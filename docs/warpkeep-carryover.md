@@ -93,8 +93,8 @@ texts are the canonical ones.
 
 **Note:** Warpkeep's lore is thin. It has names, titles and the Social Contract's
 voice, but no written history, factions or warp mythology. Nullmere has to
-write its own canon, and the still, black lake of the launcher is an obvious
-place to begin.
+write its own canon, and the black lake under the launcher's full moon is an
+obvious place to begin.
 
 **Drop:**
 

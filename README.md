@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Packaging/AppIcon.png" width="128" height="128" alt="Nullmere Online app icon: a moon above a still black lake">
+  <img src="Packaging/AppIcon.png" width="128" height="128" alt="Nullmere Online app icon: a full moon above a black lake, mirrored in the water">
 </p>
 
 <h1 align="center">Nullmere Online</h1>
@@ -12,14 +12,31 @@ premise and principles of [Warpkeep](https://github.com/ael-dev3/Warpkeep),
 without Warpkeep's Farcaster identity.
 
 **This repository currently holds the native launcher**: the "Nullmere Online"
-title screen with Play, Settings and Quit. There is no game client or server yet.
+title screen. It shows a black lake under a full moon, with Play, News,
+Settings, Repository and Quit on the water. There is no game client or server
+yet.
 
 Website: [nullmere.online](https://nullmere.online)
 
 ## Requirements
 
-- macOS 14 Sonoma or later
-- Xcode 15 or later, or another Swift 5.9+ toolchain with the macOS SDK
+Nullmere runs only on Macs that can run Apple's on-device language model,
+the roughly 3-billion-parameter model behind Apple Intelligence. Its
+characters will speak through that model, on your Mac, using the
+[Foundation Models](https://developer.apple.com/documentation/foundationmodels)
+framework. You need:
+
+- a Mac with Apple silicon,
+- macOS 26 Tahoe or later,
+- Apple Intelligence turned on in System Settings, with its model downloaded.
+
+The app is built for Apple silicon only and declares macOS 26 as its minimum,
+so macOS won't open it anywhere else. On a Mac that meets both but can't use
+the model, the launcher still opens. Play then explains what is missing,
+and the footer shows the model's status.
+
+To build the launcher you need Xcode 26 or later. It includes Swift 6.2 and
+the macOS 26 SDK.
 
 ## Build and run
 
@@ -41,11 +58,11 @@ make app                          # or: scripts/build-app.sh
 open "build/Nullmere Online.app"
 ```
 
-`scripts/build-app.sh` makes a release build and assembles
+`scripts/build-app.sh` makes an arm64 release build and assembles
 `Nullmere Online.app` with its icon and Info.plist. It signs the app ad hoc,
 which is enough to run it on the Mac that built it. To sign with a
 Developer ID instead, set `CODESIGN_IDENTITY`. `VERSION` sets the marketing
-version (default `0.1.0`).
+version (default `0.2.0`).
 
 Tests and checks:
 
@@ -58,9 +75,10 @@ make check-shader          # compile the shader with the offline Metal compiler
 
 | Key | Action |
 | --- | --- |
-| ↑ ↓ | Choose a menu item or settings row |
+| ← → | Move along the menu |
+| ↑ ↓ | Choose a story in News or a row in Settings |
 | Return or Space | Select; in Settings, cycle the option |
-| ← → | Change the selected setting |
+| ← → in Settings | Change the selected setting |
 | Esc | Go back |
 | ⌘, | Settings |
 | ⌘Q | Quit |
@@ -68,40 +86,96 @@ make check-shader          # compile the shader with the offline Metal compiler
 Any key or click during the opening skips it. Everything also works with the
 pointer.
 
-**Play** says that the first realm has not opened yet. **Settings** stores its
-values in the `online.nullmere.launcher` user defaults:
+- **Play** checks the on-device model first. If the Mac is ready and the
+  Nullmere game client is installed (bundle identifier
+  `online.nullmere.game`), the launcher fades out and opens it. Until the
+  first realm opens there is no client, so Play says the shore is quiet.
+  If the model isn't available, Play says why and, where it helps, offers
+  to open System Settings. The status of the model is always shown at the
+  bottom left. While Apple Intelligence is off or its model is downloading,
+  the launcher checks again every few seconds, and whenever it comes back to
+  the front.
+- **News** lists the latest stories, with the chosen story beside them.
+- **Settings** is described below.
+- **Repository** opens this repository in your browser.
+- **Quit** fades to black and quits.
+
+### News
+
+The news lives in this repository, in [`news/news.json`](news/news.json):
+
+```json
+{
+  "items": [
+    {
+      "id": "full-moon",
+      "date": "2026-10-24",
+      "title": "A full moon over Nullmere",
+      "body": "A few sentences, up to 280 characters.",
+      "link": "https://github.com/ael-dev3/Nullmere"
+    }
+  ]
+}
+```
+
+When you open News, the launcher downloads that file from the `main` branch
+on `raw.githubusercontent.com`, at most once every ten minutes while it is
+open, and saves the copy for the next launch. Offline, or while the
+repository is private, it shows the saved copy, or the news it was built
+with. Stories are listed newest first. Entries without a title, body or
+valid date are skipped, and only `https` links are followed. The download
+carries no cookies or identifiers, though GitHub sees your IP address as it
+would for any web request. A test keeps the built-in news identical to the
+file, so publishing news means editing `news/news.json` and the built-in copy
+in [`News.swift`](Sources/LauncherCore/News.swift) together.
+
+### Settings
+
+Settings are stored in the `online.nullmere.launcher` user defaults:
 
 | Setting | Options | Effect |
 | --- | --- | --- |
-| Motion | System, Full, Reduced, Still | Speed of the water, star twinkle and opening. System follows *Reduce motion*. Still renders a single frame and stops. |
+| Motion | System, Full, Reduced, Still | How much moves. Full: flickering stars, falling stars, rings on the water and the opening. Reduced: slower water and gentle twinkling only. Still: a single frame. System follows *Reduce motion*. |
 | Resolution | Native, Balanced, Efficient | Renders the lake at 100%, 75% or 50% of native pixels |
 | Frame rate | 30, 60, 120 | Upper bound for the lake's frame rate |
 | Full screen at launch | Off, On | Applies the next time the launcher opens |
 
 ## Design
 
-A deep black lake under a cold moon, water so still it holds the stars,
-distant flat-topped mesas, and a pale title set wide above the far shore.
-The mood is vast, quiet and monumental. Nothing on screen asks for
-attention: there is no music, and only a slow twinkle, a faint swell, mist on
-the waterline and, about once a minute, a meteor that also crosses the
-reflection.
+A full moon hangs over a great black lake. Its reflection breaks and gathers
+on the water below. Pale, thin type rests above the far shore. The mood is
+vast, quiet and monumental, after the grand, minimal look of the Dune films.
+There is no music.
 
-- **Scene.** One fragment shader draws everything procedurally: sky, three
-  layers of point stars, a faint galactic band, the moon with limb darkening,
-  the shore, mist, and the mirrored water with depth-dependent reflectance.
-  It is compiled at runtime from
+- **The moon** is a large, cold full moon at the top of the sky, the same
+  view as the app icon. Its halo swells and settles very slowly, and thin
+  haze drifting past catches its light.
+- **The stars** flicker, each at its own pace. They flicker more near the
+  horizon, as they do through deeper air. Now and then a star falls: the
+  first a few seconds after the lake appears, then at random, about twice a
+  minute, drawing a fading trail away from the moon.
+- **The lake is water, not glass.** A long swell and wind ripples run toward
+  the viewer, breaking the moon's reflection into moving slivers. Glints of
+  moonlight flash on the facets turned toward the moon and trace its path to
+  the far shore. Now and then rings spread where something touched the
+  surface. Star reflections and falling stars ripple with the water. Far
+  away, the surface lies smooth and mirrors the shore.
+- **The title** is NULLMERE, set large in SF Pro Thin with wide tracking. The
+  letters settle together as it appears. ONLINE sits beneath it between two
+  hairlines that reach the width of the word. The menu is a single row of
+  light, spaced capitals on the water, and the chosen word glows faintly
+  over a hairline. Panels darken the water beneath them so their text stays
+  legible over the reflection.
+- **Rendering.** One fragment shader draws the whole scene procedurally. It
+  is compiled at runtime from
   [`LakeShader.swift`](Sources/LauncherKit/Backdrop/LakeShader.swift), so plain
-  `swift build` works. Stars are sized in points, so they stay crisp at any
-  window size or backing scale, and the output is dithered so the dark
-  gradients don't band.
-- **Type.** SF Pro: a thin title tracked at 0.62 em, which settles in from
-  wider spacing as it appears, and light uppercase labels. Pale, slightly
-  cold ink with a faint glow. Tracking is balanced on both sides so words
-  centre optically.
+  `swift build` works. Stars and glints are sized in points, so they stay crisp
+  at any window size or backing scale. Waves too small to draw cleanly fade
+  out rather than shimmer, and the output is dithered so the dark gradients
+  don't band.
 - **Cost.** The lake renders only while the window is visible and motion is
-  allowed, at the chosen frame rate and resolution. If Metal is unavailable
-  or the shader fails, a static SwiftUI rendition replaces it.
+  allowed, at the chosen frame rate and resolution. If the shader fails, a
+  still SwiftUI painting of the scene replaces it.
 - **Accessibility.** The launcher honours Reduce Motion and Increase
   Contrast, has VoiceOver labels and selection traits, and works fully from
   the keyboard.
@@ -116,17 +190,20 @@ python3 -m http.server
 # open http://localhost:8000/Tools/scene-preview/
 ```
 
-Query parameters: `horizon`, `twinkle` and `time` (to freeze a moment).
+Query parameters: `horizon`, `activity` (1 for full motion, 0.4 reduced,
+0 still) and `time`, which freezes a moment. Try `?time=7.2` to catch the
+first falling star.
 
 ## Layout
 
 ```
 Package.swift
 Sources/
-  LauncherCore/       Platform-independent logic: settings, navigation, scene clock, composition
-  LauncherKit/        SwiftUI interface, Metal backdrop, window and keyboard handling
+  LauncherCore/       Platform-independent logic: settings, navigation, news, model readiness, composition
+  LauncherKit/        SwiftUI interface, Metal backdrop, services (on-device model, news, game client)
   NullmereLauncher/   App entry point
 Tests/                LauncherCoreTests, LauncherKitTests
+news/                 news.json, the launcher's news feed
 Packaging/            Info.plist template and the 1024 px app icon
 scripts/              build-app.sh, check-shader.sh
 Tools/scene-preview/  Browser preview of the lake shader
@@ -139,8 +216,9 @@ docs/                 Project notes, starting with what carries over from Warpke
   interface, and Metal for the world if it earns its place.
 - **Server:** [SpacetimeDB](https://spacetimedb.com) as the authoritative
   multiplayer backend, as it was for Warpkeep.
-- **Later:** NPCs voiced by Apple's on-device Foundation Models. They never
-  decide outcomes or grant resources.
+- **Characters:** non-player characters voiced by Apple's on-device model,
+  through the Foundation Models framework. They never decide outcomes or
+  grant resources.
 - **Character:** open source and pseudonymous, executed with restraint.
 
 [What carries over from Warpkeep](docs/warpkeep-carryover.md) covers the
