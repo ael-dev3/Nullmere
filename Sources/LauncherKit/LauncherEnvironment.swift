@@ -14,12 +14,15 @@ struct LauncherEnvironment {
     var downloadNews: () async throws -> Data
     /// Opens a link in the browser or System Settings; false if nothing opened it.
     var open: (URL) -> Bool
+    /// Quits the launcher.
+    var terminate: @MainActor () -> Void
 
     static let live = LauncherEnvironment(
         modelReadiness: { OnDeviceModel.readiness() },
         installedGame: { GameClient.installedURL() },
         openGame: { try await GameClient.open($0) },
         downloadNews: { try await NewsDownloader.download() },
-        open: { NSWorkspace.shared.open($0) }
+        open: { NSWorkspace.shared.open($0) },
+        terminate: { NSApp.terminate(nil) }
     )
 }

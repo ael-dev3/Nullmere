@@ -17,6 +17,7 @@ public struct LauncherRootView: View {
         GeometryReader { proxy in
             let unit = CGFloat(LakeComposition.unit(width: proxy.size.width, height: proxy.size.height))
             let waterline = CGFloat(LakeComposition.waterline(forHeight: proxy.size.height))
+            let motion = model.settings.motion.resolved(systemReducesMotion: reduceMotion)
 
             ZStack(alignment: .top) {
                 LakeBackdrop(configuration: model.backdropConfiguration(systemReducesMotion: reduceMotion))
@@ -35,7 +36,7 @@ public struct LauncherRootView: View {
                     .allowsHitTesting(false)
                     .animation(.easeInOut(duration: 0.5), value: model.screen)
 
-                TitleBlock(isRevealed: model.intro.showsTitle, settlesLetters: !reduceMotion)
+                TitleBlock(isRevealed: model.intro.showsTitle, settlesLetters: motion == .full)
                     .frame(maxWidth: .infinity)
                     .frame(height: max(waterline - 46 * unit, 0), alignment: .bottom)
 
@@ -85,6 +86,9 @@ public struct LauncherRootView: View {
         // Apple Intelligence may have been turned on in System Settings meanwhile.
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             model.refreshReadiness()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            model.pauseReadinessChecks()
         }
     }
 }

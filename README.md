@@ -93,8 +93,9 @@ pointer.
   If the model isn't available, Play says why and, where it helps, offers
   to open System Settings. The status of the model is always shown at the
   bottom left. While Apple Intelligence is off or its model is downloading,
-  the launcher checks again every few seconds, and whenever it comes back to
-  the front.
+  the launcher checks again every few seconds while it is in front, and
+  whenever it comes back to the front. If you wait on the Play page, it
+  continues by itself once the model is ready.
 - **News** lists the latest stories, with the chosen story beside them.
 - **Settings** is described below.
 - **Repository** opens this repository in your browser.

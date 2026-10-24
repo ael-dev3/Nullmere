@@ -130,21 +130,36 @@ public final class LauncherModel {
     /// every few seconds while the answer can still change: while the model
     /// downloads, or until Apple Intelligence is turned on.
     func refreshReadiness() {
-        readiness = environment.modelReadiness()
+        apply(environment.modelReadiness())
         guard readiness.needsRecheck, readinessTask == nil else { return }
         readinessTask = Task { [weak self] in
             while true {
                 try? await Task.sleep(for: .seconds(4))
                 guard let self, !Task.isCancelled else { return }
-                let current = self.environment.modelReadiness()
-                if current != self.readiness {
-                    withAnimation(.easeInOut(duration: 0.4)) { self.readiness = current }
-                }
-                if !current.needsRecheck {
+                self.apply(self.environment.modelReadiness())
+                if !self.readiness.needsRecheck {
                     self.readinessTask = nil
                     return
                 }
             }
+        }
+    }
+
+    /// Stops checking while the launcher is in the background. Coming back
+    /// to the front calls `refreshReadiness()` again.
+    func pauseReadinessChecks() {
+        readinessTask?.cancel()
+        readinessTask = nil
+    }
+
+    private func apply(_ current: ModelReadiness) {
+        guard current != readiness else { return }
+        let becameReady = current.allowsPlay && !readiness.allowsPlay
+        withAnimation(.easeInOut(duration: 0.4)) { readiness = current }
+        // Someone waiting on the Play panel crosses as soon as the model is
+        // ready. Without a game client the panel simply says so.
+        if becameReady, screen == .play, let game = environment.installedGame() {
+            launchGame(at: game)
         }
     }
 
@@ -255,7 +270,7 @@ public final class LauncherModel {
             do {
                 try await environment.openGame(url)
                 try? await Task.sleep(for: .milliseconds(850))
-                NSApp.terminate(nil)
+                environment.terminate()
             } catch {
                 gameFailedToOpen = true
                 show(.play)
@@ -268,6 +283,12 @@ public final class LauncherModel {
 
     var visibleNews: [NewsItem] {
         Array(news.items.prefix(Self.visibleNewsCount))
+    }
+
+    func selectNews(_ item: NewsItem) {
+        if let index = visibleNews.firstIndex(of: item) {
+            newsSelection = index
+        }
     }
 
     var selectedNews: NewsItem? {
@@ -323,8 +344,8 @@ public final class LauncherModel {
         _ = environment.open(Destination.repository)
     }
 
-    /// Opens System Settings at Apple Intelligence, or at its front page if
-    /// that pane can't be reached directly.
+    /// Opens System Settings at Apple Intelligence & Siri. If the settings
+    /// link can't be opened at all, opens System Settings itself.
     func openAppleIntelligenceSettings() {
         if !environment.open(Destination.appleIntelligenceSettings) {
             _ = environment.open(Destination.systemSettings)
@@ -338,7 +359,7 @@ public final class LauncherModel {
         withAnimation(.easeIn(duration: 0.6)) { isLeaving = true }
         Task {
             try? await Task.sleep(for: .milliseconds(650))
-            NSApp.terminate(nil)
+            environment.terminate()
         }
     }
 

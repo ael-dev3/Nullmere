@@ -7,27 +7,33 @@ final class LauncherModelTests: XCTestCase {
     private var defaults: UserDefaults!
     private var suiteName: String!
     private var opened: [URL] = []
+    private var launchedGames: [URL] = []
+    private var terminated = false
 
     override func setUp() async throws {
         suiteName = "LauncherModelTests.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)
         opened = []
+        launchedGames = []
+        terminated = false
     }
 
     override func tearDown() async throws {
         defaults.removePersistentDomain(forName: suiteName)
     }
 
-    /// A model whose outside world is this test: links are recorded, not opened.
+    /// A model whose outside world is this test: links, games and quitting
+    /// are recorded, not carried out. `readiness` is read afresh on every
+    /// check, so a test can change it along the way.
     private func makeModel(
-        readiness: ModelReadiness = .ready,
+        readiness: @autoclosure @escaping () -> ModelReadiness = .ready,
         game: URL? = nil,
         news: Data? = nil
     ) -> LauncherModel {
         let environment = LauncherEnvironment(
-            modelReadiness: { readiness },
+            modelReadiness: readiness,
             installedGame: { game },
-            openGame: { _ in },
+            openGame: { [weak self] url in self?.launchedGames.append(url) },
             downloadNews: {
                 guard let news else { throw URLError(.notConnectedToInternet) }
                 return news
@@ -35,7 +41,8 @@ final class LauncherModelTests: XCTestCase {
             open: { [weak self] url in
                 self?.opened.append(url)
                 return true
-            }
+            },
+            terminate: { [weak self] in self?.terminated = true }
         )
         return LauncherModel(defaults: defaults, environment: environment)
     }
@@ -88,6 +95,57 @@ final class LauncherModelTests: XCTestCase {
 
         model.handle(.confirm)
         XCTAssertEqual(model.screen, .title)
+    }
+
+    func testPlayOpensAnInstalledGameOnAReadyMac() async throws {
+        let game = URL(fileURLWithPath: "/Applications/Nullmere.app")
+        let model = makeModel(readiness: .ready, game: game)
+        model.completeIntro()
+        model.activate(.play)
+        XCTAssertTrue(model.isLeaving, "The launcher fades out")
+        try await Task.sleep(for: .milliseconds(1100))
+        XCTAssertEqual(launchedGames, [game])
+        XCTAssertTrue(terminated, "The launcher hands over to the game and quits")
+    }
+
+    func testWaitingOnPlayContinuesOnceTheModelIsReady() async throws {
+        var state = ModelReadiness.modelNotReady
+        let game = URL(fileURLWithPath: "/Applications/Nullmere.app")
+        let model = makeModel(readiness: state, game: game)
+        model.completeIntro()
+        model.activate(.play)
+        XCTAssertEqual(model.screen, .play)
+        XCTAssertFalse(model.isLeaving)
+
+        state = .ready
+        model.refreshReadiness()
+        XCTAssertEqual(model.readiness, .ready)
+        XCTAssertTrue(model.isLeaving)
+        try await Task.sleep(for: .milliseconds(1100))
+        XCTAssertEqual(launchedGames, [game])
+    }
+
+    func testTheModelBecomingReadyElsewhereDoesNotLaunchTheGame() {
+        var state = ModelReadiness.appleIntelligenceNotEnabled
+        let model = makeModel(readiness: state, game: URL(fileURLWithPath: "/Applications/Nullmere.app"))
+        model.completeIntro()
+        model.refreshReadiness()
+        state = .ready
+        model.refreshReadiness()
+        XCTAssertEqual(model.readiness, .ready)
+        XCTAssertFalse(model.isLeaving, "Only someone waiting on the Play panel crosses by themselves")
+        model.pauseReadinessChecks()
+    }
+
+    func testQuitFadesThenQuits() async throws {
+        let model = makeModel()
+        model.completeIntro()
+        model.activate(.quit)
+        XCTAssertTrue(model.isLeaving)
+        model.handle(.confirm)
+        XCTAssertFalse(terminated, "Quitting waits for the fade")
+        try await Task.sleep(for: .milliseconds(900))
+        XCTAssertTrue(terminated)
     }
 
     func testPlayOnAReadyMacWaitsForTheFirstRealm() {

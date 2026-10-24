@@ -170,7 +170,7 @@ enum LakeShader {
         float2 m = float2(aspect * NM_MOON_X, NM_MOON_Y);
         float dm = length(p - m);
         // The moon's light swells and settles very slowly.
-        float breath = 0.5 + 0.5 * sin(time * NM_TAU / 9.0);
+        float breath = 0.5 + 0.5 * sin(NM_TAU * fract(time / 9.0));
 
         float altitude = smoothstep(horizon + 0.004, horizon + 0.20, p.y);
         float glare = smoothstep(NM_MOON_R * 1.3, NM_MOON_R * 6.5, dm);
@@ -247,9 +247,10 @@ enum LakeShader {
         if (lod <= 0.0) {
             return float2(0.0);
         }
-        float k = NM_TAU / lambda;
+        // Wrap the phase so it stays small however long the launcher runs.
         float speed = 0.24 * sqrt(lambda);
-        return dir * (slope * lod * cos(k * (dot(dir, w) + speed * time)));
+        float phase = fract((dot(dir, w) + speed * time) / lambda);
+        return dir * (slope * lod * cos(NM_TAU * phase));
     }
 
     // Rings spreading where something touched the water. Three independent
@@ -305,7 +306,7 @@ enum LakeShader {
         float2 d = (g - id - pos) * cellSize / pt;
         d.x *= 0.26 + 0.2 * h.y;
         float shape = exp(-dot(d, d) / 0.5) * (0.55 + 0.45 * fract(h.y * 5.1));
-        float wave = max(sin(time * (1.6 + 2.8 * h.y) + NM_TAU * fract(h.x * 7.3)), 0.0);
+        float wave = max(sin(NM_TAU * fract(time * (1.6 + 2.8 * h.y) / NM_TAU + h.x * 7.3)), 0.0);
         float flash = wave * wave * wave;
         flash *= flash;
         return float3(0.84, 0.89, 1.0) * shape * flash * (0.35 + 0.65 * fract(h.x * 13.7));

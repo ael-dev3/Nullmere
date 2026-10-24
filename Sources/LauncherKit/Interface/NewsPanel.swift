@@ -14,12 +14,12 @@ struct NewsPanel: View {
 
             HStack(alignment: .top, spacing: 52 * unit) {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(model.visibleNews.indices, id: \.self) { index in
-                        NewsHeadline(item: model.visibleNews[index], isSelected: index == model.newsSelection) {
-                            model.newsSelection = index
+                    ForEach(model.visibleNews) { item in
+                        NewsHeadline(item: item, isSelected: item.id == model.selectedNews?.id) {
+                            model.selectNews(item)
                         }
                         .onHover { inside in
-                            if inside { model.newsSelection = index }
+                            if inside { model.selectNews(item) }
                         }
                     }
                     NewsSourceLine(status: model.newsStatus)

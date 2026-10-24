@@ -33,6 +33,9 @@ struct PlayPanel: View {
             HStack(spacing: 48 * unit) {
                 if model.readiness.isFixedInSystemSettings {
                     MenuButton(title: "Open System Settings", isSelected: hovered == .settings) {
+                        // System Settings comes to the front before the pointer
+                        // leaves the button, so the hover never ends by itself.
+                        hovered = nil
                         model.openAppleIntelligenceSettings()
                     }
                     .onHover { hovered = $0 ? .settings : nil }

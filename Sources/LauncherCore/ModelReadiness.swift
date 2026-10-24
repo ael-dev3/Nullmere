@@ -70,7 +70,7 @@ public enum ModelReadiness: Equatable, Sendable {
         case .appleIntelligenceNotEnabled:
             return "Nullmere's characters speak through Apple's on-device model. Turn on Apple Intelligence in System Settings, then come back to the shore."
         case .modelNotReady:
-            return "Apple's on-device model isn't ready yet, usually because it's still downloading. Play opens as soon as it is."
+            return "Apple's on-device model isn't ready yet, usually because it's still downloading. Stay here, and Play continues by itself once it is."
         case .unavailable:
             return "macOS reports that Apple's on-device model can't be used right now. Check Apple Intelligence in System Settings."
         }
