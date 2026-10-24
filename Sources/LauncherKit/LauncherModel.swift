@@ -45,6 +45,8 @@ public final class LauncherModel {
     var menuSelection: MenuItem = .play
     var settingsSelection: SettingsRow = .motion
     var newsSelection = 0
+    /// The chosen action on the requirement screen, an index into `readiness.actions`.
+    var requirementSelection = 0
     private(set) var intro = Intro()
     /// Fading to black, to quit or to hand over to the game.
     private(set) var isLeaving = false
@@ -80,7 +82,15 @@ public final class LauncherModel {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
     }
 
+    /// Nullmere is usable only where Apple's on-device model is. Until it is
+    /// ready, the launcher shows nothing but the requirement screen: what is
+    /// missing, a way to fix it where there is one, and Quit.
+    var isGated: Bool {
+        !readiness.allowsPlay
+    }
+
     var footerHint: String? {
+        guard !isGated else { return nil }
         switch screen {
         case .title, .play: return nil
         case .news: return "↑ ↓ choose  ·  return open  ·  esc back"
@@ -154,12 +164,11 @@ public final class LauncherModel {
 
     private func apply(_ current: ModelReadiness) {
         guard current != readiness else { return }
-        let becameReady = current.allowsPlay && !readiness.allowsPlay
-        withAnimation(.easeInOut(duration: 0.4)) { readiness = current }
-        // Someone waiting on the Play panel crosses as soon as the model is
-        // ready. Without a game client the panel simply says so.
-        if becameReady, screen == .play, let game = environment.installedGame() {
-            launchGame(at: game)
+        // The requirement screen gives way to the launcher as soon as the
+        // model is ready, and comes back if it stops being available.
+        withAnimation(.easeInOut(duration: 0.6)) {
+            readiness = current
+            requirementSelection = 0
         }
     }
 
@@ -167,6 +176,7 @@ public final class LauncherModel {
 
     public func show(_ screen: Screen) {
         completeIntro()
+        guard !isGated else { return }
         if screen == .settings, self.screen != .settings {
             settingsSelection = .motion
         }
@@ -178,6 +188,7 @@ public final class LauncherModel {
     }
 
     func activate(_ item: MenuItem) {
+        guard !isGated else { return }
         menuSelection = item
         switch item {
         case .play: play()
@@ -200,11 +211,35 @@ public final class LauncherModel {
             completeIntro()
             return
         }
+        guard !isGated else {
+            handleOnRequirement(key)
+            return
+        }
         switch screen {
         case .title: handleOnTitle(key)
         case .news: handleInNews(key)
         case .settings: handleInSettings(key)
         case .play: handleInPlay(key)
+        }
+    }
+
+    private func handleOnRequirement(_ key: KeyCommand) {
+        let actions = readiness.actions
+        switch key {
+        case .left, .up: requirementSelection = max(requirementSelection - 1, 0)
+        case .right, .down: requirementSelection = max(min(requirementSelection + 1, actions.count - 1), 0)
+        case .confirm:
+            if actions.indices.contains(requirementSelection) {
+                perform(actions[requirementSelection])
+            }
+        case .back: break
+        }
+    }
+
+    func perform(_ action: RequirementAction) {
+        switch action {
+        case .openSystemSettings: openAppleIntelligenceSettings()
+        case .quit: quit()
         }
     }
 
@@ -247,8 +282,8 @@ public final class LauncherModel {
 
     // MARK: Play
 
-    /// Opens the game when this Mac is ready and the game is installed;
-    /// otherwise explains what is missing.
+    /// Opens the game when it is installed. Until the first realm opens
+    /// there is no game client, and Play says so.
     func play() {
         menuSelection = .play
         refreshReadiness()
@@ -256,9 +291,12 @@ public final class LauncherModel {
         switch PlayOutcome(readiness: readiness, isGameInstalled: game != nil) {
         case .launchGame:
             if let game { launchGame(at: game) }
-        case .explainRequirement, .awaitFirstRealm:
+        case .awaitFirstRealm:
             gameFailedToOpen = false
             show(.play)
+        case .explainRequirement:
+            // The model just became unavailable; the requirement screen shows why.
+            break
         }
     }
 
@@ -297,6 +335,7 @@ public final class LauncherModel {
     }
 
     func openNews() {
+        guard !isGated else { return }
         menuSelection = .news
         newsSelection = 0
         show(.news)

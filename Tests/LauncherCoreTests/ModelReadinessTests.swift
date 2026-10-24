@@ -27,6 +27,16 @@ final class ModelReadinessTests: XCTestCase {
         XCTAssertEqual(Set(all.map(\.status)).count, all.count)
     }
 
+    func testTheRequirementScreenOffersSettingsOnlyWhereTheyHelp() {
+        XCTAssertEqual(ModelReadiness.appleIntelligenceNotEnabled.actions, [.openSystemSettings, .quit])
+        XCTAssertEqual(ModelReadiness.unavailable.actions, [.openSystemSettings, .quit])
+        XCTAssertEqual(ModelReadiness.deviceNotEligible.actions, [.quit])
+        XCTAssertEqual(ModelReadiness.modelNotReady.actions, [.quit])
+        XCTAssertEqual(ModelReadiness.checking.actions, [], "Nothing to press while the launcher is still checking")
+        XCTAssertEqual(ModelReadiness.ready.actions, [])
+        XCTAssertEqual(RequirementAction.openSystemSettings.title, "Open System Settings")
+    }
+
     func testPlayOutcome() {
         XCTAssertEqual(PlayOutcome(readiness: .ready, isGameInstalled: true), .launchGame)
         XCTAssertEqual(PlayOutcome(readiness: .ready, isGameInstalled: false), .awaitFirstRealm)

@@ -24,11 +24,13 @@ final class LauncherModelTests: XCTestCase {
 
     /// A model whose outside world is this test: links, games and quitting
     /// are recorded, not carried out. `readiness` is read afresh on every
-    /// check, so a test can change it along the way.
+    /// check, so a test can change it along the way. Like the window
+    /// appearing, making the model checks readiness once unless told not to.
     private func makeModel(
         readiness: @autoclosure @escaping () -> ModelReadiness = .ready,
         game: URL? = nil,
-        news: Data? = nil
+        news: Data? = nil,
+        appeared: Bool = true
     ) -> LauncherModel {
         let environment = LauncherEnvironment(
             modelReadiness: readiness,
@@ -44,7 +46,11 @@ final class LauncherModelTests: XCTestCase {
             },
             terminate: { [weak self] in self?.terminated = true }
         )
-        return LauncherModel(defaults: defaults, environment: environment)
+        let model = LauncherModel(defaults: defaults, environment: environment)
+        if appeared {
+            model.refreshReadiness()
+        }
+        return model
     }
 
     func testFirstKeySkipsTheIntro() {
@@ -82,19 +88,74 @@ final class LauncherModelTests: XCTestCase {
         XCTAssertEqual(model.menuSelection, .quit)
     }
 
-    func testPlayExplainsWhatThisMacIsMissing() {
-        let model = makeModel(readiness: .appleIntelligenceNotEnabled, game: URL(fileURLWithPath: "/Applications/Nullmere.app"))
+    func testAMacWithoutTheModelSeesOnlyWhatIsMissing() async throws {
+        let model = makeModel(readiness: .deviceNotEligible, game: URL(fileURLWithPath: "/Applications/Nullmere.app"))
         model.completeIntro()
-        model.activate(.play)
-        XCTAssertEqual(model.screen, .play, "An installed game still needs the on-device model")
-        XCTAssertEqual(model.readiness, .appleIntelligenceNotEnabled)
-        XCTAssertFalse(model.isLeaving)
+        XCTAssertTrue(model.isGated)
+        XCTAssertNil(model.footerHint)
 
-        model.openAppleIntelligenceSettings()
-        XCTAssertEqual(opened, [Destination.appleIntelligenceSettings])
+        // Nothing behind the requirement screen can be reached.
+        model.handle(.right)
+        model.handle(.down)
+        model.activate(.play)
+        model.activate(.news)
+        model.show(.settings)
+        model.openNews()
+        XCTAssertEqual(model.screen, .title)
+        XCTAssertEqual(model.menuSelection, .play)
+        XCTAssertEqual(launchedGames, [], "Not even an installed game opens")
+
+        // Quit is all there is.
+        XCTAssertEqual(model.readiness.actions, [.quit])
+        model.handle(.back)
+        XCTAssertFalse(model.isLeaving)
+        model.handle(.confirm)
+        XCTAssertTrue(model.isLeaving)
+        try await Task.sleep(for: .milliseconds(900))
+        XCTAssertTrue(terminated)
+    }
+
+    func testTheLauncherOpensOnceAppleIntelligenceIsOn() {
+        var state = ModelReadiness.appleIntelligenceNotEnabled
+        let model = makeModel(readiness: state)
+        model.completeIntro()
+        XCTAssertTrue(model.isGated)
+        XCTAssertEqual(model.readiness.actions, [.openSystemSettings, .quit])
+        XCTAssertEqual(model.requirementSelection, 0)
 
         model.handle(.confirm)
-        XCTAssertEqual(model.screen, .title)
+        XCTAssertEqual(opened, [Destination.appleIntelligenceSettings])
+        model.handle(.right)
+        XCTAssertEqual(model.requirementSelection, 1)
+        model.handle(.right)
+        XCTAssertEqual(model.requirementSelection, 1, "Selection stops at the last action")
+        model.handle(.left)
+        XCTAssertEqual(model.requirementSelection, 0)
+
+        state = .ready
+        model.refreshReadiness()
+        XCTAssertFalse(model.isGated, "The launcher opens by itself")
+        model.handle(.right)
+        XCTAssertEqual(model.menuSelection, .news)
+        model.handle(.confirm)
+        XCTAssertEqual(model.screen, .news)
+
+        state = .modelNotReady
+        model.refreshReadiness()
+        XCTAssertTrue(model.isGated, "It closes again if the model goes away")
+        XCTAssertEqual(model.readiness.actions, [.quit])
+        model.pauseReadinessChecks()
+    }
+
+    func testNothingIsOfferedWhileStillChecking() {
+        let model = makeModel(appeared: false)
+        model.completeIntro()
+        XCTAssertEqual(model.readiness, .checking)
+        XCTAssertTrue(model.isGated)
+        model.handle(.right)
+        model.handle(.confirm)
+        XCTAssertFalse(model.isLeaving, "A stray key can't quit before the check")
+        XCTAssertEqual(model.requirementSelection, 0)
     }
 
     func testPlayOpensAnInstalledGameOnAReadyMac() async throws {
@@ -106,35 +167,6 @@ final class LauncherModelTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(1100))
         XCTAssertEqual(launchedGames, [game])
         XCTAssertTrue(terminated, "The launcher hands over to the game and quits")
-    }
-
-    func testWaitingOnPlayContinuesOnceTheModelIsReady() async throws {
-        var state = ModelReadiness.modelNotReady
-        let game = URL(fileURLWithPath: "/Applications/Nullmere.app")
-        let model = makeModel(readiness: state, game: game)
-        model.completeIntro()
-        model.activate(.play)
-        XCTAssertEqual(model.screen, .play)
-        XCTAssertFalse(model.isLeaving)
-
-        state = .ready
-        model.refreshReadiness()
-        XCTAssertEqual(model.readiness, .ready)
-        XCTAssertTrue(model.isLeaving)
-        try await Task.sleep(for: .milliseconds(1100))
-        XCTAssertEqual(launchedGames, [game])
-    }
-
-    func testTheModelBecomingReadyElsewhereDoesNotLaunchTheGame() {
-        var state = ModelReadiness.appleIntelligenceNotEnabled
-        let model = makeModel(readiness: state, game: URL(fileURLWithPath: "/Applications/Nullmere.app"))
-        model.completeIntro()
-        model.refreshReadiness()
-        state = .ready
-        model.refreshReadiness()
-        XCTAssertEqual(model.readiness, .ready)
-        XCTAssertFalse(model.isLeaving, "Only someone waiting on the Play panel crosses by themselves")
-        model.pauseReadinessChecks()
     }
 
     func testQuitFadesThenQuits() async throws {
@@ -158,7 +190,7 @@ final class LauncherModelTests: XCTestCase {
     }
 
     func testReadinessIsReadFromTheSystem() {
-        let model = makeModel(readiness: .deviceNotEligible)
+        let model = makeModel(readiness: .deviceNotEligible, appeared: false)
         XCTAssertEqual(model.readiness, .checking)
         model.refreshReadiness()
         XCTAssertEqual(model.readiness, .deviceNotEligible)

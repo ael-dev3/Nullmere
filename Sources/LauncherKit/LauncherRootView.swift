@@ -32,9 +32,10 @@ public struct LauncherRootView: View {
                 PanelScrim()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.top, waterline)
-                    .opacity(model.screen == .title ? 0 : 1)
+                    .opacity(model.screen == .title && !model.isGated ? 0 : 1)
                     .allowsHitTesting(false)
                     .animation(.easeInOut(duration: 0.5), value: model.screen)
+                    .animation(.easeInOut(duration: 0.5), value: model.isGated)
 
                 TitleBlock(isRevealed: model.intro.showsTitle, settlesLetters: motion == .full)
                     .frame(maxWidth: .infinity)
@@ -46,6 +47,7 @@ public struct LauncherRootView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.top, waterline)
                     .animation(.easeInOut(duration: 0.5), value: model.screen)
+                    .animation(.easeInOut(duration: 0.6), value: model.isGated)
 
                 LauncherFooter(version: model.version, readiness: model.readiness, hint: model.footerHint) {
                     model.openWebsite()
@@ -93,13 +95,28 @@ public struct LauncherRootView: View {
     }
 }
 
-/// The menu or the open panel. Each sits at its own depth below the waterline.
+/// The menu or the open panel, or the requirement screen until this Mac's
+/// on-device model is ready. Each sits at its own depth below the waterline.
 private struct ScreenContent: View {
     let model: LauncherModel
 
     @Environment(\.launcherUnit) private var unit
 
     var body: some View {
+        ZStack(alignment: .top) {
+            if model.isGated {
+                RequirementPanel(model: model)
+                    .padding(.top, 40 * unit)
+                    .transition(.opacity)
+            } else {
+                screen
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var screen: some View {
         ZStack(alignment: .top) {
             switch model.screen {
             case .title:

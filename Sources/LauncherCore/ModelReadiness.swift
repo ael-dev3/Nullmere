@@ -1,7 +1,8 @@
 /// Whether this Mac can run Apple's on-device language model, the roughly
 /// 3-billion-parameter model behind Apple Intelligence. Nullmere requires it:
-/// its characters will speak through it. LauncherKit reads the state from
-/// the Foundation Models framework.
+/// its characters will speak through it, and the launcher shows nothing but
+/// what is missing until it is ready. LauncherKit reads the state from the
+/// Foundation Models framework.
 public enum ModelReadiness: Equatable, Sendable {
     /// Not checked yet.
     case checking
@@ -62,17 +63,41 @@ public enum ModelReadiness: Equatable, Sendable {
     public var explanation: String {
         switch self {
         case .checking:
-            return "The launcher is checking for Apple's on-device model."
+            return "Nullmere needs Apple's on-device model. The launcher is checking for it."
         case .ready:
             return "Apple's on-device model is here, and Nullmere's characters will speak through it."
         case .deviceNotEligible:
-            return "Nullmere's characters speak through Apple's on-device model, which needs a Mac that supports Apple Intelligence. This Mac doesn't."
+            return "Nullmere's characters speak through Apple's on-device model, which needs a Mac that supports Apple Intelligence. This Mac doesn't, so Nullmere can't run here."
         case .appleIntelligenceNotEnabled:
-            return "Nullmere's characters speak through Apple's on-device model. Turn on Apple Intelligence in System Settings, then come back to the shore."
+            return "Nullmere's characters speak through Apple's on-device model. Turn on Apple Intelligence in System Settings, and the launcher opens by itself."
         case .modelNotReady:
-            return "Apple's on-device model isn't ready yet, usually because it's still downloading. Stay here, and Play continues by itself once it is."
+            return "Apple's on-device model isn't ready yet, usually because it's still downloading. The launcher opens by itself once it is."
         case .unavailable:
-            return "macOS reports that Apple's on-device model can't be used right now. Check Apple Intelligence in System Settings."
+            return "macOS reports that Apple's on-device model can't be used right now. Check Apple Intelligence in System Settings; the launcher opens by itself once the model is available."
+        }
+    }
+
+    /// What the requirement screen offers in this state. Nothing is offered
+    /// while the launcher is still checking, so a stray key can't quit.
+    public var actions: [RequirementAction] {
+        switch self {
+        case .checking, .ready: return []
+        case .appleIntelligenceNotEnabled, .unavailable: return [.openSystemSettings, .quit]
+        case .deviceNotEligible, .modelNotReady: return [.quit]
+        }
+    }
+}
+
+/// A choice on the requirement screen, the only screen the launcher shows
+/// until the on-device model is ready.
+public enum RequirementAction: Equatable, Sendable {
+    case openSystemSettings
+    case quit
+
+    public var title: String {
+        switch self {
+        case .openSystemSettings: return "Open System Settings"
+        case .quit: return "Quit"
         }
     }
 }

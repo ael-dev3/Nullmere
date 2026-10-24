@@ -32,8 +32,12 @@ framework. You need:
 
 The app is built for Apple silicon only and declares macOS 26 as its minimum,
 so macOS won't open it anywhere else. On a Mac that meets both but can't use
-the model, the launcher still opens. Play then explains what is missing,
-and the footer shows the model's status.
+the model, the launcher shows nothing but what is missing: that the Mac
+doesn't support Apple Intelligence, that it is turned off, or that the
+model is still downloading. It offers System Settings where that helps, and
+Quit. The menu stays closed until the model is ready, and then the launcher
+opens by itself. While the answer can still change, it checks again every
+few seconds while it is in front, and whenever it comes back to the front.
 
 To build the launcher you need Xcode 26 or later. It includes Swift 6.2 and
 the macOS 26 SDK.
@@ -86,16 +90,10 @@ make check-shader          # compile the shader with the offline Metal compiler
 Any key or click during the opening skips it. Everything also works with the
 pointer.
 
-- **Play** checks the on-device model first. If the Mac is ready and the
-  Nullmere game client is installed (bundle identifier
-  `online.nullmere.game`), the launcher fades out and opens it. Until the
-  first realm opens there is no client, so Play says the shore is quiet.
-  If the model isn't available, Play says why and, where it helps, offers
-  to open System Settings. The status of the model is always shown at the
-  bottom left. While Apple Intelligence is off or its model is downloading,
-  the launcher checks again every few seconds while it is in front, and
-  whenever it comes back to the front. If you wait on the Play page, it
-  continues by itself once the model is ready.
+- **Play** fades the launcher out and opens the Nullmere game client
+  (bundle identifier `online.nullmere.game`). Until the first realm opens
+  there is no client, so Play says the shore is quiet. The on-device model's
+  status is always shown at the bottom left.
 - **News** lists the latest stories, with the chosen story beside them.
 - **Settings** is described below.
 - **Repository** opens this repository in your browser.
