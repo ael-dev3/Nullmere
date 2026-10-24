@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "id": "full-moon",
+      "date": "2026-10-24",
+      "title": "A full moon over Nullmere",
+      "body": "The launcher now opens on the lake under a full moon. The water moves, the stars flicker, and now and then one falls. Play, News, Settings and the repository live here while the first realm is shaped.",
+      "link": "https://github.com/ael-dev3/Nullmere"
+    },
+    {
+      "id": "apple-intelligence",
+      "date": "2026-10-24",
+      "title": "Made for Apple Intelligence",
+      "body": "Nullmere runs on Macs with Apple silicon and macOS 26 or later, with Apple Intelligence turned on. Its characters will speak through Apple's on-device model, so the launcher checks that your Mac has it before you cross."
+    },
+    {
+      "id": "out-of-warpkeep",
+      "date": "2026-10-24",
+      "title": "Out of Warpkeep",
+      "body": "Nullmere keeps Warpkeep's universe, principles and rules core, and leaves its Farcaster identity behind. The notes on what carries over are in the repository.",
+      "link": "https://github.com/ael-dev3/Nullmere/blob/main/docs/warpkeep-carryover.md"
+    }
+  ]
+}

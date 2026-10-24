@@ -44,7 +44,9 @@ final class LauncherSettingsTests: XCTestCase {
         XCTAssertEqual(MotionPreference.full.resolved(systemReducesMotion: true), .full)
         XCTAssertEqual(MotionPreference.still.resolved(systemReducesMotion: false), .still)
         XCTAssertEqual(ResolvedMotion.still.clockRate, 0)
-        XCTAssertEqual(ResolvedMotion.still.twinkle, 0)
+        XCTAssertEqual(ResolvedMotion.still.activity, 0)
+        XCTAssertEqual(ResolvedMotion.full.activity, 1)
+        XCTAssertLessThan(ResolvedMotion.reduced.activity, 0.5, "Stars fall and rings spread only above 0.5")
     }
 
     func testEveryRowHasItsCurrentValueSelected() {

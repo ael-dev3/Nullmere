@@ -42,11 +42,12 @@ public enum ResolvedMotion: Sendable, Equatable {
         }
     }
 
-    /// Amplitude of star scintillation. Meteors only appear at full motion.
-    public var twinkle: Float {
+    /// How lively the scene is, 0...1. It scales the stars' flicker; only at
+    /// full motion do stars fall and rings spread on the water.
+    public var activity: Float {
         switch self {
-        case .full: return 0.22
-        case .reduced: return 0.08
+        case .full: return 1
+        case .reduced: return 0.4
         case .still: return 0
         }
     }

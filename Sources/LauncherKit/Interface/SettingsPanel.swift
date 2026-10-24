@@ -11,10 +11,7 @@ struct SettingsPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SpacedText("Settings", size: 11 * unit, weight: .regular, tracking: 0.8)
-                .foregroundStyle(Palette.ink.opacity(0.72))
-                .accessibilityAddTraits(.isHeader)
-                .padding(.bottom, 22 * unit)
+            PanelHeader(title: "Settings")
 
             ForEach(SettingsRow.allCases, id: \.self) { row in
                 SettingsRowView(
@@ -34,11 +31,11 @@ struct SettingsPanel: View {
                 }
             }
 
-            MenuRow(title: "Return", isSelected: isReturnHovered) {
+            MenuButton(title: "Return", isSelected: isReturnHovered) {
                 model.returnToTitle()
             }
             .onHover { isReturnHovered = $0 }
-            .padding(.top, 26 * unit)
+            .padding(.top, 18 * unit)
         }
         .frame(width: 560 * unit)
     }

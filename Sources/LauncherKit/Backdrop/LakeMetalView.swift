@@ -110,7 +110,7 @@ final class LakeMetalView: MTKView {
                 Float(bounds.width), Float(bounds.height),
                 Float(drawableSize.width), Float(drawableSize.height)
             ),
-            params: SIMD4(Float(time), configuration.motion.twinkle, Float(configuration.horizon), 0)
+            params: SIMD4(Float(time), configuration.motion.activity, Float(configuration.horizon), 0)
         )
         renderer.draw(uniforms, in: pass, to: drawable)
     }
@@ -165,7 +165,7 @@ final class LakeMetalView: MTKView {
         isLoadingRenderer = true
         let pixelFormat = colorPixelFormat
         device.makeLibrary(source: LakeShader.source, options: nil) { [weak self] library, error in
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
                 self?.finishLoading(device: device, library: library, error: error, pixelFormat: pixelFormat)
             }
         }

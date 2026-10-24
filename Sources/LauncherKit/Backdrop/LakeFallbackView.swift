@@ -1,7 +1,7 @@
 import LauncherCore
 import SwiftUI
 
-/// A still rendition of the lake drawn with SwiftUI, for Macs where the Metal
+/// A still rendition of the lake drawn with SwiftUI, for when the Metal
 /// scene cannot run.
 struct LakeFallbackView: View {
     var horizon: Double

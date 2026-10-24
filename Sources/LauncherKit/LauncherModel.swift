@@ -10,7 +10,19 @@ public final class LauncherModel {
     public enum Screen: Equatable {
         case title
         case play
+        case news
         case settings
+    }
+
+    /// Where the news on show came from.
+    enum NewsStatus: Equatable {
+        /// The news the launcher shipped with, or a copy saved on an earlier visit.
+        case saved
+        case updating
+        /// Just downloaded from the repository.
+        case current
+        /// The download failed; the saved news is still shown.
+        case offline
     }
 
     /// The opening sequence: the lake surfaces from black, then the title, then the menu.
@@ -22,21 +34,45 @@ public final class LauncherModel {
         static let complete = Intro(showsScene: true, showsTitle: true, showsMenu: true)
     }
 
-    public static let website = URL(string: "https://nullmere.online")!
+    /// How many headlines the news panel lists.
+    static let visibleNewsCount = 3
+    /// How long downloaded news counts as fresh.
+    static let newsRefreshInterval: TimeInterval = 10 * 60
+    static let newsCacheKey = "launcher.news.feed"
 
     public private(set) var screen: Screen = .title
     private(set) var settings: LauncherSettings
     var menuSelection: MenuItem = .play
     var settingsSelection: SettingsRow = .motion
+    var newsSelection = 0
     private(set) var intro = Intro()
-    private(set) var isQuitting = false
+    /// Fading to black, to quit or to hand over to the game.
+    private(set) var isLeaving = false
+    private(set) var readiness: ModelReadiness = .checking
+    private(set) var news: NewsFeed
+    private(set) var newsStatus: NewsStatus = .saved
+    private(set) var gameFailedToOpen = false
 
     private let defaults: UserDefaults
+    private let environment: LauncherEnvironment
     @ObservationIgnored private var introTask: Task<Void, Never>?
+    @ObservationIgnored private var readinessTask: Task<Void, Never>?
+    @ObservationIgnored private var newsFetchedAt: Date?
+    @ObservationIgnored private var isFetchingNews = false
 
-    public init(defaults: UserDefaults = .standard) {
+    public convenience init(defaults: UserDefaults = .standard) {
+        self.init(defaults: defaults, environment: .live)
+    }
+
+    init(defaults: UserDefaults, environment: LauncherEnvironment) {
         self.defaults = defaults
+        self.environment = environment
         self.settings = LauncherSettings(defaults: defaults)
+        if let data = defaults.data(forKey: Self.newsCacheKey), let saved = try? NewsFeed(json: data) {
+            self.news = saved
+        } else {
+            self.news = .builtIn
+        }
     }
 
     /// The marketing version from the app bundle, or "dev" when run with `swift run`.
@@ -47,7 +83,8 @@ public final class LauncherModel {
     var footerHint: String? {
         switch screen {
         case .title, .play: return nil
-        case .settings: return "← → change  ·  esc return"
+        case .news: return "↑ ↓ choose  ·  return open  ·  esc back"
+        case .settings: return "← → change  ·  esc back"
         }
     }
 
@@ -70,13 +107,13 @@ public final class LauncherModel {
         }
         introTask = Task { [weak self] in
             guard let self else { return }
-            withAnimation(.easeInOut(duration: 2.4)) { intro.showsScene = true }
+            withAnimation(.easeInOut(duration: 2.4)) { self.intro.showsScene = true }
             try? await Task.sleep(for: .milliseconds(900))
             guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: 2.8)) { intro.showsTitle = true }
+            withAnimation(.easeOut(duration: 2.8)) { self.intro.showsTitle = true }
             try? await Task.sleep(for: .milliseconds(1700))
             guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: 1.4)) { intro.showsMenu = true }
+            withAnimation(.easeOut(duration: 1.4)) { self.intro.showsMenu = true }
         }
     }
 
@@ -87,11 +124,35 @@ public final class LauncherModel {
         withAnimation(.easeOut(duration: 0.6)) { intro = .complete }
     }
 
+    // MARK: Apple Intelligence
+
+    /// Reads whether the on-device model is available, and keeps checking
+    /// every few seconds while the answer can still change: while the model
+    /// downloads, or until Apple Intelligence is turned on.
+    func refreshReadiness() {
+        readiness = environment.modelReadiness()
+        guard readiness.needsRecheck, readinessTask == nil else { return }
+        readinessTask = Task { [weak self] in
+            while true {
+                try? await Task.sleep(for: .seconds(4))
+                guard let self, !Task.isCancelled else { return }
+                let current = self.environment.modelReadiness()
+                if current != self.readiness {
+                    withAnimation(.easeInOut(duration: 0.4)) { self.readiness = current }
+                }
+                if !current.needsRecheck {
+                    self.readinessTask = nil
+                    return
+                }
+            }
+        }
+    }
+
     // MARK: Navigation
 
     public func show(_ screen: Screen) {
         completeIntro()
-        if screen == .settings {
+        if screen == .settings, self.screen != .settings {
             settingsSelection = .motion
         }
         self.screen = screen
@@ -104,8 +165,10 @@ public final class LauncherModel {
     func activate(_ item: MenuItem) {
         menuSelection = item
         switch item {
-        case .play: show(.play)
+        case .play: play()
+        case .news: openNews()
         case .settings: show(.settings)
+        case .repository: openRepository()
         case .quit: quit()
         }
     }
@@ -117,46 +180,162 @@ public final class LauncherModel {
 
     /// Responds to a key press in the launcher window.
     func handle(_ key: KeyCommand) {
-        guard !isQuitting else { return }
+        guard !isLeaving else { return }
         guard intro == .complete else {
             completeIntro()
             return
         }
-        switch (screen, key) {
-        case (.title, .up):
-            menuSelection = menuSelection.moved(by: -1)
-        case (.title, .down):
-            menuSelection = menuSelection.moved(by: 1)
-        case (.title, .confirm):
-            activate(menuSelection)
-        case (.settings, .up):
-            settingsSelection = settingsSelection.moved(by: -1)
-        case (.settings, .down):
-            settingsSelection = settingsSelection.moved(by: 1)
-        case (.settings, .left):
-            updateSettings { $0.step(settingsSelection, by: -1) }
-        case (.settings, .right):
-            updateSettings { $0.step(settingsSelection, by: 1) }
-        case (.settings, .confirm):
-            updateSettings { $0.step(settingsSelection, by: 1, wrapping: true) }
-        case (.settings, .back), (.play, .back), (.play, .confirm):
-            returnToTitle()
-        case (.title, .left), (.title, .right), (.title, .back), (.play, _):
-            break
+        switch screen {
+        case .title: handleOnTitle(key)
+        case .news: handleInNews(key)
+        case .settings: handleInSettings(key)
+        case .play: handleInPlay(key)
         }
+    }
+
+    private func handleOnTitle(_ key: KeyCommand) {
+        switch key {
+        case .left, .up: menuSelection = menuSelection.moved(by: -1)
+        case .right, .down: menuSelection = menuSelection.moved(by: 1)
+        case .confirm: activate(menuSelection)
+        case .back: break
+        }
+    }
+
+    private func handleInNews(_ key: KeyCommand) {
+        switch key {
+        case .up: newsSelection = max(newsSelection - 1, 0)
+        case .down: newsSelection = min(newsSelection + 1, max(visibleNews.count - 1, 0))
+        case .confirm: openNewsLink()
+        case .back: returnToTitle()
+        case .left, .right: break
+        }
+    }
+
+    private func handleInSettings(_ key: KeyCommand) {
+        switch key {
+        case .up: settingsSelection = settingsSelection.moved(by: -1)
+        case .down: settingsSelection = settingsSelection.moved(by: 1)
+        case .left: updateSettings { $0.step(settingsSelection, by: -1) }
+        case .right: updateSettings { $0.step(settingsSelection, by: 1) }
+        case .confirm: updateSettings { $0.step(settingsSelection, by: 1, wrapping: true) }
+        case .back: returnToTitle()
+        }
+    }
+
+    private func handleInPlay(_ key: KeyCommand) {
+        switch key {
+        case .confirm, .back: returnToTitle()
+        case .up, .down, .left, .right: break
+        }
+    }
+
+    // MARK: Play
+
+    /// Opens the game when this Mac is ready and the game is installed;
+    /// otherwise explains what is missing.
+    func play() {
+        menuSelection = .play
+        refreshReadiness()
+        let game = readiness.allowsPlay ? environment.installedGame() : nil
+        switch PlayOutcome(readiness: readiness, isGameInstalled: game != nil) {
+        case .launchGame:
+            if let game { launchGame(at: game) }
+        case .explainRequirement, .awaitFirstRealm:
+            gameFailedToOpen = false
+            show(.play)
+        }
+    }
+
+    private func launchGame(at url: URL) {
+        guard !isLeaving else { return }
+        completeIntro()
+        withAnimation(.easeIn(duration: 0.8)) { isLeaving = true }
+        Task {
+            do {
+                try await environment.openGame(url)
+                try? await Task.sleep(for: .milliseconds(850))
+                NSApp.terminate(nil)
+            } catch {
+                gameFailedToOpen = true
+                show(.play)
+                withAnimation(.easeOut(duration: 0.6)) { isLeaving = false }
+            }
+        }
+    }
+
+    // MARK: News
+
+    var visibleNews: [NewsItem] {
+        Array(news.items.prefix(Self.visibleNewsCount))
+    }
+
+    var selectedNews: NewsItem? {
+        let items = visibleNews
+        return items.indices.contains(newsSelection) ? items[newsSelection] : items.first
+    }
+
+    func openNews() {
+        menuSelection = .news
+        newsSelection = 0
+        show(.news)
+        Task { await refreshNews() }
+    }
+
+    /// Downloads the latest news unless it was fetched a few minutes ago,
+    /// keeping a copy for the next launch. Saved news stays on show if the
+    /// download fails.
+    func refreshNews() async {
+        guard !isFetchingNews else { return }
+        if let fetched = newsFetchedAt, Date().timeIntervalSince(fetched) < Self.newsRefreshInterval {
+            return
+        }
+        isFetchingNews = true
+        defer { isFetchingNews = false }
+        newsStatus = .updating
+        do {
+            let data = try await environment.downloadNews()
+            let feed = try NewsFeed(json: data)
+            withAnimation(.easeInOut(duration: 0.4)) {
+                news = feed
+                newsStatus = .current
+            }
+            newsFetchedAt = Date()
+            defaults.set(data, forKey: Self.newsCacheKey)
+            newsSelection = min(newsSelection, max(visibleNews.count - 1, 0))
+        } catch {
+            newsStatus = .offline
+        }
+    }
+
+    func openNewsLink() {
+        guard let link = selectedNews?.link else { return }
+        _ = environment.open(link)
     }
 
     // MARK: Outside the window
 
     func openWebsite() {
-        NSWorkspace.shared.open(Self.website)
+        _ = environment.open(Destination.website)
+    }
+
+    func openRepository() {
+        _ = environment.open(Destination.repository)
+    }
+
+    /// Opens System Settings at Apple Intelligence, or at its front page if
+    /// that pane can't be reached directly.
+    func openAppleIntelligenceSettings() {
+        if !environment.open(Destination.appleIntelligenceSettings) {
+            _ = environment.open(Destination.systemSettings)
+        }
     }
 
     /// Fades to black, then quits.
     func quit() {
-        guard !isQuitting else { return }
+        guard !isLeaving else { return }
         introTask?.cancel()
-        withAnimation(.easeIn(duration: 0.6)) { isQuitting = true }
+        withAnimation(.easeIn(duration: 0.6)) { isLeaving = true }
         Task {
             try? await Task.sleep(for: .milliseconds(650))
             NSApp.terminate(nil)

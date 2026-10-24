@@ -1,31 +1,43 @@
 import LauncherCore
 import SwiftUI
 
-/// Play, Settings and Quit, centred on the water.
+/// Play, News, Settings, Repository and Quit, in a row on the water.
 struct MainMenu: View {
     let model: LauncherModel
 
     @Environment(\.launcherUnit) private var unit
 
     var body: some View {
-        VStack(spacing: 20 * unit) {
+        HStack(spacing: 54 * unit) {
             ForEach(MenuItem.allCases, id: \.self) { item in
-                MenuRow(title: item.title, isSelected: model.menuSelection == item) {
+                MenuButton(title: item.title, isSelected: model.menuSelection == item) {
                     model.activate(item)
                 }
                 .onHover { inside in
                     if inside { model.menuSelection = item }
                 }
+                .accessibilityHint(hint(for: item))
             }
+        }
+    }
+
+    private func hint(for item: MenuItem) -> String {
+        switch item {
+        case .play: return "Crosses into Nullmere when this Mac is ready"
+        case .news: return "Shows the latest news"
+        case .settings: return "Shows the launcher settings"
+        case .repository: return "Opens the source code on GitHub in your browser"
+        case .quit: return "Quits the launcher"
         }
     }
 }
 
-/// One menu entry. The selected entry brightens, glows faintly and is framed
-/// by two short rules.
-struct MenuRow: View {
+/// A word in light, spaced capitals. When selected it brightens, glows
+/// faintly and draws a hairline beneath itself.
+struct MenuButton: View {
     let title: String
     let isSelected: Bool
+    var size: CGFloat = 13
     let action: () -> Void
 
     @Environment(\.launcherUnit) private var unit
@@ -33,15 +45,17 @@ struct MenuRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 14 * unit) {
-                SelectionTick(isVisible: isSelected, length: 22 * unit)
-                SpacedText(title, size: 12.5 * unit, weight: .light, tracking: 0.48)
-                SelectionTick(isVisible: isSelected, length: 22 * unit)
-            }
-            .foregroundStyle(Palette.ink.opacity(isSelected ? 1 : restingOpacity))
-            .shadow(color: Palette.glow.opacity(isSelected ? 0.55 : 0), radius: 10 * unit)
-            .padding(.vertical, 4 * unit)
-            .contentShape(Rectangle())
+            SpacedText(title, size: size * unit, weight: .light, tracking: 0.42)
+                .foregroundStyle(Palette.ink.opacity(isSelected ? 1 : restingOpacity))
+                .shadow(color: Palette.glow.opacity(isSelected ? 0.55 : 0), radius: 12 * unit)
+                .overlay(alignment: .bottom) {
+                    Underline()
+                        .scaleEffect(x: isSelected ? 1 : 0.2, y: 1)
+                        .opacity(isSelected ? 1 : 0)
+                        .offset(y: 11 * unit)
+                }
+                .padding(.vertical, 8 * unit)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .animation(.easeOut(duration: 0.35), value: isSelected)
@@ -50,6 +64,6 @@ struct MenuRow: View {
     }
 
     private var restingOpacity: Double {
-        contrast == .increased ? 0.75 : 0.5
+        contrast == .increased ? 0.78 : 0.52
     }
 }

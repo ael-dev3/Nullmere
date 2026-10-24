@@ -19,10 +19,11 @@
 //
 //   python3 -m http.server     then open http://localhost:8000/Tools/scene-preview/
 //
-// Optional query parameters: horizon (0.45), twinkle (0.22), time (freeze at seconds).
+// Optional query parameters: horizon (0.47), activity (1 at full motion, 0.4
+// reduced, 0 still), time (freeze at seconds).
 const query = new URLSearchParams(location.search);
-const horizon = Number(query.get('horizon') ?? 0.45);
-const twinkle = Number(query.get('twinkle') ?? 0.22);
+const horizon = Number(query.get('horizon') ?? 0.47);
+const activity = Number(query.get('activity') ?? 1);
 const frozenTime = query.has('time') ? Number(query.get('time')) : null;
 
 const canvas = document.getElementById('scene');
@@ -80,7 +81,7 @@ function frame(now) {
   gl.viewport(0, 0, width, height);
   gl.uniform2f(gl.getUniformLocation(program, 'sizePt'), innerWidth, innerHeight);
   gl.uniform2f(gl.getUniformLocation(program, 'pixels'), width, height);
-  gl.uniform3f(gl.getUniformLocation(program, 'params'), frozenTime ?? (now - start) / 1000, twinkle, horizon);
+  gl.uniform3f(gl.getUniformLocation(program, 'params'), frozenTime ?? (now - start) / 1000, activity, horizon);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   if (frozenTime === null) requestAnimationFrame(frame);
 }

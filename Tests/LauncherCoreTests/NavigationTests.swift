@@ -3,11 +3,13 @@ import XCTest
 
 final class NavigationTests: XCTestCase {
     func testMenuMovesAndWraps() {
-        XCTAssertEqual(MenuItem.play.moved(by: 1), .settings)
+        XCTAssertEqual(MenuItem.allCases, [.play, .news, .settings, .repository, .quit])
+        XCTAssertEqual(MenuItem.play.moved(by: 1), .news)
         XCTAssertEqual(MenuItem.quit.moved(by: 1), .play)
         XCTAssertEqual(MenuItem.play.moved(by: -1), .quit)
         XCTAssertEqual(MenuItem.play.moved(by: -1, wrapping: false), .play)
         XCTAssertEqual(MenuItem.settings.moved(by: 7, wrapping: false), .quit)
+        XCTAssertEqual(MenuItem.repository.title, "Repository")
     }
 
     func testKeyCodesMapToCommands() {
@@ -53,10 +55,19 @@ final class SceneTests: XCTestCase {
         }
     }
 
-    func testLayoutUnitScalesWithHeightWithinBounds() {
-        XCTAssertEqual(LakeComposition.unit(forHeight: 800), 1)
-        XCTAssertEqual(LakeComposition.unit(forHeight: 400), 0.72)
-        XCTAssertEqual(LakeComposition.unit(forHeight: 4000), 1.7)
-        XCTAssertEqual(LakeComposition.waterline(forHeight: 1000), 550, accuracy: 1e-9)
+    func testLayoutUnitFollowsTheTighterDimensionWithinBounds() {
+        XCTAssertEqual(LakeComposition.unit(width: 1200, height: 800), 1)
+        XCTAssertEqual(LakeComposition.unit(width: 1920, height: 800), 1, "Wide windows scale with height")
+        XCTAssertEqual(LakeComposition.unit(width: 960, height: 1200), 0.8, "Tall windows scale with width")
+        XCTAssertEqual(LakeComposition.unit(width: 600, height: 400), 0.72)
+        XCTAssertEqual(LakeComposition.unit(width: 6000, height: 4000), 1.7)
+        XCTAssertEqual(LakeComposition.waterline(forHeight: 1000), 530, accuracy: 1e-9)
+    }
+
+    func testMoonSitsHighAboveTheWaterAndItsReflectionStaysOnScreen() {
+        let mirroredMoon = 2 * LakeComposition.horizon - LakeComposition.moonY
+        XCTAssertGreaterThan(LakeComposition.moonY - LakeComposition.moonRadius, LakeComposition.horizon + 0.2)
+        XCTAssertGreaterThan(mirroredMoon - LakeComposition.moonRadius, 0, "The full reflection fits above the bottom edge")
+        XCTAssertEqual(LakeComposition.moonX, 0.5, "The full moon is centred")
     }
 }

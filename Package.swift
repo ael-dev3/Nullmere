@@ -3,8 +3,11 @@ import PackageDescription
 
 let package = Package(
     name: "Nullmere",
+    // Nullmere needs Apple's on-device language model through the Foundation
+    // Models framework, which arrived in macOS 26. The app is built for Apple
+    // silicon only.
     platforms: [
-        .macOS(.v14),
+        .macOS("26.0"),
     ],
     products: [
         .executable(name: "NullmereLauncher", targets: ["NullmereLauncher"]),

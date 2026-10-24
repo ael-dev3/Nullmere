@@ -20,6 +20,7 @@ struct NullmereLauncherApp: App {
     }
 }
 
+@MainActor
 final class LauncherAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // `swift run` starts a bare executable rather than an app bundle;

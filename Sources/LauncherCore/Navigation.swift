@@ -1,13 +1,17 @@
-/// The launcher's main menu, top to bottom.
+/// The launcher's main menu, left to right along the water.
 public enum MenuItem: CaseIterable, Sendable {
     case play
+    case news
     case settings
+    case repository
     case quit
 
     public var title: String {
         switch self {
         case .play: return "Play"
+        case .news: return "News"
         case .settings: return "Settings"
+        case .repository: return "Repository"
         case .quit: return "Quit"
         }
     }
