@@ -1,0 +1,80 @@
+name: CI
+
+# One macOS job per pull request update (and per push to main). Changes that
+# only touch documentation or the browser preview don't start a run.
+on:
+  pull_request:
+    paths:
+      - Package.swift
+      - Sources/**
+      - Tests/**
+      - Packaging/**
+      - scripts/**
+      - .github/workflows/ci.yml
+  push:
+    branches: [main]
+    paths:
+      - Package.swift
+      - Sources/**
+      - Tests/**
+      - Packaging/**
+      - scripts/**
+      - .github/workflows/ci.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: Build, test and bundle
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Build
+        run: swift build
+
+      - name: Test
+        run: swift test
+
+      # Xcode 26 and later ship the Metal compiler separately. Fetch it only
+      # when no installed Xcode has one; check-shader.sh also tries them all.
+      - name: Ensure a Metal compiler
+        timeout-minutes: 10
+        run: |
+          if xcrun -sdk macosx metal --version >/dev/null 2>&1; then
+            echo "Metal compiler available in the selected Xcode"
+            exit 0
+          fi
+          for app in /Applications/Xcode*.app; do
+            if DEVELOPER_DIR="$app/Contents/Developer" xcrun -sdk macosx metal --version >/dev/null 2>&1; then
+              echo "Metal compiler available in $app"
+              exit 0
+            fi
+          done
+          xcodebuild -downloadComponent MetalToolchain || echo "::warning::Could not download the Metal toolchain"
+
+      - name: Compile shader offline
+        run: scripts/check-shader.sh
+
+      - name: Bundle app
+        run: scripts/build-app.sh
+
+      - name: Verify bundle
+        run: |
+          app="build/Nullmere Online.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          test -x "$app/Contents/MacOS/NullmereLauncher"
+          test -s "$app/Contents/Resources/AppIcon.icns"
+          plutil -p "$app/Contents/Info.plist"
