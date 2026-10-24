@@ -2,10 +2,11 @@
 # Builds "Nullmere Online.app" from the Swift package.
 #
 #   scripts/build-app.sh                 # release build into build/
-#   VERSION=0.2.0 scripts/build-app.sh   # set the marketing version
+#   VERSION=0.3.0 scripts/build-app.sh   # set the marketing version
 #
-# The app is ad-hoc signed, which is enough to run it on the Mac that built
-# it. Set CODESIGN_IDENTITY to sign with a Developer ID instead.
+# The app is built for Apple silicon only and needs macOS 26, matching
+# Apple Intelligence. It is ad-hoc signed, which is enough to run it on the
+# Mac that built it. Set CODESIGN_IDENTITY to sign with a Developer ID instead.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -13,15 +14,20 @@ cd "$(dirname "$0")/.."
 APP_NAME="Nullmere Online"
 EXECUTABLE="NullmereLauncher"
 CONFIGURATION="${CONFIGURATION:-release}"
-VERSION="${VERSION:-0.1.0}"
+VERSION="${VERSION:-0.2.0}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 OUTPUT_DIR="${OUTPUT_DIR:-build}"
 CODESIGN_IDENTITY="${CODESIGN_IDENTITY:--}"
 APP="$OUTPUT_DIR/$APP_NAME.app"
 
-echo "Building $EXECUTABLE ($CONFIGURATION)…"
-swift build -c "$CONFIGURATION" --product "$EXECUTABLE"
-BIN_DIR="$(swift build -c "$CONFIGURATION" --show-bin-path)"
+echo "Building $EXECUTABLE ($CONFIGURATION, arm64)…"
+swift build -c "$CONFIGURATION" --arch arm64 --product "$EXECUTABLE"
+BIN_DIR="$(swift build -c "$CONFIGURATION" --arch arm64 --show-bin-path)"
+ARCHS="$(lipo -archs "$BIN_DIR/$EXECUTABLE")"
+if [ "$ARCHS" != "arm64" ]; then
+    echo "Expected an arm64-only executable, got: $ARCHS" >&2
+    exit 1
+fi
 
 echo "Assembling $APP…"
 rm -rf "$APP"

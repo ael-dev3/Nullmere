@@ -24,15 +24,19 @@
 	<string>__BUILD__</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.strategy-games</string>
+	<key>LSArchitecturePriority</key>
+	<array>
+		<string>arm64</string>
+	</array>
 	<key>LSMinimumSystemVersion</key>
-	<string>14.0</string>
+	<string>26.0</string>
+	<key>LSRequiresNativeExecution</key>
+	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Nullmere contributors. Code: Apache-2.0. Original art: CC0-1.0.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
-	<key>NSSupportsAutomaticGraphicsSwitching</key>
-	<true/>
 </dict>
 </plist>

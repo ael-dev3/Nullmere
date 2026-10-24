@@ -32,7 +32,9 @@ concurrency:
 jobs:
   macos:
     name: Build, test and bundle
-    runs-on: macos-15
+    # macOS 26 and Xcode 26: the launcher needs the Foundation Models
+    # framework, and its tests only run on the OS they target.
+    runs-on: macos-26
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
@@ -76,5 +78,7 @@ jobs:
           app="build/Nullmere Online.app"
           codesign --verify --deep --strict --verbose=2 "$app"
           test -x "$app/Contents/MacOS/NullmereLauncher"
+          test "$(lipo -archs "$app/Contents/MacOS/NullmereLauncher")" = "arm64"
+          test "$(plutil -extract LSMinimumSystemVersion raw "$app/Contents/Info.plist")" = "26.0"
           test -s "$app/Contents/Resources/AppIcon.icns"
           plutil -p "$app/Contents/Info.plist"
