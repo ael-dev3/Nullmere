@@ -145,9 +145,16 @@ struct EnvoyCards: View {
                         RoundedRectangle(cornerRadius: 1).fill(Palette.house(house)).frame(width: 3, height: 12)
                         Caps("An envoy of \(house.title)", size: 9, weight: .medium).foregroundStyle(Palette.ink)
                     }
+                    if let spoken = session.spoken[.envoy(envoy.id)] {
+                        Text(verbatim: "“\(spoken)”")
+                            .font(.system(size: 12, weight: .light).italic())
+                            .foregroundStyle(Palette.ink.opacity(0.88))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .transition(.opacity)
+                    }
                     Text(verbatim: words(for: envoy.proposal, from: house))
-                        .font(.system(size: 11))
-                        .foregroundStyle(Palette.ink.opacity(0.7))
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(Palette.ink.opacity(session.spoken[.envoy(envoy.id)] == nil ? 0.7 : 0.5))
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 4) {
                         Text(verbatim: left == 1 ? "Leaves after this watch" : "Waits \(left) watches")

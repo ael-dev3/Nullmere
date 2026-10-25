@@ -33,10 +33,16 @@ struct ChroniclePanel: View {
                                     .font(.system(size: 11.5, weight: weight(entry.kind)))
                                     .foregroundStyle(Palette.ink.opacity(entry.kind == .ending ? 1 : 0.78))
                                     .fixedSize(horizontal: false, vertical: true)
+                                if let spoken = session.spoken[.chronicle(item.offset)] {
+                                    Text(verbatim: spoken)
+                                        .font(.system(size: 11.5, weight: .light).italic())
+                                        .foregroundStyle(Palette.glow.opacity(0.9))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
                             }
                         }
                         .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Watch \(entry.watch). \(entry.text)")
+                        .accessibilityLabel("Watch \(entry.watch). \(entry.text) \(session.spoken[.chronicle(item.offset)] ?? "")")
                     }
                 }
             }

@@ -101,9 +101,14 @@ public final class GameApp {
 
     // MARK: Games
 
+    /// Characters speak through the on-device model whenever it can be used.
+    static func voice() -> (any Voice)? {
+        OnDeviceVoice.isAvailable ? OnDeviceVoice() : nil
+    }
+
     public func begin(_ settings: GameSettings) {
         guard readiness.allowsPlay else { return }
-        let session = GameSession(state: GameState(settings: settings), store: store)
+        let session = GameSession(state: GameState(settings: settings), store: store, voice: Self.voice())
         store.save(session.state)
         hasSave = true
         phase = .playing(session)
@@ -114,7 +119,7 @@ public final class GameApp {
             hasSave = store.hasSave
             return
         }
-        phase = .playing(GameSession(state: state, store: store))
+        phase = .playing(GameSession(state: state, store: store, voice: Self.voice()))
     }
 
     /// Saves and goes back to the title screen.

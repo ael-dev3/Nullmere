@@ -49,12 +49,30 @@ public final class GameSession {
     public private(set) var visible: [Bool] = []
     public private(set) var isEndingWatch = false
 
+    /// What a character has said about something, once the on-device model
+    /// has put it into words.
+    public enum Spoken: Hashable, Sendable {
+        case envoy(Int)
+        case chronicle(Int)
+    }
+
+    public private(set) var spoken: [Spoken: String] = [:]
+
     private var noticeCounter = 0
     private let store: SaveStore
+    private let voice: (any Voice)?
+    private var voiceQueue: [(Spoken, VoiceMoment)] = []
+    private var asked: Set<Spoken> = []
+    private var isSpeaking = false
 
-    public init(state: GameState, store: SaveStore = SaveStore()) {
+    public init(state: GameState, store: SaveStore = SaveStore(), voice: (any Voice)? = nil) {
         self.state = state
         self.store = store
+        self.voice = voice
+        // A game picked up again doesn't retell its whole history.
+        for index in state.chronicle.indices {
+            asked.insert(.chronicle(index))
+        }
         var camera = Camera(scale: 28)
         if let seat = state.seat(of: state.player) {
             camera.focus(on: seat.position)
@@ -240,6 +258,45 @@ public final class GameSession {
         tileBytes = TileTexture.bytes(for: state, viewer: player)
         tilesVersion += 1
         refreshPathPreview()
+        askVoices()
+    }
+
+    // MARK: Voices
+
+    /// Asks for words for new envoys, and for the moments of the chronicle
+    /// that touch the player, one at a time.
+    private func askVoices() {
+        guard voice != nil else { return }
+        for envoy in state.envoys where !asked.contains(.envoy(envoy.id)) {
+            asked.insert(.envoy(envoy.id))
+            voiceQueue.append((.envoy(envoy.id), VoiceFacts.envoy(envoy, in: state)))
+        }
+        for (index, entry) in state.chronicle.enumerated() where !asked.contains(.chronicle(index)) {
+            asked.insert(.chronicle(index))
+            if VoiceFacts.isVoiced(entry.kind), entry.houses.contains(player) || entry.kind == .ending {
+                voiceQueue.append((.chronicle(index), VoiceFacts.chronicle(entry, in: state)))
+            }
+        }
+        speakNext()
+    }
+
+    private func speakNext() {
+        guard !isSpeaking, let voice, !voiceQueue.isEmpty else { return }
+        let (key, moment) = voiceQueue.removeFirst()
+        if case .envoy(let id) = key, !state.envoys.contains(where: { $0.id == id }) {
+            speakNext()
+            return
+        }
+        isSpeaking = true
+        Task { [weak self] in
+            let words = await voice.speak(moment)
+            guard let self else { return }
+            if let words {
+                withAnimation(.easeOut(duration: 0.6)) { self.spoken[key] = words }
+            }
+            self.isSpeaking = false
+            self.speakNext()
+        }
     }
 
     private func refreshPathPreview() {
