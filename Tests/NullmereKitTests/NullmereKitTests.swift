@@ -150,3 +150,20 @@ final class NarrationTests: XCTestCase {
         XCTAssertEqual(Narration.roman(9), "VI")
     }
 }
+
+final class CounselTests: XCTestCase {
+    func testCounselGuidesTheOpeningAndThenFallsSilent() {
+        var state = GameState(settings: GameSettings(seedText: "counsel", houseCount: 3, radius: 16))
+        let first = Counsel.advice(for: state, player: state.player)
+        XCTAssertNotNil(first)
+        XCTAssertTrue(first!.contains("Lantern"))
+        var said: Set<String> = []
+        for _ in 0..<Counsel.lastWatch + 1 {
+            if let advice = Counsel.advice(for: state, player: state.player) { said.insert(advice) }
+            _ = state.stewardTurn(for: state.player)
+            _ = state.endWatch()
+        }
+        XCTAssertGreaterThan(said.count, 2, "the advice changes as the House grows")
+        XCTAssertNil(Counsel.advice(for: state, player: state.player), "and stops after the opening")
+    }
+}

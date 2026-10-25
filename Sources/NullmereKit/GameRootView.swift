@@ -60,6 +60,9 @@ struct PlayView: View {
                             .transition(.opacity)
                     }
                     Spacer(minLength: 16)
+                    CounselCard(session: session)
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                    Spacer(minLength: 16)
                     VStack(alignment: .trailing, spacing: 12) {
                         switch session.panel {
                         case .houses?:
@@ -130,5 +133,36 @@ private struct KeyHints: View {
             .padding(.vertical, 6)
             .background(Color.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 3))
             .accessibilityHidden(true)
+    }
+}
+
+/// The steward's advice for the opening, at the foot of the map.
+private struct CounselCard: View {
+    let session: GameSession
+
+    @AppStorage("counsel.hidden") private var hidden = false
+
+    var body: some View {
+        if !hidden, let advice = Counsel.advice(for: session.state, player: session.player) {
+            HStack(alignment: .top, spacing: 10) {
+                Caps("Counsel", size: 8, weight: .medium)
+                    .foregroundStyle(Palette.glow)
+                    .padding(.top, 2)
+                Text(verbatim: advice)
+                    .font(.system(size: 11.5, weight: .light))
+                    .foregroundStyle(Palette.ink.opacity(0.85))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .id(advice)
+                    .transition(.opacity)
+                CloseButton { withAnimation(.easeOut(duration: 0.2)) { hidden = true } }
+                    .help("Hide counsel")
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .frame(maxWidth: 440)
+            .panelBackground()
+            .animation(.easeInOut(duration: 0.4), value: advice)
+            .accessibilityElement(children: .contain)
+        }
     }
 }
