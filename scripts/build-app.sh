@@ -30,7 +30,7 @@ if [ "$ARCHS" != "arm64" ]; then
     exit 1
 fi
 
-echo "Assembling $APP…"
+echo "Assembling ${APP}…"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/$EXECUTABLE" "$APP/Contents/MacOS/$EXECUTABLE"

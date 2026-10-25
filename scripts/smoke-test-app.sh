@@ -24,7 +24,7 @@ if pgrep -x "$EXECUTABLE" >/dev/null; then
 fi
 
 started="$(date '+%Y-%m-%d %H:%M:%S')"
-echo "Opening $APP…"
+echo "Opening ${APP}…"
 open "$APP"
 sleep "$WAIT"
 

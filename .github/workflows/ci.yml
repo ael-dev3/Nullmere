@@ -96,7 +96,7 @@ jobs:
 
       - name: Keep the screenshot
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: launcher-screenshot
           path: build/launcher.png
