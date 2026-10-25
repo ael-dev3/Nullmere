@@ -68,7 +68,7 @@ public final class GameSession {
 
     // MARK: Reading
 
-    public var selectedUnit: Unit? {
+    public var selectedUnit: NullmereCore.Unit? {
         if case .unit(let id) = selection { return state.unit(id) }
         return nil
     }
@@ -98,7 +98,7 @@ public final class GameSession {
     }
 
     /// Units of the player's that can still act this watch.
-    public var readyUnits: [Unit] {
+    public var readyUnits: [NullmereCore.Unit] {
         state.units(of: player).filter { $0.movesLeft > 0 && $0.destination == nil && !$0.fortified }
     }
 
@@ -253,3 +253,7 @@ public final class GameSession {
         }
     }
 }
+
+/// Foundation also exports a `Unit` (measurement units); in this module the
+/// word means a company in the field.
+typealias Unit = NullmereCore.Unit

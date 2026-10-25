@@ -34,5 +34,6 @@ let package = Package(
         .testTarget(name: "LauncherCoreTests", dependencies: ["LauncherCore"]),
         .testTarget(name: "NullmereCoreTests", dependencies: ["NullmereCore"]),
         .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore"]),
+        .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore"]),
     ]
 )

@@ -11,10 +11,15 @@ drama they create leave a lasting history. It continues the universe,
 premise and principles of [Warpkeep](https://github.com/ael-dev3/Warpkeep),
 without Warpkeep's Farcaster identity.
 
-**This repository currently holds the native launcher**: the "Nullmere Online"
-title screen. It shows a black lake under a full moon, with Play, News,
-Settings, Repository and Quit on the water. There is no game client or server
-yet.
+This repository holds two Mac apps:
+
+- **Nullmere Online**, the launcher: a black lake under a full moon, with
+  Play, News, Settings, Repository and Quit on the water.
+- **Nullmere**, the game: a single-player 4X around a great dead lake. You
+  lead a House against rival Houses whose minds run on your Mac. Raise
+  holds, work the land, muster companies, make and break pacts, and either
+  outlast every rival or raise the Moonspire. The multiplayer realm comes
+  later; the rules are already written to be deterministic and shareable.
 
 Website: [nullmere.online](https://nullmere.online)
 
@@ -55,30 +60,40 @@ swift run NullmereLauncher
 From Xcode: open the package with `open Package.swift`, choose the
 **NullmereLauncher** scheme and **My Mac**, then press ⌘R.
 
-As a double-clickable app:
+The game, straight from the package:
+
+```sh
+swift run Nullmere                # or: make play
+```
+
+As double-clickable apps:
 
 ```sh
 make app                          # or: scripts/build-app.sh
-open "build/Nullmere Online.app"
+open "build/Nullmere Online.app"  # Play opens build/Nullmere.app beside it
 ```
 
-`scripts/build-app.sh` makes an arm64 release build and assembles
-`Nullmere Online.app` with its icon and Info.plist. It signs the app ad hoc,
+`scripts/build-app.sh` makes arm64 release builds and assembles
+`Nullmere Online.app` and `Nullmere.app` with their icons and Info.plists. It signs the app ad hoc,
 which is enough to run it on the Mac that built it. To sign with a
 Developer ID instead, set `CODESIGN_IDENTITY`: the app is then signed with
 the hardened runtime and a secure timestamp, ready to notarize. `VERSION`
-sets the marketing version (default `0.2.0`).
+sets the marketing version (default `0.3.0`).
 
 Tests and checks:
 
 ```sh
 swift test                 # unit tests; on a Mac with Metal, the shader is also compiled on the GPU
 make check-shader          # compile the shader with the offline Metal compiler
-make smoke                 # build the app, open it, check it starts and renders with Metal, take a screenshot
+make smoke                 # build the apps, open the launcher, check it starts and renders with Metal, take a screenshot
+make smoke-game            # open a debug build of the game past the model gate, start a world, take screenshots
 ```
 
 CI runs all of these on a macOS 26 runner for every pull request, and keeps
-the screenshot of the launcher it opened.
+the screenshots of the launcher and the game it opened. Only debug builds
+of the game honour `NULLMERE_SKIP_MODEL_CHECK=1` (open without the on-device
+model) and `NULLMERE_NEW_GAME=<words>` (start a world at once); release
+builds always require the model.
 
 ## Using the launcher
 
@@ -146,6 +161,48 @@ Settings are stored in the `online.nullmere.launcher` user defaults:
 | Frame rate | 30, 60, 120 | Upper bound for the lake's frame rate. Reduced motion, Low Power Mode, a Mac running hot, or another app in front lowers it to 30 |
 | Full screen at launch | Off, On | Applies the next time the launcher opens |
 
+## Playing Nullmere
+
+Each turn is a **watch**. Give your orders, then end the watch (⌘↩): the
+rival Houses move, holds yield, works rise and companies march on.
+
+- **The land.** Strand, salt flats, greyfields, blackwood and barrows ring
+  the lake. Each yields grain, timber, stone or moonsalt to the hold whose
+  territory it lies in; groves, seams, loam and moonsalt beds yield more.
+  The still water yields nothing and cannot be crossed; shallows can.
+  Drowned ruins hide something for the first company to search them.
+- **Holds** gather what their land yields and store it, up to a limit that
+  grows with each hold. Raise Granaries, Sawpits, Quarries and Saltworks to
+  boost a resource, Walls to thicken the ward, Beacons to see and claim
+  further, and a Muster Hall to train stronger companies. Barter a surplus
+  for what you lack, three to one.
+- **Companies.** Lanterns scout, Spears hold the line and take holds,
+  Bows strike from two tiles, Riders are fast, and Founders raise new holds.
+  Every company but the Lantern eats a grain each watch.
+- **Houses.** Rivals have temperaments: ambitious, steadfast, wary or
+  cunning. Declare war, offer peace or a pact, and answer their envoys.
+  Pacts share sight; breaking one is remembered.
+- **Winning.** Raise the five stages of the **Moonspire** at your seat
+  (ascendancy), or be the last House standing (dominion). Rivals fear a
+  rising Moonspire and will march on it.
+
+The world is made from a few words: the same words make the same lake.
+The game saves itself after every watch.
+
+| Key | Action |
+| --- | --- |
+| Click | Select a company, hold or tile |
+| Right-click | March the selected company there, or strike the enemy there |
+| Drag, two-finger scroll | Pan; pinch, ⌘-scroll or a mouse wheel zooms |
+| Tab | Next company waiting for orders |
+| F / B | Fortify / found a hold with the selected Founder |
+| H | Go to your seat |
+| Arrows or WASD, + − | Pan, zoom |
+| 1 / 2 | Houses / Chronicle |
+| Esc | Close a panel, then clear the selection |
+| ⌘↩ | End the watch |
+| ⌘S, ⇧⌘W | Save, leave to the title screen |
+
 ## Design
 
 A full moon hangs over a great black lake. Its reflection breaks and gathers
@@ -209,11 +266,14 @@ Package.swift
 Sources/
   LauncherCore/       Platform-independent logic: settings, navigation, news, model readiness, composition
   LauncherKit/        SwiftUI interface, Metal backdrop, services (on-device model, news, game client)
-  NullmereLauncher/   App entry point
-Tests/                LauncherCoreTests, LauncherKitTests
+  NullmereLauncher/   Launcher entry point
+  NullmereCore/       The game's rules: world generation, economy, war, diplomacy, rival minds. Pure, deterministic Swift
+  NullmereKit/        The game's interface: Metal world, panels, title screen, saving
+  Nullmere/           Game entry point
+Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests
 news/                 news.json, the launcher's news feed
-Packaging/            Info.plist template and the 1024 px app icon
-scripts/              build-app.sh, check-shader.sh, smoke-test-app.sh
+Packaging/            Info.plist templates and the 1024 px app icon
+scripts/              build-app.sh, check-shader.sh, smoke-test-app.sh, smoke-test-game.sh
 Tools/scene-preview/  Browser preview of the lake shader
 docs/                 Project notes, starting with what carries over from Warpkeep
 ```

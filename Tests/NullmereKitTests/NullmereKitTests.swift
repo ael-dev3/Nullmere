@@ -1,0 +1,143 @@
+import Metal
+import NullmereCore
+import XCTest
+@testable import NullmereKit
+
+final class WorldShaderTests: XCTestCase {
+    func testUniformsAreThreeFloat4s() {
+        XCTAssertEqual(MemoryLayout<WorldUniforms>.stride, 48)
+        XCTAssertEqual(MemoryLayout<WorldUniforms>.alignment, 16)
+    }
+
+    /// Compiles the world shader and builds its pipeline on this Mac's GPU.
+    func testShaderCompilesAndBuildsAPipeline() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw XCTSkip("No Metal device available")
+        }
+        let library = try device.makeLibrary(source: WorldShader.source, options: nil)
+        XCTAssertNoThrow(try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm))
+    }
+}
+
+final class TileTextureTests: XCTestCase {
+    func testEachTileLandsAtItsAxialTexel() {
+        let state = GameState(settings: GameSettings(seedText: "tile texture", houseCount: 3, radius: 14))
+        let side = TileTexture.side(for: state.map)
+        let bytes = TileTexture.bytes(for: state, viewer: state.player)
+        XCTAssertEqual(side, 29)
+        XCTAssertEqual(bytes.count, side * side * 4)
+        let visible = state.visibility(for: state.player)
+        for (index, hex) in state.map.hexes.enumerated() {
+            let offset = ((hex.r + 14) * side + (hex.q + 14)) * 4
+            XCTAssertEqual(Int(bytes[offset]), Terrain.allCases.firstIndex(of: state.map[index].terrain))
+            if visible[index] {
+                XCTAssertEqual(bytes[offset + 3] / 16, 2)
+            }
+        }
+        let seat = try! XCTUnwrap(state.seat(of: state.player))
+        let offset = ((seat.position.r + 14) * side + (seat.position.q + 14)) * 4
+        XCTAssertEqual(Int(bytes[offset + 3] % 16), state.playerHouse.sigil + 1, "the seat is in its House's colour")
+    }
+}
+
+private extension GameState {
+    var playerHouse: House { houses[player] }
+}
+
+final class CameraTests: XCTestCase {
+    func testPointsAndHexesRoundTrip() {
+        var camera = Camera(centerX: 3, centerY: -2, scale: 30)
+        let size = CGSize(width: 1200, height: 800)
+        for hex in Hex(1, -1).spiral(6) {
+            XCTAssertEqual(camera.hex(at: camera.viewPoint(of: hex, in: size), in: size), hex)
+        }
+        let anchor = CGPoint(x: 300, y: 200)
+        let before = camera.world(at: anchor, in: size)
+        camera.zoom(by: 1.7, around: anchor, in: size)
+        let after = camera.world(at: anchor, in: size)
+        XCTAssertEqual(before.x, after.x, accuracy: 1e-9)
+        XCTAssertEqual(before.y, after.y, accuracy: 1e-9)
+        camera.zoom(by: 1000, around: anchor, in: size)
+        XCTAssertEqual(camera.scale, Camera.maximumScale)
+        camera.pan(dx: 1e7, dy: -1e7)
+        camera.clamp(toRadius: 20)
+        XCTAssertLessThanOrEqual(abs(camera.centerX), 3.0.squareRoot() * 20)
+        XCTAssertLessThanOrEqual(abs(camera.centerY), 30)
+    }
+}
+
+final class SaveStoreTests: XCTestCase {
+    func testSavesAndLoadsTheWholeGame() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = SaveStore(directory: directory)
+        XCTAssertFalse(store.hasSave)
+        XCTAssertNil(store.load())
+        var state = GameState(settings: GameSettings(seedText: "saved water", houseCount: 3, radius: 14))
+        _ = state.endWatch()
+        store.save(state)
+        XCTAssertTrue(store.hasSave)
+        XCTAssertEqual(store.load(), state)
+        store.delete()
+        XCTAssertFalse(store.hasSave)
+    }
+}
+
+@MainActor
+final class GameSessionTests: XCTestCase {
+    private func session() -> (GameSession, URL) {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let state = GameState(settings: GameSettings(seedText: "session", houseCount: 3, radius: 16))
+        return (GameSession(state: state, store: SaveStore(directory: directory)), directory)
+    }
+
+    func testClickingSelectsOwnCompaniesThenTheGroundBeneath() throws {
+        let (session, directory) = session()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let unit = try XCTUnwrap(session.state.units(of: session.player).first)
+        session.click(unit.position)
+        XCTAssertEqual(session.selection, .unit(unit.id))
+        XCTAssertEqual(session.selectedUnit?.id, unit.id)
+        session.click(unit.position)
+        XCTAssertNotEqual(session.selection, .unit(unit.id))
+    }
+
+    func testRefusedOrdersBecomeNoticesAndChangeNothing() throws {
+        let (session, directory) = session()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let before = session.state
+        let seat = try XCTUnwrap(session.state.seat(of: session.player))
+        XCTAssertFalse(session.perform(.build(hold: seat.id, kind: .moonspire)))
+        XCTAssertEqual(session.state, before)
+        XCTAssertEqual(session.notices.last?.tone, .bad)
+    }
+
+    func testEndingTheWatchAdvancesAndSaves() {
+        let (session, directory) = session()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        session.endWatch()
+        XCTAssertEqual(session.state.watch, 2)
+        XCTAssertEqual(SaveStore(directory: directory).load()?.watch, 2)
+    }
+
+    func testNextUnitCyclesThroughReadyCompanies() {
+        let (session, directory) = session()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let ready = session.readyUnits.map(\.id).sorted()
+        XCTAssertFalse(ready.isEmpty)
+        var seen: [Int] = []
+        for _ in ready {
+            session.selectNextReadyUnit()
+            if case .unit(let id) = session.selection { seen.append(id) }
+        }
+        XCTAssertEqual(seen, ready)
+    }
+}
+
+final class NarrationTests: XCTestCase {
+    func testRomanNumerals() {
+        XCTAssertEqual(Narration.roman(1), "I")
+        XCTAssertEqual(Narration.roman(5), "V")
+        XCTAssertEqual(Narration.roman(9), "VI")
+    }
+}

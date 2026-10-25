@@ -45,6 +45,7 @@ jobs:
           swift --version
 
       - name: Build
+        id: build
         run: swift build
 
       - name: Test
@@ -102,7 +103,7 @@ jobs:
       # builds allow that): its title screen, then a new game, whose world
       # must render with Metal.
       - name: Open the game
-        if: always()
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: scripts/smoke-test-game.sh
 
       - name: Keep the screenshots
