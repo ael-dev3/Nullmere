@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import LauncherCore
 import SwiftUI
 
@@ -84,15 +85,26 @@ public struct LauncherRootView: View {
         .onAppear {
             model.beginIntro(systemReducesMotion: reduceMotion)
             model.refreshReadiness()
+            model.refreshEnergyState()
         }
-        // Apple Intelligence may have been turned on in System Settings meanwhile.
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            model.refreshReadiness()
+            model.didBecomeActive()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
-            model.pauseReadinessChecks()
+            model.didResignActive()
+        }
+        .onReceive(Self.energyStateChanges) { _ in
+            model.refreshEnergyState()
         }
     }
+
+    /// Low Power Mode turning on or off, or the Mac heating up or cooling
+    /// down. macOS announces these on other threads.
+    private static let energyStateChanges: AnyPublisher<Notification, Never> =
+        NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)
+            .merge(with: NotificationCenter.default.publisher(for: ProcessInfo.thermalStateDidChangeNotification))
+            .receive(on: DispatchQueue.main)
+            .eraseToAnyPublisher()
 }
 
 /// The menu or the open panel, or the requirement screen until this Mac's

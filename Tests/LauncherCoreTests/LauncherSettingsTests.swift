@@ -49,6 +49,14 @@ final class LauncherSettingsTests: XCTestCase {
         XCTAssertLessThan(ResolvedMotion.reduced.activity, 0.5, "Stars fall and rings spread only above 0.5")
     }
 
+    func testTheFrameRateCapAppliesOnlyAtFullMotionWhileNotSavingEnergy() {
+        XCTAssertEqual(FrameRateCap.oneTwenty.framesPerSecond(motion: .full, isSavingEnergy: false), 120)
+        XCTAssertEqual(FrameRateCap.sixty.framesPerSecond(motion: .full, isSavingEnergy: false), 60)
+        XCTAssertEqual(FrameRateCap.oneTwenty.framesPerSecond(motion: .full, isSavingEnergy: true), 30)
+        XCTAssertEqual(FrameRateCap.sixty.framesPerSecond(motion: .reduced, isSavingEnergy: false), 30)
+        XCTAssertEqual(FrameRateCap.thirty.framesPerSecond(motion: .full, isSavingEnergy: false), 30)
+    }
+
     func testEveryRowHasItsCurrentValueSelected() {
         let settings = LauncherSettings(motion: .reduced, quality: .balanced, frameRate: .thirty, startsInFullScreen: true)
         XCTAssertEqual(settings.options(for: .motion)[settings.selectedIndex(for: .motion)], "Reduced")

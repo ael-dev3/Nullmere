@@ -54,6 +54,10 @@ public final class LauncherModel {
     private(set) var news: NewsFeed
     private(set) var newsStatus: NewsStatus = .saved
     private(set) var gameFailedToOpen = false
+    /// Whether the launcher is the app in front.
+    private(set) var isInFront = true
+    /// Whether macOS asks apps to save energy (see `LauncherEnvironment`).
+    private(set) var systemSavesEnergy = false
 
     private let defaults: UserDefaults
     private let environment: LauncherEnvironment
@@ -99,12 +103,19 @@ public final class LauncherModel {
     }
 
     func backdropConfiguration(systemReducesMotion: Bool) -> LakeConfiguration {
-        LakeConfiguration(
-            motion: settings.motion.resolved(systemReducesMotion: systemReducesMotion),
+        let motion = settings.motion.resolved(systemReducesMotion: systemReducesMotion)
+        return LakeConfiguration(
+            motion: motion,
             renderScale: settings.quality.scale,
-            framesPerSecond: settings.frameRate.rawValue,
+            framesPerSecond: settings.frameRate.framesPerSecond(motion: motion, isSavingEnergy: isSavingEnergy),
             horizon: LakeComposition.horizon
         )
+    }
+
+    /// The lake renders at a lower rate while another app is in front, in
+    /// Low Power Mode, and while the Mac runs hot.
+    var isSavingEnergy: Bool {
+        !isInFront || systemSavesEnergy
     }
 
     // MARK: Intro
@@ -169,6 +180,30 @@ public final class LauncherModel {
         withAnimation(.easeInOut(duration: 0.6)) {
             readiness = current
             requirementSelection = 0
+        }
+    }
+
+    // MARK: In front and behind
+
+    /// The launcher came to the front: the lake runs at its full rate
+    /// again, and Apple Intelligence may have been turned on meanwhile.
+    func didBecomeActive() {
+        isInFront = true
+        refreshReadiness()
+    }
+
+    /// Another app came to the front: the lake slows down, and readiness
+    /// checks wait until the launcher is back.
+    func didResignActive() {
+        isInFront = false
+        pauseReadinessChecks()
+    }
+
+    /// Reads Low Power Mode and the Mac's thermal state again.
+    func refreshEnergyState() {
+        let savesEnergy = environment.systemSavesEnergy()
+        if savesEnergy != systemSavesEnergy {
+            systemSavesEnergy = savesEnergy
         }
     }
 

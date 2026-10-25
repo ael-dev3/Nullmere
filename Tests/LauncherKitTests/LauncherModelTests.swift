@@ -23,17 +23,20 @@ final class LauncherModelTests: XCTestCase {
     }
 
     /// A model whose outside world is this test: links, games and quitting
-    /// are recorded, not carried out. `readiness` is read afresh on every
-    /// check, so a test can change it along the way. Like the window
-    /// appearing, making the model checks readiness once unless told not to.
+    /// are recorded, not carried out. `readiness` and `savesEnergy` are read
+    /// afresh on every check, so a test can change them along the way. Like
+    /// the window appearing, making the model checks both once unless told
+    /// not to.
     private func makeModel(
         readiness: @autoclosure @escaping () -> ModelReadiness = .ready,
+        savesEnergy: @autoclosure @escaping () -> Bool = false,
         game: URL? = nil,
         news: Data? = nil,
         appeared: Bool = true
     ) -> LauncherModel {
         let environment = LauncherEnvironment(
             modelReadiness: readiness,
+            systemSavesEnergy: savesEnergy,
             installedGame: { game },
             openGame: { [weak self] url in self?.launchedGames.append(url) },
             downloadNews: {
@@ -49,6 +52,7 @@ final class LauncherModelTests: XCTestCase {
         let model = LauncherModel(defaults: defaults, environment: environment)
         if appeared {
             model.refreshReadiness()
+            model.refreshEnergyState()
         }
         return model
     }
@@ -260,5 +264,25 @@ final class LauncherModelTests: XCTestCase {
         XCTAssertEqual(configuration.renderScale, 0.5)
         XCTAssertEqual(configuration.framesPerSecond, 30)
         XCTAssertEqual(configuration.horizon, LakeComposition.horizon)
+    }
+
+    func testTheLakeSlowsDownToSaveEnergy() {
+        LauncherSettings(motion: .full, frameRate: .oneTwenty).save(to: defaults)
+        var lowPowerMode = false
+        let model = makeModel(savesEnergy: lowPowerMode)
+        func framesPerSecond() -> Int {
+            model.backdropConfiguration(systemReducesMotion: false).framesPerSecond
+        }
+        XCTAssertEqual(framesPerSecond(), 120)
+
+        model.didResignActive()
+        XCTAssertEqual(framesPerSecond(), 30, "Behind another app")
+        model.didBecomeActive()
+        XCTAssertEqual(framesPerSecond(), 120)
+
+        lowPowerMode = true
+        model.refreshEnergyState()
+        XCTAssertEqual(framesPerSecond(), 30, "In Low Power Mode")
+        XCTAssertEqual(model.backdropConfiguration(systemReducesMotion: false).motion, .full, "What moves stays the same")
     }
 }

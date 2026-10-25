@@ -136,7 +136,7 @@ Settings are stored in the `online.nullmere.launcher` user defaults:
 | --- | --- | --- |
 | Motion | System, Full, Reduced, Still | How much moves. Full: flickering stars, falling stars, rings on the water and the opening. Reduced: slower water and gentle twinkling only. Still: a single frame. System follows *Reduce motion*. |
 | Resolution | Native, Balanced, Efficient | Renders the lake at 100%, 75% or 50% of native pixels |
-| Frame rate | 30, 60, 120 | Upper bound for the lake's frame rate |
+| Frame rate | 30, 60, 120 | Upper bound for the lake's frame rate. Reduced motion, Low Power Mode, a Mac running hot, or another app in front lowers it to 30 |
 | Full screen at launch | Off, On | Applies the next time the launcher opens |
 
 ## Design
@@ -173,8 +173,10 @@ There is no music.
   out rather than shimmer, and the output is dithered so the dark gradients
   don't band.
 - **Cost.** The lake renders only while the window is visible and motion is
-  allowed, at the chosen frame rate and resolution. If the shader fails, a
-  still SwiftUI painting of the scene replaces it.
+  allowed, at the chosen frame rate and resolution. It drops to 30 frames a
+  second while another app is in front, in Low Power Mode, and when the Mac
+  runs hot. If the shader fails, a still SwiftUI painting of the scene
+  replaces it.
 - **Accessibility.** The launcher honours Reduce Motion and Increase
   Contrast, has VoiceOver labels and selection traits, and works fully from
   the keyboard.

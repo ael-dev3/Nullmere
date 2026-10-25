@@ -83,6 +83,17 @@ public enum FrameRateCap: Int, CaseIterable, Sendable {
     case oneTwenty = 120
 
     public var title: String { String(rawValue) }
+
+    /// The rate the lake renders at: the cap at full motion, otherwise at
+    /// most 30 frames a second. Reduced motion is slow enough for 30, and
+    /// the lake drops to 30 while the Mac saves energy or the launcher is
+    /// behind another app.
+    public func framesPerSecond(motion: ResolvedMotion, isSavingEnergy: Bool) -> Int {
+        guard motion == .full, !isSavingEnergy else {
+            return min(rawValue, FrameRateCap.thirty.rawValue)
+        }
+        return rawValue
+    }
 }
 
 /// Launcher preferences, persisted in user defaults.

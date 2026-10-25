@@ -6,6 +6,9 @@ import LauncherCore
 struct LauncherEnvironment {
     /// Whether Apple's on-device model can be used right now.
     var modelReadiness: () -> ModelReadiness
+    /// Whether macOS asks apps to save energy: Low Power Mode is on, or the
+    /// Mac is running hot.
+    var systemSavesEnergy: () -> Bool
     /// Where the game client is installed, if it is.
     var installedGame: () -> URL?
     /// Opens the game client.
@@ -19,6 +22,10 @@ struct LauncherEnvironment {
 
     static let live = LauncherEnvironment(
         modelReadiness: { OnDeviceModel.readiness() },
+        systemSavesEnergy: {
+            let info = ProcessInfo.processInfo
+            return info.isLowPowerModeEnabled || [.serious, .critical].contains(info.thermalState)
+        },
         installedGame: { GameClient.installedURL() },
         openGame: { try await GameClient.open($0) },
         downloadNews: { try await NewsDownloader.download() },
