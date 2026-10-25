@@ -117,7 +117,7 @@ jobs:
       - name: Print small screenshots
         if: always()
         run: |
-          for shot in build/launcher.png build/game-title.png build/game-world.png; do
+          for shot in build/launcher.png build/game-title.png build/game-world.png build/game-later.png; do
             if [ -s "$shot" ]; then
               small="${shot%.png}-small.jpg"
               sips -s format jpeg -s formatOptions 70 -Z 720 "$shot" --out "$small" >/dev/null

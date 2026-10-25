@@ -55,7 +55,7 @@ public final class GameSession {
     public init(state: GameState, store: SaveStore = SaveStore()) {
         self.state = state
         self.store = store
-        var camera = Camera(scale: 34)
+        var camera = Camera(scale: 28)
         if let seat = state.seat(of: state.player) {
             camera.focus(on: seat.position)
         }
@@ -209,6 +209,21 @@ public final class GameSession {
         guard let seat = state.seat(of: player) else { return }
         selection = .hold(seat.id)
         withAnimation(.easeInOut(duration: 0.4)) {
+            camera.focus(on: seat.position)
+        }
+    }
+
+    /// Lets a steward play the player's watches, then ends them: for
+    /// screenshots and tests of a game well under way.
+    func autoplay(watches: Int) {
+        for _ in 0..<watches where state.outcome == nil {
+            _ = state.stewardTurn(for: player)
+            _ = state.endWatch()
+        }
+        notices.removeAll()
+        selection = .none
+        refreshWorld()
+        if let seat = state.seat(of: player) {
             camera.focus(on: seat.position)
         }
     }

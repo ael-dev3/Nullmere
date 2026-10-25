@@ -92,7 +92,9 @@ make smoke-game            # open a debug build of the game past the model gate,
 CI runs all of these on a macOS 26 runner for every pull request, and keeps
 the screenshots of the launcher and the game it opened. Only debug builds
 of the game honour `NULLMERE_SKIP_MODEL_CHECK=1` (open without the on-device
-model) and `NULLMERE_NEW_GAME=<words>` (start a world at once); release
+model), `NULLMERE_NEW_GAME=<words>` (start a world at once) and
+`NULLMERE_SHOW=seat,houses` (select the seat, open a panel) and
+`NULLMERE_AUTOPLAY=<watches>` (let a steward play the opening); release
 builds always require the model.
 
 ## Using the launcher

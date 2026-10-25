@@ -120,6 +120,15 @@ final class GameSessionTests: XCTestCase {
         XCTAssertEqual(SaveStore(directory: directory).load()?.watch, 2)
     }
 
+    func testAutoplayPlaysWholeWatches() {
+        let (session, directory) = session()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        session.autoplay(watches: 12)
+        XCTAssertEqual(session.state.watch, 13)
+        XCTAssertGreaterThan(session.playerHouse.explored.filter { $0 }.count, 91)
+        XCTAssertEqual(session.selection, .none)
+    }
+
     func testNextUnitCyclesThroughReadyCompanies() {
         let (session, directory) = session()
         defer { try? FileManager.default.removeItem(at: directory) }

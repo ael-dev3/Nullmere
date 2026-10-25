@@ -2,7 +2,8 @@
 # Opens the game from a debug build, past the on-device model check, and
 # checks that it really starts: it must still be running after a few
 # seconds, and its world must be rendering with Metal. Saves screenshots of
-# the title screen and of a new game.
+# the title screen, of a new game with the seat selected and the Houses
+# panel open, and of the same game forty watches on, played by a steward.
 #
 #   swift build && scripts/smoke-test-game.sh
 #
@@ -24,14 +25,16 @@ if pgrep -x "$EXECUTABLE" >/dev/null; then
     exit 1
 fi
 
-# run <screenshot> [seed]
+# run <screenshot> [seed] [watches to autoplay] [what to show]
 run() {
     local shot="$1"
     local seed="${2:-}"
+    local autoplay="${3:-0}"
+    local show="${4:-}"
     local started
     started="$(date '+%Y-%m-%d %H:%M:%S')"
     echo "Opening the game${seed:+ on \"$seed\"}…"
-    NULLMERE_SKIP_MODEL_CHECK=1 NULLMERE_NEW_GAME="$seed" "$BIN" >build/game-stdout.log 2>&1 &
+    NULLMERE_SKIP_MODEL_CHECK=1 NULLMERE_NEW_GAME="$seed" NULLMERE_AUTOPLAY="$autoplay" NULLMERE_SHOW="$show" "$BIN" >build/game-stdout.log 2>&1 &
     local pid=$!
     sleep "$WAIT"
     if ! kill -0 "$pid" 2>/dev/null; then
@@ -54,10 +57,14 @@ echo "The title screen opened."
 # A new game's saved state would otherwise be continued next time.
 SAVE="$HOME/Library/Application Support/Nullmere/autosave.json"
 [ -f "$SAVE" ] && mv "$SAVE" "$SAVE.smoke-backup"
-run build/game-world.png "$SEED"
+run build/game-world.png "$SEED" 0 seat,houses
+WORLD_LOG="$LOG"
+run build/game-later.png "$SEED" 40
 rm -f "$SAVE"
 [ -f "$SAVE.smoke-backup" ] && mv "$SAVE.smoke-backup" "$SAVE"
 
+LOG="$WORLD_LOG
+$LOG"
 echo "$LOG" | grep -E "renders with Metal|did not compile|could not be built|could not be made|No Metal device" || true
 if echo "$LOG" | grep -qE "did not compile|could not be built|could not be made|No Metal device"; then
     echo "error: the world's Metal renderer failed, so the game fell back to its still painting" >&2

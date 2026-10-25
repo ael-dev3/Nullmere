@@ -83,8 +83,18 @@ public final class GameApp {
     /// Debug builds can open straight into a new game on a given seed.
     private func startFromEnvironment() {
         #if DEBUG
-        if readiness.allowsPlay, let seed = ProcessInfo.processInfo.environment["NULLMERE_NEW_GAME"], !seed.isEmpty {
+        let environment = ProcessInfo.processInfo.environment
+        if readiness.allowsPlay, let seed = environment["NULLMERE_NEW_GAME"], !seed.isEmpty {
             begin(GameSettings(seedText: seed))
+            if let watches = environment["NULLMERE_AUTOPLAY"].flatMap(Int.init), watches > 0 {
+                session?.autoplay(watches: watches)
+            }
+            // NULLMERE_SHOW=seat,houses selects the seat and opens a panel,
+            // for screenshots of the interface.
+            let show = Set((environment["NULLMERE_SHOW"] ?? "").split(separator: ",").map(String.init))
+            if show.contains("seat") { session?.focusOnSeat() }
+            if show.contains("houses") { session?.panel = .houses }
+            if show.contains("chronicle") { session?.panel = .chronicle }
         }
         #endif
     }
