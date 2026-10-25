@@ -57,6 +57,24 @@ final class LauncherModelTests: XCTestCase {
         return model
     }
 
+    /// Waits for something the launcher does after a delay, such as quitting
+    /// once its fade has finished, and fails if it doesn't happen in time.
+    private func waitUntil(
+        _ condition: @autoclosure () -> Bool,
+        timeout: Duration = .seconds(5),
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        let deadline = ContinuousClock.now + timeout
+        while !condition() {
+            guard ContinuousClock.now < deadline else {
+                XCTFail("Timed out after \(timeout)", file: file, line: line)
+                return
+            }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
     func testFirstKeySkipsTheIntro() {
         let model = makeModel()
         model.handle(.right)
@@ -115,8 +133,7 @@ final class LauncherModelTests: XCTestCase {
         XCTAssertFalse(model.isLeaving)
         model.handle(.confirm)
         XCTAssertTrue(model.isLeaving)
-        try await Task.sleep(for: .milliseconds(900))
-        XCTAssertTrue(terminated)
+        try await waitUntil(self.terminated)
     }
 
     func testTheLauncherOpensOnceAppleIntelligenceIsOn() {
@@ -168,9 +185,8 @@ final class LauncherModelTests: XCTestCase {
         model.completeIntro()
         model.activate(.play)
         XCTAssertTrue(model.isLeaving, "The launcher fades out")
-        try await Task.sleep(for: .milliseconds(1100))
-        XCTAssertEqual(launchedGames, [game])
-        XCTAssertTrue(terminated, "The launcher hands over to the game and quits")
+        try await waitUntil(self.terminated)
+        XCTAssertEqual(launchedGames, [game], "The launcher hands over to the game, then quits")
     }
 
     func testQuitFadesThenQuits() async throws {
@@ -180,8 +196,7 @@ final class LauncherModelTests: XCTestCase {
         XCTAssertTrue(model.isLeaving)
         model.handle(.confirm)
         XCTAssertFalse(terminated, "Quitting waits for the fade")
-        try await Task.sleep(for: .milliseconds(900))
-        XCTAssertTrue(terminated)
+        try await waitUntil(self.terminated)
     }
 
     func testPlayOnAReadyMacWaitsForTheFirstRealm() {
@@ -191,6 +206,27 @@ final class LauncherModelTests: XCTestCase {
         XCTAssertEqual(model.screen, .play)
         XCTAssertTrue(model.readiness.allowsPlay)
         XCTAssertFalse(model.gameFailedToOpen)
+    }
+
+    func testThePlayPanelLightsWhatReturnDoes() {
+        let model = makeModel(readiness: .ready, game: nil)
+        model.completeIntro()
+        model.activate(.play)
+        XCTAssertEqual(model.playSelection, .back, "The panel opens with Return lit")
+
+        model.handle(.left)
+        XCTAssertEqual(model.playSelection, .website)
+        model.handle(.left)
+        XCTAssertEqual(model.playSelection, .website, "The row doesn't wrap")
+        model.handle(.confirm)
+        XCTAssertEqual(opened, [Destination.website])
+        XCTAssertEqual(model.screen, .play)
+
+        model.handle(.right)
+        model.handle(.confirm)
+        XCTAssertEqual(model.screen, .title)
+        model.activate(.play)
+        XCTAssertEqual(model.playSelection, .back, "Return is lit again next time")
     }
 
     func testReadinessIsReadFromTheSystem() {
@@ -237,6 +273,13 @@ final class LauncherModelTests: XCTestCase {
         let model = makeModel(news: nil)
         await model.refreshNews()
         XCTAssertEqual(model.newsStatus, .offline)
+        XCTAssertEqual(model.news, NewsFeed.builtIn)
+    }
+
+    func testNewsSaysWhenTheFeedCannotBeRead() async {
+        let model = makeModel(news: Data("<html>404: Not Found</html>".utf8))
+        await model.refreshNews()
+        XCTAssertEqual(model.newsStatus, .unavailable, "Online, but the answer wasn't a feed")
         XCTAssertEqual(model.news, NewsFeed.builtIn)
     }
 

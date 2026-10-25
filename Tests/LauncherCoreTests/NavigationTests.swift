@@ -23,6 +23,19 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(KeyCommand(keyCode: 53), .back)
         XCTAssertNil(KeyCommand(keyCode: 0)) // "A"
     }
+
+    func testKeyboardNavigationKeepsSpaceForTheFocusedControl() {
+        XCTAssertNil(KeyCommand(keyCode: 49, keyboardNavigation: true))
+        XCTAssertEqual(KeyCommand(keyCode: 36, keyboardNavigation: true), .confirm)
+        XCTAssertEqual(KeyCommand(keyCode: 124, keyboardNavigation: true), .right)
+    }
+
+    func testOnlyArrowsRepeatWhenHeld() {
+        XCTAssertTrue(KeyCommand.up.repeatsWhenHeld)
+        XCTAssertTrue(KeyCommand.right.repeatsWhenHeld)
+        XCTAssertFalse(KeyCommand.confirm.repeatsWhenHeld, "A held Return mustn't flip a panel open and shut")
+        XCTAssertFalse(KeyCommand.back.repeatsWhenHeld)
+    }
 }
 
 final class SceneTests: XCTestCase {
@@ -41,6 +54,15 @@ final class SceneTests: XCTestCase {
         XCTAssertEqual(clock.advance(to: 500, rate: 1), SceneClock.maximumStep, accuracy: 1e-9)
         clock.resetInterval()
         XCTAssertEqual(clock.advance(to: 900, rate: 1), SceneClock.maximumStep, accuracy: 1e-9)
+    }
+
+    func testClockStartsOverAfterAPeriod() {
+        var clock = SceneClock(time: SceneClock.period - 0.03)
+        clock.advance(to: 0, rate: 1)
+        XCTAssertEqual(clock.advance(to: 0.05, rate: 1), 0.02, accuracy: 1e-6)
+        // A 32-bit float still resolves a millisecond just before the wrap.
+        let latest = Float(SceneClock.period)
+        XCTAssertLessThan(latest.nextUp - latest, 0.001)
     }
 
     func testStarCatalogIsDeterministicAndInRange() {

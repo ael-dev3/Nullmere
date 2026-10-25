@@ -77,6 +77,8 @@ public struct LauncherRootView: View {
         .frame(minWidth: 960, minHeight: 600)
         .background(Color.black)
         .preferredColorScheme(.dark)
+        // The menu bar offers Settings… and News only when the window does.
+        .focusedSceneValue(\.launcherIsGated, model.isGated)
         .background(
             WindowBridge(startsInFullScreen: model.settings.startsInFullScreen) { key in
                 model.handle(key)

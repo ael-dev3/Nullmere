@@ -7,6 +7,8 @@ import SwiftUI
 ///
 /// Keys are read with a local event monitor rather than SwiftUI focus, so
 /// arrows, Return and Escape work no matter which control was last clicked.
+/// With keyboard navigation turned on, Space is left to the control that
+/// has focus.
 struct WindowBridge: NSViewRepresentable {
     var startsInFullScreen: Bool
     var onKey: (KeyCommand) -> Void
@@ -60,9 +62,13 @@ final class WindowBridgeView: NSView {
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isMovableByWindowBackground = true
-        if startsInFullScreen, !window.styleMask.contains(.fullScreen) {
+        if startsInFullScreen {
+            // Toggle once the window has finished setting up, and look again
+            // then: macOS may already have restored it in full screen.
             DispatchQueue.main.async {
-                window.toggleFullScreen(nil)
+                if !window.styleMask.contains(.fullScreen) {
+                    window.toggleFullScreen(nil)
+                }
             }
         }
     }
@@ -73,9 +79,11 @@ final class WindowBridgeView: NSView {
             guard let self,
                   event.window === self.window,
                   !event.modifierFlags.containsCommandKeys,
-                  let command = KeyCommand(keyCode: event.keyCode)
+                  let command = KeyCommand(keyCode: event.keyCode, keyboardNavigation: NSApp.isFullKeyboardAccessEnabled)
             else { return event }
-            self.onKey(command)
+            if !event.isARepeat || command.repeatsWhenHeld {
+                self.onKey(command)
+            }
             return nil
         }
     }

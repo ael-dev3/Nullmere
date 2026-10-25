@@ -8,7 +8,6 @@ struct RequirementPanel: View {
     let model: LauncherModel
 
     @Environment(\.launcherUnit) private var unit
-    @State private var hovered: RequirementAction?
 
     var body: some View {
         let actions = model.readiness.actions
@@ -26,17 +25,15 @@ struct RequirementPanel: View {
             RequirementsLine(readiness: model.readiness)
                 .padding(.top, 24 * unit)
 
+            // One choice is lit at a time, and it is the one Return performs:
+            // the pointer chooses by resting on a word, the arrows by moving.
             HStack(spacing: 48 * unit) {
                 ForEach(actions.indices, id: \.self) { index in
                     let action = actions[index]
-                    MenuButton(title: action.title, isSelected: isChosen(action, at: index)) {
-                        // Opening System Settings takes the pointer away before
-                        // the hover ends, so let go of it here.
-                        hovered = nil
+                    MenuButton(title: action.title, isSelected: index == model.requirementSelection) {
                         model.perform(action)
                     }
                     .onHover { inside in
-                        hovered = inside ? action : nil
                         if inside { model.requirementSelection = index }
                     }
                 }
@@ -44,11 +41,6 @@ struct RequirementPanel: View {
             .padding(.top, 22 * unit)
         }
         .animation(.easeInOut(duration: 0.4), value: model.readiness)
-    }
-
-    private func isChosen(_ action: RequirementAction, at index: Int) -> Bool {
-        if let hovered { return hovered == action }
-        return index == model.requirementSelection
     }
 }
 

@@ -26,16 +26,29 @@ public enum KeyCommand: Sendable, Equatable {
     case confirm
     case back
 
-    /// Maps a macOS virtual key code (`NSEvent.keyCode`) to a command.
-    public init?(keyCode: UInt16) {
+    /// Maps a macOS virtual key code (`NSEvent.keyCode`) to a command. With
+    /// keyboard navigation turned on in System Settings, Space belongs to
+    /// the control that has focus, so it maps to nothing.
+    public init?(keyCode: UInt16, keyboardNavigation: Bool = false) {
         switch keyCode {
         case 126: self = .up
         case 125: self = .down
         case 123: self = .left
         case 124: self = .right
-        case 36, 76, 49: self = .confirm // Return, keypad Enter, Space
+        case 36, 76: self = .confirm // Return, keypad Enter
+        case 49 where !keyboardNavigation: self = .confirm // Space
         case 53: self = .back // Escape
         default: return nil
+        }
+    }
+
+    /// Whether holding the key down repeats the command. Arrows step on;
+    /// Return and Escape act once per press, so a held key can't flip a
+    /// panel open and shut.
+    public var repeatsWhenHeld: Bool {
+        switch self {
+        case .up, .down, .left, .right: return true
+        case .confirm, .back: return false
         }
     }
 }

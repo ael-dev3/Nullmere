@@ -21,8 +21,16 @@ public final class LauncherModel {
         case updating
         /// Just downloaded from the repository.
         case current
-        /// The download failed; the saved news is still shown.
+        /// The Mac couldn't reach the repository; the saved news is still shown.
         case offline
+        /// The repository answered, but not with a feed; the saved news is still shown.
+        case unavailable
+    }
+
+    /// The choices on the Play panel, left to right.
+    enum PlayChoice: CaseIterable, Equatable {
+        case website
+        case back
     }
 
     /// The opening sequence: the lake surfaces from black, then the title, then the menu.
@@ -45,6 +53,7 @@ public final class LauncherModel {
     var menuSelection: MenuItem = .play
     var settingsSelection: SettingsRow = .motion
     var newsSelection = 0
+    var playSelection: PlayChoice = .back
     /// The chosen action on the requirement screen, an index into `readiness.actions`.
     var requirementSelection = 0
     private(set) var intro = Intro()
@@ -310,8 +319,19 @@ public final class LauncherModel {
 
     private func handleInPlay(_ key: KeyCommand) {
         switch key {
-        case .confirm, .back: returnToTitle()
-        case .up, .down, .left, .right: break
+        case .left: playSelection = playSelection.moved(by: -1, wrapping: false)
+        case .right: playSelection = playSelection.moved(by: 1, wrapping: false)
+        case .confirm: choose(playSelection)
+        case .back: returnToTitle()
+        case .up, .down: break
+        }
+    }
+
+    func choose(_ choice: PlayChoice) {
+        playSelection = choice
+        switch choice {
+        case .website: openWebsite()
+        case .back: returnToTitle()
         }
     }
 
@@ -328,6 +348,7 @@ public final class LauncherModel {
             if let game { launchGame(at: game) }
         case .awaitFirstRealm:
             gameFailedToOpen = false
+            playSelection = .back
             show(.play)
         case .explainRequirement:
             // The model just became unavailable; the requirement screen shows why.
@@ -346,6 +367,7 @@ public final class LauncherModel {
                 environment.terminate()
             } catch {
                 gameFailedToOpen = true
+                playSelection = .back
                 show(.play)
                 withAnimation(.easeOut(duration: 0.6)) { isLeaving = false }
             }
@@ -399,7 +421,20 @@ public final class LauncherModel {
             defaults.set(data, forKey: Self.newsCacheKey)
             newsSelection = min(newsSelection, max(visibleNews.count - 1, 0))
         } catch {
-            newsStatus = .offline
+            newsStatus = Self.isConnectionFailure(error) ? .offline : .unavailable
+        }
+    }
+
+    /// Whether a download failed because the Mac couldn't reach the server,
+    /// rather than because the server's answer wasn't a feed.
+    private static func isConnectionFailure(_ error: any Error) -> Bool {
+        guard let error = error as? URLError else { return false }
+        switch error.code {
+        case .notConnectedToInternet, .networkConnectionLost, .timedOut, .cannotFindHost,
+             .cannotConnectToHost, .dnsLookupFailed, .internationalRoamingOff, .dataNotAllowed:
+            return true
+        default:
+            return false
         }
     }
 

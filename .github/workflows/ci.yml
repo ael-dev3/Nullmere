@@ -52,8 +52,11 @@ jobs:
 
       # Xcode 26 and later ship the Metal compiler separately. Fetch it only
       # when no installed Xcode has one; check-shader.sh also tries them all.
+      # A slow or failed download only skips the offline compile (with a
+      # warning); `swift test` still compiles the shader on the runner's GPU.
       - name: Ensure a Metal compiler
         timeout-minutes: 10
+        continue-on-error: true
         run: |
           if xcrun -sdk macosx metal --version >/dev/null 2>&1; then
             echo "Metal compiler available in the selected Xcode"

@@ -7,12 +7,6 @@ struct PlayPanel: View {
     let model: LauncherModel
 
     @Environment(\.launcherUnit) private var unit
-    @State private var hovered: Action?
-
-    private enum Action {
-        case website
-        case back
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,19 +23,26 @@ struct PlayPanel: View {
             RequirementsLine(readiness: model.readiness)
                 .padding(.top, 24 * unit)
 
+            // The lit choice is the one the Return key performs. ← → or the
+            // pointer move it; the panel opens with Return lit.
             HStack(spacing: 48 * unit) {
-                MenuButton(title: "nullmere.online", isSelected: hovered == .website) {
-                    model.openWebsite()
+                ForEach(LauncherModel.PlayChoice.allCases, id: \.self) { choice in
+                    MenuButton(title: title(for: choice), isSelected: model.playSelection == choice) {
+                        model.choose(choice)
+                    }
+                    .onHover { inside in
+                        if inside { model.playSelection = choice }
+                    }
                 }
-                .onHover { hovered = $0 ? .website : nil }
-                // Return answers the Return key, so it shows as chosen until
-                // the pointer picks something else.
-                MenuButton(title: "Return", isSelected: hovered == nil || hovered == .back) {
-                    model.returnToTitle()
-                }
-                .onHover { hovered = $0 ? .back : nil }
             }
             .padding(.top, 22 * unit)
+        }
+    }
+
+    private func title(for choice: LauncherModel.PlayChoice) -> String {
+        switch choice {
+        case .website: return "nullmere.online"
+        case .back: return "Return"
         }
     }
 

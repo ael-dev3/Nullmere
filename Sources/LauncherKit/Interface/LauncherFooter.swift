@@ -10,6 +10,7 @@ struct LauncherFooter: View {
     let openWebsite: () -> Void
 
     @Environment(\.launcherUnit) private var unit
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         ZStack {
@@ -29,6 +30,7 @@ struct LauncherFooter: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .pointerStyle(.link)
                 .accessibilityLabel("Open nullmere.online")
 
                 SpacedText(version, size: 9.5 * unit, weight: .light, tracking: 0.3)
@@ -41,7 +43,7 @@ struct LauncherFooter: View {
                     .accessibilityHidden(true)
             }
         }
-        .foregroundStyle(Palette.ink.opacity(0.38))
+        .foregroundStyle(Palette.ink.opacity(contrast == .increased ? 0.7 : 0.38))
         .padding(.horizontal, 36 * unit)
         .padding(.bottom, 26 * unit)
     }

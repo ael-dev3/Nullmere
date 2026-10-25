@@ -120,6 +120,7 @@ private struct NewsStory: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .pointerStyle(.link)
                         .accessibilityLabel("Read more about \(item.title)")
                         .padding(.top, 14 * unit)
                     }
@@ -137,10 +138,11 @@ private struct NewsSourceLine: View {
     let status: LauncherModel.NewsStatus
 
     @Environment(\.launcherUnit) private var unit
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         SpacedText(text, size: 8.5 * unit, weight: .regular, tracking: 0.28, balanced: false)
-            .foregroundStyle(Palette.ink.opacity(0.38))
+            .foregroundStyle(Palette.ink.opacity(contrast == .increased ? 0.7 : 0.38))
             .padding(.leading, 13 * unit)
             .animation(.easeInOut(duration: 0.3), value: status)
     }
@@ -151,6 +153,7 @@ private struct NewsSourceLine: View {
         case .updating: return "Checking for news"
         case .current: return "Latest from the repository"
         case .offline: return "Offline · saved news"
+        case .unavailable: return "Feed unavailable · saved news"
         }
     }
 }

@@ -80,7 +80,7 @@ make check-shader          # compile the shader with the offline Metal compiler
 
 | Key | Action |
 | --- | --- |
-| ← → | Move along the menu |
+| ← → | Move along the menu, or between the choices on a screen |
 | ↑ ↓ | Choose a story in News or a row in Settings |
 | Return or Space | Select; in Settings, cycle the option |
 | ← → in Settings | Change the selected setting |
@@ -89,7 +89,9 @@ make check-shader          # compile the shader with the offline Metal compiler
 | ⌘Q | Quit |
 
 Any key or click during the opening skips it. Everything also works with the
-pointer.
+pointer, and the choice that is lit is always the one Return selects. Holding
+Return or Esc acts once. With Keyboard navigation turned on in System
+Settings, Tab moves focus between controls and Space presses the focused one.
 
 - **Play** fades the launcher out and opens the Nullmere game client
   (bundle identifier `online.nullmere.game`). Until the first realm opens
