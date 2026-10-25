@@ -91,3 +91,31 @@ final class KeyBridgeView: NSView {
         }
     }
 }
+
+/// Fits the window inside its screen when it first appears, so a display
+/// smaller than the default size never hides the edges of the interface.
+struct WindowFitter: NSViewRepresentable {
+    func makeNSView(context: Context) -> WindowFitterView { WindowFitterView() }
+    func updateNSView(_ view: WindowFitterView, context: Context) {}
+}
+
+final class WindowFitterView: NSView {
+    private var fitted = false
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard !fitted, let window else { return }
+        fitted = true
+        DispatchQueue.main.async {
+            guard let screen = window.screen ?? NSScreen.main else { return }
+            let visible = screen.visibleFrame
+            var frame = window.frame
+            guard frame.width > visible.width || frame.height > visible.height else { return }
+            frame.size.width = min(frame.width, visible.width)
+            frame.size.height = min(frame.height, visible.height)
+            frame.origin.x = visible.midX - frame.width / 2
+            frame.origin.y = visible.midY - frame.height / 2
+            window.setFrame(frame, display: true)
+        }
+    }
+}

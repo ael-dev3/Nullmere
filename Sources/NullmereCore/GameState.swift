@@ -84,6 +84,14 @@ public struct GameState: Codable, Equatable, Sendable {
             }
         }
         record(.beginning, houses.map(\.id), "The Houses take their seats around the Nullmere. The water lies still under a full moon.")
+        // Every House knows the country around its own seat.
+        for hold in holds {
+            for hex in hold.position.spiral(GameState.knownAtStart) {
+                if let tile = map.index(of: hex) {
+                    houses[hold.owner].explored[tile] = true
+                }
+            }
+        }
         refreshSight()
     }
 
@@ -210,6 +218,9 @@ public struct GameState: Codable, Equatable, Sendable {
     public func storage(of house: Int) -> Int {
         GameState.baseStorage + GameState.storagePerHold * holds(of: house).count
     }
+
+    /// How far around its seat each House knows the land when a game begins.
+    public static let knownAtStart = 5
 
     public static let baseStorage = 300
     public static let storagePerHold = 200

@@ -164,18 +164,31 @@ enum WorldShader {
     }
 
     // The still water: black glass holding the stars and the moon.
-    float3 nm_mirror(float2 w, float2 px, float ppp, float shallow, float time) {
-        float3 c = mix(float3(0.003, 0.005, 0.011), float3(0.018, 0.026, 0.034), shallow);
-        // Reflected stars, fixed to the water, sized in screen points.
-        float2 cell = floor(px / (14.0 * ppp));
-        float2 jitter = float2(nm_hash(cell + 3.1), nm_hash(cell + 7.9));
-        float2 star = (cell + 0.2 + 0.6 * jitter) * 14.0 * ppp;
-        float r = length(px - star) / ppp;
-        float bright = nm_hash(cell + 1.3);
-        if (bright > 0.62) {
-            float b = (bright - 0.62) / 0.38;
-            c += float3(0.62, 0.68, 0.82) * b * b * exp(-r * r / 0.9) * (1.0 - 0.7 * shallow);
-        }
+    float nm_star(float2 px, float ppp, float size, float threshold, float salt) {
+        float2 cell = floor(px / (size * ppp));
+        float2 jitter = float2(nm_hash(cell + 3.1 + salt), nm_hash(cell + 7.9 + salt));
+        float2 star = (cell + 0.2 + 0.6 * jitter) * size * ppp;
+        float2 o = (px - star) / ppp;
+        float bright = nm_hash(cell + 1.3 + salt);
+        if (bright < threshold) { return 0.0; }
+        float b = (bright - threshold) / (1.0 - threshold);
+        float r2 = dot(o, o);
+        return b * b * (exp(-r2 / 0.8) + 0.12 * exp(-r2 / 7.0));
+    }
+
+    float3 nm_mirror(float2 w, float2 px, float2 viewport, float ppp, float shallow, float time) {
+        // Black glass, faintly holding the sky: a little paler toward the top
+        // of the view, where the moon hangs, and along the moon's path.
+        float2 uv = px / viewport;
+        float gx = (uv.x - 0.5) * viewport.x / max(viewport.y, 1.0);
+        float glade = exp(-gx * gx / 0.045) * (0.35 + 0.65 * (1.0 - uv.y));
+        float3 c = float3(0.004, 0.007, 0.016) + float3(0.010, 0.014, 0.026) * (1.0 - uv.y);
+        c += float3(0.050, 0.060, 0.085) * glade * (0.85 + 0.15 * nm_fbm(w * 0.35 + float2(time * 0.004, 0.0)));
+        c = mix(c, float3(0.020, 0.027, 0.036), shallow * 0.8);
+        // Reflected stars, fixed to the screen like the sky, sized in points.
+        float stars = nm_star(px, ppp, 10.0, 0.52, 0.0) * 0.7 + nm_star(px, ppp, 37.0, 0.5, 17.0) * 1.6;
+        float twinkle = 0.85 + 0.15 * sin(time * 0.9 + nm_hash(floor(px / (41.0 * ppp))) * 30.0);
+        c += float3(0.66, 0.72, 0.86) * stars * twinkle * (1.0 - 0.75 * shallow);
         // The moon lies in the water at the lake's heart, crisp because
         // nothing moves, and a little dimmer than the moon itself.
         float2 moon = float2(0.0, -2.2);
@@ -197,8 +210,7 @@ enum WorldShader {
         float2 h = nm_hexAt(w);
         if (nm_hexLength(h) > radius) {
             // Beyond the Spine: the dark, with a few cold stars.
-            float s = nm_hash(floor(px / (9.0 * ppp)));
-            return float3(0.002, 0.003, 0.006) + float3(0.5, 0.55, 0.7) * step(0.985, s) * 0.25;
+            return float3(0.003, 0.004, 0.008) + float3(0.5, 0.55, 0.7) * nm_star(px, ppp, 23.0, 0.8, 5.0) * 0.5;
         }
 
         float4 tile = NM_TILE(h + radius);
@@ -235,6 +247,8 @@ enum WorldShader {
         float wWood = 0.0;
         float wBarrow = 0.0;
         float wSpine = 0.0;
+        float known = 0.0;
+        float watched = 0.0;
         for (int i = 0; i < 7; i++) {
             float2 cell = h;
             if (i > 0) {
@@ -243,10 +257,14 @@ enum WorldShader {
             if (nm_hexLength(cell) > radius) {
                 continue;
             }
-            float t = floor(NM_TILE(cell + radius).r * 255.0 + 0.5);
+            float4 cellData = NM_TILE(cell + radius);
+            float t = floor(cellData.r * 255.0 + 0.5);
+            float seen = floor(floor(cellData.a * 255.0 + 0.5) / 16.0);
             float2 off = ws - nm_hexCentre(cell);
             float weight = exp(-dot(off, off) * 2.6);
             total += weight;
+            if (seen > 0.5) { known += weight; }
+            if (seen > 1.5) { watched += weight; }
             if (t > 1.5) { land += weight; }
             if (t < 0.5) { deep += weight; }
             if (t > 1.5 && t < 2.5) { wStrand += weight; }
@@ -263,9 +281,10 @@ enum WorldShader {
         float water = 1.0 - shore;
         // Water: black glass, a little lighter over the dead shallows.
         float shallow = 1.0 - deep / max(total - land, 0.0001);
-        float3 wet = nm_mirror(w, px, ppp, clamp(shallow, 0.0, 1.0), time);
+        float3 wet = nm_mirror(w, px, viewport, ppp, clamp(shallow, 0.0, 1.0), time);
         // A pale line of salt where the dead water meets the land.
-        wet += float3(0.32, 0.33, 0.36) * exp(-abs(landness - 0.42) / 0.03) * 0.45;
+        wet += float3(0.32, 0.33, 0.36) * exp(-abs(landness - 0.43) / 0.025) * 0.5;
+        wet += float3(0.40, 0.46, 0.60) * exp(-abs(landness - 0.47) / 0.012) * 0.3;
 
         float3 ground = float3(0.0);
         float height = 0.0;
@@ -297,9 +316,9 @@ enum WorldShader {
                 float2 fp = d * 3.2;
                 if (feature < 1.5) {
                     // Moonsalt bed: a glittering crust.
-                    float2 cell = floor(w * 16.0);
-                    float glint = step(0.9, nm_hash(cell));
-                    c += float3(0.78, 0.84, 1.0) * glint * (0.45 + 0.55 * sin(time * 1.1 + nm_hash(cell + 2.0) * 40.0)) * (1.0 - smoothstep(0.55, 0.85, length(d)));
+                    float glint = nm_star(px, ppp, 6.0, 0.82, 31.0);
+                    float phase = nm_hash(floor(px / (6.0 * ppp)) + 2.0) * 40.0;
+                    c += float3(0.78, 0.84, 1.0) * glint * 1.4 * (0.4 + 0.6 * sin(time * 1.1 + phase)) * (1.0 - smoothstep(0.55, 0.85, length(d)));
                 } else if (feature < 2.5) {
                     // Elder grove: a black heart of ancient trees.
                     c *= 0.45 + 0.55 * smoothstep(0.15, 0.8, length(fp) / 2.2);
@@ -347,17 +366,20 @@ enum WorldShader {
             c += float3(0.75, 0.80, 0.92) * (1.0 - smoothstep(0.0, 0.06, edge.x)) * pulse + float3(0.04, 0.045, 0.06);
         }
 
-        // Fog: the unknown is dark; what was seen but is no longer watched is dimmed.
-        if (visibility < 0.5) {
-            float mist = nm_fbm(w * 0.6 + float2(time * 0.01, 0.0));
-            c = float3(0.006, 0.008, 0.013) + float3(0.012, 0.014, 0.020) * mist;
-        } else if (visibility < 1.5) {
-            float grey = dot(c, float3(0.30, 0.45, 0.25));
-            c = mix(float3(grey), c, 0.45) * 0.5;
-        }
-        if (otherVisibility < 0.5 && visibility > 0.5) {
-            c *= smoothstep(0.0, 0.18, edge.x) * 0.6 + 0.4;
-        }
+        // Fog, with soft, wandering edges. What was seen but is no longer
+        // watched is remembered dim and grey; the unknown is a slow night mist,
+        // paler than the black water, so the lake shows as the darkest thing.
+        float fogNoise = (nm_fbm(w * 1.3 + float2(3.0, 1.0)) - 0.5) * 0.3;
+        float isKnown = smoothstep(0.38, 0.62, known / max(total, 0.0001) + fogNoise);
+        float isWatched = smoothstep(0.38, 0.62, watched / max(total, 0.0001) + fogNoise);
+        float grey = dot(c, float3(0.30, 0.45, 0.25));
+        // Remembered water keeps its stars; remembered land fades to grey.
+        float3 remembered = mix(mix(float3(grey), c, 0.4) * 0.5 + float3(0.004, 0.005, 0.008), c * 0.85, water);
+        c = mix(remembered, c, isWatched);
+        float2 drift = float2(time * 0.012, time * 0.004);
+        float mist = nm_fbm(w * 0.45 + drift) * 0.65 + nm_fbm(w * 1.4 - drift * 1.7) * 0.35;
+        float3 unknown = float3(0.020, 0.023, 0.032) + float3(0.030, 0.034, 0.046) * mist * mist * 1.6;
+        c = mix(unknown, c, isKnown);
 
         c += (nm_hash(px + fract(time * 3.7) * 61.0) - 0.5) / 255.0;
         return max(c, float3(0.0));

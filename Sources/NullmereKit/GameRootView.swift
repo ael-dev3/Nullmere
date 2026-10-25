@@ -27,7 +27,8 @@ public struct GameRootView: View {
         }
         .animation(.easeInOut(duration: 0.8), value: phaseKey)
         .preferredColorScheme(.dark)
-        .frame(minWidth: 1100, minHeight: 700)
+        .frame(minWidth: 960, minHeight: 620)
+        .background(WindowFitter())
     }
 
     private var phaseKey: Int {

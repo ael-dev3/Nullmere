@@ -132,21 +132,28 @@ private struct WorldMarks: View {
                     context.fill(Path(CGRect(x: bar.minX, y: bar.minY, width: width * fraction, height: 2)), with: .color(colour))
                 }
                 if scale >= 18 {
-                    let label = Text(verbatim: hold.name.uppercased())
+                    let name = Text(verbatim: hold.name.uppercased())
                         .font(.system(size: min(max(scale * 0.3, 8.5), 12), weight: .medium))
                         .tracking(1.6)
-                        .foregroundStyle(Palette.ink.opacity(hold.owner == player ? 0.92 : 0.7))
-                    context.draw(label, at: CGPoint(x: point.x, y: point.y + r * 1.15 + 11))
+                    let at = CGPoint(x: point.x, y: point.y + r * 1.15 + 11)
+                    var shadow = context
+                    shadow.addFilter(.blur(radius: 3))
+                    shadow.draw(name.foregroundStyle(Color.black), at: at)
+                    context.draw(name.foregroundStyle(Palette.ink.opacity(hold.owner == player ? 0.92 : 0.7)), at: at)
                 }
             }
 
             // Companies the player can see.
             for unit in state.units where unit.owner == player || session.isVisible(unit.position) {
-                let point = camera.viewPoint(of: unit.position, in: size)
+                var point = camera.viewPoint(of: unit.position, in: size)
                 guard point.x > -40, point.y > -40, point.x < size.width + 40, point.y < size.height + 40 else { continue }
-                if state.hold(at: unit.position) != nil { continue }
+                // A company in a hold stands at its foot, smaller, so the hold stays legible.
+                let inHold = state.hold(at: unit.position) != nil
                 let colour = Palette.house(state.houses[unit.owner])
-                let r = min(max(scale * 0.34, 7), 16)
+                let r = min(max(scale * 0.34, 7), 16) * (inHold ? 0.62 : 1)
+                if inHold {
+                    point = CGPoint(x: point.x + r * 1.9, y: point.y + r * 0.9)
+                }
                 let disc = Path(ellipseIn: CGRect(x: point.x - r, y: point.y - r, width: r * 2, height: r * 2))
                 context.fill(disc, with: .color(Color.black.opacity(0.78)))
                 context.stroke(disc, with: .color(colour), lineWidth: unit.fortified ? 2.2 : 1.3)
