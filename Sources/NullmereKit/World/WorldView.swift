@@ -21,6 +21,8 @@ struct WorldView: View {
             }
             WorldMarks(session: session)
                 .allowsHitTesting(false)
+            ForecastOverlay(session: session)
+                .allowsHitTesting(false)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("The world map")
@@ -253,6 +255,84 @@ private struct WorldFallback: View {
         case .blackwood: return Color(red: 0.04, green: 0.06, blue: 0.06)
         case .barrow: return Color(red: 0.22, green: 0.2, blue: 0.18)
         case .spine: return Color(red: 0.1, green: 0.1, blue: 0.12)
+        }
+    }
+}
+
+/// The odds of the attack under the pointer, beside the target.
+private struct ForecastOverlay: View {
+    let session: GameSession
+
+    var body: some View {
+        GeometryReader { proxy in
+            if let forecast = session.hoverForecast, let hex = session.hovered {
+                let point = session.camera.viewPoint(of: hex, in: proxy.size)
+                ForecastCard(forecast: forecast, targetName: targetName(forecast))
+                    .fixedSize()
+                    .position(x: point.x, y: point.y - max(session.camera.scale * 0.9, 26) - 30)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: session.hoverForecast)
+    }
+
+    private func targetName(_ forecast: Forecast) -> String {
+        switch forecast.target {
+        case .unit(let kind): return kind.title
+        case .hold(let id): return session.state.hold(id)?.name ?? "the hold"
+        }
+    }
+}
+
+private struct ForecastCard: View {
+    let forecast: Forecast
+    let targetName: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Caps(isHold ? "Strike \(targetName)" : "Attack \(targetName)", size: 8.5, weight: .medium)
+                .foregroundStyle(Palette.ink)
+            line(isHold ? "Ward" : "They take", range: forecast.dealt, of: forecast.defenderHealth,
+                 colour: forecast.mayFinish ? Palette.good : Palette.ink.opacity(0.8))
+            if forecast.taken.upperBound > 0 {
+                line("You take", range: forecast.taken, of: forecast.attackerHealth,
+                     colour: forecast.mayFall ? Palette.bad : Palette.ink.opacity(0.8))
+            } else {
+                Text(verbatim: "Out of their reach").font(.system(size: 10)).foregroundStyle(Palette.ink.opacity(0.55))
+            }
+            if let verdict {
+                Text(verbatim: verdict).font(.system(size: 10, weight: .medium)).foregroundStyle(Palette.glow)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .panelBackground()
+        .accessibilityElement(children: .combine)
+    }
+
+    private var isHold: Bool {
+        if case .hold = forecast.target { return true }
+        return false
+    }
+
+    private var verdict: String? {
+        if isHold {
+            if forecast.surelyFinishes { return forecast.couldCapture ? "The ward breaks; the hold is taken" : "The ward breaks" }
+            if forecast.mayFinish { return "The ward may break" }
+            return nil
+        }
+        if forecast.surelyFinishes { return "They fall" }
+        if forecast.mayFinish { return "They may fall" }
+        return nil
+    }
+
+    private func line(_ label: String, range: ClosedRange<Int>, of total: Int, colour: Color) -> some View {
+        HStack(spacing: 6) {
+            Caps(label, size: 7.5).foregroundStyle(Palette.ink.opacity(0.5))
+            Text(verbatim: range.lowerBound == range.upperBound ? "\(range.lowerBound)" : "\(range.lowerBound)–\(range.upperBound)")
+                .font(.system(size: 11).monospacedDigit())
+                .foregroundStyle(colour)
+            Text(verbatim: "of \(total)").font(.system(size: 10)).foregroundStyle(Palette.ink.opacity(0.45))
         }
     }
 }

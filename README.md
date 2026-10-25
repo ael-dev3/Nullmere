@@ -188,13 +188,17 @@ rival Houses move, holds yield, works rise and companies march on.
   (ascendancy), or be the last House standing (dominion). Rivals fear a
   rising Moonspire and will march on it.
 
+- **Voices.** Envoys speak to you, and a chronicler writes beneath the
+  moments that touch your House, in words written on your Mac by Apple's
+  on-device model. They only speak; the rules decide everything.
+
 The world is made from a few words: the same words make the same lake.
 The game saves itself after every watch.
 
 | Key | Action |
 | --- | --- |
 | Click | Select a company, hold or tile |
-| Right-click | March the selected company there, or strike the enemy there |
+| Right-click | March the selected company there, or strike the enemy there. Hovering an enemy in reach shows the battle's odds first |
 | Drag, two-finger scroll | Pan; pinch, ⌘-scroll or a mouse wheel zooms |
 | Tab | Next company waiting for orders |
 | F / B | Fortify / found a hold with the selected Founder |

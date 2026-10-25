@@ -302,3 +302,39 @@ final class EconomyTests: XCTestCase {
         XCTAssertNil(RivalMind(house: 0).spireThreat(in: state), "A House doesn't fear its own tower")
     }
 }
+
+final class ForecastTests: XCTestCase {
+    /// Every attack lands inside its forecast: at each watch of a few whole
+    /// games, every attack any unit could make is forecast, then made on a
+    /// copy of the game.
+    func testAttacksLandInsideTheirForecasts() throws {
+        var checked = 0
+        for seed in ["forecast one", "forecast two", "forecast three"] {
+            var state = GameState(settings: GameSettings(seedText: seed, houseCount: 4, radius: 18))
+            for _ in 0..<160 where state.outcome == nil {
+                for unit in state.units {
+                    for hex in unit.position.spiral(unit.kind.range) {
+                        guard let forecast = state.forecast(unit: unit.id, at: hex) else { continue }
+                        var trial = state
+                        let events = try trial.perform(.attack(unit: unit.id, target: hex), as: unit.owner)
+                        for case .battle(let battle) in events {
+                            XCTAssertTrue(forecast.dealt.contains(battle.damageDealt), "\(battle) vs \(forecast)")
+                            XCTAssertTrue(forecast.taken.contains(battle.damageTaken), "\(battle) vs \(forecast)")
+                            checked += 1
+                        }
+                    }
+                }
+                _ = state.endWatch()
+            }
+        }
+        XCTAssertGreaterThan(checked, 20, "enough attacks were tried")
+    }
+
+    func testNoForecastWithoutAWar() {
+        let state = GameState(settings: GameSettings(seedText: "no war", houseCount: 3, radius: 14))
+        let unit = state.units(of: state.player).first { $0.kind.isMilitary }!
+        for hex in unit.position.spiral(3) {
+            XCTAssertNil(state.forecast(unit: unit.id, at: hex))
+        }
+    }
+}

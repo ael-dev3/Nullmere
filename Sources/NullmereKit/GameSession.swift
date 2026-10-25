@@ -43,6 +43,8 @@ public final class GameSession {
     public var panel: Panel?
     public private(set) var notices: [Notice] = []
     public private(set) var pathPreview: [Hex] = []
+    /// What attacking the hovered hex with the selected company would do.
+    public private(set) var hoverForecast: Forecast?
     public private(set) var tileBytes: [UInt8] = []
     public private(set) var tilesVersion = 0
     /// Holds and units the player can see right now, by map index.
@@ -69,15 +71,13 @@ public final class GameSession {
         self.state = state
         self.store = store
         self.voice = voice
-        // A game picked up again doesn't retell its whole history.
-        for index in state.chronicle.indices {
-            asked.insert(.chronicle(index))
-        }
         var camera = Camera(scale: 28)
         if let seat = state.seat(of: state.player) {
             camera.focus(on: seat.position)
         }
         self.camera = camera
+        // A game picked up again doesn't retell its whole history.
+        asked = Set(state.chronicle.indices.map { Spoken.chronicle($0) })
         refreshWorld()
     }
 
@@ -300,6 +300,14 @@ public final class GameSession {
     }
 
     private func refreshPathPreview() {
+        hoverForecast = nil
+        if let unit = selectedUnit, unit.owner == player, let hovered {
+            hoverForecast = state.forecast(unit: unit.id, at: hovered)
+            if hoverForecast != nil {
+                pathPreview = []
+                return
+            }
+        }
         guard let unit = selectedUnit, unit.owner == player, let hovered, hovered != unit.position,
               state.map[hovered]?.terrain.isPassable == true
         else {

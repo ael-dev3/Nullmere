@@ -57,7 +57,7 @@ extension GameState {
     }
 
     /// Who stands at a hex for an attacker from `house`: a foreign unit or hold.
-    private func foe(at hex: Hex, for house: Int) -> (owner: Int, unit: Int?, hold: Int?)? {
+    func foe(at hex: Hex, for house: Int) -> (owner: Int, unit: Int?, hold: Int?)? {
         let standing = unit(at: hex).flatMap { $0.owner == house ? nil : $0 }
         let holding = hold(at: hex).flatMap { $0.owner == house ? nil : $0 }
         guard let owner = standing?.owner ?? holding?.owner else { return nil }
@@ -188,19 +188,7 @@ extension GameState {
         let attacker = unit(attackerID)!
         let defender = unit(defenderID)!
         let ranged = attacker.position.distance(to: hex) > 1
-
-        var attack = attacker.kind.attack * (50 + attacker.health / 2)
-        if defender.kind == .rider {
-            attack = attack * (100 + attacker.kind.bonusAgainstRiders) / 100
-        }
-        var defenseBonus = 100 + (map[hex]?.terrain.defenseBonus ?? 0) + (defender.fortified ? 25 : 0)
-        if let hold = hold(at: hex), hold.owner == defender.owner {
-            defenseBonus += 25 + 20 * hold.level(.walls)
-        }
-        if attacker.kind == .rider {
-            defenseBonus += defender.kind.bonusAgainstRiders
-        }
-        let defense = max(1, defender.kind.defense * (50 + defender.health / 2) * defenseBonus / 100)
+        let (attack, defense) = strengths(of: attacker, against: defender, at: hex)
 
         let dealt = max(5, 70 * attack / (attack + defense) * random.int(in: 80...120) / 100)
         let taken = ranged ? 0 : 70 * defense / (attack + defense) * random.int(in: 80...120) / 100
@@ -227,6 +215,23 @@ extension GameState {
             }
         }
         return events
+    }
+
+    /// Attack and defence in a fight between two units, before chance.
+    func strengths(of attacker: Unit, against defender: Unit, at hex: Hex) -> (attack: Int, defense: Int) {
+        var attack = attacker.kind.attack * (50 + attacker.health / 2)
+        if defender.kind == .rider {
+            attack = attack * (100 + attacker.kind.bonusAgainstRiders) / 100
+        }
+        var defenseBonus = 100 + (map[hex]?.terrain.defenseBonus ?? 0) + (defender.fortified ? 25 : 0)
+        if let hold = hold(at: hex), hold.owner == defender.owner {
+            defenseBonus += 25 + 20 * hold.level(.walls)
+        }
+        if attacker.kind == .rider {
+            defenseBonus += defender.kind.bonusAgainstRiders
+        }
+        let defense = max(1, defender.kind.defense * (50 + defender.health / 2) * defenseBonus / 100)
+        return (attack, defense)
     }
 
     /// Returns whether the unit fell.
