@@ -257,3 +257,48 @@ final class RulesTests: XCTestCase {
         XCTAssertEqual(restored, state)
     }
 }
+
+final class EconomyTests: XCTestCase {
+    func testBarterTradesThreeToOneWithMoonsaltDearer() throws {
+        var state = GameState(settings: GameSettings(seedText: "barter"))
+        state.houses[0].stock = Stock(grain: 300, timber: 0, stone: 10, moonsalt: 30)
+        try state.perform(.barter(give: .grain, take: .timber, amount: 50), as: 0)
+        XCTAssertEqual(state.houses[0].stock.grain, 150)
+        XCTAssertEqual(state.houses[0].stock.timber, 50)
+        XCTAssertEqual(Resource.moonsalt.barterCost(of: 10, paidIn: .grain), 90)
+        XCTAssertEqual(Resource.stone.barterCost(of: 10, paidIn: .moonsalt), 10)
+        XCTAssertThrowsError(try state.perform(.barter(give: .stone, take: .grain, amount: 10), as: 0)) { error in
+            XCTAssertEqual(error as? RuleError, .shortOf(Stock(stone: 20)))
+        }
+        XCTAssertThrowsError(try state.perform(.barter(give: .grain, take: .grain, amount: 10), as: 0))
+    }
+
+    func testStorageLimitsWhatAHouseKeeps() {
+        var state = GameState(settings: GameSettings(seedText: "storage"))
+        let room = state.storage(of: 0)
+        XCTAssertEqual(room, GameState.baseStorage + GameState.storagePerHold)
+        state.houses[0].stock = Stock(grain: room, timber: room, stone: room, moonsalt: room)
+        state.endWatch()
+        for resource in Resource.allCases {
+            XCTAssertLessThanOrEqual(state.houses[0].stock[resource], room)
+        }
+    }
+
+    func testTheMoonspireCanBeFinishedByAFourHoldRealm() {
+        let top = BuildingKind.moonspire.cost(toLevel: BuildingKind.moonspire.maxLevel)
+        let storage = GameState.baseStorage + GameState.storagePerHold * 4
+        for resource in Resource.allCases {
+            XCTAssertLessThanOrEqual(top[resource], storage, "\(resource) for the last stage must fit four holds' stores")
+        }
+        let threeHolds = GameState.baseStorage + GameState.storagePerHold * 3
+        XCTAssertTrue(Resource.allCases.contains { top[$0] > threeHolds }, "A small realm can't finish it")
+    }
+
+    func testRivalsFearARisingMoonspire() {
+        var state = GameState(settings: GameSettings(seedText: "fear"))
+        let seat = state.seat(of: 0)!
+        state.holds[state.holdIndex(seat.id)!].levels[.moonspire] = 3
+        XCTAssertEqual(RivalMind(house: 1).spireThreat(in: state), 0)
+        XCTAssertNil(RivalMind(house: 0).spireThreat(in: state), "A House doesn't fear its own tower")
+    }
+}

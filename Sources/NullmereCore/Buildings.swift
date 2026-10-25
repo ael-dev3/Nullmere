@@ -59,7 +59,7 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
         case .musterHall: return Stock(grain: 30, timber: 40, stone: 30)
         case .walls: return Stock(grain: 10, timber: 15, stone: 45)
         case .beacon: return Stock(grain: 10, timber: 30, stone: 20, moonsalt: 5)
-        case .moonspire: return Stock(grain: 60, timber: 60, stone: 100, moonsalt: 24)
+        case .moonspire: return Stock(grain: 60, timber: 60, stone: 80, moonsalt: 24)
         }
     }
 

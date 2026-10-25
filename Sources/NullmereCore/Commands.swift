@@ -10,6 +10,8 @@ public enum Command: Codable, Equatable, Sendable {
     /// Start raising a building one level.
     case build(hold: Int, kind: BuildingKind)
     case train(hold: Int, kind: UnitKind)
+    /// Trade a surplus away for something lacking, at three to one.
+    case barter(give: Resource, take: Resource, amount: Int)
     /// Dig in: +25% defence until the unit moves.
     case fortify(unit: Int)
     case disband(unit: Int)
@@ -48,6 +50,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case alreadyStance(Stance)
     case notApplicable
     case unknownEnvoy
+    case invalidAmount
+    case storageFull
 
     public var description: String {
         switch self {
@@ -77,6 +81,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .alreadyStance(let stance): return "Already at \(stance.title.lowercased())."
         case .notApplicable: return "That isn't possible now."
         case .unknownEnvoy: return "That envoy has gone."
+        case .invalidAmount: return "Choose an amount to trade."
+        case .storageFull: return "There's no room to store that much."
         }
     }
 }
@@ -93,6 +99,7 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case buildingStarted(hold: Int, kind: BuildingKind, level: Int)
     case buildingCompleted(hold: Int, kind: BuildingKind, level: Int)
     case trainingStarted(hold: Int, kind: UnitKind)
+    case bartered(house: Int, gave: Stock, took: Stock)
     case unitTrained(unit: Int, hold: Int)
     case ruinSearched(at: Hex, by: Int, reward: Stock)
     case stanceChanged(first: Int, second: Int, stance: Stance, by: Int)

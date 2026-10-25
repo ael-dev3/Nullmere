@@ -48,7 +48,7 @@ extension GameState {
         for hold in holds(of: house) {
             income = income + self.income(of: hold, territory: owners)
         }
-        houses[house].stock.credit(income)
+        store(income, for: house)
 
         let upkeep = self.upkeep(of: house)
         if houses[house].stock.grain >= upkeep {

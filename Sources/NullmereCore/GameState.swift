@@ -186,7 +186,8 @@ public struct GameState: Codable, Equatable, Sendable {
     public func income(of hold: Hold, territory: [Int?]? = nil) -> Stock {
         let owners = territory ?? self.territory()
         var total = hold.isSeat ? Stock(grain: 3, timber: 2, stone: 2, moonsalt: 1) : Stock(grain: 2, timber: 1, stone: 1)
-        for (index, owner) in owners.enumerated() where owner == hold.id {
+        for hex in hold.position.spiral(hold.territoryRadius) {
+            guard let index = map.index(of: hex), owners[index] == hold.id else { continue }
             total = total + map[index].yield
         }
         for kind in BuildingKind.allCases {
@@ -202,6 +203,24 @@ public struct GameState: Codable, Equatable, Sendable {
     public func income(of house: Int) -> Stock {
         let owners = territory()
         return holds(of: house).reduce(Stock.zero) { $0 + income(of: $1, territory: owners) }
+    }
+
+    /// How much of each resource a House can keep. Holds add storehouses;
+    /// whatever comes in beyond this is lost.
+    public func storage(of house: Int) -> Int {
+        GameState.baseStorage + GameState.storagePerHold * holds(of: house).count
+    }
+
+    public static let baseStorage = 300
+    public static let storagePerHold = 200
+
+    /// Adds income to a House's stock, up to its storage.
+    mutating func store(_ income: Stock, for house: Int) {
+        houses[house].stock.credit(income)
+        let room = storage(of: house)
+        for resource in Resource.allCases where houses[house].stock[resource] > room {
+            houses[house].stock[resource] = room
+        }
     }
 
     /// Grain a House's units eat each watch.

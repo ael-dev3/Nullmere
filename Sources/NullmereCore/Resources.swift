@@ -15,6 +15,15 @@ public enum Resource: String, CaseIterable, Codable, Sendable {
         case .moonsalt: return "Moonsalt"
         }
     }
+
+    /// Worth in barter: moonsalt is three times dearer than the rest.
+    public var worth: Int { self == .moonsalt ? 3 : 1 }
+
+    /// What it costs in `give` to barter for `amount` of this resource:
+    /// three times its worth, rounded up.
+    public func barterCost(of amount: Int, paidIn give: Resource) -> Int {
+        (amount * 3 * worth + give.worth - 1) / give.worth
+    }
 }
 
 /// An amount of each resource. Arithmetic never goes below zero; storing

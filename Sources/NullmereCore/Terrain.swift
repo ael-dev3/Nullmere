@@ -70,11 +70,11 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
     public var yield: Stock {
         switch self {
         case .still, .shallows, .spine: return .zero
-        case .strand: return Stock(grain: 1, stone: 1)
-        case .saltFlat: return Stock(moonsalt: 2)
-        case .greyfield: return Stock(grain: 3)
-        case .blackwood: return Stock(grain: 1, timber: 3)
-        case .barrow: return Stock(stone: 3)
+        case .strand: return Stock(grain: 1)
+        case .saltFlat: return Stock(moonsalt: 1)
+        case .greyfield: return Stock(grain: 2)
+        case .blackwood: return Stock(timber: 2)
+        case .barrow: return Stock(stone: 2)
         }
     }
 }
@@ -106,7 +106,7 @@ public enum Feature: String, CaseIterable, Codable, Sendable {
     /// Added to the tile's yield when worked.
     public var yield: Stock {
         switch self {
-        case .moonsaltBed: return Stock(moonsalt: 3)
+        case .moonsaltBed: return Stock(moonsalt: 2)
         case .elderGrove: return Stock(timber: 4)
         case .stoneSeam: return Stock(stone: 4)
         case .darkLoam: return Stock(grain: 4)

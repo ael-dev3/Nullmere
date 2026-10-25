@@ -17,6 +17,8 @@ extension GameState {
             return try build(kind, in: holdID, as: house)
         case let .train(holdID, kind):
             return try train(kind, in: holdID, as: house)
+        case let .barter(give, take, amount):
+            return try barter(give: give, take: take, amount: amount, as: house)
         case let .fortify(unitID):
             let index = try ownedUnit(unitID, of: house)
             units[index].fortified = true
@@ -83,23 +85,37 @@ extension GameState {
     }
 
     /// Moves a unit along its route as far as its moves allow this watch.
+    /// The route is planned once and replanned only if something blocks it.
     mutating func march(_ unitID: Int) -> [GameEvent] {
         guard var index = unitIndex(unitID) else { return [] }
         var steps: [Hex] = []
         var events: [GameEvent] = []
+        var route: [Hex] = []
+        var replanned = false
         while let destination = units[index].destination, units[index].movesLeft > 0 {
             let unit = units[index]
-            guard let route = path(for: unit, to: destination), let next = route.first else {
-                units[index].destination = nil
-                break
+            if route.isEmpty {
+                guard let planned = path(for: unit, to: destination), !planned.isEmpty else {
+                    units[index].destination = nil
+                    break
+                }
+                route = planned
             }
-            if self.unit(at: next) != nil { break }
+            let next = route[0]
+            if self.unit(at: next) != nil {
+                // Someone stepped into the way: plan once more, then wait.
+                if replanned || next == destination { break }
+                replanned = true
+                route = []
+                continue
+            }
             if let hold = hold(at: next), hold.owner != unit.owner {
                 units[index].destination = nil
                 break
             }
             let cost = map[next]!.terrain.moveCost
             if unit.movesLeft < cost, unit.movesLeft < unit.kind.movement { break }
+            route.removeFirst()
             units[index].movesLeft = max(0, unit.movesLeft - cost)
             units[index].position = next
             units[index].acted = true
@@ -135,7 +151,7 @@ extension GameState {
             Stock(grain: 30, timber: 30, stone: 30, moonsalt: 10),
         ]
         let reward = random.pick(rewards)
-        houses[house].stock.credit(reward)
+        store(reward, for: house)
         if var tile = map[hex] {
             tile.feature = nil
             map.set(hex, tile)
@@ -355,19 +371,37 @@ extension GameState {
         return [.trainingStarted(hold: holdID, kind: kind)]
     }
 
+    // MARK: Barter
+
+    private mutating func barter(give: Resource, take: Resource, amount: Int, as house: Int) throws(RuleError) -> [GameEvent] {
+        guard give != take, amount > 0, amount <= Stock.cap else { throw .invalidAmount }
+        let price = take.barterCost(of: amount, paidIn: give)
+        var cost = Stock()
+        cost[give] = price
+        guard houses[house].stock.covers(cost) else { throw .shortOf(houses[house].stock.shortfall(for: cost)) }
+        guard houses[house].stock[take] + amount <= storage(of: house) else { throw .storageFull }
+        var gain = Stock()
+        gain[take] = amount
+        houses[house].stock.debit(cost)
+        houses[house].stock.credit(gain)
+        return [.bartered(house: house, gave: cost, took: gain)]
+    }
+
     // MARK: Diplomacy
 
     private func requireRival(_ target: Int, of house: Int) throws(RuleError) {
         guard target != house, let other = self.house(target), !other.isEliminated else { throw .unknownHouse }
     }
 
-    mutating func declareWar(by house: Int, on target: Int) throws(RuleError) -> [GameEvent] {
+    mutating func declareWar(by house: Int, on target: Int, fearingSpire: Bool = false) throws(RuleError) -> [GameEvent] {
         try requireRival(target, of: house)
         let previous = stance(house, target)
         guard previous != .war else { throw .alreadyStance(.war) }
         setStance(.war, between: house, and: target, by: house)
         envoys.removeAll { $0.from == target || $0.from == house }
-        if previous == .pact {
+        if fearingSpire {
+            record(.war, [house, target], "Fearing the white tower rising at \(seat(of: target)?.name ?? "their seat"), \(houses[house].title) goes to war against \(houses[target].title).")
+        } else if previous == .pact {
             record(.betrayal, [house, target], "\(houses[house].title) breaks its pact and turns on \(houses[target].title).")
         } else {
             record(.war, [house, target], "\(houses[house].title) declares war on \(houses[target].title).")

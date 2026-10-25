@@ -3,46 +3,60 @@ extension GameState {
     /// hexes to step through, not including the start. Hexes holding other
     /// units are avoided, except the target itself.
     public func path(for unit: Unit, to target: Hex) -> [Hex]? {
-        guard unit.position != target, map.contains(target) else { return nil }
-        guard let targetTile = map[target], targetTile.terrain.isPassable else { return nil }
+        guard unit.position != target,
+              let start = map.index(of: unit.position),
+              let goal = map.index(of: target),
+              map[goal].terrain.isPassable
+        else { return nil }
 
         struct Node: Comparable {
-            let cost: Int
-            let estimate: Int
-            let hex: Hex
+            let priority: Int
+            let tile: Int
             static func < (a: Node, b: Node) -> Bool {
-                (a.cost + a.estimate, a.hex) < (b.cost + b.estimate, b.hex)
+                (a.priority, a.tile) < (b.priority, b.tile)
             }
         }
 
-        var best: [Hex: Int] = [unit.position: 0]
-        var cameFrom: [Hex: Hex] = [:]
+        let count = map.count
+        var blocked = [Bool](repeating: false, count: count)
+        for other in units where other.id != unit.id {
+            if let index = map.index(of: other.position), index != goal {
+                blocked[index] = true
+            }
+        }
+        var best = [Int](repeating: Int.max, count: count)
+        var cameFrom = [Int](repeating: -1, count: count)
+        let hexes = map.hexes
+        best[start] = 0
         var open = MinHeap<Node>()
-        open.push(Node(cost: 0, estimate: unit.position.distance(to: target), hex: unit.position))
+        open.push(Node(priority: unit.position.distance(to: target), tile: start))
         var expanded = 0
 
         while let node = open.pop() {
-            if node.hex == target {
+            if node.tile == goal {
                 var route: [Hex] = []
-                var cursor = target
-                while cursor != unit.position {
-                    route.append(cursor)
-                    cursor = cameFrom[cursor]!
+                var cursor = goal
+                while cursor != start {
+                    route.append(hexes[cursor])
+                    cursor = cameFrom[cursor]
                 }
                 return route.reversed()
             }
-            guard node.cost == best[node.hex] else { continue }
+            let hex = hexes[node.tile]
+            let cost = best[node.tile]
+            // A stale entry: a cheaper way here was already found.
+            guard node.priority == cost + hex.distance(to: target) else { continue }
             expanded += 1
             if expanded > 6_000 { return nil }
-            for next in map.neighbors(of: node.hex) {
-                guard let tile = map[next], tile.terrain.isPassable else { continue }
-                // Other units block the way, though the target itself may be held.
-                if next != target, let other = self.unit(at: next), other.id != unit.id { continue }
-                let cost = node.cost + tile.terrain.moveCost
-                if cost < best[next] ?? Int.max {
-                    best[next] = cost
-                    cameFrom[next] = node.hex
-                    open.push(Node(cost: cost, estimate: next.distance(to: target), hex: next))
+            for direction in Hex.directions {
+                guard let next = map.index(of: hex + direction), !blocked[next] else { continue }
+                let terrain = map[next].terrain
+                guard terrain.isPassable else { continue }
+                let total = cost + terrain.moveCost
+                if total < best[next] {
+                    best[next] = total
+                    cameFrom[next] = node.tile
+                    open.push(Node(priority: total + hexes[next].distance(to: target), tile: next))
                 }
             }
         }
