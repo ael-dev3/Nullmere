@@ -17,7 +17,13 @@ struct LakeConfiguration: Equatable {
 /// The view animates only while its window is visible and motion is allowed;
 /// with motion set to still it renders a single frame per size change.
 final class LakeMetalView: MTKView {
-    static let systemDevice: (any MTLDevice)? = MTLCreateSystemDefaultDevice()
+    static let systemDevice: (any MTLDevice)? = {
+        let device = MTLCreateSystemDefaultDevice()
+        if device == nil {
+            LakeMetalView.logger.error("No Metal device is available; the lake is drawn as a still painting.")
+        }
+        return device
+    }()
 
     var configuration: LakeConfiguration {
         didSet {
@@ -184,6 +190,7 @@ final class LakeMetalView: MTKView {
         }
         do {
             renderer = try LakeRenderer(device: device, library: library, pixelFormat: pixelFormat)
+            Self.logger.notice("The lake renders with Metal on \(device.name, privacy: .public).")
             clock.resetInterval()
             updateWindowVisibility()
         } catch {

@@ -74,7 +74,11 @@ Tests and checks:
 ```sh
 swift test                 # unit tests; on a Mac with Metal, the shader is also compiled on the GPU
 make check-shader          # compile the shader with the offline Metal compiler
+make smoke                 # build the app, open it, check it starts and renders with Metal, take a screenshot
 ```
+
+CI runs all of these on a macOS 26 runner for every pull request, and keeps
+the screenshot of the launcher it opened.
 
 ## Using the launcher
 
@@ -209,7 +213,7 @@ Sources/
 Tests/                LauncherCoreTests, LauncherKitTests
 news/                 news.json, the launcher's news feed
 Packaging/            Info.plist template and the 1024 px app icon
-scripts/              build-app.sh, check-shader.sh
+scripts/              build-app.sh, check-shader.sh, smoke-test-app.sh
 Tools/scene-preview/  Browser preview of the lake shader
 docs/                 Project notes, starting with what carries over from Warpkeep
 ```
