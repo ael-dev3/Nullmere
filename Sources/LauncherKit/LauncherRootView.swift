@@ -58,13 +58,6 @@ public struct LauncherRootView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 .animation(.easeInOut(duration: 0.5), value: model.footerHint)
 
-                // A click during the opening skips it.
-                if model.intro != .complete {
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture { model.completeIntro() }
-                }
-
                 // Quitting, or crossing into the game, fades everything to black.
                 Color.black
                     .opacity(model.isLeaving ? 1 : 0)
@@ -82,6 +75,9 @@ public struct LauncherRootView: View {
         .background(
             WindowBridge(startsInFullScreen: model.settings.startsInFullScreen) { key in
                 model.handle(key)
+            } onClick: {
+                // A click anywhere during the opening skips it.
+                model.completeIntro()
             }
         )
         .onAppear {

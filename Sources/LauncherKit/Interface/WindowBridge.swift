@@ -3,35 +3,41 @@ import LauncherCore
 import SwiftUI
 
 /// Reaches the hosting `NSWindow`: styles it for the launcher, enters full
-/// screen at launch when asked, and routes navigation keys to the model.
+/// screen at launch when asked, and routes navigation keys and clicks to the
+/// model.
 ///
 /// Keys are read with a local event monitor rather than SwiftUI focus, so
 /// arrows, Return and Escape work no matter which control was last clicked.
 /// With keyboard navigation turned on, Space is left to the control that
-/// has focus.
+/// has focus. Clicks are only observed: each one still reaches the window,
+/// which may start dragging it, or the control under the pointer.
 struct WindowBridge: NSViewRepresentable {
     var startsInFullScreen: Bool
     var onKey: (KeyCommand) -> Void
+    var onClick: () -> Void
 
     func makeNSView(context: Context) -> WindowBridgeView {
-        WindowBridgeView(startsInFullScreen: startsInFullScreen, onKey: onKey)
+        WindowBridgeView(startsInFullScreen: startsInFullScreen, onKey: onKey, onClick: onClick)
     }
 
     func updateNSView(_ view: WindowBridgeView, context: Context) {
         view.onKey = onKey
+        view.onClick = onClick
     }
 }
 
 final class WindowBridgeView: NSView {
     var onKey: (KeyCommand) -> Void
+    var onClick: () -> Void
 
     private let startsInFullScreen: Bool
     private weak var configuredWindow: NSWindow?
-    private var keyMonitor: Any?
+    private var eventMonitor: Any?
 
-    init(startsInFullScreen: Bool, onKey: @escaping (KeyCommand) -> Void) {
+    init(startsInFullScreen: Bool, onKey: @escaping (KeyCommand) -> Void, onClick: @escaping () -> Void) {
         self.startsInFullScreen = startsInFullScreen
         self.onKey = onKey
+        self.onClick = onClick
         super.init(frame: .zero)
     }
 
@@ -40,19 +46,19 @@ final class WindowBridgeView: NSView {
     }
 
     deinit {
-        if let keyMonitor {
-            NSEvent.removeMonitor(keyMonitor)
+        if let eventMonitor {
+            NSEvent.removeMonitor(eventMonitor)
         }
     }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         guard let window else {
-            removeKeyMonitor()
+            removeEventMonitor()
             return
         }
         configure(window)
-        installKeyMonitor()
+        installEventMonitor()
     }
 
     private func configure(_ window: NSWindow) {
@@ -73,12 +79,15 @@ final class WindowBridgeView: NSView {
         }
     }
 
-    private func installKeyMonitor() {
-        guard keyMonitor == nil else { return }
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self,
-                  event.window === self.window,
-                  !event.modifierFlags.containsCommandKeys,
+    private func installEventMonitor() {
+        guard eventMonitor == nil else { return }
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseDown]) { [weak self] event in
+            guard let self, event.window === self.window else { return event }
+            if event.type == .leftMouseDown {
+                self.onClick()
+                return event
+            }
+            guard !event.modifierFlags.containsCommandKeys,
                   let command = KeyCommand(keyCode: event.keyCode, keyboardNavigation: NSApp.isFullKeyboardAccessEnabled)
             else { return event }
             if !event.isARepeat || command.repeatsWhenHeld {
@@ -88,10 +97,10 @@ final class WindowBridgeView: NSView {
         }
     }
 
-    private func removeKeyMonitor() {
-        if let keyMonitor {
-            NSEvent.removeMonitor(keyMonitor)
-            self.keyMonitor = nil
+    private func removeEventMonitor() {
+        if let eventMonitor {
+            NSEvent.removeMonitor(eventMonitor)
+            self.eventMonitor = nil
         }
     }
 }
