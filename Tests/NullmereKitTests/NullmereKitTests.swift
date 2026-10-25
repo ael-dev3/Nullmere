@@ -120,6 +120,20 @@ final class GameSessionTests: XCTestCase {
         XCTAssertEqual(SaveStore(directory: directory).load()?.watch, 2)
     }
 
+    func testMarchesAreShownFromWhereTheCompanyStood() throws {
+        let (session, directory) = session()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let lantern = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .lantern })
+        let target = try XCTUnwrap(lantern.position.spiral(3).first {
+            $0.distance(to: lantern.position) == 2 && session.state.map[$0]?.terrain.isPassable == true
+                && session.state.unit(at: $0) == nil && session.state.path(for: lantern, to: $0) != nil
+        })
+        XCTAssertTrue(session.perform(.move(unit: lantern.id, to: target)))
+        let march = try XCTUnwrap(session.marches[lantern.id])
+        XCTAssertEqual(march.path.first, lantern.position)
+        XCTAssertEqual(march.path.last, session.state.unit(lantern.id)?.position)
+    }
+
     func testAutoplayPlaysWholeWatches() {
         let (session, directory) = session()
         defer { try? FileManager.default.removeItem(at: directory) }

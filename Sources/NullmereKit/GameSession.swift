@@ -60,6 +60,19 @@ public final class GameSession {
 
     public private(set) var spoken: [Spoken: String] = [:]
 
+    /// A company's march being shown, from where it stood along the route.
+    public struct March: Equatable {
+        public let path: [Hex]
+        public let start: Date
+
+        public static let secondsPerStep = 0.16
+
+        public var duration: Double { Double(max(path.count - 1, 1)) * March.secondsPerStep }
+    }
+
+    /// Marches still being drawn, by unit.
+    public private(set) var marches: [Int: March] = [:]
+
     private var noticeCounter = 0
     private let store: SaveStore
     private let voice: (any Voice)?
@@ -175,7 +188,9 @@ public final class GameSession {
     @discardableResult
     public func perform(_ command: Command) -> Bool {
         do {
+            let before = positions()
             let events = try state.perform(command, as: player)
+            showMarches(events, from: before)
             report(events)
             if case .found = command, let hold = events.compactMap(holdFounded).first {
                 selection = .hold(hold)
@@ -197,7 +212,9 @@ public final class GameSession {
     public func endWatch() {
         guard state.outcome == nil, !isEndingWatch else { return }
         isEndingWatch = true
+        let before = positions()
         let events = state.endWatch()
+        showMarches(events, from: before)
         notices.removeAll()
         report(events)
         if case .unit(let id) = selection, state.unit(id) == nil {
@@ -259,6 +276,32 @@ public final class GameSession {
         tilesVersion += 1
         refreshPathPreview()
         askVoices()
+    }
+
+    // MARK: Marches
+
+    private func positions() -> [Int: Hex] {
+        Dictionary(uniqueKeysWithValues: state.units.map { ($0.id, $0.position) })
+    }
+
+    /// Draws the marches the player could see, all at once, then forgets them.
+    private func showMarches(_ events: [GameEvent], from before: [Int: Hex]) {
+        let now = Date()
+        var longest = 0.0
+        for case .moved(let id, let steps) in events {
+            guard let origin = before[id], !steps.isEmpty,
+                  state.unit(id)?.owner == player || ([origin] + steps).contains(where: isVisible)
+            else { continue }
+            let march = March(path: [origin] + steps, start: now)
+            marches[id] = march
+            longest = max(longest, march.duration)
+        }
+        guard longest > 0 else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(longest + 0.05))
+            guard let self else { return }
+            self.marches = self.marches.filter { Date().timeIntervalSince($0.value.start) < $0.value.duration }
+        }
     }
 
     // MARK: Voices

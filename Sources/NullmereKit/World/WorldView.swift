@@ -63,7 +63,30 @@ private struct WorldMetalRepresentable: NSViewRepresentable {
 private struct WorldMarks: View {
     let session: GameSession
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
+        TimelineView(.animation(paused: session.marches.isEmpty || reduceMotion)) { timeline in
+            marks(at: timeline.date)
+        }
+    }
+
+    /// Where a company is drawn: along its march while one is shown.
+    private func position(of unit: NullmereCore.Unit, at date: Date, camera: Camera, size: CGSize) -> CGPoint {
+        guard !reduceMotion, let march = session.marches[unit.id], march.path.count > 1 else {
+            return camera.viewPoint(of: unit.position, in: size)
+        }
+        let progress = min(max(date.timeIntervalSince(march.start) / march.duration, 0), 1)
+        let eased = progress * progress * (3 - 2 * progress)
+        let along = eased * Double(march.path.count - 1)
+        let step = min(Int(along), march.path.count - 2)
+        let a = camera.viewPoint(of: march.path[step], in: size)
+        let b = camera.viewPoint(of: march.path[step + 1], in: size)
+        let f = along - Double(step)
+        return CGPoint(x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f)
+    }
+
+    private func marks(at date: Date) -> some View {
         Canvas { context, size in
             let camera = session.camera
             let state = session.state
@@ -147,10 +170,10 @@ private struct WorldMarks: View {
 
             // Companies the player can see.
             for unit in state.units where unit.owner == player || session.isVisible(unit.position) {
-                var point = camera.viewPoint(of: unit.position, in: size)
+                var point = position(of: unit, at: date, camera: camera, size: size)
                 guard point.x > -40, point.y > -40, point.x < size.width + 40, point.y < size.height + 40 else { continue }
                 // A company in a hold stands at its foot, smaller, so the hold stays legible.
-                let inHold = state.hold(at: unit.position) != nil
+                let inHold = state.hold(at: unit.position) != nil && session.marches[unit.id] == nil
                 let colour = Palette.house(state.houses[unit.owner])
                 let r = min(max(scale * 0.34, 7), 16) * (inHold ? 0.62 : 1)
                 if inHold {
