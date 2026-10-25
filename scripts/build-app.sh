@@ -6,7 +6,8 @@
 #
 # The app is built for Apple silicon only and needs macOS 26, matching
 # Apple Intelligence. It is ad-hoc signed, which is enough to run it on the
-# Mac that built it. Set CODESIGN_IDENTITY to sign with a Developer ID instead.
+# Mac that built it. Set CODESIGN_IDENTITY to sign with a Developer ID
+# instead, with the hardened runtime and a secure timestamp, ready to notarize.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -47,7 +48,13 @@ done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 
 echo "Signing ($CODESIGN_IDENTITY)…"
-codesign --force --sign "$CODESIGN_IDENTITY" --options runtime --timestamp=none "$APP"
+if [ "$CODESIGN_IDENTITY" = "-" ]; then
+    TIMESTAMP="--timestamp=none"
+else
+    # Notarization needs a secure timestamp from Apple.
+    TIMESTAMP="--timestamp"
+fi
+codesign --force --sign "$CODESIGN_IDENTITY" --options runtime "$TIMESTAMP" "$APP"
 codesign --verify --strict "$APP"
 
 echo "Built $APP"

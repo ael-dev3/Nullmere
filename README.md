@@ -65,8 +65,9 @@ open "build/Nullmere Online.app"
 `scripts/build-app.sh` makes an arm64 release build and assembles
 `Nullmere Online.app` with its icon and Info.plist. It signs the app ad hoc,
 which is enough to run it on the Mac that built it. To sign with a
-Developer ID instead, set `CODESIGN_IDENTITY`. `VERSION` sets the marketing
-version (default `0.2.0`).
+Developer ID instead, set `CODESIGN_IDENTITY`: the app is then signed with
+the hardened runtime and a secure timestamp, ready to notarize. `VERSION`
+sets the marketing version (default `0.2.0`).
 
 Tests and checks:
 
