@@ -1,3 +1,4 @@
+import LauncherCore
 import SwiftUI
 
 /// The lake behind the launcher: the Metal scene, or a static painting of it
@@ -30,5 +31,22 @@ private struct LakeMetalRepresentable: NSViewRepresentable {
 
     func updateNSView(_ view: LakeMetalView, context: Context) {
         view.configuration = configuration
+    }
+}
+
+/// The launcher's moonlit lake, for the game to stand its title screen on.
+public struct MoonlitLake: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    public init() {}
+
+    public var body: some View {
+        let motion: ResolvedMotion = reduceMotion ? .reduced : .full
+        LakeBackdrop(configuration: LakeConfiguration(
+            motion: motion,
+            renderScale: 1,
+            framesPerSecond: 60,
+            horizon: LakeComposition.horizon
+        ))
     }
 }

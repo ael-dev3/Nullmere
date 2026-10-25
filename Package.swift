@@ -11,6 +11,7 @@ let package = Package(
     ],
     products: [
         .executable(name: "NullmereLauncher", targets: ["NullmereLauncher"]),
+        .executable(name: "Nullmere", targets: ["Nullmere"]),
         .library(name: "NullmereCore", targets: ["NullmereCore"]),
     ],
     targets: [
@@ -26,6 +27,10 @@ let package = Package(
             name: "NullmereCore",
             linkerSettings: [.linkedLibrary("m", .when(platforms: [.linux]))]
         ),
+        // The game's interface: the Metal world, the panels, saving.
+        .target(name: "NullmereKit", dependencies: ["NullmereCore", "LauncherCore", "LauncherKit"]),
+        // The "Nullmere" game app entry point.
+        .executableTarget(name: "Nullmere", dependencies: ["NullmereKit"]),
         .testTarget(name: "LauncherCoreTests", dependencies: ["LauncherCore"]),
         .testTarget(name: "NullmereCoreTests", dependencies: ["NullmereCore"]),
         .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore"]),

@@ -1,0 +1,168 @@
+import NullmereCore
+import SwiftUI
+
+/// Nullmere's few colours: pale, cold type over the dark, and the colours
+/// of the Houses (matching the world shader).
+enum Palette {
+    static let ink = Color(red: 0.894, green: 0.918, blue: 0.949)
+    static let glow = Color(red: 0.588, green: 0.706, blue: 0.882)
+    static let good = Color(red: 0.58, green: 0.80, blue: 0.66)
+    static let bad = Color(red: 0.90, green: 0.52, blue: 0.48)
+    static let panel = Color(red: 0.02, green: 0.025, blue: 0.035)
+
+    private static let houses: [Color] = [
+        Color(red: 0.86, green: 0.74, blue: 0.47),
+        Color(red: 0.70, green: 0.27, blue: 0.25),
+        Color(red: 0.30, green: 0.60, blue: 0.60),
+        Color(red: 0.58, green: 0.44, blue: 0.74),
+        Color(red: 0.78, green: 0.80, blue: 0.84),
+        Color(red: 0.86, green: 0.50, blue: 0.26),
+        Color(red: 0.46, green: 0.68, blue: 0.38),
+        Color(red: 0.80, green: 0.56, blue: 0.68),
+    ]
+
+    static func house(_ house: House) -> Color {
+        houses[house.sigil % houses.count]
+    }
+
+    static func tone(_ tone: GameSession.Notice.Tone) -> Color {
+        switch tone {
+        case .neutral: return ink.opacity(0.8)
+        case .good: return good
+        case .bad: return bad
+        }
+    }
+}
+
+/// Uppercase, widely tracked type, as in the launcher.
+struct Caps: View {
+    let text: String
+    var size: CGFloat = 10
+    var weight: Font.Weight = .regular
+    var tracking: CGFloat = 0.28
+
+    init(_ text: String, size: CGFloat = 10, weight: Font.Weight = .regular, tracking: CGFloat = 0.28) {
+        self.text = text
+        self.size = size
+        self.weight = weight
+        self.tracking = tracking
+    }
+
+    var body: some View {
+        Text(verbatim: text.uppercased())
+            .font(.system(size: size, weight: weight))
+            .tracking(size * tracking)
+    }
+}
+
+/// A thin rule that fades at both ends.
+struct Rule: View {
+    var opacity: Double = 0.3
+
+    @Environment(\.displayScale) private var displayScale
+
+    var body: some View {
+        LinearGradient(colors: [.clear, Palette.ink.opacity(opacity), .clear], startPoint: .leading, endPoint: .trailing)
+            .frame(height: 1 / displayScale)
+    }
+}
+
+/// The dark glass behind panels.
+struct PanelBackground: ViewModifier {
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    func body(content: Content) -> some View {
+        content
+            .background(Palette.panel.opacity(contrast == .increased ? 0.95 : 0.82))
+            .overlay(
+                RoundedRectangle(cornerRadius: 3)
+                    .strokeBorder(Palette.ink.opacity(0.12), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 3))
+    }
+}
+
+extension View {
+    func panelBackground() -> some View {
+        modifier(PanelBackground())
+    }
+}
+
+/// A quiet text button: spaced capitals that brighten on hover.
+struct QuietButton: View {
+    let title: String
+    var size: CGFloat = 10
+    var prominent = false
+    var enabled = true
+    let action: () -> Void
+
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Caps(title, size: size, weight: prominent ? .medium : .regular)
+                .foregroundStyle(Palette.ink.opacity(enabled ? (hovering || prominent ? 1 : 0.72) : 0.3))
+                .padding(.horizontal, prominent ? 16 : 8)
+                .padding(.vertical, prominent ? 9 : 5)
+                .background(
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Palette.glow.opacity(prominent ? (hovering ? 0.22 : 0.14) : (hovering && enabled ? 0.08 : 0)))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 2)
+                        .strokeBorder(Palette.ink.opacity(prominent ? 0.35 : 0), lineWidth: 1)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .onHover { hovering = $0 }
+        .accessibilityLabel(title)
+    }
+}
+
+/// A resource amount, with what is missing shown in the warning colour.
+struct CostLine: View {
+    let cost: Stock
+    let available: Stock
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(Resource.allCases, id: \.self) { resource in
+                if cost[resource] > 0 {
+                    HStack(spacing: 3) {
+                        ResourceGlyph(resource: resource)
+                        Text(verbatim: "\(cost[resource])")
+                            .font(.system(size: 11, weight: .regular).monospacedDigit())
+                    }
+                    .foregroundStyle(available[resource] >= cost[resource] ? Palette.ink.opacity(0.75) : Palette.bad)
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Costs \(cost.description)")
+    }
+}
+
+/// A tiny mark for each resource.
+struct ResourceGlyph: View {
+    let resource: Resource
+    var size: CGFloat = 7
+
+    var body: some View {
+        Group {
+            switch resource {
+            case .grain:
+                Circle().fill(Color(red: 0.84, green: 0.76, blue: 0.52))
+            case .timber:
+                Rectangle().fill(Color(red: 0.42, green: 0.55, blue: 0.44))
+            case .stone:
+                RoundedRectangle(cornerRadius: 1).fill(Color(red: 0.62, green: 0.60, blue: 0.58)).rotationEffect(.degrees(45))
+            case .moonsalt:
+                Circle().strokeBorder(Color(red: 0.80, green: 0.86, blue: 1.0), lineWidth: 1.5)
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
