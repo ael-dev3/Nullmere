@@ -1,6 +1,7 @@
 name: CI
 
-# One macOS job per pull request update (and per push to main). Changes that
+# One macOS job per pull request update, and per push to main or a working
+# branch. Changes that
 # only touch documentation or the browser preview don't start a run.
 on:
   pull_request:
@@ -12,7 +13,7 @@ on:
       - scripts/**
       - .github/workflows/ci.yml
   push:
-    branches: [main]
+    branches: [main, "claude/**"]
     paths:
       - Package.swift
       - Sources/**
