@@ -1,6 +1,6 @@
 import AppKit
 import Metal
-import NullmereCore
+@testable import NullmereCore
 import XCTest
 @testable import NullmereKit
 
@@ -30,7 +30,11 @@ final class LakeRenderTests: XCTestCase {
             var pixels = [UInt8](repeating: 0, count: width * height * 4)
             target.getBytes(&pixels, bytesPerRow: width * 4, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
             // Black water, lit land: the picture is neither empty nor flat.
-            let lit = stride(from: 0, to: pixels.count, by: 4).filter { Int(pixels[$0]) + Int(pixels[$0 + 1]) + Int(pixels[$0 + 2]) > 60 }.count
+            var lit = 0
+            for start in stride(from: 0, to: pixels.count, by: 4) {
+                let brightness: Int = Int(pixels[start]) + Int(pixels[start + 1]) + Int(pixels[start + 2])
+                if brightness > 60 { lit += 1 }
+            }
             let share = Double(lit) / Double(width * height)
             XCTAssertTrue((0.1...0.95).contains(share), "\(lake): \(Int(share * 100))% lit")
             let provider = try XCTUnwrap(CGDataProvider(data: Data(pixels) as CFData))

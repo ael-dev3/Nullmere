@@ -93,6 +93,13 @@ CODESIGN_IDENTITY="Developer ID Application: …" NOTARY_PROFILE=nullmere \
     VERSION=1.0.0 scripts/release.sh   # signs, notarizes and staples
 ```
 
+Or from GitHub: with the Developer ID certificate and an App Store
+Connect API key in the repository's secrets (`MACOS_CERTIFICATE`,
+`MACOS_CERTIFICATE_PASSWORD`, `APPLE_API_KEY`, `APPLE_API_KEY_ID`,
+`APPLE_API_ISSUER`), pushing a tag such as `v1.0.0` runs
+`.github/workflows/release.yml`: it signs, notarizes and staples the disk
+image and attaches it to a GitHub release.
+
 Tests and checks:
 
 ```sh
@@ -273,6 +280,11 @@ steward: in a container (`Dockerfile.steward`, restarted with the machine)
 when Docker is there, otherwise in the background, with its log beside the
 token. Run it again to update the module; the realm keeps its world. Ask
 for a fresh realm with `SPACETIME_CLEAR=1`.
+
+The module can also be published from GitHub: put the token
+`spacetime login show --token` prints in the `SPACETIME_TOKEN` secret, and
+run **Publish the realm** (`.github/workflows/realm.yml`) from the Actions
+tab. The steward still runs on a machine of yours, as that identity.
 
 If the name `nullmere` is taken on maincloud, choose another with
 `REALM_DB=...`, and build the app for it with

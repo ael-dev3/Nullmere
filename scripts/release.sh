@@ -40,7 +40,9 @@ fi
 
 if [ -n "${NOTARY_PROFILE:-}" ]; then
     echo "Notarizing…"
-    xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+    # NOTARY_KEYCHAIN names the keychain holding the profile, when it isn't
+    # the login keychain (as on CI).
+    xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" ${NOTARY_KEYCHAIN:+--keychain "$NOTARY_KEYCHAIN"} --wait
     xcrun stapler staple "$DMG"
     spctl --assess --type open --context context:primary-signature --verbose "$DMG"
     echo "Notarized and stapled: $DMG"

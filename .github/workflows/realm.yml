@@ -1,0 +1,48 @@
+name: Publish the realm
+
+# Publishes the realm module to SpacetimeDB's maincloud, run by hand from
+# the Actions tab. The steward itself runs on a machine of its keeper's
+# (scripts/raise-realm.sh maincloud, or Dockerfile.steward), as the same
+# identity.
+#
+# Secret, once: SPACETIME_TOKEN, the token `spacetime login show --token`
+# prints after `spacetime login` on the keeper's own machine.
+on:
+  workflow_dispatch:
+    inputs:
+      database:
+        description: "The database's name on maincloud"
+        default: nullmere
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish the realm module to maincloud
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust and SpacetimeDB
+        run: |
+          curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --target wasm32-unknown-unknown
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          curl -sSf https://install.spacetimedb.com | sh -s -- --yes
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Publish
+        env:
+          SPACETIME_TOKEN: ${{ secrets.SPACETIME_TOKEN }}
+          DATABASE: ${{ inputs.database }}
+        run: |
+          [ -n "$SPACETIME_TOKEN" ] || { echo "::error::Set the SPACETIME_TOKEN secret first: see the comment at the top of this workflow"; exit 1; }
+          case "$DATABASE" in *[!a-z0-9-]*|"") echo "::error::The name may hold lowercase letters, digits and hyphens"; exit 1 ;; esac
+          spacetime login --token "$SPACETIME_TOKEN"
+          (cd realm-server && spacetime publish --server maincloud --yes "$DATABASE")
+          echo "Published https://maincloud.spacetimedb.com/$DATABASE"
