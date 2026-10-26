@@ -21,10 +21,11 @@ struct TopBar: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Caps(house.title, size: 11, weight: .medium, tracking: 0.32)
                         .foregroundStyle(Palette.ink)
-                    Caps("Watch \(state.watch)", size: 8.5, tracking: 0.3)
-                        .foregroundStyle(Palette.ink.opacity(0.55))
+                    WatchClock(session: session)
                 }
             }
+            .fixedSize()
+            .layoutPriority(1)
             .accessibilityElement(children: .combine)
 
             Spacer(minLength: 24)
@@ -89,38 +90,33 @@ private struct ResourceReadout: View {
     }
 }
 
-/// Ready for the watch to turn, and how long until it turns of itself;
-/// and what still waits for orders.
+/// Ready for the watch to turn, and what still waits for orders.
 struct EndWatchButton: View {
     let session: GameSession
 
     var body: some View {
         let waiting = session.readyUnits.count
         let idle = session.idleHolds.count
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            VStack(alignment: .trailing, spacing: 3) {
-                if session.isReady {
-                    QuietButton(title: "Waiting", size: 10.5) { session.cancelReady() }
-                        .help("Waiting for the other keepers. Click to take back being ready.")
-                } else {
-                    QuietButton(title: "Ready", size: 10.5, prominent: true, enabled: session.state.outcome == nil) {
-                        session.endWatch()
-                    }
-                    .keyboardShortcut(.return, modifiers: .command)
-                    .help("Done with this watch's orders. The watch turns when every keeper there is ready, or when its time runs out.")
+        VStack(alignment: .trailing, spacing: 3) {
+            if session.isReady {
+                QuietButton(title: "Waiting", size: 10.5) { session.cancelReady() }
+                    .help("Waiting for the other keepers. Click to take back being ready.")
+            } else {
+                QuietButton(title: "Ready", size: 10.5, prominent: true, enabled: session.state.outcome == nil) {
+                    session.endWatch()
                 }
-                if let line = EndWatchButton.realmLine(status: session.realmStatus, secondsLeft: session.secondsLeft(at: context.date)) {
-                    Text(verbatim: line)
-                        .font(.nm(9).monospacedDigit())
-                        .foregroundStyle(Palette.ink.opacity(0.55))
-                }
-                if waiting > 0 || idle > 0 {
-                    Text(verbatim: waitingText(units: waiting, holds: idle))
-                        .font(.nm(9))
-                        .foregroundStyle(Palette.ink.opacity(0.5))
-                }
+                .keyboardShortcut(.return, modifiers: .command)
+                .help("Done with this watch's orders. The watch turns when every keeper there is ready, or when its time runs out.")
+            }
+            if waiting > 0 || idle > 0 {
+                Text(verbatim: waitingText(units: waiting, holds: idle))
+                    .font(.nm(9))
+                    .foregroundStyle(Palette.ink.opacity(0.5))
+                    .lineLimit(1)
+                    .fixedSize()
             }
         }
+        .fixedSize()
     }
 
     /// "Turns in 2:14 · 1 of 3 ready": while the watch has a clock worth
@@ -142,6 +138,28 @@ struct EndWatchButton: View {
         if units > 0 { parts.append(units == 1 ? "1 company waits" : "\(units) companies wait") }
         if holds > 0 { parts.append(holds == 1 ? "1 hold idle" : "\(holds) holds idle") }
         return parts.joined(separator: " · ")
+    }
+}
+
+/// The watch, and beside it how long until it turns of itself and who is
+/// ready: "Watch 12 · Turns in 2:14 · 1 of 3 ready".
+struct WatchClock: View {
+    let session: GameSession
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            HStack(spacing: 0) {
+                Caps("Watch \(session.state.watch)", size: 8.5, tracking: 0.3)
+                    .foregroundStyle(Palette.ink.opacity(0.55))
+                if let line = EndWatchButton.realmLine(status: session.realmStatus, secondsLeft: session.secondsLeft(at: context.date)) {
+                    Text(verbatim: "  ·  " + line)
+                        .font(.nm(9).monospacedDigit())
+                        .foregroundStyle(Palette.ink.opacity(0.55))
+                }
+            }
+            .lineLimit(1)
+            .fixedSize()
+        }
     }
 }
 

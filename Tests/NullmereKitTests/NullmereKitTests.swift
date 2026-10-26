@@ -507,6 +507,24 @@ final class TextSizeTests: XCTestCase {
         XCTAssertGreaterThan(larger.height, standard.height, "and grows to hold the larger type")
     }
 
+    /// The top bar fits the narrowest window, and the larger type a wide one,
+    /// without squeezing the House, the clock or Ready.
+    func testTheTopBarFitsTheWindow() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "top bar")), store: LocalStore(directory: dir))
+        TextSize.shared.isLarger = false
+        let standard = try size(of: TopBar(session: session).fixedSize())
+        TextSize.shared.isLarger = true
+        let larger = try size(of: TopBar(session: session).fixedSize())
+        print("LAYOUT top bar \(Int(standard.width)) wide, \(Int(larger.width)) with the larger type")
+        XCTAssertLessThanOrEqual(standard.width, 960)
+        XCTAssertLessThanOrEqual(larger.width, 1280)
+        let watch = try size(of: WatchClock(session: session))
+        XCTAssertGreaterThan(watch.width, 40, "The watch is never squeezed")
+        XCTAssertLessThan(watch.height, 30, "and stays on one line")
+    }
+
     /// A hold's long panel scrolls within its height rather than run off the window.
     func testTheHoldPanelScrollsWithinItsHeight() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

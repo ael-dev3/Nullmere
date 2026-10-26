@@ -211,7 +211,7 @@ jobs:
         if: always()
         run: |
           echo "::group::Summary"
-          grep -h "PERF \|SOUND " build-test.log 2>/dev/null || true
+          grep -h "PERF \|SOUND \|LAYOUT " build-test.log 2>/dev/null || true
           grep -hE "error: |failed \(|: warning:" build.log build-test.log 2>/dev/null | head -40 || true
           grep -h "Executed .* tests" build-test.log 2>/dev/null | tail -1 || true
           grep -hE "error|warning" build/smoke-*.log 2>/dev/null | head -20 || true
