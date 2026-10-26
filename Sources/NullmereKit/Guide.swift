@@ -46,6 +46,7 @@ enum Guide {
             "Tab: the next company waiting · H: your seat · F: fortify · B: found a hold",
             "Arrows or WASD: pan · + and −: zoom · Esc: close, then clear the selection",
             "1: Houses · 2: Chronicle · ?: this guide · ⌘Z: take back an order · ⌘S: save",
+            "⌘↩: end the watch · ⇧⌘↩: end watches until something needs you (up to ten) · ⌘,: settings",
         ]),
     ]
 }

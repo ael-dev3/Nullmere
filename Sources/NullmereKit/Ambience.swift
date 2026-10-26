@@ -28,9 +28,16 @@ public final class Ambience {
         case accord
         /// A House destroyed: a deep, long toll.
         case toll
+        /// Steel meeting steel: a company strikes in close.
+        case clash
+        /// A bowstring loosed.
+        case loose
+        /// Riders sent off: hooves on hard ground.
+        case ride
 
         /// Every cue, for tests and previews.
-        public static let all: [Cue] = [.select, .order, .battle, .watch, .rise, .dread, .envoy, .triumph, .accord, .toll]
+        public static let all: [Cue] = [.select, .order, .battle, .watch, .rise, .dread, .envoy, .triumph, .accord, .toll,
+                                        .clash, .loose, .ride]
     }
 
     private static let logger = Logger(subsystem: "online.nullmere.game", category: "sound")
@@ -63,6 +70,16 @@ public final class Ambience {
 
     private func applyMusic() {
         synth.setMusic(on: isMusicOn, mood: isAtWar ? .war : .peace)
+    }
+
+    /// How loud each part of the sound plays, from silent (0) to full (1):
+    /// the cues, the night's drone and wind, and the score.
+    public var effectsVolume: Float = 1 { didSet { applyVolumes() } }
+    public var ambienceVolume: Float = 1 { didSet { applyVolumes() } }
+    public var musicVolume: Float = 1 { didSet { applyVolumes() } }
+
+    private func applyVolumes() {
+        synth.setVolumes(effects: effectsVolume, ambience: ambienceVolume, music: musicVolume)
     }
 
     private func apply() {
@@ -125,6 +142,8 @@ final class Synth: @unchecked Sendable {
         var noise: Float
         var noiseDecay: Float
         var age: Float = 0
+        /// Seconds after the cue begins that this note sounds.
+        var delay: Float = 0
     }
 
     private let lock = NSLock()
@@ -142,6 +161,13 @@ final class Synth: @unchecked Sendable {
     private var dronePhases: [Float] = [0, 0, 0, 0]
     private var score = Score()
     private var pendingMusic: (on: Bool, mood: Score.Mood)?
+    private var volumes: (effects: Float, ambience: Float, music: Float) = (1, 1, 1)
+    private var pendingVolumes: (effects: Float, ambience: Float, music: Float)?
+
+    func setVolumes(effects: Float, ambience: Float, music: Float) {
+        let clamp = { (value: Float) in min(max(value, 0), 1) }
+        lock.lock(); pendingVolumes = (clamp(effects), clamp(ambience), clamp(music)); lock.unlock()
+    }
 
     /// What the score has played, for tests.
     var scoreSnapshot: Score {
@@ -168,6 +194,7 @@ final class Synth: @unchecked Sendable {
 
     func trigger(_ cue: Ambience.Cue) {
         let note: Note
+        var more: [Note] = []
         switch cue {
         case .select:
             note = Note(partials: [Partial(frequency: 1320, amplitude: 0.10, decay: 30)], noise: 0.03, noiseDecay: 90)
@@ -217,9 +244,35 @@ final class Synth: @unchecked Sendable {
                 Partial(frequency: f * 5.40, amplitude: 0.035, decay: 0.8),
                 Partial(frequency: f * 8.93, amplitude: 0.015, decay: 1.3),
             ], noise: 0.01, noiseDecay: 6)
+        case .clash:
+            // Bright, inharmonic and short over a dull thud.
+            note = Note(partials: [
+                Partial(frequency: 80, amplitude: 0.07, decay: 10),
+                Partial(frequency: 523, amplitude: 0.045, decay: 9),
+                Partial(frequency: 1247, amplitude: 0.032, decay: 12),
+                Partial(frequency: 1873, amplitude: 0.024, decay: 16),
+                Partial(frequency: 2690, amplitude: 0.016, decay: 20),
+            ], noise: 0.07, noiseDecay: 35)
+        case .loose:
+            // The string's low twang and its click, then the shaft's hiss.
+            note = Note(partials: [
+                Partial(frequency: 196, amplitude: 0.09, decay: 10),
+                Partial(frequency: 392, amplitude: 0.035, decay: 14),
+            ], noise: 0.07, noiseDecay: 80)
+            more = [Note(partials: [], noise: 0.03, noiseDecay: 7, delay: 0.05)]
+        case .ride:
+            // Three hooves on hard ground, close together.
+            func hoof(_ delay: Float, _ strength: Float) -> Note {
+                Note(partials: [
+                    Partial(frequency: 110, amplitude: 0.09 * strength, decay: 25),
+                    Partial(frequency: 70, amplitude: 0.06 * strength, decay: 20),
+                ], noise: 0.06 * strength, noiseDecay: 50, delay: delay)
+            }
+            note = hoof(0, 1)
+            more = [hoof(0.12, 0.8), hoof(0.21, 0.9)]
         }
         lock.lock()
-        if pending.count < 8 { pending.append(note) }
+        if pending.count < 12 { pending.append(note); pending.append(contentsOf: more) }
         lock.unlock()
     }
 
@@ -238,6 +291,11 @@ final class Synth: @unchecked Sendable {
             score.mood = music.mood
             pendingMusic = nil
         }
+        if let next = pendingVolumes {
+            volumes = next
+            pendingVolumes = nil
+        }
+        let volume = volumes
         lock.unlock()
 
         guard buffers.count >= 2,
@@ -271,7 +329,8 @@ final class Synth: @unchecked Sendable {
             var cue: Float = 0
             for n in notes.indices {
                 notes[n].age += dt
-                let age = notes[n].age
+                let age = notes[n].age - notes[n].delay
+                guard age > 0 else { continue }
                 for p in notes[n].partials.indices {
                     notes[n].partials[p].phase += tau * notes[n].partials[p].frequency * dt
                     if notes[n].partials[p].phase > tau { notes[n].partials[p].phase -= tau }
@@ -286,12 +345,15 @@ final class Synth: @unchecked Sendable {
                 }
             }
 
-            let music = score.sample(dt: dt) * level
+            cue *= volume.effects
+            drone *= volume.ambience
+            let air = 0.6 * wind * level * volume.ambience
+            let music = score.sample(dt: dt) * level * volume.music
             let bed = (drone + 0.5 * cue) * level + music
-            left[frame] = bed + windLeft * 0.6 * wind * level + 0.5 * cue * (1 - level)
-            right[frame] = bed + windRight * 0.6 * wind * level + 0.5 * cue * (1 - level)
+            left[frame] = bed + windLeft * air + 0.5 * cue * (1 - level)
+            right[frame] = bed + windRight * air + 0.5 * cue * (1 - level)
         }
-        notes.removeAll { $0.age > 8 }
+        notes.removeAll { $0.age - $0.delay > 8 }
         if time > 10_000 { time -= 10_000 }
     }
 }

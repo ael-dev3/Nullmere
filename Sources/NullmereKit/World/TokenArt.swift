@@ -1,4 +1,5 @@
 import CoreGraphics
+import NullmereCore
 import SwiftUI
 
 /// The pieces on the map, drawn as paths: original line art in the
@@ -50,6 +51,37 @@ enum TokenArt {
         pennant.addLine(to: CGPoint(x: c.x, y: top - 0.42 * r))
         pennant.closeSubpath()
         return (pole, pennant)
+    }
+
+    /// Side towers for a hold that has grown: one beside the keep after
+    /// a few works, a second after many.
+    static func towers(at c: CGPoint, radius r: CGFloat, count: Int) -> Path {
+        var p = Path()
+        let width = 0.36 * r
+        let base = c.y + 0.9 * r
+        let top = c.y - 0.7 * r
+        for side in [-1.0, 1.0].prefix(min(max(count, 0), 2)) {
+            let x = c.x + CGFloat(side) * 1.02 * r
+            let left = x - width / 2, right = x + width / 2
+            let notch = 0.16 * r
+            p.move(to: CGPoint(x: left, y: base))
+            p.addLine(to: CGPoint(x: left, y: top))
+            p.addLine(to: CGPoint(x: x - width / 6, y: top))
+            p.addLine(to: CGPoint(x: x - width / 6, y: top + notch))
+            p.addLine(to: CGPoint(x: x + width / 6, y: top + notch))
+            p.addLine(to: CGPoint(x: x + width / 6, y: top))
+            p.addLine(to: CGPoint(x: right, y: top))
+            p.addLine(to: CGPoint(x: right, y: base))
+            p.closeSubpath()
+        }
+        return p
+    }
+
+    /// How many side towers a hold shows for the works it has raised
+    /// (walls and the Moonspire have their own marks).
+    static func towerCount(for hold: Hold) -> Int {
+        let works = hold.levels.filter { $0.key != .walls && $0.key != .moonspire }.values.reduce(0, +)
+        return works >= 8 ? 2 : (works >= 3 ? 1 : 0)
     }
 
     /// A low ring of walls at the keep's foot, for walled holds.

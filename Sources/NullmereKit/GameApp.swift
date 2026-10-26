@@ -41,6 +41,9 @@ public final class GameApp {
         let soundOn = sound ?? (UserDefaults.standard.object(forKey: "sound.enabled") as? Bool ?? true)
         self.isSoundOn = soundOn
         self.ambience = Ambience(enabled: soundOn)
+        ambience.effectsVolume = Float(effectsVolume)
+        ambience.ambienceVolume = Float(ambienceVolume)
+        ambience.musicVolume = Float(musicVolume)
         checkModel()
         startFromEnvironment()
         // Whatever was ordered since the last watch is kept if the game is
@@ -133,6 +136,23 @@ public final class GameApp {
             ambience.isMusicOn = isMusicOn
             UserDefaults.standard.set(isMusicOn, forKey: "music.enabled")
         }
+    }
+
+    /// How loud the cues, the night and the score play, each from 0 to 1.
+    public var effectsVolume: Double = GameApp.storedVolume("volume.effects") {
+        didSet { ambience.effectsVolume = Float(effectsVolume); UserDefaults.standard.set(effectsVolume, forKey: "volume.effects") }
+    }
+
+    public var ambienceVolume: Double = GameApp.storedVolume("volume.ambience") {
+        didSet { ambience.ambienceVolume = Float(ambienceVolume); UserDefaults.standard.set(ambienceVolume, forKey: "volume.ambience") }
+    }
+
+    public var musicVolume: Double = GameApp.storedVolume("volume.music") {
+        didSet { ambience.musicVolume = Float(musicVolume); UserDefaults.standard.set(musicVolume, forKey: "volume.music") }
+    }
+
+    static func storedVolume(_ key: String) -> Double {
+        min(max(UserDefaults.standard.object(forKey: key) as? Double ?? 1, 0), 1)
     }
 
     private func play(_ session: GameSession) {

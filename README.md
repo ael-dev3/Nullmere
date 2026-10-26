@@ -241,7 +241,13 @@ rival Houses move, holds yield, works rise and companies march on.
   play. Beneath them an original score is written as it plays: slow chords
   in D minor drifting under a sparse line of bell-like notes, joined at war
   by a distant drum and darker chords. ⇧⌘M turns all sound off, ⇧⌘U the
-  music alone.
+  music alone, and Settings (⌘,) sets each part's volume. Each kind of
+  company sounds its own: riders' hooves, a loosed bowstring, the clash
+  of a blow struck in close.
+- **Watchmen.** When an enemy's companies gather near one of your holds,
+  you're told, and a broken red ring marks the hold on the map.
+- **Holds that grow.** A hold raises a side tower after a few works and a
+  second after many, so a glance at the map shows which holds are built up.
 
 Rivals play Gentle, Even or Merciless: poorer and slow to make war on you,
 on the same footing as you, or richer and quick to press you.
@@ -265,6 +271,8 @@ The game saves itself after every watch.
 | 1 / 2 / ? | Houses / Chronicle / Guide |
 | Esc | Close a panel, then clear the selection |
 | ⌘↩ | End the watch |
+| ⇧⌘↩ | End watches until something needs you (up to ten) |
+| ⌘, | Settings: volumes for effects, the night and the music; larger text; counsel |
 | ⌘S, ⇧⌘W | Save, leave to the title screen |
 
 ## Design

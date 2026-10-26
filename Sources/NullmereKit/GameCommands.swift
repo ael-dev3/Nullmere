@@ -28,6 +28,9 @@ public struct GameCommands: Commands {
             Button("End Watch") { app.session?.endWatch() }
                 .keyboardShortcut(.return, modifiers: .command)
                 .disabled(app.session?.state.outcome != nil || app.session == nil)
+            Button("End Watches Until Needed") { app.session?.endWatchesUntilNeeded() }
+                .keyboardShortcut(.return, modifiers: [.command, .shift])
+                .disabled(app.session?.state.outcome != nil || app.session == nil)
             Button("Next Company") { app.session?.selectNextReadyUnit() }
                 .disabled(app.session == nil)
             Button("Go to Seat") { app.session?.focusOnSeat() }

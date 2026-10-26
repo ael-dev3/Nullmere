@@ -167,6 +167,8 @@ public final class GameSession {
 
     /// Blows still being drawn.
     public private(set) var blows: [Blow] = []
+    /// The player's holds with enemy companies gathering near them.
+    public private(set) var threatened: Set<Int> = []
     private var blowCounter = 0
 
     /// Marches still being drawn, by unit.
@@ -352,21 +354,66 @@ public final class GameSession {
 
     /// Ends the watch: the rivals move and the world turns.
     public func endWatch() {
+        endWatches(upTo: 1)
+    }
+
+    /// Most watches that pass at once while nothing needs the player.
+    public static let quietWatchLimit = 10
+
+    /// Ends watches until something needs the player: news worth hearing,
+    /// an envoy, a threat, a company or a hold without orders, the end of
+    /// the game; at most `quietWatchLimit`.
+    public func endWatchesUntilNeeded() {
+        endWatches(upTo: Self.quietWatchLimit)
+    }
+
+    /// Whether, after a watch, the player has something to see to.
+    static func needsPlayer(after watch: [GameEvent], from before: GameState, to after: GameState, player: Int,
+                            threatened: Set<Int>) -> Bool {
+        if after.outcome != nil { return true }
+        if watch.contains(where: { if case .envoyArrived = $0 { return true } else { return false } }) { return true }
+        if watch.contains(where: { Narration.line(for: $0, in: after, viewer: player).map { $0.tone != .neutral } ?? false }) {
+            return true
+        }
+        if !Race.warnings(before: before, after: after, player: player).isEmpty { return true }
+        let threats = Sentinel.threats(in: after, player: player, visible: after.visibility(for: player))
+        if threats.contains(where: { !threatened.contains($0.hold) }) { return true }
+        if after.units(of: player).contains(where: { $0.movesLeft > 0 && $0.destination == nil && !$0.fortified }) { return true }
+        return after.holds(of: player).contains { $0.project == nil }
+    }
+
+    private func endWatches(upTo limit: Int) {
         guard state.outcome == nil, !isEndingWatch else { return }
         isEndingWatch = true
-        let before = positions()
         undoStack.removeAll()
         let previous = state
-        let events = state.endWatch()
+        var events: [GameEvent] = []
+        var last: [GameEvent] = []
+        var before = positions()
+        var passed = 0
+        repeat {
+            before = positions()
+            let start = state
+            last = state.endWatch()
+            events += last
+            passed += 1
+            if Self.needsPlayer(after: last, from: start, to: state, player: player, threatened: threatened) { break }
+        } while passed < limit
         showWatchCard(WatchSummary(before: previous, after: state, events: events, player: player))
-        showMarches(events, from: before)
-        showBlows(events, from: before)
+        // Only the last watch's marches and blows are drawn.
+        showMarches(last, from: before)
+        showBlows(last, from: before)
         for cue in Self.cues(for: events, player: player) {
             onCue?(cue)
         }
         notices.removeAll()
+        if passed > 1 {
+            post("\(passed) quiet watches pass.", tone: .neutral)
+        }
         report(events)
-        let warnings = Race.warnings(before: previous, after: state, player: player)
+        var warnings = Race.warnings(before: previous, after: state, player: player)
+        let threats = Sentinel.threats(in: state, player: player, visible: state.visibility(for: player))
+        warnings += threats.filter { !threatened.contains($0.hold) }.map { Sentinel.line(for: $0, in: state) }
         for warning in warnings {
             post(warning.text, tone: warning.tone)
         }
@@ -443,6 +490,7 @@ public final class GameSession {
 
     private func refreshWorld() {
         visible = state.visibility(for: player)
+        threatened = Set(Sentinel.threats(in: state, player: player, visible: visible).map(\.hold))
         territory = state.territory()
         refreshReach()
         let atWar = state.livingHouses.contains { state.isAtWar(player, $0.id) }
@@ -488,18 +536,35 @@ public final class GameSession {
     // MARK: Sound
 
     private func sound(for command: Command, events: [GameEvent]) {
+        for cue in Self.cues(for: command, events: events, in: state, player: player) {
+            onCue?(cue)
+        }
+    }
+
+    /// The sounds an order makes: each kind of company its own.
+    static func cues(for command: Command, events: [GameEvent], in state: GameState, player: Int) -> [Ambience.Cue] {
         switch command {
         case .attack:
-            onCue?(.battle)
+            let ranged = events.contains { if case .battle(let battle) = $0 { return battle.attackerKind == .bow } else { return false } }
+            var cues: [Ambience.Cue] = [ranged ? .loose : .clash]
             if events.contains(where: { if case .holdCaptured(_, _, let by) = $0 { return by == player } else { return false } }) {
-                onCue?(.triumph)
+                cues.append(.triumph)
             }
-        case .move: onCue?(.order)
-        case .found, .build, .train: onCue?(.rise)
-        case .declareWar: onCue?(.dread)
+            return cues
+        case .move(let unit, _):
+            return [state.unit(unit)?.kind == .rider ? .ride : .order]
+        default:
+            return [plainCue(for: command, events: events)]
+        }
+    }
+
+    private static func plainCue(for command: Command, events: [GameEvent]) -> Ambience.Cue {
+        switch command {
+        case .found, .build, .train: return .rise
+        case .declareWar: return .dread
         case .answer(_, true) where events.contains(where: { if case .proposalAnswered(_, _, _, true) = $0 { return true } else { return false } }):
-            onCue?(.accord)
-        default: onCue?(.select)
+            return .accord
+        default: return .select
         }
     }
 

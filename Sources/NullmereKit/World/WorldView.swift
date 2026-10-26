@@ -229,6 +229,17 @@ struct WorldMarks: View {
                 guard point.x > -80, point.y > -80, point.x < size.width + 80, point.y < size.height + 80 else { continue }
                 let colour = Palette.house(state.houses[hold.owner])
                 let r = min(max(scale * 0.36, 7), 18)
+                // Enemies gather near it: a red ring, broken like a warning.
+                if session.threatened.contains(hold.id) {
+                    let ring = Path(ellipseIn: CGRect(x: point.x - r * 1.9, y: point.y - r * 1.9, width: r * 3.8, height: r * 3.8))
+                    context.stroke(ring, with: .color(Palette.bad.opacity(0.6)), style: StrokeStyle(lineWidth: 1.4, dash: [4, 3]))
+                }
+                let towers = TokenArt.towerCount(for: hold)
+                if towers > 0 {
+                    let flanks = TokenArt.towers(at: point, radius: r, count: towers)
+                    context.fill(flanks, with: .color(Color(red: 0.04, green: 0.045, blue: 0.06).opacity(0.92)))
+                    context.stroke(flanks, with: .color(colour.opacity(0.8)), lineWidth: 1)
+                }
                 let keep = TokenArt.keep(at: point, radius: r, seat: hold.isSeat)
                 if hold.level(.walls) > 0 {
                     let walls = TokenArt.walls(at: point, radius: r)

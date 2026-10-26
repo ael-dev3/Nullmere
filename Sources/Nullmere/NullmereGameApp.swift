@@ -17,6 +17,10 @@ struct NullmereGameApp: App {
         .commands {
             GameCommands(app: app)
         }
+
+        Settings {
+            GameSettingsView(app: app)
+        }
     }
 }
 
