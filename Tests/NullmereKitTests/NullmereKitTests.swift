@@ -429,3 +429,20 @@ final class WatchCardTests: XCTestCase {
         XCTAssertEqual(summary.events.first, "2 battles", "Only the player's battles count")
     }
 }
+
+@MainActor
+final class ReachDisplayTests: XCTestCase {
+    func testSelectingACompanyShowsItsReach() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "range", houseCount: 3, radius: 16)),
+                                  store: SaveStore(directory: dir))
+        XCTAssertTrue(session.reach.isEmpty)
+        let lantern = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .lantern })
+        session.click(lantern.position)
+        XCTAssertEqual(session.reach, Set(session.state.reach(of: lantern).keys))
+        XCTAssertFalse(session.reach.isEmpty)
+        session.selection = .none
+        XCTAssertTrue(session.reach.isEmpty, "Nothing selected, nothing shown")
+    }
+}

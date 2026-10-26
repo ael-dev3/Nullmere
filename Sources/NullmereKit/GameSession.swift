@@ -39,11 +39,19 @@ public final class GameSession {
     public var camera: Camera
     public var hovered: Hex?
     public var selection: Selection = .none {
-        didSet { if selection != oldValue { refreshPathPreview() } }
+        didSet {
+            if selection != oldValue {
+                refreshReach()
+                refreshPathPreview()
+            }
+        }
     }
     public var panel: Panel?
     public private(set) var notices: [Notice] = []
     public private(set) var pathPreview: [Hex] = []
+    /// Where the selected company could march this watch, and what it could strike.
+    public private(set) var reach: Set<Hex> = []
+    public private(set) var strikeTargets: [Hex] = []
     /// What attacking the hovered hex with the selected company would do.
     public private(set) var hoverForecast: Forecast?
     public private(set) var tileBytes: [UInt8] = []
@@ -352,6 +360,7 @@ public final class GameSession {
     private func refreshWorld() {
         visible = state.visibility(for: player)
         territory = state.territory()
+        refreshReach()
         tileBytes = TileTexture.bytes(for: state, viewer: player)
         tilesVersion += 1
         refreshPathPreview()
@@ -510,6 +519,16 @@ public final class GameSession {
             }
             self.isSpeaking = false
             self.speakNext()
+        }
+    }
+
+    private func refreshReach() {
+        if let unit = selectedUnit, unit.owner == player {
+            reach = Set(state.reach(of: unit).keys)
+            strikeTargets = unit.kind.isMilitary ? state.strikeTargets(of: unit) : []
+        } else {
+            reach = []
+            strikeTargets = []
         }
     }
 

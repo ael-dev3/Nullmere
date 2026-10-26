@@ -380,3 +380,45 @@ final class VeterancyTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(Unit.self, from: JSONEncoder().encode(unit)), unit)
     }
 }
+
+final class ReachTests: XCTestCase {
+    /// Every hex in reach is where a march there ends this watch, and every
+    /// hex just beyond is not.
+    func testReachMatchesWhatMarchesDo() throws {
+        var checked = 0
+        for seed in ["reach one", "reach two"] {
+            var state = GameState(settings: GameSettings(seedText: seed, houseCount: 3, radius: 16))
+            for _ in 0..<30 {
+                for unit in state.units(of: state.player) where unit.movesLeft > 0 {
+                    let reach = state.reach(of: unit)
+                    for hex in unit.position.spiral(unit.kind.movement + 1).dropFirst() {
+                        guard state.map[hex]?.terrain.isPassable == true, state.unit(at: hex) == nil,
+                              state.hold(at: hex).map({ $0.owner == unit.owner }) ?? true,
+                              state.forecast(unit: unit.id, at: hex) == nil
+                        else { continue }
+                        var trial = state
+                        guard (try? trial.perform(.move(unit: unit.id, to: hex), as: unit.owner)) != nil else {
+                            XCTAssertNil(reach[hex], "\(hex) can't be marched to at all")
+                            continue
+                        }
+                        let arrived = trial.unit(unit.id)?.position == hex
+                        XCTAssertEqual(reach[hex] != nil, arrived, "\(unit.kind) to \(hex): reach says \(reach[hex].map(String.init) ?? "no")")
+                        if arrived { XCTAssertEqual(trial.unit(unit.id)?.movesLeft, reach[hex]) }
+                        checked += 1
+                    }
+                }
+                _ = state.stewardTurn(for: state.player)
+                _ = state.endWatch()
+            }
+        }
+        XCTAssertGreaterThan(checked, 200)
+    }
+
+    func testNothingIsInReachWithoutMoves() throws {
+        let state = GameState(settings: GameSettings(seedText: "spent", houseCount: 3, radius: 16))
+        var unit = try XCTUnwrap(state.units(of: state.player).first)
+        XCTAssertFalse(state.reach(of: unit).isEmpty)
+        unit.movesLeft = 0
+        XCTAssertTrue(state.reach(of: unit).isEmpty)
+    }
+}

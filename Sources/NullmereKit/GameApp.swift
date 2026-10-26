@@ -102,6 +102,7 @@ public final class GameApp {
             // for screenshots of the interface.
             let show = Set((environment["NULLMERE_SHOW"] ?? "").split(separator: ",").map(String.init))
             if show.contains("seat") { session?.focusOnSeat() }
+            if show.contains("unit") { session?.selectNextReadyUnit() }
             if show.contains("houses") { session?.panel = .houses }
             if show.contains("chronicle") { session?.panel = .chronicle }
             if show.contains("guide") { session?.panel = .guide }

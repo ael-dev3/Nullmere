@@ -123,6 +123,28 @@ private struct WorldMarks: View {
                 }
             }
 
+            // Where the selected company could march this watch: a faint
+            // wash with an edge, and a red ring on what it could strike.
+            if !session.reach.isEmpty || !session.strikeTargets.isEmpty {
+                let layout = HexLayout(size: 1)
+                var area = Path()
+                for hex in session.reach {
+                    let corners = layout.corners(of: hex).map { camera.viewPoint(worldX: $0.x, worldY: $0.y, in: size) }
+                    guard let first = corners.first else { continue }
+                    area.move(to: first)
+                    for corner in corners.dropFirst() { area.addLine(to: corner) }
+                    area.closeSubpath()
+                }
+                context.fill(area, with: .color(Palette.glow.opacity(0.09)))
+                context.stroke(area, with: .color(Palette.glow.opacity(0.22)), lineWidth: 0.6)
+                for hex in session.strikeTargets {
+                    let point = camera.viewPoint(of: hex, in: size)
+                    let r = scale * 0.62
+                    let ring = Path(ellipseIn: CGRect(x: point.x - r, y: point.y - r, width: r * 2, height: r * 2))
+                    context.stroke(ring, with: .color(Palette.bad.opacity(0.85)), style: StrokeStyle(lineWidth: 1.4, dash: [4, 3]))
+                }
+            }
+
             // Blows: a ring spreading from where each fell, and the damage
             // rising and fading above it. Still, under Reduce Motion.
             for blow in session.blows {

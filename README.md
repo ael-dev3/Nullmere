@@ -111,7 +111,7 @@ builds also take:
 | `NULLMERE_NEWS_URL` | Another `https` news feed, such as a branch's copy |
 | `NULLMERE_GAME_APP` | The game app Play opens, such as a freshly built `build/Nullmere.app` |
 | `NULLMERE_NEW_GAME` | Start a world on these words at once |
-| `NULLMERE_SHOW` | `seat`, `houses`, `chronicle`, `guide`: select the seat, open a panel; `watch`: end a watch after `NULLMERE_WATCH_AFTER` seconds (12.5) |
+| `NULLMERE_SHOW` | `seat`, `unit`, `houses`, `chronicle`, `guide`: select the seat or a company, open a panel; `watch`: end a watch after `NULLMERE_WATCH_AFTER` seconds (12.5) |
 | `NULLMERE_AUTOPLAY` | Let a steward play this many watches first |
 
 Release builds ignore them all and always require the model.

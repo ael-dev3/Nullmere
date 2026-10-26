@@ -99,3 +99,49 @@ struct MinHeap<Element: Comparable> {
         return top
     }
 }
+
+extension GameState {
+    /// Every hex the unit could march to and stop on this watch, with the
+    /// moves it would have left there: by the same steps a march takes, so
+    /// through no other unit and into no foreign hold.
+    public func reach(of unit: Unit) -> [Hex: Int] {
+        guard unit.movesLeft > 0, let start = map.index(of: unit.position) else { return [:] }
+        var occupied = Set<Int>()
+        for other in units where other.id != unit.id {
+            if let index = map.index(of: other.position) { occupied.insert(index) }
+        }
+        let hexes = map.hexes
+        var left = [Int](repeating: -1, count: map.count)
+        left[start] = unit.movesLeft
+        var frontier = [start]
+        var result: [Hex: Int] = [:]
+        while !frontier.isEmpty {
+            // Most moves left first, so each hex settles at its best.
+            frontier.sort { (left[$0], $0) > (left[$1], $1) }
+            let tile = frontier.removeFirst()
+            let remaining = left[tile]
+            guard remaining > 0 else { continue }
+            for direction in Hex.directions {
+                guard let next = map.index(of: hexes[tile] + direction), !occupied.contains(next) else { continue }
+                let terrain = map[next].terrain
+                guard terrain.isPassable else { continue }
+                if let hold = hold(at: hexes[next]), hold.owner != unit.owner { continue }
+                // A step costs its terrain's moves; with all its moves a
+                // company can always take one step.
+                guard remaining >= terrain.moveCost || remaining == unit.kind.movement else { continue }
+                let after = max(0, remaining - terrain.moveCost)
+                if after > left[next] {
+                    left[next] = after
+                    result[hexes[next]] = after
+                    frontier.append(next)
+                }
+            }
+        }
+        return result
+    }
+
+    /// Hexes the unit could strike this watch.
+    public func strikeTargets(of unit: Unit) -> [Hex] {
+        unit.position.spiral(unit.kind.range).filter { forecast(unit: unit.id, at: $0) != nil }
+    }
+}

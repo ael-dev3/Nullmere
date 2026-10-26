@@ -59,7 +59,7 @@ echo "The title screen opened."
 # A new game's saved state would otherwise be continued next time.
 SAVE="$HOME/Library/Application Support/Nullmere/autosave.json"
 [ -f "$SAVE" ] && mv "$SAVE" "$SAVE.smoke-backup"
-run build/game-world.png "$SEED" 0 seat,houses
+run build/game-world.png "$SEED" 0 unit,houses
 WORLD_LOG="$LOG"
 NULLMERE_WATCH_AFTER=9 run build/game-later.png "$SEED" 40 watch
 rm -f "$SAVE"
