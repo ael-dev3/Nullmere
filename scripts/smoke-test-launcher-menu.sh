@@ -7,14 +7,15 @@
 #   swift build && scripts/smoke-test-launcher-menu.sh
 #
 # Only debug builds honour NULLMERE_SKIP_MODEL_CHECK and
-# NULLMERE_LAUNCHER_SCREEN; release builds always ask Foundation Models.
+# NULLMERE_LAUNCHER_KEYS (keys typed once the opening is over, through the
+# same path as the window's); release builds always ask Foundation Models.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
 BIN="${BIN:-$(swift build --show-bin-path)/NullmereLauncher}"
 EXECUTABLE="NullmereLauncher"
-WAIT="${WAIT:-12}"
+WAIT="${WAIT:-14}"
 SUBSYSTEM="online.nullmere.launcher"
 mkdir -p build
 
@@ -23,14 +24,14 @@ if pgrep -x "$EXECUTABLE" >/dev/null; then
     exit 1
 fi
 
-# run <screenshot> [screen]
+# run <screenshot> [keys]
 run() {
     local shot="$1"
-    local screen="${2:-}"
+    local keys="${2:-}"
     local started
     started="$(date '+%Y-%m-%d %H:%M:%S')"
-    echo "Opening the launcher${screen:+ on $screen}…"
-    NULLMERE_SKIP_MODEL_CHECK=1 NULLMERE_LAUNCHER_SCREEN="$screen" "$BIN" >build/launcher-stdout.log 2>&1 &
+    echo "Opening the launcher${keys:+, then typing $keys}…"
+    NULLMERE_SKIP_MODEL_CHECK=1 NULLMERE_LAUNCHER_KEYS="$keys" "$BIN" >build/launcher-stdout.log 2>&1 &
     local pid=$!
     sleep "$WAIT"
     if ! kill -0 "$pid" 2>/dev/null; then
@@ -50,6 +51,6 @@ run() {
 }
 
 run build/launcher-menu.png
-run build/launcher-news.png news
-run build/launcher-settings.png settings
+run build/launcher-news.png right,return
+run build/launcher-settings.png right,right,return,down
 echo "The launcher's menu, News and Settings opened, and its lake renders with Metal."

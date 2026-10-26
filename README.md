@@ -90,7 +90,7 @@ Tests and checks:
 swift test                 # unit tests; on a Mac with Metal, the shader is also compiled on the GPU
 make check-shader          # compile the shader with the offline Metal compiler
 make smoke                 # build the apps, open the launcher, check it starts and renders with Metal, take a screenshot
-make smoke-menu            # open a debug build of the launcher as if the model were ready; photograph the menu, News and Settings
+make smoke-menu            # open a debug build of the launcher as if the model were ready, type into it, photograph the menu, News and Settings
 make smoke-game            # open a debug build of the game past the model gate, start a world, take screenshots
 ```
 

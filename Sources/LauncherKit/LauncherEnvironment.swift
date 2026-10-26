@@ -32,18 +32,25 @@ struct LauncherEnvironment {
         #endif
     }
 
-    /// Debug builds can open straight onto a screen with
-    /// NULLMERE_LAUNCHER_SCREEN=play, news or settings.
-    static var debugScreen: MenuItem? {
+    /// Debug builds can be driven by keys, as if typed once the opening is
+    /// over: NULLMERE_LAUNCHER_KEYS=right,return presses → then Return.
+    /// The keys take the same path as the window's.
+    static var debugKeys: [KeyCommand] {
         #if DEBUG
-        switch ProcessInfo.processInfo.environment["NULLMERE_LAUNCHER_SCREEN"] {
-        case "play": return .play
-        case "news": return .news
-        case "settings": return .settings
-        default: return nil
+        let words = (ProcessInfo.processInfo.environment["NULLMERE_LAUNCHER_KEYS"] ?? "").split(separator: ",")
+        return words.compactMap { word in
+            switch word.trimmingCharacters(in: .whitespaces).lowercased() {
+            case "up": return .up
+            case "down": return .down
+            case "left": return .left
+            case "right": return .right
+            case "return", "enter", "space": return .confirm
+            case "escape", "esc": return .back
+            default: return nil
+            }
         }
         #else
-        return nil
+        return []
         #endif
     }
 

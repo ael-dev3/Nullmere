@@ -74,7 +74,7 @@ public final class LauncherModel {
     @ObservationIgnored private var readinessTask: Task<Void, Never>?
     @ObservationIgnored private var newsFetchedAt: Date?
     @ObservationIgnored private var isFetchingNews = false
-    @ObservationIgnored private var pendingDebugScreen: MenuItem? = LauncherEnvironment.debugScreen
+    @ObservationIgnored private var pendingDebugKeys: [KeyCommand] = LauncherEnvironment.debugKeys
 
     public convenience init(defaults: UserDefaults = .standard) {
         self.init(defaults: defaults, environment: .live)
@@ -162,9 +162,17 @@ public final class LauncherModel {
     /// downloads, or until Apple Intelligence is turned on.
     func refreshReadiness() {
         apply(environment.modelReadiness())
-        if !isGated, let item = pendingDebugScreen {
-            pendingDebugScreen = nil
-            activate(item)
+        if !isGated, !pendingDebugKeys.isEmpty {
+            let keys = pendingDebugKeys
+            pendingDebugKeys = []
+            Task { [weak self] in
+                // Let the opening play out, then type.
+                try? await Task.sleep(for: .seconds(6))
+                for key in keys {
+                    self?.handle(key)
+                    try? await Task.sleep(for: .milliseconds(700))
+                }
+            }
         }
         guard readiness.needsRecheck, readinessTask == nil else { return }
         readinessTask = Task { [weak self] in
