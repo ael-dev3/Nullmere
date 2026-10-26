@@ -90,17 +90,30 @@ Tests and checks:
 swift test                 # unit tests; on a Mac with Metal, the shader is also compiled on the GPU
 make check-shader          # compile the shader with the offline Metal compiler
 make smoke                 # build the apps, open the launcher, check it starts and renders with Metal, take a screenshot
-make smoke-menu            # open a debug build of the launcher as if the model were ready, type into it, photograph the menu, News and Settings
+make smoke-menu            # open a debug build of the launcher in each model state, type into it, photograph every screen
 make smoke-game            # open a debug build of the game past the model gate, start a world, take screenshots
 ```
 
 CI runs all of these on a macOS 26 runner for every pull request, and keeps
-the screenshots of the launcher and the game it opened. Only debug builds
-of the game honour `NULLMERE_SKIP_MODEL_CHECK=1` (open without the on-device
-model), `NULLMERE_NEW_GAME=<words>` (start a world at once) and
-`NULLMERE_SHOW=seat,houses` (select the seat, open a panel) and
-`NULLMERE_AUTOPLAY=<watches>` (let a steward play the opening); release
-builds always require the model.
+the screenshots of the launcher and the game it opened.
+
+Both apps ask the Foundation Models framework through one
+`ModelAvailabilityProvider`; tests stand in a fake one and walk every state
+(ready, not eligible, Apple Intelligence off, downloading, and a reason
+macOS hasn't named), including the launcher and the game opening by
+themselves when the model arrives and closing again when it goes. Debug
+builds also take:
+
+| Variable | Effect |
+| --- | --- |
+| `NULLMERE_MODEL_STATE` | `ready`, `notEligible`, `notEnabled`, `downloading` or `unavailable` instead of asking the framework (`NULLMERE_SKIP_MODEL_CHECK=1` means `ready`) |
+| `NULLMERE_LAUNCHER_KEYS` | Keys the launcher receives once its opening is over, such as `right,return` |
+| `NULLMERE_NEWS_URL` | Another `https` news feed, such as a branch's copy |
+| `NULLMERE_NEW_GAME` | Start a world on these words at once |
+| `NULLMERE_SHOW` | `seat`, `houses`, `chronicle`: select the seat, open a panel |
+| `NULLMERE_AUTOPLAY` | Let a steward play this many watches first |
+
+Release builds ignore them all and always require the model.
 
 ## Using the launcher
 

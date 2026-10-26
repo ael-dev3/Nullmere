@@ -1,4 +1,5 @@
 import Metal
+import LauncherCore
 import NullmereCore
 import XCTest
 @testable import NullmereKit
@@ -179,5 +180,30 @@ final class CounselTests: XCTestCase {
         }
         XCTAssertGreaterThan(said.count, 2, "the advice changes as the House grows")
         XCTAssertNil(Counsel.advice(for: state, player: state.player), "and stops after the opening")
+    }
+}
+
+@MainActor
+final class GameGateTests: XCTestCase {
+    func testTheGameOpensOnlyOnceTheModelIsReady() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        var state = ModelReadiness.modelNotReady
+        let app = GameApp(store: SaveStore(directory: directory), readiness: { state }, sound: false)
+
+        for blocked in [ModelReadiness.modelNotReady, .appleIntelligenceNotEnabled, .deviceNotEligible, .unavailable] {
+            state = blocked
+            app.checkModel()
+            XCTAssertEqual(app.readiness, blocked)
+            guard case .gate = app.phase else { return XCTFail("\(blocked) must keep the game closed") }
+            app.begin(GameSettings(seedText: "too soon", houseCount: 3, radius: 14))
+            XCTAssertNil(app.session, "No game begins behind the gate")
+        }
+
+        state = .ready
+        app.checkModel()
+        guard case .title = app.phase else { return XCTFail("A ready model opens the title screen") }
+        app.begin(GameSettings(seedText: "now", houseCount: 3, radius: 14))
+        XCTAssertNotNil(app.session)
     }
 }

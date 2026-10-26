@@ -13,6 +13,6 @@ final class OnDeviceModelTests: XCTestCase {
 
     /// Whatever this Mac supports, the framework gives a definite answer.
     func testTheSystemAnswers() {
-        XCTAssertNotEqual(OnDeviceModel.readiness(), .checking)
+        XCTAssertNotEqual(OnDeviceModel.current(), .checking)
     }
 }

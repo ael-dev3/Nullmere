@@ -20,18 +20,6 @@ struct LauncherEnvironment {
     /// Quits the launcher.
     var terminate: @MainActor () -> Void
 
-    /// Debug builds can report the model as ready with
-    /// NULLMERE_SKIP_MODEL_CHECK=1, so the menu can be opened and
-    /// photographed on a machine without Apple Intelligence, such as CI.
-    /// Release builds always ask the Foundation Models framework.
-    static var debugReadiness: ModelReadiness? {
-        #if DEBUG
-        return ProcessInfo.processInfo.environment["NULLMERE_SKIP_MODEL_CHECK"] == "1" ? .ready : nil
-        #else
-        return nil
-        #endif
-    }
-
     /// Debug builds can be driven by keys, as if typed once the opening is
     /// over: NULLMERE_LAUNCHER_KEYS=right,return presses → then Return.
     /// The keys take the same path as the window's.
@@ -55,7 +43,7 @@ struct LauncherEnvironment {
     }
 
     static let live = LauncherEnvironment(
-        modelReadiness: { LauncherEnvironment.debugReadiness ?? OnDeviceModel.readiness() },
+        modelReadiness: { OnDeviceModel.current() },
         systemSavesEnergy: {
             let info = ProcessInfo.processInfo
             return info.isLowPowerModeEnabled || [.serious, .critical].contains(info.thermalState)

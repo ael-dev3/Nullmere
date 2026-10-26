@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# Opens a debug build of the launcher as if Apple's on-device model were
-# ready, so the menu and its panels can be seen on a Mac without Apple
-# Intelligence, such as CI. Photographs the menu, News and Settings, and
-# checks the launcher keeps running and its lake renders with Metal.
+# Opens a debug build of the launcher as if Apple's on-device model were in
+# a given state, so every screen can be seen on a Mac without Apple
+# Intelligence, such as CI. Photographs the menu, News and Settings with
+# the model ready, and the requirement screen with Apple Intelligence off
+# and with its model downloading. Checks the launcher keeps running and its
+# lake renders with Metal.
 #
 #   swift build && scripts/smoke-test-launcher-menu.sh
 #
-# Only debug builds honour NULLMERE_SKIP_MODEL_CHECK and
+# Only debug builds honour NULLMERE_MODEL_STATE and
 # NULLMERE_LAUNCHER_KEYS (keys typed once the opening is over, through the
 # same path as the window's); release builds always ask Foundation Models.
 set -euo pipefail
@@ -28,14 +30,15 @@ if pgrep -x "$EXECUTABLE" >/dev/null; then
     exit 1
 fi
 
-# run <screenshot> [keys]
+# run <screenshot> [keys] [model state]
 run() {
     local shot="$1"
     local keys="${2:-}"
+    local state="${3:-ready}"
     local started
     started="$(date '+%Y-%m-%d %H:%M:%S')"
     echo "Opening the launcher${keys:+, then typing $keys}…"
-    NULLMERE_SKIP_MODEL_CHECK=1 NULLMERE_LAUNCHER_KEYS="$keys" NULLMERE_NEWS_URL="$NEWS_URL" "$BIN" >build/launcher-stdout.log 2>&1 &
+    NULLMERE_MODEL_STATE="$state" NULLMERE_LAUNCHER_KEYS="$keys" NULLMERE_NEWS_URL="$NEWS_URL" "$BIN" >build/launcher-stdout.log 2>&1 &
     local pid=$!
     sleep "$WAIT"
     if ! kill -0 "$pid" 2>/dev/null; then
@@ -63,4 +66,7 @@ if ! echo "$LOG" | grep -q "News updated"; then
     exit 1
 fi
 run build/launcher-settings.png right,right,return,down
-echo "The launcher's menu, News and Settings opened, and its lake renders with Metal."
+# The requirement screen for the states a real Mac passes through.
+run build/launcher-off.png "" notEnabled
+run build/launcher-downloading.png "" downloading
+echo "The launcher's menu, News, Settings and requirement screens opened, and its lake renders with Metal."

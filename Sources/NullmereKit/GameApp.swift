@@ -1,6 +1,6 @@
 import AppKit
-import FoundationModels
 import LauncherCore
+import LauncherKit
 import NullmereCore
 import Observation
 
@@ -21,13 +21,22 @@ public final class GameApp {
     public private(set) var hasSave: Bool
 
     let store: SaveStore
+    private let readModel: () -> ModelReadiness
     public let ambience: Ambience
     private var recheckTask: Task<Void, Never>?
 
-    public init(store: SaveStore = SaveStore()) {
+    /// `readiness` answers whether Apple's on-device model can be used; by
+    /// default the Foundation Models framework does. Tests supply their own.
+    /// `sound` overrides the saved choice; tests keep the game silent.
+    public init(
+        store: SaveStore = SaveStore(),
+        readiness: @escaping () -> ModelReadiness = { OnDeviceModel.current() },
+        sound: Bool? = nil
+    ) {
         self.store = store
+        self.readModel = readiness
         self.hasSave = store.hasSave
-        let soundOn = UserDefaults.standard.object(forKey: "sound.enabled") as? Bool ?? true
+        let soundOn = sound ?? (UserDefaults.standard.object(forKey: "sound.enabled") as? Bool ?? true)
         self.isSoundOn = soundOn
         self.ambience = Ambience(enabled: soundOn)
         checkModel()
@@ -43,7 +52,7 @@ public final class GameApp {
 
     /// Reads the model's state, and opens the title screen once it is ready.
     public func checkModel() {
-        readiness = Self.skipsModelCheck ? .ready : Self.readModel()
+        readiness = readModel()
         if readiness.allowsPlay {
             recheckTask?.cancel()
             recheckTask = nil
@@ -56,35 +65,10 @@ public final class GameApp {
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(3))
                     guard let self, !Task.isCancelled else { return }
-                    if NSApp.isActive { self.checkModel() }
+                    if NSApplication.shared.isActive { self.checkModel() }
                 }
             }
         }
-    }
-
-    static func readModel() -> ModelReadiness {
-        switch SystemLanguageModel.default.availability {
-        case .available:
-            return .ready
-        case .unavailable(.deviceNotEligible):
-            return .deviceNotEligible
-        case .unavailable(.appleIntelligenceNotEnabled):
-            return .appleIntelligenceNotEnabled
-        case .unavailable(.modelNotReady):
-            return .modelNotReady
-        case .unavailable:
-            return .unavailable
-        }
-    }
-
-    /// Debug builds can skip the model check, so the game can be opened and
-    /// photographed on a machine without Apple Intelligence, such as CI.
-    static var skipsModelCheck: Bool {
-        #if DEBUG
-        return ProcessInfo.processInfo.environment["NULLMERE_SKIP_MODEL_CHECK"] == "1"
-        #else
-        return false
-        #endif
     }
 
     /// Debug builds can open straight into a new game on a given seed.

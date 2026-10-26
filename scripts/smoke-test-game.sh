@@ -7,8 +7,8 @@
 #
 #   swift build && scripts/smoke-test-game.sh
 #
-# Only debug builds honour NULLMERE_SKIP_MODEL_CHECK and NULLMERE_NEW_GAME,
-# so a runner without Apple Intelligence can see past the model gate.
+# Only debug builds honour NULLMERE_MODEL_STATE and NULLMERE_NEW_GAME, so a
+# runner without Apple Intelligence can see the gate in any state, and past it.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -34,7 +34,7 @@ run() {
     local started
     started="$(date '+%Y-%m-%d %H:%M:%S')"
     echo "Opening the game${seed:+ on \"$seed\"}…"
-    NULLMERE_SKIP_MODEL_CHECK=1 NULLMERE_NEW_GAME="$seed" NULLMERE_AUTOPLAY="$autoplay" NULLMERE_SHOW="$show" "$BIN" >build/game-stdout.log 2>&1 &
+    NULLMERE_MODEL_STATE="${MODEL_STATE:-ready}" NULLMERE_NEW_GAME="$seed" NULLMERE_AUTOPLAY="$autoplay" NULLMERE_SHOW="$show" "$BIN" >build/game-stdout.log 2>&1 &
     local pid=$!
     sleep "$WAIT"
     if ! kill -0 "$pid" 2>/dev/null; then
@@ -51,6 +51,8 @@ run() {
     LOG="$(log show --start "$started" --style compact --predicate "subsystem == \"$SUBSYSTEM\"" 2>/dev/null || true)"
 }
 
+MODEL_STATE=notEnabled run build/game-gate.png
+echo "The model gate opened."
 run build/game-title.png
 echo "The title screen opened."
 
