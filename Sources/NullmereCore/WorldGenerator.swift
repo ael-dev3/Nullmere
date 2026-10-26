@@ -13,9 +13,12 @@ public struct WorldGenerator: Sendable {
     public let radius: Int
     public let houseCount: Int
 
+    /// The most Houses a lake seats.
+    public static let mostHouses = 12
+
     public init(seed: UInt64, radius: Int = 24, houseCount: Int = 5) {
         precondition(radius >= 12, "the world needs room for a lake and its shores")
-        precondition((2...8).contains(houseCount), "between two and eight Houses")
+        precondition((2...WorldGenerator.mostHouses).contains(houseCount), "between two and twelve Houses")
         self.seed = seed
         self.radius = radius
         self.houseCount = houseCount

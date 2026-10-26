@@ -43,7 +43,7 @@ do {
         token: token,
         name: environment["NULLMERE_REALM_NAME"] ?? "The Nullmere",
         seed: environment["NULLMERE_REALM_SEED"] ?? "the still water",
-        seats: environment["NULLMERE_REALM_SEATS"].flatMap(Int.init) ?? 8,
+        seats: environment["NULLMERE_REALM_SEATS"].flatMap(Int.init) ?? RealmState.defaultSeats,
         watchLength: environment["NULLMERE_WATCH_SECONDS"].flatMap(Double.init) ?? RealmState.defaultWatchLength,
         now: Date().timeIntervalSince1970
     )

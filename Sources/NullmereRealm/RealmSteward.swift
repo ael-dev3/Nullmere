@@ -53,7 +53,7 @@ public actor RealmSteward {
     public static let answerKept = 600.0
 
     /// Takes up the realm where SpacetimeDB holds it, or begins a new one.
-    public init(transport: any SpacetimeTransport, token: String, name: String, seed: String, seats: Int = 8,
+    public init(transport: any SpacetimeTransport, token: String, name: String, seed: String, seats: Int = RealmState.defaultSeats,
                 watchLength: Double = RealmState.defaultWatchLength, now: Double) async throws {
         self.transport = transport
         self.token = token

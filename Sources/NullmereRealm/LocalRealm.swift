@@ -22,7 +22,7 @@ public final class LocalRealm {
     }
 
     /// Opens the realm kept at `url`, or begins a new one there.
-    public static func open(at url: URL, name: String, seed: String, seats: Int = 8, watchLength: Double = RealmState.defaultWatchLength,
+    public static func open(at url: URL, name: String, seed: String, seats: Int = RealmState.defaultSeats, watchLength: Double = RealmState.defaultWatchLength,
                             clock: @escaping () -> Double = { Date().timeIntervalSince1970 }) -> LocalRealm {
         if let data = try? Data(contentsOf: url), let state = try? JSONDecoder().decode(RealmState.self, from: data) {
             return LocalRealm(state: state, clock: clock, storeURL: url)
@@ -71,6 +71,11 @@ public final class LocalRealm {
             let keeper = try state.arrive(identity, name: name, now: clock())
             persist()
             deliver(.arrived(keeper, world(for: identity)), to: identity)
+            // A seat taken changes the world for everyone: a House is renamed
+            // for its keeper, and no steward's any more.
+            for other in links.keys where other != identity {
+                deliver(.changed(world(for: other)), to: other)
+            }
             broadcastStatus()
         } catch {
             deliver(.refused(error), to: identity)

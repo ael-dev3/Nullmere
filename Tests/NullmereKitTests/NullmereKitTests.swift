@@ -8,6 +8,26 @@ import XCTest
 @testable import NullmereKit
 
 final class WorldShaderTests: XCTestCase {
+    /// Every House that may sit around the lake has its colour, the same
+    /// in the interface and on the map.
+    func testEachHouseHasOneColourEverywhere() throws {
+        XCTAssertEqual(Palette.houses.count, Names.houses.count)
+        XCTAssertEqual(Names.houses.count, WorldGenerator.mostHouses)
+        for colour in Palette.houses {
+            let rgb = try XCTUnwrap(NSColor(colour).usingColorSpace(.sRGB))
+            let triple = String(format: "float3(%.2f, %.2f, %.2f)", rgb.redComponent, rgb.greenComponent, rgb.blueComponent)
+            XCTAssertTrue(WorldShader.source.contains(triple), "The map knows \(triple)")
+        }
+        // Each a colour of its own.
+        let components = Palette.houses.compactMap { NSColor($0).usingColorSpace(.sRGB) }
+        for (index, a) in components.enumerated() {
+            for b in components[(index + 1)...] {
+                let distance = abs(a.redComponent - b.redComponent) + abs(a.greenComponent - b.greenComponent) + abs(a.blueComponent - b.blueComponent)
+                XCTAssertGreaterThan(distance, 0.2, "Two Houses too alike in colour")
+            }
+        }
+    }
+
     func testUniformsAreThreeFloat4s() {
         XCTAssertEqual(MemoryLayout<WorldUniforms>.stride, 48)
         XCTAssertEqual(MemoryLayout<WorldUniforms>.alignment, 16)

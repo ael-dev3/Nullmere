@@ -195,7 +195,7 @@ as the realm will, and takes the realm's word as final.
   shows the realm's state: its age and watch, how many keepers are there,
   and how many seats are free. Enter World seats you in the first free
   House; returning, you go straight back to yours.
-- **Seats.** The lake has eight seats. Seats no keeper holds are played by
+- **Seats.** The lake has twelve seats. Seats no keeper holds are played by
   stewards, the same minds that once played rivals, until a keeper claims
   them. When every seat is held, a newcomer waits at the front door and
   steps in the moment one falls free. A seat whose keeper has been away a

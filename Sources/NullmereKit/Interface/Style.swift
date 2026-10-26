@@ -10,7 +10,9 @@ enum Palette {
     static let bad = Color(red: 0.90, green: 0.52, blue: 0.48)
     static let panel = Color(red: 0.02, green: 0.025, blue: 0.035)
 
-    private static let houses: [Color] = [
+    /// One colour for each House that may sit around the lake, in the order
+    /// of their names; WorldShader's nm_houseColour holds the same.
+    static let houses: [Color] = [
         Color(red: 0.86, green: 0.74, blue: 0.47),
         Color(red: 0.70, green: 0.27, blue: 0.25),
         Color(red: 0.30, green: 0.60, blue: 0.60),
@@ -19,6 +21,10 @@ enum Palette {
         Color(red: 0.86, green: 0.50, blue: 0.26),
         Color(red: 0.46, green: 0.68, blue: 0.38),
         Color(red: 0.80, green: 0.56, blue: 0.68),
+        Color(red: 0.36, green: 0.48, blue: 0.84),
+        Color(red: 0.62, green: 0.40, blue: 0.24),
+        Color(red: 0.78, green: 0.82, blue: 0.44),
+        Color(red: 0.88, green: 0.36, blue: 0.50),
     ]
 
     static func house(_ house: House) -> Color {

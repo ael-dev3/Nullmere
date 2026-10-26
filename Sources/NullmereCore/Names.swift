@@ -3,6 +3,7 @@ public enum Names {
     /// The great Houses that may sit around the lake.
     public static let houses = [
         "Aurel", "Venn", "Morcant", "Seris", "Okon", "Thale", "Dravic", "Ysolde",
+        "Lioth", "Quell", "Brannoch", "Sefa",
     ]
 
     private static let heads = [

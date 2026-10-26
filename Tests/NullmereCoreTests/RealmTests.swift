@@ -15,6 +15,32 @@ final class RealmTests: XCTestCase {
         XCTAssertEqual(realm.status(now: 0).freeSeats, 4)
     }
 
+    func testTheRealmProperSeatsTwelveFairly() throws {
+        for seed in ["twelve a", "twelve b", "twelve c"] {
+            let started = Date()
+            var realm = RealmState(name: "The Nullmere", seed: seed, now: 0)
+            XCTAssertEqual(realm.seats, 12)
+            XCTAssertEqual(realm.world.houses.count, 12)
+            XCTAssertEqual(Set(realm.world.houses.map(\.name)).count, 12, "Every House its own name")
+            XCTAssertEqual(Set(realm.world.houses.map(\.sigil)).count, 12, "and its own colours")
+            let seats = realm.world.houses.compactMap { realm.world.seat(of: $0.id)?.position }
+            XCTAssertEqual(seats.count, 12)
+            var nearest = Int.max
+            for (index, seat) in seats.enumerated() {
+                for other in seats[(index + 1)...] { nearest = min(nearest, seat.distance(to: other)) }
+            }
+            XCTAssertGreaterThanOrEqual(nearest, 6, "Room between the seats (\(seed))")
+            // Twelve stewards play thirty watches in good time.
+            for _ in 0..<30 {
+                _ = realm.tick(now: 1e12)
+                realm.arriveIfNeeded()
+            }
+            let seconds = Date().timeIntervalSince(started)
+            print("PERF realm of 12 (\(seed)): made and 30 watches in \(String(format: "%.2f", seconds)) s")
+            XCTAssertLessThan(seconds, 60)
+        }
+    }
+
     func testKeepersArriveAndTakeSeats() throws {
         var realm = realm()
         let ilsen = try realm.arrive("id-ilsen", name: "  Ilsen ", now: 1)
@@ -297,5 +323,13 @@ final class FogTests: XCTestCase {
         XCTAssertEqual(view.age, 1)
         XCTAssertEqual(view.world, realm.world.view(for: a.house!))
         XCTAssertNil(realm.view(for: "nobody"))
+    }
+}
+
+private extension RealmState {
+    /// Someone there, so the watch turns on the clock.
+    mutating func arriveIfNeeded() {
+        if keepers.isEmpty { _ = try? arrive("perf", name: "Perf", now: 0) }
+        watchBegan = -1e13
     }
 }

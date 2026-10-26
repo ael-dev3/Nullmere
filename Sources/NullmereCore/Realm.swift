@@ -96,11 +96,15 @@ public struct RealmState: Codable, Equatable, Sendable {
 
     public static let defaultWatchLength = 180.0
 
-    public init(name: String, seed: String, seats: Int = 8, radius: Int = 30, watchLength: Double = RealmState.defaultWatchLength,
+    /// The realm proper: twelve seats around a wide lake.
+    public static let defaultSeats = 12
+    public static let defaultRadius = 36
+
+    public init(name: String, seed: String, seats: Int = RealmState.defaultSeats, radius: Int = RealmState.defaultRadius, watchLength: Double = RealmState.defaultWatchLength,
                 now: Double) {
         self.name = name
         self.seedText = seed
-        self.seats = min(max(seats, 2), Names.houses.count)
+        self.seats = min(max(seats, 2), Names.houses.count, WorldGenerator.mostHouses)
         self.radius = radius
         self.watchLength = watchLength
         age = 1

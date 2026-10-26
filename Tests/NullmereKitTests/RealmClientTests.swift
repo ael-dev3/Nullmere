@@ -103,7 +103,7 @@ final class RealmClientTests: XCTestCase {
         XCTAssertEqual(RealmLine.present(status(["Ama", "Bel", "Cor"])), "There now: Ama, Bel and Cor.")
         XCTAssertEqual(RealmLine.present(status(["A", "B", "C", "D", "E", "F", "G"])), "There now: A, B, C, D, E and 2 more.")
         XCTAssertEqual(RealmLine.present(status(Array(repeating: "K", count: 24), online: 30)), "There now: K, K, K, K, K and 25 more.")
-        XCTAssertTrue(RealmLine.describe(status(["Ama", "Bel"])).hasSuffix("6 seats free of 8. There now: Ama and Bel."))
+        XCTAssertTrue(RealmLine.describe(status(["Ama", "Bel"])).hasSuffix("2 seats free of 8. There now: Ama and Bel."))
 
         // In the world, each House says who gives its orders.
         let realm = realm()
@@ -111,6 +111,7 @@ final class RealmClientTests: XCTestCase {
         let bel = try enter(realm, as: "b", name: "Bel")
         XCTAssertEqual(ama.realmStatus?.present, ["Ama", "Bel"])
         let bels = ama.state.houses[bel.player]
+        XCTAssertEqual(bels.title, "House Bel", "Ama's world knows Bel took a seat")
         XCTAssertEqual(HouseRow.keeping(bels, present: ama.realmStatus?.present), "Its keeper is here.")
         realm.link(identity: "b").leave()
         XCTAssertEqual(ama.realmStatus?.present, ["Ama"])
