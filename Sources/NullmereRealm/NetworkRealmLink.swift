@@ -62,6 +62,21 @@ public final class NetworkRealmLink: RealmLink {
         self.retryDelay = retryDelay
     }
 
+    /// The server refused the keeper's key: it is forgotten, and a new one
+    /// made at the next asking. Returns whether that was the trouble.
+    @discardableResult
+    func forgetKeyIfRefused(_ error: any Error) -> Bool {
+        guard (error as? SpacetimeError)?.isUnauthorized == true else { return false }
+        credentials = nil
+        try? credentialStore.save("")
+        arrived = false
+        view = nil
+        viewVersion = 0
+        viewReadAt = nil
+        outbox.removeAll()
+        return true
+    }
+
     /// The keeper's credentials, made once and kept.
     private func ensureCredentials() async throws -> SpacetimeCredentials {
         if let credentials { return credentials }
@@ -115,6 +130,11 @@ public final class NetworkRealmLink: RealmLink {
             }
         } catch {
             wasUnreachable = true
+            if forgetKeyIfRefused(error) {
+                // A new key, a new keeper: the front door asks for a name.
+                onEvent?(.refused(.unknownKeeper))
+                return
+            }
             onEvent?(.unreachable(String(describing: error)))
         }
     }
@@ -203,6 +223,10 @@ public final class NetworkRealmLink: RealmLink {
                 lastHere = Date()
                 onEvent?(.arrived(view.keeper, view.world))
             } catch {
+                if forgetKeyIfRefused(error) {
+                    onEvent?(.refused(.unknownKeeper))
+                    return
+                }
                 onEvent?(.refused(.refused(String(describing: error))))
             }
         }
@@ -260,6 +284,10 @@ public final class NetworkRealmLink: RealmLink {
                     }
                 } catch {
                     if Task.isCancelled { break }
+                    if self.forgetKeyIfRefused(error) {
+                        self.onEvent?(.refused(.unknownKeeper))
+                        break
+                    }
                     self.wasUnreachable = true
                     self.onEvent?(.unreachable(String(describing: error)))
                     try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))

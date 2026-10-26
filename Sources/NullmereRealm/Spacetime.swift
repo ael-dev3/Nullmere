@@ -58,10 +58,16 @@ public enum ReducerArgument: Sendable, Equatable {
 
 public struct SpacetimeError: Error, Equatable, CustomStringConvertible, Sendable {
     public let description: String
+    /// The server no longer takes the token: its database was made anew, or
+    /// the identity is gone.
+    public let isUnauthorized: Bool
 
-    public init(_ description: String) {
+    public init(_ description: String, isUnauthorized: Bool = false) {
         self.description = description
+        self.isUnauthorized = isUnauthorized
     }
+
+    public static let unauthorized = SpacetimeError("The realm no longer knows this Mac's key.", isUnauthorized: true)
 }
 
 /// What the realm needs of SpacetimeDB: an identity, reducer calls, and
@@ -98,6 +104,9 @@ public struct SpacetimeHTTP: SpacetimeTransport {
         guard let http = response as? HTTPURLResponse else { throw SpacetimeError("No answer from the realm's server.") }
         if http.statusCode == 404 {
             throw SpacetimeError("The realm isn't open yet.")
+        }
+        if http.statusCode == 401 {
+            throw SpacetimeError.unauthorized
         }
         guard (200..<300).contains(http.statusCode) else {
             let text = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

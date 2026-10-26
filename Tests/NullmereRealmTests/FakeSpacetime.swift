@@ -22,6 +22,9 @@ actor FakeSpacetime: SpacetimeTransport {
 
     func advance(_ seconds: Double) { time += seconds }
 
+    /// The server forgets an identity, as when its database is made anew.
+    func forget(token: String) { identities[token] = nil }
+
     /// Requests of each kind the steward has answered.
     private var settled: [String: Int] = [:]
 
@@ -37,7 +40,7 @@ actor FakeSpacetime: SpacetimeTransport {
     }
 
     private func sender(_ token: String) throws -> String {
-        guard let identity = identities[token] else { throw SpacetimeError("401 Unauthorized") }
+        guard let identity = identities[token] else { throw SpacetimeError.unauthorized }
         return identity
     }
 

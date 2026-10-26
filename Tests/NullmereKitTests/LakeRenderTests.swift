@@ -24,7 +24,8 @@ final class LakeRenderTests: XCTestCase {
             let uniforms = WorldUniforms(
                 view: SIMD4(Float(width), Float(height), 3.4, 20),
                 camera: SIMD4(0, 0, Float(state.map.radius), 1),
-                highlight: SIMD4(999, 999, 999, 999)
+                highlight: SIMD4(999, 999, 999, 999),
+                moon: MoonMirror.place(in: state.map)
             )
             XCTAssertNotNil(renderer.measureFrame(uniforms, into: target), "\(lake) drawn")
             var pixels = [UInt8](repeating: 0, count: width * height * 4)

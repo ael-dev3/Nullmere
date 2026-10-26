@@ -70,9 +70,15 @@ struct PlayView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         NoticeFeed(session: session)
                         Spacer(minLength: 0)
-                        // The briefing says it first; counsel follows it.
+                        // The briefing says it first; then the first steps,
+                        // and counsel once they're done.
                         if session.seatBriefing == nil {
-                            CounselCard(session: session)
+                            if let steps = session.firstSteps {
+                                FirstStepsCard(steps: steps) { session.dismissFirstSteps() }
+                                    .transition(.opacity)
+                            } else {
+                                CounselCard(session: session)
+                            }
                         }
                         SelectionPanel(session: session)
                             .transition(.opacity)

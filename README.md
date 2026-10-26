@@ -230,7 +230,8 @@ as the realm will, and takes the realm's word as final.
 - **Taking your seat.** The first time you enter an age, a card tells
   you the House you take up (its seat and holds, its strength among the
   Houses, its wars and pacts, which the stewards may have chosen for you)
-  and the first three things to do.
+  and the first three things to do. Those three then stay beside the map
+  as a checklist, ticked as you do them, until all are done.
 - **Coming back.** Return after watches have passed, and a card tells
   what happened while you were away: your stores and holds, and the news
   that touched your House.
@@ -257,7 +258,8 @@ as the realm will, and takes the realm's word as final.
   order they first came. Each age's lake has a shape of its own, in turn:
   the round Nullmere, the Twin Waters with a neck of land between them,
   the Sickle with land pushing in from one shore, and the Drowned Isles.
-  The front door names the lake of the age.
+  The front door names the lake of the age, and the moon lies in the
+  deepest water of each.
 - **The server.** SpacetimeDB is the realm's authority of record: it knows
   each keeper by their identity, keeps the world, and lets no one but the
   steward write it. The steward runs the same Swift rules core the clients

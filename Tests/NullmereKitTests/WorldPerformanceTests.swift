@@ -41,7 +41,8 @@ final class WorldPerformanceTests: XCTestCase {
                 let uniforms = WorldUniforms(
                     view: SIMD4(Float(width), Float(height), Float(scale * 2 * fraction), Float(3 + Double(frame) / 60)),
                     camera: SIMD4(Float(centre.x), Float(centre.y), Float(state.map.radius), Float(2 * fraction)),
-                    highlight: SIMD4(Float(seat.q), Float(seat.r), Float(seat.q), Float(seat.r))
+                    highlight: SIMD4(Float(seat.q), Float(seat.r), Float(seat.q), Float(seat.r)),
+                    moon: MoonMirror.place(in: state.map)
                 )
                 if let ms = renderer.measureFrame(uniforms, into: target) { times.append(ms) }
             }

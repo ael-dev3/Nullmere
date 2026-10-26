@@ -35,6 +35,8 @@ final class WorldMetalView: MTKView {
         didSet { if selected != oldValue { redraw() } }
     }
     var radius = 24
+    /// The moon in the water, placed for the map's lake.
+    var moon = SIMD4<Float>(0, -2.2, 1.05, 1)
     var animates = true {
         didSet { if animates != oldValue { updatePausing() } }
     }
@@ -246,7 +248,8 @@ final class WorldMetalView: MTKView {
             highlight: SIMD4(
                 Float(hovered?.q ?? 999), Float(hovered?.r ?? 999),
                 Float(selected?.q ?? 999), Float(selected?.r ?? 999)
-            )
+            ),
+            moon: moon
         )
         renderer.draw(uniforms, in: pass, to: drawable)
     }

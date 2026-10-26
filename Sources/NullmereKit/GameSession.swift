@@ -63,6 +63,8 @@ public final class GameSession {
     public private(set) var territory: [Int?] = []
     /// The texture's unchanging ground, made again only when the map changes.
     @ObservationIgnored private var ground: TileTexture.Ground?
+    /// Where the moon lies in this lake's water.
+    private(set) var moon = SIMD4<Float>(0, -2.2, 1.05, 1)
     /// Holds and units the player can see right now, by map index.
     public private(set) var visible: [Bool] = []
     public private(set) var isEndingWatch = false
@@ -183,8 +185,12 @@ public final class GameSession {
     private(set) var watchCard: (id: Int, summary: WatchSummary)?
     /// What happened while the keeper was away, until they have read it.
     private(set) var awayReport: AwayReport?
+    /// The realm forgot this keeper's key; the app takes them to its door.
+    var onForgotten: (() -> Void)?
     /// The first time in an age: the House the keeper takes up.
     private(set) var seatBriefing: SeatBriefing?
+    /// A new keeper's first steps, until all are done.
+    private(set) var firstSteps: FirstSteps?
     /// The Dock's count of watches turned while the keeper was elsewhere.
     private(set) var attention = Attention()
     /// Whether the keeper is looking, and how the Dock is told; tests
@@ -242,7 +248,9 @@ public final class GameSession {
             awayReport = AwayReport(since: seen, now: world, player: house)
         } else if world.houses.indices.contains(house) {
             seatBriefing = SeatBriefing(world: world, player: house)
+            store.saveFirstSteps(FirstSteps())
         }
+        firstSteps = store.loadFirstSteps().flatMap { $0.isComplete ? nil : $0 }
         rememberSeen()
         link.onEvent = { [weak self] event in self?.hear(event) }
         link.connect()
@@ -387,6 +395,7 @@ public final class GameSession {
             // Carried out here at once, as the realm will; its word follows.
             let events = try state.perform(command, as: player)
             link.send(command)
+            if var steps = firstSteps, steps.note(command) { advance(steps) }
             showMarches(events, from: before)
             showBlows(events, from: before)
             report(events)
@@ -412,6 +421,7 @@ public final class GameSession {
     public func endWatch() {
         guard state.outcome == nil, !isReady else { return }
         isReady = true
+        if var steps = firstSteps, steps.mark(.ready) { advance(steps) }
         link.setReady(true)
     }
 
@@ -494,6 +504,24 @@ public final class GameSession {
         if let call = attention.returned() { signal(call) }
     }
 
+    /// A first step done: kept, and when the last is, said and put away.
+    private func advance(_ steps: FirstSteps) {
+        store.saveFirstSteps(steps)
+        if steps.isComplete {
+            withAnimation(.easeOut(duration: 0.3)) { firstSteps = nil }
+            post("Well begun. The rest is yours; the Guide (?) holds more.", tone: .good)
+        } else {
+            firstSteps = steps
+        }
+    }
+
+    public func dismissFirstSteps() {
+        guard var steps = firstSteps else { return }
+        for step in FirstSteps.Step.allCases { steps.mark(step) }
+        store.saveFirstSteps(steps)
+        withAnimation(.easeOut(duration: 0.3)) { firstSteps = nil }
+    }
+
     public func dismissSeatBriefing() {
         withAnimation(.easeOut(duration: 0.3)) { seatBriefing = nil }
     }
@@ -533,6 +561,9 @@ public final class GameSession {
         case .arrived(let keeper, let world):
             // Only a new age seats a keeper already in the world.
             onNewAge?(keeper, world)
+        case .refused(.unknownKeeper):
+            // The realm has forgotten this keeper altogether.
+            onForgotten?()
         case .refused:
             break
         }
@@ -646,7 +677,10 @@ public final class GameSession {
             isAtWar = atWar
             onWarChanged?(atWar)
         }
-        if ground?.map != state.map { ground = TileTexture.Ground(map: state.map) }
+        if ground?.map != state.map {
+            ground = TileTexture.Ground(map: state.map)
+            moon = MoonMirror.place(in: state.map)
+        }
         tileBytes = TileTexture.bytes(for: state, viewer: player, visible: visible, owners: territory, ground: ground)
         tilesVersion += 1
         refreshPathPreview()

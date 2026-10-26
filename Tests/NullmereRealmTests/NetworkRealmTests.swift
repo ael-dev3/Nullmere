@@ -332,6 +332,36 @@ final class NetworkRealmTests: XCTestCase {
         try await second.step(now: 3)
     }
 
+    func testAKeyTheRealmNoLongerKnowsIsMadeAnew() async throws {
+        let db = FakeSpacetime()
+        let (_, running, _) = try await steward(db)
+        defer { running.cancel() }
+        let store = MemoryStore()
+        let (link, ear) = await MainActor.run { keeper(db, store: store) }
+        await MainActor.run { link.arrive(name: "Ama") }
+        try await until("arrival") { ear.keeper != nil }
+        let kept = await MainActor.run { link.credentials }
+        let old = try XCTUnwrap(kept)
+
+        // The realm is begun anew: it forgets the key.
+        await db.forget(token: old.token)
+        try await until("the keeper told the realm doesn't know them") {
+            ear.events.contains { if case .refused(.unknownKeeper) = $0 { return true } else { return false } }
+        }
+        // A new key is made at the next asking, and the keeper enters anew.
+        try await until("the realm's status again") {
+            if case .status = ear.events.last { return true } else { return false }
+        }
+        let made = await MainActor.run { link.credentials }
+        let fresh = try XCTUnwrap(made)
+        XCTAssertNotEqual(fresh.token, old.token)
+        XCTAssertNotNil(store.value.flatMap { $0.isEmpty ? nil : $0 }, "and kept")
+        await MainActor.run { link.arrive(name: "Ama Anew") }
+        try await until("the second arrival") {
+            ear.events.contains { if case .arrived(let keeper, _) = $0 { return keeper.name == "Ama Anew" } else { return false } }
+        }
+    }
+
     func testOneKeepersFloodDoesNotCrowdOutAnother() async throws {
         let db = FakeSpacetime()
         let credentials = try await db.createIdentity()

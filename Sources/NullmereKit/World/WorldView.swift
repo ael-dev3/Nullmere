@@ -65,6 +65,7 @@ private struct WorldMetalRepresentable: NSViewRepresentable {
 
     private func update(_ view: WorldMetalView) {
         view.radius = session.state.map.radius
+        view.moon = session.moon
         view.camera = session.camera
         view.hovered = session.hovered
         view.selected = session.selectedHex

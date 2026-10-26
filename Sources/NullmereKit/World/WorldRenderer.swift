@@ -9,6 +9,8 @@ struct WorldUniforms {
     var camera: SIMD4<Float>
     /// Hovered q and r, selected q and r; 999 for none.
     var highlight: SIMD4<Float>
+    /// The moon in the water: world x and y, radius, and 1 if it shows.
+    var moon: SIMD4<Float>
 }
 
 /// Encodes the world: one full-screen triangle reading the tile texture.

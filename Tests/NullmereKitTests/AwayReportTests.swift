@@ -90,6 +90,32 @@ final class AwayReportTests: XCTestCase {
         try keep(OmenBand(omen: Omen(kind: .moonsaltBloom, began: 5, ends: 8), watch: 6), as: "game-omen.png")
     }
 
+    func testANewKeepersFirstStepsAreTickedOffAndPutAway() throws {
+        let store = LocalStore(directory: dir)
+        let state = GameState(settings: GameSettings(seedText: "first steps", houseCount: 3, radius: 16))
+        let session = GameSession(state: state, store: store)
+        XCTAssertEqual(session.firstSteps?.done, [], "A new keeper starts with three to do")
+
+        let seat = try XCTUnwrap(session.state.holds(of: session.player).first)
+        let built = BuildingKind.allCases.contains { session.perform(.build(hold: seat.id, kind: $0)) }
+        XCTAssertTrue(built)
+        XCTAssertEqual(session.firstSteps?.done, [.work])
+
+        let unit = try XCTUnwrap(session.state.units(of: session.player).first { $0.movesLeft > 0 })
+        let open = try XCTUnwrap(session.state.map.neighbors(of: unit.position).first { hex in
+            (session.state.map[hex]?.terrain.isSettleable ?? false) && !session.state.units.contains { $0.position == hex }
+        })
+        XCTAssertTrue(session.perform(.move(unit: unit.id, to: open)))
+        XCTAssertEqual(session.firstSteps?.done, [.work, .march])
+        XCTAssertNotNil(GameSession(state: session.state, store: store).firstSteps, "Kept until all are done")
+
+        session.endWatch()
+        XCTAssertNil(session.firstSteps, "All done: put away")
+        XCTAssertTrue(session.notices.contains { $0.text.hasPrefix("Well begun") })
+        XCTAssertNil(GameSession(state: session.state, store: store).firstSteps, "and not shown again")
+        try keep(FirstStepsCard(steps: { var s = FirstSteps(); s.mark(.work); return s }()) {}, as: "game-first-steps.png")
+    }
+
     func testTheReportSpeaksPlainly() throws {
         let state = GameState(settings: GameSettings(seedText: "plain words", houseCount: 3, radius: 16))
         let seen = LastSeen(watch: state.watch, stock: state.houses[state.player].stock, holds: state.holds(of: state.player).count)

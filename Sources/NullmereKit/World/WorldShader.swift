@@ -20,6 +20,7 @@ enum WorldShader {
         float4 view;       // viewport width and height in pixels, pixels per world unit, time
         float4 camera;     // world x and y at the viewport centre, world radius, pixels per point
         float4 highlight;  // hovered q and r, selected q and r (999 for none)
+        float4 moon;       // the moon in the water: world x and y, radius, 1 if it shows
     };
 
     #define NM_TEXTURE_ARGUMENT , texture2d<float, access::read> data
@@ -196,7 +197,7 @@ enum WorldShader {
         return b * b * (exp(-r2 / 0.8) + 0.12 * exp(-r2 / 7.0));
     }
 
-    float3 nm_mirror(float2 w, float2 px, float2 viewport, float ppp, float shallow, float time) {
+    float3 nm_mirror(float2 w, float2 px, float2 viewport, float ppp, float shallow, float time, float4 moonAt) {
         // Black glass, faintly holding the sky: a little paler toward the top
         // of the view, where the moon hangs, and along the moon's path.
         float2 uv = px / viewport;
@@ -209,14 +210,14 @@ enum WorldShader {
         float stars = nm_star(px, ppp, 10.0, 0.52, 0.0) * 0.7 + nm_star(px, ppp, 37.0, 0.5, 17.0) * 1.6;
         float twinkle = 0.85 + 0.15 * sin(time * 0.9 + nm_hash(floor(px / (41.0 * ppp))) * 30.0);
         c += float3(0.66, 0.72, 0.86) * stars * twinkle * (1.0 - 0.75 * shallow);
-        // The moon lies in the water at the lake's heart, crisp because
-        // nothing moves, and a little dimmer than the moon itself.
-        float2 moon = float2(0.0, -2.2);
-        float2 mq = (w - moon) / 1.05;
+        // The moon lies in the water over the lake's deepest heart, crisp
+        // because nothing moves, and a little dimmer than the moon itself.
+        float2 moon = moonAt.xy;
+        float2 mq = (w - moon) / max(moonAt.z, 0.05);
         float dm = length(w - moon);
-        float disc = (1.0 - smoothstep(0.96, 1.0, length(mq))) * (1.0 - shallow);
+        float disc = (1.0 - smoothstep(0.96, 1.0, length(mq))) * (1.0 - shallow) * moonAt.w;
         float breath = 0.5 + 0.5 * sin(6.2831853 * fract(time / 11.0));
-        float3 glow = float3(0.50, 0.58, 0.76) * (0.09 * exp(-dm * 0.42) + 0.08 * exp(-dm * 1.8)) * (0.9 + 0.2 * breath);
+        float3 glow = float3(0.50, 0.58, 0.76) * (0.09 * exp(-dm * 0.42) + 0.08 * exp(-dm * 1.8)) * (0.9 + 0.2 * breath) * moonAt.w;
         c += glow * (1.0 - shallow * 0.6);
         if (disc > 0.0) {
             float maria = smoothstep(0.42, 0.68, nm_fbm(mq * 1.7 + float2(5.2, 1.3)));
@@ -227,7 +228,7 @@ enum WorldShader {
         return c;
     }
 
-    float3 nm_world(float2 px, float2 viewport, float scale, float time, float2 centre, float radius, float ppp, float4 highlight NM_TEXTURE_ARGUMENT) {
+    float3 nm_world(float2 px, float2 viewport, float scale, float time, float2 centre, float radius, float ppp, float4 highlight, float4 moon NM_TEXTURE_ARGUMENT) {
         float2 w = (px - viewport * 0.5) / scale + centre;
         float2 h = nm_hexAt(w);
         if (nm_hexLength(h) > radius) {
@@ -321,7 +322,7 @@ enum WorldShader {
         float3 wet = float3(0.0);
         if (shore < 0.999) {
             float shallow = 1.0 - deep / max(total - land, 0.0001);
-            wet = nm_mirror(w, px, viewport, ppp, clamp(shallow, 0.0, 1.0), time);
+            wet = nm_mirror(w, px, viewport, ppp, clamp(shallow, 0.0, 1.0), time, moon);
             // A pale line of salt where the dead water meets the land.
             wet += float3(0.32, 0.33, 0.36) * exp(-abs(landness - 0.43) / 0.025) * 0.5;
             wet += float3(0.40, 0.46, 0.60) * exp(-abs(landness - 0.47) / 0.012) * 0.3;
@@ -450,7 +451,7 @@ enum WorldShader {
     fragment float4 nm_world_fragment(WorldVertexOut in [[stage_in]],
                                       constant WorldUniforms& u [[buffer(0)]],
                                       texture2d<float, access::read> data [[texture(0)]]) {
-        float3 c = nm_world(in.position.xy, u.view.xy, u.view.z, u.view.w, u.camera.xy, u.camera.z, u.camera.w, u.highlight NM_TEXTURE_PASS);
+        float3 c = nm_world(in.position.xy, u.view.xy, u.view.z, u.view.w, u.camera.xy, u.camera.z, u.camera.w, u.highlight, u.moon NM_TEXTURE_PASS);
         return float4(c, 1.0);
     }
     """#

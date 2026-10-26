@@ -63,7 +63,12 @@ jobs:
           fi
 
       - name: Test
-        run: NULLMERE_KEEP_RENDERS="$PWD/build" swift test 2>&1 | tee build-test.log
+        run: NULLMERE_KEEP_RENDERS="$PWD/build" swift test --enable-code-coverage 2>&1 | tee build-test.log
+
+      # How much of each module the tests run, held to a floor.
+      - name: Coverage
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: mkdir -p build && python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereCore=90 NullmereRealm=70 | tee build/coverage.log
 
       # How long each scene takes the GPU at a MacBook Pro's native resolution.
       - name: Frame times
@@ -194,7 +199,7 @@ jobs:
       - name: Print small screenshots
         if: always()
         run: |
-          for shot in build/launcher.png build/launcher-menu.png build/launcher-news.png build/launcher-settings.png build/launcher-play.png build/launcher-off.png build/launcher-downloading.png build/game-world.png build/game-network.png build/game-away.png build/game-briefing.png build/game-lakes.png build/game-omen.png build/game-later.png build/game-race.png build/game-ending.png; do
+          for shot in build/launcher.png build/launcher-menu.png build/launcher-news.png build/launcher-settings.png build/launcher-play.png build/launcher-off.png build/launcher-downloading.png build/game-world.png build/game-network.png build/game-away.png build/game-briefing.png build/game-lakes.png build/game-omen.png build/game-first-steps.png build/game-later.png build/game-race.png build/game-ending.png; do
             if [ -s "$shot" ]; then
               small="${shot%.png}-small.jpg"
               sips -s format jpeg -s formatOptions 45 -Z 560 "$shot" --out "$small" >/dev/null
@@ -228,6 +233,7 @@ jobs:
           grep -h "PERF \|SOUND \|LAYOUT " build-test.log 2>/dev/null || true
           grep -hE "error: |failed \(|: warning:" build.log build-test.log 2>/dev/null | head -40 || true
           grep -h "Executed .* tests" build-test.log 2>/dev/null | tail -1 || true
+          cat build/coverage.log 2>/dev/null || true
           grep -hE "error|warning" build/smoke-*.log 2>/dev/null | head -20 || true
           tail -n 15 build/game-stdout.log 2>/dev/null || true
           tail -n 15 build/steward.log 2>/dev/null || true
@@ -256,7 +262,12 @@ jobs:
       - name: Test the rules and the realm
         env:
           NULLMERE_SOAK_WATCHES: "200"
-        run: swift test 2>&1 | tee realm-test.log
+        run: swift test --enable-code-coverage 2>&1 | tee realm-test.log
+
+      - name: Coverage
+        run: |
+          apt-get update -qq && apt-get install -y -qq python3 >/dev/null
+          python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereCore=90 NullmereRealm=75
 
       - name: Install Rust and SpacetimeDB
         run: |

@@ -257,7 +257,7 @@ public final class GameApp {
         case .refused(let error):
             Self.logger.notice("The realm refused the keeper: \(error.description, privacy: .public)")
             isEntering = false
-            if enteredByIdentity, error == .nameInvalid || error == .unknownKeeper {
+            if error == .unknownKeeper || (enteredByIdentity && error == .nameInvalid) {
                 // The realm has forgotten this keeper: they choose a name anew.
                 keeperName = nil
                 UserDefaults.standard.removeObject(forKey: Self.nameKey(for: address))
@@ -293,6 +293,7 @@ public final class GameApp {
         let session = GameSession(link: link, house: house, world: world, store: store.forAge(age, of: Self.storeKey(for: address)),
                                   voice: Self.voice(), host: hosted)
         session.onNewAge = { [weak self] keeper, world in self?.arrived(keeper, in: world) }
+        session.onForgotten = { [weak self] in self?.forgotten() }
         play(session)
         showFromEnvironment()
     }
@@ -317,6 +318,17 @@ public final class GameApp {
         isWaitingForSeat = false
         seatTimer?.invalidate()
         seatTimer = nil
+    }
+
+    /// The realm no longer knows this Mac's key (its database was made anew):
+    /// back to the front door, to enter under a name again.
+    private func forgotten() {
+        keeperName = nil
+        UserDefaults.standard.removeObject(forKey: Self.nameKey(for: address))
+        link = nil
+        phase = .frontDoor
+        openDoor()
+        arrivalProblem = "The realm no longer knows this Mac's key, as when a realm is begun anew. Choose the name you'll go by."
     }
 
     /// Leaves the world for the front door; the keeper's House stands as

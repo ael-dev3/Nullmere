@@ -28,8 +28,8 @@ final class WorldShaderTests: XCTestCase {
         }
     }
 
-    func testUniformsAreThreeFloat4s() {
-        XCTAssertEqual(MemoryLayout<WorldUniforms>.stride, 48)
+    func testUniformsAreFourFloat4s() {
+        XCTAssertEqual(MemoryLayout<WorldUniforms>.stride, 64)
         XCTAssertEqual(MemoryLayout<WorldUniforms>.alignment, 16)
     }
 
