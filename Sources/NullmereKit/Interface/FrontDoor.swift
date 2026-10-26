@@ -201,6 +201,19 @@ struct RealmLine: View {
         let there = status.online == 1 ? "1 keeper there" : "\(status.online) keepers there"
         let seats = status.freeSeats == 1 ? "1 seat free" : "\(status.freeSeats) seats free"
         let ending = status.isEnding ? " The age has ended; the next begins when the watch turns." : ""
-        return "Age \(status.age), watch \(status.watch) · \(there) · \(seats) of \(status.seats).\(ending)"
+        let names = present(status).map { " \($0)" } ?? ""
+        return "Age \(status.age), watch \(status.watch) · \(there) · \(seats) of \(status.seats).\(names)\(ending)"
+    }
+
+    /// "There now: Ama, Bel and 3 more."
+    static func present(_ status: RealmStatus, shown: Int = 5) -> String? {
+        guard let names = status.present, !names.isEmpty else { return nil }
+        let first = names.prefix(shown)
+        let more = status.online - first.count
+        if more > 0 {
+            return "There now: \(first.joined(separator: ", ")) and \(more) more."
+        }
+        if first.count == 1 { return "There now: \(first[0])." }
+        return "There now: \(first.dropLast().joined(separator: ", ")) and \(first.last!)."
     }
 }

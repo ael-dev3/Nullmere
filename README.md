@@ -206,6 +206,12 @@ as the realm will, and takes the realm's word as final.
   could know: the ground they've explored, the companies in their sight,
   their own stores, and the envoys and news that reach them. The world
   itself never leaves the server.
+- **Who is there.** The front door names the keepers in the realm now,
+  and each House in the Houses panel says who gives its orders: its
+  keeper, here or away, or a steward.
+- **Coming back.** Return after watches have passed, and a card tells
+  what happened while you were away: your stores and holds, and the news
+  that touched your House.
 - **The watch.** Each turn is a watch. Give your orders, then say you're
   ready (⌘↩). The watch turns when every keeper there is ready, or when
   its time runs out, three minutes. An empty realm sleeps until a keeper

@@ -110,6 +110,11 @@ struct PlayView: View {
                 .padding(.bottom, 18)
                 .allowsHitTesting(false)
 
+            if let report = session.awayReport, session.state.outcome == nil {
+                AwayCard(report: report) { session.dismissAwayReport() }
+                    .transition(.opacity)
+            }
+
             if let outcome = session.state.outcome {
                 OutcomeOverlay(app: app, session: session, outcome: outcome)
             }
@@ -130,7 +135,9 @@ struct PlayView: View {
         case .home:
             session.focusOnSeat()
         case .escape:
-            if session.panel != nil {
+            if session.awayReport != nil {
+                session.dismissAwayReport()
+            } else if session.panel != nil {
                 session.panel = nil
             } else if session.selection != GameSession.Selection.none {
                 session.selection = GameSession.Selection.none

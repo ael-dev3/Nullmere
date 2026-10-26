@@ -48,6 +48,7 @@ final class RealmTests: XCTestCase {
         let late = try realm.arrive("c", name: "Cor", now: 0)
         XCTAssertNil(late.house)
         XCTAssertEqual(realm.status(now: 0).freeSeats, 0)
+        XCTAssertEqual(realm.status(now: 0).present, ["Ama", "Bel", "Cor"], "Who is there, in the order they came")
         XCTAssertThrowsError(try realm.perform(.fortify(unit: 1), by: "c")) { XCTAssertEqual($0 as? RealmError, .noSeat) }
     }
 

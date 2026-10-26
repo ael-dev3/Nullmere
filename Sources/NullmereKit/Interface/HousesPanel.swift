@@ -88,7 +88,7 @@ struct RaceTable: View {
     }
 }
 
-private struct HouseRow: View {
+struct HouseRow: View {
     let session: GameSession
     let house: House
 
@@ -149,9 +149,17 @@ private struct HouseRow: View {
         }
     }
 
+    /// Who gives a House its orders: a steward, or a keeper here or away.
+    static func keeping(_ house: House, present: [String]?) -> String {
+        guard house.isPlayer else { return "A steward gives its orders." }
+        if present?.contains(house.name) == true { return "Its keeper is here." }
+        return "Its keeper is away; it stands as they left it."
+    }
+
     private func summary(stance: Stance, relation: Relation?, spire: Int) -> String {
-        var parts = ["\(house.temperament.title)."]
         let state = session.state
+        var parts = [house.isPlayer ? HouseRow.keeping(house, present: session.realmStatus?.present)
+                                    : "\(house.temperament.title). \(HouseRow.keeping(house, present: nil))"]
         if let liege = house.liege {
             parts.append(liege == session.player ? "Sworn to you." : "Sworn to \(state.houses[liege].title).")
         }

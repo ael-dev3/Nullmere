@@ -2,11 +2,26 @@ import NullmereCore
 import SwiftUI
 
 /// The House, the watch, each resource with what it brings in and how much
-/// can be stored, and the end of the watch.
+/// can be stored, and the end of the watch. Where the window is too narrow
+/// for it all (larger type in a small window), the resources lose their
+/// names, which their glyphs and tooltips still give.
 struct TopBar: View {
     let session: GameSession
+    /// Nil: whichever fits.
+    var compact: Bool?
 
     var body: some View {
+        if let compact {
+            bar(compact: compact)
+        } else {
+            ViewThatFits(in: .horizontal) {
+                bar(compact: false)
+                bar(compact: true)
+            }
+        }
+    }
+
+    private func bar(compact: Bool) -> some View {
         let state = session.state
         let house = session.playerHouse
         let income = state.income(of: house.id)
@@ -28,19 +43,19 @@ struct TopBar: View {
             .layoutPriority(1)
             .accessibilityElement(children: .combine)
 
-            Spacer(minLength: 24)
+            Spacer(minLength: compact ? 12 : 24)
 
-            HStack(spacing: 22) {
+            HStack(spacing: compact ? 14 : 22) {
                 ForEach(Resource.allCases, id: \.self) { resource in
                     let net = income[resource] - (resource == .grain ? upkeep : 0)
-                    ResourceReadout(resource: resource, amount: house.stock[resource], net: net, room: room)
+                    ResourceReadout(resource: resource, amount: house.stock[resource], net: net, room: room, named: !compact)
                 }
             }
             .fixedSize()
 
-            Spacer(minLength: 24)
+            Spacer(minLength: compact ? 12 : 24)
 
-            HStack(spacing: 6) {
+            HStack(spacing: compact ? 2 : 6) {
                 QuietButton(title: "Houses", action: { toggle(.houses) })
                 QuietButton(title: "Chronicle", action: { toggle(.chronicle) })
                 QuietButton(title: "Guide", action: { toggle(.guide) })
@@ -70,6 +85,7 @@ private struct ResourceReadout: View {
     let amount: Int
     let net: Int
     let room: Int
+    var named = true
 
     var body: some View {
         HStack(spacing: 6) {
@@ -83,8 +99,10 @@ private struct ResourceReadout: View {
                         .font(.nm(10, weight: .regular).monospacedDigit())
                         .foregroundStyle(net < 0 ? Palette.bad : Palette.good.opacity(0.85))
                 }
-                Caps(amount >= room ? "\(resource.title) · full" : resource.title, size: 7.5, tracking: 0.26)
-                    .foregroundStyle(Palette.ink.opacity(0.45))
+                if named {
+                    Caps(amount >= room ? "\(resource.title) · full" : resource.title, size: 7.5, tracking: 0.26)
+                        .foregroundStyle(Palette.ink.opacity(0.45))
+                }
             }
         }
         // A resource's name is never broken across lines.

@@ -93,6 +93,32 @@ final class RealmClientTests: XCTestCase {
         XCTAssertEqual(RealmLine.describe(alone), "Age 1, watch 3 · 1 keeper there · 3 seats free of 4.")
     }
 
+    func testTheDoorAndTheHousesTellWhoIsThere() throws {
+        func status(_ names: [String], online: Int? = nil) -> RealmStatus {
+            RealmStatus(name: "R", age: 1, watch: 3, seats: 8, freeSeats: 2, keepers: 9, online: online ?? names.count, ready: 0,
+                        secondsLeft: 60, isEnding: false, present: names)
+        }
+        XCTAssertNil(RealmLine.present(status([])))
+        XCTAssertEqual(RealmLine.present(status(["Ama"])), "There now: Ama.")
+        XCTAssertEqual(RealmLine.present(status(["Ama", "Bel", "Cor"])), "There now: Ama, Bel and Cor.")
+        XCTAssertEqual(RealmLine.present(status(["A", "B", "C", "D", "E", "F", "G"])), "There now: A, B, C, D, E and 2 more.")
+        XCTAssertEqual(RealmLine.present(status(Array(repeating: "K", count: 24), online: 30)), "There now: K, K, K, K, K and 25 more.")
+        XCTAssertTrue(RealmLine.describe(status(["Ama", "Bel"])).hasSuffix("6 seats free of 8. There now: Ama and Bel."))
+
+        // In the world, each House says who gives its orders.
+        let realm = realm()
+        let ama = try enter(realm, as: "a", name: "Ama")
+        let bel = try enter(realm, as: "b", name: "Bel")
+        XCTAssertEqual(ama.realmStatus?.present, ["Ama", "Bel"])
+        let bels = ama.state.houses[bel.player]
+        XCTAssertEqual(HouseRow.keeping(bels, present: ama.realmStatus?.present), "Its keeper is here.")
+        realm.link(identity: "b").leave()
+        XCTAssertEqual(ama.realmStatus?.present, ["Ama"])
+        XCTAssertEqual(HouseRow.keeping(bels, present: ama.realmStatus?.present), "Its keeper is away; it stands as they left it.")
+        let steward = try XCTUnwrap(ama.state.houses.first { !$0.isPlayer })
+        XCTAssertEqual(HouseRow.keeping(steward, present: ama.realmStatus?.present), "A steward gives its orders.")
+    }
+
     func testTheRealmOutOfReachIsToldOnceAndItsReturnToo() throws {
         let link = StubLink()
         let state = GameState(settings: GameSettings(seedText: "out of reach", houseCount: 3, radius: 16))

@@ -523,16 +523,20 @@ final class TextSizeTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: dir) }
         let session = GameSession(state: GameState(settings: GameSettings(seedText: "top bar")), store: LocalStore(directory: dir))
         TextSize.shared.isLarger = false
-        let standard = try size(of: TopBar(session: session).fixedSize())
+        let standard = try size(of: TopBar(session: session, compact: false).fixedSize())
         TextSize.shared.isLarger = true
-        let larger = try size(of: TopBar(session: session).fixedSize())
-        print("LAYOUT top bar \(Int(standard.width)) wide, \(Int(larger.width)) with the larger type")
+        let larger = try size(of: TopBar(session: session, compact: false).fixedSize())
+        let compact = try size(of: TopBar(session: session, compact: true).fixedSize())
+        print("LAYOUT top bar \(Int(standard.width)) wide, \(Int(larger.width)) with the larger type, \(Int(compact.width)) compact")
         XCTAssertLessThanOrEqual(standard.width, 960)
+        XCTAssertLessThanOrEqual(compact.width, 960, "The larger type fits the narrowest window, its resources unnamed")
+        TextSize.shared.isLarger = false
         let narrow = try size(of: TopBar(session: session).frame(width: 960).fixedSize(horizontal: false, vertical: true))
         // In a frame the bar may stand a few points taller; a wrapped line
         // of its smallest type would add ten or more.
         XCTAssertLessThan(narrow.height, standard.height + 10, "Nothing wraps in the narrowest window")
         XCTAssertLessThanOrEqual(larger.width, 1280)
+        TextSize.shared.isLarger = true
         let watch = try size(of: WatchClock(session: session))
         XCTAssertGreaterThan(watch.width, 40, "The watch is never squeezed")
         XCTAssertLessThan(watch.height, 30, "and stays on one line")

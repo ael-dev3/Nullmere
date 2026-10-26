@@ -179,6 +179,8 @@ public final class GameSession {
 
     /// The card marking the watch that just began, while it shows.
     private(set) var watchCard: (id: Int, summary: WatchSummary)?
+    /// What happened while the keeper was away, until they have read it.
+    private(set) var awayReport: AwayReport?
     private var watchCardCounter = 0
     /// Keeps the watch's card on screen, for photographs.
     var keepsWatchCard = false
@@ -226,6 +228,8 @@ public final class GameSession {
             }
         }
         refreshWorld()
+        awayReport = store.loadLastSeen().flatMap { AwayReport(since: $0, now: world, player: house) }
+        rememberSeen()
         link.onEvent = { [weak self] event in self?.hear(event) }
         link.connect()
     }
@@ -434,6 +438,19 @@ public final class GameSession {
         return after.holds(of: player).contains { $0.project == nil }
     }
 
+    // MARK: While away
+
+    /// Keeps what the keeper has now seen of their House, for the report
+    /// when they return.
+    private func rememberSeen() {
+        guard state.houses.indices.contains(player) else { return }
+        store.saveLastSeen(LastSeen(watch: state.watch, stock: state.houses[player].stock, holds: state.holds(of: player).count))
+    }
+
+    public func dismissAwayReport() {
+        withAnimation(.easeOut(duration: 0.3)) { awayReport = nil }
+    }
+
     // MARK: The realm's word
 
     private func hear(_ event: RealmEvent) {
@@ -474,6 +491,7 @@ public final class GameSession {
     private func adopt(_ world: GameState) {
         guard world != state else { return }
         state = world
+        rememberSeen()
         if case .unit(let id) = selection, state.unit(id) == nil { selection = .none }
         if case .hold(let id) = selection, state.hold(id) == nil { selection = .none }
         refreshWorld()
@@ -484,6 +502,7 @@ public final class GameSession {
         let previous = state
         let before = positions()
         state = world
+        rememberSeen()
         isReady = false
         guard !isAutoplaying else { return }
         isEndingWatch = true
