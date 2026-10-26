@@ -28,7 +28,7 @@ enum Guide {
             "Lanterns scout. Spears hold the line and take holds. Bows strike from two tiles. Riders are fast. Founders raise new holds.",
             "Select a company, then right-click to march, or to strike an enemy within reach. Hovering an enemy shows the battle's odds first.",
             "Every company but the Lantern eats a grain each watch. Those that live through battles rise in rank.",
-            "To take a hold, break its ward, then march Spears or Riders in.",
+            "To take a hold, break its ward, then march Spears or Riders in. You carry off its share of their stores; a seat holds half.",
         ]),
         Section(title: "Houses", lines: [
             "Rival Houses are ambitious, steadfast, wary or cunning, and remember who wronged them.",
@@ -36,8 +36,8 @@ enum Guide {
             "Envoys and the chronicle speak in words written on your Mac by Apple's on-device model. They only speak; the rules decide.",
         ]),
         Section(title: "Winning", lines: [
-            "Raise the five stages of the Moonspire at your seat (ascendancy), or rule the lake (dominion): half of all its holds and at least ten, your vassals' counted with your own, or be the last House standing.",
-            "Beaten Houses may swear you fealty: their holds join your realm, and they can never turn on you. Turn on them, and they are free.",
+            "Raise the five stages of the Moonspire at your seat (ascendancy), or rule the lake (dominion): nine of every twenty holds and at least ten, your vassals' counted with your own, or be the last House standing.",
+            "Take a rival's seat while it has four holds or fewer left and it swears you fealty; beaten Houses may offer it too. A vassal's holds join your realm, and it can never turn on you. Turn on it, and it is free.",
             "Rivals fear a rising Moonspire, and will march on it.",
         ]),
         Section(title: "Keys", lines: [

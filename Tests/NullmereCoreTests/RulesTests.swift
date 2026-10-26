@@ -442,7 +442,7 @@ final class ExpansionAndFallTests: XCTestCase {
 
     /// A House can be destroyed outright.
     func testAHouseCanBeDestroyed() {
-        var state = GameState(settings: GameSettings(seedText: "siege check 15"))
+        var state = GameState(settings: GameSettings(seedText: "siege check 36"))
         var fallen: ChronicleEntry?
         while state.outcome == nil, state.watch < 170, fallen == nil {
             _ = state.stewardTurn(for: state.player)
@@ -484,6 +484,89 @@ final class ExpansionAndFallTests: XCTestCase {
         XCTAssertThrowsError(try state.declareWar(by: vassal, on: liege))
         _ = try state.declareWar(by: liege, on: vassal)
         XCTAssertNil(state.houses[vassal].liege, "Betrayed, the vassal is free")
+    }
+}
+
+final class ConquestTests: XCTestCase {
+    /// Stages a siege: `taker`'s spear beside `house`'s seat, at war, and
+    /// strikes until the seat falls. Returns the events of the capture.
+    private func takeSeat(of house: Int, by taker: Int, in state: inout GameState) throws -> [GameEvent] {
+        let seat = try XCTUnwrap(state.seat(of: house))
+        state.units.removeAll { $0.owner == house }
+        let spot = try XCTUnwrap(seat.position.ring(1).first { hex in
+            (state.map[hex]?.terrain.isPassable ?? false) && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        })
+        let spear = try XCTUnwrap(state.placeUnit(.spear, for: taker, near: spot))
+        if state.stance(taker, house) != .war { _ = try state.declareWar(by: taker, on: house) }
+        for _ in 0..<20 {
+            let index = try XCTUnwrap(state.unitIndex(spear.id))
+            state.units[index].movesLeft = UnitKind.spear.movement
+            state.units[index].health = 100
+            let events = try state.perform(.attack(unit: spear.id, target: seat.position), as: taker)
+            if events.contains(where: { if case .holdCaptured = $0 { return true } else { return false } }) { return events }
+        }
+        XCTFail("The seat never fell")
+        return []
+    }
+
+    /// Gives `house` a second hold far from its seat.
+    private func addHold(for house: Int, in state: inout GameState) throws -> Int {
+        let seat = try XCTUnwrap(state.seat(of: house))
+        let site = try XCTUnwrap(state.map.hexes.first { hex in
+            (state.map[hex]?.terrain.isSettleable ?? false) && hex.distance(to: seat.position) == 5
+                && state.holds.allSatisfy { $0.position.distance(to: hex) >= 3 }
+        })
+        let id = 90_000 + state.holds.count
+        state.holds.append(Hold(id: id, name: "Stillmarch", owner: house, position: site, isSeat: false, foundedWatch: state.watch))
+        return id
+    }
+
+    func testTakingASeatCarriesOffHalfItsStoresAndBreaksTheHouse() throws {
+        var state = GameState(settings: GameSettings(seedText: "spoils", houseCount: 3, radius: 18))
+        let rival = 1
+        let heir = try addHold(for: rival, in: &state)
+        let theirs = state.houses[rival].stock
+        let mine = state.houses[state.player].stock
+
+        let events = try takeSeat(of: rival, by: state.player, in: &state)
+
+        XCTAssertEqual(state.houses[state.player].stock, mine + theirs.share(1, of: 2), "Half a seat's stores go to the taker")
+        XCTAssertEqual(state.houses[rival].stock + theirs.share(1, of: 2), theirs)
+        XCTAssertFalse(state.houses[rival].isEliminated)
+        XCTAssertEqual(state.hold(heir)?.isSeat, true, "The seat moves")
+        XCTAssertEqual(state.houses[rival].liege, state.player, "Broken, it bends the knee to its conqueror")
+        XCTAssertEqual(state.stance(rival, state.player), .pact)
+        XCTAssertTrue(events.contains(.stanceChanged(first: rival, second: state.player, stance: .pact, by: rival)))
+        XCTAssertTrue(state.chronicle.contains { $0.text.contains("carries off its stores") })
+        XCTAssertTrue(state.chronicle.contains { $0.text.contains("swears fealty") })
+    }
+
+    func testTakingAnOutlyingHoldCarriesOffItsShare() throws {
+        var state = GameState(settings: GameSettings(seedText: "spoils", houseCount: 3, radius: 18))
+        let rival = 1
+        let outlying = try addHold(for: rival, in: &state)
+        let theirs = state.houses[rival].stock
+        let mine = state.houses[state.player].stock
+        let hold = try XCTUnwrap(state.hold(outlying))
+        state.holds[state.holdIndex(outlying)!].ward = 0
+        let spot = try XCTUnwrap(hold.position.ring(1).first { hex in
+            (state.map[hex]?.terrain.isPassable ?? false) && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        })
+        let spear = try XCTUnwrap(state.placeUnit(.spear, for: state.player, near: spot))
+        _ = try state.declareWar(by: state.player, on: rival)
+        _ = try state.perform(.attack(unit: spear.id, target: hold.position), as: state.player)
+
+        XCTAssertEqual(state.hold(outlying)?.owner, state.player)
+        XCTAssertEqual(state.houses[state.player].stock, mine + theirs.share(1, of: 2), "One of two holds: half the stores")
+        XCTAssertNil(state.houses[rival].liege, "Losing an outlying hold breaks no one")
+    }
+
+    func testThePlayerNeverBendsTheKnee() throws {
+        var state = GameState(settings: GameSettings(seedText: "spoils", houseCount: 3, radius: 18))
+        _ = try addHold(for: state.player, in: &state)
+        _ = try takeSeat(of: state.player, by: 1, in: &state)
+        XCTAssertNil(state.houses[state.player].liege)
+        XCTAssertFalse(state.houses[state.player].isEliminated)
     }
 }
 

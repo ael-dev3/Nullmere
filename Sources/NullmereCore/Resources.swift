@@ -94,6 +94,15 @@ public struct Stock: Codable, Equatable, Hashable, Sendable, CustomStringConvert
         }
     }
 
+    /// `parts` out of every `whole` of each resource, rounded down.
+    public func share(_ parts: Int, of whole: Int) -> Stock {
+        var result = Stock()
+        for resource in Resource.allCases {
+            result[resource] = self[resource] * parts / max(whole, 1)
+        }
+        return result
+    }
+
     public static func + (lhs: Stock, rhs: Stock) -> Stock {
         var result = Stock()
         for resource in Resource.allCases {

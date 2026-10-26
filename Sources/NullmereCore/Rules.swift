@@ -290,6 +290,11 @@ extension GameState {
         let taker = units[unitIndex].owner
         let wasSeat = holds[holdIndex].isSeat
         let name = holds[holdIndex].name
+        // The taker carries off the hold's share of its House's stores; a
+        // seat holds half of them.
+        let plunder = houses[previous].stock.share(1, of: wasSeat ? 2 : max(holds(of: previous).count, 1))
+        houses[previous].stock.debit(plunder)
+        houses[taker].stock.credit(plunder)
 
         holds[holdIndex].owner = taker
         holds[holdIndex].isSeat = false
@@ -302,7 +307,8 @@ extension GameState {
 
         var events: [GameEvent] = [.holdCaptured(hold: holdID, from: previous, by: taker)]
         let seatWords = wasSeat ? ", the seat of \(houses[previous].title)," : ""
-        record(.capture, [taker, previous], "\(houses[taker].title) takes \(name)\(seatWords) from \(houses[previous].title).")
+        let spoils = plunder.isZero ? "" : ", and carries off its stores"
+        record(.capture, [taker, previous], "\(houses[taker].title) takes \(name)\(seatWords) from \(houses[previous].title)\(spoils).")
 
         let remaining = holds(of: previous).sorted { ($0.foundedWatch, $0.id) < ($1.foundedWatch, $1.id) }
         if remaining.isEmpty {
@@ -318,9 +324,21 @@ extension GameState {
             }
             events.append(.seatMoved(house: previous, to: heir.id))
             record(.fall, [previous], "\(houses[previous].title) loses its seat and is shaken; it moves to \(heir.name).")
+            // A rival House left with little beyond its lost seat bends the
+            // knee to the one that took it, rather than fall.
+            if remaining.count <= GameState.brokenAtHolds, !houses[previous].isPlayer,
+               houses[previous].liege == nil, houses[taker].liege == nil,
+               !houses.contains(where: { $0.liege == previous }) {
+                settle(.fealty, between: previous, and: taker, by: previous)
+                events.append(.stanceChanged(first: previous, second: taker, stance: .pact, by: previous))
+            }
         }
         return events
     }
+
+    /// A rival House that loses its seat with this many holds or fewer
+    /// left swears fealty to the House that took it.
+    public static let brokenAtHolds = 4
 
     mutating func eliminate(_ house: Int, by conqueror: Int?) -> [GameEvent] {
         guard !houses[house].isEliminated else { return [] }

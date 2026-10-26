@@ -207,17 +207,21 @@ rival Houses move, holds yield, works rise and companies march on.
 - **Houses.** Rivals have temperaments: ambitious, steadfast, wary or
   cunning. Declare war, offer peace or a pact, and answer their envoys.
   Pacts share sight; breaking one is remembered.
-- **Falling.** A House that loses its seat is shaken: every hold it has left
-  loses most of its ward. A House that loses every hold falls, and its
-  name passes into the chronicle. Rivals can and do destroy each other.
+- **Conquest.** Taking a hold carries off its share of the loser's stores;
+  a seat holds half of them. A House that loses its seat is shaken: every
+  hold it has left loses most of its ward. A House that loses every hold
+  falls, and its name passes into the chronicle.
 - **Winning.** Raise the five stages of the **Moonspire** at your seat
-  (ascendancy), or rule the lake (dominion): half of all its holds and at
-  least ten, your vassals' counted with your own, or be the last House
+  (ascendancy), or rule the lake (dominion): nine of every twenty holds and
+  at least ten, your vassals' counted with your own, or be the last House
   standing. Rivals fear a rising Moonspire and will march on it.
-- **Fealty.** A House beaten down to its last few holds may swear fealty to
-  a far stronger one rather than fall. Its holds join its liege's realm and
-  it can never turn on its liege; a liege who turns on a vassal frees it.
-  Rivals win by dominion about two games in five, the Moonspire the rest.
+- **Fealty.** A rival that loses its seat with four holds or fewer left
+  bends the knee to the House that took it, and a beaten House may offer
+  fealty rather than fall. A vassal's holds join its liege's realm and it
+  can never turn on its liege; a liege who turns on a vassal frees it. A
+  far stronger rival will not make peace until the war has run long. In
+  simulated games rivals win by dominion more than half the time, by the
+  Moonspire the rest, and now and then a House is destroyed outright.
 
 - **Voices.** Envoys speak to you, and a chronicler writes beneath the
   moments that touch your House, in words written on your Mac by Apple's

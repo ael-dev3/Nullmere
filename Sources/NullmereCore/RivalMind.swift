@@ -22,6 +22,8 @@ struct RivalMind {
             if nearlyFallen, me.temperament == .ambitious || me.temperament == .cunning {
                 return false
             }
+            // A House far the stronger fights on until the war is long.
+            if mine * 2 > theirs * 3, lasted <= 30 { return false }
             switch me.temperament {
             case .ambitious: return mine * 10 < theirs * 11 || lasted > 16
             case .cunning: return mine < theirs || lasted > 10
@@ -98,7 +100,7 @@ struct RivalMind {
             switch relation.stance {
             case .war:
                 let losing = mine * 10 < theirs * 7
-                let weary = lasted >= 20 && me.temperament != .ambitious
+                let weary = lasted >= 20 && me.temperament != .ambitious && mine * 2 < theirs * 3
                 // A House whose siege is going well fights on.
                 let winning = siegePlan(in: state).map { plan in
                     state.hold(at: plan.target).map { $0.owner == other.id && $0.ward * 2 < $0.maximumWard } ?? false
@@ -405,9 +407,13 @@ struct RivalMind {
             target = spire
         } else {
             // Go for the weakest House within reach, to finish it, then
-            // its nearest hold.
+            // its nearest hold; and once far the stronger, for its seat,
+            // whose fall shakes all the rest.
+            let mine = state.strength(of: house)
             func cost(_ hold: Hold) -> Int {
-                hold.position.distance(to: seat.position) + 4 * state.holds(of: hold.owner).count
+                var cost = hold.position.distance(to: seat.position) + 4 * state.holds(of: hold.owner).count
+                if hold.isSeat, mine * 10 > state.strength(of: hold.owner) * 18 { cost -= 8 }
+                return cost
             }
             target = enemyHolds.min { (cost($0), $0.id) < (cost($1), $1.id) }
         }
