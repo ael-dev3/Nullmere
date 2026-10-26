@@ -108,6 +108,18 @@ final class LocalStoreTests: XCTestCase {
         XCTAssertTrue(second.loadVoices().isEmpty, "A new age, a new book")
         XCTAssertFalse(first.directory.path.contains(" "), "A folder name the realm's name can't break")
     }
+
+    func testEachRealmKeepsItsOwnBook() throws {
+        let store = LocalStore(directory: FileManager.default.temporaryDirectory)
+        let addresses: [GameApp.RealmAddress] = [
+            .hosted(seed: "x"),
+            .network(URL(string: "https://maincloud.spacetimedb.com/nullmere")!),
+            .network(URL(string: "https://maincloud.spacetimedb.com/nullmere-two")!),
+            .network(URL(string: "http://127.0.0.1:3000/nullmere")!),
+        ]
+        let folders = Set(addresses.map { store.forAge(1, of: GameApp.storeKey(for: $0)).directory })
+        XCTAssertEqual(folders.count, addresses.count, "A realm here and realms across the network never share what this Mac keeps")
+    }
 }
 
 @MainActor

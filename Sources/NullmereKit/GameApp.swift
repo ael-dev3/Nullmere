@@ -99,6 +99,16 @@ public final class GameApp {
         }
     }
 
+    /// What this Mac keeps for a realm (words spoken, what was last seen)
+    /// is kept apart for each realm: the one hosted here, and each server
+    /// and database across the network.
+    static func storeKey(for address: RealmAddress) -> String {
+        switch address {
+        case .hosted: return "hosted"
+        case .network(let url): return (url.host() ?? "realm") + url.path()
+        }
+    }
+
     /// The name a keeper goes by is remembered for each realm.
     static func nameKey(for address: RealmAddress) -> String {
         switch address {
@@ -280,7 +290,7 @@ public final class GameApp {
         stopWaiting()
         let doorAge: Int? = { if case .open(let status) = self.door { return status.age } else { return nil } }()
         let age = session?.realmStatus?.age ?? doorAge ?? 1
-        let session = GameSession(link: link, house: house, world: world, store: store.forAge(age, of: Self.realmName),
+        let session = GameSession(link: link, house: house, world: world, store: store.forAge(age, of: Self.storeKey(for: address)),
                                   voice: Self.voice(), host: hosted)
         session.onNewAge = { [weak self] keeper, world in self?.arrived(keeper, in: world) }
         play(session)
