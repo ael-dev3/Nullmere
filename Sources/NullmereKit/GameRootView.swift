@@ -56,12 +56,10 @@ struct PlayView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         NoticeFeed(session: session)
                         Spacer(minLength: 0)
+                        CounselCard(session: session)
                         SelectionPanel(session: session)
                             .transition(.opacity)
                     }
-                    Spacer(minLength: 16)
-                    CounselCard(session: session)
-                        .frame(maxHeight: .infinity, alignment: .bottom)
                     Spacer(minLength: 16)
                     VStack(alignment: .trailing, spacing: 12) {
                         switch session.panel {
@@ -126,7 +124,7 @@ struct PlayView: View {
 /// The few keys worth knowing, in the corner.
 private struct KeyHints: View {
     var body: some View {
-        Text(verbatim: "Tab next company · F fortify · H seat · arrows pan · ⌘↩ end watch")
+        Text(verbatim: "Tab next company · H seat · ⌘↩ end watch")
             .font(.system(size: 10))
             .foregroundStyle(Palette.ink.opacity(0.4))
             .padding(.horizontal, 10)
@@ -159,7 +157,7 @@ private struct CounselCard: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .frame(maxWidth: 440)
+            .frame(width: 330, alignment: .leading)
             .panelBackground()
             .animation(.easeInOut(duration: 0.4), value: advice)
             .accessibilityElement(children: .contain)
