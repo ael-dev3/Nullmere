@@ -19,7 +19,7 @@ struct GuidePanel: View {
                                 .accessibilityAddTraits(.isHeader)
                             ForEach(section.lines, id: \.self) { line in
                                 Text(verbatim: line)
-                                    .font(.system(size: 11.5, weight: .light))
+                                    .font(.nm(11.5, weight: .light))
                                     .foregroundStyle(Palette.ink.opacity(0.82))
                                     .fixedSize(horizontal: false, vertical: true)
                             }

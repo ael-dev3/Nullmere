@@ -18,7 +18,7 @@ struct ChroniclePanel: View {
                         let entry = item.element
                         HStack(alignment: .firstTextBaseline, spacing: 10) {
                             Text(verbatim: "\(entry.watch)")
-                                .font(.system(size: 10).monospacedDigit())
+                                .font(.nm(10).monospacedDigit())
                                 .foregroundStyle(Palette.ink.opacity(0.35))
                                 .frame(width: 26, alignment: .trailing)
                             VStack(alignment: .leading, spacing: 3) {
@@ -30,12 +30,12 @@ struct ChroniclePanel: View {
                                     }
                                 }
                                 Text(verbatim: entry.text)
-                                    .font(.system(size: 11.5, weight: weight(entry.kind)))
+                                    .font(.nm(11.5, weight: weight(entry.kind)))
                                     .foregroundStyle(Palette.ink.opacity(entry.kind == .ending ? 1 : 0.78))
                                     .fixedSize(horizontal: false, vertical: true)
                                 if let spoken = session.spoken[.chronicle(item.offset)] {
                                     Text(verbatim: spoken)
-                                        .font(.system(size: 11.5, weight: .light).italic())
+                                        .font(.nm(11.5, weight: .light).italic())
                                         .foregroundStyle(Palette.glow.opacity(0.9))
                                         .fixedSize(horizontal: false, vertical: true)
                                 }

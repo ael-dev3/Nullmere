@@ -37,7 +37,7 @@ struct PanelTitle: View {
                 .accessibilityAddTraits(.isHeader)
             if let subtitle {
                 Text(verbatim: subtitle)
-                    .font(.system(size: 11))
+                    .font(.nm(11))
                     .foregroundStyle(Palette.ink.opacity(0.6))
             }
         }
@@ -83,7 +83,7 @@ private struct OwnHoldPanel: View {
                         Caps("Ward", size: 8.5).foregroundStyle(Palette.ink.opacity(0.5))
                         Spacer()
                         Text(verbatim: "\(hold.ward) / \(hold.maximumWard)")
-                            .font(.system(size: 10.5).monospacedDigit())
+                            .font(.nm(10.5).monospacedDigit())
                             .foregroundStyle(Palette.ink.opacity(0.75))
                     }
                     Meter(fraction: Double(hold.ward) / Double(max(hold.maximumWard, 1)))
@@ -144,7 +144,7 @@ private struct ProgressLine: View {
             HStack {
                 Caps(title, size: 9.5, weight: .medium).foregroundStyle(Palette.glow)
                 Spacer()
-                Text(verbatim: detail).font(.system(size: 10.5)).foregroundStyle(Palette.ink.opacity(0.65))
+                Text(verbatim: detail).font(.nm(10.5)).foregroundStyle(Palette.ink.opacity(0.65))
             }
             Meter(fraction: fraction)
         }
@@ -175,16 +175,16 @@ private struct BuildingRow: View {
             }
             if next <= kind.maxLevel {
                 Text(verbatim: kind.effect(atLevel: next))
-                    .font(.system(size: 10.5))
+                    .font(.nm(10.5))
                     .foregroundStyle(Palette.ink.opacity(0.55))
                 HStack(spacing: 10) {
                     CostLine(cost: kind.cost(toLevel: next), available: stock)
                     Text(verbatim: "\(kind.buildWatches(toLevel: next)) watches")
-                        .font(.system(size: 10))
+                        .font(.nm(10))
                         .foregroundStyle(Palette.ink.opacity(0.45))
                 }
             } else {
-                Text(verbatim: "Complete").font(.system(size: 10.5)).foregroundStyle(Palette.ink.opacity(0.45))
+                Text(verbatim: "Complete").font(.nm(10.5)).foregroundStyle(Palette.ink.opacity(0.45))
             }
         }
         .padding(.vertical, 2)
@@ -220,7 +220,7 @@ private struct TrainingRow: View {
             HStack(alignment: .firstTextBaseline) {
                 Caps(kind.title, size: 9.5, weight: .medium).foregroundStyle(Palette.ink.opacity(allowed ? 0.9 : 0.4))
                 Text(verbatim: kind.isMilitary ? "\(kind.attack) attack · \(kind.defense) defence · \(kind.movement) moves" : "\(kind.movement) moves")
-                    .font(.system(size: 10))
+                    .font(.nm(10))
                     .foregroundStyle(Palette.ink.opacity(0.45))
                 Spacer()
                 QuietButton(title: "Train", size: 8.5, enabled: allowed && hold.training == nil && stock.covers(cost)) {
@@ -231,12 +231,12 @@ private struct TrainingRow: View {
                 HStack(spacing: 10) {
                     CostLine(cost: cost, available: stock)
                     Text(verbatim: "\(kind.trainWatches) watch\(kind.trainWatches == 1 ? "" : "es")")
-                        .font(.system(size: 10))
+                        .font(.nm(10))
                         .foregroundStyle(Palette.ink.opacity(0.45))
                 }
             } else {
                 Text(verbatim: "Needs a Muster Hall \(Narration.roman(kind.requiredMuster))")
-                    .font(.system(size: 10.5))
+                    .font(.nm(10.5))
                     .foregroundStyle(Palette.ink.opacity(0.4))
             }
         }
@@ -263,9 +263,9 @@ private struct BarterRow: View {
                 .labelsHidden()
                 .frame(width: 96)
                 Stepper(value: $amount, in: 10...500, step: 10) {
-                    Text(verbatim: "\(amount)").font(.system(size: 11).monospacedDigit())
+                    Text(verbatim: "\(amount)").font(.nm(11).monospacedDigit())
                 }
-                Text(verbatim: "for").font(.system(size: 10.5)).foregroundStyle(Palette.ink.opacity(0.5))
+                Text(verbatim: "for").font(.nm(10.5)).foregroundStyle(Palette.ink.opacity(0.5))
                 Picker("Give", selection: $give) {
                     ForEach(Resource.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
@@ -274,7 +274,7 @@ private struct BarterRow: View {
             }
             HStack {
                 Text(verbatim: "Costs \(price) \(give.title.lowercased())")
-                    .font(.system(size: 10.5))
+                    .font(.nm(10.5))
                     .foregroundStyle(stock[give] >= price ? Palette.ink.opacity(0.6) : Palette.bad)
                 Spacer()
                 QuietButton(title: "Barter", size: 8.5, enabled: give != take && stock[give] >= price) {
@@ -298,20 +298,20 @@ private struct ForeignHoldPanel: View {
                 Caps(stance.title, size: 9, weight: .medium).foregroundStyle(stance == .war ? Palette.bad : Palette.ink.opacity(0.7))
                 Spacer()
                 if session.isVisible(hold.position) {
-                    Text(verbatim: "Ward \(hold.ward) / \(hold.maximumWard)").font(.system(size: 10.5)).foregroundStyle(Palette.ink.opacity(0.6))
+                    Text(verbatim: "Ward \(hold.ward) / \(hold.maximumWard)").font(.nm(10.5)).foregroundStyle(Palette.ink.opacity(0.6))
                 } else {
-                    Text(verbatim: "Out of sight").font(.system(size: 10.5)).foregroundStyle(Palette.ink.opacity(0.45))
+                    Text(verbatim: "Out of sight").font(.nm(10.5)).foregroundStyle(Palette.ink.opacity(0.45))
                 }
             }
             if hold.level(.moonspire) > 0 {
                 Text(verbatim: "Its Moonspire rises: stage \(hold.level(.moonspire)) of \(BuildingKind.moonspire.maxLevel).")
-                    .font(.system(size: 11))
+                    .font(.nm(11))
                     .foregroundStyle(Palette.glow)
             }
             Text(verbatim: stance == .war
                  ? "Break its ward with Spears, Riders or Bows; Spears or Riders take it once the ward falls."
                  : "You are not at war. Declare war in Houses to march on it.")
-                .font(.system(size: 10.5))
+                .font(.nm(10.5))
                 .foregroundStyle(Palette.ink.opacity(0.55))
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -350,7 +350,7 @@ private struct UnitPanel: View {
 
             if mine {
                 Text(verbatim: hint(for: unit))
-                    .font(.system(size: 10.5))
+                    .font(.nm(10.5))
                     .foregroundStyle(Palette.ink.opacity(0.55))
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 4) {
@@ -403,7 +403,7 @@ private struct Stat: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(verbatim: value).font(.system(size: 14, weight: .light).monospacedDigit()).foregroundStyle(Palette.ink)
+            Text(verbatim: value).font(.nm(14, weight: .light).monospacedDigit()).foregroundStyle(Palette.ink)
             Caps(label, size: 7.5).foregroundStyle(Palette.ink.opacity(0.45))
         }
         .accessibilityElement(children: .combine)
@@ -424,7 +424,7 @@ private struct TilePanel: View {
                 let yield = tile.yield
                 if yield.isZero {
                     Text(verbatim: tile.terrain.isWater ? "Dead water. Nothing lives in it, and nothing grows." : "Bare ground.")
-                        .font(.system(size: 10.5))
+                        .font(.nm(10.5))
                         .foregroundStyle(Palette.ink.opacity(0.55))
                 } else {
                     HStack {
@@ -437,7 +437,7 @@ private struct TilePanel: View {
                     Caps("Moves", size: 8.5).foregroundStyle(Palette.ink.opacity(0.5))
                     Spacer()
                     Text(verbatim: tile.terrain.isPassable ? "\(tile.terrain.moveCost)" : "Impassable")
-                        .font(.system(size: 10.5))
+                        .font(.nm(10.5))
                         .foregroundStyle(Palette.ink.opacity(0.7))
                 }
                 if tile.terrain.defenseBonus != 0 {
@@ -445,13 +445,13 @@ private struct TilePanel: View {
                         Caps("Defence", size: 8.5).foregroundStyle(Palette.ink.opacity(0.5))
                         Spacer()
                         Text(verbatim: "\(tile.terrain.defenseBonus > 0 ? "+" : "")\(tile.terrain.defenseBonus)%")
-                            .font(.system(size: 10.5))
+                            .font(.nm(10.5))
                             .foregroundStyle(Palette.ink.opacity(0.7))
                     }
                 }
                 if let owner = state.territoryOwner(of: hex) {
                     Text(verbatim: "Land of \(state.houses[owner].title)")
-                        .font(.system(size: 10.5))
+                        .font(.nm(10.5))
                         .foregroundStyle(Palette.house(state.houses[owner]))
                 }
             } else {

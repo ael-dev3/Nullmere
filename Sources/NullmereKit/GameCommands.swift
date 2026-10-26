@@ -37,6 +37,8 @@ public struct GameCommands: Commands {
                 .keyboardShortcut("m", modifiers: [.command, .shift])
             Toggle("Music", isOn: Binding(get: { app.isMusicOn }, set: { app.isMusicOn = $0 }))
                 .keyboardShortcut("u", modifiers: [.command, .shift])
+            Toggle("Larger Text", isOn: Binding(get: { TextSize.shared.isLarger }, set: { TextSize.shared.isLarger = $0 }))
+                .keyboardShortcut("+", modifiers: [.command, .shift])
             Divider()
             Button("Houses") { toggle(.houses) }
                 .disabled(app.session == nil)

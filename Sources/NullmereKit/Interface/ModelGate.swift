@@ -32,7 +32,7 @@ struct ModelGate: View {
                     .foregroundStyle(Palette.ink)
                     .accessibilityAddTraits(.isHeader)
                 Text(verbatim: app.readiness.explanation)
-                    .font(.system(size: 13, weight: .light))
+                    .font(.nm(13, weight: .light))
                     .foregroundStyle(Palette.ink.opacity(0.7))
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 440)

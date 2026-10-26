@@ -21,7 +21,7 @@ struct WatchCard: View {
                         HStack(spacing: 4) {
                             ResourceGlyph(resource: change.resource)
                             Text(verbatim: change.delta > 0 ? "+\(change.delta)" : "\(change.delta)")
-                                .font(.system(size: 12).monospacedDigit())
+                                .font(.nm(12).monospacedDigit())
                                 .foregroundStyle(change.delta > 0 ? Palette.good : Palette.bad)
                         }
                     }
@@ -29,7 +29,7 @@ struct WatchCard: View {
             }
             if !summary.events.isEmpty {
                 Text(verbatim: summary.events.joined(separator: "  ·  "))
-                    .font(.system(size: 12, weight: .light))
+                    .font(.nm(12, weight: .light))
                     .foregroundStyle(Palette.ink.opacity(0.85))
             }
         }

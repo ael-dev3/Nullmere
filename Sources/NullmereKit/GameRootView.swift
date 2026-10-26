@@ -146,7 +146,7 @@ struct PlayView: View {
 private struct KeyHints: View {
     var body: some View {
         Text(verbatim: "? guide · Tab next company · ⌘↩ end watch")
-            .font(.system(size: 10))
+            .font(.nm(10))
             .foregroundStyle(Palette.ink.opacity(0.4))
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
@@ -168,7 +168,7 @@ private struct CounselCard: View {
                     .foregroundStyle(Palette.glow)
                     .padding(.top, 2)
                 Text(verbatim: advice)
-                    .font(.system(size: 11.5, weight: .light))
+                    .font(.nm(11.5, weight: .light))
                     .foregroundStyle(Palette.ink.opacity(0.85))
                     .fixedSize(horizontal: false, vertical: true)
                     .id(advice)

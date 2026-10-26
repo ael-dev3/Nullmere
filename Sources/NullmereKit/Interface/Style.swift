@@ -50,8 +50,8 @@ struct Caps: View {
 
     var body: some View {
         Text(verbatim: text.uppercased())
-            .font(.system(size: size, weight: weight))
-            .tracking(size * tracking)
+            .font(.nm(size, weight: weight))
+            .tracking(size * TextSize.shared.scale * tracking)
     }
 }
 
@@ -133,7 +133,7 @@ struct CostLine: View {
                     HStack(spacing: 3) {
                         ResourceGlyph(resource: resource)
                         Text(verbatim: "\(cost[resource])")
-                            .font(.system(size: 11, weight: .regular).monospacedDigit())
+                            .font(.nm(11, weight: .regular).monospacedDigit())
                     }
                     .foregroundStyle(available[resource] >= cost[resource] ? Palette.ink.opacity(0.75) : Palette.bad)
                 }

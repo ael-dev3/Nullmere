@@ -131,7 +131,7 @@ struct WorldMarks: View {
                 context.stroke(ring, with: .color(Palette.ink.opacity(0.7)), lineWidth: 1.2)
                 if watch > 0 {
                     context.draw(
-                        Text(verbatim: "\(watch + 1)").font(.system(size: 10, weight: .medium)).foregroundStyle(Palette.ink.opacity(0.85)),
+                        Text(verbatim: "\(watch + 1)").font(.nm(10, weight: .medium)).foregroundStyle(Palette.ink.opacity(0.85)),
                         at: CGPoint(x: end.x, y: end.y - 14)
                     )
                 }
@@ -171,7 +171,7 @@ struct WorldMarks: View {
                 context.stroke(ring, with: .color(colour.opacity(0.75 * fade)), lineWidth: 1.6)
                 context.draw(
                     Text(verbatim: "−\(blow.damage)")
-                        .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                        .font(.nm(12, weight: .semibold).monospacedDigit())
                         .foregroundStyle(colour.opacity(fade)),
                     at: CGPoint(x: point.x, y: point.y - scale * 0.6 - 18 * age)
                 )
@@ -215,7 +215,7 @@ struct WorldMarks: View {
                 }
                 if scale >= 18 {
                     let name = Text(verbatim: hold.name.uppercased())
-                        .font(.system(size: min(max(scale * 0.3, 8.5), 12), weight: .medium))
+                        .font(.nm(min(max(scale * 0.3, 8.5), 12), weight: .medium))
                         .tracking(1.6)
                     let at = CGPoint(x: point.x, y: point.y + r * 1.15 + 11)
                     var shadow = context
@@ -395,10 +395,10 @@ private struct ForecastCard: View {
                 line("You take", range: forecast.taken, of: forecast.attackerHealth,
                      colour: forecast.mayFall ? Palette.bad : Palette.ink.opacity(0.8))
             } else {
-                Text(verbatim: "Out of their reach").font(.system(size: 10)).foregroundStyle(Palette.ink.opacity(0.55))
+                Text(verbatim: "Out of their reach").font(.nm(10)).foregroundStyle(Palette.ink.opacity(0.55))
             }
             if let verdict {
-                Text(verbatim: verdict).font(.system(size: 10, weight: .medium)).foregroundStyle(Palette.glow)
+                Text(verbatim: verdict).font(.nm(10, weight: .medium)).foregroundStyle(Palette.glow)
             }
         }
         .padding(.horizontal, 10)
@@ -427,9 +427,9 @@ private struct ForecastCard: View {
         HStack(spacing: 6) {
             Caps(label, size: 7.5).foregroundStyle(Palette.ink.opacity(0.5))
             Text(verbatim: range.lowerBound == range.upperBound ? "\(range.lowerBound)" : "\(range.lowerBound)–\(range.upperBound)")
-                .font(.system(size: 11).monospacedDigit())
+                .font(.nm(11).monospacedDigit())
                 .foregroundStyle(colour)
-            Text(verbatim: "of \(total)").font(.system(size: 10)).foregroundStyle(Palette.ink.opacity(0.45))
+            Text(verbatim: "of \(total)").font(.nm(10)).foregroundStyle(Palette.ink.opacity(0.45))
         }
     }
 }

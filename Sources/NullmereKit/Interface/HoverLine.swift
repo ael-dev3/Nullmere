@@ -40,7 +40,7 @@ struct HoverLine: View {
         if session.hoverForecast == nil, let hex = session.hovered,
            let line = HoverInfo.line(for: hex, in: session.state, explored: session.isExplored(hex), territory: session.territory) {
             Text(verbatim: line)
-                .font(.system(size: 11, weight: .light))
+                .font(.nm(11, weight: .light))
                 .foregroundStyle(Palette.ink.opacity(0.85))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)

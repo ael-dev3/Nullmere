@@ -64,7 +64,7 @@ struct TitleScreen: View {
                 .overlay(alignment: .bottom) {
                     if let notice = app.saveNotice {
                         Text(verbatim: notice)
-                            .font(.system(size: 11, weight: .light))
+                            .font(.nm(11, weight: .light))
                             .foregroundStyle(Palette.bad)
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: 420)
@@ -110,7 +110,7 @@ private struct NewWorldForm: View {
                 HStack(spacing: 8) {
                     TextField("Words that name the world", text: $seed)
                         .textFieldStyle(.plain)
-                        .font(.system(size: 13, weight: .light))
+                        .font(.nm(13, weight: .light))
                         .foregroundStyle(Palette.ink)
                         .frame(width: 220)
                         .padding(.vertical, 4)
@@ -120,7 +120,7 @@ private struct NewWorldForm: View {
                         seed = SeedWords.random()
                     } label: {
                         Image(systemName: "dice")
-                            .font(.system(size: 12, weight: .light))
+                            .font(.nm(12, weight: .light))
                             .foregroundStyle(Palette.ink.opacity(0.7))
                     }
                     .buttonStyle(.plain)

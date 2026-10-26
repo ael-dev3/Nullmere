@@ -111,6 +111,7 @@ builds also take:
 | `NULLMERE_NEWS_URL` | Another `https` news feed, such as a branch's copy |
 | `NULLMERE_GAME_APP` | The game app Play opens, such as a freshly built `build/Nullmere.app` |
 | `NULLMERE_NEW_GAME` | Start a world on these words at once |
+| `NULLMERE_TEXT` | `larger`: show the larger type without remembering it |
 | `NULLMERE_SHOW` | `seat`, `unit`, `houses`, `chronicle`, `guide`: select the seat or a company, open a panel; `watch`: end a watch after `NULLMERE_WATCH_AFTER` seconds (12.5) |
 | `NULLMERE_AUTOPLAY` | Let a steward play this many watches first |
 
@@ -231,6 +232,10 @@ rival Houses move, holds yield, works rise and companies march on.
 
 Rivals play Gentle, Even or Merciless: poorer and slow to make war on you,
 on the same footing as you, or richer and quick to press you.
+
+Larger Text (⇧⌘+, in the Watch menu) sets all the game's type a fifth
+larger; the panels grow to hold it. VoiceOver reads the map, the panels
+and every notice.
 
 The world is made from a few words: the same words make the same lake.
 The game saves itself after every watch.

@@ -1,5 +1,6 @@
 import AppKit
 import Metal
+import SwiftUI
 import LauncherCore
 import NullmereCore
 import XCTest
@@ -560,5 +561,55 @@ final class CueMappingTests: XCTestCase {
         XCTAssertEqual(GameSession.cues(for: [.stanceChanged(first: 0, second: 2, stance: .peace, by: 2)], player: player), [.watch, .accord])
         XCTAssertEqual(GameSession.cues(for: [.stanceChanged(first: 1, second: 2, stance: .war, by: 2)], player: player), [.watch],
                        "Others' wars are silent")
+    }
+}
+
+@MainActor
+final class TextSizeTests: XCTestCase {
+    override func tearDown() {
+        TextSize.shared.isLarger = false
+        super.tearDown()
+    }
+
+    private func size(of view: some View) throws -> CGSize {
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 1
+        let image = try XCTUnwrap(renderer.cgImage)
+        return CGSize(width: image.width, height: image.height)
+    }
+
+    func testTheChoiceIsRemembered() {
+        TextSize.shared.isLarger = true
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: "text.larger"))
+        XCTAssertEqual(TextSize.shared.scale, TextSize.largerScale)
+        TextSize.shared.isLarger = false
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: "text.larger"))
+        XCTAssertEqual(TextSize.shared.scale, 1)
+    }
+
+    func testLargerTextEnlargesTheType() throws {
+        TextSize.shared.isLarger = false
+        let standard = try size(of: Caps("The Moonspire rises", size: 10).fixedSize())
+        TextSize.shared.isLarger = true
+        let larger = try size(of: Caps("The Moonspire rises", size: 10).fixedSize())
+        XCTAssertGreaterThan(larger.width, standard.width * 1.15)
+        XCTAssertGreaterThan(larger.height, standard.height)
+    }
+
+    /// The panels keep their width and grow downward: nothing is cut off.
+    func testThePanelsGrowWithTheType() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "larger text")), store: SaveStore(directory: dir))
+        session.autoplay(watches: 20)
+        session.focusOnSeat()
+        XCTAssertNotNil(session.selectedHold)
+
+        TextSize.shared.isLarger = false
+        let standard = try size(of: SelectionPanel(session: session).fixedSize(horizontal: false, vertical: true))
+        TextSize.shared.isLarger = true
+        let larger = try size(of: SelectionPanel(session: session).fixedSize(horizontal: false, vertical: true))
+        XCTAssertEqual(larger.width, standard.width, "The panel keeps its width")
+        XCTAssertGreaterThan(larger.height, standard.height, "and grows to hold the larger type")
     }
 }

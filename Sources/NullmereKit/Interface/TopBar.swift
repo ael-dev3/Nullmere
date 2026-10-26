@@ -73,10 +73,10 @@ private struct ResourceReadout: View {
             VStack(alignment: .leading, spacing: 1) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(verbatim: "\(amount)")
-                        .font(.system(size: 13, weight: .regular).monospacedDigit())
+                        .font(.nm(13, weight: .regular).monospacedDigit())
                         .foregroundStyle(amount >= room ? Palette.glow : Palette.ink)
                     Text(verbatim: net >= 0 ? "+\(net)" : "\(net)")
-                        .font(.system(size: 10, weight: .regular).monospacedDigit())
+                        .font(.nm(10, weight: .regular).monospacedDigit())
                         .foregroundStyle(net < 0 ? Palette.bad : Palette.good.opacity(0.85))
                 }
                 Caps(amount >= room ? "\(resource.title) · full" : resource.title, size: 7.5, tracking: 0.26)
@@ -103,7 +103,7 @@ struct EndWatchButton: View {
             .keyboardShortcut(.return, modifiers: .command)
             if waiting > 0 || idle > 0 {
                 Text(verbatim: waitingText(units: waiting, holds: idle))
-                    .font(.system(size: 9))
+                    .font(.nm(9))
                     .foregroundStyle(Palette.ink.opacity(0.5))
             }
         }
@@ -129,7 +129,7 @@ struct NoticeFeed: View {
                         .fill(Palette.tone(notice.tone))
                         .frame(width: 4, height: 4)
                     Text(verbatim: notice.text)
-                        .font(.system(size: 11.5, weight: .regular))
+                        .font(.nm(11.5, weight: .regular))
                         .foregroundStyle(Palette.ink.opacity(0.88))
                         .lineLimit(2)
                 }

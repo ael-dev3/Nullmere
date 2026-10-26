@@ -57,7 +57,7 @@ private struct HouseRow: View {
             }
             if !house.isEliminated {
                 Text(verbatim: summary(stance: stance, relation: relation, spire: spire))
-                    .font(.system(size: 10.5))
+                    .font(.nm(10.5))
                     .foregroundStyle(Palette.ink.opacity(0.55))
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 14) {
@@ -113,7 +113,7 @@ private struct Figure: View {
     var body: some View {
         HStack(spacing: 4) {
             Caps(label, size: 7.5).foregroundStyle(Palette.ink.opacity(0.45))
-            Text(verbatim: "\(value)").font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Palette.ink.opacity(0.8))
+            Text(verbatim: "\(value)").font(.nm(10.5).monospacedDigit()).foregroundStyle(Palette.ink.opacity(0.8))
         }
         .accessibilityElement(children: .combine)
     }
@@ -127,7 +127,7 @@ struct CloseButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "xmark")
-                .font(.system(size: 9, weight: .light))
+                .font(.nm(9, weight: .light))
                 .foregroundStyle(Palette.ink.opacity(hovering ? 0.95 : 0.5))
                 .frame(width: 22, height: 22)
                 .contentShape(Rectangle())
@@ -155,18 +155,18 @@ struct EnvoyCards: View {
                     }
                     if let spoken = session.spoken[.envoy(envoy.id)] {
                         Text(verbatim: "“\(spoken)”")
-                            .font(.system(size: 12, weight: .light).italic())
+                            .font(.nm(12, weight: .light).italic())
                             .foregroundStyle(Palette.ink.opacity(0.88))
                             .fixedSize(horizontal: false, vertical: true)
                             .transition(.opacity)
                     }
                     Text(verbatim: words(for: envoy.proposal, from: house))
-                        .font(.system(size: 10.5))
+                        .font(.nm(10.5))
                         .foregroundStyle(Palette.ink.opacity(session.spoken[.envoy(envoy.id)] == nil ? 0.7 : 0.5))
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 4) {
                         Text(verbatim: left == 1 ? "Leaves after this watch" : "Waits \(left) watches")
-                            .font(.system(size: 10))
+                            .font(.nm(10))
                             .foregroundStyle(Palette.ink.opacity(0.4))
                         Spacer()
                         QuietButton(title: "Refuse", size: 8.5) { session.perform(.answer(envoy: envoy.id, accept: false)) }

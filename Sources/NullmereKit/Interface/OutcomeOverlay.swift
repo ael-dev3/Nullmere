@@ -22,7 +22,7 @@ struct OutcomeOverlay: View {
                         .accessibilityAddTraits(.isHeader)
                     Rule(opacity: 0.4).frame(width: 280)
                     Text(verbatim: description(winner: winner, won: won))
-                        .font(.system(size: 13, weight: .light))
+                        .font(.nm(13, weight: .light))
                         .foregroundStyle(Palette.ink.opacity(0.75))
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 440)

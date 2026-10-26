@@ -61,7 +61,8 @@ SAVE="$HOME/Library/Application Support/Nullmere/autosave.json"
 [ -f "$SAVE" ] && mv "$SAVE" "$SAVE.smoke-backup"
 run build/game-world.png "$SEED" 0 unit,houses
 WORLD_LOG="$LOG"
-NULLMERE_WATCH_AFTER=9 run build/game-later.png "$SEED" 40 watch
+# Later in the game, with the larger type a reader can choose.
+NULLMERE_TEXT=larger NULLMERE_WATCH_AFTER=9 run build/game-later.png "$SEED" 40 seat,watch
 rm -f "$SAVE"
 [ -f "$SAVE.smoke-backup" ] && mv "$SAVE.smoke-backup" "$SAVE"
 
