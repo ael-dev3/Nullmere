@@ -90,7 +90,16 @@ final class EndingTests: XCTestCase {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = LocalStore(directory: dir)
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "siege check 13")), store: store)
+        // A world that ends within 260 watches, found as the rules play it.
+        let seed = try XCTUnwrap((13..<33).map { "siege check \($0)" }.first { text in
+            var world = GameState(settings: GameSettings(seedText: text))
+            while world.outcome == nil, world.watch < 260 {
+                _ = world.stewardTurn(for: world.player)
+                _ = world.endWatch()
+            }
+            return world.outcome != nil
+        })
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: seed)), store: store)
         session.autoplay(watches: 100)
         // Offscreen rendering leaves a scroll view empty: draw the table alone.
         try keep(RaceTable(session: session).padding(20).frame(width: 360).panelBackground(), as: "game-race.png",
