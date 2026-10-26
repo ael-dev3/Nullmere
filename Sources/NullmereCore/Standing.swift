@@ -32,6 +32,12 @@ public struct Snapshot: Codable, Equatable, Sendable {
     public let holds: [Int]
     /// Each House's strength, by House id.
     public let strength: [Int]
+
+    public init(watch: Int, holds: [Int], strength: [Int]) {
+        self.watch = watch
+        self.holds = holds
+        self.strength = strength
+    }
 }
 
 extension GameState {
