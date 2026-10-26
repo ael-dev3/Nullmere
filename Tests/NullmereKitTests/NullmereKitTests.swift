@@ -393,3 +393,39 @@ final class GuideTests: XCTestCase {
         XCTAssertEqual(event.flatMap(KeyBridgeView.key(for:)), .guide)
     }
 }
+
+@MainActor
+final class WatchCardTests: XCTestCase {
+    func testTheCardTellsWhatTheWatchBroughtThenFades() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "card", houseCount: 3, radius: 16)),
+                                  store: SaveStore(directory: dir))
+        let before = session.playerHouse.stock
+        session.endWatch()
+        let card = try XCTUnwrap(session.watchCard)
+        XCTAssertEqual(card.summary.watch, 2)
+        for change in card.summary.changes {
+            XCTAssertEqual(session.playerHouse.stock[change.resource] - before[change.resource], change.delta)
+        }
+        XCTAssertFalse(card.summary.changes.isEmpty, "The first watch brings something in")
+        XCTAssertLessThanOrEqual(card.summary.events.count, 3)
+        try await Task.sleep(for: .seconds(GameSession.watchCardDuration + 0.3))
+        XCTAssertNil(session.watchCard)
+    }
+
+    func testTheSummaryNamesWhatTouchedThePlayer() {
+        var state = GameState(settings: GameSettings(seedText: "summary", houseCount: 3, radius: 16))
+        let before = state
+        _ = state.endWatch()
+        let battle = Battle(attacker: 1, attackerOwner: state.player, attackerKind: .spear, defender: 2, defenderOwner: 1,
+                            defenderKind: .spear, hold: nil, at: Hex(0, 0), damageDealt: 10, damageTaken: 5,
+                            attackerFell: false, defenderFell: false)
+        let elsewhere = Battle(attacker: 3, attackerOwner: 1, attackerKind: .spear, defender: 4, defenderOwner: 2,
+                               defenderKind: .spear, hold: nil, at: Hex(0, 0), damageDealt: 10, damageTaken: 5,
+                               attackerFell: false, defenderFell: false)
+        let summary = WatchSummary(before: before, after: state, events: [.battle(battle), .battle(battle), .battle(elsewhere)],
+                                   player: state.player)
+        XCTAssertEqual(summary.events.first, "2 battles", "Only the player's battles count")
+    }
+}

@@ -49,6 +49,8 @@ struct PlayView: View {
         ZStack {
             WorldView(session: session)
                 .ignoresSafeArea()
+            MapVignette()
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 TopBar(session: session)
@@ -80,6 +82,13 @@ struct PlayView: View {
                 .padding(16)
                 .animation(.easeOut(duration: 0.2), value: session.panel)
                 .animation(.easeOut(duration: 0.3), value: session.state.envoys)
+            }
+
+            if let card = session.watchCard {
+                WatchCard(summary: card.summary)
+                    .id(card.id)
+                    .transition(.opacity)
+                    .allowsHitTesting(false)
             }
 
             HoverLine(session: session)

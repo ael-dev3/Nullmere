@@ -110,6 +110,10 @@ public final class GameSession {
         public static let duration = 1.4
     }
 
+    /// The card marking the watch that just began, while it shows.
+    private(set) var watchCard: (id: Int, summary: WatchSummary)?
+    private var watchCardCounter = 0
+
     /// Blows still being drawn.
     public private(set) var blows: [Blow] = []
     private var blowCounter = 0
@@ -276,7 +280,9 @@ public final class GameSession {
         isEndingWatch = true
         let before = positions()
         undoStack.removeAll()
+        let previous = state
         let events = state.endWatch()
+        showWatchCard(WatchSummary(before: previous, after: state, events: events, player: player))
         showMarches(events, from: before)
         showBlows(events)
         onCue?(.watch)
@@ -396,6 +402,22 @@ public final class GameSession {
         case .stanceChanged(let first, let second, .war, let by): return by != player && (first == player || second == player)
         case .houseFell: return true
         default: return false
+        }
+    }
+
+    // MARK: The watch's card
+
+    static let watchCardDuration = 2.6
+
+    private func showWatchCard(_ summary: WatchSummary) {
+        guard state.outcome == nil else { return }
+        watchCardCounter += 1
+        let id = watchCardCounter
+        withAnimation(.easeOut(duration: 0.5)) { watchCard = (id, summary) }
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Self.watchCardDuration))
+            guard let self, self.watchCard?.id == id else { return }
+            withAnimation(.easeIn(duration: 0.8)) { self.watchCard = nil }
         }
     }
 
