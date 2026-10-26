@@ -64,6 +64,16 @@ enum WorldShader {
         return v;
     }
 
+    // Three octaves, for shapes too broad or too subtle to need a fourth.
+    float nm_fbm3(float2 p) {
+        float v = 0.5 * nm_noise(p);
+        p = p * 2.07 + float2(13.1, 7.7);
+        v += 0.25 * nm_noise(p);
+        p = p * 2.07 + float2(13.1, 7.7);
+        v += 0.125 * nm_noise(p);
+        return v / 0.875 * 0.9375;
+    }
+
     // The hex containing a world point, as axial (q, r), for unit-sized hexes.
     float2 nm_hexAt(float2 w) {
         float q = (NM_ROOT3 / 3.0 * w.x - w.y / 3.0);
@@ -163,10 +173,10 @@ enum WorldShader {
     // Height for moonlit relief.
     float nm_height(float t, float2 w) {
         if (t < 1.5) { return 0.0; }
-        if (t > 6.5) { return 1.4 * nm_fbm(w * 1.1) + 0.35 * nm_noise(w * 3.6); }
-        if (t > 5.5) { return 0.42 * nm_fbm(w * 1.7) + 0.06 * nm_noise(w * 8.0); }
-        if (t > 4.5) { return 0.22 * nm_fbm(w * 4.8) + 0.05 * nm_noise(w * 12.0); }
-        return 0.07 * nm_fbm(w * 2.0);
+        if (t > 6.5) { return 1.4 * nm_fbm3(w * 1.1) + 0.35 * nm_noise(w * 3.6); }
+        if (t > 5.5) { return 0.42 * nm_fbm3(w * 1.7) + 0.06 * nm_noise(w * 8.0); }
+        if (t > 4.5) { return 0.22 * nm_fbm3(w * 4.8) + 0.05 * nm_noise(w * 12.0); }
+        return 0.07 * nm_fbm3(w * 2.0);
     }
 
     // The still water: black glass holding the stars and the moon.
@@ -243,7 +253,7 @@ enum WorldShader {
         // by distance through a gentle warp, so terrains shade into each other
         // and shores curve like real country. Hex centres always show their own
         // terrain; borders, fog and selection keep to the true grid.
-        float2 warp = float2(nm_fbm(w * 0.55 + float2(1.7, 9.2)), nm_fbm(w * 0.55 + float2(8.3, 2.8))) - 0.5;
+        float2 warp = float2(nm_fbm3(w * 0.55 + float2(1.7, 9.2)), nm_fbm3(w * 0.55 + float2(8.3, 2.8))) - 0.5;
         float2 ws = w + warp * 0.95 + (float2(nm_noise(w * 2.6), nm_noise(w * 2.6 + 5.0)) - 0.5) * 0.25;
         float total = 0.0;
         float land = 0.0;
@@ -283,15 +293,14 @@ enum WorldShader {
         }
         // Fog first: where nothing is known, the mist is all there is, and
         // none of the country beneath it needs drawing.
-        float fogNoise = (nm_fbm(w * 1.3 + float2(3.0, 1.0)) - 0.5) * 0.3;
+        float fogNoise = (nm_fbm3(w * 1.3 + float2(3.0, 1.0)) - 0.5) * 0.3;
         float isKnown = smoothstep(0.38, 0.62, known / max(total, 0.0001) + fogNoise);
         float isWatched = smoothstep(0.38, 0.62, watched / max(total, 0.0001) + fogNoise);
-        float3 unknown = nm_mist(w, time);
         if (isKnown < 0.001) {
-            return unknown + (nm_hash(px + fract(time * 3.7) * 61.0) - 0.5) / 255.0;
+            return nm_mist(w, time) + (nm_hash(px + fract(time * 3.7) * 61.0) - 0.5) / 255.0;
         }
 
-        float landness = land / max(total, 0.0001) + (nm_fbm(w * 3.1 + float2(2.0, 7.0)) - 0.5) * 0.18;
+        float landness = land / max(total, 0.0001) + (nm_fbm3(w * 3.1 + float2(2.0, 7.0)) - 0.5) * 0.18;
         float shore = smoothstep(0.42, 0.58, landness);
 
         float3 c;
@@ -399,7 +408,9 @@ enum WorldShader {
         // Remembered water keeps its stars; remembered land fades to grey.
         float3 remembered = mix(mix(float3(grey), c, 0.4) * 0.5 + float3(0.004, 0.005, 0.008), c * 0.85, water);
         c = mix(remembered, c, isWatched);
-        c = mix(unknown, c, isKnown);
+        if (isKnown < 0.999) {
+            c = mix(nm_mist(w, time), c, isKnown);
+        }
 
         c += (nm_hash(px + fract(time * 3.7) * 61.0) - 0.5) / 255.0;
         return max(c, float3(0.0));
