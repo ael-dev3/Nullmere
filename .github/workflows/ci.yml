@@ -163,7 +163,10 @@ jobs:
           echo "::add-mask::$token"
           NULLMERE_STEWARD_TOKEN="$token" NULLMERE_REALM_SEED="black moon" \
             nohup "$(swift build --show-bin-path)/NullmereSteward" http://127.0.0.1:3000/nullmere > build/steward.log 2>&1 &
-          sleep 5
+          for i in $(seq 1 30); do
+            grep -q "Stewarding" build/steward.log && break
+            sleep 1
+          done
           cat build/steward.log
           grep -q "Stewarding" build/steward.log
 

@@ -12,6 +12,9 @@ import NullmereRealm
 // NULLMERE_REALM_SEATS and NULLMERE_WATCH_SECONDS shape a new realm; an
 // existing one is taken up as it stands.
 
+// Each line as it's written, even into a log file.
+setvbuf(stdout, nil, _IOLBF, 0)
+
 let environment = ProcessInfo.processInfo.environment
 let arguments = CommandLine.arguments.dropFirst()
 
