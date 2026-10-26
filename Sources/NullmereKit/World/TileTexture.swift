@@ -6,6 +6,9 @@ import NullmereCore
 /// tile is unknown, remembered or watched) with the colour of the House
 /// whose territory it is.
 enum TileTexture {
+    /// Set in the feature byte where a hold stands.
+    static let holdFlag: UInt8 = 0x80
+
     static func side(for map: WorldMap) -> Int {
         2 * map.radius + 1
     }
@@ -17,6 +20,7 @@ enum TileTexture {
         let visible = state.visibility(for: viewer)
         let explored = state.houses[viewer].explored
         let owners = state.territory()
+        let holdTiles = Set(state.holds.compactMap { map.index(of: $0.position) })
         for (index, hex) in map.hexes.enumerated() {
             let tile = map[index]
             let offset = ((hex.r + map.radius) * side + (hex.q + map.radius)) * 4
@@ -27,6 +31,10 @@ enum TileTexture {
             }
             bytes[offset] = UInt8(Terrain.allCases.firstIndex(of: tile.terrain) ?? 0)
             bytes[offset + 1] = tile.feature.map { UInt8((Feature.allCases.firstIndex(of: $0) ?? 0) + 1) } ?? 0
+            // A known hold lights the country round it: the feature byte's top bit.
+            if seen > 0, holdTiles.contains(index) {
+                bytes[offset + 1] |= TileTexture.holdFlag
+            }
             bytes[offset + 2] = UInt8(clamping: tile.relief * 255 / 100)
             bytes[offset + 3] = UInt8(seen * 16 + owner)
         }

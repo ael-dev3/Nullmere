@@ -39,6 +39,13 @@ final class TileTextureTests: XCTestCase {
         let seat = try! XCTUnwrap(state.seat(of: state.player))
         let offset = ((seat.position.r + 14) * side + (seat.position.q + 14)) * 4
         XCTAssertEqual(Int(bytes[offset + 3] % 16), state.playerHouse.sigil + 1, "the seat is in its House's colour")
+        XCTAssertEqual(bytes[offset + 1] & TileTexture.holdFlag, TileTexture.holdFlag, "the seat is lit")
+        let explored = state.houses[state.player].explored
+        for hold in state.holds where hold.owner != state.player {
+            let index = try! XCTUnwrap(state.map.index(of: hold.position))
+            let o = ((hold.position.r + 14) * side + (hold.position.q + 14)) * 4
+            XCTAssertEqual(bytes[o + 1] & TileTexture.holdFlag != 0, explored[index], "only known holds are lit")
+        }
     }
 }
 

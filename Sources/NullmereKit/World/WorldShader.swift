@@ -234,6 +234,7 @@ enum WorldShader {
         float4 tile = NM_TILE(h + radius);
         float terrain = floor(tile.r * 255.0 + 0.5);
         float feature = floor(tile.g * 255.0 + 0.5);
+        if (feature > 127.5) { feature -= 128.0; }
         float packed = floor(tile.a * 255.0 + 0.5);
         float visibility = floor(packed / 16.0);
         float owner = packed - visibility * 16.0;
@@ -266,6 +267,8 @@ enum WorldShader {
         float wSpine = 0.0;
         float known = 0.0;
         float watched = 0.0;
+        // Lantern light from holds, pooling round them.
+        float lamp = 0.0;
         for (int i = 0; i < 7; i++) {
             float2 cell = h;
             if (i > 0) {
@@ -281,6 +284,10 @@ enum WorldShader {
             float weight = exp(-dot(off, off) * 2.6);
             total += weight;
             if (seen > 0.5) { known += weight; }
+            if (cellData.g * 255.0 > 127.5) {
+                float2 fromHold = w - nm_hexCentre(cell);
+                lamp += exp(-dot(fromHold, fromHold) * 2.0);
+            }
             if (seen > 1.5) { watched += weight; }
             if (t > 1.5) { land += weight; }
             if (t < 0.5) { deep += weight; }
@@ -344,6 +351,14 @@ enum WorldShader {
             ground += float3(0.10, 0.12, 0.16) * pow(lit, 6.0) * (wSalt / landTotal);
         }
         c = mix(wet, ground, shore);
+
+        // Warm lantern light round each hold: on the land, and a faint
+        // trembling reflection on the water beside it.
+        if (lamp > 0.001) {
+            float flicker = 0.92 + 0.08 * sin(time * 2.3 + nm_hash(floor(w)) * 20.0);
+            float3 lantern = float3(1.0, 0.72, 0.42);
+            c += lantern * lamp * flicker * (0.42 * shore + 0.2 * water);
+        }
 
         if (shore > 0.5) {
             // Features, on the true tile.
