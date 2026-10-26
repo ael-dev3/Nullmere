@@ -41,6 +41,8 @@ extension GameState {
             return try propose(proposal, from: house, to: target, words: Envoy.carried(words))
         case let .answer(envoyID, accept):
             return try answer(envoyID, accept: accept, as: house)
+        case let .gift(target, resource, amount):
+            return try give(resource, amount: amount, from: house, to: target)
         }
     }
 

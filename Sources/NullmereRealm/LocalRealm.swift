@@ -89,6 +89,8 @@ public final class LocalRealm {
             deliver(.settled(world(for: identity), heard(events, by: identity)), to: identity)
             for other in links.keys where other != identity {
                 deliver(.changed(world(for: other)), to: other)
+                let news = heard(events, by: other)
+                if !news.isEmpty { deliver(.heard(news), to: other) }
             }
         } catch {
             deliver(.orderRefused(error, world(for: identity)), to: identity)

@@ -560,6 +560,12 @@ public final class GameSession {
             statusHeard = Date()
         case .settled(let world, _), .changed(let world):
             adopt(world)
+        case .heard(let events):
+            // Others' doings, told as they happen.
+            report(events)
+            for cue in Self.cues(for: events, player: player) where cue != .watch {
+                onCue?(cue)
+            }
         case .orderRefused(let error, let world):
             adopt(world)
             post(error.description, tone: .bad)

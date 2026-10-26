@@ -14,6 +14,9 @@ public enum RealmEvent: Sendable {
     case orderRefused(RealmError, GameState)
     /// Someone else's order changed the world.
     case changed(GameState)
+    /// What others did that this keeper hears of, as it happens: a gift, a
+    /// war declared, an envoy sent.
+    case heard([GameEvent])
     /// The watch turned: the new world, and everything that happened.
     case watchTurned(GameState, [GameEvent])
     /// The realm can't be reached.

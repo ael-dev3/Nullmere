@@ -16,6 +16,8 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         case ending
         /// An omen falls on the realm, or lifts.
         case omen
+        /// One House sends another a generous gift.
+        case gift
     }
 
     public let watch: Int

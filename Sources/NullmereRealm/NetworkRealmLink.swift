@@ -172,8 +172,9 @@ public final class NetworkRealmLink: RealmLink {
             onEvent?(.arrived(fresh.keeper, fresh.world))
         } else if fresh.world.watch != previous.world.watch {
             onEvent?(.watchTurned(fresh.world, events))
-        } else if fresh.world != previous.world {
-            onEvent?(.changed(fresh.world))
+        } else {
+            if fresh.world != previous.world { onEvent?(.changed(fresh.world)) }
+            if !events.isEmpty { onEvent?(.heard(events)) }
         }
     }
 

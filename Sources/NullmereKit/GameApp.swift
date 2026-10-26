@@ -271,7 +271,7 @@ public final class GameApp {
             }
             isEntering = false
             door = .unreachable(reason)
-        case .settled, .orderRefused, .changed, .watchTurned:
+        case .settled, .orderRefused, .changed, .watchTurned, .heard:
             break
         }
     }

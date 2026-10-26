@@ -144,6 +144,18 @@ final class RealmClientTests: XCTestCase {
         XCTAssertNil(try XCTUnwrap(bel.envoys.first).words)
     }
 
+    func testKeepersSendEachOtherGifts() throws {
+        let realm = realm()
+        let ama = try enter(realm, as: "a", name: "Ama")
+        let bel = try enter(realm, as: "b", name: "Bel")
+        let before = bel.state.houses[bel.player].stock.grain
+        XCTAssertTrue(ama.perform(.gift(to: bel.player, resource: .grain, amount: 25)))
+        XCTAssertEqual(bel.state.houses[bel.player].stock.grain, before + 25, "Bel's world has the gift at once")
+        XCTAssertTrue(bel.notices.contains { $0.text == "House Ama sends you a gift of 25 grain." }, "\(bel.notices.map(\.text))")
+        let choices = HouseRow.giftChoices(from: Stock(grain: 30, timber: 9, stone: 50, moonsalt: 4))
+        XCTAssertEqual(choices.map { "\($0.amount) \($0.resource.title)" }, ["10 Grain", "25 Grain", "10 Stone", "25 Stone", "50 Stone", "2 Moonsalt"])
+    }
+
     func testTheRealmOutOfReachIsToldOnceAndItsReturnToo() throws {
         let link = StubLink()
         let state = GameState(settings: GameSettings(seedText: "out of reach", houseCount: 3, radius: 16))

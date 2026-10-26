@@ -224,6 +224,10 @@ as the realm will, and takes the realm's word as final.
   could know: the ground they've explored, the companies in their sight,
   their own stores, and the envoys and news that reach them. The world
   itself never leaves the server.
+- **Gifts.** Send stores to any House you aren't at war with. Stewards
+  remember gifts for twenty watches: a war seems older to them, and enough
+  goodwill wins a pact. A keeper hears of a gift, a war declared or an
+  envoy sent the moment it happens, not when the watch turns.
 - **Who is there.** The front door names the keepers in the realm now,
   and each House in the Houses panel says who gives its orders: its
   keeper, here or away, or a steward.

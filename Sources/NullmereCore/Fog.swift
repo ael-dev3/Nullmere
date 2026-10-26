@@ -53,6 +53,8 @@ extension GameState {
                 return hold(id).map { $0.owner == house || visible($0.position) } ?? false
             case .buildingStarted(let id, _, _), .trainingStarted(let id, _), .unitTrained(_, let id):
                 return hold(id)?.owner == house
+            case .gifted(let from, let to, _):
+                return from == house || to == house
             case .bartered(let owner, _, _), .starving(let owner):
                 return owner == house
             case .promoted(_, let owner, _):

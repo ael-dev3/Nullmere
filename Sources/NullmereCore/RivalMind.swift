@@ -11,7 +11,10 @@ struct RivalMind {
         let me = state.houses[house]
         let mine = max(1, state.strength(of: house))
         let theirs = max(1, state.strength(of: proposer))
-        let lasted = state.watch - relation.since
+        // Gifts lately sent soften a steward: the war seems older, the
+        // giver more worth a pact.
+        let goodwill = state.goodwill(from: proposer, to: house)
+        let lasted = state.watch - relation.since + goodwill / 10
 
         switch proposal {
         case .peace:
@@ -45,6 +48,7 @@ struct RivalMind {
             }
         case .pact:
             if relation.betrayals > 0 || relation.aggressor == proposer { return false }
+            if goodwill >= GameState.pactGoodwill { return true }
             switch me.temperament {
             case .ambitious: return theirs * 10 > mine * 13
             case .cunning: return true

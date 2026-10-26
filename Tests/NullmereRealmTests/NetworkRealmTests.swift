@@ -151,6 +151,33 @@ final class NetworkRealmTests: XCTestCase {
         try await until("the order") { ear.world?.unit(spear.id)?.fortified == true }
     }
 
+    func testAKeeperHearsWhatAnotherDoesAsItHappens() async throws {
+        let db = FakeSpacetime()
+        let (_, running, _) = try await steward(db)
+        defer { running.cancel() }
+        let (a, earA) = await MainActor.run { keeper(db) }
+        let (b, earB) = await MainActor.run { keeper(db) }
+        await MainActor.run {
+            a.arrive(name: "Ama")
+            b.arrive(name: "Bel")
+        }
+        try await until("both keepers") { earA.keeper != nil && earB.keeper != nil }
+        let seat = await MainActor.run { earB.keeper?.house }
+        let bel = try XCTUnwrap(seat)
+        await MainActor.run { a.send(.gift(to: bel, resource: .grain, amount: 20)) }
+        try await until("Bel to hear of Ama's gift") {
+            earB.events.contains { event in
+                if case .heard(let events) = event { return events.contains { if case .gifted = $0 { return true } else { return false } } }
+                return false
+            }
+        }
+        try await Task.sleep(nanoseconds: 300_000_000)
+        let toldOwn = await MainActor.run {
+            earA.events.contains { if case .heard = $0 { return true } else { return false } }
+        }
+        XCTAssertFalse(toldOwn, "Ama isn't told of her own gift again")
+    }
+
     func testAKeeperReturnsByIdentityAlone() async throws {
         let db = FakeSpacetime()
         let (_, running, _) = try await steward(db)

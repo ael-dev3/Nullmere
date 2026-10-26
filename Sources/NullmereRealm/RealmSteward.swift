@@ -44,6 +44,9 @@ public actor RealmSteward {
     private var worldChanged = false
     /// Events since the last publication, for the keepers to hear.
     private var pendingEvents: [GameEvent] = []
+    /// What keepers' orders did since the last publication, and whose:
+    /// each other keeper hears what reaches them; no one is told their own.
+    private var pendingActs: [(by: String, events: [GameEvent])] = []
     /// When the steward last said how the realm stands, and failed.
     private var lastReport = 0.0
     private var failures = 0
@@ -169,7 +172,9 @@ public actor RealmSteward {
                 return (.refused(.refused("The order couldn't be read.")), false, [])
             }
             do {
-                _ = try state.perform(command, by: keeper)
+                let done = try state.perform(command, by: keeper)
+                // The others hear of it with the next publication.
+                if !done.isEmpty { pendingActs.append((keeper, done)) }
                 return (.done, true, [])
             } catch {
                 return (.refused(error), false, [])
@@ -225,7 +230,8 @@ public actor RealmSteward {
         for keeper in state.keepers {
             guard let view = state.view(for: keeper.id) else { continue }
             let text = String(decoding: try encoder.encode(view), as: UTF8.self)
-            let events = keeper.house.map { state.world.events(pendingEvents, heardBy: $0) } ?? []
+            let others = pendingActs.filter { $0.by != keeper.id }.flatMap(\.events)
+            let events = keeper.house.map { state.world.events(others + pendingEvents, heardBy: $0) } ?? []
             guard text != published[keeper.id] || !events.isEmpty else { continue }
             shown[keeper.id] = text
             keepers.append(keeper.id)
@@ -254,6 +260,7 @@ public actor RealmSteward {
         lastStatus = status
         published.merge(shown) { $1 }
         pendingEvents = []
+        pendingActs = []
         worldChanged = false
         unanswered.removeFirst(answers.count)
         answered += answers.map { ($0.nonce, now) }

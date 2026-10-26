@@ -154,12 +154,43 @@ struct HouseRow: View {
             QuietButton(title: "Offer peace", size: 8.5) { offer(.peace) }
         case .peace:
             QuietButton(title: "Offer a pact", size: 8.5) { offer(.pact) }
+            giftMenu
             if session.canDemandTribute(from: house.id) {
                 QuietButton(title: "Demand tribute", size: 8.5) { offer(.tribute) }
             }
             ConfirmButton(title: "Declare war", confirm: "War on \(house.title)?") { session.perform(.declareWar(on: house.id)) }
         case .pact:
+            giftMenu
             ConfirmButton(title: "Break the pact", confirm: "Betray \(house.title)?") { session.perform(.declareWar(on: house.id)) }
+        }
+    }
+
+    /// What may be sent, from what the keeper has: a few sizes of each.
+    static func giftChoices(from stock: Stock) -> [(resource: Resource, amount: Int)] {
+        Resource.allCases.flatMap { resource in
+            (resource == .moonsalt ? [2, 5, 10] : [10, 25, 50])
+                .filter { $0 <= stock[resource] }
+                .map { (resource, $0) }
+        }
+    }
+
+    @ViewBuilder
+    private var giftMenu: some View {
+        let choices = HouseRow.giftChoices(from: session.playerHouse.stock)
+        if !choices.isEmpty {
+            Menu {
+                ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
+                    Button("\(choice.amount) \(choice.resource.title.lowercased())") {
+                        session.perform(.gift(to: house.id, resource: choice.resource, amount: choice.amount))
+                    }
+                }
+            } label: {
+                Caps("Send a gift", size: 8.5).foregroundStyle(Palette.ink.opacity(0.72))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Stores sent now buy goodwill: a steward sees a war as older, and takes a pact from a House that has given enough.")
         }
     }
 
@@ -196,6 +227,10 @@ struct HouseRow: View {
         }
         if spire > 0 {
             parts.append("Its Moonspire stands at stage \(spire) of \(BuildingKind.moonspire.maxLevel).")
+        }
+        let goodwill = state.goodwill(from: session.player, to: house.id)
+        if goodwill > 0 {
+            parts.append("Your gifts lately are worth \(goodwill) to them.")
         }
         return parts.joined(separator: " ")
     }

@@ -64,6 +64,8 @@ public struct GameState: Codable, Equatable, Sendable {
     /// In a keeper's view, each House's strength as the realm reckons it:
     /// common knowledge, though their companies are out of sight.
     var reputed: [Int]?
+    /// Gifts sent between Houses lately, remembered for goodwill.
+    var gifts: [Gift]?
     /// The omen on the realm, and when the last lifted.
     var omen: Omen?
     var omenLifted: Int?

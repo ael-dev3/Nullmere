@@ -22,6 +22,8 @@ public enum Command: Codable, Equatable, Sendable {
     /// An offer to a House held by a keeper, with a keeper's own words.
     case proposeWithWords(Proposal, to: Int, words: String)
     case answer(envoy: Int, accept: Bool)
+    /// Stores sent to another House, not at war with the giver.
+    case gift(to: Int, resource: Resource, amount: Int)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -54,6 +56,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case unknownEnvoy
     case invalidAmount
     case storageFull
+    case atWarWith(Int)
 
     public var description: String {
         switch self {
@@ -85,6 +88,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .unknownEnvoy: return "That envoy has gone."
         case .invalidAmount: return "Choose an amount to trade."
         case .storageFull: return "There's no room to store that much."
+        case .atWarWith: return "A gift across a war is no gift."
         }
     }
 }
@@ -102,6 +106,7 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case buildingCompleted(hold: Int, kind: BuildingKind, level: Int)
     case trainingStarted(hold: Int, kind: UnitKind)
     case bartered(house: Int, gave: Stock, took: Stock)
+    case gifted(from: Int, to: Int, gift: Stock)
     case unitTrained(unit: Int, hold: Int)
     /// A company rose in rank after a battle.
     case promoted(unit: Int, owner: Int, rank: Int)
