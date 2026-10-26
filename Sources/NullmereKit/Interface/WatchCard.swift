@@ -35,8 +35,12 @@ struct WatchCard: View {
         }
         .padding(.horizontal, 30)
         .padding(.vertical, 18)
+        // A soft pool of dark, wider than the card, with no edge.
         .background(
-            RadialGradient(colors: [.black.opacity(0.7), .clear], center: .center, startRadius: 0, endRadius: 260)
+            EllipticalGradient(colors: [.black.opacity(0.72), .black.opacity(0.35), .clear], center: .center,
+                               startRadiusFraction: 0, endRadiusFraction: 0.5)
+                .frame(width: 720, height: 240)
+                .allowsHitTesting(false)
         )
         .offset(y: risen || reduceMotion ? 0 : 10)
         .onAppear { withAnimation(.easeOut(duration: 0.7)) { risen = true } }

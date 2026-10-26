@@ -85,8 +85,11 @@ struct PlayView: View {
             }
 
             if let card = session.watchCard {
+                // High in the view, above where the seat is centred.
                 WatchCard(summary: card.summary)
                     .id(card.id)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .padding(.top, 130)
                     .transition(.opacity)
                     .allowsHitTesting(false)
             }
