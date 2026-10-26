@@ -132,6 +132,11 @@ public actor RealmSteward {
         if let turned = state.tick(now: now) {
             pendingEvents += turned
             changed = true
+            // A world gone wrong is said at once, for whoever runs the realm.
+            let problems = state.world.problems()
+            if !problems.isEmpty {
+                report("The world is unsound at watch \(state.world.watch): " + problems.prefix(3).joined(separator: "; "))
+            }
         }
         if changed { worldChanged = true }
         let status = state.status(now: now)

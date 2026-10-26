@@ -194,7 +194,7 @@ jobs:
       - name: Print small screenshots
         if: always()
         run: |
-          for shot in build/launcher.png build/launcher-menu.png build/launcher-news.png build/launcher-settings.png build/launcher-play.png build/launcher-off.png build/launcher-downloading.png build/game-world.png build/game-network.png build/game-away.png build/game-briefing.png build/game-later.png build/game-race.png build/game-ending.png; do
+          for shot in build/launcher.png build/launcher-menu.png build/launcher-news.png build/launcher-settings.png build/launcher-play.png build/launcher-off.png build/launcher-downloading.png build/game-world.png build/game-network.png build/game-away.png build/game-briefing.png build/game-lakes.png build/game-later.png build/game-race.png build/game-ending.png; do
             if [ -s "$shot" ]; then
               small="${shot%.png}-small.jpg"
               sips -s format jpeg -s formatOptions 45 -Z 560 "$shot" --out "$small" >/dev/null
@@ -241,13 +241,21 @@ jobs:
     runs-on: ubuntu-24.04
     container: swift:6.2-noble
     timeout-minutes: 45
+    # "bash" runs with -o pipefail: a test that fails fails the step, though
+    # its output goes through tee.
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v5
 
       - name: Build the rules, the realm and the steward
         run: swift build -Xswiftc -warnings-as-errors 2>&1 | tee realm-build.log
 
+      # A long age on every shape of lake, its world checked throughout.
       - name: Test the rules and the realm
+        env:
+          NULLMERE_SOAK_WATCHES: "200"
         run: swift test 2>&1 | tee realm-test.log
 
       - name: Install Rust and SpacetimeDB
