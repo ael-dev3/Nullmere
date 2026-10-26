@@ -1,3 +1,5 @@
+import Foundation
+
 /// A House's settlement: its seat, or a hold founded later. A hold works
 /// the land around it, builds, trains, and has a ward that attackers must
 /// break before they can take it.
@@ -42,6 +44,33 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
 
     public func level(_ kind: BuildingKind) -> Int {
         levels[kind] ?? 0
+    }
+
+    // Written in a fixed order, as a dictionary would be in any order: the
+    // steward sends a keeper's view only when its words change.
+    private enum CodingKeys: String, CodingKey {
+        case id, name, owner, position, isSeat, levels, project, training, ward, struck, foundedWatch
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(owner, forKey: .owner)
+        try container.encode(position, forKey: .position)
+        try container.encode(isSeat, forKey: .isSeat)
+        var built = container.nestedUnkeyedContainer(forKey: .levels)
+        for kind in BuildingKind.allCases {
+            if let level = levels[kind] {
+                try built.encode(kind)
+                try built.encode(level)
+            }
+        }
+        try container.encodeIfPresent(project, forKey: .project)
+        try container.encodeIfPresent(training, forKey: .training)
+        try container.encode(ward, forKey: .ward)
+        try container.encode(struck, forKey: .struck)
+        try container.encode(foundedWatch, forKey: .foundedWatch)
     }
 
     public var maximumWard: Int { Hold.maximumWard(wallLevel: level(.walls), isSeat: isSeat) }
@@ -117,5 +146,63 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
         self.stock = Stock(grain: 60, timber: 50, stone: 40, moonsalt: 5)
         self.explored = Array(repeating: false, count: tileCount)
         self.isEliminated = false
+    }
+
+    // The explored ground travels as bits, eight tiles to a byte: a keeper's
+    // view goes across the network whenever it changes.
+    private enum CodingKeys: String, CodingKey {
+        case id, name, sigil, isPlayer, temperament, stock, explored, exploredBits, isEliminated, liege
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        sigil = try container.decode(Int.self, forKey: .sigil)
+        isPlayer = try container.decode(Bool.self, forKey: .isPlayer)
+        temperament = try container.decode(Temperament.self, forKey: .temperament)
+        stock = try container.decode(Stock.self, forKey: .stock)
+        if let bits = try container.decodeIfPresent(String.self, forKey: .exploredBits) {
+            guard let explored = Bits.decode(bits) else {
+                throw DecodingError.dataCorruptedError(forKey: .exploredBits, in: container, debugDescription: "Unreadable explored ground")
+            }
+            self.explored = explored
+        } else {
+            explored = try container.decode([Bool].self, forKey: .explored)
+        }
+        isEliminated = try container.decode(Bool.self, forKey: .isEliminated)
+        liege = try container.decodeIfPresent(Int.self, forKey: .liege)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(sigil, forKey: .sigil)
+        try container.encode(isPlayer, forKey: .isPlayer)
+        try container.encode(temperament, forKey: .temperament)
+        try container.encode(stock, forKey: .stock)
+        try container.encode(Bits.encode(explored), forKey: .exploredBits)
+        try container.encode(isEliminated, forKey: .isEliminated)
+        try container.encodeIfPresent(liege, forKey: .liege)
+    }
+}
+
+/// Booleans as "count:base64", eight to a byte.
+enum Bits {
+    static func encode(_ values: [Bool]) -> String {
+        var bytes = [UInt8](repeating: 0, count: (values.count + 7) / 8)
+        for (index, value) in values.enumerated() where value {
+            bytes[index / 8] |= 1 << UInt8(index % 8)
+        }
+        return "\(values.count):" + Data(bytes).base64EncodedString()
+    }
+
+    static func decode(_ text: String) -> [Bool]? {
+        let parts = text.split(separator: ":", maxSplits: 1)
+        guard parts.count == 2, let count = Int(parts[0]), count >= 0,
+              let data = Data(base64Encoded: String(parts[1])), data.count == (count + 7) / 8 else { return nil }
+        let bytes = [UInt8](data)
+        return (0..<count).map { bytes[$0 / 8] & (1 << UInt8($0 % 8)) != 0 }
     }
 }

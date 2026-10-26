@@ -18,6 +18,11 @@ public final class NetworkRealmLink: RealmLink {
     private var polling: Task<Void, Never>?
     private var statusVersion: UInt64 = 0
     private var viewVersion: UInt64 = 0
+    /// The realm's publication the keeper's view was last read against:
+    /// views change only when the realm publishes, so it's read only then.
+    private var viewReadAt: UInt64?
+    /// How many times the view was read, for tests.
+    private(set) var viewReads = 0
     private var view: RealmView?
     private var arrived = false
     private var lastHere = Date.distantPast
@@ -105,7 +110,9 @@ public final class NetworkRealmLink: RealmLink {
                 lastHere = Date()
                 try? await transport.call("here", [.string(Self.nonce())], token: credentials.token)
             }
-            try await readView(credentials)
+            if viewReadAt != statusVersion, try await readView(credentials) {
+                viewReadAt = statusVersion
+            }
         } catch {
             wasUnreachable = true
             onEvent?(.unreachable(String(describing: error)))
@@ -114,6 +121,7 @@ public final class NetworkRealmLink: RealmLink {
 
     /// The keeper's own view: `my_view` holds one row, theirs.
     private func fetchView(_ credentials: SpacetimeCredentials) async throws -> (UInt64, RealmView, [GameEvent])? {
+        viewReads += 1
         let rows = try await transport.query("SELECT * FROM my_view", token: credentials.token)
         guard let row = rows.first, row.count == 4, let number = row[1].number, let text = row[2].string, let heard = row[3].string else {
             return nil
@@ -124,9 +132,13 @@ public final class NetworkRealmLink: RealmLink {
         return (UInt64(number), view, events)
     }
 
-    private func readView(_ credentials: SpacetimeCredentials) async throws {
-        guard outbox.isEmpty, let (number, fresh, events) = try await fetchView(credentials), number != viewVersion else { return }
-        deliver(fresh, version: number, events: events)
+    /// Reads the keeper's view, unless their own orders are on their way.
+    /// Returns whether it was read.
+    private func readView(_ credentials: SpacetimeCredentials) async throws -> Bool {
+        guard outbox.isEmpty else { return false }
+        guard let (number, fresh, events) = try await fetchView(credentials) else { return true }
+        if number != viewVersion { deliver(fresh, version: number, events: events) }
+        return true
     }
 
     /// Takes a fresh view, and tells what it brought: a new age, a turned

@@ -129,6 +129,28 @@ final class NetworkRealmTests: XCTestCase {
         XCTAssertEqual(watch, 2)
     }
 
+    func testAQuietRealmIsNotReadAgainAndAgain() async throws {
+        let db = FakeSpacetime()
+        let (_, running, _) = try await steward(db)
+        defer { running.cancel() }
+        let (ama, ear) = await MainActor.run { keeper(db) }
+        await MainActor.run { ama.arrive(name: "Ama") }
+        try await until("arrival") { ear.keeper != nil }
+        try await Task.sleep(nanoseconds: 300_000_000)
+        let before = await MainActor.run { ama.viewReads }
+        // A second of polling, twenty times over, with nothing published.
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+        let quiet = await MainActor.run { ama.viewReads } - before
+        XCTAssertLessThanOrEqual(quiet, 1, "The view is read when the realm publishes, not on every poll")
+
+        // An order publishes, and the view is read again.
+        let world = try await MainActor.run { try XCTUnwrap(ear.world) }
+        let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
+        let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
+        await MainActor.run { ama.send(.fortify(unit: spear.id)) }
+        try await until("the order") { ear.world?.unit(spear.id)?.fortified == true }
+    }
+
     func testAKeeperReturnsByIdentityAlone() async throws {
         let db = FakeSpacetime()
         let (_, running, _) = try await steward(db)

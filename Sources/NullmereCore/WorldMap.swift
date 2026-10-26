@@ -1,3 +1,5 @@
+import Foundation
+
 /// One tile of the world.
 public struct Tile: Codable, Equatable, Sendable {
     public var terrain: Terrain
@@ -28,6 +30,8 @@ public struct WorldMap: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case radius
         case tiles
+        /// Three bytes a tile, base64: terrain, feature (0 for none), relief.
+        case cells
     }
 
     public init(radius: Int, fill: Tile) {
@@ -40,7 +44,14 @@ public struct WorldMap: Codable, Equatable, Sendable {
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         radius = try container.decode(Int.self, forKey: .radius)
-        tiles = try container.decode([Tile].self, forKey: .tiles)
+        if let cells = try container.decodeIfPresent(String.self, forKey: .cells) {
+            guard let decoded = WorldMap.tiles(fromCells: cells) else {
+                throw DecodingError.dataCorruptedError(forKey: .cells, in: container, debugDescription: "Unreadable tiles")
+            }
+            tiles = decoded
+        } else {
+            tiles = try container.decode([Tile].self, forKey: .tiles)
+        }
         guard radius >= 1, tiles.count == WorldMap.count(radius: radius) else {
             throw DecodingError.dataCorruptedError(forKey: .tiles, in: container, debugDescription: "Tile count doesn't match the radius")
         }
@@ -50,7 +61,34 @@ public struct WorldMap: Codable, Equatable, Sendable {
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(radius, forKey: .radius)
-        try container.encode(tiles, forKey: .tiles)
+        try container.encode(WorldMap.cells(of: tiles), forKey: .cells)
+    }
+
+    // The order of terrains and features is part of the stored world: new
+    // ones go at the end.
+    static func cells(of tiles: [Tile]) -> String {
+        var bytes = [UInt8]()
+        bytes.reserveCapacity(tiles.count * 3)
+        for tile in tiles {
+            bytes.append(UInt8(Terrain.allCases.firstIndex(of: tile.terrain)!))
+            bytes.append(tile.feature.map { UInt8(Feature.allCases.firstIndex(of: $0)! + 1) } ?? 0)
+            bytes.append(UInt8(clamping: tile.relief))
+        }
+        return Data(bytes).base64EncodedString()
+    }
+
+    static func tiles(fromCells text: String) -> [Tile]? {
+        guard let data = Data(base64Encoded: text), data.count % 3 == 0 else { return nil }
+        let bytes = [UInt8](data)
+        var tiles: [Tile] = []
+        tiles.reserveCapacity(bytes.count / 3)
+        for start in stride(from: 0, to: bytes.count, by: 3) {
+            let terrain = Int(bytes[start]), feature = Int(bytes[start + 1])
+            guard terrain < Terrain.allCases.count, feature <= Feature.allCases.count else { return nil }
+            tiles.append(Tile(terrain: Terrain.allCases[terrain], feature: feature == 0 ? nil : Feature.allCases[feature - 1],
+                              relief: Int(bytes[start + 2])))
+        }
+        return tiles
     }
 
     private static func rowStarts(radius: Int) -> [Int] {
