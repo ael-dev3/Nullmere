@@ -211,7 +211,7 @@ enum WorldShader {
         float glade = exp(-gx * gx / 0.02) * along * moonAt.w;
         float streak = nm_fbm(float2(w.x * 0.6, w.y * 5.0) + float2(time * 0.003, 0.0));
         float3 c = float3(0.004, 0.007, 0.016) + float3(0.010, 0.014, 0.026) * (1.0 - uv.y);
-        c += float3(0.085, 0.095, 0.125) * glade * (0.55 + 0.9 * streak * streak);
+        c += float3(0.150, 0.170, 0.220) * glade * (0.55 + 0.9 * streak * streak);
         c = mix(c, float3(0.020, 0.027, 0.036), shallow * 0.8);
         // Reflected stars, fixed to the screen like the sky, sized in points.
         float stars = nm_star(px, ppp, 10.0, 0.52, 0.0) * 0.7 + nm_star(px, ppp, 37.0, 0.5, 17.0) * 1.6;

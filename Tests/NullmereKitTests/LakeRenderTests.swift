@@ -110,7 +110,8 @@ final class LakeRenderTests: XCTestCase {
         // Medians, so reflected stars don't count.
         func median(_ values: [Int]) -> Int { values.sorted()[values.count / 2] }
         let lit = median(path), dark = median(side)
-        XCTAssertGreaterThanOrEqual(lit - dark, 20, "The path shows: \(lit) under the moon, \(dark) beside it")
+        print("MOONPATH \(lit) under the moon, \(dark) beside it")
+        XCTAssertGreaterThanOrEqual(lit - dark, 40, "The path shows: \(lit) under the moon, \(dark) beside it")
         XCTAssertLessThan(lit, 200, "and the lake stays black glass: \(lit)")
     }
 }
