@@ -102,6 +102,8 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
     /// Tiles this House has ever seen, by map index.
     public var explored: [Bool]
     public var isEliminated: Bool
+    /// The House this one has sworn fealty to, if any.
+    public var liege: Int?
 
     public var title: String { "House \(name)" }
 

@@ -31,7 +31,12 @@ public struct VoiceMoment: Sendable, Equatable {
         let task: String
         switch kind {
         case .envoy(let proposal):
-            let offer = proposal == .peace ? "an end to the war between their House and the player's" : "a pact: shared sight and no war between the Houses"
+            let offer: String
+            switch proposal {
+            case .peace: offer = "an end to the war between their House and the player's"
+            case .pact: offer = "a pact: shared sight and no war between the Houses"
+            case .fealty: offer = "their House's fealty: beaten, they would serve the player's House as its vassal"
+            }
             task = "Speak as the envoy, addressing the player's House directly, offering \(offer). One or two sentences, at most 40 words."
         case .chronicle:
             task = "Write the chronicler's single line recording this, as it would stand in an old book of the lake. One sentence, at most 30 words."

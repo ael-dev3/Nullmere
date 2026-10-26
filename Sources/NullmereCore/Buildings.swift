@@ -75,7 +75,7 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
     /// Watches it takes to raise this building to `level`.
     public func buildWatches(toLevel level: Int) -> Int {
         precondition((1...maxLevel).contains(level), "level out of range")
-        return self == .moonspire ? 2 + level * 2 : 1 + level
+        return self == .moonspire ? 3 + level * 3 : 1 + level
     }
 
     /// One line on what the next level does.

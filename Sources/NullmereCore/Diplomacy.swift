@@ -49,11 +49,15 @@ public struct Relation: Codable, Equatable, Sendable {
 public enum Proposal: String, Codable, CaseIterable, Sendable {
     case peace
     case pact
+    /// A beaten House offers to become the other's vassal: a pact it can't
+    /// break, and its holds counted toward its liege's dominion.
+    case fealty
 
     public var title: String {
         switch self {
         case .peace: return "Peace"
         case .pact: return "Pact"
+        case .fealty: return "Fealty"
         }
     }
 }

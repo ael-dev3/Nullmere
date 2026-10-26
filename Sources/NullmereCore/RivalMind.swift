@@ -31,6 +31,9 @@ struct RivalMind {
                 let wronged = relation.aggressor == proposer
                 return wronged ? (mine < theirs || lasted > 14) : (mine * 2 < theirs * 3 || lasted > 6)
             }
+        case .fealty:
+            // Who would refuse a vassal?
+            return me.liege == nil
         case .pact:
             if relation.betrayals > 0 || relation.aggressor == proposer { return false }
             switch me.temperament {
@@ -100,18 +103,31 @@ struct RivalMind {
                 let winning = siegePlan(in: state).map { plan in
                     state.hold(at: plan.target).map { $0.owner == other.id && $0.ward * 2 < $0.maximumWard } ?? false
                 } ?? false
-                if lasted >= 4, losing || (weary && !winning), random.chance(40) {
+                // Broken, and against a far stronger House: bend the knee
+                // rather than fall.
+                let broken = state.watch >= 70 && state.holds(of: house).count <= 3 && mine * 5 < theirs * 2 && me.liege == nil
+                    && state.houses[other.id].liege == nil
+                if lasted >= 4, broken, random.chance(50) {
+                    events += perform(.propose(.fealty, to: other.id), in: &state)
+                } else if lasted >= 4, losing || (weary && !winning), random.chance(40) {
                     events += perform(.propose(.peace, to: other.id), in: &state)
                 }
             case .peace:
                 guard !declared, enemies == 0, neighbours, !inTruce(with: other.id, in: state) else { break }
                 let grudge = relation.aggressor == other.id
-                let wantsWar: Bool
+                var wantsWar: Bool
                 switch me.temperament {
                 case .ambitious: wantsWar = state.watch >= 12 && mine * 10 > theirs * 12 && random.chance(30)
                 case .cunning: wantsWar = state.watch >= 15 && mine * 10 > theirs * 13 && random.chance(25)
                 case .wary: wantsWar = grudge && mine * 10 > theirs * 12 && random.chance(15)
                 case .steadfast: wantsWar = state.watch >= 30 && mine * 10 > theirs * 16 && random.chance(10)
+                }
+                // The leading House, once clearly the strongest, presses its
+                // advantage toward dominion, whatever its temper.
+                let others = state.livingHouses.filter { $0.id != house }.map { state.strength(of: $0.id) }
+                let leading = state.watch >= 50 && mine * 10 > (others.max() ?? 0) * 13
+                if !wantsWar, leading, mine * 10 > theirs * 15, random.chance(35) {
+                    wantsWar = true
                 }
                 if wantsWar {
                     events += perform(.declareWar(on: other.id), in: &state)
@@ -120,7 +136,8 @@ struct RivalMind {
                     events += perform(.propose(.pact, to: other.id), in: &state)
                 }
             case .pact:
-                if me.temperament == .cunning, !declared, enemies == 0, state.watch >= 25,
+                let sworn = me.liege == other.id || state.houses[other.id].liege == house
+                if !sworn, me.temperament == .cunning, !declared, enemies == 0, state.watch >= 25,
                    mine * 10 > theirs * 18, neighbours, random.chance(10) {
                     events += perform(.declareWar(on: other.id), in: &state)
                     declared = true

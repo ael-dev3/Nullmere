@@ -10,7 +10,7 @@ struct HousesPanel: View {
         let state = session.state
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                PanelTitle(title: "Houses", subtitle: "\(state.livingHouses.count) still stand around the lake")
+                PanelTitle(title: "Houses", subtitle: "\(state.livingHouses.count) still stand · your realm \(state.realm(of: session.player)) of \(state.holds.count) holds; \(GameState.supremacyShare)% and \(GameState.supremacyMinimum) win dominion")
                 CloseButton { session.panel = nil }
             }
             ScrollView {
@@ -83,6 +83,14 @@ private struct HouseRow: View {
 
     private func summary(stance: Stance, relation: Relation?, spire: Int) -> String {
         var parts = ["\(house.temperament.title)."]
+        let state = session.state
+        if let liege = house.liege {
+            parts.append(liege == session.player ? "Sworn to you." : "Sworn to \(state.houses[liege].title).")
+        }
+        let vassals = state.houses.filter { $0.liege == house.id && !$0.isEliminated }
+        if !vassals.isEmpty {
+            parts.append("Liege of \(vassals.map(\.title).joined(separator: ", ")).")
+        }
         if let relation {
             let watches = max(session.state.watch - relation.since, 0)
             let span = watches == 0 ? "since this watch" : "for \(watches) watch\(watches == 1 ? "" : "es")"
@@ -180,6 +188,8 @@ struct EnvoyCards: View {
             return "\(house.title) asks for peace. Their armies would turn from yours, and yours from theirs."
         case .pact:
             return "\(house.title) offers a pact: shared sight across the water, and no blade between you."
+        case .fealty:
+            return "\(house.title) is beaten and bends the knee: it would be your vassal, its holds counted in your realm, never to raise a blade against you."
         }
     }
 }

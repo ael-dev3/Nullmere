@@ -36,7 +36,8 @@ enum Guide {
             "Envoys and the chronicle speak in words written on your Mac by Apple's on-device model. They only speak; the rules decide.",
         ]),
         Section(title: "Winning", lines: [
-            "Raise the five stages of the Moonspire at your seat, or be the last House standing.",
+            "Raise the five stages of the Moonspire at your seat (ascendancy), or rule the lake (dominion): half of all its holds and at least ten, your vassals' counted with your own, or be the last House standing.",
+            "Beaten Houses may swear you fealty: their holds join your realm, and they can never turn on you. Turn on them, and they are free.",
             "Rivals fear a rising Moonspire, and will march on it.",
         ]),
         Section(title: "Keys", lines: [

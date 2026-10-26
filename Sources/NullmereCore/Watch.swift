@@ -139,6 +139,23 @@ extension GameState {
         }
     }
 
+    /// Share of all holds, in percent, and the least number of holds, that
+    /// win by dominion without destroying every rival.
+    public static let supremacyShare = 45
+    public static let supremacyMinimum = 10
+
+    /// Holds a House rules: its own and its vassals'.
+    public func realm(of house: Int) -> Int {
+        holds(of: house).count + houses.filter { $0.liege == house && !$0.isEliminated }.reduce(0) { $0 + holds(of: $1.id).count }
+    }
+
+    /// Whether a House rules enough of the lake to win by dominion.
+    public func isSupreme(_ house: Int) -> Bool {
+        guard houses[house].liege == nil else { return false }
+        let mine = realm(of: house)
+        return mine >= GameState.supremacyMinimum && mine * 100 >= holds.count * GameState.supremacyShare
+    }
+
     private mutating func checkForEnd() -> [GameEvent] {
         guard outcome == nil else { return [] }
         let living = livingHouses
@@ -146,6 +163,13 @@ extension GameState {
             let result = Outcome(winner: builder.owner, kind: .ascendancy, watch: watch)
             outcome = result
             record(.ending, [builder.owner], "The Moonspire of \(houses[builder.owner].title) stands complete. The lake is theirs.")
+            return [.gameEnded(result)]
+        }
+        // Supremacy: a House ruling most of the lake's holds holds the lake.
+        if let ruler = living.first(where: { isSupreme($0.id) }) {
+            let result = Outcome(winner: ruler.id, kind: .dominion, watch: watch)
+            outcome = result
+            record(.ending, [ruler.id], "\(ruler.title) rules \(realm(of: ruler.id)) of the \(holds.count) holds around the Nullmere. The others bend the knee.")
             return [.gameEnded(result)]
         }
         if living.count == 1, let last = living.first {

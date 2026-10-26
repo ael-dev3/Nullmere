@@ -440,20 +440,49 @@ final class ExpansionAndFallTests: XCTestCase {
         XCTAssertGreaterThan(state.trainingCost(of: .founder, for: state.player).grain, base.grain)
     }
 
-    /// A rival can destroy another House outright.
-    func testARivalCanDestroyAHouse() {
-        var state = GameState(settings: GameSettings(seedText: "siege check 13"))
+    /// A House can be destroyed outright.
+    func testAHouseCanBeDestroyed() {
+        var state = GameState(settings: GameSettings(seedText: "siege check 15"))
         var fallen: ChronicleEntry?
-        while state.outcome == nil, state.watch < 140, fallen == nil {
+        while state.outcome == nil, state.watch < 170, fallen == nil {
             _ = state.stewardTurn(for: state.player)
             _ = state.endWatch()
             fallen = state.chronicle.first { $0.kind == .fall && $0.text.contains(" falls") }
         }
-        let entry = try? XCTUnwrap(fallen, "A House falls in this world")
-        XCTAssertNotNil(entry)
-        if let entry, let loser = entry.houses.first {
+        XCTAssertNotNil(fallen, "A House falls in this world")
+        if let fallen, let loser = fallen.houses.first {
             XCTAssertTrue(state.houses[loser].isEliminated)
             XCTAssertTrue(state.holds(of: loser).isEmpty)
         }
+    }
+
+    /// A rival can win the lake by dominion, its vassals' holds counted
+    /// with its own.
+    func testARivalCanWinByDominion() throws {
+        var state = GameState(settings: GameSettings(seedText: "siege check 13"))
+        while state.outcome == nil, state.watch < 200 {
+            _ = state.stewardTurn(for: state.player)
+            _ = state.endWatch()
+        }
+        let outcome = try XCTUnwrap(state.outcome)
+        XCTAssertEqual(outcome.kind, .dominion)
+        XCTAssertNotEqual(outcome.winner, state.player)
+        XCTAssertTrue(state.isSupreme(outcome.winner))
+        XCTAssertGreaterThanOrEqual(state.realm(of: outcome.winner) * 100, state.holds.count * GameState.supremacyShare)
+        let vassals = state.houses.filter { $0.liege == outcome.winner }
+        XCTAssertFalse(vassals.isEmpty, "Beaten Houses bent the knee")
+        XCTAssertTrue(state.chronicle.contains { $0.text.contains("swears fealty") })
+    }
+
+    /// A vassal can't turn on its liege; a liege that turns on its vassal frees it.
+    func testFealtyBindsTheVassal() throws {
+        var state = GameState(settings: GameSettings(seedText: "fealty", houseCount: 3, radius: 16))
+        let liege = 1, vassal = 2
+        _ = try state.propose(.fealty, from: vassal, to: liege)
+        XCTAssertEqual(state.houses[vassal].liege, liege)
+        XCTAssertEqual(state.stance(vassal, liege), .pact)
+        XCTAssertThrowsError(try state.declareWar(by: vassal, on: liege))
+        _ = try state.declareWar(by: liege, on: vassal)
+        XCTAssertNil(state.houses[vassal].liege, "Betrayed, the vassal is free")
     }
 }

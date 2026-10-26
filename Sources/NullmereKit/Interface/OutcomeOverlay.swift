@@ -50,12 +50,12 @@ struct OutcomeOverlay: View {
         case (.ascendancy, false):
             return "The Moonspire of \(winner.title) stands complete \(span). The lake will remember them, and not you."
         case (.dominion, true):
-            return "The last of your rivals has fallen \(span). Every shore of the Nullmere answers to \(winner.title)."
+            return "Your realm holds \(session.state.realm(of: winner.id)) of the \(session.state.holds.count) holds around the lake \(span). Every shore of the Nullmere answers to \(winner.title)."
         case (.dominion, false):
             if session.playerHouse.isEliminated {
                 return "Your last hold has fallen \(span). \(winner.title) is the greatest House left on the shore, and the water closes over your name."
             }
-            return "\(winner.title) holds every shore \(span)."
+            return "\(winner.title) rules \(session.state.realm(of: winner.id)) of the \(session.state.holds.count) holds around the lake \(span), and the shores answer to it, not to you."
         }
     }
 }

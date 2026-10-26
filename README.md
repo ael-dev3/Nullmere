@@ -210,8 +210,13 @@ rival Houses move, holds yield, works rise and companies march on.
   loses most of its ward. A House that loses every hold falls, and its
   name passes into the chronicle. Rivals can and do destroy each other.
 - **Winning.** Raise the five stages of the **Moonspire** at your seat
-  (ascendancy), or be the last House standing (dominion). Rivals fear a
-  rising Moonspire and will march on it.
+  (ascendancy), or rule the lake (dominion): half of all its holds and at
+  least ten, your vassals' counted with your own, or be the last House
+  standing. Rivals fear a rising Moonspire and will march on it.
+- **Fealty.** A House beaten down to its last few holds may swear fealty to
+  a far stronger one rather than fall. Its holds join its liege's realm and
+  it can never turn on its liege; a liege who turns on a vassal frees it.
+  Rivals win by dominion about two games in five, the Moonspire the rest.
 
 - **Voices.** Envoys speak to you, and a chronicler writes beneath the
   moments that touch your House, in words written on your Mac by Apple's

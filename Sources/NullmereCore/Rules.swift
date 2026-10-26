@@ -325,6 +325,11 @@ extension GameState {
     mutating func eliminate(_ house: Int, by conqueror: Int?) -> [GameEvent] {
         guard !houses[house].isEliminated else { return [] }
         houses[house].isEliminated = true
+        houses[house].liege = nil
+        // A fallen liege's vassals are free again.
+        for index in houses.indices where houses[index].liege == house {
+            houses[index].liege = nil
+        }
         units.removeAll { $0.owner == house }
         envoys.removeAll { $0.from == house }
         let by = conqueror.map { " to \(houses[$0].title)" } ?? ""
@@ -433,6 +438,12 @@ extension GameState {
         try requireRival(target, of: house)
         let previous = stance(house, target)
         guard previous != .war else { throw .alreadyStance(.war) }
+        // A vassal can't turn on its liege; a liege that turns on its
+        // vassal frees it.
+        guard houses[house].liege != target else { throw .notApplicable }
+        if houses[target].liege == house {
+            houses[target].liege = nil
+        }
         setStance(.war, between: house, and: target, by: house)
         envoys.removeAll { $0.from == target || $0.from == house }
         if fearingSpire {
@@ -453,6 +464,8 @@ extension GameState {
             guard current == .war else { throw current == .pact ? .alreadyStance(.pact) : .alreadyStance(.peace) }
         case .pact:
             guard current == .peace else { throw current == .pact ? .alreadyStance(.pact) : .notApplicable }
+        case .fealty:
+            guard houses[house].liege == nil, houses[target].liege == nil, !houses[house].isPlayer else { throw .notApplicable }
         }
 
         if houses[target].isPlayer {
@@ -476,6 +489,7 @@ extension GameState {
         switch envoy.proposal {
         case .peace: stillValid = stance(house, envoy.from) == .war
         case .pact: stillValid = stance(house, envoy.from) == .peace
+        case .fealty: stillValid = houses[envoy.from].liege == nil && houses[house].liege == nil
         }
         let accepted = accept && stillValid && !houses[envoy.from].isEliminated
         if accepted {
@@ -492,6 +506,10 @@ extension GameState {
         case .pact:
             setStance(.pact, between: proposer, and: other, by: actor)
             record(.pact, [proposer, other], "\(houses[proposer].title) and \(houses[other].title) swear a pact.")
+        case .fealty:
+            setStance(.pact, between: proposer, and: other, by: actor)
+            houses[proposer].liege = other
+            record(.pact, [proposer, other], "\(houses[proposer].title) bends the knee and swears fealty to \(houses[other].title).")
         }
     }
 }
