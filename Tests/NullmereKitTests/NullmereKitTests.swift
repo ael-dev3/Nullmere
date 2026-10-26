@@ -502,3 +502,22 @@ final class PointerTests: XCTestCase {
         XCTAssertEqual(session.pointerAction(at: far), .none)
     }
 }
+
+final class TokenArtTests: XCTestCase {
+    func testPiecesStayWithinTheirBounds() {
+        let c = CGPoint(x: 100, y: 100)
+        for r in [7.0, 12.0, 18.0] as [CGFloat] {
+            let keep = TokenArt.keep(at: c, radius: r, seat: false).boundingRect
+            let seat = TokenArt.keep(at: c, radius: r, seat: true).boundingRect
+            XCTAssertLessThan(seat.minY, keep.minY, "A seat stands taller")
+            XCTAssertEqual(keep.midX, c.x, accuracy: 0.01, "Keeps stand on their centre")
+            XCTAssertLessThanOrEqual(keep.width, 1.6 * r)
+            let shield = TokenArt.shield(at: c, radius: r).boundingRect
+            XCTAssertEqual(shield.midX, c.x, accuracy: 0.01)
+            XCTAssertLessThanOrEqual(shield.height, 2 * r)
+            XCTAssertTrue(keep.contains(TokenArt.window(at: c, radius: r).boundingRect), "The window is in the keep")
+            let banner = TokenArt.banner(at: c, radius: r)
+            XCTAssertLessThan(banner.pennant.boundingRect.maxY, seat.minY + 0.01, "The banner flies above the keep")
+        }
+    }
+}

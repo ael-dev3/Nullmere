@@ -176,25 +176,28 @@ private struct WorldMarks: View {
                 guard point.x > -80, point.y > -80, point.x < size.width + 80, point.y < size.height + 80 else { continue }
                 let colour = Palette.house(state.houses[hold.owner])
                 let r = min(max(scale * 0.36, 7), 18)
-                var tower = Path()
-                tower.move(to: CGPoint(x: point.x, y: point.y - r * 1.25))
-                tower.addLine(to: CGPoint(x: point.x + r * 0.8, y: point.y - r * 0.2))
-                tower.addLine(to: CGPoint(x: point.x + r * 0.8, y: point.y + r * 0.9))
-                tower.addLine(to: CGPoint(x: point.x - r * 0.8, y: point.y + r * 0.9))
-                tower.addLine(to: CGPoint(x: point.x - r * 0.8, y: point.y - r * 0.2))
-                tower.closeSubpath()
-                context.fill(tower, with: .color(Color.black.opacity(0.75)))
-                context.stroke(tower, with: .color(colour), lineWidth: hold.isSeat ? 2 : 1.3)
+                let keep = TokenArt.keep(at: point, radius: r, seat: hold.isSeat)
+                if hold.level(.walls) > 0 {
+                    let walls = TokenArt.walls(at: point, radius: r)
+                    context.fill(walls, with: .color(Color.black.opacity(0.55)))
+                    context.stroke(walls, with: .color(colour.opacity(0.7)), lineWidth: CGFloat(hold.level(.walls)) * 0.5 + 0.6)
+                }
+                context.fill(keep, with: .color(Color(red: 0.04, green: 0.045, blue: 0.06).opacity(0.92)))
+                context.stroke(keep, with: .color(colour), lineWidth: hold.isSeat ? 1.6 : 1.2)
+                // One warm window: someone keeps the lamp lit.
+                context.fill(TokenArt.window(at: point, radius: r), with: .color(Color(red: 1.0, green: 0.76, blue: 0.45)))
                 if hold.isSeat {
-                    let crown = Path(ellipseIn: CGRect(x: point.x - r * 0.28, y: point.y - r * 0.05, width: r * 0.56, height: r * 0.56))
-                    context.fill(crown, with: .color(colour))
+                    let banner = TokenArt.banner(at: point, radius: r)
+                    context.stroke(banner.pole, with: .color(colour), lineWidth: 1.1)
+                    context.fill(banner.pennant, with: .color(colour))
                 }
                 if hold.level(.moonspire) > 0 {
                     let spire = CGFloat(hold.level(.moonspire))
+                    let top = TokenArt.keepTop(at: point, radius: r, seat: hold.isSeat)
                     var needle = Path()
-                    needle.move(to: CGPoint(x: point.x, y: point.y - r * 1.25))
-                    needle.addLine(to: CGPoint(x: point.x, y: point.y - r * (1.25 + 0.5 * spire)))
-                    context.stroke(needle, with: .color(Color.white.opacity(0.9)), lineWidth: 1.5)
+                    needle.move(to: CGPoint(x: point.x - r * 0.35, y: top))
+                    needle.addLine(to: CGPoint(x: point.x - r * 0.35, y: top - r * 0.45 * spire))
+                    context.stroke(needle, with: .color(Color(red: 0.86, green: 0.9, blue: 1.0)), lineWidth: 1.6)
                 }
                 if session.isVisible(hold.position), hold.ward < hold.maximumWard {
                     let width = r * 2
@@ -228,8 +231,8 @@ private struct WorldMarks: View {
                 if inHold {
                     point = CGPoint(x: point.x + r * 1.9, y: point.y + r * 0.9)
                 }
-                let disc = Path(ellipseIn: CGRect(x: point.x - r, y: point.y - r, width: r * 2, height: r * 2))
-                context.fill(disc, with: .color(Color.black.opacity(0.78)))
+                let disc = TokenArt.shield(at: point, radius: r)
+                context.fill(disc, with: .color(Color(red: 0.03, green: 0.035, blue: 0.05).opacity(0.9)))
                 context.stroke(disc, with: .color(colour), lineWidth: unit.fortified ? 2.2 : 1.3)
                 // The chosen company wears a bright halo; the one under the
                 // pointer a faint one.
