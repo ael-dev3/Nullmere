@@ -29,7 +29,7 @@ fi
 
 rm -f "$IDENTITY"
 started="$(date '+%Y-%m-%d %H:%M:%S')"
-echo "Opening Nullmere Online and entering $REALM as $KEEPER…"
+echo "Opening Nullmere Online and entering $REALM as ${KEEPER}…"
 NULLMERE_MODEL_STATE=ready NULLMERE_LAUNCHER_KEYS=return NULLMERE_REALM="$REALM" \
     NULLMERE_IDENTITY_FILE="$IDENTITY" NULLMERE_KEEPER="$KEEPER" NULLMERE_SHOW=houses \
     "$BIN" >build/network-stdout.log 2>&1 &

@@ -99,6 +99,8 @@ public final class GameSession {
     public let player: Int
     /// How the realm stands, as last heard, and when.
     public private(set) var realmStatus: RealmStatus?
+    /// The realm couldn't be reached when last asked; the link keeps trying.
+    public private(set) var isOutOfReach = false
     private var statusHeard = Date()
     /// The keeper has given their orders and waits for the watch to turn.
     public private(set) var isReady = false
@@ -435,6 +437,18 @@ public final class GameSession {
     // MARK: The realm's word
 
     private func hear(_ event: RealmEvent) {
+        if case .unreachable(let reason) = event {
+            // Said once, however often the link tries again.
+            if !isOutOfReach {
+                isOutOfReach = true
+                post("The realm is out of reach: \(reason) Orders given now may not reach it.", tone: .bad)
+            }
+            return
+        }
+        if isOutOfReach {
+            isOutOfReach = false
+            post("The realm answers again.", tone: .good)
+        }
         switch event {
         case .status(let status):
             realmStatus = status
@@ -446,8 +460,8 @@ public final class GameSession {
             post(error.description, tone: .bad)
         case .watchTurned(let world, let events):
             watchTurned(to: world, events: events)
-        case .unreachable(let reason):
-            post("The realm can't be reached: \(reason)", tone: .bad)
+        case .unreachable:
+            break
         case .arrived(let keeper, let world):
             // Only a new age seats a keeper already in the world.
             onNewAge?(keeper, world)

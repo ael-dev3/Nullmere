@@ -92,4 +92,28 @@ final class RealmClientTests: XCTestCase {
         XCTAssertEqual(EndWatchButton.realmLine(status: alone, secondsLeft: 61), "Turns in 1:01")
         XCTAssertEqual(RealmLine.describe(alone), "Age 1, watch 3 · 1 keeper there · 3 seats free of 4.")
     }
+
+    func testTheRealmOutOfReachIsToldOnceAndItsReturnToo() throws {
+        let link = StubLink()
+        let state = GameState(settings: GameSettings(seedText: "out of reach", houseCount: 3, radius: 16))
+        let session = GameSession(link: link, house: state.player, world: state.view(for: state.player),
+                                  store: LocalStore(directory: dir))
+        for _ in 0..<5 { link.onEvent?(.unreachable("No answer from the server.")) }
+        XCTAssertTrue(session.isOutOfReach)
+        XCTAssertEqual(session.notices.filter { $0.text.contains("out of reach") }.count, 1, "Said once, however often the link tries")
+        link.onEvent?(.changed(session.state))
+        XCTAssertFalse(session.isOutOfReach)
+        XCTAssertEqual(session.notices.last?.text, "The realm answers again.")
+    }
+}
+
+/// A link that says only what a test tells it to.
+@MainActor
+private final class StubLink: RealmLink {
+    var onEvent: ((RealmEvent) -> Void)?
+    func connect() {}
+    func arrive(name: String?) {}
+    func send(_ command: Command) {}
+    func setReady(_ ready: Bool) {}
+    func leave() {}
 }

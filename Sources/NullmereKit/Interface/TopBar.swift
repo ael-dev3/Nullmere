@@ -151,7 +151,11 @@ struct WatchClock: View {
             HStack(spacing: 0) {
                 Caps("Watch \(session.state.watch)", size: 8.5, tracking: 0.3)
                     .foregroundStyle(Palette.ink.opacity(0.55))
-                if let line = EndWatchButton.realmLine(status: session.realmStatus, secondsLeft: session.secondsLeft(at: context.date)) {
+                if session.isOutOfReach {
+                    Text(verbatim: "  ·  Out of reach, trying again…")
+                        .font(.nm(9))
+                        .foregroundStyle(Palette.bad)
+                } else if let line = EndWatchButton.realmLine(status: session.realmStatus, secondsLeft: session.secondsLeft(at: context.date)) {
                     Text(verbatim: "  ·  " + line)
                         .font(.nm(9).monospacedDigit())
                         .foregroundStyle(Palette.ink.opacity(0.55))
