@@ -181,6 +181,14 @@ public final class GameSession {
     private(set) var watchCard: (id: Int, summary: WatchSummary)?
     /// What happened while the keeper was away, until they have read it.
     private(set) var awayReport: AwayReport?
+    /// The first time in an age: the House the keeper takes up.
+    private(set) var seatBriefing: SeatBriefing?
+    /// The Dock's count of watches turned while the keeper was elsewhere.
+    private(set) var attention = Attention()
+    /// Whether the keeper is looking, and how the Dock is told; tests
+    /// supply their own.
+    var isLooking: () -> Bool = { NSApplication.shared.isActive }
+    var signal: (Attention.Signal) -> Void = { Attention.show($0) }
     private var watchCardCounter = 0
     /// Keeps the watch's card on screen, for photographs.
     var keepsWatchCard = false
@@ -228,7 +236,11 @@ public final class GameSession {
             }
         }
         refreshWorld()
-        awayReport = store.loadLastSeen().flatMap { AwayReport(since: $0, now: world, player: house) }
+        if let seen = store.loadLastSeen() {
+            awayReport = AwayReport(since: seen, now: world, player: house)
+        } else if world.houses.indices.contains(house) {
+            seatBriefing = SeatBriefing(world: world, player: house)
+        }
         rememberSeen()
         link.onEvent = { [weak self] event in self?.hear(event) }
         link.connect()
@@ -475,6 +487,15 @@ public final class GameSession {
         }
     }
 
+    /// The keeper came back to the app.
+    public func keeperReturned() {
+        if let call = attention.returned() { signal(call) }
+    }
+
+    public func dismissSeatBriefing() {
+        withAnimation(.easeOut(duration: 0.3)) { seatBriefing = nil }
+    }
+
     public func dismissAwayReport() {
         withAnimation(.easeOut(duration: 0.3)) { awayReport = nil }
     }
@@ -558,6 +579,9 @@ public final class GameSession {
         }
         refreshWorld()
         isEndingWatch = false
+        if let call = attention.watchTurned(isActive: isLooking(), needsKeeper: needed) {
+            signal(call)
+        }
         if quietLeft > 0, !needed {
             quietLeft -= 1
             endWatch()

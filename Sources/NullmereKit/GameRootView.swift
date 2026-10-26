@@ -1,3 +1,4 @@
+import AppKit
 import NullmereCore
 import SwiftUI
 
@@ -110,6 +111,11 @@ struct PlayView: View {
                 .padding(.bottom, 18)
                 .allowsHitTesting(false)
 
+            if let briefing = session.seatBriefing, session.state.outcome == nil {
+                SeatBriefingCard(briefing: briefing, colour: Palette.house(session.playerHouse)) { session.dismissSeatBriefing() }
+                    .transition(.opacity)
+            }
+
             if let report = session.awayReport, session.state.outcome == nil {
                 AwayCard(report: report) { session.dismissAwayReport() }
                     .transition(.opacity)
@@ -120,6 +126,10 @@ struct PlayView: View {
             }
         }
         .background(KeyBridge { key in handle(key) })
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            session.keeperReturned()
+        }
+        .onDisappear { session.keeperReturned() }
     }
 
     private func handle(_ key: GameKey) -> Bool {
@@ -135,7 +145,9 @@ struct PlayView: View {
         case .home:
             session.focusOnSeat()
         case .escape:
-            if session.awayReport != nil {
+            if session.seatBriefing != nil {
+                session.dismissSeatBriefing()
+            } else if session.awayReport != nil {
                 session.dismissAwayReport()
             } else if session.panel != nil {
                 session.panel = nil

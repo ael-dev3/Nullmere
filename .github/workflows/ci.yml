@@ -171,7 +171,7 @@ jobs:
       - name: Print small screenshots
         if: always()
         run: |
-          for shot in build/launcher.png build/launcher-menu.png build/launcher-news.png build/launcher-settings.png build/launcher-play.png build/launcher-off.png build/launcher-downloading.png build/game-world.png build/game-network.png build/game-away.png build/game-later.png build/game-race.png build/game-ending.png; do
+          for shot in build/launcher.png build/launcher-menu.png build/launcher-news.png build/launcher-settings.png build/launcher-play.png build/launcher-off.png build/launcher-downloading.png build/game-world.png build/game-network.png build/game-away.png build/game-briefing.png build/game-later.png build/game-race.png build/game-ending.png; do
             if [ -s "$shot" ]; then
               small="${shot%.png}-small.jpg"
               sips -s format jpeg -s formatOptions 45 -Z 560 "$shot" --out "$small" >/dev/null
@@ -180,6 +180,13 @@ jobs:
               echo "::endgroup::"
             fi
           done
+          # One larger look at the world, for judging its detail.
+          if [ -s build/game-world.png ]; then
+            sips -s format jpeg -s formatOptions 50 -Z 1100 build/game-world.png --out build/game-world-large.jpg >/dev/null
+            echo "::group::Screenshot build/game-world-large.png, base64 JPEG"
+            base64 -i build/game-world-large.jpg | fold -w 120
+            echo "::endgroup::"
+          fi
           # The icon as actool compiled it, last and small, so it survives a
           # trimmed log.
           if [ -s build/icon.png ]; then

@@ -112,7 +112,7 @@ builds also take:
 | `NULLMERE_IDENTITY_FILE` | Keep the keeper's identity in this file instead of the keychain |
 | `NULLMERE_KEEPER` | Enter the world at once under this name |
 | `NULLMERE_TEXT` | `larger`: show the larger type without remembering it |
-| `NULLMERE_SHOW` | `seat`, `unit`, `houses`, `chronicle`, `guide`: select the seat or a company, open a panel; `watch`: be ready after `NULLMERE_WATCH_AFTER` seconds (12.5) |
+| `NULLMERE_SHOW` | `seat`, `unit`, `houses`, `chronicle`, `guide`: select the seat or a company, open a panel; `briefing`: keep the card a keeper first meets; `watch`: be ready after `NULLMERE_WATCH_AFTER` seconds (12.5) |
 | `NULLMERE_AUTOPLAY` | In a hosted realm, let a steward play the keeper's House this many watches first |
 
 Release builds ignore them all and always require the model.
@@ -209,9 +209,15 @@ as the realm will, and takes the realm's word as final.
 - **Who is there.** The front door names the keepers in the realm now,
   and each House in the Houses panel says who gives its orders: its
   keeper, here or away, or a steward.
+- **Taking your seat.** The first time you enter an age, a card tells
+  you the House you take up (its seat and holds, its strength among the
+  Houses, its wars and pacts, which the stewards may have chosen for you)
+  and the first three things to do.
 - **Coming back.** Return after watches have passed, and a card tells
   what happened while you were away: your stores and holds, and the news
   that touched your House.
+- **Elsewhere.** While you are in another app, the Dock counts the
+  watches that turned, and bounces once when something needs you.
 - **The watch.** Each turn is a watch. Give your orders, then say you're
   ready (⌘↩). The watch turns when every keeper there is ready, or when
   its time runs out, three minutes. An empty realm sleeps until a keeper

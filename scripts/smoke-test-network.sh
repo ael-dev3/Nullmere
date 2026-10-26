@@ -3,7 +3,8 @@
 # across the network: a SpacetimeDB server with the realm module published
 # and the steward running beside it (see "Raising the realm" in the README).
 # The app must reach the realm, arrive as a keeper and render the world with
-# Metal. Saves a screenshot of the keeper's first watch.
+# Metal. Saves a screenshot of the keeper's first watch, with the card that
+# briefs a keeper taking up their House.
 #
 #   NULLMERE_REALM=http://127.0.0.1:3000/nullmere scripts/smoke-test-network.sh
 #
@@ -31,7 +32,7 @@ rm -f "$IDENTITY"
 started="$(date '+%Y-%m-%d %H:%M:%S')"
 echo "Opening Nullmere Online and entering $REALM as ${KEEPER}…"
 NULLMERE_MODEL_STATE=ready NULLMERE_LAUNCHER_KEYS=return NULLMERE_REALM="$REALM" \
-    NULLMERE_IDENTITY_FILE="$IDENTITY" NULLMERE_KEEPER="$KEEPER" NULLMERE_SHOW=houses \
+    NULLMERE_IDENTITY_FILE="$IDENTITY" NULLMERE_KEEPER="$KEEPER" NULLMERE_SHOW=briefing \
     "$BIN" >build/network-stdout.log 2>&1 &
 pid=$!
 sleep "$WAIT"

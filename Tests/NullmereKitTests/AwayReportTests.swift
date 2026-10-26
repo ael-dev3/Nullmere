@@ -51,6 +51,33 @@ final class AwayReportTests: XCTestCase {
         try keep(AwayCard(report: report) {}, as: "game-away.png")
     }
 
+    func testAKeeperTakingUpTheirHouseIsBriefedOnce() throws {
+        let store = LocalStore(directory: dir)
+        var state = GameState(settings: GameSettings(seedText: "taking a seat", houseCount: 5, radius: 16))
+        let rival = try XCTUnwrap(state.houses.first { !$0.isPlayer })
+        _ = try state.perform(.declareWar(on: rival.id), as: state.player)
+        // Three watches pass; the rivals' offers wait on the keeper's answer.
+        for _ in 0..<3 { _ = state.endWatch() }
+        let session = GameSession(state: state, store: store)
+        let briefing = try XCTUnwrap(session.seatBriefing)
+        XCTAssertNil(session.awayReport, "The first time in, a briefing, not a report")
+        XCTAssertEqual(briefing.title, "You take up \(state.houses[state.player].title)")
+        let seat = try XCTUnwrap(state.seat(of: state.player))
+        XCTAssertTrue(briefing.facts[0].hasPrefix("Your seat is \(seat.name)"))
+        XCTAssertTrue(briefing.facts.contains("The age is at watch 4; the stewards kept your House until now."))
+        XCTAssertTrue(briefing.facts.contains { $0.contains("You are at war with") && $0.contains(rival.title) }, "\(briefing.facts)")
+        XCTAssertTrue(briefing.facts.contains { $0.hasPrefix("Of 5 Houses around the lake, yours is ") })
+        XCTAssertEqual(briefing.steps.count, state.holds(of: state.player).contains { $0.project == nil } ? 3 : 2)
+        XCTAssertTrue(briefing.steps.last!.contains("⌘↩"))
+        session.dismissSeatBriefing()
+        XCTAssertNil(session.seatBriefing)
+        XCTAssertNil(GameSession(state: state, store: store).seatBriefing, "Once an age")
+        try keep(SeatBriefingCard(briefing: briefing, colour: .orange) {}, as: "game-briefing.png")
+
+        XCTAssertEqual(SeatBriefing.list(["A", "B", "C"]), "A, B and C")
+        XCTAssertEqual(SeatBriefing.ordinal(12), "twelfth")
+    }
+
     func testTheReportSpeaksPlainly() throws {
         let state = GameState(settings: GameSettings(seedText: "plain words", houseCount: 3, radius: 16))
         let seen = LastSeen(watch: state.watch, stock: state.houses[state.player].stock, holds: state.holds(of: state.player).count)

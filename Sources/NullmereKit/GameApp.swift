@@ -343,8 +343,14 @@ public final class GameApp {
             session?.autoplay(watches: watches)
         }
         // NULLMERE_SHOW=seat,houses selects the seat and opens a panel,
-        // for screenshots of the interface.
+        // for screenshots of the interface; "briefing" keeps the card a
+        // keeper first meets.
         let show = Set((environment["NULLMERE_SHOW"] ?? "").split(separator: ",").map(String.init))
+        // The cards a keeper first meets are shown only when asked for.
+        if !show.contains("briefing") {
+            session?.dismissSeatBriefing()
+            session?.dismissAwayReport()
+        }
         if show.contains("seat") { session?.focusOnSeat() }
         if show.contains("unit") { session?.selectNextReadyUnit() }
         if show.contains("houses") { session?.panel = .houses }
