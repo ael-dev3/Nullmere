@@ -11,7 +11,11 @@ public final class OnlineShell {
     public let launcher: LauncherModel
     public let app: GameApp
 
-    public init(launcher: LauncherModel = LauncherModel(), app: GameApp = GameApp(opensAtOnce: false)) {
+    public convenience init() {
+        self.init(launcher: LauncherModel(), app: GameApp(opensAtOnce: false))
+    }
+
+    public init(launcher: LauncherModel, app: GameApp) {
         self.launcher = launcher
         self.app = app
         launcher.enterRealm = { [weak self] in self?.enterRealm() }
