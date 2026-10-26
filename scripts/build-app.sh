@@ -21,7 +21,6 @@ CODESIGN_IDENTITY="${CODESIGN_IDENTITY:--}"
 
 echo "Building ($CONFIGURATION, arm64)…"
 swift build -c "$CONFIGURATION" --arch arm64 --product NullmereLauncher
-swift build -c "$CONFIGURATION" --arch arm64 --product Nullmere
 BIN_DIR="$(swift build -c "$CONFIGURATION" --arch arm64 --show-bin-path)"
 
 ICONSET_ROOT="$(mktemp -d)"

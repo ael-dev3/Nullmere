@@ -74,7 +74,7 @@ public final class GameApp {
         self.store = store
         self.readModel = readiness
         self.address = address ?? GameApp.defaultAddress
-        self.identityStore = identity ?? GameApp.defaultIdentityStore(store: store)
+        self.identityStore = identity ?? GameApp.defaultIdentityStore(for: address ?? GameApp.defaultAddress)
         keeperName = UserDefaults.standard.string(forKey: GameApp.nameKey(for: self.address))
         let soundOn = sound ?? (UserDefaults.standard.object(forKey: "sound.enabled") as? Bool ?? true)
         self.isSoundOn = soundOn
@@ -113,20 +113,24 @@ public final class GameApp {
         if environment["NULLMERE_REALM"] == "local" {
             return .hosted(seed: environment["NULLMERE_REALM_SEED"] ?? "the still water")
         }
-        if let text = environment["NULLMERE_REALM"], let url = URL(string: text), url.scheme?.hasPrefix("ws") == true {
+        if let text = environment["NULLMERE_REALM"], let url = URL(string: text), url.scheme?.hasPrefix("http") == true {
             return .network(url)
         }
         #endif
-        return .network(URL(string: "wss://maincloud.spacetimedb.com/v1/database/nullmere/subscribe")!)
+        return .network(URL(string: "https://maincloud.spacetimedb.com/nullmere")!)
     }
 
-    static func defaultIdentityStore(store: LocalStore) -> any IdentityStore {
+    /// Each realm knows the keeper by its own identity, kept in the keychain.
+    static func defaultIdentityStore(for address: RealmAddress) -> any IdentityStore {
         #if DEBUG
         if let path = ProcessInfo.processInfo.environment["NULLMERE_IDENTITY_FILE"], !path.isEmpty {
             return FileIdentityStore(url: URL(fileURLWithPath: path))
         }
         #endif
-        return KeychainIdentityStore(realm: realmName)
+        switch address {
+        case .hosted: return KeychainIdentityStore(realm: "hosted")
+        case .network(let url): return KeychainIdentityStore(realm: url.host() ?? url.absoluteString)
+        }
     }
 
     public var session: GameSession? {
@@ -165,16 +169,19 @@ public final class GameApp {
         door = .connecting
         arrivalProblem = nil
         isEntering = false
-        let identity = identityStore.identity()
         let link: any RealmLink
         switch address {
         case .hosted(let seed):
             let realm = hosted ?? LocalRealm.open(at: store.hostedRealmURL, name: "This Mac's realm", seed: seed)
             hosted = realm
-            link = realm.link(identity: identity)
+            link = realm.link(identity: identityStore.identity())
             startTicking(realm)
         case .network(let url):
-            link = NetworkRealmLink(url: url, identity: identity)
+            guard let transport = SpacetimeHTTP(address: url) else {
+                door = .unreachable("The realm's address can't be read.")
+                return
+            }
+            link = NetworkRealmLink(transport: transport, credentials: identityStore)
         }
         self.link = link
         link.onEvent = { [weak self] event in self?.hear(event) }

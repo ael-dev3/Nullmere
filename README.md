@@ -107,7 +107,7 @@ builds also take:
 | `NULLMERE_MODEL_STATE` | `ready`, `notEligible`, `notEnabled`, `downloading` or `unavailable` instead of asking the framework (`NULLMERE_SKIP_MODEL_CHECK=1` means `ready`) |
 | `NULLMERE_LAUNCHER_KEYS` | Keys the launcher receives once its opening is over, such as `right,return` |
 | `NULLMERE_NEWS_URL` | Another `https` news feed, such as a branch's copy |
-| `NULLMERE_REALM` | `local`: host a realm on this Mac (kept in Application Support); or a `ws://` address of another realm |
+| `NULLMERE_REALM` | `local`: host a realm on this Mac (kept in Application Support); or the `http(s)://server/database` address of another realm, such as `http://127.0.0.1:3000/nullmere` |
 | `NULLMERE_REALM_SEED` | The words a newly hosted realm's world grows from |
 | `NULLMERE_IDENTITY_FILE` | Keep the keeper's identity in this file instead of the keychain |
 | `NULLMERE_KEEPER` | Enter the world at once under this name |

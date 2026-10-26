@@ -50,6 +50,8 @@ public enum RealmError: Error, Equatable, Sendable, CustomStringConvertible {
     /// Every seat is held; the keeper waits for one to fall free.
     case noSeat
     case rule(RuleError)
+    /// Refused across the network, for the reason the realm gave.
+    case refused(String)
 
     public var description: String {
         switch self {
@@ -58,6 +60,7 @@ public enum RealmError: Error, Equatable, Sendable, CustomStringConvertible {
         case .nameTaken: return "Another keeper already goes by that name."
         case .noSeat: return "Every seat around the lake is held. You'll hold the next that falls free."
         case .rule(let error): return error.description
+        case .refused(let reason): return reason
         }
     }
 }

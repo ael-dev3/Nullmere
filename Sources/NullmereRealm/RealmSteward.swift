@@ -1,0 +1,172 @@
+import Foundation
+import NullmereCore
+
+/// The steward's answer to one request, as the client reads it.
+public struct RealmReply: Codable, Equatable, Sendable {
+    public let ok: Bool
+    /// The keeper, after an arrival.
+    public let keeper: Keeper?
+    /// Why it was refused.
+    public let refusal: String?
+
+    public static let done = RealmReply(ok: true, keeper: nil, refusal: nil)
+
+    public static func refused(_ error: RealmError) -> RealmReply {
+        RealmReply(ok: false, keeper: nil, refusal: error.description)
+    }
+}
+
+/// The realm as published: its whole state, its status, and what the last
+/// change brought.
+public struct PublishedRealm: Equatable, Sendable {
+    public let version: UInt64
+    public let state: RealmState
+    public let status: RealmStatus
+    public let events: [GameEvent]
+}
+
+/// The steward: the trusted process that runs the realm's rules. It reads
+/// the keepers' requests from SpacetimeDB in the order they came, carries
+/// them out with the rules core, answers each, and publishes the realm.
+/// SpacetimeDB lets no one else write the world.
+public actor RealmSteward {
+    private let transport: any SpacetimeTransport
+    private let token: String
+    public private(set) var state: RealmState
+    public private(set) var version: UInt64
+    private var lastEvents: [GameEvent] = []
+    private var lastStatus: RealmStatus?
+    /// When each keeper was last heard from.
+    private var heard: [String: Double] = [:]
+    private var answered: [String] = []
+
+    /// Seconds of silence after which a keeper is taken to have left.
+    public static let silence = 90.0
+
+    /// Takes up the realm where SpacetimeDB holds it, or begins a new one.
+    public init(transport: any SpacetimeTransport, token: String, name: String, seed: String, seats: Int = 8,
+                watchLength: Double = RealmState.defaultWatchLength, now: Double) async throws {
+        self.transport = transport
+        self.token = token
+        let rows = try await transport.query("SELECT version, state FROM world", token: token)
+        if let row = rows.first, row.count == 2, let version = row[0].number, let text = row[1].string,
+           let state = try? JSONDecoder().decode(RealmState.self, from: Data(text.utf8)) {
+            self.state = state
+            self.version = UInt64(version)
+        } else {
+            self.state = RealmState(name: name, seed: seed, seats: seats, watchLength: watchLength, now: now)
+            self.version = 0
+        }
+        // Whoever was there when the steward last stopped is gone now.
+        for keeper in state.keepers where keeper.isOnline {
+            state.depart(keeper.id)
+        }
+        try await publish()
+    }
+
+    /// One round: every waiting request, then the clock. Returns whether
+    /// the realm changed.
+    @discardableResult
+    public func step(now: Double) async throws -> Bool {
+        var changed = false
+        var events: [GameEvent] = []
+        let rows = try await transport.query("SELECT id, keeper, kind, nonce, payload FROM request", token: token)
+        let requests = rows.compactMap { row -> (id: UInt64, keeper: String, kind: String, nonce: String, payload: String)? in
+            guard row.count == 5, let id = row[0].number, let keeper = row[1].string, let kind = row[2].string,
+                  let nonce = row[3].string, let payload = row[4].string else { return nil }
+            return (UInt64(id), keeper, kind, nonce, payload)
+        }.sorted { $0.id < $1.id }
+
+        for request in requests {
+            heard[request.keeper] = now
+            let (reply, didChange, turned) = handle(kind: request.kind, keeper: request.keeper, payload: request.payload, now: now)
+            changed = changed || didChange
+            events += turned
+            let text = String(decoding: try JSONEncoder().encode(reply), as: UTF8.self)
+            try await transport.call("settle", [.integer(request.id), .string(text)], token: token)
+            answered.append(request.nonce)
+        }
+
+        // The silent have left.
+        for keeper in state.keepers where keeper.isOnline && now - (heard[keeper.id] ?? now) > RealmSteward.silence {
+            state.depart(keeper.id)
+            changed = true
+        }
+        if let turned = state.tick(now: now) {
+            events += turned
+            changed = true
+        }
+        if !events.isEmpty { lastEvents = events }
+        let status = state.status(now: now)
+        if changed || status.online != lastStatus?.online || status.ready != lastStatus?.ready {
+            if changed && events.isEmpty { lastEvents = [] }
+            try await publish(now: now)
+        }
+        // Answers old enough to have been read are forgotten.
+        if answered.count > 64 {
+            let old = Array(answered.prefix(answered.count - 32))
+            try await transport.call("forget", [.strings(old)], token: token)
+            answered.removeFirst(old.count)
+        }
+        return changed
+    }
+
+    private func handle(kind: String, keeper: String, payload: String, now: Double) -> (RealmReply, Bool, [GameEvent]) {
+        switch kind {
+        case "arrive":
+            do {
+                let arrived = try state.arrive(keeper, name: payload.isEmpty ? nil : payload, now: now)
+                return (RealmReply(ok: true, keeper: arrived, refusal: nil), true, [])
+            } catch {
+                return (.refused(error), false, [])
+            }
+        case "order":
+            guard let command = try? JSONDecoder().decode(Command.self, from: Data(payload.utf8)) else {
+                return (.refused(.refused("The order couldn't be read.")), false, [])
+            }
+            do {
+                _ = try state.perform(command, by: keeper)
+                return (.done, true, [])
+            } catch {
+                return (.refused(error), false, [])
+            }
+        case "ready":
+            if let turned = state.setReady(keeper, payload == "true", now: now) {
+                return (.done, true, turned)
+            }
+            return (.done, true, [])
+        case "here":
+            return (.done, false, [])
+        case "leave":
+            state.depart(keeper)
+            return (.done, true, [])
+        default:
+            return (.refused(.refused("The realm doesn't know that request.")), false, [])
+        }
+    }
+
+    private func publish(now: Double = Date().timeIntervalSince1970) async throws {
+        version += 1
+        let encoder = JSONEncoder()
+        let status = state.status(now: now)
+        lastStatus = status
+        try await transport.call("publish", [
+            .integer(version),
+            .string(String(decoding: try encoder.encode(state), as: UTF8.self)),
+            .string(String(decoding: try encoder.encode(status), as: UTF8.self)),
+            .string(String(decoding: try encoder.encode(lastEvents), as: UTF8.self)),
+        ], token: token)
+    }
+
+    /// Runs the realm until cancelled, a step every quarter second.
+    public func run(clock: @Sendable () -> Double = { Date().timeIntervalSince1970 }) async {
+        while !Task.isCancelled {
+            do {
+                try await step(now: clock())
+            } catch {
+                // The server will be there again; the next step tries anew.
+            }
+            try? await Task.sleep(nanoseconds: 250_000_000)
+        }
+    }
+}

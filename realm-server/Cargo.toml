@@ -1,0 +1,13 @@
+[package]
+name = "nullmere-realm"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "The Nullmere Online realm on SpacetimeDB: keepers' requests in, the steward's world out."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+spacetimedb = "2.13"
+log = "0.4"
