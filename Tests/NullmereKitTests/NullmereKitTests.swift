@@ -226,3 +226,45 @@ final class HoverInfoTests: XCTestCase {
         XCTAssertTrue(woodLine.contains("2 moves") && woodLine.contains("+25% defence"), woodLine)
     }
 }
+
+@MainActor
+final class UndoTests: XCTestCase {
+    private func session() -> (GameSession, URL) {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let state = GameState(settings: GameSettings(seedText: "undo", houseCount: 3, radius: 16))
+        return (GameSession(state: state, store: SaveStore(directory: directory)), directory)
+    }
+
+    func testABuildingCanBeTakenBack() throws {
+        let (session, directory) = session()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let before = session.state
+        let seat = try XCTUnwrap(session.state.seat(of: session.player))
+        XCTAssertFalse(session.canUndo)
+        XCTAssertTrue(session.perform(.build(hold: seat.id, kind: .granary)))
+        XCTAssertTrue(session.canUndo)
+        session.undo()
+        XCTAssertEqual(session.state, before, "Everything is as it was, resources included")
+        XCTAssertFalse(session.canUndo)
+    }
+
+    func testWhatChanceOrDiscoveryDecidedStays() throws {
+        let (session, directory) = session()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let lantern = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .lantern })
+        // March the lantern somewhere it will see new country.
+        let far = try XCTUnwrap(lantern.position.ring(4).first {
+            session.state.map[$0]?.terrain.isPassable == true && session.state.path(for: lantern, to: $0) != nil
+        })
+        let explored = session.playerHouse.explored.filter { $0 }.count
+        XCTAssertTrue(session.perform(.move(unit: lantern.id, to: far)))
+        if session.playerHouse.explored.filter({ $0 }).count > explored {
+            XCTAssertFalse(session.canUndo, "A march that revealed country can't be taken back")
+        }
+        let seat = try XCTUnwrap(session.state.seat(of: session.player))
+        XCTAssertTrue(session.perform(.build(hold: seat.id, kind: .granary)))
+        XCTAssertTrue(session.canUndo)
+        session.endWatch()
+        XCTAssertFalse(session.canUndo, "A new watch starts with nothing to take back")
+    }
+}

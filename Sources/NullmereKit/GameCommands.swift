@@ -14,6 +14,11 @@ public struct GameCommands: Commands {
                 .keyboardShortcut("w", modifiers: [.command, .shift])
                 .disabled(app.session == nil)
         }
+        CommandGroup(replacing: .undoRedo) {
+            Button("Undo Order") { app.session?.undo() }
+                .keyboardShortcut("z", modifiers: .command)
+                .disabled(!(app.session?.canUndo ?? false))
+        }
         CommandGroup(replacing: .saveItem) {
             Button("Save") { app.session?.save() }
                 .keyboardShortcut("s", modifiers: .command)

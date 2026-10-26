@@ -79,6 +79,11 @@ public final class GameSession {
 
     public private(set) var spoken: [Spoken: String] = [:]
 
+    /// Orders this watch that can be taken back, newest last.
+    private var undoStack: [(state: GameState, command: Command)] = []
+
+    public var canUndo: Bool { !undoStack.isEmpty }
+
     /// A company's march being shown, from where it stood along the route.
     public struct March: Equatable {
         public let path: [Hex]
@@ -219,7 +224,15 @@ public final class GameSession {
     public func perform(_ command: Command) -> Bool {
         do {
             let before = positions()
+            let previous = state
             let events = try state.perform(command, as: player)
+            if Self.isUndoable(command, events: events, before: previous, after: state, player: player) {
+                undoStack.append((previous, command))
+            } else {
+                // Something learned or left to chance can't be taken back, nor
+                // anything before it.
+                undoStack.removeAll()
+            }
             showMarches(events, from: before)
             report(events)
             sound(for: command, events: events)
@@ -244,6 +257,7 @@ public final class GameSession {
         guard state.outcome == nil, !isEndingWatch else { return }
         isEndingWatch = true
         let before = positions()
+        undoStack.removeAll()
         let events = state.endWatch()
         showMarches(events, from: before)
         onCue?(.watch)
@@ -312,6 +326,35 @@ public final class GameSession {
         tilesVersion += 1
         refreshPathPreview()
         askVoices()
+    }
+
+    // MARK: Undo
+
+    /// Takes back the last order, if nothing in it was left to chance or
+    /// revealed anything new.
+    public func undo() {
+        guard let last = undoStack.popLast() else { return }
+        state = last.state
+        if case .unit(let id) = selection, state.unit(id) == nil { selection = .none }
+        if case .hold(let id) = selection, state.hold(id)?.owner != player { selection = .none }
+        refreshWorld()
+        post("Order taken back.", tone: .neutral)
+    }
+
+    static func isUndoable(_ command: Command, events: [GameEvent], before: GameState, after: GameState, player: Int) -> Bool {
+        switch command {
+        case .build, .train, .barter, .fortify, .halt, .disband:
+            return true
+        case .move:
+            // A march may be taken back if it met nothing and saw nothing new.
+            let quiet = events.allSatisfy { event in
+                if case .moved = event { return true }
+                return false
+            }
+            return quiet && before.houses[player].explored == after.houses[player].explored
+        case .attack, .found, .declareWar, .propose, .answer:
+            return false
+        }
     }
 
     // MARK: Sound
