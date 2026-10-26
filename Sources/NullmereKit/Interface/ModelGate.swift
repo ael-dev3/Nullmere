@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import LauncherCore
+import LauncherKit
 import SwiftUI
 
 /// Shown instead of the game until Apple's on-device model is ready: what
@@ -12,8 +13,18 @@ struct ModelGate: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            MoonlitLake().ignoresSafeArea()
+            // Darken the water beneath the words, as the launcher does.
+            EllipticalGradient(
+                colors: [.black.opacity(0.75), .black.opacity(0.45), .clear],
+                center: UnitPoint(x: 0.5, y: 0.62),
+                startRadiusFraction: 0,
+                endRadiusFraction: 0.6
+            )
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
             VStack(spacing: 18) {
+                Spacer(minLength: 0)
                 Caps("Nullmere", size: 30, weight: .thin, tracking: 0.5)
                     .foregroundStyle(Palette.ink.opacity(0.9))
                 Rule(opacity: 0.4).frame(width: 260)
@@ -42,8 +53,11 @@ struct ModelGate: View {
                     }
                 }
                 .padding(.top, 6)
+                Spacer(minLength: 0)
+                    .frame(maxHeight: 60)
             }
             .padding(40)
+            .frame(maxHeight: .infinity, alignment: .bottom)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             app.checkModel()

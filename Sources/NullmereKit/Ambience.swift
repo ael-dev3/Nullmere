@@ -122,28 +122,33 @@ final class Synth: @unchecked Sendable {
         lock.lock(); target = 1; lock.unlock()
     }
 
+    /// Skips the fade, for measuring.
+    func settle() {
+        lock.lock(); target = 1; level = 1; lock.unlock()
+    }
+
     func trigger(_ cue: Ambience.Cue) {
         let note: Note
         switch cue {
         case .select:
-            note = Note(partials: [Partial(frequency: 1320, amplitude: 0.018, decay: 30)], noise: 0.01, noiseDecay: 90)
+            note = Note(partials: [Partial(frequency: 1320, amplitude: 0.10, decay: 30)], noise: 0.03, noiseDecay: 90)
         case .order:
-            note = Note(partials: [Partial(frequency: 660, amplitude: 0.022, decay: 14), Partial(frequency: 990, amplitude: 0.01, decay: 18)], noise: 0.006, noiseDecay: 60)
+            note = Note(partials: [Partial(frequency: 660, amplitude: 0.09, decay: 14), Partial(frequency: 990, amplitude: 0.04, decay: 18)], noise: 0.02, noiseDecay: 60)
         case .battle:
             note = Note(partials: [Partial(frequency: 58, amplitude: 0.16, decay: 7), Partial(frequency: 91, amplitude: 0.06, decay: 9)], noise: 0.09, noiseDecay: 22)
         case .watch:
             // An inharmonic bell, low and long.
             let f: Float = 98
             note = Note(partials: [
-                Partial(frequency: f, amplitude: 0.07, decay: 0.45),
-                Partial(frequency: f * 2.76, amplitude: 0.035, decay: 0.8),
-                Partial(frequency: f * 5.40, amplitude: 0.016, decay: 1.4),
-                Partial(frequency: f * 8.93, amplitude: 0.007, decay: 2.2),
+                Partial(frequency: f, amplitude: 0.175, decay: 0.45),
+                Partial(frequency: f * 2.76, amplitude: 0.0875, decay: 0.8),
+                Partial(frequency: f * 5.40, amplitude: 0.04, decay: 1.4),
+                Partial(frequency: f * 8.93, amplitude: 0.0175, decay: 2.2),
             ], noise: 0, noiseDecay: 1)
         case .rise:
-            note = Note(partials: [Partial(frequency: 392, amplitude: 0.03, decay: 2.2), Partial(frequency: 587.3, amplitude: 0.022, decay: 2.6), Partial(frequency: 784, amplitude: 0.012, decay: 3)], noise: 0, noiseDecay: 1)
+            note = Note(partials: [Partial(frequency: 392, amplitude: 0.09, decay: 2.2), Partial(frequency: 587.3, amplitude: 0.066, decay: 2.6), Partial(frequency: 784, amplitude: 0.036, decay: 3)], noise: 0, noiseDecay: 1)
         case .dread:
-            note = Note(partials: [Partial(frequency: 46.25, amplitude: 0.11, decay: 0.7), Partial(frequency: 69.3, amplitude: 0.05, decay: 0.9), Partial(frequency: 97.99, amplitude: 0.03, decay: 1.2)], noise: 0.02, noiseDecay: 3)
+            note = Note(partials: [Partial(frequency: 46.25, amplitude: 0.14, decay: 0.7), Partial(frequency: 69.3, amplitude: 0.065, decay: 0.9), Partial(frequency: 97.99, amplitude: 0.04, decay: 1.2)], noise: 0.026, noiseDecay: 3)
         }
         lock.lock()
         if pending.count < 8 { pending.append(note) }
