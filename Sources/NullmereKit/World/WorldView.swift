@@ -67,7 +67,7 @@ private struct WorldMetalRepresentable: NSViewRepresentable {
 }
 
 /// Holds, companies and routes, drawn in one pass over the map.
-private struct WorldMarks: View {
+struct WorldMarks: View {
     let session: GameSession
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
