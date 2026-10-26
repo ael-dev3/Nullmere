@@ -65,6 +65,38 @@ if ! echo "$LOG" | grep -q "News updated"; then
     exit 1
 fi
 run build/launcher-settings.png right,right,return,down
+# Play: Return on the lit Play opens the game, and the launcher quits.
+GAME_APP="${GAME_APP:-build/Nullmere.app}"
+if [ -d "$GAME_APP" ]; then
+    pkill -x Nullmere 2>/dev/null || true
+    started="$(date '+%Y-%m-%d %H:%M:%S')"
+    echo "Opening the launcher and pressing Return on Play…"
+    NULLMERE_MODEL_STATE=ready NULLMERE_LAUNCHER_KEYS=return NULLMERE_GAME_APP="$PWD/$GAME_APP" "$BIN" >build/launcher-stdout.log 2>&1 &
+    pid=$!
+    sleep "$WAIT"
+    screencapture -x build/launcher-play.png || true
+    play_log="$(log show --start "$started" --style compact --predicate "subsystem == \"$SUBSYSTEM\"" 2>/dev/null || true)"
+    echo "$play_log" | grep -E "Opening the game|game opened|did not open" || true
+    if kill -0 "$pid" 2>/dev/null; then
+        kill -TERM "$pid" || true
+        pkill -x Nullmere 2>/dev/null || true
+        echo "error: the launcher was still open after Play" >&2
+        exit 1
+    fi
+    if ! pgrep -x Nullmere >/dev/null; then
+        echo "error: Play did not open the game" >&2
+        exit 1
+    fi
+    pkill -TERM -x Nullmere || true
+    if ! echo "$play_log" | grep -q "The game opened"; then
+        echo "error: the launcher did not report opening the game" >&2
+        exit 1
+    fi
+    echo "Play opened the game, and the launcher stepped aside."
+else
+    echo "warning: $GAME_APP not built; Play's hand-off not checked" >&2
+fi
+
 # The requirement screen for the states a real Mac passes through.
 run build/launcher-off.png "" notEnabled
 run build/launcher-downloading.png "" downloading

@@ -6,6 +6,13 @@ enum GameClient {
     static let bundleIdentifier = "online.nullmere.game"
 
     static func installedURL() -> URL? {
+        #if DEBUG
+        // Debug builds can be pointed at a built game, such as CI's.
+        if let path = ProcessInfo.processInfo.environment["NULLMERE_GAME_APP"], !path.isEmpty {
+            let url = URL(fileURLWithPath: path)
+            return Bundle(url: url)?.bundleIdentifier == bundleIdentifier ? url : nil
+        }
+        #endif
         let sibling = Bundle.main.bundleURL.deletingLastPathComponent().appendingPathComponent("Nullmere.app")
         if Bundle(url: sibling)?.bundleIdentifier == bundleIdentifier {
             return sibling

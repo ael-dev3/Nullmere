@@ -376,12 +376,15 @@ public final class LauncherModel {
         guard !isLeaving else { return }
         completeIntro()
         withAnimation(.easeIn(duration: 0.8)) { isLeaving = true }
+        Self.logger.notice("Opening the game at \(url.path, privacy: .public).")
         Task {
             do {
                 try await environment.openGame(url)
+                Self.logger.notice("The game opened; the launcher steps aside.")
                 try? await Task.sleep(for: .milliseconds(850))
                 environment.terminate()
             } catch {
+                Self.logger.error("The game did not open: \(String(describing: error), privacy: .public)")
                 gameFailedToOpen = true
                 playSelection = .back
                 show(.play)

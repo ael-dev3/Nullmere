@@ -109,6 +109,7 @@ builds also take:
 | `NULLMERE_MODEL_STATE` | `ready`, `notEligible`, `notEnabled`, `downloading` or `unavailable` instead of asking the framework (`NULLMERE_SKIP_MODEL_CHECK=1` means `ready`) |
 | `NULLMERE_LAUNCHER_KEYS` | Keys the launcher receives once its opening is over, such as `right,return` |
 | `NULLMERE_NEWS_URL` | Another `https` news feed, such as a branch's copy |
+| `NULLMERE_GAME_APP` | The game app Play opens, such as a freshly built `build/Nullmere.app` |
 | `NULLMERE_NEW_GAME` | Start a world on these words at once |
 | `NULLMERE_SHOW` | `seat`, `houses`, `chronicle`: select the seat, open a panel |
 | `NULLMERE_AUTOPLAY` | Let a steward play this many watches first |
