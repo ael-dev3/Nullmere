@@ -108,6 +108,7 @@ public final class GameApp {
             // "watch" ends a watch a little before CI photographs the screen,
             // so the watch's card is on it.
             if show.contains("watch"), let delay = Double(environment["NULLMERE_WATCH_AFTER"] ?? "12.5") {
+                session?.keepsWatchCard = true
                 Task { [weak self] in
                     try? await Task.sleep(for: .seconds(delay))
                     self?.session?.endWatch()

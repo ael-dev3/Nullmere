@@ -113,6 +113,8 @@ public final class GameSession {
     /// The card marking the watch that just began, while it shows.
     private(set) var watchCard: (id: Int, summary: WatchSummary)?
     private var watchCardCounter = 0
+    /// Keeps the watch's card on screen, for photographs.
+    var keepsWatchCard = false
 
     /// Blows still being drawn.
     public private(set) var blows: [Blow] = []
@@ -419,7 +421,7 @@ public final class GameSession {
         withAnimation(.easeOut(duration: 0.5)) { watchCard = (id, summary) }
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(Self.watchCardDuration))
-            guard let self, self.watchCard?.id == id else { return }
+            guard let self, self.watchCard?.id == id, !self.keepsWatchCard else { return }
             withAnimation(.easeIn(duration: 0.8)) { self.watchCard = nil }
         }
     }
