@@ -540,7 +540,6 @@ public final class GameSession {
     private func adopt(_ world: GameState) {
         guard world != state else { return }
         state = world
-        rememberSeen()
         if case .unit(let id) = selection, state.unit(id) == nil { selection = .none }
         if case .hold(let id) = selection, state.hold(id) == nil { selection = .none }
         refreshWorld()
@@ -645,7 +644,7 @@ public final class GameSession {
             isAtWar = atWar
             onWarChanged?(atWar)
         }
-        tileBytes = TileTexture.bytes(for: state, viewer: player)
+        tileBytes = TileTexture.bytes(for: state, viewer: player, visible: visible, owners: territory)
         tilesVersion += 1
         refreshPathPreview()
         askVoices()

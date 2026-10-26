@@ -49,6 +49,9 @@ jobs:
           xcodebuild -version
           swift --version
 
+      - name: Check the scripts
+        run: scripts/check-scripts.sh
+
       - name: Build
         id: build
         run: |

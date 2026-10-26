@@ -70,7 +70,10 @@ struct PlayView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         NoticeFeed(session: session)
                         Spacer(minLength: 0)
-                        CounselCard(session: session)
+                        // The briefing says it first; counsel follows it.
+                        if session.seatBriefing == nil {
+                            CounselCard(session: session)
+                        }
                         SelectionPanel(session: session)
                             .transition(.opacity)
                     }

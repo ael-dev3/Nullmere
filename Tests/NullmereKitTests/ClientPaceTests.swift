@@ -34,6 +34,24 @@ final class ClientPaceTests: XCTestCase {
             _ = session.perform(order)
             times.append(Date().timeIntervalSince(start) * 1000)
         }
+        // Where the time goes, for whoever makes it faster.
+        func measure(_ name: String, _ body: () -> Void) -> String {
+            let start = Date()
+            for _ in 0..<10 { body() }
+            return "\(name) \(String(format: "%.1f", Date().timeIntervalSince(start) * 100)) ms"
+        }
+        let state = session.state, player = session.player
+        let unit = state.units(of: player).first { $0.kind.isMilitary }
+        print("PERF parts of a refresh: " + [
+            measure("sight") { _ = state.visibility(for: player) },
+            measure("territory") { _ = state.territory() },
+            measure("threats") { _ = Sentinel.threats(in: state, player: player, visible: state.visibility(for: player)) },
+            measure("tiles") { _ = TileTexture.bytes(for: state, viewer: player) },
+            measure("reach") { if let unit { _ = state.reach(of: unit) } },
+            measure("strikes") { if let unit { _ = state.strikeTargets(of: unit) } },
+            measure("view") { _ = state.view(for: player) },
+            measure("compare") { _ = state == state.view(for: player) },
+        ].joined(separator: ", "))
         let sorted = times.sorted()
         let median = sorted.isEmpty ? 0 : sorted[sorted.count / 2]
         print("PERF an order on a lake of \(session.state.houses.count) Houses at watch \(session.state.watch), \(session.state.units.count) companies: median \(String(format: "%.1f", median)) ms over \(times.count)")

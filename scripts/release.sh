@@ -27,7 +27,7 @@ fi
 
 VERSION="$VERSION" OUTPUT_DIR="$OUTPUT_DIR" CODESIGN_IDENTITY="$IDENTITY" scripts/build-app.sh
 
-echo "Packing $DMG…"
+echo "Packing ${DMG}…"
 STAGING="$(mktemp -d)"
 trap 'rm -rf "$STAGING"' EXIT
 cp -R "$APP" "$STAGING/"

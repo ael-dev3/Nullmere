@@ -13,21 +13,26 @@ enum TileTexture {
         2 * map.radius + 1
     }
 
-    static func bytes(for state: GameState, viewer: Int) -> [UInt8] {
+    /// `visible` and `owners` may be passed when already worked out, as
+    /// the session does on every change.
+    static func bytes(for state: GameState, viewer: Int, visible: [Bool]? = nil, owners: [Int?]? = nil) -> [UInt8] {
         let map = state.map
         let side = side(for: map)
         var bytes = [UInt8](repeating: 0, count: side * side * 4)
-        let visible = state.visibility(for: viewer)
+        let visible = visible ?? state.visibility(for: viewer)
         let explored = state.houses[viewer].explored
-        let owners = state.territory()
+        let owners = owners ?? state.territory()
         let holdTiles = Set(state.holds.compactMap { map.index(of: $0.position) })
+        // Each hold's colour, found once rather than for every tile.
+        var colourOf: [Int: Int] = [:]
+        for hold in state.holds { colourOf[hold.id] = state.houses[hold.owner].sigil + 1 }
         for (index, hex) in map.hexes.enumerated() {
             let tile = map[index]
             let offset = ((hex.r + map.radius) * side + (hex.q + map.radius)) * 4
             let seen = visible[index] ? 2 : (explored[index] ? 1 : 0)
             var owner = 0
-            if seen > 0, let holdID = owners[index], let hold = state.hold(holdID) {
-                owner = state.houses[hold.owner].sigil + 1
+            if seen > 0, let holdID = owners[index], let colour = colourOf[holdID] {
+                owner = colour
             }
             bytes[offset] = UInt8(Terrain.allCases.firstIndex(of: tile.terrain) ?? 0)
             bytes[offset + 1] = tile.feature.map { UInt8((Feature.allCases.firstIndex(of: $0) ?? 0) + 1) } ?? 0
