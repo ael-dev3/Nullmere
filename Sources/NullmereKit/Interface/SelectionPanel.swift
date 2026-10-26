@@ -191,7 +191,7 @@ private struct BuildingRow: View {
     }
 }
 
-private struct LevelPips: View {
+struct LevelPips: View {
     let level: Int
     let maximum: Int
 

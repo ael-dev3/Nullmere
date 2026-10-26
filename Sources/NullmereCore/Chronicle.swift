@@ -12,6 +12,7 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         case fall
         case greatWork
         case discovery
+        case tribute
         case ending
     }
 

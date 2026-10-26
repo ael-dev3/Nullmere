@@ -85,8 +85,25 @@ struct WorldMarks: View {
         }
     }
 
-    /// Where a company is drawn: along its march while one is shown.
+    /// Where a company is drawn: along its march, leaning into a blow it
+    /// strikes, shaken by one it takes.
     private func position(of unit: NullmereCore.Unit, at date: Date, camera: Camera, size: CGSize) -> CGPoint {
+        var point = marchPoint(of: unit, at: date, camera: camera, size: size)
+        guard !reduceMotion else { return point }
+        for blow in session.blows where blow.attacker == unit.id || blow.defender == unit.id {
+            let age = date.timeIntervalSince(blow.start) / GameSession.Blow.duration
+            if blow.attacker == unit.id, !blow.isRanged {
+                let foe = camera.viewPoint(of: blow.at, in: size)
+                let lean = CGFloat(GameSession.Blow.lunge(at: age))
+                point = CGPoint(x: point.x + (foe.x - point.x) * lean, y: point.y + (foe.y - point.y) * lean)
+            } else if blow.defender == unit.id {
+                point.x += CGFloat(GameSession.Blow.shake(at: age))
+            }
+        }
+        return point
+    }
+
+    private func marchPoint(of unit: NullmereCore.Unit, at date: Date, camera: Camera, size: CGSize) -> CGPoint {
         guard !reduceMotion, let march = session.marches[unit.id], march.path.count > 1 else {
             return camera.viewPoint(of: unit.position, in: size)
         }
@@ -165,6 +182,35 @@ struct WorldMarks: View {
                 let age = reduceMotion ? 0.5 : min(max(date.timeIntervalSince(blow.start) / GameSession.Blow.duration, 0), 1)
                 let point = camera.viewPoint(of: blow.at, in: size)
                 let fade = 1 - age
+                // A bow's shot crossing the gap.
+                if blow.isRanged, !reduceMotion, age < 0.1 {
+                    let origin = camera.viewPoint(of: blow.from, in: size)
+                    let t = CGFloat(age / 0.1)
+                    let head = CGPoint(x: origin.x + (point.x - origin.x) * t, y: origin.y + (point.y - origin.y) * t)
+                    let tail = CGPoint(x: origin.x + (point.x - origin.x) * max(t - 0.35, 0), y: origin.y + (point.y - origin.y) * max(t - 0.35, 0))
+                    var shot = Path()
+                    shot.move(to: tail)
+                    shot.addLine(to: head)
+                    context.stroke(shot, with: .color(Color(red: 1, green: 0.9, blue: 0.7).opacity(0.85)), lineWidth: 1.4)
+                }
+                // The flash where it lands.
+                let flash = reduceMotion ? 0 : GameSession.Blow.flash(at: age)
+                if flash > 0 {
+                    let glow = scale * 0.32 * CGFloat(1.6 - flash * 0.6)
+                    let disc = Path(ellipseIn: CGRect(x: point.x - glow, y: point.y - glow, width: glow * 2, height: glow * 2))
+                    var bright = context
+                    bright.addFilter(.blur(radius: 4))
+                    bright.fill(disc, with: .color(Color(red: 1, green: 0.88, blue: 0.68).opacity(0.7 * flash)))
+                }
+                // The fallen fade and sink where they stood.
+                for fell in blow.fallen {
+                    let at = camera.viewPoint(of: fell.at, in: size)
+                    let r = min(max(scale * 0.34, 7), 16) * CGFloat(1 - 0.25 * age)
+                    let sunk = CGPoint(x: at.x, y: at.y + CGFloat(8 * age))
+                    let colour = Palette.house(state.houses[fell.owner]).opacity(0.8 * fade)
+                    context.stroke(TokenArt.shield(at: sunk, radius: r), with: .color(colour), lineWidth: 1.2)
+                    context.stroke(glyph(for: fell.kind, at: sunk, radius: r * 0.55), with: .color(colour), lineWidth: 1.1)
+                }
                 let colour = blow.againstPlayer ? Palette.bad : Color(red: 0.95, green: 0.93, blue: 0.86)
                 let radius = scale * (0.35 + 0.55 * age)
                 let ring = Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))

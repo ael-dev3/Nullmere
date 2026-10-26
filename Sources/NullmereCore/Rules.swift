@@ -484,6 +484,11 @@ extension GameState {
             guard current == .peace else { throw current == .pact ? .alreadyStance(.pact) : .notApplicable }
         case .fealty:
             guard houses[house].liege == nil, houses[target].liege == nil, !houses[house].isPlayer else { throw .notApplicable }
+        case .tribute:
+            guard current == .peace else { throw current == .pact ? .alreadyStance(.pact) : .notApplicable }
+            guard houses[house].liege != target, houses[target].liege != house, !paidTributeLately(house, target) else {
+                throw .notApplicable
+            }
         }
 
         if houses[target].isPlayer {
@@ -497,7 +502,11 @@ extension GameState {
         if accepted {
             settle(proposal, between: house, and: target, by: house)
         }
-        return [.proposalAnswered(proposal: proposal, from: house, to: target, accepted: accepted)]
+        var events: [GameEvent] = [.proposalAnswered(proposal: proposal, from: house, to: target, accepted: accepted)]
+        if !accepted, proposal == .tribute {
+            events += refuseTribute(demandedBy: house, of: target)
+        }
+        return events
     }
 
     private mutating func answer(_ envoyID: Int, accept: Bool, as house: Int) throws(RuleError) -> [GameEvent] {
@@ -508,12 +517,17 @@ extension GameState {
         case .peace: stillValid = stance(house, envoy.from) == .war
         case .pact: stillValid = stance(house, envoy.from) == .peace
         case .fealty: stillValid = houses[envoy.from].liege == nil && houses[house].liege == nil
+        case .tribute: stillValid = stance(house, envoy.from) == .peace
         }
         let accepted = accept && stillValid && !houses[envoy.from].isEliminated
         if accepted {
             settle(envoy.proposal, between: envoy.from, and: house, by: envoy.from)
         }
-        return [.proposalAnswered(proposal: envoy.proposal, from: envoy.from, to: house, accepted: accepted)]
+        var events: [GameEvent] = [.proposalAnswered(proposal: envoy.proposal, from: envoy.from, to: house, accepted: accepted)]
+        if !accepted, envoy.proposal == .tribute, stillValid, !houses[envoy.from].isEliminated {
+            events += refuseTribute(demandedBy: envoy.from, of: house)
+        }
+        return events
     }
 
     private mutating func settle(_ proposal: Proposal, between proposer: Int, and other: Int, by actor: Int) {
@@ -528,6 +542,36 @@ extension GameState {
             setStance(.pact, between: proposer, and: other, by: actor)
             houses[proposer].liege = other
             record(.pact, [proposer, other], "\(houses[proposer].title) bends the knee and swears fealty to \(houses[other].title).")
+        case .tribute:
+            let paid = tribute(from: other)
+            houses[other].stock.debit(paid)
+            houses[proposer].stock.credit(paid)
+            if let index = relations.firstIndex(where: { $0.first == min(proposer, other) && $0.second == max(proposer, other) }) {
+                relations[index].tributePaid = watch
+            }
+            record(.tribute, [other, proposer], "\(houses[other].title) pays tribute to \(houses[proposer].title): \(paid).")
         }
+    }
+
+    /// What a House would pay in tribute: a fifth of its stores.
+    public func tribute(from payer: Int) -> Stock {
+        houses[payer].stock.share(1, of: 5)
+    }
+
+    /// Watches a paid tribute keeps the peace.
+    public static let tributeRespite = 20
+
+    /// Whether tribute passed between two Houses within the respite.
+    public func paidTributeLately(_ a: Int, _ b: Int) -> Bool {
+        guard let paid = relation(a, b)?.tributePaid else { return false }
+        return watch - paid < GameState.tributeRespite
+    }
+
+    /// A refused demand: a rival that demanded marches; the player who
+    /// demanded is only refused.
+    mutating func refuseTribute(demandedBy demander: Int, of refuser: Int) -> [GameEvent] {
+        record(.tribute, [refuser, demander], "\(houses[refuser].title) refuses tribute to \(houses[demander].title).")
+        guard !houses[demander].isPlayer else { return [] }
+        return (try? declareWar(by: demander, on: refuser)) ?? []
     }
 }

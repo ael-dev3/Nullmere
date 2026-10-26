@@ -33,12 +33,14 @@ enum Guide {
         Section(title: "Houses", lines: [
             "Rival Houses are ambitious, steadfast, wary or cunning, and remember who wronged them.",
             "Declare war, offer peace or a pact, and answer their envoys. A pact shares sight; breaking one is not forgotten.",
+            "A far stronger rival may demand tribute, a fifth of your stores: pay, and it keeps the peace for twenty watches; refuse, or let its envoy wait out, and it marches. You may demand tribute of the weak, too.",
             "Envoys and the chronicle speak in words written on your Mac by Apple's on-device model. They only speak; the rules decide.",
         ]),
         Section(title: "Winning", lines: [
             "Raise the five stages of the Moonspire at your seat (ascendancy), or rule the lake (dominion): nine of every twenty holds and at least ten, your vassals' counted with your own, or be the last House standing.",
             "Take a rival's seat while it has four holds or fewer left and it swears you fealty; beaten Houses may offer it too. A vassal's holds join your realm, and it can never turn on you. Turn on it, and it is free.",
             "Rivals fear a rising Moonspire, and will march on it.",
+            "The Houses panel shows the race: each House's holds toward dominion and its Moonspire's stages. You are warned when anyone nears the end of either road, and counsel says what to do.",
         ]),
         Section(title: "Keys", lines: [
             "Tab: the next company waiting · H: your seat · F: fortify · B: found a hold",

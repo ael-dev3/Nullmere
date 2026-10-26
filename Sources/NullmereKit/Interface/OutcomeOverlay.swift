@@ -27,6 +27,17 @@ struct OutcomeOverlay: View {
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 440)
                         .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Caps("Holds around the lake, watch by watch", size: 8, weight: .medium)
+                            .foregroundStyle(Palette.ink.opacity(0.55))
+                        StoryChart(state: state, player: session.player)
+                        Text(verbatim: StoryChart.summary(of: state, player: session.player))
+                            .font(.nm(10.5))
+                            .foregroundStyle(Palette.ink.opacity(0.6))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(width: 440)
+                    .padding(.top, 4)
                     HStack(spacing: 8) {
                         QuietButton(title: "Look upon the lake", size: 10) {
                             withAnimation(.easeOut(duration: 0.3)) { dismissed = true }

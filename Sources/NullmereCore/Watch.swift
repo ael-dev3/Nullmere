@@ -10,7 +10,10 @@ extension GameState {
 
         for house in houses where !house.isPlayer && !house.isEliminated {
             events += RivalMind(house: house.id).takeTurn(in: &self)
-            if outcome != nil { return events }
+            if outcome != nil {
+                takeSnapshot()
+                return events
+            }
         }
 
         let owners = territory()
@@ -25,13 +28,20 @@ extension GameState {
             units[index].acted = false
         }
         watch += 1
+        // An envoy unanswered is an envoy refused.
+        let unanswered = envoys.filter { watch - $0.arrived >= Envoy.patience }
         envoys.removeAll { watch - $0.arrived >= Envoy.patience }
+        for envoy in unanswered where envoy.proposal == .tribute && !houses[envoy.from].isEliminated
+            && stance(envoy.from, player) == .peace {
+            events += refuseTribute(demandedBy: envoy.from, of: player)
+        }
 
         for unit in units.sorted(by: { $0.id < $1.id }) where unit.destination != nil {
             events += march(unit.id)
         }
         refreshSight()
         events += checkForEnd()
+        takeSnapshot()
         return events
     }
 

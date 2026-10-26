@@ -36,8 +36,10 @@ public struct VoiceMoment: Sendable, Equatable {
             case .peace: offer = "an end to the war between their House and the player's"
             case .pact: offer = "a pact: shared sight and no war between the Houses"
             case .fealty: offer = "their House's fealty: beaten, they would serve the player's House as its vassal"
+            case .tribute: offer = "tribute: a fifth of the player's stores, or their armies will march"
             }
-            task = "Speak as the envoy, addressing the player's House directly, offering \(offer). One or two sentences, at most 40 words."
+            let verb = proposal == .tribute ? "demanding" : "offering"
+            task = "Speak as the envoy, addressing the player's House directly, \(verb) \(offer). One or two sentences, at most 40 words."
         case .chronicle:
             task = "Write the chronicler's single line recording this, as it would stand in an old book of the lake. One sentence, at most 30 words."
         }
@@ -130,7 +132,7 @@ enum VoiceFacts {
     /// The entries worth the chronicler's own words.
     static func isVoiced(_ kind: ChronicleEntry.Kind) -> Bool {
         switch kind {
-        case .war, .peace, .pact, .betrayal, .capture, .fall, .greatWork, .ending: return true
+        case .war, .peace, .pact, .betrayal, .capture, .fall, .greatWork, .ending, .tribute: return true
         case .beginning, .founding, .discovery: return false
         }
     }

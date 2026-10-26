@@ -36,6 +36,13 @@ struct RivalMind {
         case .fealty:
             // Who would refuse a vassal?
             return me.liege == nil
+        case .tribute:
+            // Pay rather than fight a war it would lose.
+            switch me.temperament {
+            case .wary, .steadfast: return theirs * 10 > mine * 15
+            case .cunning: return theirs * 10 > mine * 18
+            case .ambitious: return theirs > mine * 2
+            }
         case .pact:
             if relation.betrayals > 0 || relation.aggressor == proposer { return false }
             switch me.temperament {
@@ -115,7 +122,18 @@ struct RivalMind {
                     events += perform(.propose(.peace, to: other.id), in: &state)
                 }
             case .peace:
-                guard !declared, enemies == 0, neighbours, !inTruce(with: other.id, in: state) else { break }
+                // The ambitious and the cunning, far the stronger, ask a
+                // neighbour for tribute, and march only if refused.
+                let greedy = (me.temperament == .ambitious || me.temperament == .cunning) && state.watch >= 20
+                    && mine * 100 > theirs * 125 && !state.paidTributeLately(house, other.id)
+                    && me.liege != other.id && other.liege != house
+                guard !declared, neighbours, !inTruce(with: other.id, in: state) else { break }
+                if greedy, random.chance(enemies == 0 ? 10 : 5) {
+                    events += perform(.propose(.tribute, to: other.id), in: &state)
+                    declared = true
+                    break
+                }
+                guard enemies == 0 else { break }
                 let grudge = relation.aggressor == other.id
                 var wantsWar: Bool
                 switch me.temperament {
@@ -141,7 +159,14 @@ struct RivalMind {
                         wantsWar = true
                     }
                 }
-                if wantsWar {
+                // Tribute paid buys the peace for a while.
+                if wantsWar, state.paidTributeLately(house, other.id) { wantsWar = false }
+                // Even set on war, the greedy may ask for tribute first.
+                let demanding = wantsWar && greedy && random.chance(45)
+                if demanding {
+                    events += perform(.propose(.tribute, to: other.id), in: &state)
+                    declared = true
+                } else if wantsWar {
                     events += perform(.declareWar(on: other.id), in: &state)
                     declared = true
                 } else if me.temperament != .ambitious, state.watch >= 8, !grudge, relation.betrayals == 0, random.chance(8) {

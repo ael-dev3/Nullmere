@@ -88,6 +88,8 @@ public struct GameState: Codable, Equatable, Sendable {
     var nextID: Int
     /// Counts random draws within a watch so each draw is independent.
     var draws: UInt64
+    /// One snapshot per watch; absent in saves from before it was kept.
+    var recorded: [Snapshot]?
 
     public var player: Int { houses.first { $0.isPlayer }?.id ?? 0 }
 
@@ -110,6 +112,7 @@ public struct GameState: Codable, Equatable, Sendable {
         outcome = nil
         nextID = 1
         draws = 0
+        recorded = []
 
         var names = Names.houses.filter { $0 != settings.playerHouse }
         random.shuffle(&names)
@@ -146,6 +149,7 @@ public struct GameState: Codable, Equatable, Sendable {
             }
         }
         refreshSight()
+        takeSnapshot()
     }
 
     // MARK: Lookups

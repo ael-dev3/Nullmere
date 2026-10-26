@@ -70,7 +70,20 @@ enum Narration {
             if stance == .war { return Line(text: "\(house(by)) goes to war with \(house(other)).", tone: .neutral) }
             return nil
         case .envoyArrived(let envoy):
+            if envoy.proposal == .tribute {
+                return Line(text: "An envoy from \(house(envoy.from)) demands tribute, or war.", tone: .bad)
+            }
             return Line(text: "An envoy from \(house(envoy.from)) offers \(envoy.proposal.title.lowercased()).", tone: .neutral)
+        case .proposalAnswered(.tribute, let from, let to, let accepted):
+            if from == viewer {
+                return Line(text: accepted ? "\(house(to)) pays you tribute." : "\(house(to)) refuses your demand for tribute.",
+                            tone: accepted ? .good : .bad)
+            }
+            if to == viewer {
+                return Line(text: accepted ? "You pay tribute to \(house(from)); it keeps the peace." : "You refuse \(house(from)) its tribute.",
+                            tone: accepted ? .neutral : .bad)
+            }
+            return nil
         case .proposalAnswered(let proposal, let from, let to, let accepted):
             if from == viewer {
                 return Line(text: "\(house(to)) \(accepted ? "accepts" : "refuses") your offer of \(proposal.title.lowercased()).", tone: accepted ? .good : .bad)

@@ -222,6 +222,15 @@ rival Houses move, holds yield, works rise and companies march on.
   far stronger rival will not make peace until the war has run long. In
   simulated games rivals win by dominion more than half the time, by the
   Moonspire the rest, and now and then a House is destroyed outright.
+- **Tribute.** A greedy rival far stronger than a neighbour may demand a
+  fifth of its stores. Paid, it keeps the peace for twenty watches;
+  refused or ignored, it marches. You can demand tribute of the weak.
+- **The race.** The Houses panel shows each House's holds toward dominion
+  and its Moonspire's stages, and the game warns you, once, whenever any
+  House comes near the end of either road. At the end, a chart tells the
+  story of the game: every House's holds, watch by watch.
+- **Battle.** Attackers lean into their blows, the struck shake, bows'
+  shots cross the gap, and the fallen fade where they stood.
 
 - **Voices.** Envoys speak to you, and a chronicler writes beneath the
   moments that touch your House, in words written on your Mac by Apple's

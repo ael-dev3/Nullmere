@@ -8,7 +8,9 @@ enum Counsel {
     static let lastWatch = 40
 
     static func advice(for state: GameState, player: Int) -> String? {
-        guard state.outcome == nil, state.watch <= lastWatch else { return nil }
+        guard state.outcome == nil else { return nil }
+        if let warning = race(in: state, player: player) { return warning }
+        guard state.watch <= lastWatch else { return nil }
         let holds = state.holds(of: player)
         guard holds.count < holdsToStop, let seat = state.seat(of: player) else { return nil }
         let units = state.units(of: player)
@@ -36,5 +38,26 @@ enum Counsel {
             return "A hold stands idle. Select it and raise a work: each level brings in more of what its land yields."
         }
         return "End the watch with ⌘↩ when every company has its orders. The game keeps itself after every watch."
+    }
+
+    /// Later, counsel speaks only when the race for the lake is close.
+    static func race(in state: GameState, player: Int) -> String? {
+        let standings = state.standings()
+        if let rival = standings.first(where: { $0.house != player && $0.threat != nil }) {
+            let name = state.houses[rival.house].title
+            if rival.threat == .ascendancy {
+                let seat = state.seat(of: rival.house)?.name ?? "its seat"
+                return "\(name) is one stage from finishing its Moonspire at \(seat). Break that seat's ward and take it, and the tower falls with it."
+            }
+            return "\(name) rules \(rival.realm) of the \(rival.needed) holds it needs for dominion. Take its holds, or free its vassals by making war on it."
+        }
+        if let mine = standings.first(where: { $0.house == player }), let threat = mine.threat {
+            if threat == .ascendancy {
+                return "One stage more on your Moonspire and the lake is yours. Every rival will march on your seat: keep its walls manned."
+            }
+            let short = max(mine.needed - mine.realm, 0)
+            return "Your realm holds \(mine.realm) of the \(mine.needed) holds dominion needs. \(short == 0 ? "Hold them" : "Take \(short) more") and the lake is yours."
+        }
+        return nil
     }
 }

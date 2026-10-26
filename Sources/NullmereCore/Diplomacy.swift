@@ -26,6 +26,8 @@ public struct Relation: Codable, Equatable, Sendable {
     public var aggressor: Int?
     /// Times either broke a pact with the other.
     public var betrayals: Int
+    /// The watch tribute last passed between them.
+    public var tributePaid: Int?
 
     public init(first: Int, second: Int, stance: Stance = .peace, since: Int = 1) {
         self.first = min(first, second)
@@ -34,6 +36,7 @@ public struct Relation: Codable, Equatable, Sendable {
         self.since = since
         self.aggressor = nil
         self.betrayals = 0
+        self.tributePaid = nil
     }
 
     public func involves(_ house: Int) -> Bool {
@@ -52,12 +55,16 @@ public enum Proposal: String, Codable, CaseIterable, Sendable {
     /// A beaten House offers to become the other's vassal: a pact it can't
     /// break, and its holds counted toward its liege's dominion.
     case fealty
+    /// A far stronger House demands a fifth of the other's stores, and
+    /// marches if refused. Paid, it keeps the peace for a long while.
+    case tribute
 
     public var title: String {
         switch self {
         case .peace: return "Peace"
         case .pact: return "Pact"
         case .fealty: return "Fealty"
+        case .tribute: return "Tribute"
         }
     }
 }

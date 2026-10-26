@@ -442,7 +442,7 @@ final class ExpansionAndFallTests: XCTestCase {
 
     /// A House can be destroyed outright.
     func testAHouseCanBeDestroyed() {
-        var state = GameState(settings: GameSettings(seedText: "siege check 36"))
+        var state = GameState(settings: GameSettings(seedText: "siege check 14"))
         var fallen: ChronicleEntry?
         while state.outcome == nil, state.watch < 170, fallen == nil {
             _ = state.stewardTurn(for: state.player)

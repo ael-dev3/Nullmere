@@ -10,11 +10,13 @@ struct HousesPanel: View {
         let state = session.state
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                PanelTitle(title: "Houses", subtitle: "\(state.livingHouses.count) still stand · your realm \(state.realm(of: session.player)) of \(state.holds.count) holds; \(GameState.supremacyShare)% and \(GameState.supremacyMinimum) win dominion")
+                PanelTitle(title: "Houses", subtitle: "\(state.livingHouses.count) still stand around the lake")
                 CloseButton { session.panel = nil }
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    RaceTable(session: session)
+                    Rule(opacity: 0.18)
                     ForEach(state.houses.filter { $0.id != session.player }) { house in
                         HouseRow(session: session, house: house)
                         Rule(opacity: 0.18)
@@ -27,6 +29,59 @@ struct HousesPanel: View {
         .frame(width: 360)
         .frame(maxHeight: 620)
         .panelBackground()
+    }
+}
+
+/// Who is nearest to winning, by either road: holds toward dominion, and
+/// stages of the Moonspire toward ascendancy.
+struct RaceTable: View {
+    let session: GameSession
+
+    var body: some View {
+        let state = session.state
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Caps("The race for the lake", size: 8.5, weight: .medium).foregroundStyle(Palette.ink.opacity(0.7))
+                Spacer()
+                Caps("Holds of \(state.dominionNeed)", size: 7.5).foregroundStyle(Palette.ink.opacity(0.45))
+                    .frame(width: 92, alignment: .leading)
+                Caps("Spire", size: 7.5).foregroundStyle(Palette.ink.opacity(0.45))
+                    .frame(width: 44, alignment: .leading)
+            }
+            ForEach(state.standings(), id: \.house) { standing in
+                let house = state.houses[standing.house]
+                HStack(spacing: 8) {
+                    RoundedRectangle(cornerRadius: 1).fill(Palette.house(house)).frame(width: 3, height: 10)
+                    Text(verbatim: standing.house == session.player ? "You" : house.name)
+                        .font(.nm(10.5, weight: standing.house == session.player ? .medium : .regular))
+                        .foregroundStyle(standing.threat == nil ? Palette.ink.opacity(0.8) : (standing.house == session.player ? Palette.good : Palette.bad))
+                        .lineLimit(1)
+                    if standing.isVassal {
+                        Caps("Sworn", size: 7).foregroundStyle(Palette.ink.opacity(0.4))
+                    }
+                    Spacer(minLength: 4)
+                    HStack(spacing: 5) {
+                        Meter(fraction: Double(standing.dominionPercent) / 100,
+                              colour: standing.threat == .dominion ? Palette.bad : Palette.glow)
+                            .frame(width: 60)
+                        Text(verbatim: "\(standing.realm)").font(.nm(10).monospacedDigit()).foregroundStyle(Palette.ink.opacity(0.7))
+                    }
+                    .frame(width: 92, alignment: .leading)
+                    LevelPips(level: standing.spire, maximum: BuildingKind.moonspire.maxLevel)
+                        .frame(width: 44, alignment: .leading)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(RaceTable.spoken(standing, in: state, player: session.player))
+            }
+        }
+    }
+
+    static func spoken(_ standing: Standing, in state: GameState, player: Int) -> String {
+        let who = standing.house == player ? "You" : state.houses[standing.house].title
+        var line = "\(who): \(standing.realm) of \(standing.needed) holds for dominion, Moonspire stage \(standing.spire) of \(BuildingKind.moonspire.maxLevel)"
+        if standing.isVassal { line += ", sworn to another" }
+        if standing.threat != nil { line += ", near victory" }
+        return line + "."
     }
 }
 
@@ -71,6 +126,9 @@ private struct HouseRow: View {
                         QuietButton(title: "Offer peace", size: 8.5) { session.perform(.propose(.peace, to: house.id)) }
                     case .peace:
                         QuietButton(title: "Offer a pact", size: 8.5) { session.perform(.propose(.pact, to: house.id)) }
+                        if session.canDemandTribute(from: house.id) {
+                            QuietButton(title: "Demand tribute", size: 8.5) { session.perform(.propose(.tribute, to: house.id)) }
+                        }
                         QuietButton(title: "Declare war", size: 8.5) { session.perform(.declareWar(on: house.id)) }
                     case .pact:
                         QuietButton(title: "Break the pact", size: 8.5) { session.perform(.declareWar(on: house.id)) }
@@ -190,6 +248,9 @@ struct EnvoyCards: View {
             return "\(house.title) offers a pact: shared sight across the water, and no blade between you."
         case .fealty:
             return "\(house.title) is beaten and bends the knee: it would be your vassal, its holds counted in your realm, never to raise a blade against you."
+        case .tribute:
+            let price = session.state.tribute(from: session.player)
+            return "\(house.title) demands tribute: \(price), a fifth of your stores. Pay, and it keeps the peace for \(GameState.tributeRespite) watches. Refuse, or send no answer, and it marches on you."
         }
     }
 }

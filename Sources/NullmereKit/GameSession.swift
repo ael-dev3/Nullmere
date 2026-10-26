@@ -119,8 +119,44 @@ public final class GameSession {
         /// Whether it fell on the player's side.
         public let againstPlayer: Bool
         public let start: Date
+        /// Where the attacker struck from.
+        public var from: Hex
+        public var attacker: Int = 0
+        public var defender: Int?
+        /// Companies that fell in it, drawn fading where they stood.
+        public var fallen: [Fallen] = []
+
+        public struct Fallen: Equatable {
+            public let kind: UnitKind
+            public let owner: Int
+            public let at: Hex
+        }
 
         public static let duration = 1.4
+
+        /// A blow from beyond the next tile is a bow's.
+        public var isRanged: Bool { from.distance(to: at) > 1 }
+
+        /// How far toward its foe an attacker leans, as a share of the way,
+        /// at `age` (a share of the blow's duration): in and back quickly.
+        public static func lunge(at age: Double) -> Double {
+            guard age > 0, age < 0.3 else { return 0 }
+            return 0.38 * sin(Double.pi * age / 0.3)
+        }
+
+        /// How far the struck company shakes, in points, once the blow lands.
+        public static func shake(at age: Double) -> Double {
+            guard age > 0.1, age < 0.45 else { return 0 }
+            let t = (age - 0.1) / 0.35
+            return sin(t * Double.pi * 6) * 3 * (1 - t)
+        }
+
+        /// The flash where it lands: bright at the moment of the blow, gone
+        /// a moment later.
+        public static func flash(at age: Double) -> Double {
+            guard age >= 0.08, age < 0.3 else { return 0 }
+            return 1 - (age - 0.08) / 0.22
+        }
     }
 
     /// The card marking the watch that just began, while it shows.
@@ -295,7 +331,7 @@ public final class GameSession {
                 undoStack.removeAll()
             }
             showMarches(events, from: before)
-            showBlows(events)
+            showBlows(events, from: before)
             report(events)
             sound(for: command, events: events)
             if case .found = command, let hold = events.compactMap(holdFounded).first {
@@ -324,12 +360,19 @@ public final class GameSession {
         let events = state.endWatch()
         showWatchCard(WatchSummary(before: previous, after: state, events: events, player: player))
         showMarches(events, from: before)
-        showBlows(events)
+        showBlows(events, from: before)
         for cue in Self.cues(for: events, player: player) {
             onCue?(cue)
         }
         notices.removeAll()
         report(events)
+        let warnings = Race.warnings(before: previous, after: state, player: player)
+        for warning in warnings {
+            post(warning.text, tone: warning.tone)
+        }
+        if warnings.contains(where: { $0.tone == .bad }), !Self.cues(for: events, player: player).contains(.dread) {
+            onCue?(.dread)
+        }
         if case .unit(let id) = selection, state.unit(id) == nil {
             selection = .none
         }
@@ -446,7 +489,11 @@ public final class GameSession {
 
     private func sound(for command: Command, events: [GameEvent]) {
         switch command {
-        case .attack: onCue?(.battle)
+        case .attack:
+            onCue?(.battle)
+            if events.contains(where: { if case .holdCaptured(_, _, let by) = $0 { return by == player } else { return false } }) {
+                onCue?(.triumph)
+            }
         case .move: onCue?(.order)
         case .found, .build, .train: onCue?(.rise)
         case .declareWar: onCue?(.dread)
@@ -464,6 +511,7 @@ public final class GameSession {
         for event in events {
             switch event {
             case .houseFell: add(.toll)
+            case .gameEnded(let outcome): add(outcome.winner == player ? .triumph : .toll)
             case .holdCaptured(_, let from, let by):
                 if by == player { add(.triumph) } else if from == player { add(.dread) }
             case .stanceChanged(let first, let second, let stance, let by) where (first == player || second == player) && by != player:
@@ -479,6 +527,14 @@ public final class GameSession {
         return cues
     }
 
+
+    /// Whether the player may demand tribute of a House now: at peace,
+    /// neither sworn to the other, and no tribute paid between them lately.
+    public func canDemandTribute(from house: Int) -> Bool {
+        guard let other = state.house(house), !other.isEliminated, house != player else { return false }
+        return state.stance(player, house) == .peace && other.liege != player && playerHouse.liege != house
+            && !state.paidTributeLately(player, house)
+    }
 
     // MARK: The watch's card
 
@@ -499,15 +555,24 @@ public final class GameSession {
     // MARK: Blows
 
     /// Draws the blows the player could see, then forgets them.
-    func showBlows(_ events: [GameEvent]) {
+    func showBlows(_ events: [GameEvent], from before: [Int: Hex] = [:]) {
         let now = Date()
         var shown = false
         for case .battle(let battle) in events {
             let mine = battle.attackerOwner == player || battle.defenderOwner == player
             guard mine || isVisible(battle.at) else { continue }
             blowCounter += 1
+            let from = before[battle.attacker] ?? state.unit(battle.attacker)?.position ?? battle.at
+            var fallen: [Blow.Fallen] = []
+            if battle.defenderFell, battle.hold == nil, let kind = battle.defenderKind {
+                fallen.append(.init(kind: kind, owner: battle.defenderOwner, at: battle.at))
+            }
+            if battle.attackerFell {
+                fallen.append(.init(kind: battle.attackerKind, owner: battle.attackerOwner, at: from))
+            }
             blows.append(Blow(id: blowCounter, at: battle.at, damage: battle.damageDealt,
-                              againstPlayer: battle.defenderOwner == player, start: now))
+                              againstPlayer: battle.defenderOwner == player, start: now,
+                              from: from, attacker: battle.attacker, defender: battle.defender, fallen: fallen))
             shown = true
         }
         guard shown else { return }
