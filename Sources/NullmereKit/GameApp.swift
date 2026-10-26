@@ -102,7 +102,7 @@ public final class GameApp {
     /// What this Mac keeps for a realm (words spoken, what was last seen)
     /// is kept apart for each realm: the one hosted here, and each server
     /// and database across the network.
-    static func storeKey(for address: RealmAddress) -> String {
+    nonisolated static func storeKey(for address: RealmAddress) -> String {
         switch address {
         case .hosted: return "hosted"
         case .network(let url): return (url.host() ?? "realm") + url.path()

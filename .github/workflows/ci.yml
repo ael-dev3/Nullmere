@@ -115,27 +115,47 @@ jobs:
           # A look at the icon as compiled, for readers of the log.
           sips -s format png "build/Nullmere Online.app/Contents/Resources/AppIcon.icns" --out build/icon.png >/dev/null
 
+      # The disk image players download, made the way a release is made;
+      # mounted again to see the app inside is whole.
+      - name: Pack the disk image
+        run: |
+          scripts/release.sh
+          dmg="$(ls build/Nullmere-Online-*.dmg)"
+          mount="$(mktemp -d)"
+          hdiutil attach -quiet -readonly -nobrowse -mountpoint "$mount" "$dmg"
+          codesign --verify --deep --strict "$mount/Nullmere Online.app"
+          test -L "$mount/Applications"
+          hdiutil detach -quiet "$mount"
+          ls -lh "$dmg"
+
+      - name: Keep the disk image
+        uses: actions/upload-artifact@v5
+        with:
+          name: nullmere-online-dmg
+          path: build/Nullmere-Online-*.dmg
+          if-no-files-found: error
+
       # Opens the real app on the runner: it must keep running and render its
       # lake with Metal. The runner can't use Apple Intelligence, so the
       # launcher opens on its requirement screen. The screenshot (Dock
       # included) is kept as an artifact, and a small copy is printed in the
       # log for readers without artifact access.
       - name: Launch the app
-        run: scripts/smoke-test-app.sh 2>&1 | tee build/smoke-app.log
+        run: mkdir -p build && scripts/smoke-test-app.sh 2>&1 | tee build/smoke-app.log
 
       # Opens the debug build of the launcher as if the model were ready
       # (only debug builds allow that), to photograph its menu, News and
       # Settings, which the requirement screen otherwise hides on CI.
       - name: Open the launcher's menu
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        run: scripts/smoke-test-launcher-menu.sh 2>&1 | tee build/smoke-menu.log
+        run: mkdir -p build && scripts/smoke-test-launcher-menu.sh 2>&1 | tee build/smoke-menu.log
 
       # Opens the debug build of the game past the model gate (only debug
       # builds allow that): its title screen, then a new game, whose world
       # must render with Metal.
       - name: Open the game
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        run: scripts/smoke-test-game.sh 2>&1 | tee build/smoke-game.log
+        run: mkdir -p build && scripts/smoke-test-game.sh 2>&1 | tee build/smoke-game.log
 
       # A realm raised on the runner, as on maincloud: SpacetimeDB with the
       # realm module published, and the steward beside it. Then the app
@@ -158,7 +178,7 @@ jobs:
         if: ${{ !cancelled() && steps.realm.outcome == 'success' }}
         env:
           NULLMERE_REALM: http://127.0.0.1:3000/nullmere
-        run: scripts/smoke-test-network.sh 2>&1 | tee build/smoke-network.log
+        run: mkdir -p build && scripts/smoke-test-network.sh 2>&1 | tee build/smoke-network.log
 
       - name: Keep the screenshots
         if: always()

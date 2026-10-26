@@ -82,6 +82,17 @@ Developer ID instead, set `CODESIGN_IDENTITY`: the app is then signed with
 the hardened runtime and a secure timestamp, ready to notarize. `VERSION`
 sets the marketing version (default `0.3.0`).
 
+**A release is one command.** `scripts/release.sh` builds the app and
+packs it into `build/Nullmere-Online-<version>.dmg`, with a link to
+Applications; CI makes this disk image on every run and keeps it. For a
+public release, with an Apple Developer ID:
+
+```sh
+xcrun notarytool store-credentials nullmere --apple-id … --team-id …   # once
+CODESIGN_IDENTITY="Developer ID Application: …" NOTARY_PROFILE=nullmere \
+    VERSION=1.0.0 scripts/release.sh   # signs, notarizes and staples
+```
+
 Tests and checks:
 
 ```sh
