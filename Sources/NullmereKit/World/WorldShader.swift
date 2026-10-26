@@ -199,13 +199,19 @@ enum WorldShader {
 
     float3 nm_mirror(float2 w, float2 px, float2 viewport, float ppp, float shallow, float time, float4 moonAt, float2 moonPx) {
         // Black glass, faintly holding the sky: a little paler toward the top
-        // of the view, and along the moon's path, which runs down the water
-        // through the moon's own reflection wherever it lies.
+        // of the view, and along the moon's path, a narrow column of light
+        // brightest at the moon's own reflection and running on down the
+        // water toward the eye, shorter above it.
         float2 uv = px / viewport;
         float gx = (px.x - moonPx.x) / max(viewport.y, 1.0);
-        float glade = exp(-gx * gx / 0.045) * (0.35 + 0.65 * (1.0 - uv.y)) * (0.35 + 0.65 * moonAt.w);
+        float gy = (px.y - moonPx.y) / max(viewport.y, 1.0);
+        float along = mix(exp(gy * 3.0), exp(-gy * 1.5), step(0.0, gy));
+        // The path is broken into long, slow streaks, as by a swell too
+        // faint to see otherwise.
+        float glade = exp(-gx * gx / 0.02) * along * moonAt.w;
+        float streak = nm_fbm(float2(w.x * 0.6, w.y * 5.0) + float2(time * 0.003, 0.0));
         float3 c = float3(0.004, 0.007, 0.016) + float3(0.010, 0.014, 0.026) * (1.0 - uv.y);
-        c += float3(0.050, 0.060, 0.085) * glade * (0.85 + 0.15 * nm_fbm(w * 0.35 + float2(time * 0.004, 0.0)));
+        c += float3(0.085, 0.095, 0.125) * glade * (0.55 + 0.9 * streak * streak);
         c = mix(c, float3(0.020, 0.027, 0.036), shallow * 0.8);
         // Reflected stars, fixed to the screen like the sky, sized in points.
         float stars = nm_star(px, ppp, 10.0, 0.52, 0.0) * 0.7 + nm_star(px, ppp, 37.0, 0.5, 17.0) * 1.6;
