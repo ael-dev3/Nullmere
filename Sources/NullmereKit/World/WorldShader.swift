@@ -139,8 +139,8 @@ enum WorldShader {
         if (index < 6.5) { return float3(0.46, 0.68, 0.38); }
         if (index < 7.5) { return float3(0.80, 0.56, 0.68); }
         if (index < 8.5) { return float3(0.36, 0.48, 0.84); }
-        if (index < 9.5) { return float3(0.62, 0.40, 0.24); }
-        if (index < 10.5) { return float3(0.78, 0.82, 0.44); }
+        if (index < 9.5) { return float3(0.55, 0.52, 0.22); }
+        if (index < 10.5) { return float3(0.40, 0.78, 0.86); }
         return float3(0.88, 0.36, 0.50);
     }
 

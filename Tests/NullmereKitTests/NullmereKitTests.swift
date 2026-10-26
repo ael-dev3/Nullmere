@@ -23,7 +23,7 @@ final class WorldShaderTests: XCTestCase {
         for (index, a) in components.enumerated() {
             for b in components[(index + 1)...] {
                 let distance = abs(a.redComponent - b.redComponent) + abs(a.greenComponent - b.greenComponent) + abs(a.blueComponent - b.blueComponent)
-                XCTAssertGreaterThan(distance, 0.2, "Two Houses too alike in colour")
+                XCTAssertGreaterThan(distance, 0.3, "Two Houses too alike in colour")
             }
         }
     }

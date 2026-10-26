@@ -218,6 +218,67 @@ final class NetworkRealmTests: XCTestCase {
         XCTAssertEqual(stock?.grain, before.grain + 10, "Ten grain bought, once")
     }
 
+    func testARoundWhosePublicationFailedIsPublishedOnceAfter() async throws {
+        let db = FakeSpacetime()
+        let owner = try await db.createIdentity()
+        let line = Flaky(db)
+        let steward = try await RealmSteward(transport: line, token: owner.token, name: "The Nullmere", seed: "publish fails",
+                                             seats: 4, watchLength: 600, now: 0)
+        let ama = try await db.createIdentity()
+        try await db.call("arrive", [.string("a1"), .string("Ama")], token: ama.token)
+        try await steward.step(now: 1)
+        let keeper = await steward.state.keeper(ama.identity)
+        let house = try XCTUnwrap(keeper?.house)
+        let before = await steward.state.world.houses[house].stock
+
+        try await db.call("order", [.string("a2"), .string(String(decoding: try JSONEncoder().encode(Command.barter(give: .timber, take: .grain, amount: 10)), as: UTF8.self))], token: ama.token)
+        await line.failNext("publish")
+        do {
+            try await steward.step(now: 2)
+            XCTFail("The publication was lost")
+        } catch {}
+        let unanswered = try await db.query("SELECT * FROM my_replies", token: ama.token)
+        XCTAssertFalse(unanswered.contains { $0.first?.string == "a2" }, "No answer for a world not kept")
+
+        try await steward.step(now: 3)
+        let answered = try await db.query("SELECT * FROM my_replies", token: ama.token)
+        XCTAssertTrue(answered.contains { $0.first?.string == "a2" })
+        let grain = await steward.state.world.houses[house].stock.grain
+        XCTAssertEqual(grain, before.grain + 10, "Carried out once")
+        let kept = try await db.query("SELECT version, state FROM world", token: owner.token)
+        let world = try JSONDecoder().decode(RealmState.self, from: Data(try XCTUnwrap(kept.first?[1].string).utf8))
+        XCTAssertEqual(world.world.houses[house].stock.grain, before.grain + 10, "and kept")
+    }
+
+    func testAStewardThatStopsBeforePublishingLosesNothing() async throws {
+        let db = FakeSpacetime()
+        let owner = try await db.createIdentity()
+        let line = Flaky(db)
+        let first = try await RealmSteward(transport: line, token: owner.token, name: "The Nullmere", seed: "steward stops",
+                                           seats: 4, watchLength: 600, now: 0)
+        let ama = try await db.createIdentity()
+        try await db.call("arrive", [.string("a1"), .string("Ama")], token: ama.token)
+        try await first.step(now: 1)
+        let keeper = await first.state.keeper(ama.identity)
+        let house = try XCTUnwrap(keeper?.house)
+        let before = await first.state.world.houses[house].stock
+        try await db.call("order", [.string("a2"), .string(String(decoding: try JSONEncoder().encode(Command.barter(give: .timber, take: .grain, amount: 10)), as: UTF8.self))], token: ama.token)
+        await line.failNext("publish")
+        _ = try? await first.step(now: 2)
+
+        // The steward stops here; another takes up the realm as it was kept,
+        // and carries the order out once.
+        let second = try await RealmSteward(transport: db, token: owner.token, name: "ignored", seed: "ignored", now: 3)
+        let firstVersion = await first.version
+        let secondVersion = await second.version
+        XCTAssertGreaterThan(secondVersion, firstVersion - 1, "Versions never run back")
+        try await second.step(now: 4)
+        let grain = await second.state.world.houses[house].stock.grain
+        XCTAssertEqual(grain, before.grain + 10)
+        let orders = await db.handled(kind: "order")
+        XCTAssertEqual(orders, 1)
+    }
+
     func testOneKeepersFloodDoesNotCrowdOutAnother() async throws {
         let db = FakeSpacetime()
         let credentials = try await db.createIdentity()
@@ -267,11 +328,14 @@ actor Flaky: SpacetimeTransport {
     private let db: FakeSpacetime
     private var down = false
     private var losing = false
+    private var failing: Set<String> = []
 
     init(_ db: FakeSpacetime) { self.db = db }
 
     func setDown(_ value: Bool) { down = value }
     func loseNextCall() { losing = true }
+    /// The next call to this reducer never reaches the server.
+    func failNext(_ reducer: String) { failing.insert(reducer) }
 
     func createIdentity() async throws -> SpacetimeCredentials {
         if down { throw SpacetimeError("The network is down.") }
@@ -280,6 +344,7 @@ actor Flaky: SpacetimeTransport {
 
     func call(_ reducer: String, _ arguments: [ReducerArgument], token: String) async throws {
         if down { throw SpacetimeError("The network is down.") }
+        if failing.remove(reducer) != nil { throw SpacetimeError("The call to \(reducer) was lost.") }
         try await db.call(reducer, arguments, token: token)
         if losing, reducer == "order" {
             losing = false

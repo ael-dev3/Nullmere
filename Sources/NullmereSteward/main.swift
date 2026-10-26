@@ -52,4 +52,7 @@ do {
 }
 let realm = await steward.state
 print("Stewarding \(realm.name), age \(realm.age), watch \(realm.world.watch), at \(text).")
+await steward.setReporter { line in
+    print("\(Date().formatted(.iso8601)) \(line)")
+}
 await steward.run()

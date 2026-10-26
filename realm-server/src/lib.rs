@@ -195,10 +195,14 @@ pub fn forget(ctx: &ReducerContext, nonces: Vec<String>) -> Result<(), String> {
     Ok(())
 }
 
-/// The steward publishes the realm as it now stands: the whole of it, its
-/// status, and the views of the keepers whose views changed, each with the
-/// events they heard.
+/// The steward publishes the realm as it now stands, and answers the
+/// requests it carried out, in one transaction: the world is never kept
+/// without its answers, nor an answer given for a world not kept. It sends
+/// the whole world when it changed (an empty `state` keeps the one there),
+/// the status, the views of the keepers whose views changed, each with the
+/// events they heard, and its answers.
 #[reducer]
+#[allow(clippy::too_many_arguments)]
 pub fn publish(
     ctx: &ReducerContext,
     version: u64,
@@ -207,6 +211,8 @@ pub fn publish(
     keepers: Vec<String>,
     views: Vec<String>,
     events: Vec<String>,
+    requests: Vec<u64>,
+    replies: Vec<String>,
 ) -> Result<(), String> {
     if !is_steward(ctx) {
         return Err("Only the steward writes the world.".into());
@@ -214,18 +220,30 @@ pub fn publish(
     if keepers.len() != views.len() || keepers.len() != events.len() {
         return Err("Every view needs its keeper and its events.".into());
     }
-    if let Some(current) = ctx.db.world().id().find(0) {
-        if version <= current.version {
-            return Err(format!("Version {version} is not after {}.", current.version));
-        }
-        ctx.db.world().id().delete(0);
+    if requests.len() != replies.len() {
+        return Err("Every answer needs its request.".into());
     }
-    ctx.db.world().insert(World { id: 0, version, state });
+    let last = ctx.db.status().id().find(0).map(|s| s.version).unwrap_or(0);
+    if version <= last {
+        return Err(format!("Version {version} is not after {last}."));
+    }
+    if !state.is_empty() {
+        ctx.db.world().id().delete(0);
+        ctx.db.world().insert(World { id: 0, version, state });
+    } else if ctx.db.world().id().find(0).is_none() {
+        return Err("The first publication holds the world.".into());
+    }
     ctx.db.status().id().delete(0);
     ctx.db.status().insert(Status { id: 0, version, status });
     for ((keeper, view), events) in keepers.into_iter().zip(views).zip(events) {
         ctx.db.keeper_view().keeper().delete(keeper.clone());
         ctx.db.keeper_view().insert(KeeperView { keeper, version, view, events });
+    }
+    for (request, reply) in requests.into_iter().zip(replies) {
+        let Some(asked) = ctx.db.request().id().find(request) else { continue };
+        ctx.db.request().id().delete(request);
+        ctx.db.reply().nonce().delete(asked.nonce.clone());
+        ctx.db.reply().insert(Reply { nonce: asked.nonce, keeper: asked.keeper, payload: reply });
     }
     Ok(())
 }

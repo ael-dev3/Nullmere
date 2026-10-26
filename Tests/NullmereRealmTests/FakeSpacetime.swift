@@ -66,15 +66,29 @@ actor FakeSpacetime: SpacetimeTransport {
             if case .strings(let nonces)? = arguments.first { nonces.forEach { replies[$0] = nil } }
         case "publish":
             guard me == steward else { throw SpacetimeError("Only the steward writes the world.") }
-            guard case .integer(let version)? = arguments.first, arguments.count == 6,
-                  case .strings(let keepers) = arguments[3], case .strings(let shown) = arguments[4], case .strings(let heard) = arguments[5]
+            guard case .integer(let version)? = arguments.first, arguments.count == 8,
+                  case .strings(let keepers) = arguments[3], case .strings(let shown) = arguments[4], case .strings(let heard) = arguments[5],
+                  case .integers(let ids) = arguments[6], case .strings(let answers) = arguments[7]
             else { throw SpacetimeError("bad arguments") }
             guard keepers.count == shown.count, keepers.count == heard.count else { throw SpacetimeError("Every view needs its keeper and its events.") }
-            if let world, version <= world.version { throw SpacetimeError("Version \(version) is not after \(world.version).") }
-            world = (version, try string(1))
+            guard ids.count == answers.count else { throw SpacetimeError("Every answer needs its request.") }
+            if let status, version <= status.version { throw SpacetimeError("Version \(version) is not after \(status.version).") }
+            let state = try string(1)
+            if !state.isEmpty {
+                world = (version, state)
+            } else if world == nil {
+                throw SpacetimeError("The first publication holds the world.")
+            }
             status = (version, try string(2))
             for (index, keeper) in keepers.enumerated() {
                 views[keeper] = (version, shown[index], heard[index])
+            }
+            for (id, answer) in zip(ids, answers) {
+                if let index = requests.firstIndex(where: { $0.id == id }) {
+                    replies[requests[index].nonce] = (requests[index].keeper, answer)
+                    settled[requests[index].kind, default: 0] += 1
+                    requests.remove(at: index)
+                }
             }
         default:
             throw SpacetimeError("No such reducer: \(reducer)")
@@ -94,6 +108,8 @@ actor FakeSpacetime: SpacetimeTransport {
         case "SELECT id, keeper, kind, nonce, payload FROM request":
             try owner()
             return requests.map { [.number(Double($0.id)), .string($0.keeper), .string($0.kind), .string($0.nonce), .string($0.payload)] }
+        case "SELECT version FROM status":
+            return status.map { [[.number(Double($0.version))]] } ?? []
         case "SELECT version, status FROM status":
             return status.map { [[.number(Double($0.version)), .string($0.status)]] } ?? []
         case "SELECT * FROM my_view":

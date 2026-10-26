@@ -43,6 +43,7 @@ public enum ReducerArgument: Sendable, Equatable {
     case bool(Bool)
     case integer(UInt64)
     case strings([String])
+    case integers([UInt64])
 
     var json: Any {
         switch self {
@@ -50,6 +51,7 @@ public enum ReducerArgument: Sendable, Equatable {
         case .bool(let value): return value
         case .integer(let value): return value
         case .strings(let value): return value
+        case .integers(let value): return value
         }
     }
 }

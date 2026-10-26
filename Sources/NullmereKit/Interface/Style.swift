@@ -22,8 +22,8 @@ enum Palette {
         Color(red: 0.46, green: 0.68, blue: 0.38),
         Color(red: 0.80, green: 0.56, blue: 0.68),
         Color(red: 0.36, green: 0.48, blue: 0.84),
-        Color(red: 0.62, green: 0.40, blue: 0.24),
-        Color(red: 0.78, green: 0.82, blue: 0.44),
+        Color(red: 0.55, green: 0.52, blue: 0.22),
+        Color(red: 0.40, green: 0.78, blue: 0.86),
         Color(red: 0.88, green: 0.36, blue: 0.50),
     ]
 

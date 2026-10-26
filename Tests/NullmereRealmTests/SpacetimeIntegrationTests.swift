@@ -28,7 +28,8 @@ final class SpacetimeIntegrationTests: XCTestCase {
         let (transport, token) = try server()
         let stranger = try await transport.createIdentity()
         do {
-            try await transport.call("publish", [.integer(999_999), .string("{}"), .string("{}"), .string("[]")], token: stranger.token)
+            try await transport.call("publish", [.integer(999_999), .string("{}"), .string("{}"), .strings([]), .strings([]), .strings([]),
+                                                 .integers([]), .strings([])], token: stranger.token)
             XCTFail("A stranger wrote the world")
         } catch {
             XCTAssertTrue(String(describing: error).contains("steward"), "\(error)")

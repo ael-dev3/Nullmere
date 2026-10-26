@@ -269,7 +269,11 @@ read only their own view and replies, through SpacetimeDB views
 (`my_view`, `my_replies`), and the realm's public status. A keeper may
 have 32 requests waiting at most, and the steward carries out a few of
 each keeper's every round, so no one keeper can crowd out the rest. A
-request sent again, after its answer was lost, is carried out once.
+request sent again, after its answer was lost, is carried out once. The
+steward keeps the world and gives its answers in one transaction, so a
+round it couldn't publish, or a steward stopped mid-round, loses and
+doubles nothing; it says when a round fails, and every ten minutes how
+the realm stands.
 
 ## Playing Nullmere
 
