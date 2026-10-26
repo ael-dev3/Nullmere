@@ -447,6 +447,34 @@ public final class GameSession {
         store.saveLastSeen(LastSeen(watch: state.watch, stock: state.houses[player].stock, holds: state.holds(of: player).count))
     }
 
+    // MARK: Keepers' words
+
+    /// Houses whose keepers' words this keeper would rather not read,
+    /// kept on this Mac by House name.
+    public private(set) var mutedHouses: Set<String> = Set(UserDefaults.standard.stringArray(forKey: GameSession.mutedKey) ?? [])
+    static let mutedKey = "words.muted"
+
+    public func setMuted(_ muted: Bool, house: House) {
+        if muted { mutedHouses.insert(house.name) } else { mutedHouses.remove(house.name) }
+        UserDefaults.standard.set(mutedHouses.sorted(), forKey: Self.mutedKey)
+    }
+
+    /// The words an envoy carries, if any and not silenced.
+    public func words(of envoy: Envoy) -> String? {
+        guard let words = envoy.words, state.houses.indices.contains(envoy.from),
+              !mutedHouses.contains(state.houses[envoy.from].name) else { return nil }
+        return words
+    }
+
+    /// An offer, with words when there are any for a House a keeper holds.
+    public func propose(_ proposal: Proposal, to house: House, words: String) {
+        if house.isPlayer, let carried = Envoy.carried(words) {
+            perform(.proposeWithWords(proposal, to: house.id, words: carried))
+        } else {
+            perform(.propose(proposal, to: house.id))
+        }
+    }
+
     public func dismissAwayReport() {
         withAnimation(.easeOut(duration: 0.3)) { awayReport = nil }
     }

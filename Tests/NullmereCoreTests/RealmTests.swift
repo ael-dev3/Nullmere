@@ -122,6 +122,38 @@ final class RealmTests: XCTestCase {
         XCTAssertNil(try realm.arrive("d", name: "Dee", now: 20 + RealmState.unplayedSeatHeldFor).house, "Bel was ready once: a week")
     }
 
+    func testAKeepersWordsGoWithTheirEnvoyToTheKeeperAlone() throws {
+        var realm = realm()
+        let ama = try realm.arrive("a", name: "Ama", now: 0)
+        let bel = try realm.arrive("b", name: "Bel", now: 0)
+        try realm.arrive("c", name: "Cor", now: 0)
+        _ = try realm.perform(.declareWar(on: bel.house!), by: "a")
+        _ = try realm.perform(.proposeWithWords(.peace, to: bel.house!, words: "  Enough blood\non the strand.  See http://x.example "), by: "a")
+        let envoy = try XCTUnwrap(realm.world.envoys.first { $0.from == ama.house && $0.to == bel.house })
+        XCTAssertNil(envoy.words, "No addresses: the words are dropped whole")
+        _ = try realm.perform(.answer(envoy: envoy.id, accept: false), by: "b")
+        _ = try realm.perform(.proposeWithWords(.peace, to: bel.house!, words: "Enough blood\non the strand."), by: "a")
+        let second = try XCTUnwrap(realm.world.envoys.first { $0.from == ama.house && $0.to == bel.house })
+        XCTAssertEqual(second.words, "Enough blood on the strand.")
+        XCTAssertEqual(realm.view(for: "b")?.world.envoys.first?.words, "Enough blood on the strand.", "Bel reads them")
+        XCTAssertTrue(realm.view(for: "c")?.world.envoys.isEmpty ?? false, "Cor never sees them")
+
+        // Old worlds, kept before envoys carried words, still open.
+        let old = #"{"id":1,"from":0,"to":1,"proposal":"peace","arrived":3}"#
+        XCTAssertNil(try JSONDecoder().decode(Envoy.self, from: Data(old.utf8)).words)
+    }
+
+    func testWordsAreOnePlainLine() {
+        XCTAssertEqual(Envoy.carried("  Hold   fast,\tfriend!  "), "Hold fast, friend!")
+        XCTAssertNil(Envoy.carried("   "))
+        XCTAssertNil(Envoy.carried("!!! ..."), "Words need a letter")
+        XCTAssertNil(Envoy.carried("meet me at www.example.org"))
+        XCTAssertNil(Envoy.carried("free gold example.com"))
+        XCTAssertEqual(Envoy.carried("a<script>b"), "a script b")
+        XCTAssertEqual(Envoy.carried(String(repeating: "word ", count: 60))?.count, Envoy.wordsLimit)
+        XCTAssertEqual(Envoy.carried("Ysolde’s “oath” — kept…"), "Ysolde’s “oath” — kept…")
+    }
+
     func testANameIsJudgedAsItIsTyped() {
         XCTAssertNil(RealmState.nameProblem(""))
         XCTAssertNil(RealmState.nameProblem("  "))

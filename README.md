@@ -218,7 +218,9 @@ as the realm will, and takes the realm's word as final.
   returns. Leave, and your House stands as you left it.
 - **Treating with keepers.** Offers to another keeper wait as envoys for
   their answer, as theirs wait for yours. Envoys of stewards speak, in
-  words written on your Mac; a keeper's envoy carries their offer alone.
+  words written on your Mac; a keeper's envoy carries their own words, if
+  they write any: one plain line, no addresses, read by that keeper alone.
+  Hide a House's words from its envoy card; your Mac remembers.
 - **Ages.** When a House wins, the age ends. When the watch next turns, a
   new age begins on a fresh lake, and every keeper is seated anew in the
   order they first came.

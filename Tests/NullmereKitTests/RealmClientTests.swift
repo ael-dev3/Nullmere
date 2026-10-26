@@ -120,6 +120,30 @@ final class RealmClientTests: XCTestCase {
         XCTAssertEqual(HouseRow.keeping(steward, present: ama.realmStatus?.present), "A steward gives its orders.")
     }
 
+    func testWordsBetweenKeepersCanBeHidden() throws {
+        UserDefaults.standard.removeObject(forKey: GameSession.mutedKey)
+        defer { UserDefaults.standard.removeObject(forKey: GameSession.mutedKey) }
+        let realm = realm()
+        let ama = try enter(realm, as: "a", name: "Ama")
+        let bel = try enter(realm, as: "b", name: "Bel")
+        XCTAssertTrue(ama.perform(.declareWar(on: bel.player)))
+        let bels = ama.state.houses[bel.player]
+        ama.propose(.peace, to: bels, words: "  Enough   blood. ")
+        let envoy = try XCTUnwrap(bel.envoys.first)
+        XCTAssertEqual(bel.words(of: envoy), "Enough blood.")
+        let amas = bel.state.houses[ama.player]
+        bel.setMuted(true, house: amas)
+        XCTAssertNil(bel.words(of: envoy), "Hidden")
+        XCTAssertEqual(UserDefaults.standard.stringArray(forKey: GameSession.mutedKey), ["Ama"], "and remembered on this Mac")
+        bel.setMuted(false, house: amas)
+        XCTAssertEqual(bel.words(of: envoy), "Enough blood.")
+
+        // Words that can't be carried leave the offer plain.
+        XCTAssertTrue(bel.perform(.answer(envoy: envoy.id, accept: false)))
+        ama.propose(.peace, to: bels, words: "see www.example.org")
+        XCTAssertNil(try XCTUnwrap(bel.envoys.first).words)
+    }
+
     func testTheRealmOutOfReachIsToldOnceAndItsReturnToo() throws {
         let link = StubLink()
         let state = GameState(settings: GameSettings(seedText: "out of reach", houseCount: 3, radius: 16))

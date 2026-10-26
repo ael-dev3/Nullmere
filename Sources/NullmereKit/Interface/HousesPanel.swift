@@ -89,6 +89,7 @@ struct RaceTable: View {
 }
 
 struct HouseRow: View {
+    @State private var words = ""
     let session: GameSession
     let house: House
 
@@ -118,6 +119,19 @@ struct HouseRow: View {
                     .font(.nm(10.5))
                     .foregroundStyle(Palette.ink.opacity(0.55))
                     .fixedSize(horizontal: false, vertical: true)
+                if house.isPlayer {
+                    // Words for the keeper there, sent with the next offer.
+                    TextField("Words to send with an offer", text: $words)
+                        .textFieldStyle(.plain)
+                        .font(.nm(11, weight: .light))
+                        .foregroundStyle(Palette.ink)
+                        .padding(.vertical, 4)
+                        .overlay(alignment: .bottom) { Rule(opacity: 0.3) }
+                        .onChange(of: words) { _, new in
+                            if new.count > Envoy.wordsLimit { words = String(new.prefix(Envoy.wordsLimit)) }
+                        }
+                        .accessibilityLabel("Words for the keeper of \(house.title)")
+                }
                 HStack(spacing: 14) {
                     Figure(label: "Holds", value: state.holds(of: house.id).count)
                     Figure(label: "Strength", value: state.strength(of: house.id))
@@ -137,16 +151,21 @@ struct HouseRow: View {
     private func actions(stance: Stance) -> some View {
         switch stance {
         case .war:
-            QuietButton(title: "Offer peace", size: 8.5) { session.perform(.propose(.peace, to: house.id)) }
+            QuietButton(title: "Offer peace", size: 8.5) { offer(.peace) }
         case .peace:
-            QuietButton(title: "Offer a pact", size: 8.5) { session.perform(.propose(.pact, to: house.id)) }
+            QuietButton(title: "Offer a pact", size: 8.5) { offer(.pact) }
             if session.canDemandTribute(from: house.id) {
-                QuietButton(title: "Demand tribute", size: 8.5) { session.perform(.propose(.tribute, to: house.id)) }
+                QuietButton(title: "Demand tribute", size: 8.5) { offer(.tribute) }
             }
             QuietButton(title: "Declare war", size: 8.5) { session.perform(.declareWar(on: house.id)) }
         case .pact:
             QuietButton(title: "Break the pact", size: 8.5) { session.perform(.declareWar(on: house.id)) }
         }
+    }
+
+    private func offer(_ proposal: Proposal) {
+        session.propose(proposal, to: house, words: words)
+        words = ""
     }
 
     /// Who gives a House its orders: a steward, or a keeper here or away.
@@ -236,6 +255,13 @@ struct EnvoyCards: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .transition(.opacity)
                     }
+                    if let words = session.words(of: envoy) {
+                        Text(verbatim: "“\(words)”")
+                            .font(.nm(12, weight: .light).italic())
+                            .foregroundStyle(Palette.ink.opacity(0.88))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityLabel("\(house.name) writes: \(words)")
+                    }
                     Text(verbatim: words(for: envoy.proposal, from: house))
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.ink.opacity(session.spoken[.envoy(envoy.id)] == nil ? 0.7 : 0.5))
@@ -245,6 +271,11 @@ struct EnvoyCards: View {
                             .font(.nm(10))
                             .foregroundStyle(Palette.ink.opacity(0.4))
                         Spacer()
+                        if envoy.words != nil {
+                            let muted = session.mutedHouses.contains(house.name)
+                            QuietButton(title: muted ? "Show Words" : "Hide Words", size: 8.5) { session.setMuted(!muted, house: house) }
+                                .help(muted ? "Read \(house.name)'s words again." : "Hide \(house.name)'s words from now on, on this Mac.")
+                        }
                         QuietButton(title: "Refuse", size: 8.5) { session.perform(.answer(envoy: envoy.id, accept: false)) }
                         QuietButton(title: "Accept", size: 8.5, prominent: true) { session.perform(.answer(envoy: envoy.id, accept: true)) }
                     }

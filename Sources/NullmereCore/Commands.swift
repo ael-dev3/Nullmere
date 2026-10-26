@@ -19,6 +19,8 @@ public enum Command: Codable, Equatable, Sendable {
     case halt(unit: Int)
     case declareWar(on: Int)
     case propose(Proposal, to: Int)
+    /// An offer to a House held by a keeper, with a keeper's own words.
+    case proposeWithWords(Proposal, to: Int, words: String)
     case answer(envoy: Int, accept: Bool)
 }
 

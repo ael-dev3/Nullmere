@@ -37,6 +37,8 @@ extension GameState {
             return try declareWar(by: house, on: target)
         case let .propose(proposal, target):
             return try propose(proposal, from: house, to: target)
+        case let .proposeWithWords(proposal, target, words):
+            return try propose(proposal, from: house, to: target, words: Envoy.carried(words))
         case let .answer(envoyID, accept):
             return try answer(envoyID, accept: accept, as: house)
         }
@@ -474,7 +476,7 @@ extension GameState {
         return [.stanceChanged(first: house, second: target, stance: .war, by: house)]
     }
 
-    mutating func propose(_ proposal: Proposal, from house: Int, to target: Int) throws(RuleError) -> [GameEvent] {
+    mutating func propose(_ proposal: Proposal, from house: Int, to target: Int, words: String? = nil) throws(RuleError) -> [GameEvent] {
         try requireRival(target, of: house)
         let current = stance(house, target)
         switch proposal {
@@ -493,7 +495,9 @@ extension GameState {
 
         if houses[target].isPlayer {
             guard !envoys.contains(where: { $0.from == house && $0.to == target }) else { return [] }
-            let envoy = Envoy(id: takeID(), from: house, to: target, proposal: proposal, arrived: watch)
+            // Words go only between keepers: a steward has no use for them.
+            let envoy = Envoy(id: takeID(), from: house, to: target, proposal: proposal, arrived: watch,
+                              words: houses[house].isPlayer ? words : nil)
             envoys.append(envoy)
             return [.envoyArrived(envoy)]
         }

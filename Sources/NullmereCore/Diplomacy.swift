@@ -1,3 +1,5 @@
+import Foundation
+
 /// Where two Houses stand with each other.
 public enum Stance: String, Codable, CaseIterable, Sendable {
     case war
@@ -78,17 +80,36 @@ public struct Envoy: Codable, Equatable, Identifiable, Sendable {
     public let to: Int
     public let proposal: Proposal
     public let arrived: Int
+    /// A keeper's own words, carried with the offer.
+    public let words: String?
 
-    public init(id: Int, from: Int, to: Int = 0, proposal: Proposal, arrived: Int) {
+    public init(id: Int, from: Int, to: Int = 0, proposal: Proposal, arrived: Int, words: String? = nil) {
         self.id = id
         self.from = from
         self.to = to
         self.proposal = proposal
         self.arrived = arrived
+        self.words = words
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, from, to, proposal, arrived
+        case id, from, to, proposal, arrived, words
+    }
+
+    /// Longest words an envoy carries.
+    public static let wordsLimit = 140
+
+    /// A keeper's words as an envoy will carry them: one line of plain
+    /// speech, at most `wordsLimit` characters, with no addresses; nil if
+    /// nothing is left to say.
+    public static func carried(_ text: String) -> String? {
+        let allowed = CharacterSet.letters.union(.decimalDigits).union(CharacterSet(charactersIn: " .,;:!?'’\"“”()-–—…"))
+        let kept = String(String.UnicodeScalarView(text.unicodeScalars.map { allowed.contains($0) ? $0 : " " }))
+        let line = kept.split(separator: " ", omittingEmptySubsequences: true).joined(separator: " ")
+        let lowered = line.lowercased()
+        guard !line.isEmpty, line.contains(where: \.isLetter),
+              !lowered.contains("http"), !lowered.contains("www"), !lowered.contains(".com") else { return nil }
+        return String(line.prefix(wordsLimit))
     }
 
     public init(from decoder: any Decoder) throws {
@@ -98,6 +119,7 @@ public struct Envoy: Codable, Equatable, Identifiable, Sendable {
         to = try container.decodeIfPresent(Int.self, forKey: .to) ?? 0
         proposal = try container.decode(Proposal.self, forKey: .proposal)
         arrived = try container.decode(Int.self, forKey: .arrived)
+        words = try container.decodeIfPresent(String.self, forKey: .words)
     }
 
     /// Watches an envoy waits for an answer.
