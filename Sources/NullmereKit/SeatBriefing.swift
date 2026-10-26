@@ -25,8 +25,12 @@ struct SeatBriefing: Equatable {
             facts.append("The age is at watch \(world.watch); the stewards kept your House until now.")
         }
         let living = world.livingHouses
-        let stronger = living.filter { world.strength(of: $0.id) > world.strength(of: player) }.count
-        facts.append("Of \(living.count) Houses around the lake, yours is \(SeatBriefing.ordinal(stronger + 1)) in strength.")
+        let mine = world.strength(of: player)
+        let stronger = living.filter { world.strength(of: $0.id) > mine }.count
+        let even = living.filter { $0.id != player && world.strength(of: $0.id) == mine }.count
+        facts.append(stronger == 0 && even > 0
+            ? "Of \(living.count) Houses around the lake, none is stronger than yours."
+            : "Of \(living.count) Houses around the lake, yours is \(SeatBriefing.ordinal(stronger + 1)) in strength.")
         let wars = living.filter { $0.id != player && world.stance(player, $0.id) == .war }.map(\.title)
         let pacts = living.filter { $0.id != player && world.stance(player, $0.id) == .pact }.map(\.title)
         facts.append(wars.isEmpty ? "You are at war with no one." : "You are at war with \(SeatBriefing.list(wars)).")

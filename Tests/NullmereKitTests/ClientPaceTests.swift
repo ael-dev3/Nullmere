@@ -13,16 +13,25 @@ final class ClientPaceTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: dir) }
         var realm = RealmState(name: "The Nullmere", seed: "client pace", now: 0)
         try realm.arrive("a", name: "Ama", now: 0)
-        for _ in 0..<80 {
+        for _ in 0..<40 {
             for house in realm.world.houses where !house.isEliminated { _ = realm.world.stewardTurn(for: house.id) }
             _ = realm.world.endWatch()
         }
         let session = GameSession(state: realm.world, store: LocalStore(directory: dir))
-        let units = session.state.units(of: session.player).filter { !$0.fortified && $0.kind.isMilitary }
+        XCTAssertNil(session.state.outcome, "The age goes on")
+        // A step to free open ground beside each company that can move.
+        var orders: [Command] = []
+        for unit in session.state.units(of: session.player) where unit.movesLeft > 0 {
+            let open = session.state.map.neighbors(of: unit.position).first { hex in
+                guard let tile = session.state.map[hex], tile.terrain.isSettleable else { return false }
+                return !session.state.units.contains { $0.position == hex } && session.state.hold(at: hex) == nil
+            }
+            if let open { orders.append(.move(unit: unit.id, to: open)) }
+        }
         var times: [Double] = []
-        for unit in units.prefix(12) {
+        for order in orders.prefix(12) {
             let start = Date()
-            _ = session.perform(.fortify(unit: unit.id))
+            _ = session.perform(order)
             times.append(Date().timeIntervalSince(start) * 1000)
         }
         let sorted = times.sorted()
