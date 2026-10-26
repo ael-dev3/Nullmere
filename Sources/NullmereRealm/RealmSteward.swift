@@ -39,6 +39,8 @@ public actor RealmSteward {
     /// When each keeper was last heard from.
     private var heard: [String: Double] = [:]
     private var answered: [String] = []
+    /// Each keeper's view as last published, to send only what changed.
+    private var published: [String: String] = [:]
 
     /// Seconds of silence after which a keeper is taken to have left.
     public static let silence = 90.0
@@ -96,10 +98,9 @@ public actor RealmSteward {
             events += turned
             changed = true
         }
-        if !events.isEmpty { lastEvents = events }
+        lastEvents = events
         let status = state.status(now: now)
         if changed || status.online != lastStatus?.online || status.ready != lastStatus?.ready {
-            if changed && events.isEmpty { lastEvents = [] }
             try await publish(now: now)
         }
         // Answers old enough to have been read are forgotten.
@@ -145,17 +146,34 @@ public actor RealmSteward {
         }
     }
 
+    /// Publishes the realm: whole, for the steward; its status, for
+    /// everyone; and each keeper's own view, where it changed, with the
+    /// events they heard.
     private func publish(now: Double = Date().timeIntervalSince1970) async throws {
         version += 1
         let encoder = JSONEncoder()
         let status = state.status(now: now)
         lastStatus = status
+        var keepers: [String] = [], views: [String] = [], heard: [String] = []
+        for keeper in state.keepers {
+            guard let view = state.view(for: keeper.id) else { continue }
+            let text = String(decoding: try encoder.encode(view), as: UTF8.self)
+            let events = keeper.house.map { state.world.events(lastEvents, heardBy: $0) } ?? []
+            guard text != published[keeper.id] || !events.isEmpty else { continue }
+            published[keeper.id] = text
+            keepers.append(keeper.id)
+            views.append(text)
+            heard.append(String(decoding: try encoder.encode(events), as: UTF8.self))
+        }
         try await transport.call("publish", [
             .integer(version),
             .string(String(decoding: try encoder.encode(state), as: UTF8.self)),
             .string(String(decoding: try encoder.encode(status), as: UTF8.self)),
-            .string(String(decoding: try encoder.encode(lastEvents), as: UTF8.self)),
+            .strings(keepers),
+            .strings(views),
+            .strings(heard),
         ], token: token)
+        lastEvents = []
     }
 
     /// Runs the realm until cancelled, a step every quarter second.

@@ -4,6 +4,7 @@ import LauncherKit
 import NullmereCore
 import NullmereRealm
 import Observation
+import os
 
 /// The whole client: the gate on Apple's on-device model, the realm's front
 /// door, and the keeper in the world.
@@ -241,7 +242,10 @@ public final class GameApp {
         }
     }
 
+    private static let logger = Logger(subsystem: "online.nullmere.game", category: "realm")
+
     private func arrived(_ keeper: Keeper, in world: GameState) {
+        Self.logger.notice("Entered the realm as \(keeper.name, privacy: .public), watch \(world.watch).")
         isEntering = false
         keeperName = keeper.name
         UserDefaults.standard.set(keeper.name, forKey: Self.nameKey(for: address))

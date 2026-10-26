@@ -94,13 +94,27 @@ final class NetworkRealmTests: XCTestCase {
         let worldA = try await MainActor.run { try XCTUnwrap(earA.world) }
         XCTAssertEqual(worldA.houses[houseA].title, "House Ama")
 
-        // Ama's order reaches Bel's copy of the world.
+        // Ama's order is carried out; Bel's view never holds Ama's company,
+        // out of sight, nor Ama's stores.
         let spear = try XCTUnwrap(worldA.units(of: houseA).first { $0.kind == .spear })
         await MainActor.run { a.send(.fortify(unit: spear.id)) }
-        try await until("Bel to see Ama's order") { earB.world?.unit(spear.id)?.fortified == true }
+        try await until("Ama's order to be carried out") { earA.world?.unit(spear.id)?.fortified == true }
+        let belsWorld = try await MainActor.run { try XCTUnwrap(earB.world) }
+        XCTAssertNil(belsWorld.unit(spear.id))
+        XCTAssertEqual(belsWorld.houses[houseA].stock, .zero)
+        XCTAssertEqual(belsWorld.settings.seedText, "")
+
+        // Nor can a keeper read the world, or anyone's requests, directly.
+        let stranger = try await db.createIdentity()
+        for table in ["world", "request", "keeper_view", "reply"] {
+            do {
+                _ = try await db.query("SELECT * FROM \(table)", token: stranger.token)
+                XCTFail("A keeper read the private \(table) table")
+            } catch {}
+        }
 
         // An order for another's company is refused, with the world as it stands.
-        let theirs = try XCTUnwrap(worldA.units(of: houseB).first { $0.kind == .spear })
+        let theirs = try XCTUnwrap(belsWorld.units(of: houseB).first { $0.kind == .spear })
         await MainActor.run { a.send(.fortify(unit: theirs.id)) }
         try await until("the refusal") { !earA.refusals.isEmpty }
 

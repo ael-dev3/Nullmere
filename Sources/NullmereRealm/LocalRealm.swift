@@ -70,7 +70,7 @@ public final class LocalRealm {
         do {
             let keeper = try state.arrive(identity, name: name, now: clock())
             persist()
-            deliver(.arrived(keeper, state.world), to: identity)
+            deliver(.arrived(keeper, world(for: identity)), to: identity)
             broadcastStatus()
         } catch {
             deliver(.refused(error), to: identity)
@@ -81,12 +81,12 @@ public final class LocalRealm {
         do {
             let events = try state.perform(command, by: identity)
             persist()
-            deliver(.settled(state.world, events), to: identity)
+            deliver(.settled(world(for: identity), heard(events, by: identity)), to: identity)
             for other in links.keys where other != identity {
-                deliver(.changed(state.world), to: other)
+                deliver(.changed(world(for: other)), to: other)
             }
         } catch {
-            deliver(.orderRefused(error, state.world), to: identity)
+            deliver(.orderRefused(error, world(for: identity)), to: identity)
         }
     }
 
@@ -115,11 +115,21 @@ public final class LocalRealm {
         for identity in links.keys {
             if state.age != age, let keeper = state.keeper(identity) {
                 // A new age: every keeper is seated afresh.
-                deliver(.arrived(keeper, state.world), to: identity)
+                deliver(.arrived(keeper, world(for: identity)), to: identity)
             } else {
-                deliver(.watchTurned(state.world, events), to: identity)
+                deliver(.watchTurned(world(for: identity), heard(events, by: identity)), to: identity)
             }
         }
+    }
+
+    /// The world as a keeper may know it.
+    private func world(for identity: String) -> GameState {
+        state.view(for: identity)?.world ?? state.world.view(for: -1)
+    }
+
+    private func heard(_ events: [GameEvent], by identity: String) -> [GameEvent] {
+        guard let house = state.keeper(identity)?.house else { return [] }
+        return state.world.events(events, heardBy: house)
     }
 
     private func broadcastStatus() {

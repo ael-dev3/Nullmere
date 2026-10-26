@@ -8,9 +8,16 @@
 //!
 //! A keeper's client adds requests (arrive, order, ready, here, leave), each
 //! carrying a nonce the client chose. The steward takes them in order,
-//! carries them out, answers each by its nonce, and publishes the realm.
+//! carries them out, answers each by its nonce, and publishes the realm:
+//! its status for everyone, and for each keeper their own view of the
+//! world, never the whole of it.
+//!
+//! The world, the requests, the answers and the keepers' views are private
+//! tables. Everyone may read the realm's status; a keeper reads their own
+//! view and their own answers through the `my_view` and `my_replies` views,
+//! which show each caller their rows alone.
 
-use spacetimedb::{reducer, table, ReducerContext, Table};
+use spacetimedb::{reducer, table, view, ReducerContext, Table, ViewContext};
 
 /// Longest request payload: an order, or a name.
 const MAX_PAYLOAD: usize = 4096;
@@ -28,7 +35,7 @@ pub struct Steward {
 }
 
 /// A keeper's request, waiting for the steward.
-#[table(accessor = request, public)]
+#[table(accessor = request)]
 pub struct Request {
     #[primary_key]
     #[auto_inc]
@@ -42,24 +49,56 @@ pub struct Request {
 }
 
 /// The steward's answer to a request, found by its nonce.
-#[table(accessor = reply, public)]
+#[table(accessor = reply)]
 pub struct Reply {
     #[primary_key]
     pub nonce: String,
+    #[index(btree)]
     pub keeper: String,
     pub payload: String,
 }
 
-/// The realm as it stands: its whole state, its status, and the events of
-/// the last change, each as the rules core's JSON.
-#[table(accessor = world, public)]
+/// The realm as it stands, whole, as the rules core's JSON: the steward's
+/// alone to read.
+#[table(accessor = world)]
 pub struct World {
     #[primary_key]
     pub id: u8,
     pub version: u64,
     pub state: String,
+}
+
+/// What anyone may know of the realm: its age, watch, keepers and seats.
+#[table(accessor = status, public)]
+pub struct Status {
+    #[primary_key]
+    pub id: u8,
+    pub version: u64,
     pub status: String,
+}
+
+/// One keeper's view of the realm, and the events they heard in the last
+/// change.
+#[table(accessor = keeper_view)]
+pub struct KeeperView {
+    #[primary_key]
+    pub keeper: String,
+    pub version: u64,
+    pub view: String,
     pub events: String,
+}
+
+/// The caller's own view of the realm.
+#[view(accessor = my_view, public)]
+fn my_view(ctx: &ViewContext) -> Option<KeeperView> {
+    ctx.db.keeper_view().keeper().find(ctx.sender().to_hex().to_string())
+}
+
+/// The steward's answers to the caller's own requests.
+#[view(accessor = my_replies, public)]
+fn my_replies(ctx: &ViewContext) -> Vec<Reply> {
+    let me = ctx.sender().to_hex().to_string();
+    ctx.db.reply().keeper().filter(&me).collect()
 }
 
 /// The publisher of the module is the first steward.
@@ -147,11 +186,24 @@ pub fn forget(ctx: &ReducerContext, nonces: Vec<String>) -> Result<(), String> {
     Ok(())
 }
 
-/// The steward publishes the realm as it now stands.
+/// The steward publishes the realm as it now stands: the whole of it, its
+/// status, and the views of the keepers whose views changed, each with the
+/// events they heard.
 #[reducer]
-pub fn publish(ctx: &ReducerContext, version: u64, state: String, status: String, events: String) -> Result<(), String> {
+pub fn publish(
+    ctx: &ReducerContext,
+    version: u64,
+    state: String,
+    status: String,
+    keepers: Vec<String>,
+    views: Vec<String>,
+    events: Vec<String>,
+) -> Result<(), String> {
     if !is_steward(ctx) {
         return Err("Only the steward writes the world.".into());
+    }
+    if keepers.len() != views.len() || keepers.len() != events.len() {
+        return Err("Every view needs its keeper and its events.".into());
     }
     if let Some(current) = ctx.db.world().id().find(0) {
         if version <= current.version {
@@ -159,7 +211,13 @@ pub fn publish(ctx: &ReducerContext, version: u64, state: String, status: String
         }
         ctx.db.world().id().delete(0);
     }
-    ctx.db.world().insert(World { id: 0, version, state, status, events });
+    ctx.db.world().insert(World { id: 0, version, state });
+    ctx.db.status().id().delete(0);
+    ctx.db.status().insert(Status { id: 0, version, status });
+    for ((keeper, view), events) in keepers.into_iter().zip(views).zip(events) {
+        ctx.db.keeper_view().keeper().delete(keeper.clone());
+        ctx.db.keeper_view().insert(KeeperView { keeper, version, view, events });
+    }
     Ok(())
 }
 

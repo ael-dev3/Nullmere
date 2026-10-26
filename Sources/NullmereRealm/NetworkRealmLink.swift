@@ -2,8 +2,8 @@ import Foundation
 import NullmereCore
 
 /// A keeper's line to the realm proper, through SpacetimeDB: requests go
-/// in by reducer, and the realm the steward publishes is read back, as
-/// often as `pollInterval`, whenever its version moves on.
+/// in by reducer; the realm's status, and the keeper's own view of its
+/// world, are read back as often as `pollInterval`, whenever they move on.
 @MainActor
 public final class NetworkRealmLink: RealmLink {
     private let transport: any SpacetimeTransport
@@ -16,10 +16,17 @@ public final class NetworkRealmLink: RealmLink {
     public static let hereInterval = 30.0
 
     private var polling: Task<Void, Never>?
-    private var version: UInt64 = 0
-    private var realm: RealmState?
+    private var statusVersion: UInt64 = 0
+    private var viewVersion: UInt64 = 0
+    private var view: RealmView?
     private var arrived = false
     private var lastHere = Date.distantPast
+    /// The keeper's own orders sent and not yet answered. While any are,
+    /// changes from others wait, so an order carried out at once on the
+    /// keeper's copy isn't undone by news that came before it.
+    private var inFlight = 0
+    /// The last poll failed: the next that succeeds says so.
+    private var wasUnreachable = false
 
     public init(transport: any SpacetimeTransport, credentials: any IdentityStore, pollInterval: Double = 1) {
         self.transport = transport
@@ -43,7 +50,7 @@ public final class NetworkRealmLink: RealmLink {
 
     public func connect() {
         guard polling == nil else {
-            if let realm { onEvent?(.status(realm.status(now: Date().timeIntervalSince1970))) }
+            statusVersion = 0
             return
         }
         polling = Task { [weak self] in
@@ -55,42 +62,63 @@ public final class NetworkRealmLink: RealmLink {
         }
     }
 
-    /// Reads the realm if it has moved on, and tells what changed.
+    /// Reads the realm's status and the keeper's view if they have moved
+    /// on, and tells what changed.
     func poll() async {
         do {
             let credentials = try await ensureCredentials()
-            let heads = try await transport.query("SELECT version, status FROM world", token: credentials.token)
-            guard let head = heads.first, head.count == 2, let number = head[0].number else {
+            let heads = try await transport.query("SELECT version, status FROM status", token: credentials.token)
+            guard let head = heads.first, head.count == 2, let number = head[0].number, let text = head[1].string else {
                 onEvent?(.unreachable("The realm hasn't opened yet."))
                 return
             }
-            if arrived, Date().timeIntervalSince(lastHere) > Self.hereInterval {
+            if UInt64(number) != statusVersion || wasUnreachable {
+                wasUnreachable = false
+                statusVersion = UInt64(number)
+                onEvent?(.status(try JSONDecoder().decode(RealmStatus.self, from: Data(text.utf8))))
+            }
+            guard arrived else { return }
+            if Date().timeIntervalSince(lastHere) > Self.hereInterval {
                 lastHere = Date()
                 try? await transport.call("here", [.string(Self.nonce())], token: credentials.token)
             }
-            let latest = UInt64(number)
-            guard latest != version else { return }
-            let rows = try await transport.query("SELECT state, status, events FROM world", token: credentials.token)
-            guard let row = rows.first, row.count == 3, let stateText = row[0].string, let statusText = row[1].string,
-                  let eventsText = row[2].string else { return }
-            let decoder = JSONDecoder()
-            let state = try decoder.decode(RealmState.self, from: Data(stateText.utf8))
-            let status = try decoder.decode(RealmStatus.self, from: Data(statusText.utf8))
-            let events = (try? decoder.decode([GameEvent].self, from: Data(eventsText.utf8))) ?? []
-            let previous = realm
-            realm = state
-            version = latest
-            onEvent?(.status(status))
-            guard arrived, let previous, let keeper = state.keeper(credentials.identity) else { return }
-            if state.age != previous.age {
-                onEvent?(.arrived(keeper, state.world))
-            } else if state.world.watch != previous.world.watch {
-                onEvent?(.watchTurned(state.world, events))
-            } else if state.world != previous.world {
-                onEvent?(.changed(state.world))
-            }
+            try await readView(credentials)
         } catch {
+            wasUnreachable = true
             onEvent?(.unreachable(String(describing: error)))
+        }
+    }
+
+    /// The keeper's own view: `my_view` holds one row, theirs.
+    private func fetchView(_ credentials: SpacetimeCredentials) async throws -> (UInt64, RealmView, [GameEvent])? {
+        let rows = try await transport.query("SELECT * FROM my_view", token: credentials.token)
+        guard let row = rows.first, row.count == 4, let number = row[1].number, let text = row[2].string, let heard = row[3].string else {
+            return nil
+        }
+        let decoder = JSONDecoder()
+        let view = try decoder.decode(RealmView.self, from: Data(text.utf8))
+        let events = (try? decoder.decode([GameEvent].self, from: Data(heard.utf8))) ?? []
+        return (UInt64(number), view, events)
+    }
+
+    private func readView(_ credentials: SpacetimeCredentials) async throws {
+        guard inFlight == 0, let (number, fresh, events) = try await fetchView(credentials), number != viewVersion else { return }
+        deliver(fresh, version: number, events: events)
+    }
+
+    /// Takes a fresh view, and tells what it brought: a new age, a turned
+    /// watch, or a changed world.
+    private func deliver(_ fresh: RealmView, version number: UInt64, events: [GameEvent]) {
+        let previous = view
+        view = fresh
+        viewVersion = number
+        guard let previous else { return }
+        if fresh.age != previous.age {
+            onEvent?(.arrived(fresh.keeper, fresh.world))
+        } else if fresh.world.watch != previous.world.watch {
+            onEvent?(.watchTurned(fresh.world, events))
+        } else if fresh.world != previous.world {
+            onEvent?(.changed(fresh.world))
         }
     }
 
@@ -99,9 +127,9 @@ public final class NetworkRealmLink: RealmLink {
         let credentials = try await ensureCredentials()
         let nonce = Self.nonce()
         try await transport.call(reducer, [.string(nonce)] + arguments, token: credentials.token)
-        for _ in 0..<200 {
-            let rows = try await transport.query("SELECT payload FROM reply WHERE nonce = \(sqlString(nonce))", token: credentials.token)
-            if let text = rows.first?.first?.string {
+        for _ in 0..<300 {
+            let rows = try await transport.query("SELECT * FROM my_replies", token: credentials.token)
+            if let row = rows.first(where: { $0.first?.string == nonce }), row.count == 3, let text = row[2].string {
                 return try JSONDecoder().decode(RealmReply.self, from: Data(text.utf8))
             }
             try await Task.sleep(nanoseconds: 100_000_000)
@@ -109,29 +137,36 @@ public final class NetworkRealmLink: RealmLink {
         throw SpacetimeError("The realm didn't answer in time.")
     }
 
-    /// Waits until the published realm has caught up with an answer.
-    private func freshRealm() async -> RealmState? {
-        let seen = version
+    /// Waits for the steward to publish what came of a request, and takes
+    /// the view it published.
+    private func catchUp() async throws {
+        let credentials = try await ensureCredentials()
+        let seen = viewVersion
         for _ in 0..<50 {
-            await poll()
-            if version != seen { break }
-            try? await Task.sleep(nanoseconds: 100_000_000)
+            if let (number, fresh, events) = try await fetchView(credentials), number != seen {
+                deliver(fresh, version: number, events: events)
+                return
+            }
+            try await Task.sleep(nanoseconds: 100_000_000)
         }
-        return realm
     }
 
     public func arrive(name: String?) {
         Task {
             do {
                 let reply = try await request("arrive", [.string(name ?? "")])
-                guard reply.ok, let keeper = reply.keeper else {
+                guard reply.ok, reply.keeper != nil else {
                     onEvent?(.refused(.refused(reply.refusal ?? "The realm wouldn't take you in.")))
                     return
                 }
-                guard let realm = await freshRealm() else { return }
+                try await catchUp()
+                guard let view else {
+                    onEvent?(.refused(.refused("The realm took you in, but hasn't shown you the world yet. Try again.")))
+                    return
+                }
                 arrived = true
                 lastHere = Date()
-                onEvent?(.arrived(realm.keeper(keeper.id) ?? keeper, realm.world))
+                onEvent?(.arrived(view.keeper, view.world))
             } catch {
                 onEvent?(.refused(.refused(String(describing: error))))
             }
@@ -139,14 +174,20 @@ public final class NetworkRealmLink: RealmLink {
     }
 
     public func send(_ command: Command) {
+        inFlight += 1
         Task {
             do {
                 let text = String(decoding: try JSONEncoder().encode(command), as: UTF8.self)
                 let reply = try await request("order", [.string(text)])
-                if !reply.ok, let world = await freshRealm()?.world {
+                inFlight -= 1
+                if reply.ok {
+                    try await catchUp()
+                } else if let world = view?.world {
+                    // A refused order changed nothing: the world is as last seen.
                     onEvent?(.orderRefused(.refused(reply.refusal ?? "The realm refused the order."), world))
                 }
             } catch {
+                inFlight -= 1
                 onEvent?(.unreachable(String(describing: error)))
             }
         }

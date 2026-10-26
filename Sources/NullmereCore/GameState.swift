@@ -41,7 +41,7 @@ public struct GameState: Codable, Equatable, Sendable {
     public static let formatVersion = 1
 
     public var formatVersion: Int
-    public let settings: GameSettings
+    public internal(set) var settings: GameSettings
     public internal(set) var watch: Int
     public internal(set) var map: WorldMap
     public internal(set) var houses: [House]

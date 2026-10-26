@@ -86,7 +86,8 @@ final class LocalRealmTests: XCTestCase {
             let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
             a.send(.fortify(unit: spear.id))
             guard case .changed(let seen)? = earB.events.last else { return XCTFail("\(String(describing: earB.events.last))") }
-            XCTAssertTrue(seen.unit(spear.id)!.fortified, "B sees A's order")
+            XCTAssertNil(seen.unit(spear.id), "B hears the world changed, but A's company is out of B's sight")
+            XCTAssertEqual(seen.houses[house].stock, .zero, "nor are A's stores B's to know")
 
             a.setReady(true)
             XCTAssertEqual(earB.lastStatus?.ready, 1)

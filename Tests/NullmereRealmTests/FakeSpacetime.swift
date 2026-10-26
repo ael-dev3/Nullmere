@@ -11,8 +11,10 @@ actor FakeSpacetime: SpacetimeTransport {
     private var steward: String?
     private var requests: [Request] = []
     private var nextID: UInt64 = 1
-    private var replies: [String: String] = [:] // nonce → payload
-    private var world: (version: UInt64, state: String, status: String, events: String)?
+    private var replies: [String: (keeper: String, payload: String)] = [:] // by nonce
+    private var world: (version: UInt64, state: String)?
+    private var status: (version: UInt64, status: String)?
+    private var views: [String: (version: UInt64, view: String, events: String)] = [:] // by keeper
     private(set) var calls: [String] = []
 
     func createIdentity() async throws -> SpacetimeCredentials {
@@ -50,7 +52,7 @@ actor FakeSpacetime: SpacetimeTransport {
             guard case .integer(let id)? = arguments.first else { throw SpacetimeError("bad arguments") }
             let reply = try string(1)
             if let index = requests.firstIndex(where: { $0.id == id }) {
-                replies[requests[index].nonce] = reply
+                replies[requests[index].nonce] = (requests[index].keeper, reply)
                 requests.remove(at: index)
             }
         case "forget":
@@ -58,31 +60,44 @@ actor FakeSpacetime: SpacetimeTransport {
             if case .strings(let nonces)? = arguments.first { nonces.forEach { replies[$0] = nil } }
         case "publish":
             guard me == steward else { throw SpacetimeError("Only the steward writes the world.") }
-            guard case .integer(let version)? = arguments.first else { throw SpacetimeError("bad arguments") }
+            guard case .integer(let version)? = arguments.first, arguments.count == 6,
+                  case .strings(let keepers) = arguments[3], case .strings(let shown) = arguments[4], case .strings(let heard) = arguments[5]
+            else { throw SpacetimeError("bad arguments") }
+            guard keepers.count == shown.count, keepers.count == heard.count else { throw SpacetimeError("Every view needs its keeper and its events.") }
             if let world, version <= world.version { throw SpacetimeError("Version \(version) is not after \(world.version).") }
-            world = (version, try string(1), try string(2), try string(3))
+            world = (version, try string(1))
+            status = (version, try string(2))
+            for (index, keeper) in keepers.enumerated() {
+                views[keeper] = (version, shown[index], heard[index])
+            }
         default:
             throw SpacetimeError("No such reducer: \(reducer)")
         }
     }
 
+    /// Private tables are the owner's, the steward's, alone to read.
     func query(_ sql: String, token: String) async throws -> [[JSONValue]] {
-        _ = try sender(token)
+        let me = try sender(token)
+        func owner() throws {
+            guard me == steward else { throw SpacetimeError("Table is private") }
+        }
         switch sql {
         case "SELECT version, state FROM world":
+            try owner()
             return world.map { [[.number(Double($0.version)), .string($0.state)]] } ?? []
-        case "SELECT version, status FROM world":
-            return world.map { [[.number(Double($0.version)), .string($0.status)]] } ?? []
-        case "SELECT state, status, events FROM world":
-            return world.map { [[.string($0.state), .string($0.status), .string($0.events)]] } ?? []
         case "SELECT id, keeper, kind, nonce, payload FROM request":
+            try owner()
             return requests.map { [.number(Double($0.id)), .string($0.keeper), .string($0.kind), .string($0.nonce), .string($0.payload)] }
+        case "SELECT version, status FROM status":
+            return status.map { [[.number(Double($0.version)), .string($0.status)]] } ?? []
+        case "SELECT * FROM my_view":
+            return views[me].map { [[.string(me), .number(Double($0.version)), .string($0.view), .string($0.events)]] } ?? []
+        case "SELECT * FROM my_replies":
+            return replies.filter { $0.value.keeper == me }.map { [.string($0.key), .string($0.value.keeper), .string($0.value.payload)] }
+        case "SELECT * FROM world", "SELECT * FROM keeper_view", "SELECT * FROM reply", "SELECT * FROM request":
+            try owner()
+            return []
         default:
-            let prefix = "SELECT payload FROM reply WHERE nonce = '"
-            if sql.hasPrefix(prefix) {
-                let nonce = String(sql.dropFirst(prefix.count).dropLast())
-                return replies[nonce].map { [[.string($0)]] } ?? []
-            }
             throw SpacetimeError("Unexpected query: \(sql)")
         }
     }

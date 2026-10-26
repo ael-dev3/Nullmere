@@ -64,7 +64,17 @@ final class SpacetimeIntegrationTests: XCTestCase {
         let world = try await MainActor.run { try XCTUnwrap(earA.world) }
         let spear = try XCTUnwrap(world.units(of: houseA).first { $0.kind == .spear })
         await MainActor.run { a.send(.fortify(unit: spear.id)) }
-        try await until("Bel to see Ama's order") { earB.world?.unit(spear.id)?.fortified == true }
+        try await until("Ama's order to be carried out") { earA.world?.unit(spear.id)?.fortified == true }
+        let belsWorld = try await MainActor.run { try XCTUnwrap(earB.world) }
+        XCTAssertNil(belsWorld.unit(spear.id), "Ama's company is out of Bel's sight")
+        XCTAssertEqual(belsWorld.houses[houseA].stock, .zero, "and Ama's stores are Ama's to know")
+
+        // Private tables stay private to a keeper.
+        let stranger = try await transport.createIdentity()
+        for table in ["world", "request", "keeper_view", "reply"] {
+            let rows = (try? await transport.query("SELECT * FROM \(table)", token: stranger.token)) ?? []
+            XCTAssertTrue(rows.isEmpty, "A keeper read the private \(table) table")
+        }
 
         let watch = world.watch
         await MainActor.run {

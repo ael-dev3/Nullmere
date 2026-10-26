@@ -160,3 +160,84 @@ final class RealmAroundAWorldTests: XCTestCase {
         XCTAssertEqual(realm.world.watch, 2)
     }
 }
+
+final class FogTests: XCTestCase {
+    private func game() -> GameState {
+        var state = GameState(settings: GameSettings(seedText: "fog", houseCount: 4, radius: 18))
+        for _ in 0..<12 {
+            state.stewardTurn(for: state.player)
+            _ = state.endWatch()
+        }
+        return state
+    }
+
+    func testAKeeperSeesTheirOwnHouseInFullAndNoMoreOfOthers() throws {
+        let state = game()
+        let me = state.player
+        let view = state.view(for: me)
+        XCTAssertEqual(view.settings.seedText, "", "The realm's words stay with the realm")
+        XCTAssertEqual(view.houses[me], state.houses[me])
+        XCTAssertEqual(view.units(of: me), state.units(of: me))
+        XCTAssertEqual(view.holds.count, state.holds.count, "Every hold is on the political map")
+        let seen = state.visibility(for: me)
+        for other in state.houses where other.id != me {
+            XCTAssertEqual(view.houses[other.id].stock, .zero, "Another House's stores are its own")
+            XCTAssertFalse(view.houses[other.id].explored.contains(true))
+            for unit in state.units(of: other.id) {
+                let visible = state.map.index(of: unit.position).map { seen[$0] } ?? false
+                XCTAssertEqual(view.unit(unit.id) != nil, visible, "Only companies in sight")
+            }
+            for hold in state.holds(of: other.id) {
+                XCTAssertNil(view.hold(hold.id)?.project)
+            }
+        }
+        for index in 0..<state.map.count where !state.houses[me].explored[index] {
+            XCTAssertEqual(view.map[index], GameState.unknownGround, "Unexplored ground is unknown")
+        }
+        XCTAssertLessThan(try JSONEncoder().encode(view).count, try JSONEncoder().encode(state).count)
+    }
+
+    func testOrdersOnTheViewGoAsOnTheWorld() throws {
+        var state = game()
+        let me = state.player
+        var view = state.view(for: me)
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let spear = try XCTUnwrap(state.units(of: me).first { $0.kind.isMilitary && $0.movesLeft > 0 })
+        let near = try XCTUnwrap(spear.position.ring(1).first { hex in
+            state.map[hex]?.terrain.isPassable == true && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        })
+        for command in [Command.move(unit: spear.id, to: near), .build(hold: seat.id, kind: .granary)] {
+            let truth = try? state.perform(command, as: me)
+            let guess = try? view.perform(command, as: me)
+            XCTAssertEqual(truth == nil, guess == nil, "\(command)")
+        }
+        XCTAssertEqual(view.unit(spear.id)?.position, state.unit(spear.id)?.position)
+        XCTAssertEqual(view.houses[me].stock, state.houses[me].stock)
+    }
+
+    func testOnlyTheEventsAKeeperWouldHear() throws {
+        let state = game()
+        let me = state.player
+        let far = try XCTUnwrap(state.map.hexes.first { hex in
+            !(state.map.index(of: hex).map { state.visibility(for: me)[$0] } ?? true)
+        })
+        let unseen = Battle(attacker: 1, attackerOwner: 1, attackerKind: .spear, defender: 2, defenderOwner: 2, defenderKind: .spear,
+                            hold: nil, at: far, damageDealt: 5, damageTaken: 5, attackerFell: false, defenderFell: false)
+        let mine = Battle(attacker: 1, attackerOwner: me, attackerKind: .spear, defender: 2, defenderOwner: 2, defenderKind: .spear,
+                          hold: nil, at: far, damageDealt: 5, damageTaken: 5, attackerFell: false, defenderFell: false)
+        let war = GameEvent.stanceChanged(first: 1, second: 2, stance: .war, by: 1)
+        let heard = state.events([.battle(unseen), .battle(mine), war, .starving(house: 2)], heardBy: me)
+        XCTAssertEqual(heard, [.battle(mine), war])
+    }
+
+    func testTheRealmTellsEachKeeperTheirOwnView() throws {
+        var realm = RealmState(name: "R", seed: "views", seats: 4, radius: 18, watchLength: 60, now: 0)
+        let a = try realm.arrive("a", name: "Ama", now: 0)
+        try realm.arrive("b", name: "Bel", now: 0)
+        let view = try XCTUnwrap(realm.view(for: "a"))
+        XCTAssertEqual(view.keeper, a)
+        XCTAssertEqual(view.age, 1)
+        XCTAssertEqual(view.world, realm.world.view(for: a.house!))
+        XCTAssertNil(realm.view(for: "nobody"))
+    }
+}

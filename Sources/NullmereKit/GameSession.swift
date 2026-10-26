@@ -233,7 +233,8 @@ public final class GameSession {
     public convenience init(state: GameState, store: LocalStore = LocalStore(), voice: (any Voice)? = nil) {
         let identity = "rehearsal"
         let realm = LocalRealm(state: RealmState(name: "Rehearsal", world: state, keeper: identity, now: Date().timeIntervalSince1970))
-        self.init(link: realm.link(identity: identity), house: state.player, world: state, store: store, voice: voice, host: realm)
+        self.init(link: realm.link(identity: identity), house: state.player, world: state.view(for: state.player), store: store,
+                  voice: voice, host: realm)
     }
 
     public var playerHouse: House { state.houses[player] }

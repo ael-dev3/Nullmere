@@ -44,7 +44,9 @@ final class RealmClientTests: XCTestCase {
 
         let spear = try XCTUnwrap(ama.state.units(of: ama.player).first { $0.kind == .spear })
         XCTAssertTrue(ama.perform(.fortify(unit: spear.id)))
-        XCTAssertTrue(bel.state.unit(spear.id)?.fortified ?? false, "Bel's copy of the world hears Ama's order")
+        XCTAssertTrue(ama.state.unit(spear.id)?.fortified ?? false)
+        XCTAssertNil(bel.state.unit(spear.id), "Ama's company is out of Bel's sight, and so out of Bel's copy of the world")
+        XCTAssertEqual(bel.state.houses[ama.player].stock, .zero, "Ama's stores are Ama's to know")
         XCTAssertFalse(bel.perform(.fortify(unit: spear.id)), "No one gives orders to another's company")
     }
 

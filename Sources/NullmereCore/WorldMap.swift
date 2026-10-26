@@ -122,6 +122,10 @@ public struct WorldMap: Codable, Equatable, Sendable {
         set { tiles[index] = newValue }
     }
 
+    mutating func set(index: Int, _ tile: Tile) {
+        tiles[index] = tile
+    }
+
     public mutating func set(_ hex: Hex, _ tile: Tile) {
         guard let index = index(of: hex) else { return }
         tiles[index] = tile
