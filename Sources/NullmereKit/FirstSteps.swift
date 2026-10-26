@@ -29,6 +29,14 @@ struct FirstSteps: Codable, Equatable {
         }
     }
 
+    /// Marks what the keeper's House already shows done, whoever did it:
+    /// a hold with a work or a company under way can't be given another
+    /// until it's finished, so it isn't asked for.
+    mutating func note(world: GameState, player: Int) -> Bool {
+        let working = world.holds.contains { $0.owner == player && ($0.project != nil || $0.training != nil) }
+        return working && mark(.work)
+    }
+
     @discardableResult
     mutating func mark(_ step: Step) -> Bool {
         done.insert(step).inserted

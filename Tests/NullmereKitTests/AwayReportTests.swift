@@ -116,6 +116,26 @@ final class AwayReportTests: XCTestCase {
         try keep(FirstStepsCard(steps: { var s = FirstSteps(); s.mark(.work); return s }()) {}, as: "game-first-steps.png")
     }
 
+    func testAStepTheWorldShowsTakenIsNotAskedFor() throws {
+        // A seat a steward kept until now may have a work under way, and a
+        // hold can't be given another: the step is ticked, not asked for.
+        var state = GameState(settings: GameSettings(seedText: "steward's seat", houseCount: 3, radius: 16))
+        let seat = try XCTUnwrap(state.holds(of: state.player).first)
+        let started = BuildingKind.allCases.contains { (try? state.perform(.build(hold: seat.id, kind: $0), as: state.player)) != nil }
+        XCTAssertTrue(started)
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        XCTAssertEqual(session.firstSteps?.done, [.work])
+    }
+
+    func testAStewardsWatchesPutTheFirstStepsAway() {
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "steward played", houseCount: 3, radius: 16)),
+                                  store: LocalStore(directory: dir))
+        XCTAssertNotNil(session.firstSteps)
+        session.autoplay(watches: 5)
+        XCTAssertNil(session.firstSteps, "The steward took them for the keeper")
+        XCTAssertFalse(session.notices.contains { $0.text.hasPrefix("Well begun") }, "and no one is praised for it")
+    }
+
     func testTheReportSpeaksPlainly() throws {
         let state = GameState(settings: GameSettings(seedText: "plain words", houseCount: 3, radius: 16))
         let seen = LastSeen(watch: state.watch, stock: state.houses[state.player].stock, holds: state.holds(of: state.player).count)

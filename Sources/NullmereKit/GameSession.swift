@@ -254,6 +254,7 @@ public final class GameSession {
             store.saveFirstSteps(FirstSteps())
         }
         firstSteps = store.loadFirstSteps().flatMap { $0.isComplete ? nil : $0 }
+        noteStepsInWorld()
         rememberSeen()
         link.onEvent = { [weak self] event in self?.hear(event) }
         link.connect()
@@ -522,6 +523,11 @@ public final class GameSession {
         }
     }
 
+    /// Ticks the first steps the world already shows taken.
+    private func noteStepsInWorld() {
+        if var steps = firstSteps, steps.note(world: state, player: player) { advance(steps) }
+    }
+
     static let welcome = "Well begun. The rest is yours; the Guide (?) holds more."
 
     public func dismissFirstSteps() {
@@ -677,6 +683,8 @@ public final class GameSession {
         isAutoplaying = true
         host.autoplay(identity, watches: watches)
         isAutoplaying = false
+        // The steward took the first steps for the keeper.
+        if firstSteps != nil { dismissFirstSteps() }
         notices.removeAll()
         selection = .none
         refreshWorld()
@@ -705,6 +713,7 @@ public final class GameSession {
         tilesVersion += 1
         refreshPathPreview()
         askVoices()
+        noteStepsInWorld()
     }
 
     // MARK: Sound
