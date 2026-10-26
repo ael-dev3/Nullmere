@@ -374,3 +374,22 @@ final class SaveLifecycleTests: XCTestCase {
         XCTAssertFalse(app.hasSave)
     }
 }
+
+final class GuideTests: XCTestCase {
+    func testTheGuideCoversTheGameAndItsKeys() {
+        let titles = Guide.sections.map(\.title)
+        XCTAssertEqual(titles, ["The watch", "The land", "Holds", "Companies", "Houses", "Winning", "Keys"])
+        XCTAssertTrue(Guide.sections.allSatisfy { !$0.lines.isEmpty && $0.lines.allSatisfy { $0.count > 10 } })
+        let keys = Guide.sections.last!.lines.joined(separator: " ")
+        for key in ["Tab", "H:", "F:", "B:", "Esc", "1:", "2:", "?:", "⌘Z", "⌘S"] {
+            XCTAssertTrue(keys.contains(key), "The guide names \(key)")
+        }
+    }
+
+    @MainActor
+    func testQuestionMarkOpensTheGuide() {
+        let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: 0,
+                                     context: nil, characters: "?", charactersIgnoringModifiers: "?", isARepeat: false, keyCode: 44)
+        XCTAssertEqual(event.flatMap(KeyBridgeView.key(for:)), .guide)
+    }
+}

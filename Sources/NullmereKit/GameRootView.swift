@@ -67,6 +67,8 @@ struct PlayView: View {
                             HousesPanel(session: session).transition(.move(edge: .trailing).combined(with: .opacity))
                         case .chronicle?:
                             ChroniclePanel(session: session).transition(.move(edge: .trailing).combined(with: .opacity))
+                        case .guide?:
+                            GuidePanel(session: session).transition(.move(edge: .trailing).combined(with: .opacity))
                         case nil:
                             EmptyView()
                         }
@@ -121,6 +123,8 @@ struct PlayView: View {
             session.panel = session.panel == .houses ? nil : .houses
         case .chronicle:
             session.panel = session.panel == .chronicle ? nil : .chronicle
+        case .guide:
+            session.panel = session.panel == .guide ? nil : .guide
         }
         return true
     }
@@ -129,7 +133,7 @@ struct PlayView: View {
 /// The few keys worth knowing, in the corner.
 private struct KeyHints: View {
     var body: some View {
-        Text(verbatim: "Tab next company · H seat · ⌘↩ end watch")
+        Text(verbatim: "? guide · Tab next company · ⌘↩ end watch")
             .font(.system(size: 10))
             .foregroundStyle(Palette.ink.opacity(0.4))
             .padding(.horizontal, 10)

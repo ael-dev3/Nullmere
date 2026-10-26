@@ -13,6 +13,7 @@ enum GameKey: Equatable {
     case zoom(Double)
     case houses
     case chronicle
+    case guide
 }
 
 struct KeyBridge: NSViewRepresentable {
@@ -87,6 +88,7 @@ final class KeyBridgeView: NSView {
         case "d": return .pan(dx: -step, dy: 0)
         case "1": return .houses
         case "2": return .chronicle
+        case "?", "/": return .guide
         default: return nil
         }
     }

@@ -229,7 +229,7 @@ The game saves itself after every watch.
 | F / B | Fortify / found a hold with the selected Founder |
 | H | Go to your seat |
 | Arrows or WASD, + − | Pan, zoom |
-| 1 / 2 | Houses / Chronicle |
+| 1 / 2 / ? | Houses / Chronicle / Guide |
 | Esc | Close a panel, then clear the selection |
 | ⌘↩ | End the watch |
 | ⌘S, ⇧⌘W | Save, leave to the title screen |

@@ -41,6 +41,7 @@ struct TopBar: View {
             HStack(spacing: 6) {
                 QuietButton(title: "Houses", action: { toggle(.houses) })
                 QuietButton(title: "Chronicle", action: { toggle(.chronicle) })
+                QuietButton(title: "Guide", action: { toggle(.guide) })
                 EndWatchButton(session: session)
                     .padding(.leading, 8)
             }

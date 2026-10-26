@@ -40,6 +40,9 @@ public struct GameCommands: Commands {
                 .disabled(app.session == nil)
             Button("Chronicle") { toggle(.chronicle) }
                 .disabled(app.session == nil)
+            Button("Guide") { toggle(.guide) }
+                .keyboardShortcut("/", modifiers: [.command, .shift])
+                .disabled(app.session == nil)
         }
     }
 

@@ -15,7 +15,7 @@ enum Counsel {
         let stock = state.houses[player].stock
 
         if state.watch == 1, units.contains(where: { $0.kind == .lantern && $0.destination == nil && $0.movesLeft > 0 }) {
-            return "Your seat, \(seat.name), stands by the dead water. Send your Lantern into the mist: select it, then right-click where it should go."
+            return "Your seat, \(seat.name), stands by the dead water. Send your Lantern into the mist: select it, then right-click where it should go. Press ? for the guide."
         }
         if let founder = units.first(where: { $0.kind == .founder }) {
             if state.canFound(at: founder.position, for: player) == nil {

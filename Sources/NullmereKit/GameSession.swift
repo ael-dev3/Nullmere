@@ -19,6 +19,7 @@ public final class GameSession {
     public enum Panel: Equatable {
         case houses
         case chronicle
+        case guide
     }
 
     /// A short line of news for the feed under the top bar.
