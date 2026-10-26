@@ -94,6 +94,9 @@ public struct SpacetimeHTTP: SpacetimeTransport {
     private func send(_ request: URLRequest) async throws -> Data {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw SpacetimeError("No answer from the realm's server.") }
+        if http.statusCode == 404 {
+            throw SpacetimeError("The realm isn't open yet.")
+        }
         guard (200..<300).contains(http.statusCode) else {
             let text = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             throw SpacetimeError(text.isEmpty ? "The realm's server answered \(http.statusCode)." : text)

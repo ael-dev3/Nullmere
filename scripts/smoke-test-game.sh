@@ -35,9 +35,9 @@ run() {
     local show="${3:-}"
     local started
     started="$(date '+%Y-%m-%d %H:%M:%S')"
-    echo "Opening Nullmere Online and entering the realm as Aurel…"
+    echo "Opening Nullmere Online and entering the realm as Ilsen…"
     NULLMERE_MODEL_STATE=ready NULLMERE_LAUNCHER_KEYS=return NULLMERE_REALM=local NULLMERE_REALM_SEED="$SEED" \
-        NULLMERE_IDENTITY_FILE="$IDENTITY" NULLMERE_KEEPER=Aurel NULLMERE_AUTOPLAY="$autoplay" NULLMERE_SHOW="$show" \
+        NULLMERE_IDENTITY_FILE="$IDENTITY" NULLMERE_KEEPER=Ilsen NULLMERE_AUTOPLAY="$autoplay" NULLMERE_SHOW="$show" \
         "$BIN" >build/game-stdout.log 2>&1 &
     local pid=$!
     sleep "$WAIT"
