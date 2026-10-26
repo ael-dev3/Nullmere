@@ -54,7 +54,12 @@ final class RealmTests: XCTestCase {
     func testASeatLongLeftGoesToAKeeperWhoIsWaiting() throws {
         var realm = realm(seats: 2)
         let ama = try realm.arrive("a", name: "Ama", now: 0)
-        try realm.arrive("b", name: "Bel", now: 0)
+        let bel = try realm.arrive("b", name: "Bel", now: 0)
+        // Both came to play.
+        for (id, keeper) in [("a", ama), ("b", bel)] {
+            let spear = try XCTUnwrap(realm.world.units(of: keeper.house!).first { $0.kind == .spear })
+            _ = try realm.perform(.fortify(unit: spear.id), by: id)
+        }
         realm.depart("a", now: 100)
         realm.depart("b", now: 200)
         // A day away: Cor waits; the seats are kept.
@@ -74,6 +79,20 @@ final class RealmTests: XCTestCase {
         let dee = try realm.arrive("d", name: "Dee", now: 300 + RealmState.seatHeldFor * 2)
         XCTAssertNotNil(dee.house, "Bel's seat, a fortnight left")
         XCTAssertNil(try realm.arrive("e", name: "Eno", now: RealmState.seatHeldFor * 9).house, "Cor and Dee never left")
+    }
+
+    func testASeatTakenAndNeverPlayedIsHeldOnlyADay() throws {
+        var realm = realm(seats: 2)
+        let ama = try realm.arrive("a", name: "Ama", now: 0)
+        try realm.arrive("b", name: "Bel", now: 0)
+        _ = realm.setReady("b", true, now: 1)
+        realm.depart("a", now: 10)
+        realm.depart("b", now: 10)
+        XCTAssertNil(try realm.arrive("c", name: "Cor", now: 3600).house, "An hour: Ama's seat is kept")
+        let cor = try realm.arrive("c", name: nil, now: 10 + RealmState.unplayedSeatHeldFor)
+        XCTAssertEqual(cor.house, ama.house, "A day, and Ama never played: Cor takes the seat")
+        XCTAssertTrue(realm.world.chronicle.contains { $0.text.contains("stood a day without its keeper") })
+        XCTAssertNil(try realm.arrive("d", name: "Dee", now: 20 + RealmState.unplayedSeatHeldFor).house, "Bel was ready once: a week")
     }
 
     func testANameIsJudgedAsItIsTyped() {

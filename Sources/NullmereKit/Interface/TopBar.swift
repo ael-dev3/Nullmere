@@ -36,6 +36,7 @@ struct TopBar: View {
                     ResourceReadout(resource: resource, amount: house.stock[resource], net: net, room: room)
                 }
             }
+            .fixedSize()
 
             Spacer(minLength: 24)
 
@@ -46,6 +47,8 @@ struct TopBar: View {
                 EndWatchButton(session: session)
                     .padding(.leading, 8)
             }
+            // Only the space between gives way; nothing in the bar wraps.
+            .fixedSize()
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 10)

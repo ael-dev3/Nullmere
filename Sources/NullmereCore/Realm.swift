@@ -13,6 +13,8 @@ public struct Keeper: Codable, Equatable, Identifiable, Sendable {
     public let arrival: Int
     /// When they left, if they are away.
     public internal(set) var awaySince: Double?
+    /// They have given an order or been ready for a watch: they came to play.
+    public internal(set) var hasPlayed: Bool?
 }
 
 /// What anyone may know of the realm before entering it.
@@ -161,6 +163,13 @@ public struct RealmState: Codable, Equatable, Sendable {
     /// How long a seat waits for a keeper who is away before it goes to
     /// one who is waiting: a week.
     public static let seatHeldFor: Double = 7 * 24 * 3600
+    /// A seat taken and never played is held only a day, so names made in
+    /// passing can't hold the lake.
+    public static let unplayedSeatHeldFor: Double = 24 * 3600
+
+    func seatHeld(by keeper: Keeper) -> Double {
+        keeper.hasPlayed == true ? RealmState.seatHeldFor : RealmState.unplayedSeatHeldFor
+    }
 
     static func trim(_ name: String) -> String {
         String(name.drop(while: { $0 == " " }).reversed().drop(while: { $0 == " " }).reversed())
@@ -210,13 +219,14 @@ public struct RealmState: Codable, Equatable, Sendable {
     /// the stewards for a keeper who is waiting. Its House stands as it was.
     private mutating func releaseSeat(now: Double) -> Bool {
         let away = keepers.indices.filter {
-            keepers[$0].house != nil && !keepers[$0].isOnline && now - (keepers[$0].awaySince ?? now) >= RealmState.seatHeldFor
+            keepers[$0].house != nil && !keepers[$0].isOnline && now - (keepers[$0].awaySince ?? now) >= seatHeld(by: keepers[$0])
         }
         guard let index = away.min(by: { keepers[$0].awaySince ?? 0 < keepers[$1].awaySince ?? 0 }),
               let house = keepers[index].house else { return false }
         world.houses[house].isPlayer = false
         keepers[index].house = nil
-        world.record(.founding, [house], "\(world.houses[house].title) has stood a week without its keeper; the stewards keep it for another.")
+        let span = keepers[index].hasPlayed == true ? "a week" : "a day"
+        world.record(.founding, [house], "\(world.houses[house].title) has stood \(span) without its keeper; the stewards keep it for another.")
         return true
     }
 
@@ -237,7 +247,9 @@ public struct RealmState: Codable, Equatable, Sendable {
         guard let keeper = keeper(id) else { throw .unknownKeeper }
         guard let house = keeper.house, !world.houses[house].isEliminated else { throw .noSeat }
         do {
-            return try world.perform(command, as: house)
+            let events = try world.perform(command, as: house)
+            if let index = keepers.firstIndex(where: { $0.id == id }) { keepers[index].hasPlayed = true }
+            return events
         } catch {
             throw .rule(error)
         }
@@ -248,6 +260,7 @@ public struct RealmState: Codable, Equatable, Sendable {
     public mutating func setReady(_ id: String, _ ready: Bool, now: Double) -> [GameEvent]? {
         guard let index = keepers.firstIndex(where: { $0.id == id }), keepers[index].house != nil else { return nil }
         keepers[index].isReady = ready
+        if ready { keepers[index].hasPlayed = true }
         let online = keepers.filter { $0.isOnline && $0.house != nil }
         guard ready, !online.isEmpty, online.allSatisfy(\.isReady) else { return nil }
         return turn(now: now)

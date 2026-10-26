@@ -152,6 +152,27 @@ final class NetworkRealmTests: XCTestCase {
         try await until("refusal") { !earStranger.refusals.isEmpty }
     }
 
+    func testOneKeepersFloodDoesNotCrowdOutAnother() async throws {
+        let db = FakeSpacetime()
+        let credentials = try await db.createIdentity()
+        let steward = try await RealmSteward(transport: db, token: credentials.token, name: "The Nullmere", seed: "flood",
+                                             seats: 4, watchLength: 600, now: 0)
+        let loud = try await db.createIdentity()
+        let quiet = try await db.createIdentity()
+        for index in 0..<30 {
+            try await db.call("here", [.string("loud-\(index)")], token: loud.token)
+        }
+        try await db.call("arrive", [.string("quiet-arrives"), .string("Ama")], token: quiet.token)
+        try await steward.step(now: 1)
+        let answered = try await db.query("SELECT * FROM my_replies", token: quiet.token)
+        XCTAssertTrue(answered.contains { $0.first?.string == "quiet-arrives" }, "The quiet keeper is heard in the first round")
+        let loudAnswered = try await db.query("SELECT * FROM my_replies", token: loud.token)
+        XCTAssertEqual(loudAnswered.count, RealmSteward.requestsPerRound, "The loud one a few at a time")
+        try await steward.step(now: 2)
+        let more = try await db.query("SELECT * FROM my_replies", token: loud.token)
+        XCTAssertEqual(more.count, RealmSteward.requestsPerRound * 2)
+    }
+
     func testANewStewardTakesUpTheRealmWhereItStands() async throws {
         let db = FakeSpacetime()
         let (first, running, credentials) = try await steward(db)

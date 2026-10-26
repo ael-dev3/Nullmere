@@ -199,8 +199,9 @@ as the realm will, and takes the realm's word as final.
   stewards, the same minds that once played rivals, until a keeper claims
   them. When every seat is held, a newcomer waits at the front door and
   steps in the moment one falls free. A seat whose keeper has been away a
-  week goes back to the stewards for whoever is waiting; its House stands
-  as it was, and the keeper, returning, waits in turn.
+  week goes back to the stewards for whoever is waiting (a day, for a seat
+  taken and never played); its House stands as it was, and the keeper,
+  returning, waits in turn.
 - **What you see.** The realm tells each keeper only what their House
   could know: the ground they've explored, the companies in their sight,
   their own stores, and the envoys and news that reach them. The world
@@ -259,7 +260,9 @@ itself enters the world across the network (`scripts/smoke-test-network.sh`).
 
 The realm's tables are private: keepers write requests through reducers
 and read only their own view and replies, through SpacetimeDB views
-(`my_view`, `my_replies`), and the realm's public status.
+(`my_view`, `my_replies`), and the realm's public status. A keeper may
+have 32 requests waiting at most, and the steward carries out a few of
+each keeper's every round, so no one keeper can crowd out the rest.
 
 **What maincloud needs.** Publishing to `maincloud.spacetimedb.com` needs a
 SpacetimeDB account, made with `spacetime login` (it signs in through

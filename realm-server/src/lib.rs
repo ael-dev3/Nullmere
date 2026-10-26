@@ -41,6 +41,7 @@ pub struct Request {
     #[auto_inc]
     pub id: u64,
     /// The keeper's identity, in hex.
+    #[index(btree)]
     pub keeper: String,
     /// arrive, order, ready, here or leave.
     pub kind: String,
@@ -120,7 +121,7 @@ fn ask(ctx: &ReducerContext, kind: &str, nonce: String, payload: String) -> Resu
         return Err("The request is too long.".into());
     }
     let keeper = ctx.sender().to_hex().to_string();
-    let waiting = ctx.db.request().iter().filter(|r| r.keeper == keeper).count();
+    let waiting = ctx.db.request().keeper().filter(&keeper).count();
     if waiting >= MAX_WAITING {
         return Err("Too many requests are waiting; give the steward a moment.".into());
     }

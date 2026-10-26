@@ -44,6 +44,8 @@ public actor RealmSteward {
 
     /// Seconds of silence after which a keeper is taken to have left.
     public static let silence = 90.0
+    /// Most requests of one keeper carried out in a round.
+    public static let requestsPerRound = 8
 
     /// Takes up the realm where SpacetimeDB holds it, or begins a new one.
     public init(transport: any SpacetimeTransport, token: String, name: String, seed: String, seats: Int = 8,
@@ -79,7 +81,14 @@ public actor RealmSteward {
             return (UInt64(id), keeper, kind, nonce, payload)
         }.sorted { $0.id < $1.id }
 
-        for request in requests {
+        // A few of each keeper's requests a round, so no one keeper can
+        // crowd out the rest; the others wait for the next.
+        var taken: [String: Int] = [:]
+        let fair = requests.filter { request in
+            taken[request.keeper, default: 0] += 1
+            return taken[request.keeper]! <= RealmSteward.requestsPerRound
+        }
+        for request in fair {
             heard[request.keeper] = now
             let (reply, didChange, turned) = handle(kind: request.kind, keeper: request.keeper, payload: request.payload, now: now)
             changed = changed || didChange

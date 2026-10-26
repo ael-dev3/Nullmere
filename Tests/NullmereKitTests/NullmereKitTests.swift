@@ -223,8 +223,9 @@ final class GameGateTests: XCTestCase {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = LocalStore(directory: directory)
-        // Both seats held; Ama's keeper left almost a week ago.
-        let away = Date().timeIntervalSince1970 - RealmState.seatHeldFor + 1.5
+        // Both seats held; Ama's keeper took a seat almost a day ago, never
+        // played, and left.
+        let away = Date().timeIntervalSince1970 - RealmState.unplayedSeatHeldFor + 1.5
         var clock = away
         let before = LocalRealm.open(at: store.hostedRealmURL, name: "x", seed: "seats", seats: 2, clock: { clock })
         before.link(identity: "a").arrive(name: "Ama")
@@ -246,7 +247,7 @@ final class GameGateTests: XCTestCase {
         XCTAssertNil(app.arrivalProblem)
         XCTAssertFalse(app.canEnter(with: "Cor"), "Already at the door")
 
-        // The week runs out; the door asks again and steps in.
+        // The day runs out; the door asks again and steps in.
         try await Task.sleep(for: .seconds(2))
         app.askForSeat()
         XCTAssertFalse(app.isWaitingForSeat)
