@@ -196,7 +196,8 @@ rival Houses move, holds yield, works rise and companies march on.
   grows with each hold. Raise Granaries, Sawpits, Quarries and Saltworks to
   boost a resource, Walls to thicken the ward, Beacons to see and claim
   further, and a Muster Hall to train stronger companies. Barter a surplus
-  for what you lack, three to one.
+  for what you lack, three to one. Each new hold costs more to found than
+  the last, so a realm grows by choice, not by habit.
 - **Companies.** Lanterns scout, Spears hold the line and take holds,
   Bows strike from two tiles, Riders are fast, and Founders raise new holds.
   Every company but the Lantern eats a grain each watch. Companies that
@@ -205,6 +206,9 @@ rival Houses move, holds yield, works rise and companies march on.
 - **Houses.** Rivals have temperaments: ambitious, steadfast, wary or
   cunning. Declare war, offer peace or a pact, and answer their envoys.
   Pacts share sight; breaking one is remembered.
+- **Falling.** A House that loses its seat is shaken: every hold it has left
+  loses most of its ward. A House that loses every hold falls, and its
+  name passes into the chronicle. Rivals can and do destroy each other.
 - **Winning.** Raise the five stages of the **Moonspire** at your seat
   (ascendancy), or be the last House standing (dominion). Rivals fear a
   rising Moonspire and will march on it.

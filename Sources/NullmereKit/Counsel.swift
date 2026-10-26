@@ -27,9 +27,10 @@ enum Counsel {
             return "Founders are mustering at \(seat.name). While they gather, raise works at the seat."
         }
         if holds.count == 1, seat.training == nil {
-            return stock.covers(UnitKind.founder.cost)
+            let cost = state.trainingCost(of: .founder, for: player)
+            return stock.covers(cost)
                 ? "A House with one hold is a small House. Select \(seat.name) and train Founders to raise a second."
-                : "Gather for Founders: they cost \(UnitKind.founder.cost). Raise a Granary or Sawpit while you wait."
+                : "Gather for Founders: they cost \(cost). Raise a Granary or Sawpit while you wait."
         }
         if holds.contains(where: { $0.project == nil }) {
             return "A hold stands idle. Select it and raise a work: each level brings in more of what its land yields."

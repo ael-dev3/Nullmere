@@ -309,8 +309,15 @@ extension GameState {
             events += eliminate(previous, by: taker)
         } else if wasSeat, let heir = remaining.first, let heirIndex = self.holdIndex(heir.id) {
             holds[heirIndex].isSeat = true
+            // The fall of a seat breaks a House: every hold it has left is
+            // shaken, its ward down to a third.
+            for hold in remaining {
+                if let index = self.holdIndex(hold.id) {
+                    holds[index].ward = min(holds[index].ward, holds[index].maximumWard / 3)
+                }
+            }
             events.append(.seatMoved(house: previous, to: heir.id))
-            record(.fall, [previous], "\(houses[previous].title) moves its seat to \(heir.name).")
+            record(.fall, [previous], "\(houses[previous].title) loses its seat and is shaken; it moves to \(heir.name).")
         }
         return events
     }
@@ -374,14 +381,27 @@ extension GameState {
         return [.buildingStarted(hold: holdID, kind: kind, level: level)]
     }
 
+    /// What a company costs this House to muster. Founders cost half as
+    /// much again for every hold the House has beyond its seat, and every
+    /// Founder already on the march or mustering, so each new hold is
+    /// dearer than the last and a realm can't sprawl for nothing.
+    public func trainingCost(of kind: UnitKind, for house: Int) -> Stock {
+        guard kind == .founder else { return kind.cost }
+        let mustering = holds.filter { $0.owner == house && $0.training?.kind == .founder }.count
+        let marching = units.filter { $0.owner == house && $0.kind == .founder }.count
+        let extra = max(0, holds(of: house).count - 1) + mustering + marching
+        return kind.cost.scaled(percent: 100 + 50 * extra)
+    }
+
     private mutating func train(_ kind: UnitKind, in holdID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
         let index = try ownedHold(holdID, of: house)
         let hold = holds[index]
         guard hold.training == nil else { throw .busy }
         guard hold.level(.musterHall) >= kind.requiredMuster else { throw .needsMusterHall(kind.requiredMuster) }
-        guard houses[house].stock.covers(kind.cost) else { throw .shortOf(houses[house].stock.shortfall(for: kind.cost)) }
+        let cost = trainingCost(of: kind, for: house)
+        guard houses[house].stock.covers(cost) else { throw .shortOf(houses[house].stock.shortfall(for: cost)) }
 
-        houses[house].stock.debit(kind.cost)
+        houses[house].stock.debit(cost)
         let faster = hold.level(.musterHall) >= 3 && kind.trainWatches > 1 ? 1 : 0
         holds[index].training = Hold.Training(kind: kind, watchesLeft: kind.trainWatches - faster)
         return [.trainingStarted(hold: holdID, kind: kind)]

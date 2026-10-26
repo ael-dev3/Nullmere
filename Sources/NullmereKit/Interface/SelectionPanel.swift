@@ -215,6 +215,7 @@ private struct TrainingRow: View {
 
     var body: some View {
         let allowed = hold.level(.musterHall) >= kind.requiredMuster
+        let cost = session.state.trainingCost(of: kind, for: session.player)
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 Caps(kind.title, size: 9.5, weight: .medium).foregroundStyle(Palette.ink.opacity(allowed ? 0.9 : 0.4))
@@ -222,13 +223,13 @@ private struct TrainingRow: View {
                     .font(.system(size: 10))
                     .foregroundStyle(Palette.ink.opacity(0.45))
                 Spacer()
-                QuietButton(title: "Train", size: 8.5, enabled: allowed && hold.training == nil && stock.covers(kind.cost)) {
+                QuietButton(title: "Train", size: 8.5, enabled: allowed && hold.training == nil && stock.covers(cost)) {
                     session.perform(.train(hold: hold.id, kind: kind))
                 }
             }
             if allowed {
                 HStack(spacing: 10) {
-                    CostLine(cost: kind.cost, available: stock)
+                    CostLine(cost: cost, available: stock)
                     Text(verbatim: "\(kind.trainWatches) watch\(kind.trainWatches == 1 ? "" : "es")")
                         .font(.system(size: 10))
                         .foregroundStyle(Palette.ink.opacity(0.45))

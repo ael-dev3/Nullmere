@@ -422,3 +422,38 @@ final class ReachTests: XCTestCase {
         XCTAssertTrue(state.reach(of: unit).isEmpty)
     }
 }
+
+final class ExpansionAndFallTests: XCTestCase {
+    func testEachNewHoldCostsMoreThanTheLast() throws {
+        var state = GameState(settings: GameSettings(seedText: "dearer holds", houseCount: 3, radius: 16))
+        let base = state.trainingCost(of: .founder, for: state.player)
+        XCTAssertEqual(base, UnitKind.founder.cost, "The first Founders cost their price")
+        XCTAssertEqual(state.trainingCost(of: .spear, for: state.player), UnitKind.spear.cost, "Only Founders grow dearer")
+
+        // A House with more holds pays more: play until the player's grows.
+        for _ in 0..<80 where state.holds(of: state.player).count < 3 {
+            _ = state.stewardTurn(for: state.player)
+            _ = state.endWatch()
+        }
+        let holds = state.holds(of: state.player).count
+        XCTAssertGreaterThan(holds, 1)
+        XCTAssertGreaterThan(state.trainingCost(of: .founder, for: state.player).grain, base.grain)
+    }
+
+    /// A rival can destroy another House outright.
+    func testARivalCanDestroyAHouse() {
+        var state = GameState(settings: GameSettings(seedText: "siege check 13"))
+        var fallen: ChronicleEntry?
+        while state.outcome == nil, state.watch < 140, fallen == nil {
+            _ = state.stewardTurn(for: state.player)
+            _ = state.endWatch()
+            fallen = state.chronicle.first { $0.kind == .fall && $0.text.contains(" falls") }
+        }
+        let entry = try? XCTUnwrap(fallen, "A House falls in this world")
+        XCTAssertNotNil(entry)
+        if let entry, let loser = entry.houses.first {
+            XCTAssertTrue(state.houses[loser].isEliminated)
+            XCTAssertTrue(state.holds(of: loser).isEmpty)
+        }
+    }
+}

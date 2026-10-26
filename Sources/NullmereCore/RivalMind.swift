@@ -268,7 +268,7 @@ struct RivalMind {
                 choice = .spear
             }
         }
-        guard let kind = choice, hold.level(.musterHall) >= kind.requiredMuster, me.stock.covers(kind.cost) else { return nil }
+        guard let kind = choice, hold.level(.musterHall) >= kind.requiredMuster, me.stock.covers(state.trainingCost(of: kind, for: house)) else { return nil }
         return kind
     }
 
