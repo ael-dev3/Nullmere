@@ -66,7 +66,7 @@ private struct WorldMarks: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(paused: session.marches.isEmpty || reduceMotion)) { timeline in
+        TimelineView(.animation(paused: (session.marches.isEmpty && session.blows.isEmpty) || reduceMotion)) { timeline in
             marks(at: timeline.date)
         }
     }
@@ -121,6 +121,24 @@ private struct WorldMarks: View {
                         at: CGPoint(x: end.x, y: end.y - 14)
                     )
                 }
+            }
+
+            // Blows: a ring spreading from where each fell, and the damage
+            // rising and fading above it. Still, under Reduce Motion.
+            for blow in session.blows {
+                let age = reduceMotion ? 0.5 : min(max(date.timeIntervalSince(blow.start) / GameSession.Blow.duration, 0), 1)
+                let point = camera.viewPoint(of: blow.at, in: size)
+                let fade = 1 - age
+                let colour = blow.againstPlayer ? Palette.bad : Color(red: 0.95, green: 0.93, blue: 0.86)
+                let radius = scale * (0.35 + 0.55 * age)
+                let ring = Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))
+                context.stroke(ring, with: .color(colour.opacity(0.75 * fade)), lineWidth: 1.6)
+                context.draw(
+                    Text(verbatim: "−\(blow.damage)")
+                        .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(colour.opacity(fade)),
+                    at: CGPoint(x: point.x, y: point.y - scale * 0.6 - 18 * age)
+                )
             }
 
             // Holds the player knows of.

@@ -97,6 +97,22 @@ public final class GameSession {
     /// Called with each sound the game makes.
     public var onCue: ((Ambience.Cue) -> Void)?
 
+    /// A blow the player saw land: a ring and the damage, briefly, where it fell.
+    public struct Blow: Equatable, Identifiable {
+        public let id: Int
+        public let at: Hex
+        public let damage: Int
+        /// Whether it fell on the player's side.
+        public let againstPlayer: Bool
+        public let start: Date
+
+        public static let duration = 1.4
+    }
+
+    /// Blows still being drawn.
+    public private(set) var blows: [Blow] = []
+    private var blowCounter = 0
+
     /// Marches still being drawn, by unit.
     public private(set) var marches: [Int: March] = [:]
 
@@ -234,6 +250,7 @@ public final class GameSession {
                 undoStack.removeAll()
             }
             showMarches(events, from: before)
+            showBlows(events)
             report(events)
             sound(for: command, events: events)
             if case .found = command, let hold = events.compactMap(holdFounded).first {
@@ -260,6 +277,7 @@ public final class GameSession {
         undoStack.removeAll()
         let events = state.endWatch()
         showMarches(events, from: before)
+        showBlows(events)
         onCue?(.watch)
         if events.contains(where: isDreadful) {
             onCue?(.dread)
@@ -377,6 +395,28 @@ public final class GameSession {
         case .stanceChanged(let first, let second, .war, let by): return by != player && (first == player || second == player)
         case .houseFell: return true
         default: return false
+        }
+    }
+
+    // MARK: Blows
+
+    /// Draws the blows the player could see, then forgets them.
+    func showBlows(_ events: [GameEvent]) {
+        let now = Date()
+        var shown = false
+        for case .battle(let battle) in events {
+            let mine = battle.attackerOwner == player || battle.defenderOwner == player
+            guard mine || isVisible(battle.at) else { continue }
+            blowCounter += 1
+            blows.append(Blow(id: blowCounter, at: battle.at, damage: battle.damageDealt,
+                              againstPlayer: battle.defenderOwner == player, start: now))
+            shown = true
+        }
+        guard shown else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Blow.duration + 0.05))
+            guard let self else { return }
+            self.blows.removeAll { Date().timeIntervalSince($0.start) >= Blow.duration }
         }
     }
 

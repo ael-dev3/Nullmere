@@ -268,3 +268,26 @@ final class UndoTests: XCTestCase {
         XCTAssertFalse(session.canUndo, "A new watch starts with nothing to take back")
     }
 }
+
+@MainActor
+final class BlowTests: XCTestCase {
+    func testTheBlowsThePlayerSeesAreShownThenForgotten() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let state = GameState(settings: GameSettings(seedText: "blows", houseCount: 3, radius: 16))
+        let session = GameSession(state: state, store: SaveStore(directory: directory))
+        let mine = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind.isMilitary })
+        let near = Battle(attacker: mine.id, attackerOwner: session.player, attackerKind: mine.kind,
+                          defender: 999, defenderOwner: 1, defenderKind: .spear, hold: nil, at: mine.position,
+                          damageDealt: 23, damageTaken: 9, attackerFell: false, defenderFell: false)
+        let hidden = try XCTUnwrap(session.state.map.hexes.first { !session.isVisible($0) })
+        let unseen = Battle(attacker: 998, attackerOwner: 1, attackerKind: .spear,
+                            defender: 997, defenderOwner: 2, defenderKind: .spear, hold: nil, at: hidden,
+                            damageDealt: 30, damageTaken: 20, attackerFell: false, defenderFell: false)
+        session.showBlows([.battle(near), .battle(unseen)])
+        XCTAssertEqual(session.blows.map(\.damage), [23], "Only blows the player could see")
+        XCTAssertFalse(session.blows[0].againstPlayer)
+        try await Task.sleep(for: .seconds(GameSession.Blow.duration + 0.3))
+        XCTAssertTrue(session.blows.isEmpty)
+    }
+}

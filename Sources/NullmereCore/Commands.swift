@@ -127,4 +127,24 @@ public struct Battle: Codable, Equatable, Sendable {
     public let damageTaken: Int
     public let attackerFell: Bool
     public let defenderFell: Bool
+
+    public init(
+        attacker: Int, attackerOwner: Int, attackerKind: UnitKind,
+        defender: Int?, defenderOwner: Int, defenderKind: UnitKind?,
+        hold: Int?, at: Hex, damageDealt: Int, damageTaken: Int,
+        attackerFell: Bool, defenderFell: Bool
+    ) {
+        self.attacker = attacker
+        self.attackerOwner = attackerOwner
+        self.attackerKind = attackerKind
+        self.defender = defender
+        self.defenderOwner = defenderOwner
+        self.defenderKind = defenderKind
+        self.hold = hold
+        self.at = at
+        self.damageDealt = damageDealt
+        self.damageTaken = damageTaken
+        self.attackerFell = attackerFell
+        self.defenderFell = defenderFell
+    }
 }
