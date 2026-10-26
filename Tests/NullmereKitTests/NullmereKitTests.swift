@@ -521,3 +521,28 @@ final class TokenArtTests: XCTestCase {
         }
     }
 }
+
+@MainActor
+final class MapAccessibilityTests: XCTestCase {
+    func testVoiceOverReadsTheMapAsItsHoldsAndCompanies() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "voiceover", houseCount: 3, radius: 16)),
+                                  store: SaveStore(directory: dir))
+        let items = MapAccessibility.items(for: session)
+        let seat = try XCTUnwrap(session.state.seat(of: session.player))
+        XCTAssertEqual(items.first?.selection, .hold(seat.id), "The player's seat comes first")
+        XCTAssertTrue(items.first!.label.hasPrefix("\(seat.name), seat, yours"))
+        let own = session.state.units(of: session.player)
+        for unit in own {
+            let item = try XCTUnwrap(items.first { $0.selection == .unit(unit.id) }, "Every company of the player's is there")
+            XCTAssertTrue(item.label.contains("health \(unit.health)"))
+            XCTAssertTrue(item.label.contains("awaiting orders"))
+        }
+        // Nothing the player can't see is read out.
+        for unit in session.state.units where unit.owner != session.player && !session.isVisible(unit.position) {
+            XCTAssertNil(items.first { $0.selection == .unit(unit.id) })
+        }
+        XCTAssertEqual(Set(items.map(\.id)).count, items.count)
+    }
+}

@@ -590,6 +590,8 @@ public final class GameSession {
     public func post(_ text: String, tone: Notice.Tone) {
         noticeCounter += 1
         notices.append(Notice(id: noticeCounter, text: text, tone: tone))
+        // VoiceOver says what happened, as the notice appears.
+        AccessibilityNotification.Announcement(text).post()
         if notices.count > 6 {
             notices.removeFirst(notices.count - 6)
         }

@@ -26,6 +26,13 @@ struct WorldView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("The world map")
+        // VoiceOver reads the map as its holds and companies; choosing one
+        // selects it, and its panel opens as it would by a click.
+        .accessibilityChildren {
+            ForEach(MapAccessibility.items(for: session)) { item in
+                Button(item.label) { session.selection = item.selection }
+            }
+        }
     }
 }
 

@@ -43,7 +43,10 @@ struct WatchCard: View {
                 .allowsHitTesting(false)
         )
         .offset(y: risen || reduceMotion ? 0 : 10)
-        .onAppear { withAnimation(.easeOut(duration: 0.7)) { risen = true } }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.7)) { risen = true }
+            AccessibilityNotification.Announcement("Watch \(summary.watch). " + summary.events.joined(separator: ". ")).post()
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Watch \(summary.watch). \(summary.events.joined(separator: ". "))")
     }
