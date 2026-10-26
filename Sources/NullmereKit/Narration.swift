@@ -54,6 +54,9 @@ enum Narration {
         case .unitTrained(let unit, let hold):
             guard let made = state.unit(unit), made.owner == viewer else { return nil }
             return Line(text: "\(made.kind.title) muster at \(holdName(hold)).", tone: .good)
+        case .promoted(_, let owner, let rank):
+            guard owner == viewer, Unit.rankTitles.indices.contains(rank) else { return nil }
+            return Line(text: "A company of yours comes through the fighting \(Unit.rankTitles[rank]).", tone: .good)
         case .bartered(let owner, let gave, let took):
             guard owner == viewer else { return nil }
             return Line(text: "Bartered \(gave) for \(took).", tone: .neutral)

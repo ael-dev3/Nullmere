@@ -330,7 +330,11 @@ private struct UnitPanel: View {
         let owner = state.houses[unit.owner]
         let mine = unit.owner == session.player
         VStack(alignment: .leading, spacing: 12) {
-            PanelTitle(title: unit.kind.title, subtitle: mine ? nil : owner.title, accent: Palette.house(owner))
+            PanelTitle(
+                title: unit.rank > 0 ? "\(Unit.rankTitles[unit.rank]) \(unit.kind.title)" : unit.kind.title,
+                subtitle: mine ? (unit.kind.isMilitary ? veterancy(of: unit) : nil) : owner.title,
+                accent: Palette.house(owner)
+            )
             HStack(spacing: 14) {
                 Stat(label: "Health", value: "\(unit.health)")
                 if unit.kind.isMilitary {
@@ -368,6 +372,15 @@ private struct UnitPanel: View {
         }
         .padding(16)
         .panelBackground()
+    }
+
+    private func veterancy(of unit: Unit) -> String {
+        let next = Unit.rankThresholds.first { $0 > unit.experience }
+        let bonus = unit.rank * Unit.rankBonus
+        let now = bonus > 0 ? "+\(bonus)% attack and defence" : "Untried"
+        guard let next else { return now + " · the highest rank" }
+        let left = next - unit.experience
+        return now + " · \(left) more battle\(left == 1 ? "" : "s") to rise"
     }
 
     private func hint(for unit: Unit) -> String {

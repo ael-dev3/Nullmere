@@ -338,3 +338,45 @@ final class ForecastTests: XCTestCase {
         }
     }
 }
+
+final class VeterancyTests: XCTestCase {
+    func testRanksFollowExperience() {
+        XCTAssertEqual(Unit.rank(forExperience: 0), 0)
+        XCTAssertEqual(Unit.rank(forExperience: 2), 1)
+        XCTAssertEqual(Unit.rank(forExperience: 5), 2)
+        XCTAssertEqual(Unit.rank(forExperience: 9), 3)
+        XCTAssertEqual(Unit.rank(forExperience: 40), 3)
+    }
+
+    /// Survivors of battles gain experience; over whole games some companies
+    /// rise in rank, and a veteran fights better than a fresh company.
+    func testBattlesMakeVeterans() throws {
+        var promotions = 0
+        var state = GameState(settings: GameSettings(seedText: "veterans", houseCount: 4, radius: 18))
+        for _ in 0..<160 where state.outcome == nil {
+            var events = state.stewardTurn(for: state.player)
+            events += state.endWatch()
+            promotions += events.filter { if case .promoted = $0 { return true } else { return false } }.count
+        }
+        XCTAssertGreaterThan(promotions, 0)
+
+        let fresh = Unit(id: 1, kind: .spear, owner: 0, position: Hex(0, 0))
+        var veteran = fresh
+        veteran.experience = 9
+        let foe = Unit(id: 2, kind: .spear, owner: 1, position: Hex(1, 0))
+        XCTAssertGreaterThan(state.strengths(of: veteran, against: foe, at: foe.position).attack,
+                             state.strengths(of: fresh, against: foe, at: foe.position).attack)
+    }
+
+    /// Games saved before veterancy still load, with every company untried.
+    func testOlderSavesLoad() throws {
+        let unit = Unit(id: 7, kind: .bow, owner: 2, position: Hex(3, -1))
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(unit)) as? [String: Any])
+        json["experience"] = nil
+        let old = try JSONSerialization.data(withJSONObject: json)
+        let loaded = try JSONDecoder().decode(Unit.self, from: old)
+        XCTAssertEqual(loaded.experience, 0)
+        XCTAssertEqual(loaded.id, 7)
+        XCTAssertEqual(try JSONDecoder().decode(Unit.self, from: JSONEncoder().encode(unit)), unit)
+    }
+}

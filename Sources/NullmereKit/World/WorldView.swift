@@ -183,6 +183,15 @@ private struct WorldMarks: View {
                 context.fill(disc, with: .color(Color.black.opacity(0.78)))
                 context.stroke(disc, with: .color(colour), lineWidth: unit.fortified ? 2.2 : 1.3)
                 context.stroke(glyph(for: unit.kind, at: point, radius: r * 0.55), with: .color(colour), lineWidth: 1.3)
+                // Rank: a small chevron for each, beneath the token.
+                for chevron in 0..<unit.rank {
+                    var mark = Path()
+                    let y = point.y + r + 7 + CGFloat(chevron) * 3
+                    mark.move(to: CGPoint(x: point.x - 4, y: y))
+                    mark.addLine(to: CGPoint(x: point.x, y: y + 2.5))
+                    mark.addLine(to: CGPoint(x: point.x + 4, y: y))
+                    context.stroke(mark, with: .color(colour), lineWidth: 1.1)
+                }
                 if unit.owner == player, unit.movesLeft > 0, unit.destination == nil, !unit.fortified {
                     let dot = Path(ellipseIn: CGRect(x: point.x + r * 0.62, y: point.y - r * 1.02, width: 4, height: 4))
                     context.fill(dot, with: .color(Palette.ink))

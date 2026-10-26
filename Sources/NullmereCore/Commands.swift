@@ -101,6 +101,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case trainingStarted(hold: Int, kind: UnitKind)
     case bartered(house: Int, gave: Stock, took: Stock)
     case unitTrained(unit: Int, hold: Int)
+    /// A company rose in rank after a battle.
+    case promoted(unit: Int, owner: Int, rank: Int)
     case ruinSearched(at: Hex, by: Int, reward: Stock)
     case stanceChanged(first: Int, second: Int, stance: Stance, by: Int)
     case envoyArrived(Envoy)

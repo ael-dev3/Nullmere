@@ -198,7 +198,9 @@ rival Houses move, holds yield, works rise and companies march on.
   for what you lack, three to one.
 - **Companies.** Lanterns scout, Spears hold the line and take holds,
   Bows strike from two tiles, Riders are fast, and Founders raise new holds.
-  Every company but the Lantern eats a grain each watch.
+  Every company but the Lantern eats a grain each watch. Companies that
+  live through battles rise in rank (Blooded, Hardened, Sworn), each rank
+  adding a tenth to attack and defence; chevrons under a token show it.
 - **Houses.** Rivals have temperaments: ambitious, steadfast, wary or
   cunning. Declare war, offer peace or a pact, and answer their envoys.
   Pacts share sight; breaking one is remembered.

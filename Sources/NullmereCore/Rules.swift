@@ -196,6 +196,9 @@ extension GameState {
         var events: [GameEvent] = []
         let defenderFell = applyDamage(dealt, to: defenderID, events: &events)
         let attackerFell = taken > 0 && applyDamage(taken, to: attackerID, events: &events)
+        // Those who live through a battle learn from it.
+        events += gainExperience(attackerID)
+        events += gainExperience(defenderID)
         events.insert(.battle(Battle(
             attacker: attackerID, attackerOwner: attacker.owner, attackerKind: attacker.kind,
             defender: defenderID, defenderOwner: defender.owner, defenderKind: defender.kind,
@@ -219,7 +222,7 @@ extension GameState {
 
     /// Attack and defence in a fight between two units, before chance.
     func strengths(of attacker: Unit, against defender: Unit, at hex: Hex) -> (attack: Int, defense: Int) {
-        var attack = attacker.kind.attack * (50 + attacker.health / 2)
+        var attack = attacker.kind.attack * (50 + attacker.health / 2) * (100 + Unit.rankBonus * attacker.rank) / 100
         if defender.kind == .rider {
             attack = attack * (100 + attacker.kind.bonusAgainstRiders) / 100
         }
@@ -230,8 +233,16 @@ extension GameState {
         if attacker.kind == .rider {
             defenseBonus += defender.kind.bonusAgainstRiders
         }
-        let defense = max(1, defender.kind.defense * (50 + defender.health / 2) * defenseBonus / 100)
+        let defense = max(1, defender.kind.defense * (50 + defender.health / 2) * defenseBonus / 100 * (100 + Unit.rankBonus * defender.rank) / 100)
         return (attack, defense)
+    }
+
+    private mutating func gainExperience(_ unitID: Int) -> [GameEvent] {
+        guard let index = unitIndex(unitID) else { return [] }
+        let rank = units[index].rank
+        units[index].experience += 1
+        guard units[index].rank > rank else { return [] }
+        return [.promoted(unit: unitID, owner: units[index].owner, rank: units[index].rank)]
     }
 
     /// Returns whether the unit fell.
