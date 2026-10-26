@@ -29,7 +29,10 @@ final class LakePerformanceTests: XCTestCase {
             )
             if let ms = renderer.measureFrame(uniforms, into: target) { times.append(ms) }
         }
-        let median = times.dropFirst(5).sorted()[(times.count - 5) / 2]
+        let settled = times.dropFirst(5).sorted()
+        let median = settled[settled.count / 2]
+        print("PERFMETRIC lake.gpu.p50 \(String(format: "%.3f", median))")
+        print("PERFMETRIC lake.gpu.p95 \(String(format: "%.3f", settled[min(settled.count - 1, Int(Double(settled.count) * 0.95))]))")
         print("PERF lake \(Self.width)x\(Self.height) on \(device.name): median \(String(format: "%.2f", median)) ms, worst \(String(format: "%.2f", times.dropFirst(5).max() ?? 0)) ms")
         XCTAssertLessThan(median, 1000.0 / 60, "The lake must fit a 60 Hz frame")
     }

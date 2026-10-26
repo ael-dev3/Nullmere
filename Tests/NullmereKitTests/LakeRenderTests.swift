@@ -114,4 +114,83 @@ final class LakeRenderTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(lit - dark, 40, "The path shows: \(lit) under the moon, \(dark) beside it")
         XCTAssertLessThan(lit, 200, "and the lake stays black glass: \(lit)")
     }
+
+    /// The lake close up, as a keeper zoomed in on it sees it: black glass,
+    /// the moon's face crisp in it, its path running down the water, and
+    /// stars held in the dark around them. CI prints the frame large.
+    func testTheLakeCloseUp() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
+        let library = try device.makeLibrary(source: WorldShader.source, options: nil)
+        let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
+        var state = GameState(settings: GameSettings(seedText: "moon path", houseCount: 12, radius: 36, lake: .round))
+        state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
+        try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
+        let moon = MoonMirror.place(in: state.map)
+        // A 14-inch MacBook Pro's window, zoomed close, at the scale the
+        // view draws at there.
+        let cameraScale = 40.0
+        let fraction = WorldMetalView.renderScale(forCameraScale: cameraScale)
+        let width = Int((1512 * 2 * fraction).rounded()), height = Int((982 * 2 * fraction).rounded())
+        let scale = Float(cameraScale * 2 * fraction)
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
+        descriptor.usage = [.renderTarget, .shaderRead]
+        descriptor.storageMode = .shared
+        let target = try XCTUnwrap(device.makeTexture(descriptor: descriptor))
+        let centre = SIMD2(moon.x, moon.y + 3)
+        let uniforms = WorldUniforms(view: SIMD4(Float(width), Float(height), scale, 7),
+                                     camera: SIMD4(centre.x, centre.y, Float(state.map.radius), Float(2 * fraction)),
+                                     highlight: SIMD4(999, 999, 999, 999), moon: moon)
+        XCTAssertNotNil(renderer.measureFrame(uniforms, into: target))
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        target.getBytes(&pixels, bytesPerRow: width * 4, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
+        func sum(_ x: Int, _ y: Int) -> Int {
+            let i = (y * width + x) * 4
+            return Int(pixels[i]) + Int(pixels[i + 1]) + Int(pixels[i + 2])
+        }
+        let layout = HexLayout(size: 1)
+        let moonPx = (x: Float(width) / 2 + (moon.x - centre.x) * scale, y: Float(height) / 2 + (moon.y - centre.y) * scale)
+
+        // The moon's face, crisp: bright at its heart, dark a little beyond its rim.
+        let face = sum(Int(moonPx.x), Int(moonPx.y))
+        let beyond = sum(Int(moonPx.x + moon.z * scale * 1.6), Int(moonPx.y))
+        // Open water away from the moon and its path, and the stars in it.
+        var open: [Hex: Bool] = [:]
+        func isOpen(_ hex: Hex) -> Bool {
+            if let known = open[hex] { return known }
+            let answer = state.map[hex]?.terrain == .still && state.map.neighbors(of: hex).allSatisfy { state.map[$0]?.terrain == .still }
+            open[hex] = answer
+            return answer
+        }
+        var dark: [Int] = []
+        var stars = 0
+        for y in stride(from: 0, to: height, by: 2) {
+            for x in stride(from: 0, to: width, by: 2) {
+                let wx = (Float(x) - Float(width) / 2) / scale + centre.x
+                let wy = (Float(y) - Float(height) / 2) / scale + centre.y
+                guard abs(Float(x) - moonPx.x) > Float(height) * 0.3, hypot(wx - moon.x, wy - moon.y) > 5,
+                      isOpen(layout.hex(atX: Double(wx), y: Double(wy))) else { continue }
+                let value = sum(x, y)
+                dark.append(value)
+                if value > 110 { stars += 1 }
+            }
+        }
+        let water = dark.sorted()[dark.count / 2]
+        print("LAKECLOSE \(width)x\(height) at \(scale) px a hex: moon face \(face), beyond its rim \(beyond), open water \(water), star pixels \(stars) of \(dark.count)")
+        XCTAssertGreaterThan(dark.count, 2000, "Open water in view")
+        XCTAssertGreaterThan(face, 380, "The moon's face is bright in the water")
+        XCTAssertLessThan(beyond, face / 2, "and crisp: dark a little beyond its rim")
+        XCTAssertLessThan(water, 45, "Open water is black glass")
+        let share = Double(stars) / Double(dark.count)
+        XCTAssertTrue((0.0002...0.03).contains(share), "Stars held in the water, few and fine: \(share)")
+
+        guard let path = ProcessInfo.processInfo.environment["NULLMERE_KEEP_RENDERS"] else { return }
+        let provider = try XCTUnwrap(CGDataProvider(data: Data(pixels) as CFData))
+        let image = try XCTUnwrap(CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
+                                          space: CGColorSpaceCreateDeviceRGB(),
+                                          bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue),
+                                          provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+        let png = try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
+        try FileManager.default.createDirectory(at: URL(fileURLWithPath: path), withIntermediateDirectories: true)
+        try png.write(to: URL(fileURLWithPath: path).appendingPathComponent("game-lake-close.png"))
+    }
 }

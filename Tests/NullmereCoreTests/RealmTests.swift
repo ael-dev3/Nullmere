@@ -37,6 +37,7 @@ final class RealmTests: XCTestCase {
             }
             let seconds = Date().timeIntervalSince(started)
             print("PERF realm of 12 (\(seed)): made and 30 watches in \(String(format: "%.2f", seconds)) s")
+            print("PERFMETRIC realm.watch.\(seed.replacingOccurrences(of: " ", with: "-")) \(String(format: "%.3f", seconds * 1000 / 30))")
             XCTAssertLessThan(seconds, 60)
         }
     }

@@ -68,12 +68,17 @@ jobs:
       # How much of each module the tests run, held to a floor.
       - name: Coverage
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        run: mkdir -p build && python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereCore=95 NullmereRealm=80 NullmereKit=65 LauncherCore=97 LauncherKit=78 | tee build/coverage.log
+        run: mkdir -p build && python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereCore=95 NullmereRealm=80 NullmereKit=65 LauncherCore=97 LauncherKit=78 --worst 30 | tee build/coverage.log
 
-      # How long each scene takes the GPU at a MacBook Pro's native resolution.
+      # How long each scene takes the GPU at a MacBook Pro's native
+      # resolution, a whole frame while the camera pans, an order and a
+      # watch: held to perf/baseline.json, so a regression fails the build.
       - name: Frame times
-        if: ${{ !cancelled() }}
-        run: grep "PERF " build-test.log || echo "No GPU on this runner; frame times skipped"
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          grep "PERF " build-test.log || true
+          mkdir -p build
+          python3 scripts/perf-check.py build-test.log perf/baseline.json --json build/perf.json
 
       # Xcode 26 and later ship the Metal compiler separately. Fetch it only
       # when no installed Xcode has one; check-shader.sh also tries them all.
@@ -215,6 +220,14 @@ jobs:
             base64 -i build/game-world-large.jpg | fold -w 120
             echo "::endgroup::"
           fi
+          # The lake close up, large and less compressed, for judging the
+          # black water, the moon and the stars.
+          if [ -s build/game-lake-close.png ]; then
+            sips -s format jpeg -s formatOptions 80 -Z 1100 build/game-lake-close.png --out build/game-lake-close.jpg >/dev/null
+            echo "::group::Screenshot build/game-lake-close.png, base64 JPEG"
+            base64 -i build/game-lake-close.jpg | fold -w 120
+            echo "::endgroup::"
+          fi
           # The icon as actool compiled it, last and small, so it survives a
           # trimmed log.
           if [ -s build/icon.png ]; then
@@ -230,7 +243,7 @@ jobs:
         if: always()
         run: |
           echo "::group::Summary"
-          grep -h "PERF \|SOUND \|LAYOUT " build-test.log 2>/dev/null || true
+          grep -h "PERF \|SOUND \|LAYOUT \|LAKECLOSE \|MOONPATH \|PERF-CHECK " build-test.log 2>/dev/null || true
           grep -hE "error: |failed \(|: warning:" build.log build-test.log 2>/dev/null | head -40 || true
           grep -h "Executed .* tests" build-test.log 2>/dev/null | tail -1 || true
           cat build/coverage.log 2>/dev/null || true

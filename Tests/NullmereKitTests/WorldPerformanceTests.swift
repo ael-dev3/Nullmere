@@ -48,6 +48,9 @@ final class WorldPerformanceTests: XCTestCase {
             }
             let settled = Array(times.dropFirst(5)).sorted()
             let median = settled[settled.count / 2]
+            let p95 = settled[min(settled.count - 1, Int(Double(settled.count) * 0.95))]
+            print("PERFMETRIC world.gpu.scale\(Int(scale)).p50 \(String(format: "%.3f", median))")
+            print("PERFMETRIC world.gpu.scale\(Int(scale)).p95 \(String(format: "%.3f", p95))")
             results.append("scale \(Int(scale)) at \(Int(fraction * 100))% median \(String(format: "%.2f", median)) ms")
             // A 60 Hz frame, with a sixth to spare for the interface.
             XCTAssertLessThan(median, 1000.0 / 60 * 0.85, "The world at scale \(scale) must fit a 60 Hz frame with room to spare")

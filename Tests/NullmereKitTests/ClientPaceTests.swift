@@ -66,6 +66,7 @@ final class ClientPaceTests: XCTestCase {
         ].joined(separator: ", "))
         let sorted = times.sorted()
         let median = sorted.isEmpty ? 0 : sorted[sorted.count / 2]
+        print("PERFMETRIC order.cpu.p50 \(String(format: "%.3f", median))")
         print("PERF an order on a lake of \(session.state.houses.count) Houses at watch \(session.state.watch), \(session.state.units.count) companies: median \(String(format: "%.1f", median)) ms over \(times.count)")
         XCTAssertFalse(times.isEmpty, "Companies to order")
         XCTAssertLessThan(median, 16, "Less than a frame")
