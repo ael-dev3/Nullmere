@@ -1,0 +1,64 @@
+{
+  "fill" : {
+    "solid" : "srgb:0.01961,0.02745,0.05098,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "glass" : true,
+          "image-name" : "moon.png",
+          "name" : "moon"
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "glass" : false,
+          "image-name" : "reflection.png",
+          "name" : "reflection"
+        }
+      ],
+      "shadow" : {
+        "kind" : "none",
+        "opacity" : 0
+      },
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "glass" : false,
+          "image-name" : "night.png",
+          "name" : "night"
+        }
+      ],
+      "shadow" : {
+        "kind" : "none",
+        "opacity" : 0
+      },
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : [
+      "macOS"
+    ]
+  }
+}

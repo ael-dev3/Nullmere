@@ -1,0 +1,153 @@
+name: CI
+
+# One macOS job per pull request update (and per push to main). Changes that
+# only touch documentation or the browser preview don't start a run.
+on:
+  pull_request:
+    paths:
+      - Package.swift
+      - Sources/**
+      - Tests/**
+      - Packaging/**
+      - scripts/**
+      - .github/workflows/ci.yml
+  push:
+    branches: [main]
+    paths:
+      - Package.swift
+      - Sources/**
+      - Tests/**
+      - Packaging/**
+      - scripts/**
+      - .github/workflows/ci.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: Build, test and bundle
+    # macOS 26 and Xcode 26: the launcher needs the Foundation Models
+    # framework, and its tests only run on the OS they target.
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Build
+        id: build
+        run: swift build
+
+      - name: Test
+        run: swift test
+
+      # Xcode 26 and later ship the Metal compiler separately. Fetch it only
+      # when no installed Xcode has one; check-shader.sh also tries them all.
+      # A slow or failed download only skips the offline compile (with a
+      # warning); `swift test` still compiles the shader on the runner's GPU.
+      - name: Ensure a Metal compiler
+        timeout-minutes: 10
+        continue-on-error: true
+        run: |
+          if xcrun -sdk macosx metal --version >/dev/null 2>&1; then
+            echo "Metal compiler available in the selected Xcode"
+            exit 0
+          fi
+          for app in /Applications/Xcode*.app; do
+            if DEVELOPER_DIR="$app/Contents/Developer" xcrun -sdk macosx metal --version >/dev/null 2>&1; then
+              echo "Metal compiler available in $app"
+              exit 0
+            fi
+          done
+          xcodebuild -downloadComponent MetalToolchain || echo "::warning::Could not download the Metal toolchain"
+
+      - name: Compile shader offline
+        run: scripts/check-shader.sh
+
+      - name: Bundle app
+        run: scripts/build-app.sh
+
+      - name: Verify bundles
+        run: |
+          verify() {
+            app="build/$1.app"
+            codesign --verify --deep --strict --verbose=2 "$app"
+            test -x "$app/Contents/MacOS/$2"
+            test "$(lipo -archs "$app/Contents/MacOS/$2")" = "arm64"
+            test "$(plutil -extract LSMinimumSystemVersion raw "$app/Contents/Info.plist")" = "26.0"
+            test "$(plutil -extract CFBundleIdentifier raw "$app/Contents/Info.plist")" = "$3"
+            test -s "$app/Contents/Resources/AppIcon.icns"
+          }
+          verify "Nullmere Online" NullmereLauncher online.nullmere.launcher
+          verify "Nullmere" Nullmere online.nullmere.game
+          # The Liquid Glass icon compiled into each app.
+          for app in "build/Nullmere Online.app" "build/Nullmere.app"; do
+            test -s "$app/Contents/Resources/Assets.car"
+            test "$(plutil -extract CFBundleIconName raw "$app/Contents/Info.plist")" = "AppIcon"
+          done
+          # A look at the icon as compiled, for readers of the log.
+          sips -s format png "build/Nullmere Online.app/Contents/Resources/AppIcon.icns" --out build/icon.png >/dev/null
+
+      # Opens the real app on the runner: it must keep running and render its
+      # lake with Metal. The runner can't use Apple Intelligence, so the
+      # launcher opens on its requirement screen. The screenshot (Dock
+      # included) is kept as an artifact, and a small copy is printed in the
+      # log for readers without artifact access.
+      - name: Launch the app
+        run: scripts/smoke-test-app.sh
+
+      # Opens the debug build of the launcher as if the model were ready
+      # (only debug builds allow that), to photograph its menu, News and
+      # Settings, which the requirement screen otherwise hides on CI.
+      - name: Open the launcher's menu
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        env:
+          # The pull request's own commit, whose news/news.json the launcher downloads.
+          COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: scripts/smoke-test-launcher-menu.sh
+
+      # Opens the debug build of the game past the model gate (only debug
+      # builds allow that): its title screen, then a new game, whose world
+      # must render with Metal.
+      - name: Open the game
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: scripts/smoke-test-game.sh
+
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: screenshots
+          path: build/*.png
+          if-no-files-found: warn
+
+      - name: Print small screenshots
+        if: always()
+        run: |
+          for shot in build/launcher.png build/launcher-menu.png build/launcher-news.png build/launcher-settings.png build/game-title.png build/game-world.png build/game-later.png; do
+            if [ -s "$shot" ]; then
+              small="${shot%.png}-small.jpg"
+              sips -s format jpeg -s formatOptions 70 -Z 720 "$shot" --out "$small" >/dev/null
+              echo "::group::Screenshot $shot, base64 JPEG"
+              base64 -i "$small" | fold -w 120
+              echo "::endgroup::"
+            fi
+          done
+          # The icon as actool compiled it, last and small, so it survives a
+          # trimmed log.
+          if [ -s build/icon.png ]; then
+            sips -s format jpeg -s formatOptions 80 -Z 256 build/icon.png --out build/icon-small.jpg >/dev/null
+            echo "::group::Screenshot build/icon.png, base64 JPEG"
+            base64 -i build/icon-small.jpg | fold -w 120
+            echo "::endgroup::"
+          fi
