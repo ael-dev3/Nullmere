@@ -56,14 +56,14 @@ final class SoundTests: XCTestCase {
     func testEveryCueIsHeardAboveTheBed() {
         let bedLevel = rms(render(settled(), seconds: 4)[...])
         var report: [String] = []
-        for cue in [Ambience.Cue.select, .order, .battle, .watch, .rise, .dread] {
+        for cue in Ambience.Cue.all {
             let plain = settled()
             let cued = settled()
             _ = render(plain, seconds: 1)
             _ = render(cued, seconds: 1)
             cued.trigger(cue)
-            let a = render(plain, seconds: 0.4)
-            let b = render(cued, seconds: 0.4)
+            let a = render(plain, seconds: 1.0)
+            let b = render(cued, seconds: 1.0)
             let peak = zip(a, b).map { abs($1 - $0) }.max() ?? 0
             report.append("\(cue) \(String(format: "%+.1f", 20 * log10(peak / bedLevel))) dB")
             XCTAssertGreaterThan(peak, bedLevel * 1.7, "\(cue) must stand out from the bed")
@@ -74,7 +74,7 @@ final class SoundTests: XCTestCase {
     func testNothingClipsEvenWithEveryCueAtOnce() {
         let synth = settled()
         _ = render(synth, seconds: 1)
-        for cue in [Ambience.Cue.select, .order, .battle, .watch, .rise, .dread] { synth.trigger(cue) }
+        for cue in Ambience.Cue.all { synth.trigger(cue) }
         let burst = render(synth, seconds: 3)
         let peak = burst.map(abs).max() ?? 0
         print("SOUND every cue at once peaks at \(String(format: "%.3f", peak))")

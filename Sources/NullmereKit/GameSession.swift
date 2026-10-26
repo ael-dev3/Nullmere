@@ -325,9 +325,8 @@ public final class GameSession {
         showWatchCard(WatchSummary(before: previous, after: state, events: events, player: player))
         showMarches(events, from: before)
         showBlows(events)
-        onCue?(.watch)
-        if events.contains(where: isDreadful) {
-            onCue?(.dread)
+        for cue in Self.cues(for: events, player: player) {
+            onCue?(cue)
         }
         notices.removeAll()
         report(events)
@@ -451,20 +450,35 @@ public final class GameSession {
         case .move: onCue?(.order)
         case .found, .build, .train: onCue?(.rise)
         case .declareWar: onCue?(.dread)
+        case .answer(_, true) where events.contains(where: { if case .proposalAnswered(_, _, _, true) = $0 { return true } else { return false } }):
+            onCue?(.accord)
         default: onCue?(.select)
         }
     }
 
-    /// What should sound like dread to the player: their holds lost, war
-    /// declared on them, a House fallen.
-    private func isDreadful(_ event: GameEvent) -> Bool {
-        switch event {
-        case .holdCaptured(_, let from, _): return from == player
-        case .stanceChanged(let first, let second, .war, let by): return by != player && (first == player || second == player)
-        case .houseFell: return true
-        default: return false
+    /// The sounds a watch's turning makes for the player, the watch's bell
+    /// first and each other sound once.
+    static func cues(for events: [GameEvent], player: Int) -> [Ambience.Cue] {
+        var cues: [Ambience.Cue] = [.watch]
+        func add(_ cue: Ambience.Cue) { if !cues.contains(cue) { cues.append(cue) } }
+        for event in events {
+            switch event {
+            case .houseFell: add(.toll)
+            case .holdCaptured(_, let from, let by):
+                if by == player { add(.triumph) } else if from == player { add(.dread) }
+            case .stanceChanged(let first, let second, let stance, let by) where (first == player || second == player) && by != player:
+                add(stance == .war ? .dread : .accord)
+            case .proposalAnswered(_, let from, let to, true) where from == player || to == player:
+                add(.accord)
+            case .envoyArrived:
+                add(.envoy)
+            default:
+                break
+            }
         }
+        return cues
     }
+
 
     // MARK: The watch's card
 

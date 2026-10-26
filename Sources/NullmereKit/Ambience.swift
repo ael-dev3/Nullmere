@@ -20,6 +20,17 @@ public final class Ambience {
         case rise
         /// War declared, a hold lost.
         case dread
+        /// An envoy at the gate: a soft call of two notes.
+        case envoy
+        /// A hold taken: a rising triad.
+        case triumph
+        /// Peace or a pact: a gentle sixth.
+        case accord
+        /// A House destroyed: a deep, long toll.
+        case toll
+
+        /// Every cue, for tests and previews.
+        public static let all: [Cue] = [.select, .order, .battle, .watch, .rise, .dread, .envoy, .triumph, .accord, .toll]
     }
 
     private static let logger = Logger(subsystem: "online.nullmere.game", category: "sound")
@@ -104,6 +115,8 @@ final class Synth: @unchecked Sendable {
         var frequency: Float
         var amplitude: Float
         var decay: Float
+        /// Seconds after the cue begins that this partial sounds.
+        var delay: Float = 0
         var phase: Float = 0
     }
 
@@ -175,6 +188,35 @@ final class Synth: @unchecked Sendable {
             note = Note(partials: [Partial(frequency: 392, amplitude: 0.09, decay: 2.2), Partial(frequency: 587.3, amplitude: 0.066, decay: 2.6), Partial(frequency: 784, amplitude: 0.036, decay: 3)], noise: 0, noiseDecay: 1)
         case .dread:
             note = Note(partials: [Partial(frequency: 46.25, amplitude: 0.14, decay: 0.7), Partial(frequency: 69.3, amplitude: 0.065, decay: 0.9), Partial(frequency: 97.99, amplitude: 0.04, decay: 1.2)], noise: 0.026, noiseDecay: 3)
+        case .envoy:
+            // A fifth, the lower note first: a horn across the water.
+            note = Note(partials: [
+                Partial(frequency: 220, amplitude: 0.07, decay: 1.6),
+                Partial(frequency: 440, amplitude: 0.02, decay: 2.4),
+                Partial(frequency: 329.6, amplitude: 0.06, decay: 1.2, delay: 0.55),
+            ], noise: 0, noiseDecay: 1)
+        case .triumph:
+            note = Note(partials: [
+                Partial(frequency: 293.7, amplitude: 0.07, decay: 1.4),
+                Partial(frequency: 370, amplitude: 0.06, decay: 1.6, delay: 0.14),
+                Partial(frequency: 440, amplitude: 0.06, decay: 1.8, delay: 0.28),
+                Partial(frequency: 587.3, amplitude: 0.03, decay: 2.2, delay: 0.42),
+            ], noise: 0, noiseDecay: 1)
+        case .accord:
+            note = Note(partials: [
+                Partial(frequency: 523.3, amplitude: 0.06, decay: 1.5),
+                Partial(frequency: 880, amplitude: 0.04, decay: 1.8, delay: 0.2),
+                Partial(frequency: 1046.5, amplitude: 0.012, decay: 2.5),
+            ], noise: 0, noiseDecay: 1)
+        case .toll:
+            // An inharmonic bell, very low and very long.
+            let f: Float = 55
+            note = Note(partials: [
+                Partial(frequency: f, amplitude: 0.17, decay: 0.25),
+                Partial(frequency: f * 2.76, amplitude: 0.08, decay: 0.45),
+                Partial(frequency: f * 5.40, amplitude: 0.035, decay: 0.8),
+                Partial(frequency: f * 8.93, amplitude: 0.015, decay: 1.3),
+            ], noise: 0.01, noiseDecay: 6)
         }
         lock.lock()
         if pending.count < 8 { pending.append(note) }
@@ -234,8 +276,10 @@ final class Synth: @unchecked Sendable {
                     notes[n].partials[p].phase += tau * notes[n].partials[p].frequency * dt
                     if notes[n].partials[p].phase > tau { notes[n].partials[p].phase -= tau }
                     let partial = notes[n].partials[p]
-                    let attack = min(age * 400, 1)
-                    cue += sin(partial.phase) * partial.amplitude * attack * exp(-age * partial.decay)
+                    let sounding = age - partial.delay
+                    guard sounding > 0 else { continue }
+                    let attack = min(sounding * 400, 1)
+                    cue += sin(partial.phase) * partial.amplitude * attack * exp(-sounding * partial.decay)
                 }
                 if notes[n].noise > 0 {
                     cue += random() * notes[n].noise * exp(-age * notes[n].noiseDecay)

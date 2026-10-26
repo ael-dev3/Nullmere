@@ -546,3 +546,19 @@ final class MapAccessibilityTests: XCTestCase {
         XCTAssertEqual(Set(items.map(\.id)).count, items.count)
     }
 }
+
+final class CueMappingTests: XCTestCase {
+    func testEachMomentHasItsOwnSound() {
+        let player = 0
+        let envoy = Envoy(id: 1, from: 2, proposal: .peace, arrived: 3)
+        XCTAssertEqual(GameSession.cues(for: [], player: player), [.watch])
+        XCTAssertEqual(GameSession.cues(for: [.envoyArrived(envoy)], player: player), [.watch, .envoy])
+        XCTAssertEqual(GameSession.cues(for: [.holdCaptured(hold: 1, from: 2, by: player)], player: player), [.watch, .triumph])
+        XCTAssertEqual(GameSession.cues(for: [.holdCaptured(hold: 1, from: player, by: 2)], player: player), [.watch, .dread])
+        XCTAssertEqual(GameSession.cues(for: [.houseFell(3), .houseFell(4)], player: player), [.watch, .toll], "Each sound once")
+        XCTAssertEqual(GameSession.cues(for: [.stanceChanged(first: 0, second: 2, stance: .war, by: 2)], player: player), [.watch, .dread])
+        XCTAssertEqual(GameSession.cues(for: [.stanceChanged(first: 0, second: 2, stance: .peace, by: 2)], player: player), [.watch, .accord])
+        XCTAssertEqual(GameSession.cues(for: [.stanceChanged(first: 1, second: 2, stance: .war, by: 2)], player: player), [.watch],
+                       "Others' wars are silent")
+    }
+}
