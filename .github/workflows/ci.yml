@@ -213,7 +213,10 @@ jobs:
           done
           spacetime server set-default local || true
           spacetime login --server-issued-login local
-          spacetime publish --server local --project-path realm-server --yes nullmere
+          spacetime publish --help | head -n 40
+          # Publish builds the module in the directory it's run from.
+          (cd realm-server && spacetime publish --server local --yes nullmere)
+          spacetime login show --token | sed -e 's/[A-Za-z0-9._-]\{40,\}/[token]/g'
           token="$(spacetime login show --token | awk '{print $NF}' | tail -n 1)"
           echo "::add-mask::$token"
           echo "NULLMERE_STDB_TOKEN=$token" >> "$GITHUB_ENV"
