@@ -65,17 +65,35 @@ final class WorldRenderer {
     var hasTiles: Bool { tiles != nil }
 
     func draw(_ uniforms: WorldUniforms, in pass: MTLRenderPassDescriptor, to drawable: any CAMetalDrawable) {
+        guard let commandBuffer = encode(uniforms, in: pass) else { return }
+        commandBuffer.present(drawable)
+        commandBuffer.commit()
+    }
+
+    private func encode(_ uniforms: WorldUniforms, in pass: MTLRenderPassDescriptor) -> (any MTLCommandBuffer)? {
         guard let tiles,
               let commandBuffer = commandQueue.makeCommandBuffer(),
               let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass)
-        else { return }
+        else { return nil }
         var uniforms = uniforms
         encoder.setRenderPipelineState(pipeline)
         encoder.setFragmentBytes(&uniforms, length: MemoryLayout<WorldUniforms>.stride, index: 0)
         encoder.setFragmentTexture(tiles, index: 0)
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         encoder.endEncoding()
-        commandBuffer.present(drawable)
+        return commandBuffer
+    }
+
+    /// Renders one frame into a texture and returns how long the GPU spent
+    /// on it, in milliseconds: for measuring, not for showing.
+    func measureFrame(_ uniforms: WorldUniforms, into target: any MTLTexture) -> Double? {
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = target
+        pass.colorAttachments[0].loadAction = .dontCare
+        pass.colorAttachments[0].storeAction = .store
+        guard let commandBuffer = encode(uniforms, in: pass) else { return nil }
         commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        return (commandBuffer.gpuEndTime - commandBuffer.gpuStartTime) * 1000
     }
 }

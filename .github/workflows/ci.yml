@@ -1,8 +1,8 @@
 name: CI
 
 # One macOS job per pull request update, and per push to main or a working
-# branch. Changes that
-# only touch documentation or the browser preview don't start a run.
+# branch. Changes that only touch documentation or the browser preview don't
+# start a run.
 on:
   pull_request:
     paths:
@@ -37,6 +37,10 @@ jobs:
     # framework, and its tests only run on the OS they target.
     runs-on: macos-26
     timeout-minutes: 30
+    # "bash" runs with -o pipefail, so a failure piped through tee still fails.
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v5
 
@@ -47,10 +51,21 @@ jobs:
 
       - name: Build
         id: build
-        run: swift build
+        run: |
+          swift build 2>&1 | tee build.log
+          # A clean build: no warnings from our own sources.
+          if grep -E "^/.*/Sources/.*: warning:" build.log; then
+            echo "::error::The build has warnings"
+            exit 1
+          fi
 
       - name: Test
-        run: swift test
+        run: swift test 2>&1 | tee build-test.log
+
+      # How long each scene takes the GPU at a MacBook Pro's native resolution.
+      - name: Frame times
+        if: ${{ !cancelled() }}
+        run: grep "PERF " build-test.log || echo "No GPU on this runner; frame times skipped"
 
       # Xcode 26 and later ship the Metal compiler separately. Fetch it only
       # when no installed Xcode has one; check-shader.sh also tries them all.
