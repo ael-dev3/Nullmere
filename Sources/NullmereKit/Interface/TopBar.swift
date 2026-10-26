@@ -21,6 +21,7 @@ struct TopBar: View {
         }
     }
 
+    @ViewBuilder
     private func bar(compact: Bool) -> some View {
         let state = session.state
         let house = session.playerHouse
