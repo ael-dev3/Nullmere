@@ -84,6 +84,8 @@ private struct ResourceReadout: View {
                     .foregroundStyle(Palette.ink.opacity(0.45))
             }
         }
+        // A resource's name is never broken across lines.
+        .fixedSize()
         .help("\(resource.title): \(amount) of \(room) stored, \(net >= 0 ? "+" : "")\(net) each watch")
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(resource.title) \(amount), \(net >= 0 ? "gaining" : "losing") \(abs(net)) each watch, storage \(room)")

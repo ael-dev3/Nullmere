@@ -42,7 +42,10 @@ struct RaceTable: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Caps("The race for the lake", size: 8.5, weight: .medium).foregroundStyle(Palette.ink.opacity(0.7))
-                Spacer()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .layoutPriority(1)
+                Spacer(minLength: 4)
                 Caps("Holds of \(state.dominionNeed)", size: 7.5).foregroundStyle(Palette.ink.opacity(0.45))
                     .frame(width: 92, alignment: .leading)
                 Caps("Spire", size: 7.5).foregroundStyle(Palette.ink.opacity(0.45))

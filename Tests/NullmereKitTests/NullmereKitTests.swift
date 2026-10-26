@@ -519,6 +519,8 @@ final class TextSizeTests: XCTestCase {
         let larger = try size(of: TopBar(session: session).fixedSize())
         print("LAYOUT top bar \(Int(standard.width)) wide, \(Int(larger.width)) with the larger type")
         XCTAssertLessThanOrEqual(standard.width, 960)
+        let narrow = try size(of: TopBar(session: session).frame(width: 960).fixedSize(horizontal: false, vertical: true))
+        XCTAssertEqual(narrow.height, standard.height, "Nothing wraps in the narrowest window")
         XCTAssertLessThanOrEqual(larger.width, 1280)
         let watch = try size(of: WatchClock(session: session))
         XCTAssertGreaterThan(watch.width, 40, "The watch is never squeezed")
