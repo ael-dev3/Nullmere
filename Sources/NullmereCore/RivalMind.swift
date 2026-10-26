@@ -16,6 +16,12 @@ struct RivalMind {
         switch proposal {
         case .peace:
             guard lasted >= 3 else { return false }
+            // The ambitious and the cunning show no mercy to a House on its
+            // last holds when they are clearly the stronger.
+            let nearlyFallen = state.holds(of: proposer).count <= 2 && mine * 2 > theirs * 3
+            if nearlyFallen, me.temperament == .ambitious || me.temperament == .cunning {
+                return false
+            }
             switch me.temperament {
             case .ambitious: return mine * 10 < theirs * 11 || lasted > 16
             case .cunning: return mine < theirs || lasted > 10
@@ -371,7 +377,12 @@ struct RivalMind {
         if let rising = spireThreat(in: state), state.isAtWar(house, rising), let spire = state.seat(of: rising) {
             target = spire
         } else {
-            target = enemyHolds.min { ($0.position.distance(to: seat.position), $0.id) < ($1.position.distance(to: seat.position), $1.id) }
+            // Go for the weakest House within reach, to finish it, then
+            // its nearest hold.
+            func cost(_ hold: Hold) -> Int {
+                hold.position.distance(to: seat.position) + 4 * state.holds(of: hold.owner).count
+            }
+            target = enemyHolds.min { (cost($0), $0.id) < (cost($1), $1.id) }
         }
         guard let target else { return nil }
 
