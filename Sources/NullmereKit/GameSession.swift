@@ -441,7 +441,7 @@ public final class GameSession {
             // Said once, however often the link tries again.
             if !isOutOfReach {
                 isOutOfReach = true
-                post("The realm is out of reach: \(reason) Orders given now may not reach it.", tone: .bad)
+                post("The realm is out of reach: \(reason) Orders given now wait, and go when it answers.", tone: .bad)
             }
             return
         }

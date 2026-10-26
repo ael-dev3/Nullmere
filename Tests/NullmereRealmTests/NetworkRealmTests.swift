@@ -152,6 +152,72 @@ final class NetworkRealmTests: XCTestCase {
         try await until("refusal") { !earStranger.refusals.isEmpty }
     }
 
+    func testOrdersGivenOutOfReachGoInOrderOnceItAnswers() async throws {
+        let db = FakeSpacetime()
+        let (_, running, _) = try await steward(db)
+        defer { running.cancel() }
+        let line = Flaky(db)
+        let (ama, ear) = await MainActor.run { () -> (NetworkRealmLink, Listener) in
+            let link = NetworkRealmLink(transport: line, credentials: MemoryStore(), pollInterval: 0.05, retryDelay: 0.05)
+            let listener = Listener()
+            listener.listen(to: link)
+            link.connect()
+            link.arrive(name: "Ama")
+            return (link, listener)
+        }
+        try await until("arrival") { ear.keeper != nil }
+        let world = try await MainActor.run { try XCTUnwrap(ear.world) }
+        let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
+        let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
+
+        // The line goes down; two orders, whose order matters, and ready.
+        await line.setDown(true)
+        await MainActor.run {
+            ama.send(.fortify(unit: spear.id))
+            ama.send(.disband(unit: spear.id))
+            ama.setReady(true)
+        }
+        try await until("the realm out of reach") {
+            ear.events.contains { if case .unreachable = $0 { return true } else { return false } }
+        }
+        let waiting = await MainActor.run { ama.waiting }
+        XCTAssertEqual(waiting, 3, "Nothing is lost")
+        await line.setDown(false)
+        try await until("the orders, carried out in turn") { ear.world?.unit(spear.id) == nil && ear.turned }
+        let refusals = await MainActor.run { ear.refusals }
+        XCTAssertEqual(refusals, [], "Fortified, then disbanded: in the order given")
+        let after = await MainActor.run { ama.waiting }
+        XCTAssertEqual(after, 0)
+    }
+
+    func testAnOrderWhoseAnswerWasLostIsCarriedOutOnce() async throws {
+        let db = FakeSpacetime()
+        let (_, running, _) = try await steward(db)
+        defer { running.cancel() }
+        let line = Flaky(db)
+        let (ama, ear) = await MainActor.run { () -> (NetworkRealmLink, Listener) in
+            let link = NetworkRealmLink(transport: line, credentials: MemoryStore(), pollInterval: 0.05, retryDelay: 0.05)
+            let listener = Listener()
+            listener.listen(to: link)
+            link.connect()
+            link.arrive(name: "Ama")
+            return (link, listener)
+        }
+        try await until("arrival") { ear.keeper != nil }
+        let world = try await MainActor.run { try XCTUnwrap(ear.world) }
+        let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
+        let before = world.houses[house].stock
+        // The order reaches the realm, but its answer is lost on the way back.
+        await line.loseNextCall()
+        await MainActor.run { ama.send(.barter(give: .timber, take: .grain, amount: 10)) }
+        try await until("the barter") { ear.world?.houses[house].stock != before && ama.waiting == 0 }
+        try await Task.sleep(nanoseconds: 400_000_000)
+        let orders = await db.handled(kind: "order")
+        XCTAssertEqual(orders, 1, "Sent twice, carried out once")
+        let stock = await MainActor.run { ear.world?.houses[house].stock }
+        XCTAssertEqual(stock?.grain, before.grain + 10, "Ten grain bought, once")
+    }
+
     func testOneKeepersFloodDoesNotCrowdOutAnother() async throws {
         let db = FakeSpacetime()
         let credentials = try await db.createIdentity()
@@ -193,5 +259,36 @@ final class NetworkRealmTests: XCTestCase {
         XCTAssertGreaterThan(resumedVersion, version)
         let anyoneThere = await resumed.state.keepers.contains { $0.isOnline }
         XCTAssertFalse(anyoneThere, "No one is there until they say so")
+    }
+}
+
+/// A line to SpacetimeDB that can go down, or lose an answer on the way back.
+actor Flaky: SpacetimeTransport {
+    private let db: FakeSpacetime
+    private var down = false
+    private var losing = false
+
+    init(_ db: FakeSpacetime) { self.db = db }
+
+    func setDown(_ value: Bool) { down = value }
+    func loseNextCall() { losing = true }
+
+    func createIdentity() async throws -> SpacetimeCredentials {
+        if down { throw SpacetimeError("The network is down.") }
+        return try await db.createIdentity()
+    }
+
+    func call(_ reducer: String, _ arguments: [ReducerArgument], token: String) async throws {
+        if down { throw SpacetimeError("The network is down.") }
+        try await db.call(reducer, arguments, token: token)
+        if losing, reducer == "order" {
+            losing = false
+            throw SpacetimeError("The answer was lost.")
+        }
+    }
+
+    func query(_ sql: String, token: String) async throws -> [[JSONValue]] {
+        if down { throw SpacetimeError("The network is down.") }
+        return try await db.query(sql, token: token)
     }
 }

@@ -45,6 +45,7 @@ pub struct Request {
     pub keeper: String,
     /// arrive, order, ready, here or leave.
     pub kind: String,
+    #[index(btree)]
     pub nonce: String,
     pub payload: String,
 }
@@ -121,6 +122,13 @@ fn ask(ctx: &ReducerContext, kind: &str, nonce: String, payload: String) -> Resu
         return Err("The request is too long.".into());
     }
     let keeper = ctx.sender().to_hex().to_string();
+    // A request sent again, after an answer that never came back, is the
+    // same request: it waits, or has been answered, once.
+    if ctx.db.request().nonce().filter(&nonce).any(|r| r.keeper == keeper)
+        || ctx.db.reply().nonce().find(nonce.clone()).is_some_and(|r| r.keeper == keeper)
+    {
+        return Ok(());
+    }
     let waiting = ctx.db.request().keeper().filter(&keeper).count();
     if waiting >= MAX_WAITING {
         return Err("Too many requests are waiting; give the steward a moment.".into());

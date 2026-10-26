@@ -32,6 +32,8 @@
 	<string>26.0</string>
 	<key>LSRequiresNativeExecution</key>
 	<true/>
+	<key>NullmereRealm</key>
+	<string>__REALM__</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>

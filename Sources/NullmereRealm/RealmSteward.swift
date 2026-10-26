@@ -38,7 +38,9 @@ public actor RealmSteward {
     private var lastStatus: RealmStatus?
     /// When each keeper was last heard from.
     private var heard: [String: Double] = [:]
-    private var answered: [String] = []
+    /// Answers given, and when, until they are forgotten.
+    private var answered: [(nonce: String, at: Double)] = []
+    private var lastForgotten = 0.0
     /// Each keeper's view as last published, to send only what changed.
     private var published: [String: String] = [:]
 
@@ -46,6 +48,9 @@ public actor RealmSteward {
     public static let silence = 90.0
     /// Most requests of one keeper carried out in a round.
     public static let requestsPerRound = 8
+    /// How long an answer is kept: longer than a client keeps an order
+    /// waiting to be sent again, so an order sent twice is carried out once.
+    public static let answerKept = 600.0
 
     /// Takes up the realm where SpacetimeDB holds it, or begins a new one.
     public init(transport: any SpacetimeTransport, token: String, name: String, seed: String, seats: Int = 8,
@@ -95,7 +100,7 @@ public actor RealmSteward {
             events += turned
             let text = String(decoding: try JSONEncoder().encode(reply), as: UTF8.self)
             try await transport.call("settle", [.integer(request.id), .string(text)], token: token)
-            answered.append(request.nonce)
+            answered.append((request.nonce, now))
         }
 
         // The silent have left.
@@ -113,10 +118,11 @@ public actor RealmSteward {
             try await publish(now: now)
         }
         // Answers old enough to have been read are forgotten.
-        if answered.count > 64 {
-            let old = Array(answered.prefix(answered.count - 32))
-            try await transport.call("forget", [.strings(old)], token: token)
+        let old = answered.prefix { now - $0.at > RealmSteward.answerKept }
+        if !old.isEmpty, old.count >= 64 || now - lastForgotten > 30 {
+            try await transport.call("forget", [.strings(old.map(\.nonce))], token: token)
             answered.removeFirst(old.count)
+            lastForgotten = now
         }
         return changed
     }

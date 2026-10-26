@@ -36,6 +36,18 @@ final class SpacetimeIntegrationTests: XCTestCase {
         _ = token
     }
 
+    func testARequestSentTwiceWaitsOnce() async throws {
+        let (transport, token) = try server()
+        let keeper = try await transport.createIdentity()
+        let nonce = "twice" + KeeperIdentity.make().prefix(12)
+        try await transport.call("here", [.string(nonce)], token: keeper.token)
+        try await transport.call("here", [.string(nonce)], token: keeper.token)
+        let waiting = try await transport.query("SELECT id FROM request WHERE nonce = \(sqlString(nonce))", token: token)
+        let answered = try await transport.query("SELECT nonce FROM reply WHERE nonce = \(sqlString(nonce))", token: token)
+        XCTAssertEqual(waiting.count + answered.count, 1, "The same request, once")
+        print("REALM a request sent twice was taken once")
+    }
+
     func testKeepersPlayThroughSpacetime() async throws {
         let (transport, token) = try server()
         let steward = try await RealmSteward(transport: transport, token: token, name: "The Nullmere", seed: "integration",

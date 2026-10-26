@@ -105,6 +105,7 @@ jobs:
             test -s "$app/Contents/Resources/AppIcon.icns"
           }
           verify "Nullmere Online" NullmereLauncher online.nullmere.launcher
+          test "$(plutil -extract NullmereRealm raw "build/Nullmere Online.app/Contents/Info.plist")" = "https://maincloud.spacetimedb.com/nullmere"
           test ! -e build/Nullmere.app
           # The Liquid Glass icon compiled into the app.
           for app in "build/Nullmere Online.app"; do
@@ -145,30 +146,13 @@ jobs:
         timeout-minutes: 20
         run: |
           command -v rustup >/dev/null || curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
-          export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          rustup target add wasm32-unknown-unknown
+          export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
           curl -sSf https://install.spacetimedb.com | sh -s -- --yes
-          spacetime --version
-          (spacetime start > build/spacetime.log 2>&1 &)
-          for i in $(seq 1 90); do
-            curl -s -o /dev/null -X POST http://127.0.0.1:3000/v1/identity && break
-            sleep 1
-          done
-          spacetime server set-default local || true
-          spacetime login --server-issued-login local
-          (cd realm-server && spacetime publish --server local --yes nullmere)
-          token="$(spacetime login show --token | awk '{print $NF}' | tail -n 1)"
-          echo "::add-mask::$token"
-          NULLMERE_STEWARD_TOKEN="$token" NULLMERE_REALM_SEED="black moon" \
-            nohup "$(swift build --show-bin-path)/NullmereSteward" http://127.0.0.1:3000/nullmere > build/steward.log 2>&1 &
-          for i in $(seq 1 30); do
-            grep -q "Stewarding" build/steward.log && break
-            sleep 1
-          done
-          cat build/steward.log
-          grep -q "Stewarding" build/steward.log
+          # The same one command that raises the realm proper.
+          STEWARD=background CONFIGURATION=debug STEWARD_LOG="$PWD/build/steward.log" \
+            NULLMERE_REALM_SEED="black moon" scripts/raise-realm.sh local
 
       - name: Enter the realm across the network
         if: ${{ !cancelled() && steps.realm.outcome == 'success' }}
@@ -244,21 +228,12 @@ jobs:
           curl -sSf https://install.spacetimedb.com | sh -s -- --yes
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      # The same one command that raises the realm proper, without the
+      # steward: the integration tests run their own.
       - name: Start SpacetimeDB and publish the realm module
         run: |
-          spacetime --version
-          (spacetime start > spacetime.log 2>&1 &)
-          for i in $(seq 1 90); do
-            curl -s -o /dev/null -X POST http://127.0.0.1:3000/v1/identity && break
-            sleep 1
-          done
-          spacetime server set-default local || true
-          spacetime login --server-issued-login local
-          spacetime publish --help | head -n 40
-          # Publish builds the module in the directory it's run from.
-          (cd realm-server && spacetime publish --server local --yes nullmere)
-          spacetime login show --token | sed -e 's/[A-Za-z0-9._-]\{40,\}/[token]/g'
-          token="$(spacetime login show --token | awk '{print $NF}' | tail -n 1)"
+          STEWARD=none NULLMERE_STATE_DIR="$PWD/realm-state" scripts/raise-realm.sh local
+          token="$(cat realm-state/steward-token-local)"
           echo "::add-mask::$token"
           echo "NULLMERE_STDB_TOKEN=$token" >> "$GITHUB_ENV"
 
@@ -272,4 +247,4 @@ jobs:
         run: |
           grep -hE "error: |warning: " realm-build.log 2>/dev/null | head -20 || true
           grep -hE "error|failed|skipped|Executed|REALM " realm-test.log realm-integration.log 2>/dev/null | tail -20 || true
-          tail -n 30 spacetime.log 2>/dev/null || true
+          tail -n 30 realm-state/spacetime-local.log 2>/dev/null || true

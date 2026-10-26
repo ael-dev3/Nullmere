@@ -228,46 +228,42 @@ as the realm will, and takes the realm's word as final.
 
 The realm proper is a [SpacetimeDB](https://spacetimedb.com) database with
 the module in `realm-server/`, and a steward beside it running the rules.
-Release builds look for it at `https://maincloud.spacetimedb.com/nullmere`.
+Release builds go to `https://maincloud.spacetimedb.com/nullmere`.
+
+**Going live is one command**, after signing in to SpacetimeDB once:
 
 ```sh
-# The module: keepers' requests in, the steward's world out.
-cd realm-server
-spacetime publish --server maincloud --yes nullmere
-
-# The steward, as the identity that published the module.
-NULLMERE_STEWARD_TOKEN="$(spacetime login show --token | awk '{print $NF}' | tail -n 1)" \
-    swift run -c release NullmereSteward https://maincloud.spacetimedb.com/nullmere
+spacetime login                      # once: opens a GitHub sign-in
+scripts/raise-realm.sh maincloud     # publishes the module, starts the steward
 ```
 
-The steward runs on any Mac or Linux machine with Swift, and takes up the
-realm where it stands after a restart. `Dockerfile.steward` packs it into
-a small container for a server:
+The script checks its tools, publishes the module, keeps the steward's
+token in `~/.config/nullmere` (readable by you alone), and starts the
+steward: in a container (`Dockerfile.steward`, restarted with the machine)
+when Docker is there, otherwise in the background, with its log beside the
+token. Run it again to update the module; the realm keeps its world. Ask
+for a fresh realm with `SPACETIME_CLEAR=1`.
 
-```sh
-docker build -f Dockerfile.steward -t nullmere-steward .
-docker run -d --restart unless-stopped -e NULLMERE_STEWARD_TOKEN="$token" \
-    nullmere-steward https://maincloud.spacetimedb.com/nullmere
-```
- `NULLMERE_REALM_NAME`,
+If the name `nullmere` is taken on maincloud, choose another with
+`REALM_DB=...`, and build the app for it with
+`REALM_ADDRESS=https://maincloud.spacetimedb.com/<name> scripts/build-app.sh`;
+the address is kept in the app's Info.plist. `NULLMERE_REALM_NAME`,
 `NULLMERE_REALM_SEED`, `NULLMERE_REALM_SEATS` and `NULLMERE_WATCH_SECONDS`
-shape a new realm. For a realm on your own machine, `spacetime start`, then
-publish with `--server local`, run the steward against
-`http://127.0.0.1:3000/nullmere`, and open a debug build with
-`NULLMERE_REALM=http://127.0.0.1:3000/nullmere`. CI does exactly this:
-on Linux it plays two keepers through the server, and on macOS the app
-itself enters the world across the network (`scripts/smoke-test-network.sh`).
+shape a new realm; `STEWARD=foreground` keeps the steward in the terminal.
 
-The realm's tables are private: keepers write requests through reducers
-and read only their own view and replies, through SpacetimeDB views
+`scripts/raise-realm.sh local` raises the same realm on your own machine
+(starting SpacetimeDB if it isn't running); open a debug build with
+`NULLMERE_REALM=http://127.0.0.1:3000/nullmere`. CI runs this very script:
+on Linux, two keepers play through the server; on macOS, the app itself
+enters the world across the network (`scripts/smoke-test-network.sh`).
+
+The steward takes up the realm where it stands after a restart. The
+realm's tables are private: keepers write requests through reducers and
+read only their own view and replies, through SpacetimeDB views
 (`my_view`, `my_replies`), and the realm's public status. A keeper may
 have 32 requests waiting at most, and the steward carries out a few of
-each keeper's every round, so no one keeper can crowd out the rest.
-
-**What maincloud needs.** Publishing to `maincloud.spacetimedb.com` needs a
-SpacetimeDB account, made with `spacetime login` (it signs in through
-GitHub), and a machine to keep the steward running with that account's
-token. Until then the realm runs on any SpacetimeDB server, as on CI.
+each keeper's every round, so no one keeper can crowd out the rest. A
+request sent again, after its answer was lost, is carried out once.
 
 ## Playing Nullmere
 

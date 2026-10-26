@@ -219,6 +219,14 @@ final class GameGateTests: XCTestCase {
         XCTAssertEqual(session.playerHouse.title, "House Ama")
     }
 
+    func testTheAppGoesToTheRealmItWasBuiltFor() {
+        let own = URL(string: "https://maincloud.spacetimedb.com/nullmere-online")!
+        XCTAssertEqual(GameApp.realmURL(in: ["NullmereRealm": own.absoluteString]), own)
+        for unset in [nil, [:], ["NullmereRealm": "__REALM__"], ["NullmereRealm": "ftp://x/y"], ["NullmereRealm": "https://host"]] as [[String: Any]?] {
+            XCTAssertEqual(GameApp.realmURL(in: unset), GameApp.maincloudURL)
+        }
+    }
+
     func testAKeeperWaitsAtTheDoorForASeat() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }

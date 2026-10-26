@@ -4,6 +4,7 @@
 #
 #   scripts/build-app.sh                 # release builds into build/
 #   VERSION=0.3.0 scripts/build-app.sh   # set the marketing version
+#   REALM_ADDRESS=https://maincloud.spacetimedb.com/nullmere scripts/build-app.sh
 #
 # The apps are built for Apple silicon only and need macOS 26, matching
 # Apple Intelligence. They are ad-hoc signed, which is enough to run them on
@@ -18,6 +19,12 @@ VERSION="${VERSION:-0.3.0}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 OUTPUT_DIR="${OUTPUT_DIR:-build}"
 CODESIGN_IDENTITY="${CODESIGN_IDENTITY:--}"
+# The realm the app enters: as scripts/raise-realm.sh printed it.
+REALM_ADDRESS="${REALM_ADDRESS:-https://maincloud.spacetimedb.com/nullmere}"
+case "$REALM_ADDRESS" in
+    http://*|https://*) ;;
+    *) echo "REALM_ADDRESS must be an http(s) address, such as https://maincloud.spacetimedb.com/nullmere" >&2; exit 1 ;;
+esac
 
 echo "Building ($CONFIGURATION, arm64)…"
 swift build -c "$CONFIGURATION" --arch arm64 --product NullmereLauncher
@@ -80,7 +87,7 @@ bundle() {
     rm -rf "$app"
     mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
     cp "$BIN_DIR/$executable" "$app/Contents/MacOS/$executable"
-    sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD_NUMBER/" "$3" > "$app/Contents/Info.plist"
+    sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD_NUMBER/" -e "s|__REALM__|$REALM_ADDRESS|" "$3" > "$app/Contents/Info.plist"
     plutil -lint -s "$app/Contents/Info.plist"
     cp "$ICNS" "$app/Contents/Resources/AppIcon.icns"
     if [ -n "$CATALOG" ]; then

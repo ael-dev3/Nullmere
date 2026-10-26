@@ -16,6 +16,10 @@ actor FakeSpacetime: SpacetimeTransport {
     private var status: (version: UInt64, status: String)?
     private var views: [String: (version: UInt64, view: String, events: String)] = [:] // by keeper
     private(set) var calls: [String] = []
+    /// Requests of each kind the steward has answered.
+    private var settled: [String: Int] = [:]
+
+    func handled(kind: String) -> Int { settled[kind] ?? 0 }
 
     func createIdentity() async throws -> SpacetimeCredentials {
         let identity = KeeperIdentity.make() + KeeperIdentity.make()
@@ -44,6 +48,7 @@ actor FakeSpacetime: SpacetimeTransport {
             var payload = ""
             if reducer == "ready", case .bool(let ready)? = arguments.dropFirst().first { payload = ready ? "true" : "false" }
             else if reducer == "arrive" || reducer == "order" { payload = try string(1) }
+            if requests.contains(where: { $0.nonce == nonce && $0.keeper == me }) || replies[nonce]?.keeper == me { return }
             guard requests.filter({ $0.keeper == me }).count < 32 else { throw SpacetimeError("Too many requests are waiting") }
             requests.append(Request(id: nextID, keeper: me, kind: reducer, nonce: nonce, payload: payload))
             nextID += 1
@@ -53,6 +58,7 @@ actor FakeSpacetime: SpacetimeTransport {
             let reply = try string(1)
             if let index = requests.firstIndex(where: { $0.id == id }) {
                 replies[requests[index].nonce] = (requests[index].keeper, reply)
+                settled[requests[index].kind, default: 0] += 1
                 requests.remove(at: index)
             }
         case "forget":

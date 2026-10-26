@@ -122,7 +122,19 @@ public final class GameApp {
             return .network(url)
         }
         #endif
-        return .network(URL(string: "https://maincloud.spacetimedb.com/nullmere")!)
+        return .network(realmURL(in: Bundle.main.infoDictionary))
+    }
+
+    /// The realm proper: where the app was built to go (its Info.plist's
+    /// NullmereRealm, set by scripts/build-app.sh), or maincloud's.
+    static let maincloudURL = URL(string: "https://maincloud.spacetimedb.com/nullmere")!
+
+    static func realmURL(in info: [String: Any]?) -> URL {
+        if let text = info?["NullmereRealm"] as? String, let url = URL(string: text),
+           url.scheme == "https" || url.scheme == "http", url.host() != nil, url.path().count > 1 {
+            return url
+        }
+        return maincloudURL
     }
 
     /// Each realm knows the keeper by its own identity, kept in the keychain.
