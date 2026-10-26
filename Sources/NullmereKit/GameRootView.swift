@@ -80,6 +80,11 @@ struct PlayView: View {
                 .animation(.easeOut(duration: 0.3), value: session.state.envoys)
             }
 
+            HoverLine(session: session)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .padding(.bottom, 18)
+                .allowsHitTesting(false)
+
             if let outcome = session.state.outcome {
                 OutcomeOverlay(app: app, session: session, outcome: outcome)
             }

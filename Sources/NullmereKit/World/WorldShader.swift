@@ -157,7 +157,7 @@ enum WorldShader {
         }
         if (t < 5.5) {
             float canopy = smoothstep(0.30, 0.78, canopyNoise);
-            return mix(float3(0.018, 0.028, 0.030), float3(0.060, 0.082, 0.076), canopy) * (0.8 + 0.4 * fine);
+            return mix(float3(0.030, 0.042, 0.042), float3(0.085, 0.110, 0.098), canopy) * (0.8 + 0.4 * fine);
         }
         if (t < 6.5) { return mix(float3(0.17, 0.155, 0.14), float3(0.27, 0.25, 0.22), grain) * (0.88 + 0.22 * fine); }
         return mix(float3(0.075, 0.078, 0.092), float3(0.20, 0.205, 0.225), smoothstep(0.35, 0.85, grain)) * (0.82 + 0.36 * fine);

@@ -47,6 +47,8 @@ public final class GameSession {
     public private(set) var hoverForecast: Forecast?
     public private(set) var tileBytes: [UInt8] = []
     public private(set) var tilesVersion = 0
+    /// Which hold's land each tile is, by map index.
+    public private(set) var territory: [Int?] = []
     /// Holds and units the player can see right now, by map index.
     public private(set) var visible: [Bool] = []
     public private(set) var isEndingWatch = false
@@ -305,6 +307,7 @@ public final class GameSession {
 
     private func refreshWorld() {
         visible = state.visibility(for: player)
+        territory = state.territory()
         tileBytes = TileTexture.bytes(for: state, viewer: player)
         tilesVersion += 1
         refreshPathPreview()

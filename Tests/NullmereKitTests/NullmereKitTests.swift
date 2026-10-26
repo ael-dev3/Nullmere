@@ -207,3 +207,22 @@ final class GameGateTests: XCTestCase {
         XCTAssertNotNil(app.session)
     }
 }
+
+final class HoverInfoTests: XCTestCase {
+    func testTheLineDescribesTheGroundUnderThePointer() throws {
+        let state = GameState(settings: GameSettings(seedText: "hover", houseCount: 3, radius: 16))
+        let territory = state.territory()
+        let seat = try XCTUnwrap(state.seat(of: state.player))
+        let line = try XCTUnwrap(HoverInfo.line(for: seat.position, in: state, explored: true, territory: territory))
+        XCTAssertTrue(line.contains(seat.name))
+        XCTAssertTrue(line.contains("land of \(state.houses[state.player].title)"))
+        XCTAssertEqual(HoverInfo.line(for: seat.position, in: state, explored: false, territory: territory), "Unknown country · send a Lantern")
+        XCTAssertNil(HoverInfo.line(for: Hex(999, 0), in: state, explored: true, territory: territory))
+
+        let still = try XCTUnwrap(state.map.hexes.first { state.map[$0]?.terrain == .still })
+        XCTAssertTrue(HoverInfo.line(for: still, in: state, explored: true, territory: territory)!.contains("impassable"))
+        let wood = try XCTUnwrap(state.map.hexes.first { state.map[$0]?.terrain == .blackwood })
+        let woodLine = HoverInfo.line(for: wood, in: state, explored: true, territory: territory)!
+        XCTAssertTrue(woodLine.contains("2 moves") && woodLine.contains("+25% defence"), woodLine)
+    }
+}
