@@ -18,15 +18,20 @@ final class OverlayPerformanceTests: XCTestCase {
         session.camera = camera
 
         let size = CGSize(width: 1512, height: 982)
-        let marks = WorldMarks(session: session).frame(width: size.width, height: size.height)
-        let renderer = ImageRenderer(content: marks)
-        renderer.scale = 2
-        _ = renderer.cgImage
+        // A fresh renderer each time: one renderer keeps its image.
+        func renderOnce() -> Double {
+            let renderer = ImageRenderer(content: WorldMarks(session: session).frame(width: size.width, height: size.height))
+            renderer.scale = 2
+            let start = ContinuousClock.now
+            let image = renderer.cgImage
+            let elapsed = ContinuousClock.now - start
+            XCTAssertNotNil(image)
+            return Double(elapsed.components.seconds) * 1000 + Double(elapsed.components.attoseconds) / 1e15
+        }
+        _ = renderOnce()
         var times: [Double] = []
         for _ in 0..<12 {
-            let start = ContinuousClock.now
-            _ = renderer.cgImage
-            times.append(Double((ContinuousClock.now - start).components.attoseconds) / 1e15)
+            times.append(renderOnce())
         }
         times.sort()
         let median = times[times.count / 2]
