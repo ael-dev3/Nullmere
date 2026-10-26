@@ -1,0 +1,21 @@
+# The realm's steward, ready to run beside a SpacetimeDB database:
+#
+#   docker build -f Dockerfile.steward -t nullmere-steward .
+#   docker run -d --restart unless-stopped -e NULLMERE_STEWARD_TOKEN=... \
+#       nullmere-steward https://maincloud.spacetimedb.com/nullmere
+#
+# The token is that of the identity that published the realm module.
+FROM swift:6.2-noble AS build
+WORKDIR /src
+COPY Package.swift ./
+COPY Sources ./Sources
+COPY Tests ./Tests
+RUN swift build -c release --product NullmereSteward --static-swift-stdlib \
+    && cp "$(swift build -c release --show-bin-path)/NullmereSteward" /NullmereSteward
+
+FROM ubuntu:24.04
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends ca-certificates libcurl4 libxml2 \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /NullmereSteward /usr/local/bin/NullmereSteward
+USER nobody
+ENTRYPOINT ["/usr/local/bin/NullmereSteward"]

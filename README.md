@@ -240,7 +240,15 @@ NULLMERE_STEWARD_TOKEN="$(spacetime login show --token | awk '{print $NF}' | tai
 ```
 
 The steward runs on any Mac or Linux machine with Swift, and takes up the
-realm where it stands after a restart. `NULLMERE_REALM_NAME`,
+realm where it stands after a restart. `Dockerfile.steward` packs it into
+a small container for a server:
+
+```sh
+docker build -f Dockerfile.steward -t nullmere-steward .
+docker run -d --restart unless-stopped -e NULLMERE_STEWARD_TOKEN="$token" \
+    nullmere-steward https://maincloud.spacetimedb.com/nullmere
+```
+ `NULLMERE_REALM_NAME`,
 `NULLMERE_REALM_SEED`, `NULLMERE_REALM_SEATS` and `NULLMERE_WATCH_SECONDS`
 shape a new realm. For a realm on your own machine, `spacetime start`, then
 publish with `--server local`, run the steward against
