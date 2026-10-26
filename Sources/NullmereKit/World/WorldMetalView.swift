@@ -12,7 +12,21 @@ final class WorldMetalView: MTKView {
     private static let logger = Logger(subsystem: "online.nullmere.game", category: "world")
 
     var camera = Camera() {
-        didSet { if camera != oldValue { redraw() } }
+        didSet {
+            if camera != oldValue {
+                if Self.renderScale(forCameraScale: camera.scale) != Self.renderScale(forCameraScale: oldValue.scale) {
+                    updateDrawableSize()
+                }
+                redraw()
+            }
+        }
+    }
+
+    /// The fraction of native pixels the world is drawn at. Close in, a hex
+    /// spans so many points that drawing it at three quarters of native
+    /// resolution looks the same and keeps the frame well inside its budget.
+    static func renderScale(forCameraScale scale: Double) -> Double {
+        scale >= 44 ? 0.75 : 1
     }
     var hovered: Hex? {
         didSet { if hovered != oldValue { redraw() } }
@@ -49,6 +63,7 @@ final class WorldMetalView: MTKView {
         colorspace = CGColorSpace(name: CGColorSpace.sRGB)
         clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         framebufferOnly = true
+        autoResizeDrawable = false
         updateFrameRate()
         updatePausing()
     }
@@ -64,6 +79,26 @@ final class WorldMetalView: MTKView {
         for observer in appObservers {
             NotificationCenter.default.removeObserver(observer)
         }
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        updateDrawableSize()
+    }
+
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        updateDrawableSize()
+    }
+
+    private func updateDrawableSize() {
+        let backing = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+        let factor = backing * Self.renderScale(forCameraScale: camera.scale)
+        let size = CGSize(width: max(1, (bounds.width * factor).rounded()), height: max(1, (bounds.height * factor).rounded()))
+        if drawableSize != size {
+            drawableSize = size
+        }
+        redraw()
     }
 
     override var isOpaque: Bool { true }

@@ -309,7 +309,7 @@ public final class GameSession {
         }
         refreshWorld()
         isEndingWatch = false
-        store.save(state)
+        reportSave(store.save(state))
     }
 
     /// Selects the next unit that's waiting for orders.
@@ -350,9 +350,24 @@ public final class GameSession {
         }
     }
 
+    /// Whether the last save failed, so the next success can say so.
+    private(set) var saveFailing = false
+
     public func save(quietly: Bool = false) {
-        store.save(state)
-        if !quietly { post("Saved.", tone: .neutral) }
+        let problem = store.save(state)
+        reportSave(problem)
+        if problem == nil, !quietly { post("Saved.", tone: .neutral) }
+    }
+
+    /// A save that fails is never silent; nor is the one that recovers.
+    private func reportSave(_ problem: String?) {
+        if let problem {
+            post("The game could not be saved: \(problem) It is safe while Nullmere stays open; free some space and press ⌘S.", tone: .bad)
+            saveFailing = true
+        } else if saveFailing {
+            post("Saved again.", tone: .good)
+            saveFailing = false
+        }
     }
 
     // MARK: Bookkeeping

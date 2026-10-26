@@ -44,7 +44,9 @@ public struct SaveStore: Sendable {
         FileManager.default.fileExists(atPath: autosaveURL.path)
     }
 
-    public func save(_ state: GameState) {
+    /// Writes the game; returns why it couldn't, if it couldn't.
+    @discardableResult
+    public func save(_ state: GameState) -> String? {
         do {
             let files = FileManager.default
             try files.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -59,8 +61,10 @@ public struct SaveStore: Sendable {
                 // A new game starts with nothing said.
                 try? FileManager.default.removeItem(at: voicesURL)
             }
+            return nil
         } catch {
             SaveStore.logger.error("Saving failed: \(error.localizedDescription, privacy: .public)")
+            return error.localizedDescription
         }
     }
 

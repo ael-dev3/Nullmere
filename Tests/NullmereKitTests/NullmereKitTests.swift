@@ -453,3 +453,30 @@ final class ReachDisplayTests: XCTestCase {
         XCTAssertTrue(session.reach.isEmpty, "Nothing selected, nothing shown")
     }
 }
+
+@MainActor
+final class SaveFailureTests: XCTestCase {
+    /// Where the save folder should be stands a file, so nothing can be
+    /// written: the player is told, and told again when saving works.
+    func testAFailedSaveIsNeverSilent() throws {
+        let base = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: base) }
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        let blocked = base.appendingPathComponent("Nullmere")
+        try Data("not a folder".utf8).write(to: blocked)
+
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "full disk", houseCount: 3, radius: 14)),
+                                  store: SaveStore(directory: blocked))
+        XCTAssertNotNil(SaveStore(directory: blocked).save(session.state))
+        session.endWatch()
+        let warning = try XCTUnwrap(session.notices.last)
+        XCTAssertEqual(warning.tone, .bad)
+        XCTAssertTrue(warning.text.contains("could not be saved"))
+        XCTAssertTrue(session.saveFailing)
+
+        try FileManager.default.removeItem(at: blocked)
+        session.save(quietly: true)
+        XCTAssertEqual(session.notices.last?.text, "Saved again.")
+        XCTAssertFalse(session.saveFailing)
+    }
+}

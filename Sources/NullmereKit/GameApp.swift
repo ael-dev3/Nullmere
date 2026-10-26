@@ -144,8 +144,8 @@ public final class GameApp {
     public func begin(_ settings: GameSettings) {
         guard readiness.allowsPlay else { return }
         let session = GameSession(state: GameState(settings: settings), store: store, voice: Self.voice())
-        store.save(session.state)
-        hasSave = true
+        session.save(quietly: true)
+        hasSave = store.hasSave
         play(session)
     }
 

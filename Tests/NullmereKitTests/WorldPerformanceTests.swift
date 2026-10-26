@@ -20,31 +20,36 @@ final class WorldPerformanceTests: XCTestCase {
             _ = state.endWatch()
         }
         try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
-        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm, width: Self.width, height: Self.height, mipmapped: false
-        )
-        descriptor.usage = .renderTarget
-        descriptor.storageMode = .private
-        let target = try XCTUnwrap(device.makeTexture(descriptor: descriptor))
         let seat = try XCTUnwrap(state.seat(of: state.player)).position
         let centre = HexLayout(size: 1).center(of: seat)
 
         var results: [String] = []
         // Zoomed out is the most work: the most tiles, edges and mist on screen.
         for scale in [12.0, 28.0, 60.0] {
+            // At the resolution the view draws at for this zoom.
+            let fraction = WorldMetalView.renderScale(forCameraScale: scale)
+            let width = Int((Double(Self.width) * fraction).rounded())
+            let height = Int((Double(Self.height) * fraction).rounded())
+            let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false
+            )
+            descriptor.usage = .renderTarget
+            descriptor.storageMode = .private
+            let target = try XCTUnwrap(device.makeTexture(descriptor: descriptor))
             var times: [Double] = []
             for frame in 0..<30 {
                 let uniforms = WorldUniforms(
-                    view: SIMD4(Float(Self.width), Float(Self.height), Float(scale * 2), Float(3 + Double(frame) / 60)),
-                    camera: SIMD4(Float(centre.x), Float(centre.y), Float(state.map.radius), 2),
+                    view: SIMD4(Float(width), Float(height), Float(scale * 2 * fraction), Float(3 + Double(frame) / 60)),
+                    camera: SIMD4(Float(centre.x), Float(centre.y), Float(state.map.radius), Float(2 * fraction)),
                     highlight: SIMD4(Float(seat.q), Float(seat.r), Float(seat.q), Float(seat.r))
                 )
                 if let ms = renderer.measureFrame(uniforms, into: target) { times.append(ms) }
             }
             let settled = Array(times.dropFirst(5)).sorted()
             let median = settled[settled.count / 2]
-            results.append("scale \(Int(scale)) median \(String(format: "%.2f", median)) ms")
-            XCTAssertLessThan(median, 1000.0 / 60, "The world at scale \(scale) must fit a 60 Hz frame")
+            results.append("scale \(Int(scale)) at \(Int(fraction * 100))% median \(String(format: "%.2f", median)) ms")
+            // A 60 Hz frame, with a sixth to spare for the interface.
+            XCTAssertLessThan(median, 1000.0 / 60 * 0.85, "The world at scale \(scale) must fit a 60 Hz frame with room to spare")
         }
         print("PERF world \(Self.width)x\(Self.height) on \(device.name): " + results.joined(separator: ", "))
     }
