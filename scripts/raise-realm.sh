@@ -114,7 +114,8 @@ case "$MODE" in
             ${NULLMERE_REALM_SEATS:+-e NULLMERE_REALM_SEATS="$NULLMERE_REALM_SEATS"} \
             ${NULLMERE_WATCH_SECONDS:+-e NULLMERE_WATCH_SECONDS="$NULLMERE_WATCH_SECONDS"} \
             nullmere-steward "$ADDRESS" >/dev/null
-        for _ in $(seq 1 30); do
+        # A steward started again waits up to a minute for its old hold.
+        for _ in $(seq 1 90); do
             docker logs "nullmere-steward-$DB" 2>&1 | grep -q "Stewarding" && break
             sleep 1
         done
@@ -132,7 +133,7 @@ case "$MODE" in
         fi
         pkill -f "NullmereSteward $ADDRESS" 2>/dev/null || true
         steward_env nohup "$BIN" "$ADDRESS" > "$LOG" 2>&1 &
-        for _ in $(seq 1 30); do
+        for _ in $(seq 1 90); do
             grep -q "Stewarding" "$LOG" 2>/dev/null && break
             sleep 1
         done

@@ -48,6 +48,14 @@ public actor RealmSteward {
     private var lastReport = 0.0
     private var failures = 0
     private var lastHealth = 0.0
+    private var lastPublished = 0.0
+    /// This steward's own name for itself, for its hold on the realm.
+    public let holder = KeeperIdentity.make()
+    /// Another steward holds the realm: this one has stopped.
+    public private(set) var isDisplaced = false
+    /// The longest a steward goes without publishing, so its hold on the
+    /// realm (a minute) never lapses while it runs.
+    public static let heartbeat = 20.0
     /// How often a running steward says how the realm stands.
     public static let healthEvery = 600.0
     /// Answers given, and when, until they are forgotten.
@@ -85,7 +93,7 @@ public actor RealmSteward {
             state.depart(keeper.id, now: now)
         }
         worldChanged = true
-        try await publish()
+        try await publish(now: now)
     }
 
     /// One round: every waiting request, then the clock. Returns whether
@@ -128,7 +136,7 @@ public actor RealmSteward {
         if changed { worldChanged = true }
         let status = state.status(now: now)
         if worldChanged || !unanswered.isEmpty || status.online != lastStatus?.online || status.ready != lastStatus?.ready
-            || status.present != lastStatus?.present {
+            || status.present != lastStatus?.present || now - lastPublished > RealmSteward.heartbeat {
             // Should it fail, the next round publishes all of it again.
             try await publish(now: now)
         }
@@ -179,6 +187,11 @@ public actor RealmSteward {
     /// Publishes the realm: whole, for the steward; its status, for
     /// everyone; and each keeper's own view, where it changed, with the
     /// events they heard.
+    /// The realm refused a publication because another steward holds it.
+    public static func isHeldByAnother(_ error: any Error) -> Bool {
+        String(describing: error).contains("Another steward holds the realm")
+    }
+
     /// "Age 1, watch 40: 3 keepers there of 5, 7 seats free of 12."
     public static func health(_ status: RealmStatus) -> String {
         "Age \(status.age), watch \(status.watch): \(status.online) keeper\(status.online == 1 ? "" : "s") there of \(status.keepers), "
@@ -215,16 +228,23 @@ public actor RealmSteward {
             heard.append(String(decoding: try encoder.encode(events), as: UTF8.self))
         }
         let answers = unanswered
-        try await transport.call("publish", [
-            .integer(version + 1),
-            .string(worldChanged ? String(decoding: try encoder.encode(state), as: UTF8.self) : ""),
-            .string(String(decoding: try encoder.encode(status), as: UTF8.self)),
-            .strings(keepers),
-            .strings(views),
-            .strings(heard),
-            .integers(answers.map(\.id)),
-            .strings(answers.map(\.reply)),
-        ], token: token)
+        do {
+            try await transport.call("publish", [
+                .integer(version + 1),
+                .string(worldChanged ? String(decoding: try encoder.encode(state), as: UTF8.self) : ""),
+                .string(String(decoding: try encoder.encode(status), as: UTF8.self)),
+                .strings(keepers),
+                .strings(views),
+                .strings(heard),
+                .integers(answers.map(\.id)),
+                .strings(answers.map(\.reply)),
+                .string(holder),
+            ], token: token)
+        } catch {
+            if RealmSteward.isHeldByAnother(error) { isDisplaced = true }
+            throw error
+        }
+        lastPublished = now
         version += 1
         lastStatus = status
         published.merge(shown) { $1 }
@@ -236,7 +256,7 @@ public actor RealmSteward {
 
     /// Runs the realm until cancelled, a step every quarter second.
     public func run(clock: @Sendable () -> Double = { Date().timeIntervalSince1970 }) async {
-        while !Task.isCancelled {
+        while !Task.isCancelled, !isDisplaced {
             let now = clock()
             do {
                 try await step(now: now)
@@ -248,6 +268,8 @@ public actor RealmSteward {
                     lastHealth = now
                     report(RealmSteward.health(state.status(now: now)))
                 }
+            } catch where isDisplaced {
+                report("Another steward holds the realm; this one stops. \(error)")
             } catch {
                 // The server will be there again; the next round tries anew,
                 // with all that waits. Said once a minute at most.

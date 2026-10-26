@@ -288,8 +288,9 @@ final class NetworkRealmTests: XCTestCase {
         await line.failNext("publish")
         _ = try? await first.step(now: 2)
 
-        // The steward stops here; another takes up the realm as it was kept,
-        // and carries the order out once.
+        // The steward stops here; once its hold on the realm lapses, another
+        // takes up the realm as it was kept, and carries the order out once.
+        await db.advance(61)
         let second = try await RealmSteward(transport: db, token: owner.token, name: "ignored", seed: "ignored", now: 3)
         let firstVersion = await first.version
         let secondVersion = await second.version
@@ -299,6 +300,36 @@ final class NetworkRealmTests: XCTestCase {
         XCTAssertEqual(grain, before.grain + 10)
         let orders = await db.handled(kind: "order")
         XCTAssertEqual(orders, 1)
+    }
+
+    func testOneStewardHoldsTheRealmAtATime() async throws {
+        let db = FakeSpacetime()
+        let (first, running, credentials) = try await steward(db)
+        defer { running.cancel() }
+        do {
+            _ = try await RealmSteward(transport: db, token: credentials.token, name: "x", seed: "x", now: 1)
+            XCTFail("A second steward took up a realm already held")
+        } catch {
+            XCTAssertTrue(RealmSteward.isHeldByAnother(error), "\(error)")
+        }
+        // The first keeps its hold, round after round.
+        try await first.step(now: 30)
+        let displaced = await first.isDisplaced
+        XCTAssertFalse(displaced)
+
+        // Should the first fall silent past its hold, another may take the
+        // realm, and the first, finding it held, stops.
+        running.cancel()
+        await db.advance(61)
+        let second = try await RealmSteward(transport: db, token: credentials.token, name: "x", seed: "x", now: 2)
+        do {
+            try await first.step(now: 100)
+            XCTFail("The old steward published over the new")
+        } catch {
+            let stopped = await first.isDisplaced
+            XCTAssertTrue(stopped)
+        }
+        try await second.step(now: 3)
     }
 
     func testOneKeepersFloodDoesNotCrowdOutAnother() async throws {
@@ -334,7 +365,9 @@ final class NetworkRealmTests: XCTestCase {
         let watch = await first.state.world.watch
         let version = await first.version
 
-        // The steward starts again, as after a restart.
+        // The steward starts again, as after a restart, once its old hold
+        // on the realm has lapsed.
+        await db.advance(61)
         let resumed = try await RealmSteward(transport: db, token: credentials.token, name: "ignored", seed: "ignored", now: 2)
         let resumedWatch = await resumed.state.world.watch
         let resumedVersion = await resumed.version

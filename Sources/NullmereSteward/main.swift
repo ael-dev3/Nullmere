@@ -36,23 +36,42 @@ if let value = environment["NULLMERE_STEWARD_TOKEN"], !value.isEmpty {
     fail("Set NULLMERE_STEWARD_TOKEN or NULLMERE_STEWARD_TOKEN_FILE to the token of the identity that published the module.")
 }
 
-let steward: RealmSteward
-do {
-    steward = try await RealmSteward(
-        transport: transport,
-        token: token,
-        name: environment["NULLMERE_REALM_NAME"] ?? "The Nullmere",
-        seed: environment["NULLMERE_REALM_SEED"] ?? "the still water",
-        seats: environment["NULLMERE_REALM_SEATS"].flatMap(Int.init) ?? RealmState.defaultSeats,
-        watchLength: environment["NULLMERE_WATCH_SECONDS"].flatMap(Double.init) ?? RealmState.defaultWatchLength,
-        now: Date().timeIntervalSince1970
-    )
-} catch {
-    fail("The steward couldn't take up the realm: \(error)")
+// A steward restarted while its last self still holds the realm waits for
+// that hold to lapse (a minute at most); another steward running elsewhere
+// keeps it, and this one gives up.
+func takeUp() async -> RealmSteward {
+    let waitUntil = Date().addingTimeInterval(150)
+    var said = false
+    while true {
+        do {
+            return try await RealmSteward(
+                transport: transport,
+                token: token,
+                name: environment["NULLMERE_REALM_NAME"] ?? "The Nullmere",
+                seed: environment["NULLMERE_REALM_SEED"] ?? "the still water",
+                seats: environment["NULLMERE_REALM_SEATS"].flatMap(Int.init) ?? RealmState.defaultSeats,
+                watchLength: environment["NULLMERE_WATCH_SECONDS"].flatMap(Double.init) ?? RealmState.defaultWatchLength,
+                now: Date().timeIntervalSince1970
+            )
+        } catch where RealmSteward.isHeldByAnother(error) && Date() < waitUntil {
+            if !said {
+                print("Another steward holds the realm; waiting for its hold to lapse.")
+                said = true
+            }
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+        } catch {
+            fail("The steward couldn't take up the realm: \(error)")
+        }
+    }
 }
+
+let steward = await takeUp()
 let realm = await steward.state
 print("Stewarding \(realm.name), age \(realm.age), watch \(realm.world.watch), at \(text).")
 await steward.setReporter { line in
     print("\(Date().formatted(.iso8601)) \(line)")
 }
 await steward.run()
+if await steward.isDisplaced {
+    fail("Another steward holds the realm now; this one has stopped.")
+}

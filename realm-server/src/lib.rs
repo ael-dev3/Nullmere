@@ -26,6 +26,21 @@ const MAX_NONCE: usize = 64;
 /// Most requests one keeper may have waiting.
 const MAX_WAITING: usize = 32;
 
+/// How long a steward's hold on the realm lasts without a publication.
+const LEASE_MICROS: i64 = 60_000_000;
+
+/// The one steward running the realm now. Stewards share the publisher's
+/// identity, so a second one started by mistake would carry out the same
+/// requests twice and pull the world two ways; the lease lets one run.
+#[table(accessor = lease)]
+pub struct Lease {
+    #[primary_key]
+    pub id: u8,
+    /// The running steward's own name for itself, chosen when it starts.
+    pub holder: String,
+    pub until_micros: i64,
+}
+
 /// The one identity that may write the world: the steward's.
 #[table(accessor = steward)]
 pub struct Steward {
@@ -213,10 +228,20 @@ pub fn publish(
     events: Vec<String>,
     requests: Vec<u64>,
     replies: Vec<String>,
+    holder: String,
 ) -> Result<(), String> {
     if !is_steward(ctx) {
         return Err("Only the steward writes the world.".into());
     }
+    let now = ctx.timestamp.to_micros_since_unix_epoch();
+    if let Some(lease) = ctx.db.lease().id().find(0) {
+        if lease.holder != holder && lease.until_micros > now {
+            let seconds = (lease.until_micros - now) / 1_000_000 + 1;
+            return Err(format!("Another steward holds the realm for {seconds} s more."));
+        }
+        ctx.db.lease().id().delete(0);
+    }
+    ctx.db.lease().insert(Lease { id: 0, holder, until_micros: now + LEASE_MICROS });
     if keepers.len() != views.len() || keepers.len() != events.len() {
         return Err("Every view needs its keeper and its events.".into());
     }

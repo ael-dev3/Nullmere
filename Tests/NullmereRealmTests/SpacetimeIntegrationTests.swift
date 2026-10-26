@@ -29,7 +29,7 @@ final class SpacetimeIntegrationTests: XCTestCase {
         let stranger = try await transport.createIdentity()
         do {
             try await transport.call("publish", [.integer(999_999), .string("{}"), .string("{}"), .strings([]), .strings([]), .strings([]),
-                                                 .integers([]), .strings([])], token: stranger.token)
+                                                 .integers([]), .strings([]), .string("stranger")], token: stranger.token)
             XCTFail("A stranger wrote the world")
         } catch {
             XCTAssertTrue(String(describing: error).contains("steward"), "\(error)")
@@ -55,6 +55,15 @@ final class SpacetimeIntegrationTests: XCTestCase {
                                              seats: 4, watchLength: 600, now: Date().timeIntervalSince1970)
         let running = Task { await steward.run() }
         defer { running.cancel() }
+
+        // A second steward, started by mistake, finds the realm held.
+        do {
+            _ = try await RealmSteward(transport: transport, token: token, name: "x", seed: "x", now: Date().timeIntervalSince1970)
+            XCTFail("Two stewards held the realm at once")
+        } catch {
+            XCTAssertTrue(RealmSteward.isHeldByAnother(error), "\(error)")
+            print("REALM a second steward found the realm held")
+        }
 
         let (a, earA, b, earB) = await MainActor.run { () -> (NetworkRealmLink, Listener, NetworkRealmLink, Listener) in
             let a = NetworkRealmLink(transport: transport, credentials: MemoryStore(), pollInterval: 0.2)

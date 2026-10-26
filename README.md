@@ -275,7 +275,9 @@ request sent again, after its answer was lost, is carried out once. The
 steward keeps the world and gives its answers in one transaction, so a
 round it couldn't publish, or a steward stopped mid-round, loses and
 doubles nothing; it says when a round fails, and every ten minutes how
-the realm stands.
+the realm stands. One steward holds the realm at a time: a second, started
+by mistake, finds it held and gives up, and a steward started again waits
+the minute its old hold takes to lapse.
 
 ## Playing Nullmere
 

@@ -16,6 +16,12 @@ actor FakeSpacetime: SpacetimeTransport {
     private var status: (version: UInt64, status: String)?
     private var views: [String: (version: UInt64, view: String, events: String)] = [:] // by keeper
     private(set) var calls: [String] = []
+    /// The server's clock, in seconds, moved on by tests.
+    private var time = 0.0
+    private var lease: (holder: String, until: Double)?
+
+    func advance(_ seconds: Double) { time += seconds }
+
     /// Requests of each kind the steward has answered.
     private var settled: [String: Int] = [:]
 
@@ -66,12 +72,16 @@ actor FakeSpacetime: SpacetimeTransport {
             if case .strings(let nonces)? = arguments.first { nonces.forEach { replies[$0] = nil } }
         case "publish":
             guard me == steward else { throw SpacetimeError("Only the steward writes the world.") }
-            guard case .integer(let version)? = arguments.first, arguments.count == 8,
+            guard case .integer(let version)? = arguments.first, arguments.count == 9, case .string(let holder) = arguments[8],
                   case .strings(let keepers) = arguments[3], case .strings(let shown) = arguments[4], case .strings(let heard) = arguments[5],
                   case .integers(let ids) = arguments[6], case .strings(let answers) = arguments[7]
             else { throw SpacetimeError("bad arguments") }
             guard keepers.count == shown.count, keepers.count == heard.count else { throw SpacetimeError("Every view needs its keeper and its events.") }
             guard ids.count == answers.count else { throw SpacetimeError("Every answer needs its request.") }
+            if let lease, lease.holder != holder, lease.until > time {
+                throw SpacetimeError("Another steward holds the realm for \(Int(lease.until - time) + 1) s more.")
+            }
+            lease = (holder, time + 60)
             if let status, version <= status.version { throw SpacetimeError("Version \(version) is not after \(status.version).") }
             let state = try string(1)
             if !state.isEmpty {
