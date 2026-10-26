@@ -8,9 +8,9 @@ enum Guide {
 
     static let sections: [Section] = [
         Section(title: "The watch", lines: [
-            "Each turn is a watch. Give your orders, then end the watch with ⌘↩ or End Watch.",
-            "Then the rival Houses move, holds yield, works rise and companies march on.",
-            "The game saves after every watch, and whenever you leave it.",
+            "The lake is one world, shared by every keeper in the realm. Each turn is a watch: give your orders, then say you're ready with ⌘↩.",
+            "The watch turns when every keeper there is ready, or when its time runs out. Then the stewards play the seats no keeper holds, holds yield, works rise and companies march on.",
+            "The realm keeps the world. Leave, and your House stands as you left it; an empty realm sleeps until a keeper returns.",
         ]),
         Section(title: "The land", lines: [
             "Strand, salt flats, greyfields, blackwood and barrows ring the lake.",
@@ -31,7 +31,8 @@ enum Guide {
             "To take a hold, break its ward, then march Spears or Riders in. You carry off its share of their stores; a seat holds half.",
         ]),
         Section(title: "Houses", lines: [
-            "Rival Houses are ambitious, steadfast, wary or cunning, and remember who wronged them.",
+            "Other Houses are held by keepers, or by stewards until a keeper claims them. Stewards are ambitious, steadfast, wary or cunning, and remember who wronged them.",
+            "Proposals to a keeper wait as envoys for their answer, as theirs wait for yours.",
             "Declare war, offer peace or a pact, and answer their envoys. A pact shares sight; breaking one is not forgotten.",
             "A far stronger rival may demand tribute, a fifth of your stores: pay, and it keeps the peace for twenty watches; refuse, or let its envoy wait out, and it marches. You may demand tribute of the weak, too.",
             "Envoys and the chronicle speak in words written on your Mac by Apple's on-device model. They only speak; the rules decide.",
@@ -45,8 +46,8 @@ enum Guide {
         Section(title: "Keys", lines: [
             "Tab: the next company waiting · H: your seat · F: fortify · B: found a hold",
             "Arrows or WASD: pan · + and −: zoom · Esc: close, then clear the selection",
-            "1: Houses · 2: Chronicle · ?: this guide · ⌘Z: take back an order · ⌘S: save",
-            "⌘↩: end the watch · ⇧⌘↩: end watches until something needs you (up to ten) · ⌘,: settings",
+            "1: Houses · 2: Chronicle · ?: this guide · ⇧⌘W: leave the world · ⌘,: settings",
+            "⌘↩: ready · ⇧⌘↩: stay ready until something needs you, up to ten watches",
         ]),
     ]
 }

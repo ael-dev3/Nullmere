@@ -3,6 +3,7 @@ import Metal
 import SwiftUI
 import LauncherCore
 import NullmereCore
+import NullmereRealm
 import XCTest
 @testable import NullmereKit
 
@@ -76,20 +77,16 @@ final class CameraTests: XCTestCase {
     }
 }
 
-final class SaveStoreTests: XCTestCase {
-    func testSavesAndLoadsTheWholeGame() throws {
+final class LocalStoreTests: XCTestCase {
+    func testWordsAreKeptForEachAgeOfEachRealm() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let store = SaveStore(directory: directory)
-        XCTAssertFalse(store.hasSave)
-        XCTAssertNil(store.load())
-        var state = GameState(settings: GameSettings(seedText: "saved water", houseCount: 3, radius: 14))
-        _ = state.endWatch()
-        store.save(state)
-        XCTAssertTrue(store.hasSave)
-        XCTAssertEqual(store.load(), state)
-        store.delete()
-        XCTAssertFalse(store.hasSave)
+        let store = LocalStore(directory: directory)
+        let first = store.forAge(1, of: "The Nullmere"), second = store.forAge(2, of: "The Nullmere")
+        first.saveVoices(["chronicle-3": "The lake was still."])
+        XCTAssertEqual(first.loadVoices(), ["chronicle-3": "The lake was still."])
+        XCTAssertTrue(second.loadVoices().isEmpty, "A new age, a new book")
+        XCTAssertFalse(first.directory.path.contains(" "), "A folder name the realm's name can't break")
     }
 }
 
@@ -98,7 +95,7 @@ final class GameSessionTests: XCTestCase {
     private func session() -> (GameSession, URL) {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let state = GameState(settings: GameSettings(seedText: "session", houseCount: 3, radius: 16))
-        return (GameSession(state: state, store: SaveStore(directory: directory)), directory)
+        return (GameSession(state: state, store: LocalStore(directory: directory)), directory)
     }
 
     func testClickingSelectsOwnCompaniesThenTheGroundBeneath() throws {
@@ -122,12 +119,14 @@ final class GameSessionTests: XCTestCase {
         XCTAssertEqual(session.notices.last?.tone, .bad)
     }
 
-    func testEndingTheWatchAdvancesAndSaves() {
+    func testBeingReadyTurnsTheWatchInTheRealm() {
         let (session, directory) = session()
         defer { try? FileManager.default.removeItem(at: directory) }
+        XCTAssertEqual(session.realmStatus?.watch, 1, "The realm answered at once")
         session.endWatch()
-        XCTAssertEqual(session.state.watch, 2)
-        XCTAssertEqual(SaveStore(directory: directory).load()?.watch, 2)
+        XCTAssertEqual(session.state.watch, 2, "The only keeper there was ready, so the watch turned")
+        XCTAssertFalse(session.isReady, "A new watch, not yet ready")
+        XCTAssertEqual(session.realmStatus?.watch, 2)
     }
 
     func testMarchesAreShownFromWhereTheCompanyStood() throws {
@@ -194,26 +193,29 @@ final class CounselTests: XCTestCase {
 
 @MainActor
 final class GameGateTests: XCTestCase {
-    func testTheGameOpensOnlyOnceTheModelIsReady() throws {
+    func testTheRealmOpensOnlyOnceTheModelIsReady() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         var state = ModelReadiness.modelNotReady
-        let app = GameApp(store: SaveStore(directory: directory), readiness: { state }, sound: false)
+        let app = GameApp(store: LocalStore(directory: directory), readiness: { state }, sound: false,
+                          address: .hosted(seed: "gate"), identity: FileIdentityStore(url: directory.appendingPathComponent("identity")))
 
         for blocked in [ModelReadiness.modelNotReady, .appleIntelligenceNotEnabled, .deviceNotEligible, .unavailable] {
             state = blocked
             app.checkModel()
             XCTAssertEqual(app.readiness, blocked)
-            guard case .gate = app.phase else { return XCTFail("\(blocked) must keep the game closed") }
-            app.begin(GameSettings(seedText: "too soon", houseCount: 3, radius: 14))
-            XCTAssertNil(app.session, "No game begins behind the gate")
+            guard case .gate = app.phase else { return XCTFail("\(blocked) must keep the realm closed") }
+            XCTAssertFalse(app.canEnter(with: "Ama"), "No way in behind the gate")
         }
 
         state = .ready
         app.checkModel()
-        guard case .title = app.phase else { return XCTFail("A ready model opens the title screen") }
-        app.begin(GameSettings(seedText: "now", houseCount: 3, radius: 14))
-        XCTAssertNotNil(app.session)
+        guard case .frontDoor = app.phase else { return XCTFail("A ready model opens the realm's front door") }
+        guard case .open(let status) = app.door else { return XCTFail("The realm is reached: \(app.door)") }
+        XCTAssertEqual(status.watch, 1)
+        app.enterWorld(name: "Ama")
+        let session = try XCTUnwrap(app.session)
+        XCTAssertEqual(session.playerHouse.title, "House Ama")
     }
 }
 
@@ -236,47 +238,6 @@ final class HoverInfoTests: XCTestCase {
     }
 }
 
-@MainActor
-final class UndoTests: XCTestCase {
-    private func session() -> (GameSession, URL) {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let state = GameState(settings: GameSettings(seedText: "undo", houseCount: 3, radius: 16))
-        return (GameSession(state: state, store: SaveStore(directory: directory)), directory)
-    }
-
-    func testABuildingCanBeTakenBack() throws {
-        let (session, directory) = session()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let before = session.state
-        let seat = try XCTUnwrap(session.state.seat(of: session.player))
-        XCTAssertFalse(session.canUndo)
-        XCTAssertTrue(session.perform(.build(hold: seat.id, kind: .granary)))
-        XCTAssertTrue(session.canUndo)
-        session.undo()
-        XCTAssertEqual(session.state, before, "Everything is as it was, resources included")
-        XCTAssertFalse(session.canUndo)
-    }
-
-    func testWhatChanceOrDiscoveryDecidedStays() throws {
-        let (session, directory) = session()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let lantern = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .lantern })
-        // March the lantern somewhere it will see new country.
-        let far = try XCTUnwrap(lantern.position.ring(4).first {
-            session.state.map[$0]?.terrain.isPassable == true && session.state.path(for: lantern, to: $0) != nil
-        })
-        let explored = session.playerHouse.explored.filter { $0 }.count
-        XCTAssertTrue(session.perform(.move(unit: lantern.id, to: far)))
-        if session.playerHouse.explored.filter({ $0 }).count > explored {
-            XCTAssertFalse(session.canUndo, "A march that revealed country can't be taken back")
-        }
-        let seat = try XCTUnwrap(session.state.seat(of: session.player))
-        XCTAssertTrue(session.perform(.build(hold: seat.id, kind: .granary)))
-        XCTAssertTrue(session.canUndo)
-        session.endWatch()
-        XCTAssertFalse(session.canUndo, "A new watch starts with nothing to take back")
-    }
-}
 
 @MainActor
 final class BlowTests: XCTestCase {
@@ -284,7 +245,7 @@ final class BlowTests: XCTestCase {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let state = GameState(settings: GameSettings(seedText: "blows", houseCount: 3, radius: 16))
-        let session = GameSession(state: state, store: SaveStore(directory: directory))
+        let session = GameSession(state: state, store: LocalStore(directory: directory))
         let mine = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind.isMilitary })
         let near = Battle(attacker: mine.id, attackerOwner: session.player, attackerKind: mine.kind,
                           defender: 999, defenderOwner: 1, defenderKind: .spear, hold: nil, at: mine.position,
@@ -301,87 +262,7 @@ final class BlowTests: XCTestCase {
     }
 }
 
-final class SaveRobustnessTests: XCTestCase {
-    private func directory() -> URL {
-        FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-    }
 
-    func testEachSaveKeepsTheOneBeforeAsABackup() throws {
-        let dir = directory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let store = SaveStore(directory: dir)
-        var state = GameState(settings: GameSettings(seedText: "backup", houseCount: 3, radius: 14))
-        store.save(state)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: store.backupURL.path))
-        let first = state
-        _ = state.endWatch()
-        store.save(state)
-        XCTAssertEqual(store.open(), .game(state))
-        let backup = try JSONDecoder().decode(GameState.self, from: Data(contentsOf: store.backupURL))
-        XCTAssertEqual(backup, first)
-    }
-
-    func testABrokenSaveFallsBackToTheBackupAndIsSetAside() throws {
-        let dir = directory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let store = SaveStore(directory: dir)
-        var state = GameState(settings: GameSettings(seedText: "broken", houseCount: 3, radius: 14))
-        store.save(state)
-        let good = state
-        _ = state.endWatch()
-        store.save(state)
-        try Data("{ not a game".utf8).write(to: store.autosaveURL)
-
-        XCTAssertEqual(store.open(), .recovered(good))
-        let names = try FileManager.default.contentsOfDirectory(atPath: dir.path)
-        XCTAssertTrue(names.contains { $0.hasPrefix("autosave-unreadable-") }, "The broken save is kept, not lost")
-        XCTAssertEqual(store.open(), .game(good), "The recovered game is the autosave again")
-    }
-
-    func testAnUnreadableSaveWithNoBackupIsKeptAndReported() throws {
-        let dir = directory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let store = SaveStore(directory: dir)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        try Data("{ \"formatVersion\": 999 }".utf8).write(to: store.autosaveURL)
-        guard case .unreadable(let aside) = store.open() else { return XCTFail("It must be reported") }
-        XCTAssertTrue(FileManager.default.fileExists(atPath: aside.path))
-        XCTAssertFalse(store.hasSave, "A new game won't overwrite it: it has moved aside")
-        XCTAssertEqual(store.open(), .none)
-    }
-}
-
-@MainActor
-final class SaveLifecycleTests: XCTestCase {
-    func testOrdersAreSavedWhenTheGameIsPutAside() throws {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let store = SaveStore(directory: dir)
-        let app = GameApp(store: store, readiness: { .ready }, sound: false)
-        app.begin(GameSettings(seedText: "put aside", houseCount: 3, radius: 14))
-        let session = try XCTUnwrap(app.session)
-        let seat = try XCTUnwrap(session.state.seat(of: session.player))
-        XCTAssertTrue(session.perform(.build(hold: seat.id, kind: .granary)))
-        XCTAssertNotEqual(store.load(), session.state, "Not saved yet: no watch has ended")
-
-        NotificationCenter.default.post(name: NSApplication.willResignActiveNotification, object: nil)
-        XCTAssertEqual(store.load(), session.state, "Another app in front: the orders are kept")
-    }
-
-    func testAnUnreadableSaveIsExplainedOnTheTitleScreen() throws {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let store = SaveStore(directory: dir)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        try Data("garbage".utf8).write(to: store.autosaveURL)
-        let app = GameApp(store: store, readiness: { .ready }, sound: false)
-        XCTAssertTrue(app.hasSave)
-        app.continueSaved()
-        XCTAssertNil(app.session)
-        XCTAssertNotNil(app.saveNotice)
-        XCTAssertFalse(app.hasSave)
-    }
-}
 
 final class GuideTests: XCTestCase {
     func testTheGuideCoversTheGameAndItsKeys() {
@@ -389,7 +270,7 @@ final class GuideTests: XCTestCase {
         XCTAssertEqual(titles, ["The watch", "The land", "Holds", "Companies", "Houses", "Winning", "Keys"])
         XCTAssertTrue(Guide.sections.allSatisfy { !$0.lines.isEmpty && $0.lines.allSatisfy { $0.count > 10 } })
         let keys = Guide.sections.last!.lines.joined(separator: " ")
-        for key in ["Tab", "H:", "F:", "B:", "Esc", "1:", "2:", "?:", "⌘Z", "⌘S"] {
+        for key in ["Tab", "H:", "F:", "B:", "Esc", "1:", "2:", "?:", "⌘↩", "⇧⌘↩", "⇧⌘W"] {
             XCTAssertTrue(keys.contains(key), "The guide names \(key)")
         }
     }
@@ -408,7 +289,7 @@ final class WatchCardTests: XCTestCase {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let session = GameSession(state: GameState(settings: GameSettings(seedText: "card", houseCount: 3, radius: 16)),
-                                  store: SaveStore(directory: dir))
+                                  store: LocalStore(directory: dir))
         let before = session.playerHouse.stock
         session.endWatch()
         let card = try XCTUnwrap(session.watchCard)
@@ -444,7 +325,7 @@ final class ReachDisplayTests: XCTestCase {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let session = GameSession(state: GameState(settings: GameSettings(seedText: "range", houseCount: 3, radius: 16)),
-                                  store: SaveStore(directory: dir))
+                                  store: LocalStore(directory: dir))
         XCTAssertTrue(session.reach.isEmpty)
         let lantern = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .lantern })
         session.click(lantern.position)
@@ -455,32 +336,6 @@ final class ReachDisplayTests: XCTestCase {
     }
 }
 
-@MainActor
-final class SaveFailureTests: XCTestCase {
-    /// Where the save folder should be stands a file, so nothing can be
-    /// written: the player is told, and told again when saving works.
-    func testAFailedSaveIsNeverSilent() throws {
-        let base = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: base) }
-        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
-        let blocked = base.appendingPathComponent("Nullmere")
-        try Data("not a folder".utf8).write(to: blocked)
-
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "full disk", houseCount: 3, radius: 14)),
-                                  store: SaveStore(directory: blocked))
-        XCTAssertNotNil(SaveStore(directory: blocked).save(session.state))
-        session.endWatch()
-        let warning = try XCTUnwrap(session.notices.last)
-        XCTAssertEqual(warning.tone, .bad)
-        XCTAssertTrue(warning.text.contains("could not be saved"))
-        XCTAssertTrue(session.saveFailing)
-
-        try FileManager.default.removeItem(at: blocked)
-        session.save(quietly: true)
-        XCTAssertEqual(session.notices.last?.text, "Saved again.")
-        XCTAssertFalse(session.saveFailing)
-    }
-}
 
 @MainActor
 final class PointerTests: XCTestCase {
@@ -488,7 +343,7 @@ final class PointerTests: XCTestCase {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let session = GameSession(state: GameState(settings: GameSettings(seedText: "pointer", houseCount: 3, radius: 16)),
-                                  store: SaveStore(directory: dir))
+                                  store: LocalStore(directory: dir))
         let seat = try XCTUnwrap(session.state.seat(of: session.player))
         let lantern = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .lantern })
         XCTAssertEqual(session.pointerAction(at: seat.position), .select)
@@ -529,7 +384,7 @@ final class MapAccessibilityTests: XCTestCase {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let session = GameSession(state: GameState(settings: GameSettings(seedText: "voiceover", houseCount: 3, radius: 16)),
-                                  store: SaveStore(directory: dir))
+                                  store: LocalStore(directory: dir))
         let items = MapAccessibility.items(for: session)
         let seat = try XCTUnwrap(session.state.seat(of: session.player))
         XCTAssertEqual(items.first?.selection, .hold(seat.id), "The player's seat comes first")
@@ -601,7 +456,7 @@ final class TextSizeTests: XCTestCase {
     func testThePanelsGrowWithTheType() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "larger text")), store: SaveStore(directory: dir))
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "larger text")), store: LocalStore(directory: dir))
         session.selectNextReadyUnit()
         XCTAssertNotNil(session.selectedUnit)
 
@@ -617,7 +472,7 @@ final class TextSizeTests: XCTestCase {
     func testTheHoldPanelScrollsWithinItsHeight() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "larger text")), store: SaveStore(directory: dir))
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "larger text")), store: LocalStore(directory: dir))
         session.focusOnSeat()
         XCTAssertNotNil(session.selectedHold)
         TextSize.shared.isLarger = true

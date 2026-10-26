@@ -1,22 +1,26 @@
 import SwiftUI
 
 /// Menu bar commands: Settings… opens the in-window panel, and Help links to
-/// the website and the source repository. The launcher has a single window,
-/// so New Window is removed. While the window shows only the requirement
+/// the website and the source repository. The app has a single window, so
+/// New Window is removed. While the window shows only the requirement
 /// screen, Settings… and Nullmere News are unavailable there too.
 public struct LauncherCommands: Commands {
     private let model: LauncherModel
+    private let settings: (@MainActor () -> Void)?
 
     @FocusedValue(\.launcherIsGated) private var isGated
 
-    public init(model: LauncherModel) {
+    /// `settings`, when given, decides what Settings… opens: the launcher's
+    /// panel, or the settings of whatever has the window.
+    public init(model: LauncherModel, settings: (@MainActor () -> Void)? = nil) {
         self.model = model
+        self.settings = settings
     }
 
     public var body: some Commands {
         CommandGroup(replacing: .appSettings) {
             Button("Settings…") {
-                model.show(.settings)
+                if let settings { settings() } else { model.show(.settings) }
             }
             .keyboardShortcut(",", modifiers: .command)
             .disabled(isGated != false)

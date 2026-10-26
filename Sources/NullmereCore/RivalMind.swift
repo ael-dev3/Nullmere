@@ -149,16 +149,6 @@ struct RivalMind {
                 if !wantsWar, leading, mine * 10 > theirs * 15, random.chance(35) {
                     wantsWar = true
                 }
-                // Against the player, the difficulty sets how readily.
-                if other.isPlayer {
-                    let aggression = state.settings.difficulty.rivalAggression
-                    if wantsWar, aggression < 100, !random.chance(aggression) {
-                        wantsWar = false
-                    } else if !wantsWar, aggression > 100, state.watch >= 12, mine * 10 > theirs * 11,
-                              random.chance((aggression - 100) / 5) {
-                        wantsWar = true
-                    }
-                }
                 // Tribute paid buys the peace for a while.
                 if wantsWar, state.paidTributeLately(house, other.id) { wantsWar = false }
                 // Even set on war, the greedy may ask for tribute first.

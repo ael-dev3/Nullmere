@@ -107,19 +107,19 @@ public struct OnDeviceVoice: Voice {
 enum VoiceFacts {
     static func envoy(_ envoy: Envoy, in state: GameState) -> VoiceMoment {
         let house = state.houses[envoy.from]
-        let player = state.houses[state.player]
+        let player = state.houses[envoy.to]
         var facts = [
             "The envoy comes from \(house.title), whose temper is \(house.temperament.title.lowercased()).",
             "They speak to \(player.title).",
-            "The two Houses stand at \(state.stance(envoy.from, state.player).title.lowercased()).",
+            "The two Houses stand at \(state.stance(envoy.from, envoy.to).title.lowercased()).",
         ]
-        if let relation = state.relation(envoy.from, state.player) {
+        if let relation = state.relation(envoy.from, envoy.to) {
             if relation.betrayals > 0 { facts.append("Pacts between them have been broken before.") }
-            if relation.aggressor == state.player { facts.append("It was \(player.title) that declared the war.") }
+            if relation.aggressor == envoy.to { facts.append("It was \(player.title) that declared the war.") }
             if relation.aggressor == envoy.from { facts.append("It was \(house.title) that declared the war.") }
         }
         let theirs = state.strength(of: envoy.from)
-        let ours = state.strength(of: state.player)
+        let ours = state.strength(of: envoy.to)
         if theirs > ours * 3 / 2 { facts.append("\(house.title) is the stronger House.") }
         if ours > theirs * 3 / 2 { facts.append("\(player.title) is the stronger House.") }
         return VoiceMoment(kind: .envoy(proposal: envoy.proposal), facts: facts)

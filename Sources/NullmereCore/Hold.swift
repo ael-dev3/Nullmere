@@ -96,6 +96,7 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
     public var name: String
     /// Index into the House colours.
     public var sigil: Int
+    /// Held by a keeper, a person, rather than played by a steward.
     public var isPlayer: Bool
     public var temperament: Temperament
     public var stock: Stock

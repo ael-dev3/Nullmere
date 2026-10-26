@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds "Nullmere Online.app" (the launcher) and "Nullmere.app" (the game)
+# Builds "Nullmere Online.app", the launcher and the realm client in one app,
 # from the Swift package.
 #
 #   scripts/build-app.sh                 # release builds into build/
@@ -96,4 +96,3 @@ bundle() {
 }
 
 bundle "Nullmere Online" NullmereLauncher Packaging/Info.plist
-bundle "Nullmere" Nullmere Packaging/Game-Info.plist

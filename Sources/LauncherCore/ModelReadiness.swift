@@ -104,19 +104,18 @@ public enum RequirementAction: Equatable, Sendable {
 
 /// What choosing Play does.
 public enum PlayOutcome: Equatable, Sendable {
-    /// Open the installed game client.
-    case launchGame
+    /// Cross from the launcher to the realm's front door.
+    case enterRealm
     /// Explain why this Mac can't play yet.
     case explainRequirement(ModelReadiness)
-    /// The Mac is ready, but there is no game client yet: the first realm
-    /// hasn't opened.
+    /// The Mac is ready, but this launcher has no way into a realm.
     case awaitFirstRealm
 
-    public init(readiness: ModelReadiness, isGameInstalled: Bool) {
+    public init(readiness: ModelReadiness, canEnterRealm: Bool) {
         if !readiness.allowsPlay {
             self = .explainRequirement(readiness)
-        } else if isGameInstalled {
-            self = .launchGame
+        } else if canEnterRealm {
+            self = .enterRealm
         } else {
             self = .awaitFirstRealm
         }

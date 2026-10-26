@@ -1,7 +1,7 @@
 import NullmereCore
 import SwiftUI
 
-/// The game's window: the model gate, the title screen, or the lake at play.
+/// The world's window: the model gate, the realm's front door, or the lake.
 public struct GameRootView: View {
     let app: GameApp
 
@@ -16,8 +16,8 @@ public struct GameRootView: View {
             case .gate:
                 ModelGate(app: app)
                     .transition(.opacity)
-            case .title:
-                TitleScreen(app: app)
+            case .frontDoor:
+                FrontDoor(app: app)
                     .transition(.opacity)
             case .playing(let session):
                 PlayView(app: app, session: session)
@@ -26,6 +26,17 @@ public struct GameRootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.8), value: phaseKey)
+        .sheet(isPresented: Binding(get: { app.showsSettings }, set: { app.showsSettings = $0 })) {
+            VStack(spacing: 0) {
+                GameSettingsView(app: app)
+                HStack {
+                    Spacer()
+                    Button("Done") { app.showsSettings = false }
+                        .keyboardShortcut(.defaultAction)
+                }
+                .padding([.horizontal, .bottom], 20)
+            }
+        }
         .preferredColorScheme(.dark)
         .frame(minWidth: 960, minHeight: 620)
         .background(WindowFitter())
@@ -34,7 +45,7 @@ public struct GameRootView: View {
     private var phaseKey: Int {
         switch app.phase {
         case .gate: return 0
-        case .title: return 1
+        case .frontDoor: return 1
         case .playing(let session): return 2 + ObjectIdentifier(session).hashValue
         }
     }
@@ -81,7 +92,7 @@ struct PlayView: View {
                 }
                 .padding(16)
                 .animation(.easeOut(duration: 0.2), value: session.panel)
-                .animation(.easeOut(duration: 0.3), value: session.state.envoys)
+                .animation(.easeOut(duration: 0.3), value: session.envoys)
             }
 
             if let card = session.watchCard {
@@ -145,7 +156,7 @@ struct PlayView: View {
 /// The few keys worth knowing, in the corner.
 private struct KeyHints: View {
     var body: some View {
-        Text(verbatim: "? guide · Tab next company · ⌘↩ end watch")
+        Text(verbatim: "? guide · Tab next company · ⌘↩ ready")
             .font(.nm(10))
             .foregroundStyle(Palette.ink.opacity(0.4))
             .padding(.horizontal, 10)

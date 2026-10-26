@@ -210,7 +210,7 @@ struct EnvoyCards: View {
     var body: some View {
         let state = session.state
         VStack(alignment: .trailing, spacing: 8) {
-            ForEach(state.envoys) { envoy in
+            ForEach(session.envoys) { envoy in
                 let house = state.houses[envoy.from]
                 let left = max(Envoy.patience - (state.watch - envoy.arrived), 1)
                 VStack(alignment: .leading, spacing: 8) {

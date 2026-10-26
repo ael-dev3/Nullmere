@@ -37,7 +37,7 @@ enum Counsel {
         if holds.contains(where: { $0.project == nil }) {
             return "A hold stands idle. Select it and raise a work: each level brings in more of what its land yields."
         }
-        return "End the watch with ⌘↩ when every company has its orders. The game keeps itself after every watch."
+        return "When every company has its orders, say you're ready with ⌘↩. The watch turns when every keeper there is ready, or when its time runs out."
     }
 
     /// Later, counsel speaks only when the race for the lake is close.

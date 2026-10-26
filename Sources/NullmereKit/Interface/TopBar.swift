@@ -89,24 +89,52 @@ private struct ResourceReadout: View {
     }
 }
 
-/// Ends the watch, and says what still waits for orders.
+/// Ready for the watch to turn, and how long until it turns of itself;
+/// and what still waits for orders.
 struct EndWatchButton: View {
     let session: GameSession
 
     var body: some View {
         let waiting = session.readyUnits.count
         let idle = session.idleHolds.count
-        VStack(alignment: .trailing, spacing: 3) {
-            QuietButton(title: "End Watch", size: 10.5, prominent: true, enabled: session.state.outcome == nil) {
-                session.endWatch()
-            }
-            .keyboardShortcut(.return, modifiers: .command)
-            if waiting > 0 || idle > 0 {
-                Text(verbatim: waitingText(units: waiting, holds: idle))
-                    .font(.nm(9))
-                    .foregroundStyle(Palette.ink.opacity(0.5))
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            VStack(alignment: .trailing, spacing: 3) {
+                if session.isReady {
+                    QuietButton(title: "Waiting", size: 10.5) { session.cancelReady() }
+                        .help("Waiting for the other keepers. Click to take back being ready.")
+                } else {
+                    QuietButton(title: "Ready", size: 10.5, prominent: true, enabled: session.state.outcome == nil) {
+                        session.endWatch()
+                    }
+                    .keyboardShortcut(.return, modifiers: .command)
+                    .help("Done with this watch's orders. The watch turns when every keeper there is ready, or when its time runs out.")
+                }
+                if let line = EndWatchButton.realmLine(status: session.realmStatus, secondsLeft: session.secondsLeft(at: context.date)) {
+                    Text(verbatim: line)
+                        .font(.nm(9).monospacedDigit())
+                        .foregroundStyle(Palette.ink.opacity(0.55))
+                }
+                if waiting > 0 || idle > 0 {
+                    Text(verbatim: waitingText(units: waiting, holds: idle))
+                        .font(.nm(9))
+                        .foregroundStyle(Palette.ink.opacity(0.5))
+                }
             }
         }
+    }
+
+    /// "Turns in 2:14 · 1 of 3 ready": while the watch has a clock worth
+    /// showing, and others are there.
+    static func realmLine(status: RealmStatus?, secondsLeft: Int?) -> String? {
+        guard let status else { return nil }
+        var parts: [String] = []
+        if let left = secondsLeft, left < 3_600 {
+            parts.append("Turns in \(left / 60):\(String(format: "%02d", left % 60))")
+        }
+        if status.online > 1 {
+            parts.append("\(status.ready) of \(status.online) ready")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private func waitingText(units: Int, holds: Int) -> String {

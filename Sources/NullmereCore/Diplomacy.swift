@@ -69,18 +69,35 @@ public enum Proposal: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// A rival House's offer, waiting for the player's answer.
+/// An offer from one House, waiting on the answer of a House held by a
+/// keeper.
 public struct Envoy: Codable, Equatable, Identifiable, Sendable {
     public let id: Int
     public let from: Int
+    /// The kept House it waits on.
+    public let to: Int
     public let proposal: Proposal
     public let arrived: Int
 
-    public init(id: Int, from: Int, proposal: Proposal, arrived: Int) {
+    public init(id: Int, from: Int, to: Int = 0, proposal: Proposal, arrived: Int) {
         self.id = id
         self.from = from
+        self.to = to
         self.proposal = proposal
         self.arrived = arrived
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, from, to, proposal, arrived
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        from = try container.decode(Int.self, forKey: .from)
+        to = try container.decodeIfPresent(Int.self, forKey: .to) ?? 0
+        proposal = try container.decode(Proposal.self, forKey: .proposal)
+        arrived = try container.decode(Int.self, forKey: .arrived)
     }
 
     /// Watches an envoy waits for an answer.

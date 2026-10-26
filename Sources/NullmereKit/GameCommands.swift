@@ -9,26 +9,16 @@ public struct GameCommands: Commands {
     }
 
     public var body: some Commands {
-        CommandGroup(replacing: .newItem) {
-            Button("Leave to Title") { app.leaveGame() }
+        CommandGroup(after: .newItem) {
+            Button("Leave the World") { app.leaveWorld() }
                 .keyboardShortcut("w", modifiers: [.command, .shift])
                 .disabled(app.session == nil)
         }
-        CommandGroup(replacing: .undoRedo) {
-            Button("Undo Order") { app.session?.undo() }
-                .keyboardShortcut("z", modifiers: .command)
-                .disabled(!(app.session?.canUndo ?? false))
-        }
-        CommandGroup(replacing: .saveItem) {
-            Button("Save") { app.session?.save() }
-                .keyboardShortcut("s", modifiers: .command)
-                .disabled(app.session == nil)
-        }
         CommandMenu("Watch") {
-            Button("End Watch") { app.session?.endWatch() }
+            Button("Ready") { app.session?.endWatch() }
                 .keyboardShortcut(.return, modifiers: .command)
                 .disabled(app.session?.state.outcome != nil || app.session == nil)
-            Button("End Watches Until Needed") { app.session?.endWatchesUntilNeeded() }
+            Button("Stay Ready Until Needed") { app.session?.endWatchesUntilNeeded() }
                 .keyboardShortcut(.return, modifiers: [.command, .shift])
                 .disabled(app.session?.state.outcome != nil || app.session == nil)
             Button("Next Company") { app.session?.selectNextReadyUnit() }

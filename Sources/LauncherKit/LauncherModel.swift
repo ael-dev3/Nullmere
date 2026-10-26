@@ -63,7 +63,8 @@ public final class LauncherModel {
     private(set) var readiness: ModelReadiness = .checking
     private(set) var news: NewsFeed
     private(set) var newsStatus: NewsStatus = .saved
-    private(set) var gameFailedToOpen = false
+    /// Set by the app: crosses from the launcher to the realm's front door.
+    public var enterRealm: (@MainActor () -> Void)?
     /// Whether the launcher is the app in front.
     private(set) var isInFront = true
     /// Whether macOS asks apps to save energy (see `LauncherEnvironment`).
@@ -353,17 +354,15 @@ public final class LauncherModel {
 
     // MARK: Play
 
-    /// Opens the game when it is installed. Until the first realm opens
-    /// there is no game client, and Play says so.
+    /// Crosses into the realm: the launcher fades, and the realm's front
+    /// door takes the window.
     func play() {
         menuSelection = .play
         refreshReadiness()
-        let game = readiness.allowsPlay ? environment.installedGame() : nil
-        switch PlayOutcome(readiness: readiness, isGameInstalled: game != nil) {
-        case .launchGame:
-            if let game { launchGame(at: game) }
+        switch PlayOutcome(readiness: readiness, canEnterRealm: enterRealm != nil) {
+        case .enterRealm:
+            crossToRealm()
         case .awaitFirstRealm:
-            gameFailedToOpen = false
             playSelection = .back
             show(.play)
         case .explainRequirement:
@@ -372,25 +371,21 @@ public final class LauncherModel {
         }
     }
 
-    private func launchGame(at url: URL) {
+    private func crossToRealm() {
         guard !isLeaving else { return }
         completeIntro()
         withAnimation(.easeIn(duration: 0.8)) { isLeaving = true }
-        Self.logger.notice("Opening the game at \(url.path, privacy: .public).")
+        Self.logger.notice("Crossing into the realm.")
         Task {
-            do {
-                try await environment.openGame(url)
-                Self.logger.notice("The game opened; the launcher steps aside.")
-                try? await Task.sleep(for: .milliseconds(850))
-                environment.terminate()
-            } catch {
-                Self.logger.error("The game did not open: \(String(describing: error), privacy: .public)")
-                gameFailedToOpen = true
-                playSelection = .back
-                show(.play)
-                withAnimation(.easeOut(duration: 0.6)) { isLeaving = false }
-            }
+            try? await Task.sleep(for: .milliseconds(850))
+            enterRealm?()
         }
+    }
+
+    /// Back from the realm's front door: the launcher shows again.
+    public func returnFromRealm() {
+        screen = .title
+        withAnimation(.easeOut(duration: 0.8)) { isLeaving = false }
     }
 
     // MARK: News

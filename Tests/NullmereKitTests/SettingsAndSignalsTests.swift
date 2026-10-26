@@ -1,6 +1,7 @@
 import AVFoundation
 import SwiftUI
 import XCTest
+import NullmereRealm
 @testable import NullmereCore
 @testable import NullmereKit
 
@@ -87,13 +88,14 @@ final class VolumeTests: XCTestCase {
         defer { keys.forEach { UserDefaults.standard.removeObject(forKey: $0) } }
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let app = GameApp(store: SaveStore(directory: dir), readiness: { .ready }, sound: false)
+        let identity = FileIdentityStore(url: dir.appendingPathComponent("identity"))
+        let app = GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: .hosted(seed: "volumes"), identity: identity)
         app.effectsVolume = 0.3
         app.musicVolume = 0.6
         XCTAssertEqual(UserDefaults.standard.double(forKey: "volume.effects"), 0.3)
         XCTAssertEqual(app.ambience.effectsVolume, 0.3, accuracy: 0.0001)
         XCTAssertEqual(app.ambience.musicVolume, 0.6, accuracy: 0.0001)
-        let again = GameApp(store: SaveStore(directory: dir), readiness: { .ready }, sound: false)
+        let again = GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: .hosted(seed: "volumes"), identity: identity)
         XCTAssertEqual(again.effectsVolume, 0.3)
         XCTAssertEqual(again.ambience.effectsVolume, 0.3, accuracy: 0.0001)
         XCTAssertEqual(again.ambienceVolume, 1)
@@ -104,7 +106,7 @@ final class VolumeTests: XCTestCase {
 final class SignalsTests: XCTestCase {
     private func session(_ state: GameState) -> (GameSession, URL) {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        return (GameSession(state: state, store: SaveStore(directory: dir)), dir)
+        return (GameSession(state: state, store: LocalStore(directory: dir)), dir)
     }
 
     func testEachKindOfCompanySoundsItsOwn() throws {

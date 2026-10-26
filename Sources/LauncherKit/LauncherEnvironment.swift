@@ -9,10 +9,6 @@ struct LauncherEnvironment {
     /// Whether macOS asks apps to save energy: Low Power Mode is on, or the
     /// Mac is running hot.
     var systemSavesEnergy: () -> Bool
-    /// Where the game client is installed, if it is.
-    var installedGame: () -> URL?
-    /// Opens the game client.
-    var openGame: (URL) async throws -> Void
     /// Downloads the news feed.
     var downloadNews: () async throws -> Data
     /// Opens a link in the browser or System Settings; false if nothing opened it.
@@ -48,8 +44,6 @@ struct LauncherEnvironment {
             let info = ProcessInfo.processInfo
             return info.isLowPowerModeEnabled || [.serious, .critical].contains(info.thermalState)
         },
-        installedGame: { GameClient.installedURL() },
-        openGame: { try await GameClient.open($0) },
         downloadNews: { try await NewsDownloader.download() },
         open: { NSWorkspace.shared.open($0) },
         terminate: { NSApp.terminate(nil) }

@@ -48,7 +48,7 @@ final class SessionVoiceTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: directory) }
         let voice = EchoVoice()
         let state = GameState(settings: GameSettings(seedText: "voices over the water", houseCount: 4, radius: 16))
-        let session = GameSession(state: state, store: SaveStore(directory: directory), voice: voice)
+        let session = GameSession(state: state, store: LocalStore(directory: directory), voice: voice)
         session.autoplay(watches: 120)
         for _ in 0..<500 where session.voicesPending {
             try await Task.sleep(for: .milliseconds(10))
@@ -57,10 +57,9 @@ final class SessionVoiceTests: XCTestCase {
         XCTAssertFalse(voice.moments.isEmpty, "a hundred and twenty watches leave something worth telling")
         XCTAssertEqual(session.spoken.count, voice.moments.count)
 
-        // Picked up again, the game keeps its words and asks for nothing new.
-        session.save(quietly: true)
+        // Entered again, the world keeps its words and asks for nothing new.
         let again = EchoVoice()
-        let resumed = GameSession(state: session.state, store: SaveStore(directory: directory), voice: again)
+        let resumed = GameSession(state: session.state, store: LocalStore(directory: directory), voice: again)
         XCTAssertEqual(resumed.spoken, session.spoken)
         try await Task.sleep(for: .milliseconds(100))
         XCTAssertTrue(again.moments.allSatisfy { if case .envoy = $0.kind { return true } else { return false } })

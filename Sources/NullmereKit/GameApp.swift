@@ -2,66 +2,131 @@ import AppKit
 import LauncherCore
 import LauncherKit
 import NullmereCore
+import NullmereRealm
 import Observation
 
-/// The whole app: the gate on Apple's on-device model, the title screen,
-/// and the game in progress.
+/// The whole client: the gate on Apple's on-device model, the realm's front
+/// door, and the keeper in the world.
 @MainActor
 @Observable
 public final class GameApp {
     public enum Phase {
         /// Waiting for, or explaining the lack of, the on-device model.
         case gate
-        case title
+        /// The realm's front door: who you are, how the realm stands.
+        case frontDoor
         case playing(GameSession)
+    }
+
+    /// How the realm looks from its front door.
+    public enum Door: Equatable {
+        case connecting
+        case open(RealmStatus)
+        case unreachable(String)
+    }
+
+    /// Where the realm is.
+    public enum RealmAddress: Equatable {
+        /// A realm hosted on this Mac: for development, and for CI.
+        case hosted(seed: String)
+        /// The realm proper, across the network.
+        case network(URL)
     }
 
     public private(set) var phase: Phase = .gate
     public private(set) var readiness: ModelReadiness = .checking
-    public private(set) var hasSave: Bool
-    /// What happened to the saved game, when the player should know.
-    public private(set) var saveNotice: String?
+    public private(set) var door: Door = .connecting
+    /// The name this keeper goes by in the realm, once they've arrived.
+    public private(set) var keeperName: String?
+    /// Why the realm would not take the keeper in.
+    public private(set) var arrivalProblem: String?
+    public private(set) var isEntering = false
+    /// Back to the launcher, when the app has one.
+    public var onLeave: (@MainActor () -> Void)?
+    /// The game's settings, shown over the world or the front door.
+    public var showsSettings = false
 
-    let store: SaveStore
+    let store: LocalStore
+    let address: RealmAddress
+    private let identityStore: any IdentityStore
     private let readModel: () -> ModelReadiness
     public let ambience: Ambience
     private var recheckTask: Task<Void, Never>?
+    private var link: (any RealmLink)?
+    private var hosted: LocalRealm?
+    private var ticker: Timer?
+
+    /// The name of the realm proper.
+    public static let realmName = "The Nullmere"
 
     /// `readiness` answers whether Apple's on-device model can be used; by
-    /// default the Foundation Models framework does. Tests supply their own.
+    /// default the Foundation Models framework does. Tests supply their own,
+    /// with a realm hosted in the test and an identity kept in a file.
     /// `sound` overrides the saved choice; tests keep the game silent.
     public init(
-        store: SaveStore = SaveStore(),
+        store: LocalStore = LocalStore(),
         readiness: @escaping () -> ModelReadiness = { OnDeviceModel.current() },
-        sound: Bool? = nil
+        sound: Bool? = nil,
+        address: RealmAddress? = nil,
+        identity: (any IdentityStore)? = nil,
+        opensAtOnce: Bool = true
     ) {
         self.store = store
         self.readModel = readiness
-        self.hasSave = store.hasSave
+        self.address = address ?? GameApp.defaultAddress
+        self.identityStore = identity ?? GameApp.defaultIdentityStore(store: store)
+        keeperName = UserDefaults.standard.string(forKey: GameApp.nameKey(for: self.address))
         let soundOn = sound ?? (UserDefaults.standard.object(forKey: "sound.enabled") as? Bool ?? true)
         self.isSoundOn = soundOn
         self.ambience = Ambience(enabled: soundOn)
         ambience.effectsVolume = Float(effectsVolume)
         ambience.ambienceVolume = Float(ambienceVolume)
         ambience.musicVolume = Float(musicVolume)
-        checkModel()
-        startFromEnvironment()
-        // Whatever was ordered since the last watch is kept if the game is
-        // put behind another app or quit.
-        for name in [NSApplication.willResignActiveNotification, NSApplication.willTerminateNotification] {
-            lifecycleObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.saveNow() }
-            })
+        if opensAtOnce { checkModel() }
+    }
+
+    /// Crossing in from the launcher: the gate, then the realm's front door.
+    public func open() {
+        if case .frontDoor = phase {
+            openDoor()
+        } else {
+            checkModel()
         }
     }
 
-    @ObservationIgnored private var lifecycleObservers: [any NSObjectProtocol] = []
+    /// The name a keeper goes by is remembered for each realm.
+    static func nameKey(for address: RealmAddress) -> String {
+        switch address {
+        case .hosted: return "keeper.name.hosted"
+        case .network(let url): return "keeper.name.\(url.host() ?? url.absoluteString)"
+        }
+    }
 
-    /// Saves the game in progress, if there is one that hasn't ended.
-    public func saveNow() {
-        guard let session, session.state.outcome == nil else { return }
-        session.save(quietly: true)
-        hasSave = store.hasSave
+    private var enteredByIdentity = false
+    private var autoEntered = false
+
+    /// Debug builds may be pointed at another realm: NULLMERE_REALM=local
+    /// hosts one on this Mac. The realm proper is the default.
+    static var defaultAddress: RealmAddress {
+        #if DEBUG
+        let environment = ProcessInfo.processInfo.environment
+        if environment["NULLMERE_REALM"] == "local" {
+            return .hosted(seed: environment["NULLMERE_REALM_SEED"] ?? "the still water")
+        }
+        if let text = environment["NULLMERE_REALM"], let url = URL(string: text), url.scheme?.hasPrefix("ws") == true {
+            return .network(url)
+        }
+        #endif
+        return .network(URL(string: "wss://maincloud.spacetimedb.com/v1/database/nullmere/subscribe")!)
+    }
+
+    static func defaultIdentityStore(store: LocalStore) -> any IdentityStore {
+        #if DEBUG
+        if let path = ProcessInfo.processInfo.environment["NULLMERE_IDENTITY_FILE"], !path.isEmpty {
+            return FileIdentityStore(url: URL(fileURLWithPath: path))
+        }
+        #endif
+        return KeychainIdentityStore(realm: realmName)
     }
 
     public var session: GameSession? {
@@ -71,15 +136,16 @@ public final class GameApp {
 
     // MARK: The on-device model
 
-    /// Reads the model's state, and opens the title screen once it is ready.
+    /// Reads the model's state, and opens the realm's front door once it is ready.
     public func checkModel() {
         readiness = readModel()
         if readiness.allowsPlay {
             recheckTask?.cancel()
             recheckTask = nil
             if case .gate = phase {
-                phase = .title
+                phase = .frontDoor
                 ambience.start()
+                openDoor()
             }
         } else if readiness.needsRecheck, recheckTask == nil {
             recheckTask = Task { [weak self] in
@@ -92,31 +158,146 @@ public final class GameApp {
         }
     }
 
-    /// Debug builds can open straight into a new game on a given seed.
-    private func startFromEnvironment() {
+    // MARK: The front door
+
+    /// Reaches for the realm and asks how it stands.
+    public func openDoor() {
+        door = .connecting
+        arrivalProblem = nil
+        isEntering = false
+        let identity = identityStore.identity()
+        let link: any RealmLink
+        switch address {
+        case .hosted(let seed):
+            let realm = hosted ?? LocalRealm.open(at: store.hostedRealmURL, name: "This Mac's realm", seed: seed)
+            hosted = realm
+            link = realm.link(identity: identity)
+            startTicking(realm)
+        case .network(let url):
+            link = NetworkRealmLink(url: url, identity: identity)
+        }
+        self.link = link
+        link.onEvent = { [weak self] event in self?.hear(event) }
+        link.connect()
+    }
+
+    /// A realm hosted here turns its watch on time, as a server would.
+    private func startTicking(_ realm: LocalRealm) {
+        guard ticker == nil else { return }
+        ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak realm] _ in
+            MainActor.assumeIsolated { realm?.tick() }
+        }
+    }
+
+    /// Whether the keeper can step in: the realm is open, and they're known
+    /// to it or have a name ready.
+    public func canEnter(with name: String) -> Bool {
+        guard case .open = door, !isEntering else { return false }
+        return keeperName != nil || RealmState.isValidName(name)
+    }
+
+    /// Steps into the world: a returning keeper by their identity, a new one
+    /// with the name they chose.
+    public func enterWorld(name: String) {
+        guard canEnter(with: name), let link else { return }
+        isEntering = true
+        arrivalProblem = nil
+        enteredByIdentity = keeperName != nil
+        link.arrive(name: keeperName == nil ? name : nil)
+    }
+
+    private func hear(_ event: RealmEvent) {
+        switch event {
+        case .status(let status):
+            door = .open(status)
+            if !autoEntered {
+                autoEntered = true
+                enterFromEnvironment()
+            }
+        case .arrived(let keeper, let world):
+            arrived(keeper, in: world)
+        case .refused(let error):
+            isEntering = false
+            if enteredByIdentity, error == .nameInvalid || error == .unknownKeeper {
+                // The realm has forgotten this keeper: they choose a name anew.
+                keeperName = nil
+                UserDefaults.standard.removeObject(forKey: Self.nameKey(for: address))
+                arrivalProblem = "The realm doesn't know you yet. Choose the name you'll go by."
+            } else {
+                arrivalProblem = error.description
+            }
+        case .unreachable(let reason):
+            isEntering = false
+            door = .unreachable(reason)
+        case .settled, .orderRefused, .changed, .watchTurned:
+            break
+        }
+    }
+
+    private func arrived(_ keeper: Keeper, in world: GameState) {
+        isEntering = false
+        keeperName = keeper.name
+        UserDefaults.standard.set(keeper.name, forKey: Self.nameKey(for: address))
+        guard let house = keeper.house, let link else {
+            arrivalProblem = RealmError.noSeat.description
+            return
+        }
+        let doorAge: Int? = { if case .open(let status) = self.door { return status.age } else { return nil } }()
+        let age = session?.realmStatus?.age ?? doorAge ?? 1
+        let session = GameSession(link: link, house: house, world: world, store: store.forAge(age, of: Self.realmName),
+                                  voice: Self.voice(), host: hosted)
+        session.onNewAge = { [weak self] keeper, world in self?.arrived(keeper, in: world) }
+        play(session)
+        showFromEnvironment()
+    }
+
+    /// Leaves the world for the front door; the keeper's House stands as
+    /// they left it.
+    public func leaveWorld() {
+        link?.leave()
+        link = nil
+        phase = .frontDoor
+        openDoor()
+    }
+
+    /// Leaves the front door for the launcher.
+    public func leaveDoor() {
+        link?.leave()
+        link = nil
+        onLeave?()
+    }
+
+    /// Debug builds can step straight in, and set the scene for screenshots.
+    func enterFromEnvironment() {
+        #if DEBUG
+        if let name = ProcessInfo.processInfo.environment["NULLMERE_KEEPER"], !name.isEmpty {
+            enterWorld(name: name)
+        }
+        #endif
+    }
+
+    private func showFromEnvironment() {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
-        if readiness.allowsPlay, let seed = environment["NULLMERE_NEW_GAME"], !seed.isEmpty {
-            begin(GameSettings(seedText: seed))
-            if let watches = environment["NULLMERE_AUTOPLAY"].flatMap(Int.init), watches > 0 {
-                session?.autoplay(watches: watches)
-            }
-            // NULLMERE_SHOW=seat,houses selects the seat and opens a panel,
-            // for screenshots of the interface.
-            let show = Set((environment["NULLMERE_SHOW"] ?? "").split(separator: ",").map(String.init))
-            if show.contains("seat") { session?.focusOnSeat() }
-            if show.contains("unit") { session?.selectNextReadyUnit() }
-            if show.contains("houses") { session?.panel = .houses }
-            if show.contains("chronicle") { session?.panel = .chronicle }
-            if show.contains("guide") { session?.panel = .guide }
-            // "watch" ends a watch a little before CI photographs the screen,
-            // so the watch's card is on it.
-            if show.contains("watch"), let delay = Double(environment["NULLMERE_WATCH_AFTER"] ?? "12.5") {
-                session?.keepsWatchCard = true
-                Task { [weak self] in
-                    try? await Task.sleep(for: .seconds(delay))
-                    self?.session?.endWatch()
-                }
+        guard environment["NULLMERE_KEEPER"] != nil else { return }
+        if let watches = environment["NULLMERE_AUTOPLAY"].flatMap(Int.init), watches > 0 {
+            session?.autoplay(watches: watches)
+        }
+        // NULLMERE_SHOW=seat,houses selects the seat and opens a panel,
+        // for screenshots of the interface.
+        let show = Set((environment["NULLMERE_SHOW"] ?? "").split(separator: ",").map(String.init))
+        if show.contains("seat") { session?.focusOnSeat() }
+        if show.contains("unit") { session?.selectNextReadyUnit() }
+        if show.contains("houses") { session?.panel = .houses }
+        if show.contains("chronicle") { session?.panel = .chronicle }
+        if show.contains("guide") { session?.panel = .guide }
+        // "watch" makes the keeper ready a little before CI photographs the
+        // screen, so the watch's card is on it.
+        if show.contains("watch"), let delay = Double(environment["NULLMERE_WATCH_AFTER"] ?? "12.5") {
+            session?.keepsWatchCard = true
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(delay))
+                self?.session?.endWatch()
             }
         }
         #endif
@@ -163,51 +344,8 @@ public final class GameApp {
         phase = .playing(session)
     }
 
-    // MARK: Games
-
     /// Characters speak through the on-device model whenever it can be used.
     static func voice() -> (any Voice)? {
         OnDeviceVoice.isAvailable ? OnDeviceVoice() : nil
-    }
-
-    public func begin(_ settings: GameSettings) {
-        guard readiness.allowsPlay else { return }
-        let session = GameSession(state: GameState(settings: settings), store: store, voice: Self.voice())
-        session.save(quietly: true)
-        hasSave = store.hasSave
-        play(session)
-    }
-
-    public func continueSaved() {
-        guard readiness.allowsPlay else { return }
-        switch store.open() {
-        case .game(let state):
-            saveNotice = nil
-            play(GameSession(state: state, store: store, voice: Self.voice()))
-        case .recovered(let state):
-            saveNotice = nil
-            let session = GameSession(state: state, store: store, voice: Self.voice())
-            session.post("The last save could not be read; the game goes on from the one before it.", tone: .bad)
-            play(session)
-        case .unreadable(let aside):
-            saveNotice = "The saved game could not be read. It was kept as \(aside.lastPathComponent) in Application Support › Nullmere."
-        case .none:
-            break
-        }
-        hasSave = store.hasSave
-    }
-
-    /// Saves and goes back to the title screen.
-    public func leaveGame() {
-        session?.save(quietly: true)
-        hasSave = store.hasSave
-        phase = .title
-    }
-
-    /// Forgets a finished game and goes back to the title screen.
-    public func abandonFinishedGame() {
-        store.delete()
-        hasSave = false
-        phase = .title
     }
 }

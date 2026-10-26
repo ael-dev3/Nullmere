@@ -4,22 +4,20 @@
 
 <h1 align="center">Nullmere Online</h1>
 
-Nullmere is a planned persistent multiplayer 4X strategy game for the Mac,
-built for a small, personally curated community. Players explore, expand,
-develop resources, make treaties and wage war, and the alliances, politics and
+Nullmere Online is a persistent multiplayer 4X for the Mac, built for a
+small, personally curated community. Every keeper shares one world, a
+great dead lake, held by a realm server. Keepers explore, expand, develop
+resources, make treaties and wage war, and the alliances, politics and
 drama they create leave a lasting history. It continues the universe,
 premise and principles of [Warpkeep](https://github.com/ael-dev3/Warpkeep),
 without Warpkeep's Farcaster identity.
 
-This repository holds two Mac apps:
-
-- **Nullmere Online**, the launcher: a black lake under a full moon, with
-  Play, News, Settings, Repository and Quit on the water.
-- **Nullmere**, the game: a single-player 4X around a great dead lake. You
-  lead a House against rival Houses whose minds run on your Mac. Raise
-  holds, work the land, muster companies, make and break pacts, and either
-  outlast every rival or raise the Moonspire. The multiplayer realm comes
-  later; the rules are already written to be deterministic and shareable.
+This repository holds one Mac app, **Nullmere Online**: a black lake under
+a full moon, with Play, News, Settings, Repository and Quit on the water.
+Play crosses to the realm's front door: who you are on the lake, how the
+realm stands, and Enter World. Inside, you hold a House among other
+keepers' Houses: raise holds, work the land, muster companies, make and
+break pacts, and win the age by dominion or by raising the Moonspire.
 
 Website: [nullmere.online](https://nullmere.online)
 
@@ -60,21 +58,21 @@ swift run NullmereLauncher
 From Xcode: open the package with `open Package.swift`, choose the
 **NullmereLauncher** scheme and **My Mac**, then press ⌘R.
 
-The game, straight from the package:
+A realm to play in, hosted on your own Mac for development:
 
 ```sh
-swift run Nullmere                # or: make play
+NULLMERE_REALM=local swift run NullmereLauncher
 ```
 
-As double-clickable apps:
+As a double-clickable app:
 
 ```sh
 make app                          # or: scripts/build-app.sh
-open "build/Nullmere Online.app"  # Play opens build/Nullmere.app beside it
+open "build/Nullmere Online.app"
 ```
 
-`scripts/build-app.sh` makes arm64 release builds and assembles
-`Nullmere Online.app` and `Nullmere.app` with their icons and Info.plists.
+`scripts/build-app.sh` makes an arm64 release build and assembles
+`Nullmere Online.app` with its icon and Info.plist.
 The icon is a Liquid Glass document, `Packaging/AppIcon.icon` (night,
 reflection and a glass moon), compiled with `actool` into each app's asset
 catalog; the classic `AppIcon.png` is the fallback where `actool` isn't
@@ -91,17 +89,17 @@ swift test                 # unit tests; on a Mac with Metal, the shader is also
 make check-shader          # compile the shader with the offline Metal compiler
 make smoke                 # build the apps, open the launcher, check it starts and renders with Metal, take a screenshot
 make smoke-menu            # open a debug build of the launcher in each model state, type into it, photograph every screen
-make smoke-game            # open a debug build of the game past the model gate, start a world, take screenshots
+make smoke-game            # open a debug build, press Play, enter a realm hosted on the Mac as a keeper, take screenshots
 ```
 
 CI runs all of these on a macOS 26 runner for every pull request, and keeps
-the screenshots of the launcher and the game it opened.
+the screenshots of the launcher, the realm's front door and the world.
 
 Both apps ask the Foundation Models framework through one
 `ModelAvailabilityProvider`; tests stand in a fake one and walk every state
 (ready, not eligible, Apple Intelligence off, downloading, and a reason
-macOS hasn't named), including the launcher and the game opening by
-themselves when the model arrives and closing again when it goes. Debug
+macOS hasn't named), including the launcher and the realm's front door
+opening by themselves when the model arrives and closing again when it goes. Debug
 builds also take:
 
 | Variable | Effect |
@@ -109,11 +107,13 @@ builds also take:
 | `NULLMERE_MODEL_STATE` | `ready`, `notEligible`, `notEnabled`, `downloading` or `unavailable` instead of asking the framework (`NULLMERE_SKIP_MODEL_CHECK=1` means `ready`) |
 | `NULLMERE_LAUNCHER_KEYS` | Keys the launcher receives once its opening is over, such as `right,return` |
 | `NULLMERE_NEWS_URL` | Another `https` news feed, such as a branch's copy |
-| `NULLMERE_GAME_APP` | The game app Play opens, such as a freshly built `build/Nullmere.app` |
-| `NULLMERE_NEW_GAME` | Start a world on these words at once |
+| `NULLMERE_REALM` | `local`: host a realm on this Mac (kept in Application Support); or a `ws://` address of another realm |
+| `NULLMERE_REALM_SEED` | The words a newly hosted realm's world grows from |
+| `NULLMERE_IDENTITY_FILE` | Keep the keeper's identity in this file instead of the keychain |
+| `NULLMERE_KEEPER` | Enter the world at once under this name |
 | `NULLMERE_TEXT` | `larger`: show the larger type without remembering it |
-| `NULLMERE_SHOW` | `seat`, `unit`, `houses`, `chronicle`, `guide`: select the seat or a company, open a panel; `watch`: end a watch after `NULLMERE_WATCH_AFTER` seconds (12.5) |
-| `NULLMERE_AUTOPLAY` | Let a steward play this many watches first |
+| `NULLMERE_SHOW` | `seat`, `unit`, `houses`, `chronicle`, `guide`: select the seat or a company, open a panel; `watch`: be ready after `NULLMERE_WATCH_AFTER` seconds (12.5) |
+| `NULLMERE_AUTOPLAY` | In a hosted realm, let a steward play the keeper's House this many watches first |
 
 Release builds ignore them all and always require the model.
 
@@ -134,10 +134,9 @@ pointer, and the choice that is lit is always the one Return selects. Holding
 Return or Esc acts once. With Keyboard navigation turned on in System
 Settings, Tab moves focus between controls and Space presses the focused one.
 
-- **Play** fades the launcher out and opens the Nullmere game client
-  (bundle identifier `online.nullmere.game`). Until the first realm opens
-  there is no client, so Play says the shore is quiet. The on-device model's
-  status is always shown at the bottom left.
+- **Play** fades the launcher out and crosses to the realm's front door,
+  in the same window. The on-device model's status is always shown at the
+  bottom left.
 - **News** lists the latest stories, with the chosen story beside them.
 - **Settings** is described below.
 - **Repository** opens this repository in your browser.
@@ -183,10 +182,40 @@ Settings are stored in the `online.nullmere.launcher` user defaults:
 | Frame rate | 30, 60, 120 | Upper bound for the lake's frame rate. Reduced motion, Low Power Mode, a Mac running hot, or another app in front lowers it to 30 |
 | Full screen at launch | Off, On | Applies the next time the launcher opens |
 
-## Playing Nullmere
+## The realm
 
-Each turn is a **watch**. Give your orders, then end the watch (⌘↩): the
-rival Houses move, holds yield, works rise and companies march on.
+Nullmere Online is one world shared by every keeper: the realm holds it,
+and the client on your Mac holds a copy, carries out your orders at once
+as the realm will, and takes the realm's word as final.
+
+- **The front door.** Choose the name you'll go by: two to twenty letters.
+  It names you and the House you'll hold, and nothing else is asked. Your
+  identity is a random key the client makes once and keeps in your Mac's
+  keychain; the realm knows you by it and by your name. The front door
+  shows the realm's state: its age and watch, how many keepers are there,
+  and how many seats are free. Enter World seats you in the first free
+  House; returning, you go straight back to yours.
+- **Seats.** The lake has eight seats. Seats no keeper holds are played by
+  stewards, the same minds that once played rivals, until a keeper claims
+  them. When every seat is held, a newcomer waits for the next to fall
+  free.
+- **The watch.** Each turn is a watch. Give your orders, then say you're
+  ready (⌘↩). The watch turns when every keeper there is ready, or when
+  its time runs out, three minutes. An empty realm sleeps until a keeper
+  returns. Leave, and your House stands as you left it.
+- **Treating with keepers.** Offers to another keeper wait as envoys for
+  their answer, as theirs wait for yours. Envoys of stewards speak, in
+  words written on your Mac; a keeper's envoy carries their offer alone.
+- **Ages.** When a House wins, the age ends. When the watch next turns, a
+  new age begins on a fresh lake, and every keeper is seated anew in the
+  order they first came.
+- **The server.** The realm's rules are the same Swift rules core, run by
+  the authority on the server side. This build hosts a realm in-process
+  for development and CI (`NULLMERE_REALM=local`). The network realm on
+  [SpacetimeDB](https://spacetimedb.com) is being built next: until it
+  opens, a release build's front door reports the realm out of reach.
+
+## Playing Nullmere
 
 - **The land.** Strand, salt flats, greyfields, blackwood and barrows ring
   the lake. Each yields grain, timber, stone or moonsalt to the hold whose
@@ -204,9 +233,10 @@ rival Houses move, holds yield, works rise and companies march on.
   Every company but the Lantern eats a grain each watch. Companies that
   live through battles rise in rank (Blooded, Hardened, Sworn), each rank
   adding a tenth to attack and defence; chevrons under a token show it.
-- **Houses.** Rivals have temperaments: ambitious, steadfast, wary or
-  cunning. Declare war, offer peace or a pact, and answer their envoys.
-  Pacts share sight; breaking one is remembered.
+- **Houses.** Other Houses are held by keepers, or by stewards with
+  temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
+  peace or a pact, and answer envoys. Pacts share sight; breaking one is
+  remembered.
 - **Conquest.** Taking a hold carries off its share of the loser's stores;
   a seat holds half of them. A House that loses its seat is shaken: every
   hold it has left loses most of its ward. A House that loses every hold
@@ -219,16 +249,16 @@ rival Houses move, holds yield, works rise and companies march on.
   bends the knee to the House that took it, and a beaten House may offer
   fealty rather than fall. A vassal's holds join its liege's realm and it
   can never turn on its liege; a liege who turns on a vassal frees it. A
-  far stronger rival will not make peace until the war has run long. In
-  simulated games rivals win by dominion more than half the time, by the
+  far stronger steward will not make peace until the war has run long. In
+  simulated ages stewards win by dominion more than half the time, by the
   Moonspire the rest, and now and then a House is destroyed outright.
-- **Tribute.** A greedy rival far stronger than a neighbour may demand a
+- **Tribute.** A greedy steward far stronger than a neighbour may demand a
   fifth of its stores. Paid, it keeps the peace for twenty watches;
   refused or ignored, it marches. You can demand tribute of the weak.
 - **The race.** The Houses panel shows each House's holds toward dominion
   and its Moonspire's stages, and the game warns you, once, whenever any
-  House comes near the end of either road. At the end, a chart tells the
-  story of the game: every House's holds, watch by watch.
+  House comes near the end of either road. At the end of an age, a chart
+  tells its story: every House's holds, watch by watch.
 - **Battle.** Attackers lean into their blows, the struck shake, bows'
   shots cross the gap, and the fallen fade where they stood.
 
@@ -249,15 +279,12 @@ rival Houses move, holds yield, works rise and companies march on.
 - **Holds that grow.** A hold raises a side tower after a few works and a
   second after many, so a glance at the map shows which holds are built up.
 
-Rivals play Gentle, Even or Merciless: poorer and slow to make war on you,
-on the same footing as you, or richer and quick to press you.
-
 Larger Text (⇧⌘+, in the Watch menu) sets all the game's type a fifth
 larger; the panels grow to hold it. VoiceOver reads the map, the panels
 and every notice.
 
-The world is made from a few words: the same words make the same lake.
-The game saves itself after every watch.
+Each age's lake grows from the realm's private words; the realm keeps the
+world, so there is nothing to save.
 
 | Key | Action |
 | --- | --- |
@@ -270,10 +297,10 @@ The game saves itself after every watch.
 | Arrows or WASD, + − | Pan, zoom |
 | 1 / 2 / ? | Houses / Chronicle / Guide |
 | Esc | Close a panel, then clear the selection |
-| ⌘↩ | End the watch |
-| ⇧⌘↩ | End watches until something needs you (up to ten) |
+| ⌘↩ | Ready: done with this watch's orders (click Waiting to take it back) |
+| ⇧⌘↩ | Stay ready until something needs you, up to ten watches |
 | ⌘, | Settings: volumes for effects, the night and the music; larger text; counsel |
-| ⌘S, ⇧⌘W | Save, leave to the title screen |
+| ⇧⌘W | Leave the world for the front door |
 
 ## Design
 
@@ -295,9 +322,9 @@ There is no music in the launcher; the game makes its own sound as it plays.
   the far shore. Now and then rings spread where something touched the
   surface. Star reflections and falling stars ripple with the water. Far
   away, the surface lies smooth and mirrors the shore.
-- **The title** is NULLMERE, set large in SF Pro Thin with wide tracking. The
-  letters settle together as it appears. ONLINE sits beneath it between two
-  hairlines that reach the width of the word. The menu is a single row of
+- **The title** is NULLMERE ONLINE on a single line, set in SF Pro Thin
+  with wide tracking, and nothing else. The letters settle together as it
+  appears. The menu is a single row of
   light, spaced capitals on the water, and the chosen word glows faintly
   over a hairline. Panels darken the water beneath them so their text stays
   legible over the reflection.
@@ -337,12 +364,12 @@ first falling star.
 Package.swift
 Sources/
   LauncherCore/       Platform-independent logic: settings, navigation, news, model readiness, composition
-  LauncherKit/        SwiftUI interface, Metal backdrop, services (on-device model, news, game client)
-  NullmereLauncher/   Launcher entry point
-  NullmereCore/       The game's rules: world generation, economy, war, diplomacy, rival minds. Pure, deterministic Swift
-  NullmereKit/        The game's interface: Metal world, panels, title screen, saving
-  Nullmere/           Game entry point
-Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests
+  LauncherKit/        SwiftUI interface, Metal backdrop, services (on-device model, news)
+  NullmereLauncher/   The Nullmere Online app's entry point
+  NullmereCore/       The rules and the realm's authority: world generation, economy, war, diplomacy, stewards, keepers, watches, ages. Pure, deterministic Swift
+  NullmereRealm/      The client's line to the realm, a realm hosted in-process, keeper identity. Foundation only
+  NullmereKit/        The world's interface: front door, Metal world, panels, sound
+Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereRealmTests, NullmereKitTests
 news/                 news.json, the launcher's news feed
 Packaging/            Info.plist templates, the Liquid Glass icon (AppIcon.icon) and the classic 1024 px icon
 Tools/icon/           Draws the icon's layers (make-layers.py)

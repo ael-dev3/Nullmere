@@ -1,23 +1,26 @@
 #!/usr/bin/env bash
-# Opens the game from a debug build, past the on-device model check, and
-# checks that it really starts: it must still be running after a few
-# seconds, and its world must be rendering with Metal. Saves screenshots of
-# the title screen, of a new game with the seat selected and the Houses
-# panel open, and of the same game forty watches on, played by a steward.
+# Opens Nullmere Online from a debug build, presses Play, and steps into a
+# realm hosted on this Mac as a keeper, past the on-device model check. It
+# must still be running after a while, and its world must be rendering
+# with Metal. Saves screenshots of the keeper's first watch with a company
+# selected and the Houses panel open, and of the same realm forty watches
+# on, a steward having played the keeper's House, with the larger type.
 #
 #   swift build && scripts/smoke-test-game.sh
 #
-# Only debug builds honour NULLMERE_MODEL_STATE and NULLMERE_NEW_GAME, so a
-# runner without Apple Intelligence can see the gate in any state, and past it.
+# Only debug builds honour NULLMERE_MODEL_STATE, NULLMERE_LAUNCHER_KEYS,
+# NULLMERE_REALM and NULLMERE_KEEPER.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-BIN="${BIN:-$(swift build --show-bin-path)/Nullmere}"
-EXECUTABLE="Nullmere"
-WAIT="${WAIT:-15}"
+BIN="${BIN:-$(swift build --show-bin-path)/NullmereLauncher}"
+EXECUTABLE="NullmereLauncher"
+WAIT="${WAIT:-24}"
 SUBSYSTEM="online.nullmere.game"
 SEED="${SEED:-black moon}"
+REALM_FILE="$HOME/Library/Application Support/Nullmere Online/hosted-realm.json"
+IDENTITY="$PWD/build/smoke-identity"
 mkdir -p build
 
 if pgrep -x "$EXECUTABLE" >/dev/null; then
@@ -25,20 +28,21 @@ if pgrep -x "$EXECUTABLE" >/dev/null; then
     exit 1
 fi
 
-# run <screenshot> [seed] [watches to autoplay] [what to show]
+# run <screenshot> [watches to autoplay] [what to show]
 run() {
     local shot="$1"
-    local seed="${2:-}"
-    local autoplay="${3:-0}"
-    local show="${4:-}"
+    local autoplay="${2:-0}"
+    local show="${3:-}"
     local started
     started="$(date '+%Y-%m-%d %H:%M:%S')"
-    echo "Opening the game${seed:+ on \"$seed\"}…"
-    NULLMERE_MODEL_STATE="${MODEL_STATE:-ready}" NULLMERE_NEW_GAME="$seed" NULLMERE_AUTOPLAY="$autoplay" NULLMERE_SHOW="$show" "$BIN" >build/game-stdout.log 2>&1 &
+    echo "Opening Nullmere Online and entering the realm as Aurel…"
+    NULLMERE_MODEL_STATE=ready NULLMERE_LAUNCHER_KEYS=return NULLMERE_REALM=local NULLMERE_REALM_SEED="$SEED" \
+        NULLMERE_IDENTITY_FILE="$IDENTITY" NULLMERE_KEEPER=Aurel NULLMERE_AUTOPLAY="$autoplay" NULLMERE_SHOW="$show" \
+        "$BIN" >build/game-stdout.log 2>&1 &
     local pid=$!
     sleep "$WAIT"
     if ! kill -0 "$pid" 2>/dev/null; then
-        echo "error: the game quit or crashed within $WAIT seconds of launch" >&2
+        echo "error: Nullmere Online quit or crashed within $WAIT seconds of launch" >&2
         cat build/game-stdout.log >&2 || true
         for report in "$HOME/Library/Logs/DiagnosticReports/$EXECUTABLE"*; do
             [ -f "$report" ] && head -n 80 "$report" >&2
@@ -51,20 +55,18 @@ run() {
     LOG="$(log show --start "$started" --style compact --predicate "subsystem == \"$SUBSYSTEM\"" 2>/dev/null || true)"
 }
 
-MODEL_STATE=notEnabled run build/game-gate.png
-echo "The model gate opened."
-run build/game-title.png
-echo "The title screen opened."
-
-# A new game's saved state would otherwise be continued next time.
-SAVE="$HOME/Library/Application Support/Nullmere/autosave.json"
-[ -f "$SAVE" ] && mv "$SAVE" "$SAVE.smoke-backup"
-run build/game-world.png "$SEED" 0 unit,houses
+# A fresh realm, and a fresh keeper; whatever was here is put back after.
+[ -f "$REALM_FILE" ] && mv "$REALM_FILE" "$REALM_FILE.smoke-backup"
+defaults delete "$EXECUTABLE" keeper.name.hosted >/dev/null 2>&1 || true
+rm -f "$IDENTITY"
+run build/game-world.png 0 unit,houses
 WORLD_LOG="$LOG"
-# Later in the game, with the larger type a reader can choose.
-NULLMERE_TEXT=larger NULLMERE_WATCH_AFTER=9 run build/game-later.png "$SEED" 40 seat,watch
-rm -f "$SAVE"
-[ -f "$SAVE.smoke-backup" ] && mv "$SAVE.smoke-backup" "$SAVE"
+# The same realm later on, the keeper returning by identity alone, with the
+# larger type a reader can choose.
+NULLMERE_TEXT=larger NULLMERE_WATCH_AFTER=3 WAIT=30 run build/game-later.png 40 seat,watch
+rm -f "$REALM_FILE" "$IDENTITY"
+defaults delete "$EXECUTABLE" keeper.name.hosted >/dev/null 2>&1 || true
+[ -f "$REALM_FILE.smoke-backup" ] && mv "$REALM_FILE.smoke-backup" "$REALM_FILE"
 
 LOG="$WORLD_LOG
 $LOG"
@@ -77,4 +79,4 @@ if ! echo "$LOG" | grep -q "renders with Metal"; then
     echo "error: the world did not start rendering with Metal within $WAIT seconds" >&2
     exit 1
 fi
-echo "Nullmere started a new game and its world renders with Metal."
+echo "Nullmere Online entered a realm and its world renders with Metal."

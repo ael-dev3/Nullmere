@@ -27,6 +27,10 @@ struct OutcomeOverlay: View {
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 440)
                         .fixedSize(horizontal: false, vertical: true)
+                    Text(verbatim: "A new age begins on a fresh lake when the watch turns, and every keeper is seated anew.")
+                        .font(.nm(11))
+                        .foregroundStyle(Palette.ink.opacity(0.55))
+                        .multilineTextAlignment(.center)
                     VStack(alignment: .leading, spacing: 8) {
                         Caps("Holds around the lake, watch by watch", size: 8, weight: .medium)
                             .foregroundStyle(Palette.ink.opacity(0.55))
@@ -42,7 +46,7 @@ struct OutcomeOverlay: View {
                         QuietButton(title: "Look upon the lake", size: 10) {
                             withAnimation(.easeOut(duration: 0.3)) { dismissed = true }
                         }
-                        QuietButton(title: "A new world", size: 10, prominent: true) { app.abandonFinishedGame() }
+                        QuietButton(title: "Leave the world", size: 10, prominent: true) { app.leaveWorld() }
                     }
                     .padding(.top, 6)
                 }

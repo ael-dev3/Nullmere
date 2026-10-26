@@ -1,69 +1,35 @@
-/// How hard the rival Houses play.
-public enum Difficulty: String, Codable, CaseIterable, Sendable {
-    /// Rivals start with less, gather less, and are slow to make war on the player.
-    case gentle
-    /// Rivals play on the same footing as the player.
-    case even
-    /// Rivals start richer, gather more, and press the player hard.
-    case merciless
-
-    public var title: String {
-        switch self {
-        case .gentle: return "Gentle"
-        case .even: return "Even"
-        case .merciless: return "Merciless"
-        }
-    }
-
-    /// Rivals' starting stores and income, in percent.
-    public var rivalYield: Int {
-        switch self {
-        case .gentle: return 80
-        case .even: return 100
-        case .merciless: return 125
-        }
-    }
-
-    /// How readily rivals declare war on the player, in percent of the usual.
-    public var rivalAggression: Int {
-        switch self {
-        case .gentle: return 50
-        case .even: return 100
-        case .merciless: return 170
-        }
-    }
-}
-
-/// How a new game is set up.
+/// How a world is made.
 public struct GameSettings: Codable, Equatable, Sendable {
     /// Words that name the world; the same words make the same world.
     public var seedText: String
+    /// Seats around the lake: one House each.
     public var houseCount: Int
     public var radius: Int
-    /// The player's House, by name.
+    /// The first House's name, when a keeper holds it from the start.
     public var playerHouse: String
-    public var difficulty: Difficulty
+    /// Seats held by keepers from the start: one, or none in a realm, whose
+    /// keepers claim seats as they arrive.
+    public var keepers: Int
 
-    public init(seedText: String, houseCount: Int = 5, radius: Int = 24, playerHouse: String = "Aurel", difficulty: Difficulty = .even) {
+    public init(seedText: String, houseCount: Int = 5, radius: Int = 24, playerHouse: String = "Aurel", keepers: Int = 1) {
         self.seedText = seedText
         self.houseCount = houseCount
         self.radius = radius
         self.playerHouse = playerHouse
-        self.difficulty = difficulty
+        self.keepers = min(max(keepers, 0), 1)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case seedText, houseCount, radius, playerHouse, difficulty
+        case seedText, houseCount, radius, playerHouse, keepers
     }
 
-    /// Games saved before difficulty was chosen play on even terms.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         seedText = try container.decode(String.self, forKey: .seedText)
         houseCount = try container.decode(Int.self, forKey: .houseCount)
         radius = try container.decode(Int.self, forKey: .radius)
         playerHouse = try container.decode(String.self, forKey: .playerHouse)
-        difficulty = try container.decodeIfPresent(Difficulty.self, forKey: .difficulty) ?? .even
+        keepers = try container.decodeIfPresent(Int.self, forKey: .keepers) ?? 1
     }
 
     public var seed: UInt64 { Seed.from(seedText) }
@@ -114,18 +80,18 @@ public struct GameState: Codable, Equatable, Sendable {
         draws = 0
         recorded = []
 
-        var names = Names.houses.filter { $0 != settings.playerHouse }
+        var names = settings.keepers > 0 ? Names.houses.filter { $0 != settings.playerHouse } : Names.houses
         random.shuffle(&names)
         let temperaments = Temperament.allCases
         var usedHoldNames: Set<String> = []
         for (index, seat) in world.seats.enumerated() {
-            let isPlayer = index == 0
-            let name = isPlayer ? settings.playerHouse : names[index - 1]
-            let temperament = isPlayer ? .steadfast : temperaments[(index - 1) % temperaments.count]
+            let isPlayer = index == 0 && settings.keepers > 0
+            // The first seat, unkept, takes the name after all the others'.
+            let name = index > 0 ? names[index - 1] : (isPlayer ? settings.playerHouse : names[world.seats.count - 1])
+            let temperament = index == 0 ? .steadfast : temperaments[(index - 1) % temperaments.count]
             let sigil = Names.houses.firstIndex(of: name) ?? index
             var house = House(id: index, name: name, sigil: sigil, isPlayer: isPlayer, temperament: temperament, tileCount: map.count)
             house.stock = Stock(grain: 60, timber: 50, stone: 40, moonsalt: 5)
-                .scaled(percent: isPlayer ? 100 : settings.difficulty.rivalYield)
             houses.append(house)
 
             let holdName = Names.hold(using: &random, avoiding: usedHoldNames)
@@ -282,11 +248,9 @@ public struct GameState: Codable, Equatable, Sendable {
     public static let baseStorage = 300
     public static let storagePerHold = 200
 
-    /// Adds income to a House's stock, up to its storage. Rivals gather
-    /// more or less as the difficulty sets.
+    /// Adds income to a House's stock, up to its storage.
     mutating func store(_ income: Stock, for house: Int) {
-        let yield = houses[house].isPlayer ? 100 : settings.difficulty.rivalYield
-        houses[house].stock.credit(yield == 100 ? income : income.scaled(percent: yield))
+        houses[house].stock.credit(income)
         let room = storage(of: house)
         for resource in Resource.allCases where houses[house].stock[resource] > room {
             houses[house].stock[resource] = room

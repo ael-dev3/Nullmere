@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import XCTest
+import NullmereRealm
 @testable import NullmereCore
 @testable import NullmereKit
 
@@ -56,11 +57,11 @@ final class RaceTests: XCTestCase {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         var state = game()
-        XCTAssertFalse(GameSession(state: state, store: SaveStore(directory: dir)).canDemandTribute(from: 1), "Not of an equal")
+        XCTAssertFalse(GameSession(state: state, store: LocalStore(directory: dir)).canDemandTribute(from: 1), "Not of an equal")
         state.units.removeAll { $0.owner == 1 }
         let seat = try XCTUnwrap(state.seat(of: state.player))
         for _ in 0..<4 { state.placeUnit(.spear, for: state.player, near: seat.position) }
-        XCTAssertTrue(GameSession(state: state, store: SaveStore(directory: dir)).canDemandTribute(from: 1))
+        XCTAssertTrue(GameSession(state: state, store: LocalStore(directory: dir)).canDemandTribute(from: 1))
     }
 
     func testTheRaceTableReadsEachHouse() {
@@ -88,7 +89,7 @@ final class EndingTests: XCTestCase {
     func testAFinishedGameTellsItsStory() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let store = SaveStore(directory: dir)
+        let store = LocalStore(directory: dir)
         let session = GameSession(state: GameState(settings: GameSettings(seedText: "siege check 13")), store: store)
         session.autoplay(watches: 100)
         // Offscreen rendering leaves a scroll view empty: draw the table alone.
@@ -104,7 +105,8 @@ final class EndingTests: XCTestCase {
         }
         XCTAssertTrue(StoryChart.summary(of: session.state, player: session.player).hasPrefix("Over \(session.state.watch) watches"))
 
-        let app = GameApp(store: store, readiness: { .ready }, sound: false)
+        let app = GameApp(store: store, readiness: { .ready }, sound: false, address: .hosted(seed: "ending"),
+                          identity: FileIdentityStore(url: dir.appendingPathComponent("identity")))
         try keep(OutcomeOverlay(app: app, session: session, outcome: outcome), as: "game-ending.png", size: CGSize(width: 1100, height: 760))
     }
 
@@ -134,7 +136,7 @@ final class CombatFeelTests: XCTestCase {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let session = GameSession(state: GameState(settings: GameSettings(seedText: "blows", houseCount: 3, radius: 16)),
-                                  store: SaveStore(directory: dir))
+                                  store: LocalStore(directory: dir))
         let mine = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind.isMilitary })
         let target = try XCTUnwrap(mine.position.ring(2).first)
         let shot = Battle(attacker: mine.id, attackerOwner: session.player, attackerKind: .bow,

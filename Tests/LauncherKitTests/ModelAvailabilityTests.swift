@@ -77,8 +77,6 @@ final class LauncherAvailabilityTests: XCTestCase {
         let environment = LauncherEnvironment(
             modelReadiness: readiness,
             systemSavesEnergy: { false },
-            installedGame: { nil },
-            openGame: { _ in },
             downloadNews: { throw URLError(.notConnectedToInternet) },
             open: { [weak self] url in
                 self?.opened.append(url)

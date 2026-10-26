@@ -2,8 +2,9 @@
 # Opens a debug build of the launcher as if Apple's on-device model were in
 # a given state, so every screen can be seen on a Mac without Apple
 # Intelligence, such as CI. Photographs the menu, News and Settings with
-# the model ready, and the requirement screen with Apple Intelligence off
-# and with its model downloading. Checks the launcher keeps running and its
+# the model ready, the realm's front door that Play crosses to, and the
+# requirement screen with Apple Intelligence off and with its model
+# downloading. Checks the launcher keeps running and its
 # lake renders with Metal.
 #
 #   swift build && scripts/smoke-test-launcher-menu.sh
@@ -65,37 +66,20 @@ if ! echo "$LOG" | grep -q "News updated"; then
     exit 1
 fi
 run build/launcher-settings.png right,right,return,down
-# Play: Return on the lit Play opens the game, and the launcher quits.
-GAME_APP="${GAME_APP:-build/Nullmere.app}"
-if [ -d "$GAME_APP" ]; then
-    pkill -x Nullmere 2>/dev/null || true
-    started="$(date '+%Y-%m-%d %H:%M:%S')"
-    echo "Opening the launcher and pressing Return on Play…"
-    NULLMERE_MODEL_STATE=ready NULLMERE_LAUNCHER_KEYS=return NULLMERE_GAME_APP="$PWD/$GAME_APP" "$BIN" >build/launcher-stdout.log 2>&1 &
-    pid=$!
-    sleep "$WAIT"
-    screencapture -x build/launcher-play.png || true
-    play_log="$(log show --start "$started" --style compact --predicate "subsystem == \"$SUBSYSTEM\"" 2>/dev/null || true)"
-    echo "$play_log" | grep -E "Opening the game|game opened|did not open" || true
-    if kill -0 "$pid" 2>/dev/null; then
-        kill -TERM "$pid" || true
-        pkill -x Nullmere 2>/dev/null || true
-        echo "error: the launcher was still open after Play" >&2
-        exit 1
-    fi
-    if ! pgrep -x Nullmere >/dev/null; then
-        echo "error: Play did not open the game" >&2
-        exit 1
-    fi
-    pkill -TERM -x Nullmere || true
-    if ! echo "$play_log" | grep -q "The game opened"; then
-        echo "error: the launcher did not report opening the game" >&2
-        exit 1
-    fi
-    echo "Play opened the game, and the launcher stepped aside."
-else
-    echo "warning: $GAME_APP not built; Play's hand-off not checked" >&2
+# Play: Return on the lit Play crosses into the realm's front door, in the
+# same window, with a realm hosted on this Mac and a throwaway identity.
+REALM_FILE="$HOME/Library/Application Support/Nullmere Online/hosted-realm.json"
+[ -f "$REALM_FILE" ] && mv "$REALM_FILE" "$REALM_FILE.smoke-backup"
+defaults delete "$EXECUTABLE" keeper.name.hosted >/dev/null 2>&1 || true
+NULLMERE_REALM=local NULLMERE_IDENTITY_FILE="$PWD/build/smoke-identity-door" run build/launcher-play.png return
+rm -f "$REALM_FILE" "$PWD/build/smoke-identity-door"
+[ -f "$REALM_FILE.smoke-backup" ] && mv "$REALM_FILE.smoke-backup" "$REALM_FILE"
+echo "$LOG" | grep -E "Crossing into the realm" || true
+if ! echo "$LOG" | grep -q "Crossing into the realm"; then
+    echo "error: Play did not cross into the realm" >&2
+    exit 1
 fi
+echo "Play crossed into the realm's front door."
 
 # The requirement screen for the states a real Mac passes through.
 run build/launcher-off.png "" notEnabled

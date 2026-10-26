@@ -32,8 +32,8 @@ extension GameState {
         let unanswered = envoys.filter { watch - $0.arrived >= Envoy.patience }
         envoys.removeAll { watch - $0.arrived >= Envoy.patience }
         for envoy in unanswered where envoy.proposal == .tribute && !houses[envoy.from].isEliminated
-            && stance(envoy.from, player) == .peace {
-            events += refuseTribute(demandedBy: envoy.from, of: player)
+            && !houses[envoy.to].isEliminated && stance(envoy.from, envoy.to) == .peace {
+            events += refuseTribute(demandedBy: envoy.from, of: envoy.to)
         }
 
         for unit in units.sorted(by: { $0.id < $1.id }) where unit.destination != nil {

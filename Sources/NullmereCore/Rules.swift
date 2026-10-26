@@ -349,7 +349,7 @@ extension GameState {
             houses[index].liege = nil
         }
         units.removeAll { $0.owner == house }
-        envoys.removeAll { $0.from == house }
+        envoys.removeAll { $0.from == house || $0.to == house }
         let by = conqueror.map { " to \(houses[$0].title)" } ?? ""
         record(.fall, [house] + (conqueror.map { [$0] } ?? []), "\(houses[house].title) falls\(by). Its name passes into the chronicle.")
         return [.houseFell(house)]
@@ -463,7 +463,7 @@ extension GameState {
             houses[target].liege = nil
         }
         setStance(.war, between: house, and: target, by: house)
-        envoys.removeAll { $0.from == target || $0.from == house }
+        envoys.removeAll { ($0.from == target && $0.to == house) || ($0.from == house && $0.to == target) }
         if fearingSpire {
             record(.war, [house, target], "Fearing the white tower rising at \(seat(of: target)?.name ?? "their seat"), \(houses[house].title) goes to war against \(houses[target].title).")
         } else if previous == .pact {
@@ -492,8 +492,8 @@ extension GameState {
         }
 
         if houses[target].isPlayer {
-            guard !envoys.contains(where: { $0.from == house }) else { return [] }
-            let envoy = Envoy(id: takeID(), from: house, proposal: proposal, arrived: watch)
+            guard !envoys.contains(where: { $0.from == house && $0.to == target }) else { return [] }
+            let envoy = Envoy(id: takeID(), from: house, to: target, proposal: proposal, arrived: watch)
             envoys.append(envoy)
             return [.envoyArrived(envoy)]
         }
@@ -510,7 +510,7 @@ extension GameState {
     }
 
     private mutating func answer(_ envoyID: Int, accept: Bool, as house: Int) throws(RuleError) -> [GameEvent] {
-        guard let index = envoys.firstIndex(where: { $0.id == envoyID }), houses[house].isPlayer else { throw .unknownEnvoy }
+        guard let index = envoys.firstIndex(where: { $0.id == envoyID && $0.to == house }), houses[house].isPlayer else { throw .unknownEnvoy }
         let envoy = envoys.remove(at: index)
         let stillValid: Bool
         switch envoy.proposal {

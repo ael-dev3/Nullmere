@@ -7,14 +7,14 @@ final class LauncherModelTests: XCTestCase {
     private var defaults: UserDefaults!
     private var suiteName: String!
     private var opened: [URL] = []
-    private var launchedGames: [URL] = []
+    private var crossings = 0
     private var terminated = false
 
     override func setUp() async throws {
         suiteName = "LauncherModelTests.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)
         opened = []
-        launchedGames = []
+        crossings = 0
         terminated = false
     }
 
@@ -30,15 +30,13 @@ final class LauncherModelTests: XCTestCase {
     private func makeModel(
         readiness: @autoclosure @escaping () -> ModelReadiness = .ready,
         savesEnergy: @autoclosure @escaping () -> Bool = false,
-        game: URL? = nil,
+        realm: Bool = false,
         news: Data? = nil,
         appeared: Bool = true
     ) -> LauncherModel {
         let environment = LauncherEnvironment(
             modelReadiness: readiness,
             systemSavesEnergy: savesEnergy,
-            installedGame: { game },
-            openGame: { [weak self] url in self?.launchedGames.append(url) },
             downloadNews: {
                 guard let news else { throw URLError(.notConnectedToInternet) }
                 return news
@@ -50,6 +48,9 @@ final class LauncherModelTests: XCTestCase {
             terminate: { [weak self] in self?.terminated = true }
         )
         let model = LauncherModel(defaults: defaults, environment: environment)
+        if realm {
+            model.enterRealm = { [weak self] in self?.crossings += 1 }
+        }
         if appeared {
             model.refreshReadiness()
             model.refreshEnergyState()
@@ -111,7 +112,7 @@ final class LauncherModelTests: XCTestCase {
     }
 
     func testAMacWithoutTheModelSeesOnlyWhatIsMissing() async throws {
-        let model = makeModel(readiness: .deviceNotEligible, game: URL(fileURLWithPath: "/Applications/Nullmere.app"))
+        let model = makeModel(readiness: .deviceNotEligible, realm: true)
         model.completeIntro()
         XCTAssertTrue(model.isGated)
         XCTAssertNil(model.footerHint)
@@ -125,7 +126,7 @@ final class LauncherModelTests: XCTestCase {
         model.openNews()
         XCTAssertEqual(model.screen, .title)
         XCTAssertEqual(model.menuSelection, .play)
-        XCTAssertEqual(launchedGames, [], "Not even an installed game opens")
+        XCTAssertEqual(crossings, 0, "No way into the realm")
 
         // Quit is all there is.
         XCTAssertEqual(model.readiness.actions, [.quit])
@@ -179,14 +180,16 @@ final class LauncherModelTests: XCTestCase {
         XCTAssertEqual(model.requirementSelection, 0)
     }
 
-    func testPlayOpensAnInstalledGameOnAReadyMac() async throws {
-        let game = URL(fileURLWithPath: "/Applications/Nullmere.app")
-        let model = makeModel(readiness: .ready, game: game)
+    func testPlayCrossesIntoTheRealmOnAReadyMac() async throws {
+        let model = makeModel(readiness: .ready, realm: true)
         model.completeIntro()
         model.activate(.play)
         XCTAssertTrue(model.isLeaving, "The launcher fades out")
-        try await waitUntil(self.terminated)
-        XCTAssertEqual(launchedGames, [game], "The launcher hands over to the game, then quits")
+        try await waitUntil(self.crossings == 1)
+        XCTAssertFalse(terminated, "The app stays: the realm takes the window")
+        model.returnFromRealm()
+        XCTAssertFalse(model.isLeaving, "Back from the realm, the launcher shows again")
+        XCTAssertEqual(model.screen, .title)
     }
 
     func testQuitFadesThenQuits() async throws {
@@ -199,17 +202,16 @@ final class LauncherModelTests: XCTestCase {
         try await waitUntil(self.terminated)
     }
 
-    func testPlayOnAReadyMacWaitsForTheFirstRealm() {
-        let model = makeModel(readiness: .ready, game: nil)
+    func testPlayWithNoWayIntoARealmSaysSo() {
+        let model = makeModel(readiness: .ready)
         model.completeIntro()
         model.activate(.play)
         XCTAssertEqual(model.screen, .play)
         XCTAssertTrue(model.readiness.allowsPlay)
-        XCTAssertFalse(model.gameFailedToOpen)
     }
 
     func testThePlayPanelLightsWhatReturnDoes() {
-        let model = makeModel(readiness: .ready, game: nil)
+        let model = makeModel(readiness: .ready)
         model.completeIntro()
         model.activate(.play)
         XCTAssertEqual(model.playSelection, .back, "The panel opens with Return lit")

@@ -6,8 +6,9 @@ build:
 run:
 	swift run NullmereLauncher
 
+# Plays in a realm hosted on this Mac.
 play:
-	swift run Nullmere
+	NULLMERE_REALM=local swift run NullmereLauncher
 
 test:
 	swift test

@@ -11,7 +11,6 @@ let package = Package(
     ],
     products: [
         .executable(name: "NullmereLauncher", targets: ["NullmereLauncher"]),
-        .executable(name: "Nullmere", targets: ["Nullmere"]),
         .library(name: "NullmereCore", targets: ["NullmereCore"]),
     ],
     targets: [
@@ -19,21 +18,24 @@ let package = Package(
         .target(name: "LauncherCore"),
         // The SwiftUI/AppKit/Metal launcher interface.
         .target(name: "LauncherKit", dependencies: ["LauncherCore"]),
-        // The "Nullmere Online" app entry point.
-        .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherKit"]),
+        // The "Nullmere Online" app: the launcher, and through Play, the realm.
+        .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherKit", "NullmereKit"]),
         // The game's rules: world, economy, war and diplomacy. Pure Swift,
         // deterministic, and the same on every machine.
         .target(
             name: "NullmereCore",
             linkerSettings: [.linkedLibrary("m", .when(platforms: [.linux]))]
         ),
-        // The game's interface: the Metal world, the panels, saving.
-        .target(name: "NullmereKit", dependencies: ["NullmereCore", "LauncherCore", "LauncherKit"]),
-        // The "Nullmere" game app entry point.
-        .executableTarget(name: "Nullmere", dependencies: ["NullmereKit"]),
+        // The realm: the line between a keeper's client and the world it
+        // shares with every other keeper, and a realm hosted in-process.
+        // Foundation only, so it builds and tests on Linux too.
+        .target(name: "NullmereRealm", dependencies: ["NullmereCore"]),
+        // The game's interface: the Metal world, the panels, the front door.
+        .target(name: "NullmereKit", dependencies: ["NullmereCore", "NullmereRealm", "LauncherCore", "LauncherKit"]),
         .testTarget(name: "LauncherCoreTests", dependencies: ["LauncherCore"]),
         .testTarget(name: "NullmereCoreTests", dependencies: ["NullmereCore"]),
+        .testTarget(name: "NullmereRealmTests", dependencies: ["NullmereRealm", "NullmereCore"]),
         .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore"]),
-        .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "LauncherCore"]),
+        .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereRealm", "LauncherCore"]),
     ]
 )

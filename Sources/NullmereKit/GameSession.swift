@@ -1,11 +1,14 @@
 import AppKit
 import Foundation
 import NullmereCore
+import NullmereRealm
 import Observation
 import SwiftUI
 
-/// One game in progress, and everything the interface needs about it: what
-/// is selected, where the camera looks, what just happened, and saving.
+/// A keeper in the world, and everything the interface needs: what is
+/// selected, where the camera looks, what just happened. The realm holds the
+/// world; the session holds the keeper's copy of it, carries out their
+/// orders at once as the realm will, and takes the realm's word as final.
 @MainActor
 @Observable
 public final class GameSession {
@@ -88,10 +91,23 @@ public final class GameSession {
 
     public private(set) var spoken: [Spoken: String] = [:]
 
-    /// Orders this watch that can be taken back, newest last.
-    private var undoStack: [(state: GameState, command: Command)] = []
-
-    public var canUndo: Bool { !undoStack.isEmpty }
+    /// The keeper's line to the realm.
+    private let link: any RealmLink
+    /// A realm hosted in this process, kept alive while the session lives.
+    private let host: LocalRealm?
+    /// The House the keeper holds.
+    public let player: Int
+    /// How the realm stands, as last heard, and when.
+    public private(set) var realmStatus: RealmStatus?
+    private var statusHeard = Date()
+    /// The keeper has given their orders and waits for the watch to turn.
+    public private(set) var isReady = false
+    /// Watches still to pass while nothing needs the keeper, and passed so far.
+    private var quietLeft = 0
+    private var quietPassed = 0
+    private var isAutoplaying = false
+    /// Called when a new age begins and the keeper is seated afresh.
+    public var onNewAge: ((Keeper, GameState) -> Void)?
 
     /// A company's march being shown, from where it stood along the route.
     public struct March: Equatable {
@@ -175,7 +191,7 @@ public final class GameSession {
     public private(set) var marches: [Int: March] = [:]
 
     private var noticeCounter = 0
-    private let store: SaveStore
+    private let store: LocalStore
     private let voice: (any Voice)?
     private var voiceQueue: [(Spoken, VoiceMoment)] = []
     private var asked: Set<Spoken> = []
@@ -184,12 +200,17 @@ public final class GameSession {
     /// Whether any character is still to speak, or speaking.
     var voicesPending: Bool { isSpeaking || !voiceQueue.isEmpty }
 
-    public init(state: GameState, store: SaveStore = SaveStore(), voice: (any Voice)? = nil) {
-        self.state = state
+    /// A keeper's session in a realm, as they arrive in it.
+    public init(link: any RealmLink, house: Int, world: GameState, store: LocalStore = LocalStore(), voice: (any Voice)? = nil,
+                host: LocalRealm? = nil) {
+        self.link = link
+        self.host = host
+        self.player = house
+        self.state = world
         self.store = store
         self.voice = voice
         var camera = Camera(scale: 28)
-        if let seat = state.seat(of: state.player) {
+        if let seat = world.seat(of: house) {
             camera.focus(on: seat.position)
         }
         self.camera = camera
@@ -203,10 +224,29 @@ public final class GameSession {
             }
         }
         refreshWorld()
+        link.onEvent = { [weak self] event in self?.hear(event) }
+        link.connect()
     }
 
-    public var player: Int { state.player }
-    public var playerHouse: House { state.houses[state.player] }
+    /// One House's game in a realm hosted here, its keeper holding the
+    /// world's first kept House: for tests, and for rehearsing on one Mac.
+    public convenience init(state: GameState, store: LocalStore = LocalStore(), voice: (any Voice)? = nil) {
+        let identity = "rehearsal"
+        let realm = LocalRealm(state: RealmState(name: "Rehearsal", world: state, keeper: identity, now: Date().timeIntervalSince1970))
+        self.init(link: realm.link(identity: identity), house: state.player, world: state, store: store, voice: voice, host: realm)
+    }
+
+    public var playerHouse: House { state.houses[player] }
+
+    /// Envoys waiting on this keeper's answer.
+    public var envoys: [Envoy] { state.envoys.filter { $0.to == player } }
+
+    /// Seconds until the watch turns of its own accord, counting down from
+    /// what the realm last said.
+    public func secondsLeft(at date: Date = Date()) -> Int? {
+        guard let status = realmStatus else { return nil }
+        return max(0, status.secondsLeft - Int(date.timeIntervalSince(statusHeard)))
+    }
 
     // MARK: Reading
 
@@ -323,15 +363,9 @@ public final class GameSession {
     public func perform(_ command: Command) -> Bool {
         do {
             let before = positions()
-            let previous = state
+            // Carried out here at once, as the realm will; its word follows.
             let events = try state.perform(command, as: player)
-            if Self.isUndoable(command, events: events, before: previous, after: state, player: player) {
-                undoStack.append((previous, command))
-            } else {
-                // Something learned or left to chance can't be taken back, nor
-                // anything before it.
-                undoStack.removeAll()
-            }
+            link.send(command)
             showMarches(events, from: before)
             showBlows(events, from: before)
             report(events)
@@ -352,26 +386,41 @@ public final class GameSession {
         return nil
     }
 
-    /// Ends the watch: the rivals move and the world turns.
+    /// The keeper is done with this watch's orders. The watch turns when
+    /// every keeper there is ready, or when its time runs out.
     public func endWatch() {
-        endWatches(upTo: 1)
+        guard state.outcome == nil, !isReady else { return }
+        isReady = true
+        link.setReady(true)
+    }
+
+    /// Takes back being ready, while the watch hasn't turned.
+    public func cancelReady() {
+        guard isReady else { return }
+        isReady = false
+        quietLeft = 0
+        quietPassed = 0
+        link.setReady(false)
     }
 
     /// Most watches that pass at once while nothing needs the player.
     public static let quietWatchLimit = 10
 
-    /// Ends watches until something needs the player: news worth hearing,
-    /// an envoy, a threat, a company or a hold without orders, the end of
-    /// the game; at most `quietWatchLimit`.
+    /// Stays ready, watch after watch, until something needs the player:
+    /// news worth hearing, an envoy, a threat, a company or a hold without
+    /// orders, the end of the age; at most `quietWatchLimit` watches.
     public func endWatchesUntilNeeded() {
-        endWatches(upTo: Self.quietWatchLimit)
+        guard state.outcome == nil, !isReady else { return }
+        quietLeft = Self.quietWatchLimit - 1
+        quietPassed = 0
+        endWatch()
     }
 
     /// Whether, after a watch, the player has something to see to.
     static func needsPlayer(after watch: [GameEvent], from before: GameState, to after: GameState, player: Int,
                             threatened: Set<Int>) -> Bool {
         if after.outcome != nil { return true }
-        if watch.contains(where: { if case .envoyArrived = $0 { return true } else { return false } }) { return true }
+        if watch.contains(where: { if case .envoyArrived(let envoy) = $0 { return envoy.to == player } else { return false } }) { return true }
         if watch.contains(where: { Narration.line(for: $0, in: after, viewer: player).map { $0.tone != .neutral } ?? false }) {
             return true
         }
@@ -382,34 +431,55 @@ public final class GameSession {
         return after.holds(of: player).contains { $0.project == nil }
     }
 
-    private func endWatches(upTo limit: Int) {
-        guard state.outcome == nil, !isEndingWatch else { return }
-        isEndingWatch = true
-        undoStack.removeAll()
+    // MARK: The realm's word
+
+    private func hear(_ event: RealmEvent) {
+        switch event {
+        case .status(let status):
+            realmStatus = status
+            statusHeard = Date()
+        case .settled(let world, _), .changed(let world):
+            adopt(world)
+        case .orderRefused(let error, let world):
+            adopt(world)
+            post(error.description, tone: .bad)
+        case .watchTurned(let world, let events):
+            watchTurned(to: world, events: events)
+        case .unreachable(let reason):
+            post("The realm can't be reached: \(reason)", tone: .bad)
+        case .arrived(let keeper, let world):
+            // Only a new age seats a keeper already in the world.
+            onNewAge?(keeper, world)
+        case .refused:
+            break
+        }
+    }
+
+    /// Takes the realm's world as it is, where it differs from ours.
+    private func adopt(_ world: GameState) {
+        guard world != state else { return }
+        state = world
+        if case .unit(let id) = selection, state.unit(id) == nil { selection = .none }
+        if case .hold(let id) = selection, state.hold(id) == nil { selection = .none }
+        refreshWorld()
+    }
+
+    /// The watch turned in the realm: show what it brought.
+    private func watchTurned(to world: GameState, events: [GameEvent]) {
         let previous = state
-        var events: [GameEvent] = []
-        var last: [GameEvent] = []
-        var before = positions()
-        var passed = 0
-        repeat {
-            before = positions()
-            let start = state
-            last = state.endWatch()
-            events += last
-            passed += 1
-            if Self.needsPlayer(after: last, from: start, to: state, player: player, threatened: threatened) { break }
-        } while passed < limit
+        let before = positions()
+        state = world
+        isReady = false
+        guard !isAutoplaying else { return }
+        isEndingWatch = true
+        quietPassed += 1
         showWatchCard(WatchSummary(before: previous, after: state, events: events, player: player))
-        // Only the last watch's marches and blows are drawn.
-        showMarches(last, from: before)
-        showBlows(last, from: before)
+        showMarches(events, from: before)
+        showBlows(events, from: before)
         for cue in Self.cues(for: events, player: player) {
             onCue?(cue)
         }
         notices.removeAll()
-        if passed > 1 {
-            post("\(passed) quiet watches pass.", tone: .neutral)
-        }
         report(events)
         var warnings = Race.warnings(before: previous, after: state, player: player)
         let threats = Sentinel.threats(in: state, player: player, visible: state.visibility(for: player))
@@ -420,12 +490,22 @@ public final class GameSession {
         if warnings.contains(where: { $0.tone == .bad }), !Self.cues(for: events, player: player).contains(.dread) {
             onCue?(.dread)
         }
+        let needed = Self.needsPlayer(after: events, from: previous, to: state, player: player, threatened: threatened)
         if case .unit(let id) = selection, state.unit(id) == nil {
             selection = .none
         }
         refreshWorld()
         isEndingWatch = false
-        reportSave(store.save(state))
+        if quietLeft > 0, !needed {
+            quietLeft -= 1
+            endWatch()
+        } else {
+            if quietPassed > 1 {
+                post("\(quietPassed) quiet watches pass.", tone: .neutral)
+            }
+            quietLeft = 0
+            quietPassed = 0
+        }
     }
 
     /// Selects the next unit that's waiting for orders.
@@ -451,38 +531,19 @@ public final class GameSession {
         }
     }
 
-    /// Lets a steward play the player's watches, then ends them: for
-    /// screenshots and tests of a game well under way.
+    /// Lets a steward play the player's watches in a realm hosted here,
+    /// the watch turning after each: for screenshots and tests of a game
+    /// well under way.
     func autoplay(watches: Int) {
-        for _ in 0..<watches where state.outcome == nil {
-            _ = state.stewardTurn(for: player)
-            _ = state.endWatch()
-        }
+        guard let host, let identity = (link as? LocalLink)?.identity else { return }
+        isAutoplaying = true
+        host.autoplay(identity, watches: watches)
+        isAutoplaying = false
         notices.removeAll()
         selection = .none
         refreshWorld()
         if let seat = state.seat(of: player) {
             camera.focus(on: seat.position)
-        }
-    }
-
-    /// Whether the last save failed, so the next success can say so.
-    private(set) var saveFailing = false
-
-    public func save(quietly: Bool = false) {
-        let problem = store.save(state)
-        reportSave(problem)
-        if problem == nil, !quietly { post("Saved.", tone: .neutral) }
-    }
-
-    /// A save that fails is never silent; nor is the one that recovers.
-    private func reportSave(_ problem: String?) {
-        if let problem {
-            post("The game could not be saved: \(problem) It is safe while Nullmere stays open; free some space and press ⌘S.", tone: .bad)
-            saveFailing = true
-        } else if saveFailing {
-            post("Saved again.", tone: .good)
-            saveFailing = false
         }
     }
 
@@ -502,35 +563,6 @@ public final class GameSession {
         tilesVersion += 1
         refreshPathPreview()
         askVoices()
-    }
-
-    // MARK: Undo
-
-    /// Takes back the last order, if nothing in it was left to chance or
-    /// revealed anything new.
-    public func undo() {
-        guard let last = undoStack.popLast() else { return }
-        state = last.state
-        if case .unit(let id) = selection, state.unit(id) == nil { selection = .none }
-        if case .hold(let id) = selection, state.hold(id)?.owner != player { selection = .none }
-        refreshWorld()
-        post("Order taken back.", tone: .neutral)
-    }
-
-    static func isUndoable(_ command: Command, events: [GameEvent], before: GameState, after: GameState, player: Int) -> Bool {
-        switch command {
-        case .build, .train, .barter, .fortify, .halt, .disband:
-            return true
-        case .move:
-            // A march may be taken back if it met nothing and saw nothing new.
-            let quiet = events.allSatisfy { event in
-                if case .moved = event { return true }
-                return false
-            }
-            return quiet && before.houses[player].explored == after.houses[player].explored
-        case .attack, .found, .declareWar, .propose, .answer:
-            return false
-        }
     }
 
     // MARK: Sound
@@ -682,7 +714,9 @@ public final class GameSession {
     /// that touch the player, one at a time.
     private func askVoices() {
         guard voice != nil else { return }
-        for envoy in state.envoys where !asked.contains(.envoy(envoy.id)) {
+        // Envoys of stewards speak; a keeper's envoy carries their offer, not
+        // words the model would put in a person's mouth.
+        for envoy in envoys where !asked.contains(.envoy(envoy.id)) && !state.houses[envoy.from].isPlayer {
             asked.insert(.envoy(envoy.id))
             voiceQueue.append((.envoy(envoy.id), VoiceFacts.envoy(envoy, in: state)))
         }
