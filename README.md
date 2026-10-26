@@ -189,9 +189,9 @@ and the client on your Mac holds a copy, carries out your orders at once
 as the realm will, and takes the realm's word as final.
 
 - **The front door.** Choose the name you'll go by: two to twenty letters.
-  It names you and the House you'll hold, and nothing else is asked. Your
-  identity is a random key the client makes once and keeps in your Mac's
-  keychain; the realm knows you by it and by your name. The front door
+  It names you and the House you'll hold, and nothing else is asked. The
+  realm knows you by an identity your Mac keeps in its keychain, and by
+  your name. The front door
   shows the realm's state: its age and watch, how many keepers are there,
   and how many seats are free. Enter World seats you in the first free
   House; returning, you go straight back to yours.
@@ -209,11 +209,38 @@ as the realm will, and takes the realm's word as final.
 - **Ages.** When a House wins, the age ends. When the watch next turns, a
   new age begins on a fresh lake, and every keeper is seated anew in the
   order they first came.
-- **The server.** The realm's rules are the same Swift rules core, run by
-  the authority on the server side. This build hosts a realm in-process
-  for development and CI (`NULLMERE_REALM=local`). The network realm on
-  [SpacetimeDB](https://spacetimedb.com) is being built next: until it
-  opens, a release build's front door reports the realm out of reach.
+- **The server.** SpacetimeDB is the realm's authority of record: it knows
+  each keeper by their identity, keeps the world, and lets no one but the
+  steward write it. The steward runs the same Swift rules core the clients
+  carry, so there is one set of rules. A keeper's client carries out their
+  orders at once, as the realm will, and takes the realm's word as final.
+  Your SpacetimeDB identity is made once and kept in your keychain. For
+  development a realm can also be hosted in-process (`NULLMERE_REALM=local`).
+
+### Raising the realm
+
+The realm proper is a [SpacetimeDB](https://spacetimedb.com) database with
+the module in `realm-server/`, and a steward beside it running the rules.
+Release builds look for it at `https://maincloud.spacetimedb.com/nullmere`.
+
+```sh
+# The module: keepers' requests in, the steward's world out.
+cd realm-server
+spacetime publish --server maincloud --yes nullmere
+
+# The steward, as the identity that published the module.
+NULLMERE_STEWARD_TOKEN="$(spacetime login show --token | awk '{print $NF}' | tail -n 1)" \
+    swift run -c release NullmereSteward https://maincloud.spacetimedb.com/nullmere
+```
+
+The steward runs on any Mac or Linux machine with Swift, and takes up the
+realm where it stands after a restart. `NULLMERE_REALM_NAME`,
+`NULLMERE_REALM_SEED`, `NULLMERE_REALM_SEATS` and `NULLMERE_WATCH_SECONDS`
+shape a new realm. For a realm on your own machine, `spacetime start`, then
+publish with `--server local`, run the steward against
+`http://127.0.0.1:3000/nullmere`, and open a debug build with
+`NULLMERE_REALM=http://127.0.0.1:3000/nullmere`. CI does exactly this on
+Linux, and plays two keepers through it.
 
 ## Playing Nullmere
 
@@ -367,7 +394,9 @@ Sources/
   LauncherKit/        SwiftUI interface, Metal backdrop, services (on-device model, news)
   NullmereLauncher/   The Nullmere Online app's entry point
   NullmereCore/       The rules and the realm's authority: world generation, economy, war, diplomacy, stewards, keepers, watches, ages. Pure, deterministic Swift
-  NullmereRealm/      The client's line to the realm, a realm hosted in-process, keeper identity. Foundation only
+  NullmereRealm/      The client's line to the realm over SpacetimeDB or in-process, the steward, keeper identity. Foundation only
+  NullmereSteward/    The steward's command-line entry point
+realm-server/         The SpacetimeDB module (Rust): keepers, requests, answers, the world
   NullmereKit/        The world's interface: front door, Metal world, panels, sound
 Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereRealmTests, NullmereKitTests
 news/                 news.json, the launcher's news feed

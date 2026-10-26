@@ -20,44 +20,50 @@ struct FrontDoor: View {
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
 
-            VStack(spacing: 0) {
-                Spacer(minLength: 40)
-                Wordmark(appeared: appeared)
-                Spacer(minLength: 40)
-                VStack(alignment: .leading, spacing: 18) {
-                    RealmLine(door: app.door)
-                    Rule(opacity: 0.25)
-                    keeper
-                    if let problem = app.arrivalProblem {
-                        Text(verbatim: problem)
-                            .font(.nm(11))
-                            .foregroundStyle(Palette.bad)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    HStack(spacing: 10) {
-                        QuietButton(title: app.isEntering ? "Entering…" : "Enter World", size: 11, prominent: true,
-                                    enabled: app.canEnter(with: name)) {
-                            app.enterWorld(name: name)
+            GeometryReader { proxy in
+                VStack(spacing: 0) {
+                    // The name rests below the moon, above the far shore, as on
+                    // the launcher.
+                    Spacer(minLength: 0)
+                        .frame(height: proxy.size.height * 0.3)
+                    Wordmark(appeared: appeared)
+                    Spacer(minLength: 28)
+                    VStack(alignment: .leading, spacing: 18) {
+                        RealmLine(door: app.door)
+                        Rule(opacity: 0.25)
+                        keeper
+                        if let problem = app.arrivalProblem {
+                            Text(verbatim: problem)
+                                .font(.nm(11))
+                                .foregroundStyle(Palette.bad)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-                        .keyboardShortcut(.defaultAction)
-                        if case .unreachable = app.door {
-                            QuietButton(title: "Try Again", size: 11) { app.openDoor() }
+                        HStack(spacing: 10) {
+                            QuietButton(title: app.isEntering ? "Entering…" : "Enter World", size: 11, prominent: true,
+                                        enabled: app.canEnter(with: name)) {
+                                app.enterWorld(name: name)
+                            }
+                            .keyboardShortcut(.defaultAction)
+                            if case .unreachable = app.door {
+                                QuietButton(title: "Try Again", size: 11) { app.openDoor() }
+                            }
+                            Spacer()
+                            QuietButton(title: "Back", size: 11) { app.leaveDoor() }
+                                .keyboardShortcut(.cancelAction)
                         }
-                        Spacer()
-                        QuietButton(title: "Back", size: 11) { app.leaveDoor() }
-                            .keyboardShortcut(.cancelAction)
                     }
+                    .padding(26)
+                    .frame(width: 460)
+                    .panelBackground()
+                    Text(verbatim: "Your identity is a random key kept in this Mac's keychain. The realm knows you by it and by the name you choose; nothing else.")
+                        .font(.nm(10))
+                        .foregroundStyle(Palette.ink.opacity(0.45))
+                        .multilineTextAlignment(.center)
+                        .frame(width: 420)
+                        .padding(.top, 14)
+                    Spacer(minLength: 40)
                 }
-                .padding(26)
-                .frame(width: 460)
-                .panelBackground()
-                Text(verbatim: "Your identity is a random key kept in this Mac's keychain. The realm knows you by it and by the name you choose; nothing else.")
-                    .font(.nm(10))
-                    .foregroundStyle(Palette.ink.opacity(0.45))
-                    .multilineTextAlignment(.center)
-                    .frame(width: 420)
-                    .padding(.top, 14)
-                Spacer(minLength: 60)
+                .frame(width: proxy.size.width)
             }
         }
         .onAppear {
