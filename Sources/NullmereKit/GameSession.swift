@@ -529,11 +529,13 @@ public final class GameSession {
 
 
     /// Whether the player may demand tribute of a House now: at peace,
-    /// neither sworn to the other, and no tribute paid between them lately.
+    /// neither sworn to the other, no tribute paid between them lately, and
+    /// the player clearly the stronger, as a rival would need to be.
     public func canDemandTribute(from house: Int) -> Bool {
         guard let other = state.house(house), !other.isEliminated, house != player else { return false }
         return state.stance(player, house) == .peace && other.liege != player && playerHouse.liege != house
             && !state.paidTributeLately(player, house)
+            && state.strength(of: player) * 100 > state.strength(of: house) * 125
     }
 
     // MARK: The watch's card

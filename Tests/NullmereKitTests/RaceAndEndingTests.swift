@@ -52,6 +52,17 @@ final class RaceTests: XCTestCase {
         }
     }
 
+    func testTributeIsOfferedOnlyToTheClearlyWeaker() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var state = game()
+        XCTAssertFalse(GameSession(state: state, store: SaveStore(directory: dir)).canDemandTribute(from: 1), "Not of an equal")
+        state.units.removeAll { $0.owner == 1 }
+        let seat = try XCTUnwrap(state.seat(of: state.player))
+        for _ in 0..<4 { state.placeUnit(.spear, for: state.player, near: seat.position) }
+        XCTAssertTrue(GameSession(state: state, store: SaveStore(directory: dir)).canDemandTribute(from: 1))
+    }
+
     func testTheRaceTableReadsEachHouse() {
         let state = game()
         let line = RaceTable.spoken(state.standing(of: state.player), in: state, player: state.player)
@@ -80,8 +91,9 @@ final class EndingTests: XCTestCase {
         let store = SaveStore(directory: dir)
         let session = GameSession(state: GameState(settings: GameSettings(seedText: "siege check 13")), store: store)
         session.autoplay(watches: 100)
-        session.panel = .houses
-        try keep(GameRootPreview.houses(session), as: "game-race.png", size: CGSize(width: 420, height: 640))
+        // Offscreen rendering leaves a scroll view empty: draw the table alone.
+        try keep(RaceTable(session: session).padding(20).frame(width: 360).panelBackground(), as: "game-race.png",
+                 size: CGSize(width: 400, height: 260))
 
         session.autoplay(watches: 160)
         let outcome = try XCTUnwrap(session.state.outcome)
@@ -100,14 +112,6 @@ final class EndingTests: XCTestCase {
         let won = Outcome(winner: 0, kind: .dominion, watch: 90)
         XCTAssertEqual(GameSession.cues(for: [.gameEnded(won)], player: 0), [.watch, .triumph])
         XCTAssertEqual(GameSession.cues(for: [.gameEnded(won)], player: 1), [.watch, .toll])
-    }
-}
-
-/// The Houses panel alone, for rendering offscreen.
-enum GameRootPreview {
-    @MainActor
-    static func houses(_ session: GameSession) -> some View {
-        HousesPanel(session: session).padding(20)
     }
 }
 

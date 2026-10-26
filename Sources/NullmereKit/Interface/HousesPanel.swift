@@ -120,23 +120,30 @@ private struct HouseRow: View {
                     Figure(label: "Strength", value: state.strength(of: house.id))
                     Figure(label: "Renown", value: state.renown(of: house.id))
                 }
-                HStack(spacing: 4) {
-                    switch stance {
-                    case .war:
-                        QuietButton(title: "Offer peace", size: 8.5) { session.perform(.propose(.peace, to: house.id)) }
-                    case .peace:
-                        QuietButton(title: "Offer a pact", size: 8.5) { session.perform(.propose(.pact, to: house.id)) }
-                        if session.canDemandTribute(from: house.id) {
-                            QuietButton(title: "Demand tribute", size: 8.5) { session.perform(.propose(.tribute, to: house.id)) }
-                        }
-                        QuietButton(title: "Declare war", size: 8.5) { session.perform(.declareWar(on: house.id)) }
-                    case .pact:
-                        QuietButton(title: "Break the pact", size: 8.5) { session.perform(.declareWar(on: house.id)) }
-                    }
+                // In a row when they fit, one above another when they don't.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 4) { actions(stance: stance) }
+                    VStack(alignment: .leading, spacing: 2) { actions(stance: stance) }
                 }
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private func actions(stance: Stance) -> some View {
+        switch stance {
+        case .war:
+            QuietButton(title: "Offer peace", size: 8.5) { session.perform(.propose(.peace, to: house.id)) }
+        case .peace:
+            QuietButton(title: "Offer a pact", size: 8.5) { session.perform(.propose(.pact, to: house.id)) }
+            if session.canDemandTribute(from: house.id) {
+                QuietButton(title: "Demand tribute", size: 8.5) { session.perform(.propose(.tribute, to: house.id)) }
+            }
+            QuietButton(title: "Declare war", size: 8.5) { session.perform(.declareWar(on: house.id)) }
+        case .pact:
+            QuietButton(title: "Break the pact", size: 8.5) { session.perform(.declareWar(on: house.id)) }
+        }
     }
 
     private func summary(stance: Stance, relation: Relation?, spire: Int) -> String {

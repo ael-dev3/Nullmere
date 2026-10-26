@@ -101,6 +101,8 @@ struct QuietButton: View {
     var body: some View {
         Button(action: action) {
             Caps(title, size: size, weight: prominent ? .medium : .regular)
+                .lineLimit(1)
+                .fixedSize()
                 .foregroundStyle(Palette.ink.opacity(enabled ? (hovering || prominent ? 1 : 0.72) : 0.3))
                 .padding(.horizontal, prominent ? 16 : 8)
                 .padding(.vertical, prominent ? 9 : 5)
