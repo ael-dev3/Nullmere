@@ -34,8 +34,8 @@ enum TileTexture {
             if seen > 0, let holdID = owners[index], let colour = colourOf[holdID] {
                 owner = colour
             }
-            bytes[offset] = UInt8(Terrain.allCases.firstIndex(of: tile.terrain) ?? 0)
-            bytes[offset + 1] = tile.feature.map { UInt8((Feature.allCases.firstIndex(of: $0) ?? 0) + 1) } ?? 0
+            bytes[offset] = tile.terrain.code
+            bytes[offset + 1] = tile.feature.map { $0.code + 1 } ?? 0
             // A known hold lights the country round it: the feature byte's top bit.
             if seen > 0, holdTiles.contains(index) {
                 bytes[offset + 1] |= TileTexture.holdFlag

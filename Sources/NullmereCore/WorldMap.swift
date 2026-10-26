@@ -1,5 +1,17 @@
 import Foundation
 
+extension Terrain {
+    private static let codes: [Terrain: UInt8] = Dictionary(uniqueKeysWithValues: allCases.enumerated().map { ($1, UInt8($0)) })
+    /// Its place among the terrains, found once.
+    public var code: UInt8 { Terrain.codes[self]! }
+}
+
+extension Feature {
+    private static let codes: [Feature: UInt8] = Dictionary(uniqueKeysWithValues: allCases.enumerated().map { ($1, UInt8($0)) })
+    /// Its place among the features, found once.
+    public var code: UInt8 { Feature.codes[self]! }
+}
+
 /// One tile of the world.
 public struct Tile: Codable, Equatable, Sendable {
     public var terrain: Terrain
@@ -70,8 +82,8 @@ public struct WorldMap: Codable, Equatable, Sendable {
         var bytes = [UInt8]()
         bytes.reserveCapacity(tiles.count * 3)
         for tile in tiles {
-            bytes.append(UInt8(Terrain.allCases.firstIndex(of: tile.terrain)!))
-            bytes.append(tile.feature.map { UInt8(Feature.allCases.firstIndex(of: $0)! + 1) } ?? 0)
+            bytes.append(tile.terrain.code)
+            bytes.append(tile.feature.map { $0.code + 1 } ?? 0)
             bytes.append(UInt8(clamping: tile.relief))
         }
         return Data(bytes).base64EncodedString()

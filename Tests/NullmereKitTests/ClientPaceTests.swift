@@ -1,11 +1,13 @@
 import Foundation
 @testable import NullmereCore
+import NullmereRealm
 import XCTest
 @testable import NullmereKit
 
-/// The client redraws its copy of the world after every order the keeper
-/// gives: on the realm's full lake, deep into an age, that must take less
-/// than a frame.
+/// The client carries out every order on its own copy of the world at once
+/// and redraws it; the realm's answer comes later, across the network. On
+/// the realm's full lake, deep into an age, the order must take less than
+/// a frame, even in a debug build.
 @MainActor
 final class ClientPaceTests: XCTestCase {
     func testAnOrderOnAFullLakeTakesLessThanAFrame() throws {
@@ -17,7 +19,8 @@ final class ClientPaceTests: XCTestCase {
             for house in realm.world.houses where !house.isEliminated { _ = realm.world.stewardTurn(for: house.id) }
             _ = realm.world.endWatch()
         }
-        let session = GameSession(state: realm.world, store: LocalStore(directory: dir))
+        let house = try XCTUnwrap(realm.keeper("a")?.house)
+        let session = GameSession(link: QuietLink(), house: house, world: realm.world.view(for: house), store: LocalStore(directory: dir))
         XCTAssertNil(session.state.outcome, "The age goes on")
         // A step to free open ground beside each company that can move.
         var orders: [Command] = []
@@ -58,4 +61,15 @@ final class ClientPaceTests: XCTestCase {
         XCTAssertFalse(times.isEmpty, "Companies to order")
         XCTAssertLessThan(median, 16, "Less than a frame")
     }
+}
+
+/// The realm across the network: it answers, but not within the frame.
+@MainActor
+private final class QuietLink: RealmLink {
+    var onEvent: ((RealmEvent) -> Void)?
+    func connect() {}
+    func arrive(name: String?) {}
+    func send(_ command: Command) {}
+    func setReady(_ ready: Bool) {}
+    func leave() {}
 }
