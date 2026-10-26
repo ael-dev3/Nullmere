@@ -480,3 +480,25 @@ final class SaveFailureTests: XCTestCase {
         XCTAssertFalse(session.saveFailing)
     }
 }
+
+@MainActor
+final class PointerTests: XCTestCase {
+    func testThePointerSaysWhatAClickWouldDo() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "pointer", houseCount: 3, radius: 16)),
+                                  store: SaveStore(directory: dir))
+        let seat = try XCTUnwrap(session.state.seat(of: session.player))
+        let lantern = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .lantern })
+        XCTAssertEqual(session.pointerAction(at: seat.position), .select)
+        XCTAssertEqual(session.pointerAction(at: Hex(999, 0)), .none)
+
+        session.selection = .unit(lantern.id)
+        let open = try XCTUnwrap(session.reach.first { session.state.unit(at: $0) == nil && session.state.hold(at: $0) == nil })
+        XCTAssertEqual(session.pointerAction(at: open), .march)
+        let far = try XCTUnwrap(session.state.map.hexes.first {
+            $0.distance(to: lantern.position) > 8 && session.state.unit(at: $0) == nil && session.state.hold(at: $0) == nil
+        })
+        XCTAssertEqual(session.pointerAction(at: far), .none)
+    }
+}

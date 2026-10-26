@@ -38,6 +38,13 @@ private struct WorldMetalRepresentable: NSViewRepresentable {
         let view = WorldMetalView()
         view.onFailure = onFailure
         view.onHover = { hex in session.hover(hex) }
+        view.cursor = { hex in
+            switch session.pointerAction(at: hex) {
+            case .select: return .pointingHand
+            case .strike: return .crosshair
+            case .march, .none: return .arrow
+            }
+        }
         view.onClick = { hex in session.click(hex) }
         view.onSecondaryClick = { hex in session.order(hex) }
         view.onCameraChange = { camera in session.camera = camera }
@@ -216,12 +223,20 @@ private struct WorldMarks: View {
                 let inHold = state.hold(at: unit.position) != nil && session.marches[unit.id] == nil
                 let colour = Palette.house(state.houses[unit.owner])
                 let r = min(max(scale * 0.34, 7), 16) * (inHold ? 0.62 : 1)
+                let isSelected = session.selectedUnit?.id == unit.id
+                let isHovered = session.hovered == unit.position && !inHold
                 if inHold {
                     point = CGPoint(x: point.x + r * 1.9, y: point.y + r * 0.9)
                 }
                 let disc = Path(ellipseIn: CGRect(x: point.x - r, y: point.y - r, width: r * 2, height: r * 2))
                 context.fill(disc, with: .color(Color.black.opacity(0.78)))
                 context.stroke(disc, with: .color(colour), lineWidth: unit.fortified ? 2.2 : 1.3)
+                // The chosen company wears a bright halo; the one under the
+                // pointer a faint one.
+                if isSelected || isHovered {
+                    let halo = Path(ellipseIn: CGRect(x: point.x - r - 3, y: point.y - r - 3, width: (r + 3) * 2, height: (r + 3) * 2))
+                    context.stroke(halo, with: .color(Palette.ink.opacity(isSelected ? 0.9 : 0.4)), lineWidth: isSelected ? 1.4 : 1)
+                }
                 context.stroke(glyph(for: unit.kind, at: point, radius: r * 0.55), with: .color(colour), lineWidth: 1.3)
                 // Rank: a small chevron for each, beneath the token.
                 for chevron in 0..<unit.rank {

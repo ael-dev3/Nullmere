@@ -279,8 +279,14 @@ final class WorldMetalView: MTKView {
     }
 
     override func mouseMoved(with event: NSEvent) {
-        onHover?(hex(of: event))
+        let hex = hex(of: event)
+        onHover?(hex)
+        (cursor?(hex) ?? .arrow).set()
     }
+
+    /// The pointer's shape over a hex: a hand over what can be chosen, a
+    /// crosshair over what can be struck.
+    var cursor: ((Hex) -> NSCursor)?
 
     override func mouseExited(with event: NSEvent) {
         onHover?(nil)

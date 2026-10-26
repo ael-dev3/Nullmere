@@ -208,6 +208,28 @@ public final class GameSession {
 
     // MARK: Pointer
 
+    /// What a click or right-click on a hex would do, for the pointer's shape
+    /// and the marks under it.
+    public enum PointerAction: Equatable {
+        case none
+        /// Selects one of the player's companies or holds, or looks at another's.
+        case select
+        /// The selected company would march here this watch.
+        case march
+        /// The selected company would strike here.
+        case strike
+    }
+
+    public func pointerAction(at hex: Hex) -> PointerAction {
+        guard state.map.contains(hex) else { return .none }
+        if strikeTargets.contains(hex) { return .strike }
+        if let unit = state.unit(at: hex), unit.owner == player { return .select }
+        if let hold = state.hold(at: hex), hold.owner == player || isExplored(hex) { return .select }
+        if let unit = state.unit(at: hex), isVisible(hex), unit.owner != player { return .select }
+        if reach.contains(hex) { return .march }
+        return .none
+    }
+
     public func hover(_ hex: Hex?) {
         guard hex != hovered else { return }
         hovered = hex
