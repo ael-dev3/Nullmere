@@ -74,7 +74,11 @@ open "build/Nullmere Online.app"  # Play opens build/Nullmere.app beside it
 ```
 
 `scripts/build-app.sh` makes arm64 release builds and assembles
-`Nullmere Online.app` and `Nullmere.app` with their icons and Info.plists. It signs the app ad hoc,
+`Nullmere Online.app` and `Nullmere.app` with their icons and Info.plists.
+The icon is a Liquid Glass document, `Packaging/AppIcon.icon` (night,
+reflection and a glass moon), compiled with `actool` into each app's asset
+catalog; the classic `AppIcon.png` is the fallback where `actool` isn't
+available. It signs the app ad hoc,
 which is enough to run it on the Mac that built it. To sign with a
 Developer ID instead, set `CODESIGN_IDENTITY`: the app is then signed with
 the hardened runtime and a secure timestamp, ready to notarize. `VERSION`
@@ -86,6 +90,7 @@ Tests and checks:
 swift test                 # unit tests; on a Mac with Metal, the shader is also compiled on the GPU
 make check-shader          # compile the shader with the offline Metal compiler
 make smoke                 # build the apps, open the launcher, check it starts and renders with Metal, take a screenshot
+make smoke-menu            # open a debug build of the launcher as if the model were ready; photograph the menu, News and Settings
 make smoke-game            # open a debug build of the game past the model gate, start a world, take screenshots
 ```
 
@@ -282,7 +287,8 @@ Sources/
   Nullmere/           Game entry point
 Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests
 news/                 news.json, the launcher's news feed
-Packaging/            Info.plist templates and the 1024 px app icon
+Packaging/            Info.plist templates, the Liquid Glass icon (AppIcon.icon) and the classic 1024 px icon
+Tools/icon/           Draws the icon's layers (make-layers.py)
 scripts/              build-app.sh, check-shader.sh, smoke-test-app.sh, smoke-test-game.sh
 Tools/scene-preview/  Browser preview of the lake shader
 docs/                 Project notes, starting with what carries over from Warpkeep

@@ -1,4 +1,4 @@
-.PHONY: build run play test check-shader app smoke smoke-game clean
+.PHONY: build run play test check-shader app smoke smoke-game smoke-menu clean
 
 build:
 	swift build
@@ -23,6 +23,9 @@ smoke: app
 
 smoke-game: build
 	scripts/smoke-test-game.sh
+
+smoke-menu: build
+	scripts/smoke-test-launcher-menu.sh
 
 clean:
 	rm -rf .build build

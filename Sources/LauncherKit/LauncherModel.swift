@@ -74,6 +74,7 @@ public final class LauncherModel {
     @ObservationIgnored private var readinessTask: Task<Void, Never>?
     @ObservationIgnored private var newsFetchedAt: Date?
     @ObservationIgnored private var isFetchingNews = false
+    @ObservationIgnored private var pendingDebugScreen: MenuItem? = LauncherEnvironment.debugScreen
 
     public convenience init(defaults: UserDefaults = .standard) {
         self.init(defaults: defaults, environment: .live)
@@ -161,6 +162,10 @@ public final class LauncherModel {
     /// downloads, or until Apple Intelligence is turned on.
     func refreshReadiness() {
         apply(environment.modelReadiness())
+        if !isGated, let item = pendingDebugScreen {
+            pendingDebugScreen = nil
+            activate(item)
+        }
         guard readiness.needsRecheck, readinessTask == nil else { return }
         readinessTask = Task { [weak self] in
             while true {

@@ -20,8 +20,35 @@ struct LauncherEnvironment {
     /// Quits the launcher.
     var terminate: @MainActor () -> Void
 
+    /// Debug builds can report the model as ready with
+    /// NULLMERE_SKIP_MODEL_CHECK=1, so the menu can be opened and
+    /// photographed on a machine without Apple Intelligence, such as CI.
+    /// Release builds always ask the Foundation Models framework.
+    static var debugReadiness: ModelReadiness? {
+        #if DEBUG
+        return ProcessInfo.processInfo.environment["NULLMERE_SKIP_MODEL_CHECK"] == "1" ? .ready : nil
+        #else
+        return nil
+        #endif
+    }
+
+    /// Debug builds can open straight onto a screen with
+    /// NULLMERE_LAUNCHER_SCREEN=play, news or settings.
+    static var debugScreen: MenuItem? {
+        #if DEBUG
+        switch ProcessInfo.processInfo.environment["NULLMERE_LAUNCHER_SCREEN"] {
+        case "play": return .play
+        case "news": return .news
+        case "settings": return .settings
+        default: return nil
+        }
+        #else
+        return nil
+        #endif
+    }
+
     static let live = LauncherEnvironment(
-        modelReadiness: { OnDeviceModel.readiness() },
+        modelReadiness: { LauncherEnvironment.debugReadiness ?? OnDeviceModel.readiness() },
         systemSavesEnergy: {
             let info = ProcessInfo.processInfo
             return info.isLowPowerModeEnabled || [.serious, .critical].contains(info.thermalState)
