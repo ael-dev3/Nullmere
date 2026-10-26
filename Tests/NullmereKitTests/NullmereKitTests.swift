@@ -602,9 +602,8 @@ final class TextSizeTests: XCTestCase {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
         let session = GameSession(state: GameState(settings: GameSettings(seedText: "larger text")), store: SaveStore(directory: dir))
-        session.autoplay(watches: 20)
-        session.focusOnSeat()
-        XCTAssertNotNil(session.selectedHold)
+        session.selectNextReadyUnit()
+        XCTAssertNotNil(session.selectedUnit)
 
         TextSize.shared.isLarger = false
         let standard = try size(of: SelectionPanel(session: session).fixedSize(horizontal: false, vertical: true))
@@ -612,5 +611,17 @@ final class TextSizeTests: XCTestCase {
         let larger = try size(of: SelectionPanel(session: session).fixedSize(horizontal: false, vertical: true))
         XCTAssertEqual(larger.width, standard.width, "The panel keeps its width")
         XCTAssertGreaterThan(larger.height, standard.height, "and grows to hold the larger type")
+    }
+
+    /// A hold's long panel scrolls within its height rather than run off the window.
+    func testTheHoldPanelScrollsWithinItsHeight() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "larger text")), store: SaveStore(directory: dir))
+        session.focusOnSeat()
+        XCTAssertNotNil(session.selectedHold)
+        TextSize.shared.isLarger = true
+        let larger = try size(of: SelectionPanel(session: session).fixedSize(horizontal: false, vertical: true))
+        XCTAssertLessThanOrEqual(larger.height, 640)
     }
 }
