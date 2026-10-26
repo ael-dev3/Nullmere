@@ -114,7 +114,14 @@ extension GameState {
 
     private mutating func mendAndHeal(territory owners: [Int?]) {
         for index in holds.indices {
-            if !holds[index].struck {
+            // A ward can't be mended while it is struck, or while an enemy
+            // army stands at its walls.
+            let hold = holds[index]
+            let besieged = units.contains { unit in
+                unit.kind.isMilitary && unit.owner != hold.owner && isAtWar(unit.owner, hold.owner)
+                    && unit.position.distance(to: hold.position) == 1
+            }
+            if !hold.struck && !besieged {
                 holds[index].ward = min(holds[index].maximumWard, holds[index].ward + Hold.wardRecovery)
             }
             holds[index].struck = false

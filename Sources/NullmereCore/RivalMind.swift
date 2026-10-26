@@ -89,8 +89,12 @@ struct RivalMind {
             switch relation.stance {
             case .war:
                 let losing = mine * 10 < theirs * 7
-                let weary = lasted >= 12 && me.temperament != .ambitious
-                if lasted >= 4, losing || weary, random.chance(40) {
+                let weary = lasted >= 20 && me.temperament != .ambitious
+                // A House whose siege is going well fights on.
+                let winning = siegePlan(in: state).map { plan in
+                    state.hold(at: plan.target).map { $0.owner == other.id && $0.ward * 2 < $0.maximumWard } ?? false
+                } ?? false
+                if lasted >= 4, losing || (weary && !winning), random.chance(40) {
                     events += perform(.propose(.peace, to: other.id), in: &state)
                 }
             case .peace:
@@ -240,7 +244,7 @@ struct RivalMind {
         case .steadfast, .wary: wantedHolds = 4
         }
         let wealthy = me.stock.grain > 250 && me.stock.timber > 150 ? holds : 0
-        let wantedArmy = holds * 2 + 1 + (atWar ? 3 : 0) + (me.temperament == .ambitious ? 2 : 0) + wealthy
+        let wantedArmy = holds * 2 + 1 + (atWar ? 3 + holds : 0) + (me.temperament == .ambitious ? 2 : 0) + wealthy
 
         var choice: UnitKind?
         if lanterns < (state.watch < 20 ? 2 : 1), hold.isSeat {
@@ -317,24 +321,23 @@ struct RivalMind {
         if let target = foeInReach(of: unit, in: state) {
             return perform(.attack(unit: unit.id, target: target), in: &state)
         }
-        let explored = state.houses[house].explored
-        var targets: [Hex] = []
-        for other in state.units where other.owner != house && state.isAtWar(house, other.owner) {
-            if let index = state.map.index(of: other.position), visible[index],
-               other.position.distance(to: unit.position) <= 8 {
-                targets.append(other.position)
+        // Meet enemies who come close.
+        let skirmish = state.units
+            .filter { $0.owner != house && state.isAtWar(house, $0.owner) && $0.position.distance(to: unit.position) <= 3 }
+            .filter { state.map.index(of: $0.position).map { visible[$0] } ?? false }
+            .min { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
+        if let skirmish {
+            return perform(.move(unit: unit.id, to: skirmish.position), in: &state)
+        }
+        if let siege = siegePlan(in: state) {
+            let near = unit.position.distance(to: siege.target) <= RivalMind.siegeReach
+            if siege.ready || (near && unit.position.distance(to: siege.target) <= unit.kind.range + 1) {
+                return perform(.move(unit: unit.id, to: siege.target), in: &state)
             }
-        }
-        for hold in state.holds where hold.owner != house && state.isAtWar(house, hold.owner) {
-            if let index = state.map.index(of: hold.position), explored[index] {
-                targets.append(hold.position)
+            if unit.position.distance(to: siege.muster) > 1 {
+                return perform(.move(unit: unit.id, to: siege.muster), in: &state)
             }
-        }
-        if let rising = spireThreat(in: state), state.isAtWar(house, rising), let spire = state.seat(of: rising) {
-            return perform(.move(unit: unit.id, to: spire.position), in: &state)
-        }
-        if let target = targets.min(by: { ($0.distance(to: unit.position), $0) < ($1.distance(to: unit.position), $1) }) {
-            return perform(.move(unit: unit.id, to: target), in: &state)
+            return unit.fortified ? [] : perform(.fortify(unit: unit.id), in: &state)
         }
         // At peace: wait near the nearest hold.
         if let home = state.holds(of: house).min(by: { $0.position.distance(to: unit.position) < $1.position.distance(to: unit.position) }),
@@ -342,6 +345,51 @@ struct RivalMind {
             return perform(.move(unit: unit.id, to: home.position), in: &state)
         }
         return unit.fortified ? [] : perform(.fortify(unit: unit.id), in: &state)
+    }
+
+    /// How close to a besieged hold the army gathers before it goes in.
+    static let siegeReach = 4
+
+    struct Siege {
+        let target: Hex
+        let muster: Hex
+        /// Whether enough companies have gathered to go in together.
+        let ready: Bool
+    }
+
+    /// One enemy hold to take, the place to gather before it, and whether
+    /// the army has gathered. A rising Moonspire is always the target;
+    /// otherwise the nearest known enemy hold to this House's seat.
+    func siegePlan(in state: GameState) -> Siege? {
+        guard let seat = state.seat(of: house) else { return nil }
+        let explored = state.houses[house].explored
+        let enemyHolds = state.holds.filter { hold in
+            hold.owner != house && state.isAtWar(house, hold.owner)
+                && (state.map.index(of: hold.position).map { explored[$0] } ?? false)
+        }
+        let target: Hold?
+        if let rising = spireThreat(in: state), state.isAtWar(house, rising), let spire = state.seat(of: rising) {
+            target = spire
+        } else {
+            target = enemyHolds.min { ($0.position.distance(to: seat.position), $0.id) < ($1.position.distance(to: seat.position), $1.id) }
+        }
+        guard let target else { return nil }
+
+        // Gather a few tiles short of it, on the way from home.
+        let line = target.position.line(to: seat.position)
+        let ideal = line[min(3, line.count - 1)]
+        let muster = ideal.spiral(2).first { hex in
+            guard let tile = state.map[hex], tile.terrain.isPassable else { return false }
+            return state.hold(at: hex) == nil
+        } ?? ideal
+
+        let garrisons = Set(assignGarrisons(in: state).keys)
+        let army = state.units(of: house).filter { $0.kind.isMilitary && !garrisons.contains($0.id) }
+        let gathered = army.filter { $0.position.distance(to: target.position) <= RivalMind.siegeReach + 1 }.count
+        let defenders = state.units.filter { $0.owner == target.owner && $0.kind.isMilitary && $0.position.distance(to: target.position) <= 2 }.count
+        let needed = max(3, defenders + 2)
+        let ready = target.ward == 0 || gathered >= needed || (gathered >= 2 && gathered == army.count && army.count >= defenders + 2)
+        return Siege(target: target.position, muster: muster, ready: ready)
     }
 
     private func explore(with unit: Unit, in state: inout GameState) -> [GameEvent] {

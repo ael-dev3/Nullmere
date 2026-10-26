@@ -225,7 +225,7 @@ extension GameState {
         }
         var defenseBonus = 100 + (map[hex]?.terrain.defenseBonus ?? 0) + (defender.fortified ? 25 : 0)
         if let hold = hold(at: hex), hold.owner == defender.owner {
-            defenseBonus += 25 + 20 * hold.level(.walls)
+            defenseBonus += 15 + 10 * hold.level(.walls)
         }
         if attacker.kind == .rider {
             defenseBonus += defender.kind.bonusAgainstRiders
@@ -253,7 +253,7 @@ extension GameState {
         let hold = holds[holdIndex]
         let ranged = attacker.position.distance(to: hold.position) > 1
 
-        let damage = (10 + attacker.kind.attack * 3 * attacker.health / 100) * random.int(in: 80...120) / 100
+        let damage = Hold.strikeDamage(attack: attacker.kind.attack, health: attacker.health) * random.int(in: 80...120) / 100
         holds[holdIndex].ward = max(0, hold.ward - damage)
         holds[holdIndex].struck = true
         var events: [GameEvent] = [.holdStruck(hold: holdID, ward: holds[holdIndex].ward)]

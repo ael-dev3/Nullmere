@@ -62,6 +62,11 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
 
     /// Ward regained each watch the hold isn't struck.
     public static let wardRecovery = 10
+
+    /// What a blow takes from a ward, before chance.
+    public static func strikeDamage(attack: Int, health: Int) -> Int {
+        12 + attack * 4 * health / 100
+    }
 }
 
 /// How a rival House tends to play.

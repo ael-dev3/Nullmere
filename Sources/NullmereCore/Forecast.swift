@@ -47,7 +47,7 @@ extension GameState {
             )
         }
         guard let holdID = foe.hold, let hold = hold(holdID) else { return nil }
-        let damage = 10 + attacker.kind.attack * 3 * attacker.health / 100
+        let damage = Hold.strikeDamage(attack: attacker.kind.attack, health: attacker.health)
         let returned = ranged ? 0 : 5 + 4 * hold.level(.walls)
         return Forecast(
             target: .hold(holdID),
