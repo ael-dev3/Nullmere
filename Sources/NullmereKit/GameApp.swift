@@ -21,11 +21,15 @@ public final class GameApp {
     public private(set) var hasSave: Bool
 
     let store: SaveStore
+    public let ambience: Ambience
     private var recheckTask: Task<Void, Never>?
 
     public init(store: SaveStore = SaveStore()) {
         self.store = store
         self.hasSave = store.hasSave
+        let soundOn = UserDefaults.standard.object(forKey: "sound.enabled") as? Bool ?? true
+        self.isSoundOn = soundOn
+        self.ambience = Ambience(enabled: soundOn)
         checkModel()
         startFromEnvironment()
     }
@@ -43,7 +47,10 @@ public final class GameApp {
         if readiness.allowsPlay {
             recheckTask?.cancel()
             recheckTask = nil
-            if case .gate = phase { phase = .title }
+            if case .gate = phase {
+                phase = .title
+                ambience.start()
+            }
         } else if readiness.needsRecheck, recheckTask == nil {
             recheckTask = Task { [weak self] in
                 while !Task.isCancelled {
@@ -99,6 +106,21 @@ public final class GameApp {
         #endif
     }
 
+    // MARK: Sound
+
+    public var isSoundOn: Bool {
+        didSet {
+            ambience.isEnabled = isSoundOn
+            UserDefaults.standard.set(isSoundOn, forKey: "sound.enabled")
+        }
+    }
+
+    private func play(_ session: GameSession) {
+        session.onCue = { [weak self] cue in self?.ambience.play(cue) }
+        ambience.start()
+        phase = .playing(session)
+    }
+
     // MARK: Games
 
     /// Characters speak through the on-device model whenever it can be used.
@@ -111,7 +133,7 @@ public final class GameApp {
         let session = GameSession(state: GameState(settings: settings), store: store, voice: Self.voice())
         store.save(session.state)
         hasSave = true
-        phase = .playing(session)
+        play(session)
     }
 
     public func continueSaved() {
@@ -119,7 +141,7 @@ public final class GameApp {
             hasSave = store.hasSave
             return
         }
-        phase = .playing(GameSession(state: state, store: store, voice: Self.voice()))
+        play(GameSession(state: state, store: store, voice: Self.voice()))
     }
 
     /// Saves and goes back to the title screen.

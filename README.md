@@ -192,6 +192,10 @@ rival Houses move, holds yield, works rise and companies march on.
   moments that touch your House, in words written on your Mac by Apple's
   on-device model. They only speak; the rules decide everything.
 
+- **Sound.** A cold drone and the night wind over the water, a low bell
+  as each watch turns, and a few quiet cues, all synthesised as they play.
+  ⇧⌘M turns it off.
+
 The world is made from a few words: the same words make the same lake.
 The game saves itself after every watch.
 
@@ -214,7 +218,7 @@ The game saves itself after every watch.
 A full moon hangs over a great black lake. Its reflection breaks and gathers
 on the water below. Pale, thin type rests above the far shore. The mood is
 vast, quiet and monumental, after the grand, minimal look of the Dune films.
-There is no music.
+There is no music in the launcher; the game makes its own sound as it plays.
 
 - **The moon** is a large, cold full moon at the top of the sky, the same
   view as the app icon. Its halo swells and settles very slowly, and thin

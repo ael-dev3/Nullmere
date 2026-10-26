@@ -28,6 +28,9 @@ public struct GameCommands: Commands {
             Button("Go to Seat") { app.session?.focusOnSeat() }
                 .disabled(app.session == nil)
             Divider()
+            Toggle("Sound", isOn: Binding(get: { app.isSoundOn }, set: { app.isSoundOn = $0 }))
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+            Divider()
             Button("Houses") { toggle(.houses) }
                 .disabled(app.session == nil)
             Button("Chronicle") { toggle(.chronicle) }

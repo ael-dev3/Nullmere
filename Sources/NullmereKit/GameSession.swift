@@ -70,6 +70,9 @@ public final class GameSession {
         public var duration: Double { Double(max(path.count - 1, 1)) * March.secondsPerStep }
     }
 
+    /// Called with each sound the game makes.
+    public var onCue: ((Ambience.Cue) -> Void)?
+
     /// Marches still being drawn, by unit.
     public private(set) var marches: [Int: March] = [:]
 
@@ -153,6 +156,7 @@ public final class GameSession {
             selection = .none
             return
         }
+        defer { if selection != Selection.none { onCue?(.select) } }
         if let unit = state.unit(at: hex), unit.owner == player {
             selection = selection == .unit(unit.id) ? holdOrTile(at: hex) : .unit(unit.id)
         } else if let hold = state.hold(at: hex), isExplored(hex) {
@@ -192,6 +196,7 @@ public final class GameSession {
             let events = try state.perform(command, as: player)
             showMarches(events, from: before)
             report(events)
+            sound(for: command, events: events)
             if case .found = command, let hold = events.compactMap(holdFounded).first {
                 selection = .hold(hold)
             }
@@ -215,6 +220,10 @@ public final class GameSession {
         let before = positions()
         let events = state.endWatch()
         showMarches(events, from: before)
+        onCue?(.watch)
+        if events.contains(where: isDreadful) {
+            onCue?(.dread)
+        }
         notices.removeAll()
         report(events)
         if case .unit(let id) = selection, state.unit(id) == nil {
@@ -276,6 +285,29 @@ public final class GameSession {
         tilesVersion += 1
         refreshPathPreview()
         askVoices()
+    }
+
+    // MARK: Sound
+
+    private func sound(for command: Command, events: [GameEvent]) {
+        switch command {
+        case .attack: onCue?(.battle)
+        case .move: onCue?(.order)
+        case .found, .build, .train: onCue?(.rise)
+        case .declareWar: onCue?(.dread)
+        default: onCue?(.select)
+        }
+    }
+
+    /// What should sound like dread to the player: their holds lost, war
+    /// declared on them, a House fallen.
+    private func isDreadful(_ event: GameEvent) -> Bool {
+        switch event {
+        case .holdCaptured(_, let from, _): return from == player
+        case .stanceChanged(let first, let second, .war, let by): return by != player && (first == player || second == player)
+        case .houseFell: return true
+        default: return false
+        }
     }
 
     // MARK: Marches
