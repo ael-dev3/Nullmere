@@ -30,7 +30,7 @@ struct AwayReport: Equatable {
         }
         holdsChange = world.holds(of: player).count - seen.holds
         let touching = world.chronicle.filter { entry in
-            entry.watch > seen.watch && (entry.houses.contains(player) || [.fall, .ending].contains(entry.kind))
+            entry.watch > seen.watch && (entry.houses.contains(player) || [.fall, .ending, .omen].contains(entry.kind))
         }
         news = touching.suffix(AwayReport.lines).map(\.text)
     }

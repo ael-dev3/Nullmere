@@ -99,6 +99,14 @@ struct PlayView: View {
                 .animation(.easeOut(duration: 0.3), value: session.envoys)
             }
 
+            if let omen = session.state.currentOmen {
+                OmenBand(omen: omen, watch: session.state.watch)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .padding(.top, 76)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+
             if let card = session.watchCard {
                 // High in the view, above where the seat is centred.
                 WatchCard(summary: card.summary)

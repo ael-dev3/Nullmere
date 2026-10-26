@@ -122,7 +122,7 @@ extension GameState {
             units[index].position = next
             units[index].acted = true
             steps.append(next)
-            reveal(around: next, range: unit.kind.sight + map[next]!.terrain.visionBonus, for: unit.owner)
+            reveal(around: next, range: sight(of: units[index]), for: unit.owner)
             if next == destination {
                 units[index].destination = nil
             }
@@ -216,7 +216,7 @@ extension GameState {
                 }
             } else if unit(at: hex) == nil {
                 units[index].position = hex
-                reveal(around: hex, range: attacker.kind.sight, for: attacker.owner)
+                reveal(around: hex, range: omen?.kind == .risingMist ? max(1, attacker.kind.sight - 1) : attacker.kind.sight, for: attacker.owner)
             }
         }
         return events
@@ -305,7 +305,7 @@ extension GameState {
         holds[holdIndex].levels[.moonspire] = nil
         holds[holdIndex].ward = holds[holdIndex].maximumWard / 4
         units[unitIndex].position = holds[holdIndex].position
-        reveal(around: holds[holdIndex].position, range: holds[holdIndex].sight, for: taker)
+        reveal(around: holds[holdIndex].position, range: sight(of: holds[holdIndex]), for: taker)
 
         var events: [GameEvent] = [.holdCaptured(hold: holdID, from: previous, by: taker)]
         let seatWords = wasSeat ? ", the seat of \(houses[previous].title)," : ""
@@ -379,7 +379,7 @@ extension GameState {
         let hold = Hold(id: takeID(), name: name, owner: house, position: founder.position, isSeat: false, foundedWatch: watch)
         holds.append(hold)
         units.remove(at: index)
-        reveal(around: hold.position, range: hold.sight, for: house)
+        reveal(around: hold.position, range: sight(of: hold), for: house)
         record(.founding, [house], "\(houses[house].title) founds \(name) on the \(map[hold.position]!.terrain.title.lowercased()).")
         return [.holdFounded(hold: hold.id)]
     }

@@ -64,6 +64,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// In a keeper's view, each House's strength as the realm reckons it:
     /// common knowledge, though their companies are out of sight.
     var reputed: [Int]?
+    /// The omen on the realm, and when the last lifted.
+    var omen: Omen?
+    var omenLifted: Int?
 
     public var player: Int { houses.first { $0.isPlayer }?.id ?? 0 }
 
@@ -237,7 +240,7 @@ public struct GameState: Codable, Equatable, Sendable {
             guard level > 0 else { continue }
             total[resource] = total[resource] * (100 + BuildingKind.yieldBoostPerLevel * level) / 100
         }
-        return total
+        return underOmen(total)
     }
 
     /// A House's income before upkeep.
@@ -299,13 +302,13 @@ public struct GameState: Codable, Equatable, Sendable {
         let watchers = houses.filter { $0.id == house || stance($0.id, house) == .pact }.map(\.id)
         for watcher in watchers {
             for unit in units(of: watcher) {
-                let range = unit.kind.sight + (map[unit.position]?.terrain.visionBonus ?? 0)
+                let range = sight(of: unit)
                 for hex in unit.position.spiral(range) {
                     if let index = map.index(of: hex) { visible[index] = true }
                 }
             }
             for hold in holds(of: watcher) {
-                for hex in hold.position.spiral(hold.sight) {
+                for hex in hold.position.spiral(sight(of: hold)) {
                     if let index = map.index(of: hex) { visible[index] = true }
                 }
             }

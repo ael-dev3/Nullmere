@@ -247,6 +247,11 @@ as the realm will, and takes the realm's word as final.
   words written on your Mac; a keeper's envoy carries their own words, if
   they write any: one plain line, no addresses, read by that keeper alone.
   Hide a House's words from its envoy card; your Mac remembers.
+- **Omens.** Now and then the lake turns for every House at once, for
+  three to five watches: Moonsalt Bloom doubles salt, Rising Mist shortens
+  every sight by a hex, a Lean Watch takes a third of the grain, and a
+  Still Night mends wards twice as fast. The chronicle tells when one
+  falls and lifts, and a band under the top bar shows it while it lasts.
 - **Ages.** When a House wins, the age ends. When the watch next turns, a
   new age begins on a fresh lake, and every keeper is seated anew in the
   order they first came. Each age's lake has a shape of its own, in turn:

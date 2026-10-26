@@ -28,6 +28,7 @@ extension GameState {
             units[index].acted = false
         }
         watch += 1
+        turnOmens()
         // An envoy unanswered is an envoy refused.
         let unanswered = envoys.filter { watch - $0.arrived >= Envoy.patience }
         envoys.removeAll { watch - $0.arrived >= Envoy.patience }
@@ -132,7 +133,7 @@ extension GameState {
                     && unit.position.distance(to: hold.position) == 1
             }
             if !hold.struck && !besieged {
-                holds[index].ward = min(holds[index].maximumWard, holds[index].ward + Hold.wardRecovery)
+                holds[index].ward = min(holds[index].maximumWard, holds[index].ward + wardMending)
             }
             holds[index].struck = false
         }

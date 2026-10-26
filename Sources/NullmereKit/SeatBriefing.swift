@@ -35,6 +35,9 @@ struct SeatBriefing: Equatable {
         let pacts = living.filter { $0.id != player && world.stance(player, $0.id) == .pact }.map(\.title)
         facts.append(wars.isEmpty ? "You are at war with no one." : "You are at war with \(SeatBriefing.list(wars)).")
         if !pacts.isEmpty { facts.append("You stand in a pact with \(SeatBriefing.list(pacts)).") }
+        if let omen = world.currentOmen {
+            facts.append("An omen lies on the realm, \(omen.kind.title): \(omen.kind.effect)")
+        }
         self.facts = facts
 
         var steps: [String] = []

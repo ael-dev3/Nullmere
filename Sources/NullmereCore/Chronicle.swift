@@ -14,6 +14,8 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         case discovery
         case tribute
         case ending
+        /// An omen falls on the realm, or lifts.
+        case omen
     }
 
     public let watch: Int

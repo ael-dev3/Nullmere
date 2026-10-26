@@ -217,3 +217,33 @@ struct NoticeFeed: View {
         .frame(maxWidth: 420, alignment: .leading)
     }
 }
+
+/// The omen on the realm, under the top bar while it lasts.
+struct OmenBand: View {
+    let omen: Omen
+    let watch: Int
+
+    var body: some View {
+        let left = omen.watchesLeft(at: watch)
+        HStack(spacing: 8) {
+            Circle().fill(Palette.glow).frame(width: 4, height: 4)
+            Caps(omen.kind.title, size: 8.5, weight: .medium, tracking: 0.3)
+                .foregroundStyle(Palette.glow)
+            Text(verbatim: "\(omen.kind.effect) \(OmenBand.lasting(left))")
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.ink.opacity(0.75))
+        }
+        .lineLimit(1)
+        .fixedSize()
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+        .background(Capsule().fill(Color.black.opacity(0.55)))
+        .overlay(Capsule().strokeBorder(Palette.glow.opacity(0.25), lineWidth: 1))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Omen: \(omen.kind.title). \(omen.kind.effect) \(OmenBand.lasting(left))")
+    }
+
+    static func lasting(_ left: Int) -> String {
+        left <= 1 ? "It lifts as the watch turns." : "It lifts in \(left) watches."
+    }
+}

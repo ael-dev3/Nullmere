@@ -37,6 +37,10 @@ enum Guide {
             "A far stronger rival may demand tribute, a fifth of your stores: pay, and it keeps the peace for twenty watches; refuse, or let its envoy wait out, and it marches. You may demand tribute of the weak, too.",
             "Envoys and the chronicle speak in words written on your Mac by Apple's on-device model. They only speak; the rules decide.",
         ]),
+        Section(title: "Omens", lines: [
+            "Now and then the lake turns, for every House at once, for three to five watches: Moonsalt Bloom doubles salt, Rising Mist shortens every sight by a hex, a Lean Watch takes a third of the grain, and a Still Night mends wards twice as fast.",
+            "The omen on the realm is shown under the top bar, with the watches it has left.",
+        ]),
         Section(title: "Winning", lines: [
             "Raise the five stages of the Moonspire at your seat (ascendancy), or rule the lake (dominion): nine of every twenty holds and at least ten, your vassals' counted with your own, or be the last House standing.",
             "Take a rival's seat while it has four holds or fewer left and it swears you fealty; beaten Houses may offer it too. A vassal's holds join your realm, and it can never turn on you. Turn on it, and it is free.",

@@ -1,5 +1,5 @@
 import AppKit
-import NullmereCore
+@testable import NullmereCore
 import SwiftUI
 import XCTest
 @testable import NullmereKit
@@ -78,6 +78,16 @@ final class AwayReportTests: XCTestCase {
 
         XCTAssertEqual(SeatBriefing.list(["A", "B", "C"]), "A, B and C")
         XCTAssertEqual(SeatBriefing.ordinal(12), "twelfth")
+    }
+
+    func testAnOmenIsShownWhileItLasts() throws {
+        XCTAssertEqual(OmenBand.lasting(3), "It lifts in 3 watches.")
+        XCTAssertEqual(OmenBand.lasting(1), "It lifts as the watch turns.")
+        var state = GameState(settings: GameSettings(seedText: "an omen", houseCount: 3, radius: 16))
+        state.omen = Omen(kind: .risingMist, began: 1, ends: 4)
+        let briefing = SeatBriefing(world: state, player: state.player)
+        XCTAssertTrue(briefing.facts.contains("An omen lies on the realm, Rising Mist: Every company and hold sees one hex less."), "\(briefing.facts)")
+        try keep(OmenBand(omen: Omen(kind: .moonsaltBloom, began: 5, ends: 8), watch: 6), as: "game-omen.png")
     }
 
     func testTheReportSpeaksPlainly() throws {

@@ -347,7 +347,7 @@ final class BlowTests: XCTestCase {
 final class GuideTests: XCTestCase {
     func testTheGuideCoversTheGameAndItsKeys() {
         let titles = Guide.sections.map(\.title)
-        XCTAssertEqual(titles, ["The watch", "The land", "Holds", "Companies", "Houses", "Winning", "Keys"])
+        XCTAssertEqual(titles, ["The watch", "The land", "Holds", "Companies", "Houses", "Omens", "Winning", "Keys"])
         XCTAssertTrue(Guide.sections.allSatisfy { !$0.lines.isEmpty && $0.lines.allSatisfy { $0.count > 10 } })
         let keys = Guide.sections.last!.lines.joined(separator: " ")
         for key in ["Tab", "H:", "F:", "B:", "Esc", "1:", "2:", "?:", "⌘↩", "⇧⌘↩", "⇧⌘W"] {
