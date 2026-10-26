@@ -104,6 +104,15 @@ public final class GameApp {
             if show.contains("seat") { session?.focusOnSeat() }
             if show.contains("houses") { session?.panel = .houses }
             if show.contains("chronicle") { session?.panel = .chronicle }
+            if show.contains("guide") { session?.panel = .guide }
+            // "watch" ends a watch a little before CI photographs the screen,
+            // so the watch's card is on it.
+            if show.contains("watch"), let delay = Double(environment["NULLMERE_WATCH_AFTER"] ?? "12.5") {
+                Task { [weak self] in
+                    try? await Task.sleep(for: .seconds(delay))
+                    self?.session?.endWatch()
+                }
+            }
         }
         #endif
     }

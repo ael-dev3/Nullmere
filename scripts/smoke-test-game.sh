@@ -61,7 +61,7 @@ SAVE="$HOME/Library/Application Support/Nullmere/autosave.json"
 [ -f "$SAVE" ] && mv "$SAVE" "$SAVE.smoke-backup"
 run build/game-world.png "$SEED" 0 seat,houses
 WORLD_LOG="$LOG"
-run build/game-later.png "$SEED" 40
+run build/game-later.png "$SEED" 40 watch
 rm -f "$SAVE"
 [ -f "$SAVE.smoke-backup" ] && mv "$SAVE.smoke-backup" "$SAVE"
 

@@ -128,6 +128,9 @@ public final class GameSession {
     private var asked: Set<Spoken> = []
     private var isSpeaking = false
 
+    /// Whether any character is still to speak, or speaking.
+    var voicesPending: Bool { isSpeaking || !voiceQueue.isEmpty }
+
     public init(state: GameState, store: SaveStore = SaveStore(), voice: (any Voice)? = nil) {
         self.state = state
         self.store = store

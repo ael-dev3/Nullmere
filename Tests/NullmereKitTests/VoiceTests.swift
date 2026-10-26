@@ -50,10 +50,10 @@ final class SessionVoiceTests: XCTestCase {
         let state = GameState(settings: GameSettings(seedText: "voices over the water", houseCount: 4, radius: 16))
         let session = GameSession(state: state, store: SaveStore(directory: directory), voice: voice)
         session.autoplay(watches: 120)
-        for _ in 0..<200 {
+        for _ in 0..<500 where session.voicesPending {
             try await Task.sleep(for: .milliseconds(10))
-            if session.spoken.count == voice.moments.count { break }
         }
+        XCTAssertFalse(session.voicesPending)
         XCTAssertFalse(voice.moments.isEmpty, "a hundred and twenty watches leave something worth telling")
         XCTAssertEqual(session.spoken.count, voice.moments.count)
 
