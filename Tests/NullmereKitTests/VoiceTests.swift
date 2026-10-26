@@ -57,6 +57,14 @@ final class SessionVoiceTests: XCTestCase {
         }
         XCTAssertFalse(voice.moments.isEmpty, "a hundred and twenty watches leave something worth telling")
         XCTAssertEqual(session.spoken.count, voice.moments.count)
+
+        // Picked up again, the game keeps its words and asks for nothing new.
+        session.save(quietly: true)
+        let again = EchoVoice()
+        let resumed = GameSession(state: session.state, store: SaveStore(directory: directory), voice: again)
+        XCTAssertEqual(resumed.spoken, session.spoken)
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertTrue(again.moments.allSatisfy { if case .envoy = $0.kind { return true } else { return false } })
         for (key, words) in session.spoken {
             XCTAssertTrue(words.hasPrefix("Spoken: "))
             if case .chronicle(let index) = key {

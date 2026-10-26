@@ -32,6 +32,10 @@ public struct SaveStore: Sendable {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let data = try JSONEncoder().encode(state)
             try data.write(to: autosaveURL, options: .atomic)
+            if state.watch == 1, state.chronicle.count <= 1 {
+                // A new game starts with nothing said.
+                try? FileManager.default.removeItem(at: voicesURL)
+            }
         } catch {
             SaveStore.logger.error("Saving failed: \(error.localizedDescription, privacy: .public)")
         }
@@ -52,5 +56,28 @@ public struct SaveStore: Sendable {
 
     public func delete() {
         try? FileManager.default.removeItem(at: autosaveURL)
+        try? FileManager.default.removeItem(at: voicesURL)
+    }
+
+    // MARK: Voices
+
+    /// What characters said, kept beside the save so a game picked up again
+    /// keeps its words.
+    public var voicesURL: URL {
+        directory.appendingPathComponent("voices.json")
+    }
+
+    public func saveVoices(_ lines: [String: String]) {
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try JSONEncoder().encode(lines).write(to: voicesURL, options: .atomic)
+        } catch {
+            SaveStore.logger.error("Saving voices failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    public func loadVoices() -> [String: String] {
+        guard let data = try? Data(contentsOf: voicesURL) else { return [:] }
+        return (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
     }
 }

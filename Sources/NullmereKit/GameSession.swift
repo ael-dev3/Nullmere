@@ -56,6 +56,23 @@ public final class GameSession {
     public enum Spoken: Hashable, Sendable {
         case envoy(Int)
         case chronicle(Int)
+
+        var key: String {
+            switch self {
+            case .envoy(let id): return "envoy-\(id)"
+            case .chronicle(let index): return "chronicle-\(index)"
+            }
+        }
+
+        init?(key: String) {
+            let parts = key.split(separator: "-")
+            guard parts.count == 2, let number = Int(parts[1]) else { return nil }
+            switch parts[0] {
+            case "envoy": self = .envoy(number)
+            case "chronicle": self = .chronicle(number)
+            default: return nil
+            }
+        }
     }
 
     public private(set) var spoken: [Spoken: String] = [:]
@@ -92,8 +109,15 @@ public final class GameSession {
             camera.focus(on: seat.position)
         }
         self.camera = camera
-        // A game picked up again doesn't retell its whole history.
+        // A game picked up again keeps what was said, and doesn't retell
+        // the rest of its history.
         asked = Set(state.chronicle.indices.map { Spoken.chronicle($0) })
+        for (key, words) in store.loadVoices() {
+            if let spoken = Spoken(key: key) {
+                self.spoken[spoken] = words
+                asked.insert(spoken)
+            }
+        }
         refreshWorld()
     }
 
@@ -368,6 +392,7 @@ public final class GameSession {
             guard let self else { return }
             if let words {
                 withAnimation(.easeOut(duration: 0.6)) { self.spoken[key] = words }
+                self.store.saveVoices(Dictionary(uniqueKeysWithValues: self.spoken.map { ($0.key.key, $0.value) }))
             }
             self.isSpeaking = false
             self.speakNext()
