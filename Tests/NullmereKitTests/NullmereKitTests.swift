@@ -548,6 +548,7 @@ final class MapAccessibilityTests: XCTestCase {
     }
 }
 
+@MainActor
 final class CueMappingTests: XCTestCase {
     func testEachMomentHasItsOwnSound() {
         let player = 0

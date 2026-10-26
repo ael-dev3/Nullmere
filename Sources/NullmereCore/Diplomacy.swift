@@ -69,6 +69,13 @@ public struct Envoy: Codable, Equatable, Identifiable, Sendable {
     public let proposal: Proposal
     public let arrived: Int
 
+    public init(id: Int, from: Int, proposal: Proposal, arrived: Int) {
+        self.id = id
+        self.from = from
+        self.proposal = proposal
+        self.arrived = arrived
+    }
+
     /// Watches an envoy waits for an answer.
     public static let patience = 3
 }
