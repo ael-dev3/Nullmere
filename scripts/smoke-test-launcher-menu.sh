@@ -19,10 +19,9 @@ BIN="${BIN:-$(swift build --show-bin-path)/NullmereLauncher}"
 EXECUTABLE="NullmereLauncher"
 WAIT="${WAIT:-14}"
 SUBSYSTEM="online.nullmere.launcher"
-# The feed this commit carries, so News shows a real download even before
-# the feed reaches main.
-COMMIT="${COMMIT:-$(git rev-parse HEAD)}"
-NEWS_URL="${NEWS_URL:-https://raw.githubusercontent.com/ael-dev3/Nullmere/$COMMIT/news/news.json}"
+# News downloads from the same place as in a release: news/news.json on
+# main. Set NEWS_URL to try another feed, such as a branch's copy.
+NEWS_URL="${NEWS_URL:-}"
 mkdir -p build
 
 if pgrep -x "$EXECUTABLE" >/dev/null; then
@@ -62,7 +61,7 @@ run build/launcher-menu.png
 run build/launcher-news.png right,return
 echo "$LOG" | grep -E "News (updated|not updated)" || true
 if ! echo "$LOG" | grep -q "News updated"; then
-    echo "error: News did not download its feed from $NEWS_URL" >&2
+    echo "error: News did not download its feed from ${NEWS_URL:-main}" >&2
     exit 1
 fi
 run build/launcher-settings.png right,right,return,down

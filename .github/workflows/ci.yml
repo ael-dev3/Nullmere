@@ -127,9 +127,6 @@ jobs:
       # Settings, which the requirement screen otherwise hides on CI.
       - name: Open the launcher's menu
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        env:
-          # The pull request's own commit, whose news/news.json the launcher downloads.
-          COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: scripts/smoke-test-launcher-menu.sh
 
       # Opens the debug build of the game past the model gate (only debug
