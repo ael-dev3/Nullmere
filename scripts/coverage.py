@@ -15,8 +15,12 @@ def main(argv):
     if len(argv) < 2:
         print(__doc__)
         return 2
-    with open(argv[1]) as handle:
-        report = json.load(handle)
+    try:
+        with open(argv[1]) as handle:
+            report = json.load(handle)
+    except OSError as error:
+        print(f"COVERAGE not measured: {error}. (A failed test run leaves no coverage.)")
+        return 1
     floors = {}
     for arg in argv[2:]:
         name, _, floor = arg.partition("=")

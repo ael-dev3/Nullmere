@@ -191,6 +191,9 @@ public final class GameSession {
     private(set) var seatBriefing: SeatBriefing?
     /// A new keeper's first steps, until all are done.
     private(set) var firstSteps: FirstSteps?
+    /// The last first step was saying ready: the word waits for the watch
+    /// to turn, which clears what was said before it.
+    private var welcomeAfterWatch = false
     /// The Dock's count of watches turned while the keeper was elsewhere.
     private(set) var attention = Attention()
     /// Whether the keeper is looking, and how the Dock is told; tests
@@ -421,7 +424,7 @@ public final class GameSession {
     public func endWatch() {
         guard state.outcome == nil, !isReady else { return }
         isReady = true
-        if var steps = firstSteps, steps.mark(.ready) { advance(steps) }
+        if var steps = firstSteps, steps.mark(.ready) { advance(steps, waitingForWatch: true) }
         link.setReady(true)
     }
 
@@ -505,15 +508,21 @@ public final class GameSession {
     }
 
     /// A first step done: kept, and when the last is, said and put away.
-    private func advance(_ steps: FirstSteps) {
+    private func advance(_ steps: FirstSteps, waitingForWatch: Bool = false) {
         store.saveFirstSteps(steps)
         if steps.isComplete {
             withAnimation(.easeOut(duration: 0.3)) { firstSteps = nil }
-            post("Well begun. The rest is yours; the Guide (?) holds more.", tone: .good)
+            if waitingForWatch {
+                welcomeAfterWatch = true
+            } else {
+                post(Self.welcome, tone: .good)
+            }
         } else {
             firstSteps = steps
         }
     }
+
+    static let welcome = "Well begun. The rest is yours; the Guide (?) holds more."
 
     public func dismissFirstSteps() {
         guard var steps = firstSteps else { return }
@@ -596,6 +605,10 @@ public final class GameSession {
         }
         notices.removeAll()
         report(events)
+        if welcomeAfterWatch {
+            welcomeAfterWatch = false
+            post(Self.welcome, tone: .good)
+        }
         var warnings = Race.warnings(before: previous, after: state, player: player)
         let threats = Sentinel.threats(in: state, player: player, visible: state.visibility(for: player))
         warnings += threats.filter { !threatened.contains($0.hold) }.map { Sentinel.line(for: $0, in: state) }
