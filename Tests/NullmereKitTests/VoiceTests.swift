@@ -32,12 +32,11 @@ private final class EchoVoice: Voice, @unchecked Sendable {
     private var heard: [VoiceMoment] = []
 
     var moments: [VoiceMoment] {
-        lock.lock(); defer { lock.unlock() }
-        return heard
+        lock.withLock { heard }
     }
 
     func speak(_ moment: VoiceMoment) async -> String? {
-        lock.lock(); heard.append(moment); lock.unlock()
+        lock.withLock { heard.append(moment) }
         return "Spoken: " + (moment.facts.first ?? "")
     }
 }

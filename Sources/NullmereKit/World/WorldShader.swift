@@ -133,10 +133,9 @@ enum WorldShader {
     // Terrain: 0 still, 1 shallows, 2 strand, 3 salt flat, 4 greyfield,
     // 5 blackwood, 6 barrows, 7 the Spine. Colours are as moonlight shows them:
     // cool, pale where the ground is open, near black under the trees.
-    float3 nm_terrainColour(float t, float2 w) {
-        float broad = nm_fbm(w * 0.9 + float2(7.0, 3.0));
-        float grain = nm_fbm(w * 2.3);
-        float fine = nm_noise(w * 11.0);
+    // The noise is shared by every terrain at a point, so it is made once
+    // there and passed in: broad patches, grain, fine speckle, and canopy.
+    float3 nm_terrainColour(float t, float broad, float grain, float fine, float canopyNoise) {
         if (t < 0.5) { return float3(0.004, 0.006, 0.012); }
         if (t < 1.5) { return mix(float3(0.016, 0.022, 0.030), float3(0.028, 0.036, 0.044), grain); }
         if (t < 2.5) { return mix(float3(0.30, 0.30, 0.29), float3(0.42, 0.41, 0.39), grain) * (0.88 + 0.24 * fine); }
@@ -147,11 +146,18 @@ enum WorldShader {
             return mix(lush, dry, broad) * (0.86 + 0.22 * grain) * (0.94 + 0.12 * fine);
         }
         if (t < 5.5) {
-            float canopy = smoothstep(0.30, 0.78, nm_fbm(w * 4.2 + float2(4.0, 1.0)));
+            float canopy = smoothstep(0.30, 0.78, canopyNoise);
             return mix(float3(0.018, 0.028, 0.030), float3(0.060, 0.082, 0.076), canopy) * (0.8 + 0.4 * fine);
         }
         if (t < 6.5) { return mix(float3(0.17, 0.155, 0.14), float3(0.27, 0.25, 0.22), grain) * (0.88 + 0.22 * fine); }
         return mix(float3(0.075, 0.078, 0.092), float3(0.20, 0.205, 0.225), smoothstep(0.35, 0.85, grain)) * (0.82 + 0.36 * fine);
+    }
+
+    // The unknown: a slow night mist, paler than the black water.
+    float3 nm_mist(float2 w, float time) {
+        float2 drift = float2(time * 0.012, time * 0.004);
+        float mist = nm_fbm(w * 0.45 + drift) * 0.65 + nm_fbm(w * 1.4 - drift * 1.7) * 0.35;
+        return float3(0.020, 0.023, 0.032) + float3(0.030, 0.034, 0.046) * mist * mist * 1.6;
     }
 
     // Height for moonlit relief.
@@ -197,11 +203,13 @@ enum WorldShader {
         float disc = (1.0 - smoothstep(0.96, 1.0, length(mq))) * (1.0 - shallow);
         float breath = 0.5 + 0.5 * sin(6.2831853 * fract(time / 11.0));
         float3 glow = float3(0.50, 0.58, 0.76) * (0.09 * exp(-dm * 0.42) + 0.08 * exp(-dm * 1.8)) * (0.9 + 0.2 * breath);
-        float maria = smoothstep(0.42, 0.68, nm_fbm(mq * 1.7 + float2(5.2, 1.3)));
-        float limb = sqrt(clamp(1.0 - dot(mq, mq), 0.0, 1.0));
-        float3 face = float3(0.66, 0.70, 0.76) * (0.78 + 0.22 * limb) * (1.0 - 0.18 * maria);
         c += glow * (1.0 - shallow * 0.6);
-        c = mix(c, face, disc);
+        if (disc > 0.0) {
+            float maria = smoothstep(0.42, 0.68, nm_fbm(mq * 1.7 + float2(5.2, 1.3)));
+            float limb = sqrt(clamp(1.0 - dot(mq, mq), 0.0, 1.0));
+            float3 face = float3(0.66, 0.70, 0.76) * (0.78 + 0.22 * limb) * (1.0 - 0.18 * maria);
+            c = mix(c, face, disc);
+        }
         return c;
     }
 
@@ -227,7 +235,6 @@ enum WorldShader {
         if (nm_hexLength(across) > radius) {
             neighbour = tile;
         }
-        float otherTerrain = floor(neighbour.r * 255.0 + 0.5);
         float otherPacked = floor(neighbour.a * 255.0 + 0.5);
         float otherVisibility = floor(otherPacked / 16.0);
         float otherOwner = otherPacked - otherVisibility * 16.0;
@@ -274,40 +281,59 @@ enum WorldShader {
             if (t > 5.5 && t < 6.5) { wBarrow += weight; }
             if (t > 6.5) { wSpine += weight; }
         }
+        // Fog first: where nothing is known, the mist is all there is, and
+        // none of the country beneath it needs drawing.
+        float fogNoise = (nm_fbm(w * 1.3 + float2(3.0, 1.0)) - 0.5) * 0.3;
+        float isKnown = smoothstep(0.38, 0.62, known / max(total, 0.0001) + fogNoise);
+        float isWatched = smoothstep(0.38, 0.62, watched / max(total, 0.0001) + fogNoise);
+        float3 unknown = nm_mist(w, time);
+        if (isKnown < 0.001) {
+            return unknown + (nm_hash(px + fract(time * 3.7) * 61.0) - 0.5) / 255.0;
+        }
+
         float landness = land / max(total, 0.0001) + (nm_fbm(w * 3.1 + float2(2.0, 7.0)) - 0.5) * 0.18;
         float shore = smoothstep(0.42, 0.58, landness);
 
         float3 c;
         float water = 1.0 - shore;
-        // Water: black glass, a little lighter over the dead shallows.
-        float shallow = 1.0 - deep / max(total - land, 0.0001);
-        float3 wet = nm_mirror(w, px, viewport, ppp, clamp(shallow, 0.0, 1.0), time);
-        // A pale line of salt where the dead water meets the land.
-        wet += float3(0.32, 0.33, 0.36) * exp(-abs(landness - 0.43) / 0.025) * 0.5;
-        wet += float3(0.40, 0.46, 0.60) * exp(-abs(landness - 0.47) / 0.012) * 0.3;
+        // Water: black glass, a little lighter over the dead shallows. Only
+        // where there is water to see.
+        float3 wet = float3(0.0);
+        if (shore < 0.999) {
+            float shallow = 1.0 - deep / max(total - land, 0.0001);
+            wet = nm_mirror(w, px, viewport, ppp, clamp(shallow, 0.0, 1.0), time);
+            // A pale line of salt where the dead water meets the land.
+            wet += float3(0.32, 0.33, 0.36) * exp(-abs(landness - 0.43) / 0.025) * 0.5;
+            wet += float3(0.40, 0.46, 0.60) * exp(-abs(landness - 0.47) / 0.012) * 0.3;
+        }
 
+        // Land, only where there is land to see.
         float3 ground = float3(0.0);
-        float height = 0.0;
-        float landTotal = max(land, 0.0001);
-        if (wStrand > 0.01) { ground += nm_terrainColour(2.0, w) * wStrand; height += nm_height(2.0, w) * wStrand; }
-        if (wSalt > 0.01) { ground += nm_terrainColour(3.0, w) * wSalt; height += nm_height(3.0, w) * wSalt; }
-        if (wGrey > 0.01) { ground += nm_terrainColour(4.0, w) * wGrey; height += nm_height(4.0, w) * wGrey; }
-        if (wWood > 0.01) { ground += nm_terrainColour(5.0, w) * wWood; height += nm_height(5.0, w) * wWood; }
-        if (wBarrow > 0.01) { ground += nm_terrainColour(6.0, w) * wBarrow; height += nm_height(6.0, w) * wBarrow; }
-        if (wSpine > 0.01) { ground += nm_terrainColour(7.0, w) * wSpine; height += nm_height(7.0, w) * wSpine; }
-        ground /= landTotal;
-        height /= landTotal;
-        // Moonlight from the upper left over the relief.
-        float lookTerrain = terrain;
-        float e = 0.06;
-        float hx = nm_height(lookTerrain, w + float2(e, 0.0)) - nm_height(lookTerrain, w - float2(e, 0.0));
-        float hy = nm_height(lookTerrain, w + float2(0.0, e)) - nm_height(lookTerrain, w - float2(0.0, e));
-        float3 n = normalize(float3(-hx / (2.0 * e), -hy / (2.0 * e), 1.0));
-        float3 light = normalize(float3(-0.6, -0.7, 0.62));
-        float lit = clamp(dot(n, light), 0.0, 1.0);
-        ground *= 0.35 + 1.05 * lit;
-        ground *= float3(0.90, 0.96, 1.08);
-        ground += float3(0.10, 0.12, 0.16) * pow(lit, 6.0) * (wSalt / landTotal);
+        if (shore > 0.001) {
+            float landTotal = max(land, 0.0001);
+            float broad = nm_fbm(w * 0.9 + float2(7.0, 3.0));
+            float grain = nm_fbm(w * 2.3);
+            float fine = nm_noise(w * 11.0);
+            float canopyNoise = wWood > 0.01 ? nm_fbm(w * 4.2 + float2(4.0, 1.0)) : 0.0;
+            if (wStrand > 0.01) { ground += nm_terrainColour(2.0, broad, grain, fine, canopyNoise) * wStrand; }
+            if (wSalt > 0.01) { ground += nm_terrainColour(3.0, broad, grain, fine, canopyNoise) * wSalt; }
+            if (wGrey > 0.01) { ground += nm_terrainColour(4.0, broad, grain, fine, canopyNoise) * wGrey; }
+            if (wWood > 0.01) { ground += nm_terrainColour(5.0, broad, grain, fine, canopyNoise) * wWood; }
+            if (wBarrow > 0.01) { ground += nm_terrainColour(6.0, broad, grain, fine, canopyNoise) * wBarrow; }
+            if (wSpine > 0.01) { ground += nm_terrainColour(7.0, broad, grain, fine, canopyNoise) * wSpine; }
+            ground /= landTotal;
+            // Moonlight from the upper left over the relief.
+            float e = 0.06;
+            float h0 = nm_height(terrain, w);
+            float hx = nm_height(terrain, w + float2(e, 0.0)) - h0;
+            float hy = nm_height(terrain, w + float2(0.0, e)) - h0;
+            float3 n = normalize(float3(-hx / e, -hy / e, 1.0));
+            float3 light = normalize(float3(-0.6, -0.7, 0.62));
+            float lit = clamp(dot(n, light), 0.0, 1.0);
+            ground *= 0.35 + 1.05 * lit;
+            ground *= float3(0.90, 0.96, 1.08);
+            ground += float3(0.10, 0.12, 0.16) * pow(lit, 6.0) * (wSalt / landTotal);
+        }
         c = mix(wet, ground, shore);
 
         if (shore > 0.5) {
@@ -369,16 +395,10 @@ enum WorldShader {
         // Fog, with soft, wandering edges. What was seen but is no longer
         // watched is remembered dim and grey; the unknown is a slow night mist,
         // paler than the black water, so the lake shows as the darkest thing.
-        float fogNoise = (nm_fbm(w * 1.3 + float2(3.0, 1.0)) - 0.5) * 0.3;
-        float isKnown = smoothstep(0.38, 0.62, known / max(total, 0.0001) + fogNoise);
-        float isWatched = smoothstep(0.38, 0.62, watched / max(total, 0.0001) + fogNoise);
         float grey = dot(c, float3(0.30, 0.45, 0.25));
         // Remembered water keeps its stars; remembered land fades to grey.
         float3 remembered = mix(mix(float3(grey), c, 0.4) * 0.5 + float3(0.004, 0.005, 0.008), c * 0.85, water);
         c = mix(remembered, c, isWatched);
-        float2 drift = float2(time * 0.012, time * 0.004);
-        float mist = nm_fbm(w * 0.45 + drift) * 0.65 + nm_fbm(w * 1.4 - drift * 1.7) * 0.35;
-        float3 unknown = float3(0.020, 0.023, 0.032) + float3(0.030, 0.034, 0.046) * mist * mist * 1.6;
         c = mix(unknown, c, isKnown);
 
         c += (nm_hash(px + fract(time * 3.7) * 61.0) - 0.5) / 255.0;

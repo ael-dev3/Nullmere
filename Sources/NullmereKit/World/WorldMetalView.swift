@@ -38,6 +38,7 @@ final class WorldMetalView: MTKView {
     private var isWindowVisible = false
     private var occlusionObserver: (any NSObjectProtocol)?
     private var trackingArea: NSTrackingArea?
+    private var appObservers: [any NSObjectProtocol] = []
     private var dragOrigin: CGPoint?
     private var dragged = false
     private let started = CACurrentMediaTime()
@@ -48,7 +49,7 @@ final class WorldMetalView: MTKView {
         colorspace = CGColorSpace(name: CGColorSpace.sRGB)
         clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         framebufferOnly = true
-        preferredFramesPerSecond = 30
+        updateFrameRate()
         updatePausing()
     }
 
@@ -59,6 +60,9 @@ final class WorldMetalView: MTKView {
     deinit {
         if let occlusionObserver {
             NotificationCenter.default.removeObserver(occlusionObserver)
+        }
+        for observer in appObservers {
+            NotificationCenter.default.removeObserver(observer)
         }
     }
 
@@ -100,12 +104,39 @@ final class WorldMetalView: MTKView {
             }
             loadRendererIfNeeded()
         }
+        if appObservers.isEmpty {
+            let names: [Notification.Name] = [
+                NSApplication.didBecomeActiveNotification,
+                NSApplication.didResignActiveNotification,
+                .NSProcessInfoPowerStateDidChange,
+                ProcessInfo.thermalStateDidChangeNotification,
+            ]
+            appObservers = names.map { name in
+                NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                    guard let self else { return }
+                    MainActor.assumeIsolated { self.updateFrameRate() }
+                }
+            }
+        }
         updateWindowVisibility()
     }
 
     private func updateWindowVisibility() {
         isWindowVisible = window?.occlusionState.contains(.visible) ?? false
+        updateFrameRate()
         updatePausing()
+    }
+
+    /// 60 frames a second while the game is in front; 30 behind another
+    /// app, in Low Power Mode, or while the Mac runs hot.
+    func updateFrameRate() {
+        let info = ProcessInfo.processInfo
+        let savesEnergy = info.isLowPowerModeEnabled || [.serious, .critical].contains(info.thermalState)
+        let inFront = NSApplication.shared.isActive
+        let rate = inFront && !savesEnergy ? 60 : 30
+        if preferredFramesPerSecond != rate {
+            preferredFramesPerSecond = rate
+        }
     }
 
     private func updatePausing() {
