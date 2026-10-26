@@ -153,7 +153,7 @@ final class SignalsTests: XCTestCase {
             state.units[index].fortified = true
         }
         let seat = try XCTUnwrap(state.seat(of: state.player))
-        _ = try state.perform(.build(hold: seat.id, kind: .walls), as: state.player)
+        _ = try state.perform(.build(hold: seat.id, kind: .granary), as: state.player)
         let (session, dir) = session(state)
         defer { try? FileManager.default.removeItem(at: dir) }
         let start = session.state.watch
