@@ -128,8 +128,17 @@ public final class GameApp {
         }
     }
 
+    public var isMusicOn: Bool = UserDefaults.standard.object(forKey: "music.enabled") as? Bool ?? true {
+        didSet {
+            ambience.isMusicOn = isMusicOn
+            UserDefaults.standard.set(isMusicOn, forKey: "music.enabled")
+        }
+    }
+
     private func play(_ session: GameSession) {
         session.onCue = { [weak self] cue in self?.ambience.play(cue) }
+        ambience.isMusicOn = isMusicOn
+        session.onWarChanged = { [weak self] atWar in self?.ambience.isAtWar = atWar }
         ambience.start()
         phase = .playing(session)
     }

@@ -41,6 +41,19 @@ public final class Ambience {
         synth.trigger(cue)
     }
 
+    /// The score: on or off, and at peace or at war.
+    public var isMusicOn = true {
+        didSet { applyMusic() }
+    }
+
+    public var isAtWar = false {
+        didSet { if isAtWar != oldValue { applyMusic() } }
+    }
+
+    private func applyMusic() {
+        synth.setMusic(on: isMusicOn, mood: isAtWar ? .war : .peace)
+    }
+
     private func apply() {
         if isEnabled { start() } else { stop() }
     }
@@ -59,6 +72,7 @@ public final class Ambience {
             try engine.start()
             started = true
             synth.fadeIn()
+            applyMusic()
         } catch {
             Ambience.logger.notice("No sound: \(error.localizedDescription, privacy: .public)")
             engine.detach(source)
@@ -113,6 +127,18 @@ final class Synth: @unchecked Sendable {
     private var windRight: Float = 0
     private var gust: Float = 0
     private var dronePhases: [Float] = [0, 0, 0, 0]
+    private var score = Score()
+    private var pendingMusic: (on: Bool, mood: Score.Mood)?
+
+    /// What the score has played, for tests.
+    var scoreSnapshot: Score {
+        lock.lock(); defer { lock.unlock() }
+        return score
+    }
+
+    func setMusic(on: Bool, mood: Score.Mood) {
+        lock.lock(); pendingMusic = (on, mood); lock.unlock()
+    }
 
     func prepare(sampleRate: Float) {
         self.sampleRate = sampleRate
@@ -165,6 +191,11 @@ final class Synth: @unchecked Sendable {
         notes.append(contentsOf: pending)
         pending.removeAll(keepingCapacity: true)
         let goal = target
+        if let music = pendingMusic {
+            score.target = music.on ? 1 : 0
+            score.mood = music.mood
+            pendingMusic = nil
+        }
         lock.unlock()
 
         guard buffers.count >= 2,
@@ -211,7 +242,8 @@ final class Synth: @unchecked Sendable {
                 }
             }
 
-            let bed = (drone + 0.5 * cue) * level
+            let music = score.sample(dt: dt) * level
+            let bed = (drone + 0.5 * cue) * level + music
             left[frame] = bed + windLeft * 0.6 * wind * level + 0.5 * cue * (1 - level)
             right[frame] = bed + windRight * 0.6 * wind * level + 0.5 * cue * (1 - level)
         }

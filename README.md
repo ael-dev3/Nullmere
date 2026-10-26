@@ -222,9 +222,12 @@ rival Houses move, holds yield, works rise and companies march on.
   moments that touch your House, in words written on your Mac by Apple's
   on-device model. They only speak; the rules decide everything.
 
-- **Sound.** A cold drone and the night wind over the water, a low bell
-  as each watch turns, and a few quiet cues, all synthesised as they play.
-  ⇧⌘M turns it off.
+- **Sound and music.** A cold drone and the night wind over the water, a
+  low bell as each watch turns, and quiet cues, all synthesised as they
+  play. Beneath them an original score is written as it plays: slow chords
+  in D minor drifting under a sparse line of bell-like notes, joined at war
+  by a distant drum and darker chords. ⇧⌘M turns all sound off, ⇧⌘U the
+  music alone.
 
 The world is made from a few words: the same words make the same lake.
 The game saves itself after every watch.

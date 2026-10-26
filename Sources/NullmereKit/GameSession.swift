@@ -105,6 +105,11 @@ public final class GameSession {
 
     /// Called with each sound the game makes.
     public var onCue: ((Ambience.Cue) -> Void)?
+    /// Called when the player goes to war, or the last of their wars ends.
+    public var onWarChanged: ((Bool) -> Void)? {
+        didSet { onWarChanged?(isAtWar) }
+    }
+    public private(set) var isAtWar = false
 
     /// A blow the player saw land: a ring and the damage, briefly, where it fell.
     public struct Blow: Equatable, Identifiable {
@@ -398,6 +403,11 @@ public final class GameSession {
         visible = state.visibility(for: player)
         territory = state.territory()
         refreshReach()
+        let atWar = state.livingHouses.contains { state.isAtWar(player, $0.id) }
+        if atWar != isAtWar {
+            isAtWar = atWar
+            onWarChanged?(atWar)
+        }
         tileBytes = TileTexture.bytes(for: state, viewer: player)
         tilesVersion += 1
         refreshPathPreview()
