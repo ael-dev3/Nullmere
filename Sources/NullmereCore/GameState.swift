@@ -1,3 +1,39 @@
+/// How hard the rival Houses play.
+public enum Difficulty: String, Codable, CaseIterable, Sendable {
+    /// Rivals start with less, gather less, and are slow to make war on the player.
+    case gentle
+    /// Rivals play on the same footing as the player.
+    case even
+    /// Rivals start richer, gather more, and press the player hard.
+    case merciless
+
+    public var title: String {
+        switch self {
+        case .gentle: return "Gentle"
+        case .even: return "Even"
+        case .merciless: return "Merciless"
+        }
+    }
+
+    /// Rivals' starting stores and income, in percent.
+    public var rivalYield: Int {
+        switch self {
+        case .gentle: return 80
+        case .even: return 100
+        case .merciless: return 125
+        }
+    }
+
+    /// How readily rivals declare war on the player, in percent of the usual.
+    public var rivalAggression: Int {
+        switch self {
+        case .gentle: return 50
+        case .even: return 100
+        case .merciless: return 170
+        }
+    }
+}
+
 /// How a new game is set up.
 public struct GameSettings: Codable, Equatable, Sendable {
     /// Words that name the world; the same words make the same world.
@@ -6,12 +42,28 @@ public struct GameSettings: Codable, Equatable, Sendable {
     public var radius: Int
     /// The player's House, by name.
     public var playerHouse: String
+    public var difficulty: Difficulty
 
-    public init(seedText: String, houseCount: Int = 5, radius: Int = 24, playerHouse: String = "Aurel") {
+    public init(seedText: String, houseCount: Int = 5, radius: Int = 24, playerHouse: String = "Aurel", difficulty: Difficulty = .even) {
         self.seedText = seedText
         self.houseCount = houseCount
         self.radius = radius
         self.playerHouse = playerHouse
+        self.difficulty = difficulty
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case seedText, houseCount, radius, playerHouse, difficulty
+    }
+
+    /// Games saved before difficulty was chosen play on even terms.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        seedText = try container.decode(String.self, forKey: .seedText)
+        houseCount = try container.decode(Int.self, forKey: .houseCount)
+        radius = try container.decode(Int.self, forKey: .radius)
+        playerHouse = try container.decode(String.self, forKey: .playerHouse)
+        difficulty = try container.decodeIfPresent(Difficulty.self, forKey: .difficulty) ?? .even
     }
 
     public var seed: UInt64 { Seed.from(seedText) }
@@ -70,6 +122,7 @@ public struct GameState: Codable, Equatable, Sendable {
             let sigil = Names.houses.firstIndex(of: name) ?? index
             var house = House(id: index, name: name, sigil: sigil, isPlayer: isPlayer, temperament: temperament, tileCount: map.count)
             house.stock = Stock(grain: 60, timber: 50, stone: 40, moonsalt: 5)
+                .scaled(percent: isPlayer ? 100 : settings.difficulty.rivalYield)
             houses.append(house)
 
             let holdName = Names.hold(using: &random, avoiding: usedHoldNames)
@@ -225,9 +278,11 @@ public struct GameState: Codable, Equatable, Sendable {
     public static let baseStorage = 300
     public static let storagePerHold = 200
 
-    /// Adds income to a House's stock, up to its storage.
+    /// Adds income to a House's stock, up to its storage. Rivals gather
+    /// more or less as the difficulty sets.
     mutating func store(_ income: Stock, for house: Int) {
-        houses[house].stock.credit(income)
+        let yield = houses[house].isPlayer ? 100 : settings.difficulty.rivalYield
+        houses[house].stock.credit(yield == 100 ? income : income.scaled(percent: yield))
         let room = storage(of: house)
         for resource in Resource.allCases where houses[house].stock[resource] > room {
             houses[house].stock[resource] = room

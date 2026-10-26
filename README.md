@@ -229,6 +229,9 @@ rival Houses move, holds yield, works rise and companies march on.
   by a distant drum and darker chords. ⇧⌘M turns all sound off, ⇧⌘U the
   music alone.
 
+Rivals play Gentle, Even or Merciless: poorer and slow to make war on you,
+on the same footing as you, or richer and quick to press you.
+
 The world is made from a few words: the same words make the same lake.
 The game saves itself after every watch.
 

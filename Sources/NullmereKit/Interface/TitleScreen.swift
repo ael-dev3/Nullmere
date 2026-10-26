@@ -12,6 +12,7 @@ struct TitleScreen: View {
     @AppStorage("newGame.house") private var house = Names.houses[0]
     @AppStorage("newGame.houseCount") private var houseCount = 5
     @AppStorage("newGame.size") private var size = WorldSize.middling.rawValue
+    @AppStorage("newGame.difficulty") private var difficulty = Difficulty.even.rawValue
     @State private var appeared = false
     @State private var confirmingNewWorld = false
 
@@ -39,7 +40,7 @@ struct TitleScreen: View {
                 Spacer(minLength: 40)
 
                 VStack(spacing: 18) {
-                    NewWorldForm(seed: $seed, house: $house, houseCount: $houseCount, size: $size)
+                    NewWorldForm(seed: $seed, house: $house, houseCount: $houseCount, size: $size, difficulty: $difficulty)
                     HStack(spacing: 10) {
                         if app.hasSave {
                             QuietButton(title: "Continue", size: 11) { app.continueSaved() }
@@ -89,7 +90,8 @@ struct TitleScreen: View {
             seedText: words.isEmpty ? seed : words,
             houseCount: min(max(houseCount, 2), 8),
             radius: radius,
-            playerHouse: Names.houses.contains(house) ? house : Names.houses[0]
+            playerHouse: Names.houses.contains(house) ? house : Names.houses[0],
+            difficulty: Difficulty(rawValue: difficulty) ?? .even
         ))
     }
 }
@@ -99,6 +101,7 @@ private struct NewWorldForm: View {
     @Binding var house: String
     @Binding var houseCount: Int
     @Binding var size: String
+    @Binding var difficulty: String
 
     var body: some View {
         Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 12) {
@@ -143,6 +146,16 @@ private struct NewWorldForm: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .frame(width: 260)
+            }
+            GridRow {
+                label("Rivals play")
+                Picker("Rivals play", selection: $difficulty) {
+                    ForEach(Difficulty.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 260)
+                .help("Gentle: rivals start poorer and are slow to war on you. Merciless: richer, and quick to.")
             }
             GridRow {
                 label("Lake")
