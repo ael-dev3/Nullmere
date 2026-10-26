@@ -33,7 +33,7 @@ final class RealmTests: XCTestCase {
         XCTAssertTrue(RealmState.isValidName("Mara d'Ost"))
 
         // A keeper returns by identity alone, to the same House.
-        realm.depart("id-ilsen")
+        realm.depart("id-ilsen", now: 0)
         XCTAssertFalse(realm.keeper("id-ilsen")!.isOnline)
         let back = try realm.arrive("id-ilsen", name: nil, now: 3)
         XCTAssertEqual(back.house, seat)
@@ -49,6 +49,43 @@ final class RealmTests: XCTestCase {
         XCTAssertNil(late.house)
         XCTAssertEqual(realm.status(now: 0).freeSeats, 0)
         XCTAssertThrowsError(try realm.perform(.fortify(unit: 1), by: "c")) { XCTAssertEqual($0 as? RealmError, .noSeat) }
+    }
+
+    func testASeatLongLeftGoesToAKeeperWhoIsWaiting() throws {
+        var realm = realm(seats: 2)
+        let ama = try realm.arrive("a", name: "Ama", now: 0)
+        try realm.arrive("b", name: "Bel", now: 0)
+        realm.depart("a", now: 100)
+        realm.depart("b", now: 200)
+        // A day away: Cor waits; the seats are kept.
+        XCTAssertNil(try realm.arrive("c", name: "Cor", now: 200 + 24 * 3600).house)
+        // A week: the seat left longest goes to Cor, its House as it stood.
+        let stock = realm.world.houses[ama.house!].stock
+        let cor = try realm.arrive("c", name: nil, now: 100 + RealmState.seatHeldFor)
+        XCTAssertEqual(cor.house, ama.house)
+        XCTAssertEqual(realm.world.houses[ama.house!].title, "House Cor")
+        XCTAssertEqual(realm.world.houses[ama.house!].stock, stock)
+        XCTAssertNil(realm.keeper("a")?.house)
+        XCTAssertNotNil(realm.keeper("b")?.house, "Bel's week isn't up")
+        XCTAssertTrue(realm.world.chronicle.contains { $0.text.contains("without its keeper") })
+        // Ama, back at last, waits for a seat in turn.
+        XCTAssertNil(try realm.arrive("a", name: nil, now: 100 + RealmState.seatHeldFor + 1).house)
+        // A keeper who is there keeps their seat however long it's been.
+        let dee = try realm.arrive("d", name: "Dee", now: 300 + RealmState.seatHeldFor * 2)
+        XCTAssertNotNil(dee.house, "Bel's seat, a fortnight left")
+        XCTAssertNil(try realm.arrive("e", name: "Eno", now: RealmState.seatHeldFor * 9).house, "Cor and Dee never left")
+    }
+
+    func testANameIsJudgedAsItIsTyped() {
+        XCTAssertNil(RealmState.nameProblem(""))
+        XCTAssertNil(RealmState.nameProblem("  "))
+        XCTAssertNil(RealmState.nameProblem("Mara d'Ost"))
+        XCTAssertEqual(RealmState.nameProblem("I"), "At least two letters.")
+        XCTAssertEqual(RealmState.nameProblem("Ilsen7"), "Only letters, with spaces, hyphens or apostrophes between them.")
+        XCTAssertEqual(RealmState.nameProblem("Ilsen-"), "A name begins and ends with a letter.")
+        XCTAssertEqual(RealmState.nameProblem(String(repeating: "a", count: 21)), "No more than twenty letters.")
+        XCTAssertFalse(RealmState.isValidName(""))
+        XCTAssertTrue(RealmState.isValidName("Ilsen"))
     }
 
     func testOrdersOnlyForTheKeepersOwnHouse() throws {
@@ -77,7 +114,7 @@ final class RealmTests: XCTestCase {
         XCTAssertEqual(realm.status(now: 6).secondsLeft, 60)
 
         // One who leaves holds no one up.
-        realm.depart("b")
+        realm.depart("b", now: 0)
         XCTAssertNotNil(realm.setReady("a", true, now: 7))
         XCTAssertEqual(realm.world.watch, 3)
     }
@@ -90,7 +127,7 @@ final class RealmTests: XCTestCase {
         XCTAssertEqual(realm.status(now: 1_030).secondsLeft, 30)
         XCTAssertNotNil(realm.tick(now: 1_060))
         XCTAssertEqual(realm.world.watch, 2)
-        realm.depart("a")
+        realm.depart("a", now: 0)
         XCTAssertNil(realm.tick(now: 5_000))
         XCTAssertEqual(realm.world.watch, 2)
     }
@@ -129,7 +166,7 @@ final class RealmTests: XCTestCase {
         try realm.arrive("b", name: "Bel", now: 0)
         realm.world.outcome = Outcome(winner: a.house!, kind: .dominion, watch: 1)
         XCTAssertTrue(realm.status(now: 0).isEnding)
-        realm.depart("b")
+        realm.depart("b", now: 0)
         XCTAssertNotNil(realm.setReady("a", true, now: 10))
         XCTAssertEqual(realm.age, 2)
         XCTAssertNil(realm.world.outcome)
@@ -190,6 +227,7 @@ final class FogTests: XCTestCase {
             for hold in state.holds(of: other.id) {
                 XCTAssertNil(view.hold(hold.id)?.project)
             }
+            XCTAssertEqual(view.strength(of: other.id), state.strength(of: other.id), "A House's strength is common knowledge")
         }
         for index in 0..<state.map.count where !state.houses[me].explored[index] {
             XCTAssertEqual(view.map[index], GameState.unknownGround, "Unexplored ground is unknown")

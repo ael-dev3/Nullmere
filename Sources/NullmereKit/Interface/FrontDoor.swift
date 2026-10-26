@@ -32,6 +32,12 @@ struct FrontDoor: View {
                         RealmLine(door: app.door)
                         Rule(opacity: 0.25)
                         keeper
+                        if let note = seatNote {
+                            Text(verbatim: note)
+                                .font(.nm(11))
+                                .foregroundStyle(Palette.ink.opacity(0.75))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                         if let problem = app.arrivalProblem {
                             Text(verbatim: problem)
                                 .font(.nm(11))
@@ -39,7 +45,7 @@ struct FrontDoor: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         HStack(spacing: 10) {
-                            QuietButton(title: app.isEntering ? "Entering…" : "Enter World", size: 11, prominent: true,
+                            QuietButton(title: enterTitle, size: 11, prominent: true,
                                         enabled: app.canEnter(with: name)) {
                                 app.enterWorld(name: name)
                             }
@@ -72,6 +78,22 @@ struct FrontDoor: View {
         }
     }
 
+    private var enterTitle: String {
+        if app.isWaitingForSeat { return "Waiting for a Seat…" }
+        return app.isEntering ? "Entering…" : "Enter World"
+    }
+
+    /// When every seat is held: what waiting means.
+    private var seatNote: String? {
+        if app.isWaitingForSeat {
+            return "Every seat around the lake is held. Stay at the door: you'll step in the moment one falls free. A seat left a week goes to whoever waits."
+        }
+        if case .open(let status) = app.door, status.freeSeats == 0, !status.isEnding {
+            return "Every seat around the lake is held. Enter to wait for the next that falls free."
+        }
+        return nil
+    }
+
     @ViewBuilder
     private var keeper: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -90,9 +112,15 @@ struct FrontDoor: View {
                     .overlay(alignment: .bottom) { Rule(opacity: 0.35) }
                     .onSubmit { app.enterWorld(name: name) }
                     .accessibilityLabel("Your name on the lake")
-                Text(verbatim: "Two to twenty letters. It names you and the House you'll hold.")
-                    .font(.nm(10))
-                    .foregroundStyle(Palette.ink.opacity(0.5))
+                if let problem = RealmState.nameProblem(name) {
+                    Text(verbatim: problem)
+                        .font(.nm(10))
+                        .foregroundStyle(Palette.bad)
+                } else {
+                    Text(verbatim: "Two to twenty letters. It names you and the House you'll hold.")
+                        .font(.nm(10))
+                        .foregroundStyle(Palette.ink.opacity(0.5))
+                }
             }
         }
     }

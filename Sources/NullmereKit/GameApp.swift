@@ -42,6 +42,10 @@ public final class GameApp {
     /// Why the realm would not take the keeper in.
     public private(set) var arrivalProblem: String?
     public private(set) var isEntering = false
+    /// Known to the realm, but every seat is held: the door asks again as
+    /// the realm changes, and steps in when a seat falls free.
+    public private(set) var isWaitingForSeat = false
+    private var seatTimer: Timer?
     /// Back to the launcher, when the app has one.
     public var onLeave: (@MainActor () -> Void)?
     /// The game's settings, shown over the world or the front door.
@@ -170,6 +174,7 @@ public final class GameApp {
         door = .connecting
         arrivalProblem = nil
         isEntering = false
+        stopWaiting()
         let link: any RealmLink
         switch address {
         case .hosted(let seed):
@@ -200,7 +205,7 @@ public final class GameApp {
     /// Whether the keeper can step in: the realm is open, and they're known
     /// to it or have a name ready.
     public func canEnter(with name: String) -> Bool {
-        guard case .open = door, !isEntering else { return false }
+        guard case .open = door, !isEntering, !isWaitingForSeat else { return false }
         return keeperName != nil || RealmState.isValidName(name)
     }
 
@@ -218,13 +223,17 @@ public final class GameApp {
         switch event {
         case .status(let status):
             door = .open(status)
-            if !autoEntered {
+            if isWaitingForSeat {
+                // Only when a seat stands free: asking changes the status.
+                if status.freeSeats > 0, !status.isEnding { askForSeat() }
+            } else if !autoEntered {
                 autoEntered = true
                 enterFromEnvironment()
             }
         case .arrived(let keeper, let world):
             arrived(keeper, in: world)
         case .refused(let error):
+            Self.logger.notice("The realm refused the keeper: \(error.description, privacy: .public)")
             isEntering = false
             if enteredByIdentity, error == .nameInvalid || error == .unknownKeeper {
                 // The realm has forgotten this keeper: they choose a name anew.
@@ -235,6 +244,9 @@ public final class GameApp {
                 arrivalProblem = error.description
             }
         case .unreachable(let reason):
+            if door != .unreachable(reason) {
+                Self.logger.notice("The realm is unreachable: \(reason, privacy: .public)")
+            }
             isEntering = false
             door = .unreachable(reason)
         case .settled, .orderRefused, .changed, .watchTurned:
@@ -250,9 +262,10 @@ public final class GameApp {
         keeperName = keeper.name
         UserDefaults.standard.set(keeper.name, forKey: Self.nameKey(for: address))
         guard let house = keeper.house, let link else {
-            arrivalProblem = RealmError.noSeat.description
+            startWaiting()
             return
         }
+        stopWaiting()
         let doorAge: Int? = { if case .open(let status) = self.door { return status.age } else { return nil } }()
         let age = session?.realmStatus?.age ?? doorAge ?? 1
         let session = GameSession(link: link, house: house, world: world, store: store.forAge(age, of: Self.realmName),
@@ -260,6 +273,28 @@ public final class GameApp {
         session.onNewAge = { [weak self] keeper, world in self?.arrived(keeper, in: world) }
         play(session)
         showFromEnvironment()
+    }
+
+    private func startWaiting() {
+        guard !isWaitingForSeat else { return }
+        isWaitingForSeat = true
+        arrivalProblem = nil
+        // A seat can fall free with the clock alone, when its keeper has
+        // been away a week.
+        seatTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.askForSeat() }
+        }
+    }
+
+    func askForSeat() {
+        guard isWaitingForSeat, case .frontDoor = phase else { return }
+        link?.arrive(name: nil)
+    }
+
+    private func stopWaiting() {
+        isWaitingForSeat = false
+        seatTimer?.invalidate()
+        seatTimer = nil
     }
 
     /// Leaves the world for the front door; the keeper's House stands as
@@ -273,6 +308,7 @@ public final class GameApp {
 
     /// Leaves the front door for the launcher.
     public func leaveDoor() {
+        stopWaiting()
         link?.leave()
         link = nil
         onLeave?()

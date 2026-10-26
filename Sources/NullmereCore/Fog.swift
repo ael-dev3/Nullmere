@@ -29,6 +29,7 @@ extension GameState {
             view.holds[index].training = nil
         }
         view.envoys = envoys.filter { $0.from == house || $0.to == house }
+        view.reputed = houses.map { strength(of: $0.id) }
         return view
     }
 }

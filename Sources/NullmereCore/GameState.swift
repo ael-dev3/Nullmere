@@ -56,6 +56,9 @@ public struct GameState: Codable, Equatable, Sendable {
     var draws: UInt64
     /// One snapshot per watch; absent in saves from before it was kept.
     var recorded: [Snapshot]?
+    /// In a keeper's view, each House's strength as the realm reckons it:
+    /// common knowledge, though their companies are out of sight.
+    var reputed: [Int]?
 
     public var player: Int { houses.first { $0.isPlayer }?.id ?? 0 }
 
@@ -264,6 +267,7 @@ public struct GameState: Codable, Equatable, Sendable {
 
     /// A rough measure of military might, for rivals weighing war.
     public func strength(of house: Int) -> Int {
+        if let reputed, reputed.indices.contains(house) { return reputed[house] }
         let army = units(of: house).reduce(0) { total, unit in
             total + (unit.kind.attack + unit.kind.defense) * unit.health / 10
         }

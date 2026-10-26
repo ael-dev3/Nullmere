@@ -11,6 +11,8 @@ public struct Keeper: Codable, Equatable, Identifiable, Sendable {
     public internal(set) var isOnline: Bool
     /// The order they arrived in, for seats in a new age.
     public let arrival: Int
+    /// When they left, if they are away.
+    public internal(set) var awaySince: Double?
 }
 
 /// What anyone may know of the realm before entering it.
@@ -137,10 +139,28 @@ public struct RealmState: Codable, Equatable, Sendable {
     /// Whether a name will do: two to twenty letters, with spaces, hyphens
     /// or apostrophes between them.
     public static func isValidName(_ name: String) -> Bool {
-        let trimmed = trim(name)
-        guard (2...20).contains(trimmed.count), trimmed.first?.isLetter == true, trimmed.last?.isLetter == true else { return false }
-        return trimmed.allSatisfy { $0.isLetter || $0 == " " || $0 == "-" || $0 == "'" }
+        nameProblem(name) == nil && !trim(name).isEmpty
     }
+
+    /// What is wrong with a name as it is being typed, in a few words; nil
+    /// when it will do, or when nothing has been typed yet.
+    public static func nameProblem(_ name: String) -> String? {
+        let trimmed = trim(name)
+        if trimmed.isEmpty { return nil }
+        if !trimmed.allSatisfy({ $0.isLetter || $0 == " " || $0 == "-" || $0 == "'" }) {
+            return "Only letters, with spaces, hyphens or apostrophes between them."
+        }
+        if trimmed.first?.isLetter != true || trimmed.last?.isLetter != true {
+            return "A name begins and ends with a letter."
+        }
+        if trimmed.count < 2 { return "At least two letters." }
+        if trimmed.count > 20 { return "No more than twenty letters." }
+        return nil
+    }
+
+    /// How long a seat waits for a keeper who is away before it goes to
+    /// one who is waiting: a week.
+    public static let seatHeldFor: Double = 7 * 24 * 3600
 
     static func trim(_ name: String) -> String {
         String(name.drop(while: { $0 == " " }).reversed().drop(while: { $0 == " " }).reversed())
@@ -168,17 +188,36 @@ public struct RealmState: Codable, Equatable, Sendable {
             watchBegan = now
         }
         keepers[index].isOnline = true
+        keepers[index].awaySince = nil
         if keepers[index].house == nil {
+            claimSeat(for: index)
+        }
+        if keepers[index].house == nil, releaseSeat(now: now) {
             claimSeat(for: index)
         }
         return keepers[index]
     }
 
     /// A keeper leaves; their House stands as they left it.
-    public mutating func depart(_ id: String) {
+    public mutating func depart(_ id: String, now: Double) {
         guard let index = keepers.firstIndex(where: { $0.id == id }) else { return }
+        if keepers[index].isOnline { keepers[index].awaySince = now }
         keepers[index].isOnline = false
         keepers[index].isReady = false
+    }
+
+    /// The seat of the keeper away longest, if a week or more, goes back to
+    /// the stewards for a keeper who is waiting. Its House stands as it was.
+    private mutating func releaseSeat(now: Double) -> Bool {
+        let away = keepers.indices.filter {
+            keepers[$0].house != nil && !keepers[$0].isOnline && now - (keepers[$0].awaySince ?? now) >= RealmState.seatHeldFor
+        }
+        guard let index = away.min(by: { keepers[$0].awaySince ?? 0 < keepers[$1].awaySince ?? 0 }),
+              let house = keepers[index].house else { return false }
+        world.houses[house].isPlayer = false
+        keepers[index].house = nil
+        world.record(.founding, [house], "\(world.houses[house].title) has stood a week without its keeper; the stewards keep it for another.")
+        return true
     }
 
     /// Gives a keeper the first free seat: a living House no keeper holds.

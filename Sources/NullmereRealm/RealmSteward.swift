@@ -61,7 +61,7 @@ public actor RealmSteward {
         }
         // Whoever was there when the steward last stopped is gone now.
         for keeper in state.keepers where keeper.isOnline {
-            state.depart(keeper.id)
+            state.depart(keeper.id, now: now)
         }
         try await publish()
     }
@@ -91,7 +91,7 @@ public actor RealmSteward {
 
         // The silent have left.
         for keeper in state.keepers where keeper.isOnline && now - (heard[keeper.id] ?? now) > RealmSteward.silence {
-            state.depart(keeper.id)
+            state.depart(keeper.id, now: now)
             changed = true
         }
         if let turned = state.tick(now: now) {
@@ -139,7 +139,7 @@ public actor RealmSteward {
         case "here":
             return (.done, false, [])
         case "leave":
-            state.depart(keeper)
+            state.depart(keeper, now: now)
             return (.done, true, [])
         default:
             return (.refused(.refused("The realm doesn't know that request.")), false, [])

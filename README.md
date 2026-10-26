@@ -197,8 +197,14 @@ as the realm will, and takes the realm's word as final.
   House; returning, you go straight back to yours.
 - **Seats.** The lake has eight seats. Seats no keeper holds are played by
   stewards, the same minds that once played rivals, until a keeper claims
-  them. When every seat is held, a newcomer waits for the next to fall
-  free.
+  them. When every seat is held, a newcomer waits at the front door and
+  steps in the moment one falls free. A seat whose keeper has been away a
+  week goes back to the stewards for whoever is waiting; its House stands
+  as it was, and the keeper, returning, waits in turn.
+- **What you see.** The realm tells each keeper only what their House
+  could know: the ground they've explored, the companies in their sight,
+  their own stores, and the envoys and news that reach them. The world
+  itself never leaves the server.
 - **The watch.** Each turn is a watch. Give your orders, then say you're
   ready (⌘↩). The watch turns when every keeper there is ready, or when
   its time runs out, three minutes. An empty realm sleeps until a keeper
@@ -239,8 +245,18 @@ realm where it stands after a restart. `NULLMERE_REALM_NAME`,
 shape a new realm. For a realm on your own machine, `spacetime start`, then
 publish with `--server local`, run the steward against
 `http://127.0.0.1:3000/nullmere`, and open a debug build with
-`NULLMERE_REALM=http://127.0.0.1:3000/nullmere`. CI does exactly this on
-Linux, and plays two keepers through it.
+`NULLMERE_REALM=http://127.0.0.1:3000/nullmere`. CI does exactly this:
+on Linux it plays two keepers through the server, and on macOS the app
+itself enters the world across the network (`scripts/smoke-test-network.sh`).
+
+The realm's tables are private: keepers write requests through reducers
+and read only their own view and replies, through SpacetimeDB views
+(`my_view`, `my_replies`), and the realm's public status.
+
+**What maincloud needs.** Publishing to `maincloud.spacetimedb.com` needs a
+SpacetimeDB account, made with `spacetime login` (it signs in through
+GitHub), and a machine to keep the steward running with that account's
+token. Until then the realm runs on any SpacetimeDB server, as on CI.
 
 ## Playing Nullmere
 

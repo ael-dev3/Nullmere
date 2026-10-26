@@ -197,6 +197,7 @@ final class GameGateTests: XCTestCase {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         var state = ModelReadiness.modelNotReady
+        UserDefaults.standard.removeObject(forKey: GameApp.nameKey(for: .hosted(seed: "gate")))
         let app = GameApp(store: LocalStore(directory: directory), readiness: { state }, sound: false,
                           address: .hosted(seed: "gate"), identity: FileIdentityStore(url: directory.appendingPathComponent("identity")))
 
@@ -216,6 +217,44 @@ final class GameGateTests: XCTestCase {
         app.enterWorld(name: "Ama")
         let session = try XCTUnwrap(app.session)
         XCTAssertEqual(session.playerHouse.title, "House Ama")
+    }
+
+    func testAKeeperWaitsAtTheDoorForASeat() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = LocalStore(directory: directory)
+        // Both seats held; Ama's keeper left almost a week ago.
+        let away = Date().timeIntervalSince1970 - RealmState.seatHeldFor + 1.5
+        var clock = away
+        let before = LocalRealm.open(at: store.hostedRealmURL, name: "x", seed: "seats", seats: 2, clock: { clock })
+        before.link(identity: "a").arrive(name: "Ama")
+        before.link(identity: "b").arrive(name: "Bel")
+        before.link(identity: "a").leave()
+        clock = away + 60
+        before.link(identity: "b").leave()
+
+        UserDefaults.standard.removeObject(forKey: GameApp.nameKey(for: .hosted(seed: "seats")))
+        let app = GameApp(store: store, readiness: { .ready }, sound: false, address: .hosted(seed: "seats"),
+                          identity: FileIdentityStore(url: directory.appendingPathComponent("identity")))
+        guard case .open(let status) = app.door else { return XCTFail("The realm is reached") }
+        XCTAssertEqual(status.freeSeats, 0)
+        XCTAssertTrue(app.canEnter(with: "Cor"), "A full realm still lets a keeper in to wait")
+        XCTAssertNil(RealmState.nameProblem("Cor"))
+        app.enterWorld(name: "Cor")
+        XCTAssertTrue(app.isWaitingForSeat)
+        XCTAssertNil(app.session)
+        XCTAssertNil(app.arrivalProblem)
+        XCTAssertFalse(app.canEnter(with: "Cor"), "Already at the door")
+
+        // The week runs out; the door asks again and steps in.
+        try await Task.sleep(for: .seconds(2))
+        app.askForSeat()
+        XCTAssertFalse(app.isWaitingForSeat)
+        let session = try XCTUnwrap(app.session)
+        XCTAssertEqual(session.playerHouse.title, "House Cor")
+        app.leaveWorld()
+        XCTAssertFalse(app.isWaitingForSeat)
+        UserDefaults.standard.removeObject(forKey: GameApp.nameKey(for: .hosted(seed: "seats")))
     }
 }
 

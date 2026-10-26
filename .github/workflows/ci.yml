@@ -136,6 +136,43 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: scripts/smoke-test-game.sh 2>&1 | tee build/smoke-game.log
 
+      # A realm raised on the runner, as on maincloud: SpacetimeDB with the
+      # realm module published, and the steward beside it. Then the app
+      # itself enters the world across the network.
+      - name: Raise a realm on SpacetimeDB
+        id: realm
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        timeout-minutes: 20
+        run: |
+          command -v rustup >/dev/null || curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          rustup target add wasm32-unknown-unknown
+          curl -sSf https://install.spacetimedb.com | sh -s -- --yes
+          spacetime --version
+          (spacetime start > build/spacetime.log 2>&1 &)
+          for i in $(seq 1 90); do
+            curl -s -o /dev/null -X POST http://127.0.0.1:3000/v1/identity && break
+            sleep 1
+          done
+          spacetime server set-default local || true
+          spacetime login --server-issued-login local
+          (cd realm-server && spacetime publish --server local --yes nullmere)
+          token="$(spacetime login show --token | awk '{print $NF}' | tail -n 1)"
+          echo "::add-mask::$token"
+          NULLMERE_STEWARD_TOKEN="$token" NULLMERE_REALM_SEED="black moon" \
+            nohup "$(swift build --show-bin-path)/NullmereSteward" http://127.0.0.1:3000/nullmere > build/steward.log 2>&1 &
+          sleep 5
+          cat build/steward.log
+          grep -q "Stewarding" build/steward.log
+
+      - name: Enter the realm across the network
+        if: ${{ !cancelled() && steps.realm.outcome == 'success' }}
+        env:
+          NULLMERE_REALM: http://127.0.0.1:3000/nullmere
+        run: scripts/smoke-test-network.sh 2>&1 | tee build/smoke-network.log
+
       - name: Keep the screenshots
         if: always()
         uses: actions/upload-artifact@v5
@@ -147,7 +184,7 @@ jobs:
       - name: Print small screenshots
         if: always()
         run: |
-          for shot in build/launcher.png build/launcher-menu.png build/launcher-news.png build/launcher-settings.png build/launcher-play.png build/launcher-off.png build/launcher-downloading.png build/game-world.png build/game-later.png build/game-race.png build/game-ending.png; do
+          for shot in build/launcher.png build/launcher-menu.png build/launcher-news.png build/launcher-settings.png build/launcher-play.png build/launcher-off.png build/launcher-downloading.png build/game-world.png build/game-network.png build/game-later.png build/game-race.png build/game-ending.png; do
             if [ -s "$shot" ]; then
               small="${shot%.png}-small.jpg"
               sips -s format jpeg -s formatOptions 45 -Z 560 "$shot" --out "$small" >/dev/null
@@ -176,6 +213,7 @@ jobs:
           grep -h "Executed .* tests" build-test.log 2>/dev/null | tail -1 || true
           grep -hE "error|warning" build/smoke-*.log 2>/dev/null | head -20 || true
           tail -n 15 build/game-stdout.log 2>/dev/null || true
+          tail -n 15 build/steward.log 2>/dev/null || true
           echo "::endgroup::"
 
   # The rules and the realm on Linux, where the steward runs; then the realm

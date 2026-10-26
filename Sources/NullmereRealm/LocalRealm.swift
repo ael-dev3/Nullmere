@@ -101,7 +101,7 @@ public final class LocalRealm {
     }
 
     func leave(_ identity: String) {
-        state.depart(identity)
+        state.depart(identity, now: clock())
         links[identity] = nil
         persist()
         broadcastStatus()
