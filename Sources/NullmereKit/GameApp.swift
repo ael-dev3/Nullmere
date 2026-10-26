@@ -19,6 +19,8 @@ public final class GameApp {
     public private(set) var phase: Phase = .gate
     public private(set) var readiness: ModelReadiness = .checking
     public private(set) var hasSave: Bool
+    /// What happened to the saved game, when the player should know.
+    public private(set) var saveNotice: String?
 
     let store: SaveStore
     private let readModel: () -> ModelReadiness
@@ -41,6 +43,22 @@ public final class GameApp {
         self.ambience = Ambience(enabled: soundOn)
         checkModel()
         startFromEnvironment()
+        // Whatever was ordered since the last watch is kept if the game is
+        // put behind another app or quit.
+        for name in [NSApplication.willResignActiveNotification, NSApplication.willTerminateNotification] {
+            lifecycleObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.saveNow() }
+            })
+        }
+    }
+
+    @ObservationIgnored private var lifecycleObservers: [any NSObjectProtocol] = []
+
+    /// Saves the game in progress, if there is one that hasn't ended.
+    public func saveNow() {
+        guard let session, session.state.outcome == nil else { return }
+        session.save(quietly: true)
+        hasSave = store.hasSave
     }
 
     public var session: GameSession? {
@@ -121,11 +139,22 @@ public final class GameApp {
     }
 
     public func continueSaved() {
-        guard readiness.allowsPlay, let state = store.load() else {
-            hasSave = store.hasSave
-            return
+        guard readiness.allowsPlay else { return }
+        switch store.open() {
+        case .game(let state):
+            saveNotice = nil
+            play(GameSession(state: state, store: store, voice: Self.voice()))
+        case .recovered(let state):
+            saveNotice = nil
+            let session = GameSession(state: state, store: store, voice: Self.voice())
+            session.post("The last save could not be read; the game goes on from the one before it.", tone: .bad)
+            play(session)
+        case .unreadable(let aside):
+            saveNotice = "The saved game could not be read. It was kept as \(aside.lastPathComponent) in Application Support › Nullmere."
+        case .none:
+            break
         }
-        play(GameSession(state: state, store: store, voice: Self.voice()))
+        hasSave = store.hasSave
     }
 
     /// Saves and goes back to the title screen.

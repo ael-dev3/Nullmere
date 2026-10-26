@@ -1,3 +1,4 @@
+import AppKit
 import Metal
 import LauncherCore
 import NullmereCore
@@ -289,5 +290,87 @@ final class BlowTests: XCTestCase {
         XCTAssertFalse(session.blows[0].againstPlayer)
         try await Task.sleep(for: .seconds(GameSession.Blow.duration + 0.3))
         XCTAssertTrue(session.blows.isEmpty)
+    }
+}
+
+final class SaveRobustnessTests: XCTestCase {
+    private func directory() -> URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    }
+
+    func testEachSaveKeepsTheOneBeforeAsABackup() throws {
+        let dir = directory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = SaveStore(directory: dir)
+        var state = GameState(settings: GameSettings(seedText: "backup", houseCount: 3, radius: 14))
+        store.save(state)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: store.backupURL.path))
+        let first = state
+        _ = state.endWatch()
+        store.save(state)
+        XCTAssertEqual(store.open(), .game(state))
+        let backup = try JSONDecoder().decode(GameState.self, from: Data(contentsOf: store.backupURL))
+        XCTAssertEqual(backup, first)
+    }
+
+    func testABrokenSaveFallsBackToTheBackupAndIsSetAside() throws {
+        let dir = directory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = SaveStore(directory: dir)
+        var state = GameState(settings: GameSettings(seedText: "broken", houseCount: 3, radius: 14))
+        store.save(state)
+        let good = state
+        _ = state.endWatch()
+        store.save(state)
+        try Data("{ not a game".utf8).write(to: store.autosaveURL)
+
+        XCTAssertEqual(store.open(), .recovered(good))
+        let names = try FileManager.default.contentsOfDirectory(atPath: dir.path)
+        XCTAssertTrue(names.contains { $0.hasPrefix("autosave-unreadable-") }, "The broken save is kept, not lost")
+        XCTAssertEqual(store.open(), .game(good), "The recovered game is the autosave again")
+    }
+
+    func testAnUnreadableSaveWithNoBackupIsKeptAndReported() throws {
+        let dir = directory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = SaveStore(directory: dir)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data("{ \"formatVersion\": 999 }".utf8).write(to: store.autosaveURL)
+        guard case .unreadable(let aside) = store.open() else { return XCTFail("It must be reported") }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: aside.path))
+        XCTAssertFalse(store.hasSave, "A new game won't overwrite it: it has moved aside")
+        XCTAssertEqual(store.open(), .none)
+    }
+}
+
+@MainActor
+final class SaveLifecycleTests: XCTestCase {
+    func testOrdersAreSavedWhenTheGameIsPutAside() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = SaveStore(directory: dir)
+        let app = GameApp(store: store, readiness: { .ready }, sound: false)
+        app.begin(GameSettings(seedText: "put aside", houseCount: 3, radius: 14))
+        let session = try XCTUnwrap(app.session)
+        let seat = try XCTUnwrap(session.state.seat(of: session.player))
+        XCTAssertTrue(session.perform(.build(hold: seat.id, kind: .granary)))
+        XCTAssertNotEqual(store.load(), session.state, "Not saved yet: no watch has ended")
+
+        NotificationCenter.default.post(name: NSApplication.willResignActiveNotification, object: nil)
+        XCTAssertEqual(store.load(), session.state, "Another app in front: the orders are kept")
+    }
+
+    func testAnUnreadableSaveIsExplainedOnTheTitleScreen() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = SaveStore(directory: dir)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data("garbage".utf8).write(to: store.autosaveURL)
+        let app = GameApp(store: store, readiness: { .ready }, sound: false)
+        XCTAssertTrue(app.hasSave)
+        app.continueSaved()
+        XCTAssertNil(app.session)
+        XCTAssertNotNil(app.saveNotice)
+        XCTAssertFalse(app.hasSave)
     }
 }

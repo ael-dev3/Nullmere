@@ -13,6 +13,7 @@ struct TitleScreen: View {
     @AppStorage("newGame.houseCount") private var houseCount = 5
     @AppStorage("newGame.size") private var size = WorldSize.middling.rawValue
     @State private var appeared = false
+    @State private var confirmingNewWorld = false
 
     var body: some View {
         ZStack {
@@ -43,14 +44,32 @@ struct TitleScreen: View {
                         if app.hasSave {
                             QuietButton(title: "Continue", size: 11) { app.continueSaved() }
                         }
-                        QuietButton(title: "Begin", size: 11, prominent: true) { begin() }
-                            .keyboardShortcut(.defaultAction)
+                        QuietButton(title: "Begin", size: 11, prominent: true) {
+                            if app.hasSave { confirmingNewWorld = true } else { begin() }
+                        }
+                        .keyboardShortcut(.defaultAction)
+                        .confirmationDialog("Begin a new world?", isPresented: $confirmingNewWorld) {
+                            Button("Begin a New World", role: .destructive) { begin() }
+                            Button("Continue the Saved Game") { app.continueSaved() }
+                        } message: {
+                            Text(verbatim: "Your saved game will be replaced.")
+                        }
                         QuietButton(title: "Quit", size: 11) { NSApp.terminate(nil) }
                     }
                 }
                 .padding(.vertical, 22)
                 .padding(.horizontal, 28)
                 .panelBackground()
+                .overlay(alignment: .bottom) {
+                    if let notice = app.saveNotice {
+                        Text(verbatim: notice)
+                            .font(.system(size: 11, weight: .light))
+                            .foregroundStyle(Palette.bad)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 420)
+                            .offset(y: 34)
+                    }
+                }
                 .opacity(appeared ? 1 : 0)
                 .offset(y: appeared ? 0 : 12)
                 Spacer(minLength: 48)
