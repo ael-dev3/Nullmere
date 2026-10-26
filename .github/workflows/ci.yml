@@ -167,3 +167,14 @@ jobs:
             base64 -i build/icon-small.jpg | fold -w 120
             echo "::endgroup::"
           fi
+
+      # Last, so it survives a trimmed log: frame times, test failures and
+      # warnings, in a few lines.
+      - name: Summary
+        if: always()
+        run: |
+          echo "::group::Summary"
+          grep -h "PERF " build-test.log 2>/dev/null || true
+          grep -hE "error: |failed \(|: warning:" build.log build-test.log 2>/dev/null | head -40 || true
+          grep -h "Executed .* tests" build-test.log 2>/dev/null | tail -1 || true
+          echo "::endgroup::"
