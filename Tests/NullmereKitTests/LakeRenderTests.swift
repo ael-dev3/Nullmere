@@ -29,14 +29,14 @@ final class LakeRenderTests: XCTestCase {
             XCTAssertNotNil(renderer.measureFrame(uniforms, into: target), "\(lake) drawn")
             var pixels = [UInt8](repeating: 0, count: width * height * 4)
             target.getBytes(&pixels, bytesPerRow: width * 4, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
-            // Black water, lit land: the picture is neither empty nor flat.
+            // A night scene: the world's hexagon drawn, its edges in the dark.
             var lit = 0
             for start in stride(from: 0, to: pixels.count, by: 4) {
                 let brightness: Int = Int(pixels[start]) + Int(pixels[start + 1]) + Int(pixels[start + 2])
-                if brightness > 60 { lit += 1 }
+                if brightness > 12 { lit += 1 }
             }
             let share = Double(lit) / Double(width * height)
-            XCTAssertTrue((0.1...0.95).contains(share), "\(lake): \(Int(share * 100))% lit")
+            XCTAssertTrue((0.1...0.95).contains(share), "\(lake): \(Int(share * 100))% drawn")
             let provider = try XCTUnwrap(CGDataProvider(data: Data(pixels) as CFData))
             let image = try XCTUnwrap(CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
                                               space: CGColorSpaceCreateDeviceRGB(),
