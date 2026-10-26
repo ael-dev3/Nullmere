@@ -46,6 +46,9 @@ final class Listener {
 
     var turned: Bool { events.contains { if case .watchTurned = $0 { return true } else { return false } } }
     var hasStatus: Bool { events.contains { if case .status = $0 { return true } else { return false } } }
+    var silenceTold: Bool {
+        events.contains { if case .unreachable(NetworkRealmLink.silentSteward) = $0 { return true } else { return false } }
+    }
 }
 
 /// Keepers, a steward and SpacetimeDB (in memory): the realm as it runs
@@ -176,6 +179,40 @@ final class NetworkRealmTests: XCTestCase {
             earA.events.contains { if case .heard = $0 { return true } else { return false } }
         }
         XCTAssertFalse(toldOwn, "Ama isn't told of her own gift again")
+    }
+
+    func testASilentStewardIsToldAndItsReturnToo() async throws {
+        let db = FakeSpacetime()
+        let (_, running, credentials) = try await steward(db)
+        let (link, ear) = await MainActor.run { () -> (NetworkRealmLink, Listener) in
+            let link = NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 0.05, stewardSilence: 0.6)
+            let listener = Listener()
+            listener.listen(to: link)
+            link.connect()
+            link.arrive(name: "Ama")
+            return (link, listener)
+        }
+        try await until("arrival") { ear.keeper != nil }
+        try await Task.sleep(nanoseconds: 300_000_000)
+        let early = await MainActor.run { ear.silenceTold }
+        XCTAssertFalse(early, "A steward at work isn't silent")
+
+        // The steward stops: within the silence, the keeper is told.
+        running.cancel()
+        try await until("the silence told") { ear.silenceTold }
+        let count = await MainActor.run { ear.events.count }
+
+        // Another steward takes up the realm; the realm stands again.
+        await db.advance(61)
+        let second = try await RealmSteward(transport: db, token: credentials.token, name: "x", seed: "x", now: 2)
+        let again = Task { await second.run(clock: { 3 }) }
+        defer { again.cancel() }
+        try await until("the realm's status again") {
+            ear.events.dropFirst(count).contains { if case .status = $0 { return true } else { return false } }
+        }
+        let told = await MainActor.run { ear.events.filter { if case .unreachable(NetworkRealmLink.silentSteward) = $0 { return true } else { return false } }.count }
+        XCTAssertEqual(told, 1, "Told once")
+        _ = link
     }
 
     func testAKeeperReturnsByIdentityAlone() async throws {

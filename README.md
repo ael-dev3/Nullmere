@@ -257,6 +257,9 @@ as the realm will, and takes the realm's word as final.
   every sight by a hex, a Lean Watch takes a third of the grain, and a
   Still Night mends wards twice as fast. The chronicle tells when one
   falls and lifts, and a band under the top bar shows it while it lasts.
+- **Where it comes from.** Press a store in the top bar for its account:
+  what each hold yields a watch, what your companies eat, what an omen
+  adds or takes, and the room left to keep it.
 - **Ages.** When a House wins, the age ends. When the watch next turns, a
   new age begins on a fresh lake, and every keeper is seated anew in the
   order they first came. Each age's lake has a shape of its own, in turn:
@@ -322,7 +325,9 @@ round it couldn't publish, or a steward stopped mid-round, loses and
 doubles nothing; it says when a round fails, and every ten minutes how
 the realm stands. One steward holds the realm at a time: a second, started
 by mistake, finds it held and gives up, and a steward started again waits
-the minute its old hold takes to lapse.
+the minute its old hold takes to lapse. If the steward falls silent for a
+minute, every keeper is told the realm stands still, and told again when
+it returns; orders given meanwhile wait and go when it does.
 
 ## Playing Nullmere
 

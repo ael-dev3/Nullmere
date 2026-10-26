@@ -82,3 +82,30 @@ private final class QuietLink: RealmLink {
     func setReady(_ ready: Bool) {}
     func leave() {}
 }
+
+@MainActor
+final class IncomeBreakdownTests: XCTestCase {
+    func testEachResourceSaysWhereItComesFrom() throws {
+        var state = GameState(settings: GameSettings(seedText: "where it comes from", houseCount: 3, radius: 16))
+        for _ in 0..<20 {
+            _ = state.stewardTurn(for: state.player)
+            _ = state.endWatch()
+        }
+        let player = state.player
+        let income = state.income(of: player)
+        for resource in Resource.allCases {
+            let breakdown = IncomeBreakdown(state: state, house: player, resource: resource)
+            let expected = income[resource] - (resource == .grain ? state.upkeep(of: player) : 0)
+            XCTAssertEqual(breakdown.net, expected, "\(resource): the lines add up to what the top bar shows")
+            XCTAssertTrue(breakdown.summary.hasPrefix("\(resource.title): \(state.houses[player].stock[resource]) of "))
+        }
+        let grain = IncomeBreakdown(state: state, house: player, resource: .grain)
+        let seat = try XCTUnwrap(state.seat(of: player))
+        XCTAssertEqual(grain.lines.first?.label, seat.name, "The seat first")
+        XCTAssertEqual(grain.lines.last?.label, "Companies eat")
+        XCTAssertNil(grain.omen)
+        state.omen = Omen(kind: .leanWatch, began: state.watch, ends: state.watch + 3)
+        XCTAssertEqual(IncomeBreakdown(state: state, house: player, resource: .grain).omen, "A Lean Watch takes a third of it.")
+        XCTAssertNil(IncomeBreakdown(state: state, house: player, resource: .timber).omen)
+    }
+}

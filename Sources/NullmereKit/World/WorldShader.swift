@@ -197,12 +197,13 @@ enum WorldShader {
         return b * b * (exp(-r2 / 0.8) + 0.12 * exp(-r2 / 7.0));
     }
 
-    float3 nm_mirror(float2 w, float2 px, float2 viewport, float ppp, float shallow, float time, float4 moonAt) {
+    float3 nm_mirror(float2 w, float2 px, float2 viewport, float ppp, float shallow, float time, float4 moonAt, float2 moonPx) {
         // Black glass, faintly holding the sky: a little paler toward the top
-        // of the view, where the moon hangs, and along the moon's path.
+        // of the view, and along the moon's path, which runs down the water
+        // through the moon's own reflection wherever it lies.
         float2 uv = px / viewport;
-        float gx = (uv.x - 0.5) * viewport.x / max(viewport.y, 1.0);
-        float glade = exp(-gx * gx / 0.045) * (0.35 + 0.65 * (1.0 - uv.y));
+        float gx = (px.x - moonPx.x) / max(viewport.y, 1.0);
+        float glade = exp(-gx * gx / 0.045) * (0.35 + 0.65 * (1.0 - uv.y)) * (0.35 + 0.65 * moonAt.w);
         float3 c = float3(0.004, 0.007, 0.016) + float3(0.010, 0.014, 0.026) * (1.0 - uv.y);
         c += float3(0.050, 0.060, 0.085) * glade * (0.85 + 0.15 * nm_fbm(w * 0.35 + float2(time * 0.004, 0.0)));
         c = mix(c, float3(0.020, 0.027, 0.036), shallow * 0.8);
@@ -322,7 +323,7 @@ enum WorldShader {
         float3 wet = float3(0.0);
         if (shore < 0.999) {
             float shallow = 1.0 - deep / max(total - land, 0.0001);
-            wet = nm_mirror(w, px, viewport, ppp, clamp(shallow, 0.0, 1.0), time, moon);
+            wet = nm_mirror(w, px, viewport, ppp, clamp(shallow, 0.0, 1.0), time, moon, (moon.xy - centre) * scale + viewport * 0.5);
             // A pale line of salt where the dead water meets the land.
             wet += float3(0.32, 0.33, 0.36) * exp(-abs(landness - 0.43) / 0.025) * 0.5;
             wet += float3(0.40, 0.46, 0.60) * exp(-abs(landness - 0.47) / 0.012) * 0.3;

@@ -49,7 +49,8 @@ struct TopBar: View {
             HStack(spacing: compact ? 14 : 22) {
                 ForEach(Resource.allCases, id: \.self) { resource in
                     let net = income[resource] - (resource == .grain ? upkeep : 0)
-                    ResourceReadout(resource: resource, amount: house.stock[resource], net: net, room: room, named: !compact)
+                    ResourceReadout(resource: resource, amount: house.stock[resource], net: net, room: room, named: !compact,
+                                    breakdown: { IncomeBreakdown(state: state, house: house.id, resource: resource, territory: session.territory) })
                 }
             }
             .fixedSize()
@@ -87,8 +88,22 @@ private struct ResourceReadout: View {
     let net: Int
     let room: Int
     var named = true
+    /// Where it comes from, worked out when asked.
+    let breakdown: () -> IncomeBreakdown
+
+    @State private var showing = false
 
     var body: some View {
+        Button { showing.toggle() } label: { readout }
+            .buttonStyle(.plain)
+            .popover(isPresented: $showing, arrowEdge: .bottom) { IncomeCard(breakdown: breakdown()) }
+            .help(breakdown().summary)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(resource.title) \(amount), \(net >= 0 ? "gaining" : "losing") \(abs(net)) each watch, storage \(room)")
+            .accessibilityHint("Shows where it comes from.")
+    }
+
+    private var readout: some View {
         HStack(spacing: 6) {
             ResourceGlyph(resource: resource, size: 8)
             VStack(alignment: .leading, spacing: 1) {
@@ -108,9 +123,54 @@ private struct ResourceReadout: View {
         }
         // A resource's name is never broken across lines.
         .fixedSize()
-        .help("\(resource.title): \(amount) of \(room) stored, \(net >= 0 ? "+" : "")\(net) each watch")
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(resource.title) \(amount), \(net >= 0 ? "gaining" : "losing") \(abs(net)) each watch, storage \(room)")
+        .contentShape(Rectangle())
+    }
+}
+
+/// Where a resource comes from and goes, hold by hold.
+struct IncomeCard: View {
+    let breakdown: IncomeBreakdown
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                ResourceGlyph(resource: breakdown.resource, size: 8)
+                Caps(breakdown.resource.title, size: 9, weight: .medium).foregroundStyle(Palette.ink)
+                Spacer()
+                Text(verbatim: "\(breakdown.stored) of \(breakdown.room)")
+                    .font(.nm(10).monospacedDigit())
+                    .foregroundStyle(Palette.ink.opacity(0.55))
+            }
+            Rule(opacity: 0.25)
+            if breakdown.lines.isEmpty {
+                Text(verbatim: "Nothing comes in or goes out.")
+                    .font(.nm(11, weight: .light))
+                    .foregroundStyle(Palette.ink.opacity(0.7))
+            }
+            ForEach(Array(breakdown.lines.enumerated()), id: \.offset) { _, line in
+                HStack {
+                    Text(verbatim: line.label).font(.nm(11, weight: .light)).foregroundStyle(Palette.ink.opacity(0.85))
+                    Spacer(minLength: 16)
+                    Text(verbatim: line.amount >= 0 ? "+\(line.amount)" : "\(line.amount)")
+                        .font(.nm(11).monospacedDigit())
+                        .foregroundStyle(line.amount < 0 ? Palette.bad : Palette.good.opacity(0.85))
+                }
+            }
+            Rule(opacity: 0.25)
+            HStack {
+                Caps("Each watch", size: 8).foregroundStyle(Palette.ink.opacity(0.55))
+                Spacer()
+                Text(verbatim: breakdown.net >= 0 ? "+\(breakdown.net)" : "\(breakdown.net)")
+                    .font(.nm(12, weight: .medium).monospacedDigit())
+                    .foregroundStyle(breakdown.net < 0 ? Palette.bad : Palette.ink)
+            }
+            if let omen = breakdown.omen {
+                Text(verbatim: omen).font(.nm(10)).foregroundStyle(Palette.glow)
+            }
+        }
+        .padding(14)
+        .frame(width: 240)
+        .background(Color(red: 0.05, green: 0.06, blue: 0.08))
     }
 }
 

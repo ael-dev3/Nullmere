@@ -54,13 +54,22 @@ public final class NetworkRealmLink: RealmLink {
     /// Orders and readiness given and not yet answered.
     public var waiting: Int { outbox.count }
 
+    /// The steward publishes at least every twenty seconds; a status that
+    /// hasn't moved for this long means it has stopped.
+    public let stewardSilence: Double
+    private var statusMoved = Date()
+    private var toldSilence = false
+
     public init(transport: any SpacetimeTransport, credentials: any IdentityStore, pollInterval: Double = 1,
-                retryDelay: Double = 1) {
+                retryDelay: Double = 1, stewardSilence: Double = 60) {
         self.transport = transport
         self.credentialStore = credentials
         self.pollInterval = pollInterval
         self.retryDelay = retryDelay
+        self.stewardSilence = stewardSilence
     }
+
+    public static let silentSteward = "The realm's steward has been silent for a minute: the realm stands still, and orders wait until it returns."
 
     /// The server refused the keeper's key: it is forgotten, and a new one
     /// made at the next asking. Returns whether that was the trouble.
@@ -115,7 +124,16 @@ public final class NetworkRealmLink: RealmLink {
                 onEvent?(.unreachable("The realm hasn't opened yet."))
                 return
             }
-            if UInt64(number) != statusVersion || wasUnreachable {
+            if UInt64(number) != statusVersion {
+                statusMoved = Date()
+                toldSilence = false
+            } else if !toldSilence, Date().timeIntervalSince(statusMoved) > stewardSilence {
+                toldSilence = true
+                wasUnreachable = true
+                onEvent?(.unreachable(Self.silentSteward))
+                return
+            }
+            if UInt64(number) != statusVersion || (wasUnreachable && !toldSilence) {
                 wasUnreachable = false
                 statusVersion = UInt64(number)
                 onEvent?(.status(try JSONDecoder().decode(RealmStatus.self, from: Data(text.utf8))))
