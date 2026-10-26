@@ -1,3 +1,31 @@
+/// The shape of the black water. Each age of the realm lies on a lake of
+/// its own shape, in turn.
+public enum Lake: String, Codable, CaseIterable, Sendable {
+    /// One round lake: the Nullmere as the first age knew it.
+    case round
+    /// Two lakes side by side, with a neck of land between.
+    case twin
+    /// A crescent, the land pushing in from one shore.
+    case crescent
+    /// A wider lake, crowded with drowned isles.
+    case isles
+
+    public var title: String {
+        switch self {
+        case .round: return "the Nullmere"
+        case .twin: return "the Twin Waters"
+        case .crescent: return "the Sickle"
+        case .isles: return "the Drowned Isles"
+        }
+    }
+
+    /// The lake of an age of the realm: the round lake first, then each
+    /// shape in turn.
+    public static func of(age: Int) -> Lake {
+        allCases[(max(age, 1) - 1) % allCases.count]
+    }
+}
+
 /// Builds a world: a basin walled by the Spine, with the black lake of the
 /// Nullmere at its heart, a ring of shore and farmland around it, forest and
 /// barrows toward the mountains, and islands in the lake carrying the ruins
@@ -12,16 +40,36 @@ public struct WorldGenerator: Sendable {
     public let seed: UInt64
     public let radius: Int
     public let houseCount: Int
+    public let lake: Lake
 
     /// The most Houses a lake seats.
     public static let mostHouses = 12
 
-    public init(seed: UInt64, radius: Int = 24, houseCount: Int = 5) {
+    public init(seed: UInt64, radius: Int = 24, houseCount: Int = 5, lake: Lake = .round) {
         precondition(radius >= 12, "the world needs room for a lake and its shores")
         precondition((2...WorldGenerator.mostHouses).contains(houseCount), "between two and twelve Houses")
         self.seed = seed
         self.radius = radius
         self.houseCount = houseCount
+        self.lake = lake
+    }
+
+    /// How far a point lies from open water, for the lake's shape: under
+    /// 0.48 is the lake, under 0.26 its deep heart.
+    func lakeDistance(x: Double, y: Double, d: Double) -> Double {
+        switch lake {
+        case .round:
+            return d
+        case .twin:
+            let west = ((x + 0.36) * (x + 0.36) + y * y).squareRoot()
+            let east = ((x - 0.36) * (x - 0.36) + y * y).squareRoot()
+            return min(west, east) * 1.45
+        case .crescent:
+            let bite = (x * x + (y - 0.3) * (y - 0.3)).squareRoot()
+            return bite < 0.3 ? max(d, 0.5 + (0.3 - bite)) : d
+        case .isles:
+            return d * 0.86
+        }
     }
 
     public func generate() -> Result {
@@ -50,7 +98,7 @@ public struct WorldGenerator: Sendable {
             let p = position(hex)
             let wobble = lakeNoise.fractal(p.x * 2.4 + 11, p.y * 2.4 + 7) - 0.5
             let edge = rimNoise.fractal(p.x * 3 + 3, p.y * 3 + 5) - 0.5
-            if p.d + wobble * 0.32 < 0.48 {
+            if lakeDistance(x: p.x, y: p.y, d: p.d) + wobble * 0.32 < 0.48 {
                 map[index] = Tile(terrain: .still)
             } else if p.d + edge * 0.14 > 0.9 || hex.length == radius {
                 map[index] = Tile(terrain: .spine)
@@ -61,10 +109,10 @@ public struct WorldGenerator: Sendable {
         var islandCentres: [Hex] = []
         let deep = hexes.filter { hex in
             let p = position(hex)
-            return p.d < 0.26 && map[hex]?.terrain == .still
+            return lakeDistance(x: p.x, y: p.y, d: p.d) < 0.26 && map[hex]?.terrain == .still
         }
         if !deep.isEmpty {
-            let count = 2 + random.int(below: 2)
+            let count = lake == .isles ? 5 + random.int(below: 2) : 2 + random.int(below: 2)
             for _ in 0..<(count * 8) where islandCentres.count < count {
                 let candidate = random.pick(deep)
                 if islandCentres.allSatisfy({ $0.distance(to: candidate) >= 5 }) {

@@ -367,7 +367,7 @@ private struct UnitPanel: View {
                     if unit.destination != nil {
                         QuietButton(title: "Halt") { session.perform(.halt(unit: unit.id)) }
                     }
-                    QuietButton(title: "Disband") { session.perform(.disband(unit: unit.id)) }
+                    ConfirmButton(title: "Disband", confirm: "Disband them?", size: 10) { session.perform(.disband(unit: unit.id)) }
                 }
             }
         }

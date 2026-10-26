@@ -33,11 +33,13 @@ public struct RealmStatus: Codable, Equatable, Sendable {
     public let isEnding: Bool
     /// The names of the keepers there now, the first `presentShown`.
     public let present: [String]?
+    /// The lake of this age, by name.
+    public let lake: String?
 
     public static let presentShown = 24
 
     public init(name: String, age: Int, watch: Int, seats: Int, freeSeats: Int, keepers: Int, online: Int, ready: Int,
-                secondsLeft: Int, isEnding: Bool, present: [String]? = nil) {
+                secondsLeft: Int, isEnding: Bool, present: [String]? = nil, lake: String? = nil) {
         self.name = name
         self.age = age
         self.watch = watch
@@ -49,6 +51,7 @@ public struct RealmStatus: Codable, Equatable, Sendable {
         self.secondsLeft = secondsLeft
         self.isEnding = isEnding
         self.present = present
+        self.lake = lake
     }
 }
 
@@ -128,7 +131,8 @@ public struct RealmState: Codable, Equatable, Sendable {
     }
 
     static func world(seed: String, age: Int, seats: Int, radius: Int) -> GameState {
-        GameState(settings: GameSettings(seedText: "\(seed) · age \(age)", houseCount: seats, radius: radius, keepers: 0))
+        GameState(settings: GameSettings(seedText: "\(seed) · age \(age)", houseCount: seats, radius: radius, keepers: 0,
+                                         lake: Lake.of(age: age)))
     }
 
     public func keeper(_ id: String) -> Keeper? {
@@ -143,7 +147,8 @@ public struct RealmState: Codable, Equatable, Sendable {
                            keepers: keepers.count, online: online.count, ready: online.filter(\.isReady).count,
                            secondsLeft: max(0, Int((watchLength - (now - watchBegan)).rounded(.up))),
                            isEnding: world.outcome != nil,
-                           present: Array(online.sorted { $0.arrival < $1.arrival }.map(\.name).prefix(RealmStatus.presentShown)))
+                           present: Array(online.sorted { $0.arrival < $1.arrival }.map(\.name).prefix(RealmStatus.presentShown)),
+                           lake: world.settings.lake.title)
     }
 
     // MARK: Keepers

@@ -100,6 +100,8 @@ struct QuietButton: View {
     var size: CGFloat = 10
     var prominent = false
     var enabled = true
+    /// A colour for the words, for a button that asks twice.
+    var tint: Color?
     let action: () -> Void
 
     @State private var hovering = false
@@ -109,7 +111,7 @@ struct QuietButton: View {
             Caps(title, size: size, weight: prominent ? .medium : .regular)
                 .lineLimit(1)
                 .fixedSize()
-                .foregroundStyle(Palette.ink.opacity(enabled ? (hovering || prominent ? 1 : 0.72) : 0.3))
+                .foregroundStyle((tint ?? Palette.ink).opacity(enabled ? (hovering || prominent || tint != nil ? 1 : 0.72) : 0.3))
                 .padding(.horizontal, prominent ? 16 : 8)
                 .padding(.vertical, prominent ? 9 : 5)
                 .background(
@@ -172,5 +174,60 @@ struct ResourceGlyph: View {
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
+    }
+}
+
+/// A first press that arms, a second within a few seconds that acts: for
+/// what can't be taken back, such as war.
+struct Confirmation: Equatable {
+    static let window = 3.0
+    private(set) var armedAt: Date?
+
+    /// Returns whether this press acts.
+    mutating func press(at now: Date = Date()) -> Bool {
+        if isArmed(at: now) {
+            armedAt = nil
+            return true
+        }
+        armedAt = now
+        return false
+    }
+
+    /// Forgets a press whose time has passed.
+    mutating func lapse(at now: Date = Date()) {
+        if !isArmed(at: now) { armedAt = nil }
+    }
+
+    func isArmed(at now: Date = Date()) -> Bool {
+        guard let armedAt else { return false }
+        return now.timeIntervalSince(armedAt) <= Confirmation.window
+    }
+}
+
+/// A quiet button that asks again before doing what can't be undone.
+struct ConfirmButton: View {
+    let title: String
+    /// What it says once armed, such as "War on House Venn?".
+    let confirm: String
+    var size: CGFloat = 8.5
+    let action: () -> Void
+
+    @State private var confirmation = Confirmation()
+
+    var body: some View {
+        let armed = confirmation.isArmed()
+        QuietButton(title: armed ? confirm : title, size: size, tint: armed ? Palette.bad : nil) {
+            if confirmation.press() {
+                action()
+            } else {
+                // Disarms on its own, unpressed.
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(Confirmation.window + 0.1))
+                    confirmation.lapse()
+                }
+            }
+        }
+        .help(armed ? "Press again to confirm." : "Asks again before acting.")
+        .accessibilityHint("Press twice to confirm.")
     }
 }

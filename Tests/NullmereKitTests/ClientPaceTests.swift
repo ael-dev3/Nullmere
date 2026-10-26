@@ -44,12 +44,21 @@ final class ClientPaceTests: XCTestCase {
             return "\(name) \(String(format: "%.1f", Date().timeIntervalSince(start) * 100)) ms"
         }
         let state = session.state, player = session.player
+        let ground = TileTexture.Ground(map: state.map)
+        // The same texture, whether its ground is kept or made afresh.
+        XCTAssertEqual(TileTexture.bytes(for: state, viewer: player, ground: ground), TileTexture.bytes(for: state, viewer: player))
+        let elsewhere = GameState(settings: GameSettings(seedText: "another map", houseCount: 12, radius: 36))
+        XCTAssertEqual(TileTexture.bytes(for: state, viewer: player, ground: TileTexture.Ground(map: elsewhere.map)),
+                       TileTexture.bytes(for: state, viewer: player), "Ground for another map is made again")
         let unit = state.units(of: player).first { $0.kind.isMilitary }
         print("PERF parts of a refresh: " + [
             measure("sight") { _ = state.visibility(for: player) },
             measure("territory") { _ = state.territory() },
             measure("threats") { _ = Sentinel.threats(in: state, player: player, visible: state.visibility(for: player)) },
             measure("tiles") { _ = TileTexture.bytes(for: state, viewer: player) },
+            measure("tiles on known ground") {
+                _ = TileTexture.bytes(for: state, viewer: player, visible: state.visibility(for: player), owners: state.territory(), ground: ground)
+            },
             measure("reach") { if let unit { _ = state.reach(of: unit) } },
             measure("strikes") { if let unit { _ = state.strikeTargets(of: unit) } },
             measure("view") { _ = state.view(for: player) },

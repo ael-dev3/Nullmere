@@ -227,6 +227,8 @@ as the realm will, and takes the realm's word as final.
 - **Coming back.** Return after watches have passed, and a card tells
   what happened while you were away: your stores and holds, and the news
   that touched your House.
+- **What can't be undone asks twice.** Declaring war, breaking a pact
+  and disbanding a company each want a second press within three seconds.
 - **Elsewhere.** While you are in another app, the Dock counts the
   watches that turned, and bounces once when something needs you.
 - **The watch.** Each turn is a watch. Give your orders, then say you're
@@ -240,7 +242,10 @@ as the realm will, and takes the realm's word as final.
   Hide a House's words from its envoy card; your Mac remembers.
 - **Ages.** When a House wins, the age ends. When the watch next turns, a
   new age begins on a fresh lake, and every keeper is seated anew in the
-  order they first came.
+  order they first came. Each age's lake has a shape of its own, in turn:
+  the round Nullmere, the Twin Waters with a neck of land between them,
+  the Sickle with land pushing in from one shore, and the Drowned Isles.
+  The front door names the lake of the age.
 - **The server.** SpacetimeDB is the realm's authority of record: it knows
   each keeper by their identity, keeps the world, and lets no one but the
   steward write it. The steward runs the same Swift rules core the clients

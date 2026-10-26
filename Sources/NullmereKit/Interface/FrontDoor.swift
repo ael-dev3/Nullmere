@@ -202,7 +202,8 @@ struct RealmLine: View {
         let seats = status.freeSeats == 1 ? "1 seat free" : "\(status.freeSeats) seats free"
         let ending = status.isEnding ? " The age has ended; the next begins when the watch turns." : ""
         let names = present(status).map { " \($0)" } ?? ""
-        return "Age \(status.age), watch \(status.watch) · \(there) · \(seats) of \(status.seats).\(names)\(ending)"
+        let age = status.lake.map { "Age \(status.age) on \($0)" } ?? "Age \(status.age)"
+        return "\(age), watch \(status.watch) · \(there) · \(seats) of \(status.seats).\(names)\(ending)"
     }
 
     /// "There now: Ama, Bel and 3 more."

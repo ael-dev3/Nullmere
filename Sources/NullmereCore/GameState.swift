@@ -10,17 +10,21 @@ public struct GameSettings: Codable, Equatable, Sendable {
     /// Seats held by keepers from the start: one, or none in a realm, whose
     /// keepers claim seats as they arrive.
     public var keepers: Int
+    /// The shape of the lake.
+    public var lake: Lake
 
-    public init(seedText: String, houseCount: Int = 5, radius: Int = 24, playerHouse: String = "Aurel", keepers: Int = 1) {
+    public init(seedText: String, houseCount: Int = 5, radius: Int = 24, playerHouse: String = "Aurel", keepers: Int = 1,
+                lake: Lake = .round) {
         self.seedText = seedText
         self.houseCount = houseCount
         self.radius = radius
         self.playerHouse = playerHouse
         self.keepers = min(max(keepers, 0), 1)
+        self.lake = lake
     }
 
     private enum CodingKeys: String, CodingKey {
-        case seedText, houseCount, radius, playerHouse, keepers
+        case seedText, houseCount, radius, playerHouse, keepers, lake
     }
 
     public init(from decoder: any Decoder) throws {
@@ -30,6 +34,7 @@ public struct GameSettings: Codable, Equatable, Sendable {
         radius = try container.decode(Int.self, forKey: .radius)
         playerHouse = try container.decode(String.self, forKey: .playerHouse)
         keepers = try container.decodeIfPresent(Int.self, forKey: .keepers) ?? 1
+        lake = try container.decodeIfPresent(Lake.self, forKey: .lake) ?? .round
     }
 
     public var seed: UInt64 { Seed.from(seedText) }
@@ -65,7 +70,7 @@ public struct GameState: Codable, Equatable, Sendable {
     /// Starts a new game.
     public init(settings: GameSettings) {
         let seed = settings.seed
-        let world = WorldGenerator(seed: seed, radius: settings.radius, houseCount: settings.houseCount).generate()
+        let world = WorldGenerator(seed: seed, radius: settings.radius, houseCount: settings.houseCount, lake: settings.lake).generate()
         var random = SeededRandom(seed: Seed.mix(seed, 100))
 
         formatVersion = GameState.formatVersion
@@ -108,7 +113,9 @@ public struct GameState: Codable, Equatable, Sendable {
                 relations.append(Relation(first: first, second: second))
             }
         }
-        record(.beginning, houses.map(\.id), "The Houses take their seats around the Nullmere. The water lies still under a full moon.")
+        record(.beginning, houses.map(\.id), settings.lake == .round
+            ? "The Houses take their seats around the Nullmere. The water lies still under a full moon."
+            : "The Houses take their seats around \(settings.lake.title). The water lies still under a full moon.")
         // Every House knows the country around its own seat.
         for hold in holds {
             for hex in hold.position.spiral(GameState.knownAtStart) {

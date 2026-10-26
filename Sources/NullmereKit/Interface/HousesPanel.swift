@@ -157,9 +157,9 @@ struct HouseRow: View {
             if session.canDemandTribute(from: house.id) {
                 QuietButton(title: "Demand tribute", size: 8.5) { offer(.tribute) }
             }
-            QuietButton(title: "Declare war", size: 8.5) { session.perform(.declareWar(on: house.id)) }
+            ConfirmButton(title: "Declare war", confirm: "War on \(house.title)?") { session.perform(.declareWar(on: house.id)) }
         case .pact:
-            QuietButton(title: "Break the pact", size: 8.5) { session.perform(.declareWar(on: house.id)) }
+            ConfirmButton(title: "Break the pact", confirm: "Betray \(house.title)?") { session.perform(.declareWar(on: house.id)) }
         }
     }
 

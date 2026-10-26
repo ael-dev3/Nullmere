@@ -61,6 +61,8 @@ public final class GameSession {
     public private(set) var tilesVersion = 0
     /// Which hold's land each tile is, by map index.
     public private(set) var territory: [Int?] = []
+    /// The texture's unchanging ground, made again only when the map changes.
+    @ObservationIgnored private var ground: TileTexture.Ground?
     /// Holds and units the player can see right now, by map index.
     public private(set) var visible: [Bool] = []
     public private(set) var isEndingWatch = false
@@ -644,7 +646,8 @@ public final class GameSession {
             isAtWar = atWar
             onWarChanged?(atWar)
         }
-        tileBytes = TileTexture.bytes(for: state, viewer: player, visible: visible, owners: territory)
+        if ground?.map != state.map { ground = TileTexture.Ground(map: state.map) }
+        tileBytes = TileTexture.bytes(for: state, viewer: player, visible: visible, owners: territory, ground: ground)
         tilesVersion += 1
         refreshPathPreview()
         askVoices()
