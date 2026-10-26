@@ -2,6 +2,7 @@ import AppKit
 import LauncherCore
 import Observation
 import SwiftUI
+import os
 
 /// State and actions for the launcher window.
 @MainActor
@@ -74,6 +75,7 @@ public final class LauncherModel {
     @ObservationIgnored private var readinessTask: Task<Void, Never>?
     @ObservationIgnored private var newsFetchedAt: Date?
     @ObservationIgnored private var isFetchingNews = false
+    private static let logger = Logger(subsystem: "online.nullmere.launcher", category: "news")
     @ObservationIgnored private var pendingDebugKeys: [KeyCommand] = LauncherEnvironment.debugKeys
 
     public convenience init(defaults: UserDefaults = .standard) {
@@ -197,6 +199,7 @@ public final class LauncherModel {
 
     private func apply(_ current: ModelReadiness) {
         guard current != readiness else { return }
+        Self.logger.notice("On-device model: \(current.status, privacy: .public).")
         // The requirement screen gives way to the launcher as soon as the
         // model is ready, and comes back if it stops being available.
         withAnimation(.easeInOut(duration: 0.6)) {
@@ -432,9 +435,11 @@ public final class LauncherModel {
             }
             newsFetchedAt = Date()
             defaults.set(data, forKey: Self.newsCacheKey)
+            Self.logger.notice("News updated: \(feed.items.count, privacy: .public) stories.")
             newsSelection = min(newsSelection, max(visibleNews.count - 1, 0))
         } catch {
             newsStatus = Self.isConnectionFailure(error) ? .offline : .unavailable
+            Self.logger.notice("News not updated: \(String(describing: error), privacy: .public)")
         }
     }
 

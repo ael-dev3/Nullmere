@@ -52,6 +52,14 @@ if ! echo "$backdrop_log" | grep -q "renders with Metal"; then
     exit 1
 fi
 
+# The release app asks the Foundation Models framework itself; it must have
+# had an answer and shown the matching screen.
+echo "$backdrop_log" | grep "On-device model:" || true
+if ! echo "$backdrop_log" | grep "On-device model:" | grep -qv "Checking"; then
+    echo "error: the launcher never had an answer about the on-device model" >&2
+    exit 1
+fi
+
 echo "Nullmere Online started and its lake renders with Metal."
 if [ -s "$SHOT" ]; then
     echo "Screenshot: $SHOT"

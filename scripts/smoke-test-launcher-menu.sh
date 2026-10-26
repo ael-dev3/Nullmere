@@ -17,6 +17,10 @@ BIN="${BIN:-$(swift build --show-bin-path)/NullmereLauncher}"
 EXECUTABLE="NullmereLauncher"
 WAIT="${WAIT:-14}"
 SUBSYSTEM="online.nullmere.launcher"
+# The feed this commit carries, so News shows a real download even before
+# the feed reaches main.
+COMMIT="${COMMIT:-$(git rev-parse HEAD)}"
+NEWS_URL="${NEWS_URL:-https://raw.githubusercontent.com/ael-dev3/Nullmere/$COMMIT/news/news.json}"
 mkdir -p build
 
 if pgrep -x "$EXECUTABLE" >/dev/null; then
@@ -31,7 +35,7 @@ run() {
     local started
     started="$(date '+%Y-%m-%d %H:%M:%S')"
     echo "Opening the launcher${keys:+, then typing $keys}…"
-    NULLMERE_SKIP_MODEL_CHECK=1 NULLMERE_LAUNCHER_KEYS="$keys" "$BIN" >build/launcher-stdout.log 2>&1 &
+    NULLMERE_SKIP_MODEL_CHECK=1 NULLMERE_LAUNCHER_KEYS="$keys" NULLMERE_NEWS_URL="$NEWS_URL" "$BIN" >build/launcher-stdout.log 2>&1 &
     local pid=$!
     sleep "$WAIT"
     if ! kill -0 "$pid" 2>/dev/null; then
@@ -48,9 +52,15 @@ run() {
         echo "error: the lake did not render with Metal" >&2
         exit 1
     fi
+    LOG="$log"
 }
 
 run build/launcher-menu.png
 run build/launcher-news.png right,return
+echo "$LOG" | grep -E "News (updated|not updated)" || true
+if ! echo "$LOG" | grep -q "News updated"; then
+    echo "error: News did not download its feed from $NEWS_URL" >&2
+    exit 1
+fi
 run build/launcher-settings.png right,right,return,down
 echo "The launcher's menu, News and Settings opened, and its lake renders with Metal."
