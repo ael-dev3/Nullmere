@@ -76,3 +76,42 @@ final class WorldViewHostTests: XCTestCase {
         map.draw(map.bounds)
     }
 }
+
+/// The map without Metal, and the forecast over an enemy in reach.
+@MainActor
+final class WorldOverlayTests: XCTestCase {
+    func testTheFallbackMapAndAStrikesForecastDraw() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var state = GameState(settings: GameSettings(seedText: "a forecast", houseCount: 4, radius: 18))
+        let me = state.player
+        let foe = (me + 1) % state.houses.count
+        _ = try state.perform(.declareWar(on: foe), as: me)
+        let spear = try XCTUnwrap(state.units(of: me).first { $0.kind.isMilitary })
+        let beside = try XCTUnwrap(state.map.neighbors(of: spear.position).first { hex in
+            state.map[hex]?.terrain.isPassable == true && !state.units.contains { $0.position == hex } && state.hold(at: hex) == nil
+        })
+        let enemy = try XCTUnwrap(state.units.firstIndex { $0.owner == foe })
+        state.units[enemy].position = beside
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        session.camera.focus(on: spear.position)
+        session.selection = .unit(spear.id)
+        session.hover(beside)
+        let forecast = try XCTUnwrap(session.hoverForecast, "Hovering a foe in reach forecasts the strike")
+
+        func draw(_ view: some View, width: CGFloat, height: CGFloat) throws {
+            let renderer = ImageRenderer(content: view.frame(width: width, height: height).background(Color.black))
+            renderer.scale = 1
+            XCTAssertNotNil(renderer.cgImage)
+        }
+        try draw(ForecastOverlay(session: session), width: 1000, height: 700)
+        try draw(ForecastCard(forecast: forecast, targetName: "Spear"), width: 300, height: 200)
+        try draw(WorldFallback(session: session), width: 1000, height: 700)
+        try draw(WorldMarks(session: session), width: 1000, height: 700)
+        for terrain in Terrain.allCases {
+            _ = WorldFallback.colour(for: terrain)
+        }
+        session.hover(nil)
+        XCTAssertNil(session.hoverForecast)
+    }
+}

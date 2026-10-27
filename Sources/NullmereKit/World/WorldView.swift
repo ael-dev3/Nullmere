@@ -370,7 +370,7 @@ struct WorldMarks: View {
 }
 
 /// A still painting of the map, for when Metal can't run.
-private struct WorldFallback: View {
+struct WorldFallback: View {
     let session: GameSession
 
     var body: some View {
@@ -415,7 +415,7 @@ private struct WorldFallback: View {
 }
 
 /// The odds of the attack under the pointer, beside the target.
-private struct ForecastOverlay: View {
+struct ForecastOverlay: View {
     let session: GameSession
 
     var body: some View {
@@ -439,7 +439,7 @@ private struct ForecastOverlay: View {
     }
 }
 
-private struct ForecastCard: View {
+struct ForecastCard: View {
     let forecast: Forecast
     let targetName: String
 
