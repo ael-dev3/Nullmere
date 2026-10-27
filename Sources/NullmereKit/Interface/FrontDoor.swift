@@ -16,9 +16,16 @@ struct FrontDoor: View {
         ZStack {
             MoonlitLake()
                 .ignoresSafeArea()
-            LinearGradient(colors: [.clear, .black.opacity(0.55)], startPoint: .center, endPoint: .bottom)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
+            // Darken the water beneath the card, as the launcher's panels and
+            // the gate do, so the moon's reflection doesn't glow through it.
+            EllipticalGradient(
+                colors: [.black.opacity(0.8), .black.opacity(0.5), .clear],
+                center: UnitPoint(x: 0.5, y: 0.7),
+                startRadiusFraction: 0,
+                endRadiusFraction: 0.55
+            )
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
 
             GeometryReader { proxy in
                 // The name rests where the launcher sets it, to the point, so it
