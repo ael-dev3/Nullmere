@@ -148,14 +148,28 @@ private struct ScreenContent: View {
     }
 }
 
-/// A soft darkness over the middle of the water.
-private struct PanelScrim: View {
+/// A soft darkness on the water under an open panel.
+struct PanelScrim: View {
+    /// Where the moon's reflection lies, as a fraction of the water's
+    /// height below the waterline: the moon stands as far above the
+    /// horizon as its image lies below it.
+    static var reflectionDepth: Double {
+        (LakeComposition.moonY - LakeComposition.horizon) / LakeComposition.horizon
+    }
+
     var body: some View {
+        // Darkest over the moon's reflection, where the panels' text and
+        // buttons lie, and clear toward the far edges of the lake.
         EllipticalGradient(
-            colors: [.black.opacity(0.72), .black.opacity(0.45), .clear],
-            center: UnitPoint(x: 0.5, y: 0.4),
+            stops: [
+                .init(color: .black.opacity(0.9), location: 0),
+                .init(color: .black.opacity(0.86), location: 0.35),
+                .init(color: .black.opacity(0.5), location: 0.7),
+                .init(color: .clear, location: 1),
+            ],
+            center: UnitPoint(x: 0.5, y: Self.reflectionDepth - 0.1),
             startRadiusFraction: 0,
-            endRadiusFraction: 0.62
+            endRadiusFraction: 0.7
         )
     }
 }

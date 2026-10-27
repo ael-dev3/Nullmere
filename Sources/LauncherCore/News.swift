@@ -123,6 +123,20 @@ extension NewsFeed {
     /// It matches `news/news.json`; a test keeps the two in step.
     public static let builtIn = NewsFeed(items: [
         NewsItem(
+            id: "still-water",
+            date: NewsDate(year: 2026, month: 10, day: 27)!,
+            title: "Still water",
+            body: "The lake has gone dead still. It holds the full moon whole and gives back every star above it, black glass from shore to shore. On the map, too, the water lies unmoving, the moon's path laid straight across it.",
+            link: URL(string: "https://github.com/ael-dev3/Nullmere")
+        ),
+        NewsItem(
+            id: "twelve-seats",
+            date: NewsDate(year: 2026, month: 10, day: 26)!,
+            title: "Twelve seats around the lake",
+            body: "Nullmere Online is one realm, shared by every keeper. Enter under a name of your choosing and hold one of twelve seats. Each watch, every House's orders are carried out together: pacts, gifts, trade, war. The realm opens with the first release.",
+            link: nil
+        ),
+        NewsItem(
             id: "full-moon",
             date: NewsDate(year: 2026, month: 10, day: 24)!,
             title: "A full moon over Nullmere",

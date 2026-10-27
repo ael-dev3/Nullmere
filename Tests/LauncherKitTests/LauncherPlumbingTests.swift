@@ -2,6 +2,7 @@ import AppKit
 import LauncherCore
 import Metal
 import NullmereTestSupport
+import SwiftUI
 import XCTest
 @testable import LauncherKit
 
@@ -234,5 +235,43 @@ final class WindowBridgeTests: XCTestCase {
         // Out of the window, it stops listening.
         bridge.removeFromSuperview()
         XCTAssertFalse(bridge.isMonitoring)
+    }
+}
+
+/// The darkness laid on the water under an open panel: deepest over the
+/// moon's reflection, where the panels' words and buttons lie, so they
+/// read clearly over it, and clear toward the lake's far edges.
+@MainActor
+final class PanelScrimTests: XCTestCase {
+    func testTheReflectionIsDarkenedUnderAPanelAndTheEdgesAreNot() throws {
+        let width = 1200, height = Int(800 * LakeComposition.horizon)
+        let renderer = ImageRenderer(content: PanelScrim().frame(width: CGFloat(width), height: CGFloat(height)).background(Color.white))
+        renderer.scale = 1
+        let image = try XCTUnwrap(renderer.cgImage)
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = pixels.withUnsafeMutableBytes { raw -> Bool in
+            guard let context = CGContext(data: raw.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                                          space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        XCTAssertTrue(drawn)
+        // How much of the white beneath shows through, 0...1, the buffer's first row the top.
+        func light(_ x: Double, _ y: Double) -> Double {
+            let px = min(width - 1, Int(x * Double(width))), py = min(height - 1, Int(y * Double(height)))
+            let i = (py * width + px) * 4
+            return Double(Int(pixels[i]) + Int(pixels[i + 1]) + Int(pixels[i + 2])) / 765
+        }
+        let depth = PanelScrim.reflectionDepth
+        XCTAssertEqual(depth, 0.69, accuracy: 0.01)
+        // The moon's image, a disc of its radius about that depth.
+        let radius = LakeComposition.moonRadius / LakeComposition.horizon
+        let across = LakeComposition.moonRadius * 800 / 1200
+        for (dx, dy) in [(0.0, 0.0), (0.0, -radius), (0.0, radius), (-across, 0.0), (across, 0.0)] {
+            XCTAssertLessThan(light(0.5 + dx, depth + dy), 0.2, "Over the moon's image, at \(dx), \(dy)")
+        }
+        XCTAssertGreaterThan(light(0.02, 0.02), 0.9, "The lake's far corners are left clear")
+        XCTAssertGreaterThan(light(0.5, 0.0), light(0.5, depth) + 0.2, "The water by the shore is lighter than over the reflection")
     }
 }
