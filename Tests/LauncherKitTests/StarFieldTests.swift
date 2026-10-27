@@ -61,19 +61,30 @@ final class StarFieldTests: XCTestCase {
         var values: [Int] = []
         for y in ys { for x in xs { values.append(light(x, y)) } }
         let median = values.sorted()[values.count / 2]
+        // Each star once, at its brightest pixel: a star's halo spans
+        // several pixels, which says nothing about where the stars lie.
         var columns = [Double](repeating: 0, count: xs.count), rows = [Double](repeating: 0, count: ys.count)
         var stars = 0
-        for (row, y) in ys.enumerated() {
-            for (column, x) in xs.enumerated() where light(x, y) > median + 24 {
+        for (row, y) in ys.enumerated() where y > 0 && y < height - 1 {
+            for (column, x) in xs.enumerated() where x > 0 && x < width - 1 {
+                let here = light(x, y)
+                guard here > median + 24 else { continue }
+                var peak = true
+                for dy in -1...1 { for dx in -1...1 where (dx, dy) != (0, 0) {
+                    let there = light(x + dx, y + dy)
+                    // Ties go to the first pixel met, so a flat top counts once.
+                    if there > here || (there == here && (dy < 0 || (dy == 0 && dx < 0))) { peak = false }
+                } }
+                guard peak else { continue }
                 columns[column] += 1
                 rows[row] += 1
                 stars += 1
             }
         }
         let across = Self.strongestRepeat(columns), down = Self.strongestRepeat(rows)
-        print(String(format: "STARS %ld star pixels; strongest repeat across %.2f at %ld px, down %.2f at %ld px",
+        print(String(format: "STARS %ld stars; strongest repeat across %.2f at %ld px, down %.2f at %ld px",
                      stars, across.strength, across.spacing, down.strength, down.spacing))
-        XCTAssertGreaterThan(stars, 200, "Stars in the sky")
+        XCTAssertGreaterThan(stars, 100, "Stars in the sky")
         XCTAssertLessThan(across.strength, 0.35, "No columns of stars")
         XCTAssertLessThan(down.strength, 0.35, "No rows of stars")
     }

@@ -27,7 +27,7 @@ struct FrontDoor: View {
                     .animation(.easeOut(duration: 0.9), value: appeared)
                 VStack(spacing: 0) {
                     Spacer(minLength: 0)
-                        .frame(height: LakeTitle.waterline(for: proxy.size) - 12)
+                        .frame(height: LakeTitle.waterline(for: proxy.size) + 8)
                     VStack(alignment: .leading, spacing: 18) {
                         RealmLine(door: app.door)
                         Rule(opacity: 0.25)
@@ -66,11 +66,15 @@ struct FrontDoor: View {
                         .foregroundStyle(Palette.ink.opacity(0.45))
                         .multilineTextAlignment(.center)
                         .frame(width: 420)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 14)
-                    Spacer(minLength: 40)
+                    Spacer(minLength: 16)
                 }
                 .frame(width: proxy.size.width)
             }
+            // Measured over the whole window, title bar and all, as the
+            // launcher measures it, so the title rests at the same height.
+            .ignoresSafeArea()
         }
         .onAppear {
             withAnimation(.easeOut(duration: 1.6)) { appeared = true }

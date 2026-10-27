@@ -60,6 +60,8 @@ struct ModelGate: View {
                 .padding(.horizontal, 40)
                 .frame(width: proxy.size.width)
             }
+            // Measured over the whole window, as the launcher measures it.
+            .ignoresSafeArea()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             app.checkModel()
