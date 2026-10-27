@@ -40,7 +40,7 @@ targets += [
     // The "Nullmere Online" app: the launcher, and through Play, the realm.
     .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherKit", "NullmereKit"]),
     .testTarget(name: "LauncherCoreTests", dependencies: ["LauncherCore"]),
-    .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore"]),
+    .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore", "NullmereTestSupport"]),
     .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereRealm", "LauncherCore", "NullmereTestSupport"]),
 ]
 #endif

@@ -5,6 +5,12 @@ What remains needs accounts, hardware or people only its keeper has. Each step
 below is one command, says plainly whether it worked, and can be run alone, in
 any order.
 
+To see where every step stands, and the command for each one not yet done:
+
+```sh
+scripts/go-live-status.sh
+```
+
 ## 1. Raise the realm on SpacetimeDB's maincloud
 
 Needs a SpacetimeDB sign-in (a GitHub account) and a machine to run the

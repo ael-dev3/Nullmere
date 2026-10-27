@@ -213,17 +213,17 @@ enum WorldShader {
         float gx = (px.x - moonPx.x) / max(viewport.y, 1.0);
         float gy = (px.y - moonPx.y) / max(viewport.y, 1.0);
         float along = mix(exp(gy * 10.0), exp(-gy * 1.5), step(0.0, gy));
-        // The path is broken into slow streaks of uneven length, as by a
-        // swell too faint to see otherwise, never in even bands.
+        // The water is dead still: the path is all but whole, only the
+        // faintest unevenness along it, never in even bands.
         float glade = exp(-gx * gx / 0.02) * along * moonAt.w;
         float streak = nm_fbm(float2(w.x * 1.7, w.y * 4.3) + float2(time * 0.003, 0.0)) * (0.6 + 0.8 * nm_fbm(w * float2(0.5, 1.9) + float2(3.1, time * 0.002)));
         float3 c = float3(0.004, 0.007, 0.016) + float3(0.010, 0.014, 0.026) * (1.0 - uv.y);
-        c += float3(0.150, 0.170, 0.220) * glade * (0.55 + 0.9 * streak * streak);
+        c += float3(0.150, 0.170, 0.220) * glade * (0.80 + 0.35 * streak * streak);
         c = mix(c, float3(0.020, 0.027, 0.036), shallow * 0.8);
         // Reflected stars, fixed to the screen like the sky, sized in points.
-        float stars = nm_star(px, ppp, 10.0, 0.52, 0.0) * 0.7 + nm_star(px, ppp, 37.0, 0.5, 17.0) * 1.6;
+        float stars = nm_star(px, ppp, 10.0, 0.52, 0.0) * 0.9 + nm_star(px, ppp, 37.0, 0.5, 17.0) * 2.0;
         float twinkle = 0.85 + 0.15 * sin(time * 0.9 + nm_hash(floor(px / (41.0 * ppp))) * 30.0);
-        c += float3(0.66, 0.72, 0.86) * stars * twinkle * (1.0 - 0.75 * shallow);
+        c += float3(0.80, 0.85, 0.96) * stars * twinkle * (1.0 - 0.75 * shallow);
         // The moon lies in the water over the lake's deepest heart, crisp
         // because nothing moves, and a little dimmer than the moon itself.
         float2 moon = moonAt.xy;
@@ -231,7 +231,7 @@ enum WorldShader {
         float dm = length(w - moon);
         float disc = (1.0 - smoothstep(0.96, 1.0, length(mq))) * (1.0 - shallow) * moonAt.w;
         float breath = 0.5 + 0.5 * sin(6.2831853 * fract(time / 11.0));
-        float3 glow = float3(0.50, 0.58, 0.76) * (0.09 * exp(-dm * 0.42) + 0.08 * exp(-dm * 1.8)) * (0.9 + 0.2 * breath) * moonAt.w;
+        float3 glow = float3(0.50, 0.58, 0.76) * (0.05 * exp(-dm * 0.6) + 0.10 * exp(-dm * 2.2)) * (0.9 + 0.2 * breath) * moonAt.w;
         c += glow * (1.0 - shallow * 0.6);
         if (disc > 0.0) {
             float maria = smoothstep(0.42, 0.68, nm_fbm(mq * 1.7 + float2(5.2, 1.3)));

@@ -88,23 +88,25 @@ extension SpacetimeTransport {
 }
 
 /// SpacetimeDB's HTTP API: `/v1/identity`, and a database's `call` and `sql`.
-public struct SpacetimeHTTP: SpacetimeTransport {
+public struct SpacetimeHTTP: SpacetimeTransport, @unchecked Sendable {
     public let server: URL
     public let database: String
+    /// The session requests go by: the shared one, but for tests.
+    let session: URLSession
 
     /// `address` names the server and the database: `http://127.0.0.1:3000/nullmere`.
-    public init?(address: URL) {
+    public init?(address: URL, session: URLSession = .shared) {
         let parts = address.pathComponents.filter { $0 != "/" }
         guard let database = parts.last, var components = URLComponents(url: address, resolvingAgainstBaseURL: false) else { return nil }
         components.path = ""
         guard let server = components.url else { return nil }
-        self.server = server
-        self.database = database
+        self.init(server: server, database: database, session: session)
     }
 
-    public init(server: URL, database: String) {
+    public init(server: URL, database: String, session: URLSession = .shared) {
         self.server = server
         self.database = database
+        self.session = session
     }
 
     private func send(_ request: URLRequest) async throws -> Data {
@@ -113,7 +115,7 @@ public struct SpacetimeHTTP: SpacetimeTransport {
 
     /// An answer, and the server's clock by its `Date` header.
     private func sendDated(_ request: URLRequest) async throws -> (data: Data, date: Date?) {
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw SpacetimeError("No answer from the realm's server.") }
         if http.statusCode == 404 {
             throw SpacetimeError("The realm isn't open yet.")

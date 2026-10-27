@@ -82,20 +82,32 @@ final class WindowBridgeView: NSView {
     private func installEventMonitor() {
         guard eventMonitor == nil else { return }
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseDown]) { [weak self] event in
-            guard let self, event.window === self.window else { return event }
-            if event.type == .leftMouseDown {
-                self.onClick()
-                return event
-            }
-            guard !event.modifierFlags.containsCommandKeys,
-                  let command = KeyCommand(keyCode: event.keyCode, keyboardNavigation: NSApp.isFullKeyboardAccessEnabled)
-            else { return event }
-            if !event.isARepeat || command.repeatsWhenHeld {
-                self.onKey(command)
-            }
-            return nil
+            guard let self else { return event }
+            var passed: NSEvent? = event
+            MainActor.assumeIsolated { passed = self.monitored(event) }
+            return passed
         }
     }
+
+    /// An event in this window, seen before the window has it: a click is
+    /// told and passed on; a navigation key is taken for the model, held
+    /// keys repeating only where they should. Anything else passes on.
+    func monitored(_ event: NSEvent, keyboardNavigation: Bool = NSApp.isFullKeyboardAccessEnabled) -> NSEvent? {
+        guard event.window === window else { return event }
+        if event.type == .leftMouseDown {
+            onClick()
+            return event
+        }
+        guard !event.modifierFlags.containsCommandKeys,
+              let command = KeyCommand(keyCode: event.keyCode, keyboardNavigation: keyboardNavigation)
+        else { return event }
+        if !event.isARepeat || command.repeatsWhenHeld {
+            onKey(command)
+        }
+        return nil
+    }
+
+    var isMonitoring: Bool { eventMonitor != nil }
 
     private func removeEventMonitor() {
         if let eventMonitor {

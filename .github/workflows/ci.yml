@@ -366,11 +366,13 @@ jobs:
 
       # A whole realm standing alone, raised by the one command: the module
       # published, the steward started in the background, and the realm's
-      # status read back as a keeper would; then the steward stopped.
+      # status read back as a keeper would, and as the go-live check reads
+      # it; then the steward stopped.
       - name: Raise a standalone realm in one command
         run: |
           export REALM_DB=standalone NULLMERE_STATE_DIR="$PWD/realm-state" STEWARD_LOG="$PWD/realm-state/standalone.log"
           CONFIGURATION=debug STEWARD=background scripts/raise-realm.sh local
+          REALM_ADDRESS=http://127.0.0.1:3000/standalone scripts/go-live-status.sh --expect-realm
           scripts/raise-realm.sh local --stop
 
       - name: Summary

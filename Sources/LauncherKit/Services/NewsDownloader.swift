@@ -20,14 +20,14 @@ enum NewsDownloader {
     /// Anything larger is not news.
     static let maximumSize = 256 * 1024
 
-    static func download() async throws -> Data {
-        let configuration = URLSessionConfiguration.ephemeral
+    /// The feed's bytes. Tests pass a configuration of their own, and a URL.
+    static func download(from url: URL = feedURL, configuration: URLSessionConfiguration = .ephemeral) async throws -> Data {
         configuration.timeoutIntervalForRequest = 10
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         let session = URLSession(configuration: configuration)
         defer { session.finishTasksAndInvalidate() }
 
-        let (data, response) = try await session.data(from: feedURL)
+        let (data, response) = try await session.data(from: url)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw URLError(.badServerResponse)
         }

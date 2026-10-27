@@ -32,7 +32,7 @@ struct KeyBridge: NSViewRepresentable {
 
 final class KeyBridgeView: NSView {
     var onKey: ((GameKey) -> Bool)?
-    private var monitor: Any?
+    private(set) var monitor: Any?
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -56,7 +56,7 @@ final class KeyBridgeView: NSView {
         super.removeFromSuperview()
     }
 
-    private func handle(_ event: NSEvent) -> Bool {
+    func handle(_ event: NSEvent) -> Bool {
         guard let window, event.window === window else { return false }
         // Leave typing, and anything with ⌘ or ⌃, to the controls and menus.
         if window.firstResponder is NSText { return false }

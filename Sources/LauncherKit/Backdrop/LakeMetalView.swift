@@ -36,7 +36,7 @@ final class LakeMetalView: MTKView {
 
     private static let logger = Logger(subsystem: "online.nullmere.launcher", category: "backdrop")
 
-    private var renderer: LakeRenderer?
+    private(set) var renderer: LakeRenderer?
     private var isLoadingRenderer = false
     private var clock = SceneClock()
     private var isWindowVisible = false
@@ -177,7 +177,7 @@ final class LakeMetalView: MTKView {
         }
     }
 
-    private func finishLoading(
+    func finishLoading(
         device: any MTLDevice,
         library: (any MTLLibrary)?,
         error: (any Error)?,
