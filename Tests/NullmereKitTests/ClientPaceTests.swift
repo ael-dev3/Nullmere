@@ -33,9 +33,9 @@ final class ClientPaceTests: XCTestCase {
         }
         var times: [Double] = []
         for order in orders.prefix(12) {
-            let start = Date()
+            let start = ThreadClock.milliseconds()
             _ = session.perform(order)
-            times.append(Date().timeIntervalSince(start) * 1000)
+            times.append(ThreadClock.milliseconds() - start)
         }
         // Where the time goes, for whoever makes it faster.
         func measure(_ name: String, _ body: () -> Void) -> String {

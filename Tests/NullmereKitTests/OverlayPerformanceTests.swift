@@ -22,11 +22,11 @@ final class OverlayPerformanceTests: XCTestCase {
         func renderOnce() -> Double {
             let renderer = ImageRenderer(content: WorldMarks(session: session).frame(width: size.width, height: size.height))
             renderer.scale = 2
-            let start = ContinuousClock.now
+            let start = ThreadClock.milliseconds()
             let image = renderer.cgImage
-            let elapsed = ContinuousClock.now - start
+            let elapsed = ThreadClock.milliseconds() - start
             XCTAssertNotNil(image)
-            return Double(elapsed.components.seconds) * 1000 + Double(elapsed.components.attoseconds) / 1e15
+            return elapsed
         }
         _ = renderOnce()
         var times: [Double] = []
