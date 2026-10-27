@@ -44,6 +44,9 @@ public final class NetworkRealmLink: RealmLink {
     /// again is never carried out twice.
     public static let orderLifetime = 300.0
 
+    /// The link's clock: the Mac's, or a test's.
+    var now: () -> Date = { Date() }
+
     struct Outgoing {
         enum Kind { case order(Command), ready(Bool) }
         let kind: Kind
@@ -125,9 +128,9 @@ public final class NetworkRealmLink: RealmLink {
                 return
             }
             if UInt64(number) != statusVersion {
-                statusMoved = Date()
+                statusMoved = now()
                 toldSilence = false
-            } else if !toldSilence, Date().timeIntervalSince(statusMoved) > stewardSilence {
+            } else if !toldSilence, now().timeIntervalSince(statusMoved) > stewardSilence {
                 toldSilence = true
                 wasUnreachable = true
                 onEvent?(.unreachable(Self.silentSteward))
@@ -140,8 +143,8 @@ public final class NetworkRealmLink: RealmLink {
                 onEvent?(.status(status.aged(by: await age(of: UInt64(number), credentials))))
             }
             guard arrived else { return }
-            if Date().timeIntervalSince(lastHere) > Self.hereInterval {
-                lastHere = Date()
+            if now().timeIntervalSince(lastHere) > Self.hereInterval {
+                lastHere = now()
                 try? await transport.call("here", [.string(Self.nonce())], token: credentials.token)
             }
             if viewReadAt != statusVersion, try await readView(credentials) {
@@ -249,7 +252,7 @@ public final class NetworkRealmLink: RealmLink {
                     return
                 }
                 arrived = true
-                lastHere = Date()
+                lastHere = now()
                 onEvent?(.arrived(view.keeper, view.world))
             } catch {
                 if forgetKeyIfRefused(error) {
@@ -262,12 +265,12 @@ public final class NetworkRealmLink: RealmLink {
     }
 
     public func send(_ command: Command) {
-        outbox.append(Outgoing(kind: .order(command), nonce: Self.nonce(), given: Date()))
+        outbox.append(Outgoing(kind: .order(command), nonce: Self.nonce(), given: now()))
         sendWaiting()
     }
 
     public func setReady(_ ready: Bool) {
-        outbox.append(Outgoing(kind: .ready(ready), nonce: Self.nonce(), given: Date()))
+        outbox.append(Outgoing(kind: .ready(ready), nonce: Self.nonce(), given: now()))
         sendWaiting()
     }
 
@@ -278,7 +281,7 @@ public final class NetworkRealmLink: RealmLink {
         sending = Task { [weak self] in
             var delay = self?.retryDelay ?? 1
             while let self, let next = self.outbox.first {
-                if case .order = next.kind, Date().timeIntervalSince(next.given) > Self.orderLifetime {
+                if case .order = next.kind, now().timeIntervalSince(next.given) > Self.orderLifetime {
                     self.outbox.removeFirst()
                     if let world = self.view?.world {
                         self.onEvent?(.orderRefused(.refused("An order given while the realm was out of reach was too old to send."), world))

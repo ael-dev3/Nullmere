@@ -142,6 +142,26 @@ final class WatchEdgeTests: XCTestCase {
         XCTAssertEqual(state.outcome?.winner, state.player)
     }
 
+    func testAMarchOnAHeldHexWaitsBesideIt() throws {
+        var state = GameState(settings: GameSettings(seedText: "a held hex", houseCount: 3, radius: 16))
+        let me = state.player
+        let lantern = try XCTUnwrap(state.units(of: me).first { $0.kind == .lantern })
+        let target = try XCTUnwrap(state.map.hexes.first { hex in
+            (3...4).contains(hex.distance(to: lantern.position)) && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+                && state.map[hex]?.terrain.isPassable == true && state.path(for: lantern, to: hex) != nil
+        })
+        // Another company already stands where the lantern is bound.
+        state.units.append(NullmereCore.Unit(id: state.nextID, kind: .spear, owner: me, position: target))
+        state.nextID += 1
+        for _ in 0..<4 {
+            _ = try? state.perform(.move(unit: lantern.id, to: target), as: me)
+            _ = state.endWatch()
+        }
+        let moved = try XCTUnwrap(state.unit(lantern.id))
+        XCTAssertNotEqual(moved.position, target, "It never steps onto a held hex")
+        XCTAssertEqual(moved.position.distance(to: target), 1, "It waits beside it")
+    }
+
     func testAMarchIsHalted() throws {
         var state = GameState(settings: GameSettings(seedText: "a halted march", houseCount: 3, radius: 16))
         let me = state.player

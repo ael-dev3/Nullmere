@@ -87,3 +87,65 @@ final class LinkEdgeTests: XCTestCase {
         link.leave()
     }
 }
+
+/// The link on its own clock: an order kept through a long outage is let
+/// go, not sent stale; and a keeper in the world says they are still
+/// there, every half minute.
+@MainActor
+final class LinkClockTests: XCTestCase {
+    private func until(_ what: String, timeout: Double = 15, _ condition: () async -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !(await condition()) {
+            if Date() > deadline { throw SpacetimeError("Timed out waiting for \(what)") }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+    }
+
+    private func arrived(_ db: FakeSpacetime) async throws -> (NetworkRealmLink, Listener, Task<Void, Never>, () -> Void) {
+        let key = try await db.createIdentity()
+        let steward = try await RealmSteward(transport: db, token: key.token, name: "The Nullmere", seed: "on its own clock",
+                                             seats: 4, watchLength: 600, now: 0)
+        let running = Task { await steward.run(clock: { 1 }) }
+        let link = NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 0.05, retryDelay: 0.05)
+        var clock = Date(timeIntervalSince1970: 1_800_000_000)
+        link.now = { clock }
+        let ear = Listener()
+        ear.listen(to: link)
+        link.connect()
+        link.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        return (link, ear, running, { clock = clock.addingTimeInterval(NetworkRealmLink.orderLifetime + 1) })
+    }
+
+    func testAnOrderTooOldToSendIsLetGo() async throws {
+        let db = FakeSpacetime()
+        let (link, ear, running, later) = try await arrived(db)
+        defer { running.cancel(); link.leave() }
+        let world = try XCTUnwrap(ear.world)
+        let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
+        let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
+
+        await db.setReachable(false)
+        link.send(.fortify(unit: spear.id))
+        try await until("the realm out of reach") {
+            ear.events.contains { if case .unreachable = $0 { return true } else { return false } }
+        }
+        later()
+        await db.setReachable(true)
+        try await until("the stale order let go") {
+            ear.refusals.contains("An order given while the realm was out of reach was too old to send.")
+        }
+        let carried = await db.handled(kind: "order")
+        XCTAssertEqual(carried, 0, "Never carried out")
+        XCTAssertEqual(link.waiting, 0)
+    }
+
+    func testAKeeperInTheWorldSaysTheyAreHere() async throws {
+        let db = FakeSpacetime()
+        let (link, _, running, later) = try await arrived(db)
+        defer { running.cancel(); link.leave() }
+        let before = await db.calls.filter { $0 == "here" }.count
+        later()
+        try await until("the keeper to say they are here") { await db.calls.filter { $0 == "here" }.count > before }
+    }
+}

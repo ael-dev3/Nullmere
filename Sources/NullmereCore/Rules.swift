@@ -91,13 +91,13 @@ extension GameState {
     }
 
     /// Moves a unit along its route as far as its moves allow this watch.
-    /// The route is planned once and replanned only if something blocks it.
+    /// The route is planned once: it steers round every other company, so
+    /// only its end, the destination itself, can be held by another.
     mutating func march(_ unitID: Int) -> [GameEvent] {
         guard var index = unitIndex(unitID) else { return [] }
         var steps: [Hex] = []
         var events: [GameEvent] = []
         var route: [Hex] = []
-        var replanned = false
         while let destination = units[index].destination, units[index].movesLeft > 0 {
             let unit = units[index]
             if route.isEmpty {
@@ -108,13 +108,8 @@ extension GameState {
                 route = planned
             }
             let next = route[0]
-            if self.unit(at: next) != nil {
-                // Someone stepped into the way: plan once more, then wait.
-                if replanned || next == destination { break }
-                replanned = true
-                route = []
-                continue
-            }
+            // Another company holds the destination: wait beside it.
+            if self.unit(at: next) != nil { break }
             if let hold = hold(at: next), hold.owner != unit.owner {
                 units[index].destination = nil
                 break

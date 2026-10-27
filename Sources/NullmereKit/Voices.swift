@@ -62,22 +62,37 @@ public struct OnDeviceVoice: Voice {
     with the spoken words alone, without quotation marks or a speaker's name.
     """
 
-    public init() {}
+    /// Whether the model can be asked now, and the asking itself: Apple's
+    /// on-device model, or for tests a stand-in.
+    let isReady: @Sendable () -> Bool
+    let respond: @Sendable (_ instructions: String, _ prompt: String) async throws -> String
+
+    public init() {
+        self.init(isReady: { OnDeviceVoice.isAvailable }, respond: { try await OnDeviceVoice.askTheModel(instructions: $0, prompt: $1) })
+    }
+
+    init(isReady: @escaping @Sendable () -> Bool,
+         respond: @escaping @Sendable (_ instructions: String, _ prompt: String) async throws -> String) {
+        self.isReady = isReady
+        self.respond = respond
+    }
 
     public static var isAvailable: Bool {
         if case .available = SystemLanguageModel.default.availability { return true }
         return false
     }
 
+    /// One line from Apple's on-device model, in a fresh session.
+    private static func askTheModel(instructions: String, prompt: String) async throws -> String {
+        let session = LanguageModelSession(instructions: instructions)
+        let response = try await session.respond(to: prompt, options: GenerationOptions(temperature: 0.8, maximumResponseTokens: 90))
+        return response.content
+    }
+
     public func speak(_ moment: VoiceMoment) async -> String? {
-        guard OnDeviceVoice.isAvailable else { return nil }
-        let session = LanguageModelSession(instructions: OnDeviceVoice.instructions)
+        guard isReady() else { return nil }
         do {
-            let response = try await session.respond(
-                to: moment.prompt,
-                options: GenerationOptions(temperature: 0.8, maximumResponseTokens: 90)
-            )
-            return Self.clean(response.content)
+            return Self.clean(try await respond(OnDeviceVoice.instructions, moment.prompt))
         } catch {
             OnDeviceVoice.logger.notice("A voice stayed silent: \(String(describing: error), privacy: .public)")
             return nil

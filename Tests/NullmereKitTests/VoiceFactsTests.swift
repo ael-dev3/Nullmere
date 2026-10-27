@@ -70,3 +70,58 @@ final class AmbienceEngineTests: XCTestCase {
         ambience.isEnabled = false
     }
 }
+
+/// The on-device voice's own work, with a stand-in for Apple's model: it
+/// asks with the voices' rules and the moment's facts, keeps only the
+/// spoken line, stays silent when the model isn't ready, and stays silent,
+/// not failing, when the model can't answer.
+final class OnDeviceVoiceTests: XCTestCase {
+    private let moment = VoiceMoment(kind: .envoy(proposal: .pact), facts: ["The envoy comes from House Venn."])
+
+    func testTheModelIsAskedWithTheRulesAndTheFactsAndItsLineCleaned() async {
+        let asked = Asked()
+        let voice = OnDeviceVoice(isReady: { true }) { instructions, prompt in
+            asked.record(instructions, prompt)
+            return "Envoy: \"Let the water lie still between us!\"\nAnd more."
+        }
+        let line = await voice.speak(moment)
+        XCTAssertEqual(line, "Let the water lie still between us.")
+        XCTAssertEqual(asked.instructions, OnDeviceVoice.instructions)
+        XCTAssertTrue(asked.prompt?.contains("- The envoy comes from House Venn.") == true)
+        XCTAssertTrue(asked.prompt?.contains("offering a pact") == true)
+    }
+
+    func testANotReadyModelIsNotAsked() async {
+        let asked = Asked()
+        let voice = OnDeviceVoice(isReady: { false }) { instructions, prompt in
+            asked.record(instructions, prompt)
+            return "Words."
+        }
+        let line = await voice.speak(moment)
+        XCTAssertNil(line)
+        XCTAssertNil(asked.prompt, "Not asked")
+    }
+
+    func testAModelThatFailsLeavesTheVoiceSilent() async {
+        let voice = OnDeviceVoice(isReady: { true }) { _, _ in throw CancellationError() }
+        let line = await voice.speak(moment)
+        XCTAssertNil(line)
+        let short = OnDeviceVoice(isReady: { true }) { _, _ in "Yes." }
+        let tooShort = await short.speak(moment)
+        XCTAssertNil(tooShort, "Too short to be a line")
+    }
+
+    func testTheLiveVoiceAnswersWhetherTheModelIsReady() {
+        // On CI's Mac there is no Apple Intelligence: the live voice says so.
+        _ = OnDeviceVoice().isReady()
+    }
+}
+
+private final class Asked: @unchecked Sendable {
+    private let lock = NSLock()
+    private(set) var instructions: String?
+    private(set) var prompt: String?
+    func record(_ instructions: String, _ prompt: String) {
+        lock.lock(); self.instructions = instructions; self.prompt = prompt; lock.unlock()
+    }
+}

@@ -40,6 +40,9 @@ public actor FakeSpacetime: SpacetimeTransport {
     /// The server forgets an identity, as when its database is made anew.
     public func forget(token: String) { identities[token] = nil }
 
+    /// A world already kept, as a realm's own steward left it.
+    public func seed(world state: String, version: UInt64) { world = (version, state) }
+
     /// Requests of each kind the steward has answered.
     private var settled: [String: Int] = [:]
 
