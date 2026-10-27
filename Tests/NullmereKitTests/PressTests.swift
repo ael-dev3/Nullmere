@@ -82,7 +82,9 @@ final class PressTests: XCTestCase {
     func testAHoldsWorksMustersAndBarterAreOrdered() throws {
         var state = GameState(settings: GameSettings(seedText: "pressed works", houseCount: 4, radius: 18))
         let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == state.player && $0.isSeat })
-        state.houses[state.player].stock = Stock(grain: 900, timber: 900, stone: 900, moonsalt: 200)
+        // Stores full of grain and stone, with room left for timber bought by barter.
+        let room = state.storage(of: state.player)
+        state.houses[state.player].stock = Stock(grain: room, timber: room / 4, stone: room, moonsalt: 60)
         state.holds[seat].project = nil
         state.holds[seat].training = nil
         let (session, link) = session(state)
