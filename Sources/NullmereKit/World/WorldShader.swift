@@ -208,14 +208,17 @@ enum WorldShader {
         return b * b * (exp(-r2 / 0.8) + 0.12 * exp(-r2 / 7.0));
     }
 
-    float3 nm_mirror(float2 w, float2 px, float2 viewport, float ppp, float shallow, float time, float4 moonAt, float2 moonPx) {
+    float3 nm_mirror(float2 w, float2 px, float2 viewport, float ppp, float shallow, float time, float4 moonAt, float2 moonPx, float moonRadiusPx) {
         // Black glass, faintly holding the sky: a little paler toward the top
         // of the view, and along the moon's path, a narrow column of light
         // brightest at the moon's own reflection and running on down the
-        // water toward the eye, shorter above it.
+        // water toward the eye, shorter above it. The path is as wide as the
+        // moon is large on screen, within bounds: zoomed out, it stays a
+        // column on the lake rather than a wash over all of it.
         float2 uv = px / viewport;
-        float gx = (px.x - moonPx.x) / max(viewport.y, 1.0);
-        float gy = (px.y - moonPx.y) / max(viewport.y, 1.0);
+        float reach = clamp(moonRadiusPx * 48.0, viewport.y * 0.3, viewport.y);
+        float gx = (px.x - moonPx.x) / reach;
+        float gy = (px.y - moonPx.y) / reach;
         float along = mix(exp(gy * 10.0), exp(-gy * 1.5), step(0.0, gy));
         // The water is dead still: the path is all but whole, only the
         // faintest unevenness along it, never in even bands.
@@ -341,7 +344,7 @@ enum WorldShader {
         float3 wet = float3(0.0);
         if (shore < 0.999) {
             float shallow = 1.0 - deep / max(total - land, 0.0001);
-            wet = nm_mirror(w, px, viewport, ppp, clamp(shallow, 0.0, 1.0), time, moon, (moon.xy - centre) * scale + viewport * 0.5);
+            wet = nm_mirror(w, px, viewport, ppp, clamp(shallow, 0.0, 1.0), time, moon, (moon.xy - centre) * scale + viewport * 0.5, moon.z * scale);
             // A pale line of salt where the dead water meets the land.
             wet += float3(0.32, 0.33, 0.36) * exp(-abs(landness - 0.43) / 0.025) * 0.5;
             wet += float3(0.40, 0.46, 0.60) * exp(-abs(landness - 0.47) / 0.012) * 0.3;

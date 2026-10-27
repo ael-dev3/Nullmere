@@ -134,6 +134,55 @@ final class LakeRenderTests: XCTestCase {
         XCTAssertLessThan(lit, 200, "and the lake stays black glass: \(lit)")
     }
 
+    /// The lake from afar, the whole world in view: black still, its open
+    /// water dark away from the moon's path, which stays a column the
+    /// moon's own size rather than a wash over all the lake.
+    func testTheLakeStaysBlackFromAfar() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
+        let library = try device.makeLibrary(source: WorldShader.source, options: nil)
+        let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
+        var state = GameState(settings: GameSettings(seedText: "the still water", houseCount: 12, radius: 36))
+        state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
+        try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
+        let width = 1400, height = 900
+        let scale: Float = 4
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
+        descriptor.usage = [.renderTarget, .shaderRead]
+        descriptor.storageMode = .shared
+        let target = try XCTUnwrap(device.makeTexture(descriptor: descriptor))
+        let moon = MoonMirror.place(in: state.map)
+        let uniforms = WorldUniforms(view: SIMD4(Float(width), Float(height), scale, 20),
+                                     camera: SIMD4(0, 0, Float(state.map.radius), 1),
+                                     highlight: SIMD4(999, 999, 999, 999), moon: moon)
+        XCTAssertNotNil(renderer.measureFrame(uniforms, into: target))
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        target.getBytes(&pixels, bytesPerRow: width * 4, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
+
+        let layout = HexLayout(size: 1)
+        let moonX = Float(width) / 2 + moon.x * scale
+        var open: [Int] = []
+        var path: [Int] = []
+        for y in stride(from: 0, to: height, by: 2) {
+            for x in stride(from: 0, to: width, by: 2) {
+                let wx = (Float(x) - Float(width) / 2) / scale, wy = (Float(y) - Float(height) / 2) / scale
+                let hex = layout.hex(atX: Double(wx), y: Double(wy))
+                guard state.map[hex]?.terrain == .still, state.map.neighbors(of: hex).allSatisfy({ state.map[$0]?.terrain == .still }),
+                      hypot(wx - moon.x, wy - moon.y) > 4 else { continue }
+                let i = (y * width + x) * 4
+                let sum = Int(pixels[i]) + Int(pixels[i + 1]) + Int(pixels[i + 2])
+                let off = abs(Float(x) - moonX)
+                if off > Float(height) * 0.12 { open.append(sum) } else if off < Float(height) * 0.03, wy > moon.y { path.append(sum) }
+            }
+        }
+        XCTAssertGreaterThan(open.count, 500, "Open water in view")
+        open.sort()
+        path.sort()
+        let water = open[open.count / 2], lit = path.isEmpty ? 0 : path[path.count / 2]
+        print("LAKEAFAR open water \(water), the moon's path \(lit)")
+        XCTAssertLessThan(water, 25, "Black from afar, not washed with the moon's light")
+        XCTAssertGreaterThan(lit, water + 8, "and the moon's path shows on it")
+    }
+
     /// The unknown as a game opens: a night mist in vast banks, never a
     /// flat grey, and never as dark as the black water.
     func testTheUnknownIsAMistInBanks() throws {
