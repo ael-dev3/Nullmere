@@ -263,7 +263,7 @@ public final class GameApp {
         link.arrive(name: keeperName == nil ? name : nil)
     }
 
-    private func hear(_ event: RealmEvent) {
+    func hear(_ event: RealmEvent) {
         switch event {
         case .status(let status):
             door = .open(status)

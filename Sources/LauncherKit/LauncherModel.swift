@@ -201,6 +201,7 @@ public final class LauncherModel {
     private func apply(_ current: ModelReadiness) {
         guard current != readiness else { return }
         Self.logger.notice("On-device model: \(current.status, privacy: .public).")
+        Reporting.say("On-device model: \(current.status).")
         // The requirement screen gives way to the launcher as soon as the
         // model is ready, and comes back if it stops being available.
         withAnimation(.easeInOut(duration: 0.6)) {

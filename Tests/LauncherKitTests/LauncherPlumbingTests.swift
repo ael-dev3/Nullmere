@@ -236,6 +236,30 @@ final class WindowBridgeTests: XCTestCase {
         bridge.removeFromSuperview()
         XCTAssertFalse(bridge.isMonitoring)
     }
+
+    func testFullScreenAtLaunchIsAskedForOnce() {
+        var entered: [NSWindow] = []
+        let bridge = WindowBridgeView(startsInFullScreen: true, onKey: { _ in }, onClick: {})
+        bridge.enterFullScreen = { entered.append($0) }
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 400), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 400))
+        window.contentView = content
+        defer { window.close() }
+        content.addSubview(bridge)
+        // Moved again within the same window: configured once.
+        bridge.removeFromSuperview()
+        content.addSubview(bridge)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        XCTAssertEqual(entered.count, 1)
+        XCTAssertTrue(entered.first === window)
+
+        let windowed = WindowBridgeView(startsInFullScreen: false, onKey: { _ in }, onClick: {})
+        windowed.enterFullScreen = { entered.append($0) }
+        content.addSubview(windowed)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        XCTAssertEqual(entered.count, 1, "Not asked for, not entered")
+    }
 }
 
 /// The darkness laid on the water under an open panel: deepest over the

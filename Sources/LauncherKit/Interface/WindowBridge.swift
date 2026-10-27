@@ -31,6 +31,8 @@ final class WindowBridgeView: NSView {
     var onClick: () -> Void
 
     private let startsInFullScreen: Bool
+    /// How the window enters full screen; tests watch it instead.
+    var enterFullScreen: (NSWindow) -> Void = { $0.toggleFullScreen(nil) }
     private weak var configuredWindow: NSWindow?
     private var eventMonitor: Any?
 
@@ -71,9 +73,9 @@ final class WindowBridgeView: NSView {
         if startsInFullScreen {
             // Toggle once the window has finished setting up, and look again
             // then: macOS may already have restored it in full screen.
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [enterFullScreen] in
                 if !window.styleMask.contains(.fullScreen) {
-                    window.toggleFullScreen(nil)
+                    enterFullScreen(window)
                 }
             }
         }

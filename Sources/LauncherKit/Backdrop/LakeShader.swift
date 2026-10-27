@@ -345,12 +345,15 @@ enum LakeShader {
             slope += nm_wave(w, normalize(float2(0.40, 1.0)), 0.15, 0.012, time, z, pt);
             slope += nm_wave(w, normalize(float2(-0.60, 1.0)), 0.085, 0.010, time, z, pt);
             slope += nm_wave(w, normalize(float2(0.90, 1.0)), 0.055, 0.008, time, z, pt);
-            // The swell, a quarter of a living lake's.
-            slope *= 0.26;
+            // The swell, a tenth of a living lake's: the moon's image keeps
+            // a clean rim, and only its glints say the water is there.
+            slope *= 0.10;
             float2 ring = float2(0.0);
             if (activity > 0.5) {
+                // A ring shows by its light; it barely bends the mirror, so
+                // the moon's image keeps its rim as a ring passes through.
                 ring = nm_rings(w, time, z, pt) * 0.45;
-                slope += ring;
+                slope += ring * 0.25;
             }
 
             float2 r = float2(p.x + 0.35 * slope.x, 2.0 * horizon - p.y + 0.55 * slope.y);

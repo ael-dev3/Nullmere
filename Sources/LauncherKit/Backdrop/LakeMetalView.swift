@@ -191,11 +191,7 @@ final class LakeMetalView: MTKView {
         do {
             renderer = try LakeRenderer(device: device, library: library, pixelFormat: pixelFormat)
             Self.logger.notice("The lake renders with Metal on \(device.name, privacy: .public).")
-            #if DEBUG
-            // The smoke tests read this from the app's own output, which,
-            // unlike the unified log, holds it the moment it is written.
-            FileHandle.standardError.write(Data("The lake renders with Metal on \(device.name).\n".utf8))
-            #endif
+            Reporting.say("The lake renders with Metal on \(device.name).")
             clock.resetInterval()
             updateWindowVisibility()
         } catch {

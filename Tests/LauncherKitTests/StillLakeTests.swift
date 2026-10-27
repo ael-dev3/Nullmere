@@ -18,6 +18,7 @@ final class StillLakeTests: XCTestCase {
         let target = try XCTUnwrap(device.makeTexture(descriptor: descriptor))
         var worst = (gathered: 1.0, filled: 1.0, heart: 765)
         var water = 0, bright = 0
+        var rim = (rough: 0.0, worst: 0.0)
         // Over several moments, so no lucky frame passes for a still lake.
         for time in [3.0, 7.5, 12.25, 20.0] {
             let uniforms = LakeUniforms(sizeAndPixels: SIMD4(Float(width), Float(height), Float(width), Float(height)),
@@ -46,6 +47,22 @@ final class StillLakeTests: XCTestCase {
             let filled = Double(inside) / (Double.pi * (1.25 * radius) * (1.25 * radius))
             worst = (min(worst.gathered, gathered), min(worst.filled, filled), min(worst.heart, light(Int(mirrorX), Int(mirrorY))))
 
+            // Its rim clean, as on dead still water: the edge, found along 72
+            // rays from its heart, strays little from the edge smoothed.
+            let cut = Double(light(Int(mirrorX), Int(mirrorY))) * 0.6
+            var rays: [Double] = []
+            for k in 0..<72 {
+                let angle = 2 * Double.pi * Double(k) / 72
+                var r = 0.0
+                while r < 2 * radius, Double(light(Int(mirrorX + r * cos(angle)), Int(mirrorY + r * sin(angle)))) > cut { r += 0.5 }
+                rays.append(r)
+            }
+            let strays = rays.indices.map { i -> Double in
+                let smooth = (-4...4).map { rays[(i + $0 + 72) % 72] }.reduce(0, +) / 9
+                return abs(rays[i] - smooth) / radius
+            }
+            rim = (max(rim.rough, strays.reduce(0, +) / 72), max(rim.worst, strays.max() ?? 0))
+
             // Open water, away from the moon's image: black.
             var values: [Int] = []
             for y in stride(from: Int(Double(height) * 0.72), to: Int(Double(height) * 0.95), by: 3) {
@@ -68,6 +85,9 @@ final class StillLakeTests: XCTestCase {
         XCTAssertGreaterThan(worst.heart, 330, "The moon lies in the water")
         XCTAssertGreaterThan(worst.gathered, 0.97, "gathered in a disc, not strewn down the water")
         XCTAssertGreaterThan(worst.filled, 0.58, "and whole")
+        print(String(format: "STILL the moon's image's rim strays %.3f on average, %.3f at most", rim.rough, rim.worst))
+        XCTAssertLessThan(rim.rough, 0.016, "Its rim clean, not bitten by ripples")
+        XCTAssertLessThan(rim.worst, 0.055, "nowhere")
         XCTAssertLessThan(water, 40, "Open water is black")
         XCTAssertGreaterThanOrEqual(bright, 10, "Bright stars stand in the sky")
     }

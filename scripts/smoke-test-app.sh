@@ -27,7 +27,12 @@ fi
 
 started="$(date '+%Y-%m-%d %H:%M:%S')"
 echo "Opening ${APP}…"
-open "$APP"
+# Asked to, the release app says what the unified log hears on its own
+# output too, which holds it at once; the log can lag behind.
+SAID="$PWD/build/app-said.log"
+mkdir -p build
+rm -f "$SAID"
+open --env NULLMERE_SAY_READY=1 --stderr "$SAID" "$APP"
 sleep "$WAIT"
 
 if ! pgrep -x "$EXECUTABLE" >/dev/null; then
@@ -38,7 +43,8 @@ if ! pgrep -x "$EXECUTABLE" >/dev/null; then
     exit 1
 fi
 
-backdrop_log="$(settled_log "$started" "$SUBSYSTEM" "renders with Metal")"
+backdrop_log="$(settled_log "$started" "$SUBSYSTEM" "renders with Metal" "On-device model:")
+$(cat "$SAID" 2>/dev/null || true)"
 
 screencapture -x "$SHOT" || echo "warning: could not take a screenshot" >&2
 # A signal rather than an Apple Event, which could wait on a privacy prompt.
