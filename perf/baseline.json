@@ -59,22 +59,32 @@
     },
     "marks.cpu.p50": {
       "baseline": 1.1,
-      "gpu": true
+      "gpu": true,
+      "cpu": true
     },
     "order.cpu.p50": {
-      "baseline": 3.9
+      "baseline": 3.9,
+      "cpu": true
     },
     "realm.watch.twelve-a": {
       "baseline": 121,
-      "note": "thread CPU time per watch"
+      "note": "thread CPU time per watch",
+      "cpu": true
     },
     "realm.watch.twelve-b": {
       "baseline": 121,
-      "note": "thread CPU time per watch"
+      "note": "thread CPU time per watch",
+      "cpu": true
     },
     "realm.watch.twelve-c": {
       "baseline": 126,
-      "note": "thread CPU time per watch"
+      "note": "thread CPU time per watch",
+      "cpu": true
+    },
+    "calibration.cpu": {
+      "baseline": 300,
+      "calibration": true,
+      "note": "estimated from Linux's ratio; set from the first macOS run"
     }
   }
 }

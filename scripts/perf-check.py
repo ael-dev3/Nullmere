@@ -16,6 +16,12 @@ GPU on the runner the GPU metrics are missing; that is said, not failed.
 Anything else missing fails, so a renamed metric can't slip its baseline.
 Fails, too, if a figure is under a third of its baseline: either the
 work is no longer measured, or the baseline should come down.
+
+A shared runner is faster some days than others. The metric marked
+"calibration" times a fixed piece of the game's work; when this run's is
+slower than its baseline, every metric marked "cpu" is allowed that much
+more. A slower machine moves the calibration and the CPU figures alike; a
+slower path moves only its own figure, and still fails.
 """
 import json
 import re
@@ -40,6 +46,12 @@ def check(found, baseline):
     metrics = baseline.get("metrics", {})
     gpu_measured = any(name in found for name, spec in metrics.items() if spec.get("gpu"))
     lines, failed = [], False
+    pace = 1.0
+    for name, spec in metrics.items():
+        if spec.get("calibration") and spec.get("baseline") and name in found:
+            pace = max(1.0, found[name] / spec["baseline"])
+            lines.append(f"PERF-CHECK this runner runs the game's work at {found[name]:.1f} ms against {spec['baseline']:.1f}: "
+                         f"CPU figures allowed x{pace:.2f}")
     for name in sorted(set(metrics) | set(found)):
         spec = metrics.get(name)
         value = found.get(name)
@@ -61,6 +73,11 @@ def check(found, baseline):
             lines.append(f"PERF-CHECK {name} {value:.2f} ms RECORDED (no baseline yet)")
             continue
         allowed = max(base * spec.get("ratio", ratio), base + spec.get("slack_ms", slack))
+        if spec.get("calibration"):
+            lines.append(f"PERF-CHECK {name} {value:.2f} ms (baseline {base:.2f}) CALIBRATION")
+            continue
+        if spec.get("cpu"):
+            allowed *= pace
         if spec.get("limit") is not None:
             allowed = min(allowed, spec["limit"])
         verdict = "OK"
@@ -95,6 +112,15 @@ def self_test():
     assert failed, "a CPU metric missing is"
     _, failed = check({"a": 2.0, "b": 1.0}, baseline)
     assert failed, "a third of the baseline is suspicious"
+    paced = {"metrics": {"cal": {"baseline": 100.0, "calibration": True}, "w": {"baseline": 10.0, "cpu": True}}}
+    _, failed = check({"cal": 100.0, "w": 16.0}, paced)
+    assert failed, "on a machine of the baseline's pace, 16 is over 10 x 1.5"
+    _, failed = check({"cal": 170.0, "w": 16.0}, paced)
+    assert not failed, "on a machine 1.7 times slower, 16 is within 10 x 1.5 x 1.7"
+    _, failed = check({"cal": 170.0, "w": 30.0}, paced)
+    assert failed, "a path slower than the machine still fails"
+    _, failed = check({"cal": 60.0, "w": 14.0}, paced)
+    assert not failed, "a faster machine is held to the baseline as it is"
     print("perf-check self-test passed")
     return 0
 
