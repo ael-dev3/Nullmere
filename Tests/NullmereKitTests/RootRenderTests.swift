@@ -1,5 +1,5 @@
 import LauncherCore
-import LauncherKit
+@testable import LauncherKit
 import NullmereRealm
 import SwiftUI
 import XCTest
