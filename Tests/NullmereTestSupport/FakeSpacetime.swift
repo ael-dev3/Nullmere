@@ -27,6 +27,16 @@ public actor FakeSpacetime: SpacetimeTransport {
 
     public func advance(_ seconds: Double) { time += seconds }
 
+    /// Whether the server answers at all: off, every request fails as a
+    /// lost connection does.
+    private var reachable = true
+
+    public func setReachable(_ reachable: Bool) { self.reachable = reachable }
+
+    private func answering() throws {
+        guard reachable else { throw SpacetimeError("No answer from the realm's server.") }
+    }
+
     /// The server forgets an identity, as when its database is made anew.
     public func forget(token: String) { identities[token] = nil }
 
@@ -36,6 +46,7 @@ public actor FakeSpacetime: SpacetimeTransport {
     public func handled(kind: String) -> Int { settled[kind] ?? 0 }
 
     public func createIdentity() async throws -> SpacetimeCredentials {
+        try answering()
         let identity = KeeperIdentity.make() + KeeperIdentity.make()
         let token = "token-" + identity
         identities[token] = identity
@@ -50,6 +61,7 @@ public actor FakeSpacetime: SpacetimeTransport {
     }
 
     public func call(_ reducer: String, _ arguments: [ReducerArgument], token: String) async throws {
+        try answering()
         let me = try sender(token)
         calls.append(reducer)
         func string(_ index: Int) throws -> String {
@@ -116,6 +128,7 @@ public actor FakeSpacetime: SpacetimeTransport {
 
     /// Private tables are the owner's, the steward's, alone to read.
     public func query(_ sql: String, token: String) async throws -> [[JSONValue]] {
+        try answering()
         let me = try sender(token)
         func owner() throws {
             guard me == steward else { throw SpacetimeError("Table is private") }

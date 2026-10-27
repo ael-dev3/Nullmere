@@ -116,7 +116,8 @@ enum LakeShader {
     float nm_mesas(float x) {
         float n = nm_fbm(float2(x * 2.2 + 7.0, 4.3));
         float tops = smoothstep(0.50, 0.56, n) * 0.55 + smoothstep(0.60, 0.65, n) * 0.45;
-        float body = 0.012 + 0.030 * tops;
+        // Flat-topped and broad: a far range on the scale of the lake.
+        float body = 0.016 + 0.044 * tops;
         float wear = 0.0012 * nm_noise(float2(x * 55.0, 1.0));
         float mask = smoothstep(0.15, 0.55, nm_noise(float2(x * 0.9 + 2.0, 8.0)));
         return (body + wear) * mask;
@@ -195,9 +196,9 @@ enum LakeShader {
 
         // Stars low in the sky flicker more, as through a deeper air.
         float twinkle = 0.72 * activity * (1.4 - 0.6 * altitude);
-        float3 s = nm_starLayer(p, 74.0, 0.42 + 0.40 * band, 0.02, 0.20, 0.42, pt, time, twinkle * 0.7, 3.0);
-        s += nm_starLayer(p, 31.0, 0.40, 0.10, 0.62, 0.52, pt, time, twinkle, 17.0);
-        s += nm_starLayer(p, 11.0, 0.36, 0.50, 1.80, 0.66, pt, time, twinkle, 31.0);
+        float3 s = nm_starLayer(p, 74.0, 0.46 + 0.40 * band, 0.03, 0.30, 0.42, pt, time, twinkle * 0.7, 3.0);
+        s += nm_starLayer(p, 31.0, 0.44, 0.14, 0.90, 0.52, pt, time, twinkle, 17.0);
+        s += nm_starLayer(p, 11.0, 0.40, 0.70, 2.40, 0.68, pt, time, twinkle, 31.0);
         c += s * visible;
         if (activity > 0.5) {
             c += nm_fallingStar(p, aspect, pt, time) * altitude;
@@ -230,7 +231,7 @@ enum LakeShader {
 
         // The far shore: distant mesas veiled by haze, then a darker bank.
         float h = p.y - horizon;
-        if (h < 0.06) {
+        if (h < 0.075) {
             float mesaTop = nm_mesas(p.x);
             float far = 1.0 - smoothstep(mesaTop - pt, mesaTop + pt, h);
             float3 farColor = mix(float3(0.020, 0.026, 0.038), nm_skyGradient(p.y, horizon) * 0.80, 0.35);
@@ -305,7 +306,7 @@ enum LakeShader {
         float2 g = p / cellSize;
         float2 id = floor(g);
         float2 h = nm_hash22(id + 71.0);
-        if (h.x > path * 0.45) {
+        if (h.x > path * 0.22) {
             return float3(0.0);
         }
         float2 pos = 0.3 + 0.4 * nm_hash22(id + 13.0);
@@ -330,10 +331,10 @@ enum LakeShader {
         if (p.y >= horizon) {
             c = nm_sky(p, aspect, pt, horizon, time, activity);
         } else {
-            // Water: the sky mirrored in a surface that is never quite still. A
-            // long swell and wind ripples run toward the shore below, and rings
-            // spread where something touched the lake. Their slopes bend the
-            // reflection, so the moon's image breaks and gathers again.
+            // Water: dead, deep and nearly still, a black mirror of the sky. A
+            // long, faint swell barely stirs it, and now and then a ring
+            // spreads where something touched the lake; the moon lies in it
+            // whole, and the stars with it.
             float s = horizon - p.y;
             float z = 1.0 / max(s, 0.0005);
             float2 w = float2((p.x - m.x) * z, z);
@@ -344,16 +345,18 @@ enum LakeShader {
             slope += nm_wave(w, normalize(float2(0.40, 1.0)), 0.15, 0.012, time, z, pt);
             slope += nm_wave(w, normalize(float2(-0.60, 1.0)), 0.085, 0.010, time, z, pt);
             slope += nm_wave(w, normalize(float2(0.90, 1.0)), 0.055, 0.008, time, z, pt);
+            // The swell, a quarter of a living lake's.
+            slope *= 0.26;
             float2 ring = float2(0.0);
             if (activity > 0.5) {
-                ring = nm_rings(w, time, z, pt);
+                ring = nm_rings(w, time, z, pt) * 0.45;
                 slope += ring;
             }
 
             float2 r = float2(p.x + 0.35 * slope.x, 2.0 * horizon - p.y + 0.55 * slope.y);
             r.y = max(r.y, horizon + 0.0005);
             float depth = s / horizon;
-            float reflectance = mix(0.94, 0.50, sqrt(depth));
+            float reflectance = mix(0.94, 0.56, sqrt(depth));
             c = nm_sky(r, aspect, pt, horizon, time, activity) * reflectance;
 
             // Faces of the waves turned toward the moon catch a faint sheen.

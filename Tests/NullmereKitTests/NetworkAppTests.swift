@@ -122,4 +122,73 @@ final class NetworkAppTests: XCTestCase {
         first.leaveWorld()
         XCTAssertNil(first.session)
     }
+
+    func testTheRealmOutOfReachAtTheDoorAndInTheWorld() async throws {
+        let db = FakeSpacetime()
+        let running = try await steward(db, seats: 4)
+        defer { running.cancel() }
+        let identity = MemoryStore()
+        let app = app(db, identity: identity, realm: "reach")
+        await db.setReachable(false)
+        app.open()
+        try await until("the door to find the realm out of reach") { if case .unreachable = app.door { return true } else { return false } }
+        XCTAssertFalse(app.canEnter(with: "Ama"), "No way in to a realm that doesn't answer")
+        draw(FrontDoor(app: app))
+
+        // Try Again, once it answers.
+        await db.setReachable(true)
+        app.openDoor()
+        try await until("the realm to answer again") { if case .open = app.door { return true } else { return false } }
+        app.enterWorld(name: "Ama")
+        try await until("the world") { app.session != nil }
+        let session = try XCTUnwrap(app.session)
+
+        // Lost in play: the keeper is told once, and told again when it answers.
+        await db.setReachable(false)
+        try await until("the keeper to be told") { session.isOutOfReach }
+        XCTAssertEqual(session.notices.filter { $0.text.contains("out of reach") }.count, 1)
+        draw(GameRootView(app: app))
+        await db.setReachable(true)
+        try await until("the realm to answer again") { !session.isOutOfReach }
+        XCTAssertEqual(session.notices.last?.text, "The realm answers again.")
+        app.leaveWorld()
+    }
+
+    func testANameAlreadyHeldIsRefused() async throws {
+        let db = FakeSpacetime()
+        let running = try await steward(db, seats: 4)
+        defer { running.cancel() }
+        let first = app(db, identity: MemoryStore(), realm: "names-first")
+        first.open()
+        try await until("the realm") { if case .open = first.door { return true } else { return false } }
+        first.enterWorld(name: "Ama")
+        try await until("Ama's seat") { first.session != nil }
+
+        let second = app(db, identity: MemoryStore(), realm: "names-second")
+        second.open()
+        try await until("the realm") { if case .open = second.door { return true } else { return false } }
+        second.enterWorld(name: "Ama")
+        try await until("the refusal") { second.arrivalProblem != nil }
+        XCTAssertEqual(second.arrivalProblem, "Another keeper already goes by that name.")
+        XCTAssertNil(second.session)
+        XCTAssertFalse(second.isEntering, "The door is open to try another name")
+        draw(FrontDoor(app: second))
+        second.enterWorld(name: "Bel")
+        try await until("Bel's seat") { second.session != nil }
+        XCTAssertNil(second.arrivalProblem)
+        first.leaveWorld()
+        second.leaveWorld()
+    }
+
+    func testAnAddressWithoutADatabaseIsSaidPlainly() {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        dirs.append(dir)
+        let address = GameApp.RealmAddress.network(URL(string: "https://realm.test")!)
+        let app = GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: address,
+                          identity: MemoryStore(), opensAtOnce: false, transport: nil, pollInterval: 1)
+        app.open()
+        XCTAssertEqual(app.door, .unreachable("The realm's address can't be read."))
+        XCTAssertFalse(app.canEnter(with: "Ama"))
+        draw(FrontDoor(app: app))
+    }
 }
