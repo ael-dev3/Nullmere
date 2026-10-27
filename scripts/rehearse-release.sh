@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Rehearses a signed, notarized release with no Apple account: a throwaway
-# self-signed code-signing identity, made here and trusted on this machine
-# only, takes the Developer ID's place through the very same steps
+# self-signed code-signing identity, made here, takes the Developer ID's
+# place through the very same steps
 # (scripts/take-up-identity.sh, then scripts/release.sh, signing the app
 # with the hardened runtime and a secure timestamp, and the disk image);
 # notarizing is rehearsed too, printing what it would send to Apple. CI runs
-# it, so a real release only wants the secrets. Needs sudo, to trust the
-# throwaway certificate: CI's runners have it.
+# it, so a real release only wants the secrets. The throwaway identity is
+# never trusted (that would wait on a password nobody types): codesign
+# signs with it all the same, only warning that it chains to no root Apple
+# trusts.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -16,7 +18,6 @@ WORK="$(mktemp -d)"
 OUTPUT_DIR="${OUTPUT_DIR:-build/rehearsal}"
 cleanup() {
     security delete-keychain "$WORK/release.keychain-db" >/dev/null 2>&1 || true
-    [ -f "$WORK/certificate.pem" ] && sudo security remove-trusted-cert -d "$WORK/certificate.pem" >/dev/null 2>&1 || true
     rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -42,12 +43,11 @@ legacy=""
 openssl pkcs12 -help 2>&1 | grep -q -- "-legacy" && legacy="-legacy"
 openssl pkcs12 -export $legacy -inkey "$WORK/key.pem" -in "$WORK/certificate.pem" -name "$NAME" \
     -out "$WORK/identity.p12" -passout "pass:$password"
-sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain "$WORK/certificate.pem"
 
 echo "== Taking it up, as the release workflow takes up the Developer ID"
 outputs="$WORK/outputs"
 MACOS_CERTIFICATE="$(base64 < "$WORK/identity.p12")" MACOS_CERTIFICATE_PASSWORD="$password" \
-    IDENTITY_KIND="$NAME" RUNNER_TEMP="$WORK" GITHUB_OUTPUT="$outputs" scripts/take-up-identity.sh
+    IDENTITY_KIND="$NAME" ALLOW_UNTRUSTED=1 RUNNER_TEMP="$WORK" GITHUB_OUTPUT="$outputs" scripts/take-up-identity.sh
 identity="$(sed -n 's/^identity=//p' "$outputs")"
 [ "$identity" = "$NAME" ] || { echo "error: took up \"$identity\", not \"$NAME\"" >&2; exit 1; }
 

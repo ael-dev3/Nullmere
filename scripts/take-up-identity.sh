@@ -11,6 +11,8 @@
 #   APPLE_API_ISSUER            its issuer id
 #   IDENTITY_KIND               the identity's name begins so (default:
 #                               "Developer ID Application")
+#   ALLOW_UNTRUSTED=1           take an identity this Mac doesn't trust (a
+#                               rehearsal's self-signed one); never for a release
 #
 # Prints, and writes to $GITHUB_OUTPUT when set: identity=, keychain=, and
 # notary=nullmere when the notary's credentials were stored.
@@ -32,7 +34,10 @@ rm -f "$WORK/certificate.p12"
 security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain" >/dev/null
 # shellcheck disable=SC2046
 security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
-identity="$(security find-identity -v -p codesigning "$keychain" | sed -n "s/.*\"\\($KIND.*\\)\"/\\1/p" | head -n 1)"
+valid="-v"
+[ "${ALLOW_UNTRUSTED:-}" = 1 ] && valid=""
+# shellcheck disable=SC2086
+identity="$(security find-identity $valid -p codesigning "$keychain" | sed -n "s/.*\"\\($KIND[^\"]*\\)\".*/\\1/p" | head -n 1)"
 if [ -z "$identity" ]; then
     echo "error: no valid \"$KIND\" signing identity in the certificate" >&2
     security find-identity -p codesigning "$keychain" >&2 || true

@@ -152,6 +152,7 @@ jobs:
       # the same steps release.yml takes with the Developer ID, so a real
       # release wants only the secrets.
       - name: Rehearse a signed release
+        timeout-minutes: 10
         run: scripts/rehearse-release.sh 2>&1 | tee build/rehearsal.log
 
       # Opens the real app on the runner: it must keep running and render its
