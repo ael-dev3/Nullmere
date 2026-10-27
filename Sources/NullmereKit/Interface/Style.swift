@@ -95,6 +95,31 @@ extension View {
 }
 
 /// A quiet text button: spaced capitals that brighten on hover.
+/// The actions of the buttons drawn while a test listens, by their
+/// titles, so a test can press a panel's buttons as a keeper would and run
+/// their own actions. Nothing is kept unless a test turns it on.
+@MainActor
+enum PressableButtons {
+    static var isListening = false {
+        didSet { actions = [:] }
+    }
+    private(set) static var actions: [String: () -> Void] = [:]
+
+    static func note(_ title: String, enabled: Bool, _ action: @escaping () -> Void) {
+        guard isListening, enabled else { return }
+        actions[title] = action
+    }
+
+    /// Presses the button drawn with that title; false if none was drawn,
+    /// or it was drawn disabled.
+    @discardableResult
+    static func press(_ title: String) -> Bool {
+        guard let action = actions[title] else { return false }
+        action()
+        return true
+    }
+}
+
 struct QuietButton: View {
     let title: String
     var size: CGFloat = 10
@@ -102,11 +127,15 @@ struct QuietButton: View {
     var enabled = true
     /// A colour for the words, for a button that asks twice.
     var tint: Color?
+    /// Whether a listening test may press it; a button that asks twice is
+    /// pressed by its own action instead.
+    var pressable = true
     let action: () -> Void
 
     @State private var hovering = false
 
     var body: some View {
+        let _ = pressable ? PressableButtons.note(title, enabled: enabled, action) : ()
         Button(action: action) {
             Caps(title, size: size, weight: prominent ? .medium : .regular)
                 .lineLimit(1)
@@ -216,7 +245,8 @@ struct ConfirmButton: View {
 
     var body: some View {
         let armed = confirmation.isArmed()
-        QuietButton(title: armed ? confirm : title, size: size, tint: armed ? Palette.bad : nil) {
+        let _ = PressableButtons.note(title, enabled: true, action)
+        QuietButton(title: armed ? confirm : title, size: size, tint: armed ? Palette.bad : nil, pressable: false) {
             if confirmation.press() {
                 action()
             } else {

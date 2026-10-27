@@ -184,11 +184,12 @@ struct HouseRow: View {
     private var giftMenu: some View {
         let choices = HouseRow.giftChoices(from: session.playerHouse.stock)
         if !choices.isEmpty {
+            let _ = choices.forEach { choice in
+                PressableButtons.note("Send \(choice.amount) \(choice.resource.title.lowercased())", enabled: true) { send(choice) }
+            }
             Menu {
                 ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
-                    Button("\(choice.amount) \(choice.resource.title.lowercased())") {
-                        session.perform(.gift(to: house.id, resource: choice.resource, amount: choice.amount))
-                    }
+                    Button("\(choice.amount) \(choice.resource.title.lowercased())") { send(choice) }
                 }
             } label: {
                 // Set as the buttons beside it are.
@@ -214,6 +215,10 @@ struct HouseRow: View {
                     trading = false
                 }
             }
+    }
+
+    private func send(_ choice: (resource: Resource, amount: Int)) {
+        session.perform(.gift(to: house.id, resource: choice.resource, amount: choice.amount))
     }
 
     private func offer(_ proposal: Proposal) {

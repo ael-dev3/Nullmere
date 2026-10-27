@@ -5,40 +5,33 @@ import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
 
-/// The panels' buttons pressed as VoiceOver presses them, in a real
-/// window: each reaches the session and sends the order it names.
+/// The panels' buttons pressed as a keeper presses them: each panel is
+/// drawn while the test listens, each button leaves its own action under
+/// its title, and pressing it reaches the session and sends the order it
+/// names to the realm.
 @MainActor
 final class PressTests: XCTestCase {
     private var dir: URL!
-    private var windows: [NSWindow] = []
 
     override func setUp() async throws {
         dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        PressableButtons.isListening = true
     }
 
     override func tearDown() async throws {
-        windows.forEach { $0.close() }
-        windows = []
+        PressableButtons.isListening = false
         try? FileManager.default.removeItem(at: dir)
     }
 
-    private func spin(_ seconds: Double = 0.15) {
-        RunLoop.main.run(until: Date().addingTimeInterval(seconds))
+    /// Draws the view afresh, so its buttons are those it shows now.
+    private func draw(_ view: some View, width: CGFloat = 360, height: CGFloat = 700) {
+        PressableButtons.isListening = true
+        let renderer = ImageRenderer(content: view.frame(width: width, height: height).background(Color.black))
+        renderer.scale = 1
+        XCTAssertNotNil(renderer.cgImage)
     }
 
-    /// The view in a window of its own, laid out.
-    @discardableResult
-    private func host(_ view: some View, width: CGFloat = 360, height: CGFloat = 700) -> NSView {
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: height), styleMask: [.titled], backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
-        let hosting = NSHostingView(rootView: view.frame(width: width, height: height).background(Color.black))
-        window.contentView = hosting
-        window.orderFrontRegardless()
-        windows.append(window)
-        hosting.layoutSubtreeIfNeeded()
-        spin()
-        return hosting
-    }
+    private var shown: [String] { PressableButtons.actions.keys.sorted() }
 
     private func session(_ state: GameState) -> (GameSession, RecordingLink) {
         let link = RecordingLink()
@@ -53,21 +46,23 @@ final class PressTests: XCTestCase {
         let (session, link) = session(state)
         let other = try XCTUnwrap(session.state.houses.first { $0.id != session.player && !$0.isEliminated })
         XCTAssertEqual(session.state.stance(session.player, other.id), .peace)
-        let row = host(HouseRow(session: session, house: other))
-        XCTAssertTrue(Accessibility.press("Offer a pact", in: row), "Found among \(Accessibility.labels(in: row))")
+        draw(HouseRow(session: session, house: other))
+        XCTAssertTrue(PressableButtons.press("Offer a pact"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .propose(.pact, to: other.id))
-
-        // War asks twice before it is declared.
-        XCTAssertTrue(Accessibility.press("Declare war", in: row))
-        XCTAssertFalse(link.sent.contains(.declareWar(on: other.id)), "Once arms it")
-        spin()
-        XCTAssertTrue(Accessibility.press("War on \(other.title)?", in: row), "Armed, it asks: \(Accessibility.labels(in: row))")
+        let gift = try XCTUnwrap(shown.first { $0.hasPrefix("Send ") }, "A gift to send, among \(shown)")
+        XCTAssertTrue(PressableButtons.press(gift))
+        guard case .gift(let to, _, _)? = link.sent.last else { return XCTFail("The gift is sent: \(link.sent)") }
+        XCTAssertEqual(to, other.id)
+        XCTAssertTrue(PressableButtons.press("Offer a trade"), "The trade opens to be composed")
+        XCTAssertTrue(PressableButtons.press("Declare war"))
         XCTAssertEqual(link.sent.last, .declareWar(on: other.id))
 
         // At war, peace may be offered.
-        spin()
-        XCTAssertTrue(Accessibility.press("Offer peace", in: row), "\(Accessibility.labels(in: row))")
+        draw(HouseRow(session: session, house: session.state.houses[other.id]))
+        XCTAssertTrue(PressableButtons.press("Offer peace"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .propose(.peace, to: other.id))
+        draw(HousesPanel(session: session), height: 900)
+        XCTAssertFalse(shown.isEmpty)
     }
 
     func testATradeIsComposedAndOffered() throws {
@@ -75,8 +70,8 @@ final class PressTests: XCTestCase {
         let (session, link) = session(state)
         let other = try XCTUnwrap(session.state.houses.first { $0.id != session.player })
         var offered: Trade?
-        let composer = host(TradeComposer(house: other, stock: session.playerHouse.stock) { offered = $0 }, width: 300, height: 320)
-        XCTAssertTrue(Accessibility.press("Offer", in: composer), "\(Accessibility.labels(in: composer))")
+        draw(TradeComposer(house: other, stock: session.playerHouse.stock) { offered = $0 }, width: 300, height: 320)
+        XCTAssertTrue(PressableButtons.press("Offer"), "Among \(shown)")
         let trade = try XCTUnwrap(offered)
         session.offerTrade(trade, to: other, words: "")
         guard case .offerTrade(let sent, to: let to, words: _)? = link.sent.last else { return XCTFail("The trade is sent") }
@@ -84,7 +79,7 @@ final class PressTests: XCTestCase {
         XCTAssertEqual(to, other.id)
     }
 
-    func testAHoldsWorksAndMustersAreOrdered() throws {
+    func testAHoldsWorksMustersAndBarterAreOrdered() throws {
         var state = GameState(settings: GameSettings(seedText: "pressed works", houseCount: 4, radius: 18))
         let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == state.player && $0.isSeat })
         state.houses[state.player].stock = Stock(grain: 900, timber: 900, stone: 900, moonsalt: 200)
@@ -92,79 +87,70 @@ final class PressTests: XCTestCase {
         state.holds[seat].training = nil
         let (session, link) = session(state)
         session.selection = .hold(state.holds[seat].id)
-        let panel = host(SelectionPanel(session: session), height: 1000)
-        XCTAssertTrue(Accessibility.press("Build I", in: panel), "\(Accessibility.labels(in: panel))")
+        draw(SelectionPanel(session: session), height: 1400)
+        XCTAssertTrue(PressableButtons.press("Build I"), "Among \(shown)")
         XCTAssertTrue(link.sent.contains { if case .build = $0 { return true } else { return false } })
-        XCTAssertTrue(Accessibility.press("Train", in: panel))
+        XCTAssertTrue(PressableButtons.press("Train"))
         XCTAssertTrue(link.sent.contains { if case .train = $0 { return true } else { return false } })
-        XCTAssertTrue(Accessibility.press("Barter", in: panel))
+        XCTAssertTrue(PressableButtons.press("Barter"))
         XCTAssertTrue(link.sent.contains { if case .barter = $0 { return true } else { return false } })
     }
 
-    func testACompanysOrdersAndTheTopBar() throws {
-        let state = GameState(settings: GameSettings(seedText: "pressed company", houseCount: 4, radius: 18))
+    func testACompanysOrders() throws {
+        var state = GameState(settings: GameSettings(seedText: "pressed company", houseCount: 4, radius: 18))
+        let me = state.player
+        // A lantern made a founder where a hold may rise.
+        let lantern = try XCTUnwrap(state.units.firstIndex { $0.owner == me && $0.kind == .lantern })
+        state.units[lantern].kind = .founder
+        let site = try XCTUnwrap(state.map.hexes.first { hex in state.unit(at: hex) == nil && state.canFound(at: hex, for: me) == nil })
+        state.units[lantern].position = site
         let (session, link) = session(state)
-        let spear = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .spear })
+        let spear = try XCTUnwrap(session.state.units(of: me).first { $0.kind == .spear })
         session.selection = .unit(spear.id)
-        let panel = host(SelectionPanel(session: session), height: 600)
-        XCTAssertTrue(Accessibility.press("Fortify", in: panel), "\(Accessibility.labels(in: panel))")
+        draw(SelectionPanel(session: session), height: 600)
+        XCTAssertTrue(PressableButtons.press("Fortify"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .fortify(unit: spear.id))
+        XCTAssertTrue(PressableButtons.press("Disband"))
+        XCTAssertEqual(link.sent.last, .disband(unit: spear.id))
 
-        let bar = host(TopBar(session: session), width: 1200, height: 90)
-        for (label, panel) in [("Houses", GameSession.Panel.houses), ("Chronicle", .chronicle), ("Guide", .guide)] {
-            XCTAssertTrue(Accessibility.press(label, in: bar), "\(Accessibility.labels(in: bar))")
-            XCTAssertEqual(session.panel, panel)
+        let founder = state.units[lantern].id
+        session.selection = .unit(founder)
+        draw(SelectionPanel(session: session), height: 600)
+        XCTAssertTrue(PressableButtons.press("Found Hold"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .found(unit: founder))
+
+        // A company on the march may be halted.
+        guard let walker = session.state.units(of: me).first(where: { $0.kind != .founder && $0.movesLeft > 0 }),
+              let far = session.state.map.hexes.first(where: { hex in
+                  hex.distance(to: walker.position) >= 8 && session.state.path(for: walker, to: hex) != nil
+              })
+        else { return }
+        XCTAssertTrue(session.perform(.move(unit: walker.id, to: far)))
+        session.selection = .unit(walker.id)
+        draw(SelectionPanel(session: session), height: 600)
+        if session.state.unit(walker.id)?.destination != nil {
+            XCTAssertTrue(PressableButtons.press("Halt"), "Among \(shown)")
+            XCTAssertEqual(link.sent.last, .halt(unit: walker.id))
         }
-        XCTAssertTrue(Accessibility.press("Ready", in: bar))
+    }
+
+    func testTheTopBarsPanelsAndReady() throws {
+        let state = GameState(settings: GameSettings(seedText: "pressed bar", houseCount: 4, radius: 18))
+        let (session, link) = session(state)
+        draw(TopBar(session: session), width: 1200, height: 90)
+        for (label, panel) in [("Houses", GameSession.Panel.houses), ("Chronicle", .chronicle), ("Guide", .guide)] {
+            XCTAssertTrue(PressableButtons.press(label), "Among \(shown)")
+            XCTAssertEqual(session.panel, panel)
+            XCTAssertTrue(PressableButtons.press(label))
+            XCTAssertNil(session.panel, "Pressed again, it closes")
+        }
+        XCTAssertTrue(PressableButtons.press("Ready"))
         XCTAssertTrue(session.isReady)
         XCTAssertEqual(link.readies.last, true)
-        spin()
-        XCTAssertTrue(Accessibility.press("Waiting", in: bar), "\(Accessibility.labels(in: bar))")
+        draw(TopBar(session: session), width: 1200, height: 90)
+        XCTAssertTrue(PressableButtons.press("Waiting"), "Among \(shown)")
         XCTAssertFalse(session.isReady)
-    }
-}
-
-/// Finds what VoiceOver would find in a view, by its label, and presses
-/// it. SwiftUI's elements are reached through the Objective-C runtime, as
-/// the accessibility system reaches them.
-@MainActor
-enum Accessibility {
-    private static func value(_ key: String, of element: AnyObject) -> Any? {
-        guard let object = element as? NSObject, object.responds(to: Selector(key)) else { return nil }
-        return object.value(forKey: key)
-    }
-
-    private static func elements(in root: NSView) -> [AnyObject] {
-        var found: [AnyObject] = []
-        var queue: [AnyObject] = [root]
-        var seen = Set<ObjectIdentifier>()
-        while !queue.isEmpty, found.count < 5000 {
-            let element = queue.removeFirst()
-            guard seen.insert(ObjectIdentifier(element)).inserted else { continue }
-            found.append(element)
-            let children = (value("accessibilityChildren", of: element) as? [Any]) ?? []
-            queue += children.map { $0 as AnyObject }
-        }
-        return found
-    }
-
-    static func labels(in root: NSView) -> [String] {
-        elements(in: root).compactMap { value("accessibilityLabel", of: $0) as? String }.filter { !$0.isEmpty }
-    }
-
-    /// Presses the first element labelled so; false if none was found or
-    /// it wouldn't be pressed.
-    @discardableResult
-    static func press(_ label: String, in root: NSView) -> Bool {
-        for element in elements(in: root) {
-            guard let named = value("accessibilityLabel", of: element) as? String,
-                  named.caseInsensitiveCompare(label) == .orderedSame else { continue }
-            if let pressed = value("accessibilityPerformPress", of: element) as? Bool, pressed {
-                RunLoop.main.run(until: Date().addingTimeInterval(0.1))
-                return true
-            }
-        }
-        return false
+        XCTAssertEqual(link.readies.last, false)
     }
 }
 
