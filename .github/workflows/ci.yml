@@ -11,6 +11,9 @@ on:
       - Tests/**
       - Packaging/**
       - scripts/**
+      - perf/**
+      - realm-server/**
+      - Dockerfile.steward
       - .github/workflows/ci.yml
   push:
     branches: [main, "claude/**"]
@@ -20,6 +23,9 @@ on:
       - Tests/**
       - Packaging/**
       - scripts/**
+      - perf/**
+      - realm-server/**
+      - Dockerfile.steward
       - .github/workflows/ci.yml
   workflow_dispatch:
 
