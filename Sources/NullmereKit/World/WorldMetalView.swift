@@ -48,7 +48,7 @@ final class WorldMetalView: MTKView {
     var onCameraChange: ((Camera) -> Void)?
     var onFailure: (() -> Void)?
 
-    private var renderer: WorldRenderer?
+    private(set) var renderer: WorldRenderer?
     private var isLoadingRenderer = false
     private var pendingTiles: (bytes: [UInt8], side: Int)?
     private var tilesVersion = -1
@@ -207,7 +207,7 @@ final class WorldMetalView: MTKView {
         }
     }
 
-    private func finishLoading(device: any MTLDevice, library: (any MTLLibrary)?, error: (any Error)?, pixelFormat: MTLPixelFormat) {
+    func finishLoading(device: any MTLDevice, library: (any MTLLibrary)?, error: (any Error)?, pixelFormat: MTLPixelFormat) {
         isLoadingRenderer = false
         guard let library else {
             reportFailure("The world shader did not compile: \(error?.localizedDescription ?? "unknown error")")
