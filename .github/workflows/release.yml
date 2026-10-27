@@ -5,7 +5,10 @@ name: Release
 # attaches it to a GitHub release. Without those secrets it releases an
 # ad-hoc signed image, marked as such.
 #
-# Secrets, once:
+# CI rehearses this whole path on every push with a throwaway identity
+# (scripts/rehearse-release.sh), so adding the secrets is all that's left.
+#
+# Secrets, once (Settings > Secrets and variables > Actions):
 #   MACOS_CERTIFICATE           the Developer ID Application certificate, a base64 .p12
 #   MACOS_CERTIFICATE_PASSWORD  its password
 #   APPLE_API_KEY               an App Store Connect API key, the base64 .p8
@@ -43,22 +46,7 @@ jobs:
             echo "::warning::No Developer ID in the secrets: this release is ad-hoc signed and not notarized"
             exit 0
           fi
-          keychain="$RUNNER_TEMP/release.keychain-db"
-          password="$(uuidgen)"
-          security create-keychain -p "$password" "$keychain"
-          security set-keychain-settings -lut 3600 "$keychain"
-          security unlock-keychain -p "$password" "$keychain"
-          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
-          security import "$RUNNER_TEMP/certificate.p12" -k "$keychain" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain" >/dev/null
-          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
-          identity="$(security find-identity -v -p codesigning "$keychain" | sed -n 's/.*"\(Developer ID Application:.*\)"/\1/p' | head -n 1)"
-          [ -n "$identity" ] || { echo "::error::No Developer ID Application identity in the certificate"; exit 1; }
-          echo "$APPLE_API_KEY" | base64 --decode > "$RUNNER_TEMP/api-key.p8"
-          xcrun notarytool store-credentials nullmere --key "$RUNNER_TEMP/api-key.p8" \
-            --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" --keychain "$keychain"
-          echo "identity=$identity" >> "$GITHUB_OUTPUT"
-          echo "keychain=$keychain" >> "$GITHUB_OUTPUT"
+          scripts/take-up-identity.sh
 
       - name: Pack the disk image
         env:
@@ -68,7 +56,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           [ "$GITHUB_REF_TYPE" = tag ] || version="0.0.0-$(git rev-parse --short HEAD)"
           if [ -n "$CODESIGN_IDENTITY" ]; then
-            VERSION="$version" NOTARY_PROFILE=nullmere scripts/release.sh
+            VERSION="$version" NOTARY_PROFILE=${{ steps.identity.outputs.notary }} scripts/release.sh
           else
             VERSION="$version" scripts/release.sh
           fi

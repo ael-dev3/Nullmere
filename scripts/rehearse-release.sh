@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Rehearses a signed, notarized release with no Apple account: a throwaway
+# self-signed code-signing identity, made here and trusted on this machine
+# only, takes the Developer ID's place through the very same steps
+# (scripts/take-up-identity.sh, then scripts/release.sh, signing the app
+# with the hardened runtime and a secure timestamp, and the disk image);
+# notarizing is rehearsed too, printing what it would send to Apple. CI runs
+# it, so a real release only wants the secrets. Needs sudo, to trust the
+# throwaway certificate: CI's runners have it.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+NAME="Nullmere Rehearsal"
+WORK="$(mktemp -d)"
+OUTPUT_DIR="${OUTPUT_DIR:-build/rehearsal}"
+cleanup() {
+    security delete-keychain "$WORK/release.keychain-db" >/dev/null 2>&1 || true
+    [ -f "$WORK/certificate.pem" ] && sudo security remove-trusted-cert -d "$WORK/certificate.pem" >/dev/null 2>&1 || true
+    rm -rf "$WORK"
+}
+trap cleanup EXIT
+
+echo "== A throwaway identity, \"$NAME\""
+cat > "$WORK/openssl.cnf" <<EOF
+[req]
+distinguished_name = dn
+x509_extensions = ext
+prompt = no
+[dn]
+CN = $NAME
+[ext]
+basicConstraints = critical, CA:false
+keyUsage = critical, digitalSignature
+extendedKeyUsage = critical, codeSigning
+EOF
+openssl req -x509 -newkey rsa:2048 -nodes -days 2 -config "$WORK/openssl.cnf" \
+    -keyout "$WORK/key.pem" -out "$WORK/certificate.pem" 2>/dev/null
+password="rehearsal"
+# The legacy algorithms the macOS keychain imports, where the openssl has them.
+legacy=""
+openssl pkcs12 -help 2>&1 | grep -q -- "-legacy" && legacy="-legacy"
+openssl pkcs12 -export $legacy -inkey "$WORK/key.pem" -in "$WORK/certificate.pem" -name "$NAME" \
+    -out "$WORK/identity.p12" -passout "pass:$password"
+sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain "$WORK/certificate.pem"
+
+echo "== Taking it up, as the release workflow takes up the Developer ID"
+outputs="$WORK/outputs"
+MACOS_CERTIFICATE="$(base64 < "$WORK/identity.p12")" MACOS_CERTIFICATE_PASSWORD="$password" \
+    IDENTITY_KIND="$NAME" RUNNER_TEMP="$WORK" GITHUB_OUTPUT="$outputs" scripts/take-up-identity.sh
+identity="$(sed -n 's/^identity=//p' "$outputs")"
+[ "$identity" = "$NAME" ] || { echo "error: took up \"$identity\", not \"$NAME\"" >&2; exit 1; }
+
+echo "== Releasing, signed, the notarizing rehearsed"
+rm -rf "$OUTPUT_DIR"
+VERSION=0.0.0-rehearsal OUTPUT_DIR="$OUTPUT_DIR" CODESIGN_IDENTITY="$identity" NOTARY_PROFILE=nullmere NOTARY_DRY_RUN=1 \
+    scripts/release.sh | tee "$WORK/release.log"
+
+echo "== Checking what was signed"
+app="$OUTPUT_DIR/Nullmere Online.app"
+dmg="$OUTPUT_DIR/Nullmere-Online-0.0.0-rehearsal.dmg"
+codesign --verify --deep --strict --verbose=2 "$app"
+details="$(codesign -dvv "$app" 2>&1)"
+echo "$details" | grep -q "Authority=$NAME" || { echo "error: the app isn't signed by $NAME" >&2; echo "$details" >&2; exit 1; }
+echo "$details" | grep -q "flags=.*runtime" || { echo "error: the app lacks the hardened runtime notarization needs" >&2; exit 1; }
+echo "$details" | grep -q "^Timestamp=" || { echo "error: the app lacks the secure timestamp notarization needs" >&2; exit 1; }
+codesign --verify --strict --verbose=2 "$dmg"
+codesign -dvv "$dmg" 2>&1 | grep -q "Authority=$NAME" || { echo "error: the disk image isn't signed" >&2; exit 1; }
+grep -q "would run: xcrun notarytool submit" "$WORK/release.log" || { echo "error: notarizing wasn't rehearsed" >&2; exit 1; }
+grep -q "would run: xcrun stapler staple" "$WORK/release.log" || { echo "error: stapling wasn't rehearsed" >&2; exit 1; }
+echo "REHEARSAL signed by \"$NAME\" with the hardened runtime and a secure timestamp; the disk image signed; notarizing and stapling ready. A real release needs only the secrets."

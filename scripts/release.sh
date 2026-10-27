@@ -9,6 +9,8 @@
 #
 # NOTARY_PROFILE names credentials kept in the keychain once, with
 #   xcrun notarytool store-credentials nullmere --apple-id … --team-id …
+# NOTARY_DRY_RUN=1 prints the notarizing it would do instead of doing it
+# (scripts/rehearse-release.sh).
 # REALM_ADDRESS, if set, is passed on to scripts/build-app.sh.
 set -euo pipefail
 
@@ -38,7 +40,14 @@ if [ "$IDENTITY" != "-" ]; then
     codesign --force --sign "$IDENTITY" --timestamp "$DMG"
 fi
 
-if [ -n "${NOTARY_PROFILE:-}" ]; then
+if [ -n "${NOTARY_PROFILE:-}" ] && [ "${NOTARY_DRY_RUN:-}" = 1 ]; then
+    # A rehearsal: what would go to Apple, and back.
+    echo "Notarizing, rehearsed:"
+    echo "  would run: xcrun notarytool submit \"$DMG\" --keychain-profile \"$NOTARY_PROFILE\"${NOTARY_KEYCHAIN:+ --keychain \"$NOTARY_KEYCHAIN\"} --wait"
+    echo "  would run: xcrun stapler staple \"$DMG\""
+    echo "  would run: spctl --assess --type open --context context:primary-signature --verbose \"$DMG\""
+    xcrun --find notarytool >/dev/null && xcrun --find stapler >/dev/null && echo "  notarytool and stapler are here."
+elif [ -n "${NOTARY_PROFILE:-}" ]; then
     echo "Notarizing…"
     # NOTARY_KEYCHAIN names the keychain holding the profile, when it isn't
     # the login keychain (as on CI).

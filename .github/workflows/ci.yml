@@ -148,6 +148,12 @@ jobs:
           path: build/Nullmere-Online-*.dmg
           if-no-files-found: error
 
+      # The signed, notarized release rehearsed with a throwaway identity:
+      # the same steps release.yml takes with the Developer ID, so a real
+      # release wants only the secrets.
+      - name: Rehearse a signed release
+        run: scripts/rehearse-release.sh 2>&1 | tee build/rehearsal.log
+
       # Opens the real app on the runner: it must keep running and render its
       # lake with Metal. The runner can't use Apple Intelligence, so the
       # launcher opens on its requirement screen. The screenshot (Dock
@@ -248,6 +254,7 @@ jobs:
           grep -h "Executed .* tests" build-test.log 2>/dev/null | tail -1 || true
           cat build/coverage.log 2>/dev/null || true
           cat build/perf-check.log 2>/dev/null || true
+          grep -h "REHEARSAL\|error:" build/rehearsal.log 2>/dev/null || true
           grep -hE "error|warning" build/smoke-*.log 2>/dev/null | head -20 || true
           tail -n 15 build/game-stdout.log 2>/dev/null || true
           tail -n 15 build/steward.log 2>/dev/null || true
@@ -291,6 +298,12 @@ jobs:
           curl -sSf https://install.spacetimedb.com | sh -s -- --yes
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      # The one command that raises the realm proper, rehearsed: it checks
+      # its tools, builds the module and the steward, and says what it
+      # would do, publishing nothing. With ael's sign-in it does it.
+      - name: Rehearse raising the realm proper
+        run: CONFIGURATION=debug STEWARD=background NULLMERE_STATE_DIR="$PWD/realm-state" scripts/raise-realm.sh maincloud --dry-run
+
       # The same one command that raises the realm proper, without the
       # steward: the integration tests run their own.
       - name: Start SpacetimeDB and publish the realm module
@@ -305,9 +318,19 @@ jobs:
           NULLMERE_STDB: http://127.0.0.1:3000/nullmere
         run: swift test --skip-build --filter SpacetimeIntegrationTests 2>&1 | tee realm-integration.log
 
+      # A whole realm standing alone, raised by the one command: the module
+      # published, the steward started in the background, and the realm's
+      # status read back as a keeper would; then the steward stopped.
+      - name: Raise a standalone realm in one command
+        run: |
+          export REALM_DB=standalone NULLMERE_STATE_DIR="$PWD/realm-state" STEWARD_LOG="$PWD/realm-state/standalone.log"
+          CONFIGURATION=debug STEWARD=background scripts/raise-realm.sh local
+          scripts/raise-realm.sh local --stop
+
       - name: Summary
         if: always()
         run: |
           grep -hE "error: |warning: " realm-build.log 2>/dev/null | head -20 || true
           grep -hE "error|failed|skipped|Executed|REALM " realm-test.log realm-integration.log 2>/dev/null | tail -20 || true
           tail -n 30 realm-state/spacetime-local.log 2>/dev/null || true
+          tail -n 10 realm-state/standalone.log 2>/dev/null || true

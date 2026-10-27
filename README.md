@@ -100,6 +100,21 @@ Connect API key in the repository's secrets (`MACOS_CERTIFICATE`,
 `.github/workflows/release.yml`: it signs, notarizes and staples the disk
 image and attaches it to a GitHub release.
 
+CI rehearses that path on every push (`scripts/rehearse-release.sh`): a
+throwaway self-signed identity takes the Developer ID's place through the
+same steps, the app is signed with the hardened runtime and a secure
+timestamp, the disk image is signed, and the notarizing and stapling are
+printed rather than sent. Adding the secrets is all that's left. To make
+them, once:
+
+```sh
+# The Developer ID Application certificate, exported from Keychain Access
+# with its key as a .p12 and a password of your choosing:
+base64 -i DeveloperID.p12 | pbcopy        # MACOS_CERTIFICATE
+# An App Store Connect API key (Users and Access > Integrations), its .p8:
+base64 -i AuthKey_XXXXXXXXXX.p8 | pbcopy  # APPLE_API_KEY, with its key id and issuer id
+```
+
 Tests and checks:
 
 ```sh
@@ -291,9 +306,15 @@ Release builds go to `https://maincloud.spacetimedb.com/nullmere`.
 **Going live is one command**, after signing in to SpacetimeDB once:
 
 ```sh
-spacetime login                      # once: opens a GitHub sign-in
-scripts/raise-realm.sh maincloud     # publishes the module, starts the steward
+spacetime login                                # once: opens a GitHub sign-in
+scripts/raise-realm.sh maincloud --dry-run     # optional: checks and builds everything, changes nothing
+scripts/raise-realm.sh maincloud               # publishes the module, starts the steward
 ```
+
+When the steward is up, the script reads the realm's status back as any
+keeper would, and fails if the realm doesn't answer. CI runs the dry run
+for maincloud, and raises a whole realm standing alone on its own
+SpacetimeDB the same way (`scripts/raise-realm.sh local`, then `--stop`).
 
 The script checks its tools, publishes the module, keeps the steward's
 token in `~/.config/nullmere` (readable by you alone), and starts the
