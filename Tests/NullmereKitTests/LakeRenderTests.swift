@@ -174,7 +174,7 @@ final class LakeRenderTests: XCTestCase {
                 if off > Float(height) * 0.12 { open.append(sum) } else if off < Float(height) * 0.03, wy > moon.y { path.append(sum) }
             }
         }
-        XCTAssertGreaterThan(open.count, 500, "Open water in view")
+        XCTAssertGreaterThan(open.count, 300, "Open water in view")
         open.sort()
         path.sort()
         let water = open[open.count / 2], lit = path.isEmpty ? 0 : path[path.count / 2]

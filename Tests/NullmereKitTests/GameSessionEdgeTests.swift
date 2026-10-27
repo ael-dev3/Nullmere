@@ -81,7 +81,9 @@ final class GameSessionEdgeTests: XCTestCase {
     func testAFoundingChoosesItsNewHold() throws {
         var state = GameState(settings: GameSettings(seedText: "a founding", houseCount: 4, radius: 18))
         let me = state.player
-        let founder = try XCTUnwrap(state.units.firstIndex { $0.owner == me && $0.kind == .founder })
+        // A keeper's lantern made a founder, standing where a hold may rise.
+        let founder = try XCTUnwrap(state.units.firstIndex { $0.owner == me && $0.kind == .lantern })
+        state.units[founder].kind = .founder
         let site = try XCTUnwrap(state.map.hexes.first { hex in
             state.unit(at: hex) == nil && state.canFound(at: hex, for: me) == nil
         })
