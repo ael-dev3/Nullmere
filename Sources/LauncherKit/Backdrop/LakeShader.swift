@@ -69,18 +69,24 @@ enum LakeShader {
     }
 
     // One layer of point stars on a jittered grid. Each cell holds at most one
-    // star kept away from the cell border, so a single cell lookup is exact.
-    // `pt` is the size of one point in scene units; star sizes are in points so
-    // they stay crisp at every window size and backing scale.
+    // star kept a little way from the cell border, so a single cell lookup is
+    // exact. Each layer's grid is turned to an angle of its own and every row
+    // slid along by chance, so no lattice of rows and columns shows through
+    // the sky. `pt` is the size of one point in scene units; star sizes are in
+    // points so they stay crisp at every window size and backing scale.
     float3 nm_starLayer(float2 p, float scale, float density, float minB, float maxB,
                         float sigma, float pt, float time, float twinkle, float seed) {
-        float2 g = p * scale;
+        float turn = 0.35 + seed * 0.61;
+        float ct = cos(turn);
+        float st = sin(turn);
+        float2 g = float2(ct * p.x - st * p.y, st * p.x + ct * p.y) * scale;
+        g.x += nm_hash12(float2(floor(g.y), seed + 3.0));
         float2 id = floor(g);
         float2 f = g - id;
         if (nm_hash12(id + seed) > density) {
             return float3(0.0);
         }
-        float2 pos = 0.2 + 0.6 * nm_hash22(id + seed * 1.7 + 11.0);
+        float2 pos = 0.08 + 0.84 * nm_hash22(id + seed * 1.7 + 11.0);
         float r = length(f - pos) / (scale * pt);
         if (r > 20.0 * sigma) {
             return float3(0.0);

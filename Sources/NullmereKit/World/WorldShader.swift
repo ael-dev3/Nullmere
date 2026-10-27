@@ -186,10 +186,17 @@ enum WorldShader {
 
     // The still water: black glass holding the stars and the moon.
     float nm_star(float2 px, float ppp, float size, float threshold, float salt) {
-        float2 cell = floor(px / (size * ppp));
+        // A grid of its own angle for each salt, every row slid along by
+        // chance and each star roaming most of its cell: no lattice of rows
+        // and columns shows through.
+        float turn = 0.4 + salt * 0.137;
+        float ct = cos(turn);
+        float st = sin(turn);
+        float2 g = float2(ct * px.x - st * px.y, st * px.x + ct * px.y) / (size * ppp);
+        g.x += nm_hash(float2(floor(g.y), salt + 5.0));
+        float2 cell = floor(g);
         float2 jitter = float2(nm_hash(cell + 3.1 + salt), nm_hash(cell + 7.9 + salt));
-        float2 star = (cell + 0.2 + 0.6 * jitter) * size * ppp;
-        float2 o = (px - star) / ppp;
+        float2 o = (g - (cell + 0.08 + 0.84 * jitter)) * size;
         float bright = nm_hash(cell + 1.3 + salt);
         if (bright < threshold) { return 0.0; }
         float b = (bright - threshold) / (1.0 - threshold);

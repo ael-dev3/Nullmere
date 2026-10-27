@@ -23,41 +23,43 @@ struct ModelGate: View {
             )
             .ignoresSafeArea()
             .allowsHitTesting(false)
-            VStack(spacing: 18) {
-                Spacer(minLength: 0)
-                Caps("Nullmere", size: 30, weight: .thin, tracking: 0.5)
-                    .foregroundStyle(Palette.ink.opacity(0.9))
-                Rule(opacity: 0.4).frame(width: 260)
-                Caps(app.readiness.headline, size: 12, weight: .medium)
-                    .foregroundStyle(Palette.ink)
-                    .accessibilityAddTraits(.isHeader)
-                Text(verbatim: app.readiness.explanation)
-                    .font(.nm(13, weight: .light))
-                    .foregroundStyle(Palette.ink.opacity(0.7))
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 440)
-                    .fixedSize(horizontal: false, vertical: true)
-                if app.readiness == .checking {
-                    ProgressView().controlSize(.small).tint(Palette.ink)
-                }
-                HStack(spacing: 8) {
-                    ForEach(app.readiness.actions, id: \.title) { action in
-                        switch action {
-                        case .openSystemSettings:
-                            QuietButton(title: action.title, size: 10, prominent: true) {
-                                NSWorkspace.shared.open(Self.settingsURL)
+            // The name where the launcher sets it, exactly; what is missing
+            // on the water below, as the launcher shows it.
+            GeometryReader { proxy in
+                LakeTitle(size: proxy.size)
+                VStack(spacing: 18) {
+                    Spacer(minLength: 0)
+                        .frame(height: LakeTitle.waterline(for: proxy.size) + 12)
+                    Caps(app.readiness.headline, size: 12, weight: .medium)
+                        .foregroundStyle(Palette.ink)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(verbatim: app.readiness.explanation)
+                        .font(.nm(13, weight: .light))
+                        .foregroundStyle(Palette.ink.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 440)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if app.readiness == .checking {
+                        ProgressView().controlSize(.small).tint(Palette.ink)
+                    }
+                    HStack(spacing: 8) {
+                        ForEach(app.readiness.actions, id: \.title) { action in
+                            switch action {
+                            case .openSystemSettings:
+                                QuietButton(title: action.title, size: 10, prominent: true) {
+                                    NSWorkspace.shared.open(Self.settingsURL)
+                                }
+                            case .quit:
+                                QuietButton(title: action.title, size: 10) { NSApp.terminate(nil) }
                             }
-                        case .quit:
-                            QuietButton(title: action.title, size: 10) { NSApp.terminate(nil) }
                         }
                     }
+                    .padding(.top, 6)
+                    Spacer(minLength: 0)
                 }
-                .padding(.top, 6)
-                Spacer(minLength: 0)
-                    .frame(maxHeight: 60)
+                .padding(.horizontal, 40)
+                .frame(width: proxy.size.width)
             }
-            .padding(40)
-            .frame(maxHeight: .infinity, alignment: .bottom)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             app.checkModel()

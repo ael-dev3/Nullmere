@@ -38,9 +38,7 @@ public struct LauncherRootView: View {
                     .animation(.easeInOut(duration: 0.5), value: model.screen)
                     .animation(.easeInOut(duration: 0.5), value: model.isGated)
 
-                TitleBlock(isRevealed: model.intro.showsTitle, settlesLetters: motion == .full)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: max(waterline - 46 * unit, 0), alignment: .bottom)
+                LakeTitle(size: proxy.size, isRevealed: model.intro.showsTitle, settlesLetters: motion == .full)
 
                 ScreenContent(model: model)
                     .opacity(model.intro.showsMenu ? 1 : 0)

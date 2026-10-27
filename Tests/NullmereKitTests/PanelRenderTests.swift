@@ -1,3 +1,4 @@
+import LauncherKit
 @testable import NullmereCore
 import NullmereRealm
 import SwiftUI
@@ -109,7 +110,7 @@ final class PanelRenderTests: XCTestCase {
         for door in [GameApp.Door.connecting, .unreachable("No answer from the server."), .open(full), .open(ending)] {
             try draw(RealmLine(door: door), width: 600)
         }
-        try draw(Wordmark(), width: 600)
+        try draw(LakeTitle(size: CGSize(width: 1200, height: 760)), width: 1200)
         app.enterWorld(name: "Ama")
         let session = try XCTUnwrap(app.session)
         try draw(TopBar(session: session), width: 1200)

@@ -7,6 +7,25 @@ import XCTest
 /// Each age's lake, drawn by the world's own shader, whole and known, for
 /// the eye: CI prints the four together.
 final class LakeRenderTests: XCTestCase {
+    /// The strongest repeat in a series, its slow trend taken out: near 0.15
+    /// for scattered stars, near 1 for a lattice.
+    static func strongestRepeat(_ series: [Double]) -> (Double, Int) {
+        let n = series.count
+        var detrended = [Double](repeating: 0, count: n)
+        for i in 0..<n {
+            let lo = max(0, i - 15), hi = min(n, i + 16)
+            detrended[i] = series[i] - series[lo..<hi].reduce(0, +) / Double(hi - lo)
+        }
+        let variance = max(detrended.reduce(0) { $0 + $1 * $1 }, 1e-9)
+        var best = (-1.0, 0)
+        for lag in 6..<min(60, n / 2) {
+            var sum = 0.0
+            for i in 0..<(n - lag) { sum += detrended[i] * detrended[i + lag] }
+            if sum / variance > best.0 { best = (sum / variance, lag) }
+        }
+        return best
+    }
+
     func testEveryLakeIsDrawn() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: WorldShader.source, options: nil)
@@ -163,6 +182,7 @@ final class LakeRenderTests: XCTestCase {
         }
         var dark: [Int] = []
         var stars = 0
+        var starColumns = [Double](repeating: 0, count: width / 2), starRows = [Double](repeating: 0, count: height / 2)
         for y in stride(from: 0, to: height, by: 2) {
             for x in stride(from: 0, to: width, by: 2) {
                 let wx = (Float(x) - Float(width) / 2) / scale + centre.x
@@ -171,7 +191,11 @@ final class LakeRenderTests: XCTestCase {
                       isOpen(layout.hex(atX: Double(wx), y: Double(wy))) else { continue }
                 let value = sum(x, y)
                 dark.append(value)
-                if value > 110 { stars += 1 }
+                if value > 110 {
+                    stars += 1
+                    starColumns[x / 2] += 1
+                    starRows[y / 2] += 1
+                }
             }
         }
         let water = dark.sorted()[dark.count / 2]
@@ -194,6 +218,11 @@ final class LakeRenderTests: XCTestCase {
         XCTAssertLessThan(beyond, face / 2, "and crisp: dark a little beyond its rim")
         XCTAssertLessThan(water, 45, "Open water is black glass")
         let share = Double(stars) / Double(dark.count)
+        // Scattered, as stars are: no rows or columns repeating.
+        let across = LakeRenderTests.strongestRepeat(starColumns), down = LakeRenderTests.strongestRepeat(starRows)
+        print(String(format: "STARS in the water: strongest repeat across %.2f at %ld, down %.2f at %ld", across.0, across.1, down.0, down.1))
+        XCTAssertLessThan(across.0, 0.35, "No columns of stars in the water")
+        XCTAssertLessThan(down.0, 0.35, "No rows of stars in the water")
         XCTAssertTrue((0.0002...0.03).contains(share), "Stars held in the water, few and fine: \(share)")
 
         guard let path = ProcessInfo.processInfo.environment["NULLMERE_KEEP_RENDERS"] else { return }

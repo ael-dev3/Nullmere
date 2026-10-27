@@ -21,13 +21,13 @@ struct FrontDoor: View {
                 .allowsHitTesting(false)
 
             GeometryReader { proxy in
+                // The name rests where the launcher sets it, to the point, so it
+                // doesn't move as the keeper steps from one to the other.
+                LakeTitle(size: proxy.size, isRevealed: appeared)
+                    .animation(.easeOut(duration: 0.9), value: appeared)
                 VStack(spacing: 0) {
-                    // The name rests below the moon, above the far shore, as on
-                    // the launcher.
                     Spacer(minLength: 0)
-                        .frame(height: proxy.size.height * 0.3)
-                    Wordmark(appeared: appeared)
-                    Spacer(minLength: 28)
+                        .frame(height: LakeTitle.waterline(for: proxy.size) - 12)
                     VStack(alignment: .leading, spacing: 18) {
                         RealmLine(door: app.door)
                         Rule(opacity: 0.25)
@@ -123,24 +123,6 @@ struct FrontDoor: View {
                 }
             }
         }
-    }
-}
-
-/// NULLMERE ONLINE, set wide and thin.
-struct Wordmark: View {
-    var appeared = true
-
-    var body: some View {
-        Text(verbatim: "NULLMERE ONLINE")
-            .font(.system(size: 54, weight: .thin))
-            .tracking(appeared ? 18 : 30)
-            .foregroundStyle(Palette.ink)
-            .shadow(color: Palette.glow.opacity(0.35), radius: 24)
-            .lineLimit(1)
-            .minimumScaleFactor(0.5)
-            .opacity(appeared ? 1 : 0)
-            .accessibilityLabel("Nullmere Online")
-            .accessibilityAddTraits(.isHeader)
     }
 }
 
