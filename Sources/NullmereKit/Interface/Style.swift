@@ -231,3 +231,56 @@ struct ConfirmButton: View {
         .accessibilityHint("Press twice to confirm.")
     }
 }
+
+/// Lays its views in rows, left to right, starting a row afresh when the
+/// next would overflow: a House's actions wrap rather than run off.
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 4
+    var lineSpacing: CGFloat = 2
+
+    struct Row: Equatable {
+        var indices: [Int] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+    }
+
+    /// Views of these sizes, in rows no wider than `width`; a view wider
+    /// than that has a row to itself.
+    static func rows(of sizes: [CGSize], width: CGFloat, spacing: CGFloat) -> [Row] {
+        var rows: [Row] = []
+        var row = Row()
+        for (index, size) in sizes.enumerated() {
+            let needed = row.indices.isEmpty ? size.width : row.width + spacing + size.width
+            if needed > width, !row.indices.isEmpty {
+                rows.append(row)
+                row = Row(indices: [index], width: size.width, height: size.height)
+            } else {
+                row.indices.append(index)
+                row.width = needed
+                row.height = max(row.height, size.height)
+            }
+        }
+        if !row.indices.isEmpty { rows.append(row) }
+        return rows
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let rows = FlowLayout.rows(of: sizes, width: proposal.width ?? .infinity, spacing: spacing)
+        let height = rows.reduce(0) { $0 + $1.height } + lineSpacing * CGFloat(max(rows.count - 1, 0))
+        return CGSize(width: rows.map(\.width).max() ?? 0, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        var y = bounds.minY
+        for row in FlowLayout.rows(of: sizes, width: bounds.width, spacing: spacing) {
+            var x = bounds.minX
+            for index in row.indices {
+                subviews[index].place(at: CGPoint(x: x, y: y + (row.height - sizes[index].height) / 2), proposal: ProposedViewSize(sizes[index]))
+                x += sizes[index].width + spacing
+            }
+            y += row.height + lineSpacing
+        }
+    }
+}

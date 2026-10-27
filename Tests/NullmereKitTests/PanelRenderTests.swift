@@ -181,3 +181,15 @@ private final class SilentLink: RealmLink {
     func setReady(_ ready: Bool) {}
     func leave() {}
 }
+
+final class FlowLayoutTests: XCTestCase {
+    func testViewsWrapIntoRows() {
+        let sizes = [CGSize(width: 80, height: 20), CGSize(width: 70, height: 24), CGSize(width: 90, height: 20), CGSize(width: 400, height: 22)]
+        let rows = FlowLayout.rows(of: sizes, width: 200, spacing: 4)
+        XCTAssertEqual(rows.map(\.indices), [[0, 1], [2], [3]], "Two fit, the third wraps, an over-wide one stands alone")
+        XCTAssertEqual(rows[0].width, 154)
+        XCTAssertEqual(rows[0].height, 24)
+        XCTAssertEqual(FlowLayout.rows(of: sizes, width: .infinity, spacing: 4).count, 1, "Unbounded, all in one row")
+        XCTAssertTrue(FlowLayout.rows(of: [], width: 100, spacing: 4).isEmpty)
+    }
+}

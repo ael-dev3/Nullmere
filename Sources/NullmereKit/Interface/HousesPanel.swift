@@ -143,11 +143,8 @@ struct HouseRow: View {
                     Figure(label: "Strength", value: state.strength(of: house.id))
                     Figure(label: "Renown", value: state.renown(of: house.id))
                 }
-                // In a row when they fit, one above another when they don't.
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 4) { actions(stance: stance) }
-                    VStack(alignment: .leading, spacing: 2) { actions(stance: stance) }
-                }
+                // In a row when they fit, wrapping onto the next when not.
+                FlowLayout(spacing: 4, lineSpacing: 2) { actions(stance: stance) }
             }
         }
         .accessibilityElement(children: .contain)
@@ -193,7 +190,11 @@ struct HouseRow: View {
                     }
                 }
             } label: {
-                Caps("Send a gift", size: 8.5).foregroundStyle(Palette.ink.opacity(0.72))
+                // Set as the buttons beside it are.
+                Caps("Send a gift", size: 8.5)
+                    .foregroundStyle(Palette.ink.opacity(0.72))
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
