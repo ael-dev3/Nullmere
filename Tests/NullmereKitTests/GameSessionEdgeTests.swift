@@ -124,6 +124,74 @@ final class GameSessionEdgeTests: XCTestCase {
         link.onEvent?(.unreachable("No answer."))
         XCTAssertTrue(session.isOutOfReach)
     }
+
+    func testAWatchThatBringsFoesToTheGatesIsWarnedOfAndTheWelcomeWaitsForIt() throws {
+        var world = GameState(settings: GameSettings(seedText: "foes at the gates", houseCount: 3, radius: 18))
+        let me = world.player
+        let foe = (me + 1) % world.houses.count
+        _ = try world.perform(.declareWar(on: foe), as: me)
+        let store = LocalStore(directory: dir)
+        _ = GameSession(link: QuietLink(), house: me, world: world.view(for: me), store: store)
+        // Back again with all but the last first step taken.
+        var steps = FirstSteps()
+        steps.mark(.work)
+        steps.mark(.march)
+        store.saveFirstSteps(steps)
+        let link = QuietLink()
+        let session = GameSession(link: link, house: me, world: world.view(for: me), store: store)
+        var cues: [Ambience.Cue] = []
+        session.onCue = { cues.append($0) }
+        XCTAssertNotNil(session.firstSteps)
+        let spear = try XCTUnwrap(world.units(of: me).first { $0.kind == .spear })
+        session.selection = .unit(spear.id)
+
+        session.endWatch()
+        XCTAssertNil(session.firstSteps, "The last step taken")
+        XCTAssertFalse(session.notices.contains { $0.text == GameSession.welcome }, "The welcome waits for the watch to turn")
+
+        // The watch turns: foes gather near the seat, and the chosen spear is gone.
+        var next = world
+        next.units.removeAll { $0.id == spear.id }
+        let seat = try XCTUnwrap(next.seat(of: me))
+        let spots = next.map.hexes.filter { hex in
+            hex.distance(to: seat.position) == 2 && next.map[hex]?.terrain.isPassable == true
+                && next.unit(at: hex) == nil && next.hold(at: hex) == nil
+        }
+        XCTAssertGreaterThanOrEqual(spots.count, Sentinel.gathering)
+        for spot in spots.prefix(Sentinel.gathering) {
+            next.units.append(NullmereCore.Unit(id: next.nextID, kind: .spear, owner: foe, position: spot))
+            next.nextID += 1
+        }
+        next.watch += 1
+        link.onEvent?(.watchTurned(next.view(for: me), []))
+        XCTAssertTrue(session.notices.contains { $0.text == GameSession.welcome }, "Said once the watch turns")
+        XCTAssertTrue(session.notices.contains { $0.text.contains("gather near") && $0.tone == .bad })
+        XCTAssertTrue(cues.contains(.dread))
+        XCTAssertEqual(session.selection, .none, "A company that is gone is chosen no longer")
+    }
+
+    func testATakenHoldIsATriumphAndAFallenAttackerIsDrawnWhereItStood() throws {
+        let (state, spear, beside, foe) = try warWorld()
+        let me = state.player
+        let taken = GameSession.cues(for: .attack(unit: spear.id, target: beside),
+                                     events: [.holdCaptured(hold: 1, from: foe, by: me)], in: state, player: me)
+        XCTAssertEqual(taken, [.clash, .triumph])
+        let lost = GameSession.cues(for: .attack(unit: spear.id, target: beside),
+                                    events: [.holdCaptured(hold: 1, from: me, by: foe)], in: state, player: me)
+        XCTAssertEqual(lost, [.clash])
+
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        let enemy = try XCTUnwrap(state.unit(at: beside))
+        session.showBlows([.battle(Battle(
+            attacker: spear.id, attackerOwner: me, attackerKind: .spear,
+            defender: enemy.id, defenderOwner: foe, defenderKind: enemy.kind,
+            hold: nil, at: beside, damageDealt: 10, damageTaken: 120, attackerFell: true, defenderFell: false
+        ))])
+        let blow = try XCTUnwrap(session.blows.last)
+        XCTAssertEqual(blow.fallen, [GameSession.Blow.Fallen(kind: .spear, owner: me, at: spear.position)])
+        XCTAssertEqual(blow.attacker, spear.id)
+        XCTAssertEqual(blow.defender, enemy.id)
+    }
 }
 
 private final class QuietLink: RealmLink {

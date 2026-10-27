@@ -571,6 +571,52 @@ final class ConquestTests: XCTestCase {
         XCTAssertNil(state.houses[rival].liege, "Losing an outlying hold breaks no one")
     }
 
+    /// A company standing in a hold whose ward is down falls in close
+    /// combat: a spear takes the hold with its victory; a bow, which can't
+    /// hold ground, only clears it; and a ward still standing keeps the
+    /// victors out.
+    func testCloseCombatInAHoldWithItsWardDownTakesIt() throws {
+        func scene(_ kind: UnitKind, ward: Int) throws -> (GameState, Hold, Int, [GameEvent]) {
+            var state = GameState(settings: GameSettings(seedText: "close combat", houseCount: 3, radius: 18))
+            let rival = 1
+            let seat = try XCTUnwrap(state.seat(of: rival))
+            state.units.removeAll { $0.owner == rival }
+            var garrison = NullmereCore.Unit(id: state.nextID, kind: .spear, owner: rival, position: seat.position)
+            garrison.health = 1
+            state.units.append(garrison)
+            state.nextID += 1
+            let index = try XCTUnwrap(state.holds.firstIndex { $0.id == seat.id })
+            state.holds[index].ward = ward
+            let spot = try XCTUnwrap(seat.position.ring(1).first { hex in
+                (state.map[hex]?.terrain.isPassable ?? false) && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+            })
+            let attacker = try XCTUnwrap(state.placeUnit(kind, for: 0, near: spot))
+            XCTAssertEqual(attacker.position, spot)
+            _ = try state.declareWar(by: 0, on: rival)
+            let events = try state.perform(.attack(unit: attacker.id, target: seat.position), as: 0)
+            XCTAssertNil(state.unit(garrison.id), "The garrison falls")
+            return (state, seat, attacker.id, events)
+        }
+        func captured(_ events: [GameEvent]) -> Bool {
+            events.contains { if case .holdCaptured = $0 { return true } else { return false } }
+        }
+
+        let (taken, seat, spear, won) = try scene(.spear, ward: 0)
+        XCTAssertTrue(captured(won))
+        XCTAssertEqual(taken.hold(seat.id)?.owner, 0)
+        XCTAssertEqual(taken.unit(spear)?.position, seat.position, "The victors march in")
+
+        let (cleared, _, bow, shot) = try scene(.bow, ward: 0)
+        XCTAssertFalse(captured(shot), "A bow can't hold ground")
+        XCTAssertEqual(cleared.hold(seat.id)?.owner, 1)
+        XCTAssertNotEqual(cleared.unit(bow)?.position, seat.position)
+
+        let (warded, _, held, kept) = try scene(.spear, ward: 30)
+        XCTAssertFalse(captured(kept), "The ward still stands")
+        XCTAssertEqual(warded.hold(seat.id)?.owner, 1)
+        XCTAssertNotEqual(warded.unit(held)?.position, seat.position)
+    }
+
     func testThePlayerNeverBendsTheKnee() throws {
         var state = GameState(settings: GameSettings(seedText: "spoils", houseCount: 3, radius: 18))
         _ = try addHold(for: state.player, in: &state)

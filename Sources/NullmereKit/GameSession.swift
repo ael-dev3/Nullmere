@@ -142,11 +142,11 @@ public final class GameSession {
         public let againstPlayer: Bool
         public let start: Date
         /// Where the attacker struck from.
-        public var from: Hex
-        public var attacker: Int = 0
-        public var defender: Int?
+        public let from: Hex
+        public let attacker: Int
+        public let defender: Int?
         /// Companies that fell in it, drawn fading where they stood.
-        public var fallen: [Fallen] = []
+        public let fallen: [Fallen]
 
         public struct Fallen: Equatable {
             public let kind: UnitKind

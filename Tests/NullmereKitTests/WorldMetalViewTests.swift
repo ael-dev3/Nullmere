@@ -61,4 +61,53 @@ final class WorldMetalViewTests: XCTestCase {
         XCTAssertTrue(view.isOpaque)
         XCTAssertTrue(view.acceptsFirstResponder)
     }
+
+    func testInAWindowItListensAndLetsGoWhenItLeaves() throws {
+        guard WorldMetalView.systemDevice != nil else { throw XCTSkip("No Metal device available") }
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 300), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+        window.contentView = content
+        weak var gone: WorldMetalView?
+        autoreleasepool {
+            let view = WorldMetalView()
+            view.frame = content.bounds
+            content.addSubview(view)
+            window.orderFrontRegardless()
+            // The window's occlusion and the app's activity are heard.
+            NotificationCenter.default.post(name: NSWindow.didChangeOcclusionStateNotification, object: window)
+            NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification, object: nil)
+            RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+            view.updateTrackingAreas()
+            view.updateTrackingAreas()
+            XCTAssertEqual(view.trackingAreas.count, 1, "One tracking area, renewed")
+            // Moved to another window, it listens there instead.
+            let other = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 200, height: 200), styleMask: [.titled], backing: .buffered, defer: false)
+            other.isReleasedWhenClosed = false
+            defer { other.close() }
+            other.contentView?.addSubview(view)
+            XCTAssertNotNil(view.window)
+            view.removeFromSuperview()
+            gone = view
+        }
+        let deadline = Date().addingTimeInterval(5)
+        while gone != nil, Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTAssertNil(gone, "Let go, and its observers with it")
+    }
+
+    func testWithoutAMetalDeviceItSaysSo() {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 200, height: 200), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let view = WorldMetalView()
+        view.device = nil
+        var failures = 0
+        view.onFailure = { failures += 1 }
+        window.contentView?.addSubview(view)
+        XCTAssertEqual(failures, 1)
+        XCTAssertNil(view.renderer)
+    }
 }

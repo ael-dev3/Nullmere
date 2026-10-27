@@ -72,6 +72,29 @@ final class KeyBridgeTests: XCTestCase {
         XCTAssertNil(bridge.monitor, "Gone from the window, it stops listening")
     }
 
+    func testAKeyFromTheQueueIsTakenByTheGame() throws {
+        var heard: [GameKey] = []
+        let bridge = KeyBridgeView()
+        bridge.onKey = { heard.append($0); return true }
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 500, height: 300), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSView(frame: NSRect(x: 0, y: 0, width: 500, height: 300))
+        window.contentView?.addSubview(bridge)
+        window.orderFrontRegardless()
+        defer { window.close() }
+
+        let app = NSApplication.shared
+        app.postEvent(key("f", in: window), atStart: true)
+        let passed = app.nextEvent(matching: .keyDown, until: Date().addingTimeInterval(0.5), inMode: .default, dequeue: true)
+        XCTAssertNil(passed, "Taken by the game, not passed on")
+        XCTAssertEqual(heard, [.fortify])
+
+        app.postEvent(key("q", in: window), atStart: true)
+        let left = app.nextEvent(matching: .keyDown, until: Date().addingTimeInterval(0.5), inMode: .default, dequeue: true)
+        XCTAssertEqual(left?.characters, "q", "A key with no meaning is passed on")
+        XCTAssertEqual(heard, [.fortify])
+    }
+
     func testAWindowTooLargeForItsScreenIsFittedToIt() throws {
         let screen = try XCTUnwrap(NSScreen.main ?? NSScreen.screens.first, "A screen")
         let visible = screen.visibleFrame
@@ -80,8 +103,10 @@ final class KeyBridgeTests: XCTestCase {
         window.isReleasedWhenClosed = false
         let content = NSView(frame: window.contentLayoutRect)
         window.contentView = content
-        window.orderFrontRegardless()
         defer { window.close() }
+        // Not yet on screen, so AppKit hasn't fitted it itself.
+        window.setFrame(NSRect(x: 0, y: 0, width: visible.width + 400, height: visible.height + 300), display: false)
+        XCTAssertGreaterThan(window.frame.width, visible.width, "Too large to begin with")
         content.addSubview(WindowFitterView())
         let deadline = Date().addingTimeInterval(3)
         while window.frame.width > visible.width, Date() < deadline {
