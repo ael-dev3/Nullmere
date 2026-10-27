@@ -53,8 +53,11 @@ run() {
     wait "$pid" 2>/dev/null || true
     local log
     log="$(settled_log "$started" "$SUBSYSTEM" "renders with Metal")"
-    if ! echo "$log" | grep -q "renders with Metal"; then
+    # A debug build says it on its own output too, the moment it happens;
+    # the unified log can lag behind.
+    if ! grep -q "renders with Metal" build/launcher-stdout.log && ! echo "$log" | grep -q "renders with Metal"; then
         echo "error: the lake did not render with Metal" >&2
+        cat build/launcher-stdout.log >&2 || true
         exit 1
     fi
     LOG="$log"

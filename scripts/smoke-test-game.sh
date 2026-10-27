@@ -55,6 +55,10 @@ run() {
     kill -TERM "$pid" || true
     wait "$pid" 2>/dev/null || true
     LOG="$(settled_log "$started" "$SUBSYSTEM" "renders with Metal")"
+    # A debug build says it on its own output too, the moment it happens;
+    # the unified log can lag behind.
+    LOG="$LOG
+$(grep -h "renders with Metal" build/game-stdout.log 2>/dev/null || true)"
 }
 
 # A fresh realm, and a fresh keeper; whatever was here is put back after.

@@ -220,6 +220,11 @@ final class WorldMetalView: MTKView {
             }
             self.renderer = renderer
             WorldMetalView.logger.notice("The world renders with Metal on \(device.name, privacy: .public).")
+            #if DEBUG
+            // The smoke tests read this from the app's own output, which,
+            // unlike the unified log, holds it the moment it is written.
+            FileHandle.standardError.write(Data("The world renders with Metal on \(device.name).\n".utf8))
+            #endif
             updatePausing()
         } catch {
             reportFailure("The world pipeline could not be built: \(error)")
