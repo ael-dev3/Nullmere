@@ -173,7 +173,7 @@ enum WorldShader {
     // deep troughs, so the unknown has a size, not a flat grey.
     float3 nm_mist(float2 w, float time) {
         float2 drift = float2(time * 0.012, time * 0.004);
-        float banks = smoothstep(0.30, 0.75, nm_fbm(w * 0.09 + drift * 0.3));
+        float banks = smoothstep(0.40, 0.95, nm_noise(w * 0.09 + drift * 0.3));
         float mist = nm_fbm(w * 0.45 + drift) * 0.65 + nm_fbm(w * 1.4 - drift * 1.7) * 0.35;
         float lit = mist * mist * (0.45 + 1.1 * banks);
         return float3(0.012, 0.014, 0.021) + float3(0.042, 0.047, 0.062) * lit * 1.6;
