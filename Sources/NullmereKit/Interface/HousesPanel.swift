@@ -94,6 +94,11 @@ struct HouseRow: View {
     let session: GameSession
     let house: House
 
+    init(session: GameSession, house: House) {
+        self.session = session
+        self.house = house
+    }
+
     var body: some View {
         let state = session.state
         let player = session.player

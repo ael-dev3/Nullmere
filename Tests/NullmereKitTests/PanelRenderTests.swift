@@ -1,4 +1,4 @@
-import NullmereCore
+@testable import NullmereCore
 import NullmereRealm
 import SwiftUI
 import XCTest
@@ -60,6 +60,21 @@ final class PanelRenderTests: XCTestCase {
         if let hold = state.holds.first(where: { $0.owner == session.player }) { choices.append(.hold(hold.id)) }
         if let hold = state.holds.first(where: { $0.owner != session.player }) { choices.append(.hold(hold.id)) }
         if let hold = state.holds.first { choices.append(.tile(hold.position)) }
+        // A company of every kind there is, and ground of every kind.
+        for kind in UnitKind.allCases {
+            if let unit = state.units.first(where: { $0.kind == kind }) { choices.append(.unit(unit.id)) }
+        }
+        for terrain in Terrain.allCases {
+            if let hex = state.map.hexes.first(where: { state.map[$0]?.terrain == terrain && session.isExplored($0) }) {
+                choices.append(.tile(hex))
+            }
+        }
+        // A hold of the keeper's with works and a company under way.
+        if let hold = state.holds.first(where: { $0.owner == session.player }) {
+            _ = BuildingKind.allCases.contains { session.perform(.build(hold: hold.id, kind: $0)) }
+            _ = UnitKind.allCases.contains { session.perform(.train(hold: hold.id, kind: $0)) }
+            choices.append(.hold(hold.id))
+        }
         XCTAssertGreaterThanOrEqual(choices.count, 4, "A game under way has companies and holds of its own and others'")
         for choice in choices {
             session.selection = choice
@@ -86,9 +101,83 @@ final class PanelRenderTests: XCTestCase {
             try draw(FrontDoor(app: app), width: width, height: 700)
         }
         try draw(GameSettingsView(app: app), width: 480, height: 520)
+        // Every way the realm can look from its door.
+        let full = RealmStatus(name: "The Nullmere", age: 2, watch: 40, seats: 12, freeSeats: 0, keepers: 12, online: 9, ready: 3,
+                               secondsLeft: 75, isEnding: false, present: ["Ama", "Bel", "Cor"], lake: "Twin")
+        let ending = RealmStatus(name: "The Nullmere", age: 2, watch: 90, seats: 12, freeSeats: 4, keepers: 8, online: 1, ready: 0,
+                                 secondsLeft: 5, isEnding: true)
+        for door in [GameApp.Door.connecting, .unreachable("No answer from the server."), .open(full), .open(ending)] {
+            try draw(RealmLine(door: door), width: 600)
+        }
+        try draw(Wordmark(), width: 600)
         app.enterWorld(name: "Ama")
         let session = try XCTUnwrap(app.session)
         try draw(TopBar(session: session), width: 1200)
         try draw(GameSettingsView(app: app), width: 480, height: 520)
     }
+
+    func testEveryStanceAndEveryEnvoyDraws() throws {
+        var state = GameState(settings: GameSettings(seedText: "every stance", houseCount: 6, radius: 22))
+        let me = state.player
+        let others = state.houses.indices.filter { $0 != me }
+        state.setStance(.war, between: me, and: others[0], by: me)
+        state.setStance(.pact, between: me, and: others[1], by: me)
+        state.houses[others[2]].isPlayer = true
+        state.houses[others[3]].liege = me
+        for (index, proposal) in Proposal.allCases.enumerated() {
+            let trade = proposal == .trade ? Trade(give: .timber, 20, for: .grain, 15) : nil
+            state.envoys.append(Envoy(id: 900 + index, from: others[index % others.count], to: me, proposal: proposal,
+                                      arrived: state.watch, words: index == 0 ? "Hear us." : nil, trade: trade))
+        }
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        for larger in [false, true] {
+            TextSize.shared.isLarger = larger
+            try draw(HousesPanel(session: session), width: 360, height: 900)
+            for house in session.state.houses where house.id != me {
+                try draw(HouseRow(session: session, house: house), width: 340)
+            }
+            try draw(EnvoyCards(session: session), width: 360)
+        }
+        for envoy in session.envoys {
+            let line = EnvoyCards.words(for: envoy, from: session.state.houses[envoy.from], in: session.state, player: me)
+            XCTAssertFalse(line.isEmpty, "\(envoy.proposal)")
+        }
+        XCTAssertEqual(HouseRow.keeping(session.state.houses[others[2]], present: ["Someone"]), "Its keeper is away; it stands as they left it.")
+        XCTAssertEqual(HouseRow.keeping(session.state.houses[others[0]], present: nil), "A steward gives its orders.")
+    }
+
+    func testTheTopBarInEveryStateOfTheRealm() throws {
+        let link = SilentLink()
+        let state = GameState(settings: GameSettings(seedText: "top bar states", houseCount: 4, radius: 18))
+        let session = GameSession(link: link, house: state.player, world: state.view(for: state.player), store: LocalStore(directory: dir))
+        let status = RealmStatus(name: "The Nullmere", age: 1, watch: 3, seats: 4, freeSeats: 1, keepers: 3, online: 3, ready: 1,
+                                 secondsLeft: 134, isEnding: false)
+        link.onEvent?(.status(status))
+        XCTAssertEqual(EndWatchButton.realmLine(status: status, secondsLeft: session.secondsLeft()), "Turns in 2:14 · 1 of 3 ready")
+        XCTAssertNil(EndWatchButton.realmLine(status: nil, secondsLeft: 10))
+        try draw(TopBar(session: session), width: 1200)
+        try draw(WatchClock(session: session), width: 400)
+        session.endWatch()
+        XCTAssertTrue(session.isReady)
+        try draw(EndWatchButton(session: session), width: 200)
+        session.cancelReady()
+        link.onEvent?(.unreachable("No answer."))
+        XCTAssertTrue(session.isOutOfReach)
+        try draw(WatchClock(session: session), width: 400)
+        try draw(TopBar(session: session, compact: true), width: 800)
+        try draw(NoticeFeed(session: session), width: 400)
+        let empty = IncomeBreakdown(state: state, house: state.player, resource: .moonsalt)
+        try draw(IncomeCard(breakdown: empty), width: 260)
+    }
+}
+
+/// A link that tells only what a test makes it.
+@MainActor
+private final class SilentLink: RealmLink {
+    var onEvent: ((RealmEvent) -> Void)?
+    func connect() {}
+    func arrive(name: String?) {}
+    func send(_ command: Command) {}
+    func setReady(_ ready: Bool) {}
+    func leave() {}
 }
