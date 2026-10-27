@@ -303,8 +303,9 @@ final class PanelScrimTests: XCTestCase {
 /// The launcher hosted in a window as the app hosts it: a click skips the
 /// opening and a key moves through the menu, both dispatched as the app
 /// dispatches them; the app going behind another and coming back, and the
-/// Mac beginning to save energy, are heard; and the lake and the bridge let
-/// go of what they watch when they leave.
+/// Mac beginning to save energy, are heard; and when the launcher is taken
+/// out of the window, as crossing to the realm takes it, its lake and its
+/// bridge are let go and nothing listens for its keys.
 @MainActor
 final class LauncherHostTests: XCTestCase {
     private func spin(_ seconds: Double) {
@@ -342,7 +343,8 @@ final class LauncherHostTests: XCTestCase {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 600), styleMask: [.titled, .fullSizeContentView],
                               backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: LauncherRootView(model: model))
+        let host = NSHostingView(rootView: AnyView(LauncherRootView(model: model)))
+        window.contentView = host
         window.orderFrontRegardless()
         defer { window.close() }
         spin(0.2)
@@ -377,6 +379,31 @@ final class LauncherHostTests: XCTestCase {
         let deadline = Date().addingTimeInterval(3)
         while !model.systemSavesEnergy, Date() < deadline { spin(0.05) }
         XCTAssertTrue(model.systemSavesEnergy)
+
+        // Crossing to the realm takes the launcher out of the window, as the
+        // app's shell does: its lake and its bridge go with it, and the
+        // window's keys reach the launcher no more.
+        weak var lake: LakeMetalView?
+        weak var bridge: WindowBridgeView?
+        autoreleasepool {
+            lake = views(LakeMetalView.self, in: host).first
+            bridge = views(WindowBridgeView.self, in: host).first
+        }
+        XCTAssertNotNil(lake, "The launcher draws its lake in the window")
+        XCTAssertNotNil(bridge, "and listens to it")
+        host.rootView = AnyView(Color.black)
+        let gone = Date().addingTimeInterval(5)
+        while lake != nil || bridge != nil, Date() < gone { spin(0.05) }
+        XCTAssertNil(lake, "The lake is let go")
+        XCTAssertNil(bridge, "and the bridge")
+        let chosen = model.menuSelection
+        dispatch(down, in: window)
+        XCTAssertEqual(model.menuSelection, chosen, "No one listens for the launcher's keys")
+    }
+
+    /// Our own views of a type in a view's hierarchy.
+    private func views<T: NSView>(_ type: T.Type, in view: NSView) -> [T] {
+        view.subviews.flatMap { child -> [T] in ((child as? T).map { [$0] } ?? []) + views(type, in: child) }
     }
 
     func testTheLakeAndTheBridgeLetGoWhenTheyLeave() throws {
@@ -390,6 +417,8 @@ final class LauncherHostTests: XCTestCase {
         weak var lake: LakeMetalView?
         weak var bridge: WindowBridgeView?
         var keys: [KeyCommand] = []
+        let up = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
+                                  context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: 126)!
         autoreleasepool {
             let view = LakeMetalView(configuration: LakeConfiguration(motion: .full, renderScale: 0.5, framesPerSecond: 30,
                                                                       horizon: LakeComposition.horizon))
@@ -397,23 +426,36 @@ final class LauncherHostTests: XCTestCase {
             content.addSubview(view)
             let listening = WindowBridgeView(startsInFullScreen: false, onKey: { keys.append($0) }, onClick: {})
             content.addSubview(listening)
-            // The window's occlusion is heard.
+            // The lake's shader built, its handler called back; where the
+            // window shows, the lake animates.
+            let loaded = Date().addingTimeInterval(20)
+            while view.renderer == nil, Date() < loaded { spin(0.05) }
+            XCTAssertNotNil(view.renderer)
             NotificationCenter.default.post(name: NSWindow.didChangeOcclusionStateNotification, object: window)
             spin(0.1)
+            if window.occlusionState.contains(.visible) {
+                XCTAssertFalse(view.isPaused, "A visible lake in full motion animates")
+            }
             // A key the app dispatches reaches the bridge's monitor.
-            let up = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
-                                      context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: 126)!
             NSApplication.shared.sendEvent(up)
             XCTAssertEqual(keys, [.up])
             lake = view
             bridge = listening
-            // Out of the window and let go: nothing holds on to them.
-            window.contentView = NSView()
+            // Taken away as SwiftUI takes a representable's view away: out of
+            // its superview, and so out of the window.
+            view.removeFromSuperview()
+            listening.removeFromSuperview()
+            XCTAssertTrue(view.isPaused, "Out of the window, nothing animates")
+            XCTAssertFalse(listening.isMonitoring, "and nothing is watched")
         }
+        // Nothing else holds on to them: not the display link, the shader's
+        // handler, the window's notifications or the event monitor.
         let deadline = Date().addingTimeInterval(5)
         while lake != nil || bridge != nil, Date() < deadline { spin(0.05) }
-        XCTAssertNil(lake)
-        XCTAssertNil(bridge)
+        XCTAssertNil(lake, "The lake is let go")
+        XCTAssertNil(bridge, "and the bridge")
+        NSApplication.shared.sendEvent(up)
+        XCTAssertEqual(keys, [.up], "Its keys reach no one")
     }
 
     func testWithoutAMetalDeviceTheLakeSaysSo() {

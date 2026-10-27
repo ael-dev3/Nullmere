@@ -33,10 +33,15 @@ final class ClientPaceTests: XCTestCase {
             if let open { orders.append(.move(unit: unit.id, to: open)) }
         }
         var times: [Double] = []
+        // Each order is reported as measured, with the clock on the wall
+        // beside it, read outside the thread's CPU time: diagnostics only.
+        var walls: [Double] = []
         for order in orders.prefix(12) {
+            let wall = Date()
             let start = ThreadClock.milliseconds()
             _ = session.perform(order)
             times.append(ThreadClock.milliseconds() - start)
+            walls.append(Date().timeIntervalSince(wall) * 1000)
         }
         // Where the time goes, for whoever makes it faster.
         func measure(_ name: String, _ body: () -> Void) -> String {
@@ -69,6 +74,8 @@ final class ClientPaceTests: XCTestCase {
         let median = sorted.isEmpty ? 0 : sorted[sorted.count / 2]
         print("PERFMETRIC order.cpu.p50 \(String(format: "%.3f", median))")
         print("PERF an order on a lake of \(session.state.houses.count) Houses at watch \(session.state.watch), \(session.state.units.count) companies: median \(String(format: "%.1f", median)) ms over \(times.count)")
+        func list(_ values: [Double]) -> String { values.map { String(format: "%.2f", $0) }.joined(separator: " ") }
+        print("PERF order samples as taken, thread CPU ms: \(list(times)); wall ms: \(list(walls))")
         XCTAssertFalse(times.isEmpty, "Companies to order")
         XCTAssertLessThan(median, 16, "Less than a frame")
     }

@@ -135,7 +135,7 @@ final class PanelRenderTests: XCTestCase {
             TextSize.shared.isLarger = larger
             try draw(HousesPanel(session: session), width: 360, height: 900)
             for house in session.state.houses where house.id != me {
-                try draw(HouseRow(session: session, house: house), width: 340)
+                try draw(HouseRow(session: session, house: house, draft: OfferDraft(for: house)), width: 340)
             }
             try draw(EnvoyCards(session: session), width: 360)
         }
@@ -170,7 +170,7 @@ final class PanelRenderTests: XCTestCase {
         let session = GameSession(state: state, store: store)
         XCTAssertEqual(session.spoken[.envoy(77)], "The water remembers the last war. Let it rest.")
         for house in [others[0], others[1], others[2]] {
-            try draw(HouseRow(session: session, house: session.state.houses[house]), width: 340)
+            try draw(HouseRow(session: session, house: session.state.houses[house], draft: OfferDraft(for: session.state.houses[house])), width: 340)
         }
         try draw(HousesPanel(session: session), width: 360, height: 900)
         try draw(EnvoyCards(session: session), width: 360)

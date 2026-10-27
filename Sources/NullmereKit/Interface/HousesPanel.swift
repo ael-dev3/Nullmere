@@ -1,11 +1,15 @@
 import NullmereCore
 import LauncherKit
+import Observation
 import SwiftUI
 
 /// The other Houses around the lake: how they stand with the player, how
 /// strong they are, and what can be said to them.
 struct HousesPanel: View {
     let session: GameSession
+    /// What the keeper is putting together for each House, kept while the
+    /// panel is open.
+    @State private var drafts = OfferDrafts()
 
     var body: some View {
         let state = session.state
@@ -19,7 +23,7 @@ struct HousesPanel: View {
                     RaceTable(session: session)
                     Rule(opacity: 0.18)
                     ForEach(state.houses.filter { $0.id != session.player }) { house in
-                        HouseRow(session: session, house: house)
+                        HouseRow(session: session, house: house, draft: drafts.draft(for: house))
                         Rule(opacity: 0.18)
                     }
                 }
@@ -90,15 +94,128 @@ struct RaceTable: View {
     }
 }
 
-struct HouseRow: View {
-    @State private var words = ""
-    @State private var trading = false
+/// Who an offer's words are for: a House, and the keeper holding it, if one
+/// does. Others are told nothing of a keeper but the name, and the realm
+/// gives a name to one keeper only, for as long as it stands
+/// (`RealmState.arrive`), so the name is all there is to tell keepers apart.
+struct OfferRecipient: Hashable {
+    let house: Int
+    let keeper: String?
+
+    init(_ house: House) {
+        self.house = house.id
+        keeper = house.isPlayer ? house.name : nil
+    }
+}
+
+/// What the keeper is putting together for another House: the words to
+/// send with the next offer, never longer than an envoy carries, and
+/// whether a trade is being composed. A draft is for one recipient. Once
+/// the House is kept by another, the draft is retired: its words read
+/// empty, its trade put away, and nothing it holds is sent, not even by a
+/// button drawn before.
+@MainActor
+@Observable
+final class OfferDraft {
+    let recipient: OfferRecipient
+    /// Retired drafts are no longer drawn, so no one need hear of it.
+    @ObservationIgnored private(set) var isRetired = false
+    private var typed = ""
+    private var composing = false
+
+    init(for house: House) {
+        recipient = OfferRecipient(house)
+    }
+
+    /// Taken as typed, then cut to what an envoy carries. Taking it first
+    /// tells the field of every keystroke, even one that leaves the words as
+    /// they were; otherwise the field would go on showing what was cut.
+    var words: String {
+        get { isRetired ? "" : typed }
+        set {
+            guard !isRetired else { return }
+            typed = newValue
+            if typed.count > Envoy.wordsLimit { typed = String(typed.prefix(Envoy.wordsLimit)) }
+        }
+    }
+
+    var isComposingTrade: Bool {
+        get { !isRetired && composing }
+        set { if !isRetired { composing = newValue } }
+    }
+
+    /// The House is kept by another now. Marked, not emptied: this happens
+    /// while the panel is being drawn, where what is drawn mustn't change.
+    func retire() {
+        isRetired = true
+    }
+
+    /// Offers a proposal with the words, which go with it.
+    func propose(_ proposal: Proposal, through session: GameSession) {
+        guard let house = currentHouse(in: session) else { return }
+        session.propose(proposal, to: house, words: words)
+        words = ""
+    }
+
+    /// Offers a trade with the words, which go with it, and puts the trade away.
+    func offer(_ trade: Trade, through session: GameSession) {
+        guard let house = currentHouse(in: session) else { return }
+        session.offerTrade(trade, to: house, words: words)
+        words = ""
+        isComposingTrade = false
+    }
+
+    /// The House as the session knows it now, while this draft is still for
+    /// whoever keeps it: the world may have moved on before the panel is
+    /// drawn again.
+    private func currentHouse(in session: GameSession) -> House? {
+        guard !isRetired, session.state.houses.indices.contains(recipient.house) else { return nil }
+        let house = session.state.houses[recipient.house]
+        return OfferRecipient(house) == recipient ? house : nil
+    }
+}
+
+/// The Houses panel's drafts: one for each House, for whoever keeps it now.
+/// A House seen kept by another than its draft was begun for has that draft
+/// retired and a fresh one begun, so nothing comes back if the first keeper
+/// does. A change made and undone between two looks at the world can't be
+/// seen here.
+@MainActor
+final class OfferDrafts {
+    private var current: [Int: OfferDraft] = [:]
+
+    func draft(for house: House) -> OfferDraft {
+        let recipient = OfferRecipient(house)
+        if let draft = current[house.id], draft.recipient == recipient { return draft }
+        current[house.id]?.retire()
+        let draft = OfferDraft(for: house)
+        current[house.id] = draft
+        return draft
+    }
+}
+
+/// What the trade popover holds: the composer, offering through the draft.
+struct TradeOffer: View {
     let session: GameSession
     let house: House
+    let draft: OfferDraft
 
-    init(session: GameSession, house: House) {
+    var body: some View {
+        TradeComposer(house: house, stock: session.playerHouse.stock) { trade in
+            draft.offer(trade, through: session)
+        }
+    }
+}
+
+struct HouseRow: View {
+    let session: GameSession
+    let house: House
+    let draft: OfferDraft
+
+    init(session: GameSession, house: House, draft: OfferDraft) {
         self.session = session
         self.house = house
+        self.draft = draft
     }
 
     var body: some View {
@@ -129,15 +246,12 @@ struct HouseRow: View {
                     .fixedSize(horizontal: false, vertical: true)
                 if house.isPlayer {
                     // Words for the keeper there, sent with the next offer.
-                    TextField("Words to send with an offer", text: $words)
+                    TextField("Words to send with an offer", text: Bindable(draft).words)
                         .textFieldStyle(.plain)
                         .font(.nm(11, weight: .light))
                         .foregroundStyle(Palette.ink)
                         .padding(.vertical, 4)
                         .overlay(alignment: .bottom) { Rule(opacity: 0.3) }
-                        .onChange(of: words) { _, new in
-                            if new.count > Envoy.wordsLimit { words = String(new.prefix(Envoy.wordsLimit)) }
-                        }
                         .accessibilityLabel("Words for the keeper of \(house.title)")
                 }
                 HStack(spacing: 14) {
@@ -207,15 +321,14 @@ struct HouseRow: View {
     }
 
     private var tradeButton: some View {
-        QuietButton(title: "Offer a trade", size: 8.5) { trading = true }
+        QuietButton(title: "Offer a trade", size: 8.5) { draft.isComposingTrade = true }
             .help("So much of one store for so much of another.")
-            .popover(isPresented: $trading, arrowEdge: .leading) {
-                TradeComposer(house: house, stock: session.playerHouse.stock) { trade in
-                    session.offerTrade(trade, to: house, words: words)
-                    words = ""
-                    trading = false
-                }
+            .popover(isPresented: Bindable(draft).isComposingTrade, arrowEdge: .leading) {
+                TradeOffer(session: session, house: house, draft: draft)
             }
+            // When the button goes (war, or the House falls), the trade goes
+            // with it, so it doesn't open by itself when the button returns.
+            .onDisappear { draft.isComposingTrade = false }
     }
 
     private func send(_ choice: (resource: Resource, amount: Int)) {
@@ -223,8 +336,7 @@ struct HouseRow: View {
     }
 
     private func offer(_ proposal: Proposal) {
-        session.propose(proposal, to: house, words: words)
-        words = ""
+        draft.propose(proposal, through: session)
     }
 
     /// Who gives a House its orders: a steward, or a keeper here or away.
