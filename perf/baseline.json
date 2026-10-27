@@ -82,9 +82,9 @@
       "cpu": true
     },
     "calibration.cpu": {
-      "baseline": 300,
+      "baseline": 250,
       "calibration": true,
-      "note": "estimated from Linux's ratio; set from the first macOS run"
+      "note": "fixed game work by thread CPU, from CI's runner"
     }
   }
 }
