@@ -77,6 +77,14 @@ public protocol SpacetimeTransport: Sendable {
     func call(_ reducer: String, _ arguments: [ReducerArgument], token: String) async throws
     /// The rows of a query, each the values of its columns in order.
     func query(_ sql: String, token: String) async throws -> [[JSONValue]]
+    /// A query's rows, and the server's clock when it answered, if it said.
+    func queryDated(_ sql: String, token: String) async throws -> (rows: [[JSONValue]], date: Date?)
+}
+
+extension SpacetimeTransport {
+    public func queryDated(_ sql: String, token: String) async throws -> (rows: [[JSONValue]], date: Date?) {
+        (try await query(sql, token: token), nil)
+    }
 }
 
 /// SpacetimeDB's HTTP API: `/v1/identity`, and a database's `call` and `sql`.
@@ -100,6 +108,11 @@ public struct SpacetimeHTTP: SpacetimeTransport {
     }
 
     private func send(_ request: URLRequest) async throws -> Data {
+        try await sendDated(request).data
+    }
+
+    /// An answer, and the server's clock by its `Date` header.
+    private func sendDated(_ request: URLRequest) async throws -> (data: Data, date: Date?) {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw SpacetimeError("No answer from the realm's server.") }
         if http.statusCode == 404 {
@@ -112,7 +125,16 @@ public struct SpacetimeHTTP: SpacetimeTransport {
             let text = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             throw SpacetimeError(text.isEmpty ? "The realm's server answered \(http.statusCode)." : text)
         }
-        return data
+        return (data, (http.value(forHTTPHeaderField: "Date")).flatMap(Self.httpDate))
+    }
+
+    /// An HTTP date: "Mon, 26 Oct 2026 22:04:54 GMT".
+    static func httpDate(_ text: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "GMT")
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
+        return formatter.date(from: text)
     }
 
     public func createIdentity() async throws -> SpacetimeCredentials {
@@ -131,6 +153,10 @@ public struct SpacetimeHTTP: SpacetimeTransport {
     }
 
     public func query(_ sql: String, token: String) async throws -> [[JSONValue]] {
+        try await queryDated(sql, token: token).rows
+    }
+
+    public func queryDated(_ sql: String, token: String) async throws -> (rows: [[JSONValue]], date: Date?) {
         var request = URLRequest(url: server.appendingPathComponent("v1/database/\(database)/sql"))
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -138,8 +164,9 @@ public struct SpacetimeHTTP: SpacetimeTransport {
         struct Statement: Decodable {
             let rows: [[JSONValue]]
         }
-        let statements = try JSONDecoder().decode([Statement].self, from: try await send(request))
-        return statements.first?.rows ?? []
+        let (data, date) = try await sendDated(request)
+        let statements = try JSONDecoder().decode([Statement].self, from: data)
+        return (statements.first?.rows ?? [], date)
     }
 }
 

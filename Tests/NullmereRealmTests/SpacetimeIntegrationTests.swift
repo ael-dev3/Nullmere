@@ -98,6 +98,26 @@ final class SpacetimeIntegrationTests: XCTestCase {
             XCTAssertTrue(rows.isEmpty, "A keeper read the private \(table) table")
         }
 
+        // The server stamps each publication by its own clock, and says
+        // its clock with each answer, so a countdown can be made true.
+        let (stamps, date) = try await transport.queryDated("SELECT version, at_micros FROM stamp", token: stranger.token)
+        let at = try XCTUnwrap(stamps.first?[1].number) / 1_000_000
+        let now = try XCTUnwrap(date, "The server dates its answers").timeIntervalSince1970
+        XCTAssertLessThan(abs(now - Date().timeIntervalSince1970), 120, "The server's clock, near ours")
+        XCTAssertTrue((0...60).contains(now.rounded(.down) - at.rounded(.down)), "Stamped lately: \(now - at) s ago")
+        print("REALM the status is stamped by the server's clock, \(Int(now - at)) s ago")
+
+        // A keeper offers a steward trade and is told the realm's answer.
+        let stewarded = try XCTUnwrap(world.houses.first { !$0.isPlayer && !$0.isEliminated }?.id)
+        await MainActor.run { a.send(.offerTrade(Trade(give: .timber, 30, for: .stone, 10), to: stewarded, words: nil)) }
+        try await until("the realm's answer to the trade") {
+            earA.events.contains { event in
+                if case .answered(let events) = event { return events.contains { if case .tradeAnswered = $0 { return true } else { return false } } }
+                return false
+            }
+        }
+        print("REALM a keeper offered a steward trade and heard its answer")
+
         let watch = world.watch
         await MainActor.run {
             a.setReady(true)

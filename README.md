@@ -228,6 +228,13 @@ as the realm will, and takes the realm's word as final.
   remember gifts for twenty watches: a war seems older to them, and enough
   goodwill wins a pact. A keeper hears of a gift, a war declared or an
   envoy sent the moment it happens, not when the watch turns.
+- **Trade.** Offer any House you aren't at war with so much of one store
+  for so much of another. Stewards weigh it by barter worth, the cunning
+  asking most; allies, givers of gifts and a House short of what you offer
+  ask less, and none trades away the grain its companies need. A keeper
+  answers by envoy. Stewards trade among themselves before bartering at
+  three to one. The answer is always the realm's: your copy of the world
+  can't see the others' stores, so it doesn't guess.
 - **Who is there.** The front door names the keepers in the realm now,
   and each House in the Houses panel says who gives its orders: its
   keeper, here or away, or a steward.
@@ -325,7 +332,9 @@ round it couldn't publish, or a steward stopped mid-round, loses and
 doubles nothing; it says when a round fails, and every ten minutes how
 the realm stands. One steward holds the realm at a time: a second, started
 by mistake, finds it held and gives up, and a steward started again waits
-the minute its old hold takes to lapse. If the steward falls silent for a
+the minute its old hold takes to lapse. The server stamps each publication
+by its own clock, so a keeper arriving mid-watch sees the watch's true
+time left, whatever their own clock says. If the steward falls silent for a
 minute, every keeper is told the realm stands still, and told again when
 it returns; orders given meanwhile wait and go when it does.
 

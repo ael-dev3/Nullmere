@@ -39,6 +39,9 @@ struct RivalMind {
         case .fealty:
             // Who would refuse a vassal?
             return me.liege == nil
+        case .trade:
+            // Trade is weighed on its terms, by `acceptsTrade`.
+            return false
         case .tribute:
             // Pay rather than fight a war it would lose.
             switch me.temperament {
@@ -221,6 +224,10 @@ struct RivalMind {
             let affordable = stock[high] / 2 * high.worth / 3
             let amount = min(room / 4 - stock[low], affordable)
             guard amount >= 10 else { break }
+            // A House to trade with near even first; barter only if none will.
+            let sought = seekTrade(giving: high, for: low, amount: amount, in: &state)
+            events += sought.events
+            if sought.met { continue }
             events += perform(.barter(give: high, take: low, amount: amount), in: &state)
         }
         return events

@@ -194,6 +194,9 @@ public final class GameSession {
     /// The last first step was saying ready: the word waits for the watch
     /// to turn, which clears what was said before it.
     private var welcomeAfterWatch = false
+    /// For each order sent and not yet answered, in order: whether its
+    /// outcome is the realm's to decide, so its answer is told when it comes.
+    private var answersAwaited: [Bool] = []
     /// The Dock's count of watches turned while the keeper was elsewhere.
     private(set) var attention = Attention()
     /// Whether the keeper is looking, and how the Dock is told; tests
@@ -397,12 +400,15 @@ public final class GameSession {
         do {
             let before = positions()
             // Carried out here at once, as the realm will; its word follows.
+            let decided = Self.decidedByRealm(command, in: state)
             let events = try state.perform(command, as: player)
+            answersAwaited.append(decided)
             link.send(command)
             if var steps = firstSteps, steps.note(command) { advance(steps) }
             showMarches(events, from: before)
             showBlows(events, from: before)
-            report(events)
+            // A steward's answer, or a trade's, is the realm's to tell.
+            report(decided ? events.filter { !Self.isAnswer($0) } : events)
             sound(for: command, events: events)
             if case .found = command, let hold = events.compactMap(holdFounded).first {
                 selection = .hold(hold)
@@ -494,6 +500,32 @@ public final class GameSession {
         return words
     }
 
+    /// Orders whose outcome the keeper's copy can't know, not seeing the
+    /// others' stores and companies: an offer to a steward, and taking an
+    /// offer of trade.
+    static func decidedByRealm(_ command: Command, in state: GameState) -> Bool {
+        switch command {
+        case .propose(_, let to), .proposeWithWords(_, let to, _), .offerTrade(_, let to, _):
+            return state.house(to).map { !$0.isPlayer } ?? false
+        case .answer(let id, _):
+            return state.envoys.first { $0.id == id }?.proposal == .trade
+        default:
+            return false
+        }
+    }
+
+    static func isAnswer(_ event: GameEvent) -> Bool {
+        switch event {
+        case .proposalAnswered, .tradeAnswered: return true
+        default: return false
+        }
+    }
+
+    /// An offer of trade, with words when it goes to a keeper.
+    public func offerTrade(_ trade: Trade, to house: House, words: String) {
+        perform(.offerTrade(trade, to: house.id, words: house.isPlayer ? Envoy.carried(words) : nil))
+    }
+
     /// An offer, with words when there are any for a House a keeper holds.
     public func propose(_ proposal: Proposal, to house: House, words: String) {
         if house.isPlayer, let carried = Envoy.carried(words) {
@@ -573,7 +605,15 @@ public final class GameSession {
             for cue in Self.cues(for: events, player: player) where cue != .watch {
                 onCue?(cue)
             }
+        case .answered(let events):
+            guard !answersAwaited.isEmpty, answersAwaited.removeFirst() else { break }
+            let answers = events.filter(Self.isAnswer)
+            report(answers)
+            for cue in Self.cues(for: answers, player: player) where cue != .watch {
+                onCue?(cue)
+            }
         case .orderRefused(let error, let world):
+            if !answersAwaited.isEmpty { answersAwaited.removeFirst() }
             adopt(world)
             post(error.description, tone: .bad)
         case .watchTurned(let world, let events):
@@ -765,6 +805,8 @@ public final class GameSession {
             case .stanceChanged(let first, let second, let stance, let by) where (first == player || second == player) && by != player:
                 add(stance == .war ? .dread : .accord)
             case .proposalAnswered(_, let from, let to, true) where from == player || to == player:
+                add(.accord)
+            case .tradeAnswered(_, let from, let to, true) where from == player || to == player:
                 add(.accord)
             case .envoyArrived:
                 add(.envoy)

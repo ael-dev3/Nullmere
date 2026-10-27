@@ -94,6 +94,17 @@ pub struct Status {
     pub status: String,
 }
 
+/// When the server took the status's publication, by its own clock: a
+/// keeper arriving mid-watch takes off the time since, read by the same
+/// clock, so its countdown is right whatever the keeper's own clock says.
+#[table(accessor = stamp, public)]
+pub struct Stamp {
+    #[primary_key]
+    pub id: u8,
+    pub version: u64,
+    pub at_micros: i64,
+}
+
 /// One keeper's view of the realm, and the events they heard in the last
 /// change.
 #[table(accessor = keeper_view)]
@@ -260,6 +271,8 @@ pub fn publish(
     }
     ctx.db.status().id().delete(0);
     ctx.db.status().insert(Status { id: 0, version, status });
+    ctx.db.stamp().id().delete(0);
+    ctx.db.stamp().insert(Stamp { id: 0, version, at_micros: now });
     for ((keeper, view), events) in keepers.into_iter().zip(views).zip(events) {
         ctx.db.keeper_view().keeper().delete(keeper.clone());
         ctx.db.keeper_view().insert(KeeperView { keeper, version, view, events });

@@ -43,6 +43,8 @@ extension GameState {
             return try answer(envoyID, accept: accept, as: house)
         case let .gift(target, resource, amount):
             return try give(resource, amount: amount, from: house, to: target)
+        case let .offerTrade(trade, target, words):
+            return try offerTrade(trade, from: house, to: target, words: words.flatMap(Envoy.carried))
         }
     }
 
@@ -488,6 +490,9 @@ extension GameState {
             guard current == .peace else { throw current == .pact ? .alreadyStance(.pact) : .notApplicable }
         case .fealty:
             guard houses[house].liege == nil, houses[target].liege == nil, !houses[house].isPlayer else { throw .notApplicable }
+        case .trade:
+            // A trade goes with its terms, by `offerTrade`.
+            throw .notApplicable
         case .tribute:
             guard current == .peace else { throw current == .pact ? .alreadyStance(.pact) : .notApplicable }
             guard houses[house].liege != target, houses[target].liege != house, !paidTributeLately(house, target) else {
@@ -518,8 +523,10 @@ extension GameState {
     private mutating func answer(_ envoyID: Int, accept: Bool, as house: Int) throws(RuleError) -> [GameEvent] {
         guard let index = envoys.firstIndex(where: { $0.id == envoyID && $0.to == house }), houses[house].isPlayer else { throw .unknownEnvoy }
         let envoy = envoys.remove(at: index)
+        if envoy.proposal == .trade { return answerTrade(envoy, accept: accept, as: house) }
         let stillValid: Bool
         switch envoy.proposal {
+        case .trade: stillValid = false
         case .peace: stillValid = stance(house, envoy.from) == .war
         case .pact: stillValid = stance(house, envoy.from) == .peace
         case .fealty: stillValid = houses[envoy.from].liege == nil && houses[house].liege == nil
@@ -538,6 +545,8 @@ extension GameState {
 
     private mutating func settle(_ proposal: Proposal, between proposer: Int, and other: Int, by actor: Int) {
         switch proposal {
+        case .trade:
+            break
         case .peace:
             setStance(.peace, between: proposer, and: other, by: actor)
             record(.peace, [proposer, other], "\(houses[proposer].title) and \(houses[other].title) make peace.")

@@ -175,6 +175,19 @@ final class LakeRenderTests: XCTestCase {
             }
         }
         let water = dark.sorted()[dark.count / 2]
+        // The path runs from the moon toward the eye, and barely above it.
+        func band(at dy: Float) -> Int {
+            var values: [Int] = []
+            let row = Int(moonPx.y + dy * Float(height))
+            for y in max(0, row - 10)..<min(height, row + 10) {
+                for x in max(0, Int(moonPx.x) - 20)..<min(width, Int(moonPx.x) + 20) { values.append(sum(x, y)) }
+            }
+            return values.sorted()[values.count / 2]
+        }
+        let above = band(at: -0.12), below = band(at: 0.12)
+        print("LAKECLOSE the path a little above the moon \(above), as far below \(below)")
+        XCTAssertLessThan(Double(above - water), Double(below - water) * 0.6, "The path runs down from the moon, not up")
+        XCTAssertGreaterThan(below - water, 15, "and shows below it")
         print("LAKECLOSE \(width)x\(height) at \(scale) px a hex: moon face \(face), beyond its rim \(beyond), open water \(water), star pixels \(stars) of \(dark.count)")
         XCTAssertGreaterThan(dark.count, 2000, "Open water in view")
         XCTAssertGreaterThan(face, 380, "The moon's face is bright in the water")

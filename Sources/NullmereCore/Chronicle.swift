@@ -18,6 +18,8 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         case omen
         /// One House sends another a generous gift.
         case gift
+        /// Two Houses trade stores in quantity.
+        case trade
     }
 
     public let watch: Int

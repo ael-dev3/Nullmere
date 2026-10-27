@@ -17,6 +17,11 @@ public enum RealmEvent: Sendable {
     /// What others did that this keeper hears of, as it happens: a gift, a
     /// war declared, an envoy sent.
     case heard([GameEvent])
+    /// What came of the keeper's own order as the realm decided it, after
+    /// each order it carried out: an offer a steward took or refused, a
+    /// trade carried out or fallen through. The keeper's copy can't decide
+    /// these, not seeing the others' stores and companies.
+    case answered([GameEvent])
     /// The watch turned: the new world, and everything that happened.
     case watchTurned(GameState, [GameEvent])
     /// The realm can't be reached.

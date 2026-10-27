@@ -60,6 +60,8 @@ public enum Proposal: String, Codable, CaseIterable, Sendable {
     /// A far stronger House demands a fifth of the other's stores, and
     /// marches if refused. Paid, it keeps the peace for a long while.
     case tribute
+    /// An exchange of stores, its terms carried by the envoy.
+    case trade
 
     public var title: String {
         switch self {
@@ -67,6 +69,7 @@ public enum Proposal: String, Codable, CaseIterable, Sendable {
         case .pact: return "Pact"
         case .fealty: return "Fealty"
         case .tribute: return "Tribute"
+        case .trade: return "Trade"
         }
     }
 }
@@ -82,18 +85,21 @@ public struct Envoy: Codable, Equatable, Identifiable, Sendable {
     public let arrived: Int
     /// A keeper's own words, carried with the offer.
     public let words: String?
+    /// The terms of an offer of trade.
+    public let trade: Trade?
 
-    public init(id: Int, from: Int, to: Int = 0, proposal: Proposal, arrived: Int, words: String? = nil) {
+    public init(id: Int, from: Int, to: Int = 0, proposal: Proposal, arrived: Int, words: String? = nil, trade: Trade? = nil) {
         self.id = id
         self.from = from
         self.to = to
         self.proposal = proposal
         self.arrived = arrived
         self.words = words
+        self.trade = trade
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, from, to, proposal, arrived, words
+        case id, from, to, proposal, arrived, words, trade
     }
 
     /// Longest words an envoy carries.
@@ -120,6 +126,7 @@ public struct Envoy: Codable, Equatable, Identifiable, Sendable {
         proposal = try container.decode(Proposal.self, forKey: .proposal)
         arrived = try container.decode(Int.self, forKey: .arrived)
         words = try container.decodeIfPresent(String.self, forKey: .words)
+        trade = try container.decodeIfPresent(Trade.self, forKey: .trade)
     }
 
     /// Watches an envoy waits for an answer.

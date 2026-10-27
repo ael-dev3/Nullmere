@@ -35,6 +35,11 @@ final class Listener {
         return nil
     }
 
+    var lastStatus: RealmStatus? {
+        for event in events.reversed() { if case .status(let status) = event { return status } }
+        return nil
+    }
+
     var refusals: [String] {
         events.compactMap {
             switch $0 {
@@ -179,6 +184,54 @@ final class NetworkRealmTests: XCTestCase {
             earA.events.contains { if case .heard = $0 { return true } else { return false } }
         }
         XCTAssertFalse(toldOwn, "Ama isn't told of her own gift again")
+    }
+
+    func testAKeeperIsToldWhatAStewardAnswered() async throws {
+        // The keeper's copy can't see a steward's stores, so can't know
+        // whether it takes a trade: the realm says, after the order.
+        let db = FakeSpacetime()
+        let (_, running, _) = try await steward(db)
+        defer { running.cancel() }
+        let (ama, ear) = await MainActor.run { keeper(db) }
+        await MainActor.run { ama.arrive(name: "Ama") }
+        try await until("arrival") { ear.keeper != nil }
+        let world = try await MainActor.run { try XCTUnwrap(ear.world) }
+        let mine = try await MainActor.run { try XCTUnwrap(ear.keeper?.house) }
+        let other = try XCTUnwrap(world.houses.first { !$0.isPlayer && $0.temperament == .steadfast && !$0.isEliminated }?.id)
+        XCTAssertEqual(world.houses[other].stock, .zero, "Another House's stores are hidden from the keeper")
+        let trade = Trade(give: .timber, 12, for: .stone, 12)
+        await MainActor.run { ama.send(.offerTrade(trade, to: other, words: nil)) }
+        try await until("the realm's answer") {
+            ear.events.contains { if case .answered = $0 { return true } else { return false } }
+        }
+        let answers = await MainActor.run { ear.events.compactMap { if case .answered(let events) = $0 { return events } else { return nil } } }
+        XCTAssertEqual(answers.first, [.tradeAnswered(trade: trade, from: mine, to: other, accepted: true)])
+        try await until("the stone to arrive") { (ear.world?.houses[mine].stock.stone ?? 0) == world.houses[mine].stock.stone + 12 }
+    }
+
+    func testAKeeperConnectingMidWatchCountsItsTimeTrue() async throws {
+        // The status is published now and then; a keeper connecting long
+        // after takes off the time since, by the server's clock.
+        let db = FakeSpacetime()
+        let (_, running, _) = try await steward(db)
+        defer { running.cancel() }
+        let (first, early) = await MainActor.run { keeper(db) }
+        try await until("a status") { early.lastStatus != nil }
+        let published = try await MainActor.run { try XCTUnwrap(early.lastStatus?.secondsLeft) }
+        XCTAssertGreaterThan(published, 20)
+        await db.advance(15)
+        let (second, late) = await MainActor.run { keeper(db) }
+        try await until("a status") { late.lastStatus != nil }
+        let heard = await MainActor.run { late.lastStatus?.secondsLeft }
+        withExtendedLifetime((first, second)) {}
+        XCTAssertEqual(heard, published - 15, "Fifteen seconds of the watch are gone")
+        XCTAssertEqual(RealmStatus(name: "R", age: 1, watch: 1, seats: 1, freeSeats: 1, keepers: 0, online: 0, ready: 0,
+                                   secondsLeft: 10, isEnding: false).aged(by: 30).secondsLeft, 0, "never below nothing")
+    }
+
+    func testHTTPDatesAreRead() {
+        XCTAssertEqual(SpacetimeHTTP.httpDate("Mon, 26 Oct 2026 22:04:54 GMT")?.timeIntervalSince1970, 1_793_052_294)
+        XCTAssertNil(SpacetimeHTTP.httpDate("yesterday"))
     }
 
     func testASilentStewardIsToldAndItsReturnToo() async throws {

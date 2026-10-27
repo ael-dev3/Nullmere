@@ -56,8 +56,9 @@ final class LocalRealmTests: XCTestCase {
 
             let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
             link.send(.fortify(unit: spear.id))
-            guard case .settled(let after, _)? = ear.events.last else { return XCTFail("\(String(describing: ear.events.last))") }
+            guard case .settled(let after, _)? = ear.events.dropLast().last else { return XCTFail("\(ear.events.suffix(2))") }
             XCTAssertTrue(after.unit(spear.id)!.fortified)
+            guard case .answered([])? = ear.events.last else { return XCTFail("Each order carried out is answered: \(String(describing: ear.events.last))") }
 
             link.send(.fortify(unit: 999_999))
             guard case .orderRefused(.rule, _)? = ear.events.last else { return XCTFail("\(String(describing: ear.events.last))") }

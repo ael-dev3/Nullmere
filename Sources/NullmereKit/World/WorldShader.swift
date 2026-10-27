@@ -205,11 +205,11 @@ enum WorldShader {
         float2 uv = px / viewport;
         float gx = (px.x - moonPx.x) / max(viewport.y, 1.0);
         float gy = (px.y - moonPx.y) / max(viewport.y, 1.0);
-        float along = mix(exp(gy * 3.0), exp(-gy * 1.5), step(0.0, gy));
-        // The path is broken into long, slow streaks, as by a swell too
-        // faint to see otherwise.
+        float along = mix(exp(gy * 10.0), exp(-gy * 1.5), step(0.0, gy));
+        // The path is broken into slow streaks of uneven length, as by a
+        // swell too faint to see otherwise, never in even bands.
         float glade = exp(-gx * gx / 0.02) * along * moonAt.w;
-        float streak = nm_fbm(float2(w.x * 0.6, w.y * 5.0) + float2(time * 0.003, 0.0));
+        float streak = nm_fbm(float2(w.x * 1.7, w.y * 4.3) + float2(time * 0.003, 0.0)) * (0.6 + 0.8 * nm_fbm(w * float2(0.5, 1.9) + float2(3.1, time * 0.002)));
         float3 c = float3(0.004, 0.007, 0.016) + float3(0.010, 0.014, 0.026) * (1.0 - uv.y);
         c += float3(0.150, 0.170, 0.220) * glade * (0.55 + 0.9 * streak * streak);
         c = mix(c, float3(0.020, 0.027, 0.036), shallow * 0.8);

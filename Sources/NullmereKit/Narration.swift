@@ -74,6 +74,10 @@ enum Narration {
             if stance == .war { return Line(text: "\(house(by)) goes to war with \(house(other)).", tone: .neutral) }
             return nil
         case .envoyArrived(let envoy):
+            if let trade = envoy.trade {
+                if envoy.from == viewer { return Line(text: "Your envoy takes \(house(envoy.to)) an offer: \(trade).", tone: .neutral) }
+                return Line(text: "An envoy from \(house(envoy.from)) offers a trade: \(trade.given) for \(trade.taken) of yours.", tone: .neutral)
+            }
             if envoy.proposal == .tribute {
                 return Line(text: "An envoy from \(house(envoy.from)) demands tribute, or war.", tone: .bad)
             }
@@ -94,6 +98,16 @@ enum Narration {
             }
             if to == viewer, accepted {
                 return Line(text: "You and \(house(from)) agree to \(proposal.title.lowercased()).", tone: .good)
+            }
+            return nil
+        case .tradeAnswered(let trade, let from, let to, let accepted):
+            if from == viewer {
+                return accepted ? Line(text: "\(house(to)) takes your trade: \(trade.given) for \(trade.taken).", tone: .good)
+                                : Line(text: "\(house(to)) won't trade \(trade.taken) for \(trade.given).", tone: .bad)
+            }
+            if to == viewer {
+                return accepted ? Line(text: "You trade \(trade.taken) to \(house(from)) for \(trade.given).", tone: .good)
+                                : Line(text: "No trade with \(house(from)): \(trade.given) for \(trade.taken).", tone: .neutral)
             }
             return nil
         case .starving(let owner):

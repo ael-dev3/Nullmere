@@ -90,6 +90,7 @@ struct RaceTable: View {
 
 struct HouseRow: View {
     @State private var words = ""
+    @State private var trading = false
     let session: GameSession
     let house: House
 
@@ -155,12 +156,14 @@ struct HouseRow: View {
         case .peace:
             QuietButton(title: "Offer a pact", size: 8.5) { offer(.pact) }
             giftMenu
+            tradeButton
             if session.canDemandTribute(from: house.id) {
                 QuietButton(title: "Demand tribute", size: 8.5) { offer(.tribute) }
             }
             ConfirmButton(title: "Declare war", confirm: "War on \(house.title)?") { session.perform(.declareWar(on: house.id)) }
         case .pact:
             giftMenu
+            tradeButton
             ConfirmButton(title: "Break the pact", confirm: "Betray \(house.title)?") { session.perform(.declareWar(on: house.id)) }
         }
     }
@@ -192,6 +195,18 @@ struct HouseRow: View {
             .fixedSize()
             .help("Stores sent now buy goodwill: a steward sees a war as older, and takes a pact from a House that has given enough.")
         }
+    }
+
+    private var tradeButton: some View {
+        QuietButton(title: "Offer a trade", size: 8.5) { trading = true }
+            .help("So much of one store for so much of another.")
+            .popover(isPresented: $trading, arrowEdge: .leading) {
+                TradeComposer(house: house, stock: session.playerHouse.stock) { trade in
+                    session.offerTrade(trade, to: house, words: words)
+                    words = ""
+                    trading = false
+                }
+            }
     }
 
     private func offer(_ proposal: Proposal) {
@@ -297,7 +312,7 @@ struct EnvoyCards: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityLabel("\(house.name) writes: \(words)")
                     }
-                    Text(verbatim: words(for: envoy.proposal, from: house))
+                    Text(verbatim: EnvoyCards.words(for: envoy, from: house, in: state, player: session.player))
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.ink.opacity(session.spoken[.envoy(envoy.id)] == nil ? 0.7 : 0.5))
                         .fixedSize(horizontal: false, vertical: true)
@@ -324,8 +339,14 @@ struct EnvoyCards: View {
         }
     }
 
-    private func words(for proposal: Proposal, from house: House) -> String {
-        switch proposal {
+    static func words(for envoy: Envoy, from house: House, in state: GameState, player: Int) -> String {
+        switch envoy.proposal {
+        case .trade:
+            guard let trade = envoy.trade else { return "\(house.title) would trade, but its terms are lost." }
+            var line = "\(house.title) offers \(trade.given) for \(trade.taken) of yours. \(TradeComposer.note(asking: trade.asking))"
+            let have = state.houses[player].stock[trade.take]
+            if have < trade.takeAmount { line += " You have only \(have) \(trade.take.title.lowercased())." }
+            return line
         case .peace:
             return "\(house.title) asks for peace. Their armies would turn from yours, and yours from theirs."
         case .pact:
@@ -333,8 +354,91 @@ struct EnvoyCards: View {
         case .fealty:
             return "\(house.title) is beaten and bends the knee: it would be your vassal, its holds counted in your realm, never to raise a blade against you."
         case .tribute:
-            let price = session.state.tribute(from: session.player)
+            let price = state.tribute(from: player)
             return "\(house.title) demands tribute: \(price), a fifth of your stores. Pay, and it keeps the peace for \(GameState.tributeRespite) watches. Refuse, or send no answer, and it marches on you."
         }
+    }
+}
+
+/// Terms of a trade, set by the keeper: what to give, and what to ask.
+struct TradeComposer: View {
+    let house: House
+    let stock: Stock
+    let offer: (Trade) -> Void
+
+    @State private var give: Resource = .grain
+    @State private var giveAmount = 10
+    @State private var take: Resource = .timber
+    @State private var takeAmount = 10
+
+    init(house: House, stock: Stock, offer: @escaping (Trade) -> Void) {
+        self.house = house
+        self.stock = stock
+        self.offer = offer
+        // Start from what the keeper has most of.
+        let most = Resource.allCases.max { stock[$0] * $0.worth < stock[$1] * $1.worth } ?? .grain
+        _give = State(initialValue: most)
+        _take = State(initialValue: most == .timber ? .stone : .timber)
+    }
+
+    var trade: Trade { Trade(give: give, giveAmount, for: take, takeAmount) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Caps("A trade with \(house.title)", size: 9, weight: .medium).foregroundStyle(Palette.ink)
+            row("Give", resource: $give, amount: $giveAmount, most: max(1, stock[give]))
+            row("For", resource: $take, amount: $takeAmount, most: Stock.cap)
+            Text(verbatim: TradeComposer.line(for: trade, stock: stock, keeper: house.isPlayer))
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.ink.opacity(0.7))
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Spacer()
+                QuietButton(title: "Offer", size: 9, prominent: true, enabled: TradeComposer.problem(with: trade, stock: stock) == nil) {
+                    offer(trade)
+                }
+            }
+        }
+        .padding(14)
+        .frame(width: 280)
+    }
+
+    private func row(_ label: String, resource: Binding<Resource>, amount: Binding<Int>, most: Int) -> some View {
+        HStack(spacing: 8) {
+            Caps(label, size: 8).foregroundStyle(Palette.ink.opacity(0.5)).frame(width: 34, alignment: .leading)
+            Picker(label, selection: resource) {
+                ForEach(Resource.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .labelsHidden()
+            .frame(width: 104)
+            Stepper(value: amount, in: 1...max(1, most), step: resource.wrappedValue == .moonsalt ? 1 : 5) {
+                Text(verbatim: "\(amount.wrappedValue)").font(.nm(11).monospacedDigit()).foregroundStyle(Palette.ink)
+            }
+            .accessibilityLabel("\(label) amount")
+        }
+    }
+
+    /// Why the terms can't be offered, if they can't.
+    static func problem(with trade: Trade, stock: Stock) -> String? {
+        if trade.give == trade.take { return "Choose two different stores." }
+        if !trade.isWellFormed { return "Choose an amount of each." }
+        if stock[trade.give] < trade.giveAmount { return "You have only \(stock[trade.give]) \(trade.give.title.lowercased())." }
+        return nil
+    }
+
+    /// How terms weigh, from the side of the House that would get `asking`
+    /// percent of what it gives.
+    static func note(asking: Int) -> String {
+        switch asking {
+        case ..<90: return "Generous: more given than asked, by barter worth."
+        case 90...110: return "Even terms, by barter worth."
+        default: return "More asked than given, by barter worth."
+        }
+    }
+
+    static func line(for trade: Trade, stock: Stock, keeper: Bool) -> String {
+        if let problem = problem(with: trade, stock: stock) { return problem }
+        let who = keeper ? "Their keeper answers by envoy." : "Their steward answers at once; the shrewd ask more, allies less."
+        return "\(note(asking: trade.asking)) \(who)"
     }
 }

@@ -14,6 +14,9 @@ actor FakeSpacetime: SpacetimeTransport {
     private var replies: [String: (keeper: String, payload: String)] = [:] // by nonce
     private var world: (version: UInt64, state: String)?
     private var status: (version: UInt64, status: String)?
+    private var stamp: (version: UInt64, at: Double)?
+    /// The server's clock at the epoch's start, for its `Date` answers.
+    private let epoch = Date(timeIntervalSince1970: 1_800_000_000)
     private var views: [String: (version: UInt64, view: String, events: String)] = [:] // by keeper
     private(set) var calls: [String] = []
     /// The server's clock, in seconds, moved on by tests.
@@ -93,6 +96,7 @@ actor FakeSpacetime: SpacetimeTransport {
                 throw SpacetimeError("The first publication holds the world.")
             }
             status = (version, try string(2))
+            stamp = (version, time)
             for (index, keeper) in keepers.enumerated() {
                 views[keeper] = (version, shown[index], heard[index])
             }
@@ -125,6 +129,8 @@ actor FakeSpacetime: SpacetimeTransport {
             return status.map { [[.number(Double($0.version))]] } ?? []
         case "SELECT version, status FROM status":
             return status.map { [[.number(Double($0.version)), .string($0.status)]] } ?? []
+        case "SELECT version, at_micros FROM stamp":
+            return stamp.map { [[.number(Double($0.version)), .number((epoch.timeIntervalSince1970 + $0.at) * 1_000_000)]] } ?? []
         case "SELECT * FROM my_view":
             return views[me].map { [[.string(me), .number(Double($0.version)), .string($0.view), .string($0.events)]] } ?? []
         case "SELECT * FROM my_replies":
@@ -135,5 +141,10 @@ actor FakeSpacetime: SpacetimeTransport {
         default:
             throw SpacetimeError("Unexpected query: \(sql)")
         }
+    }
+
+    /// Answers dated by the server's clock, to the second, as HTTP dates are.
+    func queryDated(_ sql: String, token: String) async throws -> (rows: [[JSONValue]], date: Date?) {
+        (try await query(sql, token: token), Date(timeIntervalSince1970: (epoch.timeIntervalSince1970 + time).rounded(.down)))
     }
 }

@@ -55,6 +55,15 @@ public struct RealmStatus: Codable, Equatable, Sendable {
     }
 }
 
+extension RealmStatus {
+    /// The status as it stands `seconds` after it was made: the watch's
+    /// time that much shorter.
+    public func aged(by seconds: Int) -> RealmStatus {
+        RealmStatus(name: name, age: age, watch: watch, seats: seats, freeSeats: freeSeats, keepers: keepers, online: online,
+                    ready: ready, secondsLeft: max(0, secondsLeft - max(0, seconds)), isEnding: isEnding, present: present, lake: lake)
+    }
+}
+
 public enum RealmError: Error, Equatable, Sendable, CustomStringConvertible {
     case unknownKeeper
     case nameInvalid

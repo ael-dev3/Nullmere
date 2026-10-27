@@ -35,6 +35,7 @@ enum Guide {
             "Proposals to a keeper wait as envoys for their answer, as theirs wait for yours.",
             "Declare war, offer peace or a pact, and answer their envoys. A pact shares sight; breaking one is not forgotten.",
             "Send a gift to a House you aren't at war with. Stewards remember gifts for twenty watches: a war seems older to them, and enough goodwill wins a pact.",
+            "Offer a trade to any House you aren't at war with: so much of one store for so much of another. Stewards weigh it by barter worth, the cunning asking most; allies and givers of gifts ask less, and a House takes less for what it lacks. A keeper answers by envoy. Stewards trade among themselves, too, before bartering at three to one.",
             "A far stronger rival may demand tribute, a fifth of your stores: pay, and it keeps the peace for twenty watches; refuse, or let its envoy wait out, and it marches. You may demand tribute of the weak, too.",
             "Envoys and the chronicle speak in words written on your Mac by Apple's on-device model. They only speak; the rules decide.",
         ]),

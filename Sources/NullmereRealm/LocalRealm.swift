@@ -86,7 +86,9 @@ public final class LocalRealm {
         do {
             let events = try state.perform(command, by: identity)
             persist()
-            deliver(.settled(world(for: identity), heard(events, by: identity)), to: identity)
+            let mine = heard(events, by: identity)
+            deliver(.settled(world(for: identity), mine), to: identity)
+            deliver(.answered(mine), to: identity)
             for other in links.keys where other != identity {
                 deliver(.changed(world(for: other)), to: other)
                 let news = heard(events, by: other)

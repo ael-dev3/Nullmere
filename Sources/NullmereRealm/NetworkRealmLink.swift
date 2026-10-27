@@ -136,7 +136,8 @@ public final class NetworkRealmLink: RealmLink {
             if UInt64(number) != statusVersion || (wasUnreachable && !toldSilence) {
                 wasUnreachable = false
                 statusVersion = UInt64(number)
-                onEvent?(.status(try JSONDecoder().decode(RealmStatus.self, from: Data(text.utf8))))
+                let status = try JSONDecoder().decode(RealmStatus.self, from: Data(text.utf8))
+                onEvent?(.status(status.aged(by: await age(of: UInt64(number), credentials))))
             }
             guard arrived else { return }
             if Date().timeIntervalSince(lastHere) > Self.hereInterval {
@@ -155,6 +156,15 @@ public final class NetworkRealmLink: RealmLink {
             }
             onEvent?(.unreachable(String(describing: error)))
         }
+    }
+
+    /// Seconds since the server took this publication of the status, by
+    /// the server's own clock; nothing if it can't say.
+    private func age(of version: UInt64, _ credentials: SpacetimeCredentials) async -> Int {
+        guard let (rows, date) = try? await transport.queryDated("SELECT version, at_micros FROM stamp", token: credentials.token),
+              let date, let row = rows.first, row.count == 2, row[0].number.map(UInt64.init) == version, let micros = row[1].number
+        else { return 0 }
+        return Int((date.timeIntervalSince1970 - micros / 1_000_000).rounded(.down))
     }
 
     /// The keeper's own view: `my_view` holds one row, theirs.
@@ -294,6 +304,7 @@ public final class NetworkRealmLink: RealmLink {
                     case .order:
                         if reply.ok {
                             if self.outbox.isEmpty { try? await self.catchUp() }
+                            self.onEvent?(.answered(reply.events ?? []))
                         } else if let world = self.view?.world {
                             // A refused order changed nothing: the world is as last seen.
                             self.onEvent?(.orderRefused(.refused(reply.refusal ?? "The realm refused the order."), world))

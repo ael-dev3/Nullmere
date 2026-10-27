@@ -37,6 +37,7 @@ public struct VoiceMoment: Sendable, Equatable {
             case .pact: offer = "a pact: shared sight and no war between the Houses"
             case .fealty: offer = "their House's fealty: beaten, they would serve the player's House as its vassal"
             case .tribute: offer = "tribute: a fifth of the player's stores, or their armies will march"
+            case .trade: offer = "a trade of stores, on the terms given"
             }
             let verb = proposal == .tribute ? "demanding" : "offering"
             task = "Speak as the envoy, addressing the player's House directly, \(verb) \(offer). One or two sentences, at most 40 words."
@@ -122,6 +123,9 @@ enum VoiceFacts {
         let ours = state.strength(of: envoy.to)
         if theirs > ours * 3 / 2 { facts.append("\(house.title) is the stronger House.") }
         if ours > theirs * 3 / 2 { facts.append("\(player.title) is the stronger House.") }
+        if let trade = envoy.trade {
+            facts.append("\(house.title) would give \(trade.given) for \(trade.taken).")
+        }
         return VoiceMoment(kind: .envoy(proposal: envoy.proposal), facts: facts)
     }
 
@@ -133,7 +137,7 @@ enum VoiceFacts {
     static func isVoiced(_ kind: ChronicleEntry.Kind) -> Bool {
         switch kind {
         case .war, .peace, .pact, .betrayal, .capture, .fall, .greatWork, .ending, .tribute: return true
-        case .beginning, .founding, .discovery, .omen, .gift: return false
+        case .beginning, .founding, .discovery, .omen, .gift, .trade: return false
         }
     }
 }

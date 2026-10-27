@@ -24,6 +24,8 @@ public enum Command: Codable, Equatable, Sendable {
     case answer(envoy: Int, accept: Bool)
     /// Stores sent to another House, not at war with the giver.
     case gift(to: Int, resource: Resource, amount: Int)
+    /// An offer of trade, with a keeper's own words if it goes to a keeper.
+    case offerTrade(Trade, to: Int, words: String?)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -107,6 +109,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case trainingStarted(hold: Int, kind: UnitKind)
     case bartered(house: Int, gave: Stock, took: Stock)
     case gifted(from: Int, to: Int, gift: Stock)
+    /// An offer of trade taken or refused, and so carried out or not.
+    case tradeAnswered(trade: Trade, from: Int, to: Int, accepted: Bool)
     case unitTrained(unit: Int, hold: Int)
     /// A company rose in rank after a battle.
     case promoted(unit: Int, owner: Int, rank: Int)

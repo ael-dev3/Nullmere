@@ -8,6 +8,15 @@ public struct RealmReply: Codable, Equatable, Sendable {
     public let keeper: Keeper?
     /// Why it was refused.
     public let refusal: String?
+    /// What the keeper hears of their order, as the realm carried it out.
+    public let events: [GameEvent]?
+
+    public init(ok: Bool, keeper: Keeper?, refusal: String?, events: [GameEvent]? = nil) {
+        self.ok = ok
+        self.keeper = keeper
+        self.refusal = refusal
+        self.events = events
+    }
 
     public static let done = RealmReply(ok: true, keeper: nil, refusal: nil)
 
@@ -173,9 +182,11 @@ public actor RealmSteward {
             }
             do {
                 let done = try state.perform(command, by: keeper)
-                // The others hear of it with the next publication.
+                // The others hear of it with the next publication; the
+                // keeper, with the answer.
                 if !done.isEmpty { pendingActs.append((keeper, done)) }
-                return (.done, true, [])
+                let heard = state.keeper(keeper)?.house.map { state.world.events(done, heardBy: $0) } ?? []
+                return (RealmReply(ok: true, keeper: nil, refusal: nil, events: heard.isEmpty ? nil : heard), true, [])
             } catch {
                 return (.refused(error), false, [])
             }
