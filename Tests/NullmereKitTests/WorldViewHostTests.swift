@@ -73,6 +73,24 @@ final class WorldViewHostTests: XCTestCase {
         }
         spin(0.2)
         XCTAssertNotEqual(session.camera, before, "The camera moved")
+
+        // A trackpad's scroll pans; with Command held, it zooms; a pinch zooms.
+        func trackpad(_ dy: Int32, command: Bool) {
+            guard let scroll = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 2, wheel1: dy, wheel2: 4, wheel3: 0) else { return }
+            scroll.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+            if command { scroll.flags = .maskCommand }
+            if let wheel = NSEvent(cgEvent: scroll) { map.scrollWheel(with: wheel) }
+        }
+        let panned = session.camera
+        trackpad(12, command: false)
+        XCTAssertNotEqual(session.camera, panned, "A trackpad pans")
+        let zoomed = session.camera
+        trackpad(12, command: true)
+        XCTAssertNotEqual(session.camera.scale, zoomed.scale, "With Command, it zooms")
+        map.pinch(by: 0.8, around: centre)
+        let pinched = session.camera.scale
+        map.pinch(by: 1.2, around: centre)
+        XCTAssertGreaterThan(session.camera.scale, pinched, "A pinch outward zooms in")
         map.draw(map.bounds)
     }
 }

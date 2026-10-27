@@ -343,8 +343,13 @@ final class WorldMetalView: MTKView {
     }
 
     override func magnify(with event: NSEvent) {
+        pinch(by: 1 + event.magnification, around: point(of: event))
+    }
+
+    /// A pinch on the trackpad: zooms about the point between the fingers.
+    func pinch(by factor: Double, around point: CGPoint) {
         var moved = camera
-        moved.zoom(by: 1 + event.magnification, around: point(of: event), in: bounds.size)
+        moved.zoom(by: factor, around: point, in: bounds.size)
         moved.clamp(toRadius: radius)
         camera = moved
         onCameraChange?(moved)
