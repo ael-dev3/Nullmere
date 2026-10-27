@@ -271,7 +271,7 @@ jobs:
         if: always()
         run: |
           echo "::group::Summary"
-          grep -h "PERF \|SOUND \|LAYOUT \|LAKECLOSE \|MOONPATH \|STARS \|STILL \|PERF-CHECK " build-test.log 2>/dev/null || true
+          grep -h "PERF \|SOUND \|LAYOUT \|LAKECLOSE \|MOONPATH \|STARS \|STILL \|MIST \|PERF-CHECK " build-test.log 2>/dev/null || true
           grep -hE "error: |failed \(|: warning:" build.log build-test.log 2>/dev/null | head -40 || true
           grep -h "Executed .* tests" build-test.log 2>/dev/null | tail -1 || true
           cat build/coverage.log 2>/dev/null || true
@@ -324,6 +324,11 @@ jobs:
 
       - name: Build the rules, the realm and the steward
         run: swift build -Xswiftc -warnings-as-errors 2>&1 | tee realm-build.log
+
+      # The map's preview data, from the rules and the map's own packing
+      # code: kept building, so the map can always be tuned in a browser.
+      - name: Write the map preview's tiles
+        run: scripts/world-preview-data.sh
 
       # A long age on every shape of lake, its world checked throughout.
       - name: Test the rules and the realm

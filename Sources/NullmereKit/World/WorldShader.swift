@@ -168,11 +168,15 @@ enum WorldShader {
         return mix(float3(0.075, 0.078, 0.092), float3(0.20, 0.205, 0.225), smoothstep(0.35, 0.85, grain)) * (0.82 + 0.36 * fine);
     }
 
-    // The unknown: a slow night mist, paler than the black water.
+    // The unknown: a slow night mist, paler than the black water. Vast
+    // banks of it, moonlit on their crowns, lie across the dark between
+    // deep troughs, so the unknown has a size, not a flat grey.
     float3 nm_mist(float2 w, float time) {
         float2 drift = float2(time * 0.012, time * 0.004);
+        float banks = smoothstep(0.30, 0.75, nm_fbm(w * 0.09 + drift * 0.3));
         float mist = nm_fbm(w * 0.45 + drift) * 0.65 + nm_fbm(w * 1.4 - drift * 1.7) * 0.35;
-        return float3(0.020, 0.023, 0.032) + float3(0.030, 0.034, 0.046) * mist * mist * 1.6;
+        float lit = mist * mist * (0.45 + 1.1 * banks);
+        return float3(0.012, 0.014, 0.021) + float3(0.042, 0.047, 0.062) * lit * 1.6;
     }
 
     // Height for moonlit relief.
@@ -220,8 +224,9 @@ enum WorldShader {
         float3 c = float3(0.004, 0.007, 0.016) + float3(0.010, 0.014, 0.026) * (1.0 - uv.y);
         c += float3(0.150, 0.170, 0.220) * glade * (0.80 + 0.35 * streak * streak);
         c = mix(c, float3(0.020, 0.027, 0.036), shallow * 0.8);
-        // Reflected stars, fixed to the screen like the sky, sized in points.
-        float stars = nm_star(px, ppp, 10.0, 0.52, 0.0) * 0.9 + nm_star(px, ppp, 37.0, 0.5, 17.0) * 2.0;
+        // Reflected stars, fixed to the screen like the sky, sized in points:
+        // many faint, fewer bright, and a rare few brighter still.
+        float stars = nm_star(px, ppp, 10.0, 0.74, 0.0) * 0.8 + nm_star(px, ppp, 37.0, 0.5, 17.0) * 2.0 + nm_star(px, ppp, 83.0, 0.62, 29.0) * 3.2;
         float twinkle = 0.85 + 0.15 * sin(time * 0.9 + nm_hash(floor(px / (41.0 * ppp))) * 30.0);
         c += float3(0.80, 0.85, 0.96) * stars * twinkle * (1.0 - 0.75 * shallow);
         // The moon lies in the water over the lake's deepest heart, crisp

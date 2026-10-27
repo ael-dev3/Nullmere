@@ -134,6 +134,54 @@ final class LakeRenderTests: XCTestCase {
         XCTAssertLessThan(lit, 200, "and the lake stays black glass: \(lit)")
     }
 
+    /// The unknown as a game opens: a night mist in vast banks, never a
+    /// flat grey, and never as dark as the black water.
+    func testTheUnknownIsAMistInBanks() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
+        let library = try device.makeLibrary(source: WorldShader.source, options: nil)
+        let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
+        let state = GameState(settings: GameSettings(seedText: "the still water", houseCount: 12, radius: 36))
+        try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
+        let width = 1100, height = 700
+        let scale: Float = 28
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
+        descriptor.usage = [.renderTarget, .shaderRead]
+        descriptor.storageMode = .shared
+        let target = try XCTUnwrap(device.makeTexture(descriptor: descriptor))
+        let seat = try XCTUnwrap(state.seat(of: state.player))
+        let centre = HexLayout(size: 1).center(of: seat.position)
+        let uniforms = WorldUniforms(view: SIMD4(Float(width), Float(height), scale, 20),
+                                     camera: SIMD4(Float(centre.x), Float(centre.y), Float(state.map.radius), 1),
+                                     highlight: SIMD4(999, 999, 999, 999), moon: MoonMirror.place(in: state.map))
+        XCTAssertNotNil(renderer.measureFrame(uniforms, into: target))
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        target.getBytes(&pixels, bytesPerRow: width * 4, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
+
+        // The mist alone: away from all the keeper knows, and inside the world.
+        let explored = state.houses[state.player].explored
+        let layout = HexLayout(size: 1)
+        var mist: [Int] = []
+        for y in stride(from: 0, to: height, by: 4) {
+            for x in stride(from: 0, to: width, by: 4) {
+                let wx = (Double(x) - Double(width) / 2) / Double(scale) + centre.x
+                let wy = (Double(y) - Double(height) / 2) / Double(scale) + centre.y
+                let hex = layout.hex(atX: wx, y: wy)
+                guard let index = state.map.index(of: hex), !explored[index],
+                      state.map.neighbors(of: hex).allSatisfy({ state.map.index(of: $0).map { !explored[$0] } ?? false })
+                else { continue }
+                let i = (y * width + x) * 4
+                mist.append(Int(pixels[i]) + Int(pixels[i + 1]) + Int(pixels[i + 2]))
+            }
+        }
+        XCTAssertGreaterThan(mist.count, 2000, "Mist in view")
+        mist.sort()
+        let low = mist[mist.count / 20], middle = mist[mist.count / 2], high = mist[mist.count * 19 / 20]
+        print("MIST the unknown's darkest twentieth \(low), middle \(middle), brightest twentieth \(high)")
+        XCTAssertGreaterThan(low, 13, "Paler than the black water, even in its troughs")
+        XCTAssertLessThan(middle, 30, "A night mist, dark")
+        XCTAssertGreaterThanOrEqual(high - low, 16, "In banks with troughs between, not a flat grey")
+    }
+
     /// The lake close up, as a keeper zoomed in on it sees it: black glass,
     /// the moon's face crisp in it, its path running down the water, and
     /// stars held in the dark around them. CI prints the frame large.

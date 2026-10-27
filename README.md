@@ -509,6 +509,20 @@ Query parameters: `horizon`, `activity` (1 for full motion, 0.4 reduced,
 0 still) and `time`, which freezes a moment. Try `?time=7.2` to catch the
 first falling star.
 
+The world map's shader is written the same way. Its preview reads the tile
+texture the game would, written for a keeper at a game's opening and for
+the whole world known:
+
+```sh
+scripts/world-preview-data.sh
+python3 -m http.server
+# open http://localhost:8000/Tools/world-preview/?data=../../build/world-preview/opening.json
+```
+
+Query parameters: `scale` (points per world unit, 28 as a game opens),
+`x` and `y` (the view's centre; the seat by default, `x=moon` for the
+moon's reflection) and `time`.
+
 ## Layout
 
 ```
