@@ -96,13 +96,18 @@ final class NetworkAppTests: XCTestCase {
 
     func testAKeeperWaitsForASeat() async throws {
         let db = FakeSpacetime()
-        let running = try await steward(db, seats: 1)
+        let running = try await steward(db, seats: 2)
         defer { running.cancel() }
-        let first = app(db, identity: MemoryStore(), realm: "full-first")
-        first.open()
-        try await until("the realm") { if case .open = first.door { return true } else { return false } }
-        first.enterWorld(name: "Ama")
-        try await until("the one seat taken") { first.session != nil }
+        var seated: [GameApp] = []
+        for (index, name) in ["Ama", "Cor"].enumerated() {
+            let keeper = app(db, identity: MemoryStore(), realm: "full-\(index)")
+            keeper.open()
+            try await until("the realm") { if case .open = keeper.door { return true } else { return false } }
+            keeper.enterWorld(name: name)
+            try await until("\(name)'s seat") { keeper.session != nil }
+            seated.append(keeper)
+        }
+        let first = seated[0]
 
         let second = app(db, identity: MemoryStore(), realm: "full-second")
         second.open()

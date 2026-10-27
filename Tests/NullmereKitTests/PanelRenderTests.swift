@@ -200,9 +200,14 @@ final class ScrollEdgeFadeTests: XCTestCase {
     private func brightest(_ image: CGImage, rows: Range<Int>) throws -> Int {
         let width = image.width
         var pixels = [UInt8](repeating: 0, count: width * image.height * 4)
-        let context = try XCTUnwrap(CGContext(data: &pixels, width: width, height: image.height, bitsPerComponent: 8, bytesPerRow: width * 4,
-                                              space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: image.height))
+        let drawn = pixels.withUnsafeMutableBytes { raw -> Bool in
+            guard let context = CGContext(data: raw.baseAddress, width: width, height: image.height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                                          space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: image.height))
+            return true
+        }
+        XCTAssertTrue(drawn)
         var most = 0
         for y in rows {
             for x in 0..<width {
