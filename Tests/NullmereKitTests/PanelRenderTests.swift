@@ -231,9 +231,11 @@ final class ScrollEdgeFadeTests: XCTestCase {
         let renderer = ImageRenderer(content: lines.scrollEdgeFade().background(Color.black))
         renderer.scale = 1
         let image = try XCTUnwrap(renderer.cgImage)
-        // CGContext rows run from the bottom.
+        // The buffer's first row is the image's top; its foot is the last.
         let middle = try brightest(image, rows: 90..<110)
-        let edge = try brightest(image, rows: 0..<3)
+        let edge = try brightest(image, rows: (image.height - 3)..<image.height)
+        let top = try brightest(image, rows: 0..<6)
+        XCTAssertGreaterThan(top, 600, "The top isn't faded")
         XCTAssertGreaterThan(middle, 600, "Bright above the edge")
         XCTAssertLessThan(edge, middle / 3, "and faded at it: \(edge) against \(middle)")
     }

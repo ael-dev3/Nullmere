@@ -20,7 +20,9 @@ final class LauncherMenuTests: XCTestCase {
         let model = LauncherModel(defaults: defaults, environment: environment)
         _ = LauncherCommands(model: model).body
         _ = LauncherCommands(model: model, settings: {}).body
+        model.refreshReadiness()
         model.completeIntro()
+        XCTAssertFalse(model.isGated, "A ready model opens the launcher")
 
         XCTAssertEqual(Set(LauncherMenu.allCases.map(\.title)).count, LauncherMenu.allCases.count)
         XCTAssertEqual(LauncherMenu.settings.shortcut, KeyboardShortcut(",", modifiers: .command))
