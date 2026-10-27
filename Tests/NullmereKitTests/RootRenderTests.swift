@@ -86,12 +86,30 @@ final class RootRenderTests: XCTestCase {
         XCTAssertNotNil(omened.state.currentOmen)
         XCTAssertNotNil(Counsel.advice(for: omened.state, player: omened.player), "Counsel at the opening")
         try draw(PlayView(app: app, session: omened))
+        // The first steps put away: the steward's counsel takes their place.
+        omened.dismissFirstSteps()
+        try draw(PlayView(app: app, session: omened))
 
         state.omen = nil
         state.outcome = Outcome(winner: (state.player + 1) % state.houses.count, kind: .ascendancy, watch: state.watch)
         let ended = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("ended")))
         XCTAssertNotNil(ended.state.outcome)
         try draw(PlayView(app: app, session: ended))
+
+        // A keeper back after watches away: the report of what passed, put
+        // away by Escape.
+        let awayStore = LocalStore(directory: dir.appendingPathComponent("away"))
+        var world = GameState(settings: GameSettings(seedText: "away a while", houseCount: 4, radius: 16))
+        _ = GameSession(state: world, store: awayStore)
+        for _ in 0..<6 {
+            _ = world.stewardTurn(for: world.player)
+            _ = world.endWatch()
+        }
+        let back = GameSession(state: world, store: awayStore)
+        XCTAssertNotNil(back.awayReport)
+        try draw(PlayView(app: app, session: back))
+        XCTAssertTrue(back.handle(.escape))
+        XCTAssertNil(back.awayReport, "Escape puts the report away")
     }
 
     func testTheOneWindowShowsTheLauncherThenTheRealm() throws {
