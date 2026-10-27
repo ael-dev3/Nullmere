@@ -2,6 +2,7 @@
 """Holds the frame and turn timings the tests print to their baselines.
 
     scripts/perf-check.py <test-log> <baseline.json> [--json out.json]
+    scripts/perf-check.py <test-log> <baseline.json> --report   # told, never failed
     scripts/perf-check.py --self-test
 
 The tests print `PERFMETRIC <name> <milliseconds>`. Each name in the
@@ -136,6 +137,11 @@ def main(argv):
     with open(argv[2]) as handle:
         baseline = json.load(handle)
     lines, failed = check(found, baseline)
+    if "--report" in argv:
+        # Another machine's figures, set beside CI's baselines: told, not held.
+        lines = [line.replace("REGRESSED", "slower than CI").replace("MISSING", "not measured here") for line in lines]
+        lines = [line.split(" TOO FAST")[0] + " faster than CI" if " TOO FAST" in line else line for line in lines]
+        failed = False
     for line in lines:
         print(line)
     if "--json" in argv:

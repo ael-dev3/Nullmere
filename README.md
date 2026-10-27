@@ -21,6 +21,12 @@ break pacts, and win the age by dominion or by raising the Moonspire.
 
 Website: [nullmere.online](https://nullmere.online)
 
+**Going live** takes four steps that need an account, a Mac or people only
+the realm's keeper has: raising the realm on maincloud, signing and
+notarizing the release, hearing the voices on a Mac with Apple Intelligence,
+and measuring on real Apple silicon. Each is one command, rehearsed in CI
+where it can be: see [docs/GO-LIVE.md](docs/GO-LIVE.md).
+
 ## Requirements
 
 Nullmere runs only on Macs that can run Apple's on-device language model,
