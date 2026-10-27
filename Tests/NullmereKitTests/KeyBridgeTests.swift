@@ -1,5 +1,6 @@
 import AppKit
 import XCTest
+@testable import NullmereCore
 @testable import NullmereKit
 
 /// The game's keys as the window reads them: each key's meaning, typing
@@ -88,5 +89,63 @@ final class KeyBridgeTests: XCTestCase {
         }
         XCTAssertLessThanOrEqual(window.frame.width, visible.width)
         XCTAssertLessThanOrEqual(window.frame.height, visible.height)
+    }
+}
+
+/// What each key does in the world, as the session carries it out.
+@MainActor
+final class GameKeyTests: XCTestCase {
+    func testEachKeyActsOnTheWorld() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "keys", houseCount: 4, radius: 18)),
+                                  store: LocalStore(directory: dir))
+
+        // Escape lays down what is open, one thing at a time.
+        XCTAssertNotNil(session.seatBriefing)
+        XCTAssertTrue(session.handle(.escape))
+        XCTAssertNil(session.seatBriefing, "The briefing first")
+
+        // The panels open and close by their keys.
+        for (key, panel) in [(GameKey.houses, GameSession.Panel.houses), (.chronicle, .chronicle), (.guide, .guide)] {
+            XCTAssertTrue(session.handle(key))
+            XCTAssertEqual(session.panel, panel)
+            XCTAssertTrue(session.handle(key))
+            XCTAssertNil(session.panel)
+        }
+        XCTAssertTrue(session.handle(.guide))
+        XCTAssertTrue(session.handle(.escape))
+        XCTAssertNil(session.panel, "Escape closes a panel")
+
+        // Nothing chosen: fortify and found aren't the world's to take.
+        session.selection = .none
+        XCTAssertFalse(session.handle(.fortify))
+        XCTAssertFalse(session.handle(.found))
+        XCTAssertFalse(session.handle(.escape), "Nothing left for Escape to lay down")
+
+        // Tab chooses a company; F fortifies it.
+        XCTAssertTrue(session.handle(.nextUnit))
+        let chosen = try XCTUnwrap(session.selectedUnit)
+        if chosen.kind != .founder {
+            XCTAssertFalse(session.handle(.found), "Only a founder founds")
+        }
+        XCTAssertTrue(session.handle(.fortify))
+        XCTAssertTrue(session.handle(.escape))
+        XCTAssertEqual(session.selection, .none, "Escape lets the company go")
+
+        // A founder founds where it stands.
+        if let founder = session.state.units(of: session.player).first(where: { $0.kind == .founder }) {
+            session.selection = .unit(founder.id)
+            _ = session.handle(.found)
+        }
+
+        // The camera pans, zooms and comes home.
+        let before = session.camera
+        XCTAssertTrue(session.handle(.pan(dx: 90, dy: 0)))
+        XCTAssertNotEqual(session.camera, before)
+        let panned = session.camera
+        XCTAssertTrue(session.handle(.zoom(1.25)))
+        XCTAssertNotEqual(session.camera.scale, panned.scale)
+        XCTAssertTrue(session.handle(.home))
     }
 }

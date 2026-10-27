@@ -74,6 +74,26 @@ final class RootRenderTests: XCTestCase {
         try draw(MapVignette(), width: 400, height: 300)
     }
 
+    /// The world under an omen, the steward's counsel at the map's foot,
+    /// and an age ended: each laid over the map as the window shows it.
+    func testOmensCounselAndAnEndingDrawOverTheWorld() throws {
+        let app = app({ .ready }, seed: "omens and endings")
+        UserDefaults.standard.set(false, forKey: "counsel.hidden")
+        var state = GameState(settings: GameSettings(seedText: "an omen", houseCount: 4, radius: 18))
+        state.omen = Omen(kind: .moonsaltBloom, began: 1, ends: 4)
+        let omened = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("omen")))
+        omened.dismissSeatBriefing()
+        XCTAssertNotNil(omened.state.currentOmen)
+        XCTAssertNotNil(Counsel.advice(for: omened.state, player: omened.player), "Counsel at the opening")
+        try draw(PlayView(app: app, session: omened))
+
+        state.omen = nil
+        state.outcome = Outcome(winner: (state.player + 1) % state.houses.count, kind: .ascendancy, watch: state.watch)
+        let ended = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("ended")))
+        XCTAssertNotNil(ended.state.outcome)
+        try draw(PlayView(app: app, session: ended))
+    }
+
     func testTheOneWindowShowsTheLauncherThenTheRealm() throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: "root-render-\(UUID().uuidString)"))
         let environment = LauncherEnvironment(

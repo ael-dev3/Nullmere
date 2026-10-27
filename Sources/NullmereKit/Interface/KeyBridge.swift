@@ -16,6 +16,48 @@ enum GameKey: Equatable {
     case guide
 }
 
+extension GameSession {
+    /// What a key does in the world. False leaves the key to the window.
+    func handle(_ key: GameKey) -> Bool {
+        switch key {
+        case .nextUnit:
+            selectNextReadyUnit()
+        case .fortify:
+            guard let unit = selectedUnit, unit.owner == player else { return false }
+            perform(.fortify(unit: unit.id))
+        case .found:
+            guard let unit = selectedUnit, unit.owner == player, unit.kind == .founder else { return false }
+            perform(.found(unit: unit.id))
+        case .home:
+            focusOnSeat()
+        case .escape:
+            if seatBriefing != nil {
+                dismissSeatBriefing()
+            } else if awayReport != nil {
+                dismissAwayReport()
+            } else if panel != nil {
+                panel = nil
+            } else if selection != Selection.none {
+                selection = Selection.none
+            } else {
+                return false
+            }
+        case .pan(let dx, let dy):
+            camera.pan(dx: dx, dy: dy)
+            camera.clamp(toRadius: state.map.radius)
+        case .zoom(let factor):
+            camera.zoom(by: factor, around: .zero, in: .zero)
+        case .houses:
+            panel = panel == .houses ? nil : .houses
+        case .chronicle:
+            panel = panel == .chronicle ? nil : .chronicle
+        case .guide:
+            panel = panel == .guide ? nil : .guide
+        }
+        return true
+    }
+}
+
 struct KeyBridge: NSViewRepresentable {
     let onKey: (GameKey) -> Bool
 

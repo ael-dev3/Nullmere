@@ -142,50 +142,11 @@ struct PlayView: View {
                 OutcomeOverlay(app: app, session: session, outcome: outcome)
             }
         }
-        .background(KeyBridge { key in handle(key) })
+        .background(KeyBridge { key in session.handle(key) })
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             session.keeperReturned()
         }
         .onDisappear { session.keeperReturned() }
-    }
-
-    private func handle(_ key: GameKey) -> Bool {
-        switch key {
-        case .nextUnit:
-            session.selectNextReadyUnit()
-        case .fortify:
-            guard let unit = session.selectedUnit, unit.owner == session.player else { return false }
-            session.perform(.fortify(unit: unit.id))
-        case .found:
-            guard let unit = session.selectedUnit, unit.owner == session.player, unit.kind == .founder else { return false }
-            session.perform(.found(unit: unit.id))
-        case .home:
-            session.focusOnSeat()
-        case .escape:
-            if session.seatBriefing != nil {
-                session.dismissSeatBriefing()
-            } else if session.awayReport != nil {
-                session.dismissAwayReport()
-            } else if session.panel != nil {
-                session.panel = nil
-            } else if session.selection != GameSession.Selection.none {
-                session.selection = GameSession.Selection.none
-            } else {
-                return false
-            }
-        case .pan(let dx, let dy):
-            session.camera.pan(dx: dx, dy: dy)
-            session.camera.clamp(toRadius: session.state.map.radius)
-        case .zoom(let factor):
-            session.camera.zoom(by: factor, around: .zero, in: .zero)
-        case .houses:
-            session.panel = session.panel == .houses ? nil : .houses
-        case .chronicle:
-            session.panel = session.panel == .chronicle ? nil : .chronicle
-        case .guide:
-            session.panel = session.panel == .guide ? nil : .guide
-        }
-        return true
     }
 }
 
