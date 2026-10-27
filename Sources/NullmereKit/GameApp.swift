@@ -73,7 +73,7 @@ public final class GameApp {
     /// default the Foundation Models framework does. Tests supply their own,
     /// with a realm hosted in the test and an identity kept in a file.
     /// `sound` overrides the saved choice; tests keep the game silent.
-    public init(
+    public convenience init(
         store: LocalStore = LocalStore(),
         readiness: @escaping () -> ModelReadiness = { OnDeviceModel.current() },
         sound: Bool? = nil,
