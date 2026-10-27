@@ -65,16 +65,16 @@
       "baseline": 3.9
     },
     "realm.watch.twelve-a": {
-      "baseline": null,
-      "note": "thread CPU time per watch; baseline from the first run that measures it"
+      "baseline": 121,
+      "note": "thread CPU time per watch"
     },
     "realm.watch.twelve-b": {
-      "baseline": null,
-      "note": "thread CPU time per watch; baseline from the first run that measures it"
+      "baseline": 121,
+      "note": "thread CPU time per watch"
     },
     "realm.watch.twelve-c": {
-      "baseline": null,
-      "note": "thread CPU time per watch; baseline from the first run that measures it"
+      "baseline": 126,
+      "note": "thread CPU time per watch"
     }
   }
 }
