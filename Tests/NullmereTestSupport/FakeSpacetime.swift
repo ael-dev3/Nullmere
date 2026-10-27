@@ -1,10 +1,10 @@
 import Foundation
-@testable import NullmereRealm
+import NullmereRealm
 
 /// SpacetimeDB in memory, keeping the realm module's tables and following
 /// its reducers' rules (`realm-server/src/lib.rs`), for testing the steward
 /// and the network link without a server.
-actor FakeSpacetime: SpacetimeTransport {
+public actor FakeSpacetime: SpacetimeTransport {
     struct Request { let id: UInt64; let keeper: String; let kind: String; let nonce: String; let payload: String }
 
     private var identities: [String: String] = [:] // token → identity
@@ -18,22 +18,24 @@ actor FakeSpacetime: SpacetimeTransport {
     /// The server's clock at the epoch's start, for its `Date` answers.
     private let epoch = Date(timeIntervalSince1970: 1_800_000_000)
     private var views: [String: (version: UInt64, view: String, events: String)] = [:] // by keeper
-    private(set) var calls: [String] = []
+    public private(set) var calls: [String] = []
     /// The server's clock, in seconds, moved on by tests.
     private var time = 0.0
     private var lease: (holder: String, until: Double)?
 
-    func advance(_ seconds: Double) { time += seconds }
+    public init() {}
+
+    public func advance(_ seconds: Double) { time += seconds }
 
     /// The server forgets an identity, as when its database is made anew.
-    func forget(token: String) { identities[token] = nil }
+    public func forget(token: String) { identities[token] = nil }
 
     /// Requests of each kind the steward has answered.
     private var settled: [String: Int] = [:]
 
-    func handled(kind: String) -> Int { settled[kind] ?? 0 }
+    public func handled(kind: String) -> Int { settled[kind] ?? 0 }
 
-    func createIdentity() async throws -> SpacetimeCredentials {
+    public func createIdentity() async throws -> SpacetimeCredentials {
         let identity = KeeperIdentity.make() + KeeperIdentity.make()
         let token = "token-" + identity
         identities[token] = identity
@@ -47,7 +49,7 @@ actor FakeSpacetime: SpacetimeTransport {
         return identity
     }
 
-    func call(_ reducer: String, _ arguments: [ReducerArgument], token: String) async throws {
+    public func call(_ reducer: String, _ arguments: [ReducerArgument], token: String) async throws {
         let me = try sender(token)
         calls.append(reducer)
         func string(_ index: Int) throws -> String {
@@ -113,7 +115,7 @@ actor FakeSpacetime: SpacetimeTransport {
     }
 
     /// Private tables are the owner's, the steward's, alone to read.
-    func query(_ sql: String, token: String) async throws -> [[JSONValue]] {
+    public func query(_ sql: String, token: String) async throws -> [[JSONValue]] {
         let me = try sender(token)
         func owner() throws {
             guard me == steward else { throw SpacetimeError("Table is private") }
@@ -144,7 +146,15 @@ actor FakeSpacetime: SpacetimeTransport {
     }
 
     /// Answers dated by the server's clock, to the second, as HTTP dates are.
-    func queryDated(_ sql: String, token: String) async throws -> (rows: [[JSONValue]], date: Date?) {
+    public func queryDated(_ sql: String, token: String) async throws -> (rows: [[JSONValue]], date: Date?) {
         (try await query(sql, token: token), Date(timeIntervalSince1970: (epoch.timeIntervalSince1970 + time).rounded(.down)))
     }
+}
+
+/// Credentials kept in memory, as the keychain would keep them.
+public final class MemoryStore: IdentityStore, @unchecked Sendable {
+    public var value: String?
+    public init(value: String? = nil) { self.value = value }
+    public func load() -> String? { value }
+    public func save(_ identity: String) throws { value = identity }
 }

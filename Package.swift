@@ -22,7 +22,10 @@ var targets: [Target] = [
     // The steward's command-line entry point.
     .executableTarget(name: "NullmereSteward", dependencies: ["NullmereRealm", "NullmereCore"]),
     .testTarget(name: "NullmereCoreTests", dependencies: ["NullmereCore"]),
-    .testTarget(name: "NullmereRealmTests", dependencies: ["NullmereRealm", "NullmereCore"]),
+    // SpacetimeDB in memory, and credentials kept in memory, for tests of
+    // the realm across the network: the realm's and the app's.
+    .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm"], path: "Tests/NullmereTestSupport"),
+    .testTarget(name: "NullmereRealmTests", dependencies: ["NullmereRealm", "NullmereCore", "NullmereTestSupport"]),
 ]
 
 #if os(macOS)
@@ -38,7 +41,7 @@ targets += [
     .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherKit", "NullmereKit"]),
     .testTarget(name: "LauncherCoreTests", dependencies: ["LauncherCore"]),
     .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore"]),
-    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereRealm", "LauncherCore"]),
+    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereRealm", "LauncherCore", "NullmereTestSupport"]),
 ]
 #endif
 

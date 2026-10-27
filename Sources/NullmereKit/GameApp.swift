@@ -59,6 +59,11 @@ public final class GameApp {
     private var recheckTask: Task<Void, Never>?
     private var link: (any RealmLink)?
     private var hosted: LocalRealm?
+    /// The line to a realm across the network: SpacetimeDB's HTTP API, or
+    /// what a test gives in its place.
+    private let transport: (any SpacetimeTransport)?
+    /// How often a networked realm is asked how it stands.
+    let pollInterval: Double
     private var ticker: Timer?
 
     /// The name of the realm proper.
@@ -76,6 +81,23 @@ public final class GameApp {
         identity: (any IdentityStore)? = nil,
         opensAtOnce: Bool = true
     ) {
+        self.init(store: store, readiness: readiness, sound: sound, address: address, identity: identity,
+                  opensAtOnce: opensAtOnce, transport: nil, pollInterval: 1)
+    }
+
+    /// The same, across the network through `transport` (tests use one in memory).
+    init(
+        store: LocalStore,
+        readiness: @escaping () -> ModelReadiness,
+        sound: Bool?,
+        address: RealmAddress?,
+        identity: (any IdentityStore)?,
+        opensAtOnce: Bool,
+        transport: (any SpacetimeTransport)?,
+        pollInterval: Double
+    ) {
+        self.transport = transport
+        self.pollInterval = pollInterval
         self.store = store
         self.readModel = readiness
         self.address = address ?? GameApp.defaultAddress
@@ -205,11 +227,11 @@ public final class GameApp {
             link = realm.link(identity: identityStore.identity())
             startTicking(realm)
         case .network(let url):
-            guard let transport = SpacetimeHTTP(address: url) else {
+            guard let transport = self.transport ?? SpacetimeHTTP(address: url) else {
                 door = .unreachable("The realm's address can't be read.")
                 return
             }
-            link = NetworkRealmLink(transport: transport, credentials: identityStore)
+            link = NetworkRealmLink(transport: transport, credentials: identityStore, pollInterval: pollInterval)
         }
         self.link = link
         link.onEvent = { [weak self] event in self?.hear(event) }

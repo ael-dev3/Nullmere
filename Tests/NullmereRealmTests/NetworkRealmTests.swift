@@ -2,13 +2,8 @@ import Foundation
 import NullmereCore
 import XCTest
 @testable import NullmereRealm
+import NullmereTestSupport
 
-/// Credentials kept in memory, as the keychain would keep them.
-final class MemoryStore: IdentityStore, @unchecked Sendable {
-    var value: String?
-    func load() -> String? { value }
-    func save(_ identity: String) throws { value = identity }
-}
 
 /// Everything a link hears, on the main actor where links live.
 @MainActor

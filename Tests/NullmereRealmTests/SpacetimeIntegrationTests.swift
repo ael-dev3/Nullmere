@@ -2,6 +2,7 @@ import Foundation
 import NullmereCore
 import XCTest
 @testable import NullmereRealm
+import NullmereTestSupport
 
 /// The realm on a real SpacetimeDB server: the module published, the
 /// steward running, two keepers playing. CI sets NULLMERE_STDB to the
