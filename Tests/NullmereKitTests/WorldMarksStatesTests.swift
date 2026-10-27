@@ -48,8 +48,10 @@ final class WorldMarksStatesTests: XCTestCase {
             state.nextID += 1
             return unit.id
         }
-        // Foes at the gates of the keeper's seat.
-        _ = place(.spear, of: foe, at: try XCTUnwrap(free(near: mine.position, in: state)))
+        // Foes gathered at the gates of the keeper's seat.
+        for _ in 0..<Sentinel.gathering {
+            _ = place(.spear, of: foe, at: try XCTUnwrap(free(near: mine.position, in: state)))
+        }
         // A veteran spear at the foe's seat, whose ward is broken down.
         let veteran = place(.spear, of: me, at: try XCTUnwrap(free(near: theirs.position, in: state)), experience: 9)
         let ward = try XCTUnwrap(state.holds.firstIndex { $0.id == theirs.id })
