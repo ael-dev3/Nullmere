@@ -154,7 +154,7 @@ public final class NetworkRealmLink: RealmLink {
                 onEvent?(.refused(.unknownKeeper))
                 return
             }
-            onEvent?(.unreachable(String(describing: error)))
+            onEvent?(.unreachable(RealmTrouble.words(for: error)))
         }
     }
 
@@ -256,7 +256,7 @@ public final class NetworkRealmLink: RealmLink {
                     onEvent?(.refused(.unknownKeeper))
                     return
                 }
-                onEvent?(.refused(.refused(String(describing: error))))
+                onEvent?(.refused(.refused(RealmTrouble.words(for: error))))
             }
         }
     }
@@ -319,7 +319,7 @@ public final class NetworkRealmLink: RealmLink {
                         break
                     }
                     self.wasUnreachable = true
-                    self.onEvent?(.unreachable(String(describing: error)))
+                    self.onEvent?(.unreachable(RealmTrouble.words(for: error)))
                     try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                     delay = min(delay * 2, Self.retryLimit)
                 }
