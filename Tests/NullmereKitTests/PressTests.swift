@@ -154,6 +154,83 @@ final class PressTests: XCTestCase {
     }
 }
 
+/// The front door's, an ending's and the first cards' buttons, pressed.
+@MainActor
+final class PressDoorTests: XCTestCase {
+    private var dir: URL!
+
+    override func setUp() async throws {
+        dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    }
+
+    override func tearDown() async throws {
+        PressableButtons.isListening = false
+        try? FileManager.default.removeItem(at: dir)
+    }
+
+    private func draw(_ view: some View, width: CGFloat = 1100, height: CGFloat = 720) {
+        PressableButtons.isListening = true
+        let renderer = ImageRenderer(content: view.frame(width: width, height: height).background(Color.black))
+        renderer.scale = 1
+        XCTAssertNotNil(renderer.cgImage)
+    }
+
+    private var shown: [String] { PressableButtons.actions.keys.sorted() }
+
+    private func app(_ seed: String) -> GameApp {
+        let address = GameApp.RealmAddress.hosted(seed: seed)
+        UserDefaults.standard.removeObject(forKey: GameApp.nameKey(for: address))
+        return GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: address,
+                       identity: FileIdentityStore(url: dir.appendingPathComponent("identity")), opensAtOnce: false)
+    }
+
+    func testTheFrontDoorsButtons() throws {
+        let app = app("door buttons")
+        var left = 0
+        app.onLeave = { left += 1 }
+        app.checkModel()
+        draw(FrontDoor(app: app))
+        XCTAssertTrue(PressableButtons.press("Back"), "Among \(shown)")
+        XCTAssertEqual(left, 1, "Back to the launcher")
+
+        // A realm out of reach: Try Again reaches for it once more.
+        app.hear(.unreachable("No answer from the realm's server."))
+        draw(FrontDoor(app: app))
+        XCTAssertTrue(PressableButtons.press("Try Again"), "Among \(shown)")
+        XCTAssertNotEqual(app.door, .unreachable("No answer from the realm's server."))
+    }
+
+    func testAnEndingsButtons() throws {
+        let app = app("ending buttons")
+        app.checkModel()
+        app.enterWorld(name: "Ama")
+        let session = try XCTUnwrap(app.session)
+        let outcome = Outcome(winner: session.player, kind: .dominion, watch: session.state.watch)
+        draw(OutcomeOverlay(app: app, session: session, outcome: outcome))
+        XCTAssertTrue(PressableButtons.press("Look upon the lake"), "Among \(shown)")
+        XCTAssertTrue(PressableButtons.press("Leave the world"))
+        XCTAssertNil(app.session, "Back at the front door")
+    }
+
+    func testTheFirstCardsButtons() throws {
+        let state = GameState(settings: GameSettings(seedText: "first cards", houseCount: 4, radius: 18))
+        var begun = 0, back = 0
+        draw(SeatBriefingCard(briefing: SeatBriefing(world: state, player: state.player), colour: .white) { begun += 1 }, width: 600, height: 500)
+        XCTAssertTrue(PressableButtons.press("Begin"), "Among \(shown)")
+        XCTAssertEqual(begun, 1)
+        var later = state
+        for _ in 0..<4 {
+            _ = later.stewardTurn(for: later.player)
+            _ = later.endWatch()
+        }
+        let seen = LastSeen(watch: state.watch, stock: state.houses[state.player].stock, holds: state.holds(of: state.player).count)
+        let report = try XCTUnwrap(AwayReport(since: seen, now: later, player: state.player))
+        draw(AwayCard(report: report) { back += 1 }, width: 600, height: 500)
+        XCTAssertTrue(PressableButtons.press("Back to It"), "Among \(shown)")
+        XCTAssertEqual(back, 1)
+    }
+}
+
 private final class RecordingLink: RealmLink {
     var onEvent: ((RealmEvent) -> Void)?
     private(set) var sent: [Command] = []
