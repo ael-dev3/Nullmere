@@ -68,4 +68,8 @@ codesign --verify --strict --verbose=2 "$dmg"
 codesign -dvv "$dmg" 2>&1 | grep -q "Authority=$NAME" || { echo "error: the disk image isn't signed" >&2; exit 1; }
 grep -q "would run: xcrun notarytool submit" "$WORK/release.log" || { echo "error: notarizing wasn't rehearsed" >&2; exit 1; }
 grep -q "would run: xcrun stapler staple" "$WORK/release.log" || { echo "error: stapling wasn't rehearsed" >&2; exit 1; }
+echo "== The release's notes, as a signed release would have them"
+scripts/release-notes.sh v0.0.0-rehearsal signed | tee "$WORK/notes.md"
+grep -qi "ad-hoc" "$WORK/notes.md" && { echo "error: a signed release's notes say ad-hoc" >&2; exit 1; }
+scripts/release-notes.sh v0.0.0-rehearsal | grep -qi "ad-hoc" || { echo "error: an unsigned release's notes don't say so" >&2; exit 1; }
 echo "REHEARSAL signed by \"$NAME\" with the hardened runtime and a secure timestamp; the disk image signed; notarizing and stapling ready. A real release needs only the secrets."

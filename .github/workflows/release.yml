@@ -74,6 +74,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SIGNED: ${{ steps.identity.outputs.identity }}
         run: |
-          notes="Nullmere Online ${GITHUB_REF_NAME}."
-          [ -n "$SIGNED" ] || notes="$notes Ad-hoc signed and not notarized: right-click Open the first time."
-          gh release create "$GITHUB_REF_NAME" "$DMG" --title "Nullmere Online ${GITHUB_REF_NAME}" --notes "$notes"
+          scripts/release-notes.sh "$GITHUB_REF_NAME" ${SIGNED:+signed} > "$RUNNER_TEMP/notes.md"
+          gh release create "$GITHUB_REF_NAME" "$DMG" --title "Nullmere Online ${GITHUB_REF_NAME}" --notes-file "$RUNNER_TEMP/notes.md"

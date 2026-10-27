@@ -26,12 +26,13 @@ the realm's keeper has: raising the realm on maincloud, signing and
 notarizing the release, hearing the voices on a Mac with Apple Intelligence,
 and measuring on real Apple silicon. Each is one command, rehearsed in CI
 where it can be: see [docs/GO-LIVE.md](docs/GO-LIVE.md).
+`scripts/go-live-status.sh` says where each step stands.
 
 ## Requirements
 
 Nullmere runs only on Macs that can run Apple's on-device language model,
 the roughly 3-billion-parameter model behind Apple Intelligence. Its
-characters will speak through that model, on your Mac, using the
+envoys and chronicler speak through that model, on your Mac, using the
 [Foundation Models](https://developer.apple.com/documentation/foundationmodels)
 framework. You need:
 

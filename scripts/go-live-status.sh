@@ -63,7 +63,7 @@ if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
     for secret in $secrets; do
         echo "$have" | grep -qx "$secret" || missing="$missing $secret"
     done
-    release="$(gh release view --json tagName,body --jq '.tagName + "|" + (.body | test("ad-hoc") | tostring)' 2>/dev/null || true)"
+    release="$(gh release view --json tagName,body --jq '.tagName + "|" + (.body | test("ad-hoc"; "i") | tostring)' 2>/dev/null || true)"
     if [ -n "$release" ] && [ "${release##*|}" = false ]; then
         line "2. The release" "NOTARIZED: ${release%|*}"
         done_steps=$((done_steps + 1))
