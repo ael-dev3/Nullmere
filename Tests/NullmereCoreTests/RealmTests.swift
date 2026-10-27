@@ -3,6 +3,13 @@ import XCTest
 @testable import NullmereCore
 
 final class RealmTests: XCTestCase {
+    /// The CPU time this thread has spent, in seconds.
+    static func threadCPUSeconds() -> Double {
+        var time = timespec()
+        clock_gettime(CLOCK_THREAD_CPUTIME_ID, &time)
+        return Double(time.tv_sec) + Double(time.tv_nsec) / 1e9
+    }
+
     private func realm(seats: Int = 4, watchLength: Double = 60) -> RealmState {
         RealmState(name: "The Nullmere", seed: "realm test", seats: seats, radius: 18, watchLength: watchLength, now: 0)
     }
@@ -18,6 +25,7 @@ final class RealmTests: XCTestCase {
     func testTheRealmProperSeatsTwelveFairly() throws {
         for seed in ["twelve a", "twelve b", "twelve c"] {
             let started = Date()
+            let cpuStarted = RealmTests.threadCPUSeconds()
             var realm = RealmState(name: "The Nullmere", seed: seed, now: 0)
             XCTAssertEqual(realm.seats, 12)
             XCTAssertEqual(realm.world.houses.count, 12)
@@ -37,7 +45,10 @@ final class RealmTests: XCTestCase {
             }
             let seconds = Date().timeIntervalSince(started)
             print("PERF realm of 12 (\(seed)): made and 30 watches in \(String(format: "%.2f", seconds)) s")
-            print("PERFMETRIC realm.watch.\(seed.replacingOccurrences(of: " ", with: "-")) \(String(format: "%.3f", seconds * 1000 / 30))")
+            // Held to its baseline by this thread's own CPU time, which
+            // others' work on a shared runner doesn't stretch.
+            let cpu = RealmTests.threadCPUSeconds() - cpuStarted
+            print("PERFMETRIC realm.watch.\(seed.replacingOccurrences(of: " ", with: "-")) \(String(format: "%.3f", cpu * 1000 / 30))")
             XCTAssertLessThan(seconds, 60)
         }
     }

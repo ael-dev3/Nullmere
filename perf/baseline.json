@@ -3,22 +3,78 @@
   "ratio": 1.5,
   "slack_ms": 1.0,
   "metrics": {
-    "world.gpu.scale12.p50": {"baseline": 9.7, "gpu": true, "limit": 16.7},
-    "world.gpu.scale12.p95": {"baseline": null, "gpu": true},
-    "world.gpu.scale28.p50": {"baseline": 12.4, "gpu": true, "limit": 16.7},
-    "world.gpu.scale28.p95": {"baseline": null, "gpu": true},
-    "world.gpu.scale60.p50": {"baseline": 10.5, "gpu": true, "limit": 16.7},
-    "world.gpu.scale60.p95": {"baseline": null, "gpu": true},
-    "pan.frame.p50": {"baseline": null, "gpu": true},
-    "pan.frame.p95": {"baseline": null, "gpu": true},
-    "pan.gpu.p50": {"baseline": null, "gpu": true},
-    "pan.gpu.p95": {"baseline": null, "gpu": true},
-    "lake.gpu.p50": {"baseline": 8.3, "gpu": true, "limit": 16.7},
-    "lake.gpu.p95": {"baseline": null, "gpu": true},
-    "marks.cpu.p50": {"baseline": 1.1, "gpu": true},
-    "order.cpu.p50": {"baseline": 3.9},
-    "realm.watch.twelve-a": {"baseline": 150},
-    "realm.watch.twelve-b": {"baseline": 145},
-    "realm.watch.twelve-c": {"baseline": 145}
+    "world.gpu.scale12.p50": {
+      "baseline": 9.7,
+      "gpu": true,
+      "limit": 16.7
+    },
+    "world.gpu.scale12.p95": {
+      "baseline": 11.8,
+      "gpu": true
+    },
+    "world.gpu.scale28.p50": {
+      "baseline": 12.4,
+      "gpu": true,
+      "limit": 16.7
+    },
+    "world.gpu.scale28.p95": {
+      "baseline": 12.4,
+      "gpu": true
+    },
+    "world.gpu.scale60.p50": {
+      "baseline": 10.5,
+      "gpu": true,
+      "limit": 16.7
+    },
+    "world.gpu.scale60.p95": {
+      "baseline": 12.3,
+      "gpu": true
+    },
+    "pan.frame.p50": {
+      "baseline": 11.9,
+      "gpu": true,
+      "limit": 16.7
+    },
+    "pan.frame.p95": {
+      "baseline": 12.4,
+      "gpu": true
+    },
+    "pan.gpu.p50": {
+      "baseline": 11.5,
+      "gpu": true,
+      "limit": 16.7
+    },
+    "pan.gpu.p95": {
+      "baseline": 12.0,
+      "gpu": true
+    },
+    "lake.gpu.p50": {
+      "baseline": 8.3,
+      "gpu": true,
+      "limit": 16.7
+    },
+    "lake.gpu.p95": {
+      "baseline": 8.3,
+      "gpu": true
+    },
+    "marks.cpu.p50": {
+      "baseline": 1.1,
+      "gpu": true
+    },
+    "order.cpu.p50": {
+      "baseline": 3.9
+    },
+    "realm.watch.twelve-a": {
+      "baseline": null,
+      "note": "thread CPU time per watch; baseline from the first run that measures it"
+    },
+    "realm.watch.twelve-b": {
+      "baseline": null,
+      "note": "thread CPU time per watch; baseline from the first run that measures it"
+    },
+    "realm.watch.twelve-c": {
+      "baseline": null,
+      "note": "thread CPU time per watch; baseline from the first run that measures it"
+    }
   }
 }
