@@ -10,7 +10,10 @@
     },
     "world.gpu.scale12.p95": {
       "baseline": 11.8,
-      "gpu": true
+      "gpu": true,
+      "ratio": 2.0,
+      "limit": 16.7,
+      "note": "the worst frames, held to a 60 Hz frame: noisy on a shared GPU, so a regression is caught by its p50"
     },
     "world.gpu.scale28.p50": {
       "baseline": 12.4,
@@ -19,7 +22,10 @@
     },
     "world.gpu.scale28.p95": {
       "baseline": 12.4,
-      "gpu": true
+      "gpu": true,
+      "ratio": 2.0,
+      "limit": 16.7,
+      "note": "the worst frames, held to a 60 Hz frame: noisy on a shared GPU, so a regression is caught by its p50"
     },
     "world.gpu.scale60.p50": {
       "baseline": 10.5,
@@ -28,7 +34,10 @@
     },
     "world.gpu.scale60.p95": {
       "baseline": 12.3,
-      "gpu": true
+      "gpu": true,
+      "ratio": 2.0,
+      "limit": 16.7,
+      "note": "the worst frames, held to a 60 Hz frame: noisy on a shared GPU, so a regression is caught by its p50"
     },
     "pan.frame.p50": {
       "baseline": 11.9,
@@ -37,7 +46,10 @@
     },
     "pan.frame.p95": {
       "baseline": 12.4,
-      "gpu": true
+      "gpu": true,
+      "ratio": 2.0,
+      "limit": 16.7,
+      "note": "the worst frames, held to a 60 Hz frame: noisy on a shared GPU, so a regression is caught by its p50"
     },
     "pan.gpu.p50": {
       "baseline": 11.5,
@@ -46,7 +58,10 @@
     },
     "pan.gpu.p95": {
       "baseline": 12.0,
-      "gpu": true
+      "gpu": true,
+      "ratio": 2.0,
+      "limit": 16.7,
+      "note": "the worst frames, held to a 60 Hz frame: noisy on a shared GPU, so a regression is caught by its p50"
     },
     "lake.gpu.p50": {
       "baseline": 8.3,
@@ -55,12 +70,17 @@
     },
     "lake.gpu.p95": {
       "baseline": 8.3,
-      "gpu": true
+      "gpu": true,
+      "ratio": 2.0,
+      "limit": 16.7,
+      "note": "the worst frames, held to a 60 Hz frame: noisy on a shared GPU, so a regression is caught by its p50"
     },
     "marks.cpu.p50": {
       "baseline": 1.1,
       "gpu": true,
-      "cpu": true
+      "cpu": true,
+      "slack_ms": 2.0,
+      "note": "about a millisecond: the absolute slack carries the noise"
     },
     "order.cpu.p50": {
       "baseline": 3.9,
