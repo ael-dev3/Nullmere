@@ -193,3 +193,43 @@ final class FlowLayoutTests: XCTestCase {
         XCTAssertTrue(FlowLayout.rows(of: [], width: 100, spacing: 4).isEmpty)
     }
 }
+
+@MainActor
+final class ScrollEdgeFadeTests: XCTestCase {
+    /// The brightest pixel in a band of rows.
+    private func brightest(_ image: CGImage, rows: Range<Int>) throws -> Int {
+        let width = image.width
+        var pixels = [UInt8](repeating: 0, count: width * image.height * 4)
+        let context = try XCTUnwrap(CGContext(data: &pixels, width: width, height: image.height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                                              space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: image.height))
+        var most = 0
+        for y in rows {
+            for x in 0..<width {
+                let i = (y * width + x) * 4
+                most = max(most, Int(pixels[i]) + Int(pixels[i + 1]) + Int(pixels[i + 2]))
+            }
+        }
+        return most
+    }
+
+    func testAPanelFadesAtItsEdgeRatherThanCutting() throws {
+        // Rows running past the panel's foot, as a long panel's do.
+        let lines = VStack(alignment: .leading, spacing: 0) {
+            ForEach(0..<60, id: \.self) { _ in
+                Rectangle().fill(Color.white).frame(height: 6)
+                Color.clear.frame(height: 2)
+            }
+        }
+        .frame(width: 120, height: 200, alignment: .top)
+        .clipped()
+        let renderer = ImageRenderer(content: lines.scrollEdgeFade().background(Color.black))
+        renderer.scale = 1
+        let image = try XCTUnwrap(renderer.cgImage)
+        // CGContext rows run from the bottom.
+        let middle = try brightest(image, rows: 90..<110)
+        let edge = try brightest(image, rows: 0..<3)
+        XCTAssertGreaterThan(middle, 600, "Bright above the edge")
+        XCTAssertLessThan(edge, middle / 3, "and faded at it: \(edge) against \(middle)")
+    }
+}

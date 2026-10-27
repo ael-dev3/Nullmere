@@ -284,3 +284,19 @@ struct FlowLayout: Layout {
         }
     }
 }
+
+extension View {
+    /// Fades the last few points of a scrolling panel, so a row cut by its
+    /// edge reads as more below rather than as clipped, and leaves as much
+    /// room after the last row, so it clears the fade when scrolled to.
+    func scrollEdgeFade(_ length: CGFloat = 18) -> some View {
+        contentMargins(.bottom, length, for: .scrollContent)
+            .mask {
+                VStack(spacing: 0) {
+                    Rectangle()
+                    LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
+                        .frame(height: length)
+                }
+            }
+    }
+}

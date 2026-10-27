@@ -128,6 +128,7 @@ private struct OwnHoldPanel: View {
             }
             .padding(16)
         }
+        .scrollEdgeFade()
         .scrollIndicators(.never)
         .frame(maxHeight: 640)
         .panelBackground()

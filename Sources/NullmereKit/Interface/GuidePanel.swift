@@ -27,6 +27,7 @@ struct GuidePanel: View {
                     }
                 }
             }
+            .scrollEdgeFade()
             .scrollIndicators(.never)
         }
         .padding(16)

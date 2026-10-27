@@ -46,6 +46,7 @@ struct ChroniclePanel: View {
                     }
                 }
             }
+            .scrollEdgeFade()
             .scrollIndicators(.never)
         }
         .padding(16)

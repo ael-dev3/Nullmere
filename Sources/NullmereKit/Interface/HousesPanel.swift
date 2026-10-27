@@ -23,6 +23,7 @@ struct HousesPanel: View {
                     }
                 }
             }
+            .scrollEdgeFade()
             .scrollIndicators(.never)
         }
         .padding(16)
