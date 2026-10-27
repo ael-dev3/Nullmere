@@ -147,6 +147,58 @@ final class PanelRenderTests: XCTestCase {
         XCTAssertEqual(HouseRow.keeping(session.state.houses[others[0]], present: nil), "A steward gives its orders.")
     }
 
+    /// Everything a House's row can tell: a fallen House, a sworn one, the
+    /// pacts broken between two Houses, a Moonspire rising, the goodwill of
+    /// gifts, and an envoy's words as the on-device voice spoke them.
+    func testAHouseRowTellsAllThatLiesBetweenTwoHouses() throws {
+        var state = GameState(settings: GameSettings(seedText: "all between", houseCount: 6, radius: 22))
+        let me = state.player
+        let others = state.houses.indices.filter { $0 != me }
+        state.setStance(.war, between: me, and: others[0], by: others[0])
+        let index = try XCTUnwrap(state.relations.firstIndex { [$0.first, $0.second].sorted() == [me, others[0]].sorted() })
+        state.relations[index].betrayals = 2
+        state.relations[index].since = max(state.watch - 3, 1)
+        state.houses[others[1]].liege = others[0]
+        state.houses[others[2]].isEliminated = true
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == others[0] && $0.isSeat })
+        state.holds[seat].levels[.moonspire] = 2
+        state.gifts = [Gift(from: me, to: others[0], worth: 45, watch: state.watch)]
+        let envoy = Envoy(id: 77, from: others[0], to: me, proposal: .peace, arrived: state.watch)
+        state.envoys.append(envoy)
+        let store = LocalStore(directory: dir.appendingPathComponent("between"))
+        store.saveVoices([GameSession.Spoken.envoy(77).key: "The water remembers the last war. Let it rest."])
+        let session = GameSession(state: state, store: store)
+        XCTAssertEqual(session.spoken[.envoy(77)], "The water remembers the last war. Let it rest.")
+        for house in [others[0], others[1], others[2]] {
+            try draw(HouseRow(session: session, house: session.state.houses[house]), width: 340)
+        }
+        try draw(HousesPanel(session: session), width: 360, height: 900)
+        try draw(EnvoyCards(session: session), width: 360)
+    }
+
+    /// What the selection panel shows of a hold whose works are all built,
+    /// a foreign hold out of sight with its Moonspire rising, and ground
+    /// no lantern has seen.
+    func testTheSelectionPanelAtItsEdges() throws {
+        var state = GameState(settings: GameSettings(seedText: "selection edges", houseCount: 4, radius: 18))
+        let me = state.player
+        let mine = try XCTUnwrap(state.holds.firstIndex { $0.owner == me })
+        for kind in BuildingKind.allCases where !kind.requiresSeat || state.holds[mine].isSeat {
+            state.holds[mine].levels[kind] = kind.maxLevel
+        }
+        let theirs = try XCTUnwrap(state.holds.firstIndex { $0.owner != me && $0.isSeat })
+        state.holds[theirs].levels[.moonspire] = 3
+        state.houses[me].explored[state.map.index(of: state.holds[theirs].position)!] = true
+        let session = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("edges")))
+        session.selection = .hold(session.state.holds[mine].id)
+        try draw(SelectionPanel(session: session), width: 340, height: 900)
+        session.selection = .hold(session.state.holds[theirs].id)
+        try draw(SelectionPanel(session: session), width: 340, height: 500)
+        let unseen = try XCTUnwrap(session.state.map.hexes.first { !session.isExplored($0) })
+        session.selection = .tile(unseen)
+        try draw(SelectionPanel(session: session), width: 340, height: 300)
+    }
+
     func testTheTopBarInEveryStateOfTheRealm() throws {
         let link = SilentLink()
         let state = GameState(settings: GameSettings(seedText: "top bar states", houseCount: 4, radius: 18))

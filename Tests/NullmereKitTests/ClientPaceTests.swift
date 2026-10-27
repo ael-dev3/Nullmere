@@ -1,6 +1,7 @@
 import Foundation
 @testable import NullmereCore
 import NullmereRealm
+import SwiftUI
 import XCTest
 @testable import NullmereKit
 
@@ -108,5 +109,21 @@ final class IncomeBreakdownTests: XCTestCase {
         state.omen = Omen(kind: .leanWatch, began: state.watch, ends: state.watch + 3)
         XCTAssertEqual(IncomeBreakdown(state: state, house: player, resource: .grain).omen, "A Lean Watch takes a third of it.")
         XCTAssertNil(IncomeBreakdown(state: state, house: player, resource: .timber).omen)
+
+        // The card the top bar opens, with its omen, and with nothing coming in.
+        try Self.draw(IncomeCard(breakdown: IncomeBreakdown(state: state, house: player, resource: .grain)))
+        var bare = state
+        bare.holds.removeAll { $0.owner == player }
+        bare.units.removeAll { $0.owner == player }
+        let nothing = IncomeBreakdown(state: bare, house: player, resource: .moonsalt)
+        XCTAssertTrue(nothing.lines.isEmpty)
+        try Self.draw(IncomeCard(breakdown: nothing))
+    }
+
+    @MainActor
+    static func draw(_ view: some View) throws {
+        let renderer = ImageRenderer(content: view.frame(width: 320, height: 300).background(Color.black))
+        renderer.scale = 1
+        XCTAssertNotNil(renderer.cgImage)
     }
 }
