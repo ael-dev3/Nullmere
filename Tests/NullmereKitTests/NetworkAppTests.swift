@@ -116,6 +116,12 @@ final class NetworkAppTests: XCTestCase {
         try await until("Bel to wait") { second.isWaitingForSeat }
         XCTAssertNil(second.session, "No seat, no world")
         XCTAssertEqual(second.keeperName, "Bel", "Known to the realm all the same")
+        // The clock asks again after a seat; none has fallen free.
+        XCTAssertNotNil(second.seatTimer)
+        second.seatTimer?.fire()
+        try await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertTrue(second.isWaitingForSeat, "Still waiting")
+        XCTAssertNil(second.session)
         draw(FrontDoor(app: second))
         second.leaveDoor()
         XCTAssertFalse(second.isWaitingForSeat)

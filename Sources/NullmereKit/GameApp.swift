@@ -45,7 +45,7 @@ public final class GameApp {
     /// Known to the realm, but every seat is held: the door asks again as
     /// the realm changes, and steps in when a seat falls free.
     public private(set) var isWaitingForSeat = false
-    private var seatTimer: Timer?
+    private(set) var seatTimer: Timer?
     /// Back to the launcher, when the app has one.
     public var onLeave: (@MainActor () -> Void)?
     /// The game's settings, shown over the world or the front door.

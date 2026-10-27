@@ -1,5 +1,6 @@
 import Foundation
 import LauncherCore
+import LauncherKit
 import NullmereRealm
 import XCTest
 @testable import NullmereCore
@@ -44,6 +45,13 @@ final class GameAppEnvironmentTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: GameApp.nameKey(for: address))
         return GameApp(store: LocalStore(directory: dir), readiness: readiness, sound: false, address: address,
                        identity: FileIdentityStore(url: dir.appendingPathComponent("identity")), opensAtOnce: false)
+    }
+
+    func testByDefaultTheSystemIsAskedAfterTheModel() {
+        let app = GameApp(store: LocalStore(directory: dir), sound: false, address: .hosted(seed: "the system asked"),
+                          identity: FileIdentityStore(url: dir.appendingPathComponent("identity")), opensAtOnce: false)
+        app.checkModel()
+        XCTAssertEqual(app.readiness, OnDeviceModel.current(), "What Apple's framework says of this Mac")
     }
 
     func testTheRealmAndTheKeyComeFromTheBuildAndItsSurroundings() {

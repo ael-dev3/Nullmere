@@ -72,7 +72,7 @@ final class KeyBridgeTests: XCTestCase {
         XCTAssertNil(bridge.monitor, "Gone from the window, it stops listening")
     }
 
-    func testAKeyFromTheQueueIsTakenByTheGame() throws {
+    func testAKeyTheAppDispatchesIsTakenByTheGame() throws {
         var heard: [GameKey] = []
         let bridge = KeyBridgeView()
         bridge.onKey = { heard.append($0); return true }
@@ -83,16 +83,11 @@ final class KeyBridgeTests: XCTestCase {
         window.orderFrontRegardless()
         defer { window.close() }
 
-        let app = NSApplication.shared
-        app.postEvent(key("f", in: window), atStart: true)
-        let passed = app.nextEvent(matching: .keyDown, until: Date().addingTimeInterval(0.5), inMode: .default, dequeue: true)
-        XCTAssertNil(passed, "Taken by the game, not passed on")
+        // The app's own dispatch, where its event monitors see each key first.
+        NSApplication.shared.sendEvent(key("f", in: window))
         XCTAssertEqual(heard, [.fortify])
-
-        app.postEvent(key("q", in: window), atStart: true)
-        let left = app.nextEvent(matching: .keyDown, until: Date().addingTimeInterval(0.5), inMode: .default, dequeue: true)
-        XCTAssertEqual(left?.characters, "q", "A key with no meaning is passed on")
-        XCTAssertEqual(heard, [.fortify])
+        NSApplication.shared.sendEvent(key("q", in: window))
+        XCTAssertEqual(heard, [.fortify], "A key with no meaning is left to the window")
     }
 
     func testAWindowTooLargeForItsScreenIsFittedToIt() throws {

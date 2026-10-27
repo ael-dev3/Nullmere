@@ -66,6 +66,54 @@ final class PressTests: XCTestCase {
         XCTAssertFalse(shown.isEmpty)
     }
 
+    private func spin(until what: String, timeout: Double = 5, _ condition: () -> Bool) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition(), Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTAssertTrue(condition(), "Waited for \(what)")
+    }
+
+    private func textField(in view: NSView?) -> NSTextField? {
+        guard let view else { return nil }
+        if let field = view as? NSTextField, field.isEditable { return field }
+        for child in view.subviews {
+            if let field = textField(in: child) { return field }
+        }
+        return nil
+    }
+
+    func testInAWindowTheWordsAreKeptShortAndATradeGoesFromItsPopover() throws {
+        var state = GameState(settings: GameSettings(seedText: "a trade in a window", houseCount: 4, radius: 18))
+        let other = (state.player + 1) % state.houses.count
+        state.houses[other].isPlayer = true
+        let (session, link) = session(state)
+        let house = session.state.houses[other]
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 380, height: 460), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: HouseRow(session: session, house: house).frame(width: 340).padding(20).background(Color.black))
+        window.orderFrontRegardless()
+        window.makeKey()
+        defer { window.close() }
+        spin(until: "the row drawn") { PressableButtons.actions["Offer a trade"] != nil }
+
+        // Words longer than an envoy carries are cut as they're typed.
+        let field = try XCTUnwrap(textField(in: window.contentView), "The words' field")
+        XCTAssertTrue(window.makeFirstResponder(field))
+        let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+        editor.insertText(String(repeating: "Grain for stone. ", count: 12), replacementRange: NSRange(location: NSNotFound, length: 0))
+        spin(until: "the words cut") { field.stringValue.count == Envoy.wordsLimit }
+
+        // The trade composed in its popover goes, with the words.
+        XCTAssertTrue(PressableButtons.press("Offer a trade"))
+        spin(until: "the composer shown") { PressableButtons.actions["Offer"] != nil }
+        XCTAssertTrue(PressableButtons.press("Offer"))
+        guard case .offerTrade(_, let to, let words)? = link.sent.last else { return XCTFail("The trade is offered: \(link.sent)") }
+        XCTAssertEqual(to, other)
+        XCTAssertEqual(words?.hasPrefix("Grain for stone. Grain"), true)
+        XCTAssertLessThanOrEqual(words?.count ?? .max, Envoy.wordsLimit)
+    }
+
     func testATradeIsComposedAndOffered() throws {
         let state = GameState(settings: GameSettings(seedText: "pressed trade", houseCount: 4, radius: 18))
         let (session, link) = session(state)

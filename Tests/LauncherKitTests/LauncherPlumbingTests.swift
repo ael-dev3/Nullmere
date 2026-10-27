@@ -299,3 +299,134 @@ final class PanelScrimTests: XCTestCase {
         XCTAssertGreaterThan(light(0.5, 0.0), light(0.5, depth) + 0.2, "The water by the shore is lighter than over the reflection")
     }
 }
+
+/// The launcher hosted in a window as the app hosts it: a click skips the
+/// opening and a key moves through the menu, both dispatched as the app
+/// dispatches them; the app going behind another and coming back, and the
+/// Mac beginning to save energy, are heard; and the lake and the bridge let
+/// go of what they watch when they leave.
+@MainActor
+final class LauncherHostTests: XCTestCase {
+    private func spin(_ seconds: Double) {
+        RunLoop.main.run(until: Date().addingTimeInterval(seconds))
+    }
+
+    /// Dispatches an event as the app's own loop does, so the window's
+    /// event monitors see it first. A mouse-up waits in the queue, so that
+    /// anything that follows a press ends at once; it is cleared after.
+    private func dispatch(_ event: NSEvent, in window: NSWindow) {
+        let app = NSApplication.shared
+        if event.type == .leftMouseDown {
+            let up = NSEvent.mouseEvent(with: .leftMouseUp, location: event.locationInWindow, modifierFlags: [], timestamp: 0,
+                                        windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 0)!
+            app.postEvent(up, atStart: false)
+        }
+        app.sendEvent(event)
+        while app.nextEvent(matching: .leftMouseUp, until: Date(), inMode: .default, dequeue: true) != nil {}
+    }
+
+    func testTheHostedLauncherHearsItsWindowAndTheApp() throws {
+        let suite = "LauncherHostTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var savesEnergy = false
+        let environment = LauncherEnvironment(
+            modelReadiness: { .ready },
+            systemSavesEnergy: { savesEnergy },
+            downloadNews: { throw URLError(.notConnectedToInternet) },
+            open: { _ in true },
+            terminate: {}
+        )
+        let model = LauncherModel(defaults: defaults, environment: environment)
+        model.refreshReadiness()
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 600), styleMask: [.titled, .fullSizeContentView],
+                              backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: LauncherRootView(model: model))
+        window.orderFrontRegardless()
+        defer { window.close() }
+        spin(0.2)
+
+        // A click anywhere skips the opening, and still reaches the window.
+        let click = NSEvent.mouseEvent(with: .leftMouseDown, location: NSPoint(x: 480, y: 300), modifierFlags: [], timestamp: 0,
+                                       windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
+        dispatch(click, in: window)
+        XCTAssertEqual(model.intro, .complete)
+
+        // A key moves through the menu, and is taken.
+        XCTAssertEqual(model.menuSelection, .play)
+        let down = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
+                                    context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: 125)!
+        dispatch(down, in: window)
+        XCTAssertNotEqual(model.menuSelection, .play, "Taken by the launcher")
+
+        // Behind another app, and back.
+        NotificationCenter.default.post(name: NSApplication.didResignActiveNotification, object: nil)
+        spin(0.1)
+        XCTAssertFalse(model.isInFront)
+        XCTAssertTrue(model.isSavingEnergy)
+        NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification, object: nil)
+        spin(0.1)
+        XCTAssertTrue(model.isInFront)
+
+        // Low Power Mode, announced on another thread.
+        savesEnergy = true
+        DispatchQueue.global().async {
+            NotificationCenter.default.post(name: .NSProcessInfoPowerStateDidChange, object: nil)
+        }
+        let deadline = Date().addingTimeInterval(3)
+        while !model.systemSavesEnergy, Date() < deadline { spin(0.05) }
+        XCTAssertTrue(model.systemSavesEnergy)
+    }
+
+    func testTheLakeAndTheBridgeLetGoWhenTheyLeave() throws {
+        guard LakeMetalView.systemDevice != nil else { throw XCTSkip("No Metal device available") }
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 300), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+        window.contentView = content
+        window.orderFrontRegardless()
+        weak var lake: LakeMetalView?
+        weak var bridge: WindowBridgeView?
+        var keys: [KeyCommand] = []
+        autoreleasepool {
+            let view = LakeMetalView(configuration: LakeConfiguration(motion: .full, renderScale: 0.5, framesPerSecond: 30,
+                                                                      horizon: LakeComposition.horizon))
+            view.frame = content.bounds
+            content.addSubview(view)
+            let listening = WindowBridgeView(startsInFullScreen: false, onKey: { keys.append($0) }, onClick: {})
+            content.addSubview(listening)
+            // The window's occlusion is heard.
+            NotificationCenter.default.post(name: NSWindow.didChangeOcclusionStateNotification, object: window)
+            spin(0.1)
+            // A key the app dispatches reaches the bridge's monitor.
+            let up = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
+                                      context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: 126)!
+            NSApplication.shared.sendEvent(up)
+            XCTAssertEqual(keys, [.up])
+            lake = view
+            bridge = listening
+            // Out of the window and let go: nothing holds on to them.
+            window.contentView = NSView()
+        }
+        let deadline = Date().addingTimeInterval(5)
+        while lake != nil || bridge != nil, Date() < deadline { spin(0.05) }
+        XCTAssertNil(lake)
+        XCTAssertNil(bridge)
+    }
+
+    func testWithoutAMetalDeviceTheLakeSaysSo() {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 200, height: 200), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let view = LakeMetalView(configuration: LakeConfiguration(motion: .still, renderScale: 0.5, framesPerSecond: 30,
+                                                                  horizon: LakeComposition.horizon))
+        view.device = nil
+        var failures = 0
+        view.onFailure = { failures += 1 }
+        window.contentView = view
+        XCTAssertEqual(failures, 1)
+        XCTAssertNil(view.renderer)
+    }
+}

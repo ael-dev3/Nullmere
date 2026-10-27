@@ -75,10 +75,8 @@ final class WorldMetalView: MTKView {
         fatalError("init(coder:) is not supported")
     }
 
-    deinit {
-        if let occlusionObserver {
-            NotificationCenter.default.removeObserver(occlusionObserver)
-        }
+    isolated deinit {
+        stopWatchingWindow()
         for observer in appObservers {
             NotificationCenter.default.removeObserver(observer)
         }
@@ -127,10 +125,7 @@ final class WorldMetalView: MTKView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if let occlusionObserver {
-            NotificationCenter.default.removeObserver(occlusionObserver)
-            self.occlusionObserver = nil
-        }
+        stopWatchingWindow()
         if let window {
             occlusionObserver = NotificationCenter.default.addObserver(
                 forName: NSWindow.didChangeOcclusionStateNotification,
@@ -189,6 +184,13 @@ final class WorldMetalView: MTKView {
     private func redraw() {
         if isPaused {
             needsDisplay = true
+        }
+    }
+
+    private func stopWatchingWindow() {
+        if let occlusionObserver {
+            NotificationCenter.default.removeObserver(occlusionObserver)
+            self.occlusionObserver = nil
         }
     }
 

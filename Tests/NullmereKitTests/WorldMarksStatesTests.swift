@@ -91,6 +91,10 @@ final class WorldMarksStatesTests: XCTestCase {
         let blow = try XCTUnwrap(session.blows.last)
         XCTAssertTrue(blow.isRanged)
         XCTAssertFalse(blow.fallen.isEmpty, "The foe falls")
+        // A moment after it lands, the blow's flash; then as it fades.
+        RunLoop.main.run(until: blow.start.addingTimeInterval(0.1))
+        XCTAssertGreaterThan(GameSession.Blow.flash(at: Date().timeIntervalSince(blow.start)), 0)
+        try draw(WorldMarks(session: session))
         try draw(WorldMarks(session: session))
     }
 }

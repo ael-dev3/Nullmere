@@ -17,13 +17,7 @@ struct LakeConfiguration: Equatable {
 /// The view animates only while its window is visible and motion is allowed;
 /// with motion set to still it renders a single frame per size change.
 final class LakeMetalView: MTKView {
-    static let systemDevice: (any MTLDevice)? = {
-        let device = MTLCreateSystemDefaultDevice()
-        if device == nil {
-            LakeMetalView.logger.error("No Metal device is available; the lake is drawn as a still painting.")
-        }
-        return device
-    }()
+    static let systemDevice: (any MTLDevice)? = MTLCreateSystemDefaultDevice()
 
     var configuration: LakeConfiguration {
         didSet {
@@ -57,10 +51,8 @@ final class LakeMetalView: MTKView {
         fatalError("init(coder:) is not supported")
     }
 
-    deinit {
-        if let occlusionObserver {
-            NotificationCenter.default.removeObserver(occlusionObserver)
-        }
+    isolated deinit {
+        stopWatchingWindow()
     }
 
     override var isOpaque: Bool { true }
@@ -72,10 +64,7 @@ final class LakeMetalView: MTKView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if let occlusionObserver {
-            NotificationCenter.default.removeObserver(occlusionObserver)
-            self.occlusionObserver = nil
-        }
+        stopWatchingWindow()
         if let window {
             occlusionObserver = NotificationCenter.default.addObserver(
                 forName: NSWindow.didChangeOcclusionStateNotification,
@@ -89,6 +78,13 @@ final class LakeMetalView: MTKView {
         }
         updateWindowVisibility()
         updateDrawableSize()
+    }
+
+    private func stopWatchingWindow() {
+        if let occlusionObserver {
+            NotificationCenter.default.removeObserver(occlusionObserver)
+            self.occlusionObserver = nil
+        }
     }
 
     override func setFrameSize(_ newSize: NSSize) {

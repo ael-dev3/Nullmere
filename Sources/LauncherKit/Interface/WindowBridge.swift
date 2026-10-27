@@ -47,10 +47,8 @@ final class WindowBridgeView: NSView {
         fatalError("init(coder:) is not supported")
     }
 
-    deinit {
-        if let eventMonitor {
-            NSEvent.removeMonitor(eventMonitor)
-        }
+    isolated deinit {
+        removeEventMonitor()
     }
 
     override func viewDidMoveToWindow() {
