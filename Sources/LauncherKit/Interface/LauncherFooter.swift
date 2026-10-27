@@ -25,6 +25,7 @@ struct LauncherFooter: View {
 
                 Spacer(minLength: 24 * unit)
 
+                let _ = PressableButtons.note("nullmere.online", enabled: true, openWebsite)
                 Button(action: openWebsite) {
                     SpacedText("nullmere.online", size: 9.5 * unit, weight: .light, tracking: 0.3)
                         .contentShape(Rectangle())

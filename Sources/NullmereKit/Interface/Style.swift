@@ -1,4 +1,5 @@
 import NullmereCore
+import LauncherKit
 import SwiftUI
 
 /// Nullmere's few colours: pale, cold type over the dark, and the colours
@@ -95,31 +96,6 @@ extension View {
 }
 
 /// A quiet text button: spaced capitals that brighten on hover.
-/// The actions of the buttons drawn while a test listens, by their
-/// titles, so a test can press a panel's buttons as a keeper would and run
-/// their own actions. Nothing is kept unless a test turns it on.
-@MainActor
-enum PressableButtons {
-    static var isListening = false {
-        didSet { actions = [:] }
-    }
-    private(set) static var actions: [String: () -> Void] = [:]
-
-    static func note(_ title: String, enabled: Bool, _ action: @escaping () -> Void) {
-        guard isListening, enabled else { return }
-        actions[title] = action
-    }
-
-    /// Presses the button drawn with that title; false if none was drawn,
-    /// or it was drawn disabled.
-    @discardableResult
-    static func press(_ title: String) -> Bool {
-        guard let action = actions[title] else { return false }
-        action()
-        return true
-    }
-}
-
 struct QuietButton: View {
     let title: String
     var size: CGFloat = 10

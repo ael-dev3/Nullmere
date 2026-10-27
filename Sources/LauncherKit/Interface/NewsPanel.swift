@@ -53,6 +53,7 @@ private struct NewsHeadline: View {
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
+        let _ = PressableButtons.note(item.title, enabled: true, action)
         Button(action: action) {
             HStack(alignment: .top, spacing: 12 * unit) {
                 Rectangle()
@@ -114,6 +115,7 @@ private struct NewsStory: View {
                         .padding(.top, 10 * unit)
 
                     if item.link != nil {
+                        let _ = PressableButtons.note("Read more", enabled: true, openLink)
                         Button(action: openLink) {
                             SpacedText("Read more", size: 9.5 * unit, weight: .regular, tracking: 0.36, balanced: false)
                                 .foregroundStyle(Palette.glow.opacity(0.9))

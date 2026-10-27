@@ -44,6 +44,7 @@ struct MenuButton: View {
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
+        let _ = PressableButtons.note(title, enabled: true, action)
         Button(action: action) {
             SpacedText(title, size: size * unit, weight: .light, tracking: 0.42)
                 .foregroundStyle(Palette.ink.opacity(isSelected ? 1 : restingOpacity))

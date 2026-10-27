@@ -76,7 +76,8 @@ private struct SettingsRowView: View {
     }
 
     private func option(_ label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        PressableButtons.note(label, enabled: true, action)
+        return Button(action: action) {
             SpacedText(label, size: 10.5 * unit, weight: .light, tracking: 0.24)
                 .opacity(isSelected ? 1 : optionOpacity)
                 .overlay(alignment: .bottom) {

@@ -1,4 +1,5 @@
 import AppKit
+import LauncherKit
 import NullmereRealm
 import SwiftUI
 import XCTest
