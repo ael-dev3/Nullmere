@@ -15,6 +15,8 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+# shellcheck source=settled-log.sh
+. scripts/settled-log.sh
 
 BIN="${BIN:-$(swift build --show-bin-path)/NullmereLauncher}"
 EXECUTABLE="NullmereLauncher"
@@ -50,7 +52,7 @@ run() {
     kill -TERM "$pid" || true
     wait "$pid" 2>/dev/null || true
     local log
-    log="$(log show --start "$started" --style compact --predicate "subsystem == \"$SUBSYSTEM\"" 2>/dev/null || true)"
+    log="$(settled_log "$started" "$SUBSYSTEM" "renders with Metal")"
     if ! echo "$log" | grep -q "renders with Metal"; then
         echo "error: the lake did not render with Metal" >&2
         exit 1

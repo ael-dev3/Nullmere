@@ -13,6 +13,8 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+# shellcheck source=settled-log.sh
+. scripts/settled-log.sh
 
 BIN="${BIN:-$(swift build --show-bin-path)/NullmereLauncher}"
 EXECUTABLE="NullmereLauncher"
@@ -52,7 +54,7 @@ run() {
     screencapture -x "$shot" || echo "warning: could not take a screenshot" >&2
     kill -TERM "$pid" || true
     wait "$pid" 2>/dev/null || true
-    LOG="$(log show --start "$started" --style compact --predicate "subsystem == \"$SUBSYSTEM\"" 2>/dev/null || true)"
+    LOG="$(settled_log "$started" "$SUBSYSTEM" "renders with Metal")"
 }
 
 # A fresh realm, and a fresh keeper; whatever was here is put back after.

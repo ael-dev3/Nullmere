@@ -11,6 +11,8 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+# shellcheck source=settled-log.sh
+. scripts/settled-log.sh
 
 APP="${APP:-build/Nullmere Online.app}"
 EXECUTABLE="NullmereLauncher"
@@ -36,7 +38,7 @@ if ! pgrep -x "$EXECUTABLE" >/dev/null; then
     exit 1
 fi
 
-backdrop_log="$(log show --start "$started" --style compact --predicate "subsystem == \"$SUBSYSTEM\"" 2>/dev/null || true)"
+backdrop_log="$(settled_log "$started" "$SUBSYSTEM" "renders with Metal")"
 
 screencapture -x "$SHOT" || echo "warning: could not take a screenshot" >&2
 # A signal rather than an Apple Event, which could wait on a privacy prompt.
