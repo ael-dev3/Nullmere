@@ -36,7 +36,7 @@ final class NetworkAppTests: XCTestCase {
     private func app(_ db: FakeSpacetime, identity: MemoryStore, realm: String) -> GameApp {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         dirs.append(dir)
-        let address = RealmAddress.network(URL(string: "https://realm.test/\(realm)")!)
+        let address = GameApp.RealmAddress.network(URL(string: "https://realm.test/\(realm)")!)
         UserDefaults.standard.removeObject(forKey: GameApp.nameKey(for: address))
         return GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: address, identity: identity,
                        opensAtOnce: false, transport: db, pollInterval: 0.05)
