@@ -113,5 +113,30 @@ final class WorldOverlayTests: XCTestCase {
         }
         session.hover(nil)
         XCTAssertNil(session.hoverForecast)
+
+        // The strike itself: its ring, its flash and any fallen, drawn as they play.
+        XCTAssertTrue(session.perform(.attack(unit: spear.id, target: beside)))
+        XCTAssertFalse(session.blows.isEmpty, "The blow plays on the map")
+        try draw(WorldMarks(session: session), width: 1000, height: 700)
+
+        // A company on the march, and a route planned far off, over more than one watch.
+        if let walker = session.state.units(of: me).first(where: { $0.kind == .lantern && $0.movesLeft > 0 }),
+           let step = session.state.map.neighbors(of: walker.position).first(where: { hex in
+               session.state.map[hex]?.terrain.isPassable == true && session.state.unit(at: hex) == nil
+           }) {
+            XCTAssertTrue(session.perform(.move(unit: walker.id, to: step)))
+            XCTAssertFalse(session.marches.isEmpty, "The march plays on the map")
+            try draw(WorldMarks(session: session), width: 1000, height: 700)
+            session.selection = .unit(walker.id)
+            let moved = try XCTUnwrap(session.state.unit(walker.id))
+            let far = session.state.map.hexes.first { hex in
+                (6...10).contains(hex.distance(to: step)) && session.state.map[hex]?.terrain.isPassable == true
+                    && session.state.unit(at: hex) == nil && session.state.path(for: moved, to: hex) != nil
+            }
+            session.hover(far)
+            XCTAssertFalse(session.pathPreview.isEmpty, "A route is planned")
+            try draw(WorldMarks(session: session), width: 1000, height: 700)
+            session.hover(nil)
+        }
     }
 }
