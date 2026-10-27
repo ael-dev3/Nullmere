@@ -217,7 +217,14 @@ jobs:
       - name: Print small screenshots
         if: always()
         run: |
-          for shot in build/launcher.png build/launcher-menu.png build/launcher-news.png build/launcher-settings.png build/launcher-play.png build/launcher-off.png build/launcher-downloading.png build/game-world.png build/game-network.png build/game-away.png build/game-briefing.png build/game-lakes.png build/game-omen.png build/game-first-steps.png build/game-later.png build/game-race.png build/game-ending.png; do
+          # The launcher's screens, larger, are printed by the job after this
+          # one, in a log of their own that is never trimmed.
+          for shot in build/launcher.png build/launcher-menu.png build/launcher-news.png build/launcher-settings.png build/launcher-play.png build/launcher-off.png build/launcher-downloading.png; do
+            if [ -s "$shot" ]; then
+              sips -s format jpeg -s formatOptions 65 -Z 900 "$shot" --out "${shot%.png}-print.jpg" >/dev/null
+            fi
+          done
+          for shot in build/game-world.png build/game-network.png build/game-away.png build/game-briefing.png build/game-lakes.png build/game-omen.png build/game-first-steps.png build/game-later.png build/game-race.png build/game-ending.png; do
             if [ -s "$shot" ]; then
               small="${shot%.png}-small.jpg"
               sips -s format jpeg -s formatOptions 45 -Z 560 "$shot" --out "$small" >/dev/null
@@ -250,6 +257,14 @@ jobs:
             echo "::endgroup::"
           fi
 
+      - name: Keep the launcher's screens for printing
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: launcher-screens
+          path: build/*-print.jpg
+          if-no-files-found: warn
+
       # Last, so it survives a trimmed log: frame times, test failures and
       # warnings, in a few lines.
       - name: Summary
@@ -266,6 +281,30 @@ jobs:
           tail -n 15 build/game-stdout.log 2>/dev/null || true
           tail -n 15 build/steward.log 2>/dev/null || true
           echo "::endgroup::"
+
+  # The launcher's screens, printed where the long macOS log can't trim
+  # them, for readers without access to the artifacts.
+  screens:
+    name: Launcher screens
+    needs: macos
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: launcher-screens
+          path: screens
+        continue-on-error: true
+      - name: Print the launcher's screens
+        run: |
+          for shot in screens/*-print.jpg; do
+            [ -s "$shot" ] || continue
+            name="$(basename "$shot" -print.jpg)"
+            echo "::group::Screenshot build/$name.png, base64 JPEG"
+            base64 -w 120 "$shot"
+            echo "::endgroup::"
+          done
 
   # The rules and the realm on Linux, where the steward runs; then the realm
   # module published to a real SpacetimeDB server, the steward taking it up,
