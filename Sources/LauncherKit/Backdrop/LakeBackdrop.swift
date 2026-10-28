@@ -32,6 +32,12 @@ private struct LakeMetalRepresentable: NSViewRepresentable {
     func updateNSView(_ view: LakeMetalView, context: Context) {
         view.configuration = configuration
     }
+
+    /// Taken out of the window with the launcher as it crosses to the realm:
+    /// leave the view tree here too, so nothing detached keeps the lake alive.
+    static func dismantleNSView(_ view: LakeMetalView, coordinator: ()) {
+        view.removeFromSuperview()
+    }
 }
 
 /// The launcher's moonlit lake, for the game to stand its title screen on.

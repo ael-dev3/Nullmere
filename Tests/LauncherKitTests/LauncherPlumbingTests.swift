@@ -313,8 +313,11 @@ final class LauncherHostTests: XCTestCase {
     }
 
     /// Dispatches an event as the app's own loop does, so the window's
-    /// event monitors see it first. A mouse-up waits in the queue, so that
-    /// anything that follows a press ends at once; it is cleared after.
+    /// event monitors see it first. A press is a whole click: its mouse-up
+    /// waits in the queue, so that anything that tracks the press ends at
+    /// once, and if nothing took it, it is sent after, as the app's loop
+    /// would send it. A press left without its mouse-up stays the window's
+    /// own, and keeps whatever it pressed.
     private func dispatch(_ event: NSEvent, in window: NSWindow) {
         let app = NSApplication.shared
         if event.type == .leftMouseDown {
@@ -323,7 +326,9 @@ final class LauncherHostTests: XCTestCase {
             app.postEvent(up, atStart: false)
         }
         app.sendEvent(event)
-        while app.nextEvent(matching: .leftMouseUp, until: Date(), inMode: .default, dequeue: true) != nil {}
+        while let up = app.nextEvent(matching: .leftMouseUp, until: Date(), inMode: .default, dequeue: true) {
+            app.sendEvent(up)
+        }
     }
 
     func testTheHostedLauncherHearsItsWindowAndTheApp() throws {
@@ -408,6 +413,7 @@ final class LauncherHostTests: XCTestCase {
         // Should either still be held, find out whether its hosting held it:
         // release the hosting view, close the window, and look again.
         if lake != nil || bridge != nil {
+            weak let hosting = host
             autoreleasepool {
                 window.contentView = nil
                 host = nil
@@ -415,17 +421,20 @@ final class LauncherHostTests: XCTestCase {
             }
             let after = Date().addingTimeInterval(5)
             while lake != nil || bridge != nil, Date() < after { autoreleasepool { spin(0.05) } }
-            XCTAssertNil(lake, "The lake is held even with its hosting view released and its window closed")
-            XCTAssertNil(bridge, "The bridge is held even with its hosting view released and its window closed")
+            let hostingHeld = hosting == nil ? "; the hosting view went" : "; the hosting view is held too"
+            XCTAssertNil(lake, "The lake is held even with its hosting view released and its window closed\(Self.stillHeld(lake))\(hostingHeld)")
+            XCTAssertNil(bridge, "The bridge is held even with its hosting view released and its window closed\(Self.stillHeld(bridge))\(hostingHeld)")
         }
     }
 
     /// Where a view that should have been let go is, for a failure to say:
-    /// still shown in the window, or out of it and held unseen.
+    /// still shown in the window, or out of it and held unseen, and if in a
+    /// view, what kind of view holds it.
     private static func stillHeld(_ view: NSView?) -> String {
         guard let view else { return "" }
         if view.window != nil { return ": still in the window" }
-        return view.superview != nil ? ": out of the window, still in a view" : ": out of every view, still held"
+        guard let superview = view.superview else { return ": out of every view, still held" }
+        return ": out of the window, still in a view (\(type(of: superview)))"
     }
 
     /// Our own views of a type in a view's hierarchy.

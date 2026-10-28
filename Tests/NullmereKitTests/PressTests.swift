@@ -760,12 +760,18 @@ final class PressTests: XCTestCase {
         compose("か", in: editor)
 
         // The world moves on at the realm's word and the row is drawn again,
-        // for the same keeper: the composition goes on undisturbed.
-        PressableButtons.forget("Offer a pact")
+        // for the same keeper: the composition goes on undisturbed. The row
+        // notes its gifts as it is drawn, so a gift forgotten and noted again
+        // is the row drawn again; a button in it that is unchanged need not
+        // draw again, and so can't tell.
+        let gift = try XCTUnwrap(HouseRow.giftChoices(from: row.session.playerHouse.stock).first, "Something the keeper can give")
+        let sendTheGift = "Send \(gift.amount) \(gift.resource.title.lowercased())"
+        spin(until: "the row's gifts") { PressableButtons.actions[sendTheGift] != nil }
+        PressableButtons.forget(sendTheGift)
         var later = row.session.state
         later.watch += 1
         row.link.onEvent?(.changed(later))
-        spin(until: "the row drawn again") { PressableButtons.actions["Offer a pact"] != nil }
+        spin(until: "the row drawn again") { PressableButtons.actions[sendTheGift] != nil }
         XCTAssertTrue(editor.hasMarkedText(), "Still composing")
         XCTAssertEqual(editor.string, "Grain か")
         XCTAssertEqual(row.draft.words, "Grain ", "Nothing composed is taken before it is committed")
@@ -895,7 +901,7 @@ final class PressTests: XCTestCase {
         XCTAssertLessThan(words.inked, 0.5, "No bezel or background fills the field")
         XCTAssertGreaterThan(words.brightest, hint.brightest * 1.4, "The hint is dimmer than the words")
         _ = row.window.makeFirstResponder(nil)
-        XCTAssertEqual(field.accessibilityValue() as? String, "Grain for stone, as before.")
+        XCTAssertEqual(field.accessibilityValue(), "Grain for stone, as before.")
     }
 
     func testATradeIsComposedAndOffered() throws {

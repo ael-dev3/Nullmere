@@ -237,6 +237,7 @@ struct EnvoyWordsField: NSViewRepresentable {
         // before a boundary is forgotten there (`Coordinator.startAfresh`).
         field.cell?.allowsUndo = true
         field.delegate = context.coordinator
+        context.coordinator.field = field
         style(field)
         return field
     }
@@ -265,6 +266,10 @@ struct EnvoyWordsField: NSViewRepresentable {
                 .font: font, .foregroundColor: NSColor(Palette.ink).withAlphaComponent(0.4),
             ])
         }
+        // Setting the label and placeholder through the accessibility API
+        // leaves the role unresolved (AXUnknown); say it is a text field, so
+        // assistive technologies read it as one.
+        if field.accessibilityRole() != .textField { field.setAccessibilityRole(.textField) }
         if field.accessibilityLabel() != label { field.setAccessibilityLabel(label) }
         if field.accessibilityPlaceholderValue() != placeholder { field.setAccessibilityPlaceholderValue(placeholder) }
     }
@@ -272,9 +277,36 @@ struct EnvoyWordsField: NSViewRepresentable {
     @MainActor
     final class Coordinator: NSObject, NSTextFieldDelegate {
         let sync: EnvoyWordsSync
+        /// The field typed in, to follow undo and redo in it.
+        weak var field: NSTextField?
+        private var replays: [any NSObjectProtocol] = []
 
         init(draft: OfferDraft) {
             sync = EnvoyWordsSync(draft: draft)
+            super.init()
+            // Undo and redo, as the undo manager announces them once done,
+            // by the notices' own names: the field's change notice isn't
+            // sent for them, and the draft must still hold what is shown.
+            for name in ["NSUndoManagerDidUndoChangeNotification", "NSUndoManagerDidRedoChangeNotification"] {
+                replays.append(NotificationCenter.default.addObserver(forName: NSNotification.Name(name), object: nil, queue: nil) { [weak self] notice in
+                    let history = notice.object as? UndoManager
+                    MainActor.assumeIsolated { self?.replayed(history) }
+                })
+            }
+        }
+
+        isolated deinit {
+            for replay in replays {
+                NotificationCenter.default.removeObserver(replay)
+            }
+        }
+
+        /// Undo or redo has put back, in an editor, what was there before:
+        /// if it is this field's, the draft takes what the field shows now,
+        /// as it would a keystroke, taking nothing back while it replays.
+        private func replayed(_ history: UndoManager?) {
+            guard let history, let editor = field?.currentEditor() as? NSTextView, editor.undoManager === history else { return }
+            _ = sync.entered(editor.string, composing: editor.hasMarkedText(), replaying: true)
         }
 
         /// The row drawn again: at a boundary the editor starts afresh;

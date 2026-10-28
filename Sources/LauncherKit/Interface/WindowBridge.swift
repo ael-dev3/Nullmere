@@ -24,6 +24,14 @@ struct WindowBridge: NSViewRepresentable {
         view.onKey = onKey
         view.onClick = onClick
     }
+
+    /// Crossing to the realm takes the launcher out of the window, and
+    /// SwiftUI tears this bridge down with it. Take it out of the view tree
+    /// here too: left in a detached tree, the bridge (and the event monitor
+    /// it holds) would outlive the window it was made for.
+    static func dismantleNSView(_ view: WindowBridgeView, coordinator: ()) {
+        view.removeFromSuperview()
+    }
 }
 
 final class WindowBridgeView: NSView {
