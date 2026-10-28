@@ -1,8 +1,8 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
-// The rules and the realm build anywhere Swift does, Linux included: the
-// steward runs on a server. The app needs the Mac.
+// The rules, the realm and the launcher's own logic build anywhere Swift
+// does, Linux included: the steward runs on a server. The app needs the Mac.
 var products: [Product] = [
     .executable(name: "NullmereSteward", targets: ["NullmereSteward"]),
     .library(name: "NullmereCore", targets: ["NullmereCore"]),
@@ -26,20 +26,22 @@ var targets: [Target] = [
     // the realm across the network: the realm's and the app's.
     .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm"], path: "Tests/NullmereTestSupport"),
     .testTarget(name: "NullmereRealmTests", dependencies: ["NullmereRealm", "NullmereCore", "NullmereTestSupport"]),
+    // Platform-independent launcher logic: settings, navigation, scene
+    // constants, the news feed and the moon's veil. Pure Swift, so it is
+    // tested on Linux too.
+    .target(name: "LauncherCore"),
+    .testTarget(name: "LauncherCoreTests", dependencies: ["LauncherCore"]),
 ]
 
 #if os(macOS)
 products.append(.executable(name: "NullmereLauncher", targets: ["NullmereLauncher"]))
 targets += [
-    // Platform-independent launcher logic: settings, navigation, scene constants.
-    .target(name: "LauncherCore"),
     // The SwiftUI/AppKit/Metal launcher interface.
     .target(name: "LauncherKit", dependencies: ["LauncherCore"]),
     // The world's interface: the front door, the Metal world, the panels.
     .target(name: "NullmereKit", dependencies: ["NullmereCore", "NullmereRealm", "LauncherCore", "LauncherKit"]),
     // The "Nullmere Online" app: the launcher, and through Play, the realm.
     .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherKit", "NullmereKit"]),
-    .testTarget(name: "LauncherCoreTests", dependencies: ["LauncherCore"]),
     .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore", "NullmereTestSupport"]),
     .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereRealm", "LauncherCore", "NullmereTestSupport"]),
 ]
