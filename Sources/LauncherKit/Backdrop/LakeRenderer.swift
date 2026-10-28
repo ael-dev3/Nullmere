@@ -5,7 +5,8 @@ import QuartzCore
 struct LakeUniforms {
     /// View size in points (x, y) and drawable size in pixels (z, w).
     var sizeAndPixels: SIMD4<Float>
-    /// Scene time, activity (see `ResolvedMotion.activity`), horizon height and an unused lane.
+    /// Scene time, activity (see `ResolvedMotion.activity`), horizon height,
+    /// and how far the moon's image is veiled (see `ReflectionVeil.shown`).
     var params: SIMD4<Float>
 }
 

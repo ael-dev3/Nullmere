@@ -91,4 +91,55 @@ final class StillLakeTests: XCTestCase {
         XCTAssertLessThan(water, 40, "Open water is black")
         XCTAssertGreaterThanOrEqual(bright, 10, "Bright stars stand in the sky")
     }
+
+    /// Under a panel the moon's image sinks into the water: gone from its
+    /// place, while the moon in the sky and the stars on the water stay.
+    func testAPanelSinksTheMoonsImageAndLeavesTheStars() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
+        let library = try device.makeLibrary(source: LakeShader.source, options: nil)
+        let renderer = try LakeRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
+        let width = 1512, height = 982
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
+        descriptor.usage = [.renderTarget, .shaderRead]
+        descriptor.storageMode = .shared
+        let target = try XCTUnwrap(device.makeTexture(descriptor: descriptor))
+        func frame(veil: Float) -> [UInt8] {
+            let uniforms = LakeUniforms(sizeAndPixels: SIMD4(Float(width), Float(height), Float(width), Float(height)),
+                                        params: SIMD4(12.25, 0, Float(LakeComposition.horizon), veil))
+            XCTAssertNotNil(renderer.measureFrame(uniforms, into: target))
+            var pixels = [UInt8](repeating: 0, count: width * height * 4)
+            target.getBytes(&pixels, bytesPerRow: width * 4, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
+            return pixels
+        }
+        let whole = frame(veil: 0), sunk = frame(veil: 1)
+        func light(_ pixels: [UInt8], _ x: Int, _ y: Int) -> Int {
+            let i = (y * width + x) * 4
+            return Int(pixels[i]) + Int(pixels[i + 1]) + Int(pixels[i + 2])
+        }
+        let moonX = Int(LakeComposition.moonX * Double(width))
+        let moonY = Int((1 - LakeComposition.moonY) * Double(height))
+        let mirrorY = Int((1 - (2 * LakeComposition.horizon - LakeComposition.moonY)) * Double(height))
+        // The dithering differs by a step at most.
+        XCTAssertEqual(light(sunk, moonX, moonY), light(whole, moonX, moonY), accuracy: 6, "The moon in the sky stays")
+        XCTAssertGreaterThan(light(whole, moonX, mirrorY), 330)
+        XCTAssertLessThan(light(sunk, moonX, mirrorY), 30, "Its image is gone")
+
+        // Stars on the open water, away from the moon's image, in both.
+        func stars(_ pixels: [UInt8]) -> Int {
+            var count = 0
+            for y in stride(from: Int(Double(height) * 0.62), to: Int(Double(height) * 0.95), by: 1) {
+                for x in stride(from: 2, to: width / 3, by: 1) where light(pixels, x, y) > 60 {
+                    let here = light(pixels, x, y)
+                    if here >= light(pixels, x - 1, y), here >= light(pixels, x + 1, y), here >= light(pixels, x, y - 1), here > light(pixels, x, y + 1) {
+                        count += 1
+                    }
+                }
+            }
+            return count
+        }
+        let before = stars(whole), after = stars(sunk)
+        print("STILL stars on the water: \(before) beside the moon's image, \(after) with it sunk")
+        XCTAssertGreaterThan(before, 5, "Stars lie on the water")
+        XCTAssertEqual(after, before, "and stay when the moon's image sinks")
+    }
 }

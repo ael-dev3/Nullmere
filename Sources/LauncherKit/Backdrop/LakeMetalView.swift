@@ -10,6 +10,9 @@ struct LakeConfiguration: Equatable {
     var renderScale: Double
     var framesPerSecond: Int
     var horizon: Double
+    /// 1 while a panel lies on the water and veils the moon's image, else 0;
+    /// the lake eases between them (see `ReflectionVeil`).
+    var veil: Double = 0
 }
 
 /// Draws the lake with Metal.
@@ -33,6 +36,9 @@ final class LakeMetalView: MTKView {
     private(set) var renderer: LakeRenderer?
     private var isLoadingRenderer = false
     private var clock = SceneClock()
+    /// How far the moon's image is veiled, as last drawn.
+    private(set) var veil = ReflectionVeil()
+    private var lastFrame: CFTimeInterval?
     private var isWindowVisible = false
     private var occlusionObserver: (any NSObjectProtocol)?
 
@@ -106,13 +112,17 @@ final class LakeMetalView: MTKView {
               let drawable = currentDrawable
         else { return }
 
-        let time = clock.advance(to: CACurrentMediaTime(), rate: configuration.motion.clockRate)
+        let now = CACurrentMediaTime()
+        let time = clock.advance(to: now, rate: configuration.motion.clockRate)
+        // A paused lake draws one frame per change, so the veil settles at once.
+        veil.advance(toward: configuration.veil, by: isPaused ? .infinity : now - (lastFrame ?? now))
+        lastFrame = now
         let uniforms = LakeUniforms(
             sizeAndPixels: SIMD4(
                 Float(bounds.width), Float(bounds.height),
                 Float(drawableSize.width), Float(drawableSize.height)
             ),
-            params: SIMD4(Float(time), configuration.motion.activity, Float(configuration.horizon), 0)
+            params: SIMD4(Float(time), configuration.motion.activity, Float(configuration.horizon), Float(veil.shown))
         )
         renderer.draw(uniforms, in: pass, to: drawable)
     }

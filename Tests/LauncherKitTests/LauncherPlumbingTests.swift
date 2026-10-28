@@ -135,6 +135,15 @@ final class LakeMetalViewTests: XCTestCase {
         XCTAssertTrue(view.isPaused)
         XCTAssertTrue(view.enableSetNeedsDisplay)
         view.draw(view.bounds)
+        // A panel opened on a still lake: its veil settles in the one frame.
+        var veiled = configuration(.still)
+        veiled.veil = 1
+        view.configuration = veiled
+        view.draw(view.bounds)
+        XCTAssertEqual(view.veil.value, 1)
+        view.configuration = configuration(.still)
+        view.draw(view.bounds)
+        XCTAssertEqual(view.veil.value, 0)
 
         // Sharper, and resized.
         view.configuration = configuration(.reduced, renderScale: 1)

@@ -171,8 +171,10 @@ enum LakeShader {
     }
 
     // Everything above the waterline: gradient, Milky Way, stars, moon, shore.
-    // `activity` is 1 at full motion and smaller when motion is reduced.
-    float3 nm_sky(float2 p, float aspect, float pt, float horizon, float time, float activity) {
+    // `activity` is 1 at full motion and smaller when motion is reduced;
+    // `moonlight` scales the moon, its halo and the haze it lights (1 in the
+    // sky; less in its image on the water while a panel veils it).
+    float3 nm_sky(float2 p, float aspect, float pt, float horizon, float time, float activity, float moonlight) {
         float3 c = nm_skyGradient(p.y, horizon);
         float2 m = float2(aspect * NM_MOON_X, NM_MOON_Y);
         float dm = length(p - m);
@@ -206,16 +208,16 @@ enum LakeShader {
 
         // Thin haze drifting past the moon catches its light.
         if (dm < 0.45) {
-            float veil = smoothstep(0.50, 0.82, nm_fbm(float2(p.x * 2.3 - time * 0.012, p.y * 7.5 + 2.0)));
-            c += float3(0.55, 0.64, 0.80) * 0.11 * veil * exp(-dm * 9.0) * (0.85 + 0.3 * breath);
+            float haze = smoothstep(0.50, 0.82, nm_fbm(float2(p.x * 2.3 - time * 0.012, p.y * 7.5 + 2.0)));
+            c += float3(0.55, 0.64, 0.80) * 0.11 * haze * exp(-dm * 9.0) * (0.85 + 0.3 * breath) * moonlight;
         }
 
         // Moon: a cold full disc with soft limb darkening, maria and a wide halo.
         float rim = max(dm - NM_MOON_R, 0.0);
         float3 glowTint = float3(0.58, 0.68, 0.86);
         float glow = 0.050 * exp(-rim * 2.2) + 0.080 * exp(-rim * 7.5) + 0.15 * exp(-rim * 24.0) + 0.26 * exp(-rim * 90.0);
-        c += glowTint * glow * (0.86 + 0.28 * breath);
-        float disc = 1.0 - smoothstep(NM_MOON_R - pt, NM_MOON_R + pt, dm);
+        c += glowTint * glow * (0.86 + 0.28 * breath) * moonlight;
+        float disc = (1.0 - smoothstep(NM_MOON_R - pt, NM_MOON_R + pt, dm)) * moonlight;
         if (disc > 0.0) {
             float2 q = (p - m) / NM_MOON_R;
             float limb = sqrt(clamp(1.0 - dot(q, q), 0.0, 1.0));
@@ -321,7 +323,9 @@ enum LakeShader {
 
     // The full scene. `uv` is 0...1 with y pointing up, `sizePt` is the view
     // size in points, `px` the fragment position in pixels (for dithering).
-    float3 nm_scene(float2 uv, float2 sizePt, float2 px, float time, float activity, float horizon) {
+    // `veil` (0...1) sinks the moon's image into the water while a panel lies
+    // over it; the stars on the water stay.
+    float3 nm_scene(float2 uv, float2 sizePt, float2 px, float time, float activity, float horizon, float veil) {
         float aspect = sizePt.x / sizePt.y;
         float pt = 1.0 / sizePt.y;
         float2 p = float2(uv.x * aspect, uv.y);
@@ -329,7 +333,7 @@ enum LakeShader {
         float3 c;
 
         if (p.y >= horizon) {
-            c = nm_sky(p, aspect, pt, horizon, time, activity);
+            c = nm_sky(p, aspect, pt, horizon, time, activity, 1.0);
         } else {
             // Water: dead, deep and nearly still, a black mirror of the sky. A
             // long, faint swell barely stirs it, and now and then a ring
@@ -360,17 +364,18 @@ enum LakeShader {
             r.y = max(r.y, horizon + 0.0005);
             float depth = s / horizon;
             float reflectance = mix(0.94, 0.56, sqrt(depth));
-            c = nm_sky(r, aspect, pt, horizon, time, activity) * reflectance;
+            float moonlight = 1.0 - veil;
+            c = nm_sky(r, aspect, pt, horizon, time, activity, moonlight) * reflectance;
 
             // Faces of the waves turned toward the moon catch a faint sheen.
             float lateral = (p.x - m.x) / (0.30 * aspect);
             float sheen = smoothstep(0.0, 0.06, slope.y) * exp(-lateral * lateral);
-            c += float3(0.50, 0.60, 0.78) * 0.05 * sheen * (0.4 + 0.6 * depth);
+            c += float3(0.50, 0.60, 0.78) * 0.05 * sheen * (0.4 + 0.6 * depth) * moonlight;
             float ringLight = max(ring.y, 0.0) * (0.35 + 0.65 * exp(-lateral * lateral));
-            c += float3(0.55, 0.64, 0.80) * 0.45 * ringLight;
+            c += float3(0.55, 0.64, 0.80) * 0.45 * ringLight * moonlight;
 
             float lit = dot(c, float3(0.33, 0.34, 0.33));
-            c += nm_glints(p, m, horizon, depth, pt, time) * (0.35 + 0.65 * reflectance) * (1.0 - smoothstep(0.15, 0.40, lit));
+            c += nm_glints(p, m, horizon, depth, pt, time) * (0.35 + 0.65 * reflectance) * (1.0 - smoothstep(0.15, 0.40, lit)) * moonlight;
 
             c += float3(0.0015, 0.0022, 0.0035);
         }
@@ -395,7 +400,7 @@ enum LakeShader {
 
     struct LakeUniforms {
         float4 sizeAndPixels; // view size in points (xy), drawable size in pixels (zw)
-        float4 params;        // scene time, activity, horizon, unused
+        float4 params;        // scene time, activity, horizon, veil
     };
 
     struct LakeVertexOut {
@@ -415,7 +420,7 @@ enum LakeShader {
     fragment float4 nm_lake_fragment(LakeVertexOut in [[stage_in]],
                                      constant LakeUniforms& u [[buffer(0)]]) {
         float3 color = nm_scene(in.uv, u.sizeAndPixels.xy, in.position.xy,
-                                u.params.x, u.params.y, u.params.z);
+                                u.params.x, u.params.y, u.params.z, u.params.w);
         return float4(color, 1.0);
     }
     """#

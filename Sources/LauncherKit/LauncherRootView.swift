@@ -29,7 +29,7 @@ public struct LauncherRootView: View {
                     .allowsHitTesting(false)
 
                 // Panels darken the water beneath them, so their text stays
-                // legible over the moon's reflection.
+                // legible; the lake sinks the moon's image under them too.
                 PanelScrim()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.top, waterline)

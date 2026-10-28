@@ -20,11 +20,13 @@
 //   python3 -m http.server     then open http://localhost:8000/Tools/scene-preview/
 //
 // Optional query parameters: horizon (0.47), activity (1 at full motion, 0.4
-// reduced, 0 still), time (freeze at seconds).
+// reduced, 0 still), time (freeze at seconds), veil (0 to 1: how far an open
+// panel sinks the moon's image in the water).
 const query = new URLSearchParams(location.search);
 const horizon = Number(query.get('horizon') ?? 0.47);
 const activity = Number(query.get('activity') ?? 1);
 const frozenTime = query.has('time') ? Number(query.get('time')) : null;
+const veil = Number(query.get('veil') ?? 0);
 
 const canvas = document.getElementById('scene');
 const gl = canvas.getContext('webgl2');
@@ -60,10 +62,10 @@ precision highp float;
 ${scene}
 uniform vec2 sizePt;
 uniform vec2 pixels;
-uniform vec3 params;
+uniform vec4 params;
 out vec4 color;
 void main() {
-  color = vec4(nm_scene(gl_FragCoord.xy / pixels, sizePt, gl_FragCoord.xy, params.x, params.y, params.z), 1.0);
+  color = vec4(nm_scene(gl_FragCoord.xy / pixels, sizePt, gl_FragCoord.xy, params.x, params.y, params.z, params.w), 1.0);
 }`));
 gl.linkProgram(program);
 if (!gl.getProgramParameter(program, gl.LINK_STATUS)) fail(gl.getProgramInfoLog(program));
@@ -81,7 +83,7 @@ function frame(now) {
   gl.viewport(0, 0, width, height);
   gl.uniform2f(gl.getUniformLocation(program, 'sizePt'), innerWidth, innerHeight);
   gl.uniform2f(gl.getUniformLocation(program, 'pixels'), width, height);
-  gl.uniform3f(gl.getUniformLocation(program, 'params'), frozenTime ?? (now - start) / 1000, activity, horizon);
+  gl.uniform4f(gl.getUniformLocation(program, 'params'), frozenTime ?? (now - start) / 1000, activity, horizon, veil);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   if (frozenTime === null) requestAnimationFrame(frame);
 }

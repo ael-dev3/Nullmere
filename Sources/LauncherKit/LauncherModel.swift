@@ -121,7 +121,8 @@ public final class LauncherModel {
             motion: motion,
             renderScale: settings.quality.scale,
             framesPerSecond: settings.frameRate.framesPerSecond(motion: motion, isSavingEnergy: isSavingEnergy),
-            horizon: LakeComposition.horizon
+            horizon: LakeComposition.horizon,
+            veil: screen == .title && !isGated ? 0 : 1
         )
     }
 

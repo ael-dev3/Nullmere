@@ -311,6 +311,20 @@ final class LauncherModelTests: XCTestCase {
         XCTAssertEqual(configuration.horizon, LakeComposition.horizon)
     }
 
+    func testAPanelVeilsTheMoonsImage() {
+        let model = makeModel()
+        func veil() -> Double { model.backdropConfiguration(systemReducesMotion: false).veil }
+        XCTAssertEqual(veil(), 0, "The menu leaves the moon's image whole")
+        for screen in [LauncherModel.Screen.news, .settings, .play] {
+            model.show(screen)
+            XCTAssertEqual(veil(), 1, "Under \(screen)")
+        }
+        model.show(.title)
+        XCTAssertEqual(veil(), 0)
+        XCTAssertEqual(makeModel(readiness: .appleIntelligenceNotEnabled).backdropConfiguration(systemReducesMotion: false).veil, 1,
+                       "Under the requirement")
+    }
+
     func testTheLakeSlowsDownToSaveEnergy() {
         LauncherSettings(motion: .full, frameRate: .oneTwenty).save(to: defaults)
         var lowPowerMode = false
