@@ -343,7 +343,7 @@ final class LauncherHostTests: XCTestCase {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 600), styleMask: [.titled, .fullSizeContentView],
                               backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
-        let host = NSHostingView(rootView: AnyView(LauncherRootView(model: model)))
+        var host: NSHostingView<AnyView>? = NSHostingView(rootView: AnyView(LauncherRootView(model: model)))
         window.contentView = host
         window.orderFrontRegardless()
         defer { window.close() }
@@ -382,23 +382,50 @@ final class LauncherHostTests: XCTestCase {
 
         // Crossing to the realm takes the launcher out of the window, as the
         // app's shell does: its lake and its bridge go with it, and the
-        // window's keys reach the launcher no more.
+        // window's keys reach the launcher no more. The app's own loop
+        // empties its autorelease pool after every event; waiting here does
+        // the same after every turn, or what SwiftUI let go as it took the
+        // launcher out would stay held by this test until the test ends.
         weak var lake: LakeMetalView?
         weak var bridge: WindowBridgeView?
         autoreleasepool {
-            lake = views(LakeMetalView.self, in: host).first
-            bridge = views(WindowBridgeView.self, in: host).first
+            if let host {
+                lake = views(LakeMetalView.self, in: host).first
+                bridge = views(WindowBridgeView.self, in: host).first
+            }
         }
         XCTAssertNotNil(lake, "The launcher draws its lake in the window")
         XCTAssertNotNil(bridge, "and listens to it")
-        host.rootView = AnyView(Color.black)
+        autoreleasepool { host?.rootView = AnyView(Color.black) }
         let gone = Date().addingTimeInterval(5)
-        while lake != nil || bridge != nil, Date() < gone { spin(0.05) }
-        XCTAssertNil(lake, "The lake is let go")
-        XCTAssertNil(bridge, "and the bridge")
+        while lake != nil || bridge != nil, Date() < gone { autoreleasepool { spin(0.05) } }
+        XCTAssertNil(lake, "The lake is let go\(Self.stillHeld(lake))")
+        XCTAssertNil(bridge, "and the bridge\(Self.stillHeld(bridge))")
         let chosen = model.menuSelection
         dispatch(down, in: window)
         XCTAssertEqual(model.menuSelection, chosen, "No one listens for the launcher's keys")
+
+        // Should either still be held, find out whether its hosting held it:
+        // release the hosting view, close the window, and look again.
+        if lake != nil || bridge != nil {
+            autoreleasepool {
+                window.contentView = nil
+                host = nil
+                window.close()
+            }
+            let after = Date().addingTimeInterval(5)
+            while lake != nil || bridge != nil, Date() < after { autoreleasepool { spin(0.05) } }
+            XCTAssertNil(lake, "The lake is held even with its hosting view released and its window closed")
+            XCTAssertNil(bridge, "The bridge is held even with its hosting view released and its window closed")
+        }
+    }
+
+    /// Where a view that should have been let go is, for a failure to say:
+    /// still shown in the window, or out of it and held unseen.
+    private static func stillHeld(_ view: NSView?) -> String {
+        guard let view else { return "" }
+        if view.window != nil { return ": still in the window" }
+        return view.superview != nil ? ": out of the window, still in a view" : ": out of every view, still held"
     }
 
     /// Our own views of a type in a view's hierarchy.

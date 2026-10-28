@@ -1,3 +1,4 @@
+import AppKit
 import NullmereCore
 import LauncherKit
 import Observation
@@ -122,14 +123,20 @@ final class OfferDraft {
     @ObservationIgnored private(set) var isRetired = false
     private var typed = ""
     private var composing = false
+    /// How many offers have gone from this draft, its words with them or
+    /// none. Each is a boundary for the field being typed in, even one
+    /// that leaves the words as empty as they were: the words alone can't
+    /// tell it went.
+    private(set) var sent = 0
 
     init(for house: House) {
         recipient = OfferRecipient(house)
     }
 
     /// Taken as typed, then cut to what an envoy carries. Taking it first
-    /// tells the field of every keystroke, even one that leaves the words as
-    /// they were; otherwise the field would go on showing what was cut.
+    /// tells whoever shows the words of every keystroke, even one that
+    /// leaves them as they were. The field being typed in takes back what
+    /// is cut itself (`EnvoyWordsField`).
     var words: String {
         get { isRetired ? "" : typed }
         set {
@@ -155,6 +162,7 @@ final class OfferDraft {
         guard let house = currentHouse(in: session) else { return }
         session.propose(proposal, to: house, words: words)
         words = ""
+        sent += 1
     }
 
     /// Offers a trade with the words, which go with it, and puts the trade away.
@@ -162,6 +170,7 @@ final class OfferDraft {
         guard let house = currentHouse(in: session) else { return }
         session.offerTrade(trade, to: house, words: words)
         words = ""
+        sent += 1
         isComposingTrade = false
     }
 
@@ -191,6 +200,200 @@ final class OfferDrafts {
         let draft = OfferDraft(for: house)
         current[house.id] = draft
         return draft
+    }
+}
+
+/// The words for a keeper, in AppKit's own text field. What is typed or
+/// pasted goes to the draft as it is entered; when the draft keeps less,
+/// the rest is taken back in the field at once, while it is still being
+/// typed in, so the field shows what will be sent. SwiftUI's text field,
+/// told of the cut while it was being typed in, went on showing what had
+/// been cut.
+struct EnvoyWordsField: NSViewRepresentable {
+    let draft: OfferDraft
+    /// What the draft keeps now, read where the row is drawn, so the field
+    /// hears when it changes from outside: sent, or the House kept by another.
+    let words: String
+    /// How many offers have gone from the draft, read there too, so the
+    /// field hears of each, even one that left the words as empty as before.
+    let sent: Int
+    let placeholder: String
+    let label: String
+    let size: CGFloat
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(draft: draft)
+    }
+
+    func makeNSView(context: Context) -> NSTextField {
+        let field = NSTextField(string: words)
+        field.isBordered = false
+        field.isBezeled = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.cell?.isScrollable = true
+        field.cell?.wraps = false
+        // Typing is undone as in any field, within one draft; what came
+        // before a boundary is forgotten there (`Coordinator.startAfresh`).
+        field.cell?.allowsUndo = true
+        field.delegate = context.coordinator
+        style(field)
+        return field
+    }
+
+    func updateNSView(_ field: NSTextField, context: Context) {
+        style(field)
+        context.coordinator.drawn(field, with: draft, words: words, sent: sent)
+    }
+
+    static func dismantleNSView(_ field: NSTextField, coordinator: Coordinator) {
+        field.delegate = nil
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView field: NSTextField, context: Context) -> CGSize? {
+        CGSize(width: proposal.width ?? field.intrinsicContentSize.width, height: field.intrinsicContentSize.height)
+    }
+
+    /// Set as the row's other words are: the interface's type at the
+    /// reader's size, in ink, the hint dimmer.
+    private func style(_ field: NSTextField) {
+        let font = NSFont.systemFont(ofSize: size, weight: .light)
+        if field.font != font || field.placeholderAttributedString?.string != placeholder {
+            field.font = font
+            field.textColor = NSColor(Palette.ink)
+            field.placeholderAttributedString = NSAttributedString(string: placeholder, attributes: [
+                .font: font, .foregroundColor: NSColor(Palette.ink).withAlphaComponent(0.4),
+            ])
+        }
+        if field.accessibilityLabel() != label { field.setAccessibilityLabel(label) }
+        if field.accessibilityPlaceholderValue() != placeholder { field.setAccessibilityPlaceholderValue(placeholder) }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        let sync: EnvoyWordsSync
+
+        init(draft: OfferDraft) {
+            sync = EnvoyWordsSync(draft: draft)
+        }
+
+        /// The row drawn again: at a boundary the editor starts afresh;
+        /// otherwise it, and any composition in it, is left alone.
+        func drawn(_ field: NSTextField, with draft: OfferDraft, words: String, sent: Int) {
+            sync.drawn(with: draft, words: words, sent: sent) { words in
+                Coordinator.startAfresh(field, showing: words)
+            }
+        }
+
+        /// The editor shows the words the field types for now, and nothing
+        /// from before lingers there: a composition under way is dropped, the
+        /// input method told, and the history of what was typed forgotten,
+        /// so neither can bring words sent, or meant for another keeper,
+        /// back into the field or its draft.
+        private static func startAfresh(_ field: NSTextField, showing words: String) {
+            guard let editor = field.currentEditor() as? NSTextView else {
+                field.stringValue = words
+                // Not being typed in: unless another field of the window is,
+                // whose history it is now, the history goes too.
+                if !(field.window?.firstResponder is NSText) { forgetHistory(field.window?.undoManager) }
+                return
+            }
+            if editor.hasMarkedText() {
+                editor.inputContext?.discardMarkedText()
+                editor.unmarkText()
+            }
+            editor.string = words
+            editor.setSelectedRange(NSRange(location: (words as NSString).length, length: 0))
+            forgetHistory(editor.undoManager)
+        }
+
+        /// The window's history holds only what was typed in fields (the
+        /// game registers no undo of its own), so all of it goes. If the
+        /// event under way is still gathering an undo group, it goes once
+        /// the undo manager has closed that group: emptied with the group
+        /// open, the manager would be left to close a group no longer there.
+        private static func forgetHistory(_ history: UndoManager?) {
+            guard let history else { return }
+            guard history.groupingLevel > 0 else { return history.removeAllActions() }
+            RunLoop.main.perform(#selector(UndoManager.removeAllActions as (UndoManager) -> () -> Void), target: history,
+                                 argument: nil, order: Int.max, modes: history.runLoopModes)
+        }
+
+        /// Each change, as it is entered: the draft takes it, and whatever
+        /// the draft doesn't keep is taken back from the field, through the
+        /// editor as a keystroke would be.
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSTextField,
+                  let editor = field.currentEditor() as? NSTextView
+            else { return }
+            let history = editor.undoManager
+            guard let change = sync.entered(editor.string, composing: editor.hasMarkedText(),
+                                            replaying: history?.isUndoing == true || history?.isRedoing == true),
+                  editor.shouldChangeText(in: change.range, replacementString: change.replacement)
+            else { return }
+            editor.replaceCharacters(in: change.range, with: change.replacement)
+            editor.didChangeText()
+        }
+    }
+}
+
+/// What the words field decides, apart from AppKit, so it can be checked
+/// anywhere: the draft it types for, what it last knew that draft to hold,
+/// and when its editor starts afresh.
+@MainActor
+final class EnvoyWordsSync {
+    private(set) var draft: OfferDraft
+    /// What the field last gave its draft, or found in it starting afresh.
+    private(set) var known: String
+    /// How many offers the field last knew to have gone from its draft.
+    private(set) var sent: Int
+    /// While the editor starts afresh, what it reports is the field's own
+    /// doing: none of it is typing, for either draft.
+    private(set) var isStartingAfresh = false
+
+    init(draft: OfferDraft) {
+        self.draft = draft
+        known = draft.words
+        sent = draft.sent
+    }
+
+    /// The row drawn again, with a draft, the words it holds and how many
+    /// offers have gone from it. Another draft (the House kept by another),
+    /// words changed from outside, or another offer gone (with its words,
+    /// or none) is a boundary: `startAfresh` puts the editor right while the
+    /// field still types for the draft before and takes nothing the editor
+    /// reports meanwhile, and only then does the field type for this draft.
+    /// Anything else leaves the editor alone, so a composition goes on.
+    func drawn(with draft: OfferDraft, words: String, sent: Int, startAfresh: (String) -> Void) {
+        guard draft !== self.draft || words != known || sent != self.sent else { return }
+        isStartingAfresh = true
+        defer { isStartingAfresh = false }
+        startAfresh(words)
+        self.draft = draft
+        known = words
+        self.sent = sent
+    }
+
+    /// The editor holds `text` now. The draft takes it, unless it is still
+    /// being composed or the editor is starting afresh. Returns the change
+    /// that leaves the editor with what the draft keeps, if it keeps less;
+    /// none while undo or redo puts back, step by step, what was there.
+    func entered(_ text: String, composing: Bool, replaying: Bool) -> (range: NSRange, replacement: String)? {
+        guard !isStartingAfresh, !composing else { return nil }
+        draft.words = text
+        known = draft.words
+        return replaying ? nil : EnvoyWordsSync.correction(of: text, keeping: known)
+    }
+
+    /// The change that makes what was entered into what the draft kept, in
+    /// the editor's own measure (UTF-16): what follows what was kept, taken
+    /// out. A draft keeps the start of what was entered, or nothing; were it
+    /// ever otherwise, the whole is replaced. Nil if it kept it all.
+    static func correction(of entered: String, keeping kept: String) -> (range: NSRange, replacement: String)? {
+        guard kept != entered else { return nil }
+        let whole = NSRange(location: 0, length: entered.utf16.count)
+        guard entered.utf16.starts(with: kept.utf16) else { return (whole, kept) }
+        return (NSRange(location: kept.utf16.count, length: whole.length - kept.utf16.count), "")
     }
 }
 
@@ -246,13 +449,10 @@ struct HouseRow: View {
                     .fixedSize(horizontal: false, vertical: true)
                 if house.isPlayer {
                     // Words for the keeper there, sent with the next offer.
-                    TextField("Words to send with an offer", text: Bindable(draft).words)
-                        .textFieldStyle(.plain)
-                        .font(.nm(11, weight: .light))
-                        .foregroundStyle(Palette.ink)
+                    EnvoyWordsField(draft: draft, words: draft.words, sent: draft.sent, placeholder: "Words to send with an offer",
+                                    label: "Words for the keeper of \(house.title)", size: 11 * TextSize.shared.scale)
                         .padding(.vertical, 4)
                         .overlay(alignment: .bottom) { Rule(opacity: 0.3) }
-                        .accessibilityLabel("Words for the keeper of \(house.title)")
                 }
                 HStack(spacing: 14) {
                     Figure(label: "Holds", value: state.holds(of: house.id).count)
