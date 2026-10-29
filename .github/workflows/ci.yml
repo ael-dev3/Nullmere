@@ -134,17 +134,14 @@ jobs:
           # A look at the icon as compiled, for readers of the log.
           sips -s format png "build/Nullmere Online.app/Contents/Resources/AppIcon.icns" --out build/icon.png >/dev/null
 
-      # The disk image players download, made the way a release is made;
-      # mounted again to see the app inside is whole.
+      # The disk image players download, made the way a release is made,
+      # and checked as the release workflow checks the one that ships.
       - name: Pack the disk image
         run: |
           scripts/release.sh
           dmg="$(ls build/Nullmere-Online-*.dmg)"
-          mount="$(mktemp -d)"
-          hdiutil attach -quiet -readonly -nobrowse -mountpoint "$mount" "$dmg"
-          codesign --verify --deep --strict "$mount/Nullmere Online.app"
-          test -L "$mount/Applications"
-          hdiutil detach -quiet "$mount"
+          version="${dmg#build/Nullmere-Online-}"
+          scripts/verify-release.sh "$dmg" "${version%.dmg}"
           ls -lh "$dmg"
 
       - name: Keep the disk image
@@ -368,10 +365,18 @@ jobs:
           echo "::add-mask::$token"
           echo "NULLMERE_STDB_TOKEN=$token" >> "$GITHUB_ENV"
 
+      # The macOS job skips these, with no server to play through; here they
+      # must run, every one: a skip would pass for a play-through.
       - name: Play through SpacetimeDB
         env:
           NULLMERE_STDB: http://127.0.0.1:3000/nullmere
-        run: swift test --skip-build --filter SpacetimeIntegrationTests 2>&1 | tee realm-integration.log
+        run: |
+          swift test --skip-build --filter SpacetimeIntegrationTests 2>&1 | tee realm-integration.log
+          total="$(grep "Executed .* tests" realm-integration.log | tail -n 1)"
+          echo "$total" | grep -Eq "Executed [1-9][0-9]* tests?, with 0 failures" || {
+            echo "::error::The play-through through SpacetimeDB didn't run whole: $total"
+            exit 1
+          }
 
       # A whole realm standing alone, raised by the one command: the module
       # published, the steward started in the background, and the realm's

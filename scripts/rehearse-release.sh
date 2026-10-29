@@ -56,16 +56,21 @@ rm -rf "$OUTPUT_DIR"
 VERSION=0.0.0-rehearsal OUTPUT_DIR="$OUTPUT_DIR" CODESIGN_IDENTITY="$identity" NOTARY_PROFILE=nullmere NOTARY_DRY_RUN=1 \
     scripts/release.sh | tee "$WORK/release.log"
 
-echo "== Checking what was signed"
-app="$OUTPUT_DIR/Nullmere Online.app"
+echo "== Checking what was signed, as the release workflow checks what ships"
 dmg="$OUTPUT_DIR/Nullmere-Online-0.0.0-rehearsal.dmg"
-codesign --verify --deep --strict --verbose=2 "$app"
-details="$(codesign -dvv "$app" 2>&1)"
-echo "$details" | grep -q "Authority=$NAME" || { echo "error: the app isn't signed by $NAME" >&2; echo "$details" >&2; exit 1; }
-echo "$details" | grep -q "flags=.*runtime" || { echo "error: the app lacks the hardened runtime notarization needs" >&2; exit 1; }
-echo "$details" | grep -q "^Timestamp=" || { echo "error: the app lacks the secure timestamp notarization needs" >&2; exit 1; }
-codesign --verify --strict --verbose=2 "$dmg"
-codesign -dvv "$dmg" 2>&1 | grep -q "Authority=$NAME" || { echo "error: the disk image isn't signed" >&2; exit 1; }
+AUTHORITY="$NAME" scripts/verify-release.sh "$dmg" 0.0.0-rehearsal
+test -s "$dmg.sha256" || { echo "error: no checksum beside the disk image" >&2; exit 1; }
+(cd "$OUTPUT_DIR" && shasum -a 256 -c "$(basename "$dmg").sha256") || { echo "error: the checksum doesn't match the disk image" >&2; exit 1; }
+# The check refuses what it should: an image signed by someone else.
+if AUTHORITY="Developer ID Application: Someone Else" scripts/verify-release.sh "$dmg" 0.0.0-rehearsal >/dev/null 2>&1; then
+    echo "error: the check passed an image signed by someone else" >&2
+    exit 1
+fi
+# And a version other than the one released.
+if AUTHORITY="$NAME" scripts/verify-release.sh "$dmg" 9.9.9 >/dev/null 2>&1; then
+    echo "error: the check passed an image named for another version" >&2
+    exit 1
+fi
 grep -q "would run: xcrun notarytool submit" "$WORK/release.log" || { echo "error: notarizing wasn't rehearsed" >&2; exit 1; }
 grep -q "would run: xcrun stapler staple" "$WORK/release.log" || { echo "error: stapling wasn't rehearsed" >&2; exit 1; }
 echo "== The release's notes, as a signed release would have them"
