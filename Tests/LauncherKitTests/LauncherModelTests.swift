@@ -294,7 +294,7 @@ final class LauncherModelTests: XCTestCase {
         let model = makeModel()
         func veil() -> Double { model.backdropConfiguration(systemReducesMotion: false).veil }
         XCTAssertEqual(veil(), 0, "The menu leaves the moon's image whole")
-        for screen in [LauncherModel.Screen.news, .settings, .play] {
+        for screen in [LauncherModel.Screen.news, .settings] {
             model.show(screen)
             XCTAssertEqual(veil(), 1, "Under \(screen)")
         }

@@ -78,9 +78,10 @@ final class LakeRenderTests: XCTestCase {
         try png.write(to: URL(fileURLWithPath: path).appendingPathComponent("game-lakes.png"))
     }
 
-    /// The moon lays a path of light down the water beneath it: the water
-    /// under the moon is plainly brighter than open water to either side.
-    func testTheMoonLaysAPathOnTheWater() throws {
+    /// The water under the moon is as still as the launcher's: no path of
+    /// light runs down it, only the moon's halo, fading, as it does to
+    /// either side.
+    func testNoPathRunsDownTheStillWater() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: WorldShader.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
@@ -95,7 +96,7 @@ final class LakeRenderTests: XCTestCase {
         descriptor.usage = [.renderTarget, .shaderRead]
         descriptor.storageMode = .shared
         let target = try XCTUnwrap(device.makeTexture(descriptor: descriptor))
-        // The moon a little above the middle, so the path runs below it.
+        // The moon a little above the middle, so a path would run below it.
         let centre = SIMD2(moon.x, moon.y + 4)
         let uniforms = WorldUniforms(view: SIMD4(Float(width), Float(height), scale, 20),
                                      camera: SIMD4(centre.x, centre.y, Float(state.map.radius), 1),
@@ -130,13 +131,12 @@ final class LakeRenderTests: XCTestCase {
         func median(_ values: [Int]) -> Int { values.sorted()[values.count / 2] }
         let lit = median(path), dark = median(side)
         print("MOONPATH \(lit) under the moon, \(dark) beside it")
-        XCTAssertGreaterThanOrEqual(lit - dark, 40, "The path shows: \(lit) under the moon, \(dark) beside it")
-        XCTAssertLessThan(lit, 200, "and the lake stays black glass: \(lit)")
+        XCTAssertLessThan(lit - dark, 20, "No path: \(lit) under the moon, \(dark) beside it, the halo's fading alone")
+        XCTAssertLessThan(lit, 60, "and the lake stays black glass: \(lit)")
     }
 
     /// The lake from afar, the whole world in view: black still, its open
-    /// water dark away from the moon's path, which stays a column the
-    /// moon's own size rather than a wash over all the lake.
+    /// water dark, and dark too beneath the moon, where no path runs.
     func testTheLakeStaysBlackFromAfar() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: WorldShader.source, options: nil)
@@ -178,9 +178,9 @@ final class LakeRenderTests: XCTestCase {
         open.sort()
         path.sort()
         let water = open[open.count / 2], lit = path.isEmpty ? 0 : path[path.count / 2]
-        print("LAKEAFAR open water \(water), the moon's path \(lit)")
+        print("LAKEAFAR open water \(water), beneath the moon \(lit)")
         XCTAssertLessThan(water, 25, "Black from afar, not washed with the moon's light")
-        XCTAssertGreaterThan(lit, water + 8, "and the moon's path shows on it")
+        XCTAssertLessThan(lit, water + 12, "and beneath the moon, no path")
     }
 
     /// The unknown as a game opens: a night mist in vast banks, never a
@@ -232,8 +232,9 @@ final class LakeRenderTests: XCTestCase {
     }
 
     /// The lake close up, as a keeper zoomed in on it sees it: black glass,
-    /// the moon's face crisp in it, its path running down the water, and
-    /// stars held in the dark around them. CI prints the frame large.
+    /// the moon's face crisp in it, its halo the same above it as below
+    /// (no path), and stars held in the dark around them. CI prints the
+    /// frame large.
     func testTheLakeCloseUp() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: WorldShader.source, options: nil)
@@ -296,7 +297,7 @@ final class LakeRenderTests: XCTestCase {
             }
         }
         let water = dark.sorted()[dark.count / 2]
-        // The path runs from the moon toward the eye, and barely above it.
+        // Still water: the halo lies as far above the moon as below it.
         func band(at dy: Float) -> Int {
             var values: [Int] = []
             let row = Int(moonPx.y + dy * Float(height))
@@ -306,9 +307,9 @@ final class LakeRenderTests: XCTestCase {
             return values.sorted()[values.count / 2]
         }
         let above = band(at: -0.12), below = band(at: 0.12)
-        print("LAKECLOSE the path a little above the moon \(above), as far below \(below)")
-        XCTAssertLessThan(Double(above - water), Double(below - water) * 0.6, "The path runs down from the moon, not up")
-        XCTAssertGreaterThan(below - water, 15, "and shows below it")
+        print("LAKECLOSE a little above the moon \(above), as far below \(below)")
+        XCTAssertLessThan(abs(above - below), 12, "No path: the halo the same above the moon as below")
+        XCTAssertLessThan(below - water, 40, "and faint by then")
         print("LAKECLOSE \(width)x\(height) at \(scale) px a hex: moon face \(face), beyond its rim \(beyond), open water \(water), star pixels \(stars) of \(dark.count)")
         XCTAssertGreaterThan(dark.count, 2000, "Open water in view")
         XCTAssertGreaterThan(face, 380, "The moon's face is bright in the water")

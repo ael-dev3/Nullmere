@@ -37,10 +37,15 @@ enum WorldShader {
 
     #define NM_ROOT3 1.73205080757
 
+    // Nullmere's own hash, as the launcher's lake has it: a point folded
+    // once along each axis, each fold stirred by the square of the other,
+    // and the two drawn together.
     float nm_hash(float2 p) {
-        float3 p3 = fract(float3(p.x, p.y, p.x) * 0.1031);
-        p3 += dot(p3, p3.yzx + 33.33);
-        return fract((p3.x + p3.y) * p3.z);
+        float a = fract(p.x * 0.1137 + 0.4142);
+        float b = fract(p.y * 0.1459 + 0.7320);
+        a = fract(a * 51.73 + b * b * 29.17);
+        b = fract(b * 43.39 + a * a * 37.61);
+        return fract(a * 19.07 + b * 61.13 + a * b * 7.31);
     }
 
     float nm_noise(float2 p) {
@@ -215,45 +220,75 @@ enum WorldShader {
         return b * b * (exp(-r2 / 0.8) + halo) * twinkle;
     }
 
-    float3 nm_mirror(float2 w, float2 px, float2 viewport, float ppp, float shallow, float time, float4 moonAt, float2 moonPx, float moonRadiusPx) {
-        // Black glass, faintly holding the sky: a little paler toward the top
-        // of the view, and along the moon's path, a narrow column of light
-        // brightest at the moon's own reflection and running on down the
-        // water toward the eye, shorter above it. The path is as wide as the
-        // moon is large on screen, within bounds: zoomed out, it stays a
-        // column on the lake rather than a wash over all of it.
+    // Smooth random flicker, roughly -1...1, as the launcher's stars have
+    // it: a slow swell with a quicker shimmer on top, its own for each star.
+    float nm_flicker(float time, float ph) {
+        float slow = nm_noise(float2(time * (0.7 + 1.3 * ph), ph * 97.0));
+        float quick = nm_noise(float2(time * (3.0 + 3.5 * ph), ph * 61.0 + 40.0));
+        return (slow - 0.5) * 1.6 + (quick - 0.5) * 1.0;
+    }
+
+    // A reflected star as the launcher's water gives one back: warm or cold
+    // by chance, and flickering on its own; laid out as nm_star lays them.
+    float3 nm_reflectedStar(float2 px, float ppp, float size, float threshold, float salt, float time) {
+        float turn = 0.4 + salt * 0.137;
+        float ct = cos(turn);
+        float st = sin(turn);
+        float2 g = float2(ct * px.x - st * px.y, st * px.x + ct * px.y) / (size * ppp);
+        g.x += nm_hash(float2(floor(g.y), salt + 5.0));
+        float2 cell = floor(g);
+        float bright = nm_hash(cell + 1.3 + salt);
+        if (bright < threshold) { return float3(0.0); }
+        float2 jitter = float2(nm_hash(cell + 3.1 + salt), nm_hash(cell + 7.9 + salt));
+        float margin = clamp(2.0 / size, 0.08, 0.45);
+        float2 at = margin + (1.0 - 2.0 * margin) * jitter;
+        float2 o = (g - (cell + at)) * size;
+        float b = (bright - threshold) / (1.0 - threshold);
+        float r2 = dot(o, o);
+        float room = min(min(at.x, 1.0 - at.x), min(at.y, 1.0 - at.y)) * size;
+        float halo = 0.12 * exp(-r2 / 7.0) * (1.0 - smoothstep(0.5 * room, room, sqrt(r2)));
+        float ph = nm_hash(cell + 11.0 + salt);
+        float twinkle = max(1.0 + 0.5 * nm_flicker(time, ph), 0.05);
+        float temp = nm_hash(cell + 41.0 + salt);
+        float3 tint = mix(float3(0.76, 0.85, 1.0), float3(1.0, 0.92, 0.82), temp * temp);
+        return tint * b * b * (exp(-r2 / 0.8) + halo) * twinkle;
+    }
+
+    float3 nm_mirror(float2 w, float2 px, float2 viewport, float ppp, float shallow, float time, float4 moonAt, float moonRadiusPx) {
+        // Black glass, dead and still, as the launcher's lake: it gives back
+        // the sky and nothing else, a little paler toward the top of the
+        // view; the stars where they stand; and the moon whole, with its
+        // halo. Nothing stirs it, so no path of light runs across it.
         float2 uv = px / viewport;
-        float reach = clamp(moonRadiusPx * 48.0, viewport.y * 0.3, viewport.y);
-        float gx = (px.x - moonPx.x) / reach;
-        float gy = (px.y - moonPx.y) / reach;
-        float along = mix(exp(gy * 10.0), exp(-gy * 1.5), step(0.0, gy));
-        // The water is dead still: the path is all but whole, only the
-        // faintest unevenness along it, never in even bands.
-        float glade = exp(-gx * gx / 0.02) * along * moonAt.w;
-        float streak = nm_fbm(float2(w.x * 1.7, w.y * 4.3) + float2(time * 0.003, 0.0)) * (0.6 + 0.8 * nm_fbm(w * float2(0.5, 1.9) + float2(3.1, time * 0.002)));
         float3 c = float3(0.004, 0.007, 0.016) + float3(0.010, 0.014, 0.026) * (1.0 - uv.y);
-        c += float3(0.150, 0.170, 0.220) * glade * (0.80 + 0.35 * streak * streak);
         c = mix(c, float3(0.020, 0.027, 0.036), shallow * 0.8);
         // Reflected stars, fixed to the screen like the sky, sized in points:
         // many faint, fewer bright, and a rare few brighter still.
-        float stars = nm_star(px, ppp, 10.0, 0.74, 0.0, time) * 0.8 + nm_star(px, ppp, 37.0, 0.5, 17.0, time) * 2.0
-            + nm_star(px, ppp, 83.0, 0.62, 29.0, time) * 3.2;
-        c += float3(0.80, 0.85, 0.96) * stars * (1.0 - 0.75 * shallow);
+        float3 stars = nm_reflectedStar(px, ppp, 10.0, 0.95, 0.0, time) * 0.45 + nm_reflectedStar(px, ppp, 37.0, 0.72, 17.0, time) * 1.2
+            + nm_reflectedStar(px, ppp, 83.0, 0.74, 29.0, time) * 2.2;
+        c += stars * (1.0 - 0.75 * shallow);
         // The moon lies in the water over the lake's deepest heart, crisp
-        // because nothing moves, and a little dimmer than the moon itself.
+        // because nothing moves: the launcher's moon, its glow and breath
+        // too, given back a little dimmer.
         float2 moon = moonAt.xy;
         float2 mq = (w - moon) / max(moonAt.z, 0.05);
         float dm = length(w - moon);
         // Its rim a pixel and a half wide at any zoom: crisp, never jagged.
         float edge = clamp(1.5 / max(moonRadiusPx, 1.0), 0.002, 0.25);
         float disc = (1.0 - smoothstep(1.0 - edge, 1.0, length(mq))) * (1.0 - shallow) * moonAt.w;
-        float breath = 0.5 + 0.5 * sin(6.2831853 * fract(time / 11.0));
-        float3 glow = float3(0.50, 0.58, 0.76) * (0.05 * exp(-dm * 0.6) + 0.10 * exp(-dm * 2.2)) * (0.9 + 0.2 * breath) * moonAt.w;
+        float breath = 0.5 + 0.5 * sin(6.2831853 * fract(time / 9.0));
+        // The launcher's halo, layer by layer, measured in the moon's own
+        // radii so it keeps its shape at every zoom.
+        float rim = max(length(mq) - 1.0, 0.0);
+        float halo = 0.050 * exp(-rim * 0.123) + 0.080 * exp(-rim * 0.42) + 0.15 * exp(-rim * 1.34) + 0.26 * exp(-rim * 5.04);
+        float3 glow = float3(0.58, 0.68, 0.86) * halo * 0.82 * (0.86 + 0.28 * breath) * moonAt.w;
         c += glow * (1.0 - shallow * 0.6);
         if (disc > 0.0) {
-            float maria = smoothstep(0.42, 0.68, nm_fbm(mq * 1.7 + float2(5.2, 1.3)));
+            float maria = smoothstep(0.40, 0.70, nm_fbm(mq * 1.6 + float2(5.2, 1.3)));
+            float grain = nm_fbm(mq * 6.0 + float2(1.7, 8.1));
             float limb = sqrt(clamp(1.0 - dot(mq, mq), 0.0, 1.0));
-            float3 face = float3(0.66, 0.70, 0.76) * (0.78 + 0.22 * limb) * (1.0 - 0.18 * maria);
+            float3 face = float3(0.93, 0.95, 0.98) * 0.82 * (0.80 + 0.20 * limb) * (1.0 - 0.15 * maria) * (0.93 + 0.12 * grain)
+                * (0.97 + 0.04 * breath);
             c = mix(c, face, disc);
         }
         return c;
@@ -353,7 +388,7 @@ enum WorldShader {
         float3 wet = float3(0.0);
         if (shore < 0.999) {
             float shallow = 1.0 - deep / max(total - land, 0.0001);
-            wet = nm_mirror(w, px, viewport, ppp, clamp(shallow, 0.0, 1.0), time, moon, (moon.xy - centre) * scale + viewport * 0.5, moon.z * scale);
+            wet = nm_mirror(w, px, viewport, ppp, clamp(shallow, 0.0, 1.0), time, moon, moon.z * scale);
             // A pale line of salt where the dead water meets the land.
             wet += float3(0.32, 0.33, 0.36) * exp(-abs(landness - 0.43) / 0.025) * 0.5;
             wet += float3(0.40, 0.46, 0.60) * exp(-abs(landness - 0.47) / 0.012) * 0.3;

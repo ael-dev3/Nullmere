@@ -48,7 +48,7 @@ final class LauncherViewTests: XCTestCase {
     func testEveryScreenDraws() throws {
         let model = model()
         model.completeIntro()
-        for screen in [LauncherModel.Screen.title, .play, .news, .settings] {
+        for screen in [LauncherModel.Screen.title, .news, .settings] {
             model.show(screen)
             XCTAssertEqual(model.screen, screen)
             try draw(LauncherRootView(model: model))

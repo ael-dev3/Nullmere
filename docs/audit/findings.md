@@ -60,7 +60,7 @@ Each finding below has an ID, what was wrong, and its status: **fixed**
 
 | ID | Finding | Status |
 | --- | --- | --- |
-| C1 | The map's lake is not the launcher's: a bright moon path, a greyer moon image, another glow and breath, other stars | open |
+| C1 | The map's lake is not the launcher's: a bright moon path, a greyer moon image, another glow and breath, other stars | fixed: the map's water is the launcher's still glass, no path; its moon, halo, breath and stars are the launcher's |
 | C2 | The front door and model gate darken the whole window, sky and title too; the launcher darkens only the water | open |
 | C3 | The front door and model gate box their content in cards; the launcher sets it on the water | open |
 | C4 | Status dots differ between the launcher and the front door | open |
@@ -71,7 +71,7 @@ Each finding below has an ID, what was wrong, and its status: **fixed**
 | C9 | The title's fades differ between screens, and every crossing replays the first falling star | open |
 | C10 | The fallbacks drawn without Metal differ from the Metal scenes (shore, stars, unexplored ground) | open |
 | C11 | Colours copied by hand between launcher and game; README describes moving water; the icon shows a broken reflection | open |
-| C12 | The shaders' hash functions are Dave Hoskins' "Hash without Sine" (MIT), copied uncredited; the project wants original work only | open |
+| C12 | The shaders' hash functions are Dave Hoskins' "Hash without Sine" (MIT), copied uncredited; the project wants original work only | fixed: both shaders use a hash written for Nullmere, tested even and free of lattices in float32; the far shore's noise offsets were refitted so the scene keeps its mesas |
 | C13 | `realm-server/Cargo.toml` says MIT; the project is Apache-2.0 | fixed |
 
 ## E: docs and scripts against behaviour

@@ -29,16 +29,27 @@ enum LakeShader {
     // whole number of them, and of the moon's nine-second breath.
     #define NM_STAR_PERIOD 47.0
 
+    // Nullmere's own hash, written for it: a point folded once along each
+    // axis, each fold stirred by the square of the other, and the two drawn
+    // together. Even, and free of lattices, from single cells to a screen's
+    // width of pixels.
     float nm_hash12(float2 p) {
-        float3 p3 = fract(float3(p.x, p.y, p.x) * 0.1031);
-        p3 += dot(p3, p3.yzx + 33.33);
-        return fract((p3.x + p3.y) * p3.z);
+        float a = fract(p.x * 0.1137 + 0.4142);
+        float b = fract(p.y * 0.1459 + 0.7320);
+        a = fract(a * 51.73 + b * b * 29.17);
+        b = fract(b * 43.39 + a * a * 37.61);
+        return fract(a * 19.07 + b * 61.13 + a * b * 7.31);
     }
 
+    // The same, two numbers at once, each stirred into the other.
     float2 nm_hash22(float2 p) {
-        float3 p3 = fract(float3(p.x, p.y, p.x) * float3(0.1031, 0.1030, 0.0973));
-        p3 += dot(p3, p3.yzx + 33.33);
-        return fract((p3.xx + p3.yz) * p3.zy);
+        float a = fract(p.x * 0.0829 + 0.2476);
+        float b = fract(p.y * 0.1091 + 0.8714);
+        a = fract(a * 16.87 + b * b * 34.56);
+        b = fract(b * 39.37 + a * a * 55.4);
+        a = fract(a * 52.33 + b * 54.47 + a * b * 26.36);
+        b = fract(b * 32.93 + a * 30.22 + a * b * 55.44);
+        return float2(a, b);
     }
 
     float nm_noise(float2 p) {
@@ -130,17 +141,17 @@ enum LakeShader {
     // Heights of the far shore above the horizon, in scene units: a distant
     // range of flat-topped mesas and a low, nearer bank.
     float nm_mesas(float x) {
-        float n = nm_fbm(float2(x * 2.2 + 7.0, 4.3));
+        float n = nm_fbm(float2(x * 2.2 + 4.0, 11.0));
         float tops = smoothstep(0.50, 0.56, n) * 0.55 + smoothstep(0.60, 0.65, n) * 0.45;
         // Flat-topped and broad: a far range on the scale of the lake.
         float body = 0.016 + 0.044 * tops;
         float wear = 0.0012 * nm_noise(float2(x * 55.0, 1.0));
-        float mask = smoothstep(0.15, 0.55, nm_noise(float2(x * 0.9 + 2.0, 8.0)));
+        float mask = smoothstep(0.15, 0.55, nm_noise(float2(x * 0.9 + 19.0, 4.5)));
         return (body + wear) * mask;
     }
 
     float nm_bank(float x) {
-        float n = nm_fbm(float2(x * 3.1 + 1.0, 2.2));
+        float n = nm_fbm(float2(x * 3.1 + 18.75, 8.6));
         return 0.0018 + 0.006 * smoothstep(0.35, 0.75, n) + 0.0007 * nm_noise(float2(x * 70.0, 5.0));
     }
 

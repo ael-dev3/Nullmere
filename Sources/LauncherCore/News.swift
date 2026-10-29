@@ -126,7 +126,7 @@ extension NewsFeed {
             id: "still-water",
             date: NewsDate(year: 2026, month: 10, day: 27)!,
             title: "Still water",
-            body: "The lake has gone dead still. It holds the full moon whole and gives back every star above it, black glass from shore to shore. On the map, too, the water lies unmoving, the moon's path laid straight across it.",
+            body: "The lake has gone dead still. It holds the full moon whole and gives back every star above it, black glass from shore to shore. On the map, too, the water lies unmoving, a black mirror for the moon and every star.",
             link: URL(string: "https://github.com/ael-dev3/Nullmere")
         ),
         NewsItem(
