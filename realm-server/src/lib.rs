@@ -75,14 +75,15 @@ pub struct Reply {
     pub payload: String,
 }
 
-/// The realm as it stands, whole, as the rules core's JSON: the steward's
-/// alone to read.
-#[table(accessor = world)]
-pub struct World {
+/// The realm as it stands, as the rules core's JSON, in parts (the map, a
+/// page of each long list, the rest), so the steward rewrites only the
+/// parts that changed: the steward's alone to read.
+#[table(accessor = world_part)]
+pub struct WorldPart {
     #[primary_key]
-    pub id: u8,
+    pub name: String,
     pub version: u64,
-    pub state: String,
+    pub text: String,
 }
 
 /// What anyone may know of the realm: its age, watch, keepers and seats.
@@ -210,15 +211,17 @@ pub fn forget(ctx: &ReducerContext, nonces: Vec<String>) -> Result<(), String> {
 /// The steward publishes the realm as it now stands, and answers the
 /// requests it carried out, in one transaction: the world is never kept
 /// without its answers, nor an answer given for a world not kept. It sends
-/// the whole world when it changed (an empty `state` keeps the one there),
-/// the status, the views of the keepers whose views changed, each with the
+/// the world's parts that changed and the names of those now gone, the
+/// status, the views of the keepers whose views changed, each with the
 /// events they heard, and its answers.
 #[reducer]
 #[allow(clippy::too_many_arguments)]
 pub fn publish(
     ctx: &ReducerContext,
     version: u64,
-    state: String,
+    parts: Vec<String>,
+    texts: Vec<String>,
+    gone: Vec<String>,
     status: String,
     keepers: Vec<String>,
     views: Vec<String>,
@@ -245,14 +248,22 @@ pub fn publish(
     if requests.len() != replies.len() {
         return Err("Every answer needs its request.".into());
     }
+    if parts.len() != texts.len() {
+        return Err("Every part of the world needs its name.".into());
+    }
     let last = ctx.db.status().id().find(0).map(|s| s.version).unwrap_or(0);
     if version <= last {
         return Err(format!("Version {version} is not after {last}."));
     }
-    if !state.is_empty() {
-        ctx.db.world().id().delete(0);
-        ctx.db.world().insert(World { id: 0, version, state });
-    } else if ctx.db.world().id().find(0).is_none() {
+    for name in gone {
+        ctx.db.world_part().name().delete(name);
+    }
+    for (name, text) in parts.into_iter().zip(texts) {
+        ctx.db.world_part().name().delete(name.clone());
+        ctx.db.world_part().insert(WorldPart { name, version, text });
+    }
+    // An error undoes the whole reducer, these parts with it.
+    if ctx.db.world_part().count() == 0 {
         return Err("The first publication holds the world.".into());
     }
     ctx.db.status().id().delete(0);

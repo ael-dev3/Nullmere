@@ -333,8 +333,8 @@ final class LauncherModelTests: XCTestCase {
                        "Under the requirement")
     }
 
-    func testTheLakeSlowsDownToSaveEnergy() {
-        LauncherSettings(motion: .full, frameRate: .oneTwenty).save(to: defaults)
+    func testTheLakeSlowsDownToSaveEnergy() throws {
+        LauncherSettings(motion: .system, frameRate: .oneTwenty).save(to: defaults)
         var lowPowerMode = false
         let model = makeModel(savesEnergy: lowPowerMode)
         func framesPerSecond() -> Int {
@@ -343,6 +343,9 @@ final class LauncherModelTests: XCTestCase {
         XCTAssertEqual(framesPerSecond(), 120)
         XCTAssertNil(model.frameRateNote(systemReducesMotion: false), "As chosen: nothing to say")
         XCTAssertEqual(model.frameRateNote(systemReducesMotion: true), "Held to 30 while motion is reduced")
+        model.choose(try XCTUnwrap(MotionPreference.allCases.firstIndex(of: .full)), for: .motion)
+        XCTAssertNil(model.frameRateNote(systemReducesMotion: true), "Full motion chosen outright: the system's wish doesn't hold it")
+        model.choose(try XCTUnwrap(MotionPreference.allCases.firstIndex(of: .system)), for: .motion)
 
         model.didResignActive()
         XCTAssertEqual(framesPerSecond(), 30, "Behind another app")

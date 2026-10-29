@@ -130,7 +130,7 @@ final class NetworkRealmTests: XCTestCase {
 
         // Nor can a keeper read the world, or anyone's requests, directly.
         let stranger = try await db.createIdentity()
-        for table in ["world", "request", "keeper_view", "reply"] {
+        for table in ["world_part", "request", "keeper_view", "reply"] {
             do {
                 _ = try await db.query("SELECT * FROM \(table)", token: stranger.token)
                 XCTFail("A keeper read the private \(table) table")
@@ -408,8 +408,8 @@ final class NetworkRealmTests: XCTestCase {
         XCTAssertTrue(answered.contains { $0.first?.string == "a2" })
         let grain = await steward.state.world.houses[house].stock.grain
         XCTAssertEqual(grain, before.grain + 10, "Carried out once")
-        let kept = try await db.query("SELECT version, state FROM world", token: owner.token)
-        let world = try JSONDecoder().decode(RealmState.self, from: Data(try XCTUnwrap(kept.first?[1].string).utf8))
+        let kept = try await db.query("SELECT name, text FROM world_part", token: owner.token)
+        let world = try RealmState(parts: Dictionary(uniqueKeysWithValues: kept.map { ($0[0].string ?? "", $0[1].string ?? "") }))
         XCTAssertEqual(world.world.houses[house].stock.grain, before.grain + 10, "and kept")
     }
 

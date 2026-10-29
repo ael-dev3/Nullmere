@@ -12,13 +12,15 @@ public actor FakeSpacetime: SpacetimeTransport {
     private var requests: [Request] = []
     private var nextID: UInt64 = 1
     private var replies: [String: (keeper: String, payload: String)] = [:] // by nonce
-    private var world: (version: UInt64, state: String)?
+    private var parts: [String: String] = [:] // the world's, by name
     private var status: (version: UInt64, status: String)?
     private var stamp: (version: UInt64, at: Double)?
     /// The server's clock at the epoch's start, for its `Date` answers.
     private let epoch = Date(timeIntervalSince1970: 1_800_000_000)
     private var views: [String: (version: UInt64, view: String, events: String)] = [:] // by keeper
     public private(set) var calls: [String] = []
+    /// How many of the world's parts publications have sent, all told.
+    public private(set) var partsSent = 0
     /// The server's clock, in seconds, moved on by tests.
     private var time = 0.0
     private var lease: (holder: String, until: Double)?
@@ -41,7 +43,13 @@ public actor FakeSpacetime: SpacetimeTransport {
     public func forget(token: String) { identities[token] = nil }
 
     /// A world already kept, as a realm's own steward left it.
-    public func seed(world state: String, version: UInt64) { world = (version, state) }
+    public func seed(world parts: [String: String], version: UInt64) {
+        self.parts = parts
+        status = (version, "{}")
+    }
+
+    /// The world's parts as kept, by name: for tests.
+    public var worldParts: [String: String] { parts }
 
     /// Requests of each kind the steward has answered.
     private var settled: [String: Int] = [:]
@@ -86,24 +94,26 @@ public actor FakeSpacetime: SpacetimeTransport {
             if case .strings(let nonces)? = arguments.first { nonces.forEach { replies[$0] = nil } }
         case "publish":
             guard me == steward else { throw SpacetimeError("Only the steward writes the world.") }
-            guard case .integer(let version)? = arguments.first, arguments.count == 9, case .string(let holder) = arguments[8],
-                  case .strings(let keepers) = arguments[3], case .strings(let shown) = arguments[4], case .strings(let heard) = arguments[5],
-                  case .integers(let ids) = arguments[6], case .strings(let answers) = arguments[7]
+            guard case .integer(let version)? = arguments.first, arguments.count == 11, case .string(let holder) = arguments[10],
+                  case .strings(let names) = arguments[1], case .strings(let texts) = arguments[2], case .strings(let gone) = arguments[3],
+                  case .strings(let keepers) = arguments[5], case .strings(let shown) = arguments[6], case .strings(let heard) = arguments[7],
+                  case .integers(let ids) = arguments[8], case .strings(let answers) = arguments[9]
             else { throw SpacetimeError("bad arguments") }
             guard keepers.count == shown.count, keepers.count == heard.count else { throw SpacetimeError("Every view needs its keeper and its events.") }
             guard ids.count == answers.count else { throw SpacetimeError("Every answer needs its request.") }
+            guard names.count == texts.count else { throw SpacetimeError("Every part of the world needs its name.") }
             if let lease, lease.holder != holder, lease.until > time {
                 throw SpacetimeError("Another steward holds the realm for \(Int(lease.until - time) + 1) s more.")
             }
             lease = (holder, time + 60)
             if let status, version <= status.version { throw SpacetimeError("Version \(version) is not after \(status.version).") }
-            let state = try string(1)
-            if !state.isEmpty {
-                world = (version, state)
-            } else if world == nil {
-                throw SpacetimeError("The first publication holds the world.")
-            }
-            status = (version, try string(2))
+            var kept = parts
+            gone.forEach { kept[$0] = nil }
+            zip(names, texts).forEach { kept[$0] = $1 }
+            guard !kept.isEmpty else { throw SpacetimeError("The first publication holds the world.") }
+            parts = kept
+            partsSent += names.count
+            status = (version, try string(4))
             stamp = (version, time)
             for (index, keeper) in keepers.enumerated() {
                 views[keeper] = (version, shown[index], heard[index])
@@ -128,9 +138,9 @@ public actor FakeSpacetime: SpacetimeTransport {
             guard me == steward else { throw SpacetimeError("Table is private") }
         }
         switch sql {
-        case "SELECT version, state FROM world":
+        case "SELECT name, text FROM world_part":
             try owner()
-            return world.map { [[.number(Double($0.version)), .string($0.state)]] } ?? []
+            return parts.map { [.string($0.key), .string($0.value)] }
         case "SELECT id, keeper, kind, nonce, payload FROM request":
             try owner()
             return requests.map { [.number(Double($0.id)), .string($0.keeper), .string($0.kind), .string($0.nonce), .string($0.payload)] }
@@ -146,7 +156,7 @@ public actor FakeSpacetime: SpacetimeTransport {
             return views[me].map { [[.string(me), .number(Double($0.version)), .string($0.view), .string($0.events)]] } ?? []
         case "SELECT * FROM my_replies":
             return replies.filter { $0.value.keeper == me }.map { [.string($0.key), .string($0.value.keeper), .string($0.value.payload)] }
-        case "SELECT * FROM world", "SELECT * FROM keeper_view", "SELECT * FROM reply", "SELECT * FROM request":
+        case "SELECT * FROM world_part", "SELECT * FROM keeper_view", "SELECT * FROM reply", "SELECT * FROM request":
             try owner()
             return []
         default:

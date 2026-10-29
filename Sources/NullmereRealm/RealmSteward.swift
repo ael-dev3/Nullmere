@@ -94,6 +94,9 @@ public actor RealmSteward {
     private var lastForgotten = 0.0
     /// Each keeper's view as last published, to send only what changed.
     private var published: [String: String] = [:]
+    /// The world's parts as SpacetimeDB keeps them, to send only those
+    /// that changed.
+    private var keptParts: [String: String] = [:]
     /// What each keeper there heard lately, and when: published with their
     /// view until it is old enough to have been read.
     private var recentlyHeard: [String: [(at: Double, batch: HeardBatch)]] = [:]
@@ -113,17 +116,22 @@ public actor RealmSteward {
                 watchLength: Double = RealmState.defaultWatchLength, now: Double) async throws {
         self.transport = transport
         self.token = token
-        let rows = try await transport.query("SELECT version, state FROM world", token: token)
-        if let row = rows.first, row.count == 2, let version = row[0].number, let text = row[1].string,
-           let state = try? JSONDecoder().decode(RealmState.self, from: Data(text.utf8)) {
+        let rows = try await transport.query("SELECT name, text FROM world_part", token: token)
+        let parts = Dictionary(rows.compactMap { row -> (String, String)? in
+            guard row.count == 2, let name = row[0].string, let text = row[1].string else { return nil }
+            return (name, text)
+        }, uniquingKeysWith: { $1 })
+        // What is kept is known, whether or not it can be read: parts left
+        // over are taken away with the next publication.
+        keptParts = parts
+        // Versions run on past the last status, never back.
+        let status = try await transport.query("SELECT version FROM status", token: token)
+        self.version = status.first?.first?.number.map { UInt64($0) } ?? 0
+        if !parts.isEmpty, let state = try? RealmState(parts: parts) {
             self.state = state
             self.state.fillIn()
-            // Versions run on past the last status, never back.
-            let status = try await transport.query("SELECT version FROM status", token: token)
-            self.version = max(UInt64(version), status.first?.first?.number.map { UInt64($0) } ?? 0)
         } else {
             self.state = RealmState(name: name, seed: seed, seats: seats, watchLength: watchLength, now: now)
-            self.version = 0
         }
         // Whoever was there when the steward last stopped is gone now.
         for keeper in state.keepers where keeper.isOnline {
@@ -293,10 +301,16 @@ public actor RealmSteward {
             heard.append(String(decoding: try encoder.encode(batches.map(\.batch)), as: UTF8.self))
         }
         let answers = unanswered
+        // The world's parts that changed, and those no longer there.
+        let parts = worldChanged ? try state.parts(using: encoder) : keptParts
+        let changed = parts.filter { keptParts[$0.key] != $0.value }.sorted { $0.key < $1.key }
+        let gone = keptParts.keys.filter { parts[$0] == nil }.sorted()
         do {
             try await transport.call("publish", [
                 .integer(version + 1),
-                .string(worldChanged ? String(decoding: try encoder.encode(state), as: UTF8.self) : ""),
+                .strings(changed.map(\.key)),
+                .strings(changed.map(\.value)),
+                .strings(gone),
                 .string(String(decoding: try encoder.encode(status), as: UTF8.self)),
                 .strings(keepers),
                 .strings(views),
@@ -313,6 +327,7 @@ public actor RealmSteward {
         version += 1
         lastStatus = status
         published.merge(shown) { $1 }
+        keptParts = parts
         recentlyHeard = lately
         pendingEvents = []
         pendingActs = []

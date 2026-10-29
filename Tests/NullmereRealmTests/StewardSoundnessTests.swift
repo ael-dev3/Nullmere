@@ -13,7 +13,7 @@ final class StewardSoundnessTests: XCTestCase {
         realm.world.relations.append(realm.world.relations[0])
         XCTAssertFalse(realm.world.problems().isEmpty)
         let db = FakeSpacetime()
-        await db.seed(world: String(decoding: try JSONEncoder().encode(realm), as: UTF8.self), version: 3)
+        await db.seed(world: try realm.parts(using: JSONEncoder()), version: 3)
         let key = try await db.createIdentity()
         let steward = try await RealmSteward(transport: db, token: key.token, name: "The Nullmere", seed: "gone wrong",
                                              seats: 4, watchLength: 60, now: 0)
