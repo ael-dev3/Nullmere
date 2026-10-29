@@ -36,8 +36,11 @@ final class WorldPerformanceTests: XCTestCase {
             descriptor.usage = .renderTarget
             descriptor.storageMode = .private
             let target = try XCTUnwrap(device.makeTexture(descriptor: descriptor))
+            // Eighty frames once it has settled, as the pan is measured: over
+            // fewer, the worst twentieth is a frame or two, and one hiccup of
+            // a shared GPU reads as the world's own.
             var times: [Double] = []
-            for frame in 0..<30 {
+            for frame in 0..<85 {
                 let uniforms = WorldUniforms(
                     view: SIMD4(Float(width), Float(height), Float(scale * 2 * fraction), Float(3 + Double(frame) / 60)),
                     camera: SIMD4(Float(centre.x), Float(centre.y), Float(state.map.radius), Float(2 * fraction)),

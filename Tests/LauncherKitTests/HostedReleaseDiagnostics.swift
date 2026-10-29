@@ -20,6 +20,7 @@ final class HostedReleaseDiagnostics: XCTestCase {
         let clicked = launcherModel()
         let changed = launcherModel()
         let lines = [
+            probe("a plain view, set up outside a pool", AnyView(Probe()), pooled: false),
             probe("a plain view alone", AnyView(Probe())),
             probe("a plain view, clicked", AnyView(Probe()), touch: { self.click(at: middle, in: $0) }),
             probe("beside a hover", AnyView(ZStack { Probe(); Color.white.opacity(0.01).onHover { _ in } })),
@@ -40,33 +41,39 @@ final class HostedReleaseDiagnostics: XCTestCase {
         for line in lines {
             print(line)
         }
-        XCTAssertEqual(lines.count, 11)
+        XCTAssertEqual(lines.count, 12)
     }
 
     /// Hosts `content` in a window, as the launcher is hosted, and takes it
     /// out; then lets its host go and closes the window; then lets the
     /// window go. Says how many of the views `watched` finds are still held
-    /// after each, and whether the host is.
-    private func probe(_ name: String, _ content: AnyView, size: NSSize = NSSize(width: 400, height: 300),
+    /// after each, and whether the host is. `pooled`, it is set up and
+    /// touched in a pool of its own, as the app's loop empties its pool
+    /// after each event; otherwise what AppKit set aside as it was shown
+    /// stays in the test's own pool until the test ends.
+    private func probe(_ name: String, _ content: AnyView, size: NSSize = NSSize(width: 400, height: 300), pooled: Bool = true,
                        touch: @MainActor (NSWindow) -> Void = { _ in }, afterTakingOut: @MainActor (NSWindow) -> Void = { _ in },
                        watched: (@MainActor (NSView) -> [NSView])? = nil) -> String {
-        let watched = watched ?? { Self.views(ProbeView.self, in: $0) }
-        var window: NSWindow? = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled], backing: .buffered, defer: false)
-        window?.isReleasedWhenClosed = false
-        var host: NSHostingView<AnyView>? = NSHostingView(rootView: content)
-        window?.contentView = host
-        window?.orderFrontRegardless()
-        spin(0.3)
+        let watched = watched ?? { Self.views(ProbeView.self, in: $0) as [NSView] }
+        var window: NSWindow?
+        var host: NSHostingView<AnyView>?
         let found = NSHashTable<NSView>.weakObjects()
-        autoreleasepool {
+        func show() {
+            window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled], backing: .buffered, defer: false)
+            window?.isReleasedWhenClosed = false
+            host = NSHostingView(rootView: content)
+            window?.contentView = host
+            window?.orderFrontRegardless()
+            spin(0.3)
             if let host {
                 for view in watched(host) { found.add(view) }
             }
+            if let window { touch(window) }
         }
+        if pooled { autoreleasepool { show() } } else { show() }
         weak let hosting = host
         func held() -> Int { found.allObjects.count }
         let shown = held()
-        if let window { touch(window) }
 
         autoreleasepool { host?.rootView = AnyView(Color.black) }
         if let window { afterTakingOut(window) }

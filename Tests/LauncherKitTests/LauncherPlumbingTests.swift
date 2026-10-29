@@ -364,49 +364,55 @@ final class LauncherHostTests: XCTestCase {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 600), styleMask: [.titled, .fullSizeContentView],
                               backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
-        var host: NSHostingView<AnyView>? = NSHostingView(rootView: AnyView(LauncherRootView(model: model)))
-        window.contentView = host
-        window.orderFrontRegardless()
         defer { window.close() }
-        spin(0.2)
-
-        // A click anywhere skips the opening, and still reaches the window.
-        let click = NSEvent.mouseEvent(with: .leftMouseDown, location: NSPoint(x: 480, y: 300), modifierFlags: [], timestamp: 0,
-                                       windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
-        dispatch(click, in: window)
-        XCTAssertEqual(model.intro, .complete)
-
-        // A key moves through the menu, and is taken.
-        XCTAssertEqual(model.menuSelection, .play)
+        var host: NSHostingView<AnyView>?
         let down = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
                                     context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: 125)!
-        dispatch(down, in: window)
-        XCTAssertNotEqual(model.menuSelection, .play, "Taken by the launcher")
 
-        // Behind another app, and back.
-        NotificationCenter.default.post(name: NSApplication.didResignActiveNotification, object: nil)
-        spin(0.1)
-        XCTAssertFalse(model.isInFront)
-        XCTAssertTrue(model.isSavingEnergy)
-        NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification, object: nil)
-        spin(0.1)
-        XCTAssertTrue(model.isInFront)
+        // The app's own loop empties its autorelease pool after every event.
+        // Shown and used here in a pool of its own, as it would be: what
+        // AppKit and SwiftUI set aside meanwhile would otherwise stay in the
+        // test's own pool until the test ends, holding the launcher.
+        autoreleasepool {
+            host = NSHostingView(rootView: AnyView(LauncherRootView(model: model)))
+            window.contentView = host
+            window.orderFrontRegardless()
+            spin(0.2)
 
-        // Low Power Mode, announced on another thread.
-        savesEnergy = true
-        DispatchQueue.global().async {
-            NotificationCenter.default.post(name: .NSProcessInfoPowerStateDidChange, object: nil)
+            // A click anywhere skips the opening, and still reaches the window.
+            let click = NSEvent.mouseEvent(with: .leftMouseDown, location: NSPoint(x: 480, y: 300), modifierFlags: [], timestamp: 0,
+                                           windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
+            dispatch(click, in: window)
+            XCTAssertEqual(model.intro, .complete)
+
+            // A key moves through the menu, and is taken.
+            XCTAssertEqual(model.menuSelection, .play)
+            dispatch(down, in: window)
+            XCTAssertNotEqual(model.menuSelection, .play, "Taken by the launcher")
+
+            // Behind another app, and back.
+            NotificationCenter.default.post(name: NSApplication.didResignActiveNotification, object: nil)
+            spin(0.1)
+            XCTAssertFalse(model.isInFront)
+            XCTAssertTrue(model.isSavingEnergy)
+            NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification, object: nil)
+            spin(0.1)
+            XCTAssertTrue(model.isInFront)
+
+            // Low Power Mode, announced on another thread.
+            savesEnergy = true
+            DispatchQueue.global().async {
+                NotificationCenter.default.post(name: .NSProcessInfoPowerStateDidChange, object: nil)
+            }
+            let deadline = Date().addingTimeInterval(3)
+            while !model.systemSavesEnergy, Date() < deadline { spin(0.05) }
+            XCTAssertTrue(model.systemSavesEnergy)
         }
-        let deadline = Date().addingTimeInterval(3)
-        while !model.systemSavesEnergy, Date() < deadline { spin(0.05) }
-        XCTAssertTrue(model.systemSavesEnergy)
 
         // Crossing to the realm takes the launcher out of the window, as the
         // app's shell does: its lake and its bridge go with it, and the
-        // window's keys reach the launcher no more. The app's own loop
-        // empties its autorelease pool after every event; waiting here does
-        // the same after every turn, or what SwiftUI let go as it took the
-        // launcher out would stay held by this test until the test ends.
+        // window's keys reach the launcher no more. Waiting here empties the
+        // pool after every turn, as the app's loop does.
         weak var lake: LakeMetalView?
         weak var bridge: WindowBridgeView?
         autoreleasepool {

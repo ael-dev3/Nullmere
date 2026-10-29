@@ -21,8 +21,10 @@ final class LakePerformanceTests: XCTestCase {
         descriptor.storageMode = .private
         let target = try XCTUnwrap(device.makeTexture(descriptor: descriptor))
 
+        // Eighty frames once it has settled, so the worst twentieth is more
+        // than a hiccup or two of a shared GPU.
         var times: [Double] = []
-        for frame in 0..<40 {
+        for frame in 0..<85 {
             let uniforms = LakeUniforms(
                 sizeAndPixels: SIMD4(Float(Self.width) / 2, Float(Self.height) / 2, Float(Self.width), Float(Self.height)),
                 params: SIMD4(Float(4 + Double(frame) / 60), 1, Float(LakeComposition.horizon), 0)
