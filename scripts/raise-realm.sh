@@ -89,6 +89,22 @@ if [ "$ACTION" = --stop ]; then
     exit 0
 fi
 
+# Who issued the SpacetimeDB CLI's sign-in, read from its token. A realm on
+# this machine signs the CLI in with a token its own server issued, which
+# maincloud won't take: that is not a sign-in for maincloud.
+token_issuer() {
+    local payload
+    payload="$(spacetime login show --token 2>/dev/null | awk '{print $NF}' | tail -n 1 | cut -d. -f2 | tr '_-' '/+')"
+    while [ $(( ${#payload} % 4 )) -ne 0 ]; do payload="$payload="; done
+    printf '%s' "$payload" | base64 -d 2>/dev/null | sed -n 's/.*"iss" *: *"\([^"]*\)".*/\1/p'
+}
+signed_in_for_maincloud() {
+    spacetime login show --token >/dev/null 2>&1 || return 1
+    case "$(token_issuer)" in
+        *localhost*|*127.0.0.1*) return 1 ;;
+    esac
+}
+
 # Reads the realm's status as a keeper would: a fresh identity, and SQL.
 realm_answers() {
     local token
@@ -110,10 +126,10 @@ spacetime --version | head -n 1
 if [ "$ACTION" = --dry-run ]; then
     say "Rehearsing: nothing is published or started"
     if [ "$TARGET" = maincloud ]; then
-        if spacetime login show --token >/dev/null 2>&1; then
+        if signed_in_for_maincloud; then
             echo "Signed in to SpacetimeDB; the realm will belong to that identity."
         else
-            echo "Not signed in yet: run \`spacetime login\` (it opens a GitHub sign-in) before the real run."
+            echo "Not signed in for maincloud yet: run \`spacetime login\` (it opens a GitHub sign-in) before the real run."
         fi
     fi
     say "Building the realm module"
@@ -159,8 +175,9 @@ if [ "$TARGET" = local ]; then
         spacetime login --server-issued-login local
     fi
 else
-    if ! spacetime login show --token >/dev/null 2>&1; then
-        echo "error: sign in to SpacetimeDB first: run \`spacetime login\` (it opens a GitHub sign-in), then this again." >&2
+    if ! signed_in_for_maincloud; then
+        echo "error: sign in to SpacetimeDB for maincloud first: run \`spacetime login\` (it opens a GitHub sign-in), then this again." >&2
+        echo "(A realm raised on this machine signs the CLI in with its own server's token, which maincloud won't take.)" >&2
         exit 1
     fi
 fi
