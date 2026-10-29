@@ -19,6 +19,34 @@ public actor FakeSpacetime: SpacetimeTransport {
     private let epoch = Date(timeIntervalSince1970: 1_800_000_000)
     private var views: [String: (version: UInt64, view: String, events: String)] = [:] // by keeper
     public private(set) var calls: [String] = []
+    /// Queries made, by statement and by statement and caller.
+    private var queryCounts: [String: Int] = [:]
+
+    /// A keeper's poll of the realm's status.
+    public static let statusPoll = "SELECT version, status FROM status"
+    /// A steward's round begins by reading the requests waiting.
+    public static let stewardRound = "SELECT id, keeper, kind, nonce, payload FROM request"
+
+    /// How many times a statement has been queried, by anyone or by the
+    /// holder of one token.
+    public func queried(_ sql: String, by token: String? = nil) -> Int {
+        guard let token else { return queryCounts[sql] ?? 0 }
+        guard let identity = identities[token] else { return 0 }
+        return queryCounts[sql + "\u{0}" + identity] ?? 0
+    }
+
+    /// Waits until a statement has been queried `count` more times: for a
+    /// test that something didn't happen, work done rather than time
+    /// passed, so a slow machine can't pass it by luck.
+    public func waitFor(_ count: Int, more sql: String, by token: String? = nil, timeout: Double = 20) async throws {
+        let target = queried(sql, by: token) + count
+        let deadline = Date().addingTimeInterval(timeout)
+        while queried(sql, by: token) < target {
+            if Date() > deadline { throw SpacetimeError("Timed out waiting for \(count) more of \(sql)") }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+    }
+
     /// How many of the world's parts publications have sent, all told.
     public private(set) var partsSent = 0
     /// The server's clock, in seconds, moved on by tests.
@@ -134,6 +162,8 @@ public actor FakeSpacetime: SpacetimeTransport {
     public func query(_ sql: String, token: String) async throws -> [[JSONValue]] {
         try answering()
         let me = try sender(token)
+        queryCounts[sql, default: 0] += 1
+        queryCounts[sql + "\u{0}" + me, default: 0] += 1
         func owner() throws {
             guard me == steward else { throw SpacetimeError("Table is private") }
         }

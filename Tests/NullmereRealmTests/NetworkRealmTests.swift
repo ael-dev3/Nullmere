@@ -87,10 +87,11 @@ final class NetworkRealmTests: XCTestCase {
         defer { running.cancel() }
         let (link, ear) = await MainActor.run { keeper(db) }
         try await until("the realm's status") { ear.hasStatus }
-        // Unchanged, the status isn't told again.
-        try await Task.sleep(nanoseconds: 300_000_000)
+        // Unchanged, the status isn't told again, however often it is read.
+        let token = await MainActor.run { link.credentials?.token }
+        try await db.waitFor(2, more: FakeSpacetime.statusPoll, by: token)
         let told = await MainActor.run { ear.events.filter { if case .status = $0 { return true } else { return false } }.count }
-        try await Task.sleep(nanoseconds: 300_000_000)
+        try await db.waitFor(6, more: FakeSpacetime.statusPoll, by: token)
         let still = await MainActor.run { ear.events.filter { if case .status = $0 { return true } else { return false } }.count }
         XCTAssertEqual(still, told, "Told once while it stands still")
         await MainActor.run { link.connect() }
@@ -144,7 +145,11 @@ final class NetworkRealmTests: XCTestCase {
 
         // The watch turns when both are ready.
         await MainActor.run { a.setReady(true) }
-        try await Task.sleep(nanoseconds: 300_000_000)
+        while await db.handled(kind: "ready") < 1 { try await Task.sleep(nanoseconds: 10_000_000) }
+        // Rounds of the steward, and polls of Ama's, after it: the watch
+        // still waits.
+        try await db.waitFor(3, more: FakeSpacetime.stewardRound)
+        try await db.waitFor(3, more: FakeSpacetime.statusPoll, by: await MainActor.run { a.credentials?.token })
         let early = await MainActor.run { earA.turned }
         XCTAssertFalse(early, "Bel isn't ready yet")
         await MainActor.run { b.setReady(true) }
@@ -160,10 +165,11 @@ final class NetworkRealmTests: XCTestCase {
         let (ama, ear) = await MainActor.run { keeper(db) }
         await MainActor.run { ama.arrive(name: "Ama") }
         try await until("arrival") { ear.keeper != nil }
-        try await Task.sleep(nanoseconds: 300_000_000)
+        let token = await MainActor.run { ama.credentials?.token }
+        try await db.waitFor(3, more: FakeSpacetime.statusPoll, by: token)
         let before = await MainActor.run { ama.viewReads }
-        // A second of polling, twenty times over, with nothing published.
-        try await Task.sleep(nanoseconds: 1_000_000_000)
+        // Twenty polls, with nothing published.
+        try await db.waitFor(20, more: FakeSpacetime.statusPoll, by: token)
         let quiet = await MainActor.run { ama.viewReads } - before
         XCTAssertLessThanOrEqual(quiet, 1, "The view is read when the realm publishes, not on every poll")
 
@@ -195,7 +201,7 @@ final class NetworkRealmTests: XCTestCase {
                 return false
             }
         }
-        try await Task.sleep(nanoseconds: 300_000_000)
+        try await db.waitFor(6, more: FakeSpacetime.statusPoll, by: await MainActor.run { a.credentials?.token })
         let toldOwn = await MainActor.run {
             earA.events.contains { if case .heard = $0 { return true } else { return false } }
         }
@@ -374,7 +380,8 @@ final class NetworkRealmTests: XCTestCase {
         await line.loseNextCall()
         await MainActor.run { ama.send(.barter(give: .timber, take: .grain, amount: 10)) }
         try await until("the barter") { ear.world?.houses[house].stock != before && ama.waiting == 0 }
-        try await Task.sleep(nanoseconds: 400_000_000)
+        // Rounds of the steward after: nothing carried out again.
+        try await db.waitFor(4, more: FakeSpacetime.stewardRound)
         let orders = await db.handled(kind: "order")
         XCTAssertEqual(orders, 1, "Sent twice, carried out once")
         let stock = await MainActor.run { ear.world?.houses[house].stock }

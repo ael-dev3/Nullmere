@@ -383,7 +383,10 @@ struct WorldMarks: View {
     }
 }
 
-/// A still painting of the map, for when Metal can't run.
+/// A still painting of the map, for when Metal can't run: the ground the
+/// keeper knows, each hold's land washed in its House's colour, the moon in
+/// the water, and the tile under the pointer and the one chosen outlined,
+/// so the game plays as it does on the full map.
 struct WorldFallback: View {
     let session: GameSession
 
@@ -394,22 +397,7 @@ struct WorldFallback: View {
     var body: some View {
         GeometryReader { proxy in
             Canvas { context, size in
-                context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(red: 0.004, green: 0.006, blue: 0.012)))
-                let camera = session.camera
-                let state = session.state
-                let layout = HexLayout(size: 1)
-                for (index, hex) in state.map.hexes.enumerated() where session.playerHouse.explored[index] {
-                    let corners = layout.corners(of: hex).map { camera.viewPoint(worldX: $0.x, worldY: $0.y, in: size) }
-                    guard let first = corners.first,
-                          corners.contains(where: { $0.x > 0 && $0.y > 0 && $0.x < size.width && $0.y < size.height })
-                    else { continue }
-                    var hexagon = Path()
-                    hexagon.move(to: first)
-                    for corner in corners.dropFirst() { hexagon.addLine(to: corner) }
-                    hexagon.closeSubpath()
-                    let tint = WorldFallback.colour(for: state.map[index].terrain)
-                    context.fill(hexagon, with: .color(session.visible[index] ? tint : tint.opacity(0.5)))
-                }
+                WorldFallback.paint(session, in: &context, size: size)
             }
             .contentShape(Rectangle())
             // Without Metal there is no right-click: a click where the
@@ -438,6 +426,56 @@ struct WorldFallback: View {
         }
     }
 
+    static let water = Color(red: 0.004, green: 0.006, blue: 0.012)
+
+    static func paint(_ session: GameSession, in context: inout GraphicsContext, size: CGSize) {
+        context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(water))
+        let camera = session.camera
+        let state = session.state
+        let territory = session.territory
+        for (index, hex) in state.map.hexes.enumerated() where session.playerHouse.explored[index] {
+            guard let hexagon = path(of: hex, camera: camera, in: size) else { continue }
+            let tint = colour(for: state.map[index].terrain)
+            let seen = session.visible.indices.contains(index) && session.visible[index]
+            context.fill(hexagon, with: .color(seen ? tint : tint.opacity(0.5)))
+            // Whose land it is, as a faint wash of the House's colour.
+            if territory.indices.contains(index), let holdID = territory[index], let owner = state.hold(holdID)?.owner,
+               state.houses.indices.contains(owner) {
+                context.fill(hexagon, with: .color(Palette.house(state.houses[owner]).opacity(seen ? 0.16 : 0.08)))
+            }
+        }
+        // The moon, lying in the still water.
+        let moon = session.moon
+        if moon.w > 0 {
+            let centre = camera.viewPoint(worldX: Double(moon.x), worldY: Double(moon.y), in: size)
+            let radius = max(Double(moon.z) * camera.scale, 2)
+            let glow = Path(ellipseIn: CGRect(x: centre.x - radius * 3, y: centre.y - radius * 3, width: radius * 6, height: radius * 6))
+            context.fill(glow, with: .radialGradient(Gradient(colors: [Color(white: 0.85, opacity: 0.18), .clear]),
+                                                     center: centre, startRadius: radius, endRadius: radius * 3))
+            context.fill(Path(ellipseIn: CGRect(x: centre.x - radius, y: centre.y - radius, width: radius * 2, height: radius * 2)),
+                         with: .color(Color(red: 0.86, green: 0.88, blue: 0.92)))
+        }
+        if let hovered = session.hovered, let outline = path(of: hovered, camera: camera, in: size) {
+            context.stroke(outline, with: .color(Palette.ink.opacity(0.45)), lineWidth: 1)
+        }
+        if let selected = session.selectedHex, let outline = path(of: selected, camera: camera, in: size) {
+            context.stroke(outline, with: .color(Palette.glow), lineWidth: 2)
+        }
+    }
+
+    /// A hex's outline on screen, if any of it is.
+    static func path(of hex: Hex, camera: Camera, in size: CGSize) -> Path? {
+        let corners = HexLayout(size: 1).corners(of: hex).map { camera.viewPoint(worldX: $0.x, worldY: $0.y, in: size) }
+        guard let first = corners.first,
+              corners.contains(where: { $0.x > 0 && $0.y > 0 && $0.x < size.width && $0.y < size.height })
+        else { return nil }
+        var hexagon = Path()
+        hexagon.move(to: first)
+        for corner in corners.dropFirst() { hexagon.addLine(to: corner) }
+        hexagon.closeSubpath()
+        return hexagon
+    }
+
     static func drag(by step: CGSize, in session: GameSession) {
         session.camera.pan(dx: step.width, dy: step.height)
         session.camera.clamp(toRadius: session.state.map.radius)
@@ -457,7 +495,7 @@ struct WorldFallback: View {
 
     static func colour(for terrain: Terrain) -> Color {
         switch terrain {
-        case .still: return Color(red: 0.004, green: 0.006, blue: 0.012)
+        case .still: return water
         case .shallows: return Color(red: 0.02, green: 0.03, blue: 0.04)
         case .strand: return Color(red: 0.34, green: 0.34, blue: 0.33)
         case .saltFlat: return Color(red: 0.7, green: 0.73, blue: 0.78)

@@ -136,14 +136,15 @@ final class LinkViewTests: XCTestCase {
         try await until("the order answered") {
             ear.events.dropFirst(answered).contains { if case .answered = $0 { return true } else { return false } }
         }
-        try await Task.sleep(nanoseconds: 300_000_000)
+        // However often the realm is read after.
+        try await db.waitFor(6, more: FakeSpacetime.statusPoll, by: link.credentials?.token)
         XCTAssertEqual(gifts(), 1, "Told once")
     }
 
     /// Left while an order's answer is on its way: the link drops the
     /// errand rather than tripping over it.
     func testALinkLeftWithAnAnswerOnItsWayDropsTheErrand() async throws {
-        let (_, _, link, ear, running) = try await realm("left mid-answer")
+        let (db, _, link, ear, running) = try await realm("left mid-answer")
         defer { running.cancel() }
         link.arrive(name: "Ama")
         try await until("arrival") { ear.keeper != nil }
@@ -156,8 +157,8 @@ final class LinkViewTests: XCTestCase {
             link.leave()
             XCTAssertEqual(link.waiting, 0)
         }
-        // The answers come, to no one.
-        try await Task.sleep(nanoseconds: 600_000_000)
+        // The answers come, to no one: the steward's rounds go by.
+        try await db.waitFor(6, more: FakeSpacetime.stewardRound)
         XCTAssertEqual(link.waiting, 0)
     }
 
