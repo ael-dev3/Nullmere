@@ -34,4 +34,11 @@ final class OnlineAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
     }
+
+    /// Orders still on their way to the realm get a moment to arrive.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let app = GameApp.current, app.ordersWaiting > 0 else { return .terminateNow }
+        app.sendWaiting(within: 3) { NSApp.reply(toApplicationShouldTerminate: true) }
+        return .terminateLater
+    }
 }

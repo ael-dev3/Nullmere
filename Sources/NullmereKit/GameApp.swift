@@ -117,10 +117,31 @@ public final class GameApp {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.woke() }
         }
+        GameApp.current = self
         if opensAtOnce { checkModel() }
     }
 
     @ObservationIgnored private var wakeObserver: (any NSObjectProtocol)?
+
+    /// The game now running, for the app as it quits.
+    public static weak var current: GameApp?
+
+    /// Orders and readiness given and not yet carried to the realm.
+    public var ordersWaiting: Int {
+        (link as? NetworkRealmLink)?.waiting ?? 0
+    }
+
+    /// Lets what waits to be sent go, for a few seconds at most, then
+    /// calls `done`: quitting just after an order doesn't lose it.
+    public func sendWaiting(within seconds: Double, then done: @escaping @MainActor () -> Void) {
+        let deadline = Date().addingTimeInterval(seconds)
+        Task { @MainActor [weak self] in
+            while let self, self.ordersWaiting > 0, Date() < deadline {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            done()
+        }
+    }
 
     /// The Mac woke: a link across the network asks the realm at once.
     func woke() {

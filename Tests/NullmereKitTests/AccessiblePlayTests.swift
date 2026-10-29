@@ -183,3 +183,27 @@ private final class SilentLink: RealmLink {
     func setReady(_ ready: Bool) {}
     func leave() {}
 }
+
+/// Quitting just after an order: what waits is given a moment to go.
+@MainActor
+final class QuittingTests: XCTestCase {
+    func testNothingWaitingLetsTheAppQuitAtOnce() async {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let app = GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: nil, identity: MemoryIdentity(),
+                          opensAtOnce: false, transport: nil, pollInterval: 1)
+        XCTAssertTrue(GameApp.current === app)
+        XCTAssertEqual(app.ordersWaiting, 0)
+        let done = expectation(description: "quit")
+        let start = Date()
+        app.sendWaiting(within: 3) { done.fulfill() }
+        await fulfillment(of: [done], timeout: 2)
+        XCTAssertLessThan(Date().timeIntervalSince(start), 1, "Nothing to wait for")
+    }
+}
+
+private final class MemoryIdentity: IdentityStore, @unchecked Sendable {
+    var value: String?
+    func load() -> String? { value }
+    func save(_ identity: String) throws { value = identity }
+}
