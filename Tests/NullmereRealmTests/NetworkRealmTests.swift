@@ -482,6 +482,35 @@ final class NetworkRealmTests: XCTestCase {
         XCTAssertTrue(said.lines.contains { $0.hasPrefix("Another steward holds the realm; this one stops.") }, "\(said.lines)")
     }
 
+    /// An order carried to a realm that has forgotten this keeper's key is
+    /// refused as from a stranger: the key is let go, and the keeper told.
+    func testAnOrderFromAForgottenKeyIsToldSo() async throws {
+        let db = FakeSpacetime()
+        let (_, running, _) = try await steward(db)
+        defer { running.cancel() }
+        // Polling slowly, so the order is what meets the forgetting first.
+        let (link, ear) = await MainActor.run { () -> (NetworkRealmLink, Listener) in
+            let link = NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 60)
+            let ear = Listener()
+            ear.listen(to: link)
+            link.connect()
+            return (link, ear)
+        }
+        await MainActor.run { link.arrive(name: "Ama") }
+        try await until("arrival") { ear.keeper != nil }
+        let house = try await MainActor.run { try XCTUnwrap(ear.keeper?.house) }
+        let spear = try await MainActor.run { try XCTUnwrap(ear.world?.units(of: house).first { $0.kind == .spear }) }
+        let old = try await MainActor.run { try XCTUnwrap(link.credentials) }
+        await db.forget(token: old.token)
+        await MainActor.run { link.send(.fortify(unit: spear.id)) }
+        try await until("the keeper told the realm doesn't know them") {
+            ear.events.contains { if case .refused(.unknownKeeper) = $0 { return true } else { return false } }
+        }
+        let kept = await MainActor.run { link.credentials }
+        XCTAssertNil(kept, "The forgotten key is let go")
+        await MainActor.run { link.leave() }
+    }
+
     func testAKeyTheRealmNoLongerKnowsIsMadeAnew() async throws {
         let db = FakeSpacetime()
         let (_, running, _) = try await steward(db)
