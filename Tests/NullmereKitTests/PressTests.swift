@@ -1,5 +1,5 @@
 import AppKit
-import LauncherKit
+@testable import LauncherKit
 import NullmereRealm
 import Observation
 import SwiftUI

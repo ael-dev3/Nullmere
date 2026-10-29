@@ -77,7 +77,7 @@ timestamp, signs and notarizes the disk image, and staples it; checks the
 image as a player receives it (`scripts/verify-release.sh`: the app inside
 named Nullmere Online, at the tag's version, signed by the Developer ID,
 accepted by Gatekeeper); and attaches it, with its SHA-256, to a GitHub
-release. A tag with a suffix (`v1.0.0-beta.1`) makes a prerelease. It worked
+release. Tags are three numbers (`v1.0.0`), as the app's version is. It worked
 when the release's notes don't say "ad-hoc signed", and on any Mac:
 
 ```sh

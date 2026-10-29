@@ -16,6 +16,8 @@ cd "$(dirname "$0")/.."
 
 CONFIGURATION="${CONFIGURATION:-release}"
 VERSION="${VERSION:-0.3.0}"
+# CFBundleShortVersionString: three numbers, as macOS compares versions.
+echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "VERSION must be three numbers, such as 1.0.0 (not $VERSION)" >&2; exit 1; }
 BUILD_NUMBER="${BUILD_NUMBER:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 OUTPUT_DIR="${OUTPUT_DIR:-build}"
 CODESIGN_IDENTITY="${CODESIGN_IDENTITY:--}"

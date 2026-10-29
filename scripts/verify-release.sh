@@ -40,7 +40,7 @@ hdiutil attach -quiet -readonly -nobrowse -mountpoint "$mount" "$dmg"
 app="$mount/Nullmere Online.app"
 [ -d "$app" ] || fail "the image holds no Nullmere Online.app"
 [ -L "$mount/Applications" ] && [ "$(readlink "$mount/Applications")" = /Applications ] || fail "the image has no link to Applications"
-extra="$(ls -A "$mount" | grep -v -e '^Nullmere Online\.app$' -e '^Applications$' -e '^\.' || true)"
+extra="$(ls -A "$mount" | grep -vx -e 'Nullmere Online\.app' -e 'Applications' -e '\.DS_Store' -e '\.fseventsd' -e '\.Trashes' -e '\.background' || true)"
 [ -z "$extra" ] || fail "the image holds more than the app and the link: $extra"
 
 plist="$app/Contents/Info.plist"

@@ -43,24 +43,32 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The version comes from the tag, so the tag must be one: v1.2.3, or
-      # v1.2.3-beta.1 for a prerelease.
+      # The version comes from the tag, so the tag must be one, v1.2.3: the
+      # app's version (CFBundleShortVersionString) is three numbers.
       - name: Read the version
         run: |
           if [ "$GITHUB_REF_TYPE" = tag ]; then
-            echo "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' || {
+            echo "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || {
               echo "::error::$GITHUB_REF_NAME is not a version tag such as v1.0.0"
               exit 1
             }
             version="${GITHUB_REF_NAME#v}"
           else
-            version="0.0.0-$(git rev-parse --short HEAD)"
+            # Run by hand: packed and checked, never released.
+            version="0.0.0"
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
-      # Whatever commit the tag names, nothing ships that fails its tests.
+      # Whatever commit the tag names, nothing ships that fails its tests:
+      # the run's own exit status decides, so a run that crashes, and never
+      # prints its whole count, fails too.
       - name: Test before releasing
-        run: swift test 2>&1 | tee "$RUNNER_TEMP/test.log" | grep -E "error:|failed \(|Executed .* tests" || true
+        run: |
+          set -o pipefail
+          if ! swift test 2>&1 | tee "$RUNNER_TEMP/test.log" | grep -E "error:|failed \(|Executed .* tests"; then
+            echo "::error::The tagged commit fails its tests, or its test run ended early: nothing is released"
+            exit 1
+          fi
 
       # The last count is the whole run's; each suite that passed has its own.
       - name: Tests passed
@@ -123,9 +131,7 @@ jobs:
           scripts/release-notes.sh "$GITHUB_REF_NAME" ${SIGNED:+signed} > "$RUNNER_TEMP/notes.md"
           # shellcheck disable=SC2016 # the backquotes are the notes' own
           printf '\n**SHA-256** `%s`\n' "$(cut -d' ' -f1 "$DMG.sha256")" >> "$RUNNER_TEMP/notes.md"
-          prerelease=""
-          case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" "$DMG" "$DMG.sha256" $prerelease --verify-tag \
+          gh release create "$GITHUB_REF_NAME" "$DMG" "$DMG.sha256" --verify-tag \
             --title "Nullmere Online ${GITHUB_REF_NAME}" --notes-file "$RUNNER_TEMP/notes.md"
 
       # The signing keychain goes with the job, whatever became of it.

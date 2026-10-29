@@ -63,16 +63,16 @@ fi
 
 echo "== Releasing, signed, the notarizing rehearsed"
 rm -rf "$OUTPUT_DIR"
-VERSION=0.0.0-rehearsal OUTPUT_DIR="$OUTPUT_DIR" CODESIGN_IDENTITY="$identity" NOTARY_PROFILE=nullmere NOTARY_DRY_RUN=1 \
+VERSION=0.0.0 OUTPUT_DIR="$OUTPUT_DIR" CODESIGN_IDENTITY="$identity" NOTARY_PROFILE=nullmere NOTARY_DRY_RUN=1 \
     scripts/release.sh | tee "$WORK/release.log"
 
 echo "== Checking what was signed, as the release workflow checks what ships"
-dmg="$OUTPUT_DIR/Nullmere-Online-0.0.0-rehearsal.dmg"
-AUTHORITY="$NAME" scripts/verify-release.sh "$dmg" 0.0.0-rehearsal
+dmg="$OUTPUT_DIR/Nullmere-Online-0.0.0.dmg"
+AUTHORITY="$NAME" scripts/verify-release.sh "$dmg" 0.0.0
 test -s "$dmg.sha256" || { echo "error: no checksum beside the disk image" >&2; exit 1; }
 (cd "$OUTPUT_DIR" && shasum -a 256 -c "$(basename "$dmg").sha256") || { echo "error: the checksum doesn't match the disk image" >&2; exit 1; }
 # The check refuses what it should: an image signed by someone else.
-if AUTHORITY="Developer ID Application: Someone Else" scripts/verify-release.sh "$dmg" 0.0.0-rehearsal >/dev/null 2>&1; then
+if AUTHORITY="Developer ID Application: Someone Else" scripts/verify-release.sh "$dmg" 0.0.0 >/dev/null 2>&1; then
     echo "error: the check passed an image signed by someone else" >&2
     exit 1
 fi
@@ -84,7 +84,7 @@ fi
 grep -q "would run: xcrun notarytool submit" "$WORK/release.log" || { echo "error: notarizing wasn't rehearsed" >&2; exit 1; }
 grep -q "would run: xcrun stapler staple" "$WORK/release.log" || { echo "error: stapling wasn't rehearsed" >&2; exit 1; }
 echo "== The release's notes, as a signed release would have them"
-scripts/release-notes.sh v0.0.0-rehearsal signed | tee "$WORK/notes.md"
+scripts/release-notes.sh v0.0.0 signed | tee "$WORK/notes.md"
 grep -qi "ad-hoc" "$WORK/notes.md" && { echo "error: a signed release's notes say ad-hoc" >&2; exit 1; }
-scripts/release-notes.sh v0.0.0-rehearsal | grep -qi "ad-hoc" || { echo "error: an unsigned release's notes don't say so" >&2; exit 1; }
+scripts/release-notes.sh v0.0.0 | grep -qi "ad-hoc" || { echo "error: an unsigned release's notes don't say so" >&2; exit 1; }
 echo "REHEARSAL signed by \"$NAME\" with the hardened runtime and a secure timestamp; the disk image signed; notarizing and stapling ready. A real release needs only the secrets."

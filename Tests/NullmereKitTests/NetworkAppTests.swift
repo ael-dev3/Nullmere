@@ -1,5 +1,5 @@
 import Foundation
-import LauncherKit
+@testable import LauncherKit
 import NullmereRealm
 import NullmereTestSupport
 import SwiftUI

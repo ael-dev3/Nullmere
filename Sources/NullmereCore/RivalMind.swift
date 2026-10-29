@@ -76,7 +76,7 @@ struct RivalMind {
         let garrisons = assignGarrisons(in: state)
         let visible = state.visibility(for: house)
         for unit in state.units(of: house).sorted(by: { $0.id < $1.id }) {
-            guard state.unit(unit.id) != nil, state.outcome == nil else { continue }
+            guard state.unit(unit.id) != nil else { continue }
             events += command(unit.id, garrisonFor: garrisons[unit.id], seeing: visible, in: &state)
         }
         return events

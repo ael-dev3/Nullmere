@@ -289,6 +289,10 @@ struct EnvoyWordsField: NSViewRepresentable {
             // sent for them, and the draft must still hold what is shown.
             for name in ["NSUndoManagerDidUndoChangeNotification", "NSUndoManagerDidRedoChangeNotification"] {
                 replays.append(NotificationCenter.default.addObserver(forName: NSNotification.Name(name), object: nil, queue: nil) { [weak self] notice in
+                    // Any undo manager's, on whatever thread it works: this
+                    // field's undoes on the main thread, so others are not
+                    // its concern.
+                    guard Thread.isMainThread else { return }
                     let history = notice.object as? UndoManager
                     MainActor.assumeIsolated { self?.replayed(history) }
                 })

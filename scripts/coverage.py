@@ -108,7 +108,7 @@ def main(argv):
             if percent < floor:
                 note += " BELOW"
                 failed = True
-        print(f"COVERAGE {module} {percent:.1f}% of {counted[module]} lines{note}")
+        print(f"COVERAGE {module} {percent:.2f}% of {counted[module]} lines{note}")
     ranked = sorted(files, key=lambda file: (file[0], file[1], file[2]), reverse=True)
     for missed, count, name, _ in ranked[:worst]:
         print(f"COVERFILE {name} {count - missed}/{count} lines, {missed} unrun")

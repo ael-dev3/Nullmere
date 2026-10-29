@@ -16,7 +16,7 @@ public enum PressableButtons {
     /// Forgets the action drawn under one title, so that only a drawing of
     /// it from now on can be pressed. The others stay as they were last
     /// drawn: a view drawn once is not drawn again only to be listened to.
-    public static func forget(_ title: String) {
+    static func forget(_ title: String) {
         actions[title] = nil
     }
 
