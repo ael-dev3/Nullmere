@@ -334,7 +334,9 @@ struct OmenBand: View {
 /// colour" on, a sign that says it in shape: + good, ! bad.
 struct ToneMark: View {
     let tone: GameSession.Notice.Tone
-    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
+    /// With "Differentiate without colour" on, what colour says is said in
+    /// shape too.
+    private var differentiate: Bool { Contrast.shared.differentiates }
 
     var body: some View {
         if differentiate, tone != .neutral {

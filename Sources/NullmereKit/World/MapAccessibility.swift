@@ -47,6 +47,24 @@ enum MapAccessibility {
         return distance == 1 ? "beside it, \(direction)" : "\(distance) tiles \(direction)"
     }
 
+    /// An order chosen from VoiceOver's actions on a company: given as a
+    /// right-click would give it, and, carried out, said so. (A refusal
+    /// says itself, as a notice.)
+    @MainActor
+    static func carryOut(_ order: Order, for item: Item, in session: GameSession) {
+        session.selection = item.selection
+        let before = session.selectedUnit
+        if order.founds, case .unit(let id) = item.selection {
+            session.perform(.found(unit: id))
+        } else {
+            session.order(order.hex)
+        }
+        let after = session.selectedUnit
+        if before != after || (order.founds && after == nil) {
+            session.sayNow("Done: \(order.name.prefix { $0 != "," && $0 != ":" }).")
+        }
+    }
+
     /// What a strike would do, as the forecast card says it.
     static func odds(_ forecast: Forecast) -> String {
         func range(_ r: ClosedRange<Int>) -> String { r.lowerBound == r.upperBound ? "\(r.lowerBound)" : "\(r.lowerBound) to \(r.upperBound)" }

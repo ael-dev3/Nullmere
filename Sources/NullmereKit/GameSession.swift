@@ -1057,8 +1057,12 @@ public final class GameSession {
     /// Says something to VoiceOver at once, as the keeper moves about the
     /// map: not a notice, and not kept.
     func sayNow(_ text: String) {
+        lastSaid = text
         AccessibilityNotification.Announcement(text).post()
     }
+
+    /// What was last said at once, for tests.
+    @ObservationIgnored private(set) var lastSaid: String?
 
     /// VoiceOver says what happened as the notices appear: those posted
     /// together (a watch's worth) in one announcement, not one each.

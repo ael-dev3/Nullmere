@@ -6,6 +6,7 @@ import SwiftUI
 public struct GameRootView: View {
     let app: GameApp
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
 
     public init(app: GameApp) {
         self.app = app
@@ -42,6 +43,9 @@ public struct GameRootView: View {
         .preferredColorScheme(.dark)
         .onChange(of: contrast, initial: true) { _, contrast in
             Contrast.shared.isIncreased = contrast == .increased
+        }
+        .onChange(of: differentiate, initial: true) { _, differentiate in
+            Contrast.shared.differentiates = differentiate
         }
         .frame(minWidth: 960, minHeight: 600)
         .background(WindowFitter())

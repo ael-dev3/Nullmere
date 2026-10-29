@@ -351,4 +351,6 @@ extension View {
 final class Contrast: @unchecked Sendable {
     static let shared = Contrast()
     var isIncreased = false
+    /// "Differentiate without colour": what colour says, said in shape too.
+    var differentiates = false
 }

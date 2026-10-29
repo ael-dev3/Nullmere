@@ -43,7 +43,9 @@ struct HousesPanel: View {
 /// stages of the Moonspire toward ascendancy.
 struct RaceTable: View {
     let session: GameSession
-    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
+    /// With "Differentiate without colour" on, what colour says is said in
+    /// shape too.
+    private var differentiate: Bool { Contrast.shared.differentiates }
 
     var body: some View {
         let state = session.state

@@ -22,6 +22,28 @@ final class AccessiblePlayTests: XCTestCase {
     override func tearDown() async throws {
         try? FileManager.default.removeItem(at: dir)
         Contrast.shared.isIncreased = false
+        Contrast.shared.differentiates = false
+    }
+
+    private func draw(_ view: some View, width: CGFloat = 900, height: CGFloat = 600) throws {
+        let renderer = ImageRenderer(content: view.frame(width: width, height: height).background(Color.black))
+        renderer.scale = 1
+        XCTAssertNotNil(renderer.cgImage)
+    }
+
+    /// A world with a foe's spear beside the keeper's, at war.
+    private func atWar(_ seed: String) throws -> (GameState, spear: Int, foe: Hex) {
+        var state = world(seed)
+        let me = state.player
+        let foe = (me + 1) % state.houses.count
+        _ = try state.perform(.declareWar(on: foe), as: me)
+        let spear = try XCTUnwrap(state.units(of: me).first { $0.kind == .spear })
+        let beside = try XCTUnwrap(state.map.neighbors(of: spear.position).first { hex in
+            state.map[hex]?.terrain.isPassable == true && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        })
+        state.units.append(NullmereCore.Unit(id: state.nextID, kind: .spear, owner: foe, position: beside))
+        state.nextID += 1
+        return (state, spear.id, beside)
     }
 
     private func world(_ seed: String) -> GameState {
@@ -170,6 +192,70 @@ final class AccessiblePlayTests: XCTestCase {
         XCTAssertEqual(Palette.text(0.95), Palette.ink.opacity(0.95), "Bright text, as it was")
     }
 
+    func testWhatColourSaysIsSaidInShape() throws {
+        XCTAssertFalse(WorldMarks.ownership(.own, at: .zero, radius: 10).isEmpty, "A bar over the keeper's own")
+        XCTAssertFalse(WorldMarks.ownership(.foe, at: .zero, radius: 10).isEmpty, "A cross on a foe's")
+        XCTAssertTrue(WorldMarks.ownership(.other, at: .zero, radius: 10).isEmpty, "Nothing for others")
+        let (state, spear, _) = try atWar("shapes, not colours")
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        session.camera.focus(on: try XCTUnwrap(session.state.unit(spear)).position)
+        Contrast.shared.differentiates = true
+        try draw(WorldMarks(session: session))
+        for tone in [GameSession.Notice.Tone.good, .bad, .neutral] {
+            try draw(ToneMark(tone: tone), width: 20, height: 20)
+        }
+        try draw(RaceTable(session: session).frame(width: 360), width: 400, height: 300)
+    }
+
+    func testVoiceOverOrdersAreCarriedOutAndSaid() throws {
+        var state = world("orders carried out")
+        let me = state.player
+        let site = try XCTUnwrap(state.map.hexes.first { hex in
+            state.canFound(at: hex, for: me) == nil && state.isExplored(hex, by: me) && state.unit(at: hex) == nil
+        })
+        state.units.append(NullmereCore.Unit(id: state.nextID, kind: .founder, owner: me, position: site))
+        let founder = state.nextID
+        state.nextID += 1
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        let founderItem = try XCTUnwrap(session.mapItems.first { $0.selection == .unit(founder) })
+        let found = try XCTUnwrap(founderItem.orders.first { $0.founds })
+        MapAccessibility.carryOut(found, for: founderItem, in: session)
+        XCTAssertEqual(session.lastSaid, "Done: Found a hold here.")
+        XCTAssertNotNil(session.state.hold(at: site))
+
+        let lantern = try XCTUnwrap(session.state.units(of: me).first { $0.kind == .lantern })
+        let lanternItem = try XCTUnwrap(session.mapItems.first { $0.selection == .unit(lantern.id) })
+        let explore = try XCTUnwrap(lanternItem.orders.first { $0.name.hasPrefix("Explore") })
+        MapAccessibility.carryOut(explore, for: lanternItem, in: session)
+        XCTAssertEqual(session.lastSaid, "Done: Explore toward the unknown.")
+        XCTAssertNotEqual(session.state.unit(lantern.id), lantern, "On its way")
+    }
+
+    func testThePannedCentreIsSaid() throws {
+        let (state, spear, foe) = try atWar("the middle said")
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        session.dismissSeatBriefing()
+        let seat = try XCTUnwrap(session.state.seat(of: session.player))
+        session.camera.focus(on: seat.position)
+        let ground = try XCTUnwrap(session.centreWords)
+        XCTAssertTrue(ground.contains(seat.name), ground)
+        XCTAssertFalse(ground.contains(" · "), "Said as a sentence, not a line of dots")
+        // A spear chosen, a foe in the middle: the odds.
+        session.selection = .unit(spear)
+        session.camera.focus(on: foe)
+        session.hover(foe)
+        let strike = try XCTUnwrap(session.centreWords)
+        XCTAssertTrue(strike.hasPrefix("Strike: they take"), strike)
+        session.sayNow(strike)
+        XCTAssertEqual(session.lastSaid, strike)
+    }
+
+    func testAStrikeOnAHoldIsSaidAsItsWard() {
+        let odds = MapAccessibility.odds(Forecast(target: .hold(1), dealt: 30...30, taken: 0...0, defenderHealth: 30,
+                                                  attackerHealth: 100, couldCapture: true))
+        XCTAssertEqual(odds, "the ward loses 30 of 30; out of their reach; the hold is taken")
+    }
+
     func testTheDoorSaysWhenTheRealmIsOutOfReach() {
         XCTAssertEqual(FrontDoor.spokenState(of: .unreachable("No answer.")), "The realm is out of reach. No answer.")
         XCTAssertNil(FrontDoor.spokenState(of: .connecting))
@@ -196,6 +282,7 @@ final class QuittingTests: XCTestCase {
                           opensAtOnce: false, transport: nil, pollInterval: 1)
         XCTAssertTrue(GameApp.current === app)
         XCTAssertEqual(app.ordersWaiting, 0)
+        app.woke()
         let done = expectation(description: "quit")
         let start = Date()
         app.sendWaiting(within: 3) { done.fulfill() }
@@ -213,6 +300,10 @@ private final class MemoryIdentity: IdentityStore, @unchecked Sendable {
 /// One copy of the game at a time.
 final class SingleInstanceTests: XCTestCase {
     func testASecondCopyHandsOverToTheFirst() {
+        var brought: [pid_t] = []
+        XCTAssertFalse(SingleInstance.handOver(to: [(42, { brought.append(42) })], current: 42), "Alone: it stays")
+        XCTAssertTrue(SingleInstance.handOver(to: [(42, { brought.append(42) }), (7, { brought.append(7) })], current: 42))
+        XCTAssertEqual(brought, [7], "The first copy comes forward")
         XCTAssertNil(SingleInstance.other(among: [42], current: 42), "Alone: it stays")
         XCTAssertEqual(SingleInstance.other(among: [42, 7], current: 42), 7, "Another running: that one comes forward")
         XCTAssertNil(SingleInstance.other(among: [], current: 42))

@@ -10,16 +10,21 @@ public enum SingleInstance {
     }
 
     /// Brings forward the copy already running, if there is one; returns
-    /// whether this copy should quit. A bare executable (`swift run`) has
-    /// no bundle identifier and is never turned away.
+    /// whether this copy should quit.
+    static func handOver(to running: [(pid: pid_t, bringForward: () -> Void)], current: pid_t) -> Bool {
+        guard let pid = other(among: running.map(\.pid), current: current),
+              let first = running.first(where: { $0.pid == pid }) else { return false }
+        first.bringForward()
+        return true
+    }
+
+    /// The same, for the copies the Mac is running. A bare executable
+    /// (`swift run`) has no bundle identifier and is never turned away.
     @MainActor
     public static func handOver() -> Bool {
         guard let identifier = Bundle.main.bundleIdentifier else { return false }
         let running = NSRunningApplication.runningApplications(withBundleIdentifier: identifier)
-        guard let pid = other(among: running.map(\.processIdentifier), current: ProcessInfo.processInfo.processIdentifier),
-              let first = running.first(where: { $0.processIdentifier == pid })
-        else { return false }
-        first.activate(options: [])
-        return true
+        return handOver(to: running.map { app in (app.processIdentifier, { app.activate(options: []) }) },
+                        current: ProcessInfo.processInfo.processIdentifier)
     }
 }

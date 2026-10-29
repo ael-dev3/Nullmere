@@ -38,20 +38,7 @@ struct WorldView: View {
                 Button(item.label) { session.selection = item.selection }
                     .accessibilityActions {
                         ForEach(item.orders, id: \.self) { order in
-                            Button(order.name) {
-                                session.selection = item.selection
-                                let before = session.selectedUnit
-                                if order.founds, case .unit(let id) = item.selection {
-                                    session.perform(.found(unit: id))
-                                } else {
-                                    session.order(order.hex)
-                                }
-                                // Carried out: said so. (A refusal says itself, as a notice.)
-                                let after = session.selectedUnit
-                                if before != after || (order.founds && after == nil) {
-                                    session.sayNow("Done: \(order.name.prefix { $0 != "," && $0 != ":" }).")
-                                }
-                            }
+                            Button(order.name) { MapAccessibility.carryOut(order, for: item, in: session) }
                         }
                     }
             }
@@ -104,9 +91,9 @@ struct WorldMarks: View {
     var moment: Date?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// With "Differentiate without colour" on, whose a company is shows in
-    /// its shape too: a tick above the keeper's own, a cross on a foe's.
-    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
+    /// With "Differentiate without colour" on, what colour says is said in
+    /// shape too.
+    private var differentiate: Bool { Contrast.shared.differentiates }
 
     var body: some View {
         if let moment {
