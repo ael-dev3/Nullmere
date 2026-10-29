@@ -734,10 +734,14 @@ public final class GameSession {
             for step in 1...steps {
                 try? await Task.sleep(nanoseconds: 17_000_000)
                 guard let self, !Task.isCancelled, self.camera == placed else { return }
-                let t = Double(step) / Double(steps)
-                let eased = t * t * (3 - 2 * t)
-                placed.centerX = start.centerX + (target.centerX - start.centerX) * eased
-                placed.centerY = start.centerY + (target.centerY - start.centerY) * eased
+                if step == steps {
+                    placed = target
+                } else {
+                    let t = Double(step) / Double(steps)
+                    let eased = t * t * (3 - 2 * t)
+                    placed.centerX = start.centerX + (target.centerX - start.centerX) * eased
+                    placed.centerY = start.centerY + (target.centerY - start.centerY) * eased
+                }
                 self.camera = placed
             }
         }

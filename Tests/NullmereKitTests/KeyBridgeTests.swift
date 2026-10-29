@@ -93,6 +93,8 @@ final class KeyBridgeTests: XCTestCase {
                                     context: nil, characters: text, charactersIgnoringModifiers: text, isARepeat: false, keyCode: code)!
         }
         let tab = special(.tab, code: 48), up = special(.upArrow, code: 126)
+        // A window may hand its first key view the keyboard as it opens.
+        window.makeFirstResponder(nil)
 
         XCTAssertFalse(KeyBridgeView.controlHasFocus(in: window), "Nothing focused yet")
         XCTAssertTrue(bridge.handle(tab, keyboardNavigation: true), "Nothing focused: Tab is the game's")

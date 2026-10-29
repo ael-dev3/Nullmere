@@ -29,10 +29,13 @@ final class FrameHarnessTests: XCTestCase {
         let target = try XCTUnwrap(device.makeTexture(descriptor: descriptor))
         let moon = MoonMirror.place(in: state.map)
 
+        // Two hundred and forty frames once warm, so the slowest twentieth is
+        // a dozen frames, not the few a shared runner's hiccup can spoil.
         var frames: [Double] = [], gpu: [Double] = []
-        for frame in 0..<90 {
-            // A slow pan across the lake, as a keeper drags the map.
-            let t = Double(frame) / 60
+        for frame in 0..<250 {
+            // A slow pan across the lake, as a keeper drags the map, over
+            // the same stretch of it as ninety frames once covered.
+            let t = Double(frame) / 60 * 90 / 250
             let uniforms = WorldUniforms(
                 view: SIMD4(Float(width), Float(height), Float(scale * 2 * fraction), Float(3 + t)),
                 camera: SIMD4(Float(start.x + t * 6), Float(start.y + t * 2), Float(state.map.radius), Float(2 * fraction)),
@@ -47,7 +50,7 @@ final class FrameHarnessTests: XCTestCase {
                 frames.append(Double(took.components.seconds) * 1000 + Double(took.components.attoseconds) / 1e15)
             }
         }
-        XCTAssertGreaterThan(frames.count, 60)
+        XCTAssertGreaterThan(frames.count, 200)
         func percentile(_ values: [Double], _ p: Double) -> Double {
             let sorted = values.sorted()
             return sorted[min(sorted.count - 1, Int(Double(sorted.count) * p))]

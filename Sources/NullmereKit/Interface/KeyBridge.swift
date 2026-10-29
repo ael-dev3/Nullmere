@@ -119,10 +119,12 @@ final class KeyBridgeView: NSView {
     }
 
     /// A control of its own has the keyboard: not the window, the view the
-    /// whole interface is drawn in, nor the map, which takes it when clicked.
+    /// whole interface is drawn in (SwiftUI's hosting view, wherever it
+    /// sits), nor the map, which takes it when clicked.
     static func controlHasFocus(in window: NSWindow) -> Bool {
         guard let responder = window.firstResponder, responder !== window, responder !== window.contentView,
-              !(responder is WorldMetalView) else { return false }
+              !(responder is WorldMetalView), !String(describing: type(of: responder)).hasPrefix("NSHostingView")
+        else { return false }
         return responder is NSView
     }
 
