@@ -80,9 +80,11 @@ final class TributeTests: XCTestCase {
     /// some pay it.
     func testRivalsDemandTributeInPlay() {
         var demanded = 0, paid = 0
-        for seed in 0..<6 {
+        // Played until a tribute is paid, in one of a few worlds.
+        for seed in 0..<6 where paid == 0 {
             var state = GameState(settings: GameSettings(seedText: "tribute play \(seed)"))
-            while state.outcome == nil, state.watch < 120 {
+            while state.outcome == nil, state.watch < 120,
+                  !state.chronicle.contains(where: { $0.kind == .tribute && $0.text.contains("pays tribute") }) {
                 state.stewardTurn(for: state.player)
                 _ = state.endWatch()
             }

@@ -442,10 +442,12 @@ final class ExpansionAndFallTests: XCTestCase {
 
     /// A House can be destroyed outright.
     func testAHouseCanBeDestroyed() {
-        // In one of a few worlds, played out, a House falls outright.
+        // In one of a few worlds, played out, a House falls outright. (Those
+        // from 21 to 30 end in a victory or the watches run out before any
+        // does: two minutes of play, passed over. 31 sees one fall.)
         var state = GameState(settings: GameSettings(seedText: "siege check 14"))
         var fallen: ChronicleEntry?
-        for seed in 21..<41 where fallen == nil {
+        for seed in 31..<41 where fallen == nil {
             state = GameState(settings: GameSettings(seedText: "siege check \(seed)"))
             while state.outcome == nil, state.watch < 170, fallen == nil {
                 _ = state.stewardTurn(for: state.player)
