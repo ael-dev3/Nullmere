@@ -131,7 +131,7 @@ struct QuietButton: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
-        .onHover { hovering = $0 }
+        .onPointer { hovering = $0 }
         .accessibilityLabel(title)
     }
 }

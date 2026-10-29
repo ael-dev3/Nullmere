@@ -635,7 +635,7 @@ struct CloseButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { hovering = $0 }
+        .onPointer { hovering = $0 }
         .accessibilityLabel("Close")
     }
 }

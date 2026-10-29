@@ -9,7 +9,7 @@ extension View {
     /// the hosting view around them, until the pointer moves again: the
     /// launcher, taken out of its window as Play crosses to the realm, would
     /// stay alive with its Metal lake. A tracking area holds nothing.
-    func onPointer(_ action: @escaping (Bool) -> Void) -> some View {
+    public func onPointer(_ action: @escaping (Bool) -> Void) -> some View {
         background(PointerArea(cursor: nil, onChange: action))
     }
 
