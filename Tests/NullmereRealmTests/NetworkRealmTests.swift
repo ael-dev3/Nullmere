@@ -88,7 +88,8 @@ final class NetworkRealmTests: XCTestCase {
         let (link, ear) = await MainActor.run { keeper(db) }
         try await until("the realm's status") { ear.hasStatus }
         // Unchanged, the status isn't told again, however often it is read.
-        let token = await MainActor.run { link.credentials?.token }
+        let linksToken = await MainActor.run { link.credentials?.token }
+        let token = try XCTUnwrap(linksToken)
         try await db.waitFor(2, more: FakeSpacetime.statusPoll, by: token)
         let told = await MainActor.run { ear.events.filter { if case .status = $0 { return true } else { return false } }.count }
         try await db.waitFor(6, more: FakeSpacetime.statusPoll, by: token)
@@ -131,7 +132,7 @@ final class NetworkRealmTests: XCTestCase {
 
         // Nor can a keeper read the world, or anyone's requests, directly.
         let stranger = try await db.createIdentity()
-        for table in ["world_part", "request", "keeper_view", "reply"] {
+        for table in ["world", "world_part", "request", "keeper_view", "reply"] {
             do {
                 _ = try await db.query("SELECT * FROM \(table)", token: stranger.token)
                 XCTFail("A keeper read the private \(table) table")
@@ -145,11 +146,16 @@ final class NetworkRealmTests: XCTestCase {
 
         // The watch turns when both are ready.
         await MainActor.run { a.setReady(true) }
-        while await db.handled(kind: "ready") < 1 { try await Task.sleep(nanoseconds: 10_000_000) }
+        let deadline = Date().addingTimeInterval(20)
+        while await db.handled(kind: "ready") < 1 {
+            if Date() > deadline { return XCTFail("Ama's readiness was never carried out") }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
         // Rounds of the steward, and polls of Ama's, after it: the watch
         // still waits.
         try await db.waitFor(3, more: FakeSpacetime.stewardRound)
-        try await db.waitFor(3, more: FakeSpacetime.statusPoll, by: await MainActor.run { a.credentials?.token })
+        let amasToken = await MainActor.run { a.credentials?.token }
+        try await db.waitFor(3, more: FakeSpacetime.statusPoll, by: try XCTUnwrap(amasToken))
         let early = await MainActor.run { earA.turned }
         XCTAssertFalse(early, "Bel isn't ready yet")
         await MainActor.run { b.setReady(true) }
@@ -165,7 +171,8 @@ final class NetworkRealmTests: XCTestCase {
         let (ama, ear) = await MainActor.run { keeper(db) }
         await MainActor.run { ama.arrive(name: "Ama") }
         try await until("arrival") { ear.keeper != nil }
-        let token = await MainActor.run { ama.credentials?.token }
+        let amasToken = await MainActor.run { ama.credentials?.token }
+        let token = try XCTUnwrap(amasToken)
         try await db.waitFor(3, more: FakeSpacetime.statusPoll, by: token)
         let before = await MainActor.run { ama.viewReads }
         // Twenty polls, with nothing published.
@@ -201,7 +208,8 @@ final class NetworkRealmTests: XCTestCase {
                 return false
             }
         }
-        try await db.waitFor(6, more: FakeSpacetime.statusPoll, by: await MainActor.run { a.credentials?.token })
+        let amasToken = await MainActor.run { a.credentials?.token }
+        try await db.waitFor(6, more: FakeSpacetime.statusPoll, by: try XCTUnwrap(amasToken))
         let toldOwn = await MainActor.run {
             earA.events.contains { if case .heard = $0 { return true } else { return false } }
         }
@@ -613,6 +621,9 @@ actor Flaky: SpacetimeTransport {
 
     func setDown(_ value: Bool) { down = value }
     func loseNextCall() { losing = true }
+    /// The next call to this reducer is carried out, but its answer is lost.
+    func loseAnswer(to reducer: String) { losingAnswers.insert(reducer) }
+    private var losingAnswers: Set<String> = []
     /// The next call to this reducer never reaches the server.
     func failNext(_ reducer: String) { failing.insert(reducer) }
 
@@ -625,6 +636,7 @@ actor Flaky: SpacetimeTransport {
         if down { throw SpacetimeError("The network is down.") }
         if failing.remove(reducer) != nil { throw SpacetimeError("The call to \(reducer) was lost.") }
         try await db.call(reducer, arguments, token: token)
+        if losingAnswers.remove(reducer) != nil { throw SpacetimeError("The answer was lost.") }
         if losing, reducer == "order" {
             losing = false
             throw SpacetimeError("The answer was lost.")

@@ -95,7 +95,7 @@ final class SpacetimeIntegrationTests: XCTestCase {
 
         // Private tables stay private to a keeper.
         let stranger = try await transport.createIdentity()
-        for table in ["world_part", "request", "keeper_view", "reply"] {
+        for table in ["world", "world_part", "request", "keeper_view", "reply"] {
             let rows = (try? await transport.query("SELECT * FROM \(table)", token: stranger.token)) ?? []
             XCTAssertTrue(rows.isEmpty, "A keeper read the private \(table) table")
         }

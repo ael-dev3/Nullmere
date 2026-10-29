@@ -146,7 +146,7 @@ extension RivalMind {
         guard let trade = terms(giving: high, for: low, amount: amount, in: state) else { return ([], false) }
         let partners = state.livingHouses
             .filter { $0.id != house && state.stance(house, $0.id) != .war }
-            .sorted { ($0.stock[low], $0.id) > ($1.stock[low], $1.id) }
+            .sorted { ($0.stock[low], tieBreak($0.id, in: state)) > ($1.stock[low], tieBreak($1.id, in: state)) }
         var events: [GameEvent] = []
         for partner in partners.prefix(3) where !partner.isPlayer {
             guard state.canSettle(trade, from: house, to: partner.id),

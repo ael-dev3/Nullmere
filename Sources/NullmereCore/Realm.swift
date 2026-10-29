@@ -276,13 +276,16 @@ public struct RealmState: Codable, Equatable, Sendable {
 
     /// Gives a keeper the first free seat: a living House no keeper holds.
     private mutating func claimSeat(for index: Int) {
-        // The greatest House free, so one coming late to an age takes up a
-        // House with a road to winning it; at an age's start, all alike,
-        // the first.
-        guard world.outcome == nil,
-              let seat = world.livingHouses.filter({ !$0.isPlayer && $0.liege == nil }).max(by: { a, b in
-                  (world.realm(of: a.id), world.renown(of: a.id), -a.id) < (world.realm(of: b.id), world.renown(of: b.id), -b.id)
-              }) else { return }
+        // A middling House of those free: one coming late to an age takes
+        // up a House with a road still open, but never the strongest, which
+        // a keeper could otherwise seize by coming again under a new name,
+        // nor, as a rule, the House that took their own. At an age's start,
+        // all alike, the first.
+        let free = world.livingHouses.filter { !$0.isPlayer && $0.liege == nil }
+        func standing(_ house: House) -> [Int] { [world.realm(of: house.id), world.renown(of: house.id)] }
+        let ranked = free.map(standing).sorted { $0.lexicographicallyPrecedes($1) }
+        guard world.outcome == nil, !ranked.isEmpty,
+              let seat = free.first(where: { standing($0) == ranked[(ranked.count - 1) / 2] }) else { return }
         world.houses[seat.id].isPlayer = true
         world.houses[seat.id].name = keepers[index].name
         keepers[index].house = seat.id
@@ -380,15 +383,13 @@ public struct RealmState: Codable, Equatable, Sendable {
             beginAge(now: now)
             return []
         }
-        // A House whose keeper has been away a while is kept for them, so
-        // it doesn't stand idle while its neighbours act.
-        var events: [GameEvent] = []
-        for keeper in keepers where !keeper.isOnline {
-            guard let house = keeper.house, !world.houses[house].isEliminated,
-                  now - (keeper.awaySince ?? now) >= RealmState.caretakerAfter * watchLength else { continue }
-            events += world.stewardTurn(for: house, caretaking: true)
-        }
-        return events + world.endWatch()
+        // A House whose keeper has been away a while is kept for them, in
+        // its turn among the stewards, so it doesn't stand idle while its
+        // neighbours act.
+        let absent = keepers.filter { keeper in
+            !keeper.isOnline && now - (keeper.awaySince ?? now) >= RealmState.caretakerAfter * watchLength
+        }.compactMap(\.house)
+        return world.endWatch(keptFor: Set(absent))
     }
 
     /// The next age: a fresh lake, and every keeper seated again in the

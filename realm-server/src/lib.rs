@@ -75,6 +75,17 @@ pub struct Reply {
     pub payload: String,
 }
 
+/// The realm kept whole, as it was before it was kept in parts: kept so a
+/// realm from then updates in place, and read once by the steward, which
+/// keeps it in parts from then on. Nothing writes it now.
+#[table(accessor = world)]
+pub struct World {
+    #[primary_key]
+    pub id: u8,
+    pub version: u64,
+    pub state: String,
+}
+
 /// The realm as it stands, as the rules core's JSON, in parts (the map, a
 /// page of each long list, the rest), so the steward rewrites only the
 /// parts that changed: the steward's alone to read.

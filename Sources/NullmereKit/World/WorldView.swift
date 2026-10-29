@@ -444,9 +444,11 @@ struct WorldFallback: View {
                 context.fill(hexagon, with: .color(Palette.house(state.houses[owner]).opacity(seen ? 0.16 : 0.08)))
             }
         }
-        // The moon, lying in the still water.
+        // The moon, lying in the still water, where the keeper knows it.
         let moon = session.moon
-        if moon.w > 0 {
+        let moonHex = HexLayout(size: 1).hex(atX: Double(moon.x), y: Double(moon.y))
+        let moonKnown = state.map.index(of: moonHex).map { session.playerHouse.explored[$0] } ?? false
+        if moon.w > 0, moonKnown {
             let centre = camera.viewPoint(worldX: Double(moon.x), worldY: Double(moon.y), in: size)
             let radius = max(Double(moon.z) * camera.scale, 2)
             let glow = Path(ellipseIn: CGRect(x: centre.x - radius * 3, y: centre.y - radius * 3, width: radius * 6, height: radius * 6))

@@ -113,7 +113,9 @@ struct RivalMind {
             }
         }
 
-        for other in state.livingHouses where other.id != house {
+        // Each other House weighed in an order of no one's seat number: the
+        // first a House sets on is no likelier to be one numbered low.
+        for other in state.livingHouses.sorted(by: { tieBreak($0.id, in: state) < tieBreak($1.id, in: state) }) where other.id != house {
             guard let relation = state.relation(house, other.id) else { continue }
             let theirs = max(1, state.strength(of: other.id))
             let lasted = state.watch - relation.since
@@ -190,14 +192,14 @@ struct RivalMind {
     }
 
     /// A caretaker's diplomacy: the envoys waiting on the House answered as
-    /// a steward would, but never bending the knee; a war going badly ended
-    /// if it can be.
+    /// a steward would (a House offering fealty is taken as a vassal), and
+    /// a war going badly ended if it can be. It offers nothing itself, so
+    /// it never bends the knee for its keeper.
     private func keepThePeace(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
         var events: [GameEvent] = []
         for envoy in state.envoys where envoy.to == house {
             let accept: Bool
             switch envoy.proposal {
-            case .fealty: accept = false
             case .trade: accept = envoy.trade.map { acceptsTrade($0, from: envoy.from, in: state) } ?? false
             case .pact: accept = acceptsPactForKeeper(from: envoy.from, in: state)
             default: accept = accepts(envoy.proposal, from: envoy.from, in: state)
@@ -224,6 +226,12 @@ struct RivalMind {
         return !allies.contains { state.isAtWar(proposer, $0.id) }
     }
 
+    /// A tie broken by no one's seat or hold number: the same for the same
+    /// House, watch and choice, and no likelier low than high.
+    func tieBreak(_ id: Int, in state: GameState) -> UInt64 {
+        Seed.mix(UInt64(id), UInt64(house), UInt64(state.watch))
+    }
+
     /// Watches a House keeps a fresh peace before it would break it.
     static let truce = 10
 
@@ -243,7 +251,7 @@ struct RivalMind {
     func spireThreats(in state: GameState) -> [Int] {
         state.holds
             .filter { $0.owner != house && $0.isSeat && $0.level(.moonspire) >= 3 }
-            .sorted { ($0.level(.moonspire), $0.id) > ($1.level(.moonspire), $1.id) }
+            .sorted { ($0.level(.moonspire), tieBreak($0.owner, in: state)) > ($1.level(.moonspire), tieBreak($1.owner, in: state)) }
             .map(\.owner)
     }
 
@@ -521,7 +529,7 @@ struct RivalMind {
                 if hold.isSeat, mine * 10 > state.strength(of: hold.owner) * 18 { cost -= 8 }
                 return cost
             }
-            target = enemyHolds.min { (cost($0), $0.id) < (cost($1), $1.id) }
+            target = enemyHolds.min { (cost($0), tieBreak($0.id, in: state)) < (cost($1), tieBreak($1.id, in: state)) }
         }
         guard let target else { return nil }
 

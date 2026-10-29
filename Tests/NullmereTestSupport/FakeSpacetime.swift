@@ -38,7 +38,16 @@ public actor FakeSpacetime: SpacetimeTransport {
     /// Waits until a statement has been queried `count` more times: for a
     /// test that something didn't happen, work done rather than time
     /// passed, so a slow machine can't pass it by luck.
-    public func waitFor(_ count: Int, more sql: String, by token: String? = nil, timeout: Double = 20) async throws {
+    public func waitFor(_ count: Int, more sql: String, timeout: Double = 20) async throws {
+        try await waitFor(count, more: sql, caller: nil, timeout: timeout)
+    }
+
+    /// The same, for one caller's queries alone.
+    public func waitFor(_ count: Int, more sql: String, by token: String, timeout: Double = 20) async throws {
+        try await waitFor(count, more: sql, caller: token, timeout: timeout)
+    }
+
+    private func waitFor(_ count: Int, more sql: String, caller token: String?, timeout: Double) async throws {
         let target = queried(sql, by: token) + count
         let deadline = Date().addingTimeInterval(timeout)
         while queried(sql, by: token) < target {
@@ -75,6 +84,10 @@ public actor FakeSpacetime: SpacetimeTransport {
         self.parts = parts
         status = (version, "{}")
     }
+
+    /// A world kept whole, as a realm from before parts left it.
+    public func seed(legacyWorld state: String) { legacyWorld = state }
+    private var legacyWorld: String?
 
     /// The world's parts as kept, by name: for tests.
     public var worldParts: [String: String] { parts }
@@ -168,6 +181,9 @@ public actor FakeSpacetime: SpacetimeTransport {
             guard me == steward else { throw SpacetimeError("Table is private") }
         }
         switch sql {
+        case "SELECT version, state FROM world":
+            try owner()
+            return legacyWorld.map { [[.number(1), .string($0)]] } ?? []
         case "SELECT name, text FROM world_part":
             try owner()
             return parts.map { [.string($0.key), .string($0.value)] }
@@ -186,7 +202,7 @@ public actor FakeSpacetime: SpacetimeTransport {
             return views[me].map { [[.string(me), .number(Double($0.version)), .string($0.view), .string($0.events)]] } ?? []
         case "SELECT * FROM my_replies":
             return replies.filter { $0.value.keeper == me }.map { [.string($0.key), .string($0.value.keeper), .string($0.value.payload)] }
-        case "SELECT * FROM world_part", "SELECT * FROM keeper_view", "SELECT * FROM reply", "SELECT * FROM request":
+        case "SELECT * FROM world", "SELECT * FROM world_part", "SELECT * FROM keeper_view", "SELECT * FROM reply", "SELECT * FROM request":
             try owner()
             return []
         default:

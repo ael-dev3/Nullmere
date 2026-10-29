@@ -242,9 +242,9 @@ as the realm will, and takes the realm's word as final.
   realm knows you by an identity your Mac keeps in its keychain, and by
   your name. The front door
   shows the realm's state: its age and watch, how many keepers are there,
-  and how many seats are free. Enter World seats you in the greatest House
-  free (at an age's start, all alike, the first); returning, you go
-  straight back to yours.
+  and how many seats are free. Enter World seats you in a middling House of
+  those free, never the strongest (at an age's start, all alike, the
+  first); returning, you go straight back to yours.
 - **Seats.** The lake has twelve seats. Seats no keeper holds are played by
   stewards, the same minds that once played rivals, until a keeper claims
   them. When every seat is held, a newcomer waits at the front door and
@@ -254,7 +254,8 @@ as the realm will, and takes the realm's word as final.
   returning, waits in turn. Meanwhile, after two watches away, a caretaker
   keeps the House: it answers envoys, tends and guards the holds and sues
   for peace in a war going badly, but begins no war, demand or pact and
-  never bends the knee. A pact offered it swears as a steward would, but
+  never bends the knee, though it takes a House offering fealty as a
+  vassal. A pact offered it swears as a steward would, but
   never with a House at war with the keeper's allies or one whose Moonspire
   is rising. While fewer than half the keepers are there, a watch lasts at
   least a third of its time, however ready they are.

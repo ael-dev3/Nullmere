@@ -11,11 +11,13 @@ import XCTest
 final class FallbackMapTests: XCTestCase {
     private let size = CGSize(width: 600, height: 400)
 
-    private func session() -> (GameSession, URL) {
+    private func session(knowingTheMoonsWater: Bool = false) -> (GameSession, URL) {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "painted without metal", houseCount: 4, radius: 18)),
-                                  store: LocalStore(directory: dir))
-        return (session, dir)
+        var state = GameState(settings: GameSettings(seedText: "painted without metal", houseCount: 4, radius: 18))
+        if knowingTheMoonsWater, let water = state.moonWater {
+            state.reveal(around: water.hex, range: 4, for: state.player)
+        }
+        return (GameSession(state: state, store: LocalStore(directory: dir)), dir)
     }
 
     /// The painting, as RGBA bytes.
@@ -40,8 +42,8 @@ final class FallbackMapTests: XCTestCase {
         return Int(painted.pixels[i]) + Int(painted.pixels[i + 1]) + Int(painted.pixels[i + 2])
     }
 
-    func testTheMoonLiesInItsWater() throws {
-        let (session, dir) = session()
+    func testTheMoonLiesInItsWaterWhereTheKeeperKnowsIt() throws {
+        let (session, dir) = session(knowingTheMoonsWater: true)
         defer { try? FileManager.default.removeItem(at: dir) }
         let moon = session.moon
         XCTAssertEqual(moon.w, 1, "This lake holds the moon")
@@ -51,6 +53,12 @@ final class FallbackMapTests: XCTestCase {
         XCTAssertGreaterThan(light(painted, at: centre), 600, "The moon, bright on the water")
         let away = CGPoint(x: centre.x + CGFloat(moon.z) * 30 * 4, y: centre.y)
         XCTAssertLessThan(light(painted, at: away), 120, "and the water beyond it dark")
+
+        // Water the keeper hasn't seen tells nothing of the moon in it.
+        let (unknowing, otherDir) = self.session()
+        defer { try? FileManager.default.removeItem(at: otherDir) }
+        unknowing.camera = session.camera
+        XCTAssertLessThan(light(try paint(unknowing), at: centre), 60, "Unknown water, dark")
     }
 
     func testAHoldsLandShowsWhoseItIs() throws {
@@ -81,7 +89,7 @@ final class FallbackMapTests: XCTestCase {
         XCTAssertEqual(session.selectedHex, seat.position)
         let chosen = try paint(session)
         let neighbour = try XCTUnwrap(session.state.map.neighbors(of: seat.position).first)
-        session.selection = nil
+        session.selection = .none
         session.hover(neighbour)
         let hovered = try paint(session)
         // The pixels that changed, and how many of them lie away from the tile.

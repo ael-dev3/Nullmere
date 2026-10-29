@@ -137,7 +137,7 @@ final class LinkViewTests: XCTestCase {
             ear.events.dropFirst(answered).contains { if case .answered = $0 { return true } else { return false } }
         }
         // However often the realm is read after.
-        try await db.waitFor(6, more: FakeSpacetime.statusPoll, by: link.credentials?.token)
+        try await db.waitFor(6, more: FakeSpacetime.statusPoll, by: try XCTUnwrap(link.credentials?.token))
         XCTAssertEqual(gifts(), 1, "Told once")
     }
 

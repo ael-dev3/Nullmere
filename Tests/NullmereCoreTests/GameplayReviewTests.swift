@@ -83,7 +83,7 @@ final class AbsentKeeperTests: XCTestCase {
         var (realm, ama, _) = try realm()
         realm.depart("id-ama", now: 0)
         var now = 0.0
-        // A stronger House demands tribute; another asks for fealty.
+        // A beaten House offers to become Ama's vassal.
         let others = realm.world.houses.filter { !$0.isPlayer }.map(\.id)
         realm.world.envoys.append(Envoy(id: realm.world.nextID, from: others[0], to: ama, proposal: .fealty, arrived: realm.world.watch))
         realm.world.nextID += 1
@@ -96,7 +96,7 @@ final class AbsentKeeperTests: XCTestCase {
         XCTAssertFalse(world.houses[ama].isEliminated, "Kept, it stands")
         XCTAssertGreaterThanOrEqual(world.holds(of: ama).count, holds, "and holds what it held")
         XCTAssertNil(world.houses[ama].liege, "It never bent the knee for its keeper")
-        XCTAssertFalse(world.envoys.contains { $0.to == ama && $0.proposal == .fealty }, "The envoy was answered")
+        XCTAssertEqual(world.houses[others[0]].liege, ama, "It took the vassal offered")
         XCTAssertFalse(world.relations.contains { relation in
             (relation.first == ama || relation.second == ama) && relation.stance == .war && relation.aggressor == ama
         }, "No war of its making")
@@ -191,9 +191,13 @@ final class StewardBalanceTests: XCTestCase {
         // renowned; this one has only its seat: it waits.
         let rival = try XCTUnwrap(state.holds.firstIndex { $0.owner != steward && $0.isSeat })
         state.holds[rival].levels = state.holds[seat].levels
-        let third = try XCTUnwrap(state.holds.firstIndex { $0.owner != steward && $0.owner != state.holds[rival].owner })
-        state.holds[third].owner = state.holds[rival].owner
-        state.holds[third].isSeat = false
+        let open = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex]?.terrain.isSettleable == true && state.hold(at: hex) == nil && state.unit(at: hex) == nil
+                && hex.distance(to: state.holds[seat].position) > 6
+        })
+        state.holds.append(Hold(id: state.nextID, name: "Second", owner: state.holds[rival].owner, position: open, isSeat: false, foundedWatch: 1))
+        state.nextID += 1
+        let third = state.holds.count - 1
         _ = state.stewardTurn(for: steward)
         XCTAssertNil(state.holds[seat].project, "Not with one hold and another House the greater")
         // The second hold its own, it is foremost on the lake, and begins.
@@ -202,15 +206,27 @@ final class StewardBalanceTests: XCTestCase {
         XCTAssertEqual(state.holds[seat].project?.kind, .moonspire)
     }
 
-    func testALateComerTakesUpTheGreatestHouseFree() throws {
+    func testALateComerTakesUpAMiddlingHouseNeverTheStrongest() throws {
         var realm = RealmState(name: "The Nullmere", seed: "late comer", seats: 6, radius: 20, watchLength: 180, now: 0)
         _ = try realm.arrive("id-ama", name: "Ama", now: 0)
         let free = realm.world.houses.filter { !$0.isPlayer }.map(\.id)
-        let greatest = try XCTUnwrap(free.last)
-        let spare = try XCTUnwrap(realm.world.holds.firstIndex { $0.owner == free[0] })
-        realm.world.holds[spare].owner = greatest
-        realm.world.holds[spare].isSeat = false
-        XCTAssertEqual(try realm.arrive("id-bel", name: "Bel", now: 1).house, greatest)
+        // The free Houses grown to one, two, three, four and five holds.
+        var open = realm.world.map.hexes.filter { hex in
+            realm.world.map[hex]?.terrain.isSettleable == true && realm.world.hold(at: hex) == nil && realm.world.unit(at: hex) == nil
+        }.makeIterator()
+        for (rank, house) in free.enumerated() {
+            for _ in 0..<rank {
+                let hex = try XCTUnwrap(open.next())
+                realm.world.holds.append(Hold(id: realm.world.nextID, name: "Grown \(realm.world.nextID)", owner: house,
+                                              position: hex, isSeat: false, foundedWatch: 1))
+                realm.world.nextID += 1
+            }
+        }
+        XCTAssertEqual(try realm.arrive("id-bel", name: "Bel", now: 1).house, free[2], "The middling House of five")
+        // Again under another name: still not the strongest.
+        let again = try XCTUnwrap(realm.arrive("id-bel-again", name: "Belle", now: 2).house)
+        XCTAssertNotEqual(again, free[4], "Never the strongest House, however often a keeper comes")
+        XCTAssertEqual(again, free[1], "The middling House of those left")
     }
 }
 
@@ -219,7 +235,8 @@ final class StewardBalanceTests: XCTestCase {
 /// luck of the draw, and no steward always first to act.
 final class SeatFairnessTests: XCTestCase {
     func testEverySeatHasRoomAndLandOfItsOwn() {
-        for (seed, lake) in zip(["fair 20", "fair 39", "fair 5"], [Lake.round, .isles, .twin]) {
+        // Eight lakes in a row, of every shape, none picked.
+        for (seed, lake) in (0..<8).map({ ("fair \($0)", Lake.allCases[$0 % Lake.allCases.count]) }) {
             let world = GameState(settings: GameSettings(seedText: seed, houseCount: 12, radius: 36, keepers: 0, lake: lake))
             let seats = world.houses.map { world.seat(of: $0.id)!.position }
             let lands = seats.enumerated().map { i, seat in
@@ -241,8 +258,8 @@ final class SeatFairnessTests: XCTestCase {
         var world = GameState(settings: GameSettings(seedText: "turns", houseCount: 6, radius: 20, keepers: 0))
         var firsts: [Int] = []
         for _ in 0..<6 {
-            firsts.append(world.stewardOrder.first!)
-            XCTAssertEqual(Set(world.stewardOrder), Set(world.livingHouses.filter { !$0.isPlayer }.map(\.id)), "Every steward, once")
+            firsts.append(world.stewardOrder().first!)
+            XCTAssertEqual(Set(world.stewardOrder()), Set(world.livingHouses.filter { !$0.isPlayer }.map(\.id)), "Every steward, once")
             world.watch += 1
         }
         XCTAssertEqual(Set(firsts).count, 6, "Each first in turn: \(firsts)")

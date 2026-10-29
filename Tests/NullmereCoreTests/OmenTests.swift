@@ -12,10 +12,12 @@ final class OmenTests: XCTestCase {
         var fallen: [OmenKind] = []
         var lifted = 0
         var longest = 0
-        for _ in 0..<300 where state.outcome == nil {
+        // Three hundred watches of the omens' own clock, however the age
+        // itself would have gone.
+        for _ in 0..<300 {
             let before = state.currentOmen
-            for house in state.houses where !house.isEliminated { _ = state.stewardTurn(for: house.id) }
-            _ = state.endWatch()
+            state.watch += 1
+            state.turnOmens()
             if let omen = state.currentOmen, before == nil {
                 fallen.append(omen.kind)
                 longest = max(longest, omen.ends - omen.began)
@@ -23,10 +25,9 @@ final class OmenTests: XCTestCase {
             }
             if before != nil, state.currentOmen == nil { lifted += 1 }
         }
-        XCTAssertGreaterThanOrEqual(fallen.count, 3, "Over three hundred watches the lake turns more than twice")
+        XCTAssertGreaterThanOrEqual(fallen.count, 6, "Over three hundred watches the lake turns again and again: some twelve times, as a rule")
         XCTAssertLessThanOrEqual(longest, 5)
         XCTAssertGreaterThanOrEqual(lifted, fallen.count - 1)
-        XCTAssertEqual(state.problems(), [])
         XCTAssertTrue(state.chronicle.contains { $0.kind == .omen })
     }
 

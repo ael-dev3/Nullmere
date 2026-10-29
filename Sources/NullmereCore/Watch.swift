@@ -3,8 +3,10 @@ extension GameState {
     /// bring in their yield, armies eat, works and training advance, wards
     /// mend, the wounded heal, marches continue, and the chronicle notes
     /// whether anyone has won.
+    /// `keptFor` names kept Houses whose keepers are away, which a
+    /// caretaker plays in their turn among the stewards.
     @discardableResult
-    public mutating func endWatch() -> [GameEvent] {
+    public mutating func endWatch(keptFor absent: Set<Int> = []) -> [GameEvent] {
         guard outcome == nil else { return [] }
         var events: [GameEvent] = []
 
@@ -12,8 +14,8 @@ extension GameState {
         // watch has turned (checkForEnd), never partway through. Who goes
         // first goes round the lake, watch by watch: no seat always first
         // to a site, a march or a trade.
-        for house in stewardOrder {
-            events += RivalMind(house: house).takeTurn(in: &self)
+        for house in stewardOrder(keptFor: absent) {
+            events += RivalMind(house: house, caretaking: houses[house].isPlayer).takeTurn(in: &self)
         }
 
         let owners = territory()
@@ -47,10 +49,12 @@ extension GameState {
         return events
     }
 
-    /// The Houses the stewards play, in the order they act this watch:
-    /// starting one seat further round the lake each watch.
-    var stewardOrder: [Int] {
-        houses.indices.map { (watch + $0) % houses.count }.filter { !houses[$0].isPlayer && !houses[$0].isEliminated }
+    /// The Houses the stewards play, and those kept for keepers away, in
+    /// the order they act this watch: starting one seat further round the
+    /// lake each watch.
+    func stewardOrder(keptFor absent: Set<Int> = []) -> [Int] {
+        houses.indices.map { (watch + $0) % houses.count }
+            .filter { !houses[$0].isEliminated && (!houses[$0].isPlayer || absent.contains($0)) }
     }
 
     /// Lets a House's steward play its watch, deciding as the rival Houses

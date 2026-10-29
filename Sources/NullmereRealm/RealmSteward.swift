@@ -39,6 +39,20 @@ public struct HeardBatch: Codable, Equatable, Sendable {
     }
 }
 
+/// Why a steward can't take up its realm.
+public enum StewardError: Error, Equatable, CustomStringConvertible {
+    /// SpacetimeDB keeps a world this steward can't read: a part missing,
+    /// or from a version of the rules it doesn't know.
+    case unreadableWorld(String)
+
+    public var description: String {
+        switch self {
+        case .unreadableWorld(let why):
+            return "The realm's world is kept but can't be read (\(why)); the steward won't begin a new one over it."
+        }
+    }
+}
+
 /// The realm as published: its whole state, its status, and what the last
 /// change brought.
 public struct PublishedRealm: Equatable, Sendable {
@@ -97,6 +111,8 @@ public actor RealmSteward {
     /// The world's parts as SpacetimeDB keeps them, to send only those
     /// that changed.
     private var keptParts: [String: String] = [:]
+    /// The last publication failed: whether SpacetimeDB kept it is unknown.
+    private var unsure = false
     /// What each keeper there heard lately, and when: published with their
     /// view until it is old enough to have been read.
     private var recentlyHeard: [String: [(at: Double, batch: HeardBatch)]] = [:]
@@ -116,18 +132,25 @@ public actor RealmSteward {
                 watchLength: Double = RealmState.defaultWatchLength, now: Double) async throws {
         self.transport = transport
         self.token = token
-        let rows = try await transport.query("SELECT name, text FROM world_part", token: token)
-        let parts = Dictionary(rows.compactMap { row -> (String, String)? in
-            guard row.count == 2, let name = row[0].string, let text = row[1].string else { return nil }
-            return (name, text)
-        }, uniquingKeysWith: { $1 })
-        // What is kept is known, whether or not it can be read: parts left
-        // over are taken away with the next publication.
+        let parts = try await RealmSteward.keptParts(transport, token: token)
         keptParts = parts
         // Versions run on past the last status, never back.
-        let status = try await transport.query("SELECT version FROM status", token: token)
-        self.version = status.first?.first?.number.map { UInt64($0) } ?? 0
-        if !parts.isEmpty, let state = try? RealmState(parts: parts) {
+        self.version = try await RealmSteward.statusVersion(transport, token: token)
+        if !parts.isEmpty {
+            // A world kept that can't be read is refused, never begun anew
+            // over: that would wipe every keeper's House. Whoever runs the
+            // realm is told, and steps in.
+            do {
+                self.state = try RealmState(parts: parts)
+            } catch {
+                throw StewardError.unreadableWorld(String(describing: error))
+            }
+            self.state.fillIn()
+        } else if let legacy = try? await transport.query("SELECT version, state FROM world", token: token).first,
+                  legacy.count == 2, let text = legacy[1].string,
+                  let state = try? JSONDecoder().decode(RealmState.self, from: Data(text.utf8)) {
+            // A realm kept whole, from before the world was kept in parts:
+            // taken up, and kept in parts from now on.
             self.state = state
             self.state.fillIn()
         } else {
@@ -248,6 +271,20 @@ public actor RealmSteward {
         }
     }
 
+    /// The world's parts as SpacetimeDB keeps them, by name.
+    private static func keptParts(_ transport: any SpacetimeTransport, token: String) async throws -> [String: String] {
+        let rows = try await transport.query("SELECT name, text FROM world_part", token: token)
+        return Dictionary(rows.compactMap { row -> (String, String)? in
+            guard row.count == 2, let name = row[0].string, let text = row[1].string else { return nil }
+            return (name, text)
+        }, uniquingKeysWith: { $1 })
+    }
+
+    private static func statusVersion(_ transport: any SpacetimeTransport, token: String) async throws -> UInt64 {
+        let status = try await transport.query("SELECT version FROM status", token: token)
+        return status.first?.first?.number.map { UInt64($0) } ?? 0
+    }
+
     /// The realm refused a publication because another steward holds it.
     public static func isHeldByAnother(_ error: any Error) -> Bool {
         String(describing: error).contains("Another steward holds the realm")
@@ -301,6 +338,15 @@ public actor RealmSteward {
             heard.append(String(decoding: try encoder.encode(batches.map(\.batch)), as: UTF8.self))
         }
         let answers = unanswered
+        // A publication that failed may have been kept all the same, its
+        // answer lost on the way back: what SpacetimeDB holds is read
+        // again, so the versions run on from it and the parts sent are
+        // those that differ from it.
+        if unsure {
+            version = max(version, try await RealmSteward.statusVersion(transport, token: token))
+            keptParts = try await RealmSteward.keptParts(transport, token: token)
+            unsure = false
+        }
         // The world's parts that changed, and those no longer there.
         let parts = worldChanged ? try state.parts(using: encoder) : keptParts
         let changed = parts.filter { keptParts[$0.key] != $0.value }.sorted { $0.key < $1.key }
@@ -321,6 +367,7 @@ public actor RealmSteward {
             ], token: token)
         } catch {
             if RealmSteward.isHeldByAnother(error) { isDisplaced = true }
+            unsure = true
             throw error
         }
         lastPublished = now
