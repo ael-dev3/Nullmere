@@ -47,12 +47,19 @@ public struct MoonlitLake: View {
     public init() {}
 
     public var body: some View {
-        let motion: ResolvedMotion = reduceMotion ? .reduced : .full
-        LakeBackdrop(configuration: LakeConfiguration(
-            motion: motion,
+        LakeBackdrop(configuration: MoonlitLake.configuration(systemReducesMotion: reduceMotion))
+    }
+
+    /// The game's title screens, the realm's door and the model's gate, each
+    /// stand a panel on the water, so the moon's image lies sunk beneath it
+    /// as under the launcher's own panels.
+    static func configuration(systemReducesMotion: Bool) -> LakeConfiguration {
+        LakeConfiguration(
+            motion: systemReducesMotion ? .reduced : .full,
             renderScale: 1,
             framesPerSecond: 60,
-            horizon: LakeComposition.horizon
-        ))
+            horizon: LakeComposition.horizon,
+            veil: 1
+        )
     }
 }

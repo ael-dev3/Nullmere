@@ -44,6 +44,8 @@ final class LakeMetalView: MTKView {
 
     init(configuration: LakeConfiguration) {
         self.configuration = configuration
+        // A lake made under a panel starts with the moon's image already sunk.
+        veil = ReflectionVeil(configuration.veil)
         super.init(frame: .zero, device: LakeMetalView.systemDevice)
         colorPixelFormat = .bgra8Unorm
         colorspace = CGColorSpace(name: CGColorSpace.sRGB)

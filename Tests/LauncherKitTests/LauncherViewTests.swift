@@ -93,6 +93,17 @@ final class LauncherViewTests: XCTestCase {
         XCTAssertEqual(model.screen, .title)
     }
 
+    /// The game's title screens stand a panel on the water, so their lake
+    /// has the moon's image sunk, as under the launcher's panels.
+    func testTheGamesLakeLiesVeiledUnderItsPanels() {
+        for reduces in [false, true] {
+            let configuration = MoonlitLake.configuration(systemReducesMotion: reduces)
+            XCTAssertEqual(configuration.veil, 1)
+            XCTAssertEqual(configuration.motion, reduces ? .reduced : .full)
+            XCTAssertEqual(configuration.horizon, LakeComposition.horizon)
+        }
+    }
+
     func testTheTitleAndItsPartsDraw() throws {
         for revealed in [false, true] {
             try draw(TitleBlock(isRevealed: revealed, settlesLetters: true), width: 1200, height: 200)

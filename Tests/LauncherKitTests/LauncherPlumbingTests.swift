@@ -159,6 +159,13 @@ final class LakeMetalViewTests: XCTestCase {
         XCTAssertEqual(failures, 0)
     }
 
+    func testALakeMadeUnderAPanelStartsWithTheMoonsImageSunk() {
+        var veiled = configuration()
+        veiled.veil = 1
+        XCTAssertEqual(LakeMetalView(configuration: veiled).veil.value, 1, "Made under a panel, the image is already sunk")
+        XCTAssertEqual(LakeMetalView(configuration: configuration()).veil.value, 0, "Made over open water, it lies whole")
+    }
+
     func testAFailingShaderIsSaidOnce() throws {
         guard let device = LakeMetalView.systemDevice else { throw XCTSkip("No Metal device available") }
         let uncompiled = LakeMetalView(configuration: configuration())
