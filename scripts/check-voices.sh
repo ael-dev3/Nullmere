@@ -18,9 +18,15 @@ swift build --build-tests >/dev/null
 echo "== Asking Apple's on-device model for each voice (a minute or two)"
 mkdir -p build
 NULLMERE_LIVE_VOICES=1 swift test --skip-build --filter VoicesLiveTests 2>&1 | tee build/voices-test.log | grep -vE "^Test (Suite|Case)|^\s*Executed" || true
-if grep -q "with 0 failures" build/voices-test.log && ! grep -q "skipped" build/voices-test.log; then
+# The last count is the whole run's; a skip means no model answered.
+total="$(grep "Executed .* tests" build/voices-test.log | tail -n 1)"
+if echo "$total" | grep -Eq "(with|and) 0 failures" && ! echo "$total" | grep -q "skipped"; then
+    # Kept beside this Mac's measurements, to be committed: heard, on record.
+    name="$(sysctl -n hw.model | tr -c 'A-Za-z0-9,.-' '-' | sed 's/-*$//')"
+    mkdir -p perf/mac
+    cp build/voices-report.txt "perf/mac/$name-voices.txt"
     echo
-    echo "The voices speak within their rules. The lines: build/voices-report.txt"
+    echo "The voices speak within their rules. The lines: perf/mac/$name-voices.txt"
 else
     echo
     echo "error: the voices didn't pass; see build/voices-report.txt and build/voices-test.log" >&2

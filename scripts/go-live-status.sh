@@ -73,17 +73,19 @@ if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
         line "2. The release" "NONE YET"
     fi
     if [ -n "$missing" ]; then
-        also "secrets missing:$missing (docs/GO-LIVE.md, step 2)"
+        also "secrets missing:$missing"
+        also "scripts/set-release-secrets.sh DeveloperID.p12 AuthKey_XXXXXXXXXX.p8 <issuer id>"
     elif [ "${release##*|}" != false ]; then
         also "the secrets are all set: git tag v1.0.0 && git push origin v1.0.0"
     fi
 else
     line "2. The release" "CAN'T TELL: the GitHub CLI isn't signed in here (gh auth login)"
-    also "add the five secrets (docs/GO-LIVE.md, step 2), then tag a version"
+    also "scripts/set-release-secrets.sh DeveloperID.p12 AuthKey_XXXXXXXXXX.p8 <issuer id>, then tag a version"
 fi
 
 # 3. The voices, heard on a Mac with Apple Intelligence.
-report=build/voices-report.txt
+report="$(ls perf/mac/*-voices.txt 2>/dev/null | head -n 1 || true)"
+[ -n "$report" ] || report=build/voices-report.txt
 if [ -s "$report" ] && grep -q "Every line within the rules." "$report"; then
     line "3. The voices" "HEARD, within their rules ($report)"
     done_steps=$((done_steps + 1))
@@ -92,7 +94,7 @@ elif [ -s "$report" ]; then
     also "scripts/check-voices.sh"
 else
     line "3. The voices" "NOT YET HEARD"
-    also "scripts/check-voices.sh  (on a Mac with Apple Intelligence)"
+    also "scripts/check-on-mac.sh  (on a Mac with Apple Intelligence)"
 fi
 
 # 4. Real Apple silicon, measured and on record.
@@ -102,7 +104,7 @@ if [ -n "$measured" ]; then
     done_steps=$((done_steps + 1))
 else
     line "4. Apple silicon" "NOT YET MEASURED"
-    also "scripts/measure-mac.sh  (on a Mac with Apple silicon), then commit perf/mac/"
+    also "scripts/check-on-mac.sh  (on a Mac with Apple silicon)"
 fi
 
 # 5. The first players.

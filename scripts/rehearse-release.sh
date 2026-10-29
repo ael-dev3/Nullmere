@@ -51,6 +51,16 @@ MACOS_CERTIFICATE="$(base64 < "$WORK/identity.p12")" MACOS_CERTIFICATE_PASSWORD=
 identity="$(sed -n 's/^identity=//p' "$outputs")"
 [ "$identity" = "$NAME" ] || { echo "error: took up \"$identity\", not \"$NAME\"" >&2; exit 1; }
 
+echo "== Setting the release's secrets, rehearsed: each file checked, nothing set"
+openssl ecparam -name prime256v1 -genkey -noout 2>/dev/null | openssl pkcs8 -topk8 -nocrypt -out "$WORK/AuthKey_REHEARSE01.p8"
+DRY_RUN=1 IDENTITY_KIND="$NAME" MACOS_CERTIFICATE_PASSWORD="$password" \
+    scripts/set-release-secrets.sh "$WORK/identity.p12" "$WORK/AuthKey_REHEARSE01.p8" 69a6de70-0000-47e3-e053-5b8c7c11a4d1
+if DRY_RUN=1 IDENTITY_KIND="$NAME" MACOS_CERTIFICATE_PASSWORD=wrong \
+    scripts/set-release-secrets.sh "$WORK/identity.p12" "$WORK/AuthKey_REHEARSE01.p8" 69a6de70-0000-47e3-e053-5b8c7c11a4d1 >/dev/null 2>&1; then
+    echo "error: the secrets' check took a certificate with the wrong password" >&2
+    exit 1
+fi
+
 echo "== Releasing, signed, the notarizing rehearsed"
 rm -rf "$OUTPUT_DIR"
 VERSION=0.0.0-rehearsal OUTPUT_DIR="$OUTPUT_DIR" CODESIGN_IDENTITY="$identity" NOTARY_PROFILE=nullmere NOTARY_DRY_RUN=1 \

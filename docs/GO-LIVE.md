@@ -44,16 +44,26 @@ enters it as two keepers.
 
 ## 2. Sign and notarize the release
 
-Needs an Apple Developer account. Add five secrets to the repository
-(Settings > Secrets and variables > Actions):
+Needs an Apple Developer account, and the GitHub CLI signed in (`gh auth
+login`). Two files from Apple, and one id:
 
-| Secret | What it is |
-|---|---|
-| `MACOS_CERTIFICATE` | the Developer ID Application certificate with its key, exported from Keychain Access as a .p12: `base64 -i DeveloperID.p12 \| pbcopy` |
-| `MACOS_CERTIFICATE_PASSWORD` | the password chosen when exporting it |
-| `APPLE_API_KEY` | an App Store Connect API key (Users and Access > Integrations), the .p8: `base64 -i AuthKey_XXXXXXXXXX.p8 \| pbcopy` |
-| `APPLE_API_KEY_ID` | that key's id |
-| `APPLE_API_ISSUER` | the issuer id shown above the keys |
+- the Developer ID Application certificate with its key, exported from
+  Keychain Access as a .p12 with a password of your choosing;
+- an App Store Connect API key (Users and Access > Integrations), the
+  `AuthKey_XXXXXXXXXX.p8` file Apple gives once, and the issuer id shown
+  above the keys.
+
+One command checks each (the certificate opens and holds a Developer ID
+Application identity with its key; the key is a private key; the ids are
+ids) and puts the five secrets the release signs and notarizes with into
+the repository, asking for the certificate's password:
+
+```sh
+scripts/set-release-secrets.sh DeveloperID.p12 AuthKey_XXXXXXXXXX.p8 <issuer id>
+```
+
+`DRY_RUN=1` checks them and sets nothing; CI rehearses that check on every
+push.
 
 Then tag a version:
 
@@ -80,34 +90,25 @@ CI rehearses every one of these steps on every push with a throwaway identity
 checks its own image with `scripts/verify-release.sh` too. The checksum, on any
 Mac: `shasum -a 256 -c Nullmere-Online-1.0.0.dmg.sha256`.
 
-## 3. Hear the voices
+## 3 and 4. Hear the voices, and measure on real Apple silicon
 
 Needs a Mac with Apple silicon, macOS 26, and Apple Intelligence turned on
-and downloaded.
+and downloaded. One command:
 
 ```sh
-scripts/check-voices.sh
+scripts/check-on-mac.sh
 ```
 
-Apple's on-device model speaks for every kind of envoy and chronicle entry;
-every line is held to the voices' rules (spoken at all, short, grave, no
-numbers but the facts', no talk of games or players) and kept in
-`build/voices-report.txt` to be read. It worked when it ends "The voices speak
-within their rules."
-
-## 4. Measure on real Apple silicon
-
-Needs any Mac with Apple silicon and macOS 26.
-
-```sh
-scripts/measure-mac.sh
-```
-
-Takes the same frame, GPU and turn figures CI holds to `perf/baseline.json`,
-sets them beside CI's, and keeps them in `perf/mac/<this Mac>.json`. Commit
-that file: the game's figures on real hardware are then on record. CI's
-runner is a virtual Mac with a paravirtual GPU, so real Apple silicon should
-come in well under its figures.
+First Apple's on-device model speaks for every kind of envoy and chronicle
+entry, and every line is held to the voices' rules (spoken at all, short,
+grave, no numbers but the facts', no talk of games or players). Then the same
+frame, GPU and turn figures CI holds to `perf/baseline.json` are taken here
+and set beside CI's. Both are kept in `perf/mac/` and committed, so they are
+on record: push the commit. It worked when it says "The voices speak within
+their rules." and ends with the status of every step. CI's runner is a
+virtual Mac with a paravirtual GPU, so real Apple silicon should come in well
+under its figures. (`scripts/check-voices.sh` and `scripts/measure-mac.sh`
+each do one half.)
 
 ## 5. The first players
 

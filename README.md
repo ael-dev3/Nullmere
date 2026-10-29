@@ -111,15 +111,11 @@ CI rehearses that path on every push (`scripts/rehearse-release.sh`): a
 throwaway self-signed identity takes the Developer ID's place through the
 same steps, the app is signed with the hardened runtime and a secure
 timestamp, the disk image is signed, and the notarizing and stapling are
-printed rather than sent. Adding the secrets is all that's left. To make
-them, once:
+printed rather than sent. Adding the secrets is all that's left, in one
+command that checks each file first (docs/GO-LIVE.md, step 2):
 
 ```sh
-# The Developer ID Application certificate, exported from Keychain Access
-# with its key as a .p12 and a password of your choosing:
-base64 -i DeveloperID.p12 | pbcopy        # MACOS_CERTIFICATE
-# An App Store Connect API key (Users and Access > Integrations), its .p8:
-base64 -i AuthKey_XXXXXXXXXX.p8 | pbcopy  # APPLE_API_KEY, with its key id and issuer id
+scripts/set-release-secrets.sh DeveloperID.p12 AuthKey_XXXXXXXXXX.p8 <issuer id>
 ```
 
 Tests and checks:
@@ -141,7 +137,7 @@ lists every line no test runs. What remains is mostly what a test can't
 reach: `init(coder:)` stubs no window calls, SwiftUI state's initial values,
 the fallbacks drawn when Metal or sound fails, the live environment's
 closures (downloading the news, opening a link, quitting), trackpad
-gestures, and Apple's on-device model, which `scripts/check-voices.sh` asks
+gestures, and Apple's on-device model, which `scripts/check-on-mac.sh` asks
 on a Mac with Apple Intelligence. A few more are reached only by hand: a
 menu's items, VoiceOver's actions on the map, and a victory won in the
 middle of the rivals' own turns.

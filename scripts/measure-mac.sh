@@ -20,7 +20,9 @@ echo "== Measuring on $chip, $model, $memory, $system"
 swift build --build-tests >/dev/null
 swift test --skip-build --filter 'WorldPerformanceTests|FrameHarnessTests|OverlayPerformanceTests|ClientPaceTests|LakePerformanceTests|CalibrationTests|RealmTests/testTheRealmProperSeatsTwelveFairly' \
     2>&1 | tee build/mac-perf.log | grep -E "^PERF |error:" || true
-grep -q "with 0 failures" build/mac-perf.log || { echo "error: a measuring test failed; see build/mac-perf.log" >&2; exit 1; }
+# The last count is the whole run's; each suite that passed has its own.
+grep "Executed .* tests" build/mac-perf.log | tail -n 1 | grep -Eq "(with|and) 0 failures" \
+    || { echo "error: a measuring test failed; see build/mac-perf.log" >&2; exit 1; }
 
 echo
 echo "== Beside CI's runner (perf/baseline.json)"
