@@ -82,7 +82,7 @@ enum MapAccessibility {
     }
 
     @MainActor
-    static func items(for session: GameSession) -> [Item] {
+    static func items(for session: GameSession, withOrders: Bool = true) -> [Item] {
         let state = session.state
         let player = session.player
         func whose(_ owner: Int) -> String {
@@ -155,7 +155,7 @@ enum MapAccessibility {
                 else { parts.append("no moves left") }
             }
             companies.append(Item(id: "unit-\(unit.id)", label: parts.joined(separator: ", "), selection: .unit(unit.id),
-                                  orders: unit.owner == player && unit.movesLeft > 0 ? orders(for: unit, in: session) : [],
+                                  orders: withOrders && unit.owner == player && unit.movesLeft > 0 ? orders(for: unit, in: session) : [],
                                   isOwnCompany: unit.owner == player, isFoe: unit.owner != player && state.isAtWar(player, unit.owner)))
         }
 

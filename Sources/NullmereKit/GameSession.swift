@@ -1139,8 +1139,15 @@ extension GameSession {
         keptForThisWorld("holds") { Dictionary(state.holds.map { ($0.position, $0) }, uniquingKeysWith: { first, _ in first }) }
     }
 
+    /// Whether VoiceOver is running. Only then are each company's orders
+    /// worked out (the way to the unknown, the odds of each strike): some
+    /// milliseconds at every change of the world, for no one without it.
+    /// Tests say yes.
+    @ObservationIgnored var voiceOverRunning: () -> Bool = { NSWorkspace.shared.isVoiceOverEnabled }
+
     /// The map as VoiceOver reads it.
     var mapItems: [MapAccessibility.Item] {
-        keptForThisWorld("map") { MapAccessibility.items(for: self) }
+        let withOrders = voiceOverRunning()
+        return keptForThisWorld(withOrders ? "map with orders" : "map") { MapAccessibility.items(for: self, withOrders: withOrders) }
     }
 }

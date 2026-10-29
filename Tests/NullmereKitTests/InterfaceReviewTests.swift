@@ -107,6 +107,7 @@ final class InterfaceReviewTests: XCTestCase {
         XCTAssertEqual(session.state.unit(spear.id)?.position, target)
 
         // VoiceOver offers the same, as actions on each company.
+        session.voiceOverRunning = { true }
         let items = session.mapItems
         let mine = items.filter { !$0.orders.isEmpty }
         XCTAssertFalse(mine.isEmpty)
@@ -128,6 +129,7 @@ final class InterfaceReviewTests: XCTestCase {
         let index = try XCTUnwrap(state.relations.firstIndex { $0.first == min(me, foe) && $0.second == max(me, foe) })
         state.relations[index].stance = .war
         let session = GameSession(state: state, store: LocalStore(directory: dir))
+        session.voiceOverRunning = { true }
         let item = try XCTUnwrap(session.mapItems.first { $0.selection == .unit(spear.id) })
         let strike = try XCTUnwrap(item.orders.first?.name)
         XCTAssertTrue(strike.hasPrefix("Strike the Spears of \(state.houses[foe].title), beside it, "), strike)

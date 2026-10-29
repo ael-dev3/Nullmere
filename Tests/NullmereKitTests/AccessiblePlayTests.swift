@@ -86,6 +86,10 @@ final class AccessiblePlayTests: XCTestCase {
         state.units.append(NullmereCore.Unit(id: state.nextID, kind: .spear, owner: foe, position: beside))
         state.nextID += 1
         let session = GameSession(state: state, store: LocalStore(directory: dir))
+        // Without VoiceOver, no orders are worked out: nothing to pay for.
+        session.voiceOverRunning = { false }
+        XCTAssertTrue(session.mapItems.allSatisfy(\.orders.isEmpty))
+        session.voiceOverRunning = { true }
         let items = session.mapItems
 
         let founderOrders = try XCTUnwrap(items.first { $0.selection == .unit(founder) }).orders
@@ -217,6 +221,7 @@ final class AccessiblePlayTests: XCTestCase {
         let founder = state.nextID
         state.nextID += 1
         let session = GameSession(state: state, store: LocalStore(directory: dir))
+        session.voiceOverRunning = { true }
         let founderItem = try XCTUnwrap(session.mapItems.first { $0.selection == .unit(founder) })
         let found = try XCTUnwrap(founderItem.orders.first { $0.founds })
         MapAccessibility.carryOut(found, for: founderItem, in: session)
