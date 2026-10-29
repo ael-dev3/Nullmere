@@ -121,7 +121,12 @@ public struct WorldMap: Codable, Equatable, Sendable {
     public var count: Int { tiles.count }
 
     public func contains(_ hex: Hex) -> Bool {
-        hex.length <= radius
+        // A hex of the world has each coordinate within the radius. Reject
+        // anything past that by comparison alone, before `length`: a hex
+        // from a keeper's order carries client-chosen coordinates, and ones
+        // near the limits of Int would overflow the sum in `Hex.distance`.
+        guard (-radius...radius).contains(hex.q), (-radius...radius).contains(hex.r) else { return false }
+        return hex.length <= radius
     }
 
     /// The tile index of a hex, or nil outside the world.
