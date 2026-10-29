@@ -18,7 +18,7 @@ final class RareCaseTests: XCTestCase {
 
     /// A map whose tiles can't be read, or don't fill its radius, is refused.
     func testAMapThatCantBeReadIsRefused() throws {
-        let map = GameState(settings: GameSettings(seedText: "unreadable", houseCount: 3, radius: 16)).map
+        let map = GameState(settings: GameSettings(seedText: "unreadable", houseCount: 3, radius: 16, keepers: 1)).map
         let saved = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(map)) as? [String: Any])
         XCTAssertNotNil(saved["cells"], "Maps are kept as cells")
         func decoded(_ changes: [String: Any]) throws -> WorldMap {
@@ -31,7 +31,7 @@ final class RareCaseTests: XCTestCase {
 
     /// A House whose explored ground can't be read is refused.
     func testAHouseWhoseGroundCantBeReadIsRefused() throws {
-        let house = GameState(settings: GameSettings(seedText: "unreadable", houseCount: 3, radius: 16)).houses[0]
+        let house = GameState(settings: GameSettings(seedText: "unreadable", houseCount: 3, radius: 16, keepers: 1)).houses[0]
         let saved = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(house)) as? [String: Any])
         func decoded(_ bits: String) throws -> House {
             var changed = saved
@@ -85,21 +85,36 @@ final class RareCaseTests: XCTestCase {
         XCTAssertTrue(costly.mayFall)
     }
 
-    /// What a company could strike are the hexes the forecast reaches.
+    /// What a company could strike are the hexes the forecast reaches: an
+    /// enemy beside a spear at war is one; at peace, none is.
     func testStrikeTargetsAreWhatCouldBeStruck() throws {
-        let state = GameState(settings: GameSettings(seedText: "strikes", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "strikes", houseCount: 3, radius: 16, keepers: 1))
+        let me = state.player
+        let foe = (me + 1) % state.houses.count
+        let spear = try XCTUnwrap(state.units(of: me).first { $0.kind == .spear })
+        let beside = try XCTUnwrap(state.map.neighbors(of: spear.position).first { hex in
+            state.map[hex]?.terrain.isPassable == true && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        })
+        state.units.append(Unit(id: state.nextID, kind: .spear, owner: foe, position: beside))
+        state.nextID += 1
+        XCTAssertFalse(state.strikeTargets(of: spear).contains(beside), "At peace, no target")
+        _ = try state.perform(.declareWar(on: foe), as: me)
+        var targets = 0
         for unit in state.units where unit.kind.isMilitary {
             for hex in state.strikeTargets(of: unit) {
                 XCTAssertNotNil(state.forecast(unit: unit.id, at: hex))
                 XCTAssertLessThanOrEqual(unit.position.distance(to: hex), unit.kind.range)
+                targets += 1
             }
         }
+        XCTAssertTrue(state.strikeTargets(of: spear).contains(beside), "At war, the enemy beside it")
+        XCTAssertGreaterThan(targets, 0)
     }
 
     /// A company trained where every hex near the hold is taken waits, its
     /// training done, and musters the watch a hex falls free.
     func testATrainedCompanyWaitsForRoomToStand() throws {
-        var state = GameState(settings: GameSettings(seedText: "no room", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "no room", houseCount: 3, radius: 16, keepers: 1))
         let me = state.player
         let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
         state.holds[seat].training = Hold.Training(kind: .spear, watchesLeft: 1)
@@ -128,7 +143,7 @@ final class RareCaseTests: XCTestCase {
 
     /// A trade is weighed on its terms alone, never accepted as a proposal.
     func testATradeIsNotAcceptedAsAProposal() {
-        let state = GameState(settings: GameSettings(seedText: "terms", houseCount: 3, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "terms", houseCount: 3, radius: 16, keepers: 1))
         let rival = state.houses.first { !$0.isPlayer }!.id
         XCTAssertFalse(RivalMind(house: rival).accepts(.trade, from: state.player, in: state))
     }

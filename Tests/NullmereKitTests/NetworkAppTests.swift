@@ -187,7 +187,7 @@ final class NetworkAppTests: XCTestCase {
         try await until("the realm") { if case .open = second.door { return true } else { return false } }
         second.enterWorld(name: "Ama")
         try await until("the refusal") { second.arrivalProblem != nil }
-        XCTAssertEqual(second.arrivalProblem, "Another keeper already goes by that name.")
+        XCTAssertEqual(second.arrivalProblem, "A keeper or a House already goes by that name.")
         XCTAssertNil(second.session)
         XCTAssertFalse(second.isEntering, "The door is open to try another name")
         draw(FrontDoor(app: second))

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Writes the tile textures Tools/world-preview renders the map from: a
-# keeper's view as a game opens, and the whole world known. The rules and
+# keeper's view as an age opens, and the whole world known. The rules and
 # the map's own packing code are compiled together into one small program,
 # so this runs anywhere Swift does, Linux included.
 #

@@ -1,7 +1,7 @@
 import NullmereCore
 import SwiftUI
 
-/// The end of a game: who holds the lake now, and how.
+/// The end of an age: who holds the lake now, and how.
 struct OutcomeOverlay: View {
     let app: GameApp
     let session: GameSession

@@ -22,7 +22,7 @@ final class PanelRenderTests: XCTestCase {
     }
 
     private func busySession() -> GameSession {
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "panels")), store: LocalStore(directory: dir))
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "panels", keepers: 1)), store: LocalStore(directory: dir))
         session.autoplay(watches: 40)
         return session
     }
@@ -118,7 +118,7 @@ final class PanelRenderTests: XCTestCase {
     }
 
     func testEveryStanceAndEveryEnvoyDraws() throws {
-        var state = GameState(settings: GameSettings(seedText: "every stance", houseCount: 6, radius: 22))
+        var state = GameState(settings: GameSettings(seedText: "every stance", houseCount: 6, radius: 22, keepers: 1))
         let me = state.player
         let others = state.houses.indices.filter { $0 != me }
         state.setStance(.war, between: me, and: others[0], by: me)
@@ -151,7 +151,7 @@ final class PanelRenderTests: XCTestCase {
     /// pacts broken between two Houses, a Moonspire rising, the goodwill of
     /// gifts, and an envoy's words as the on-device voice spoke them.
     func testAHouseRowTellsAllThatLiesBetweenTwoHouses() throws {
-        var state = GameState(settings: GameSettings(seedText: "all between", houseCount: 6, radius: 22))
+        var state = GameState(settings: GameSettings(seedText: "all between", houseCount: 6, radius: 22, keepers: 1))
         let me = state.player
         let others = state.houses.indices.filter { $0 != me }
         state.setStance(.war, between: me, and: others[0], by: others[0])
@@ -179,7 +179,7 @@ final class PanelRenderTests: XCTestCase {
     /// A chronicle's entry with the words the chronicler spoke for it,
     /// kept from before.
     func testTheChronicleShowsWhatWasSpokenOfIt() throws {
-        let state = GameState(settings: GameSettings(seedText: "spoken chronicle", houseCount: 4, radius: 18))
+        let state = GameState(settings: GameSettings(seedText: "spoken chronicle", houseCount: 4, radius: 18, keepers: 1))
         XCTAssertFalse(state.chronicle.isEmpty, "The age's first entry")
         let store = LocalStore(directory: dir.appendingPathComponent("chronicle"))
         store.saveVoices([GameSession.Spoken.chronicle(0).key: "The lake took the first of them without a sound."])
@@ -192,7 +192,7 @@ final class PanelRenderTests: XCTestCase {
     /// a foreign hold out of sight with its Moonspire rising, and ground
     /// no lantern has seen.
     func testTheSelectionPanelAtItsEdges() throws {
-        var state = GameState(settings: GameSettings(seedText: "selection edges", houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "selection edges", houseCount: 4, radius: 18, keepers: 1))
         let me = state.player
         let mine = try XCTUnwrap(state.holds.firstIndex { $0.owner == me })
         for kind in BuildingKind.allCases where !kind.requiresSeat || state.holds[mine].isSeat {
@@ -213,7 +213,7 @@ final class PanelRenderTests: XCTestCase {
 
     func testTheTopBarInEveryStateOfTheRealm() throws {
         let link = SilentLink()
-        let state = GameState(settings: GameSettings(seedText: "top bar states", houseCount: 4, radius: 18))
+        let state = GameState(settings: GameSettings(seedText: "top bar states", houseCount: 4, radius: 18, keepers: 1))
         let session = GameSession(link: link, house: state.player, world: state.view(for: state.player), store: LocalStore(directory: dir))
         let status = RealmStatus(name: "The Nullmere", age: 1, watch: 3, seats: 4, freeSeats: 1, keepers: 3, online: 3, ready: 1,
                                  secondsLeft: 134, isEnding: false)

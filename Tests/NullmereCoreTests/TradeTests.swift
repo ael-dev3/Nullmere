@@ -4,7 +4,7 @@ import XCTest
 
 final class TradeTests: XCTestCase {
     private func world() -> GameState {
-        GameState(settings: GameSettings(seedText: "trade", houseCount: 5, radius: 20))
+        GameState(settings: GameSettings(seedText: "trade", houseCount: 5, radius: 20, keepers: 1))
     }
 
     private func steward(_ state: GameState, _ temperament: Temperament) throws -> Int {

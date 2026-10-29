@@ -25,7 +25,7 @@ final class WorldViewHostTests: XCTestCase {
         guard WorldMetalView.systemDevice != nil else { throw XCTSkip("No Metal device available") }
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "a window on the lake")), store: LocalStore(directory: dir))
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "a window on the lake", keepers: 1)), store: LocalStore(directory: dir))
         session.autoplay(watches: 12)
 
         let size = NSSize(width: 1000, height: 700)
@@ -101,7 +101,7 @@ final class WorldOverlayTests: XCTestCase {
     func testTheFallbackMapAndAStrikesForecastDraw() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        var state = GameState(settings: GameSettings(seedText: "a forecast", houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "a forecast", houseCount: 4, radius: 18, keepers: 1))
         let me = state.player
         let foe = (me + 1) % state.houses.count
         _ = try state.perform(.declareWar(on: foe), as: me)

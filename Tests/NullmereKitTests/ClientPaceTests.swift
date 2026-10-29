@@ -53,7 +53,7 @@ final class ClientPaceTests: XCTestCase {
         let ground = TileTexture.Ground(map: state.map)
         // The same texture, whether its ground is kept or made afresh.
         XCTAssertEqual(TileTexture.bytes(for: state, viewer: player, ground: ground), TileTexture.bytes(for: state, viewer: player))
-        let elsewhere = GameState(settings: GameSettings(seedText: "another map", houseCount: 12, radius: 36))
+        let elsewhere = GameState(settings: GameSettings(seedText: "another map", houseCount: 12, radius: 36, keepers: 1))
         XCTAssertEqual(TileTexture.bytes(for: state, viewer: player, ground: TileTexture.Ground(map: elsewhere.map)),
                        TileTexture.bytes(for: state, viewer: player), "Ground for another map is made again")
         let unit = state.units(of: player).first { $0.kind.isMilitary }
@@ -95,7 +95,7 @@ private final class QuietLink: RealmLink {
 @MainActor
 final class IncomeBreakdownTests: XCTestCase {
     func testEachResourceSaysWhereItComesFrom() throws {
-        var state = GameState(settings: GameSettings(seedText: "where it comes from", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "where it comes from", houseCount: 3, radius: 16, keepers: 1))
         for _ in 0..<20 {
             _ = state.stewardTurn(for: state.player)
             _ = state.endWatch()

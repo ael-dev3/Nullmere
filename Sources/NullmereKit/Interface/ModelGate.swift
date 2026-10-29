@@ -13,7 +13,7 @@ struct ModelGate: View {
 
     var body: some View {
         ZStack {
-            MoonlitLake().ignoresSafeArea()
+            MoonlitLake(settings: app.displaySettings).ignoresSafeArea()
             // Darken the water beneath the words, as the launcher does.
             EllipticalGradient(
                 colors: [.black.opacity(0.75), .black.opacity(0.45), .clear],

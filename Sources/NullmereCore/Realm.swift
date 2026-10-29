@@ -128,8 +128,8 @@ public struct RealmState: Codable, Equatable, Sendable {
     }
 
     /// A realm around a world already made, its first kept House held by
-    /// one keeper: one House's game, hosted to rehearse or to test.
-    public init(name: String, world: GameState, keeper id: String, now: Double, watchLength: Double = 1e9) {
+    /// one keeper: one House's game, for tests to rehearse with.
+    init(name: String, world: GameState, keeper id: String, now: Double, watchLength: Double = 1e9) {
         self.name = name
         self.seedText = world.settings.seedText
         self.seats = world.houses.count

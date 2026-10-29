@@ -10,7 +10,6 @@ import os
 public final class LauncherModel {
     public enum Screen: Equatable {
         case title
-        case play
         case news
         case settings
     }
@@ -26,12 +25,6 @@ public final class LauncherModel {
         case offline
         /// The repository answered, but not with a feed; the saved news is still shown.
         case unavailable
-    }
-
-    /// The choices on the Play panel, left to right.
-    enum PlayChoice: CaseIterable, Equatable {
-        case website
-        case back
     }
 
     /// The opening sequence: the lake surfaces from black, then the title, then the menu.
@@ -54,7 +47,6 @@ public final class LauncherModel {
     var menuSelection: MenuItem = .play
     var settingsSelection: SettingsRow = .motion
     var newsSelection = 0
-    var playSelection: PlayChoice = .back
     /// The chosen action on the requirement screen, an index into `readiness.actions`.
     var requirementSelection = 0
     private(set) var intro = Intro()
@@ -64,6 +56,7 @@ public final class LauncherModel {
     private(set) var news: NewsFeed
     private(set) var newsStatus: NewsStatus = .saved
     /// Set by the app: crosses from the launcher to the realm's front door.
+    /// Until it is set, Play waits.
     public var enterRealm: (@MainActor () -> Void)?
     /// Whether the launcher is the app in front.
     private(set) var isInFront = true
@@ -109,7 +102,7 @@ public final class LauncherModel {
     var footerHint: String? {
         guard !isGated else { return nil }
         switch screen {
-        case .title, .play: return nil
+        case .title: return nil
         // Return opens a story's page; a story without one has none to open.
         case .news: return selectedNews?.link == nil ? "↑ ↓ choose  ·  Esc back" : "↑ ↓ choose  ·  Return open  ·  Esc back"
         case .settings: return "← → change  ·  Esc back"
@@ -300,7 +293,6 @@ public final class LauncherModel {
         case .title: handleOnTitle(key)
         case .news: handleInNews(key)
         case .settings: handleInSettings(key)
-        case .play: handleInPlay(key)
         }
     }
 
@@ -354,24 +346,6 @@ public final class LauncherModel {
         }
     }
 
-    private func handleInPlay(_ key: KeyCommand) {
-        switch key {
-        case .left: playSelection = playSelection.moved(by: -1, wrapping: false)
-        case .right: playSelection = playSelection.moved(by: 1, wrapping: false)
-        case .confirm: choose(playSelection)
-        case .back: returnToTitle()
-        case .up, .down: break
-        }
-    }
-
-    func choose(_ choice: PlayChoice) {
-        playSelection = choice
-        switch choice {
-        case .website: openWebsite()
-        case .back: returnToTitle()
-        }
-    }
-
     // MARK: Play
 
     /// Crosses into the realm: the launcher fades, and the realm's front
@@ -379,12 +353,9 @@ public final class LauncherModel {
     func play() {
         menuSelection = .play
         refreshReadiness()
-        switch PlayOutcome(readiness: readiness, canEnterRealm: enterRealm != nil) {
+        switch PlayOutcome(readiness: readiness) {
         case .enterRealm:
             crossToRealm()
-        case .awaitFirstRealm:
-            playSelection = .back
-            show(.play)
         case .explainRequirement:
             // The model just became unavailable; the requirement screen shows why.
             break
@@ -392,7 +363,7 @@ public final class LauncherModel {
     }
 
     private func crossToRealm() {
-        guard !isLeaving else { return }
+        guard !isLeaving, enterRealm != nil else { return }
         completeIntro()
         withAnimation(.easeIn(duration: 0.8)) { isLeaving = true }
         Self.logger.notice("Crossing into the realm.")
@@ -506,6 +477,16 @@ public final class LauncherModel {
             try? await Task.sleep(for: .milliseconds(650))
             environment.terminate()
         }
+    }
+
+    /// The display settings, which the realm's own Settings show and set
+    /// too: one Motion, Resolution and Frame rate for the lake and the map.
+    public var displaySettings: LauncherSettings { settings }
+
+    /// Changes a display setting, from the realm's Settings as from the
+    /// launcher's own panel.
+    public func setDisplay(_ row: SettingsRow, to index: Int) {
+        updateSettings { $0.select(index, for: row) }
     }
 
     private func updateSettings(_ change: (inout LauncherSettings) -> Void) {

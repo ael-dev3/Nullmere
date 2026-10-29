@@ -47,7 +47,7 @@ final class AccessiblePlayTests: XCTestCase {
     }
 
     private func world(_ seed: String) -> GameState {
-        GameState(settings: GameSettings(seedText: seed, houseCount: 3, radius: 16))
+        GameState(settings: GameSettings(seedText: seed, houseCount: 3, radius: 16, keepers: 1))
     }
 
     func testDirectionsAreTheCompasss() {

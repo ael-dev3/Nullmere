@@ -141,10 +141,6 @@ private struct ScreenContent: View {
                 SettingsPanel(model: model)
                     .padding(.top, 34 * unit)
                     .transition(.opacity)
-            case .play:
-                PlayPanel(model: model)
-                    .padding(.top, 40 * unit)
-                    .transition(.opacity)
             }
         }
     }

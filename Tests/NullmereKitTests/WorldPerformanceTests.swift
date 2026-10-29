@@ -14,7 +14,7 @@ final class WorldPerformanceTests: XCTestCase {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: WorldShader.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
-        var state = GameState(settings: GameSettings(seedText: "measured water"))
+        var state = GameState(settings: GameSettings(seedText: "measured water", keepers: 1))
         for _ in 0..<60 {
             _ = state.stewardTurn(for: state.player)
             _ = state.endWatch()

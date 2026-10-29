@@ -4,7 +4,7 @@ import XCTest
 /// The world's own checks on itself, each wrong a world can go, and the
 /// names, effects and geometry the rules give the interface.
 final class SoundnessTests: XCTestCase {
-    private let world = GameState(settings: GameSettings(seedText: "sound or not", houseCount: 4, radius: 16))
+    private let world = GameState(settings: GameSettings(seedText: "sound or not", houseCount: 4, radius: 16, keepers: 1))
 
     private func assertFinds(_ expected: String, _ wrong: (inout GameState) -> Void, file: StaticString = #filePath, line: UInt = #line) {
         var state = world
@@ -98,7 +98,7 @@ final class RuleNamesTests: XCTestCase {
     func testTrainingTakesTheWatchesItSays() throws {
         for musterHall in 0...BuildingKind.musterHall.maxLevel {
             for kind in UnitKind.allCases where kind.requiredMuster <= musterHall {
-                var state = GameState(settings: GameSettings(seedText: "training watches"))
+                var state = GameState(settings: GameSettings(seedText: "training watches", keepers: 1))
                 let me = state.player
                 let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
                 state.holds[seat].levels[.musterHall] = musterHall
@@ -160,7 +160,7 @@ final class RuleNamesTests: XCTestCase {
 /// alone on the lake, and a march halted.
 final class WatchEdgeTests: XCTestCase {
     func testStarvingCompaniesWeakenAndFall() throws {
-        var state = GameState(settings: GameSettings(seedText: "a hungry watch", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "a hungry watch", houseCount: 3, radius: 16, keepers: 1))
         let me = state.player
         let seat = try XCTUnwrap(state.seat(of: me))
         // More spears than the land can feed, worn already, and no grain in store.
@@ -182,7 +182,7 @@ final class WatchEdgeTests: XCTestCase {
     }
 
     func testAHouseLeftAloneHoldsTheLake() {
-        var state = GameState(settings: GameSettings(seedText: "alone on the shore", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "alone on the shore", houseCount: 3, radius: 16, keepers: 1))
         for index in state.houses.indices where index != state.player {
             state.houses[index].isEliminated = true
             state.units.removeAll { $0.owner == index }
@@ -195,7 +195,7 @@ final class WatchEdgeTests: XCTestCase {
     }
 
     func testAMarchOnAHeldHexWaitsBesideIt() throws {
-        var state = GameState(settings: GameSettings(seedText: "a held hex", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "a held hex", houseCount: 3, radius: 16, keepers: 1))
         let me = state.player
         let lantern = try XCTUnwrap(state.units(of: me).first { $0.kind == .lantern })
         let target = try XCTUnwrap(state.map.hexes.first { hex in
@@ -215,7 +215,7 @@ final class WatchEdgeTests: XCTestCase {
     }
 
     func testAMarchIsHalted() throws {
-        var state = GameState(settings: GameSettings(seedText: "a halted march", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "a halted march", houseCount: 3, radius: 16, keepers: 1))
         let me = state.player
         let lantern = try XCTUnwrap(state.units(of: me).first { $0.kind == .lantern })
         let far = try XCTUnwrap(state.map.hexes.first { hex in

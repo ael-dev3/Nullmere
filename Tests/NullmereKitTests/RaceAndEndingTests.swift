@@ -8,7 +8,7 @@ import NullmereRealm
 @MainActor
 final class RaceTests: XCTestCase {
     private func game() -> GameState {
-        GameState(settings: GameSettings(seedText: "race", houseCount: 3, radius: 16))
+        GameState(settings: GameSettings(seedText: "race", houseCount: 3, radius: 16, keepers: 1))
     }
 
     func testARivalNearingTheSpireIsAnnouncedOnce() throws {
@@ -46,11 +46,12 @@ final class RaceTests: XCTestCase {
             state.stewardTurn(for: state.player)
             _ = state.endWatch()
         }
-        if let rival = state.livingHouses.first(where: { !$0.isPlayer }), let seat = state.seat(of: rival.id) {
-            state.holds[state.holdIndex(seat.id)!].levels[.moonspire] = 4
-            let advice = try XCTUnwrap(Counsel.advice(for: state, player: state.player))
-            XCTAssertTrue(advice.contains(seat.name), "Counsel names the seat to march on")
-        }
+        let rival = try XCTUnwrap(state.livingHouses.first { !$0.isPlayer })
+        let seat = try XCTUnwrap(state.seat(of: rival.id))
+        let spire = try XCTUnwrap(state.holdIndex(seat.id))
+        state.holds[spire].levels[.moonspire] = 4
+        let advice = try XCTUnwrap(Counsel.advice(for: state, player: state.player))
+        XCTAssertTrue(advice.contains(seat.name), "Counsel names the seat to march on")
     }
 
     func testTributeIsOfferedOnlyToTheClearlyWeaker() throws {
@@ -92,14 +93,14 @@ final class EndingTests: XCTestCase {
         let store = LocalStore(directory: dir)
         // A world that ends within 260 watches, found as the rules play it.
         let seed = try XCTUnwrap((13..<33).map { "siege check \($0)" }.first { text in
-            var world = GameState(settings: GameSettings(seedText: text))
+            var world = GameState(settings: GameSettings(seedText: text, keepers: 1))
             while world.outcome == nil, world.watch < 260 {
                 _ = world.stewardTurn(for: world.player)
                 _ = world.endWatch()
             }
             return world.outcome != nil
         })
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: seed)), store: store)
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: seed, keepers: 1)), store: store)
         session.autoplay(watches: 100)
         // Offscreen rendering leaves a scroll view empty: draw the table alone.
         try keep(RaceTable(session: session).padding(20).frame(width: 360).panelBackground(), as: "game-race.png",
@@ -146,7 +147,7 @@ final class CombatFeelTests: XCTestCase {
     func testTheFallenAndTheBowsAreShown() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "blows", houseCount: 3, radius: 16)),
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "blows", houseCount: 3, radius: 16, keepers: 1)),
                                   store: LocalStore(directory: dir))
         let mine = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind.isMilitary })
         let target = try XCTUnwrap(mine.position.ring(2).first)

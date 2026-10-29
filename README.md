@@ -226,14 +226,22 @@ in [`News.swift`](Sources/LauncherCore/News.swift) together.
 ### Settings
 
 Settings are stored in the app's user defaults (`online.nullmere.launcher`;
-a `swift run` build keeps its own, under `NullmereLauncher`):
+a `swift run` build keeps its own, under `NullmereLauncher`). The display
+settings are one set, shown in the launcher's Settings and in the realm's
+(⌘, at the front door or in the world), and the lake and the map both
+follow them:
 
 | Setting | Options | Effect |
 | --- | --- | --- |
-| Motion | System, Full, Reduced, Still | How much the lake moves, in the launcher and at the realm's front door. Full: flickering and falling stars, and the opening. Reduced: slower, gentler twinkling, with no falling stars and no opening. Still: a single frame. System follows *Reduce Motion*. |
-| Resolution | Native, Balanced, Efficient | Renders the lake at 100%, 75% or 50% of native pixels |
-| Frame rate | 30, 60, 120 | Upper bound for the lake's frame rate. Reduced motion, Low Power Mode, a Mac running hot, or another app in front lowers it to 30 |
+| Motion | System, Full, Reduced, Still | How much the lake and the map move. Full: flickering and falling stars, the opening, marches and blows played out, panels sliding in. Reduced: slower, gentler twinkling and water, no falling stars, no opening; marches and blows shown where they end, panels fading in. Still: a single frame, drawn again only when something changes. System follows *Reduce Motion*. |
+| Resolution | Native, Balanced, Efficient | Renders the lake at 100%, 75% or 50% of native pixels, and the map at most at that |
+| Frame rate | 30, 60, 120 | Upper bound for the lake's and the map's frame rate. Reduced motion, Low Power Mode, a Mac running hot, or another app in front lowers it to 30 |
 | Full screen at launch | Off, On | Applies the next time the launcher opens |
+
+The realm's Settings also hold its sound (on or off, the effects, the
+night, the music and its score's volume), Larger text and counsel. The
+launcher makes no sound; ⇧⌘M and ⇧⌘U turn sound and music off or on once
+the realm shows.
 
 ## The realm
 
@@ -477,7 +485,10 @@ twice.
   by a distant drum and darker chords. ⇧⌘M turns all sound off, ⇧⌘U the
   music alone, and Settings (⌘,) sets each part's volume. Each kind of
   company sounds its own: Riders' hooves, a loosed bowstring, the clash
-  of a blow struck in close.
+  of a blow struck in close, heard as well when the blow falls on yours.
+  A company lost or hungry sounds dread, a work or company finished rises,
+  and an order that begins a war sounds as war, refusing a steward's
+  tribute too. Sound fades out with the picture and back in from silence.
 - **Watchmen.** When an enemy's companies gather near one of your holds,
   you're told, and a broken red ring marks the hold on the map.
 - **Holds that grow.** A hold raises a side tower after a few works and a
@@ -504,7 +515,7 @@ world, so there is nothing to save.
 | Esc | Close a panel, then clear the selection |
 | ⌘↩ | Ready: done with this watch's orders (click Waiting to take it back) |
 | ⇧⌘↩ | Stay ready until something needs you, up to ten watches |
-| ⌘, | Settings: volumes for effects, the night and the music; larger text; counsel |
+| ⌘, | Settings: display (the launcher's), sound and volumes, larger text, counsel |
 | ⇧⌘W | Leave the world for the front door |
 
 ## Design

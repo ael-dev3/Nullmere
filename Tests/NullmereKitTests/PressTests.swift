@@ -45,7 +45,7 @@ final class PressTests: XCTestCase {
     }
 
     func testAHousesActionsSendTheirOffers() throws {
-        let state = GameState(settings: GameSettings(seedText: "pressed offers", houseCount: 4, radius: 18))
+        let state = GameState(settings: GameSettings(seedText: "pressed offers", houseCount: 4, radius: 18, keepers: 1))
         let (session, link) = session(state)
         let other = try XCTUnwrap(session.state.houses.first { $0.id != session.player && !$0.isEliminated })
         XCTAssertEqual(session.state.stance(session.player, other.id), .peace)
@@ -82,7 +82,7 @@ final class PressTests: XCTestCase {
     /// the last in the Houses panel, if asked, so its buttons' actions are
     /// the last left under their titles as the panel is drawn.
     private func keepersHouse(_ seed: String, lastInThePanel: Bool = false) -> (GameSession, RecordingLink, House) {
-        var state = GameState(settings: GameSettings(seedText: seed, houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: seed, houseCount: 4, radius: 18, keepers: 1))
         let others = state.houses.map(\.id).filter { $0 != state.player }
         let other = lastInThePanel ? others[others.count - 1] : (state.player + 1) % state.houses.count
         state.houses[other].isPlayer = true
@@ -244,7 +244,7 @@ final class PressTests: XCTestCase {
     }
 
     func testAHouseKeptByAnotherStartsAfreshAndNothingComesBack() {
-        var state = GameState(settings: GameSettings(seedText: "a seat changes hands", houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "a seat changes hands", houseCount: 4, radius: 18, keepers: 1))
         let other = (state.player + 1) % state.houses.count
         state.houses[other].isPlayer = true
         state.houses[other].name = "Ama"
@@ -918,7 +918,7 @@ final class PressTests: XCTestCase {
     }
 
     func testATradeIsComposedAndOffered() throws {
-        let state = GameState(settings: GameSettings(seedText: "pressed trade", houseCount: 4, radius: 18))
+        let state = GameState(settings: GameSettings(seedText: "pressed trade", houseCount: 4, radius: 18, keepers: 1))
         let (session, link) = session(state)
         let other = try XCTUnwrap(session.state.houses.first { $0.id != session.player })
         var offered: Trade?
@@ -932,7 +932,7 @@ final class PressTests: XCTestCase {
     }
 
     func testAHoldsWorksMustersAndBarterAreOrdered() throws {
-        var state = GameState(settings: GameSettings(seedText: "pressed works", houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "pressed works", houseCount: 4, radius: 18, keepers: 1))
         let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == state.player && $0.isSeat })
         // Stores full of grain and stone, with room left for timber bought by barter.
         let room = state.storage(of: state.player)
@@ -951,7 +951,7 @@ final class PressTests: XCTestCase {
     }
 
     func testACompanysOrders() throws {
-        var state = GameState(settings: GameSettings(seedText: "pressed company", houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "pressed company", houseCount: 4, radius: 18, keepers: 1))
         let me = state.player
         // A lantern made a founder where a hold may rise.
         let lantern = try XCTUnwrap(state.units.firstIndex { $0.owner == me && $0.kind == .lantern })
@@ -989,7 +989,7 @@ final class PressTests: XCTestCase {
     }
 
     func testTheTopBarsPanelsAndReady() throws {
-        let state = GameState(settings: GameSettings(seedText: "pressed bar", houseCount: 4, radius: 18))
+        let state = GameState(settings: GameSettings(seedText: "pressed bar", houseCount: 4, radius: 18, keepers: 1))
         let (session, link) = session(state)
         draw(TopBar(session: session), width: 1200, height: 90)
         for (label, panel) in [("Houses", GameSession.Panel.houses), ("Chronicle", .chronicle), ("Guide", .guide)] {
@@ -1067,7 +1067,7 @@ final class PressDoorTests: XCTestCase {
     }
 
     func testTheFirstCardsButtons() throws {
-        let state = GameState(settings: GameSettings(seedText: "first cards", houseCount: 4, radius: 18))
+        let state = GameState(settings: GameSettings(seedText: "first cards", houseCount: 4, radius: 18, keepers: 1))
         var begun = 0, back = 0
         draw(SeatBriefingCard(briefing: SeatBriefing(world: state, player: state.player), colour: .white) { begun += 1 }, width: 600, height: 500)
         XCTAssertTrue(PressableButtons.press("Begin"), "Among \(shown)")

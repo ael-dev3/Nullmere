@@ -49,7 +49,7 @@ Each finding below has an ID, what was wrong, and its status: **fixed**
 | B8 | Words with two meanings: realm (also a House's holds), steward (also the server process), keeper (also the operator), Sworn (also the vassal badge), "free House" vs seat, "granaries are empty" | fixed |
 | B9 | The Guide names Full Keyboard Access where the setting is Keyboard navigation | fixed |
 | B10 | "Enter World" and "Leave the World" | fixed |
-| B11 | The product is called "Nullmere" and "the launcher" in places a player reads | fixed, but for the Play panel, which goes with D8 |
+| B11 | The product is called "Nullmere" and "the launcher" in places a player reads | fixed |
 | B12 | The keychain item has no label | fixed |
 | B13 | Keys: ⌘? (the Guide), "." and M are undocumented; the launcher's footer keys are in lower case | fixed |
 | B14 | Button titles in title case among sentence case; "Close Houses" vs "Close the …"; "Reduce motion" | fixed |
@@ -92,17 +92,17 @@ Each finding below has an ID, what was wrong, and its status: **fixed**
 
 | ID | Finding | Status |
 | --- | --- | --- |
-| D1 | Being struck, losing a company, a hold struck and hunger make no sound; a strike heard from another keeper shows no blows | open |
-| D2 | Refusing a steward's tribute, which is war, sounds a click, not war's cue | open |
-| D3 | Settings are split: volumes only in the world, motion and display only in the launcher; the Watch menu's toggles stay live in the launcher; one setting has three names | open |
-| D4 | The world ignores the launcher's Motion; Settings says motion follows the system | open |
-| D5 | `.rise` is said to sound when a hold is founded or a work completed; it sounds when the order is given, and completions are silent | open |
-| D6 | Many watch bells at once can clip | open |
-| D7 | Turning sound back on snaps in at full level, with stale tails | open |
-| D8 | The Play panel ("this build of the launcher can't enter the realm") is unreachable and treats the launcher and the game as two products | open |
-| D9 | Single-player paths remain public: `GameApp.init(address:)`, `GameSession.init(state:)`, `RealmState.init(name:world:keeper:)`; `GameSettings` defaults to one keeper named Aurel | open |
-| D10 | Tests that can't fail or don't test what they say: strike targets in peace, every cue at once, leaving a link, a narration render, an `if let` that hides its assertion, a seed-dependent vassal | open |
-| D11 | Stale test and doc comments: seeds that no longer fall, "twelve stewards, thirty watches", "the greatest House free", two apps, "a game", a doc comment on the wrong function | open |
+| D1 | Being struck, losing a company, a hold struck and hunger make no sound; a strike heard from another keeper shows no blows | fixed |
+| D2 | Refusing a steward's tribute, which is war, sounds a click, not war's cue | fixed |
+| D3 | Settings are split: volumes only in the world, motion and display only in the launcher; the Watch menu's toggles stay live in the launcher; one setting has three names | fixed |
+| D4 | The world ignores the launcher's Motion; Settings says motion follows the system | fixed |
+| D5 | `.rise` is said to sound when a hold is founded or a work completed; it sounds when the order is given, and completions are silent | fixed |
+| D6 | Many watch bells at once can clip | fixed |
+| D7 | Turning sound back on snaps in at full level, with stale tails | fixed |
+| D8 | The Play panel ("this build of the launcher can't enter the realm") is unreachable and treats the launcher and the game as two products | fixed |
+| D9 | Single-player paths remain public: `GameApp.init(address:)`, `GameSession.init(state:)`, `RealmState.init(name:world:keeper:)`; `GameSettings` defaults to one keeper named Aurel | fixed |
+| D10 | Tests that can't fail or don't test what they say: strike targets in peace, every cue at once, leaving a link, a narration render, an `if let` that hides its assertion, a seed-dependent vassal | fixed |
+| D11 | Stale test and doc comments: seeds that no longer fall, "twelve stewards, thirty watches", "the greatest House free", two apps, "a game", a doc comment on the wrong function | fixed |
 
 ## Found while fixing
 

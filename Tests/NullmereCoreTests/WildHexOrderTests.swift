@@ -6,7 +6,7 @@ import XCTest
 /// coordinates overflow the arithmetic that places it.
 final class WildHexOrderTests: XCTestCase {
     private func newGame() -> GameState {
-        GameState(settings: GameSettings(seedText: "the still water"))
+        GameState(settings: GameSettings(seedText: "the still water", keepers: 1))
     }
 
     private static let wild: [Hex] = [

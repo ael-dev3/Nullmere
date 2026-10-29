@@ -10,7 +10,7 @@ final class OverlayPerformanceTests: XCTestCase {
     func testTheMarksDrawWellWithinAFrame() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "busy overlay")), store: LocalStore(directory: dir))
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "busy overlay", keepers: 1)), store: LocalStore(directory: dir))
         session.autoplay(watches: 90)
         session.selectNextReadyUnit()
         var camera = session.camera

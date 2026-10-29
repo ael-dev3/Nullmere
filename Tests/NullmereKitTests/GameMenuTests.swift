@@ -8,6 +8,20 @@ import XCTest
 /// entered; each does what it says once it is.
 @MainActor
 final class GameMenuTests: XCTestCase {
+    /// The realm's face shows from crossing in to leaving for the launcher,
+    /// and the Watch menu's sound toggles with it.
+    func testTheRealmsFaceShowsFromCrossingInToLeaving() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let app = GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: .hosted(seed: "showing"),
+                          identity: FileIdentityStore(url: dir.appendingPathComponent("identity")))
+        XCTAssertFalse(app.isShowing)
+        app.open()
+        XCTAssertTrue(app.isShowing)
+        app.leaveDoor()
+        XCTAssertFalse(app.isShowing)
+    }
+
     func testEveryMenuItemDoesWhatItSays() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -15,6 +29,7 @@ final class GameMenuTests: XCTestCase {
         let app = GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: .hosted(seed: "menus"),
                           identity: FileIdentityStore(url: dir.appendingPathComponent("identity")))
         _ = GameCommands(app: app).body
+        XCTAssertFalse(app.isShowing, "In the launcher: the Watch menu's Sound and Music wait for the realm")
         for item in GameMenu.allCases {
             XCTAssertFalse(item.isEnabled(in: app), "\(item.title) waits for the world")
             item.perform(in: app)

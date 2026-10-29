@@ -202,35 +202,6 @@ final class LauncherModelTests: XCTestCase {
         try await waitUntil(self.terminated)
     }
 
-    func testPlayWithNoWayIntoARealmSaysSo() {
-        let model = makeModel(readiness: .ready)
-        model.completeIntro()
-        model.activate(.play)
-        XCTAssertEqual(model.screen, .play)
-        XCTAssertTrue(model.readiness.allowsPlay)
-    }
-
-    func testThePlayPanelLightsWhatReturnDoes() {
-        let model = makeModel(readiness: .ready)
-        model.completeIntro()
-        model.activate(.play)
-        XCTAssertEqual(model.playSelection, .back, "The panel opens with Return lit")
-
-        model.handle(.left)
-        XCTAssertEqual(model.playSelection, .website)
-        model.handle(.left)
-        XCTAssertEqual(model.playSelection, .website, "The row doesn't wrap")
-        model.handle(.confirm)
-        XCTAssertEqual(opened, [Destination.website])
-        XCTAssertEqual(model.screen, .play)
-
-        model.handle(.right)
-        model.handle(.confirm)
-        XCTAssertEqual(model.screen, .title)
-        model.activate(.play)
-        XCTAssertEqual(model.playSelection, .back, "Return is lit again next time")
-    }
-
     func testReadinessIsReadFromTheSystem() {
         let model = makeModel(readiness: .deviceNotEligible, appeared: false)
         XCTAssertEqual(model.readiness, .checking)

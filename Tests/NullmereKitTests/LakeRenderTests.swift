@@ -33,7 +33,7 @@ final class LakeRenderTests: XCTestCase {
         let width = 640, height = 440
         var images: [CGImage] = []
         for lake in Lake.allCases {
-            var state = GameState(settings: GameSettings(seedText: "drawn \(lake.rawValue)", houseCount: 12, radius: 36, lake: lake))
+            var state = GameState(settings: GameSettings(seedText: "drawn \(lake.rawValue)", houseCount: 12, radius: 36, keepers: 1, lake: lake))
             state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
             try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
             let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
@@ -86,7 +86,7 @@ final class LakeRenderTests: XCTestCase {
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
         let width = 900, height = 600
         let scale: Float = 12
-        var state = GameState(settings: GameSettings(seedText: "moon path", houseCount: 12, radius: 36, lake: .round))
+        var state = GameState(settings: GameSettings(seedText: "moon path", houseCount: 12, radius: 36, keepers: 1, lake: .round))
         state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
         try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
         let moon = MoonMirror.place(in: state.map)
@@ -141,7 +141,7 @@ final class LakeRenderTests: XCTestCase {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: WorldShader.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
-        var state = GameState(settings: GameSettings(seedText: "the still water", houseCount: 12, radius: 36))
+        var state = GameState(settings: GameSettings(seedText: "the still water", houseCount: 12, radius: 36, keepers: 1))
         state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
         try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
         let width = 1400, height = 900
@@ -189,7 +189,7 @@ final class LakeRenderTests: XCTestCase {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: WorldShader.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
-        let state = GameState(settings: GameSettings(seedText: "the still water", houseCount: 12, radius: 36))
+        let state = GameState(settings: GameSettings(seedText: "the still water", houseCount: 12, radius: 36, keepers: 1))
         try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
         let width = 1100, height = 700
         let scale: Float = 28
@@ -238,7 +238,7 @@ final class LakeRenderTests: XCTestCase {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: WorldShader.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
-        var state = GameState(settings: GameSettings(seedText: "moon path", houseCount: 12, radius: 36, lake: .round))
+        var state = GameState(settings: GameSettings(seedText: "moon path", houseCount: 12, radius: 36, keepers: 1, lake: .round))
         state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
         try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
         let moon = MoonMirror.place(in: state.map)

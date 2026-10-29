@@ -54,6 +54,11 @@ public struct MoonlitLake: View {
         settings = LauncherSettings(defaults: defaults)
     }
 
+    /// Drawn as these settings say: the launcher's own, as they change.
+    public init(settings: LauncherSettings) {
+        self.settings = settings
+    }
+
     public var body: some View {
         LakeBackdrop(configuration: MoonlitLake.configuration(settings: settings, systemReducesMotion: reduceMotion,
                                                               isSavingEnergy: !isInFront || savesEnergy))

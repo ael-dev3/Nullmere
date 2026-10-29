@@ -143,7 +143,6 @@ final class LauncherViewTests: XCTestCase {
         try draw(MoonlitLake(), width: 640, height: 400)
         let model = model()
         try draw(MainMenu(model: model), width: 1000, height: 80)
-        try draw(PlayPanel(model: model), width: 900, height: 300)
         for selected in [false, true] {
             try draw(MenuButton(title: "Play", isSelected: selected, action: {}), width: 200, height: 40)
         }

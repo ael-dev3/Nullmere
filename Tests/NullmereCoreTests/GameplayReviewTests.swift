@@ -9,7 +9,7 @@ import XCTest
 /// earlier seat.
 final class GameplayReviewTests: XCTestCase {
     func testNoStewardTradesBelowEven() throws {
-        var state = GameState(settings: GameSettings(seedText: "no pump"))
+        var state = GameState(settings: GameSettings(seedText: "no pump", keepers: 1))
         let me = state.player
         for steward in state.houses where !steward.isPlayer {
             let other = steward.id
@@ -29,7 +29,7 @@ final class GameplayReviewTests: XCTestCase {
     }
 
     func testTradingBackAndForthGainsNothing() throws {
-        var state = GameState(settings: GameSettings(seedText: "no pump"))
+        var state = GameState(settings: GameSettings(seedText: "no pump", keepers: 1))
         let me = state.player
         let other = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
         state.houses[other].temperament = .steadfast
@@ -52,7 +52,7 @@ final class GameplayReviewTests: XCTestCase {
     }
 
     func testTwoMoonspiresFinishedTogetherGoToTheGreaterRealm() throws {
-        var state = GameState(settings: GameSettings(seedText: "spires together"))
+        var state = GameState(settings: GameSettings(seedText: "spires together", keepers: 1))
         let first = 0, second = 1
         for house in [first, second] {
             let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == house && $0.isSeat })
@@ -88,7 +88,13 @@ final class AbsentKeeperTests: XCTestCase {
         realm.world.envoys.append(Envoy(id: realm.world.nextID, from: others[0], to: ama, proposal: .fealty, arrived: realm.world.watch))
         realm.world.nextID += 1
         let holds = realm.world.holds(of: ama).count
-        for _ in 0..<80 {
+        // Kept from the second watch away: the vassal offered is taken then.
+        for _ in 0..<2 {
+            now += 180
+            _ = realm.tick(now: now)
+        }
+        XCTAssertEqual(realm.world.houses[others[0]].liege, ama, "It took the vassal offered")
+        for _ in 0..<78 {
             now += 180
             _ = realm.tick(now: now)
         }
@@ -96,7 +102,6 @@ final class AbsentKeeperTests: XCTestCase {
         XCTAssertFalse(world.houses[ama].isEliminated, "Kept, it stands")
         XCTAssertGreaterThanOrEqual(world.holds(of: ama).count, holds, "and holds what it held")
         XCTAssertNil(world.houses[ama].liege, "It never bent the knee for its keeper")
-        XCTAssertEqual(world.houses[others[0]].liege, ama, "It took the vassal offered")
         XCTAssertFalse(world.relations.contains { relation in
             (relation.first == ama || relation.second == ama) && relation.stance == .war && relation.aggressor == ama
         }, "No war of its making")
@@ -184,10 +189,30 @@ final class AbsentKeeperTests: XCTestCase {
 /// Stewards that make a race of more than the Moonspire: every rising
 /// spire is feared, only a House able to finish one begins it, holds
 /// beyond the seat muster companies, and one coming late to an age takes
-/// up the greatest House free.
+/// up a middling House open, never the strongest.
 final class StewardBalanceTests: XCTestCase {
+    /// A hold beyond the seat with a Muster Hall musters companies too, so
+    /// a great House's army comes from all its land.
+    func testHoldsBeyondTheSeatMusterCompanies() throws {
+        var state = GameState(settings: GameSettings(seedText: "every hold musters", keepers: 1))
+        let steward = try XCTUnwrap(state.houses.first { !$0.isPlayer }?.id)
+        let seat = try XCTUnwrap(state.seat(of: steward))
+        let open = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex]?.terrain.isSettleable == true && state.hold(at: hex) == nil && state.unit(at: hex) == nil
+                && (4...6).contains(hex.distance(to: seat.position))
+        })
+        var second = Hold(id: state.nextID, name: "Second", owner: steward, position: open, isSeat: false, foundedWatch: 1)
+        second.levels[.musterHall] = 1
+        state.holds.append(second)
+        state.nextID += 1
+        state.watch = 25
+        state.houses[steward].stock = Stock(grain: 900, timber: 900, stone: 900, moonsalt: 200)
+        _ = state.stewardTurn(for: steward)
+        XCTAssertNotNil(state.hold(second.id)?.training, "The hold beyond the seat musters a company")
+    }
+
     func testEveryRisingSpireIsFeared() throws {
-        var state = GameState(settings: GameSettings(seedText: "two spires"))
+        var state = GameState(settings: GameSettings(seedText: "two spires", keepers: 1))
         for (house, level) in [(1, 4), (2, 3), (3, 2)] {
             let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == house && $0.isSeat })
             state.holds[seat].levels[.moonspire] = level
@@ -197,7 +222,7 @@ final class StewardBalanceTests: XCTestCase {
     }
 
     func testOnlyAHouseAbleToFinishTheMoonspireBeginsIt() throws {
-        var state = GameState(settings: GameSettings(seedText: "who builds"))
+        var state = GameState(settings: GameSettings(seedText: "who builds", keepers: 1))
         let steward = try XCTUnwrap(state.houses.first { !$0.isPlayer && $0.temperament == .steadfast }?.id
             ?? state.houses.first { !$0.isPlayer }?.id)
         state.houses[steward].temperament = .steadfast
@@ -313,7 +338,7 @@ final class SeatFairnessTests: XCTestCase {
 /// claim; and riders it can't pay for become spears, not nothing.
 final class StewardKitTests: XCTestCase {
     private func wealthy() throws -> (GameState, steward: Int, seat: Int) {
-        var state = GameState(settings: GameSettings(seedText: "the whole kit"))
+        var state = GameState(settings: GameSettings(seedText: "the whole kit", keepers: 1))
         let steward = try XCTUnwrap(state.houses.first { !$0.isPlayer }?.id)
         state.houses[steward].temperament = .steadfast
         state.watch = 70

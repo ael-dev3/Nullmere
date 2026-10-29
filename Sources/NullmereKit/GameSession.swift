@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import LauncherCore
 import NullmereCore
 import NullmereRealm
 import Observation
@@ -41,6 +42,9 @@ public final class GameSession {
     public private(set) var state: GameState
     public var camera: Camera
     @ObservationIgnored private var glideTask: Task<Void, Never>?
+    /// How much the world moves, as the display settings and the system
+    /// say: below full motion, the camera goes to its mark at once.
+    @ObservationIgnored public var motion: ResolvedMotion = .full
     @ObservationIgnored private var unannounced: [String] = []
     public var hovered: Hex?
     public var selection: Selection = .none {
@@ -278,15 +282,6 @@ public final class GameSession {
         rememberSeen()
         link.onEvent = { [weak self] event in self?.hear(event) }
         link.connect()
-    }
-
-    /// One House's game in a realm hosted here, its keeper holding the
-    /// world's first kept House: for tests, and for rehearsing on one Mac.
-    public convenience init(state: GameState, store: LocalStore = LocalStore(), voice: (any Voice)? = nil) {
-        let identity = "rehearsal"
-        let realm = LocalRealm(state: RealmState(name: "Rehearsal", world: state, keeper: identity, now: Date().timeIntervalSince1970))
-        self.init(link: realm.link(identity: identity), house: state.player, world: state.view(for: state.player), store: store,
-                  voice: voice, host: realm)
     }
 
     public var playerHouse: House { state.houses[player] }
@@ -623,9 +618,10 @@ public final class GameSession {
         case .settled(let world, _), .changed(let world):
             adopt(world)
         case .heard(let events):
-            // Others' doings, told as they happen.
+            // Others' doings, told as they happen, and a blow seen as struck.
             report(events)
-            for cue in Self.cues(for: events, player: player) where cue != .watch {
+            showBlows(events)
+            for cue in Self.cues(for: events, in: state, player: player) where cue != .watch {
                 onCue?(cue)
             }
         case .answered(let events):
@@ -690,7 +686,7 @@ public final class GameSession {
         showWatchCard(WatchSummary(before: previous, after: state, events: events, player: player))
         showMarches(events, from: before)
         showBlows(events, from: before)
-        for cue in Self.cues(for: events, player: player) {
+        for cue in Self.cues(for: events, in: state, player: player) {
             onCue?(cue)
         }
         notices.removeAll()
@@ -705,7 +701,7 @@ public final class GameSession {
         for warning in warnings {
             post(warning.text, tone: warning.tone)
         }
-        if warnings.contains(where: { $0.tone == .bad }), !Self.cues(for: events, player: player).contains(.dread) {
+        if warnings.contains(where: { $0.tone == .bad }), !Self.cues(for: events, in: state, player: player).contains(.dread) {
             onCue?(.dread)
         }
         let needed = Self.needsPlayer(after: events, from: previous, to: state, player: player, threatened: threatened)
@@ -761,14 +757,14 @@ public final class GameSession {
     }
 
     /// Carries the camera to a hex over a moment, eased in and out; at once
-    /// where motion is reduced. The camera reaches the map as a plain value,
-    /// so it is moved step by step here rather than by SwiftUI. A pan or a
+    /// below full motion. The camera reaches the map as a plain value, so
+    /// it is moved step by step here rather than by SwiftUI. A pan or a
     /// zoom by the keeper meanwhile has the last word.
-    func glide(to hex: Hex, reducesMotion: Bool = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) {
+    func glide(to hex: Hex, reducesMotion: Bool? = nil) {
         glideTask?.cancel()
         var target = camera
         target.focus(on: hex)
-        guard !reducesMotion else {
+        guard !(reducesMotion ?? (motion != .full)) else {
             camera = target
             return
         }
@@ -854,11 +850,18 @@ public final class GameSession {
         case .move(let unit, _):
             return [state.unit(unit)?.kind == .rider ? .ride : .order]
         default:
-            return [plainCue(for: command, events: events)]
+            return [plainCue(for: command, events: events, player: player)]
         }
     }
 
-    private static func plainCue(for command: Command, events: [GameEvent]) -> Ambience.Cue {
+    private static func plainCue(for command: Command, events: [GameEvent], player: Int) -> Ambience.Cue {
+        // Whatever the order, one that begins a war sounds as war: refusing
+        // a steward's tribute, too.
+        let war = events.contains { event in
+            guard case .stanceChanged(let first, let second, .war, _) = event else { return false }
+            return first == player || second == player
+        }
+        if war { return .dread }
         switch command {
         case .found, .build, .train: return .rise
         case .declareWar: return .dread
@@ -869,12 +872,24 @@ public final class GameSession {
     }
 
     /// The sounds a watch's turning makes for the player, the watch's bell
-    /// first and each other sound once.
-    static func cues(for events: [GameEvent], player: Int) -> [Ambience.Cue] {
+    /// first and each other sound once. With the world as it now stands,
+    /// the player's works and companies finished sound too.
+    static func cues(for events: [GameEvent], in state: GameState? = nil, player: Int) -> [Ambience.Cue] {
         var cues: [Ambience.Cue] = [.watch]
         func add(_ cue: Ambience.Cue) { if !cues.contains(cue) { cues.append(cue) } }
         for event in events {
             switch event {
+            case .battle(let battle) where battle.defenderOwner == player:
+                // Struck: steel, or arrows, as the blow came.
+                add(battle.attackerKind == .bow ? .loose : .clash)
+            case .unitLost(_, _, let owner, _) where owner == player:
+                add(.dread)
+            case .starving(let house) where house == player:
+                add(.dread)
+            case .buildingCompleted(let hold, _, _) where state?.hold(hold)?.owner == player:
+                add(.rise)
+            case .unitTrained(let unit, _) where state?.unit(unit)?.owner == player:
+                add(.rise)
             case .houseFell: add(.toll)
             case .gameEnded(let outcome): add(outcome.winner == player ? .triumph : .toll)
             case .holdCaptured(_, let from, let by):

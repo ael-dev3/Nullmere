@@ -101,17 +101,16 @@ final class LauncherPressTests: XCTestCase {
         XCTAssertTrue(terminated, "The launcher quits once it has faded")
     }
 
-    /// With no realm yet to enter, Play shows its panel; Return goes back.
-    func testThePlayPanelIsPressed() {
+    /// Play, pressed, crosses to the realm's front door: the launcher fades,
+    /// and the way in is taken once.
+    func testPlayIsPressed() async throws {
         let model = model()
-        model.enterRealm = nil
         draw(model)
-        XCTAssertTrue(PressableButtons.press("Play"))
-        XCTAssertEqual(model.screen, .play, "No realm yet: the panel says so")
-        draw(model)
-        XCTAssertTrue(PressableButtons.press("Back"), "Among \(shown)")
-        XCTAssertEqual(model.playSelection, .back)
-        XCTAssertEqual(model.screen, .title)
+        XCTAssertTrue(PressableButtons.press("Play"), "Among \(shown)")
+        XCTAssertTrue(model.isLeaving, "The launcher fades out")
+        let deadline = Date().addingTimeInterval(3)
+        while crossings == 0, Date() < deadline { try await Task.sleep(nanoseconds: 50_000_000) }
+        XCTAssertEqual(crossings, 1)
     }
 
     /// On a Mac whose model is off, the requirement screen's way to turn it

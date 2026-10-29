@@ -197,8 +197,6 @@ final class PointerAreaTests: XCTestCase {
         XCTAssertGreaterThan(ready.visibleNews.count, 1)
         let news = chosen(in: NewsPanel(model: ready), count: ready.visibleNews.count) { ready.newsSelection }
         XCTAssertEqual(Set(news), Set(ready.visibleNews.indices), "Each headline")
-        let play = chosen(in: PlayPanel(model: ready), count: LauncherModel.PlayChoice.allCases.count) { ready.playSelection }
-        XCTAssertEqual(Set(play.map { "\($0)" }).count, LauncherModel.PlayChoice.allCases.count, "Each way on")
         let settings = chosen(in: SettingsPanel(model: ready), count: SettingsRow.allCases.count) { ready.settingsSelection }
         XCTAssertEqual(Set(settings.map { "\($0)" }).count, SettingsRow.allCases.count, "Each setting")
 

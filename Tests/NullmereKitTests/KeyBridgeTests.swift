@@ -198,7 +198,7 @@ final class GameKeyTests: XCTestCase {
     func testEachKeyActsOnTheWorld() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "keys", houseCount: 4, radius: 18)),
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "keys", houseCount: 4, radius: 18, keepers: 1)),
                                   store: LocalStore(directory: dir))
 
         // Escape lays down what is open, one thing at a time.

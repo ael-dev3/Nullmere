@@ -79,7 +79,7 @@ final class RootRenderTests: XCTestCase {
     func testOmensCounselAndAnEndingDrawOverTheWorld() throws {
         let app = app({ .ready }, seed: "omens and endings")
         UserDefaults.standard.set(false, forKey: "counsel.hidden")
-        var state = GameState(settings: GameSettings(seedText: "an omen", houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "an omen", houseCount: 4, radius: 18, keepers: 1))
         state.omen = Omen(kind: .moonsaltBloom, began: 1, ends: 4)
         let omened = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("omen")))
         omened.dismissSeatBriefing()
@@ -99,7 +99,7 @@ final class RootRenderTests: XCTestCase {
         // A keeper back after watches away: the report of what passed, put
         // away by Escape.
         let awayStore = LocalStore(directory: dir.appendingPathComponent("away"))
-        var world = GameState(settings: GameSettings(seedText: "away a while", houseCount: 4, radius: 16))
+        var world = GameState(settings: GameSettings(seedText: "away a while", houseCount: 4, radius: 16, keepers: 1))
         _ = GameSession(state: world, store: awayStore)
         for _ in 0..<6 {
             _ = world.stewardTurn(for: world.player)
@@ -151,18 +151,23 @@ final class RootRenderTests: XCTestCase {
                    .tradeAnswered(trade: Trade(give: .grain, 5, for: .stone, 5), from: 0, to: 1, accepted: false),
                    .tradeAnswered(trade: Trade(give: .grain, 5, for: .stone, 5), from: 1, to: 0, accepted: true),
                    .gifted(from: 0, to: 1, gift: Stock(grain: 5)), .gifted(from: 1, to: 0, gift: Stock(grain: 5))]
-        var told = 0, kinds = Set<String>()
+        var told = 0, kinds = Set<String>(), toldKinds = Set<String>()
         for event in events {
-            kinds.insert(String(describing: event).prefix { $0 != "(" }.description)
+            let kind = String(describing: event).prefix { $0 != "(" }.description
+            kinds.insert(kind)
             for viewer in state.houses.indices {
                 if let line = Narration.line(for: event, in: state, viewer: viewer) {
                     XCTAssertFalse(line.text.isEmpty)
                     XCTAssertFalse(line.text.contains("Optional"), line.text)
                     told += 1
+                    toldKinds.insert(kind)
                 }
             }
         }
         print("NEWS \(events.count) events of \(kinds.count) kinds, \(told) lines told")
         XCTAssertGreaterThan(kinds.count, 12, "\(kinds.sorted())")
+        // Marches, training begun and a ward struck are shown, not told.
+        let shown: Set<String> = ["moved", "trainingStarted", "holdStruck"]
+        XCTAssertEqual(kinds.subtracting(shown).subtracting(toldKinds), [], "Every other kind of news is told to someone")
     }
 }

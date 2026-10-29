@@ -5,7 +5,7 @@ import XCTest
 final class SimulationTests: XCTestCase {
     func testWholeGamesKeepTheirInvariants() {
         for seed in ["sim one", "sim two"] {
-            var state = GameState(settings: GameSettings(seedText: seed))
+            var state = GameState(settings: GameSettings(seedText: seed, keepers: 1))
             for _ in 0..<110 {
                 state.stewardTurn(for: state.player)
                 state.endWatch()

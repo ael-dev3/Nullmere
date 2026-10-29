@@ -30,7 +30,7 @@ final class SoakTests: XCTestCase {
     }
 
     func testAnUnsoundWorldIsCaught() {
-        var world = GameState(settings: GameSettings(seedText: "unsound", houseCount: 3, radius: 16))
+        var world = GameState(settings: GameSettings(seedText: "unsound", houseCount: 3, radius: 16, keepers: 1))
         world.units[0].health = 0
         world.houses[1].stock.grain = -5
         let problems = world.problems()

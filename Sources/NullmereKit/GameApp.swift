@@ -50,6 +50,18 @@ public final class GameApp {
     public var onLeave: (@MainActor () -> Void)?
     /// The game's settings, shown over the world or the front door.
     public var showsSettings = false
+    /// The realm's face shows: from crossing in to leaving for the launcher.
+    public private(set) var isShowing = false
+    /// The launcher, whose display settings the realm's face follows and
+    /// shows in its own Settings: one Motion, Resolution and Frame rate.
+    /// Set by the app's shell.
+    @ObservationIgnored public weak var display: LauncherModel?
+
+    /// The display settings as they stand: the launcher's, as they change,
+    /// or as stored.
+    public var displaySettings: LauncherSettings {
+        display?.displaySettings ?? LauncherSettings(defaults: .standard)
+    }
 
     let store: LocalStore
     let address: RealmAddress
@@ -73,7 +85,7 @@ public final class GameApp {
     /// default the Foundation Models framework does. Tests supply their own,
     /// with a realm hosted in the test and an identity kept in a file.
     /// `sound` overrides the saved choice; tests keep the game silent.
-    public convenience init(
+    convenience init(
         store: LocalStore = LocalStore(),
         readiness: @escaping () -> ModelReadiness = { OnDeviceModel.current() },
         sound: Bool? = nil,
@@ -150,6 +162,7 @@ public final class GameApp {
 
     /// Crossing in from the launcher: the gate, then the realm's front door.
     public func open() {
+        isShowing = true
         if case .frontDoor = phase {
             ambience.start()
             openDoor()
@@ -384,8 +397,6 @@ public final class GameApp {
         seatTimer = nil
     }
 
-    /// The realm no longer knows this Mac's key (its database was made anew):
-    /// back to the front door, to enter under a name again.
     /// Lets the link go: it tells nothing more, and leaves the realm, or,
     /// when the realm no longer knows its key, simply stops.
     private func releaseLink(leaving: Bool = true) {
@@ -394,6 +405,8 @@ public final class GameApp {
         link = nil
     }
 
+    /// The realm no longer knows this Mac's key (its database was made anew):
+    /// back to the front door, to enter under a name again.
     private func forgotten() {
         keeperName = nil
         UserDefaults.standard.removeObject(forKey: Self.nameKey(for: address))
@@ -422,6 +435,7 @@ public final class GameApp {
         releaseLink()
         ambience.isAtWar = false
         ambience.stop()
+        isShowing = false
         onLeave?()
     }
 

@@ -34,7 +34,7 @@ final class WorldMarksStatesTests: XCTestCase {
     }
 
     func testAWarsMarksAreDrawn() throws {
-        var state = GameState(settings: GameSettings(seedText: "a war drawn", houseCount: 3, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "a war drawn", houseCount: 3, radius: 18, keepers: 1))
         let me = state.player
         let foe = (me + 1) % state.houses.count
         _ = try state.perform(.declareWar(on: foe), as: me)
@@ -124,7 +124,7 @@ final class VoiceQueueTests: XCTestCase {
     func testEnvoysAreSpokenInTurnAndAnAnsweredOneIsPassedOver() async throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        var state = GameState(settings: GameSettings(seedText: "voices in turn", houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "voices in turn", houseCount: 4, radius: 18, keepers: 1))
         let me = state.player
         let stewards = state.houses.indices.filter { $0 != me && !state.houses[$0].isPlayer }
         state.envoys.append(Envoy(id: 801, from: stewards[0], to: me, proposal: .pact, arrived: state.watch))

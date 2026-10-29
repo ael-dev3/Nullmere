@@ -108,16 +108,8 @@ public enum PlayOutcome: Equatable, Sendable {
     case enterRealm
     /// Explain why this Mac can't play yet.
     case explainRequirement(ModelReadiness)
-    /// The Mac is ready, but this launcher has no way into a realm.
-    case awaitFirstRealm
 
-    public init(readiness: ModelReadiness, canEnterRealm: Bool) {
-        if !readiness.allowsPlay {
-            self = .explainRequirement(readiness)
-        } else if canEnterRealm {
-            self = .enterRealm
-        } else {
-            self = .awaitFirstRealm
-        }
+    public init(readiness: ModelReadiness) {
+        self = readiness.allowsPlay ? .enterRealm : .explainRequirement(readiness)
     }
 }

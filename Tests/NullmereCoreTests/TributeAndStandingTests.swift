@@ -4,7 +4,7 @@ import XCTest
 
 final class TributeTests: XCTestCase {
     private func game() -> GameState {
-        GameState(settings: GameSettings(seedText: "tribute", houseCount: 3, radius: 16))
+        GameState(settings: GameSettings(seedText: "tribute", houseCount: 3, radius: 16, keepers: 1))
     }
 
     func testAPaidTributeMovesAFifthOfTheStoresAndKeepsThePeace() throws {
@@ -82,7 +82,7 @@ final class TributeTests: XCTestCase {
         var demanded = 0, paid = 0
         // Played until a tribute is paid, in one of a few worlds.
         for seed in 0..<6 where paid == 0 {
-            var state = GameState(settings: GameSettings(seedText: "tribute play \(seed)"))
+            var state = GameState(settings: GameSettings(seedText: "tribute play \(seed)", keepers: 1))
             while state.outcome == nil, state.watch < 120,
                   !state.chronicle.contains(where: { $0.kind == .tribute && $0.text.contains("pays tribute") }) {
                 state.stewardTurn(for: state.player)
@@ -98,7 +98,7 @@ final class TributeTests: XCTestCase {
 
 final class StandingAndHistoryTests: XCTestCase {
     func testEveryWatchLeavesASnapshot() {
-        var state = GameState(settings: GameSettings(seedText: "history", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "history", houseCount: 3, radius: 16, keepers: 1))
         XCTAssertEqual(state.history.map(\.watch), [1])
         for _ in 0..<5 {
             state.stewardTurn(for: state.player)
@@ -111,7 +111,7 @@ final class StandingAndHistoryTests: XCTestCase {
     }
 
     func testSavesFromBeforeTheHistoryStillOpen() throws {
-        let state = GameState(settings: GameSettings(seedText: "old history", houseCount: 3, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "old history", houseCount: 3, radius: 16, keepers: 1))
         var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(state)) as? [String: Any])
         json["recorded"] = nil
         var relations = try XCTUnwrap(json["relations"] as? [[String: Any]])
@@ -123,7 +123,7 @@ final class StandingAndHistoryTests: XCTestCase {
     }
 
     func testStandingsNameTheNearestThreat() throws {
-        var state = GameState(settings: GameSettings(seedText: "standing", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "standing", houseCount: 3, radius: 16, keepers: 1))
         XCTAssertEqual(state.dominionNeed, GameState.supremacyMinimum, "A young lake still needs ten holds")
         XCTAssertTrue(state.standings().allSatisfy { $0.threat == nil })
 

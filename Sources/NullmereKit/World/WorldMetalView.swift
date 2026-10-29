@@ -38,9 +38,28 @@ final class WorldMetalView: MTKView {
     var radius = 24
     /// The moon in the water, placed for the map's lake.
     var moon = SIMD4<Float>(0, -2.2, 1.05, 1)
-    var animates = true {
-        didSet { if animates != oldValue { updatePausing() } }
+    /// How much the map moves: still, it is drawn only when something
+    /// changes; reduced, its clock runs slower, at 30 frames a second.
+    var motion: ResolvedMotion = .full {
+        didSet {
+            guard motion != oldValue else { return }
+            updateFrameRate()
+            updatePausing()
+        }
     }
+    /// The display settings' frame rate cap.
+    var frameRateCap: FrameRateCap = .sixty {
+        didSet { if frameRateCap != oldValue { updateFrameRate() } }
+    }
+    /// The display settings' resolution: the most of the screen's pixels
+    /// the map is drawn at.
+    var quality: RenderQuality = .native {
+        didSet { if quality != oldValue { updateDrawableSize() } }
+    }
+    /// The map's time, advanced at the motion's pace: it never jumps as
+    /// motion slows or stops, a paused map redrawn shows the same moment,
+    /// and it starts over on a whole number of the shader's cycles.
+    private var clock = SceneClock()
 
     var onHover: ((Hex?) -> Void)?
     var onClick: ((Hex) -> Void)?
@@ -58,7 +77,6 @@ final class WorldMetalView: MTKView {
     private var appObservers: [any NSObjectProtocol] = []
     private var dragOrigin: CGPoint?
     private var dragged = false
-    private let started = CACurrentMediaTime()
 
     init() {
         super.init(frame: .zero, device: WorldMetalView.systemDevice)
@@ -94,7 +112,7 @@ final class WorldMetalView: MTKView {
 
     private func updateDrawableSize() {
         let backing = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
-        let factor = backing * Self.renderScale(forCameraScale: camera.scale)
+        let factor = backing * min(Self.renderScale(forCameraScale: camera.scale), quality.scale)
         let size = CGSize(width: max(1, (bounds.width * factor).rounded()), height: max(1, (bounds.height * factor).rounded()))
         if drawableSize != size {
             drawableSize = size
@@ -160,20 +178,21 @@ final class WorldMetalView: MTKView {
         updatePausing()
     }
 
-    /// 60 frames a second while the game is in front; 30 behind another
-    /// app, in Low Power Mode, or while the Mac runs hot.
+    /// The display settings' frame rate while the game is in front at full
+    /// motion; 30 below full motion, behind another app, in Low Power Mode,
+    /// or while the Mac runs hot: as the launcher's lake.
     func updateFrameRate() {
         let info = ProcessInfo.processInfo
         let savesEnergy = info.isLowPowerModeEnabled || [.serious, .critical].contains(info.thermalState)
         let inFront = NSApplication.shared.isActive
-        let rate = inFront && !savesEnergy ? 60 : 30
+        let rate = frameRateCap.framesPerSecond(motion: motion, isSavingEnergy: !inFront || savesEnergy)
         if preferredFramesPerSecond != rate {
             preferredFramesPerSecond = rate
         }
     }
 
     private func updatePausing() {
-        let running = renderer != nil && isWindowVisible && animates
+        let running = renderer != nil && isWindowVisible && motion != .still
         isPaused = !running
         enableSetNeedsDisplay = !running
         if !running {
@@ -245,7 +264,7 @@ final class WorldMetalView: MTKView {
               let drawable = currentDrawable
         else { return }
         let pixelsPerPoint = drawableSize.width / bounds.width
-        let time = (CACurrentMediaTime() - started).truncatingRemainder(dividingBy: 3600)
+        let time = clock.advance(to: CACurrentMediaTime(), rate: motion.clockRate)
         let uniforms = WorldUniforms(
             view: SIMD4(Float(drawableSize.width), Float(drawableSize.height), Float(camera.scale * pixelsPerPoint), Float(time)),
             camera: SIMD4(Float(camera.centerX), Float(camera.centerY), Float(radius), Float(pixelsPerPoint)),

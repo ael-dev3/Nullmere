@@ -73,9 +73,17 @@ final class SoundTests: XCTestCase {
 
     func testNothingClipsEvenWithEveryCueAtOnce() {
         let synth = settled()
-        _ = render(synth, seconds: 1)
-        for cue in Ambience.Cue.all { synth.trigger(cue) }
-        let burst = render(synth, seconds: 3)
+        // The war's score playing beneath, the loudest the sound gets.
+        synth.setMusic(on: true, mood: .war)
+        _ = render(synth, seconds: 4)
+        // Every cue within a few milliseconds, each taken up before the
+        // next, so none is dropped for a full queue.
+        var burst: [Float] = []
+        for cue in Ambience.Cue.all {
+            synth.trigger(cue)
+            burst += render(synth, seconds: 0.005)
+        }
+        burst += render(synth, seconds: 3)
         let peak = burst.map(abs).max() ?? 0
         print("SOUND every cue at once peaks at \(String(format: "%.3f", peak))")
         XCTAssertLessThan(peak, 0.8)

@@ -7,13 +7,14 @@ public struct GameSettings: Codable, Equatable, Sendable {
     public var radius: Int
     /// The first House's name, when a keeper holds it from the start.
     public var playerHouse: String
-    /// Seats held by keepers from the start: one, or none in a realm, whose
-    /// keepers claim seats as they arrive.
+    /// Seats held by a keeper from the start: none in a realm, whose
+    /// keepers claim seats as they arrive. Tests rehearse one House's
+    /// game with one.
     public var keepers: Int
     /// The shape of the lake.
     public var lake: Lake
 
-    public init(seedText: String, houseCount: Int = 5, radius: Int = 24, playerHouse: String = "Aurel", keepers: Int = 1,
+    public init(seedText: String, houseCount: Int = 5, radius: Int = 24, playerHouse: String = "Aurel", keepers: Int = 0,
                 lake: Lake = .round) {
         self.seedText = seedText
         self.houseCount = houseCount
@@ -33,15 +34,16 @@ public struct GameSettings: Codable, Equatable, Sendable {
         houseCount = try container.decode(Int.self, forKey: .houseCount)
         radius = try container.decode(Int.self, forKey: .radius)
         playerHouse = try container.decode(String.self, forKey: .playerHouse)
-        keepers = try container.decodeIfPresent(Int.self, forKey: .keepers) ?? 1
+        keepers = try container.decodeIfPresent(Int.self, forKey: .keepers) ?? 0
         lake = try container.decodeIfPresent(Lake.self, forKey: .lake) ?? .round
     }
 
     public var seed: UInt64 { Seed.from(seedText) }
 }
 
-/// The whole state of one game. Every rule is a function of this value, so
-/// saving is encoding it and the same commands replay the same history.
+/// The whole state of one age's world. Every rule is a function of this
+/// value, so keeping it is encoding it, and the same commands replay the
+/// same history.
 public struct GameState: Codable, Equatable, Sendable {
     public static let formatVersion = 1
 
@@ -76,7 +78,7 @@ public struct GameState: Codable, Equatable, Sendable {
 
     public var player: Int { houses.first { $0.isPlayer }?.id ?? 0 }
 
-    /// Starts a new game.
+    /// Makes an age's world: its lake, its Houses at their seats.
     public init(settings: GameSettings) {
         let seed = settings.seed
         let world = WorldGenerator(seed: seed, radius: settings.radius, houseCount: settings.houseCount, lake: settings.lake).generate()

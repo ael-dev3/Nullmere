@@ -33,7 +33,7 @@ final class RealmFairnessTests: XCTestCase {
         XCTAssertNil(realm.world.outcome, "Three Houses still stand: the age goes on")
 
         // A House's own game still ends with its House.
-        var own = GameState(settings: GameSettings(seedText: "one House", houseCount: 3, radius: 14))
+        var own = GameState(settings: GameSettings(seedText: "one House", houseCount: 3, radius: 14, keepers: 1))
         let other = try XCTUnwrap(own.houses.first { !$0.isPlayer }).id
         fell(own.player, to: other, in: &own)
         _ = own.endWatch()
@@ -148,7 +148,7 @@ final class RealmFairnessTests: XCTestCase {
     }
 
     func testAViewKeepsOtherHousesCounsel() throws {
-        var world = GameState(settings: GameSettings(seedText: "kept counsel", houseCount: 3, radius: 16))
+        var world = GameState(settings: GameSettings(seedText: "kept counsel", houseCount: 3, radius: 16, keepers: 1))
         let me = world.player
         let others = world.houses.filter { !$0.isPlayer }.map(\.id)
         world.gifts = [Gift(from: others[0], to: others[1], worth: 5, watch: 1),

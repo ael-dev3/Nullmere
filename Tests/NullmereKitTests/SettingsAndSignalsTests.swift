@@ -110,7 +110,7 @@ final class SignalsTests: XCTestCase {
     }
 
     func testEachKindOfCompanySoundsItsOwn() throws {
-        var state = GameState(settings: GameSettings(seedText: "voices of war", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "voices of war", houseCount: 3, radius: 16, keepers: 1))
         let seat = try XCTUnwrap(state.seat(of: state.player))
         let rider = try XCTUnwrap(state.placeUnit(.rider, for: state.player, near: seat.position))
         let spear = try XCTUnwrap(state.units(of: state.player).first { $0.kind == .spear })
@@ -128,7 +128,7 @@ final class SignalsTests: XCTestCase {
     }
 
     func testWatchmenSeeEnemiesGather() throws {
-        var state = GameState(settings: GameSettings(seedText: "gathering", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "gathering", houseCount: 3, radius: 16, keepers: 1))
         let seat = try XCTUnwrap(state.seat(of: state.player))
         let near = seat.position.ring(2).filter { state.map[$0]?.terrain.isPassable == true && state.unit(at: $0) == nil }
         XCTAssertGreaterThanOrEqual(near.count, 2)
@@ -150,7 +150,7 @@ final class SignalsTests: XCTestCase {
     }
 
     func testQuietWatchesPassUntilSomethingNeedsThePlayer() throws {
-        var state = GameState(settings: GameSettings(seedText: "quiet watches", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "quiet watches", houseCount: 3, radius: 16, keepers: 1))
         for index in state.units.indices where state.units[index].owner == state.player {
             state.units[index].fortified = true
         }
@@ -166,8 +166,10 @@ final class SignalsTests: XCTestCase {
         XCTAssertLessThanOrEqual(passed, GameSession.quietWatchLimit)
         XCTAssertTrue(session.notices.contains { $0.text == "\(passed) quiet watches pass." })
         XCTAssertNil(session.state.outcome)
-        XCTAssertTrue(session.idleHolds.contains { $0.id == seat.id } || passed == GameSession.quietWatchLimit,
-                      "It stopped because the seat stands idle")
+        // Short of the limit, it stopped because the seat stands idle.
+        if passed < GameSession.quietWatchLimit {
+            XCTAssertTrue(session.idleHolds.contains { $0.id == seat.id }, "Stopped at \(passed): the seat stands idle")
+        }
     }
 }
 

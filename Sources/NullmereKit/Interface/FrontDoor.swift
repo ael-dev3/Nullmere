@@ -21,7 +21,7 @@ struct FrontDoor: View {
 
     var body: some View {
         ZStack {
-            MoonlitLake()
+            MoonlitLake(settings: app.displaySettings)
                 .ignoresSafeArea()
             // Darken the water beneath the card, as the launcher's panels and
             // the gate do, so the moon's reflection doesn't glow through it.

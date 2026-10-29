@@ -21,7 +21,7 @@ final class GameSessionEdgeTests: XCTestCase {
 
     /// A world at war with a foe's spear beside the keeper's own.
     private func warWorld() throws -> (GameState, spear: NullmereCore.Unit, beside: Hex, foe: Int) {
-        var state = GameState(settings: GameSettings(seedText: "edges of a session", houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "edges of a session", houseCount: 4, radius: 18, keepers: 1))
         let me = state.player
         let foe = (me + 1) % state.houses.count
         _ = try state.perform(.declareWar(on: foe), as: me)
@@ -79,7 +79,7 @@ final class GameSessionEdgeTests: XCTestCase {
     }
 
     func testAFoundingChoosesItsNewHold() throws {
-        var state = GameState(settings: GameSettings(seedText: "a founding", houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "a founding", houseCount: 4, radius: 18, keepers: 1))
         let me = state.player
         // A keeper's lantern made a founder, standing where a hold may rise.
         let founder = try XCTUnwrap(state.units.firstIndex { $0.owner == me && $0.kind == .lantern })
@@ -95,7 +95,7 @@ final class GameSessionEdgeTests: XCTestCase {
     }
 
     func testWhenEveryCompanyHasItsOrdersTheKeeperIsTold() throws {
-        var state = GameState(settings: GameSettings(seedText: "all ordered", houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "all ordered", houseCount: 4, radius: 18, keepers: 1))
         for index in state.units.indices where state.units[index].owner == state.player {
             state.units[index].fortified = true
         }
@@ -106,7 +106,7 @@ final class GameSessionEdgeTests: XCTestCase {
     }
 
     func testNoticesKeepTheLatestSix() {
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "notices", houseCount: 3, radius: 16)),
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "notices", houseCount: 3, radius: 16, keepers: 1)),
                                   store: LocalStore(directory: dir))
         for index in 1...9 { session.post("Notice \(index)", tone: .neutral) }
         XCTAssertEqual(session.notices.count, 6)
@@ -116,7 +116,7 @@ final class GameSessionEdgeTests: XCTestCase {
 
     func testARefusedOrderFromTheRealmIsToldAndTheWorldKept() {
         let link = QuietLink()
-        let state = GameState(settings: GameSettings(seedText: "refused by the realm", houseCount: 3, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "refused by the realm", houseCount: 3, radius: 16, keepers: 1))
         let session = GameSession(link: link, house: state.player, world: state.view(for: state.player), store: LocalStore(directory: dir))
         link.onEvent?(.orderRefused(.refused("The ford is held."), session.state))
         XCTAssertEqual(session.notices.last?.text, "The ford is held.")
@@ -126,7 +126,7 @@ final class GameSessionEdgeTests: XCTestCase {
     }
 
     func testAWatchThatBringsFoesToTheGatesIsWarnedOfAndTheWelcomeWaitsForIt() throws {
-        var world = GameState(settings: GameSettings(seedText: "foes at the gates", houseCount: 3, radius: 18))
+        var world = GameState(settings: GameSettings(seedText: "foes at the gates", houseCount: 3, radius: 18, keepers: 1))
         let me = world.player
         let foe = (me + 1) % world.houses.count
         _ = try world.perform(.declareWar(on: foe), as: me)
@@ -173,7 +173,7 @@ final class GameSessionEdgeTests: XCTestCase {
     /// The last first step taken by an order, not by saying ready: the
     /// welcome is said at once, with no watch to wait for.
     func testTheWelcomeIsSaidAtOnceWhenAnOrderTakesTheLastStep() throws {
-        let world = GameState(settings: GameSettings(seedText: "a last march", houseCount: 3, radius: 18))
+        let world = GameState(settings: GameSettings(seedText: "a last march", houseCount: 3, radius: 18, keepers: 1))
         let me = world.player
         let store = LocalStore(directory: dir)
         _ = GameSession(link: QuietLink(), house: me, world: world.view(for: me), store: store)

@@ -20,6 +20,7 @@ public final class OnlineShell {
         self.app = app
         launcher.enterRealm = { [weak self] in self?.enterRealm() }
         app.onLeave = { [weak self] in self?.leaveRealm() }
+        app.display = launcher
     }
 
     func enterRealm() {

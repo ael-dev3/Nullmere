@@ -1,5 +1,5 @@
 // Writes a world's tile texture for Tools/world-preview: the same bytes the
-// game's map shader reads, for a keeper at a game's opening, or with the
+// game's map shader reads, for a keeper at an age's opening, or with the
 // whole world known. Built and run by scripts/world-preview-data.sh.
 //
 //   generate <seed> <houses> <radius> <opening|whole> <out.json>
@@ -10,7 +10,7 @@ guard arguments.count == 6, let houses = Int(arguments[2]), let radius = Int(arg
     print("usage: generate <seed> <houses> <radius> <opening|whole> <out.json>")
     exit(2)
 }
-var state = GameState(settings: GameSettings(seedText: arguments[1], houseCount: houses, radius: radius))
+var state = GameState(settings: GameSettings(seedText: arguments[1], houseCount: houses, radius: radius, keepers: 1))
 if arguments[4] == "whole" {
     state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
 }

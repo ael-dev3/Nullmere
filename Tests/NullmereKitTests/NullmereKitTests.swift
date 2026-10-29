@@ -45,7 +45,7 @@ final class WorldShaderTests: XCTestCase {
 
 final class TileTextureTests: XCTestCase {
     func testEachTileLandsAtItsAxialTexel() {
-        let state = GameState(settings: GameSettings(seedText: "tile texture", houseCount: 3, radius: 14))
+        let state = GameState(settings: GameSettings(seedText: "tile texture", houseCount: 3, radius: 14, keepers: 1))
         let side = TileTexture.side(for: state.map)
         let bytes = TileTexture.bytes(for: state, viewer: state.player)
         XCTAssertEqual(side, 29)
@@ -145,7 +145,7 @@ final class LocalStoreTests: XCTestCase {
 final class GameSessionTests: XCTestCase {
     private func session() -> (GameSession, URL) {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let state = GameState(settings: GameSettings(seedText: "session", houseCount: 3, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "session", houseCount: 3, radius: 16, keepers: 1))
         return (GameSession(state: state, store: LocalStore(directory: directory)), directory)
     }
 
@@ -226,7 +226,7 @@ final class NarrationTests: XCTestCase {
 
     /// A seat moved and empty granaries are told to their own House alone.
     func testTheKeepersOwnTroublesAreToldToThemAlone() throws {
-        let state = GameState(settings: GameSettings(seedText: "troubles", houseCount: 3, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "troubles", houseCount: 3, radius: 16, keepers: 1))
         let me = state.player, other = (state.player + 1) % state.houses.count
         let hold = try XCTUnwrap(state.holds.first { $0.owner == me })
         let moved = try XCTUnwrap(Narration.line(for: .seatMoved(house: me, to: hold.id), in: state, viewer: me))
@@ -242,7 +242,7 @@ final class NarrationTests: XCTestCase {
     /// The keeper's own envoys are told as theirs, going out; another's as
     /// coming in. An age is won by ascendancy or by dominion, each named.
     func testEnvoysAndEndingsAreToldAsTheyAre() throws {
-        let state = GameState(settings: GameSettings(seedText: "envoys", houseCount: 3, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "envoys", houseCount: 3, radius: 16, keepers: 1))
         let me = state.player, other = (state.player + 1) % state.houses.count
         let them = state.houses[other].title
         func said(_ event: GameEvent) throws -> Narration.Line { try XCTUnwrap(Narration.line(for: event, in: state, viewer: me)) }
@@ -280,7 +280,7 @@ final class WatchSummaryTests: XCTestCase {
     /// A battle the keeper fought heads the card; a hold lost and gone from
     /// the world since is still named, as a hold.
     func testTheCardNamesWhatTheWatchBrought() throws {
-        let state = GameState(settings: GameSettings(seedText: "card", houseCount: 3, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "card", houseCount: 3, radius: 16, keepers: 1))
         let me = state.player
         let mine = try XCTUnwrap(state.units(of: me).first)
         let fought = Battle(attacker: mine.id, attackerOwner: me, attackerKind: mine.kind, defender: nil, defenderOwner: 1,
@@ -295,7 +295,7 @@ final class WatchSummaryTests: XCTestCase {
 
 final class CounselTests: XCTestCase {
     func testCounselGuidesTheOpeningAndThenFallsSilent() {
-        var state = GameState(settings: GameSettings(seedText: "counsel", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "counsel", houseCount: 3, radius: 16, keepers: 1))
         let first = Counsel.advice(for: state, player: state.player)
         XCTAssertNotNil(first)
         XCTAssertTrue(first!.contains("Lantern"))
@@ -388,7 +388,7 @@ final class GameGateTests: XCTestCase {
 
 final class HoverInfoTests: XCTestCase {
     func testTheLineDescribesTheGroundUnderThePointer() throws {
-        let state = GameState(settings: GameSettings(seedText: "hover", houseCount: 3, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "hover", houseCount: 3, radius: 16, keepers: 1))
         let territory = state.territory()
         let seat = try XCTUnwrap(state.seat(of: state.player))
         let line = try XCTUnwrap(HoverInfo.line(for: seat.position, in: state, explored: true, territory: territory))
@@ -417,7 +417,7 @@ final class HoverLineTests: XCTestCase {
     func testTheLineShowsWhileThePointerRestsOnTheMap() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "hover line")), store: LocalStore(directory: directory))
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "hover line", keepers: 1)), store: LocalStore(directory: directory))
         let seat = try XCTUnwrap(session.state.seat(of: session.player))
         func drawn() throws -> CGImage {
             let renderer = ImageRenderer(content: HoverLine(session: session).frame(width: 600, height: 40).background(Color.black))
@@ -445,7 +445,7 @@ final class BlowTests: XCTestCase {
     func testTheBlowsThePlayerSeesAreShownThenForgotten() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let state = GameState(settings: GameSettings(seedText: "blows", houseCount: 3, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "blows", houseCount: 3, radius: 16, keepers: 1))
         let session = GameSession(state: state, store: LocalStore(directory: directory))
         let mine = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind.isMilitary })
         let near = Battle(attacker: mine.id, attackerOwner: session.player, attackerKind: mine.kind,
@@ -493,7 +493,7 @@ final class WatchCardTests: XCTestCase {
     func testTheCardTellsWhatTheWatchBroughtThenFades() async throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "card", houseCount: 3, radius: 16)),
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "card", houseCount: 3, radius: 16, keepers: 1)),
                                   store: LocalStore(directory: dir))
         let before = session.playerHouse.stock
         session.endWatch()
@@ -509,7 +509,7 @@ final class WatchCardTests: XCTestCase {
     }
 
     func testTheSummaryNamesWhatTouchedThePlayer() {
-        var state = GameState(settings: GameSettings(seedText: "summary", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "summary", houseCount: 3, radius: 16, keepers: 1))
         let before = state
         _ = state.endWatch()
         let battle = Battle(attacker: 1, attackerOwner: state.player, attackerKind: .spear, defender: 2, defenderOwner: 1,
@@ -529,7 +529,7 @@ final class ReachDisplayTests: XCTestCase {
     func testSelectingACompanyShowsItsReach() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "range", houseCount: 3, radius: 16)),
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "range", houseCount: 3, radius: 16, keepers: 1)),
                                   store: LocalStore(directory: dir))
         XCTAssertTrue(session.reach.isEmpty)
         let lantern = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .lantern })
@@ -547,7 +547,7 @@ final class PointerTests: XCTestCase {
     func testThePointerSaysWhatAClickWouldDo() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "pointer", houseCount: 3, radius: 16)),
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "pointer", houseCount: 3, radius: 16, keepers: 1)),
                                   store: LocalStore(directory: dir))
         let seat = try XCTUnwrap(session.state.seat(of: session.player))
         let lantern = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .lantern })
@@ -588,7 +588,7 @@ final class MapAccessibilityTests: XCTestCase {
     func testVoiceOverReadsTheMapAsItsHoldsAndCompanies() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "voiceover", houseCount: 3, radius: 16)),
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "voiceover", houseCount: 3, radius: 16, keepers: 1)),
                                   store: LocalStore(directory: dir))
         let items = MapAccessibility.items(for: session)
         let seat = try XCTUnwrap(session.state.seat(of: session.player))
@@ -622,6 +622,35 @@ final class CueMappingTests: XCTestCase {
         XCTAssertEqual(GameSession.cues(for: [.stanceChanged(first: 0, second: 2, stance: .peace, by: 2)], player: player), [.watch, .accord])
         XCTAssertEqual(GameSession.cues(for: [.stanceChanged(first: 1, second: 2, stance: .war, by: 2)], player: player), [.watch],
                        "Others' wars are silent")
+    }
+
+    /// Blows taken are heard as blows dealt are, losses and hunger as
+    /// dread, and works and companies finished as they were begun.
+    func testWhatBefallsTheKeepersHouseIsHeard() throws {
+        let state = GameState(settings: GameSettings(seedText: "heard", keepers: 1))
+        let player = state.player
+        func struck(by kind: UnitKind) -> GameEvent {
+            .battle(Battle(attacker: 90, attackerOwner: 2, attackerKind: kind, defender: 91, defenderOwner: player, defenderKind: .spear,
+                           hold: nil, at: Hex(0, 0), damageDealt: 10, damageTaken: 4, attackerFell: false, defenderFell: false))
+        }
+        XCTAssertEqual(GameSession.cues(for: [struck(by: .spear)], player: player), [.watch, .clash])
+        XCTAssertEqual(GameSession.cues(for: [struck(by: .bow)], player: player), [.watch, .loose])
+        XCTAssertEqual(GameSession.cues(for: [.unitLost(unit: 91, kind: .spear, owner: player, at: Hex(0, 0))], player: player), [.watch, .dread])
+        XCTAssertEqual(GameSession.cues(for: [.starving(house: player)], player: player), [.watch, .dread])
+        XCTAssertEqual(GameSession.cues(for: [.unitLost(unit: 92, kind: .spear, owner: 2, at: Hex(0, 0)), .starving(house: 2)], player: player), [.watch],
+                       "Others' losses are silent")
+        let seat = try XCTUnwrap(state.seat(of: player))
+        let done = GameEvent.buildingCompleted(hold: seat.id, kind: .granary, level: 1)
+        XCTAssertEqual(GameSession.cues(for: [done], in: state, player: player), [.watch, .rise])
+        let theirs = try XCTUnwrap(state.holds.first { $0.owner != player })
+        XCTAssertEqual(GameSession.cues(for: [.buildingCompleted(hold: theirs.id, kind: .granary, level: 1)], in: state, player: player), [.watch])
+        let unit = try XCTUnwrap(state.units(of: player).first)
+        XCTAssertEqual(GameSession.cues(for: [.unitTrained(unit: unit.id, hold: seat.id)], in: state, player: player), [.watch, .rise])
+        // Refusing a steward's tribute begins a war, and sounds as war does.
+        let refusal = GameSession.cues(for: .answer(envoy: 1, accept: false),
+                                       events: [.stanceChanged(first: player, second: 2, stance: .war, by: 2)], in: state, player: player)
+        XCTAssertEqual(refusal, [.dread])
+        XCTAssertEqual(GameSession.cues(for: .answer(envoy: 1, accept: false), events: [], in: state, player: player), [.select])
     }
 }
 
@@ -661,7 +690,7 @@ final class TextSizeTests: XCTestCase {
     func testThePanelsGrowWithTheType() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "larger text")), store: LocalStore(directory: dir))
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "larger text", keepers: 1)), store: LocalStore(directory: dir))
         session.selectNextReadyUnit()
         XCTAssertNotNil(session.selectedUnit)
 
@@ -678,7 +707,7 @@ final class TextSizeTests: XCTestCase {
     func testTheTopBarFitsTheWindow() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "top bar")), store: LocalStore(directory: dir))
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "top bar", keepers: 1)), store: LocalStore(directory: dir))
         TextSize.shared.isLarger = false
         let standard = try size(of: TopBar(session: session, compact: false).fixedSize())
         TextSize.shared.isLarger = true
@@ -705,7 +734,7 @@ final class TextSizeTests: XCTestCase {
     func testTheCameraGlidesAndGivesWayToThePlayer() async throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "a glide")), store: LocalStore(directory: dir))
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "a glide", keepers: 1)), store: LocalStore(directory: dir))
         let seat = try XCTUnwrap(session.state.seat(of: session.player)).position
         var target = session.camera
         target.focus(on: seat)
@@ -737,7 +766,7 @@ final class TextSizeTests: XCTestCase {
     func testTheLedgerIsTheWorldsOwn() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "a ledger")), store: LocalStore(directory: dir))
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "a ledger", keepers: 1)), store: LocalStore(directory: dir))
         let state = session.state, me = session.player
         let ledger = session.ledger
         XCTAssertEqual(ledger.income, state.income(of: me))
@@ -754,7 +783,7 @@ final class TextSizeTests: XCTestCase {
 
     /// A company's march is told in words, never in coordinates.
     func testAMarchIsToldInWords() throws {
-        var state = GameState(settings: GameSettings(seedText: "a march told", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "a march told", houseCount: 3, radius: 16, keepers: 1))
         let me = state.player
         let index = try XCTUnwrap(state.units.firstIndex { $0.owner == me })
         XCTAssertNil(UnitPanel.march(of: state.units[index], in: state, viewer: me))
@@ -781,7 +810,7 @@ final class TextSizeTests: XCTestCase {
     func testTheHoldPanelScrollsWithinItsHeight() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "larger text")), store: LocalStore(directory: dir))
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "larger text", keepers: 1)), store: LocalStore(directory: dir))
         session.focusOnSeat()
         XCTAssertNotNil(session.selectedHold)
         TextSize.shared.isLarger = true

@@ -13,7 +13,7 @@ final class FallbackMapTests: XCTestCase {
 
     private func session(knowingTheMoonsWater: Bool = false) -> (GameSession, URL) {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        var state = GameState(settings: GameSettings(seedText: "painted without metal", houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "painted without metal", houseCount: 4, radius: 18, keepers: 1))
         if knowingTheMoonsWater, let water = state.moonWater {
             state.reveal(around: water.hex, range: 4, for: state.player)
         }

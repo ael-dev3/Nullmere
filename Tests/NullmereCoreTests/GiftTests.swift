@@ -4,7 +4,7 @@ import XCTest
 
 final class GiftTests: XCTestCase {
     private func world() -> GameState {
-        GameState(settings: GameSettings(seedText: "gifts", houseCount: 4, radius: 18))
+        GameState(settings: GameSettings(seedText: "gifts", houseCount: 4, radius: 18, keepers: 1))
     }
 
     func testAGiftMovesStoresBetweenHousesAtPeace() throws {

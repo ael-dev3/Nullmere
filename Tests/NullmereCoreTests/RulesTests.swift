@@ -3,7 +3,7 @@ import XCTest
 
 final class RulesTests: XCTestCase {
     private func newGame(_ seed: String = "the still water") -> GameState {
-        GameState(settings: GameSettings(seedText: seed))
+        GameState(settings: GameSettings(seedText: seed, keepers: 1))
     }
 
     /// A free passable hex next to `hex`, for staging a scene.
@@ -262,7 +262,7 @@ final class RulesTests: XCTestCase {
 
 final class EconomyTests: XCTestCase {
     func testBarterTradesThreeToOneWithMoonsaltDearer() throws {
-        var state = GameState(settings: GameSettings(seedText: "barter"))
+        var state = GameState(settings: GameSettings(seedText: "barter", keepers: 1))
         state.houses[0].stock = Stock(grain: 300, timber: 0, stone: 10, moonsalt: 30)
         try state.perform(.barter(give: .grain, take: .timber, amount: 50), as: 0)
         XCTAssertEqual(state.houses[0].stock.grain, 150)
@@ -276,7 +276,7 @@ final class EconomyTests: XCTestCase {
     }
 
     func testStorageLimitsWhatAHouseKeeps() {
-        var state = GameState(settings: GameSettings(seedText: "storage"))
+        var state = GameState(settings: GameSettings(seedText: "storage", keepers: 1))
         let room = state.storage(of: 0)
         XCTAssertEqual(room, GameState.baseStorage + GameState.storagePerHold)
         state.houses[0].stock = Stock(grain: room, timber: room, stone: room, moonsalt: room)
@@ -297,7 +297,7 @@ final class EconomyTests: XCTestCase {
     }
 
     func testRivalsFearARisingMoonspire() {
-        var state = GameState(settings: GameSettings(seedText: "fear"))
+        var state = GameState(settings: GameSettings(seedText: "fear", keepers: 1))
         let seat = state.seat(of: 0)!
         state.holds[state.holdIndex(seat.id)!].levels[.moonspire] = 3
         XCTAssertEqual(RivalMind(house: 1).spireThreat(in: state), 0)
@@ -312,7 +312,7 @@ final class ForecastTests: XCTestCase {
     func testAttacksLandInsideTheirForecasts() throws {
         var checked = 0
         for seed in ["forecast one", "forecast two", "forecast three"] {
-            var state = GameState(settings: GameSettings(seedText: seed, houseCount: 4, radius: 18))
+            var state = GameState(settings: GameSettings(seedText: seed, houseCount: 4, radius: 18, keepers: 1))
             for _ in 0..<160 where state.outcome == nil {
                 for unit in state.units {
                     for hex in unit.position.spiral(unit.kind.range) {
@@ -333,7 +333,7 @@ final class ForecastTests: XCTestCase {
     }
 
     func testNoForecastWithoutAWar() {
-        let state = GameState(settings: GameSettings(seedText: "no war", houseCount: 3, radius: 14))
+        let state = GameState(settings: GameSettings(seedText: "no war", houseCount: 3, radius: 14, keepers: 1))
         let unit = state.units(of: state.player).first { $0.kind.isMilitary }!
         for hex in unit.position.spiral(3) {
             XCTAssertNil(state.forecast(unit: unit.id, at: hex))
@@ -354,7 +354,7 @@ final class VeterancyTests: XCTestCase {
     /// rise in rank, and a veteran fights better than a fresh company.
     func testBattlesMakeVeterans() throws {
         var promotions = 0
-        var state = GameState(settings: GameSettings(seedText: "veterans", houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "veterans", houseCount: 4, radius: 18, keepers: 1))
         for _ in 0..<160 where state.outcome == nil {
             var events = state.stewardTurn(for: state.player)
             events += state.endWatch()
@@ -389,7 +389,7 @@ final class ReachTests: XCTestCase {
     func testReachMatchesWhatMarchesDo() throws {
         var checked = 0
         for seed in ["reach one", "reach two"] {
-            var state = GameState(settings: GameSettings(seedText: seed, houseCount: 3, radius: 16))
+            var state = GameState(settings: GameSettings(seedText: seed, houseCount: 3, radius: 16, keepers: 1))
             for _ in 0..<30 {
                 for unit in state.units(of: state.player) where unit.movesLeft > 0 {
                     let reach = state.reach(of: unit)
@@ -417,7 +417,7 @@ final class ReachTests: XCTestCase {
     }
 
     func testNothingIsInReachWithoutMoves() throws {
-        let state = GameState(settings: GameSettings(seedText: "spent", houseCount: 3, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "spent", houseCount: 3, radius: 16, keepers: 1))
         var unit = try XCTUnwrap(state.units(of: state.player).first)
         XCTAssertFalse(state.reach(of: unit).isEmpty)
         unit.movesLeft = 0
@@ -427,7 +427,7 @@ final class ReachTests: XCTestCase {
 
 final class ExpansionAndFallTests: XCTestCase {
     func testEachNewHoldCostsMoreThanTheLast() throws {
-        var state = GameState(settings: GameSettings(seedText: "dearer holds", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "dearer holds", houseCount: 3, radius: 16, keepers: 1))
         let base = state.trainingCost(of: .founder, for: state.player)
         XCTAssertEqual(base, UnitKind.founder.cost, "The first Founders cost their price")
         XCTAssertEqual(state.trainingCost(of: .spear, for: state.player), UnitKind.spear.cost, "Only Founders grow dearer")
@@ -444,13 +444,12 @@ final class ExpansionAndFallTests: XCTestCase {
 
     /// A House can be destroyed outright.
     func testAHouseCanBeDestroyed() {
-        // In one of a few worlds, played out, a House falls outright. (Those
-        // from 21 to 30 end in a victory or the watches run out before any
-        // does: two minutes of play, passed over. 31 sees one fall.)
-        var state = GameState(settings: GameSettings(seedText: "siege check 14"))
+        // In one of a few worlds, played out, a House falls outright: the
+        // first of them to see one is enough (32, as the rules now stand).
+        var state = GameState(settings: GameSettings(seedText: "siege check 31", keepers: 1))
         var fallen: ChronicleEntry?
         for seed in 31..<41 where fallen == nil {
-            state = GameState(settings: GameSettings(seedText: "siege check \(seed)"))
+            state = GameState(settings: GameSettings(seedText: "siege check \(seed)", keepers: 1))
             while state.outcome == nil, state.watch < 170, fallen == nil {
                 _ = state.stewardTurn(for: state.player)
                 _ = state.endWatch()
@@ -468,9 +467,9 @@ final class ExpansionAndFallTests: XCTestCase {
     /// with its own.
     func testARivalCanWinByDominion() throws {
         // In one of a few worlds, played out, a rival wins by dominion.
-        var state = GameState(settings: GameSettings(seedText: "siege check 13"))
+        var state = GameState(settings: GameSettings(seedText: "siege check 15", keepers: 1))
         for seed in 15..<35 {
-            state = GameState(settings: GameSettings(seedText: "siege check \(seed)"))
+            state = GameState(settings: GameSettings(seedText: "siege check \(seed)", keepers: 1))
             while state.outcome == nil, state.watch < 200 {
                 _ = state.stewardTurn(for: state.player)
                 _ = state.endWatch()
@@ -490,7 +489,7 @@ final class ExpansionAndFallTests: XCTestCase {
 
     /// A vassal can't turn on its liege; a liege that turns on its vassal frees it.
     func testFealtyBindsTheVassal() throws {
-        var state = GameState(settings: GameSettings(seedText: "fealty", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "fealty", houseCount: 3, radius: 16, keepers: 1))
         let liege = 1, vassal = 2
         _ = try state.propose(.fealty, from: vassal, to: liege)
         XCTAssertEqual(state.houses[vassal].liege, liege)
@@ -536,7 +535,7 @@ final class ConquestTests: XCTestCase {
     }
 
     func testTakingASeatCarriesOffHalfItsStoresAndBreaksTheHouse() throws {
-        var state = GameState(settings: GameSettings(seedText: "spoils", houseCount: 3, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "spoils", houseCount: 3, radius: 18, keepers: 1))
         let rival = 1
         let heir = try addHold(for: rival, in: &state)
         let theirs = state.houses[rival].stock
@@ -556,7 +555,7 @@ final class ConquestTests: XCTestCase {
     }
 
     func testTakingAnOutlyingHoldCarriesOffItsShare() throws {
-        var state = GameState(settings: GameSettings(seedText: "spoils", houseCount: 3, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "spoils", houseCount: 3, radius: 18, keepers: 1))
         let rival = 1
         let outlying = try addHold(for: rival, in: &state)
         let theirs = state.houses[rival].stock
@@ -581,7 +580,7 @@ final class ConquestTests: XCTestCase {
     /// victors out.
     func testCloseCombatInAHoldWithItsWardDownTakesIt() throws {
         func scene(_ kind: UnitKind, ward: Int) throws -> (GameState, Hold, Int, [GameEvent]) {
-            var state = GameState(settings: GameSettings(seedText: "close combat", houseCount: 3, radius: 18))
+            var state = GameState(settings: GameSettings(seedText: "close combat", houseCount: 3, radius: 18, keepers: 1))
             let rival = 1
             let seat = try XCTUnwrap(state.seat(of: rival))
             state.units.removeAll { $0.owner == rival }
@@ -622,7 +621,7 @@ final class ConquestTests: XCTestCase {
     }
 
     func testThePlayerNeverBendsTheKnee() throws {
-        var state = GameState(settings: GameSettings(seedText: "spoils", houseCount: 3, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "spoils", houseCount: 3, radius: 18, keepers: 1))
         _ = try addHold(for: state.player, in: &state)
         _ = try takeSeat(of: state.player, by: 1, in: &state)
         XCTAssertNil(state.houses[state.player].liege)

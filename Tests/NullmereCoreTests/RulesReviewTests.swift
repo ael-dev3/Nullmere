@@ -9,7 +9,7 @@ import XCTest
 /// past storage, and the walls described as they work.
 final class RulesReviewTests: XCTestCase {
     private func newGame(_ seed: String = "rules reviewed") -> GameState {
-        GameState(settings: GameSettings(seedText: seed))
+        GameState(settings: GameSettings(seedText: seed, keepers: 1))
     }
 
     func testARefusedDemandWaitsBeforeItsMadeAgain() throws {

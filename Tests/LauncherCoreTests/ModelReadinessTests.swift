@@ -38,13 +38,12 @@ final class ModelReadinessTests: XCTestCase {
     }
 
     func testPlayOutcome() {
-        XCTAssertEqual(PlayOutcome(readiness: .ready, canEnterRealm: true), .enterRealm)
-        XCTAssertEqual(PlayOutcome(readiness: .ready, canEnterRealm: false), .awaitFirstRealm)
+        XCTAssertEqual(PlayOutcome(readiness: .ready), .enterRealm)
         XCTAssertEqual(
-            PlayOutcome(readiness: .appleIntelligenceNotEnabled, canEnterRealm: true),
+            PlayOutcome(readiness: .appleIntelligenceNotEnabled),
             .explainRequirement(.appleIntelligenceNotEnabled),
-            "The realm still needs the on-device model"
+            "The realm needs the on-device model"
         )
-        XCTAssertEqual(PlayOutcome(readiness: .deviceNotEligible, canEnterRealm: false), .explainRequirement(.deviceNotEligible))
+        XCTAssertEqual(PlayOutcome(readiness: .deviceNotEligible), .explainRequirement(.deviceNotEligible))
     }
 }

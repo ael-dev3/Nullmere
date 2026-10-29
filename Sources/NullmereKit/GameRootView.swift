@@ -1,4 +1,5 @@
 import AppKit
+import LauncherCore
 import NullmereCore
 import SwiftUI
 
@@ -64,6 +65,18 @@ public struct GameRootView: View {
 struct PlayView: View {
     let app: GameApp
     let session: GameSession
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// The display settings' Motion, the launcher's, with the system's
+    /// Reduce Motion where it says to follow it.
+    private var motion: ResolvedMotion {
+        app.displaySettings.motion.resolved(systemReducesMotion: reduceMotion)
+    }
+
+    /// Panels slide in at full motion; below it they only fade in.
+    private var panelTransition: AnyTransition {
+        motion == .full ? .move(edge: .trailing).combined(with: .opacity) : .opacity
+    }
 
     var body: some View {
         ZStack {
@@ -104,11 +117,11 @@ struct PlayView: View {
                     VStack(alignment: .trailing, spacing: 12) {
                         switch session.panel {
                         case .houses?:
-                            HousesPanel(session: session).transition(.move(edge: .trailing).combined(with: .opacity))
+                            HousesPanel(session: session).transition(panelTransition)
                         case .chronicle?:
-                            ChroniclePanel(session: session).transition(.move(edge: .trailing).combined(with: .opacity))
+                            ChroniclePanel(session: session).transition(panelTransition)
                         case .guide?:
-                            GuidePanel(session: session).transition(.move(edge: .trailing).combined(with: .opacity))
+                            GuidePanel(session: session).transition(panelTransition)
                         case nil:
                             EmptyView()
                         }
@@ -160,6 +173,10 @@ struct PlayView: View {
             }
         }
         .background(KeyBridge { key in session.handle(key) })
+        .environment(\.worldMotion, motion)
+        .environment(\.worldFrameRate, app.displaySettings.frameRate)
+        .environment(\.worldQuality, app.displaySettings.quality)
+        .onChange(of: motion, initial: true) { _, motion in session.motion = motion }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             session.keeperReturned()
         }

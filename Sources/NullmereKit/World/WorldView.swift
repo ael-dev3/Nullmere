@@ -1,4 +1,5 @@
 import AppKit
+import LauncherCore
 import NullmereCore
 import SwiftUI
 
@@ -7,7 +8,9 @@ import SwiftUI
 struct WorldView: View {
     let session: GameSession
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.worldMotion) private var motion
+    @Environment(\.worldFrameRate) private var frameRate
+    @Environment(\.worldQuality) private var quality
     @State private var metalFailed = false
 
     var body: some View {
@@ -15,7 +18,7 @@ struct WorldView: View {
             if metalFailed || WorldMetalView.systemDevice == nil {
                 WorldFallback(session: session)
             } else {
-                WorldMetalRepresentable(session: session, animates: !reduceMotion) {
+                WorldMetalRepresentable(session: session, motion: motion, frameRate: frameRate, quality: quality) {
                     metalFailed = true
                 }
             }
@@ -48,7 +51,9 @@ struct WorldView: View {
 
 private struct WorldMetalRepresentable: NSViewRepresentable {
     let session: GameSession
-    let animates: Bool
+    let motion: ResolvedMotion
+    let frameRate: FrameRateCap
+    let quality: RenderQuality
     let onFailure: () -> Void
 
     func makeNSView(context: Context) -> WorldMetalView {
@@ -79,7 +84,9 @@ private struct WorldMetalRepresentable: NSViewRepresentable {
         view.camera = session.camera
         view.hovered = session.hovered
         view.selected = session.selectedHex
-        view.animates = animates
+        view.motion = motion
+        view.frameRateCap = frameRate
+        view.quality = quality
         view.setTiles(session.tileBytes, side: TileTexture.side(for: session.state.map), version: session.tilesVersion)
     }
 }
@@ -90,7 +97,10 @@ struct WorldMarks: View {
     /// A moment to draw instead of the clock's, for tests.
     var moment: Date?
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.worldMotion) private var motion
+    /// Below full motion, marches and blows are shown where they end, not
+    /// played out.
+    private var reduceMotion: Bool { motion != .full }
     /// With "Differentiate without colour" on, what colour says is said in
     /// shape too.
     private var differentiate: Bool { Contrast.shared.differentiates }

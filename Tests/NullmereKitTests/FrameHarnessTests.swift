@@ -12,7 +12,7 @@ final class FrameHarnessTests: XCTestCase {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: WorldShader.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
-        var state = GameState(settings: GameSettings(seedText: "panning frames"))
+        var state = GameState(settings: GameSettings(seedText: "panning frames", keepers: 1))
         for _ in 0..<40 {
             _ = state.stewardTurn(for: state.player)
             _ = state.endWatch()

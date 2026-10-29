@@ -44,7 +44,7 @@ final class ComingBackTests: XCTestCase {
     }
 
     func testComingBackClearsWhatWasMissed() throws {
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "coming back", houseCount: 3, radius: 16)),
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "coming back", houseCount: 3, radius: 16, keepers: 1)),
                                   store: LocalStore(directory: dir.appendingPathComponent("session")))
         session.dismissSeatBriefing()
         session.isLooking = { false }

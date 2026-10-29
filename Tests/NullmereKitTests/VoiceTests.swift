@@ -47,7 +47,7 @@ final class SessionVoiceTests: XCTestCase {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let voice = EchoVoice()
-        let state = GameState(settings: GameSettings(seedText: "voices over the water", houseCount: 4, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "voices over the water", houseCount: 4, radius: 16, keepers: 1))
         let session = GameSession(state: state, store: LocalStore(directory: directory), voice: voice)
         session.autoplay(watches: 120)
         for _ in 0..<500 where session.voicesPending {

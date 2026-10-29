@@ -102,20 +102,20 @@ final class LauncherModelTimingTests: XCTestCase {
         XCTAssertEqual(model.newsSelection, 0)
     }
 
-    func testPlayWithNowhereToGoAndPlayAsTheModelGoes() {
+    func testPlayWaitsForTheWayInAndNotAsTheModelGoes() {
         let world = World()
         let model = model(world)
         model.refreshReadiness()
         model.completeIntro()
         model.play()
-        XCTAssertEqual(model.screen, .play, "No realm to cross into: the Play screen says so")
-        XCTAssertEqual(model.playSelection, .back)
+        XCTAssertEqual(model.screen, .title, "No way into the realm given yet: Play waits")
+        XCTAssertFalse(model.isLeaving, "and nothing fades")
 
         model.enterRealm = {}
-        model.returnToTitle()
         world.readiness = .appleIntelligenceNotEnabled
         model.play()
         XCTAssertTrue(model.isGated, "The model went away: the requirement screen says why")
+        XCTAssertFalse(model.isLeaving)
     }
 
     func testTheSettingsLinkFallsBackToSystemSettings() {

@@ -27,7 +27,7 @@ final class WorldMetalViewTests: XCTestCase {
 
     func testTilesWaitForTheShaderAndFailuresAreSaidOnce() throws {
         guard let device = WorldMetalView.systemDevice else { throw XCTSkip("No Metal device available") }
-        let state = GameState(settings: GameSettings(seedText: "waiting tiles", houseCount: 3, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "waiting tiles", houseCount: 3, radius: 16, keepers: 1))
         let side = TileTexture.side(for: state.map)
         let bytes = TileTexture.bytes(for: state, viewer: state.player)
 

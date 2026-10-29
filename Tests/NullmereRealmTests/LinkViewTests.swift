@@ -155,11 +155,13 @@ final class LinkViewTests: XCTestCase {
             link.send(.fortify(unit: spear.id))
             try await Task.sleep(nanoseconds: 30_000_000)
             link.leave()
-            XCTAssertEqual(link.waiting, 0)
         }
+        let heard = ear.events.count
         // The answers come, to no one: the steward's rounds go by.
         try await db.waitFor(6, more: FakeSpacetime.stewardRound)
-        XCTAssertEqual(link.waiting, 0)
+        XCTAssertEqual(ear.events.count, heard, "Nothing is told after leaving")
+        let carried = await db.handled(kind: "order")
+        XCTAssertLessThanOrEqual(carried, 5, "No order carried out twice")
     }
 
     func testANewAgeIsANewArrival() async throws {

@@ -38,7 +38,9 @@ final class RealmTests: XCTestCase {
                 for other in seats[(index + 1)...] { nearest = min(nearest, seat.distance(to: other)) }
             }
             XCTAssertGreaterThanOrEqual(nearest, 6, "Room between the seats (\(seed))")
-            // Twelve stewards play thirty watches in good time.
+            // A keeper takes one seat, and eleven stewards play thirty
+            // watches in good time.
+            realm.arriveIfNeeded()
             for _ in 0..<30 {
                 _ = realm.tick(now: 1e12)
                 realm.arriveIfNeeded()
@@ -276,7 +278,7 @@ final class RealmTests: XCTestCase {
 
 final class RealmAroundAWorldTests: XCTestCase {
     func testOneHousesGameIsARealmWithOneKeeper() throws {
-        let world = GameState(settings: GameSettings(seedText: "one house", houseCount: 3, radius: 16))
+        let world = GameState(settings: GameSettings(seedText: "one house", houseCount: 3, radius: 16, keepers: 1))
         var realm = RealmState(name: "Rehearsal", world: world, keeper: "me", now: 0)
         XCTAssertEqual(realm.keeper("me")?.house, world.player)
         XCTAssertEqual(realm.world, world)
@@ -290,7 +292,7 @@ final class RealmAroundAWorldTests: XCTestCase {
 
 final class FogTests: XCTestCase {
     private func game() -> GameState {
-        var state = GameState(settings: GameSettings(seedText: "fog", houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "fog", houseCount: 4, radius: 18, keepers: 1))
         for _ in 0..<12 {
             state.stewardTurn(for: state.player)
             _ = state.endWatch()

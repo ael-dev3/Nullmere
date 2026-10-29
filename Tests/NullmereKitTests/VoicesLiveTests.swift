@@ -19,7 +19,7 @@ final class VoicesLiveTests: XCTestCase {
         guard OnDeviceVoice.isAvailable else {
             return XCTFail("Apple's on-device model isn't ready on this Mac: turn on Apple Intelligence and let it finish downloading")
         }
-        var state = GameState(settings: GameSettings(seedText: "voices", houseCount: 6, radius: 22))
+        var state = GameState(settings: GameSettings(seedText: "voices", houseCount: 6, radius: 22, keepers: 1))
         for _ in 0..<60 where state.outcome == nil {
             _ = state.stewardTurn(for: state.player)
             _ = state.endWatch()

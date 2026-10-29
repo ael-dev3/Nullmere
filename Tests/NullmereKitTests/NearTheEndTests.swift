@@ -30,7 +30,7 @@ final class NearTheEndTests: XCTestCase {
 
     /// Counsel warns the keeper of their own near victory, by either road.
     func testCounselSpeaksOfTheKeepersOwnNearVictory() throws {
-        var state = GameState(settings: GameSettings(seedText: "near victory"))
+        var state = GameState(settings: GameSettings(seedText: "near victory", keepers: 1))
         let me = state.player
         let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
         state.holds[seat].levels[.moonspire] = BuildingKind.moonspire.maxLevel - 1
@@ -57,7 +57,7 @@ final class NearTheEndTests: XCTestCase {
     /// one whose last hold has fallen.
     func testARivalsDominionIsToldEachWay() throws {
         for fallen in [false, true] {
-            var state = GameState(settings: GameSettings(seedText: "a rival's dominion"))
+            var state = GameState(settings: GameSettings(seedText: "a rival's dominion", keepers: 1))
             let rival = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
             if fallen { state.houses[state.player].isEliminated = true }
             let outcome = Outcome(winner: rival, kind: .dominion, watch: state.watch)
@@ -74,7 +74,7 @@ final class NearTheEndTests: XCTestCase {
     /// A keeper whose House falls while the age goes on looks on, and is
     /// told they'll be seated again when the next begins.
     func testAFallenKeeperLooksOnUntilTheAgeEnds() throws {
-        var state = GameState(settings: GameSettings(seedText: "fallen, looking on"))
+        var state = GameState(settings: GameSettings(seedText: "fallen, looking on", keepers: 1))
         state.houses[state.player].isEliminated = true
         let store = LocalStore(directory: dir.appendingPathComponent("fallen"))
         let session = GameSession(state: state, store: store)
@@ -136,7 +136,7 @@ final class NearTheEndTests: XCTestCase {
 
     /// The story's line runs to the present watch, recorded or not yet.
     func testTheStoryRunsToTheWatchNotYetRecorded() {
-        var state = GameState(settings: GameSettings(seedText: "a story", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "a story", houseCount: 3, radius: 16, keepers: 1))
         state.watch += 1
         XCTAssertNotEqual(state.history.last?.watch, state.watch, "Not yet recorded")
         let points = StoryChart.points(for: state)
@@ -145,7 +145,7 @@ final class NearTheEndTests: XCTestCase {
 
     /// A foreign hold in sight shows its ward; out of sight, it can't.
     func testAForeignHoldInSightShowsItsWard() throws {
-        var state = GameState(settings: GameSettings(seedText: "a ward in sight", houseCount: 3, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "a ward in sight", houseCount: 3, radius: 18, keepers: 1))
         let me = state.player
         let theirs = try XCTUnwrap(state.holds.first { $0.owner != me && $0.isSeat })
         let beside = try XCTUnwrap(state.map.neighbors(of: theirs.position).first { hex in

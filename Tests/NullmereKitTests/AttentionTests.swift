@@ -20,7 +20,7 @@ final class AttentionTests: XCTestCase {
     func testASessionTellsTheDockWhenTheWatchTurnsUnseen() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "elsewhere", houseCount: 3, radius: 16)),
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "elsewhere", houseCount: 3, radius: 16, keepers: 1)),
                                   store: LocalStore(directory: dir))
         var looking = false
         var signals: [Attention.Signal] = []

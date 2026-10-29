@@ -27,7 +27,7 @@ final class AwayReportTests: XCTestCase {
 
     func testAReturningKeeperHearsWhatPassedWhileAway() throws {
         let store = LocalStore(directory: dir)
-        let state = GameState(settings: GameSettings(seedText: "away a while", houseCount: 4, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "away a while", houseCount: 4, radius: 16, keepers: 1))
         let first = GameSession(state: state, store: store)
         XCTAssertNil(first.awayReport, "The first time in, there's nothing to tell")
 
@@ -57,7 +57,7 @@ final class AwayReportTests: XCTestCase {
 
     func testAKeeperTakingUpTheirHouseIsBriefedOnce() throws {
         let store = LocalStore(directory: dir)
-        var state = GameState(settings: GameSettings(seedText: "taking a seat", houseCount: 5, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "taking a seat", houseCount: 5, radius: 16, keepers: 1))
         let rival = try XCTUnwrap(state.houses.first { !$0.isPlayer })
         _ = try state.perform(.declareWar(on: rival.id), as: state.player)
         // Three watches pass; the rivals' offers wait on the keeper's answer.
@@ -71,7 +71,7 @@ final class AwayReportTests: XCTestCase {
         XCTAssertTrue(briefing.facts.contains("The age is at watch 4; the stewards kept your House until now."))
         XCTAssertTrue(briefing.facts.contains { $0.contains("You are at war with") && $0.contains(rival.title) }, "\(briefing.facts)")
         XCTAssertTrue(briefing.facts.contains { $0.hasPrefix("Of 5 Houses around the lake, ") })
-        let even = SeatBriefing(world: GameState(settings: GameSettings(seedText: "even start", houseCount: 4, radius: 16)), player: 0)
+        let even = SeatBriefing(world: GameState(settings: GameSettings(seedText: "even start", houseCount: 4, radius: 16, keepers: 1)), player: 0)
         XCTAssertTrue(even.facts.contains("Of 4 Houses around the lake, none is stronger than yours."), "\(even.facts)")
         XCTAssertEqual(briefing.steps.count, state.holds(of: state.player).contains { $0.project == nil } ? 3 : 2)
         XCTAssertTrue(briefing.steps.last!.contains("⌘↩"))
@@ -87,7 +87,7 @@ final class AwayReportTests: XCTestCase {
     func testAnOmenIsShownWhileItLasts() throws {
         XCTAssertEqual(OmenBand.lasting(3), "It lifts in 3 watches.")
         XCTAssertEqual(OmenBand.lasting(1), "It lifts as the watch turns.")
-        var state = GameState(settings: GameSettings(seedText: "an omen", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "an omen", houseCount: 3, radius: 16, keepers: 1))
         state.omen = Omen(kind: .risingMist, began: 1, ends: 4)
         let briefing = SeatBriefing(world: state, player: state.player)
         XCTAssertTrue(briefing.facts.contains("An omen lies on the realm, Rising Mist: Every company and hold sees one tile less."), "\(briefing.facts)")
@@ -96,7 +96,7 @@ final class AwayReportTests: XCTestCase {
 
     func testANewKeepersFirstStepsAreTickedOffAndPutAway() throws {
         let store = LocalStore(directory: dir)
-        let state = GameState(settings: GameSettings(seedText: "first steps", houseCount: 3, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "first steps", houseCount: 3, radius: 16, keepers: 1))
         let session = GameSession(state: state, store: store)
         XCTAssertEqual(session.firstSteps?.done, [], "A new keeper starts with three to do")
 
@@ -123,7 +123,7 @@ final class AwayReportTests: XCTestCase {
     func testAStepTheWorldShowsTakenIsNotAskedFor() throws {
         // A seat a steward kept until now may have a work under way, and a
         // hold can't be given another: the step is ticked, not asked for.
-        var state = GameState(settings: GameSettings(seedText: "steward's seat", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "steward's seat", houseCount: 3, radius: 16, keepers: 1))
         let seat = try XCTUnwrap(state.holds(of: state.player).first)
         let started = BuildingKind.allCases.contains { (try? state.perform(.build(hold: seat.id, kind: $0), as: state.player)) != nil }
         XCTAssertTrue(started)
@@ -132,7 +132,7 @@ final class AwayReportTests: XCTestCase {
     }
 
     func testAStewardsWatchesPutTheFirstStepsAway() {
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "steward played", houseCount: 3, radius: 16)),
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "steward played", houseCount: 3, radius: 16, keepers: 1)),
                                   store: LocalStore(directory: dir))
         XCTAssertNotNil(session.firstSteps)
         session.autoplay(watches: 5)
@@ -141,7 +141,7 @@ final class AwayReportTests: XCTestCase {
     }
 
     func testTheReportSpeaksPlainly() throws {
-        let state = GameState(settings: GameSettings(seedText: "plain words", houseCount: 3, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "plain words", houseCount: 3, radius: 16, keepers: 1))
         let seen = LastSeen(watch: state.watch, stock: state.houses[state.player].stock, holds: state.holds(of: state.player).count)
         XCTAssertNil(AwayReport(since: seen, now: state, player: state.player), "No watch passed")
         let one = try XCTUnwrap(AwayReport(since: seen, now: later(state, by: 1), player: state.player))

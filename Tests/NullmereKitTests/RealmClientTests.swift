@@ -158,7 +158,7 @@ final class RealmClientTests: XCTestCase {
 
     func testTheRealmOutOfReachIsToldOnceAndItsReturnToo() throws {
         let link = StubLink()
-        let state = GameState(settings: GameSettings(seedText: "out of reach", houseCount: 3, radius: 16))
+        let state = GameState(settings: GameSettings(seedText: "out of reach", houseCount: 3, radius: 16, keepers: 1))
         let session = GameSession(link: link, house: state.player, world: state.view(for: state.player),
                                   store: LocalStore(directory: dir))
         for _ in 0..<5 { link.onEvent?(.unreachable("No answer from the server.")) }

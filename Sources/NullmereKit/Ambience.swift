@@ -14,9 +14,10 @@ public final class Ambience {
         case order
         /// The watch turns: a low bell over the water.
         case watch
-        /// A hold founded, a work completed.
+        /// Something raised: a hold founded, a work or a company ordered,
+        /// and each finished.
         case rise
-        /// War declared, a hold lost.
+        /// War begun, a hold or a company lost, hunger.
         case dread
         /// An envoy at the gate: a soft call of two notes.
         case envoy
@@ -26,9 +27,9 @@ public final class Ambience {
         case accord
         /// A House destroyed: a deep, long toll.
         case toll
-        /// Steel meeting steel: a company strikes in close.
+        /// Steel meeting steel: a company strikes in close, or is struck.
         case clash
-        /// A bowstring loosed.
+        /// A bowstring loosed, by a company or at one.
         case loose
         /// Riders sent off: hooves on hard ground.
         case ride
@@ -54,15 +55,28 @@ public final class Ambience {
     /// meanwhile waits for it.
     public private(set) var isWanted = false
 
-    /// The engine is running: for tests.
-    var isPlaying: Bool { started }
+    /// Fading out before the engine stops: a hard stop clicks.
+    private var winding: Task<Void, Never>?
+    /// How long sound takes to fade out, as the picture fades.
+    static let fadeOutSeconds = 0.8
+
+    /// The engine is running and not fading out: for tests.
+    var isPlaying: Bool { started && winding == nil }
+
+    /// When each cue last sounded. The same cue again within a tenth of a
+    /// second is one sound, not a pile of them: ten watches turned at once
+    /// toll one bell.
+    private var lastPlayed: [Cue: ContinuousClock.Instant] = [:]
 
     public init(enabled: Bool) {
         isEnabled = enabled
     }
 
     public func play(_ cue: Cue) {
-        guard isEnabled, started else { return }
+        guard isEnabled, started, winding == nil else { return }
+        let now = ContinuousClock.now
+        if let last = lastPlayed[cue], now - last < .milliseconds(100) { return }
+        lastPlayed[cue] = now
         synth.trigger(cue)
     }
 
@@ -90,7 +104,7 @@ public final class Ambience {
     }
 
     private func apply() {
-        if isEnabled { begin() } else { end() }
+        if isEnabled { begin() } else { windDown() }
     }
 
     public func start() {
@@ -99,7 +113,15 @@ public final class Ambience {
     }
 
     private func begin() {
-        guard isEnabled, isWanted, !started else { return }
+        guard isEnabled, isWanted else { return }
+        if let winding {
+            // Wanted again while fading out: it fades back in.
+            winding.cancel()
+            self.winding = nil
+            synth.fadeIn()
+            return
+        }
+        guard !started else { return }
         let format = engine.outputNode.inputFormat(forBus: 0)
         let rate = format.sampleRate > 0 ? format.sampleRate : 48_000
         let stereo = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 2)!
@@ -129,7 +151,19 @@ public final class Ambience {
 
     public func stop() {
         isWanted = false
-        end()
+        windDown()
+    }
+
+    /// Fades out, then stops the engine.
+    private func windDown() {
+        guard started, winding == nil else { return }
+        synth.fadeOut()
+        winding = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Ambience.fadeOutSeconds))
+            guard let self, !Task.isCancelled else { return }
+            self.winding = nil
+            self.end()
+        }
     }
 
     private func end() {
@@ -138,6 +172,8 @@ public final class Ambience {
         for node in engine.attachedNodes where node is AVAudioSourceNode {
             engine.detach(node)
         }
+        // Begun again, it fades in from silence, with no tail of before.
+        synth.reset()
         started = false
     }
 }
@@ -171,6 +207,9 @@ final class Synth: @unchecked Sendable {
     private var time: Float = 0
     private var level: Float = 0
     private var target: Float = 0
+    /// How fast the level follows its target, per second: slowly in, as
+    /// night falls; quickly out, with the picture.
+    private var fadeRate: Float = 0.25
     private var seed: UInt32 = 0x1234_5678
     private var windLeft: Float = 0
     private var windRight: Float = 0
@@ -201,7 +240,21 @@ final class Synth: @unchecked Sendable {
     }
 
     func fadeIn() {
-        lock.lock(); target = 1; lock.unlock()
+        lock.lock(); target = 1; fadeRate = 0.25; lock.unlock()
+    }
+
+    func fadeOut() {
+        lock.lock(); target = 0; fadeRate = 5; lock.unlock()
+    }
+
+    /// Silent, with nothing left sounding: called with the engine stopped.
+    func reset() {
+        lock.lock()
+        level = 0
+        target = 0
+        pending.removeAll()
+        notes.removeAll()
+        lock.unlock()
     }
 
     /// Skips the fade, for measuring.
@@ -301,6 +354,7 @@ final class Synth: @unchecked Sendable {
         notes.append(contentsOf: pending)
         pending.removeAll(keepingCapacity: true)
         let goal = target
+        let rate = fadeRate
         if let music = pendingMusic {
             score.target = music.on ? 1 : 0
             score.mood = music.mood
@@ -323,7 +377,7 @@ final class Synth: @unchecked Sendable {
         let droneFrequencies: [Float] = [55, 82.41, 110, 164.81]
         for frame in 0..<frames {
             time += dt
-            level += (goal - level) * dt / 4
+            level += (goal - level) * dt * rate
 
             // The drone: a few cold partials, each swelling at its own pace.
             var drone: Float = 0

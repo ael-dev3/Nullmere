@@ -4,7 +4,7 @@ import XCTest
 
 final class OmenTests: XCTestCase {
     private func world() -> GameState {
-        GameState(settings: GameSettings(seedText: "omens", houseCount: 4, radius: 18))
+        GameState(settings: GameSettings(seedText: "omens", houseCount: 4, radius: 18, keepers: 1))
     }
 
     func testOmensFallNowAndThenAndLift() {

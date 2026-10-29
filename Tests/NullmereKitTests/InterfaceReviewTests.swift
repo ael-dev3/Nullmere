@@ -33,7 +33,7 @@ final class InterfaceReviewTests: XCTestCase {
     }
 
     func testTheAwayReportTellsOnlyOfTheHouseLastSeen() throws {
-        let state = GameState(settings: GameSettings(seedText: "whose House"))
+        let state = GameState(settings: GameSettings(seedText: "whose House", keepers: 1))
         let store = LocalStore(directory: dir)
         let other = (state.player + 1) % state.houses.count
         store.saveLastSeen(LastSeen(watch: 0, stock: .zero, holds: 9, house: other))
@@ -54,13 +54,13 @@ final class InterfaceReviewTests: XCTestCase {
         root.forAge(1, of: "a realm").saveFirstSteps(steps)
         let second = root.forAge(2, of: "a realm")
         XCTAssertEqual(second.loadFirstSteps(), steps, "Kept across ages")
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "a second age")), store: second)
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "a second age", keepers: 1)), store: second)
         XCTAssertNotNil(session.seatBriefing)
         XCTAssertNil(session.firstSteps, "Done once, not asked again")
     }
 
     func testAnOfferThatCantBeKeptCantBeAccepted() throws {
-        var state = GameState(settings: GameSettings(seedText: "unpayable"))
+        var state = GameState(settings: GameSettings(seedText: "unpayable", keepers: 1))
         let me = state.player
         let other = (me + 1) % state.houses.count
         let trade = Trade(give: .grain, 10, for: .moonsalt, 40)
@@ -88,7 +88,7 @@ final class InterfaceReviewTests: XCTestCase {
     }
 
     func testACompanyIsOrderedWithoutAPointer() throws {
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "no pointer")), store: LocalStore(directory: dir))
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "no pointer", keepers: 1)), store: LocalStore(directory: dir))
         // The seat's briefing, first in an age, keeps the keys until put away.
         XCTAssertFalse(session.handle(.pan(dx: 0, dy: 0)))
         session.dismissSeatBriefing()
@@ -117,7 +117,7 @@ final class InterfaceReviewTests: XCTestCase {
     }
 
     func testVoiceOverOffersAStrikeAtAFoeInReach() throws {
-        var state = GameState(settings: GameSettings(seedText: "a strike offered", houseCount: 3, radius: 16))
+        var state = GameState(settings: GameSettings(seedText: "a strike offered", houseCount: 3, radius: 16, keepers: 1))
         let me = state.player
         let spear = try XCTUnwrap(state.units.first { $0.owner == me && $0.kind == .spear })
         let foe = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
@@ -190,7 +190,7 @@ final class InterfaceReviewTests: XCTestCase {
     }
 
     func testTheEnvoyCardsButtonsAnswer() throws {
-        var state = GameState(settings: GameSettings(seedText: "answered by press"))
+        var state = GameState(settings: GameSettings(seedText: "answered by press", keepers: 1))
         let me = state.player
         let steward = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
         state.envoys.append(Envoy(id: state.nextID, from: steward, to: me, proposal: .tribute, arrived: state.watch))
@@ -203,7 +203,7 @@ final class InterfaceReviewTests: XCTestCase {
     }
 
     func testTheMapWithoutMetalStillGivesOrders() throws {
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "no metal")), store: LocalStore(directory: dir))
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "no metal", keepers: 1)), store: LocalStore(directory: dir))
         let lantern = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .lantern })
         WorldFallback.tap(lantern.position, in: session)
         XCTAssertEqual(session.selection, .unit(lantern.id), "A click selects")
@@ -220,7 +220,7 @@ final class InterfaceReviewTests: XCTestCase {
     }
 
     func testAFallenKeeperIsOfferedOnlyWhatHelps() throws {
-        var state = GameState(settings: GameSettings(seedText: "offered what helps"))
+        var state = GameState(settings: GameSettings(seedText: "offered what helps", keepers: 1))
         state.houses[state.player].isEliminated = true
         XCTAssertNil(Counsel.advice(for: state, player: state.player))
         let store = LocalStore(directory: dir)
@@ -234,7 +234,7 @@ final class InterfaceReviewTests: XCTestCase {
     }
 
     func testWhatTheBarAndPanelsReadIsTheWorldsOwn() throws {
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "kept for the world")), store: LocalStore(directory: dir))
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "kept for the world", keepers: 1)), store: LocalStore(directory: dir))
         XCTAssertEqual(session.standings, session.state.standings())
         XCTAssertNotNil(session.counsel, "The opening has counsel")
         XCTAssertEqual(session.counsel, Counsel.advice(for: session.state, player: session.player))

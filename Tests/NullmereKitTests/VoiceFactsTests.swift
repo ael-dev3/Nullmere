@@ -7,7 +7,7 @@ import XCTest
 /// a trade would give for what.
 final class VoiceFactsTests: XCTestCase {
     func testAnEnvoyIsGivenTheFactsBetweenTheTwoHouses() throws {
-        var state = GameState(settings: GameSettings(seedText: "voice facts", houseCount: 4, radius: 18))
+        var state = GameState(settings: GameSettings(seedText: "voice facts", houseCount: 4, radius: 18, keepers: 1))
         let me = state.player
         let them = (me + 1) % state.houses.count
         let index = try XCTUnwrap(state.relations.firstIndex { [$0.first, $0.second].sorted() == [me, them].sorted() })

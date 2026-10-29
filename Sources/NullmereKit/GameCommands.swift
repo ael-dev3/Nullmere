@@ -79,10 +79,13 @@ public struct GameCommands: Commands {
             item(.nextCompany)
             item(.goToSeat)
             Divider()
+            // The launcher makes no sound: these wait for the realm's face.
             Toggle("Sound", isOn: Binding(get: { app.isSoundOn }, set: { app.isSoundOn = $0 }))
                 .keyboardShortcut("m", modifiers: [.command, .shift])
+                .disabled(!app.isShowing)
             Toggle("Music", isOn: Binding(get: { app.isMusicOn }, set: { app.isMusicOn = $0 }))
                 .keyboardShortcut("u", modifiers: [.command, .shift])
+                .disabled(!app.isShowing || !app.isSoundOn)
             Toggle("Larger Text", isOn: Binding(get: { TextSize.shared.isLarger }, set: { TextSize.shared.isLarger = $0 }))
                 .keyboardShortcut("+", modifiers: [.command, .shift])
             Divider()
