@@ -10,7 +10,7 @@ enum Narration {
     }
 
     static func roman(_ number: Int) -> String {
-        ["", "I", "II", "III", "IV", "V", "VI"][min(max(number, 0), 6)]
+        BuildingKind.numeral(number)
     }
 
     static func line(for event: GameEvent, in state: GameState, viewer: Int) -> Line? {
@@ -44,7 +44,7 @@ enum Narration {
             return Line(text: "Your seat moves to \(holdName(hold)).", tone: .bad)
         case .holdFounded(let hold):
             guard state.hold(hold)?.owner == viewer else { return nil }
-            return Line(text: "Your Founders raise \(holdName(hold)).", tone: .good)
+            return Line(text: "Your Founders found \(holdName(hold)).", tone: .good)
         case .buildingStarted(let hold, let kind, let level):
             guard state.hold(hold)?.owner == viewer else { return nil }
             return Line(text: "Work begins on \(kind.title) \(roman(level)) at \(holdName(hold)).", tone: .neutral)
@@ -70,7 +70,7 @@ enum Narration {
         case .stanceChanged(let first, let second, let stance, let by):
             let other = first == by ? second : first
             if other == viewer, stance == .war { return Line(text: "\(house(by)) declares war on you.", tone: .bad) }
-            if by == viewer { return Line(text: "You are at \(stance.title.lowercased()) with \(house(other)).", tone: .neutral) }
+            if by == viewer { return Line(text: "You are \(stance.standing) with \(house(other)).", tone: .neutral) }
             if stance == .war { return Line(text: "\(house(by)) goes to war with \(house(other)).", tone: .neutral) }
             return nil
         case .envoyArrived(let envoy):
@@ -79,13 +79,15 @@ enum Narration {
                 return Line(text: "An envoy from \(house(envoy.from)) offers a trade: \(trade.given) for \(trade.taken) of yours.", tone: .neutral)
             }
             if envoy.from == viewer {
-                let errand = envoy.proposal == .tribute ? "a demand for tribute" : "an offer of \(envoy.proposal.title.lowercased())"
+                let errand = envoy.proposal == .tribute ? "a demand for tribute" : "an offer of \(envoy.proposal.offered)"
                 return Line(text: "Your envoy takes \(house(envoy.to)) \(errand).", tone: .neutral)
             }
             if envoy.proposal == .tribute {
-                return Line(text: "An envoy from \(house(envoy.from)) demands tribute, or war.", tone: .bad)
+                // A steward refused marches; a keeper refused may only choose war.
+                let threat = state.houses[envoy.from].isPlayer ? "" : ", or war"
+                return Line(text: "An envoy from \(house(envoy.from)) demands tribute\(threat).", tone: .bad)
             }
-            return Line(text: "An envoy from \(house(envoy.from)) offers \(envoy.proposal.title.lowercased()).", tone: .neutral)
+            return Line(text: "An envoy from \(house(envoy.from)) offers \(envoy.proposal.offered).", tone: .neutral)
         case .proposalAnswered(.tribute, let from, let to, let accepted):
             if from == viewer {
                 return Line(text: accepted ? "\(house(to)) pays you tribute." : "\(house(to)) refuses your demand for tribute.",
@@ -98,10 +100,15 @@ enum Narration {
             return nil
         case .proposalAnswered(let proposal, let from, let to, let accepted):
             if from == viewer {
-                return Line(text: "\(house(to)) \(accepted ? "accepts" : "refuses") your offer of \(proposal.title.lowercased()).", tone: accepted ? .good : .bad)
+                return Line(text: "\(house(to)) \(accepted ? "accepts" : "refuses") your offer of \(proposal.offered).", tone: accepted ? .good : .bad)
             }
             if to == viewer, accepted {
-                return Line(text: "You and \(house(from)) agree to \(proposal.title.lowercased()).", tone: .good)
+                switch proposal {
+                case .peace: return Line(text: "You and \(house(from)) make peace.", tone: .good)
+                case .pact: return Line(text: "You and \(house(from)) swear a pact.", tone: .good)
+                case .fealty: return Line(text: "\(house(from)) swears you fealty.", tone: .good)
+                case .trade, .tribute: return Line(text: "You and \(house(from)) agree to \(proposal.offered).", tone: .good)
+                }
             }
             return nil
         case .tradeAnswered(let trade, let from, let to, let accepted):
@@ -116,11 +123,11 @@ enum Narration {
             return nil
         case .starving(let owner):
             guard owner == viewer else { return nil }
-            return Line(text: "Your granaries are empty; your companies go hungry.", tone: .bad)
+            return Line(text: "Your grain has run out; your companies go hungry.", tone: .bad)
         case .houseFell(let fallen):
             return Line(text: fallen == viewer ? "Your House has fallen." : "\(house(fallen)) has fallen.", tone: fallen == viewer ? .bad : .neutral)
         case .gameEnded(let outcome):
-            if outcome.winner == viewer { return Line(text: "The Nullmere is yours.", tone: .good) }
+            if outcome.winner == viewer { return Line(text: "\(state.settings.lake.title.prefix(1).uppercased() + state.settings.lake.title.dropFirst()) is yours.", tone: .good) }
             switch outcome.kind {
             case .ascendancy: return Line(text: "\(house(outcome.winner)) is ascendant.", tone: .bad)
             case .dominion: return Line(text: "\(house(outcome.winner)) holds dominion over the lake.", tone: .bad)

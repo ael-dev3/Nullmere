@@ -22,7 +22,7 @@ struct AwayCard: View {
                     ForEach(report.changes, id: \.self) { change in
                         HStack(spacing: 4) {
                             ResourceGlyph(resource: change.resource)
-                            Text(verbatim: change.delta > 0 ? "+\(change.delta)" : "\(change.delta)")
+                            Text(verbatim: change.delta > 0 ? "+\(change.delta)" : "−\(-change.delta)")
                                 .font(.nm(12).monospacedDigit())
                                 .foregroundStyle(change.delta > 0 ? Palette.good : Palette.bad)
                         }
@@ -55,7 +55,7 @@ struct AwayCard: View {
             }
             HStack {
                 Spacer()
-                QuietButton(title: "Back to It", size: 10.5, prominent: true, action: dismiss)
+                QuietButton(title: "Back to it", size: 10.5, prominent: true, action: dismiss)
                     .keyboardShortcut(.defaultAction)
             }
         }

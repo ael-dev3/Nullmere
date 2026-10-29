@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import NullmereRealm
 
 /// SpacetimeDB in memory, keeping the realm module's tables and following
@@ -66,15 +69,18 @@ public actor FakeSpacetime: SpacetimeTransport {
 
     public func advance(_ seconds: Double) { time += seconds }
 
-    /// Whether the server answers at all: off, every request fails as a
-    /// lost connection does.
+    /// Whether the server answers at all: off, every request fails as one
+    /// to a server that can't be reached does, never having left the Mac.
     private var reachable = true
 
     public func setReachable(_ reachable: Bool) { self.reachable = reachable }
 
     private func answering() throws {
-        guard reachable else { throw SpacetimeError("No answer from the realm's server.") }
+        guard reachable else { throw URLError(.cannotConnectToHost) }
     }
+
+    /// The steward forgets every answer it gave, as it does ten minutes on.
+    public func forgetReplies() { replies.removeAll() }
 
     /// The server forgets an identity, as when its database is made anew.
     public func forget(token: String) { identities[token] = nil }
@@ -204,6 +210,8 @@ public actor FakeSpacetime: SpacetimeTransport {
             return views[me].map { [[.number(Double($0.version))]] } ?? []
         case "SELECT * FROM my_view":
             return views[me].map { [[.string(me), .number(Double($0.version)), .string($0.view), .string($0.events)]] } ?? []
+        case "SELECT nonce FROM my_requests":
+            return requests.filter { $0.keeper == me }.map { [.string($0.nonce)] }
         case "SELECT * FROM my_replies":
             return replies.filter { $0.value.keeper == me }.map { [.string($0.key), .string($0.value.keeper), .string($0.value.payload)] }
         case "SELECT * FROM world", "SELECT * FROM world_part", "SELECT * FROM keeper_view", "SELECT * FROM reply", "SELECT * FROM request":

@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import NullmereCore
 
 /// A keeper's line to the realm proper, through SpacetimeDB: requests go
@@ -49,9 +52,11 @@ public final class NetworkRealmLink: RealmLink {
     /// up to `retryLimit`.
     public let retryDelay: Double
     public static let retryLimit = 5.0
-    /// An order not sent within this long is dropped: the world has moved
-    /// on. Shorter than the steward keeps its answers, so an order sent
-    /// again is never carried out twice.
+    /// An order that hasn't reached the realm within this long is let go:
+    /// the world has moved on. One that may have reached it is never let go
+    /// on the client's word, and after this long it is no longer sent again,
+    /// only asked after: shorter than the steward keeps its answers, so an
+    /// order is never carried out twice.
     public static let orderLifetime = 300.0
 
     /// The link's clock, in seconds: a steady one, which a clock set
@@ -71,8 +76,9 @@ public final class NetworkRealmLink: RealmLink {
         let kind: Kind
         let nonce: String
         let given: Double
-        /// Sent at least once: the realm may have carried it out.
-        var sent = false
+        /// It may have reached the realm: sent, and not refused on the way
+        /// out. Only the realm's word settles such an order.
+        var mayHaveReached = false
     }
     /// What the keeper last asked about being ready, and in which watch.
     private var askedReady: (ready: Bool, watch: Int?)?
@@ -95,7 +101,7 @@ public final class NetworkRealmLink: RealmLink {
         self.stewardSilence = stewardSilence
     }
 
-    public static let silentSteward = "The realm's steward has been silent for a minute: the realm stands still, and orders wait until it returns."
+    public static let silentSteward = "The realm has been silent for a minute: it stands still, and orders sent to it wait until it returns."
 
     /// The server refused the keeper's key: it is forgotten, and a new one
     /// made at the next asking. Returns whether that was the trouble.
@@ -168,7 +174,7 @@ public final class NetworkRealmLink: RealmLink {
             let credentials = try await ensureCredentials()
             let heads = try await transport.query("SELECT version, status FROM status", token: credentials.token)
             guard let head = heads.first, head.count == 2, let number = head[0].number, let text = head[1].string else {
-                onEvent?(.unreachable("The realm hasn't opened yet."))
+                onEvent?(.unreachable("The realm isn't open yet."))
                 return
             }
             failures = 0
@@ -274,10 +280,19 @@ public final class NetworkRealmLink: RealmLink {
     }
 
     /// A request, and the steward's answer to it. Sent again with the same
-    /// nonce, it is the same request.
-    private func request(_ reducer: String, _ arguments: [ReducerArgument], nonce: String = NetworkRealmLink.nonce()) async throws -> RealmReply {
+    /// nonce, it is the same request. `mayReach` is told when the request
+    /// may have reached the realm: always, unless the call failed in a way
+    /// that proves it never left this Mac.
+    private func request(_ reducer: String, _ arguments: [ReducerArgument], nonce: String = NetworkRealmLink.nonce(),
+                         mayReach: (() -> Void)? = nil) async throws -> RealmReply {
         let credentials = try await ensureCredentials()
-        try await transport.call(reducer, [.string(nonce)] + arguments, token: credentials.token)
+        do {
+            try await transport.call(reducer, [.string(nonce)] + arguments, token: credentials.token)
+        } catch {
+            if !Self.neverLeftThisMac(error) { mayReach?() }
+            throw error
+        }
+        mayReach?()
         // Asked often at first, when the steward most likely answers, then
         // less, for thirty seconds.
         let deadline = now() + 30
@@ -288,6 +303,26 @@ public final class NetworkRealmLink: RealmLink {
             wait = min(wait * 1.5, 1)
         }
         throw SpacetimeError("The realm didn't answer in time.")
+    }
+
+    /// Whether an error proves a request never left this Mac: no network,
+    /// no such server, or no connection made. A request lost on the way
+    /// back, or one the server was slow to take, may have reached it.
+    nonisolated static func neverLeftThisMac(_ error: any Error) -> Bool {
+        guard let url = error as? URLError else { return false }
+        switch url.code {
+        case .notConnectedToInternet, .dataNotAllowed, .internationalRoamingOff, .cannotFindHost, .dnsLookupFailed,
+             .cannotConnectToHost, .secureConnectionFailed, .badURL, .unsupportedURL:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Whether a request still waits at the realm for its steward.
+    private func isWaitingAtRealm(_ nonce: String, _ credentials: SpacetimeCredentials) async throws -> Bool {
+        let rows = try await transport.query("SELECT nonce FROM my_requests", token: credentials.token)
+        return rows.contains { $0.first?.string == nonce }
     }
 
     /// The steward's answer to a request, if it has given one.
@@ -360,32 +395,51 @@ public final class NetworkRealmLink: RealmLink {
             while let self, let next = self.outbox.first {
                 var expired = false
                 if case .order = next.kind { expired = self.now() - next.given > Self.orderLifetime }
+                // Told as it may reach the realm, while it is still this
+                // sender's errand.
+                let reached = { [weak self] in
+                    guard let self, self.outbox.first?.nonce == next.nonce else { return }
+                    self.outbox[0].mayHaveReached = true
+                }
                 do {
                     let reply: RealmReply
-                    if expired {
-                        // Too old to send. If it was sent, the realm may have
-                        // carried it out: its answer is kept longer than an
-                        // order lives, so it is looked for before the order
-                        // is said to be lost.
+                    if expired, !next.mayHaveReached {
+                        // Too old to send, and it never reached the realm:
+                        // let go, and the keeper told so.
+                        self.outbox.removeFirst()
+                        if let world = self.view?.world {
+                            self.onEvent?(.orderRefused(.refused(Self.tooOldToSend), world))
+                        }
+                        continue
+                    } else if expired {
+                        // Past its time, and it may have reached the realm:
+                        // never sent again, which could carry it out twice,
+                        // only asked after. Waiting there, its steward will
+                        // answer it; answered, the answer is taken; neither,
+                        // and what came of it is the world's to show.
                         let credentials = try await self.ensureCredentials()
-                        guard next.sent, let kept = try await self.answer(to: next.nonce, credentials) else {
+                        if try await self.isWaitingAtRealm(next.nonce, credentials) {
+                            try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                            delay = min(delay * 2, Self.retryLimit)
+                            continue
+                        }
+                        guard let kept = try await self.answer(to: next.nonce, credentials) else {
                             self.outbox.removeFirst()
                             if let world = self.view?.world {
-                                self.onEvent?(.orderRefused(.refused("An order given while the realm was out of reach was too old to send."), world))
+                                self.onEvent?(.orderRefused(.refused(Self.unanswered), world))
                             }
                             continue
                         }
                         reply = kept
                     } else {
-                        self.outbox[0].sent = true
                         switch next.kind {
                         case .order(let command):
                             let text = String(decoding: try JSONEncoder().encode(command), as: UTF8.self)
-                            reply = try await self.request("order", [.string(text)], nonce: next.nonce)
+                            reply = try await self.request("order", [.string(text)], nonce: next.nonce, mayReach: reached)
                         case .ready(let ready, let watch?):
-                            reply = try await self.request("ready_in_watch", [.bool(ready), .integer(UInt64(max(watch, 0)))], nonce: next.nonce)
+                            reply = try await self.request("ready_in_watch", [.bool(ready), .integer(UInt64(max(watch, 0)))], nonce: next.nonce, mayReach: reached)
                         case .ready(let ready, nil):
-                            reply = try await self.request("ready", [.bool(ready)], nonce: next.nonce)
+                            reply = try await self.request("ready", [.bool(ready)], nonce: next.nonce, mayReach: reached)
                         }
                     }
                     // The realm was begun anew and doesn't know this keeper:
@@ -455,4 +509,11 @@ public final class NetworkRealmLink: RealmLink {
     nonisolated static func nonce() -> String {
         KeeperIdentity.make()
     }
+
+    /// An order that never reached the realm, let go when its time ran out.
+    public static let tooOldToSend = "An order given while the realm was out of reach was too old to send."
+    /// An order that may have reached the realm, past its time, neither
+    /// waiting there nor answered: the realm won't carry it out from now
+    /// on, and the world shows whether it did.
+    public static let unanswered = "An order sent as the realm went out of reach was never answered; the world shows whether it was carried out."
 }

@@ -25,6 +25,8 @@
 #   SPACETIME_CLEAR=1        publish with --delete-data: a fresh realm
 #   CONFIGURATION=release    how the steward is built when run by Swift
 #   STEWARD_LOG=...          where a background steward writes
+#   NULLMERE_STATE_DIR=...   where the steward's token and log are kept
+#                            (default ~/.config/nullmere)
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

@@ -234,7 +234,7 @@ final class NarrationTests: XCTestCase {
         XCTAssertEqual(moved.tone, .bad)
         XCTAssertNil(Narration.line(for: .seatMoved(house: other, to: hold.id), in: state, viewer: me))
         let hungry = try XCTUnwrap(Narration.line(for: .starving(house: me), in: state, viewer: me))
-        XCTAssertEqual(hungry.text, "Your granaries are empty; your companies go hungry.")
+        XCTAssertEqual(hungry.text, "Your grain has run out; your companies go hungry.")
         XCTAssertEqual(hungry.tone, .bad)
         XCTAssertNil(Narration.line(for: .starving(house: other), in: state, viewer: me))
     }
@@ -248,17 +248,31 @@ final class NarrationTests: XCTestCase {
         func said(_ event: GameEvent) throws -> Narration.Line { try XCTUnwrap(Narration.line(for: event, in: state, viewer: me)) }
 
         let pact = try said(.envoyArrived(Envoy(id: 1, from: me, to: other, proposal: .pact, arrived: 1)))
-        XCTAssertEqual(pact.text, "Your envoy takes \(them) an offer of pact.")
+        XCTAssertEqual(pact.text, "Your envoy takes \(them) an offer of a pact.")
         XCTAssertEqual(pact.tone, .neutral)
         let demand = try said(.envoyArrived(Envoy(id: 2, from: me, to: other, proposal: .tribute, arrived: 1)))
         XCTAssertEqual(demand.text, "Your envoy takes \(them) a demand for tribute.")
         XCTAssertEqual(demand.tone, .neutral, "Their own demand is no threat to them")
         let theirs = try said(.envoyArrived(Envoy(id: 3, from: other, to: me, proposal: .tribute, arrived: 1)))
-        XCTAssertEqual(theirs.text, "An envoy from \(them) demands tribute, or war.")
+        XCTAssertEqual(theirs.text, "An envoy from \(them) demands tribute, or war.", "A steward's demand: refused, it marches")
+        var kept = state
+        kept.houses[other].isPlayer = true
+        let keepers = try XCTUnwrap(Narration.line(for: .envoyArrived(Envoy(id: 4, from: other, to: me, proposal: .tribute, arrived: 1)), in: kept, viewer: me))
+        XCTAssertEqual(keepers.text, "An envoy from \(them) demands tribute.", "A keeper refused may only choose war")
+        let offered = try XCTUnwrap(Narration.line(for: .envoyArrived(Envoy(id: 5, from: other, to: me, proposal: .pact, arrived: 1)), in: state, viewer: me))
+        XCTAssertEqual(offered.text, "An envoy from \(them) offers a pact.")
+        let sworn = try XCTUnwrap(Narration.line(for: .proposalAnswered(proposal: .fealty, from: other, to: me, accepted: true), in: state, viewer: me))
+        XCTAssertEqual(sworn.text, "\(them) swears you fealty.")
+        let allied = try XCTUnwrap(Narration.line(for: .proposalAnswered(proposal: .pact, from: other, to: me, accepted: true), in: state, viewer: me))
+        XCTAssertEqual(allied.text, "You and \(them) swear a pact.")
 
         XCTAssertEqual(try said(.gameEnded(Outcome(winner: other, kind: .ascendancy, watch: 9))).text, "\(them) is ascendant.")
         XCTAssertEqual(try said(.gameEnded(Outcome(winner: other, kind: .dominion, watch: 9))).text, "\(them) holds dominion over the lake.")
         XCTAssertEqual(try said(.gameEnded(Outcome(winner: me, kind: .dominion, watch: 9))).text, "The Nullmere is yours.")
+        // Another age's lake is named as its own.
+        var sickle = state
+        sickle.settings.lake = .crescent
+        XCTAssertEqual(try XCTUnwrap(Narration.line(for: .gameEnded(Outcome(winner: me, kind: .dominion, watch: 9)), in: sickle, viewer: me)).text, "The Sickle is yours.")
     }
 }
 
@@ -380,7 +394,7 @@ final class HoverInfoTests: XCTestCase {
         let line = try XCTUnwrap(HoverInfo.line(for: seat.position, in: state, explored: true, territory: territory))
         XCTAssertTrue(line.contains(seat.name))
         XCTAssertTrue(line.contains("land of \(state.houses[state.player].title)"))
-        XCTAssertEqual(HoverInfo.line(for: seat.position, in: state, explored: false, territory: territory), "Unknown country · send a Lantern")
+        XCTAssertEqual(HoverInfo.line(for: seat.position, in: state, explored: false, territory: territory), "Unknown country · send Lanterns")
         XCTAssertNil(HoverInfo.line(for: Hex(999, 0), in: state, explored: true, territory: territory))
 
         let still = try XCTUnwrap(state.map.hexes.first { state.map[$0]?.terrain == .still })
@@ -389,11 +403,11 @@ final class HoverInfoTests: XCTestCase {
         let woodLine = HoverInfo.line(for: wood, in: state, explored: true, territory: territory)!
         XCTAssertTrue(woodLine.contains("2 moves") && woodLine.contains("+25% defence"), woodLine)
 
-        // The Spine walls the world: dry land no one crosses, not dead water.
+        // The Spine walls the world: dry land no one crosses, not the Still.
         let spine = try XCTUnwrap(state.map.hexes.first { state.map[$0]?.terrain == .spine })
         let spineLine = try XCTUnwrap(HoverInfo.line(for: spine, in: state, explored: true, territory: territory))
         XCTAssertTrue(spineLine.hasPrefix("The Spine") && spineLine.hasSuffix("impassable"), spineLine)
-        XCTAssertFalse(spineLine.contains("dead water"), spineLine)
+        XCTAssertFalse(spineLine.contains("yields nothing"), spineLine)
     }
 }
 

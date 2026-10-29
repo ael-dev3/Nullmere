@@ -90,7 +90,7 @@ final class AwayReportTests: XCTestCase {
         var state = GameState(settings: GameSettings(seedText: "an omen", houseCount: 3, radius: 16))
         state.omen = Omen(kind: .risingMist, began: 1, ends: 4)
         let briefing = SeatBriefing(world: state, player: state.player)
-        XCTAssertTrue(briefing.facts.contains("An omen lies on the realm, Rising Mist: Every company and hold sees one hex less."), "\(briefing.facts)")
+        XCTAssertTrue(briefing.facts.contains("An omen lies on the realm, Rising Mist: Every company and hold sees one tile less."), "\(briefing.facts)")
         try keep(OmenBand(omen: Omen(kind: .moonsaltBloom, began: 5, ends: 8), watch: 6), as: "game-omen.png")
     }
 

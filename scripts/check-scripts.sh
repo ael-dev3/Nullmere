@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Checks the shell scripts as macOS's bash 3.2 reads them (/bin/bash on a
-# Mac; whatever bash is first on the PATH elsewhere): each parses, and
+# Checks the shell scripts as /bin/bash reads them (macOS's is 3.2; Linux
+# has a newer one): each parses, and
 # no variable runs into a non-ASCII character: bash 3.2 reads an ellipsis
 # straight after a variable as part of its name. Brace the name instead.
 set -euo pipefail

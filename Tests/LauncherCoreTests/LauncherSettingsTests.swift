@@ -54,7 +54,7 @@ final class LauncherSettingsTests: XCTestCase {
         XCTAssertEqual(ResolvedMotion.still.clockRate, 0)
         XCTAssertEqual(ResolvedMotion.still.activity, 0)
         XCTAssertEqual(ResolvedMotion.full.activity, 1)
-        XCTAssertLessThan(ResolvedMotion.reduced.activity, 0.5, "Stars fall and rings spread only above 0.5")
+        XCTAssertLessThan(ResolvedMotion.reduced.activity, 0.5, "Stars fall only above 0.5")
     }
 
     func testTheFrameRateCapAppliesOnlyAtFullMotionWhileNotSavingEnergy() {

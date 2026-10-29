@@ -68,16 +68,70 @@ final class RuleNamesTests: XCTestCase {
                 XCTAssertFalse(kind.effect(atLevel: level).isEmpty, "\(kind) at \(level)")
             }
         }
-        XCTAssertEqual(BuildingKind.moonspire.effect(atLevel: BuildingKind.moonspire.maxLevel), "Ascendancy over the Nullmere")
-        XCTAssertTrue(BuildingKind.granary.effect(atLevel: 1).hasSuffix("grain from this hold's land"))
+        XCTAssertEqual(BuildingKind.moonspire.effect(atLevel: BuildingKind.moonspire.maxLevel), "Ascendancy over the lake")
+        XCTAssertEqual(BuildingKind.moonspire.effect(atLevel: 3), "Stage 3 of 5")
+        XCTAssertEqual(BuildingKind.granary.effect(atLevel: 1), "+\(BuildingKind.yieldBoostPerLevel)% to the grain this hold yields")
         XCTAssertTrue(BuildingKind.walls.effect(atLevel: 1).hasPrefix("Ward "))
-        XCTAssertTrue(BuildingKind.beacon.effect(atLevel: 1).hasPrefix("Sight "))
-        XCTAssertTrue(BuildingKind.musterHall.effect(atLevel: 1).hasPrefix("Trains"))
+        XCTAssertEqual(BuildingKind.musterHall.effect(atLevel: 1), "Trains Spears")
+        XCTAssertEqual(BuildingKind.musterHall.effect(atLevel: 2), "Trains Bows")
+        XCTAssertEqual(BuildingKind.musterHall.effect(atLevel: 3), "Trains Riders; all but Lanterns a watch sooner")
+    }
+
+    /// A Beacon's line says what its level does: sight at every level, and
+    /// a tile more of land only where the land truly grows.
+    func testABeaconSaysWhereItsLandGrows() {
+        for isSeat in [false, true] {
+            for level in 1...BuildingKind.beacon.maxLevel {
+                let line = BuildingKind.beacon.effect(atLevel: level, isSeat: isSeat)
+                XCTAssertTrue(line.hasPrefix("Sight \(Hold.sight(beaconLevel: level))"), line)
+                let grows = Hold.territoryRadius(isSeat: isSeat, beaconLevel: level) > Hold.territoryRadius(isSeat: isSeat, beaconLevel: level - 1)
+                XCTAssertEqual(line.contains("its land reaches a tile further"), grows, "Level \(level): \(line)")
+            }
+        }
+        XCTAssertEqual(BuildingKind.beacon.effect(atLevel: 2), "Sight 4; its land reaches a tile further")
+        XCTAssertEqual(BuildingKind.beacon.effect(atLevel: 3), "Sight 5")
+    }
+
+    /// The watches a company takes, as the panel shows them, are the
+    /// watches the rules give it: one fewer at a Muster Hall III, but never
+    /// for Lanterns, which take one already.
+    func testTrainingTakesTheWatchesItSays() throws {
+        for musterHall in 0...BuildingKind.musterHall.maxLevel {
+            for kind in UnitKind.allCases where kind.requiredMuster <= musterHall {
+                var state = GameState(settings: GameSettings(seedText: "training watches"))
+                let me = state.player
+                let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+                state.holds[seat].levels[.musterHall] = musterHall
+                state.houses[me].stock = Stock(grain: 900, timber: 900, stone: 900, moonsalt: 900)
+                let hold = state.holds[seat]
+                _ = try state.perform(.train(hold: hold.id, kind: kind), as: me)
+                XCTAssertEqual(state.holds[seat].training?.watchesLeft, hold.trainingWatches(for: kind), "\(kind) at Muster Hall \(musterHall)")
+                let faster = musterHall >= 3 && kind != .lantern
+                XCTAssertEqual(hold.trainingWatches(for: kind), kind.trainWatches - (faster ? 1 : 0), "\(kind) at Muster Hall \(musterHall)")
+            }
+        }
+    }
+
+    func testLevelsAreWrittenInNumerals() {
+        XCTAssertEqual((1...5).map(BuildingKind.numeral), ["I", "II", "III", "IV", "V"])
+        XCTAssertEqual(RuleError.needsMusterHall(2).description, "Needs a Muster Hall II.")
+    }
+
+    /// One cause, one refusal: a sentence never borrowed for another.
+    func testEachRefusalSaysItsOwnCause() {
+        XCTAssertEqual(RuleError.alreadyStance(.pact).description, "Already in a pact.")
+        XCTAssertEqual(RuleError.alreadyStance(.war).description, "Already at war.")
+        XCTAssertEqual(RuleError.alreadyStance(.peace).description, "Already at peace.")
+        let texts = [RuleError.invalidAmount, .sameStore, .storageFull, .noRoomWithThem, .atWarWith(1), .noTradeAcrossWar(1)].map(\.description)
+        XCTAssertEqual(Set(texts).count, texts.count, "\(texts)")
+        XCTAssertEqual(RuleError.gameOver.description, "The age is over.")
     }
 
     func testStancesAndProposalsAreNamed() {
         XCTAssertEqual([Stance.war, .peace, .pact].map(\.title), ["War", "Peace", "Pact"])
         XCTAssertEqual(Proposal.allCases.map(\.title), ["Peace", "Pact", "Fealty", "Tribute", "Trade"])
+        XCTAssertEqual(Proposal.allCases.map(\.offered), ["peace", "a pact", "fealty", "tribute", "trade"])
+        XCTAssertEqual([Stance.war, .peace, .pact].map(\.standing), ["at war", "at peace", "in a pact"])
         let relation = Relation(first: 1, second: 3)
         XCTAssertEqual(relation.other(than: 1), 3)
         XCTAssertEqual(relation.other(than: 3), 1)

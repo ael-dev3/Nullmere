@@ -20,7 +20,7 @@ struct WatchCard: View {
                     ForEach(summary.changes, id: \.self) { change in
                         HStack(spacing: 4) {
                             ResourceGlyph(resource: change.resource)
-                            Text(verbatim: change.delta > 0 ? "+\(change.delta)" : "\(change.delta)")
+                            Text(verbatim: change.delta > 0 ? "+\(change.delta)" : "−\(-change.delta)")
                                 .font(.nm(12).monospacedDigit())
                                 .foregroundStyle(change.delta > 0 ? Palette.good : Palette.bad)
                         }

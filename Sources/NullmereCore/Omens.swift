@@ -23,7 +23,7 @@ public enum OmenKind: String, Codable, CaseIterable, Sendable {
     public var effect: String {
         switch self {
         case .moonsaltBloom: return "Moonsalt yields are doubled."
-        case .risingMist: return "Every company and hold sees one hex less."
+        case .risingMist: return "Every company and hold sees one tile less."
         case .leanWatch: return "Grain yields fall by a third."
         case .stillNight: return "Wards mend twice as fast."
         }

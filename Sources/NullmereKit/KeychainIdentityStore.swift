@@ -6,6 +6,8 @@ import Security
 public struct KeychainIdentityStore: IdentityStore {
     private let service = "online.nullmere.keeper"
     private let account: String
+    /// What Keychain Access shows for the item.
+    private var label: String { "Nullmere Online: your key for \(account)" }
 
     /// One identity for each realm.
     public init(realm: String) {
@@ -29,10 +31,11 @@ public struct KeychainIdentityStore: IdentityStore {
 
     public func save(_ identity: String) throws {
         let data = Data(identity.utf8)
-        let update = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        let update = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data, kSecAttrLabel as String: label] as CFDictionary)
         if update == errSecItemNotFound {
             var item = query
             item[kSecValueData as String] = data
+            item[kSecAttrLabel as String] = label
             item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
             let status = SecItemAdd(item as CFDictionary, nil)
             guard status == errSecSuccess else { throw NSError(domain: NSOSStatusErrorDomain, code: Int(status)) }

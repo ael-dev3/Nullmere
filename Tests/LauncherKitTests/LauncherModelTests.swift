@@ -252,14 +252,14 @@ final class LauncherModelTests: XCTestCase {
         XCTAssertEqual(model.newsSelection, 0)
 
         let link = try XCTUnwrap(model.visibleNews[0].link)
-        XCTAssertEqual(model.footerHint, "↑ ↓ choose  ·  return open  ·  esc back")
+        XCTAssertEqual(model.footerHint, "↑ ↓ choose  ·  Return open  ·  Esc back")
         model.handle(.confirm)
         XCTAssertEqual(opened, [link])
 
         // A story without a page offers none to open, and Return opens nothing.
         let bare = try XCTUnwrap(model.visibleNews.firstIndex { $0.link == nil })
         model.newsSelection = bare
-        XCTAssertEqual(model.footerHint, "↑ ↓ choose  ·  esc back")
+        XCTAssertEqual(model.footerHint, "↑ ↓ choose  ·  Esc back")
         model.handle(.confirm)
         XCTAssertEqual(opened, [link])
         model.handle(.back)

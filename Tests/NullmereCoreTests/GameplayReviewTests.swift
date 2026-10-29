@@ -124,11 +124,32 @@ final class AbsentKeeperTests: XCTestCase {
             realm.world.envoys.append(Envoy(id: realm.world.nextID, from: from, to: ama, proposal: .pact, arrived: realm.world.watch))
             realm.world.nextID += 1
         }
-        _ = realm.tick(now: 180 * 3)
+        // Kept from the second watch to turn after its keeper left.
+        _ = realm.tick(now: 180)
+        _ = realm.tick(now: 360)
         XCTAssertEqual(realm.world.stance(ama, friend), .pact, "A friend's pact, sworn")
         XCTAssertNotEqual(realm.world.stance(ama, foe), .pact, "Not with a House at war with an ally")
         XCTAssertNotEqual(realm.world.stance(ama, builder), .pact, "Nor with one whose Moonspire the lake should stop")
         XCTAssertFalse(realm.world.envoys.contains { $0.to == ama }, "Every envoy answered")
+    }
+
+    /// Two watches away, not two watches' time: however quickly the
+    /// watches turn, an absent keeper's House is kept from the second.
+    func testAHouseIsKeptFromTheSecondWatchAwayHoweverQuicklyTheyTurn() throws {
+        var (realm, ama, _) = try realm()
+        realm.depart("id-ama", now: 0)
+        let friend = try XCTUnwrap(realm.world.houses.first { !$0.isPlayer }?.id)
+        realm.world.gifts = [Gift(from: friend, to: ama, worth: 500, watch: realm.world.watch)]
+        realm.world.envoys.append(Envoy(id: realm.world.nextID, from: friend, to: ama, proposal: .pact, arrived: realm.world.watch))
+        realm.world.nextID += 1
+        XCTAssertNotNil(realm.setReady("id-bel", true, now: 1), "Bel there, and ready: the watch turns at once")
+        XCTAssertEqual(realm.keeper("id-ama")?.watchesAway, 1)
+        XCTAssertNotEqual(realm.world.stance(ama, friend), .pact, "One watch away: not yet kept")
+        XCTAssertNotNil(realm.setReady("id-bel", true, now: 2))
+        XCTAssertEqual(realm.keeper("id-ama")?.watchesAway, 2)
+        XCTAssertEqual(realm.world.stance(ama, friend), .pact, "Two watches away, two seconds in all: kept")
+        _ = try realm.arrive("id-ama", name: "Ama", now: 3)
+        XCTAssertNil(realm.keeper("id-ama")?.watchesAway, "Back, and no longer counted away")
     }
 
     func testAHouseAwayOnlyAMomentIsLeftAsItsKeeperLeftIt() throws {

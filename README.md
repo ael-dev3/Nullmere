@@ -4,10 +4,11 @@
 
 <h1 align="center">Nullmere Online</h1>
 
-Nullmere Online is a persistent multiplayer 4X for the Mac, built for a
-small, personally curated community. Every keeper shares one world, a
-great dead lake, held by a realm server. Keepers explore, expand, develop
-resources, make treaties and wage war, and the alliances, politics and
+Nullmere Online is a persistent multiplayer 4X for the Mac, for a small
+community: one realm, twelve seats round its lake, open to anyone with the
+app. Every keeper shares one world, a great dead lake, held by a realm
+server. Keepers explore, expand, build up their stores, make pacts and wage
+war, and the alliances, politics and
 drama they create leave a lasting history. It continues the universe,
 premise and principles of [Warpkeep](https://github.com/ael-dev3/Warpkeep),
 without Warpkeep's Farcaster identity.
@@ -15,23 +16,23 @@ without Warpkeep's Farcaster identity.
 This repository holds one Mac app, **Nullmere Online**: a black lake under
 a full moon, with Play, News, Settings, Repository and Quit on the water.
 Play crosses to the realm's front door: who you are on the lake, how the
-realm stands, and Enter World. Inside, you hold a House among other
-keepers' Houses: raise holds, work the land, muster companies, make and
+realm stands, and the way in. Inside, you hold a House among other
+keepers' Houses: found holds, work the land, train companies, make and
 break pacts, and win the age by dominion or by raising the Moonspire.
 
 Website: [nullmere.online](https://nullmere.online)
 
 **Going live** takes five steps that need an account, a Mac or people only
-the realm's keeper has: raising the realm on maincloud, signing and
+the realm's maintainer has: raising the realm on maincloud, signing and
 notarizing the release, hearing the voices on a Mac with Apple Intelligence,
 measuring on real Apple silicon (those two are one command together), and
-its first players. Each is rehearsed in CI where it can be: see
+its first keepers. Each is rehearsed in CI where it can be: see
 [docs/GO-LIVE.md](docs/GO-LIVE.md).
 `scripts/go-live-status.sh` says where each step stands.
 
 ## Requirements
 
-Nullmere runs only on Macs that can run Apple's on-device language model,
+Nullmere Online runs only on Macs that can run Apple's on-device language model,
 the roughly 3-billion-parameter model behind Apple Intelligence. Its
 envoys and chronicler speak through that model, on your Mac, using the
 [Foundation Models](https://developer.apple.com/documentation/foundationmodels)
@@ -82,7 +83,7 @@ open "build/Nullmere Online.app"
 `scripts/build-app.sh` makes an arm64 release build and assembles
 `Nullmere Online.app` with its icon and Info.plist.
 The icon is a Liquid Glass document, `Packaging/AppIcon.icon` (night,
-reflection and a glass moon), compiled with `actool` into each app's asset
+reflection and a glass moon), compiled with `actool` into the app's asset
 catalog; the classic `AppIcon.png` is the fallback where `actool` isn't
 available. It signs the app ad hoc,
 which is enough to run it on the Mac that built it. To sign with a
@@ -108,7 +109,7 @@ Connect API key in the repository's secrets (`MACOS_CERTIFICATE`,
 `.github/workflows/release.yml`: it signs, notarizes and staples the disk
 image and attaches it to a GitHub release.
 
-CI rehearses that path on every push (`scripts/rehearse-release.sh`): a
+CI rehearses that path on every run (`scripts/rehearse-release.sh`): a
 throwaway self-signed identity takes the Developer ID's place through the
 same steps, the app is signed with the hardened runtime and a secure
 timestamp, the disk image is signed, and the notarizing and stapling are
@@ -123,19 +124,21 @@ Tests and checks:
 
 ```sh
 swift test                 # unit tests; on a Mac with Metal, the shader is also compiled on the GPU
-make check-shader          # compile the shader with the offline Metal compiler
+make check-shader          # compile the lake's and the map's shaders with the offline Metal compiler
 make smoke                 # build the app, open the launcher, check it starts and renders with Metal, take a screenshot
-make smoke-menu            # open a debug build of the launcher in each model state, type into it, photograph every screen
+make smoke-menu            # open a debug build of the launcher with the model ready, Apple Intelligence off and the model downloading; type into it, photograph every screen
 make smoke-game            # open a debug build, press Play, enter a realm hosted on the Mac as a keeper, take screenshots
 ```
 
-CI runs all of these on a macOS 26 runner for every pull request, and keeps
-the screenshots of the launcher, the realm's front door and the world.
+CI runs all of these on a macOS 26 runner for every pull request and every
+push to `main` or a working branch that touches the code, and keeps the
+screenshots of the launcher, the realm's front door and the world.
 
 Line coverage is held to a floor for each module, on macOS and, for the
-rules, the realm and the launcher's logic, on Linux too (`scripts/coverage.py`); CI's summary
-lists every line no test runs (the command-line entry points, the
-launcher's and the steward's, have no floor: CI runs both whole). What remains is mostly what a test can't
+rules, the realm and the launcher's logic, on Linux too (`scripts/coverage.py`). On macOS,
+CI's summary lists the files with the most lines no test runs, and the
+lines themselves (the command-line entry points, the launcher's and the
+steward's, have no floor: CI runs both whole). What remains is mostly what a test can't
 reach: `init(coder:)` stubs no window calls, SwiftUI state's initial values,
 the fallbacks drawn when Metal or sound fails, the live environment's
 closures (downloading the news, opening a link, quitting), trackpad
@@ -161,8 +164,8 @@ builds also take:
 | `NULLMERE_IDENTITY_FILE` | Keep the keeper's identity in this file instead of the keychain |
 | `NULLMERE_KEEPER` | Enter the world at once under this name |
 | `NULLMERE_TEXT` | `larger`: show the larger type without remembering it |
-| `NULLMERE_SHOW` | `seat`, `unit`, `houses`, `chronicle`, `guide`: select the seat or a company, open a panel; `briefing`: keep the card a keeper first meets; `watch`: be ready after `NULLMERE_WATCH_AFTER` seconds (12.5) |
-| `NULLMERE_AUTOPLAY` | In a hosted realm, let a steward play the keeper's House this many watches first |
+| `NULLMERE_SHOW` | With `NULLMERE_KEEPER`: `seat`, `unit`, `houses`, `chronicle`, `guide`: select the seat or a company, open a panel; `briefing`: keep the card a keeper first meets; `watch`: be ready after `NULLMERE_WATCH_AFTER` seconds (12.5) |
+| `NULLMERE_AUTOPLAY` | With `NULLMERE_KEEPER`, in a hosted realm: let a steward play the keeper's House this many watches first |
 
 Release builds ignore them all and always require the model.
 
@@ -222,11 +225,12 @@ in [`News.swift`](Sources/LauncherCore/News.swift) together.
 
 ### Settings
 
-Settings are stored in the `online.nullmere.launcher` user defaults:
+Settings are stored in the app's user defaults (`online.nullmere.launcher`;
+a `swift run` build keeps its own, under `NullmereLauncher`):
 
 | Setting | Options | Effect |
 | --- | --- | --- |
-| Motion | System, Full, Reduced, Still | How much moves. Full: flickering stars, falling stars, rings on the water and the opening. Reduced: slower water and gentle twinkling only. Still: a single frame. System follows *Reduce motion*. |
+| Motion | System, Full, Reduced, Still | How much the lake moves, in the launcher and at the realm's front door. Full: flickering and falling stars, and the opening. Reduced: slower, gentler twinkling, with no falling stars and no opening. Still: a single frame. System follows *Reduce Motion*. |
 | Resolution | Native, Balanced, Efficient | Renders the lake at 100%, 75% or 50% of native pixels |
 | Frame rate | 30, 60, 120 | Upper bound for the lake's frame rate. Reduced motion, Low Power Mode, a Mac running hot, or another app in front lowers it to 30 |
 | Full screen at launch | Off, On | Applies the next time the launcher opens |
@@ -242,21 +246,23 @@ as the realm will, and takes the realm's word as final.
   realm knows you by an identity your Mac keeps in its keychain, and by
   your name. The front door
   shows the realm's state: its age and watch, how many keepers are there,
-  and how many seats are free. Enter World seats you in a middling House of
-  those free (at an age's start, all alike, the first); returning, you go
-  straight back to yours. The House leading the lake, or one within reach
-  of dominion or with its Moonspire risen, is open to no one.
+  and how many seats are open. Entering seats you in a middling House of
+  those open (at an age's start, all alike, the first); returning, you go
+  straight back to yours. No newcomer may take up a House sworn to another,
+  the House leading the lake, or one within reach of dominion or with its
+  Moonspire risen.
 - **Seats.** The lake has twelve seats. Seats no keeper holds are played by
   stewards, the same minds that once played rivals, until a keeper claims
   them. When every seat is held, a newcomer waits at the front door and
   steps in the moment one falls free. A seat whose keeper has been away a
   week goes back to the stewards for whoever is waiting (a day, for a seat
   taken and never played); its House stands as it was, and the keeper,
-  returning, waits in turn. Meanwhile, after two watches away, a caretaker
-  keeps the House: it answers envoys, tends and guards the holds and sues
-  for peace in a war going badly, but begins no war, demand or pact and
-  never bends the knee, though it takes a House offering fealty as a
-  vassal. A pact offered it swears as a steward would, but
+  returning, waits in turn. Meanwhile, after two watches away (counted in
+  watches, however quickly they turn), a caretaker keeps the House: it
+  answers envoys, builds and trains, guards the holds, fights on in wars
+  already begun and sues for peace in one going badly, but begins no war,
+  demand or pact and never bends the knee, though it takes a House offering
+  fealty as a vassal. A pact offered it swears as a steward would, but
   never with a House at war with the keeper's allies or one whose Moonspire
   is rising. While fewer than half the keepers are there, a watch lasts at
   least a third of its time, however ready they are.
@@ -270,7 +276,8 @@ as the realm will, and takes the realm's word as final.
   itself never leaves the server.
 - **Gifts.** Send stores to any House you aren't at war with. Stewards
   remember gifts for twenty watches: a war seems older to them, and enough
-  goodwill wins a pact. A keeper hears of a gift, a war declared or an
+  goodwill wins a pact, unless you once made war on them or a pact between
+  you was broken. A keeper hears of a gift, a war declared or an
   envoy sent the moment it happens, not when the watch turns.
 - **Trade.** Offer any House you aren't at war with so much of one store
   for so much of another. Stewards weigh it by barter worth, the cunning
@@ -291,30 +298,34 @@ as the realm will, and takes the realm's word as final.
 - **Coming back.** Return after watches have passed, and a card tells
   what happened while you were away: your stores and holds, and the news
   that touched your House.
-- **What can't be undone asks twice.** Declaring war, breaking a pact
-  and disbanding a company each want a second press within three seconds.
+- **What can't be undone asks twice.** Declaring war, breaking a pact,
+  disbanding a company and refusing a steward's demand for tribute each want
+  a second press within three seconds (ten while VoiceOver runs).
 - **Elsewhere.** While you are in another app, the Dock counts the
   watches that turned, and bounces once when something needs you.
-- **The watch.** Each turn is a watch. Give your orders, then say you're
-  ready (⌘↩). The watch turns when every keeper there is ready, or when
-  its time runs out, three minutes. An empty realm sleeps until a keeper
-  returns. Leave, and your House stands as you left it.
+- **The watch.** Each turn is a watch. Your orders take effect as you give
+  them; say you're ready (⌘↩) when they're given. The watch turns when
+  every keeper there is ready, or when its time runs out, three minutes;
+  then the stewards act, and the lake yields, eats and mends. An empty
+  realm sleeps until a keeper returns. Leave, and after two watches away a
+  caretaker keeps your House.
 - **Treating with keepers.** Offers to another keeper wait as envoys for
   their answer, as theirs wait for yours. Envoys of stewards speak, in
   words written on your Mac; a keeper's envoy carries their own words, if
   they write any: one plain line, no addresses, read by that keeper alone.
   Hide a House's words from its envoy card; your Mac remembers.
 - **Omens.** Now and then the lake turns for every House at once, for
-  three to five watches: Moonsalt Bloom doubles salt, Rising Mist shortens
-  every sight by a hex, a Lean Watch takes a third of the grain, and a
+  three to five watches: Moonsalt Bloom doubles moonsalt, Rising Mist shortens
+  every sight by a tile, a Lean Watch takes a third of the grain, and a
   Still Night mends wards twice as fast. The chronicle tells when one
   falls and lifts, and a band under the top bar shows it while it lasts.
 - **Where it comes from.** Press a store in the top bar for its account:
   what each hold yields a watch, what your companies eat, what an omen
   adds or takes, and the room left to keep it.
 - **Ages.** When a House wins, the age ends. When the watch next turns, a
-  new age begins on a fresh lake, and every keeper is seated anew in the
-  order they first came. Each age's lake has a shape of its own, in turn:
+  new age begins on a fresh lake, and keepers are seated anew in the order
+  they first came, as seats allow, but for any away longer than a seat is
+  kept for them. Each age's lake has a shape of its own, in turn:
   the round Nullmere, the Twin Waters with a neck of land between them,
   the Sickle with land pushing in from one shore, and the Drowned Isles.
   The front door names the lake of the age, and the moon lies in the
@@ -324,7 +335,7 @@ as the realm will, and takes the realm's word as final.
   steward write it. The steward runs the same Swift rules core the clients
   carry, so there is one set of rules. A keeper's client carries out their
   orders at once, as the realm will, and takes the realm's word as final.
-  Your SpacetimeDB identity is made once and kept in your keychain. For
+  Your identity is made once and kept in your keychain. For
   development a realm can also be hosted in-process (`NULLMERE_REALM=local`).
 
 ### Raising the realm
@@ -348,9 +359,9 @@ SpacetimeDB the same way (`scripts/raise-realm.sh local`, then `--stop`).
 
 The script checks its tools, publishes the module, keeps the steward's
 token in `~/.config/nullmere` (readable by you alone), and starts the
-steward: in a container (`Dockerfile.steward`, restarted with the machine)
-when Docker is there, otherwise in the background, with its log beside the
-token. Run it again to update the module; the realm keeps its world. Ask
+steward: for maincloud, in a container (`Dockerfile.steward`, restarted with
+the machine) when Docker is there; otherwise, and always for a local realm,
+in the background, with its log beside the token. Run it again to update the module; the realm keeps its world. Ask
 for a fresh realm with `SPACETIME_CLEAR=1`.
 
 The module can also be published from GitHub: put the token
@@ -359,7 +370,7 @@ run **Publish the realm** (`.github/workflows/realm.yml`) from the Actions
 tab. The steward still runs on a machine of yours, as that identity.
 
 If the name `nullmere` is taken on maincloud, choose another with
-`REALM_DB=...`, and build the app for it with
+`REALM_DB=…`, and build the app for it with
 `REALM_ADDRESS=https://maincloud.spacetimedb.com/<name> scripts/build-app.sh`;
 the address is kept in the app's Info.plist. `NULLMERE_REALM_NAME`,
 `NULLMERE_REALM_SEED`, `NULLMERE_REALM_SEATS` and `NULLMERE_WATCH_SECONDS`
@@ -381,30 +392,38 @@ request sent again, after its answer was lost, is carried out once. The
 steward keeps the world and gives its answers in one transaction, so a
 round it couldn't publish, or a steward stopped mid-round, loses and
 doubles nothing; it says when a round fails, and every ten minutes how
-the realm stands. One steward holds the realm at a time: a second, started
-by mistake, finds it held and gives up, and a steward started again waits
-the minute its old hold takes to lapse. The server stamps each publication
-by its own clock, so a keeper arriving mid-watch sees the watch's true
-time left, whatever their own clock says. If the steward falls silent for a
-minute, every keeper is told the realm stands still, and told again when
-it returns; orders given meanwhile wait and go when it does.
+the realm stands. One steward holds the realm at a time: any other finds it
+held, tries again for two and a half minutes (a steward started again
+waits the minute its old hold takes to lapse), then gives up. A container
+is restarted after it, so stop a second one with `--stop`. The server
+stamps each publication by its own clock, so a keeper arriving mid-watch
+sees the watch's true time left, whatever their own clock says. If the
+steward falls silent for a minute, every keeper is told the realm stands
+still, and told again when it returns. An order that reached the realm
+waits there for its answer, however long; one that can't reach it within
+five minutes is let go, and its keeper told. Past those five minutes an
+order is never sent again, only asked after, so none is carried out
+twice.
 
-## Playing Nullmere
+## Playing Nullmere Online
 
 - **The land.** Strand, salt flats, greyfields, blackwood and barrows ring
   the lake. Each yields grain, timber, stone or moonsalt to the hold whose
   territory it lies in; groves, seams, loam and moonsalt beds yield more.
-  The still water yields nothing and cannot be crossed; shallows can.
+  The Still, the lake's deep water, yields nothing and cannot be crossed;
+  the shallows can.
   Drowned ruins hide something for the first company to search them.
 - **Holds** gather what their land yields and store it, up to a limit that
-  grows with each hold. Raise Granaries, Sawpits, Quarries and Saltworks to
-  boost a resource, Walls to thicken the ward, Beacons to see and claim
-  further, and a Muster Hall to train stronger companies. Barter a surplus
+  grows with each hold. Build Granaries, Sawpits, Quarries and Saltworks to
+  boost a store, Walls to thicken the ward, Beacons to see further (at
+  level II, a hold's land reaches a tile further too), and a Muster Hall to
+  train stronger companies, and at level III to train all but Lanterns a
+  watch sooner. Barter a surplus
   for what you lack, three to one. Each new hold costs more to found than
-  the last, so a realm grows by choice, not by habit.
+  the last, so a House grows by choice, not by habit.
 - **Companies.** Lanterns scout, Spears hold the line and take holds,
-  Bows strike from two tiles, Riders are fast, and Founders raise new holds.
-  Every company but the Lantern eats a grain each watch. Companies that
+  Bows strike from two tiles, Riders are fast, and Founders found new holds.
+  Every company but Lanterns eats a grain each watch. Companies that
   live through battles rise in rank (Blooded, Hardened, Sworn), each rank
   adding a tenth to attack and defence; chevrons under a token show it.
 - **Houses.** Other Houses are held by keepers, or by stewards with
@@ -418,24 +437,33 @@ it returns; orders given meanwhile wait and go when it does.
 - **Winning.** Raise the five stages of the **Moonspire** at your seat
   (ascendancy), or rule the lake (dominion): five of every twenty holds and
   at least ten, your vassals' counted with your own, or be the last House
-  standing. Rivals fear every rising Moonspire and will march on it, and
+  standing. Stewards fear every rising Moonspire and will march on it, and
   begin one only with the holds to store its last stage, or as the most
   renowned House on the lake.
-- **Fealty.** A rival that loses its seat with four holds or fewer left
-  bends the knee to the House that took it, and a beaten House may offer
-  fealty rather than fall. A vassal's holds join its liege's realm and it
-  can never turn on its liege; a liege who turns on a vassal frees it. A
-  far stronger steward will not make peace until the war has run long. In
-  simulated ages stewards win by dominion more than half the time, by the
-  Moonspire the rest, and now and then a House is destroyed outright.
-- **Tribute.** A greedy steward far stronger than a neighbour may demand a
-  fifth of its stores. Paid, it keeps the peace for twenty watches;
-  refused or ignored, it marches. You can demand tribute of the weak.
-- **The race.** The Houses panel shows each House's holds toward dominion
+- **Fealty.** A steward's House that loses its seat with four holds or
+  fewer left, and no vassals of its own, bends the knee to the House that
+  took it, if that House is sworn to no one; and a beaten House may offer
+  fealty rather than fall. A vassal's holds count with its liege's and it
+  can never turn on its liege; a liege who turns on a vassal frees it, and
+  a liege's fall frees all its vassals. A far stronger steward will not
+  make peace until the war has run long.
+- **How ages end.** In 528 ages played through by stewards alone, the
+  Moonspire decided seven in ten and dominion the rest; an age ran 157
+  watches at the median, and two in five saw a House fall outright. The
+  seats won alike, within chance. The tempers win differently: the
+  ambitious (37%) and the cunning (28%), quick to war, take most
+  dominions, while the steadfast (17%) and the wary (19%) win almost only by
+  the Moonspire.
+- **Tribute.** From watch twenty, an ambitious or cunning steward a quarter
+  stronger than a neighbour may demand a fifth of its stores. Paid, it keeps
+  the peace for twenty watches, unless that neighbour's Moonspire rises;
+  refused or ignored, it marches. You can demand tribute too: a keeper who
+  refuses you owes nothing more, and war is yours to choose.
+- **The race.** The Houses panel shows each House's holds towards dominion
   and its Moonspire's stages, and the game warns you, once, whenever any
   House comes near the end of either road. At the end of an age, a chart
   tells its story: every House's holds, watch by watch.
-- **Battle.** Attackers lean into their blows, the struck shake, bows'
+- **Battle.** Attackers lean into their blows, the struck shake, Bows'
   shots cross the gap, and the fallen fade where they stood.
 
 - **Voices.** Envoys speak to you, and a chronicler writes beneath the
@@ -448,7 +476,7 @@ it returns; orders given meanwhile wait and go when it does.
   in D minor drifting under a sparse line of bell-like notes, joined at war
   by a distant drum and darker chords. ⇧⌘M turns all sound off, ⇧⌘U the
   music alone, and Settings (⌘,) sets each part's volume. Each kind of
-  company sounds its own: riders' hooves, a loosed bowstring, the clash
+  company sounds its own: Riders' hooves, a loosed bowstring, the clash
   of a blow struck in close.
 - **Watchmen.** When an enemy's companies gather near one of your holds,
   you're told, and a broken red ring marks the hold on the map.
@@ -467,11 +495,12 @@ world, so there is nothing to save.
 | Click | Select a company, hold or tile |
 | Right-click | March the selected company there, or strike the enemy there. Hovering an enemy in reach shows the battle's odds first |
 | Drag, two-finger scroll | Pan; pinch, ⌘-scroll or a mouse wheel zooms |
-| Tab | Next company waiting for orders |
-| F / B | Fortify / found a hold with the selected Founder |
+| Tab or . | Next company waiting for orders |
+| F / B | Fortify / found a hold with the selected Founders |
+| M | March the selected company to the middle of the view, or strike there: play without a pointer |
 | H | Go to your seat |
 | Arrows or WASD, + − | Pan, zoom |
-| 1 / 2 / ? | Houses / Chronicle / Guide |
+| 1 / 2 / ? or ⌘? | Houses / Chronicle / Guide |
 | Esc | Close a panel, then clear the selection |
 | ⌘↩ | Ready: done with this watch's orders (click Waiting to take it back) |
 | ⇧⌘↩ | Stay ready until something needs you, up to ten watches |
@@ -480,24 +509,24 @@ world, so there is nothing to save.
 
 ## Design
 
-A full moon hangs over a great black lake. Its reflection breaks and gathers
-on the water below. Pale, thin type rests above the far shore. The mood is
+A full moon hangs over a great black lake. The water below gives it back
+whole, still as black glass. Pale, thin type rests above the far shore. The mood is
 vast, quiet and monumental, after the grand, minimal look of the Dune films.
 There is no music in the launcher; the game makes its own sound as it plays.
 
 - **The moon** is a large, cold full moon at the top of the sky, the same
   view as the app icon. Its halo swells and settles very slowly, and thin
   haze drifting past catches its light.
-- **The stars** flicker, each at its own pace. They flicker more near the
-  horizon, as they do through deeper air. Now and then a star falls: the
-  first a few seconds after the lake appears, then at random, about twice a
-  minute, drawing a fading trail away from the moon.
-- **The lake is water, not glass.** A long swell and wind ripples run toward
-  the viewer, breaking the moon's reflection into moving slivers. Glints of
-  moonlight flash on the facets turned toward the moon and trace its path to
-  the far shore. Now and then rings spread where something touched the
-  surface. Star reflections and falling stars ripple with the water. Far
-  away, the surface lies smooth and mirrors the shore.
+- **The stars** flicker, each at its own pace, warm or cold. They flicker
+  more near the horizon, as they do through deeper air. Now and then a star
+  falls: the first a few seconds after the lake appears, then at random,
+  about once in a minute and a half, drawing a fading trail away from the
+  moon.
+- **The lake is dead, deep and still.** Nothing stirs it: it gives back the
+  sky exactly, the moon whole with its rim as clean as above, and every
+  star where it stands, falling stars too. It shows itself only by giving
+  back a little less light as it nears, and by the mist and the hairline of
+  light where it meets the far shore.
 - **The title** is NULLMERE ONLINE on a single line, set in SF Pro Thin
   with wide tracking, and nothing else. The letters settle together as it
   appears. The menu is a single row of
@@ -507,10 +536,9 @@ There is no music in the launcher; the game makes its own sound as it plays.
 - **Rendering.** One fragment shader draws the whole scene procedurally. It
   is compiled at runtime from
   [`LakeShader.swift`](Sources/LauncherKit/Backdrop/LakeShader.swift), so plain
-  `swift build` works. Stars and glints are sized in points, so they stay crisp
-  at any window size or backing scale. Waves too small to draw cleanly fade
-  out rather than shimmer, and the output is dithered so the dark gradients
-  don't band.
+  `swift build` works. Stars are sized in points, so they stay crisp at any
+  window size or backing scale, and the output is dithered so the dark
+  gradients don't band.
 - **Cost.** The lake renders only while the window is visible and motion is
   allowed, at the chosen frame rate and resolution. It drops to 30 frames a
   second while another app is in front, in Low Power Mode, and when the Mac
@@ -535,7 +563,7 @@ Query parameters: `horizon`, `activity` (1 for full motion, 0.4 reduced,
 first falling star.
 
 The world map's shader is written the same way. Its preview reads the tile
-texture the game would, written for a keeper at a game's opening and for
+texture the game would, written for a keeper at an age's opening and for
 the whole world known:
 
 ```sh
@@ -544,7 +572,7 @@ python3 -m http.server
 # open http://localhost:8000/Tools/world-preview/?data=../../build/world-preview/opening.json
 ```
 
-Query parameters: `scale` (points per world unit, 28 as a game opens),
+Query parameters: `scale` (points per world unit, 28 as an age opens),
 `x` and `y` (the view's centre; the seat by default, `x=moon` for the
 moon's reflection) and `time`.
 
@@ -560,17 +588,17 @@ Sources/
   NullmereRealm/      The client's line to the realm over SpacetimeDB or in-process, the steward, keeper identity. Foundation only
   NullmereKit/        The world's interface: front door, Metal world, panels, sound
   NullmereSteward/    The steward's command-line entry point
-Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereRealmTests, NullmereKitTests
+Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereRealmTests, NullmereKitTests, and NullmereTestSupport (a SpacetimeDB in memory)
 realm-server/         The SpacetimeDB module (Rust): keepers, requests, answers, the world
 Dockerfile.steward    The steward in a container, as raise-realm.sh runs it
 news/                 news.json, the launcher's news feed
-perf/                 CI's performance baseline, and figures measured on real Macs (perf/mac/)
-Packaging/            Info.plist templates, the Liquid Glass icon (AppIcon.icon) and the classic 1024 px icon
+perf/                 CI's performance baseline; scripts/measure-mac.sh adds figures from real Macs in perf/mac/
+Packaging/            The Info.plist template, the Liquid Glass icon (AppIcon.icon) and the classic 1024 px icon
 scripts/              Building, packing and checking a release; smoke tests; raising the realm; going live
 Tools/icon/           Draws the icon's layers (make-layers.py)
 Tools/scene-preview/  Browser preview of the lake shader
 Tools/world-preview/  Browser preview of the world map's tiles
-docs/                 Going live, and project notes, starting with what carries over from Warpkeep
+docs/                 Going live; the consistency audit of October 2026 (docs/audit/); the plan made before the build for what carries over from Warpkeep
 ```
 
 ## Direction
@@ -581,17 +609,17 @@ docs/                 Going live, and project notes, starting with what carries 
   multiplayer backend, as it was for Warpkeep.
 - **Characters:** non-player characters voiced by Apple's on-device model,
   through the Foundation Models framework. They never decide outcomes or
-  grant resources.
+  grant stores.
 - **Character:** open source and pseudonymous, executed with restraint.
 
-[What carries over from Warpkeep](docs/warpkeep-carryover.md) covers the
-universe, principles, rules core, world model, backend and asset licensing in
-detail.
+[What carries over from Warpkeep](docs/warpkeep-carryover.md), a plan
+written before the build, covers the universe, principles and asset
+licensing, and says where the build went another way.
 
-## License
+## Licence
 
 - Code is licensed under the [Apache License 2.0](LICENSE).
 - Original art and documentation, including the app icon, are dedicated to
   the public domain under [CC0 1.0](LICENSE-CC0-1.0).
 - The Nullmere name and nullmere.online identify the official project. Neither
-  license grants rights to them.
+  licence grants rights to them.

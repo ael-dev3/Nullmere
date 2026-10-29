@@ -99,7 +99,7 @@ public final class LauncherModel {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
     }
 
-    /// Nullmere is usable only where Apple's on-device model is. Until it is
+    /// Nullmere Online is usable only where Apple's on-device model is. Until it is
     /// ready, the launcher shows nothing but the requirement screen: what is
     /// missing, a way to fix it where there is one, and Quit.
     var isGated: Bool {
@@ -111,8 +111,8 @@ public final class LauncherModel {
         switch screen {
         case .title, .play: return nil
         // Return opens a story's page; a story without one has none to open.
-        case .news: return selectedNews?.link == nil ? "↑ ↓ choose  ·  esc back" : "↑ ↓ choose  ·  return open  ·  esc back"
-        case .settings: return "← → change  ·  esc back"
+        case .news: return selectedNews?.link == nil ? "↑ ↓ choose  ·  Esc back" : "↑ ↓ choose  ·  Return open  ·  Esc back"
+        case .settings: return "← → change  ·  Esc back"
         }
     }
 

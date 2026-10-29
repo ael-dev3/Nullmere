@@ -17,7 +17,7 @@ Nullmere Online ${version}
 
 **What it needs.** A Mac with Apple silicon, macOS 26 or later, and Apple Intelligence turned on with its model downloaded. The envoys and the chronicler speak through Apple's on-device model, on your Mac. Where something is missing, the app says what, and opens System Settings where that helps.
 
-**The realm.** One persistent world on the dead lake, shared by every keeper, twelve seats around it. When every seat is held, newcomers wait at the door for one to fall free. Each watch, every House's orders are carried out together.
+**The realm.** One persistent world on the dead lake, shared by every keeper, twelve seats around it. When every seat is held, newcomers wait at the door for one to fall free. Your orders take effect at once; when the watch turns, the stewards act and the lake yields.
 NOTES
 if [ -z "$signed" ]; then
     echo

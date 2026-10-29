@@ -115,7 +115,7 @@ private struct ResourceReadout: View {
                     Text(verbatim: "\(amount)")
                         .font(.nm(13, weight: .regular).monospacedDigit())
                         .foregroundStyle(amount >= room ? Palette.glow : Palette.ink)
-                    Text(verbatim: net >= 0 ? "+\(net)" : "\(net)")
+                    Text(verbatim: net >= 0 ? "+\(net)" : "−\(-net)")
                         .font(.nm(10, weight: .regular).monospacedDigit())
                         .foregroundStyle(net < 0 ? Palette.bad : Palette.good.opacity(0.85))
                 }

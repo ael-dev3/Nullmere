@@ -17,7 +17,7 @@ struct HousesPanel: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 PanelTitle(title: "Houses", subtitle: "\(state.livingHouses.count) still stand around the lake")
-                CloseButton(label: "Close Houses") { session.panel = nil }
+                CloseButton(label: "Close the Houses") { session.panel = nil }
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
@@ -58,8 +58,10 @@ struct RaceTable: View {
                 Spacer(minLength: 4)
                 Caps("Holds of \(state.dominionNeed)", size: 7.5).foregroundStyle(Palette.text(0.45))
                     .frame(width: 92, alignment: .leading)
-                Caps("Spire", size: 7.5).foregroundStyle(Palette.text(0.45))
-                    .frame(width: 44, alignment: .leading)
+                Caps("Moonspire", size: 7.5).foregroundStyle(Palette.text(0.45))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .frame(width: 58, alignment: .leading)
             }
             ForEach(session.standings, id: \.house) { standing in
                 let house = state.houses[standing.house]
@@ -70,7 +72,7 @@ struct RaceTable: View {
                         .foregroundStyle(standing.threat == nil ? Palette.text(0.8) : (standing.house == session.player ? Palette.good : Palette.bad))
                         .lineLimit(1)
                     if standing.isVassal {
-                        Caps("Sworn", size: 7).foregroundStyle(Palette.text(0.4))
+                        Caps("Vassal", size: 7).foregroundStyle(Palette.text(0.4))
                     }
                     if standing.threat != nil, differentiate {
                         // Near the end of a road, said in words, not colour alone.
@@ -85,7 +87,7 @@ struct RaceTable: View {
                     }
                     .frame(width: 92, alignment: .leading)
                     LevelPips(level: standing.spire, maximum: BuildingKind.moonspire.maxLevel)
-                        .frame(width: 44, alignment: .leading)
+                        .frame(width: 58, alignment: .leading)
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(RaceTable.spoken(standing, in: state, player: session.player))
@@ -567,7 +569,7 @@ struct HouseRow: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
-            .help("Stores sent now buy goodwill: a steward sees a war as older, and takes a pact from a House that has given enough.")
+            .help("Stores sent now buy goodwill: a steward sees a war as older, and takes a pact from a House that has given enough, unless that House once made war on it or a pact between them was broken.")
         }
     }
 
@@ -594,7 +596,7 @@ struct HouseRow: View {
     static func keeping(_ house: House, present: [String]?) -> String {
         guard house.isPlayer else { return "A steward gives its orders." }
         if present?.contains(house.name) == true { return "Its keeper is here." }
-        return "Its keeper is away; after two watches a caretaker keeps it, beginning nothing."
+        return "Its keeper is away; after two watches a caretaker keeps it, beginning no war, demand or pact."
     }
 
     private func summary(stance: Stance, relation: Relation?, spire: Int) -> String {
@@ -641,7 +643,7 @@ private struct Figure: View {
 }
 
 struct CloseButton: View {
-    /// What it closes, as VoiceOver says it: "Close Houses", "Hide counsel".
+    /// What it closes, as VoiceOver says it: "Close the Houses", "Hide counsel".
     var label = "Close"
     let action: () -> Void
 
@@ -680,14 +682,14 @@ struct EnvoyCards: View {
                         Caps("An envoy of \(house.title)", size: 9, weight: .medium).foregroundStyle(Palette.ink)
                     }
                     if let spoken = session.spoken[.envoy(envoy.id)] {
-                        Text(verbatim: "“\(spoken)”")
+                        Text(verbatim: "\"\(spoken)\"")
                             .font(.nm(12, weight: .light).italic())
                             .foregroundStyle(Palette.text(0.88))
                             .fixedSize(horizontal: false, vertical: true)
                             .transition(.opacity)
                     }
                     if let words = session.words(of: envoy) {
-                        Text(verbatim: "“\(words)”")
+                        Text(verbatim: "\"\(words)\"")
                             .font(.nm(12, weight: .light).italic())
                             .foregroundStyle(Palette.text(0.88))
                             .fixedSize(horizontal: false, vertical: true)
@@ -704,7 +706,7 @@ struct EnvoyCards: View {
                         Spacer()
                         if envoy.words != nil {
                             let muted = session.mutedHouses.contains(house.name)
-                            QuietButton(title: muted ? "Show Words" : "Hide Words", size: 8.5) { session.setMuted(!muted, house: house) }
+                            QuietButton(title: muted ? "Show words" : "Hide words", size: 8.5) { session.setMuted(!muted, house: house) }
                                 .help(muted ? "Read \(house.name)'s words again." : "Hide \(house.name)'s words from now on, on this Mac.")
                         }
                         if envoy.proposal == .tribute, !house.isPlayer {
@@ -747,14 +749,17 @@ struct EnvoyCards: View {
             if have < trade.takeAmount { line += " You have only \(have) \(trade.take.title.lowercased())." }
             return line
         case .peace:
-            return "\(house.title) asks for peace. Their armies would turn from yours, and yours from theirs."
+            return "\(house.title) asks for peace. Their companies would turn from yours, and yours from theirs."
         case .pact:
             return "\(house.title) offers a pact: shared sight across the water, and no blade between you."
         case .fealty:
-            return "\(house.title) is beaten and bends the knee: it would be your vassal, its holds counted in your realm, never to raise a blade against you."
+            return "\(house.title) is beaten and bends the knee: it would be your vassal, its holds counted with yours, never to raise a blade against you."
         case .tribute:
             let price = state.tribute(from: player)
-            return "\(house.title) demands tribute: \(price), a fifth of your stores. Pay, and it keeps the peace for \(GameState.tributeRespite) watches. Refuse, or send no answer, and it marches on you."
+            guard !house.isPlayer else {
+                return "\(house.title) demands tribute: \(price), a fifth of your stores. Pay, and they can't ask again for \(GameState.tributeRespite) watches. Refuse, or send no answer, and war is theirs to choose."
+            }
+            return "\(house.title) demands tribute: \(price), a fifth of your stores. Pay, and it keeps the peace for \(GameState.tributeRespite) watches, unless your Moonspire rises. Refuse, or send no answer, and it marches on you."
         }
     }
 }
@@ -837,7 +842,7 @@ struct TradeComposer: View {
 
     static func line(for trade: Trade, stock: Stock, keeper: Bool) -> String {
         if let problem = problem(with: trade, stock: stock) { return problem }
-        let who = keeper ? "Their keeper answers by envoy." : "Their steward answers at once; the shrewd ask more, allies less."
+        let who = keeper ? "Their keeper answers by envoy." : "Their steward answers at once; the cunning ask more, allies less."
         return "\(note(asking: trade.asking)) \(who)"
     }
 }

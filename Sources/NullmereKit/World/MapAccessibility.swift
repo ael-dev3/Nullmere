@@ -98,7 +98,7 @@ enum MapAccessibility {
             var offered: [Order] = []
             // Foes it can strike now, with the odds the forecast gives.
             for hex in state.strikeTargets(of: unit).sorted(by: { unit.position.distance(to: $0) < unit.position.distance(to: $1) }) {
-                let what = state.hold(at: hex).map { $0.name } ?? state.unit(at: hex).map { "the \($0.kind.title) of \(state.houses[$0.owner].title)" } ?? "the foe"
+                let what = state.hold(at: hex).map { $0.name } ?? state.unit(at: hex).map { "the \($0.kind.title) of \(state.houses[$0.owner].title)" } ?? "the enemy"
                 let odds = state.forecast(unit: unit.id, at: hex).map { ": " + MapAccessibility.odds($0) } ?? ""
                 offered.append(Order(name: "Strike \(what), \(way(from: unit.position, to: hex))\(odds)", hex: hex))
             }
@@ -117,7 +117,7 @@ enum MapAccessibility {
                     && state.unit(at: hex) == nil && state.map.neighbors(of: hex).contains { !session.isExplored($0) }
             }.sorted { (unit.position.distance(to: $0), $0) < (unit.position.distance(to: $1), $1) }
             if let edge = frontier.prefix(8).first(where: { state.path(for: unit, to: $0) != nil }) {
-                offered.append(Order(name: "Explore toward the unknown, \(way(from: unit.position, to: edge))", hex: edge))
+                offered.append(Order(name: "Explore towards the unknown, \(way(from: unit.position, to: edge))", hex: edge))
             }
             // The nearest holds it knows of.
             let known = state.holds

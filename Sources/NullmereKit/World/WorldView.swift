@@ -27,9 +27,9 @@ struct WorldView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("The world map")
         // VoiceOver's rotor goes straight to the keeper's companies, the
-        // foes in sight, or the holds.
+        // enemies in sight, or the holds.
         .accessibilityRotor("Your companies", entries: session.mapItems.filter(\.isOwnCompany), entryID: \.id, entryLabel: \.label)
-        .accessibilityRotor("Foes in sight", entries: session.mapItems.filter(\.isFoe), entryID: \.id, entryLabel: \.label)
+        .accessibilityRotor("Enemies in sight", entries: session.mapItems.filter(\.isFoe), entryID: \.id, entryLabel: \.label)
         .accessibilityRotor("Holds", entries: session.mapItems.filter(\.isHold), entryID: \.id, entryLabel: \.label)
         // VoiceOver reads the map as its holds and companies; choosing one
         // selects it, and its panel opens as it would by a click.
@@ -572,7 +572,7 @@ struct ForecastCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Caps(isHold ? "Strike \(targetName)" : "Attack \(targetName)", size: 8.5, weight: .medium)
+            Caps("Strike \(targetName)", size: 8.5, weight: .medium)
                 .foregroundStyle(Palette.ink)
             line(isHold ? "Ward" : "They take", range: forecast.dealt, of: forecast.defenderHealth,
                  colour: forecast.mayFinish ? Palette.good : Palette.ink.opacity(0.8))

@@ -37,7 +37,7 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Nullmere contributors. Code: Apache-2.0. Original art: CC0-1.0.</string>
+	<string>Nullmere Online contributors. Code: Apache-2.0. Original art: CC0-1.0.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

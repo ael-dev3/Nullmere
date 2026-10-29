@@ -64,9 +64,9 @@ struct OutcomeOverlay: View {
     /// When the next age begins, as the realm's clock says.
     static func nextAge(secondsLeft: Int?) -> String {
         guard let left = secondsLeft, left < 3_600 else {
-            return "A new age begins on a fresh lake when the watch turns, and every keeper is seated anew."
+            return "A new age begins on a fresh lake when the watch turns, and keepers are seated anew in the order they first came, as seats allow."
         }
-        return "A new age begins on a fresh lake in \(left / 60):\(String(format: "%02d", left % 60)), and every keeper is seated anew."
+        return "A new age begins on a fresh lake in \(left / 60):\(String(format: "%02d", left % 60)), and keepers are seated anew in the order they first came, as seats allow."
     }
 
     private func description(winner: House, won: Bool) -> String {
@@ -77,7 +77,7 @@ struct OutcomeOverlay: View {
         case (.ascendancy, false):
             return "The Moonspire of \(winner.title) stands complete \(span). The lake will remember them, and not you."
         case (.dominion, true):
-            return "Your realm holds \(session.state.realm(of: winner.id)) of the \(session.state.holds.count) holds around the lake \(span). Every shore of the Nullmere answers to \(winner.title)."
+            return "You hold \(session.state.realm(of: winner.id)) of the \(session.state.holds.count) holds around the lake \(span), your vassals' counted. Every shore of \(session.state.settings.lake.title) answers to \(winner.title)."
         case (.dominion, false):
             if session.playerHouse.isEliminated {
                 return "Your last hold has fallen \(span). \(winner.title) is the greatest House left on the shore, and the water closes over your name."
@@ -118,7 +118,7 @@ struct FallenOverlay: View {
                         .keyboardShortcut(.cancelAction)
                         QuietButton(title: "Leave the world", size: 10) { app.leaveWorld() }
                         if session.mayTakeUpAFreeHouse {
-                            QuietButton(title: "Take up a free House", size: 10, prominent: true) { session.takeUpAFreeHouse() }
+                            QuietButton(title: "Take up an open seat", size: 10, prominent: true) { session.takeUpAFreeHouse() }
                         }
                     }
                     .padding(.top, 6)
@@ -131,10 +131,10 @@ struct FallenOverlay: View {
         } else if session.mayTakeUpAFreeHouse {
             // Looking on, the way back into play stays in reach.
             HStack(spacing: 10) {
-                Text(verbatim: "A House stands without a keeper.")
+                Text(verbatim: "A seat stands open.")
                     .font(.nm(11))
                     .foregroundStyle(Palette.text(0.75))
-                QuietButton(title: "Take up a free House", size: 9.5, prominent: true) { session.takeUpAFreeHouse() }
+                QuietButton(title: "Take up an open seat", size: 9.5, prominent: true) { session.takeUpAFreeHouse() }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -148,7 +148,7 @@ struct FallenOverlay: View {
     static func words(for house: House, watch: Int, freeHouse: Bool = false) -> String {
         let lost = "The last hold of \(house.title) is lost at watch \(watch). "
         if freeHouse {
-            return lost + "A House still stands without a keeper: take it up and play on, or look on until the age ends."
+            return lost + "A seat still stands open: take it up and play on, or look on until the age ends."
         }
         return lost + "The age goes on for the Houses still standing; when it ends, a new one begins on a fresh lake and you are seated again."
     }

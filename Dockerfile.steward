@@ -7,7 +7,8 @@
 #       nullmere-steward https://maincloud.spacetimedb.com/nullmere
 #
 # The token is that of the identity that published the realm module;
-# scripts/raise-realm.sh keeps it in that file and runs exactly this.
+# scripts/raise-realm.sh keeps it in that file and runs this, naming the
+# container and passing on the settings that shape a new realm.
 FROM swift:6.2-noble AS build
 WORKDIR /src
 COPY Package.swift ./

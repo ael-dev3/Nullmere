@@ -445,15 +445,15 @@ extension GameState {
         guard houses[house].stock.covers(cost) else { throw .shortOf(houses[house].stock.shortfall(for: cost)) }
 
         houses[house].stock.debit(cost)
-        let faster = hold.level(.musterHall) >= 3 && kind.trainWatches > 1 ? 1 : 0
-        holds[index].training = Hold.Training(kind: kind, watchesLeft: kind.trainWatches - faster)
+        holds[index].training = Hold.Training(kind: kind, watchesLeft: hold.trainingWatches(for: kind))
         return [.trainingStarted(hold: holdID, kind: kind)]
     }
 
     // MARK: Barter
 
     private mutating func barter(give: Resource, take: Resource, amount: Int, as house: Int) throws(RuleError) -> [GameEvent] {
-        guard give != take, amount > 0, amount <= Stock.cap else { throw .invalidAmount }
+        guard give != take else { throw .sameStore }
+        guard amount > 0, amount <= Stock.cap else { throw .invalidAmount }
         let price = take.barterCost(of: amount, paidIn: give)
         var cost = Stock()
         cost[give] = price

@@ -1,8 +1,9 @@
 name: CI
 
-# One macOS job per pull request update, and per push to main or a working
-# branch. Changes that only touch documentation or the lake's browser preview
-# don't start a run.
+# A run for each pull request update, and each push to main or a working
+# branch: the app built, tested and bundled on macOS; a realm raised on
+# SpacetimeDB; and the launcher's screens photographed. Changes that only
+# touch documentation or the lake's browser preview don't start a run.
 on:
   pull_request:
     paths:
@@ -112,7 +113,7 @@ jobs:
           done
           xcodebuild -downloadComponent MetalToolchain || echo "::warning::Could not download the Metal toolchain"
 
-      - name: Compile shader offline
+      - name: Compile the shaders offline
         run: scripts/check-shader.sh
 
       - name: Bundle app
@@ -179,9 +180,10 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: mkdir -p build && scripts/smoke-test-launcher-menu.sh 2>&1 | tee build/smoke-menu.log
 
-      # Opens the debug build of the game past the model gate (only debug
-      # builds allow that): its title screen, then a new game, whose world
-      # must render with Metal.
+      # Opens the debug build past the model gate (only debug builds allow
+      # that), presses Play and enters a realm hosted on the runner as a
+      # keeper, whose world must render with Metal; then the same realm
+      # forty watches on.
       - name: Open the game
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: mkdir -p build && scripts/smoke-test-game.sh 2>&1 | tee build/smoke-game.log

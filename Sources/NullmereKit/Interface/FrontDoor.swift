@@ -70,7 +70,7 @@ struct FrontDoor: View {
                             }
                             .keyboardShortcut(.defaultAction)
                             if case .unreachable = app.door {
-                                QuietButton(title: "Try Again", size: 11) { app.openDoor() }
+                                QuietButton(title: "Try again", size: 11) { app.openDoor() }
                             }
                             Spacer()
                             QuietButton(title: "Back", size: 11) { app.leaveDoor() }
@@ -124,20 +124,24 @@ struct FrontDoor: View {
     }
 
     private var enterTitle: String {
-        if app.isWaitingForSeat { return "Waiting for a Seat…" }
-        return app.isEntering ? "Entering…" : "Enter World"
+        if app.isWaitingForSeat { return "Waiting for a seat…" }
+        return app.isEntering ? "Entering…" : "Enter the world"
     }
 
-    /// When every seat is held: what waiting means.
+    /// When no seat is open: why, and what waiting means.
     private var seatNote: String? {
         if app.isWaitingForSeat {
-            return "Every seat around the lake is held. Stay at the door: you'll step in the moment one falls free. A seat left a week goes to whoever waits."
+            return "\(Self.noSeatOpen) Stay at the door: you'll step in the moment one opens. A seat left a week goes to whoever waits."
         }
         if case .open(let status) = app.door, status.freeSeats == 0, !status.isEnding {
-            return "Every seat around the lake is held. Enter to wait for the next that falls free."
+            return "\(Self.noSeatOpen) Enter to wait for the next to open."
         }
         return nil
     }
+
+    /// Why no seat is open: each House is a keeper's, sworn to another, or
+    /// leading or near the end of the age, which no newcomer may take up.
+    static let noSeatOpen = "No seat is open now: every House is held by a keeper, sworn to another, or leading the lake or near winning it."
 
     @ViewBuilder
     private var keeper: some View {
@@ -229,7 +233,7 @@ struct RealmLine: View {
 
     static func describe(_ status: RealmStatus) -> String {
         let there = status.online == 1 ? "1 keeper there" : "\(status.online) keepers there"
-        let seats = status.freeSeats == 1 ? "1 seat free" : "\(status.freeSeats) seats free"
+        let seats = status.freeSeats == 1 ? "1 seat open" : "\(status.freeSeats) seats open"
         let ending = status.isEnding ? " The age has ended; the next begins when the watch turns." : ""
         let names = present(status).map { " \($0)" } ?? ""
         let age = status.lake.map { "Age \(status.age) on \($0)" } ?? "Age \(status.age)"

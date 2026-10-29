@@ -10,7 +10,7 @@ public enum UnitKind: String, CaseIterable, Codable, Sendable {
 
     public var title: String {
         switch self {
-        case .lantern: return "Lantern"
+        case .lantern: return "Lanterns"
         case .spear: return "Spears"
         case .bow: return "Bows"
         case .rider: return "Riders"

@@ -87,6 +87,15 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
         30 + 30 * wallLevel + (isSeat ? 20 : 0)
     }
 
+    /// From this Muster Hall level, every company that takes more than a
+    /// watch to train takes one fewer.
+    public static let fasterTrainingAt = 3
+
+    /// Watches a company takes to train at this hold.
+    public func trainingWatches(for kind: UnitKind) -> Int {
+        kind.trainWatches - (level(.musterHall) >= Hold.fasterTrainingAt && kind.trainWatches > 1 ? 1 : 0)
+    }
+
     public static func sight(beaconLevel: Int) -> Int {
         2 + beaconLevel
     }

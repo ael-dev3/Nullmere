@@ -35,7 +35,7 @@ final class NearTheEndTests: XCTestCase {
         let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
         state.holds[seat].levels[.moonspire] = BuildingKind.moonspire.maxLevel - 1
         XCTAssertEqual(Counsel.race(in: state, player: me),
-                       "One stage more on your Moonspire and the lake is yours. Every rival will march on your seat: keep its walls manned.")
+                       "One stage more on your Moonspire and the lake is yours. The stewards will march on your seat: keep its walls manned.")
 
         // Holds founded, until the realm is two short of dominion (never
         // fewer than ten, so more than a young lake's seats).
@@ -49,7 +49,7 @@ final class NearTheEndTests: XCTestCase {
         }
         XCTAssertEqual(state.standings().first { $0.house == me }?.threat, .dominion)
         let line = try XCTUnwrap(Counsel.race(in: state, player: me))
-        XCTAssertTrue(line.hasPrefix("Your realm holds "), line)
+        XCTAssertTrue(line.hasPrefix("You hold "), line)
         XCTAssertTrue(line.hasSuffix("and the lake is yours."), line)
     }
 

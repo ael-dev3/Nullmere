@@ -33,7 +33,7 @@ extension GameState {
         var gift = Stock()
         gift[resource] = amount
         guard houses[house].stock.covers(gift) else { throw .shortOf(houses[house].stock.shortfall(for: gift)) }
-        guard houses[target].stock[resource] + amount <= storage(of: target) else { throw .storageFull }
+        guard houses[target].stock[resource] + amount <= storage(of: target) else { throw .noRoomWithThem }
         houses[house].stock.debit(gift)
         houses[target].stock.credit(gift)
         let worth = GameState.worth(of: resource, amount: amount)

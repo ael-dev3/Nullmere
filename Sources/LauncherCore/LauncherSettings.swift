@@ -43,7 +43,7 @@ public enum ResolvedMotion: Sendable, Equatable {
     }
 
     /// How lively the scene is, 0...1. It scales the stars' flicker; only at
-    /// full motion do stars fall and rings spread on the water.
+    /// full motion do stars fall.
     public var activity: Float {
         switch self {
         case .full: return 1

@@ -43,7 +43,7 @@ public struct GameSettingsView: View {
             Slider(value: value, in: 0...1)
                 .frame(width: 200)
                 .accessibilityLabel(title)
-                .accessibilityValue("\(Int((value.wrappedValue * 100).rounded())) percent")
+                .accessibilityValue("\(Int((value.wrappedValue * 100).rounded())) per cent")
         } label: {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)

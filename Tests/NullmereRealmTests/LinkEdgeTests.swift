@@ -36,7 +36,7 @@ final class LinkEdgeTests: XCTestCase {
         link.connect()
         defer { link.leave() }
         try await until("word of the realm") {
-            ear.events.contains { if case .unreachable("The realm hasn't opened yet.") = $0 { return true } else { return false } }
+            ear.events.contains { if case .unreachable("The realm isn't open yet.") = $0 { return true } else { return false } }
         }
     }
 
@@ -46,7 +46,7 @@ final class LinkEdgeTests: XCTestCase {
         let (link, ear) = link(db)
         link.arrive(name: "Ama")
         try await until("the refusal") { !ear.refusals.isEmpty }
-        XCTAssertEqual(ear.refusals.first, "No answer from the realm's server.")
+        XCTAssertEqual(ear.refusals.first, "The realm can't be reached.")
         link.leave()
     }
 

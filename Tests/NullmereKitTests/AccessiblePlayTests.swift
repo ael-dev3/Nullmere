@@ -103,7 +103,7 @@ final class AccessiblePlayTests: XCTestCase {
 
         let lantern = try XCTUnwrap(state.units(of: me).first { $0.kind == .lantern })
         let lanternOrders = try XCTUnwrap(items.first { $0.selection == .unit(lantern.id) }).orders
-        let explore = try XCTUnwrap(lanternOrders.first { $0.name.hasPrefix("Explore toward the unknown") }, "\(lanternOrders.map(\.name))")
+        let explore = try XCTUnwrap(lanternOrders.first { $0.name.hasPrefix("Explore towards the unknown") }, "\(lanternOrders.map(\.name))")
         XCTAssertTrue(["east", "west", "north", "south"].contains { explore.name.contains($0) }, explore.name)
         XCTAssertTrue(session.isExplored(explore.hex))
         XCTAssertTrue(state.map.neighbors(of: explore.hex).contains { !session.isExplored($0) }, "At the edge of what is known")
@@ -232,7 +232,7 @@ final class AccessiblePlayTests: XCTestCase {
         let lanternItem = try XCTUnwrap(session.mapItems.first { $0.selection == .unit(lantern.id) })
         let explore = try XCTUnwrap(lanternItem.orders.first { $0.name.hasPrefix("Explore") })
         MapAccessibility.carryOut(explore, for: lanternItem, in: session)
-        XCTAssertEqual(session.lastSaid, "Done: Explore toward the unknown.")
+        XCTAssertEqual(session.lastSaid, "Done: Explore towards the unknown.")
         XCTAssertNotEqual(session.state.unit(lantern.id), lantern, "On its way")
     }
 

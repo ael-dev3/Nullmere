@@ -58,13 +58,19 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case unknownEnvoy
     case envoyWaiting
     case invalidAmount
+    /// A trade or barter of a store for the same store.
+    case sameStore
     case storageFull
+    /// A gift the receiving House has no room to keep.
+    case noRoomWithThem
     case atWarWith(Int)
+    /// An offer of trade to a House at war with the trader.
+    case noTradeAcrossWar(Int)
 
     public var description: String {
         switch self {
-        case .gameOver: return "The game is over."
-        case .unknownUnit: return "That unit no longer exists."
+        case .gameOver: return "The age is over."
+        case .unknownUnit: return "That company no longer exists."
         case .unknownHold: return "That hold no longer exists."
         case .unknownHouse: return "No such House."
         case .notYours: return "That isn't yours to command."
@@ -74,25 +80,28 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .impassable(let terrain): return "\(terrain.title) can't be crossed."
         case .noPath: return "There's no way there."
         case .notAtWar: return "You're not at war with them."
-        case .nothingToAttack: return "There's nothing there to attack."
+        case .nothingToAttack: return "There's nothing there to strike."
         case .outOfReach: return "That's out of reach."
         case .cannotFight: return "These aren't fighters."
-        case .notAFounder: return "Only Founders can settle a hold."
+        case .notAFounder: return "Only Founders can found a hold."
         case .cannotSettle(let terrain): return "A hold can't stand on \(terrain.title)."
         case .tooCloseToHold: return "Too close to another hold; it needs three tiles of room."
         case .foreignTerritory: return "That land belongs to another House."
         case .busy: return "That hold is already busy."
         case .maxLevel: return "It's already at its highest level."
         case .seatOnly: return "Only a House's seat can raise it."
-        case .needsMusterHall(let level): return "Needs a Muster Hall of level \(level)."
+        case .needsMusterHall(let level): return "Needs a Muster Hall \(BuildingKind.numeral(level))."
         case .shortOf(let missing): return "Short of \(missing)."
-        case .alreadyStance(let stance): return "Already at \(stance.title.lowercased())."
+        case .alreadyStance(let stance): return "Already \(stance.standing)."
         case .notApplicable: return "That isn't possible now."
         case .unknownEnvoy: return "That envoy has gone."
         case .envoyWaiting: return "An envoy with that offer already waits on their answer."
-        case .invalidAmount: return "Choose an amount to trade."
+        case .invalidAmount: return "Choose an amount."
+        case .sameStore: return "Choose two different stores."
         case .storageFull: return "There's no room to store that much."
+        case .noRoomWithThem: return "They have no room to store that much."
         case .atWarWith: return "A gift across a war is no gift."
+        case .noTradeAcrossWar: return "No trade crosses a war."
         }
     }
 }

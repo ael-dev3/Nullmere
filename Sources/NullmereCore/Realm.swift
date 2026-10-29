@@ -13,6 +13,8 @@ public struct Keeper: Codable, Equatable, Identifiable, Sendable {
     public let arrival: Int
     /// When they left, if they are away.
     public internal(set) var awaySince: Double?
+    /// Watches turned since they left, if they are away.
+    public internal(set) var watchesAway: Int?
     /// They have given an order or been ready for a watch: they came to play.
     public internal(set) var hasPlayed: Bool?
 }
@@ -68,7 +70,7 @@ public enum RealmError: Error, Equatable, Sendable, CustomStringConvertible {
     case unknownKeeper
     case nameInvalid
     case nameTaken
-    /// Every seat is held; the keeper waits for one to fall free.
+    /// An order from a keeper who holds no standing House.
     case noSeat
     case rule(RuleError)
     /// Refused across the network, for the reason the realm gave.
@@ -78,8 +80,8 @@ public enum RealmError: Error, Equatable, Sendable, CustomStringConvertible {
         switch self {
         case .unknownKeeper: return "The realm doesn't know you yet."
         case .nameInvalid: return "A name is two to twenty letters, spaces, hyphens or apostrophes."
-        case .nameTaken: return "Another keeper already goes by that name."
-        case .noSeat: return "Every seat around the lake is held. You'll hold the next that falls free."
+        case .nameTaken: return "A keeper or a House already goes by that name."
+        case .noSeat: return "You hold no House standing on the lake."
         case .rule(let error): return error.description
         case .refused(let reason): return reason
         }
@@ -232,6 +234,7 @@ public struct RealmState: Codable, Equatable, Sendable {
         }
         keepers[index].isOnline = true
         keepers[index].awaySince = nil
+        keepers[index].watchesAway = nil
         // A keeper whose House has fallen may take up one standing free,
         // rather than look on until the age ends.
         if reseatsTheFallen, let house = keepers[index].house, world.houses[house].isEliminated, hasFreeSeat {
@@ -249,7 +252,10 @@ public struct RealmState: Codable, Equatable, Sendable {
     /// A keeper leaves; after two watches a caretaker keeps their House.
     public mutating func depart(_ id: String, now: Double) {
         guard let index = keepers.firstIndex(where: { $0.id == id }) else { return }
-        if keepers[index].isOnline { keepers[index].awaySince = now }
+        if keepers[index].isOnline {
+            keepers[index].awaySince = now
+            keepers[index].watchesAway = 0
+        }
         keepers[index].isOnline = false
         keepers[index].isReady = false
     }
@@ -374,7 +380,7 @@ public struct RealmState: Codable, Equatable, Sendable {
     }
 
     /// Watches a keeper is away before a caretaker keeps their House.
-    public static let caretakerAfter = 2.0
+    public static let caretakerAfter = 2
 
     /// A steward gives this watch's orders for a keeper's House, as a realm
     /// hosted on one Mac does when its keeper lets the watches run.
@@ -400,11 +406,16 @@ public struct RealmState: Codable, Equatable, Sendable {
             beginAge(now: now)
             return []
         }
-        // A House whose keeper has been away a while is kept for them, in
-        // its turn among the stewards, so it doesn't stand idle while its
-        // neighbours act.
+        // A House whose keeper has been away two watches is kept for them,
+        // in its turn among the stewards, so it doesn't stand idle while
+        // its neighbours act. Counted in watches, not minutes: however
+        // quickly the watches turn, it is kept from the second to turn
+        // after its keeper left.
+        for index in keepers.indices where !keepers[index].isOnline {
+            keepers[index].watchesAway = (keepers[index].watchesAway ?? 0) + 1
+        }
         let absent = keepers.filter { keeper in
-            !keeper.isOnline && now - (keeper.awaySince ?? now) >= RealmState.caretakerAfter * watchLength
+            !keeper.isOnline && (keeper.watchesAway ?? 0) >= RealmState.caretakerAfter
         }.compactMap(\.house)
         return world.endWatch(keptFor: Set(absent))
     }

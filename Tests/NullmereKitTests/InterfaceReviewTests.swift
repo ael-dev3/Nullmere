@@ -177,14 +177,14 @@ final class InterfaceReviewTests: XCTestCase {
             RunLoop.main.run(until: Date().addingTimeInterval(0.05))
         }
         XCTAssertTrue(PressableButtons.press("Look upon the lake"))
-        PressableButtons.forget("Take up a free House")
+        PressableButtons.forget("Take up an open seat")
         deadline = Date().addingTimeInterval(3)
-        while PressableButtons.actions["Take up a free House"] == nil, Date() < deadline {
+        while PressableButtons.actions["Take up an open seat"] == nil, Date() < deadline {
             RunLoop.main.run(until: Date().addingTimeInterval(0.05))
         }
         var seated: Keeper?
         session.onNewAge = { keeper, _ in seated = keeper }
-        XCTAssertTrue(PressableButtons.press("Take up a free House"), "Still in reach while looking on")
+        XCTAssertTrue(PressableButtons.press("Take up an open seat"), "Still in reach while looking on")
         XCTAssertNotNil(seated?.house)
         window.contentView = nil
     }
@@ -229,8 +229,8 @@ final class InterfaceReviewTests: XCTestCase {
         let app = GameApp(store: store, readiness: { .ready }, sound: false, address: .hosted(seed: "offered what helps"),
                           identity: FileIdentityStore(url: dir.appendingPathComponent("identity")))
         draw(FallenOverlay(app: app, session: session))
-        XCTAssertEqual(OutcomeOverlay.nextAge(secondsLeft: 134), "A new age begins on a fresh lake in 2:14, and every keeper is seated anew.")
-        XCTAssertEqual(OutcomeOverlay.nextAge(secondsLeft: nil), "A new age begins on a fresh lake when the watch turns, and every keeper is seated anew.")
+        XCTAssertEqual(OutcomeOverlay.nextAge(secondsLeft: 134), "A new age begins on a fresh lake in 2:14, and keepers are seated anew in the order they first came, as seats allow.")
+        XCTAssertEqual(OutcomeOverlay.nextAge(secondsLeft: nil), "A new age begins on a fresh lake when the watch turns, and keepers are seated anew in the order they first came, as seats allow.")
     }
 
     func testWhatTheBarAndPanelsReadIsTheWorldsOwn() throws {

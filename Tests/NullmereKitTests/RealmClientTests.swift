@@ -90,7 +90,7 @@ final class RealmClientTests: XCTestCase {
                                 secondsLeft: 999_999_999, isEnding: false)
         XCTAssertNil(EndWatchButton.realmLine(status: alone, secondsLeft: 999_999_999), "Alone, with no clock: nothing to say")
         XCTAssertEqual(EndWatchButton.realmLine(status: alone, secondsLeft: 61), "Turns in 1:01")
-        XCTAssertEqual(RealmLine.describe(alone), "Age 1, watch 3 · 1 keeper there · 3 seats free of 4.")
+        XCTAssertEqual(RealmLine.describe(alone), "Age 1, watch 3 · 1 keeper there · 3 seats open of 4.")
     }
 
     func testTheDoorAndTheHousesTellWhoIsThere() throws {
@@ -103,7 +103,7 @@ final class RealmClientTests: XCTestCase {
         XCTAssertEqual(RealmLine.present(status(["Ama", "Bel", "Cor"])), "There now: Ama, Bel and Cor.")
         XCTAssertEqual(RealmLine.present(status(["A", "B", "C", "D", "E", "F", "G"])), "There now: A, B, C, D, E and 2 more.")
         XCTAssertEqual(RealmLine.present(status(Array(repeating: "K", count: 24), online: 30)), "There now: K, K, K, K, K and 25 more.")
-        XCTAssertTrue(RealmLine.describe(status(["Ama", "Bel"])).hasSuffix("2 seats free of 8. There now: Ama and Bel."))
+        XCTAssertTrue(RealmLine.describe(status(["Ama", "Bel"])).hasSuffix("2 seats open of 8. There now: Ama and Bel."))
 
         // In the world, each House says who gives its orders.
         let realm = realm()
@@ -115,7 +115,7 @@ final class RealmClientTests: XCTestCase {
         XCTAssertEqual(HouseRow.keeping(bels, present: ama.realmStatus?.present), "Its keeper is here.")
         realm.link(identity: "b").leave()
         XCTAssertEqual(ama.realmStatus?.present, ["Ama"])
-        XCTAssertEqual(HouseRow.keeping(bels, present: ama.realmStatus?.present), "Its keeper is away; after two watches a caretaker keeps it, beginning nothing.")
+        XCTAssertEqual(HouseRow.keeping(bels, present: ama.realmStatus?.present), "Its keeper is away; after two watches a caretaker keeps it, beginning no war, demand or pact.")
         let steward = try XCTUnwrap(ama.state.houses.first { !$0.isPlayer })
         XCTAssertEqual(HouseRow.keeping(steward, present: ama.realmStatus?.present), "A steward gives its orders.")
     }

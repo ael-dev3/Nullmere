@@ -6,7 +6,7 @@ import SwiftUI
 enum HoverInfo {
     static func line(for hex: Hex, in state: GameState, explored: Bool, territory: [Int?]) -> String? {
         guard let index = state.map.index(of: hex) else { return nil }
-        guard explored else { return "Unknown country · send a Lantern" }
+        guard explored else { return "Unknown country · send Lanterns" }
         let tile = state.map[index]
         var parts = [tile.terrain.title]
         if let feature = tile.feature { parts.append(feature.title) }
@@ -14,7 +14,7 @@ enum HoverInfo {
             parts.append(hold.name)
         }
         if tile.terrain.isWater, tile.terrain != .shallows {
-            parts.append("dead water, impassable")
+            parts.append("yields nothing, impassable")
             return parts.joined(separator: " · ")
         }
         if !tile.yield.isZero { parts.append(tile.yield.description) }

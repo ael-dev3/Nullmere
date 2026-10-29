@@ -25,7 +25,7 @@ enum Race {
         case (.ascendancy, false):
             return .init(text: "The Moonspire of \(name) reaches its fourth stage. One more, and the lake is theirs: march on its seat.", tone: .bad)
         case (.dominion, true):
-            return .init(text: "Your realm holds \(standing.realm) of the \(standing.needed) holds dominion needs: \(holds(short)) more.", tone: .good)
+            return .init(text: "You hold \(standing.realm) of the \(standing.needed) holds dominion needs: \(holds(short)) more.", tone: .good)
         case (.dominion, false):
             return .init(text: "\(name) rules \(standing.realm) of the \(standing.needed) holds dominion needs. Take holds from it before it takes the lake.", tone: .bad)
         }

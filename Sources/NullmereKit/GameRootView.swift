@@ -170,7 +170,7 @@ struct PlayView: View {
 /// The few keys worth knowing, in the corner.
 private struct KeyHints: View {
     var body: some View {
-        Text(verbatim: "? guide · Tab next company · ⌘↩ ready")
+        Text(verbatim: "? Guide · Tab next company · ⌘↩ ready")
             .font(.nm(10))
             .foregroundStyle(Palette.text(0.4))
             .padding(.horizontal, 10)

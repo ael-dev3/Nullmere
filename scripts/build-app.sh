@@ -6,9 +6,9 @@
 #   VERSION=0.3.0 scripts/build-app.sh   # set the marketing version
 #   REALM_ADDRESS=https://maincloud.spacetimedb.com/nullmere scripts/build-app.sh
 #
-# The apps are built for Apple silicon only and need macOS 26, matching
-# Apple Intelligence. They are ad-hoc signed, which is enough to run them on
-# the Mac that built them. Set CODESIGN_IDENTITY to sign with a Developer ID
+# The app is built for Apple silicon only and needs macOS 26, matching
+# Apple Intelligence. It is ad-hoc signed, which is enough to run it on the
+# Mac that built it. Set CODESIGN_IDENTITY to sign with a Developer ID
 # instead, with the hardened runtime and a secure timestamp, ready to notarize.
 set -euo pipefail
 

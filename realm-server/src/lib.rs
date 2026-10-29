@@ -14,8 +14,9 @@
 //!
 //! The world, the requests, the answers and the keepers' views are private
 //! tables. Everyone may read the realm's status; a keeper reads their own
-//! view and their own answers through the `my_view` and `my_replies` views,
-//! which show each caller their rows alone.
+//! view, their own answers and their own requests still waiting through the
+//! `my_view`, `my_replies` and `my_requests` views, which show each caller
+//! their rows alone.
 
 use spacetimedb::{reducer, table, view, ReducerContext, Table, ViewContext};
 
@@ -135,6 +136,14 @@ fn my_view(ctx: &ViewContext) -> Option<KeeperView> {
     ctx.db.keeper_view().keeper().find(ctx.sender().to_hex().to_string())
 }
 
+/// The caller's own requests still waiting for the steward: a client asks
+/// after an order past its time here, rather than send it again.
+#[view(accessor = my_requests, public)]
+fn my_requests(ctx: &ViewContext) -> Vec<Request> {
+    let me = ctx.sender().to_hex().to_string();
+    ctx.db.request().keeper().filter(&me).collect()
+}
+
 /// The steward's answers to the caller's own requests.
 #[view(accessor = my_replies, public)]
 fn my_replies(ctx: &ViewContext) -> Vec<Reply> {
@@ -209,7 +218,8 @@ pub fn here(ctx: &ReducerContext, nonce: String) -> Result<(), String> {
     ask(ctx, "here", nonce, String::new())
 }
 
-/// Leave the realm; the keeper's House stands as they left it.
+/// Leave the realm; after two watches away a caretaker keeps the keeper's
+/// House.
 #[reducer]
 pub fn leave(ctx: &ReducerContext, nonce: String) -> Result<(), String> {
     ask(ctx, "leave", nonce, String::new())

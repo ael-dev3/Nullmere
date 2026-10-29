@@ -120,7 +120,7 @@ public struct SpacetimeHTTP: SpacetimeTransport, @unchecked Sendable {
     /// An answer, and the server's clock by its `Date` header.
     private func sendDated(_ request: URLRequest) async throws -> (data: Data, date: Date?) {
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw SpacetimeError("No answer from the realm's server.") }
+        guard let http = response as? HTTPURLResponse else { throw SpacetimeError("No answer from the realm.") }
         if http.statusCode == 404 {
             throw SpacetimeError("The realm isn't open yet.")
         }
@@ -129,7 +129,7 @@ public struct SpacetimeHTTP: SpacetimeTransport, @unchecked Sendable {
         }
         guard (200..<300).contains(http.statusCode) else {
             let text = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            throw SpacetimeError(text.isEmpty ? "The realm's server answered \(http.statusCode)." : text)
+            throw SpacetimeError(text.isEmpty ? "The realm answered \(http.statusCode)." : text)
         }
         return (data, (http.value(forHTTPHeaderField: "Date")).flatMap(Self.httpDate))
     }

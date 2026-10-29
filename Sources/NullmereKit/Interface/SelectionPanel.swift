@@ -118,7 +118,7 @@ private struct OwnHoldPanel: View {
                 }
 
                 Rule()
-                Caps("Muster", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7))
+                Caps("Companies", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7))
                 ForEach(UnitKind.allCases, id: \.self) { kind in
                     TrainingRow(session: session, hold: hold, kind: kind, stock: stock)
                 }
@@ -232,7 +232,8 @@ private struct TrainingRow: View {
             if allowed {
                 HStack(spacing: 10) {
                     CostLine(cost: cost, available: stock)
-                    Text(verbatim: "\(kind.trainWatches) watch\(kind.trainWatches == 1 ? "" : "es")")
+                    let watches = hold.trainingWatches(for: kind)
+                    Text(verbatim: "\(watches) watch\(watches == 1 ? "" : "es")")
                         .font(.nm(10))
                         .foregroundStyle(Palette.text(0.45))
                 }
@@ -388,7 +389,7 @@ struct UnitPanel: View {
                 HStack(spacing: 4) {
                     if unit.kind == .founder {
                         let problem = state.canFound(at: unit.position, for: session.player)
-                        QuietButton(title: "Found Hold", prominent: problem == nil, enabled: problem == nil) {
+                        QuietButton(title: "Found a hold", prominent: problem == nil, enabled: problem == nil) {
                             session.perform(.found(unit: unit.id))
                         }
                         .help(problem.map { String(describing: $0) } ?? "Raise a new hold here")
@@ -455,7 +456,8 @@ private struct TilePanel: View {
                 PanelTitle(title: tile.terrain.title, subtitle: tile.feature?.title)
                 let yield = tile.yield
                 if yield.isZero {
-                    Text(verbatim: tile.terrain.isWater ? "Dead water. Nothing lives in it, and nothing grows." : "Bare ground.")
+                    Text(verbatim: tile.terrain == .still ? "Nothing lives in the Still, and nothing grows."
+                                   : tile.terrain == .shallows ? "Nothing lives in the shallows, and nothing grows; they can be waded." : "Bare ground.")
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.text(0.55))
                 } else {
@@ -487,7 +489,7 @@ private struct TilePanel: View {
                         .foregroundStyle(Palette.house(state.houses[owner]))
                 }
             } else {
-                PanelTitle(title: "Unknown", subtitle: "Send a Lantern to see what lies here.")
+                PanelTitle(title: "Unknown", subtitle: "Send Lanterns to see what lies here.")
             }
         }
         .padding(16)

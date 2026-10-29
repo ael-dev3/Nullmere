@@ -970,7 +970,7 @@ final class PressTests: XCTestCase {
         let founder = state.units[lantern].id
         session.selection = .unit(founder)
         draw(SelectionPanel(session: session), height: 600)
-        XCTAssertTrue(PressableButtons.press("Found Hold"), "Among \(shown)")
+        XCTAssertTrue(PressableButtons.press("Found a hold"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .found(unit: founder))
 
         // A company on the march may be halted.
@@ -1047,11 +1047,11 @@ final class PressDoorTests: XCTestCase {
         XCTAssertTrue(PressableButtons.press("Back"), "Among \(shown)")
         XCTAssertEqual(left, 1, "Back to the launcher")
 
-        // A realm out of reach: Try Again reaches for it once more.
-        app.hear(.unreachable("No answer from the realm's server."))
+        // A realm out of reach: Try again reaches for it once more.
+        app.hear(.unreachable("No answer from the realm."))
         draw(FrontDoor(app: app))
-        XCTAssertTrue(PressableButtons.press("Try Again"), "Among \(shown)")
-        XCTAssertNotEqual(app.door, .unreachable("No answer from the realm's server."))
+        XCTAssertTrue(PressableButtons.press("Try again"), "Among \(shown)")
+        XCTAssertNotEqual(app.door, .unreachable("No answer from the realm."))
     }
 
     func testAnEndingsButtons() throws {
@@ -1080,7 +1080,7 @@ final class PressDoorTests: XCTestCase {
         let seen = LastSeen(watch: state.watch, stock: state.houses[state.player].stock, holds: state.holds(of: state.player).count)
         let report = try XCTUnwrap(AwayReport(since: seen, now: later, player: state.player))
         draw(AwayCard(report: report) { back += 1 }, width: 600, height: 500)
-        XCTAssertTrue(PressableButtons.press("Back to It"), "Among \(shown)")
+        XCTAssertTrue(PressableButtons.press("Back to it"), "Among \(shown)")
         XCTAssertEqual(back, 1)
     }
 }

@@ -2,7 +2,7 @@
 name = "nullmere-realm"
 version = "0.1.0"
 edition = "2021"
-license = "MIT"
+license = "Apache-2.0"
 description = "The Nullmere Online realm on SpacetimeDB: keepers' requests in, the steward's world out."
 
 [lib]

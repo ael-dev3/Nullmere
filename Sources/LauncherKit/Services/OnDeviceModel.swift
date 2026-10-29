@@ -2,7 +2,7 @@ import Foundation
 import FoundationModels
 import LauncherCore
 
-/// Where the answer about Apple's on-device model comes from. The apps ask
+/// Where the answer about Apple's on-device model comes from. The app asks
 /// the system; tests supply a fake that can be set to any state.
 public protocol ModelAvailabilityProvider: Sendable {
     var availability: SystemLanguageModel.Availability { get }
@@ -17,8 +17,8 @@ public struct SystemModelAvailability: ModelAvailabilityProvider {
     }
 }
 
-/// Reads whether Apple's on-device model can be used on this Mac. Nullmere
-/// Online and Nullmere both ask here.
+/// Reads whether Apple's on-device model can be used on this Mac: the
+/// launcher and the realm's front door both ask here.
 public enum OnDeviceModel {
     /// This Mac's state, as the Foundation Models framework reports it, or
     /// in a debug build as NULLMERE_MODEL_STATE names it.

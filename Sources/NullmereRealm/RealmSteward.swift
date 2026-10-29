@@ -305,10 +305,10 @@ public actor RealmSteward {
         String(describing: error).contains("Another steward holds the realm")
     }
 
-    /// "Age 1, watch 40: 3 keepers there of 5, 7 seats free of 12."
+    /// "Age 1, watch 40: 3 keepers there of 5, 7 seats open of 12."
     public static func health(_ status: RealmStatus) -> String {
         "Age \(status.age), watch \(status.watch): \(status.online) keeper\(status.online == 1 ? "" : "s") there of \(status.keepers), "
-            + "\(status.freeSeats) seat\(status.freeSeats == 1 ? "" : "s") free of \(status.seats)."
+            + "\(status.freeSeats) seat\(status.freeSeats == 1 ? "" : "s") open of \(status.seats)."
     }
 
     /// What the steward has to say, for whoever runs it.

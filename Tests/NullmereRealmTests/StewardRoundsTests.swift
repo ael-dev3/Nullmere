@@ -11,10 +11,10 @@ final class StewardRoundsTests: XCTestCase {
     func testHealthIsSaidPlainly() {
         let one = RealmStatus(name: "N", age: 2, watch: 40, seats: 12, freeSeats: 1, keepers: 11, online: 1, ready: 0,
                               secondsLeft: 60, isEnding: false)
-        XCTAssertEqual(RealmSteward.health(one), "Age 2, watch 40: 1 keeper there of 11, 1 seat free of 12.")
+        XCTAssertEqual(RealmSteward.health(one), "Age 2, watch 40: 1 keeper there of 11, 1 seat open of 12.")
         let many = RealmStatus(name: "N", age: 1, watch: 3, seats: 12, freeSeats: 7, keepers: 5, online: 3, ready: 1,
                                secondsLeft: 60, isEnding: false)
-        XCTAssertEqual(RealmSteward.health(many), "Age 1, watch 3: 3 keepers there of 5, 7 seats free of 12.")
+        XCTAssertEqual(RealmSteward.health(many), "Age 1, watch 3: 3 keepers there of 5, 7 seats open of 12.")
         XCTAssertTrue(RealmSteward.isHeldByAnother(SpacetimeError("Another steward holds the realm until 12:00.")))
         XCTAssertFalse(RealmSteward.isHeldByAnother(SpacetimeError("The realm isn't open yet.")))
     }

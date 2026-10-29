@@ -1,8 +1,8 @@
 # Going live
 
-Everything Nullmere Online needs is built and rehearsed in CI on every push that
-changes the code, the scripts or the news. What remains needs accounts,
-hardware or people only its keeper has. Each step below is one command, says
+Everything Nullmere Online needs is built and rehearsed in CI on every pull
+request and every push that changes the code, the scripts or the news. What
+remains needs accounts, hardware or people only its maintainer has. Each step below is one command, says
 plainly whether it worked, and can be run alone, in any order.
 
 To see where every step stands, and the command for each one not yet done:
@@ -43,7 +43,7 @@ the terminal. Release builds already point at
 also be published from GitHub (Actions > Publish the realm) once the
 `SPACETIME_TOKEN` secret holds `spacetime login show --token`'s token.
 
-CI raises a whole realm this way on every push, on its own SpacetimeDB, and
+CI raises a whole realm this way on every run, on its own SpacetimeDB, and
 enters it as two keepers.
 
 ## 2. Sign and notarize the release
@@ -67,7 +67,7 @@ scripts/set-release-secrets.sh DeveloperID.p12 AuthKey_XXXXXXXXXX.p8 <issuer id>
 ```
 
 `DRY_RUN=1` checks them and sets nothing; CI rehearses that check on every
-push.
+run.
 
 Then tag a version:
 
@@ -78,7 +78,7 @@ git tag v1.0.0 && git push origin v1.0.0
 The Release workflow runs the tagged commit's tests and releases nothing
 that fails them; signs the app with the hardened runtime and a secure
 timestamp, signs and notarizes the disk image, and staples it; checks the
-image as a player receives it (`scripts/verify-release.sh`: the app inside
+image as a keeper receives it (`scripts/verify-release.sh`: the app inside
 named Nullmere Online, at the tag's version, signed by the Developer ID,
 accepted by Gatekeeper); and attaches it, with its SHA-256, to a GitHub
 release. Tags are three numbers (`v1.0.0`), as the app's version is. It worked
@@ -89,7 +89,7 @@ spctl --assess --type open --context context:primary-signature --verbose Nullmer
 # Nullmere-Online-1.0.0.dmg: accepted   source=Notarized Developer ID
 ```
 
-CI rehearses every one of these steps on every push with a throwaway identity
+CI rehearses every one of these steps on every run with a throwaway identity
 (`scripts/rehearse-release.sh`), printing the notarization it would send, and
 checks its own image with `scripts/verify-release.sh` too. The checksum, on any
 Mac: `shasum -a 256 -c Nullmere-Online-1.0.0.dmg.sha256`.
@@ -114,13 +114,15 @@ virtual Mac with a paravirtual GPU, so real Apple silicon should come in well
 under its figures. (`scripts/check-voices.sh` and `scripts/measure-mac.sh`
 each do one half.)
 
-## 5. The first players
+## 5. The first keepers
 
-With the realm up (step 1) and a release out (step 2), a player downloads the
+With the realm up (step 1) and a release out (step 2), a keeper downloads the
 disk image from the release, opens Nullmere Online, presses Play, and enters
 under a name of their choosing: no account, no settings, the realm is the
 realm. The first twelve take the twelve seats; others wait at the door for
-one to fall free.
+one to open.
 
-For the steward's keeper: `docker logs -f nullmere-steward-nullmere` follows
-the realm; each player's order and each watch's turn passes through it.
+For the realm's maintainer: `docker logs -f nullmere-steward-nullmere` shows
+the steward. Every ten minutes it says how the realm stands, and it says
+when a round fails and when the server answers again; keepers' orders and
+the turning of the watches are not logged.

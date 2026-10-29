@@ -1,5 +1,26 @@
 # What Nullmere carries over from Warpkeep
 
+> **A plan, written on 24 October 2026, before Nullmere was built.** It is
+> kept as written. Where the build went another way:
+>
+> - **The rules are new.** Nullmere's rules core is its own Swift
+>   (`Sources/NullmereCore`), not a port of Warpkeep's `gameplay04`. Its
+>   stores are grain, timber, stone and moonsalt; its time is the watch, not
+>   worker journeys and build timers.
+> - **Its world is its own.** A dead lake ringed by Houses' seats, grown from
+>   the realm's private words. No Hegemony region or gate is used.
+> - **The server is a Rust module** (`realm-server/`) that keeps the world
+>   and the keepers' requests. A steward runs the Swift rules beside it.
+>   Clients speak to it over SpacetimeDB's HTTP API, calling reducers and
+>   reading views, not over subscriptions.
+> - **Admission is open.** A keeper is known by a SpacetimeDB identity kept
+>   in the Mac's keychain. There are no invites and no accounts.
+> - **Metal is here.** The launcher's lake and the world map are both drawn
+>   with Metal.
+>
+> The open decisions at the end were settled that way. Licensing is as
+> planned: code under Apache-2.0, original art and docs under CC0.
+
 Nullmere grows out of [Warpkeep](https://github.com/ael-dev3/Warpkeep), a
 persistent browser strategy game built around Farcaster identity. Warpkeep's
 development halted on 17 October 2026 and its source was published for reuse.

@@ -18,7 +18,7 @@ struct SeatBriefing: Equatable {
         let holds = world.holds(of: player)
         if let seat = world.seat(of: player) {
             let others = holds.count - 1
-            facts.append(others == 0 ? "Your seat is \(seat.name), by the still water."
+            facts.append(others == 0 ? "Your seat is \(seat.name), by the Still."
                                      : "Your seat is \(seat.name), with \(others == 1 ? "one hold" : "\(others) holds") besides.")
         }
         if world.watch > 1 {
@@ -46,7 +46,7 @@ struct SeatBriefing: Equatable {
             steps.append(idle == 1 ? "Give your hold a work to build: select it, and choose one." : "Give each of your \(idle) idle holds a work to build.")
         }
         steps.append("Select a company (Tab), then right-click where it should go. Lanterns find what lies in the mist.")
-        steps.append("When your orders are given, say you're ready (⌘↩). The watch turns when every keeper is ready, or when its time runs out.")
+        steps.append("When your orders are given, say you're ready (⌘↩). The watch turns when every keeper there is ready, or when its time runs out.")
         self.steps = steps
     }
 

@@ -70,11 +70,11 @@ final class NetworkAppTests: XCTestCase {
         PressableButtons.isListening = true
         defer { PressableButtons.isListening = false }
         XCTAssertNotNil(RealmState.nameProblem("A"))
-        PressableButtons.forget("Enter World")
+        PressableButtons.forget("Enter the world")
         draw(FrontDoor(app: app, name: "A"))
-        XCTAssertFalse(PressableButtons.press("Enter World"), "Not with a name of one letter")
+        XCTAssertFalse(PressableButtons.press("Enter the world"), "Not with a name of one letter")
         draw(FrontDoor(app: app, name: "Ama"))
-        XCTAssertTrue(PressableButtons.press("Enter World"))
+        XCTAssertTrue(PressableButtons.press("Enter the world"))
         XCTAssertTrue(app.isEntering)
         draw(FrontDoor(app: app))
         try await until("the world") { app.session != nil }
@@ -153,7 +153,7 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertFalse(app.canEnter(with: "Ama"), "No way in to a realm that doesn't answer")
         draw(FrontDoor(app: app))
 
-        // Try Again, once it answers.
+        // Try again, once it answers.
         await db.setReachable(true)
         app.openDoor()
         try await until("the realm to answer again") { if case .open = app.door { return true } else { return false } }

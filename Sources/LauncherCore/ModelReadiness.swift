@@ -1,5 +1,5 @@
 /// Whether this Mac can run Apple's on-device language model, the roughly
-/// 3-billion-parameter model behind Apple Intelligence. Nullmere requires it:
+/// 3-billion-parameter model behind Apple Intelligence. Nullmere Online requires it:
 /// its characters will speak through it, and the launcher shows nothing but
 /// what is missing until it is ready. LauncherKit reads the state from the
 /// Foundation Models framework.
@@ -52,7 +52,7 @@ public enum ModelReadiness: Equatable, Sendable {
         switch self {
         case .checking: return "Checking this Mac"
         case .ready: return "This Mac is ready"
-        case .deviceNotEligible: return "This Mac can't run Nullmere"
+        case .deviceNotEligible: return "This Mac can't run Nullmere Online"
         case .appleIntelligenceNotEnabled: return "Apple Intelligence is off"
         case .modelNotReady: return "The model is still arriving"
         case .unavailable: return "The model is unavailable"
@@ -63,17 +63,17 @@ public enum ModelReadiness: Equatable, Sendable {
     public var explanation: String {
         switch self {
         case .checking:
-            return "Nullmere needs Apple's on-device model. This Mac is being checked for it."
+            return "Nullmere Online needs Apple's on-device model. This Mac is being checked for it."
         case .ready:
-            return "Apple's on-device model is here, and Nullmere's characters will speak through it."
+            return "Apple's on-device model is here, and Nullmere Online's characters will speak through it."
         case .deviceNotEligible:
-            return "Nullmere's characters speak through Apple's on-device model, which needs a Mac that supports Apple Intelligence. This Mac doesn't, so Nullmere can't run here."
+            return "Nullmere Online's characters speak through Apple's on-device model, which needs a Mac that supports Apple Intelligence. This Mac doesn't, so Nullmere Online can't run here."
         case .appleIntelligenceNotEnabled:
-            return "Nullmere's characters speak through Apple's on-device model. Turn on Apple Intelligence in System Settings, and Nullmere opens by itself."
+            return "Nullmere Online's characters speak through Apple's on-device model. Turn on Apple Intelligence in System Settings, and Nullmere Online opens by itself."
         case .modelNotReady:
-            return "Apple's on-device model isn't ready yet, usually because it's still downloading. Nullmere opens by itself once it is."
+            return "Apple's on-device model isn't ready yet, usually because it's still downloading. Nullmere Online opens by itself once it is."
         case .unavailable:
-            return "macOS reports that Apple's on-device model can't be used right now. Check Apple Intelligence in System Settings; Nullmere opens by itself once the model is available."
+            return "macOS reports that Apple's on-device model can't be used right now. Check Apple Intelligence in System Settings; Nullmere Online opens by itself once the model is available."
         }
     }
 

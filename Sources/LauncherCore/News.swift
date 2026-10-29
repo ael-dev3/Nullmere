@@ -133,28 +133,28 @@ extension NewsFeed {
             id: "twelve-seats",
             date: NewsDate(year: 2026, month: 10, day: 26)!,
             title: "Twelve seats around the lake",
-            body: "Nullmere Online is one realm, shared by every keeper. Enter under a name of your choosing and hold one of twelve seats. Each watch, every House's orders are carried out together: pacts, gifts, trade, war. The realm opens with the first release.",
+            body: "Nullmere Online is one realm, shared by every keeper. Enter under a name of your choosing and hold one of twelve seats. Your orders take effect at once; when the watch turns, the stewards act and the lake yields. The realm opens with the first release.",
             link: nil
         ),
         NewsItem(
             id: "full-moon",
             date: NewsDate(year: 2026, month: 10, day: 24)!,
             title: "A full moon over Nullmere",
-            body: "The launcher now opens on the lake under a full moon. The water moves, the stars flicker, and now and then one falls. Play, News, Settings and the repository live here while the first realm is shaped.",
+            body: "The launcher now opens on the lake under a full moon. The water moves, the stars flicker, and now and then one falls. Play, News, Settings and Repository live here while the first realm is shaped.",
             link: URL(string: "https://github.com/ael-dev3/Nullmere")
         ),
         NewsItem(
             id: "apple-intelligence",
             date: NewsDate(year: 2026, month: 10, day: 24)!,
             title: "Made for Apple Intelligence",
-            body: "Nullmere runs on Macs with Apple silicon and macOS 26 or later, with Apple Intelligence turned on. Its characters will speak through Apple's on-device model, so the launcher checks that your Mac has it before you cross.",
+            body: "Nullmere Online runs on Macs with Apple silicon and macOS 26 or later, with Apple Intelligence turned on. Its characters will speak through Apple's on-device model, so the launcher checks that your Mac has it before you cross.",
             link: nil
         ),
         NewsItem(
             id: "out-of-warpkeep",
             date: NewsDate(year: 2026, month: 10, day: 24)!,
             title: "Out of Warpkeep",
-            body: "Nullmere keeps Warpkeep's universe, principles and rules core, and leaves its Farcaster identity behind. The notes on what carries over are in the repository.",
+            body: "Nullmere keeps Warpkeep's universe and principles, and leaves its Farcaster identity behind. The notes on what carries over are in the repository.",
             link: URL(string: "https://github.com/ael-dev3/Nullmere/blob/main/docs/warpkeep-carryover.md")
         ),
     ])

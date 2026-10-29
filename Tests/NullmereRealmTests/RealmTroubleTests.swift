@@ -14,15 +14,15 @@ final class RealmTroubleTests: XCTestCase {
         let said: [(any Error, String)] = [
             (SpacetimeError("The realm isn't open yet."), "The realm isn't open yet."),
             (URLError(.notConnectedToInternet), "This Mac isn't connected to the internet."),
-            (URLError(.timedOut), "The realm's server didn't answer in time."),
-            (URLError(.cannotFindHost), "The realm's server can't be found."),
-            (URLError(.dnsLookupFailed), "The realm's server can't be found."),
-            (URLError(.serverCertificateUntrusted), "The realm's server couldn't be reached safely."),
-            (URLError(.secureConnectionFailed), "The realm's server couldn't be reached safely."),
-            (URLError(.cannotConnectToHost), "The realm's server can't be reached."),
-            (URLError(.networkConnectionLost), "The realm's server can't be reached."),
+            (URLError(.timedOut), "The realm didn't answer in time."),
+            (URLError(.cannotFindHost), "The realm can't be found."),
+            (URLError(.dnsLookupFailed), "The realm can't be found."),
+            (URLError(.serverCertificateUntrusted), "The realm couldn't be reached safely."),
+            (URLError(.secureConnectionFailed), "The realm couldn't be reached safely."),
+            (URLError(.cannotConnectToHost), "The realm can't be reached."),
+            (URLError(.networkConnectionLost), "The realm can't be reached."),
             (NSError(domain: "NSOSStatusErrorDomain", code: -25308),
-             "This Mac's keychain wouldn't keep the realm's key. Unlock the keychain, then try again."),
+             "This Mac's keychain wouldn't keep your key. Unlock the keychain, then try again."),
             (NSError(domain: "Elsewhere", code: 7), "The realm can't be reached."),
         ]
         for (error, words) in said {
@@ -41,7 +41,7 @@ final class RealmTroubleTests: XCTestCase {
         let server = StubHTTP.serve { _ in throw URLError(.cannotConnectToHost) }
         let transport = try XCTUnwrap(SpacetimeHTTP(address: server.address.appendingPathComponent("nullmere"), session: server.session))
         let told = try await firstTrouble(NetworkRealmLink(transport: transport, credentials: MemoryStore(), pollInterval: 0.05))
-        XCTAssertEqual(told, "The realm's server can't be reached.")
+        XCTAssertEqual(told, "The realm can't be reached.")
     }
 
     /// A keychain that won't keep the key the realm's server gave.
@@ -49,7 +49,7 @@ final class RealmTroubleTests: XCTestCase {
         let server = StubHTTP.serve { _ in StubHTTP.Answer(text: #"{"identity":"c200abc","token":"t0ken"}"#) }
         let transport = try XCTUnwrap(SpacetimeHTTP(address: server.address.appendingPathComponent("nullmere"), session: server.session))
         let told = try await firstTrouble(NetworkRealmLink(transport: transport, credentials: LockedStore(), pollInterval: 0.05))
-        XCTAssertEqual(told, "This Mac's keychain wouldn't keep the realm's key. Unlock the keychain, then try again.")
+        XCTAssertEqual(told, "This Mac's keychain wouldn't keep your key. Unlock the keychain, then try again.")
     }
 
     private func firstTrouble(_ link: NetworkRealmLink) async throws -> String {

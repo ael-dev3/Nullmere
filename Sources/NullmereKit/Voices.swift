@@ -36,7 +36,7 @@ public struct VoiceMoment: Sendable, Equatable {
             case .peace: offer = "an end to the war between their House and the player's"
             case .pact: offer = "a pact: shared sight and no war between the Houses"
             case .fealty: offer = "their House's fealty: beaten, they would serve the player's House as its vassal"
-            case .tribute: offer = "tribute: a fifth of the player's stores, or their armies will march"
+            case .tribute: offer = "tribute: a fifth of the player's stores, or their companies will march"
             case .trade: offer = "a trade of stores, on the terms given"
             }
             let verb = proposal == .tribute ? "demanding" : "offering"
@@ -54,8 +54,8 @@ public struct OnDeviceVoice: Voice {
     private static let logger = Logger(subsystem: "online.nullmere.game", category: "voices")
 
     static let instructions = """
-    You give voice to characters in Nullmere, a game of great Houses around the Nullmere, \
-    a vast black lake of dead, perfectly still water under a full moon. The tone is grave, \
+    You give voice to characters in Nullmere Online, a game of great Houses around a vast \
+    black lake of dead, perfectly still water under a full moon. The tone is grave, \
     spare and formal, like an old chronicle: quiet, never cheerful, no modern words, no \
     exclamation marks. Use only the facts you are given. Never invent numbers, places, \
     names, promises or events, and never mention games, players, turns or rules. Reply \

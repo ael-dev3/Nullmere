@@ -10,9 +10,9 @@ enum LauncherMenu: CaseIterable {
     var title: String {
         switch self {
         case .settings: return "Settings…"
-        case .news: return "Nullmere News"
-        case .website: return "Nullmere Website"
-        case .repository: return "Source Repository"
+        case .news: return "Nullmere Online News"
+        case .website: return "Nullmere Online Website"
+        case .repository: return "Nullmere Online Repository"
         }
     }
 
@@ -46,7 +46,7 @@ enum LauncherMenu: CaseIterable {
 /// Menu bar commands: Settings… opens the in-window panel, and Help links to
 /// the website and the source repository. The app has a single window, so
 /// New Window is removed. While the window shows only the requirement
-/// screen, Settings… and Nullmere News are unavailable there too.
+/// screen, Settings… and Nullmere Online News are unavailable there too.
 public struct LauncherCommands: Commands {
     private let model: LauncherModel
     private let settings: (@MainActor () -> Void)?

@@ -34,11 +34,11 @@ struct MainMenu: View {
 
     private func hint(for item: MenuItem) -> String {
         switch item {
-        case .play: return "Crosses into Nullmere when this Mac is ready"
+        case .play: return "Crosses to the realm's front door when this Mac is ready"
         case .news: return "Shows the latest news"
         case .settings: return "Shows the launcher settings"
         case .repository: return "Opens the source code on GitHub in your browser"
-        case .quit: return "Quits the launcher"
+        case .quit: return "Quits Nullmere Online"
         }
     }
 }

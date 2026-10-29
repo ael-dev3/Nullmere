@@ -48,7 +48,8 @@ extension GameState {
 
     mutating func offerTrade(_ trade: Trade, from house: Int, to target: Int, words: String? = nil) throws(RuleError) -> [GameEvent] {
         guard target != house, let other = self.house(target), !other.isEliminated else { throw .unknownHouse }
-        guard stance(house, target) != .war else { throw .atWarWith(target) }
+        guard stance(house, target) != .war else { throw .noTradeAcrossWar(target) }
+        guard trade.give != trade.take else { throw .sameStore }
         guard trade.isWellFormed else { throw .invalidAmount }
         guard houses[house].stock.covers(trade.given) else { throw .shortOf(houses[house].stock.shortfall(for: trade.given)) }
         guard houses[house].stock[trade.take] + trade.takeAmount <= storage(of: house) else { throw .storageFull }

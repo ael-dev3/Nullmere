@@ -107,7 +107,7 @@ extension GameState {
                     if project.kind == .moonspire {
                         let owner = holds[index].owner
                         let words = project.targetLevel == BuildingKind.moonspire.maxLevel
-                            ? "completes the Moonspire. Its white light falls across the whole of the Nullmere."
+                            ? "completes the Moonspire. Its white light falls across the whole of \(settings.lake.title)."
                             : "raises the Moonspire at \(holds[index].name) to its \(ordinal(project.targetLevel)) stage."
                         record(.greatWork, [owner], "\(houses[owner].title) \(words)")
                     }
@@ -197,13 +197,13 @@ extension GameState {
         }) {
             let result = Outcome(winner: ruler.id, kind: .dominion, watch: watch)
             outcome = result
-            record(.ending, [ruler.id], "\(ruler.title) rules \(realm(of: ruler.id)) of the \(holds.count) holds around the Nullmere. The others bend the knee.")
+            record(.ending, [ruler.id], "\(ruler.title) rules \(realm(of: ruler.id)) of the \(holds.count) holds around \(settings.lake.title). The others bend the knee.")
             return [.gameEnded(result)]
         }
         if living.count == 1, let last = living.first {
             let result = Outcome(winner: last.id, kind: .dominion, watch: watch)
             outcome = result
-            record(.ending, [last.id], "\(last.title) alone remains on the shores of the Nullmere.")
+            record(.ending, [last.id], "\(last.title) alone remains on the shores of \(settings.lake.title).")
             return [.gameEnded(result)]
         }
         // A House's own game ends with its House. A realm's age goes on

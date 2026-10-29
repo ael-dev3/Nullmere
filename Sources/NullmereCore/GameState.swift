@@ -126,9 +126,7 @@ public struct GameState: Codable, Equatable, Sendable {
                 relations.append(Relation(first: first, second: second))
             }
         }
-        record(.beginning, houses.map(\.id), settings.lake == .round
-            ? "The Houses take their seats around the Nullmere. The water lies still under a full moon."
-            : "The Houses take their seats around \(settings.lake.title). The water lies still under a full moon.")
+        record(.beginning, houses.map(\.id), "The Houses take their seats around \(settings.lake.title). The water lies still under a full moon.")
         // Every House knows the country around its own seat.
         for hold in holds {
             for hex in hold.position.spiral(GameState.knownAtStart) {

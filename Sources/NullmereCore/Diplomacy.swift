@@ -15,6 +15,15 @@ public enum Stance: String, Codable, CaseIterable, Sendable {
         case .pact: return "Pact"
         }
     }
+
+    /// How two Houses stand, as a sentence says it: "at war", "in a pact".
+    public var standing: String {
+        switch self {
+        case .war: return "at war"
+        case .peace: return "at peace"
+        case .pact: return "in a pact"
+        }
+    }
 }
 
 /// The relation between two Houses.
@@ -56,8 +65,8 @@ public enum Proposal: String, Codable, CaseIterable, Sendable {
     /// A beaten House offers to become the other's vassal: a pact it can't
     /// break, and its holds counted toward its liege's dominion.
     case fealty
-    /// A far stronger House demands a fifth of the other's stores, and
-    /// marches if refused. Paid, it keeps the peace for a long while.
+    /// A stronger House demands a fifth of the other's stores. A steward
+    /// refused marches; paid, it keeps the peace twenty watches.
     case tribute
     /// An exchange of stores, its terms carried by the envoy.
     case trade
@@ -69,6 +78,17 @@ public enum Proposal: String, Codable, CaseIterable, Sendable {
         case .fealty: return "Fealty"
         case .tribute: return "Tribute"
         case .trade: return "Trade"
+        }
+    }
+
+    /// What an envoy offers, as a sentence says it: "peace", "a pact".
+    public var offered: String {
+        switch self {
+        case .peace: return "peace"
+        case .pact: return "a pact"
+        case .fealty: return "fealty"
+        case .tribute: return "tribute"
+        case .trade: return "trade"
         }
     }
 }

@@ -143,7 +143,7 @@ final class PanelRenderTests: XCTestCase {
             let line = EnvoyCards.words(for: envoy, from: session.state.houses[envoy.from], in: session.state, player: me)
             XCTAssertFalse(line.isEmpty, "\(envoy.proposal)")
         }
-        XCTAssertEqual(HouseRow.keeping(session.state.houses[others[2]], present: ["Someone"]), "Its keeper is away; after two watches a caretaker keeps it, beginning nothing.")
+        XCTAssertEqual(HouseRow.keeping(session.state.houses[others[2]], present: ["Someone"]), "Its keeper is away; after two watches a caretaker keeps it, beginning no war, demand or pact.")
         XCTAssertEqual(HouseRow.keeping(session.state.houses[others[0]], present: nil), "A steward gives its orders.")
     }
 

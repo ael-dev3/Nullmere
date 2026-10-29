@@ -59,6 +59,9 @@ def self_test():
 def main(argv):
     if len(argv) == 2 and argv[1] == "--self-test":
         return self_test()
+    if len(argv) == 2 and argv[1] in ("-h", "--help"):
+        print(__doc__)
+        return 0
     if len(argv) < 2:
         print(__doc__)
         return 2

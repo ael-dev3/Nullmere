@@ -83,16 +83,25 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
         switch self {
         case .granary, .sawpit, .quarry, .saltworks:
             let resource = boostedResource!.title.lowercased()
-            return "+\(BuildingKind.yieldBoostPerLevel * level)% \(resource) from this hold's land"
+            return "+\(BuildingKind.yieldBoostPerLevel * level)% to the \(resource) this hold yields"
         case .musterHall:
-            let unlocked = UnitKind.allCases.filter { $0.requiredMuster == level }.map(\.title)
-            return unlocked.isEmpty ? "Trains faster" : "Trains " + unlocked.joined(separator: " and ")
+            var gains = UnitKind.allCases.filter { $0.requiredMuster == level }.map(\.title)
+            if level == Hold.fasterTrainingAt {
+                gains.append("all but Lanterns a watch sooner")
+            }
+            return gains.isEmpty ? "No new company" : "Trains " + gains.joined(separator: "; ")
         case .walls:
             return "Ward \(Hold.maximumWard(wallLevel: level, isSeat: isSeat)), garrison +\(Hold.garrisonBonus(wallLevel: level))% defence"
         case .beacon:
-            return "Sight \(Hold.sight(beaconLevel: level)) and +\(level) territory"
+            let wider = Hold.territoryRadius(isSeat: isSeat, beaconLevel: level) > Hold.territoryRadius(isSeat: isSeat, beaconLevel: level - 1)
+            return "Sight \(Hold.sight(beaconLevel: level))" + (wider ? "; its land reaches a tile further" : "")
         case .moonspire:
-            return level == maxLevel ? "Ascendancy over the Nullmere" : "Spire \(level) of \(maxLevel)"
+            return level == maxLevel ? "Ascendancy over the lake" : "Stage \(level) of \(maxLevel)"
         }
+    }
+
+    /// A level as the game writes it: I, II, III.
+    public static func numeral(_ level: Int) -> String {
+        ["", "I", "II", "III", "IV", "V", "VI"][min(max(level, 0), 6)]
     }
 }

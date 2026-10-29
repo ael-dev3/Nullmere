@@ -77,6 +77,9 @@ final class TradeTests: XCTestCase {
             guard case .shortOf = $0 as? RuleError else { return XCTFail("\($0)") }
         }
         XCTAssertThrowsError(try state.perform(.offerTrade(Trade(give: .stone, 1, for: .stone, 1), to: other, words: nil), as: me)) {
+            XCTAssertEqual($0 as? RuleError, .sameStore)
+        }
+        XCTAssertThrowsError(try state.perform(.offerTrade(Trade(give: .stone, 0, for: .grain, 1), to: other, words: nil), as: me)) {
             XCTAssertEqual($0 as? RuleError, .invalidAmount)
         }
         XCTAssertThrowsError(try state.perform(.offerTrade(Trade(give: .stone, 1, for: .grain, 1), to: me, words: nil), as: me)) {
@@ -87,7 +90,7 @@ final class TradeTests: XCTestCase {
         }
         _ = try state.perform(.declareWar(on: other), as: me)
         XCTAssertThrowsError(try state.perform(.offerTrade(Trade(give: .stone, 1, for: .grain, 1), to: other, words: nil), as: me)) {
-            XCTAssertEqual($0 as? RuleError, .atWarWith(other))
+            XCTAssertEqual($0 as? RuleError, .noTradeAcrossWar(other))
         }
     }
 

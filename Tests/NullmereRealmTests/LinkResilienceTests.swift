@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import NullmereCore
 import NullmereTestSupport
 import XCTest
@@ -86,6 +89,82 @@ final class LinkResilienceTests: XCTestCase {
         XCTAssertFalse(ear.refusals.contains { $0.contains("too old") }, "Carried out, and not said to be lost: \(ear.refusals)")
         let carried = await db.handled(kind: "order")
         XCTAssertEqual(carried, 1, "Once")
+    }
+
+    /// An order that reached the realm while its steward was silent waits
+    /// there past its time, and is never said to be lost: the steward,
+    /// back, carries it out, once.
+    func testAnOrderWaitingAtASilentRealmIsNeverLetGo() async throws {
+        let db = FakeSpacetime()
+        let (_, first, key) = try await steward(db, seed: "a silent realm")
+        let (ama, ear) = try await keeper(db, name: "Ama")
+        defer { ama.close() }
+        var clock = 1_000.0
+        ama.now = { clock }
+        let world = try XCTUnwrap(ear.world)
+        let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
+        let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
+        first.cancel()
+        await first.value
+        ama.send(.fortify(unit: spear.id))
+        try await until("the order sent") { await db.calls.contains("order") }
+        clock += NetworkRealmLink.orderLifetime + 1
+        try await db.waitFor(3, more: "SELECT nonce FROM my_requests")
+        XCTAssertEqual(ama.waiting, 1, "Still waiting on the realm's word")
+        XCTAssertTrue(ear.refusals.isEmpty, "Never said to be lost: \(ear.refusals)")
+        let sent = await db.calls.filter { $0 == "order" }.count
+        // A steward takes the realm up again, and answers it.
+        await db.advance(61)
+        let second = try await RealmSteward(transport: db, token: key.token, name: "The Nullmere", seed: "a silent realm",
+                                            seats: 4, watchLength: 600, now: 100)
+        let running = Task { await second.run(clock: { 101 }) }
+        defer { running.cancel() }
+        try await until("the order answered") { ama.waiting == 0 }
+        let carried = await db.handled(kind: "order")
+        XCTAssertEqual(carried, 1, "Carried out once")
+        let sentInAll = await db.calls.filter { $0 == "order" }.count
+        XCTAssertEqual(sentInAll, sent, "Past its time, only asked after, never sent again")
+        XCTAssertTrue(ear.refusals.isEmpty, "\(ear.refusals)")
+    }
+
+    /// An order carried out whose answer was lost, and then forgotten by the
+    /// realm before the keeper's line came back past the order's time, is
+    /// never sent again (it would be carried out twice); the keeper is told
+    /// the world shows what came of it.
+    func testAnOrderPastItsTimeIsNeverSentTwice() async throws {
+        let db = FakeSpacetime()
+        let (_, running, _) = try await steward(db, seed: "never twice")
+        defer { running.cancel() }
+        let line = Flaky(db)
+        let (ama, ear) = try await keeper(line, name: "Ama", retryDelay: 2)
+        defer { ama.close() }
+        var clock = 1_000.0
+        ama.now = { clock }
+        let world = try XCTUnwrap(ear.world)
+        let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
+        let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
+        await line.loseNextCall()
+        ama.send(.fortify(unit: spear.id))
+        try await until("the order carried out") { await db.handled(kind: "order") == 1 }
+        await db.forgetReplies()
+        clock += NetworkRealmLink.orderLifetime + 1
+        try await until("the order settled") { ama.waiting == 0 }
+        XCTAssertTrue(ear.refusals.contains(NetworkRealmLink.unanswered), "\(ear.refusals)")
+        XCTAssertFalse(ear.refusals.contains(NetworkRealmLink.tooOldToSend), "It may have reached the realm: not called too old to send")
+        let carried = await db.handled(kind: "order")
+        XCTAssertEqual(carried, 1, "Never sent again, so never carried out twice")
+    }
+
+    /// Only an error that proves a request never left the Mac lets an order
+    /// past its time go as never sent.
+    func testOnlyAnErrorBeforeSendingProvesARequestNeverLeft() {
+        for code in [URLError.Code.notConnectedToInternet, .cannotFindHost, .dnsLookupFailed, .cannotConnectToHost, .secureConnectionFailed] {
+            XCTAssertTrue(NetworkRealmLink.neverLeftThisMac(URLError(code)), "\(code)")
+        }
+        for code in [URLError.Code.timedOut, .networkConnectionLost, .badServerResponse] {
+            XCTAssertFalse(NetworkRealmLink.neverLeftThisMac(URLError(code)), "\(code): it may have reached the realm")
+        }
+        XCTAssertFalse(NetworkRealmLink.neverLeftThisMac(SpacetimeError("The realm answered 503.")))
     }
 
     func testReadinessTheRealmLostIsPutRight() async throws {

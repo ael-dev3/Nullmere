@@ -27,6 +27,13 @@ final class GiftTests: XCTestCase {
         XCTAssertThrowsError(try state.perform(.gift(to: other, resource: .stone, amount: 9_000), as: me)) {
             guard case .shortOf = $0 as? RuleError else { return XCTFail("\($0)") }
         }
+        // Their stores full: the refusal says it is their room, not yours.
+        let room = state.storage(of: other)
+        state.houses[other].stock.timber = room
+        state.houses[me].stock.timber = 50
+        XCTAssertThrowsError(try state.perform(.gift(to: other, resource: .timber, amount: 10), as: me)) {
+            XCTAssertEqual($0 as? RuleError, .noRoomWithThem)
+        }
         _ = try state.perform(.declareWar(on: other), as: me)
         XCTAssertThrowsError(try state.perform(.gift(to: other, resource: .grain, amount: 5), as: me)) { XCTAssertEqual($0 as? RuleError, .atWarWith(other)) }
     }

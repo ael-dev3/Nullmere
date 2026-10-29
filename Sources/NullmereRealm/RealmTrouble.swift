@@ -13,14 +13,14 @@ public enum RealmTrouble {
             case .notConnectedToInternet, .dataNotAllowed, .internationalRoamingOff:
                 return "This Mac isn't connected to the internet."
             case .timedOut:
-                return "The realm's server didn't answer in time."
+                return "The realm didn't answer in time."
             case .cannotFindHost, .dnsLookupFailed:
-                return "The realm's server can't be found."
+                return "The realm can't be found."
             case .secureConnectionFailed, .serverCertificateUntrusted, .serverCertificateHasBadDate,
                  .serverCertificateNotYetValid, .serverCertificateHasUnknownRoot, .clientCertificateRejected:
-                return "The realm's server couldn't be reached safely."
+                return "The realm couldn't be reached safely."
             default:
-                return "The realm's server can't be reached."
+                return "The realm can't be reached."
             }
         }
         if error is DecodingError {
@@ -28,7 +28,7 @@ public enum RealmTrouble {
         }
         let described = error as NSError
         if described.domain == "NSOSStatusErrorDomain" {
-            return "This Mac's keychain wouldn't keep the realm's key. Unlock the keychain, then try again."
+            return "This Mac's keychain wouldn't keep your key. Unlock the keychain, then try again."
         }
         return "The realm can't be reached."
     }

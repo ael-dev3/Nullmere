@@ -100,7 +100,7 @@ final class SpacetimeHTTPTests: XCTestCase {
         XCTAssertEqual(said?.description, "The reducer panicked: no such keeper")
         XCTAssertFalse(said?.isUnauthorized ?? true)
         let silent = await refusal(StubHTTP.Answer(status: 503))
-        XCTAssertEqual(silent?.description, "The realm's server answered 503.")
+        XCTAssertEqual(silent?.description, "The realm answered 503.")
     }
 
     func testAServerOutOfReachIsAnError() async {

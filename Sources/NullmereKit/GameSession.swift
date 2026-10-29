@@ -608,7 +608,7 @@ public final class GameSession {
             if !isOutOfReach {
                 isOutOfReach = true
                 post(reason == NetworkRealmLink.silentSteward ? reason
-                     : "The realm is out of reach. \(reason) Orders given now wait, and go when it answers.", tone: .bad)
+                     : "The realm is out of reach. \(reason) Orders given now wait for it; any that haven't reached it in five minutes are let go.", tone: .bad)
             }
             return
         }
