@@ -204,6 +204,38 @@ final class NarrationTests: XCTestCase {
         XCTAssertEqual(Narration.roman(5), "V")
         XCTAssertEqual(Narration.roman(9), "VI")
     }
+
+    /// A seat moved and empty granaries are told to their own House alone.
+    func testTheKeepersOwnTroublesAreToldToThemAlone() throws {
+        let state = GameState(settings: GameSettings(seedText: "troubles", houseCount: 3, radius: 16))
+        let me = state.player, other = (state.player + 1) % state.houses.count
+        let hold = try XCTUnwrap(state.holds.first { $0.owner == me })
+        let moved = try XCTUnwrap(Narration.line(for: .seatMoved(house: me, to: hold.id), in: state, viewer: me))
+        XCTAssertEqual(moved.text, "Your seat moves to \(hold.name).")
+        XCTAssertEqual(moved.tone, .bad)
+        XCTAssertNil(Narration.line(for: .seatMoved(house: other, to: hold.id), in: state, viewer: me))
+        let hungry = try XCTUnwrap(Narration.line(for: .starving(house: me), in: state, viewer: me))
+        XCTAssertEqual(hungry.text, "Your granaries are empty; your companies go hungry.")
+        XCTAssertEqual(hungry.tone, .bad)
+        XCTAssertNil(Narration.line(for: .starving(house: other), in: state, viewer: me))
+    }
+}
+
+final class WatchSummaryTests: XCTestCase {
+    /// A battle the keeper fought heads the card; a hold lost and gone from
+    /// the world since is still named, as a hold.
+    func testTheCardNamesWhatTheWatchBrought() throws {
+        let state = GameState(settings: GameSettings(seedText: "card", houseCount: 3, radius: 16))
+        let me = state.player
+        let mine = try XCTUnwrap(state.units(of: me).first)
+        let fought = Battle(attacker: mine.id, attackerOwner: me, attackerKind: mine.kind, defender: nil, defenderOwner: 1,
+                            defenderKind: nil, hold: nil, at: mine.position, damageDealt: 5, damageTaken: 2,
+                            attackerFell: false, defenderFell: false)
+        let summary = WatchSummary(before: state, after: state, events: [.battle(fought), .holdCaptured(hold: 9999, from: me, by: 1)],
+                                   player: me)
+        XCTAssertEqual(summary.events.first, "A battle")
+        XCTAssertTrue(summary.events.contains("a hold is lost"), "\(summary.events)")
+    }
 }
 
 final class CounselTests: XCTestCase {
@@ -315,6 +347,40 @@ final class HoverInfoTests: XCTestCase {
         let wood = try XCTUnwrap(state.map.hexes.first { state.map[$0]?.terrain == .blackwood })
         let woodLine = HoverInfo.line(for: wood, in: state, explored: true, territory: territory)!
         XCTAssertTrue(woodLine.contains("2 moves") && woodLine.contains("+25% defence"), woodLine)
+
+        // The Spine walls the world: dry land no one crosses, not dead water.
+        let spine = try XCTUnwrap(state.map.hexes.first { state.map[$0]?.terrain == .spine })
+        let spineLine = try XCTUnwrap(HoverInfo.line(for: spine, in: state, explored: true, territory: territory))
+        XCTAssertTrue(spineLine.hasPrefix("The Spine") && spineLine.hasSuffix("impassable"), spineLine)
+        XCTAssertFalse(spineLine.contains("dead water"), spineLine)
+    }
+}
+
+/// The line under the map says what lies under the pointer, and only then.
+@MainActor
+final class HoverLineTests: XCTestCase {
+    func testTheLineShowsWhileThePointerRestsOnTheMap() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "hover line")), store: LocalStore(directory: directory))
+        let seat = try XCTUnwrap(session.state.seat(of: session.player))
+        func drawn() throws -> CGImage {
+            let renderer = ImageRenderer(content: HoverLine(session: session).frame(width: 600, height: 40).background(Color.black))
+            renderer.scale = 1
+            return try XCTUnwrap(renderer.cgImage)
+        }
+        func lit(_ image: CGImage) -> Int {
+            let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: image.width * 4,
+                                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+            let bytes = context.data!.assumingMemoryBound(to: UInt8.self)
+            return (0..<(image.width * image.height)).filter { Int(bytes[$0 * 4]) + Int(bytes[$0 * 4 + 1]) + Int(bytes[$0 * 4 + 2]) > 300 }.count
+        }
+        session.hovered = nil
+        XCTAssertEqual(lit(try drawn()), 0, "Nothing under the pointer, nothing said")
+        session.hovered = seat.position
+        XCTAssertTrue(session.isExplored(seat.position))
+        XCTAssertGreaterThan(lit(try drawn()), 50, "Its own seat, named under the map")
     }
 }
 

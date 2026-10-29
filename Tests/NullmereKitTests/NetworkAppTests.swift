@@ -112,6 +112,8 @@ final class NetworkAppTests: XCTestCase {
         let second = app(db, identity: MemoryStore(), realm: "full-second")
         second.open()
         try await until("the realm, full") { if case .open(let status) = second.door { return status.freeSeats == 0 } else { return false } }
+        // The door says every seat is held, and what entering means then.
+        draw(FrontDoor(app: second))
         second.enterWorld(name: "Bel")
         try await until("Bel to wait") { second.isWaitingForSeat }
         XCTAssertNil(second.session, "No seat, no world")
