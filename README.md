@@ -416,7 +416,7 @@ it returns; orders given meanwhile wait and go when it does.
   hold it has left loses most of its ward. A House that loses every hold
   falls, and its name passes into the chronicle.
 - **Winning.** Raise the five stages of the **Moonspire** at your seat
-  (ascendancy), or rule the lake (dominion): six of every twenty holds and
+  (ascendancy), or rule the lake (dominion): five of every twenty holds and
   at least ten, your vassals' counted with your own, or be the last House
   standing. Rivals fear every rising Moonspire and will march on it, and
   begin one only with the holds to store its last stage, or as the most

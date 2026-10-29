@@ -163,7 +163,7 @@ extension GameState {
 
     /// Share of all holds, in percent, and the least number of holds, that
     /// win by dominion without destroying every rival.
-    public static let supremacyShare = 30
+    public static let supremacyShare = 25
     public static let supremacyMinimum = 10
 
     /// Holds a House rules: its own and its vassals'.

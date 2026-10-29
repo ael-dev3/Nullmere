@@ -334,7 +334,14 @@ struct RivalMind {
         if hold.isSeat {
             // Only a House that can see it through: one of holds enough to
             // store its last stage, or the most renowned on the lake.
-            let spireFrom = me.temperament == .steadfast ? 20 : 34
+            // The builders begin early, the wary soon after, behind walls;
+            // the warlike first take the land.
+            let spireFrom: Int
+            switch me.temperament {
+            case .steadfast: spireFrom = 20
+            case .wary: spireFrom = 24
+            case .ambitious, .cunning: spireFrom = 34
+            }
             let renown = state.renown(of: house)
             let foremost = state.livingHouses.allSatisfy { $0.id == house || state.renown(of: $0.id) <= renown }
             let able = state.holds(of: house).count >= 4 || foremost
@@ -383,9 +390,10 @@ struct RivalMind {
 
         let wantedHolds: Int
         switch me.temperament {
+        // Every temper reaches for the four holds whose storage the last
+        // stage of a Moonspire needs, and one more: the ambitious further.
         case .ambitious: wantedHolds = 6
-        case .cunning: wantedHolds = 5
-        case .steadfast, .wary: wantedHolds = 4
+        case .cunning, .steadfast, .wary: wantedHolds = 5
         }
         let wealthy = me.stock.grain > 250 && me.stock.timber > 150 ? holds : 0
         let wantedArmy = holds * 2 + 1 + (atWar ? 3 + holds : 0) + (me.temperament == .ambitious ? 2 : 0) + wealthy
