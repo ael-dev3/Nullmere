@@ -37,7 +37,7 @@ struct FrontDoor: View {
         var choices = [Choice(title: enterTitle, enabled: app.canEnter(with: name), hint: enterHint) {
             app.enterWorld(name: name)
         }]
-        if case .unreachable = app.door {
+        if isOutOfReach {
             choices.append(Choice(title: "Try again", hint: "Reaches for the realm again") { app.openDoor() })
         }
         choices.append(Choice(title: "Back", hint: "Returns to the launcher") { app.leaveDoor() })
@@ -102,8 +102,11 @@ struct FrontDoor: View {
             withAnimation(.easeOut(duration: LakeTitle.revealSeconds)) { appeared = true }
             nameFocused = app.keeperName == nil
         }
-        // Writing a name means to enter with it: Enter is lit again.
+        // Writing a name means to enter with it: Enter is lit again. Out of
+        // reach, Try again is lit, the one way forward; Enter again once
+        // the realm answers.
         .onChange(of: name) { _, _ in selection = 0 }
+        .onChange(of: isOutOfReach, initial: true) { _, out in selection = out ? 1 : 0 }
         .onChange(of: focusedChoice) { _, choice in if let choice { selection = choice } }
         .onChange(of: selection) { _, choice in if focusedChoice != nil { focusedChoice = choice } }
         // What the door has to tell, said as it changes: a problem at the
@@ -192,6 +195,11 @@ struct FrontDoor: View {
     static func spokenState(of door: GameApp.Door) -> String? {
         if case .unreachable(let reason) = door { return "The realm is out of reach. \(reason)" }
         return nil
+    }
+
+    private var isOutOfReach: Bool {
+        if case .unreachable = app.door { return true }
+        return false
     }
 
     private var enterTitle: String {

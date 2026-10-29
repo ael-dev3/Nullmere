@@ -345,4 +345,19 @@ final class LauncherModelTests: XCTestCase {
         model.setDisplay(.motion, to: 99)
         XCTAssertEqual(model.displaySettings.motion, .still, "No such choice: nothing changes")
     }
+
+    /// The type's size is one setting wherever it is set: the launcher's
+    /// Text row sets Larger Text, and Larger Text set elsewhere (⇧⌘+, the
+    /// realm's Settings) shows in the row at once.
+    func testTheTextRowIsLargerText() {
+        let model = makeModel()
+        defer { TextSize.shared.isLarger = false }
+        TextSize.shared.isLarger = false
+        model.choose(1, for: .text)
+        XCTAssertTrue(TextSize.shared.isLarger, "The launcher's row sets the type's size")
+        XCTAssertTrue(LauncherSettings(defaults: defaults).largerText, "Kept with the other settings")
+        TextSize.shared.isLarger = false
+        XCTAssertFalse(model.settings.largerText, "Set elsewhere, the row follows")
+        XCTAssertEqual(model.settings.selectedIndex(for: .text), 0)
+    }
 }

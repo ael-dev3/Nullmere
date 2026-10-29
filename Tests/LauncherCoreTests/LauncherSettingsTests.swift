@@ -23,7 +23,7 @@ final class LauncherSettingsTests: XCTestCase {
     func testResolutionsAndRowsAreNamedAndScaled() {
         XCTAssertEqual(RenderQuality.allCases.map(\.scale), [1, 0.75, 0.5])
         XCTAssertEqual(RenderQuality.allCases.map(\.title), ["Native", "Balanced", "Efficient"])
-        XCTAssertEqual(SettingsRow.allCases.map(\.title), ["Motion", "Resolution", "Frame rate", "Full screen at launch"])
+        XCTAssertEqual(SettingsRow.allCases.map(\.title), ["Motion", "Resolution", "Frame rate", "Text", "Full screen at launch"])
     }
 
     func testEmptyDefaultsProduceDefaultSettings() {
@@ -31,12 +31,20 @@ final class LauncherSettingsTests: XCTestCase {
         XCTAssertEqual(LauncherSettings().motion, .system)
         XCTAssertEqual(LauncherSettings().frameRate, .sixty)
         XCTAssertFalse(LauncherSettings().startsInFullScreen)
+        XCTAssertFalse(LauncherSettings().largerText)
     }
 
     func testSettingsRoundTrip() {
-        let settings = LauncherSettings(motion: .still, quality: .efficient, frameRate: .oneTwenty, startsInFullScreen: true)
+        let settings = LauncherSettings(motion: .still, quality: .efficient, frameRate: .oneTwenty, largerText: true, startsInFullScreen: true)
         settings.save(to: defaults)
         XCTAssertEqual(LauncherSettings(defaults: defaults), settings)
+    }
+
+    /// Larger Text keeps its choice where it always has, so a choice made
+    /// before it was a setting of the launcher's carries over.
+    func testLargerTextIsReadWhereItWasAlwaysKept() {
+        defaults.set(true, forKey: "text.larger")
+        XCTAssertTrue(LauncherSettings(defaults: defaults).largerText)
     }
 
     func testUnrecognisedStoredValuesFallBackToDefaults() {
@@ -66,8 +74,9 @@ final class LauncherSettingsTests: XCTestCase {
     }
 
     func testEveryRowHasItsCurrentValueSelected() {
-        let settings = LauncherSettings(motion: .reduced, quality: .balanced, frameRate: .thirty, startsInFullScreen: true)
+        let settings = LauncherSettings(motion: .reduced, quality: .balanced, frameRate: .thirty, largerText: true, startsInFullScreen: true)
         XCTAssertEqual(settings.options(for: .motion)[settings.selectedIndex(for: .motion)], "Reduced")
+        XCTAssertEqual(settings.options(for: .text)[settings.selectedIndex(for: .text)], "Larger")
         XCTAssertEqual(settings.options(for: .quality)[settings.selectedIndex(for: .quality)], "Balanced")
         XCTAssertEqual(settings.options(for: .frameRate)[settings.selectedIndex(for: .frameRate)], "30")
         XCTAssertEqual(settings.options(for: .startsInFullScreen)[settings.selectedIndex(for: .startsInFullScreen)], "On")
@@ -83,6 +92,10 @@ final class LauncherSettingsTests: XCTestCase {
         XCTAssertEqual(settings.quality, .native)
         settings.step(.startsInFullScreen, by: 1, wrapping: true)
         XCTAssertTrue(settings.startsInFullScreen)
+        settings.step(.text, by: 1)
+        XCTAssertTrue(settings.largerText)
+        settings.step(.text, by: 1, wrapping: true)
+        XCTAssertFalse(settings.largerText)
     }
 
     func testSelectingAnOutOfRangeOptionIsIgnored() {

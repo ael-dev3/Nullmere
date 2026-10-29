@@ -43,7 +43,17 @@ public final class LauncherModel {
     static let newsCacheKey = "launcher.news.feed"
 
     public private(set) var screen: Screen = .title
-    private(set) var settings: LauncherSettings
+    /// The settings as kept, but for the type's size, which the realm's
+    /// Larger Text sets as well: it is read from TextSize, always current.
+    private var kept: LauncherSettings
+    private(set) var settings: LauncherSettings {
+        get {
+            var current = kept
+            current.largerText = TextSize.shared.isLarger
+            return current
+        }
+        set { kept = newValue }
+    }
     var menuSelection: MenuItem = .play
     var settingsSelection: SettingsRow = .motion
     var newsSelection = 0
@@ -79,7 +89,7 @@ public final class LauncherModel {
     init(defaults: UserDefaults, environment: LauncherEnvironment) {
         self.defaults = defaults
         self.environment = environment
-        self.settings = LauncherSettings(defaults: defaults)
+        self.kept = LauncherSettings(defaults: defaults)
         if let data = defaults.data(forKey: Self.newsCacheKey), let saved = try? NewsFeed(json: data) {
             self.news = saved
         } else {
@@ -480,7 +490,8 @@ public final class LauncherModel {
     }
 
     /// The display settings, which the realm's own Settings show and set
-    /// too: one Motion, Resolution and Frame rate for the lake and the map.
+    /// too: one Motion, Resolution and Frame rate for the lake and the map,
+    /// and one size of type for the launcher and the game.
     public var displaySettings: LauncherSettings { settings }
 
     /// Changes a display setting, from the realm's Settings as from the
@@ -494,6 +505,7 @@ public final class LauncherModel {
         change(&updated)
         guard updated != settings else { return }
         settings = updated
-        settings.save(to: defaults)
+        updated.save(to: defaults)
+        if TextSize.shared.isLarger != updated.largerText { TextSize.shared.isLarger = updated.largerText }
     }
 }

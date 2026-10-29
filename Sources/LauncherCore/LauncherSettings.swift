@@ -96,22 +96,28 @@ public enum FrameRateCap: Int, CaseIterable, Sendable {
     }
 }
 
-/// Launcher preferences, persisted in user defaults.
+/// Launcher preferences, persisted in user defaults: how the lake and the
+/// map are drawn, and the type's size, set in the launcher's Settings and
+/// the realm's alike.
 public struct LauncherSettings: Equatable, Sendable {
     public var motion: MotionPreference
     public var quality: RenderQuality
     public var frameRate: FrameRateCap
+    /// All the type a fifth larger, the launcher's and the game's.
+    public var largerText: Bool
     public var startsInFullScreen: Bool
 
     public init(
         motion: MotionPreference = .system,
         quality: RenderQuality = .native,
         frameRate: FrameRateCap = .sixty,
+        largerText: Bool = false,
         startsInFullScreen: Bool = false
     ) {
         self.motion = motion
         self.quality = quality
         self.frameRate = frameRate
+        self.largerText = largerText
         self.startsInFullScreen = startsInFullScreen
     }
 
@@ -119,6 +125,8 @@ public struct LauncherSettings: Equatable, Sendable {
         static let motion = "launcher.motion"
         static let quality = "launcher.renderQuality"
         static let frameRate = "launcher.frameRate"
+        /// Where Larger Text has always kept its choice.
+        static let largerText = "text.larger"
         static let startsInFullScreen = "launcher.startsInFullScreen"
     }
 
@@ -134,6 +142,7 @@ public struct LauncherSettings: Equatable, Sendable {
         if let value = FrameRateCap(rawValue: defaults.integer(forKey: Key.frameRate)) {
             frameRate = value
         }
+        largerText = defaults.bool(forKey: Key.largerText)
         startsInFullScreen = defaults.bool(forKey: Key.startsInFullScreen)
     }
 
@@ -141,6 +150,7 @@ public struct LauncherSettings: Equatable, Sendable {
         defaults.set(motion.rawValue, forKey: Key.motion)
         defaults.set(quality.rawValue, forKey: Key.quality)
         defaults.set(frameRate.rawValue, forKey: Key.frameRate)
+        defaults.set(largerText, forKey: Key.largerText)
         defaults.set(startsInFullScreen, forKey: Key.startsInFullScreen)
     }
 }
@@ -150,6 +160,7 @@ public enum SettingsRow: CaseIterable, Sendable {
     case motion
     case quality
     case frameRate
+    case text
     case startsInFullScreen
 
     public var title: String {
@@ -157,6 +168,7 @@ public enum SettingsRow: CaseIterable, Sendable {
         case .motion: return "Motion"
         case .quality: return "Resolution"
         case .frameRate: return "Frame rate"
+        case .text: return "Text"
         case .startsInFullScreen: return "Full screen at launch"
         }
     }
@@ -169,6 +181,7 @@ extension LauncherSettings {
         case .motion: return MotionPreference.allCases.map(\.title)
         case .quality: return RenderQuality.allCases.map(\.title)
         case .frameRate: return FrameRateCap.allCases.map(\.title)
+        case .text: return ["Standard", "Larger"]
         case .startsInFullScreen: return ["Off", "On"]
         }
     }
@@ -179,6 +192,7 @@ extension LauncherSettings {
         case .motion: return MotionPreference.allCases.firstIndex(of: motion) ?? 0
         case .quality: return RenderQuality.allCases.firstIndex(of: quality) ?? 0
         case .frameRate: return FrameRateCap.allCases.firstIndex(of: frameRate) ?? 0
+        case .text: return largerText ? 1 : 0
         case .startsInFullScreen: return startsInFullScreen ? 1 : 0
         }
     }
@@ -190,6 +204,7 @@ extension LauncherSettings {
         case .motion: motion = MotionPreference.allCases[index]
         case .quality: quality = RenderQuality.allCases[index]
         case .frameRate: frameRate = FrameRateCap.allCases[index]
+        case .text: largerText = index == 1
         case .startsInFullScreen: startsInFullScreen = index == 1
         }
     }

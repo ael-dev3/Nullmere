@@ -3,11 +3,10 @@ import LauncherKit
 import SwiftUI
 
 /// The realm's Settings (⌘,), over the front door or the world: how the
-/// lake and the map are drawn, the launcher's own display settings shared;
-/// how loud each part of the sound plays; and how the interface reads.
+/// lake, the map and the type are drawn, the launcher's own display
+/// settings shared; how loud each part of the sound plays; and counsel.
 public struct GameSettingsView: View {
     @Bindable private var app: GameApp
-    @Bindable private var text = TextSize.shared
     @AppStorage("counsel.hidden") private var counselHidden = false
 
     public init(app: GameApp) {
@@ -24,7 +23,7 @@ public struct GameSettingsView: View {
                         }
                     }
                 }
-                Text("Motion is how much the lake and the map move; System follows Reduce Motion. The same settings as the launcher's.")
+                Text("Motion is how much the lake and the map move; System follows Reduce Motion. Text set to Larger makes all the type a fifth larger. The same settings as the launcher's.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -40,8 +39,7 @@ public struct GameSettingsView: View {
                 volume("The score", value: $app.musicVolume, help: "The music, written as it plays")
                     .disabled(!app.isSoundOn || !app.isMusicOn)
             }
-            Section("Reading") {
-                Toggle("Larger text", isOn: $text.isLarger)
+            Section("Counsel") {
                 Toggle("Show counsel", isOn: Binding(get: { !counselHidden }, set: { counselHidden = !$0 }))
                 Text("Counsel guides the opening and warns of the race for the lake.")
                     .font(.caption)

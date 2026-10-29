@@ -237,10 +237,11 @@ follow them:
 | Motion | System, Full, Reduced, Still | How much the lake and the map move. Full: flickering and falling stars, the opening, marches and blows played out, panels sliding in. Reduced: slower, gentler twinkling and water, no falling stars, no opening; marches and blows shown where they end, panels fading in. Still: a single frame, drawn again only when something changes. System follows *Reduce Motion*. |
 | Resolution | Native, Balanced, Efficient | Renders the lake at 100%, 75% or 50% of native pixels, and the map at most at that |
 | Frame rate | 30, 60, 120 | Upper bound for the lake's and the map's frame rate. Reduced motion, Low Power Mode, a Mac running hot, or another app in front lowers it to 30 |
+| Text | Standard, Larger | Larger sets all the type a fifth larger, the launcher's and the game's, none of it under eleven points. ⇧⌘+ in the Watch menu sets it too |
 | Full screen at launch | Off, On | Applies the next time the launcher opens |
 
 The realm's Settings also hold its sound (on or off, the effects, the
-night, the music and its score's volume), Larger text and counsel. The
+night, the music and its score's volume) and counsel. The
 launcher makes no sound; ⇧⌘M and ⇧⌘U turn sound and music off or on once
 the realm shows.
 
@@ -497,7 +498,7 @@ twice.
 - **Holds that grow.** A hold raises a side tower after a few works and a
   second after many, so a glance at the map shows which holds are built up.
 
-Larger Text (⇧⌘+ in the Watch menu, or the realm's Settings) sets all
+Larger text (Text in either Settings, or ⇧⌘+ in the Watch menu) sets all
 the type a fifth larger, the launcher's and the game's, none of it under
 eleven points; the panels grow to hold it. Every text reads by one rule
 of contrast, in the launcher as in the game: never fainter than 4.5 to 1
@@ -521,7 +522,7 @@ world, so there is nothing to save.
 | Esc | Close a panel, then clear the selection |
 | ⌘↩ | Ready: done with this watch's orders (click Waiting to take it back) |
 | ⇧⌘↩ | Stay ready until something needs you, up to ten watches |
-| ⌘, | Settings: display (the launcher's), sound and volumes, larger text, counsel |
+| ⌘, | Settings: display and text (the launcher's), sound and volumes, counsel |
 | ⇧⌘W | Leave the world for the front door |
 
 ## Design
