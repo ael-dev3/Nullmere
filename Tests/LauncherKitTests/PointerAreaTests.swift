@@ -59,6 +59,73 @@ final class PointerAreaTests: XCTestCase {
         XCTAssertEqual(drawn.first?.cursor, .pointingHand)
     }
 
+    /// Disabled, an area hears nothing; turned off with the pointer over it,
+    /// it says the pointer left, and turned back on, that it came.
+    func testADisabledAreaIsDeaf() {
+        var heard: [Bool] = []
+        let area = PointerAreaView(cursor: .pointingHand) { heard.append($0) }
+        area.isEnabled = false
+        area.pointer(isInside: true)
+        settle()
+        XCTAssertEqual(heard, [], "Disabled, it hears the pointer come and says nothing")
+        XCTAssertTrue(area.isInside, "but knows it is there")
+        area.isEnabled = true
+        XCTAssertEqual(heard, [], "Told only once SwiftUI is done updating the view")
+        settle()
+        XCTAssertEqual(heard, [true])
+        area.isEnabled = false
+        settle()
+        XCTAssertEqual(heard, [true, false], "Turned off under the pointer, it lets it go")
+        area.pointer(isInside: false)
+        area.isEnabled = true
+        settle()
+        XCTAssertEqual(heard, [true, false], "and the pointer gone, turning it on says nothing")
+
+        // A disabled link shows no hand.
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 200, height: 100), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let host = NSHostingView(rootView: Text("nullmere.online").linkPointer().disabled(true))
+        host.frame = NSRect(x: 0, y: 0, width: 200, height: 40)
+        window.contentView = host
+        let drawn = drawnAreas(in: host, expecting: 1)
+        XCTAssertEqual(drawn.first?.isEnabled, false, "SwiftUI's disabling reaches the area")
+        drawn.first?.resetCursorRects()
+    }
+
+    /// While the launcher's menu waits hidden for the lake and the title, its
+    /// items don't answer a pointer resting where they will be.
+    func testTheLaunchersHiddenMenuIsDeaf() throws {
+        let suite = "PointerAreaTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let model = LauncherModel(defaults: defaults, environment: LauncherEnvironment(
+            modelReadiness: { .ready },
+            systemSavesEnergy: { false },
+            downloadNews: { throw URLError(.notConnectedToInternet) },
+            open: { _ in true },
+            terminate: {}
+        ))
+        model.refreshReadiness()
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 600), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let host = NSHostingView(rootView: LauncherRootView(model: model))
+        window.contentView = host
+        window.orderFrontRegardless()
+        // The menu's items, the footer's link.
+        let count = MenuItem.allCases.count + 1
+        let hidden = drawnAreas(in: host, expecting: count)
+        try XCTSkipIf(model.intro.showsMenu, "The opening ran through before the launcher was drawn")
+        XCTAssertEqual(hidden.count, count)
+        XCTAssertTrue(hidden.allSatisfy { !$0.isEnabled }, "Hidden, the menu and the footer are deaf")
+
+        model.completeIntro()
+        let deadline = Date().addingTimeInterval(5)
+        while !areas(in: host).allSatisfy(\.isEnabled), Date() < deadline { settle() }
+        XCTAssertTrue(areas(in: host).allSatisfy(\.isEnabled), "Shown, they answer")
+    }
+
     /// Each item of the main menu is chosen as the pointer comes over it, as
     /// it was by SwiftUI's hover.
     func testTheMenuFollowsThePointer() throws {
@@ -87,6 +154,11 @@ final class PointerAreaTests: XCTestCase {
             area.pointer(isInside: false)
         }
         XCTAssertEqual(Set(chosen.map(\.title)), Set(MenuItem.allCases.map(\.title)), "The pointer over each item chooses it")
+    }
+
+    /// Lets what was set aside for the main queue run.
+    private func settle() {
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
     }
 
     /// The areas drawn in a window's hosting view, once it has drawn them.

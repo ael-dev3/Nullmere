@@ -43,6 +43,7 @@ public struct LauncherRootView: View {
                 ScreenContent(model: model)
                     .opacity(model.intro.showsMenu ? 1 : 0)
                     .allowsHitTesting(model.intro.showsMenu)
+                    .disabled(!model.intro.showsMenu || model.isLeaving)
                     .frame(maxWidth: .infinity)
                     .padding(.top, waterline)
                     .animation(.easeInOut(duration: 0.5), value: model.screen)
@@ -53,6 +54,7 @@ public struct LauncherRootView: View {
                 }
                 .opacity(model.intro.showsMenu ? 1 : 0)
                 .allowsHitTesting(model.intro.showsMenu)
+                .disabled(!model.intro.showsMenu || model.isLeaving)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 .animation(.easeInOut(duration: 0.5), value: model.footerHint)
 

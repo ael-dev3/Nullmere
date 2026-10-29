@@ -22,6 +22,8 @@ extension View {
 
 /// An area of the window that hears the pointer come and go, and shows a
 /// cursor while it is there; clicks pass through it to what lies beneath.
+/// Disabled, as a launcher's menu is while it is hidden, it is deaf: a
+/// tracking area, unlike SwiftUI's hover, would hear through anything.
 struct PointerArea: NSViewRepresentable {
     var cursor: NSCursor?
     var onChange: ((Bool) -> Void)?
@@ -33,6 +35,7 @@ struct PointerArea: NSViewRepresentable {
     func updateNSView(_ view: PointerAreaView, context: Context) {
         view.cursor = cursor
         view.onChange = onChange
+        view.isEnabled = context.environment.isEnabled
     }
 
     static func dismantleNSView(_ view: PointerAreaView, coordinator: ()) {
@@ -47,8 +50,20 @@ final class PointerAreaView: NSView {
         }
     }
     var onChange: ((Bool) -> Void)?
+    /// Whether the area answers the pointer. Turned off with the pointer
+    /// over it, it is told the pointer left; turned back on, that it came.
+    var isEnabled = true {
+        didSet {
+            guard isEnabled != oldValue else { return }
+            window?.invalidateCursorRects(for: self)
+            // Set as SwiftUI updates the view, so told once it has.
+            DispatchQueue.main.async { [weak self] in self?.tell() }
+        }
+    }
     /// The pointer is over the area.
     private(set) var isInside = false
+    /// What `onChange` was last told.
+    private var told = false
 
     init(cursor: NSCursor?, onChange: ((Bool) -> Void)?) {
         self.cursor = cursor
@@ -68,7 +83,7 @@ final class PointerAreaView: NSView {
     }
 
     override func resetCursorRects() {
-        if let cursor { addCursorRect(bounds, cursor: cursor) }
+        if isEnabled, let cursor { addCursorRect(bounds, cursor: cursor) }
     }
 
     override func mouseEntered(with event: NSEvent) {
@@ -79,10 +94,17 @@ final class PointerAreaView: NSView {
         pointer(isInside: false)
     }
 
-    /// The pointer came over the area or left it; told once for each.
+    /// The pointer came over the area or left it; told once for each, while
+    /// the area answers.
     func pointer(isInside inside: Bool) {
-        guard inside != isInside else { return }
         isInside = inside
-        onChange?(inside)
+        tell()
+    }
+
+    private func tell() {
+        let heard = isInside && isEnabled
+        guard heard != told else { return }
+        told = heard
+        onChange?(heard)
     }
 }
