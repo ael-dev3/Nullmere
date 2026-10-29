@@ -127,6 +127,23 @@ public final class LauncherModel {
         )
     }
 
+    /// What the frame-rate setting comes to now, when that isn't what was
+    /// chosen: "Held to 30 while motion is reduced".
+    func frameRateNote(systemReducesMotion: Bool) -> String? {
+        let motion = settings.motion.resolved(systemReducesMotion: systemReducesMotion)
+        let rate = settings.frameRate.framesPerSecond(motion: motion, isSavingEnergy: isSavingEnergy)
+        guard rate != settings.frameRate.rawValue else { return nil }
+        let why: String
+        if motion != .full {
+            why = "while motion is reduced"
+        } else if !isInFront {
+            why = "behind another app"
+        } else {
+            why = "while this Mac saves energy"
+        }
+        return "Held to \(rate) \(why)"
+    }
+
     /// The lake renders at a lower rate while another app is in front, in
     /// Low Power Mode, and while the Mac runs hot.
     var isSavingEnergy: Bool {

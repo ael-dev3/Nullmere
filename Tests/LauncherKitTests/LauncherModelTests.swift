@@ -341,15 +341,19 @@ final class LauncherModelTests: XCTestCase {
             model.backdropConfiguration(systemReducesMotion: false).framesPerSecond
         }
         XCTAssertEqual(framesPerSecond(), 120)
+        XCTAssertNil(model.frameRateNote(systemReducesMotion: false), "As chosen: nothing to say")
+        XCTAssertEqual(model.frameRateNote(systemReducesMotion: true), "Held to 30 while motion is reduced")
 
         model.didResignActive()
         XCTAssertEqual(framesPerSecond(), 30, "Behind another app")
+        XCTAssertEqual(model.frameRateNote(systemReducesMotion: false), "Held to 30 behind another app")
         model.didBecomeActive()
         XCTAssertEqual(framesPerSecond(), 120)
 
         lowPowerMode = true
         model.refreshEnergyState()
         XCTAssertEqual(framesPerSecond(), 30, "In Low Power Mode")
+        XCTAssertEqual(model.frameRateNote(systemReducesMotion: false), "Held to 30 while this Mac saves energy")
         XCTAssertEqual(model.backdropConfiguration(systemReducesMotion: false).motion, .full, "What moves stays the same")
     }
 }

@@ -140,6 +140,8 @@ public actor FakeSpacetime: SpacetimeTransport {
             return status.map { [[.number(Double($0.version)), .string($0.status)]] } ?? []
         case "SELECT version, at_micros FROM stamp":
             return stamp.map { [[.number(Double($0.version)), .number((epoch.timeIntervalSince1970 + $0.at) * 1_000_000)]] } ?? []
+        case "SELECT version FROM my_view":
+            return views[me].map { [[.number(Double($0.version))]] } ?? []
         case "SELECT * FROM my_view":
             return views[me].map { [[.string(me), .number(Double($0.version)), .string($0.view), .string($0.events)]] } ?? []
         case "SELECT * FROM my_replies":

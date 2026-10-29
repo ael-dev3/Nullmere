@@ -35,6 +35,15 @@ final class LakeShaderTests: XCTestCase {
         XCTAssertNoThrow(try LakeRenderer(device: device, library: library, pixelFormat: .bgra8Unorm))
     }
 
+    /// The scene starts over without a jump: its clock's period is a whole
+    /// number of the falling star's chances and of the moon's breath.
+    func testTheSceneStartsOverWithoutAJump() throws {
+        let star = try define("NM_STAR_PERIOD")
+        XCTAssertEqual(SceneClock.period.truncatingRemainder(dividingBy: star), 0)
+        XCTAssertEqual(SceneClock.period.truncatingRemainder(dividingBy: 9), 0)
+        XCTAssertTrue(LakeShader.source.contains("sin(NM_TAU * fract(time / 9.0))"), "The moon's breath is nine seconds")
+    }
+
     private func define(_ name: String) throws -> Double {
         let line = try XCTUnwrap(
             LakeShader.source.split(separator: "\n").first { $0.contains("#define \(name) ") },

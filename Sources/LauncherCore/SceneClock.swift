@@ -7,11 +7,13 @@ public struct SceneClock: Sendable {
     /// The longest real-time step the clock accepts between two frames.
     public static let maximumStep = 0.1
 
-    /// Scene time starts over after this many seconds. The shader reads
-    /// time as a 32-bit float, which is precise to about a millisecond up
-    /// to here; starting over once every three hours of motion keeps the
-    /// lake smooth however long the launcher stays open.
-    public static let period: Double = 3 * 60 * 60
+    /// Scene time starts over after this many seconds, nearly three hours.
+    /// The shader reads time as a 32-bit float, which is precise to about a
+    /// millisecond up to here; starting over keeps the lake smooth however
+    /// long the launcher stays open. It is a whole number of the falling
+    /// star's 47-second chances and the moon's 9-second breath, so neither
+    /// jumps as it starts over.
+    public static let period: Double = 47 * 9 * 25
 
     public private(set) var time: Double
     private var lastTimestamp: Double?

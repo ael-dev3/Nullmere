@@ -11,7 +11,7 @@ struct LakeBackdrop: View {
 
     var body: some View {
         if metalFailed || LakeMetalView.systemDevice == nil {
-            LakeFallbackView(horizon: configuration.horizon)
+            LakeFallbackView(horizon: configuration.horizon, veil: configuration.veil)
         } else {
             LakeMetalRepresentable(configuration: configuration) {
                 metalFailed = true

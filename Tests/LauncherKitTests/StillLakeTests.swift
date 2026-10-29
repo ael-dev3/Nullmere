@@ -65,7 +65,7 @@ final class StillLakeTests: XCTestCase {
             rim = (max(rim.rough, strays.reduce(0, +) / 72), max(rim.worst, strays.max() ?? 0))
 
             // And round: seen from its own centre, its edge lies as far out
-            // every way, not pushed into lumps by the swell. (The edge found
+            // every way, not pushed out of shape. (The edge found
             // this way strays a little even in the sky, by the moon's seas.)
             var lit = (x: 0.0, y: 0.0, count: 0.0)
             for y in Int(mirrorY - 1.5 * radius)..<Int(mirrorY + 1.5 * radius) {
@@ -108,10 +108,10 @@ final class StillLakeTests: XCTestCase {
         XCTAssertGreaterThan(worst.gathered, 0.97, "gathered in a disc, not strewn down the water")
         XCTAssertGreaterThan(worst.filled, 0.58, "and whole")
         print(String(format: "STILL the moon's image's rim strays %.3f on average, %.3f at most", rim.rough, rim.worst))
-        XCTAssertLessThan(rim.rough, 0.016, "Its rim clean, not bitten by ripples")
+        XCTAssertLessThan(rim.rough, 0.016, "Its rim clean, as on dead still water")
         XCTAssertLessThan(rim.worst, 0.055, "nowhere")
         print(String(format: "STILL the moon's image is round within %.3f, its reach spread %.3f", roundness.worst, roundness.spread))
-        XCTAssertLessThan(roundness.worst, 0.04, "Round as the moon, not pushed out of shape by the swell")
+        XCTAssertLessThan(roundness.worst, 0.04, "Round as the moon")
         XCTAssertLessThan(roundness.spread, 0.065, "every way")
         XCTAssertLessThan(water, 40, "Open water is black")
         XCTAssertGreaterThanOrEqual(bright, 10, "Bright stars stand in the sky")
@@ -152,19 +152,17 @@ final class StillLakeTests: XCTestCase {
         // Stars on the open water, away from the moon's image, in both. A
         // star is a point that stands out from the water around it: the
         // moon's halo, gone with its image, lit the water and its stars
-        // alike, so how bright a point is can't tell a star. Nor are the
-        // moon's glints stars: moonlight, they sink with its image. They
-        // lie within two of their widths of the moon's line, a width that
-        // grows toward the near water (the shader's nm_glints).
-        func amidGlints(_ x: Int, _ y: Int) -> Bool {
-            let depth = (LakeComposition.horizon - (1 - Double(y) / Double(height))) / LakeComposition.horizon
-            let reach = 2.1 * LakeComposition.moonRadius * (1.1 + 2.4 * depth) * Double(height)
-            return abs(Double(x) - LakeComposition.moonX * Double(width)) < reach
+        // alike, so how bright a point is can't tell a star. Points within
+        // the halo of the moon's image are left out: they sink with it.
+        func inMoonsHalo(_ x: Int, _ y: Int) -> Bool {
+            let mirrorY = (1 - (2 * LakeComposition.horizon - LakeComposition.moonY)) * Double(height)
+            let dx = Double(x) - LakeComposition.moonX * Double(width), dy = Double(y) - mirrorY
+            return (dx * dx + dy * dy).squareRoot() < 4 * LakeComposition.moonRadius * Double(height)
         }
         func stars(_ pixels: [UInt8], standingOut contrast: Int) -> [(x: Int, y: Int)] {
             var found: [(x: Int, y: Int)] = []
             for y in stride(from: Int(Double(height) * 0.62), to: Int(Double(height) * 0.95), by: 1) {
-                for x in stride(from: 3, to: width / 3, by: 1) where !amidGlints(x, y) {
+                for x in stride(from: 3, to: width / 3, by: 1) where !inMoonsHalo(x, y) {
                     let here = light(pixels, x, y)
                     let around = (light(pixels, x - 3, y) + light(pixels, x + 3, y) + light(pixels, x, y - 3) + light(pixels, x, y + 3)) / 4
                     guard here - around > contrast else { continue }

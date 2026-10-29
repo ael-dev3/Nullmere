@@ -25,6 +25,9 @@ enum LakeShader {
     #define NM_MOON_X 0.5
     #define NM_MOON_Y 0.795
     #define NM_MOON_R 0.056
+    // Seconds between chances of a falling star; SceneClock's period is a
+    // whole number of them, and of the moon's nine-second breath.
+    #define NM_STAR_PERIOD 47.0
 
     float nm_hash12(float2 p) {
         float3 p3 = fract(float3(p.x, p.y, p.x) * 0.1031);
@@ -105,7 +108,14 @@ enum LakeShader {
         float halo = 0.10 * exp(-r / (sigma * 4.0)) * smoothstep(0.55, 1.0, k) * (1.0 - smoothstep(0.5 * room, room, r));
         float temp = nm_hash12(id + seed + 41.0);
         float3 tint = mix(float3(0.76, 0.85, 1.0), float3(1.0, 0.92, 0.82), temp * temp);
-        return tint * b * tw * (core + halo);
+        float3 light = tint * b * tw * (core + halo);
+        // The brightest ease toward white rather than burn flat, so each keeps
+        // its warm or cold tint and twinkles by brightening as well as dimming.
+        float peak = max(light.r, max(light.g, light.b));
+        if (peak > 0.8) {
+            light *= (0.8 + 0.2 * (1.0 - exp(-(peak - 0.8) / 0.2))) / peak;
+        }
+        return light;
     }
 
     float3 nm_skyGradient(float y, float horizon) {
@@ -136,14 +146,15 @@ enum LakeShader {
 
     // Now and then a star falls: a bright head drawing a fading trail away from
     // the moon. The first falls a few seconds after the lake appears, later ones
-    // at random, about twice a minute. It is a pure function of time, so its
-    // reflection follows it across the water.
+    // at random, about once in a minute and a half: rare enough to wait for.
+    // It is a pure function of time, so its reflection follows it across the
+    // water.
     float3 nm_fallingStar(float2 p, float aspect, float pt, float time) {
-        float period = 17.0;
+        float period = NM_STAR_PERIOD;
         float k = floor(time / period);
         float2 hk = nm_hash22(float2(k, 7.0));
         bool first = k < 0.5;
-        if (!first && hk.x > 0.6) {
+        if (!first && hk.x > 0.5) {
             return float3(0.0);
         }
         float start = first ? 6.5 : 1.0 + hk.y * (period - 3.0);
@@ -196,7 +207,9 @@ enum LakeShader {
         float2 bandOrigin = float2(aspect * 0.12, horizon);
         float across = dot(p - bandOrigin, float2(-bandDir.y, bandDir.x));
         float band = exp(-across * across / 0.018);
-        if (band > 0.004) {
+        // Worked out only where it can show: in the moon's glare and down at
+        // the horizon it adds less than a step of light.
+        if (band * visible > 0.01) {
             float dust = nm_fbm(p * 3.1 + float2(3.0, 1.0));
             float lanes = smoothstep(0.42, 0.62, nm_fbm(p * 7.3 + float2(9.0, 4.0)));
             c += float3(0.70, 0.76, 0.88) * 0.034 * band * (0.45 + 0.9 * dust) * (1.0 - 0.6 * lanes) * visible;
@@ -241,8 +254,9 @@ enum LakeShader {
         }
 
         // The far shore: distant mesas veiled by haze, then a darker bank.
+        // Nothing of it stands higher than its tallest mesa, 0.0612.
         float h = p.y - horizon;
-        if (h < 0.075) {
+        if (h < 0.066) {
             float mesaTop = nm_mesas(p.x);
             float far = 1.0 - smoothstep(mesaTop - pt, mesaTop + pt, h);
             float3 farColor = mix(float3(0.020, 0.026, 0.038), nm_skyGradient(p.y, horizon) * 0.80, 0.35);
@@ -253,81 +267,6 @@ enum LakeShader {
             c = mix(c, float3(0.007, 0.009, 0.014) + float3(0.010, 0.013, 0.018) * exp(-h / 0.004), bank);
         }
         return c;
-    }
-
-    // One train of waves on the lake, as the slope (dh/dX, dh/dZ) it adds at the
-    // plane point w = (X, Z). The camera sits one unit above the water, so a
-    // point s below the horizon lies Z = 1/s away. Waves whose image would be
-    // smaller than a few points fade out instead of shimmering.
-    float2 nm_wave(float2 w, float2 dir, float lambda, float slope, float time, float z, float pt) {
-        float onScreen = lambda / (z * sqrt(dir.x * dir.x + dir.y * dir.y * z * z));
-        float lod = smoothstep(3.0 * pt, 10.0 * pt, onScreen);
-        if (lod <= 0.0) {
-            return float2(0.0);
-        }
-        // Wrap the phase so it stays small however long the launcher runs.
-        float speed = 0.24 * sqrt(lambda);
-        float phase = fract((dot(dir, w) + speed * time) / lambda);
-        return dir * (slope * lod * cos(NM_TAU * phase));
-    }
-
-    // Rings spreading where something touched the water. Three independent
-    // channels each start a ring now and then, mostly near the moon's path.
-    float2 nm_rings(float2 w, float time, float z, float pt) {
-        float2 g = float2(0.0);
-        for (int i = 0; i < 3; i++) {
-            float fi = float(i);
-            float period = 6.0 + 2.3 * fi;
-            float t = time + 2.7 * fi + 1.5;
-            float k = floor(t / period);
-            float age = t - k * period;
-            float2 h = nm_hash22(float2(k * 1.7 + fi * 31.0, 3.0 + fi));
-            if (h.x > 0.85) {
-                continue;
-            }
-            float cz = 2.35 + 2.2 * h.y;
-            float2 centre = float2((fract(h.x * 9.7) - 0.5) * 0.55 * cz, cz);
-            float2 d = w - centre;
-            float dist = length(d);
-            float front = dist - 0.11 * age;
-            float width = 0.07 + 0.035 * age;
-            if (abs(front) > 3.0 * width) {
-                continue;
-            }
-            float lambda = 0.15 + 0.015 * age;
-            float lod = smoothstep(3.0 * pt, 9.0 * pt, lambda / (z * z));
-            float env = exp(-front * front / (width * width)) * exp(-0.38 * age) * smoothstep(0.0, 0.5, age);
-            g += d / max(dist, 0.0001) * (0.13 * lod * env * cos(NM_TAU * front / lambda));
-        }
-        return g;
-    }
-
-    // Glints: points of moonlight flashing on facets that tilt toward the moon,
-    // gathered around its image and thinning toward the far shore. They live on
-    // a grid of small cells in points, so they stay crisp at any size.
-    float3 nm_glints(float2 p, float2 m, float horizon, float depth, float pt, float time) {
-        float mirrorY = 2.0 * horizon - m.y;
-        float gx = (p.x - m.x) / (NM_MOON_R * (1.1 + 2.4 * depth));
-        float gy = (p.y - mirrorY) / (NM_MOON_R * 2.2);
-        float path = exp(-gx * gx) * (exp(-gy * gy) + 0.40 * smoothstep(0.05, 0.70, depth) * exp(-abs(gy) * 0.30));
-        if (path < 0.02) {
-            return float3(0.0);
-        }
-        float2 cellSize = float2(11.0, 3.0) * pt;
-        float2 g = p / cellSize;
-        float2 id = floor(g);
-        float2 h = nm_hash22(id + 71.0);
-        if (h.x > path * 0.22) {
-            return float3(0.0);
-        }
-        float2 pos = 0.3 + 0.4 * nm_hash22(id + 13.0);
-        float2 d = (g - id - pos) * cellSize / pt;
-        d.x *= 0.26 + 0.2 * h.y;
-        float shape = exp(-dot(d, d) / 0.5) * (0.55 + 0.45 * fract(h.y * 5.1));
-        float wave = max(sin(NM_TAU * fract(time * (1.6 + 2.8 * h.y) / NM_TAU + h.x * 7.3)), 0.0);
-        float flash = wave * wave * wave;
-        flash *= flash;
-        return float3(0.84, 0.89, 1.0) * shape * flash * (0.35 + 0.65 * fract(h.x * 13.7));
     }
 
     // The full scene. `uv` is 0...1 with y pointing up, `sizePt` is the view
@@ -344,68 +283,33 @@ enum LakeShader {
         if (p.y >= horizon) {
             c = nm_sky(p, aspect, pt, horizon, time, activity, 1.0);
         } else {
-            // Water: dead, deep and nearly still, a black mirror of the sky. A
-            // long, faint swell barely stirs it, and now and then a ring
-            // spreads where something touched the lake; the moon lies in it
-            // whole, and the stars with it.
+            // Water: dead, deep and still, black glass from shore to shore. It
+            // gives back the sky exactly: the moon whole, its rim as clean as
+            // above, and every star where it stands. Nothing stirs it; it
+            // shows itself only by giving back less as it nears, and by the
+            // mist and the line of light where it meets the far shore.
             float s = horizon - p.y;
-            float z = 1.0 / max(s, 0.0005);
-            float2 w = float2((p.x - m.x) * z, z);
-            float2 slope = nm_wave(w, normalize(float2(0.20, 1.0)), 1.70, 0.020, time, z, pt);
-            slope += nm_wave(w, normalize(float2(-0.45, 1.0)), 0.93, 0.018, time, z, pt);
-            slope += nm_wave(w, normalize(float2(0.75, 1.0)), 0.51, 0.016, time, z, pt);
-            slope += nm_wave(w, normalize(float2(-0.12, 1.0)), 0.27, 0.014, time, z, pt);
-            slope += nm_wave(w, normalize(float2(0.40, 1.0)), 0.15, 0.012, time, z, pt);
-            slope += nm_wave(w, normalize(float2(-0.60, 1.0)), 0.085, 0.010, time, z, pt);
-            slope += nm_wave(w, normalize(float2(0.90, 1.0)), 0.055, 0.008, time, z, pt);
-            // The swell, a tenth of a living lake's: the moon's image keeps
-            // a clean rim, and only its glints say the water is there.
-            slope *= 0.10;
-            float2 ring = float2(0.0);
-            if (activity > 0.5) {
-                // A ring shows by its light; it barely bends the mirror, so
-                // the moon's image keeps its rim as a ring passes through.
-                ring = nm_rings(w, time, z, pt) * 0.45;
-                slope += ring * 0.25;
-            }
-
-            // The mirror barely bends, and alike each way: bent more, the
-            // long swell pushed the moon's image out of round, lumpy where it
-            // should be whole, and bent more up and down than across, it
-            // stretched the brighter image's edge.
-            float2 r = float2(p.x + 0.10 * slope.x, 2.0 * horizon - p.y + 0.10 * slope.y);
-            r.y = max(r.y, horizon + 0.0005);
+            float2 r = float2(p.x, max(2.0 * horizon - p.y, horizon + 0.0005));
             float depth = s / horizon;
             // A black mirror gives the moon back nearly whole: falling off
             // further toward the near water, its image lay there a grey coin.
             float reflectance = mix(0.94, 0.74, sqrt(depth));
             float moonlight = 1.0 - veil;
             c = nm_sky(r, aspect, pt, horizon, time, activity, moonlight) * reflectance;
-
-            // Faces of the waves turned toward the moon catch a faint sheen.
-            float lateral = (p.x - m.x) / (0.30 * aspect);
-            float sheen = smoothstep(0.0, 0.06, slope.y) * exp(-lateral * lateral);
-            c += float3(0.50, 0.60, 0.78) * 0.05 * sheen * (0.4 + 0.6 * depth) * moonlight;
-            float ringLight = max(ring.y, 0.0) * (0.35 + 0.65 * exp(-lateral * lateral));
-            c += float3(0.55, 0.64, 0.80) * 0.45 * ringLight * moonlight;
-
-            if (moonlight > 0.0) {
-                float lit = dot(c, float3(0.33, 0.34, 0.33));
-                c += nm_glints(p, m, horizon, depth, pt, time) * (0.35 + 0.65 * reflectance) * (1.0 - smoothstep(0.15, 0.40, lit)) * moonlight;
-            }
-
             c += float3(0.0015, 0.0022, 0.0035);
         }
 
         // Mist lying on the water at the horizon.
+        // Beyond where it adds a step of light, it isn't worked out at all.
         float mistBand = exp(-abs(p.y - horizon) / 0.03);
-        if (mistBand > 0.01) {
+        if (mistBand > 0.07) {
             float mistNoise = nm_fbm(float2(p.x * 1.4 - time * 0.004, p.y * 9.0));
             c += float3(0.55, 0.63, 0.76) * 0.055 * mistBand * (0.30 + 0.70 * mistNoise);
         }
 
-        // The waterline itself catches a hairline of light.
-        c += float3(0.40, 0.48, 0.60) * 0.030 * exp(-abs(p.y - horizon) / (pt * 1.2));
+        // The waterline itself catches a hairline of light, faint enough that
+        // it reads as the bank meeting its image, not a seam between them.
+        c += float3(0.40, 0.48, 0.60) * 0.015 * exp(-abs(p.y - horizon) / (pt * 1.2));
 
         // Vignette and dithering against banding in the dark gradients.
         float2 v = (uv - 0.5) * float2(1.0, 1.15);

@@ -94,6 +94,24 @@ final class StewardFairnessTests: XCTestCase {
         XCTAssertEqual(later.keepers.first { $0.name == "Ama" }?.isOnline, true)
     }
 
+    /// A view unchanged isn't sent again, however often the realm is
+    /// published: its keys are written in one order on every platform.
+    func testAViewUnchangedIsNotSentAgain() async throws {
+        let (db, steward, ama, bel, _) = try await stewarded("unchanged")
+        let first = try await heard(db, ama).version
+        // Heard from, nothing done: the status moves, Ama's view doesn't.
+        try await db.call("here", [.string("a2")], token: ama.token)
+        try await db.call("here", [.string("b2")], token: bel.token)
+        try await steward.step(now: 2 + RealmSteward.heartbeat)
+        try await steward.step(now: 4 + 2 * RealmSteward.heartbeat)
+        let status = try await db.query("SELECT version FROM status", token: ama.token)
+        XCTAssertGreaterThan(UInt64(try XCTUnwrap(status.first?.first?.number)), first, "Published again")
+        let now = try await heard(db, ama).version
+        XCTAssertEqual(now, first, "Ama's view, unchanged, not sent again")
+        let head = try await db.query("SELECT version FROM my_view", token: ama.token)
+        XCTAssertEqual(head.first?.first?.number.map { UInt64($0) }, first, "Its version alone says so")
+    }
+
     func testAKeeperAwayIsNotShownTheirView() async throws {
         let (db, steward, ama, bel, _) = try await stewarded("one away")
         try await db.call("leave", [.string("b2")], token: bel.token)

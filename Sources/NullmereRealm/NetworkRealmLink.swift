@@ -176,7 +176,6 @@ public final class NetworkRealmLink: RealmLink {
 
     /// The keeper's own view: `my_view` holds one row, theirs.
     private func fetchView(_ credentials: SpacetimeCredentials) async throws -> (UInt64, RealmView, [HeardBatch])? {
-        viewReads += 1
         let rows = try await transport.query("SELECT * FROM my_view", token: credentials.token)
         guard let row = rows.first, row.count == 4, let number = row[1].number, let text = row[2].string, let heard = row[3].string else {
             return nil
@@ -191,6 +190,12 @@ public final class NetworkRealmLink: RealmLink {
     /// Returns whether it was read.
     private func readView(_ credentials: SpacetimeCredentials) async throws -> Bool {
         guard outbox.isEmpty else { return false }
+        viewReads += 1
+        // The row's version first: the whole view, tens of kilobytes to
+        // fetch and decode, only when it has moved. Most publications move
+        // the status, not this keeper's view.
+        let heads = try await transport.query("SELECT version FROM my_view", token: credentials.token)
+        if let number = heads.first?.first?.number, UInt64(number) == viewVersion { return true }
         guard let (number, fresh, batches) = try await fetchView(credentials) else { return true }
         if number != viewVersion { deliver(fresh, version: number, heard: batches) }
         return true

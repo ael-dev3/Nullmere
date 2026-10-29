@@ -33,7 +33,7 @@ struct NewsPanel: View {
                 .frame(width: 370 * unit, alignment: .topLeading)
             }
 
-            MenuButton(title: "Return", isSelected: isReturnHovered) {
+            MenuButton(title: "Back", isSelected: isReturnHovered) {
                 model.returnToTitle()
             }
             .onPointer { isReturnHovered = $0 }

@@ -41,11 +41,11 @@ struct PlayPanel: View {
     private func title(for choice: LauncherModel.PlayChoice) -> String {
         switch choice {
         case .website: return "nullmere.online"
-        case .back: return "Return"
+        case .back: return "Back"
         }
     }
 
     private var explanation: String {
-        "This Mac is ready: Apple's on-device model is here. This build has no way into the realm; the website has one that does."
+        "This Mac is ready: Apple's on-device model is here. This build of the launcher can't enter the realm; Nullmere Online itself is on the website."
     }
 }

@@ -7,7 +7,12 @@ struct SettingsPanel: View {
     let model: LauncherModel
 
     @Environment(\.launcherUnit) private var unit
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isReturnHovered = false
+    /// The row whose option has keyboard focus, with keyboard navigation
+    /// on: the ticked row follows it, so ← → and Return act where the focus
+    /// ring is.
+    @FocusState private var focusedRow: SettingsRow?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,7 +23,10 @@ struct SettingsPanel: View {
                     title: row.title,
                     options: model.settings.options(for: row),
                     selectedIndex: model.settings.selectedIndex(for: row),
-                    isFocused: model.settingsSelection == row
+                    isFocused: model.settingsSelection == row,
+                    note: row == .frameRate ? model.frameRateNote(systemReducesMotion: reduceMotion) : nil,
+                    focus: $focusedRow,
+                    row: row
                 ) { index in
                     model.choose(index, for: row)
                 }
@@ -31,13 +39,16 @@ struct SettingsPanel: View {
                 }
             }
 
-            MenuButton(title: "Return", isSelected: isReturnHovered) {
+            MenuButton(title: "Back", isSelected: isReturnHovered) {
                 model.returnToTitle()
             }
             .onPointer { isReturnHovered = $0 }
             .padding(.top, 18 * unit)
         }
         .frame(width: 560 * unit)
+        .onChange(of: focusedRow) { _, row in
+            if let row { model.settingsSelection = row }
+        }
     }
 }
 
@@ -46,6 +57,10 @@ private struct SettingsRowView: View {
     let options: [String]
     let selectedIndex: Int
     let isFocused: Bool
+    /// What the row's choice comes to now, where that isn't plain.
+    let note: String?
+    let focus: FocusState<SettingsRow?>.Binding
+    let row: SettingsRow
     let choose: (Int) -> Void
 
     @Environment(\.launcherUnit) private var unit
@@ -55,8 +70,15 @@ private struct SettingsRowView: View {
         HStack(spacing: 0) {
             SelectionTick(isVisible: isFocused, length: 10 * unit)
                 .padding(.trailing, isFocused ? 10 * unit : 0)
-            SpacedText(title, size: 10.5 * unit, weight: .regular, tracking: 0.32)
-                .opacity(isFocused ? 0.95 : labelOpacity)
+            VStack(alignment: .leading, spacing: 4 * unit) {
+                SpacedText(title, size: 10.5 * unit, weight: .regular, tracking: 0.32)
+                    .opacity(isFocused ? 0.95 : labelOpacity)
+                if let note {
+                    Text(verbatim: note)
+                        .font(.system(size: 9 * unit, weight: .light))
+                        .opacity(0.45)
+                }
+            }
             Spacer(minLength: 24 * unit)
             HStack(spacing: 18 * unit) {
                 ForEach(options.indices, id: \.self) { index in
@@ -71,8 +93,19 @@ private struct SettingsRowView: View {
         .contentShape(Rectangle())
         .animation(.easeOut(duration: 0.3), value: isFocused)
         .animation(.easeOut(duration: 0.3), value: selectedIndex)
-        .accessibilityElement(children: .contain)
+        // One element to VoiceOver: the setting, its value, and a swipe up or
+        // down to change it, rather than bare options without their row.
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
+        .accessibilityValue([options.indices.contains(selectedIndex) ? options[selectedIndex] : "", note ?? ""]
+            .filter { !$0.isEmpty }.joined(separator: ", "))
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: if selectedIndex + 1 < options.count { choose(selectedIndex + 1) }
+            case .decrement: if selectedIndex > 0 { choose(selectedIndex - 1) }
+            @unknown default: break
+            }
+        }
     }
 
     private func option(_ label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
@@ -89,6 +122,7 @@ private struct SettingsRowView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .focused(focus, equals: row)
         .accessibilityLabel(label)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

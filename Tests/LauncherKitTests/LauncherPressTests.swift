@@ -66,7 +66,7 @@ final class LauncherPressTests: XCTestCase {
             XCTAssertTrue(PressableButtons.press("Read more"), "Among \(shown)")
             XCTAssertEqual(opened.last, headline.link)
         }
-        XCTAssertTrue(PressableButtons.press("Return"))
+        XCTAssertTrue(PressableButtons.press("Back"))
         XCTAssertEqual(model.screen, .title)
 
         draw(model)
@@ -77,7 +77,7 @@ final class LauncherPressTests: XCTestCase {
         XCTAssertEqual(model.settings.motion, .full)
         XCTAssertTrue(PressableButtons.press("On"))
         XCTAssertTrue(model.settings.startsInFullScreen)
-        XCTAssertTrue(PressableButtons.press("Return"))
+        XCTAssertTrue(PressableButtons.press("Back"))
         XCTAssertEqual(model.screen, .title)
 
         draw(model)
@@ -109,7 +109,7 @@ final class LauncherPressTests: XCTestCase {
         XCTAssertTrue(PressableButtons.press("Play"))
         XCTAssertEqual(model.screen, .play, "No realm yet: the panel says so")
         draw(model)
-        XCTAssertTrue(PressableButtons.press("Return"), "Among \(shown)")
+        XCTAssertTrue(PressableButtons.press("Back"), "Among \(shown)")
         XCTAssertEqual(model.playSelection, .back)
         XCTAssertEqual(model.screen, .title)
     }

@@ -268,7 +268,11 @@ public actor RealmSteward {
     /// back is shown it as they arrive. Nothing is taken as published until
     /// the server has it.
     private func publish(now: Double = Date().timeIntervalSince1970) async throws {
+        // Keys in a fixed order, so a view unchanged encodes the same and
+        // isn't sent again: unsorted, Foundation on Linux orders them anew
+        // each time, and every view went out with every publication.
         let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
         let status = state.status(now: now)
         var keepers: [String] = [], views: [String] = [], heard: [String] = []
         var shown: [String: String] = [:]

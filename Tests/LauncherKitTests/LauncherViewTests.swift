@@ -139,6 +139,7 @@ final class LauncherViewTests: XCTestCase {
             try draw(TitleBlock(isRevealed: revealed, settlesLetters: true), width: 1200, height: 200)
         }
         try draw(LakeFallbackView(horizon: 0.55))
+        try draw(LakeFallbackView(horizon: 0.55, veil: 1))
         try draw(MoonlitLake(), width: 640, height: 400)
         let model = model()
         try draw(MainMenu(model: model), width: 1000, height: 80)

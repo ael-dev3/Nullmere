@@ -5,6 +5,8 @@ import SwiftUI
 /// scene cannot run.
 struct LakeFallbackView: View {
     var horizon: Double
+    /// 1 sinks the moon's image under a panel, as the Metal lake does.
+    var veil: Double = 0
 
     private static let stars = StarCatalog.stars(count: 320, seed: 0x4E55_4C4C)
 
@@ -41,7 +43,8 @@ struct LakeFallbackView: View {
                 context.fill(Path(ellipseIn: sky), with: .color(.white.opacity(0.85 * star.brightness)))
                 let mirrored = sky.offsetBy(dx: 0, dy: 2 * rise)
                 if mirrored.minY < size.height {
-                    context.fill(Path(ellipseIn: mirrored), with: .color(.white.opacity(0.35 * star.brightness)))
+                    // A black mirror gives the stars back nearly whole.
+                    context.fill(Path(ellipseIn: mirrored), with: .color(.white.opacity(0.70 * star.brightness)))
                 }
             }
 
@@ -50,7 +53,7 @@ struct LakeFallbackView: View {
             let moonRise = size.height * LakeComposition.moonY - size.height * horizon
             let moon = CGPoint(x: size.width * LakeComposition.moonX, y: waterline - moonRise)
             let reflection = CGPoint(x: moon.x, y: waterline + moonRise)
-            for (center, strength) in [(moon, 1.0), (reflection, 0.55)] {
+            for (center, strength) in [(moon, 1.0), (reflection, 0.85 * (1 - min(max(veil, 0), 1)))] where strength > 0 {
                 context.fill(
                     Path(ellipseIn: CGRect(x: center.x - radius * 12, y: center.y - radius * 12, width: radius * 24, height: radius * 24)),
                     with: .radialGradient(

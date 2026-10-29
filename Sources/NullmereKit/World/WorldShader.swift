@@ -189,10 +189,12 @@ enum WorldShader {
     }
 
     // The still water: black glass holding the stars and the moon.
-    float nm_star(float2 px, float ppp, float size, float threshold, float salt) {
+    float nm_star(float2 px, float ppp, float size, float threshold, float salt, float time) {
         // A grid of its own angle for each salt, every row slid along by
         // chance and each star roaming most of its cell: no lattice of rows
-        // and columns shows through.
+        // and columns shows through. Each star's core keeps two points clear
+        // of its cell's border and its halo fades out before it, so a single
+        // cell draws it whole; each twinkles on its own.
         float turn = 0.4 + salt * 0.137;
         float ct = cos(turn);
         float st = sin(turn);
@@ -200,12 +202,17 @@ enum WorldShader {
         g.x += nm_hash(float2(floor(g.y), salt + 5.0));
         float2 cell = floor(g);
         float2 jitter = float2(nm_hash(cell + 3.1 + salt), nm_hash(cell + 7.9 + salt));
-        float2 o = (g - (cell + 0.08 + 0.84 * jitter)) * size;
+        float margin = clamp(2.0 / size, 0.08, 0.45);
+        float2 at = margin + (1.0 - 2.0 * margin) * jitter;
+        float2 o = (g - (cell + at)) * size;
         float bright = nm_hash(cell + 1.3 + salt);
         if (bright < threshold) { return 0.0; }
         float b = (bright - threshold) / (1.0 - threshold);
         float r2 = dot(o, o);
-        return b * b * (exp(-r2 / 0.8) + 0.12 * exp(-r2 / 7.0));
+        float room = min(min(at.x, 1.0 - at.x), min(at.y, 1.0 - at.y)) * size;
+        float halo = 0.12 * exp(-r2 / 7.0) * (1.0 - smoothstep(0.5 * room, room, sqrt(r2)));
+        float twinkle = 0.85 + 0.15 * sin(time * 0.9 + nm_hash(cell + 11.0 + salt) * 30.0);
+        return b * b * (exp(-r2 / 0.8) + halo) * twinkle;
     }
 
     float3 nm_mirror(float2 w, float2 px, float2 viewport, float ppp, float shallow, float time, float4 moonAt, float2 moonPx, float moonRadiusPx) {
@@ -229,15 +236,17 @@ enum WorldShader {
         c = mix(c, float3(0.020, 0.027, 0.036), shallow * 0.8);
         // Reflected stars, fixed to the screen like the sky, sized in points:
         // many faint, fewer bright, and a rare few brighter still.
-        float stars = nm_star(px, ppp, 10.0, 0.74, 0.0) * 0.8 + nm_star(px, ppp, 37.0, 0.5, 17.0) * 2.0 + nm_star(px, ppp, 83.0, 0.62, 29.0) * 3.2;
-        float twinkle = 0.85 + 0.15 * sin(time * 0.9 + nm_hash(floor(px / (41.0 * ppp))) * 30.0);
-        c += float3(0.80, 0.85, 0.96) * stars * twinkle * (1.0 - 0.75 * shallow);
+        float stars = nm_star(px, ppp, 10.0, 0.74, 0.0, time) * 0.8 + nm_star(px, ppp, 37.0, 0.5, 17.0, time) * 2.0
+            + nm_star(px, ppp, 83.0, 0.62, 29.0, time) * 3.2;
+        c += float3(0.80, 0.85, 0.96) * stars * (1.0 - 0.75 * shallow);
         // The moon lies in the water over the lake's deepest heart, crisp
         // because nothing moves, and a little dimmer than the moon itself.
         float2 moon = moonAt.xy;
         float2 mq = (w - moon) / max(moonAt.z, 0.05);
         float dm = length(w - moon);
-        float disc = (1.0 - smoothstep(0.96, 1.0, length(mq))) * (1.0 - shallow) * moonAt.w;
+        // Its rim a pixel and a half wide at any zoom: crisp, never jagged.
+        float edge = clamp(1.5 / max(moonRadiusPx, 1.0), 0.002, 0.25);
+        float disc = (1.0 - smoothstep(1.0 - edge, 1.0, length(mq))) * (1.0 - shallow) * moonAt.w;
         float breath = 0.5 + 0.5 * sin(6.2831853 * fract(time / 11.0));
         float3 glow = float3(0.50, 0.58, 0.76) * (0.05 * exp(-dm * 0.6) + 0.10 * exp(-dm * 2.2)) * (0.9 + 0.2 * breath) * moonAt.w;
         c += glow * (1.0 - shallow * 0.6);
@@ -255,7 +264,7 @@ enum WorldShader {
         float2 h = nm_hexAt(w);
         if (nm_hexLength(h) > radius) {
             // Beyond the Spine: the dark, with a few cold stars.
-            return float3(0.003, 0.004, 0.008) + float3(0.5, 0.55, 0.7) * nm_star(px, ppp, 23.0, 0.8, 5.0) * 0.5;
+            return float3(0.003, 0.004, 0.008) + float3(0.5, 0.55, 0.7) * nm_star(px, ppp, 23.0, 0.8, 5.0, time) * 0.5;
         }
 
         float4 tile = NM_TILE(h + radius);
@@ -393,7 +402,7 @@ enum WorldShader {
                 float2 fp = d * 3.2;
                 if (feature < 1.5) {
                     // Moonsalt bed: a glittering crust.
-                    float glint = nm_star(px, ppp, 6.0, 0.82, 31.0);
+                    float glint = nm_star(px, ppp, 6.0, 0.82, 31.0, time);
                     float phase = nm_hash(floor(px / (6.0 * ppp)) + 2.0) * 40.0;
                     c += float3(0.78, 0.84, 1.0) * glint * 1.4 * (0.4 + 0.6 * sin(time * 1.1 + phase)) * (1.0 - smoothstep(0.55, 0.85, length(d)));
                 } else if (feature < 2.5) {
