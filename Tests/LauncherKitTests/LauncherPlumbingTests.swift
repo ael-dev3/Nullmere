@@ -101,6 +101,25 @@ final class LakeMetalViewTests: XCTestCase {
         LakeConfiguration(motion: motion, renderScale: renderScale, framesPerSecond: 30, horizon: LakeComposition.horizon)
     }
 
+    /// The shader is compiled once for the GPU: a lake made after the
+    /// first (the front door's, the launcher's on coming back) has its
+    /// pipeline as it enters its window, with no wait.
+    func testALaterLakeNeedsNoCompiling() throws {
+        guard LakeMetalView.systemDevice != nil else { throw XCTSkip("No Metal device available") }
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 250), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let first = LakeMetalView(configuration: configuration())
+        window.contentView = first
+        let deadline = Date().addingTimeInterval(20)
+        while first.renderer == nil, Date() < deadline { spin(0.05) }
+        XCTAssertNotNil(first.renderer)
+        let later = LakeMetalView(configuration: configuration())
+        window.contentView = later
+        XCTAssertNotNil(later.renderer, "Ready at once, from the shader already compiled")
+        window.contentView = nil
+    }
+
     func testTheLakeDrawsInAWindow() throws {
         guard LakeMetalView.systemDevice != nil else { throw XCTSkip("No Metal device available") }
         let view = LakeMetalView(configuration: configuration())
