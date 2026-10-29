@@ -195,6 +195,14 @@ pub fn ready(ctx: &ReducerContext, nonce: String, ready: bool) -> Result<(), Str
     ask(ctx, "ready", nonce, if ready { "true".into() } else { "false".into() })
 }
 
+/// Ready for the watch to turn, or not, in the watch the keeper saw: if
+/// that watch is gone by the time the steward reads it, it counts for
+/// nothing.
+#[reducer]
+pub fn ready_in_watch(ctx: &ReducerContext, nonce: String, ready: bool, watch: u64) -> Result<(), String> {
+    ask(ctx, "ready", nonce, format!("{ready}@{watch}"))
+}
+
 /// Still here: a keeper's client says so now and then.
 #[reducer]
 pub fn here(ctx: &ReducerContext, nonce: String) -> Result<(), String> {

@@ -93,6 +93,10 @@ public struct SpacetimeHTTP: SpacetimeTransport, @unchecked Sendable {
     public let database: String
     /// The session requests go by: the shared one, but for tests.
     let session: URLSession
+    /// Seconds a request may take: a request in flight as the Mac sleeps,
+    /// or as the network goes, fails soon after rather than holding up
+    /// the next poll for a minute.
+    public static let timeout: TimeInterval = 15
 
     /// `address` names the server and the database: `http://127.0.0.1:3000/nullmere`.
     public init?(address: URL, session: URLSession = .shared) {
@@ -141,12 +145,14 @@ public struct SpacetimeHTTP: SpacetimeTransport, @unchecked Sendable {
 
     public func createIdentity() async throws -> SpacetimeCredentials {
         var request = URLRequest(url: server.appendingPathComponent("v1/identity"))
+        request.timeoutInterval = SpacetimeHTTP.timeout
         request.httpMethod = "POST"
         return try JSONDecoder().decode(SpacetimeCredentials.self, from: try await send(request))
     }
 
     public func call(_ reducer: String, _ arguments: [ReducerArgument], token: String) async throws {
         var request = URLRequest(url: server.appendingPathComponent("v1/database/\(database)/call/\(reducer)"))
+        request.timeoutInterval = SpacetimeHTTP.timeout
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -160,6 +166,7 @@ public struct SpacetimeHTTP: SpacetimeTransport, @unchecked Sendable {
 
     public func queryDated(_ sql: String, token: String) async throws -> (rows: [[JSONValue]], date: Date?) {
         var request = URLRequest(url: server.appendingPathComponent("v1/database/\(database)/sql"))
+        request.timeoutInterval = SpacetimeHTTP.timeout
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.httpBody = Data(sql.utf8)

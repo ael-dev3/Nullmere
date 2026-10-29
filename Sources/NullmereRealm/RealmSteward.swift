@@ -10,18 +10,22 @@ public struct RealmReply: Codable, Equatable, Sendable {
     public let refusal: String?
     /// What the keeper hears of their order, as the realm carried it out.
     public let events: [GameEvent]?
+    /// The realm doesn't know this keeper (it was begun anew): the client
+    /// goes back to the door rather than giving orders no one will carry.
+    public let unknownKeeper: Bool?
 
-    public init(ok: Bool, keeper: Keeper?, refusal: String?, events: [GameEvent]? = nil) {
+    public init(ok: Bool, keeper: Keeper?, refusal: String?, events: [GameEvent]? = nil, unknownKeeper: Bool? = nil) {
         self.ok = ok
         self.keeper = keeper
         self.refusal = refusal
         self.events = events
+        self.unknownKeeper = unknownKeeper
     }
 
     public static let done = RealmReply(ok: true, keeper: nil, refusal: nil)
 
     public static func refused(_ error: RealmError) -> RealmReply {
-        RealmReply(ok: false, keeper: nil, refusal: error.description)
+        RealmReply(ok: false, keeper: nil, refusal: error.description, unknownKeeper: error == .unknownKeeper ? true : nil)
     }
 }
 
@@ -260,11 +264,18 @@ public actor RealmSteward {
                 return (.refused(error), false, [])
             }
         case "ready":
-            if let turned = state.setReady(keeper, payload == "true", now: now) {
+            guard state.keeper(keeper) != nil else { return (.refused(.unknownKeeper), false, []) }
+            // "true@12": ready in watch 12. Readiness sent for a watch
+            // already gone (sent before the line dropped, and carried only
+            // now) is not readiness for this one.
+            let parts = payload.split(separator: "@")
+            if parts.count == 2, Int(parts[1]) != state.world.watch { return (.done, false, []) }
+            if let turned = state.setReady(keeper, parts.first == "true", now: now) {
                 return (.done, true, turned)
             }
             return (.done, true, [])
         case "here":
+            guard state.keeper(keeper) != nil else { return (.refused(.unknownKeeper), false, []) }
             return (.done, false, [])
         case "leave":
             left[keeper] = now

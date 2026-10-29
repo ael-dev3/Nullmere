@@ -27,7 +27,7 @@ public final class NetworkRealmLink: RealmLink {
     private(set) var viewReads = 0
     private var view: RealmView?
     private var arrived = false
-    private var lastHere = Date.distantPast
+    private var lastHere = -Double.infinity
     /// What the keeper asked of the realm, waiting to be sent or answered,
     /// in the order they asked it: orders, and being ready, which comes
     /// after the orders before it. While any wait, changes from others
@@ -37,8 +37,14 @@ public final class NetworkRealmLink: RealmLink {
     private var sending: Task<Void, Never>?
     /// Which sender is the present one.
     private var senderNumber = 0
-    /// The last poll failed: the next that succeeds says so.
+    /// The keeper was told the realm is out of reach: the next poll that
+    /// succeeds says it answers again.
     private var wasUnreachable = false
+    /// Polls failed in a row. One failure on a shaky line isn't told; two
+    /// are, and the polls that follow come further apart, to thirty
+    /// seconds, so a realm that is down isn't hammered by every keeper.
+    private var failures = 0
+    public static let longestPoll = 30.0
     /// Seconds before sending again what the realm didn't answer; doubles
     /// up to `retryLimit`.
     public let retryDelay: Double
@@ -48,15 +54,28 @@ public final class NetworkRealmLink: RealmLink {
     /// again is never carried out twice.
     public static let orderLifetime = 300.0
 
-    /// The link's clock: the Mac's, or a test's.
-    var now: () -> Date = { Date() }
+    /// The link's clock, in seconds: a steady one, which a clock set
+    /// back or forward doesn't move and which runs on while the Mac
+    /// sleeps; or a test's.
+    var now: () -> Double = { NetworkRealmLink.steadySeconds() }
+
+    private static let origin = ContinuousClock.now
+    nonisolated static func steadySeconds() -> Double {
+        let elapsed = origin.duration(to: ContinuousClock.now).components
+        return Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18
+    }
 
     struct Outgoing {
-        enum Kind { case order(Command), ready(Bool) }
+        /// An order, or being ready in the watch the keeper saw.
+        enum Kind { case order(Command), ready(Bool, watch: Int?) }
         let kind: Kind
         let nonce: String
-        let given: Date
+        let given: Double
+        /// Sent at least once: the realm may have carried it out.
+        var sent = false
     }
+    /// What the keeper last asked about being ready, and in which watch.
+    private var askedReady: (ready: Bool, watch: Int?)?
 
     /// Orders and readiness given and not yet answered.
     public var waiting: Int { outbox.count }
@@ -64,7 +83,7 @@ public final class NetworkRealmLink: RealmLink {
     /// The steward publishes at least every twenty seconds; a status that
     /// hasn't moved for this long means it has stopped.
     public let stewardSilence: Double
-    private var statusMoved = Date()
+    private var statusMoved = NetworkRealmLink.steadySeconds()
     private var toldSilence = false
 
     public init(transport: any SpacetimeTransport, credentials: any IdentityStore, pollInterval: Double = 1,
@@ -86,6 +105,8 @@ public final class NetworkRealmLink: RealmLink {
         credentials = nil
         try? credentialStore.save("")
         arrived = false
+        // The realm as it stands is told afresh, to the keeper at its door.
+        statusVersion = 0
         view = nil
         viewVersion = 0
         viewReadAt = nil
@@ -116,9 +137,28 @@ public final class NetworkRealmLink: RealmLink {
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.poll()
-                try? await Task.sleep(nanoseconds: UInt64(self.pollInterval * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: UInt64(self.nextPoll * 1_000_000_000))
             }
         }
+    }
+
+    /// Seconds to the next poll: the link's own interval while the realm
+    /// answers; after failures, doubling to `longestPoll`, a little
+    /// earlier or later at random so keepers don't all come back at once.
+    var nextPoll: Double {
+        guard failures > 1 else { return pollInterval }
+        let backed = min(pollInterval * pow(2, Double(failures - 1)), max(pollInterval, Self.longestPoll))
+        return backed * Double.random(in: 0.8...1.2)
+    }
+
+    /// The Mac woke, or found the network again: the realm is asked at
+    /// once, not at the end of a long wait.
+    public func wake() {
+        guard polling != nil else { return }
+        failures = 0
+        polling?.cancel()
+        polling = nil
+        connect()
     }
 
     /// Reads the realm's status and the keeper's view if they have moved
@@ -131,10 +171,11 @@ public final class NetworkRealmLink: RealmLink {
                 onEvent?(.unreachable("The realm hasn't opened yet."))
                 return
             }
+            failures = 0
             if UInt64(number) != statusVersion {
                 statusMoved = now()
                 toldSilence = false
-            } else if !toldSilence, now().timeIntervalSince(statusMoved) > stewardSilence {
+            } else if !toldSilence, now() - statusMoved > stewardSilence {
                 toldSilence = true
                 wasUnreachable = true
                 onEvent?(.unreachable(Self.silentSteward))
@@ -147,7 +188,8 @@ public final class NetworkRealmLink: RealmLink {
                 onEvent?(.status(status.aged(by: await age(of: UInt64(number), credentials))))
             }
             guard arrived else { return }
-            if now().timeIntervalSince(lastHere) > Self.hereInterval {
+            // "Here" while the steward is silent would only pile up for it.
+            if !toldSilence, now() - lastHere > Self.hereInterval {
                 lastHere = now()
                 try? await transport.call("here", [.string(Self.nonce())], token: credentials.token)
             }
@@ -155,12 +197,14 @@ public final class NetworkRealmLink: RealmLink {
                 viewReadAt = statusVersion
             }
         } catch {
-            wasUnreachable = true
             if forgetKeyIfRefused(error) {
                 // A new key, a new keeper: the front door asks for a name.
                 onEvent?(.refused(.unknownKeeper))
                 return
             }
+            failures += 1
+            guard failures > 1 else { return }
+            wasUnreachable = true
             onEvent?(.unreachable(RealmTrouble.words(for: error)))
         }
     }
@@ -217,6 +261,15 @@ public final class NetworkRealmLink: RealmLink {
         } else {
             if fresh.world != previous.world { onEvent?(.changed(fresh.world)) }
             if !events.isEmpty { onEvent?(.heard(events)) }
+            // The realm's word on whether the keeper is ready stands over
+            // the client's: readiness lost while away (taken to have left,
+            // a steward begun again) is put right, once nothing about it
+            // is still on its way.
+            let readinessWaiting = outbox.contains { if case .ready = $0.kind { return true } else { return false } }
+            if !readinessWaiting, let asked = askedReady, asked.watch == fresh.world.watch, asked.ready != fresh.keeper.isReady {
+                askedReady = (fresh.keeper.isReady, fresh.world.watch)
+                onEvent?(.readiness(fresh.keeper.isReady))
+            }
         }
     }
 
@@ -225,14 +278,23 @@ public final class NetworkRealmLink: RealmLink {
     private func request(_ reducer: String, _ arguments: [ReducerArgument], nonce: String = NetworkRealmLink.nonce()) async throws -> RealmReply {
         let credentials = try await ensureCredentials()
         try await transport.call(reducer, [.string(nonce)] + arguments, token: credentials.token)
-        for _ in 0..<300 {
-            let rows = try await transport.query("SELECT * FROM my_replies", token: credentials.token)
-            if let row = rows.first(where: { $0.first?.string == nonce }), row.count == 3, let text = row[2].string {
-                return try JSONDecoder().decode(RealmReply.self, from: Data(text.utf8))
-            }
-            try await Task.sleep(nanoseconds: 100_000_000)
+        // Asked often at first, when the steward most likely answers, then
+        // less, for thirty seconds.
+        let deadline = now() + 30
+        var wait = 0.1
+        for _ in 0..<60 where now() < deadline {
+            if let reply = try await answer(to: nonce, credentials) { return reply }
+            try await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+            wait = min(wait * 1.5, 1)
         }
         throw SpacetimeError("The realm didn't answer in time.")
+    }
+
+    /// The steward's answer to a request, if it has given one.
+    private func answer(to nonce: String, _ credentials: SpacetimeCredentials) async throws -> RealmReply? {
+        let rows = try await transport.query("SELECT * FROM my_replies", token: credentials.token)
+        guard let row = rows.first(where: { $0.first?.string == nonce }), row.count == 3, let text = row[2].string else { return nil }
+        return try JSONDecoder().decode(RealmReply.self, from: Data(text.utf8))
     }
 
     /// Waits for the steward to publish what came of a request, and takes
@@ -281,7 +343,9 @@ public final class NetworkRealmLink: RealmLink {
     }
 
     public func setReady(_ ready: Bool) {
-        outbox.append(Outgoing(kind: .ready(ready), nonce: Self.nonce(), given: now()))
+        let watch = view?.world.watch
+        askedReady = (ready, watch)
+        outbox.append(Outgoing(kind: .ready(ready, watch: watch), nonce: Self.nonce(), given: now()))
         sendWaiting()
     }
 
@@ -294,21 +358,43 @@ public final class NetworkRealmLink: RealmLink {
         sending = Task { [weak self] in
             var delay = self?.retryDelay ?? 1
             while let self, let next = self.outbox.first {
-                if case .order = next.kind, now().timeIntervalSince(next.given) > Self.orderLifetime {
-                    self.outbox.removeFirst()
-                    if let world = self.view?.world {
-                        self.onEvent?(.orderRefused(.refused("An order given while the realm was out of reach was too old to send."), world))
-                    }
-                    continue
-                }
+                var expired = false
+                if case .order = next.kind { expired = self.now() - next.given > Self.orderLifetime }
                 do {
                     let reply: RealmReply
-                    switch next.kind {
-                    case .order(let command):
-                        let text = String(decoding: try JSONEncoder().encode(command), as: UTF8.self)
-                        reply = try await self.request("order", [.string(text)], nonce: next.nonce)
-                    case .ready(let ready):
-                        reply = try await self.request("ready", [.bool(ready)], nonce: next.nonce)
+                    if expired {
+                        // Too old to send. If it was sent, the realm may have
+                        // carried it out: its answer is kept longer than an
+                        // order lives, so it is looked for before the order
+                        // is said to be lost.
+                        let credentials = try await self.ensureCredentials()
+                        guard next.sent, let kept = try await self.answer(to: next.nonce, credentials) else {
+                            self.outbox.removeFirst()
+                            if let world = self.view?.world {
+                                self.onEvent?(.orderRefused(.refused("An order given while the realm was out of reach was too old to send."), world))
+                            }
+                            continue
+                        }
+                        reply = kept
+                    } else {
+                        self.outbox[0].sent = true
+                        switch next.kind {
+                        case .order(let command):
+                            let text = String(decoding: try JSONEncoder().encode(command), as: UTF8.self)
+                            reply = try await self.request("order", [.string(text)], nonce: next.nonce)
+                        case .ready(let ready, let watch?):
+                            reply = try await self.request("ready_in_watch", [.bool(ready), .integer(UInt64(max(watch, 0)))], nonce: next.nonce)
+                        case .ready(let ready, nil):
+                            reply = try await self.request("ready", [.bool(ready)], nonce: next.nonce)
+                        }
+                    }
+                    // The realm was begun anew and doesn't know this keeper:
+                    // back to the door, not orders no one will carry out.
+                    if reply.unknownKeeper == true {
+                        self.arrived = false
+                        self.outbox.removeAll()
+                        self.onEvent?(.refused(.unknownKeeper))
+                        break
                     }
                     // Left while the answer came: the outbox is gone, and
                     // so is this sender's errand.

@@ -630,6 +630,12 @@ public final class GameSession {
             post(error.description, tone: .bad)
         case .watchTurned(let world, let events):
             watchTurned(to: world, events: events)
+        case .readiness(let ready):
+            // The realm's word on readiness stands: lost while away, it is
+            // shown lost, and said so.
+            guard ready != isReady else { break }
+            isReady = ready
+            if !ready { post("The realm lost your readiness while you were away: say ready again when you are.", tone: .neutral) }
         case .unreachable:
             break
         case .arrived(let keeper, let world):
@@ -658,6 +664,12 @@ public final class GameSession {
     private func watchTurned(to world: GameState, events: [GameEvent]) {
         let previous = state
         let before = positions()
+        // Many watches at once (the Mac asleep, the line down a while): what
+        // happened while the keeper was away, as on coming back.
+        if world.watch - previous.watch > 1, previous.houses.indices.contains(player) {
+            let seen = LastSeen(watch: previous.watch, stock: previous.houses[player].stock, holds: previous.holds(of: player).count, house: player)
+            awayReport = AwayReport(since: seen, now: world, player: player)
+        }
         state = world
         rememberSeen()
         isReady = false

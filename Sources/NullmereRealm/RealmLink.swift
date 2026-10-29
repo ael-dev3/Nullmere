@@ -26,6 +26,9 @@ public enum RealmEvent: Sendable {
     case watchTurned(GameState, [GameEvent])
     /// The realm can't be reached.
     case unreachable(String)
+    /// The realm counts the keeper as ready, or not, otherwise than the
+    /// keeper last asked: readiness lost while away, put right.
+    case readiness(Bool)
 }
 
 /// A keeper's line to the realm. The realm holds the world; the client

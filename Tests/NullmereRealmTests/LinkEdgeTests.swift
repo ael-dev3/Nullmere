@@ -107,14 +107,14 @@ final class LinkClockTests: XCTestCase {
                                              seats: 4, watchLength: 600, now: 0)
         let running = Task { await steward.run(clock: { 1 }) }
         let link = NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 0.05, retryDelay: 0.05)
-        var clock = Date(timeIntervalSince1970: 1_800_000_000)
+        var clock = 1_000.0
         link.now = { clock }
         let ear = Listener()
         ear.listen(to: link)
         link.connect()
         link.arrive(name: "Ama")
         try await until("arrival") { ear.keeper != nil }
-        return (link, ear, running, { clock = clock.addingTimeInterval(NetworkRealmLink.orderLifetime + 1) })
+        return (link, ear, running, { clock += NetworkRealmLink.orderLifetime + 1 })
     }
 
     func testAnOrderTooOldToSendIsLetGo() async throws {
@@ -142,10 +142,13 @@ final class LinkClockTests: XCTestCase {
 
     func testAKeeperInTheWorldSaysTheyAreHere() async throws {
         let db = FakeSpacetime()
-        let (link, _, running, later) = try await arrived(db)
+        let (link, _, running, _) = try await arrived(db)
         defer { running.cancel(); link.leave() }
         let before = await db.calls.filter { $0 == "here" }.count
-        later()
+        // Past the interval, though not so long that the steward (whose
+        // clock stands still here) seems silent.
+        let now = link.now()
+        link.now = { now + NetworkRealmLink.hereInterval + 1 }
         try await until("the keeper to say they are here") { await db.calls.filter { $0 == "here" }.count > before }
     }
 }

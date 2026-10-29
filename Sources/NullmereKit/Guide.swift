@@ -53,15 +53,16 @@ enum Guide {
             "The omen on the realm is shown under the top bar, with the watches it has left.",
         ]),
         Section(title: "Winning", lines: [
-            "Raise the five stages of the Moonspire at your seat (ascendancy), or rule the lake (dominion): six of every twenty holds and at least ten, your vassals' counted with your own, or be the last House standing.",
+            "Raise the five stages of the Moonspire at your seat (ascendancy), or rule the lake (dominion): five of every twenty holds and at least ten, your vassals' counted with your own, or be the last House standing.",
             "Take a rival's seat while it has four holds or fewer left and it swears you fealty; beaten Houses may offer it too. A vassal's holds join your realm, and it can never turn on you. Turn on it, and it is free.",
             "Rivals fear a rising Moonspire, and will march on it.",
             "Each hold stores more: the Moonspire's last stage asks for \(BuildingKind.moonspire.cost(toLevel: BuildingKind.moonspire.maxLevel).stone) stone, more than a House of fewer than \(Guide.holdsForTheLastSpire) holds can keep.",
             "The Houses panel shows the race: each House's holds toward dominion and its Moonspire's stages. You are warned when anyone nears the end of either road, and counsel says what to do.",
         ]),
         Section(title: "Keys", lines: [
-            "Tab: the next company waiting · H: your seat · F: fortify · B: found a hold",
+            "Tab or .: the next company waiting · H: your seat · F: fortify · B: found a hold",
             "Arrows or WASD: pan · + and −: zoom · Esc: close, then clear the selection",
+            "With Full Keyboard Access, Tab and the arrows move through the controls as everywhere on the Mac: . and WASD stay the game's, and the arrows pan once the map has the keyboard",
             "Without a pointer: choose a company, pan until where it should go is in the middle of the view, then M to march there, or strike",
             "1: Houses · 2: Chronicle · ?: this guide · ⇧⌘W: leave the world · ⌘,: settings",
             "⌘↩: ready · ⇧⌘↩: stay ready until something needs you, up to ten watches",

@@ -73,9 +73,10 @@ final class KeyBridgeTests: XCTestCase {
         XCTAssertNil(bridge.monitor, "Gone from the window, it stops listening")
     }
 
-    /// With keyboard navigation on, a control with focus keeps Tab and the
-    /// arrows; letters stay the game's, and without it every key is.
-    func testAFocusedControlKeepsTabAndArrowsUnderKeyboardNavigation() throws {
+    /// With keyboard navigation on, Tab and the arrows move focus, whatever
+    /// has it, unless it is the map; "." and the letters stay the game's,
+    /// and without keyboard navigation every key is.
+    func testKeyboardNavigationKeepsTabAndTheArrows() throws {
         var heard: [GameKey] = []
         let bridge = KeyBridgeView()
         bridge.onKey = { heard.append($0); return true }
@@ -97,15 +98,15 @@ final class KeyBridgeTests: XCTestCase {
         // A window may hand its first key view the keyboard as it opens.
         window.makeFirstResponder(nil)
 
-        XCTAssertFalse(KeyBridgeView.controlHasFocus(in: window), "Nothing focused yet")
-        XCTAssertTrue(bridge.handle(tab, keyboardNavigation: true), "Nothing focused: Tab is the game's")
+        XCTAssertFalse(bridge.handle(tab, keyboardNavigation: true), "Nothing focused yet: Tab moves focus to the first control")
         XCTAssertTrue(window.makeFirstResponder(control))
-        XCTAssertTrue(KeyBridgeView.controlHasFocus(in: window))
         XCTAssertFalse(bridge.handle(tab, keyboardNavigation: true), "Tab moves focus on")
         XCTAssertFalse(bridge.handle(up, keyboardNavigation: true), "The arrows are the control's")
         XCTAssertTrue(bridge.handle(key("f", in: window), keyboardNavigation: true), "Letters stay the game's")
+        XCTAssertTrue(bridge.handle(key(".", in: window), keyboardNavigation: true), "and . is the next company")
         XCTAssertTrue(bridge.handle(tab, keyboardNavigation: false), "Without keyboard navigation, Tab is the game's")
-        XCTAssertEqual(heard, [.nextUnit, .fortify, .nextUnit])
+        XCTAssertTrue(bridge.handle(up, keyboardNavigation: false), "and the arrows pan")
+        XCTAssertEqual(heard, [.fortify, .nextUnit, .nextUnit, .pan(dx: 0, dy: 90)])
 
         // The map, clicked, has the keyboard: its keys are still the game's.
         if WorldMetalView.systemDevice != nil {
@@ -113,18 +114,18 @@ final class KeyBridgeTests: XCTestCase {
             map.frame = NSRect(x: 100, y: 10, width: 200, height: 200)
             content.addSubview(map)
             XCTAssertTrue(window.makeFirstResponder(map))
-            XCTAssertFalse(KeyBridgeView.controlHasFocus(in: window))
             XCTAssertTrue(bridge.handle(tab, keyboardNavigation: true))
+            XCTAssertTrue(bridge.handle(up, keyboardNavigation: true), "The map, with the keyboard, pans to the arrows")
             // Out of the window, so it draws no more for the tests after.
             map.removeFromSuperview()
         }
         bridge.removeFromSuperview()
     }
 
-    /// The interface as the app draws it, in a SwiftUI hosting view set
-    /// within the window: that view holding the keyboard is the game's, not
-    /// a control's, so Tab and the arrows stay with the game.
-    func testSwiftUIsOwnViewIsNoFocusedControl() throws {
+    /// The interface as the app draws it, in a SwiftUI hosting view: with
+    /// keyboard navigation on, Tab moves through its buttons rather than
+    /// being kept by the game, so every control can be reached.
+    func testWithKeyboardNavigationTabReachesTheInterfacesControls() throws {
         var heard: [GameKey] = []
         let bridge = KeyBridgeView()
         bridge.onKey = { heard.append($0); return true }
@@ -142,13 +143,11 @@ final class KeyBridgeTests: XCTestCase {
         window.makeKeyAndOrderFront(nil)
         defer { window.close() }
         RunLoop.main.run(until: Date().addingTimeInterval(0.2))
-        XCTAssertFalse(KeyBridgeView.controlHasFocus(in: window), "As the window opens: \(String(describing: window.firstResponder))")
-        if window.makeFirstResponder(hosting) {
-            XCTAssertFalse(KeyBridgeView.controlHasFocus(in: window))
-        }
+        _ = window.makeFirstResponder(hosting)
         let tab = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
                                    context: nil, characters: "\t", charactersIgnoringModifiers: "\t", isARepeat: false, keyCode: 48)!
-        XCTAssertTrue(bridge.handle(tab, keyboardNavigation: true))
+        XCTAssertFalse(bridge.handle(tab, keyboardNavigation: true), "Tab is the window's, to move through the buttons")
+        XCTAssertTrue(bridge.handle(tab, keyboardNavigation: false))
         XCTAssertEqual(heard, [.nextUnit])
         bridge.removeFromSuperview()
     }

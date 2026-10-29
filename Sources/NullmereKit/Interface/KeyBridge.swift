@@ -113,28 +113,20 @@ final class KeyBridgeView: NSView {
         if window.firstResponder is NSText { return false }
         let modifiers = event.modifierFlags.intersection([.command, .control, .option])
         guard modifiers.isEmpty, let key = Self.key(for: event) else { return false }
-        // With keyboard navigation on, a control with focus keeps Tab, to
-        // move focus on, and the arrows, to step its value or its choice.
-        if keyboardNavigation, Self.movesFocus(key), Self.controlHasFocus(in: window) { return false }
+        // With keyboard navigation on, Tab and the arrows move focus through
+        // the interface, as everywhere on the Mac, unless the map itself
+        // has the keyboard. The game keeps "." for the next company and
+        // WASD to pan, whatever has focus.
+        if keyboardNavigation, Self.isNavigationKey(event), !(window.firstResponder is WorldMetalView) { return false }
         return onKey?(key) ?? false
     }
 
-    private static func movesFocus(_ key: GameKey) -> Bool {
-        switch key {
-        case .nextUnit: return true
-        case .pan: return true
+    /// Tab and the arrows: the keys keyboard navigation moves focus with.
+    static func isNavigationKey(_ event: NSEvent) -> Bool {
+        switch event.specialKey {
+        case .tab?, .upArrow?, .downArrow?, .leftArrow?, .rightArrow?: return true
         default: return false
         }
-    }
-
-    /// A control of its own has the keyboard: not the window, the view the
-    /// whole interface is drawn in (SwiftUI's hosting view, wherever it
-    /// sits), nor the map, which takes it when clicked.
-    static func controlHasFocus(in window: NSWindow) -> Bool {
-        guard let responder = window.firstResponder, responder !== window, responder !== window.contentView,
-              !(responder is WorldMetalView), !String(describing: type(of: responder)).hasPrefix("NSHostingView")
-        else { return false }
-        return responder is NSView
     }
 
     static func key(for event: NSEvent) -> GameKey? {
@@ -149,6 +141,7 @@ final class KeyBridgeView: NSView {
         }
         if event.keyCode == 53 { return .escape }
         switch event.charactersIgnoringModifiers?.lowercased() {
+        case ".": return .nextUnit
         case "f": return .fortify
         case "m": return .orderAtCentre
         case "b": return .found

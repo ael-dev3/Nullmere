@@ -121,14 +121,18 @@ public actor FakeSpacetime: SpacetimeTransport {
             return value
         }
         switch reducer {
-        case "arrive", "order", "ready", "here", "leave":
+        case "arrive", "order", "ready", "ready_in_watch", "here", "leave":
             let nonce = try string(0)
             var payload = ""
             if reducer == "ready", case .bool(let ready)? = arguments.dropFirst().first { payload = ready ? "true" : "false" }
-            else if reducer == "arrive" || reducer == "order" { payload = try string(1) }
+            else if reducer == "ready_in_watch", arguments.count == 3, case .bool(let ready) = arguments[1], case .integer(let watch) = arguments[2] {
+                payload = "\(ready)@\(watch)"
+            } else if reducer == "arrive" || reducer == "order" { payload = try string(1) }
+            // As the module asks it: readiness in a watch is a "ready" request.
+            let kind = reducer == "ready_in_watch" ? "ready" : reducer
             if requests.contains(where: { $0.nonce == nonce && $0.keeper == me }) || replies[nonce]?.keeper == me { return }
             guard requests.filter({ $0.keeper == me }).count < 32 else { throw SpacetimeError("Too many requests are waiting") }
-            requests.append(Request(id: nextID, keeper: me, kind: reducer, nonce: nonce, payload: payload))
+            requests.append(Request(id: nextID, keeper: me, kind: kind, nonce: nonce, payload: payload))
             nextID += 1
         case "forget":
             guard me == steward else { throw SpacetimeError("Only the steward forgets answers.") }

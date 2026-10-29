@@ -110,7 +110,21 @@ public final class GameApp {
         ambience.ambienceVolume = Float(ambienceVolume)
         ambience.musicVolume = Float(musicVolume)
         ambience.isMusicOn = isMusicOn
+        // The Mac awake again: the realm is asked at once how it stands,
+        // rather than at the end of a wait that began before it slept.
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.woke() }
+        }
         if opensAtOnce { checkModel() }
+    }
+
+    @ObservationIgnored private var wakeObserver: (any NSObjectProtocol)?
+
+    /// The Mac woke: a link across the network asks the realm at once.
+    func woke() {
+        (link as? NetworkRealmLink)?.wake()
     }
 
     /// Crossing in from the launcher: the gate, then the realm's front door.
@@ -222,9 +236,10 @@ public final class GameApp {
         isEntering = false
         stopWaiting()
         // A link replaced (Try Again) is let go first: nothing it still has
-        // on its way can be taken for the new one's, and its leaving can't
-        // undo the new one's coming.
-        releaseLink()
+        // on its way can be taken for the new one's. It doesn't leave the
+        // realm: at the door the keeper isn't in the world, and a leaving
+        // would take out of it the same keeper playing on another Mac.
+        releaseLink(leaving: false)
         let link: any RealmLink
         switch address {
         case .hosted(let seed):
@@ -299,7 +314,7 @@ public final class GameApp {
             }
             isEntering = false
             door = .unreachable(reason)
-        case .settled, .orderRefused, .changed, .watchTurned, .heard, .answered:
+        case .settled, .orderRefused, .changed, .watchTurned, .heard, .answered, .readiness:
             break
         }
     }
