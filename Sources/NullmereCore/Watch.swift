@@ -8,12 +8,10 @@ extension GameState {
         guard outcome == nil else { return [] }
         var events: [GameEvent] = []
 
+        // Rivals act first; whether anyone has won is weighed once the
+        // watch has turned (checkForEnd), never partway through.
         for house in houses where !house.isPlayer && !house.isEliminated {
             events += RivalMind(house: house.id).takeTurn(in: &self)
-            if outcome != nil {
-                takeSnapshot()
-                return events
-            }
         }
 
         let owners = territory()
