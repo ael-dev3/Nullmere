@@ -276,6 +276,8 @@ jobs:
           grep -hE "error: |failed \(" build.log build-test.log 2>/dev/null | head -40 || true
           grep -h ": warning:" build.log build-test.log 2>/dev/null | sort -u | head -20 || true
           grep -h "Executed .* tests" build-test.log 2>/dev/null | tail -1 || true
+          # Which tests skipped, and why, so a skip can't hide a test.
+          grep -h "Test skipped" build-test.log 2>/dev/null | sed 's|^.*/Tests/||' | sort -u | head -20 || true
           cat build/coverage.log 2>/dev/null || true
           cat build/perf-check.log 2>/dev/null || true
           grep -h "REHEARSAL\|error:" build/rehearsal.log 2>/dev/null || true

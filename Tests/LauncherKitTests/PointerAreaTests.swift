@@ -99,6 +99,9 @@ final class PointerAreaTests: XCTestCase {
         let suite = "PointerAreaTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
+        // In full motion, whatever the Mac's own setting, the opening plays
+        // out over seconds.
+        LauncherSettings(motion: .full).save(to: defaults)
         let model = LauncherModel(defaults: defaults, environment: LauncherEnvironment(
             modelReadiness: { .ready },
             systemSavesEnergy: { false },
@@ -116,8 +119,8 @@ final class PointerAreaTests: XCTestCase {
         // The menu's items, the footer's link.
         let count = MenuItem.allCases.count + 1
         let hidden = drawnAreas(in: host, expecting: count)
-        try XCTSkipIf(model.intro.showsMenu, "The opening ran through before the launcher was drawn")
         XCTAssertEqual(hidden.count, count)
+        XCTAssertFalse(model.intro.showsMenu, "The menu still waits for the lake and the title")
         XCTAssertTrue(hidden.allSatisfy { !$0.isEnabled }, "Hidden, the menu and the footer are deaf")
 
         model.completeIntro()
