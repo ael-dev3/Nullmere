@@ -381,6 +381,10 @@ struct WorldMarks: View {
 struct WorldFallback: View {
     let session: GameSession
 
+    /// How far the current drag, or pinch, has gone already.
+    @State private var dragged: CGSize = .zero
+    @State private var pinched: CGFloat = 1
+
     var body: some View {
         GeometryReader { proxy in
             Canvas { context, size in
@@ -409,6 +413,16 @@ struct WorldFallback: View {
             .gesture(SpatialTapGesture().onEnded { value in
                 WorldFallback.tap(session.camera.hex(at: value.location, in: proxy.size), in: session)
             })
+            // Dragged and pinched, as the Metal map is.
+            .simultaneousGesture(DragGesture(minimumDistance: 4).onChanged { value in
+                WorldFallback.drag(by: CGSize(width: value.translation.width - dragged.width,
+                                              height: value.translation.height - dragged.height), in: session)
+                dragged = value.translation
+            }.onEnded { _ in dragged = .zero })
+            .simultaneousGesture(MagnifyGesture().onChanged { value in
+                WorldFallback.zoom(by: value.magnification / pinched, around: value.startLocation, in: proxy.size, session: session)
+                pinched = value.magnification
+            }.onEnded { _ in pinched = 1 })
             .onContinuousHover { phase in
                 switch phase {
                 case .active(let point): session.hover(session.camera.hex(at: point, in: proxy.size))
@@ -416,6 +430,16 @@ struct WorldFallback: View {
                 }
             }
         }
+    }
+
+    static func drag(by step: CGSize, in session: GameSession) {
+        session.camera.pan(dx: step.width, dy: step.height)
+        session.camera.clamp(toRadius: session.state.map.radius)
+    }
+
+    static func zoom(by factor: CGFloat, around anchor: CGPoint, in size: CGSize, session: GameSession) {
+        session.camera.zoom(by: factor, around: anchor, in: size)
+        session.camera.clamp(toRadius: session.state.map.radius)
     }
 
     static func tap(_ hex: Hex, in session: GameSession) {

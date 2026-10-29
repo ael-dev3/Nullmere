@@ -203,6 +203,13 @@ final class InterfaceReviewTests: XCTestCase {
         let target = try XCTUnwrap(session.reach.first { $0.distance(to: lantern.position) == 2 })
         WorldFallback.tap(target, in: session)
         XCTAssertEqual(session.state.unit(lantern.id)?.position, target, "A click where it would march, marches")
+
+        // Dragged and pinched as the Metal map is.
+        let before = session.camera
+        WorldFallback.drag(by: CGSize(width: 28, height: 0), in: session)
+        XCTAssertEqual(session.camera.centerX, before.centerX - 28 / before.scale, accuracy: 1e-9)
+        WorldFallback.zoom(by: 1.5, around: CGPoint(x: 480, y: 300), in: CGSize(width: 960, height: 600), session: session)
+        XCTAssertEqual(session.camera.scale, before.scale * 1.5, accuracy: 1e-9)
     }
 
     func testAFallenKeeperIsOfferedOnlyWhatHelps() throws {
