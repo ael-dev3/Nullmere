@@ -1,6 +1,6 @@
 import Foundation
 import LauncherCore
-import LauncherKit
+@testable import LauncherKit
 import NullmereRealm
 import SwiftUI
 import XCTest
@@ -158,16 +158,20 @@ final class InterfaceReviewTests: XCTestCase {
         link.connect()
         let app = GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: .hosted(seed: "looking on"),
                           identity: FileIdentityStore(url: dir.appendingPathComponent("identity")))
+        // Listening before anything is drawn, so every button drawn is heard.
+        PressableButtons.isListening = true
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 600), styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: FallenOverlay(app: app, session: session))
         window.orderFrontRegardless()
         defer { window.close() }
-        PressableButtons.isListening = true
-        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        var deadline = Date().addingTimeInterval(3)
+        while PressableButtons.actions["Look upon the lake"] == nil, Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        }
         XCTAssertTrue(PressableButtons.press("Look upon the lake"))
-        let deadline = Date().addingTimeInterval(3)
-        PressableButtons.isListening = true
+        PressableButtons.forget("Take up a free House")
+        deadline = Date().addingTimeInterval(3)
         while PressableButtons.actions["Take up a free House"] == nil, Date() < deadline {
             RunLoop.main.run(until: Date().addingTimeInterval(0.05))
         }
