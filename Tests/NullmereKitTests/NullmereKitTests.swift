@@ -120,6 +120,25 @@ final class LocalStoreTests: XCTestCase {
         let folders = Set(addresses.map { store.forAge(1, of: GameApp.storeKey(for: $0)).directory })
         XCTAssertEqual(folders.count, addresses.count, "A realm here and realms across the network never share what this Mac keeps")
     }
+
+    /// Unless told otherwise, the game keeps its words in Application
+    /// Support, in a folder of its own.
+    func testTheStoreLivesInApplicationSupport() throws {
+        let support = try XCTUnwrap(FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first)
+        XCTAssertEqual(LocalStore().directory, support.appendingPathComponent("Nullmere Online", isDirectory: true))
+    }
+
+    /// Words that can't be kept are let go, said in the log, and nothing
+    /// else breaks.
+    func testWordsThatCantBeKeptAreLetGo() throws {
+        let blocker = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: blocker) }
+        // A file where the store's folder would be.
+        try Data("not a folder".utf8).write(to: blocker)
+        let store = LocalStore(directory: blocker.appendingPathComponent("store", isDirectory: true))
+        store.saveVoices(["chronicle-1": "The lake was still."])
+        XCTAssertTrue(store.loadVoices().isEmpty)
+    }
 }
 
 @MainActor
