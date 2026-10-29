@@ -145,7 +145,7 @@ jobs:
           ls -lh "$dmg"
 
       - name: Keep the disk image
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: nullmere-online-dmg
           path: build/Nullmere-Online-*.dmg
@@ -205,7 +205,7 @@ jobs:
 
       - name: Keep the screenshots
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: screenshots
           path: build/*.png
@@ -256,7 +256,7 @@ jobs:
 
       - name: Keep the launcher's screens for printing
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: launcher-screens
           path: build/*-print.jpg
@@ -292,7 +292,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: launcher-screens
           path: screens
