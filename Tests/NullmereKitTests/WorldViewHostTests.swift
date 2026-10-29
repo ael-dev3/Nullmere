@@ -124,7 +124,8 @@ final class WorldViewHostTests: XCTestCase {
         }
         let elements = walk(host)
         guard let company = elements.first(where: { ($0.accessibilityLabel?() ?? nil) == item.label }) else {
-            throw XCTSkip("SwiftUI built no accessibility elements for the map in this process (\(elements.count) found)")
+            throw XCTSkip("SwiftUI built no accessibility elements for the map in this process (\(elements.count) found), "
+                          + "as where no assistive app is running; run it with VoiceOver on to drive the map through them")
         }
 
         session.selection = .none
