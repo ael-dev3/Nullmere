@@ -59,7 +59,7 @@ public final class NetworkRealmLink: RealmLink {
     /// sleeps; or a test's.
     var now: () -> Double = { NetworkRealmLink.steadySeconds() }
 
-    private static let origin = ContinuousClock.now
+    nonisolated private static let origin = ContinuousClock.now
     nonisolated static func steadySeconds() -> Double {
         let elapsed = origin.duration(to: ContinuousClock.now).components
         return Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18
