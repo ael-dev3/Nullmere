@@ -139,8 +139,8 @@ the fallbacks drawn when Metal or sound fails, the live environment's
 closures (downloading the news, opening a link, quitting), trackpad
 gestures, and Apple's on-device model, which `scripts/check-on-mac.sh` asks
 on a Mac with Apple Intelligence. A few more are reached only by hand: a
-menu's items, VoiceOver's actions on the map, and a victory won in the
-middle of the rivals' own turns.
+menu's items, and VoiceOver's actions on the map (a test process has no
+assistive technology to build SwiftUI's accessibility tree for).
 
 Both apps ask the Foundation Models framework through one
 `ModelAvailabilityProvider`; tests stand in a fake one and walk every state

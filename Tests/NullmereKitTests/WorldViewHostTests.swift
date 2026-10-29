@@ -21,53 +21,6 @@ final class WorldViewHostTests: XCTestCase {
         return nil
     }
 
-    /// What VoiceOver finds in the accessibility tree under a view: each
-    /// element with a label, as an assistive technology walks it.
-    private func elements(under root: AnyObject) -> [(label: String, element: AnyObject)] {
-        var found: [(label: String, element: AnyObject)] = []
-        var queue: [AnyObject] = [root]
-        var seen = 0
-        while !queue.isEmpty, seen < 5_000 {
-            let object = queue.removeFirst()
-            seen += 1
-            // Asked as AppKit asks any element, whatever its class.
-            if let label = object.accessibilityLabel?() ?? nil, !label.isEmpty { found.append((label, object)) }
-            let children: [Any] = (object.accessibilityChildren?() ?? nil) ?? []
-            queue += children.map { $0 as AnyObject }
-        }
-        return found
-    }
-
-    /// VoiceOver reads the map as its holds and companies; pressing one
-    /// chooses it, as a click on the map would.
-    func testVoiceOverChoosesWhatTheMapHolds() throws {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "a map read aloud", houseCount: 3, radius: 16)),
-                                  store: LocalStore(directory: dir))
-        session.dismissSeatBriefing()
-        let items = MapAccessibility.items(for: session)
-        let seat = try XCTUnwrap(items.first { if case .hold = $0.selection { return true } else { return false } })
-
-        let size = NSSize(width: 1000, height: 700)
-        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled], backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
-        let host = NSHostingView(rootView: WorldView(session: session).frame(width: size.width, height: size.height))
-        window.contentView = host
-        window.orderFrontRegardless()
-        defer { window.close() }
-        host.layoutSubtreeIfNeeded()
-        spin(0.5)
-
-        let read = elements(under: host)
-        XCTAssertTrue(read.contains { $0.label == "The world map" }, "The map is named: \(read.map(\.label).prefix(12))")
-        let element = try XCTUnwrap(read.first { $0.label == seat.label }?.element, "\(seat.label) is read aloud")
-        XCTAssertEqual(session.selection, .none)
-        XCTAssertEqual(element.accessibilityPerformPress?(), true, "and can be pressed")
-        spin(0.1)
-        XCTAssertEqual(session.selection, seat.selection, "Pressed, it is chosen")
-    }
-
     func testTheMapLivesInAWindowAndAnswersThePointer() throws {
         guard WorldMetalView.systemDevice != nil else { throw XCTSkip("No Metal device available") }
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
