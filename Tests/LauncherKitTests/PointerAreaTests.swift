@@ -159,6 +159,57 @@ final class PointerAreaTests: XCTestCase {
         XCTAssertEqual(Set(chosen.map(\.title)), Set(MenuItem.allCases.map(\.title)), "The pointer over each item chooses it")
     }
 
+    /// In every panel, as on the menu, the pointer over an item chooses it.
+    func testEachPanelFollowsThePointer() throws {
+        func model(_ readiness: ModelReadiness) throws -> LauncherModel {
+            let suite = "PointerAreaTests.\(UUID().uuidString)"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+            addTeardownBlock { defaults.removePersistentDomain(forName: suite) }
+            let model = LauncherModel(defaults: defaults, environment: LauncherEnvironment(
+                modelReadiness: { readiness },
+                systemSavesEnergy: { false },
+                downloadNews: { throw URLError(.notConnectedToInternet) },
+                open: { _ in true },
+                terminate: {}
+            ))
+            model.refreshReadiness()
+            return model
+        }
+        /// Hosts the panel, brings the pointer over each item in turn, and
+        /// says what was chosen each time.
+        func chosen<T>(in panel: some View, count: Int, _ choice: () -> T) -> [T] {
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 700), styleMask: [.titled], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            defer { window.close() }
+            let host = NSHostingView(rootView: panel)
+            window.contentView = host
+            window.orderFrontRegardless()
+            var picks: [T] = []
+            for area in drawnAreas(in: host, expecting: count) where area.onChange != nil {
+                area.pointer(isInside: true)
+                picks.append(choice())
+                area.pointer(isInside: false)
+            }
+            return picks
+        }
+
+        let ready = try model(.ready)
+        XCTAssertGreaterThan(ready.visibleNews.count, 1)
+        let news = chosen(in: NewsPanel(model: ready), count: ready.visibleNews.count) { ready.newsSelection }
+        XCTAssertEqual(Set(news), Set(ready.visibleNews.indices), "Each headline")
+        let play = chosen(in: PlayPanel(model: ready), count: LauncherModel.PlayChoice.allCases.count) { ready.playSelection }
+        XCTAssertEqual(Set(play.map { "\($0)" }).count, LauncherModel.PlayChoice.allCases.count, "Each way on")
+        let settings = chosen(in: SettingsPanel(model: ready), count: SettingsRow.allCases.count) { ready.settingsSelection }
+        XCTAssertEqual(Set(settings.map { "\($0)" }).count, SettingsRow.allCases.count, "Each setting")
+
+        let gated = try model(.appleIntelligenceNotEnabled)
+        XCTAssertTrue(gated.isGated)
+        let actions = gated.readiness.actions.count
+        XCTAssertGreaterThan(actions, 1)
+        let requirement = chosen(in: RequirementPanel(model: gated), count: actions) { gated.requirementSelection }
+        XCTAssertEqual(Set(requirement), Set(0..<actions), "Each way to make this Mac ready")
+    }
+
     /// Lets what was set aside for the main queue run.
     private func settle() {
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))

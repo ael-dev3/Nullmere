@@ -465,6 +465,23 @@ final class NetworkRealmTests: XCTestCase {
         try await second.step(now: 3)
     }
 
+    /// A steward that fell silent past its hold, set running again after
+    /// another has taken up the realm, finds it held, says so and stops.
+    func testARunningStewardFindingTheRealmHeldSaysSoAndStops() async throws {
+        let db = FakeSpacetime()
+        let (first, running, credentials) = try await steward(db)
+        running.cancel()
+        await running.value
+        await db.advance(61)
+        _ = try await RealmSteward(transport: db, token: credentials.token, name: "x", seed: "x", now: 2)
+        let said = Said()
+        await first.setReporter { said.add($0) }
+        await first.run(clock: { 100 })
+        let displaced = await first.isDisplaced
+        XCTAssertTrue(displaced, "It stops of itself")
+        XCTAssertTrue(said.lines.contains { $0.hasPrefix("Another steward holds the realm; this one stops.") }, "\(said.lines)")
+    }
+
     func testAKeyTheRealmNoLongerKnowsIsMadeAnew() async throws {
         let db = FakeSpacetime()
         let (_, running, _) = try await steward(db)
@@ -573,5 +590,23 @@ actor Flaky: SpacetimeTransport {
     func query(_ sql: String, token: String) async throws -> [[JSONValue]] {
         if down { throw SpacetimeError("The network is down.") }
         return try await db.query(sql, token: token)
+    }
+}
+
+/// What a steward said, from wherever it said it.
+private final class Said: @unchecked Sendable {
+    private let lock = NSLock()
+    private var kept: [String] = []
+
+    func add(_ line: String) {
+        lock.lock()
+        kept.append(line)
+        lock.unlock()
+    }
+
+    var lines: [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return kept
     }
 }
