@@ -135,6 +135,17 @@ make smoke-game            # open a debug build, press Play, enter a realm hoste
 CI runs all of these on a macOS 26 runner for every pull request, and keeps
 the screenshots of the launcher, the realm's front door and the world.
 
+Line coverage is held to a floor for each module, on macOS and, for the
+rules and the realm, on Linux too (`scripts/coverage.py`); CI's summary
+lists every line no test runs. What remains is mostly what a test can't
+reach: `init(coder:)` stubs no window calls, SwiftUI state's initial values,
+the fallbacks drawn when Metal or sound fails, the live environment's
+closures (downloading the news, opening a link, quitting), trackpad
+gestures, and Apple's on-device model, which `scripts/check-voices.sh` asks
+on a Mac with Apple Intelligence. A few more are reached only by hand: a
+menu's items, VoiceOver's actions on the map, and a victory won in the
+middle of the rivals' own turns.
+
 Both apps ask the Foundation Models framework through one
 `ModelAvailabilityProvider`; tests stand in a fake one and walk every state
 (ready, not eligible, Apple Intelligence off, downloading, and a reason
