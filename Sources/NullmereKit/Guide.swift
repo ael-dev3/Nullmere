@@ -53,7 +53,7 @@ enum Guide {
             "The omen on the realm is shown under the top bar, with the watches it has left.",
         ]),
         Section(title: "Winning", lines: [
-            "Raise the five stages of the Moonspire at your seat (ascendancy), or rule the lake (dominion): nine of every twenty holds and at least ten, your vassals' counted with your own, or be the last House standing.",
+            "Raise the five stages of the Moonspire at your seat (ascendancy), or rule the lake (dominion): seven of every twenty holds and at least ten, your vassals' counted with your own, or be the last House standing.",
             "Take a rival's seat while it has four holds or fewer left and it swears you fealty; beaten Houses may offer it too. A vassal's holds join your realm, and it can never turn on you. Turn on it, and it is free.",
             "Rivals fear a rising Moonspire, and will march on it.",
             "Each hold stores more: the Moonspire's last stage asks for \(BuildingKind.moonspire.cost(toLevel: BuildingKind.moonspire.maxLevel).stone) stone, more than a House of fewer than \(Guide.holdsForTheLastSpire) holds can keep.",

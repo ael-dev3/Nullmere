@@ -131,3 +131,57 @@ final class AbsentKeeperTests: XCTestCase {
         XCTAssertEqual(realm.world.watch, 4)
     }
 }
+
+/// Stewards that make a race of more than the Moonspire: every rising
+/// spire is feared, only a House able to finish one begins it, holds
+/// beyond the seat muster companies, and one coming late to an age takes
+/// up the greatest House free.
+final class StewardBalanceTests: XCTestCase {
+    func testEveryRisingSpireIsFeared() throws {
+        var state = GameState(settings: GameSettings(seedText: "two spires"))
+        for (house, level) in [(1, 4), (2, 3), (3, 2)] {
+            let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == house && $0.isSeat })
+            state.holds[seat].levels[.moonspire] = level
+        }
+        XCTAssertEqual(RivalMind(house: 4).spireThreats(in: state), [1, 2], "The highest first; a second stage is no threat yet")
+        XCTAssertEqual(RivalMind(house: 1).spireThreats(in: state), [2])
+    }
+
+    func testOnlyAHouseAbleToFinishTheMoonspireBeginsIt() throws {
+        var state = GameState(settings: GameSettings(seedText: "who builds"))
+        let steward = try XCTUnwrap(state.houses.first { !$0.isPlayer && $0.temperament == .steadfast }?.id
+            ?? state.houses.first { !$0.isPlayer }?.id)
+        state.houses[steward].temperament = .steadfast
+        state.watch = 40
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == steward && $0.isSeat })
+        // Everything else built: only the Moonspire is left to wish for.
+        for kind in BuildingKind.allCases where kind != .moonspire && !(kind.requiresSeat && !state.holds[seat].isSeat) {
+            state.holds[seat].levels[kind] = kind.maxLevel
+        }
+        state.houses[steward].stock = Stock(grain: 300, timber: 300, stone: 300, moonsalt: 100)
+        // Another House as built and with a second hold, the more
+        // renowned; this one has only its seat: it waits.
+        let rival = try XCTUnwrap(state.holds.firstIndex { $0.owner != steward && $0.isSeat })
+        state.holds[rival].levels = state.holds[seat].levels
+        let third = try XCTUnwrap(state.holds.firstIndex { $0.owner != steward && $0.owner != state.holds[rival].owner })
+        state.holds[third].owner = state.holds[rival].owner
+        state.holds[third].isSeat = false
+        _ = state.stewardTurn(for: steward)
+        XCTAssertNil(state.holds[seat].project, "Not with one hold and another House the greater")
+        // The second hold its own, it is foremost on the lake, and begins.
+        state.holds[third].owner = steward
+        _ = state.stewardTurn(for: steward)
+        XCTAssertEqual(state.holds[seat].project?.kind, .moonspire)
+    }
+
+    func testALateComerTakesUpTheGreatestHouseFree() throws {
+        var realm = RealmState(name: "The Nullmere", seed: "late comer", seats: 6, radius: 20, watchLength: 180, now: 0)
+        _ = try realm.arrive("id-ama", name: "Ama", now: 0)
+        let free = realm.world.houses.filter { !$0.isPlayer }.map(\.id)
+        let greatest = try XCTUnwrap(free.last)
+        let spare = try XCTUnwrap(realm.world.holds.firstIndex { $0.owner == free[0] })
+        realm.world.holds[spare].owner = greatest
+        realm.world.holds[spare].isSeat = false
+        XCTAssertEqual(try realm.arrive("id-bel", name: "Bel", now: 1).house, greatest)
+    }
+}

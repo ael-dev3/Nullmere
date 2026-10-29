@@ -101,9 +101,12 @@ struct RivalMind {
         var declared = false
 
         // A rising Moonspire frightens everyone else around the lake.
-        if let rising = spireThreat(in: state), state.stance(house, rising) != .war,
-           !inTruce(with: rising, in: state),
-           mine * 10 > max(1, state.strength(of: rising)) * 6, random.chance(35) {
+        // Every one of them, not only the highest: the House it can best
+        // stand against.
+        if let rising = spireThreats(in: state).first(where: { rising in
+            state.stance(house, rising) != .war && !inTruce(with: rising, in: state)
+                && mine * 10 > max(1, state.strength(of: rising)) * 6
+        }), random.chance(35) {
             if (try? state.declareWar(by: house, on: rising, fearingSpire: true)) != nil {
                 events.append(.stanceChanged(first: house, second: rising, stance: .war, by: house))
                 declared = true
@@ -218,12 +221,19 @@ struct RivalMind {
         return relation.aggressor != nil && state.watch - relation.since < RivalMind.truce
     }
 
-    /// Another House whose Moonspire has reached its third stage, if any.
+    /// Another House whose Moonspire has reached its third stage, if any:
+    /// the highest.
     func spireThreat(in state: GameState) -> Int? {
+        spireThreats(in: state).first
+    }
+
+    /// Every other House whose Moonspire has reached its third stage, the
+    /// highest first.
+    func spireThreats(in state: GameState) -> [Int] {
         state.holds
             .filter { $0.owner != house && $0.isSeat && $0.level(.moonspire) >= 3 }
-            .max { ($0.level(.moonspire), $0.id) < ($1.level(.moonspire), $1.id) }?
-            .owner
+            .sorted { ($0.level(.moonspire), $0.id) > ($1.level(.moonspire), $1.id) }
+            .map(\.owner)
     }
 
     private func knowsHold(of other: Int, within distance: Int, in state: GameState) -> Bool {
@@ -285,6 +295,11 @@ struct RivalMind {
 
         if threatened, hold.level(.walls) < 3 { wishes.append(.walls) }
         if hold.isSeat, hold.level(.musterHall) == 0, state.watch >= 3 { wishes.append(.musterHall) }
+        // Beyond the seat, a muster hall where there's war or stores to spare,
+        // so a great House's wealth becomes companies, not idle stores.
+        let room = state.storage(of: house)
+        let plenty = stock.grain > room * 3 / 5 && stock.timber > room * 3 / 5
+        if !hold.isSeat, hold.level(.musterHall) == 0, state.watch >= 20, atWar || plenty { wishes.append(.musterHall) }
 
         let income = state.income(of: hold)
         let net = state.income(of: house).grain - state.upkeep(of: house)
@@ -298,8 +313,13 @@ struct RivalMind {
         if let first = economy.first { wishes.append(first) }
 
         if hold.isSeat {
+            // Only a House that can see it through: one of holds enough to
+            // store its last stage, or the most renowned on the lake.
             let spireFrom = me.temperament == .steadfast ? 20 : 34
-            if state.watch >= spireFrom, !threatened { wishes.append(.moonspire) }
+            let renown = state.renown(of: house)
+            let foremost = state.livingHouses.allSatisfy { $0.id == house || state.renown(of: $0.id) <= renown }
+            let able = state.holds(of: house).count >= 4 || foremost
+            if state.watch >= spireFrom, !threatened, able || hold.level(.moonspire) > 0 { wishes.append(.moonspire) }
             if me.temperament == .ambitious, hold.level(.musterHall) < 3 { wishes.append(.musterHall) }
             if hold.level(.musterHall) < 2, state.watch >= 14 { wishes.append(.musterHall) }
         }
@@ -311,6 +331,8 @@ struct RivalMind {
             if kind.requiresSeat, !hold.isSeat { continue }
             guard let cost = state.nextLevelCost(of: kind, in: hold) else { continue }
             if stock.covers(cost) { return kind }
+            // A stage it hasn't the storage for is no use saving for.
+            if kind == .moonspire, [cost.grain, cost.timber, cost.stone, cost.moonsalt].contains(where: { $0 > room }) { continue }
             // Save for the Moonspire rather than spending on lesser works.
             if kind == .moonspire { return nil }
         }
@@ -458,7 +480,7 @@ struct RivalMind {
                 && (state.map.index(of: hold.position).map { explored[$0] } ?? false)
         }
         let target: Hold?
-        if let rising = spireThreat(in: state), state.isAtWar(house, rising), let spire = state.seat(of: rising) {
+        if let rising = spireThreats(in: state).first(where: { state.isAtWar(house, $0) }), let spire = state.seat(of: rising) {
             target = spire
         } else {
             // Go for the weakest House within reach, to finish it, then

@@ -242,15 +242,20 @@ as the realm will, and takes the realm's word as final.
   realm knows you by an identity your Mac keeps in its keychain, and by
   your name. The front door
   shows the realm's state: its age and watch, how many keepers are there,
-  and how many seats are free. Enter World seats you in the first free
-  House; returning, you go straight back to yours.
+  and how many seats are free. Enter World seats you in the greatest House
+  free (at an age's start, all alike, the first); returning, you go
+  straight back to yours.
 - **Seats.** The lake has twelve seats. Seats no keeper holds are played by
   stewards, the same minds that once played rivals, until a keeper claims
   them. When every seat is held, a newcomer waits at the front door and
   steps in the moment one falls free. A seat whose keeper has been away a
   week goes back to the stewards for whoever is waiting (a day, for a seat
   taken and never played); its House stands as it was, and the keeper,
-  returning, waits in turn.
+  returning, waits in turn. Meanwhile, after two watches away, a caretaker
+  keeps the House: it answers envoys, tends and guards the holds and sues
+  for peace in a war going badly, but begins no war, demand or pact and
+  never bends the knee. While fewer than half the keepers are there, a
+  watch lasts at least a third of its time, however ready they are.
 - **What you see.** The realm tells each keeper only what their House
   could know: the ground they've explored, the companies in their sight,
   their own stores, and the envoys and news that reach them. The world
@@ -262,7 +267,8 @@ as the realm will, and takes the realm's word as final.
 - **Trade.** Offer any House you aren't at war with so much of one store
   for so much of another. Stewards weigh it by barter worth, the cunning
   asking most; allies, givers of gifts and a House short of what you offer
-  ask less, and none trades away the grain its companies need. A keeper
+  ask less, though never below even, and none trades away the grain its
+  companies need. A keeper
   answers by envoy. Stewards trade among themselves before bartering at
   three to one. The answer is always the realm's: your copy of the world
   can't see the others' stores, so it doesn't guess.
@@ -402,9 +408,11 @@ it returns; orders given meanwhile wait and go when it does.
   hold it has left loses most of its ward. A House that loses every hold
   falls, and its name passes into the chronicle.
 - **Winning.** Raise the five stages of the **Moonspire** at your seat
-  (ascendancy), or rule the lake (dominion): nine of every twenty holds and
+  (ascendancy), or rule the lake (dominion): seven of every twenty holds and
   at least ten, your vassals' counted with your own, or be the last House
-  standing. Rivals fear a rising Moonspire and will march on it.
+  standing. Rivals fear every rising Moonspire and will march on it, and
+  begin one only with the holds to store its last stage, or as the most
+  renowned House on the lake.
 - **Fealty.** A rival that loses its seat with four holds or fewer left
   bends the knee to the House that took it, and a beaten House may offer
   fealty rather than fall. A vassal's holds join its liege's realm and it

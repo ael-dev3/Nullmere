@@ -276,8 +276,13 @@ public struct RealmState: Codable, Equatable, Sendable {
 
     /// Gives a keeper the first free seat: a living House no keeper holds.
     private mutating func claimSeat(for index: Int) {
+        // The greatest House free, so one coming late to an age takes up a
+        // House with a road to winning it; at an age's start, all alike,
+        // the first.
         guard world.outcome == nil,
-              let seat = world.livingHouses.first(where: { !$0.isPlayer && $0.liege == nil }) else { return }
+              let seat = world.livingHouses.filter({ !$0.isPlayer && $0.liege == nil }).max(by: { a, b in
+                  (world.realm(of: a.id), world.renown(of: a.id), -a.id) < (world.realm(of: b.id), world.renown(of: b.id), -b.id)
+              }) else { return }
         world.houses[seat.id].isPlayer = true
         world.houses[seat.id].name = keepers[index].name
         keepers[index].house = seat.id
