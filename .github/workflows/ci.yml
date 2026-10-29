@@ -229,6 +229,10 @@ jobs:
               sips -s format jpeg -s formatOptions 65 -Z 900 "$shot" --out "${shot%.png}-print.jpg" >/dev/null
             fi
           done
+          # The realm's front door, small, for the next job to print last.
+          if [ -s build/launcher-play.png ]; then
+            sips -s format jpeg -s formatOptions 45 -Z 560 build/launcher-play.png --out build/door-small.jpg >/dev/null
+          fi
           for shot in build/game-world.png build/game-network.png build/game-away.png build/game-briefing.png build/game-lakes.png build/game-omen.png build/game-first-steps.png build/game-later.png build/game-race.png build/game-ending.png; do
             if [ -s "$shot" ]; then
               small="${shot%.png}-small.jpg"
@@ -267,7 +271,9 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: launcher-screens
-          path: build/*-print.jpg
+          path: |
+            build/*-print.jpg
+            build/door-small.jpg
           if-no-files-found: warn
 
       # Last, so it survives a trimmed log: frame times, test failures and
@@ -314,6 +320,13 @@ jobs:
             base64 -w 120 "$shot"
             echo "::endgroup::"
           done
+          # The realm's front door once more, small and last of all, so the
+          # end of the log holds it whole.
+          if [ -s screens/door-small.jpg ]; then
+            echo "::group::Screenshot build/launcher-play.png, small, base64 JPEG"
+            base64 -w 120 screens/door-small.jpg
+            echo "::endgroup::"
+          fi
 
   # The rules and the realm on Linux, where the steward runs; then the realm
   # module published to a real SpacetimeDB server, the steward taking it up,
