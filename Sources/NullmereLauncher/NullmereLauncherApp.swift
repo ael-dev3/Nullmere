@@ -25,6 +25,11 @@ struct NullmereOnlineApp: App {
 @MainActor
 final class OnlineAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // A copy already running: it comes forward, and this one goes.
+        if SingleInstance.handOver() {
+            NSApp.terminate(nil)
+            return
+        }
         // `swift run` starts a bare executable rather than an app bundle;
         // make sure it still behaves like a regular, frontmost Mac app.
         NSApp.setActivationPolicy(.regular)

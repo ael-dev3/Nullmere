@@ -209,3 +209,12 @@ private final class MemoryIdentity: IdentityStore, @unchecked Sendable {
     func load() -> String? { value }
     func save(_ identity: String) throws { value = identity }
 }
+
+/// One copy of the game at a time.
+final class SingleInstanceTests: XCTestCase {
+    func testASecondCopyHandsOverToTheFirst() {
+        XCTAssertNil(SingleInstance.other(among: [42], current: 42), "Alone: it stays")
+        XCTAssertEqual(SingleInstance.other(among: [42, 7], current: 42), 7, "Another running: that one comes forward")
+        XCTAssertNil(SingleInstance.other(among: [], current: 42))
+    }
+}

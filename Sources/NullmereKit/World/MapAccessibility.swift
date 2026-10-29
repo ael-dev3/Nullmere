@@ -12,6 +12,11 @@ enum MapAccessibility {
         /// For a company of the player's: where VoiceOver can send it, each
         /// as an action on it, as a right-click would.
         var orders: [Order] = []
+        /// What VoiceOver's rotors find it as: the keeper's own company, a
+        /// foe's (at war), or a hold.
+        var isOwnCompany = false
+        var isFoe = false
+        var isHold = false
     }
 
     struct Order: Equatable, Hashable {
@@ -118,7 +123,7 @@ enum MapAccessibility {
                 parts.append("idle")
             }
             if hold.level(.moonspire) > 0 { parts.append("Moonspire stage \(hold.level(.moonspire))") }
-            holds.append(Item(id: "hold-\(hold.id)", label: parts.joined(separator: ", "), selection: .hold(hold.id)))
+            holds.append(Item(id: "hold-\(hold.id)", label: parts.joined(separator: ", "), selection: .hold(hold.id), isHold: true))
         }
 
         var companies: [Item] = []
@@ -132,7 +137,8 @@ enum MapAccessibility {
                 else { parts.append("no moves left") }
             }
             companies.append(Item(id: "unit-\(unit.id)", label: parts.joined(separator: ", "), selection: .unit(unit.id),
-                                  orders: unit.owner == player && unit.movesLeft > 0 ? orders(for: unit, in: session) : []))
+                                  orders: unit.owner == player && unit.movesLeft > 0 ? orders(for: unit, in: session) : [],
+                                  isOwnCompany: unit.owner == player, isFoe: unit.owner != player && state.isAtWar(player, unit.owner)))
         }
 
         func mineFirst(_ items: [Item]) -> [Item] {

@@ -26,6 +26,11 @@ struct WorldView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("The world map")
+        // VoiceOver's rotor goes straight to the keeper's companies, the
+        // foes in sight, or the holds.
+        .accessibilityRotor("Your companies", entries: session.mapItems.filter(\.isOwnCompany), entryID: \.id, entryLabel: \.label)
+        .accessibilityRotor("Foes in sight", entries: session.mapItems.filter(\.isFoe), entryID: \.id, entryLabel: \.label)
+        .accessibilityRotor("Holds", entries: session.mapItems.filter(\.isHold), entryID: \.id, entryLabel: \.label)
         // VoiceOver reads the map as its holds and companies; choosing one
         // selects it, and its panel opens as it would by a click.
         .accessibilityChildren {
