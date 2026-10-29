@@ -26,6 +26,47 @@ final class LocalRealmEdgeTests: XCTestCase {
         }
     }
 
+    /// A link closed stops hearing without leaving: the keeper stays in the
+    /// realm, and a link made since for them is the one told. Leaving by an
+    /// old link doesn't silence the new one.
+    func testALinkClosedStopsHearingAndLeavesNoOneOut() {
+        MainActor.assumeIsolated {
+            let realm = LocalRealm(state: state(), clock: { 0 })
+            let old = realm.link(identity: "a")
+            old.arrive(name: "Ama")
+            var oldHeard = 0
+            old.onEvent = { _ in oldHeard += 1 }
+            old.close()
+            XCTAssertNil(old.onEvent)
+            XCTAssertEqual(realm.state.keeper("a")?.isOnline, true, "Closed, not gone")
+            let new = realm.link(identity: "a")
+            var heard: [RealmEvent] = []
+            new.onEvent = { heard.append($0) }
+            old.leave()
+            new.connect()
+            XCTAssertTrue(heard.contains { if case .status = $0 { return true } else { return false } }, "The new link is told")
+            XCTAssertEqual(oldHeard, 0)
+        }
+    }
+
+    /// A link of another kind closes by letting go of its listener.
+    func testAnyLinkClosesByLettingGo() {
+        final class Bare: RealmLink {
+            var onEvent: ((RealmEvent) -> Void)?
+            func connect() {}
+            func arrive(name: String?) {}
+            func send(_ command: Command) {}
+            func setReady(_ ready: Bool) {}
+            func leave() {}
+        }
+        MainActor.assumeIsolated {
+            let link = Bare()
+            link.onEvent = { _ in }
+            link.close()
+            XCTAssertNil(link.onEvent)
+        }
+    }
+
     /// A keeper whose link is gone is no longer told anything; the others
     /// still are.
     func testALinkLetGoIsForgotten() {

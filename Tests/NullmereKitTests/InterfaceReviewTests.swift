@@ -112,6 +112,85 @@ final class InterfaceReviewTests: XCTestCase {
         XCTAssertEqual(items, MapAccessibility.items(for: session), "Kept for the world as it is")
     }
 
+    func testVoiceOverOffersAStrikeAtAFoeInReach() throws {
+        var state = GameState(settings: GameSettings(seedText: "a strike offered", houseCount: 3, radius: 16))
+        let me = state.player
+        let spear = try XCTUnwrap(state.units.first { $0.owner == me && $0.kind == .spear })
+        let foe = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
+        let beside = try XCTUnwrap(state.map.neighbors(of: spear.position).first { hex in
+            state.map[hex]?.terrain.isPassable == true && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        })
+        state.units.append(NullmereCore.Unit(id: state.nextID, kind: .spear, owner: foe, position: beside))
+        state.nextID += 1
+        let index = try XCTUnwrap(state.relations.firstIndex { $0.first == min(me, foe) && $0.second == max(me, foe) })
+        state.relations[index].stance = .war
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        let item = try XCTUnwrap(session.mapItems.first { $0.selection == .unit(spear.id) })
+        XCTAssertEqual(item.orders.first?.name, "Strike the Spears of \(state.houses[foe].title)")
+        XCTAssertEqual(item.orders.first?.hex, beside)
+    }
+
+    func testARefusalFromTheRealmIsTold() throws {
+        var realm = RealmState(name: "The Nullmere", seed: "a refusal", seats: 4, radius: 18, watchLength: 600, now: 0)
+        let house = try XCTUnwrap(realm.arrive("id-ama", name: "Ama", now: 1).house)
+        let host = LocalRealm(state: realm)
+        let link = host.link(identity: "id-ama")
+        let session = GameSession(link: link, house: house, world: try XCTUnwrap(realm.view(for: "id-ama")).world,
+                                  store: LocalStore(directory: dir), host: host)
+        link.onEvent?(.refused(.noSeat))
+        XCTAssertEqual(session.notices.last?.text, RealmError.noSeat.description)
+    }
+
+    func testTheFallenKeepWayBackStaysInReachAfterLookingOn() throws {
+        var realm = RealmState(name: "The Nullmere", seed: "looking on", seats: 4, radius: 18, watchLength: 600, now: 0)
+        let ama = try XCTUnwrap(realm.arrive("id-ama", name: "Ama", now: 1).house)
+        let bel = try XCTUnwrap(realm.arrive("id-bel", name: "Bel", now: 1).house)
+        for index in realm.world.holds.indices where realm.world.holds[index].owner == bel {
+            realm.world.holds[index].owner = ama
+            realm.world.holds[index].isSeat = false
+        }
+        realm.world.units.removeAll { $0.owner == bel }
+        realm.world.houses[bel].isEliminated = true
+        let host = LocalRealm(state: realm)
+        let link = host.link(identity: "id-bel")
+        let session = GameSession(link: link, house: bel, world: try XCTUnwrap(realm.view(for: "id-bel")).world,
+                                  store: LocalStore(directory: dir), host: host)
+        link.connect()
+        let app = GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: .hosted(seed: "looking on"),
+                          identity: FileIdentityStore(url: dir.appendingPathComponent("identity")))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 600), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: FallenOverlay(app: app, session: session))
+        window.orderFrontRegardless()
+        defer { window.close() }
+        PressableButtons.isListening = true
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        XCTAssertTrue(PressableButtons.press("Look upon the lake"))
+        let deadline = Date().addingTimeInterval(3)
+        PressableButtons.isListening = true
+        while PressableButtons.actions["Take up a free House"] == nil, Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        }
+        var seated: Keeper?
+        session.onNewAge = { keeper, _ in seated = keeper }
+        XCTAssertTrue(PressableButtons.press("Take up a free House"), "Still in reach while looking on")
+        XCTAssertNotNil(seated?.house)
+        window.contentView = nil
+    }
+
+    func testTheEnvoyCardsButtonsAnswer() throws {
+        var state = GameState(settings: GameSettings(seedText: "answered by press"))
+        let me = state.player
+        let steward = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
+        state.envoys.append(Envoy(id: state.nextID, from: steward, to: me, proposal: .tribute, arrived: state.watch))
+        state.nextID += 1
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        PressableButtons.isListening = true
+        draw(EnvoyCards(session: session), width: 360, height: 400)
+        XCTAssertTrue(PressableButtons.press("Accept"), "Paid, the peace kept")
+        XCTAssertTrue(session.state.envoys.isEmpty)
+    }
+
     func testTheMapWithoutMetalStillGivesOrders() throws {
         let session = GameSession(state: GameState(settings: GameSettings(seedText: "no metal")), store: LocalStore(directory: dir))
         let lantern = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .lantern })
