@@ -340,7 +340,7 @@ jobs:
       - name: Coverage
         run: |
           apt-get update -qq && apt-get install -y -qq python3 >/dev/null
-          python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereCore=93 NullmereRealm=91 LauncherCore=97
+          python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereCore=97 NullmereRealm=97 LauncherCore=97
 
       - name: Install Rust and SpacetimeDB
         run: |
