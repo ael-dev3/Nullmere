@@ -586,7 +586,7 @@ struct HouseRow: View {
     static func keeping(_ house: House, present: [String]?) -> String {
         guard house.isPlayer else { return "A steward gives its orders." }
         if present?.contains(house.name) == true { return "Its keeper is here." }
-        return "Its keeper is away; it stands as they left it."
+        return "Its keeper is away; after two watches a caretaker keeps it, beginning nothing."
     }
 
     private func summary(stance: Stance, relation: Relation?, spire: Int) -> String {

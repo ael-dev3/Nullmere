@@ -115,7 +115,7 @@ final class RealmClientTests: XCTestCase {
         XCTAssertEqual(HouseRow.keeping(bels, present: ama.realmStatus?.present), "Its keeper is here.")
         realm.link(identity: "b").leave()
         XCTAssertEqual(ama.realmStatus?.present, ["Ama"])
-        XCTAssertEqual(HouseRow.keeping(bels, present: ama.realmStatus?.present), "Its keeper is away; it stands as they left it.")
+        XCTAssertEqual(HouseRow.keeping(bels, present: ama.realmStatus?.present), "Its keeper is away; after two watches a caretaker keeps it, beginning nothing.")
         let steward = try XCTUnwrap(ama.state.houses.first { !$0.isPlayer })
         XCTAssertEqual(HouseRow.keeping(steward, present: ama.realmStatus?.present), "A steward gives its orders.")
     }

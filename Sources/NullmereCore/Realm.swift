@@ -246,7 +246,7 @@ public struct RealmState: Codable, Equatable, Sendable {
         return keepers[index]
     }
 
-    /// A keeper leaves; their House stands as they left it.
+    /// A keeper leaves; after two watches a caretaker keeps their House.
     public mutating func depart(_ id: String, now: Double) {
         guard let index = keepers.firstIndex(where: { $0.id == id }) else { return }
         if keepers[index].isOnline { keepers[index].awaySince = now }

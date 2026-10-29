@@ -368,8 +368,8 @@ public final class GameApp {
         arrivalProblem = "The realm no longer knows this Mac's key, as when a realm is begun anew. Choose the name you'll go by."
     }
 
-    /// Leaves the world for the front door; the keeper's House stands as
-    /// they left it.
+    /// Leaves the world for the front door; after two watches a caretaker
+    /// keeps the keeper's House.
     public func leaveWorld() {
         releaseLink()
         ambience.isAtWar = false

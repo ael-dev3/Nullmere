@@ -42,7 +42,7 @@ public protocol RealmLink: AnyObject {
     func arrive(name: String?)
     func send(_ command: Command)
     func setReady(_ ready: Bool)
-    /// Leaves the realm; the keeper's House stands as they left it.
+    /// Leaves the realm; after two watches a caretaker keeps the keeper's House.
     func leave()
     /// Stops listening and asking, without a word to the realm: for a link
     /// whose key the realm no longer knows.
