@@ -113,7 +113,9 @@ final class RootRenderTests: XCTestCase {
     }
 
     func testTheOneWindowShowsTheLauncherThenTheRealm() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: "root-render-\(UUID().uuidString)"))
+        let suite = "root-render-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
         let environment = LauncherEnvironment(
             modelReadiness: { .ready },
             systemSavesEnergy: { false },

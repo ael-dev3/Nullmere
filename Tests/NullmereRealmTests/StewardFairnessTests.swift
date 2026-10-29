@@ -7,8 +7,8 @@ import XCTest
 /// The steward fair to keepers whose connection falters: one taken to have
 /// left who is still playing counts again as soon as they are heard, what
 /// a keeper heard is kept with their view until they can have read it, the
-/// keepers away cost nothing to publish, and a link left with an answer on
-/// its way doesn't trip over it.
+/// keepers away cost nothing to publish, one silent too long is taken to
+/// have left, and a link left with an answer on its way doesn't trip over it.
 final class StewardFairnessTests: XCTestCase {
     private func stewarded(_ seed: String) async throws
         -> (FakeSpacetime, RealmSteward, SpacetimeCredentials, SpacetimeCredentials, SpacetimeCredentials) {
@@ -92,6 +92,32 @@ final class StewardFairnessTests: XCTestCase {
         try await steward.step(now: 3 + RealmSteward.leavingGrace)
         let later = await steward.state
         XCTAssertEqual(later.keepers.first { $0.name == "Ama" }?.isOnline, true)
+    }
+
+    func testAKeeperSilentTooLongIsTakenToHaveLeft() async throws {
+        let (db, steward, ama, bel, _) = try await stewarded("a silence")
+        func online() async -> [String: Bool] {
+            Dictionary(uniqueKeysWithValues: await steward.state.keepers.map { ($0.name, $0.isOnline) })
+        }
+        // Bel is heard from; Ama, last heard as she arrived, is not.
+        try await db.call("here", [.string("b2")], token: bel.token)
+        try await steward.step(now: 1 + RealmSteward.silence)
+        let atTheEdge = await online()
+        XCTAssertEqual(atTheEdge, ["Ama": true, "Bel": true], "Silent as long as allowed, and no longer: still there")
+        try await steward.step(now: 1 + RealmSteward.silence + 1)
+        let past = await online()
+        XCTAssertEqual(past, ["Ama": false, "Bel": true])
+        // Gone, she holds up no watch: Bel's readiness turns it.
+        let watch = await steward.state.world.watch
+        try await db.call("ready", [.string("b3"), .bool(true)], token: bel.token)
+        try await steward.step(now: 3 + RealmSteward.silence)
+        let turned = await steward.state.world.watch
+        XCTAssertEqual(turned, watch + 1)
+        // Heard from again, she is back.
+        try await db.call("here", [.string("a2")], token: ama.token)
+        try await steward.step(now: 4 + RealmSteward.silence)
+        let back = await online()
+        XCTAssertEqual(back["Ama"], true)
     }
 
     /// A view unchanged isn't sent again, however often the realm is

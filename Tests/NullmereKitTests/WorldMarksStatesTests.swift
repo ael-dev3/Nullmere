@@ -104,13 +104,15 @@ final class WorldMarksStatesTests: XCTestCase {
         let blow = try XCTUnwrap(session.blows.last)
         XCTAssertTrue(blow.isRanged)
         XCTAssertFalse(blow.fallen.isEmpty, "The foe falls")
-        // The arrow crossing the gap, in the first tenth of the blow.
-        XCTAssertLessThan(Date().timeIntervalSince(blow.start), GameSession.Blow.duration * 0.1)
-        try draw(WorldMarks(session: session))
-        // A moment after it lands, the blow's flash; then as it fades.
-        RunLoop.main.run(until: blow.start.addingTimeInterval(0.1))
-        XCTAssertGreaterThan(GameSession.Blow.flash(at: Date().timeIntervalSince(blow.start)), 0)
-        try draw(WorldMarks(session: session))
+        // Drawn at its own moments, whatever the clock says: the arrow
+        // crossing the gap, the flash where it lands, then the flash faded.
+        let duration = GameSession.Blow.duration
+        XCTAssertEqual(GameSession.Blow.flash(at: 0.05), 0, "In flight, nothing has landed")
+        XCTAssertGreaterThan(GameSession.Blow.flash(at: 0.1), 0)
+        XCTAssertEqual(GameSession.Blow.flash(at: 0.5), 0)
+        for share in [0.05, 0.1, 0.5] {
+            try draw(WorldMarks(session: session, moment: blow.start.addingTimeInterval(share * duration)))
+        }
         try draw(WorldMarks(session: session))
     }
 }

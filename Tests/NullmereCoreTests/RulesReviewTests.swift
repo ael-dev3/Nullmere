@@ -16,14 +16,30 @@ final class RulesReviewTests: XCTestCase {
         var state = newGame()
         let me = state.player
         let other = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
+        // Matched as at the start, a steward refuses.
         _ = try state.perform(.propose(.tribute, to: other), as: me)
+        XCTAssertNotNil(state.relation(me, other)?.tributeRefused, "Refused")
         let lines = state.chronicle.count
-        // Refused or paid, the same demand can't be made again at once.
         XCTAssertThrowsError(try state.perform(.propose(.tribute, to: other), as: me))
         XCTAssertEqual(state.chronicle.count, lines, "Nothing more in the chronicle")
-        if state.relation(me, other)?.tributeRefused != nil {
-            state.watch += GameState.tributeRefusedRespite
-            XCTAssertFalse(state.refusedTributeLately(me, other), "After the respite, it may be made again")
+        state.watch += GameState.tributeRefusedRespite - 1
+        XCTAssertTrue(state.refusedTributeLately(me, other), "Not before the respite")
+        state.watch += 1
+        XCTAssertFalse(state.refusedTributeLately(me, other), "After it, it may be made again")
+        XCTAssertNoThrow(try state.perform(.propose(.tribute, to: other), as: me))
+    }
+
+    func testAPaidDemandWaitsBeforeItsMadeAgain() throws {
+        var state = newGame()
+        let me = state.player
+        let other = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
+        // Stripped of its companies, a steward pays rather than fight.
+        state.units.removeAll { $0.owner == other }
+        _ = try state.perform(.propose(.tribute, to: other), as: me)
+        XCTAssertNil(state.relation(me, other)?.tributeRefused, "Paid")
+        XCTAssertTrue(state.paidTributeLately(me, other))
+        XCTAssertThrowsError(try state.perform(.propose(.tribute, to: other), as: me)) { error in
+            XCTAssertEqual(error as? RuleError, .notApplicable)
         }
     }
 

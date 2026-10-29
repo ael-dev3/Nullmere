@@ -85,12 +85,18 @@ private struct WorldMetalRepresentable: NSViewRepresentable {
 /// Holds, companies and routes, drawn in one pass over the map.
 struct WorldMarks: View {
     let session: GameSession
+    /// A moment to draw instead of the clock's, for tests.
+    var moment: Date?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(paused: (session.marches.isEmpty && session.blows.isEmpty) || reduceMotion)) { timeline in
-            marks(at: timeline.date)
+        if let moment {
+            marks(at: moment)
+        } else {
+            TimelineView(.animation(paused: (session.marches.isEmpty && session.blows.isEmpty) || reduceMotion)) { timeline in
+                marks(at: timeline.date)
+            }
         }
     }
 

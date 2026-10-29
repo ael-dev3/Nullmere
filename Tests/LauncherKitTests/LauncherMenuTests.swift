@@ -8,7 +8,9 @@ import XCTest
 @MainActor
 final class LauncherMenuTests: XCTestCase {
     func testEveryMenuItemDoesWhatItSays() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: "launcher-menu-\(UUID().uuidString)"))
+        let suite = "launcher-menu-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
         var opened: [URL] = []
         let environment = LauncherEnvironment(
             modelReadiness: { .ready },

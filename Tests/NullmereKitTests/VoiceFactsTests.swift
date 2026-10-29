@@ -52,9 +52,14 @@ final class AmbienceEngineTests: XCTestCase {
     func testTheSoundStartsPlaysAndStops() async throws {
         let ambience = Ambience(enabled: false)
         ambience.start()
+        XCTAssertTrue(ambience.isWanted)
+        XCTAssertFalse(ambience.isPlaying, "Wanted, but turned off: silent")
         ambience.play(.clash)
         ambience.isEnabled = true
+        // Whether this Mac has an output to play on: CI's may not.
+        let hasOutput = ambience.isPlaying
         ambience.start()
+        XCTAssertEqual(ambience.isPlaying, hasOutput, "Started once")
         for cue in Ambience.Cue.all { ambience.play(cue) }
         ambience.isAtWar = true
         ambience.isMusicOn = false
@@ -64,9 +69,13 @@ final class AmbienceEngineTests: XCTestCase {
         ambience.musicVolume = 0
         try await Task.sleep(nanoseconds: 300_000_000)
         ambience.isAtWar = false
+        XCTAssertEqual(ambience.isPlaying, hasOutput, "Playing on through the score's changes")
         ambience.isEnabled = false
+        XCTAssertFalse(ambience.isPlaying, "Turned off, stopped")
         ambience.stop()
+        XCTAssertFalse(ambience.isWanted)
         ambience.isEnabled = true
+        XCTAssertFalse(ambience.isPlaying, "Turned on where the game doesn't want it: waits")
         ambience.isEnabled = false
     }
 
@@ -129,9 +138,15 @@ final class OnDeviceVoiceTests: XCTestCase {
         XCTAssertNil(tooShort, "Too short to be a line")
     }
 
-    func testTheLiveVoiceAnswersWhetherTheModelIsReady() {
-        // On CI's Mac there is no Apple Intelligence: the live voice says so.
-        _ = OnDeviceVoice().isReady()
+    func testTheLiveVoiceAnswersWhetherTheModelIsReady() async {
+        // On CI's Mac there is no Apple Intelligence: the live voice says
+        // so, and stays silent rather than failing.
+        let live = OnDeviceVoice()
+        XCTAssertEqual(live.isReady(), OnDeviceVoice.isAvailable)
+        if !live.isReady() {
+            let line = await live.speak(moment)
+            XCTAssertNil(line)
+        }
     }
 }
 
