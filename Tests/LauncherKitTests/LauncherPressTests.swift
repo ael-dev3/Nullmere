@@ -27,9 +27,9 @@ final class LauncherPressTests: XCTestCase {
         defaults.removePersistentDomain(forName: suiteName)
     }
 
-    private func model() -> LauncherModel {
+    private func model(_ readiness: ModelReadiness = .ready) -> LauncherModel {
         let environment = LauncherEnvironment(
-            modelReadiness: { .ready },
+            modelReadiness: { readiness },
             systemSavesEnergy: { false },
             downloadNews: { throw URLError(.notConnectedToInternet) },
             open: { [weak self] url in self?.opened.append(url); return true },
@@ -99,6 +99,30 @@ final class LauncherPressTests: XCTestCase {
         let deadline = Date().addingTimeInterval(3)
         while !terminated, Date() < deadline { try await Task.sleep(nanoseconds: 50_000_000) }
         XCTAssertTrue(terminated, "The launcher quits once it has faded")
+    }
+
+    /// With no realm yet to enter, Play shows its panel; Return goes back.
+    func testThePlayPanelIsPressed() {
+        let model = model()
+        model.enterRealm = nil
+        draw(model)
+        XCTAssertTrue(PressableButtons.press("Play"))
+        XCTAssertEqual(model.screen, .play, "No realm yet: the panel says so")
+        draw(model)
+        XCTAssertTrue(PressableButtons.press("Return"), "Among \(shown)")
+        XCTAssertEqual(model.playSelection, .back)
+        XCTAssertEqual(model.screen, .title)
+    }
+
+    /// On a Mac whose model is off, the requirement screen's way to turn it
+    /// on opens System Settings where it is.
+    func testTheRequirementScreenIsPressed() throws {
+        let model = model(.appleIntelligenceNotEnabled)
+        XCTAssertTrue(model.isGated)
+        draw(model)
+        XCTAssertTrue(PressableButtons.press("Open System Settings"), "Among \(shown)")
+        XCTAssertEqual(opened.count, 1)
+        XCTAssertEqual(model.requirementSelection, 0)
     }
 
     func testNothingIsKeptWhileNoTestListens() {
