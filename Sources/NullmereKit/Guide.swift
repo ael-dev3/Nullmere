@@ -19,7 +19,7 @@ enum Guide {
         Section(title: "The watch", lines: [
             "The lake is one world, shared by every keeper in the realm. Each turn is a watch: give your orders, then say you're ready with ⌘↩.",
             "The watch turns when every keeper there is ready, or when its time runs out; while fewer than half the keepers are there, it lasts at least a third of its time. Then the stewards play the seats no keeper holds, holds yield, works rise and companies march on.",
-            "The realm keeps the world. Leave, and after two watches a steward keeps your House for you: it answers envoys, tends your holds and guards them, and sues for peace in a war going badly, but begins nothing. It never bends the knee for you. An empty realm sleeps until a keeper returns.",
+            "The realm keeps the world. Leave, and after two watches a steward keeps your House for you: it answers envoys, tends your holds and guards them, and sues for peace in a war going badly, but begins nothing. It swears a pact a steward would take, but never with a House at war with your allies or one whose Moonspire is rising, and never bends the knee for you. An empty realm sleeps until a keeper returns.",
         ]),
         Section(title: "The land", lines: [
             "Strand, salt flats, greyfields, blackwood and barrows ring the lake.",
@@ -53,7 +53,7 @@ enum Guide {
             "The omen on the realm is shown under the top bar, with the watches it has left.",
         ]),
         Section(title: "Winning", lines: [
-            "Raise the five stages of the Moonspire at your seat (ascendancy), or rule the lake (dominion): seven of every twenty holds and at least ten, your vassals' counted with your own, or be the last House standing.",
+            "Raise the five stages of the Moonspire at your seat (ascendancy), or rule the lake (dominion): six of every twenty holds and at least ten, your vassals' counted with your own, or be the last House standing.",
             "Take a rival's seat while it has four holds or fewer left and it swears you fealty; beaten Houses may offer it too. A vassal's holds join your realm, and it can never turn on you. Turn on it, and it is free.",
             "Rivals fear a rising Moonspire, and will march on it.",
             "Each hold stores more: the Moonspire's last stage asks for \(BuildingKind.moonspire.cost(toLevel: BuildingKind.moonspire.maxLevel).stone) stone, more than a House of fewer than \(Guide.holdsForTheLastSpire) holds can keep.",

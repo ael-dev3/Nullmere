@@ -206,6 +206,56 @@ public struct WorldGenerator: Sendable {
                 }!
                 seats.append(next)
             }
+            // Picked so, the last few are squeezed between the first: each
+            // in turn moves to the nearby site furthest from its nearest
+            // neighbour, a few times over, until they lie evenly spread.
+            let sites = Set(candidates)
+            for _ in 0..<4 {
+                for i in seats.indices {
+                    let others = seats.indices.filter { $0 != i }.map { seats[$0] }
+                    // Room enough from its neighbours, then, among the
+                    // roomiest sites, the most land nearer it than any other
+                    // seat.
+                    func room(_ hex: Hex) -> Int { min(others.map { $0.distance(to: hex) }.min() ?? 0, 12) }
+                    func land(_ hex: Hex) -> Int {
+                        hex.spiral(6).filter { tile in
+                            guard let index = map.index(of: tile), map[index].terrain.isSettleable else { return false }
+                            let mine = tile.distance(to: hex)
+                            return others.allSatisfy { $0.distance(to: tile) > mine }
+                        }.count
+                    }
+                    let near = seats[i].spiral(3).filter { sites.contains($0) && !others.contains($0) }.map { ($0, room($0)) }
+                    guard let roomiest = near.map(\.1).max(), roomiest >= room(seats[i]) else { continue }
+                    let finalists = near.filter { $0.1 == roomiest }.map { ($0.0, land($0.0)) }
+                    let here = (room(seats[i]), land(seats[i]))
+                    if let best = finalists.max(by: { ($0.1, $1.0) < ($1.1, $0.0) }), (roomiest, best.1) > here {
+                        seats[i] = best.0
+                    }
+                }
+            }
+            // A seat left with little land of its own, hemmed in by water,
+            // the Spine or its neighbours, moves to the best site anywhere
+            // still well apart from the rest.
+            func ownLand(_ hex: Hex, among others: [Hex]) -> Int {
+                hex.spiral(6).filter { tile in
+                    guard let index = map.index(of: tile), map[index].terrain.isSettleable else { return false }
+                    let mine = tile.distance(to: hex)
+                    return others.allSatisfy { $0.distance(to: tile) > mine }
+                }.count
+            }
+            let lands = seats.indices.map { i in ownLand(seats[i], among: seats.indices.filter { $0 != i }.map { seats[$0] }) }
+            let median = lands.sorted()[lands.count / 2]
+            for i in seats.indices where lands[i] * 2 < median {
+                let others = seats.indices.filter { $0 != i }.map { seats[$0] }
+                let apart = candidates.filter { site in others.allSatisfy { $0.distance(to: site) >= 8 } }
+                if let best = apart.map({ ($0, ownLand($0, among: others)) }).max(by: { ($0.1, $1.0) < ($1.1, $0.0) }),
+                   best.1 > lands[i] {
+                    seats[i] = best.0
+                }
+            }
+            // Which House sits where is the luck of the draw, not the order
+            // the seats were found in.
+            random.shuffle(&seats)
         }
 
         // 8. Every seat gets a fair start.

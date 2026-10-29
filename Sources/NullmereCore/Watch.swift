@@ -9,9 +9,11 @@ extension GameState {
         var events: [GameEvent] = []
 
         // Rivals act first; whether anyone has won is weighed once the
-        // watch has turned (checkForEnd), never partway through.
-        for house in houses where !house.isPlayer && !house.isEliminated {
-            events += RivalMind(house: house.id).takeTurn(in: &self)
+        // watch has turned (checkForEnd), never partway through. Who goes
+        // first goes round the lake, watch by watch: no seat always first
+        // to a site, a march or a trade.
+        for house in stewardOrder {
+            events += RivalMind(house: house).takeTurn(in: &self)
         }
 
         let owners = territory()
@@ -43,6 +45,12 @@ extension GameState {
         events += checkForEnd()
         takeSnapshot()
         return events
+    }
+
+    /// The Houses the stewards play, in the order they act this watch:
+    /// starting one seat further round the lake each watch.
+    var stewardOrder: [Int] {
+        houses.indices.map { (watch + $0) % houses.count }.filter { !houses[$0].isPlayer && !houses[$0].isEliminated }
     }
 
     /// Lets a House's steward play its watch, deciding as the rival Houses
@@ -151,7 +159,7 @@ extension GameState {
 
     /// Share of all holds, in percent, and the least number of holds, that
     /// win by dominion without destroying every rival.
-    public static let supremacyShare = 35
+    public static let supremacyShare = 30
     public static let supremacyMinimum = 10
 
     /// Holds a House rules: its own and its vassals'.

@@ -100,13 +100,16 @@ public struct GameState: Codable, Equatable, Sendable {
 
         var names = settings.keepers > 0 ? Names.houses.filter { $0 != settings.playerHouse } : Names.houses
         random.shuffle(&names)
-        let temperaments = Temperament.allCases
+        // Tempers dealt evenly and at random: no seat number always the
+        // same kind of neighbour.
+        var temperaments = world.seats.indices.map { Temperament.allCases[$0 % Temperament.allCases.count] }
+        random.shuffle(&temperaments)
         var usedHoldNames: Set<String> = []
         for (index, seat) in world.seats.enumerated() {
             let isPlayer = index == 0 && settings.keepers > 0
             // The first seat, unkept, takes the name after all the others'.
             let name = index > 0 ? names[index - 1] : (isPlayer ? settings.playerHouse : names[world.seats.count - 1])
-            let temperament = index == 0 ? .steadfast : temperaments[(index - 1) % temperaments.count]
+            let temperament = temperaments[index]
             let sigil = Names.houses.firstIndex(of: name) ?? index
             var house = House(id: index, name: name, sigil: sigil, isPlayer: isPlayer, temperament: temperament, tileCount: map.count)
             house.stock = Stock(grain: 60, timber: 50, stone: 40, moonsalt: 5)

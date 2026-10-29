@@ -254,8 +254,14 @@ as the realm will, and takes the realm's word as final.
   returning, waits in turn. Meanwhile, after two watches away, a caretaker
   keeps the House: it answers envoys, tends and guards the holds and sues
   for peace in a war going badly, but begins no war, demand or pact and
-  never bends the knee. While fewer than half the keepers are there, a
-  watch lasts at least a third of its time, however ready they are.
+  never bends the knee. A pact offered it swears as a steward would, but
+  never with a House at war with the keeper's allies or one whose Moonspire
+  is rising. While fewer than half the keepers are there, a watch lasts at
+  least a third of its time, however ready they are.
+- **Fair seats.** Seats are spread evenly round the lake, none hemmed in
+  with little land of its own; which House takes which is the luck of the
+  draw, and the stewards take their turns starting one seat further round
+  the lake each watch.
 - **What you see.** The realm tells each keeper only what their House
   could know: the ground they've explored, the companies in their sight,
   their own stores, and the envoys and news that reach them. The world
@@ -408,7 +414,7 @@ it returns; orders given meanwhile wait and go when it does.
   hold it has left loses most of its ward. A House that loses every hold
   falls, and its name passes into the chronicle.
 - **Winning.** Raise the five stages of the **Moonspire** at your seat
-  (ascendancy), or rule the lake (dominion): seven of every twenty holds and
+  (ascendancy), or rule the lake (dominion): six of every twenty holds and
   at least ten, your vassals' counted with your own, or be the last House
   standing. Rivals fear every rising Moonspire and will march on it, and
   begin one only with the holds to store its last stage, or as the most

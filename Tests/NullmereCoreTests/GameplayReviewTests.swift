@@ -103,6 +103,34 @@ final class AbsentKeeperTests: XCTestCase {
         XCTAssertGreaterThan(world.units(of: ama).count, 0, "Its companies kept up")
     }
 
+    func testACaretakerSwearsASensiblePactAndNoOther() throws {
+        var (realm, ama, _) = try realm()
+        realm.depart("id-ama", now: 0)
+        let others = realm.world.houses.filter { !$0.isPlayer }.map(\.id)
+        let (friend, ally, foe, builder) = (others[0], others[1], others[2], others[3])
+        func relate(_ a: Int, _ b: Int, _ stance: Stance) throws {
+            let index = try XCTUnwrap(realm.world.relations.firstIndex { $0.first == min(a, b) && $0.second == max(a, b) })
+            realm.world.relations[index].stance = stance
+        }
+        // Ama's House already sworn to one ally; the foe is at war with it.
+        try relate(ama, ally, .pact)
+        try relate(foe, ally, .war)
+        // Each asks for a pact, each having given gifts enough to win one.
+        realm.world.gifts = [friend, foe, builder].map { Gift(from: $0, to: ama, worth: 500, watch: realm.world.watch) }
+        // The builder's Moonspire rises.
+        let spire = try XCTUnwrap(realm.world.holds.firstIndex { $0.owner == builder && $0.isSeat })
+        realm.world.holds[spire].levels[.moonspire] = 3
+        for from in [friend, foe, builder] {
+            realm.world.envoys.append(Envoy(id: realm.world.nextID, from: from, to: ama, proposal: .pact, arrived: realm.world.watch))
+            realm.world.nextID += 1
+        }
+        _ = realm.tick(now: 180 * 3)
+        XCTAssertEqual(realm.world.stance(ama, friend), .pact, "A friend's pact, sworn")
+        XCTAssertNotEqual(realm.world.stance(ama, foe), .pact, "Not with a House at war with an ally")
+        XCTAssertNotEqual(realm.world.stance(ama, builder), .pact, "Nor with one whose Moonspire the lake should stop")
+        XCTAssertFalse(realm.world.envoys.contains { $0.to == ama }, "Every envoy answered")
+    }
+
     func testAHouseAwayOnlyAMomentIsLeftAsItsKeeperLeftIt() throws {
         var (realm, ama, _) = try realm()
         realm.depart("id-ama", now: 170)
@@ -183,5 +211,117 @@ final class StewardBalanceTests: XCTestCase {
         realm.world.holds[spare].owner = greatest
         realm.world.holds[spare].isSeat = false
         XCTAssertEqual(try realm.arrive("id-bel", name: "Bel", now: 1).house, greatest)
+    }
+}
+
+/// Seats fair whatever their number: spread evenly round the lake, none
+/// hemmed in with little land of its own, which seat a House takes the
+/// luck of the draw, and no steward always first to act.
+final class SeatFairnessTests: XCTestCase {
+    func testEverySeatHasRoomAndLandOfItsOwn() {
+        for (seed, lake) in zip(["fair 20", "fair 39", "fair 5"], [Lake.round, .isles, .twin]) {
+            let world = GameState(settings: GameSettings(seedText: seed, houseCount: 12, radius: 36, keepers: 0, lake: lake))
+            let seats = world.houses.map { world.seat(of: $0.id)!.position }
+            let lands = seats.enumerated().map { i, seat in
+                seat.spiral(6).filter { tile in
+                    guard let terrain = world.map[tile]?.terrain, terrain.isSettleable else { return false }
+                    let mine = tile.distance(to: seat)
+                    return seats.enumerated().allSatisfy { $0.offset == i || $0.element.distance(to: tile) > mine }
+                }.count
+            }
+            let nearest = seats.enumerated().map { i, seat in
+                seats.enumerated().filter { $0.offset != i }.map { $0.element.distance(to: seat) }.min()!
+            }
+            XCTAssertGreaterThanOrEqual(nearest.min()!, 8, "\(seed): seats well apart \(nearest)")
+            XCTAssertGreaterThanOrEqual(Double(lands.min()!) / Double(lands.max()!), 0.35, "\(seed): none hemmed in \(lands)")
+        }
+    }
+
+    func testWhoGoesFirstGoesRoundTheLake() {
+        var world = GameState(settings: GameSettings(seedText: "turns", houseCount: 6, radius: 20, keepers: 0))
+        var firsts: [Int] = []
+        for _ in 0..<6 {
+            firsts.append(world.stewardOrder.first!)
+            XCTAssertEqual(Set(world.stewardOrder), Set(world.livingHouses.filter { !$0.isPlayer }.map(\.id)), "Every steward, once")
+            world.watch += 1
+        }
+        XCTAssertEqual(Set(firsts).count, 6, "Each first in turn: \(firsts)")
+    }
+}
+
+/// Stewards with the means use the whole of what the lake offers: a third
+/// muster hall and riders, walls on the border, beacons for the land they
+/// claim; and riders it can't pay for become spears, not nothing.
+final class StewardKitTests: XCTestCase {
+    private func wealthy() throws -> (GameState, steward: Int, seat: Int) {
+        var state = GameState(settings: GameSettings(seedText: "the whole kit"))
+        let steward = try XCTUnwrap(state.houses.first { !$0.isPlayer }?.id)
+        state.houses[steward].temperament = .steadfast
+        state.watch = 70
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == steward && $0.isSeat })
+        for kind in [BuildingKind.granary, .sawpit, .quarry, .saltworks] { state.holds[seat].levels[kind] = kind.maxLevel }
+        state.holds[seat].levels[.walls] = 2
+        state.holds[seat].levels[.beacon] = 1
+        state.holds[seat].levels[.musterHall] = 2
+        let room = state.storage(of: steward)
+        state.houses[steward].stock = Stock(grain: room, timber: room, stone: room, moonsalt: room)
+        // Another House the more renowned, so this one leaves the Moonspire be.
+        let other = try XCTUnwrap(state.holds.firstIndex { $0.owner != steward && $0.isSeat })
+        state.holds[other].levels = [.granary: 5, .sawpit: 5, .quarry: 5, .saltworks: 5, .walls: 5, .beacon: 3, .musterHall: 3]
+        return (state, steward, seat)
+    }
+
+    func testAWealthyStewardRaisesItsMusterHallThenItsBeacons() throws {
+        var (state, steward, seat) = try wealthy()
+        _ = state.stewardTurn(for: steward)
+        XCTAssertEqual(state.holds[seat].project?.kind, .musterHall, "A third muster hall, for riders")
+        state.holds[seat].project = nil
+        state.holds[seat].levels[.musterHall] = 3
+        _ = state.stewardTurn(for: steward)
+        XCTAssertEqual(state.holds[seat].project?.kind, .beacon, "Then beacons, for the land they claim")
+    }
+
+    func testAStewardAtWarTrainsRiders() throws {
+        var (state, steward, seat) = try wealthy()
+        state.holds[seat].levels[.musterHall] = 3
+        let foe = try XCTUnwrap(state.houses.first { $0.id != steward && !$0.isPlayer }?.id)
+        _ = try state.declareWar(by: steward, on: foe)
+        var riders = 0
+        for watch in 70..<90 {
+            var trial = state
+            trial.watch = watch
+            trial.draws = UInt64(watch)
+            _ = trial.stewardTurn(for: steward)
+            if trial.holds[seat].training?.kind == .rider { riders += 1 }
+        }
+        XCTAssertGreaterThan(riders, 4, "At war, riders, often")
+        // Without the moonsalt for riders, spears.
+        state.houses[steward].stock.moonsalt = 0
+        var spears = 0
+        for watch in 70..<90 {
+            var trial = state
+            trial.watch = watch
+            trial.draws = UInt64(watch)
+            _ = trial.stewardTurn(for: steward)
+            XCTAssertNotEqual(trial.holds[seat].training?.kind, .rider)
+            if trial.holds[seat].training?.kind == .spear { spears += 1 }
+        }
+        XCTAssertGreaterThan(spears, 10, "Spears instead, never an idle hall")
+    }
+
+    func testABorderHoldWallsItself() throws {
+        var (state, steward, seat) = try wealthy()
+        state.holds[seat].levels[.musterHall] = 3
+        state.holds[seat].levels[.walls] = 1
+        state.holds[seat].levels[.beacon] = 3
+        let neighbour = try XCTUnwrap(state.holds.firstIndex { $0.owner != steward })
+        // Another House's hold, close by.
+        let near = try XCTUnwrap(state.map.hexes.first { hex in
+            hex.distance(to: state.holds[seat].position) == 6 && state.map[hex]?.terrain.isSettleable == true && state.hold(at: hex) == nil
+        })
+        state.holds.append(Hold(id: state.nextID, name: "Close By", owner: state.holds[neighbour].owner, position: near, isSeat: false, foundedWatch: 1))
+        state.nextID += 1
+        _ = state.stewardTurn(for: steward)
+        XCTAssertEqual(state.holds[seat].project?.kind, .walls)
     }
 }

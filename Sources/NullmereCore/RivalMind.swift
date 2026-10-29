@@ -190,15 +190,16 @@ struct RivalMind {
     }
 
     /// A caretaker's diplomacy: the envoys waiting on the House answered as
-    /// a steward would, but never bending the knee, and pacts left for the
-    /// keeper; a war going badly ended if it can be.
+    /// a steward would, but never bending the knee; a war going badly ended
+    /// if it can be.
     private func keepThePeace(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
         var events: [GameEvent] = []
-        for envoy in state.envoys where envoy.to == house && envoy.proposal != .pact {
+        for envoy in state.envoys where envoy.to == house {
             let accept: Bool
             switch envoy.proposal {
             case .fealty: accept = false
             case .trade: accept = envoy.trade.map { acceptsTrade($0, from: envoy.from, in: state) } ?? false
+            case .pact: accept = acceptsPactForKeeper(from: envoy.from, in: state)
             default: accept = accepts(envoy.proposal, from: envoy.from, in: state)
             }
             events += perform(.answer(envoy: envoy.id, accept: accept), in: &state)
@@ -211,6 +212,16 @@ struct RivalMind {
             }
         }
         return events
+    }
+
+    /// A pact a caretaker swears for its keeper: one a steward would take,
+    /// but not with a House at war with the keeper's allies, which would
+    /// set two pacts against each other, nor with one whose rising
+    /// Moonspire the lake should be stopping.
+    func acceptsPactForKeeper(from proposer: Int, in state: GameState) -> Bool {
+        guard accepts(.pact, from: proposer, in: state), !spireThreats(in: state).contains(proposer) else { return false }
+        let allies = state.livingHouses.filter { $0.id != proposer && state.stance(house, $0.id) == .pact }
+        return !allies.contains { state.isAtWar(proposer, $0.id) }
     }
 
     /// Watches a House keeps a fresh peace before it would break it.
@@ -322,9 +333,17 @@ struct RivalMind {
             if state.watch >= spireFrom, !threatened, able || hold.level(.moonspire) > 0 { wishes.append(.moonspire) }
             if me.temperament == .ambitious, hold.level(.musterHall) < 3 { wishes.append(.musterHall) }
             if hold.level(.musterHall) < 2, state.watch >= 14 { wishes.append(.musterHall) }
+            // Riders, for a House at war or with stores to spare.
+            if hold.level(.musterHall) < 3, state.watch >= 40, atWar || plenty { wishes.append(.musterHall) }
+            // A rising Moonspire draws every army on the lake: wall it.
+            if hold.level(.moonspire) >= 2, hold.level(.walls) < 4 { wishes.append(.walls) }
         }
         if hold.level(.walls) < 1, state.watch >= 10 { wishes.append(.walls) }
+        // A hold on the border, another House's hold near, walls itself.
+        if hold.level(.walls) < 2, state.watch >= 30, bordersAnother(hold, in: state) { wishes.append(.walls) }
         if hold.level(.beacon) < 1, state.watch >= 18 { wishes.append(.beacon) }
+        // With stores to spare, beacons for the land (and the yield) they claim.
+        if plenty, hold.level(.beacon) < (state.watch >= 60 ? 3 : 2), state.watch >= 35 { wishes.append(.beacon) }
         wishes += economy.dropFirst()
 
         for kind in wishes {
@@ -337,6 +356,11 @@ struct RivalMind {
             if kind == .moonspire { return nil }
         }
         return nil
+    }
+
+    /// Whether another House's hold stands within eight tiles of this one.
+    private func bordersAnother(_ hold: Hold, in state: GameState) -> Bool {
+        state.holds.contains { $0.owner != house && $0.position.distance(to: hold.position) <= 8 }
     }
 
     private func chooseTraining(for hold: Hold, in state: GameState, random: inout SeededRandom) -> UnitKind? {
@@ -366,7 +390,9 @@ struct RivalMind {
             choice = .founder
         } else if military < wantedArmy, netGrain > 1 || atWar {
             let muster = hold.level(.musterHall)
-            if muster >= 3, random.chance(35) {
+            // Riders, fast and the hardest-hitting, the more so at war,
+            // when holds must be taken.
+            if muster >= 3, random.chance(atWar ? 50 : 35) {
                 choice = .rider
             } else if muster >= 2, random.chance(35) {
                 choice = .bow
@@ -374,7 +400,10 @@ struct RivalMind {
                 choice = .spear
             }
         }
-        guard let kind = choice, hold.level(.musterHall) >= kind.requiredMuster, me.stock.covers(state.trainingCost(of: kind, for: house)) else { return nil }
+        guard var kind = choice, hold.level(.musterHall) >= kind.requiredMuster else { return nil }
+        // Riders or bows it can't pay for: spears, rather than nothing.
+        if !me.stock.covers(state.trainingCost(of: kind, for: house)), kind == .rider || kind == .bow { kind = .spear }
+        guard me.stock.covers(state.trainingCost(of: kind, for: house)) else { return nil }
         return kind
     }
 
