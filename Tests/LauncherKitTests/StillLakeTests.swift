@@ -104,7 +104,7 @@ final class StillLakeTests: XCTestCase {
         }
         print(String(format: "STILL the moon's image gathered %.2f, filled %.2f, heart %ld; open water %ld; bright stars %ld",
                      worst.gathered, worst.filled, worst.heart, water, bright))
-        XCTAssertGreaterThan(worst.heart, 330, "The moon lies in the water")
+        XCTAssertGreaterThan(worst.heart, 450, "The moon lies in the water, bright: a mirror, not a grey coin")
         XCTAssertGreaterThan(worst.gathered, 0.97, "gathered in a disc, not strewn down the water")
         XCTAssertGreaterThan(worst.filled, 0.58, "and whole")
         print(String(format: "STILL the moon's image's rim strays %.3f on average, %.3f at most", rim.rough, rim.worst))
@@ -152,11 +152,19 @@ final class StillLakeTests: XCTestCase {
         // Stars on the open water, away from the moon's image, in both. A
         // star is a point that stands out from the water around it: the
         // moon's halo, gone with its image, lit the water and its stars
-        // alike, so how bright a point is can't tell a star.
+        // alike, so how bright a point is can't tell a star. Nor are the
+        // moon's glints stars: moonlight, they sink with its image. They
+        // lie within two of their widths of the moon's line, a width that
+        // grows toward the near water (the shader's nm_glints).
+        func amidGlints(_ x: Int, _ y: Int) -> Bool {
+            let depth = (LakeComposition.horizon - (1 - Double(y) / Double(height))) / LakeComposition.horizon
+            let reach = 2.1 * LakeComposition.moonRadius * (1.1 + 2.4 * depth) * Double(height)
+            return abs(Double(x) - LakeComposition.moonX * Double(width)) < reach
+        }
         func stars(_ pixels: [UInt8], standingOut contrast: Int) -> [(x: Int, y: Int)] {
             var found: [(x: Int, y: Int)] = []
             for y in stride(from: Int(Double(height) * 0.62), to: Int(Double(height) * 0.95), by: 1) {
-                for x in stride(from: 3, to: width / 3, by: 1) {
+                for x in stride(from: 3, to: width / 3, by: 1) where !amidGlints(x, y) {
                     let here = light(pixels, x, y)
                     let around = (light(pixels, x - 3, y) + light(pixels, x + 3, y) + light(pixels, x, y - 3) + light(pixels, x, y + 3)) / 4
                     guard here - around > contrast else { continue }

@@ -365,7 +365,9 @@ enum LakeShader {
             float2 r = float2(p.x + 0.10 * slope.x, 2.0 * horizon - p.y + 0.15 * slope.y);
             r.y = max(r.y, horizon + 0.0005);
             float depth = s / horizon;
-            float reflectance = mix(0.94, 0.56, sqrt(depth));
+            // A black mirror gives the moon back nearly whole: falling off
+            // further toward the near water, its image lay there a grey coin.
+            float reflectance = mix(0.94, 0.74, sqrt(depth));
             float moonlight = 1.0 - veil;
             c = nm_sky(r, aspect, pt, horizon, time, activity, moonlight) * reflectance;
 

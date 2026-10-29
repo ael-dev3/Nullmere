@@ -61,10 +61,14 @@ Then tag a version:
 git tag v1.0.0 && git push origin v1.0.0
 ```
 
-The Release workflow signs the app with the hardened runtime and a secure
-timestamp, signs and notarizes the disk image, staples it, and attaches it to
-a GitHub release. It worked when the release's notes don't say "ad-hoc
-signed", and on any Mac:
+The Release workflow runs the tagged commit's tests and releases nothing
+that fails them; signs the app with the hardened runtime and a secure
+timestamp, signs and notarizes the disk image, and staples it; checks the
+image as a player receives it (`scripts/verify-release.sh`: the app inside
+named Nullmere Online, at the tag's version, signed by the Developer ID,
+accepted by Gatekeeper); and attaches it, with its SHA-256, to a GitHub
+release. A tag with a suffix (`v1.0.0-beta.1`) makes a prerelease. It worked
+when the release's notes don't say "ad-hoc signed", and on any Mac:
 
 ```sh
 spctl --assess --type open --context context:primary-signature --verbose Nullmere-Online-1.0.0.dmg
@@ -72,7 +76,9 @@ spctl --assess --type open --context context:primary-signature --verbose Nullmer
 ```
 
 CI rehearses every one of these steps on every push with a throwaway identity
-(`scripts/rehearse-release.sh`), printing the notarization it would send.
+(`scripts/rehearse-release.sh`), printing the notarization it would send, and
+checks its own image with `scripts/verify-release.sh` too. The checksum, on any
+Mac: `shasum -a 256 -c Nullmere-Online-1.0.0.dmg.sha256`.
 
 ## 3. Hear the voices
 
