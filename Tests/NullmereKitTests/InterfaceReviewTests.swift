@@ -1,4 +1,5 @@
 import Foundation
+import LauncherCore
 import LauncherKit
 import NullmereRealm
 import SwiftUI
