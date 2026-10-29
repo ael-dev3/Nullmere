@@ -19,6 +19,7 @@ final class StillLakeTests: XCTestCase {
         var worst = (gathered: 1.0, filled: 1.0, heart: 765)
         var water = 0, bright = 0
         var rim = (rough: 0.0, worst: 0.0)
+        var roundness = (worst: 0.0, spread: 0.0)
         // Over several moments, so no lucky frame passes for a still lake.
         for time in [3.0, 7.5, 12.25, 20.0] {
             let uniforms = LakeUniforms(sizeAndPixels: SIMD4(Float(width), Float(height), Float(width), Float(height)),
@@ -63,6 +64,27 @@ final class StillLakeTests: XCTestCase {
             }
             rim = (max(rim.rough, strays.reduce(0, +) / 72), max(rim.worst, strays.max() ?? 0))
 
+            // And round: seen from its own centre, its edge lies as far out
+            // every way, not pushed into lumps by the swell. (The edge found
+            // this way strays a little even in the sky, by the moon's seas.)
+            var lit = (x: 0.0, y: 0.0, count: 0.0)
+            for y in Int(mirrorY - 1.5 * radius)..<Int(mirrorY + 1.5 * radius) {
+                for x in Int(mirrorX - 1.5 * radius)..<Int(mirrorX + 1.5 * radius) where Double(light(x, y)) > cut {
+                    lit = (lit.x + Double(x), lit.y + Double(y), lit.count + 1)
+                }
+            }
+            let centre = (x: lit.x / max(lit.count, 1), y: lit.y / max(lit.count, 1))
+            var reach: [Double] = []
+            for k in 0..<72 {
+                let angle = 2 * Double.pi * Double(k) / 72
+                var r = 0.0
+                while r < 2 * radius, Double(light(Int(centre.x + r * cos(angle)), Int(centre.y + r * sin(angle)))) > cut { r += 0.5 }
+                reach.append(r)
+            }
+            let mean = reach.reduce(0, +) / 72
+            roundness = (max(roundness.worst, (reach.map { abs($0 - mean) }.max() ?? 0) / radius),
+                     max(roundness.spread, ((reach.max() ?? 0) - (reach.min() ?? 0)) / radius))
+
             // Open water, away from the moon's image: black.
             var values: [Int] = []
             for y in stride(from: Int(Double(height) * 0.72), to: Int(Double(height) * 0.95), by: 3) {
@@ -88,6 +110,9 @@ final class StillLakeTests: XCTestCase {
         print(String(format: "STILL the moon's image's rim strays %.3f on average, %.3f at most", rim.rough, rim.worst))
         XCTAssertLessThan(rim.rough, 0.016, "Its rim clean, not bitten by ripples")
         XCTAssertLessThan(rim.worst, 0.055, "nowhere")
+        print(String(format: "STILL the moon's image is round within %.3f, its reach spread %.3f", roundness.worst, roundness.spread))
+        XCTAssertLessThan(roundness.worst, 0.04, "Round as the moon, not pushed out of shape by the swell")
+        XCTAssertLessThan(roundness.spread, 0.065, "every way")
         XCTAssertLessThan(water, 40, "Open water is black")
         XCTAssertGreaterThanOrEqual(bright, 10, "Bright stars stand in the sky")
     }
