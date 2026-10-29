@@ -229,9 +229,10 @@ jobs:
               sips -s format jpeg -s formatOptions 65 -Z 900 "$shot" --out "${shot%.png}-print.jpg" >/dev/null
             fi
           done
-          # The realm's front door, small, for the next job to print last.
+          # The realm's front door, small enough that the end of the next
+          # job's log, where it is printed last, can be read in one piece.
           if [ -s build/launcher-play.png ]; then
-            sips -s format jpeg -s formatOptions 45 -Z 560 build/launcher-play.png --out build/door-small.jpg >/dev/null
+            sips -s format jpeg -s formatOptions 30 -Z 480 build/launcher-play.png --out build/door-small.jpg >/dev/null
           fi
           for shot in build/game-world.png build/game-network.png build/game-away.png build/game-briefing.png build/game-lakes.png build/game-omen.png build/game-first-steps.png build/game-later.png build/game-race.png build/game-ending.png; do
             if [ -s "$shot" ]; then
