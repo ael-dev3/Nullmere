@@ -360,9 +360,11 @@ enum LakeShader {
                 slope += ring * 0.25;
             }
 
-            // The mirror barely bends: bent more, the long swell pushed the
-            // moon's image out of round, lumpy where it should be whole.
-            float2 r = float2(p.x + 0.10 * slope.x, 2.0 * horizon - p.y + 0.15 * slope.y);
+            // The mirror barely bends, and alike each way: bent more, the
+            // long swell pushed the moon's image out of round, lumpy where it
+            // should be whole, and bent more up and down than across, it
+            // stretched the brighter image's edge.
+            float2 r = float2(p.x + 0.10 * slope.x, 2.0 * horizon - p.y + 0.10 * slope.y);
             r.y = max(r.y, horizon + 0.0005);
             float depth = s / horizon;
             // A black mirror gives the moon back nearly whole: falling off
