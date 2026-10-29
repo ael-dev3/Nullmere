@@ -112,7 +112,8 @@ final class IncomeBreakdownTests: XCTestCase {
         let seat = try XCTUnwrap(state.seat(of: player))
         XCTAssertEqual(grain.lines.first?.label, seat.name, "The seat first")
         XCTAssertEqual(grain.lines.last?.label, "Companies eat")
-        XCTAssertNil(grain.omen)
+        state.omen = nil
+        XCTAssertNil(IncomeBreakdown(state: state, house: player, resource: .grain).omen, "No omen, nothing said of one")
         state.omen = Omen(kind: .leanWatch, began: state.watch, ends: state.watch + 3)
         XCTAssertEqual(IncomeBreakdown(state: state, house: player, resource: .grain).omen, "A Lean Watch takes a third of it.")
         XCTAssertNil(IncomeBreakdown(state: state, house: player, resource: .timber).omen)

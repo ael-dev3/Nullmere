@@ -108,9 +108,11 @@ final class EndingTests: XCTestCase {
         session.autoplay(watches: 160)
         let outcome = try XCTUnwrap(session.state.outcome)
         let points = StoryChart.points(for: session.state)
-        XCTAssertGreaterThan(points.filter { $0.house == session.player }.count, 100, "A line for the whole game")
+        let mine = points.filter { $0.house == session.player }
         if !session.playerHouse.isEliminated {
-            XCTAssertEqual(points.filter { $0.house == session.player }.last?.watch, session.state.watch, "The line runs to the end")
+            XCTAssertEqual(mine.map(\.watch), Array(1...session.state.watch), "A line for the whole game, a point a watch, to the end")
+        } else {
+            XCTAssertEqual(mine.last?.holds, 0, "A fallen House's line ends where it fell")
         }
         XCTAssertTrue(StoryChart.summary(of: session.state, player: session.player).hasPrefix("Over \(session.state.watch) watches"))
 

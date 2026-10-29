@@ -37,7 +37,11 @@ final class AwayReportTests: XCTestCase {
         XCTAssertEqual(report.watches, 24)
         XCTAssertEqual(report.title, "While you were away, 24 watches passed")
         XCTAssertLessThanOrEqual(report.news.count, AwayReport.lines)
-        let told = world.chronicle.filter { $0.watch > 1 && ($0.houses.contains(state.player) || $0.kind == .fall || $0.kind == .ending) }
+        // What touched the keeper's House, and what everyone heard: a fall,
+        // the end of an age, an omen.
+        let told = world.chronicle.filter { entry in
+            entry.watch > 1 && (entry.houses.contains(state.player) || [.fall, .ending, .omen].contains(entry.kind))
+        }
         XCTAssertEqual(report.news, Array(told.suffix(AwayReport.lines).map(\.text)))
         XCTAssertEqual(report.holdsChange, world.holds(of: state.player).count - state.holds(of: state.player).count)
         for change in report.changes {

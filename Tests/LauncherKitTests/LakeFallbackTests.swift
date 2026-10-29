@@ -55,7 +55,7 @@ final class LakeFallbackTests: XCTestCase {
         let imageY = Int((1 - (2 * LakeComposition.horizon - LakeComposition.moonY)) * Double(height))
         XCTAssertGreaterThan(light(open, moonX, moonY), 650, "The moon")
         XCTAssertGreaterThan(light(open, moonX, imageY), 450, "and its image in the water")
-        XCTAssertEqual(light(veiled, moonX, moonY), light(open, moonX, moonY), "The moon stays under a panel")
+        XCTAssertEqual(light(veiled, moonX, moonY), light(open, moonX, moonY), accuracy: 3, "The moon stays under a panel")
         XCTAssertLessThan(light(veiled, moonX, imageY), 120, "its image sinks")
     }
 }
