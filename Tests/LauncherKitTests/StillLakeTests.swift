@@ -124,22 +124,33 @@ final class StillLakeTests: XCTestCase {
         XCTAssertGreaterThan(light(whole, moonX, mirrorY), 330)
         XCTAssertLessThan(light(sunk, moonX, mirrorY), 30, "Its image is gone")
 
-        // Stars on the open water, away from the moon's image, in both.
-        func stars(_ pixels: [UInt8]) -> Int {
-            var count = 0
+        // Stars on the open water, away from the moon's image, in both. A
+        // star is a point that stands out from the water around it: the
+        // moon's halo, gone with its image, lit the water and its stars
+        // alike, so how bright a point is can't tell a star.
+        func stars(_ pixels: [UInt8], standingOut contrast: Int) -> [(x: Int, y: Int)] {
+            var found: [(x: Int, y: Int)] = []
             for y in stride(from: Int(Double(height) * 0.62), to: Int(Double(height) * 0.95), by: 1) {
-                for x in stride(from: 2, to: width / 3, by: 1) where light(pixels, x, y) > 60 {
+                for x in stride(from: 3, to: width / 3, by: 1) {
                     let here = light(pixels, x, y)
+                    let around = (light(pixels, x - 3, y) + light(pixels, x + 3, y) + light(pixels, x, y - 3) + light(pixels, x, y + 3)) / 4
+                    guard here - around > contrast else { continue }
                     if here >= light(pixels, x - 1, y), here >= light(pixels, x + 1, y), here >= light(pixels, x, y - 1), here > light(pixels, x, y + 1) {
-                        count += 1
+                        found.append((x: x, y: y))
                     }
                 }
             }
-            return count
+            return found
         }
-        let before = stars(whole), after = stars(sunk)
-        print("STILL stars on the water: \(before) beside the moon's image, \(after) with it sunk")
-        XCTAssertGreaterThan(before, 5, "Stars lie on the water")
-        XCTAssertEqual(after, before, "and stay when the moon's image sinks")
+        // Each star found in one is found in the other, where it was: by a
+        // margin the dithering can't cross, give or take a pixel.
+        func stillThere(_ stars: [(x: Int, y: Int)], among others: [(x: Int, y: Int)]) -> Int {
+            stars.filter { star in !others.contains { abs($0.x - star.x) <= 1 && abs($0.y - star.y) <= 1 } }.count
+        }
+        let before = stars(whole, standingOut: 40), after = stars(sunk, standingOut: 40)
+        print("STILL stars on the water: \(before.count) beside the moon's image, \(after.count) with it sunk")
+        XCTAssertGreaterThan(before.count, 5, "Stars lie on the water")
+        XCTAssertEqual(stillThere(before, among: stars(sunk, standingOut: 28)), 0, "and stay when the moon's image sinks")
+        XCTAssertEqual(stillThere(after, among: stars(whole, standingOut: 28)), 0, "and none appear that weren't there")
     }
 }
