@@ -49,7 +49,9 @@ final class AccessiblePlayTests: XCTestCase {
         let site = try XCTUnwrap(state.map.hexes.first { hex in
             state.canFound(at: hex, for: me) == nil && state.isExplored(hex, by: me) && state.unit(at: hex) == nil
         })
-        state.units.append(NullmereCore.Unit(id: state.nextID, kind: .founder, owner: me, position: site))
+        var settler = NullmereCore.Unit(id: state.nextID, kind: .founder, owner: me, position: site)
+        settler.movesLeft = UnitKind.founder.movement
+        state.units.append(settler)
         let founder = state.nextID
         state.nextID += 1
         // A foe beside the keeper's spear, at war.

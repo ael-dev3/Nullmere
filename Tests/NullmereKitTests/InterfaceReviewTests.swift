@@ -89,6 +89,9 @@ final class InterfaceReviewTests: XCTestCase {
 
     func testACompanyIsOrderedWithoutAPointer() throws {
         let session = GameSession(state: GameState(settings: GameSettings(seedText: "no pointer")), store: LocalStore(directory: dir))
+        // The seat's briefing, first in an age, keeps the keys until put away.
+        XCTAssertFalse(session.handle(.pan(dx: 0, dy: 0)))
+        session.dismissSeatBriefing()
         XCTAssertEqual(KeyBridgeView.key(for: NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: 0,
                                                                   context: nil, characters: "m", charactersIgnoringModifiers: "m",
                                                                   isARepeat: false, keyCode: 46)!), .orderAtCentre)
@@ -126,7 +129,9 @@ final class InterfaceReviewTests: XCTestCase {
         state.relations[index].stance = .war
         let session = GameSession(state: state, store: LocalStore(directory: dir))
         let item = try XCTUnwrap(session.mapItems.first { $0.selection == .unit(spear.id) })
-        XCTAssertEqual(item.orders.first?.name, "Strike the Spears of \(state.houses[foe].title)")
+        let strike = try XCTUnwrap(item.orders.first?.name)
+        XCTAssertTrue(strike.hasPrefix("Strike the Spears of \(state.houses[foe].title), beside it, "), strike)
+        XCTAssertTrue(strike.contains("they take") && strike.contains("you take"), "With its odds: \(strike)")
         XCTAssertEqual(item.orders.first?.hex, beside)
     }
 

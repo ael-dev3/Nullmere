@@ -87,13 +87,13 @@ enum MapAccessibility {
                     offered.append(Order(name: "March to a site to found a hold, \(way(from: unit.position, to: site)), \(place(site))", hex: site))
                 }
             }
-            // Into the unknown: the nearest known ground in reach that
-            // borders country not yet seen.
-            let frontier = state.reach(of: unit).keys.filter { hex in
-                hex != unit.position && session.isExplored(hex)
-                    && state.map.neighbors(of: hex).contains { !session.isExplored($0) }
-            }
-            if let edge = frontier.min(by: { (unit.position.distance(to: $0), $0) < (unit.position.distance(to: $1), $1) }) {
+            // Into the unknown: the nearest known ground, a march of one
+            // watch or several, that borders country not yet seen.
+            let frontier = unit.position.spiral(12).filter { hex in
+                hex != unit.position && session.isExplored(hex) && state.map[hex]?.terrain.isPassable == true
+                    && state.unit(at: hex) == nil && state.map.neighbors(of: hex).contains { !session.isExplored($0) }
+            }.sorted { (unit.position.distance(to: $0), $0) < (unit.position.distance(to: $1), $1) }
+            if let edge = frontier.prefix(8).first(where: { state.path(for: unit, to: $0) != nil }) {
                 offered.append(Order(name: "Explore toward the unknown, \(way(from: unit.position, to: edge))", hex: edge))
             }
             // The nearest holds it knows of.
