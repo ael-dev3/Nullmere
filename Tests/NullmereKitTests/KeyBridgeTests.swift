@@ -1,4 +1,5 @@
 import AppKit
+import LauncherCore
 import SwiftUI
 import XCTest
 @testable import NullmereCore
@@ -35,6 +36,17 @@ final class KeyBridgeTests: XCTestCase {
         XCTAssertEqual(KeyBridgeView.key(for: special(.downArrow, code: 125)), .pan(dx: 0, dy: -90))
         XCTAssertEqual(KeyBridgeView.key(for: special(.leftArrow, code: 123)), .pan(dx: 90, dy: 0))
         XCTAssertEqual(KeyBridgeView.key(for: special(.rightArrow, code: 124, modifiers: .shift)), .pan(dx: -240, dy: 0), "Shift pans further")
+    }
+
+    /// The realm's gate and door step along their choices as the launcher
+    /// does: left and up back, right and down on.
+    func testTheGateAndTheDoorReadTheArrowsAsTheLauncherDoes() {
+        XCTAssertEqual(ChoiceArrows.command(for: .leftArrow), .left)
+        XCTAssertEqual(ChoiceArrows.command(for: .upArrow), .up)
+        XCTAssertEqual(ChoiceArrows.command(for: .rightArrow), .right)
+        XCTAssertEqual(ChoiceArrows.command(for: .downArrow), .down)
+        XCTAssertEqual(ChoiceRow.step(0, by: ChoiceArrows.command(for: .downArrow), among: 3), 1)
+        XCTAssertEqual(ChoiceRow.step(1, by: ChoiceArrows.command(for: .upArrow), among: 3), 0)
     }
 
     func testTheWindowsKeysReachTheGameButTypingAndShortcutsDont() throws {

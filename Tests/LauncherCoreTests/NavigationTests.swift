@@ -30,6 +30,23 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(KeyCommand(keyCode: 124, keyboardNavigation: true), .right)
     }
 
+    /// One rule for every row of choices: the arrows step the lit one along
+    /// and stop at the ends, and a row grown shorter brings it back.
+    func testTheArrowsStepAlongARowOfChoices() {
+        XCTAssertEqual(ChoiceRow.step(0, by: .right, among: 3), 1)
+        XCTAssertEqual(ChoiceRow.step(1, by: .down, among: 3), 2)
+        XCTAssertEqual(ChoiceRow.step(2, by: .right, among: 3), 2, "Stops at the last")
+        XCTAssertEqual(ChoiceRow.step(2, by: .left, among: 3), 1)
+        XCTAssertEqual(ChoiceRow.step(1, by: .up, among: 3), 0)
+        XCTAssertEqual(ChoiceRow.step(0, by: .left, among: 3), 0, "Stops at the first")
+        XCTAssertEqual(ChoiceRow.step(1, by: .confirm, among: 3), 1, "Return performs; it doesn't move")
+        XCTAssertEqual(ChoiceRow.step(1, by: .back, among: 3), 1)
+        XCTAssertEqual(ChoiceRow.step(2, by: .left, among: 2), 0, "Lit beyond a row grown shorter, stepped back from its end")
+        XCTAssertEqual(ChoiceRow.step(5, by: .right, among: 2), 1)
+        XCTAssertEqual(ChoiceRow.step(-1, by: .right, among: 2), 1)
+        XCTAssertEqual(ChoiceRow.step(3, by: .right, among: 0), 0, "No choices, nothing lit")
+    }
+
     func testOnlyArrowsRepeatWhenHeld() {
         XCTAssertTrue(KeyCommand.up.repeatsWhenHeld)
         XCTAssertTrue(KeyCommand.right.repeatsWhenHeld)

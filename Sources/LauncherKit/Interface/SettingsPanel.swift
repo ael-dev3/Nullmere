@@ -46,9 +46,7 @@ struct SettingsPanel: View {
             .padding(.top, 18 * unit)
         }
         .frame(width: 560 * unit)
-        .onChange(of: focusedRow) { _, row in
-            if let row { model.settingsSelection = row }
-        }
+        .onChange(of: focusedRow) { _, row in if let row { model.settingsSelection = row } }
     }
 }
 
@@ -64,19 +62,18 @@ private struct SettingsRowView: View {
     let choose: (Int) -> Void
 
     @Environment(\.launcherUnit) private var unit
-    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         HStack(spacing: 0) {
             SelectionTick(isVisible: isFocused, length: 10 * unit)
                 .padding(.trailing, isFocused ? 10 * unit : 0)
             VStack(alignment: .leading, spacing: 4 * unit) {
-                SpacedText(title, size: 10.5 * unit, weight: .regular, tracking: 0.32)
-                    .opacity(isFocused ? 0.95 : labelOpacity)
+                SpacedText(title, size: .launcherType(10.5, unit: unit), weight: .regular, tracking: 0.32)
+                    .foregroundStyle(Palette.text(isFocused ? 0.95 : 0.55))
                 if let note {
                     Text(verbatim: note)
-                        .font(.system(size: 9 * unit, weight: .light))
-                        .opacity(0.45)
+                        .font(.system(size: .launcherType(9, unit: unit), weight: .light))
+                        .foregroundStyle(Palette.text(0.5))
                 }
             }
             Spacer(minLength: 24 * unit)
@@ -111,12 +108,13 @@ private struct SettingsRowView: View {
     private func option(_ label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         PressableButtons.note(label, enabled: true, action)
         return Button(action: action) {
-            SpacedText(label, size: 10.5 * unit, weight: .light, tracking: 0.24)
-                .opacity(isSelected ? 1 : optionOpacity)
+            SpacedText(label, size: .launcherType(10.5, unit: unit), weight: .light, tracking: 0.24)
+                .foregroundStyle(Palette.text(isSelected ? 1 : 0.5))
                 .overlay(alignment: .bottom) {
                     Rectangle()
+                        .fill(Palette.line(0.55))
                         .frame(height: 1)
-                        .opacity(isSelected ? 0.55 : 0)
+                        .opacity(isSelected ? 1 : 0)
                         .offset(y: 6 * unit)
                 }
                 .contentShape(Rectangle())
@@ -126,7 +124,4 @@ private struct SettingsRowView: View {
         .accessibilityLabel(label)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
-
-    private var labelOpacity: Double { contrast == .increased ? 0.8 : 0.55 }
-    private var optionOpacity: Double { contrast == .increased ? 0.7 : 0.38 }
 }

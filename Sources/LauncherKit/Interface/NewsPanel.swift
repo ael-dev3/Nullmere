@@ -50,28 +50,27 @@ private struct NewsHeadline: View {
     let action: () -> Void
 
     @Environment(\.launcherUnit) private var unit
-    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         let _ = PressableButtons.note(item.title, enabled: true, action)
         Button(action: action) {
             HStack(alignment: .top, spacing: 12 * unit) {
                 Rectangle()
+                    .fill(Palette.line(0.7))
                     .frame(width: 1, height: 30 * unit)
-                    .opacity(isSelected ? 0.7 : 0)
+                    .opacity(isSelected ? 1 : 0)
                 VStack(alignment: .leading, spacing: 4 * unit) {
-                    SpacedText(item.date.shortText, size: 9 * unit, weight: .regular, tracking: 0.3, balanced: false)
-                        .opacity(0.6)
+                    SpacedText(item.date.shortText, size: .launcherType(9, unit: unit), weight: .regular, tracking: 0.3, balanced: false)
+                        .foregroundStyle(Palette.text(isSelected ? 0.68 : 0.5))
                     Text(verbatim: item.title.uppercased())
-                        .font(.system(size: 11.5 * unit, weight: .light))
+                        .font(.system(size: .launcherType(11.5, unit: unit), weight: .light))
                         .tracking(11.5 * unit * 0.2)
                         .lineSpacing(2 * unit)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
+                        .foregroundStyle(Palette.text(isSelected ? 1 : 0.55))
                 }
             }
-            .foregroundStyle(Palette.ink)
-            .opacity(isSelected ? 1 : restingOpacity)
             .padding(.vertical, 7 * unit)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
@@ -80,10 +79,6 @@ private struct NewsHeadline: View {
         .animation(.easeOut(duration: 0.3), value: isSelected)
         .accessibilityLabel("\(item.title), \(item.date.spokenText)")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-
-    private var restingOpacity: Double {
-        contrast == .increased ? 0.75 : 0.45
     }
 }
 
@@ -99,17 +94,17 @@ private struct NewsStory: View {
             if let item {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(verbatim: item.title)
-                        .font(.system(size: 18 * unit, weight: .light))
+                        .font(.system(size: .launcherType(18, unit: unit), weight: .light))
                         .tracking(18 * unit * 0.04)
-                        .foregroundStyle(Palette.ink.opacity(0.96))
+                        .foregroundStyle(Palette.text(0.96))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
 
                     Text(verbatim: item.body)
-                        .font(.system(size: 12.5 * unit, weight: .light))
+                        .font(.system(size: .launcherType(12.5, unit: unit), weight: .light))
                         .lineSpacing(5 * unit)
-                        .foregroundStyle(Palette.ink.opacity(0.7))
+                        .foregroundStyle(Palette.text(0.7))
                         .lineLimit(5)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 10 * unit)
@@ -117,7 +112,7 @@ private struct NewsStory: View {
                     if item.link != nil {
                         let _ = PressableButtons.note("Read more", enabled: true, openLink)
                         Button(action: openLink) {
-                            SpacedText("Read more", size: 9.5 * unit, weight: .regular, tracking: 0.36, balanced: false)
+                            SpacedText("Read more", size: .launcherType(9.5, unit: unit), weight: .regular, tracking: 0.36, balanced: false)
                                 .foregroundStyle(Palette.glow.opacity(0.9))
                                 .contentShape(Rectangle())
                         }
@@ -140,11 +135,10 @@ private struct NewsSourceLine: View {
     let status: LauncherModel.NewsStatus
 
     @Environment(\.launcherUnit) private var unit
-    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
-        SpacedText(text, size: 8.5 * unit, weight: .regular, tracking: 0.28, balanced: false)
-            .foregroundStyle(Palette.ink.opacity(contrast == .increased ? 0.7 : 0.38))
+        SpacedText(text, size: .launcherType(8.5, unit: unit), weight: .regular, tracking: 0.28, balanced: false)
+            .foregroundStyle(Palette.text(0.45))
             .padding(.leading, 13 * unit)
             .animation(.easeInOut(duration: 0.3), value: status)
     }

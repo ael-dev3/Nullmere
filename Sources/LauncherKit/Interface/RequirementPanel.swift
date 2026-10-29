@@ -7,40 +7,64 @@ import SwiftUI
 struct RequirementPanel: View {
     let model: LauncherModel
 
-    @Environment(\.launcherUnit) private var unit
-
     var body: some View {
         let actions = model.readiness.actions
-        VStack(spacing: 0) {
-            PanelHeader(title: model.readiness.headline)
+        RequirementView(readiness: model.readiness, choices: actions.map(\.title),
+                        selection: Bindable(model).requirementSelection) { index in
+            model.perform(actions[index])
+        }
+    }
+}
 
-            Text(verbatim: model.readiness.explanation)
-                .font(.system(size: 13 * unit, weight: .light))
+/// What is missing, as the launcher shows it on the water: the heading, the
+/// explanation, the requirements each lit when met, and a row of choices,
+/// one lit at a time, the one Return performs. The realm's gate shows the
+/// same, with its own choices.
+public struct RequirementView: View {
+    let readiness: ModelReadiness
+    let choices: [String]
+    @Binding var selection: Int
+    let choose: (Int) -> Void
+
+    @Environment(\.launcherUnit) private var unit
+
+    public init(readiness: ModelReadiness, choices: [String], selection: Binding<Int>, choose: @escaping (Int) -> Void) {
+        self.readiness = readiness
+        self.choices = choices
+        _selection = selection
+        self.choose = choose
+    }
+
+    public var body: some View {
+        VStack(spacing: 0) {
+            PanelHeader(title: readiness.headline)
+
+            Text(verbatim: readiness.explanation)
+                .font(.system(size: .launcherType(13, unit: unit), weight: .light))
                 .lineSpacing(6 * unit)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(Palette.ink.opacity(0.68))
+                .foregroundStyle(Palette.text(0.68))
                 .frame(maxWidth: 460 * unit)
                 .fixedSize(horizontal: false, vertical: true)
 
-            RequirementsLine(readiness: model.readiness)
+            RequirementsLine(readiness: readiness)
                 .padding(.top, 24 * unit)
 
             // One choice is lit at a time, and it is the one Return performs:
             // the pointer chooses by resting on a word, the arrows by moving.
             HStack(spacing: 48 * unit) {
-                ForEach(actions.indices, id: \.self) { index in
-                    let action = actions[index]
-                    MenuButton(title: action.title, isSelected: index == model.requirementSelection) {
-                        model.perform(action)
+                ForEach(choices.indices, id: \.self) { index in
+                    MenuButton(title: choices[index], isSelected: index == selection) {
+                        choose(index)
                     }
                     .onPointer { inside in
-                        if inside { model.requirementSelection = index }
+                        if inside { selection = index }
                     }
                 }
             }
             .padding(.top, 22 * unit)
         }
-        .animation(.easeInOut(duration: 0.4), value: model.readiness)
+        .animation(.easeInOut(duration: 0.4), value: readiness)
     }
 }
 
@@ -74,8 +98,8 @@ struct RequirementsLine: View {
     private func requirement(_ title: String, isMet: Bool) -> some View {
         HStack(spacing: 8 * unit) {
             StatusDot(isLit: isMet)
-            SpacedText(title, size: 9 * unit, weight: .regular, tracking: 0.3)
-                .foregroundStyle(Palette.ink.opacity(isMet ? 0.72 : 0.42))
+            SpacedText(title, size: .launcherType(9, unit: unit), weight: .regular, tracking: 0.3)
+                .foregroundStyle(Palette.text(isMet ? 0.72 : 0.5))
         }
     }
 

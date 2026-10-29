@@ -22,43 +22,25 @@ struct LakeFallbackView: View {
     /// water reflects a little less than all.
     private static let farShoreImage = Color(red: 0.027, green: 0.034, blue: 0.049)
     private static let nearBankImage = Color(red: 0.007, green: 0.010, blue: 0.014)
-
-    /// Smooth value noise along a line, 0...1.
-    private static func noise(_ x: Double) -> Double {
-        func hash(_ i: Double) -> Double {
-            let v = sin(i * 127.1 + 311.7) * 43_758.5453
-            return v - v.rounded(.down)
-        }
-        let i = x.rounded(.down), f = x - i
-        let u = f * f * (3 - 2 * f)
-        return hash(i) + (hash(i + 1) - hash(i)) * u
-    }
-
-    private static func smoothstep(_ a: Double, _ b: Double, _ x: Double) -> Double {
-        let t = min(max((x - a) / (b - a), 0), 1)
-        return t * t * (3 - 2 * t)
-    }
-
-    /// A rise from 0 to 1 between `a - slope` and `a`, and down again
-    /// between `b` and `b + slope`.
-    private static func plateau(_ u: Double, from a: Double, to b: Double, slope: Double) -> Double {
-        smoothstep(a - slope, a, u) * (1 - smoothstep(b, b + slope, u))
-    }
+    private static let mist = Color(red: 0.55, green: 0.63, blue: 0.76)
 
     /// The far shore's height above the waterline, as a share of the view's
-    /// height, at `u` across the view (0 at the left, 1 at the right), as
-    /// the Metal lake composes it: low hills, a shelf, and the broad,
-    /// flat-topped mesa beside the moon, no higher than `nm_mesas` draws.
-    static func mesas(_ u: Double) -> Double {
-        let hills = 0.010 + 0.006 * noise(u * 9 + 4)
-        let shelf = 0.028 * plateau(u, from: 0.20, to: 0.47, slope: 0.05)
-        let mesa = 0.046 * plateau(u, from: 0.45, to: 0.72, slope: 0.035)
-        return max(hills, shelf, mesa) + 0.0012 * noise(u * 60)
+    /// height, at `u` across a view of this aspect (0 at the left, 1 at the
+    /// right): the Metal lake's own mesas, worked out here.
+    static func mesas(_ u: Double, aspect: Double) -> Double {
+        LakeShore.mesas(u * aspect)
     }
 
-    /// The low, nearer bank's height, as `nm_bank` draws it.
-    static func bank(_ u: Double) -> Double {
-        0.0018 + 0.006 * smoothstep(0.35, 0.75, noise(u * 5 + 1))
+    /// The low, nearer bank's height, as the Metal lake draws it.
+    static func bank(_ u: Double, aspect: Double) -> Double {
+        LakeShore.bank(u * aspect)
+    }
+
+    /// A star's colour, as the shader tints them: cold, or now and then warm.
+    private static func tint(_ star: Star) -> Color {
+        let warmth = (star.x * 9301 + star.altitude * 49297).truncatingRemainder(dividingBy: 1)
+        let w = warmth * warmth
+        return Color(red: 0.76 + 0.24 * w, green: 0.85 + 0.07 * w, blue: 1.0 - 0.18 * w)
     }
 
     var body: some View {
@@ -84,11 +66,12 @@ struct LakeFallbackView: View {
                 let x = star.x * size.width
                 let r = star.radius
                 let sky = CGRect(x: x - r, y: waterline - rise - r, width: 2 * r, height: 2 * r)
-                context.fill(Path(ellipseIn: sky), with: .color(.white.opacity(0.85 * star.brightness)))
+                let colour = Self.tint(star)
+                context.fill(Path(ellipseIn: sky), with: .color(colour.opacity(0.85 * star.brightness)))
                 let mirrored = sky.offsetBy(dx: 0, dy: 2 * rise)
                 if mirrored.minY < size.height {
                     // A black mirror gives the stars back nearly whole.
-                    context.fill(Path(ellipseIn: mirrored), with: .color(.white.opacity(0.70 * star.brightness)))
+                    context.fill(Path(ellipseIn: mirrored), with: .color(colour.opacity(0.70 * star.brightness)))
                 }
             }
 
@@ -116,7 +99,9 @@ struct LakeFallbackView: View {
             // The far shore, flat-topped mesas and a darker bank before
             // them, standing in front of the moon's glow, and their image
             // in the water.
-            // A ridge of heights along the waterline, standing up or mirrored down.
+            // A ridge of heights along the waterline, standing up or mirrored
+            // down, at the view's own aspect, as the Metal lake draws it.
+            let aspect = Double(size.width / max(size.height, 1))
             func ridge(_ height: (Double) -> Double, mirrored: Bool) -> Path {
                 var path = Path()
                 path.move(to: CGPoint(x: 0, y: waterline))
@@ -128,10 +113,32 @@ struct LakeFallbackView: View {
                 path.closeSubpath()
                 return path
             }
-            context.fill(ridge(Self.mesas, mirrored: false), with: .color(Self.farShore))
-            context.fill(ridge(Self.mesas, mirrored: true), with: .color(Self.farShoreImage))
-            context.fill(ridge(Self.bank, mirrored: false), with: .color(Self.nearBank))
-            context.fill(ridge(Self.bank, mirrored: true), with: .color(Self.nearBankImage))
+            context.fill(ridge({ Self.mesas($0, aspect: aspect) }, mirrored: false), with: .color(Self.farShore))
+            context.fill(ridge({ Self.mesas($0, aspect: aspect) }, mirrored: true), with: .color(Self.farShoreImage))
+            context.fill(ridge({ Self.bank($0, aspect: aspect) }, mirrored: false), with: .color(Self.nearBank))
+            context.fill(ridge({ Self.bank($0, aspect: aspect) }, mirrored: true), with: .color(Self.nearBankImage))
+
+            // Mist lying on the water at the horizon, as the shader lays it:
+            // faint, and fading by two thirds every 3% of the height away.
+            let mist = size.height * 0.06
+            context.fill(Path(CGRect(x: 0, y: waterline - mist, width: size.width, height: mist * 2)), with: .linearGradient(
+                Gradient(stops: [
+                    .init(color: .clear, location: 0),
+                    .init(color: Self.mist.opacity(0.01), location: 0.25),
+                    .init(color: Self.mist.opacity(0.03), location: 0.5),
+                    .init(color: Self.mist.opacity(0.01), location: 0.75),
+                    .init(color: .clear, location: 1),
+                ]),
+                startPoint: CGPoint(x: 0, y: waterline - mist),
+                endPoint: CGPoint(x: 0, y: waterline + mist)
+            ))
+            // And the shader's vignette, the corners a little darker.
+            context.fill(Path(CGRect(origin: .zero, size: size)), with: .radialGradient(
+                Gradient(stops: [.init(color: .clear, location: 0.45), .init(color: .black.opacity(0.42), location: 1)]),
+                center: CGPoint(x: size.width / 2, y: size.height / 2),
+                startRadius: 0,
+                endRadius: hypot(size.width, size.height) / 2
+            ))
         }
         .accessibilityHidden(true)
     }

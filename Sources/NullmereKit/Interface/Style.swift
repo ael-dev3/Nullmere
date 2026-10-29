@@ -1,14 +1,15 @@
 import AppKit
-import NullmereCore
+import LauncherCore
 import LauncherKit
+import NullmereCore
 import Observation
 import SwiftUI
 
-/// Nullmere's few colours: pale, cold type over the dark, and the colours
-/// of the Houses (matching the world shader).
+/// Nullmere's few colours: pale, cold type over the dark, the launcher's
+/// own, and the colours of the Houses (matching the world shader).
 enum Palette {
-    static let ink = Color(red: 0.894, green: 0.918, blue: 0.949)
-    static let glow = Color(red: 0.588, green: 0.706, blue: 0.882)
+    static let ink = LauncherKit.Palette.ink
+    static let glow = LauncherKit.Palette.glow
     static let good = Color(red: 0.58, green: 0.80, blue: 0.66)
     static let bad = Color(red: 0.90, green: 0.52, blue: 0.48)
     static let panel = Color(red: 0.02, green: 0.025, blue: 0.035)
@@ -30,10 +31,15 @@ enum Palette {
         Color(red: 0.88, green: 0.36, blue: 0.50),
     ]
 
-    /// The pale type, as faint as the design asks, or, with Increase
-    /// Contrast on, no fainter than reads clearly over the dark.
+    /// The pale type, by the launcher's one rule: as faint as the design
+    /// asks, but never too faint to read, and plainer with Increase Contrast.
     static func text(_ opacity: Double) -> Color {
-        ink.opacity(Contrast.shared.isIncreased ? max(opacity, 0.85) : opacity)
+        LauncherKit.Palette.text(opacity)
+    }
+
+    /// A line, a track or a mark that isn't type, by the launcher's rule.
+    static func line(_ opacity: Double) -> Color {
+        LauncherKit.Palette.line(opacity)
     }
 
     static func house(_ house: House) -> Color {
@@ -42,31 +48,47 @@ enum Palette {
 
     static func tone(_ tone: GameSession.Notice.Tone) -> Color {
         switch tone {
-        case .neutral: return ink.opacity(0.8)
+        case .neutral: return text(0.8)
         case .good: return good
         case .bad: return bad
         }
     }
 }
 
-/// Uppercase, widely tracked type, as in the launcher.
+/// Uppercase, widely tracked type, as in the launcher. Tracking adds
+/// space after the last letter; centred capitals take the same before the
+/// first, as the launcher's do, so they sit centred over what lies beneath.
 struct Caps: View {
     let text: String
     var size: CGFloat = 10
     var weight: Font.Weight = .regular
     var tracking: CGFloat = 0.28
+    var centred = false
 
-    init(_ text: String, size: CGFloat = 10, weight: Font.Weight = .regular, tracking: CGFloat = 0.28) {
+    init(_ text: String, size: CGFloat = 10, weight: Font.Weight = .regular, tracking: CGFloat = 0.28, centred: Bool = false) {
         self.text = text
         self.size = size
         self.weight = weight
         self.tracking = tracking
+        self.centred = centred
     }
 
     var body: some View {
+        // Spaced by the size the letters are drawn at, Larger type and all.
+        let drawn = TextSize.shared.size(size)
         Text(verbatim: text.uppercased())
             .font(.nm(size, weight: weight))
-            .tracking(size * TextSize.shared.scale * tracking)
+            .tracking(drawn * tracking)
+            .padding(.leading, centred ? drawn * tracking : 0)
+    }
+}
+
+extension Font {
+    /// The interface's type at a size, scaled by the reader's choice, and
+    /// never under the least that reads.
+    @MainActor
+    static func nm(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .system(size: TextSize.shared.size(size), weight: weight)
     }
 }
 
@@ -77,7 +99,7 @@ struct Rule: View {
     @Environment(\.displayScale) private var displayScale
 
     var body: some View {
-        LinearGradient(colors: [.clear, Palette.ink.opacity(opacity), .clear], startPoint: .leading, endPoint: .trailing)
+        LinearGradient(colors: [.clear, Palette.line(opacity), .clear], startPoint: .leading, endPoint: .trailing)
             .frame(height: 1 / displayScale)
     }
 }
@@ -91,7 +113,7 @@ struct PanelBackground: ViewModifier {
             .background(Palette.panel.opacity(contrast == .increased ? 0.95 : 0.82))
             .overlay(
                 RoundedRectangle(cornerRadius: 3)
-                    .strokeBorder(Palette.ink.opacity(0.12), lineWidth: 1)
+                    .strokeBorder(Palette.line(0.12), lineWidth: 1)
             )
             .clipShape(RoundedRectangle(cornerRadius: 3))
     }
@@ -125,7 +147,7 @@ struct QuietButton: View {
             Caps(title, size: size, weight: prominent ? .medium : .regular)
                 .lineLimit(1)
                 .fixedSize()
-                .foregroundStyle((tint ?? Palette.ink).opacity(enabled ? (hovering || prominent || tint != nil ? 1 : 0.72) : 0.3))
+                .foregroundStyle(enabled ? (tint ?? Palette.text(hovering || prominent ? 1 : 0.72)) : (tint ?? Palette.ink).opacity(0.3))
                 .padding(.horizontal, prominent ? 16 : 8)
                 .padding(.vertical, prominent ? 9 : 5)
                 .background(
@@ -134,7 +156,7 @@ struct QuietButton: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 2)
-                        .strokeBorder(Palette.ink.opacity(prominent ? 0.35 : 0), lineWidth: 1)
+                        .strokeBorder(Palette.line(prominent ? 0.35 : 0), lineWidth: 1)
                 )
                 .overlay(FocusRing(isFocused: focused))
                 .contentShape(Rectangle())
@@ -176,7 +198,7 @@ struct CostLine: View {
                         Text(verbatim: "\(cost[resource])")
                             .font(.nm(11, weight: .regular).monospacedDigit())
                     }
-                    .foregroundStyle(available[resource] >= cost[resource] ? Palette.ink.opacity(0.75) : Palette.bad)
+                    .foregroundStyle(available[resource] >= cost[resource] ? Palette.text(0.75) : Palette.bad)
                 }
             }
         }
@@ -240,6 +262,31 @@ struct Confirmation: Equatable {
     func isArmed(at now: Date = Date()) -> Bool {
         guard let armedAt else { return false }
         return now.timeIntervalSince(armedAt) <= span
+    }
+}
+
+/// The arrows moving the lit choice along a row of choices, by the
+/// launcher's rule: left and up step back, right and down on. For the
+/// realm's gate and door, where SwiftUI hears the keys.
+struct ChoiceArrows: ViewModifier {
+    @Binding var lit: Int
+    let count: Int
+
+    func body(content: Content) -> some View {
+        content.onKeyPress(keys: [.leftArrow, .upArrow, .rightArrow, .downArrow]) { press in
+            lit = ChoiceRow.step(lit, by: Self.command(for: press.key), among: count)
+            return .handled
+        }
+    }
+
+    /// The launcher's word for an arrow.
+    static func command(for key: KeyEquivalent) -> KeyCommand {
+        switch key {
+        case .leftArrow: return .left
+        case .upArrow: return .up
+        case .downArrow: return .down
+        default: return .right
+        }
     }
 }
 
@@ -345,12 +392,3 @@ extension View {
     }
 }
 
-/// Whether the Mac asks for more contrast: read by `Palette.text`, set
-/// where the interface begins from the environment, on the main thread.
-@Observable
-final class Contrast: @unchecked Sendable {
-    static let shared = Contrast()
-    var isIncreased = false
-    /// "Differentiate without colour": what colour says, said in shape too.
-    var differentiates = false
-}

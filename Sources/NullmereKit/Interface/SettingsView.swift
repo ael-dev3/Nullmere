@@ -1,4 +1,5 @@
 import LauncherCore
+import LauncherKit
 import SwiftUI
 
 /// The realm's Settings (⌘,), over the front door or the world: how the

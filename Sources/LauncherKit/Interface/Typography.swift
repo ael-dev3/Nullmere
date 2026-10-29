@@ -1,9 +1,40 @@
+import Observation
 import SwiftUI
 
-/// The launcher's few colours: pale, slightly cold type and its glow.
-enum Palette {
-    static let ink = Color(red: 0.894, green: 0.918, blue: 0.949)
-    static let glow = Color(red: 0.588, green: 0.706, blue: 0.882)
+/// The launcher's few colours: pale, slightly cold type and its glow. The
+/// realm's interface takes its own from here, so the two are one.
+public enum Palette {
+    public static let ink = Color(red: 0.894, green: 0.918, blue: 0.949)
+    public static let glow = Color(red: 0.588, green: 0.706, blue: 0.882)
+
+    /// The pale type at the opacity the design asks, made to read: never
+    /// fainter than half, which reads at 4.5 to 1 over the dark; with
+    /// Increase Contrast on, lifted most of the way to full, 10 to 1 or
+    /// more, keeping what is fainter than what. The launcher's type and the
+    /// realm's follow this one rule; only a choice that can't be made yet
+    /// stays fainter.
+    public static func text(_ opacity: Double) -> Color {
+        let readable = Swift.max(opacity, 0.5)
+        return ink.opacity(Contrast.shared.isIncreased ? 0.6 + 0.4 * readable : readable)
+    }
+
+    /// A line, a track or a mark that isn't type, at the opacity the design
+    /// asks: with Increase Contrast on, twice as plain, up to 0.4, so it
+    /// shows clearly and an empty meter still can't be taken for a full one.
+    public static func line(_ opacity: Double) -> Color {
+        ink.opacity(Contrast.shared.isIncreased ? Swift.max(opacity, Swift.min(opacity * 2, 0.4)) : opacity)
+    }
+}
+
+/// Whether the Mac asks for more contrast, and for what colour says to be
+/// said in shape too: read as the launcher and the realm draw, set where
+/// each window begins, from its environment, on the main thread.
+@Observable
+public final class Contrast: @unchecked Sendable {
+    public static let shared = Contrast()
+    public var isIncreased = false
+    /// "Differentiate without colour".
+    public var differentiates = false
 }
 
 /// Scale for type and spacing; 1 at the reference window size.
@@ -11,8 +42,19 @@ private struct LauncherUnitKey: EnvironmentKey {
     static let defaultValue: CGFloat = 1
 }
 
+extension CGFloat {
+    /// A size of the launcher's type: scaled with the window, by the
+    /// reader's Larger type too (one setting with the realm's), and never
+    /// under the least that reads, however small the window.
+    @MainActor
+    public static func launcherType(_ size: CGFloat, unit: CGFloat) -> CGFloat {
+        let text = TextSize.shared
+        return Swift.max(size * unit * text.scale, text.isLarger ? TextSize.smallestLarger : 9)
+    }
+}
+
 extension EnvironmentValues {
-    var launcherUnit: CGFloat {
+    public var launcherUnit: CGFloat {
         get { self[LauncherUnitKey.self] }
         set { self[LauncherUnitKey.self] = newValue }
     }
@@ -23,7 +65,7 @@ extension EnvironmentValues {
 /// Tracking also adds space after the last glyph. Centred text gets the same
 /// space before the first glyph, so the word stays optically centred;
 /// left-aligned text doesn't, so it lines up with the text around it.
-struct SpacedText: View {
+public struct SpacedText: View {
     private let text: String
     private let size: CGFloat
     private let weight: Font.Weight
@@ -33,7 +75,7 @@ struct SpacedText: View {
     /// - Parameters:
     ///   - tracking: letter spacing in ems.
     ///   - balanced: whether to pad the leading edge to match the trailing tracking.
-    init(_ text: String, size: CGFloat, weight: Font.Weight = .light, tracking: CGFloat, balanced: Bool = true) {
+    public init(_ text: String, size: CGFloat, weight: Font.Weight = .light, tracking: CGFloat, balanced: Bool = true) {
         self.text = text.uppercased()
         self.size = size
         self.weight = weight
@@ -41,7 +83,7 @@ struct SpacedText: View {
         self.balanced = balanced
     }
 
-    var body: some View {
+    public var body: some View {
         Text(verbatim: text)
             .font(.system(size: size, weight: weight))
             .tracking(size * tracking)
@@ -81,7 +123,7 @@ struct Hairline: View {
 
     var body: some View {
         LinearGradient(
-            colors: [.clear, Palette.ink.opacity(opacity), .clear],
+            colors: [.clear, Palette.line(opacity), .clear],
             startPoint: .leading,
             endPoint: .trailing
         )
@@ -90,14 +132,18 @@ struct Hairline: View {
 }
 
 /// A hairline as wide as the space it is given, brightest in the middle.
-struct Underline: View {
+public struct Underline: View {
     var opacity: Double = 0.75
 
     @Environment(\.displayScale) private var displayScale
 
-    var body: some View {
+    public init(opacity: Double = 0.75) {
+        self.opacity = opacity
+    }
+
+    public var body: some View {
         LinearGradient(
-            colors: [.clear, Palette.ink.opacity(opacity), .clear],
+            colors: [.clear, Palette.line(opacity), .clear],
             startPoint: .leading,
             endPoint: .trailing
         )
@@ -117,17 +163,22 @@ struct SelectionTick: View {
     }
 }
 
-/// A small dot: lit and glowing when something is ready, a faint ring when not.
-struct StatusDot: View {
+/// A small dot: lit and glowing when something is ready, a faint ring when
+/// not. The realm's front door shows the realm's state with it too.
+public struct StatusDot: View {
     var isLit: Bool
 
     @Environment(\.launcherUnit) private var unit
 
-    var body: some View {
+    public init(isLit: Bool) {
+        self.isLit = isLit
+    }
+
+    public var body: some View {
         Circle()
             .fill(Palette.glow.opacity(isLit ? 0.95 : 0))
             .overlay {
-                Circle().strokeBorder(Palette.ink.opacity(isLit ? 0 : 0.5), lineWidth: 1)
+                Circle().strokeBorder(Palette.line(isLit ? 0 : 0.5), lineWidth: 1)
             }
             .frame(width: 5 * unit, height: 5 * unit)
             .shadow(color: Palette.glow.opacity(isLit ? 0.8 : 0), radius: 4 * unit)
@@ -136,15 +187,19 @@ struct StatusDot: View {
 }
 
 /// A panel's heading: spaced capitals over a short hairline.
-struct PanelHeader: View {
+public struct PanelHeader: View {
     let title: String
 
     @Environment(\.launcherUnit) private var unit
 
-    var body: some View {
+    public init(title: String) {
+        self.title = title
+    }
+
+    public var body: some View {
         VStack(spacing: 14 * unit) {
-            SpacedText(title, size: 12 * unit, weight: .regular, tracking: 0.6)
-                .foregroundStyle(Palette.ink.opacity(0.86))
+            SpacedText(title, size: .launcherType(12, unit: unit), weight: .regular, tracking: 0.6)
+                .foregroundStyle(Palette.text(0.86))
                 .accessibilityAddTraits(.isHeader)
             Hairline(width: 64 * unit)
         }

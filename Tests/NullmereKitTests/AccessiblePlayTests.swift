@@ -1,4 +1,5 @@
 import AppKit
+import LauncherKit
 import SwiftUI
 import XCTest
 @testable import NullmereCore
@@ -189,11 +190,28 @@ final class AccessiblePlayTests: XCTestCase {
         XCTAssertFalse(quick.press(at: start.addingTimeInterval(Confirmation.window + 4)))
     }
 
-    func testIncreasedContrastRaisesFaintText() {
-        XCTAssertEqual(Palette.text(0.4), Palette.ink.opacity(0.4))
+    /// One rule for every text, the launcher's and the realm's: as faint as
+    /// the design asks but never fainter than reads; with Increase Contrast,
+    /// all of it plain, the fainter still fainter. Lines and meters by a
+    /// rule of their own, so an empty one is never taken for a full one.
+    func testOneRuleOfContrastForEveryText() {
+        func drawn(_ colour: Color) -> Double { Double(colour.resolve(in: EnvironmentValues()).opacity) }
+        let asked = stride(from: 0.1, through: 1.0, by: 0.05).map { $0 }
+        for opacity in asked {
+            XCTAssertEqual(drawn(NullmereKit.Palette.text(opacity)), max(opacity, 0.5), accuracy: 0.001, "At \(opacity)")
+            XCTAssertEqual(drawn(LauncherKit.Palette.text(opacity)), drawn(NullmereKit.Palette.text(opacity)), accuracy: 0.0001,
+                           "The launcher's rule and the realm's are one")
+        }
+        XCTAssertEqual(drawn(NullmereKit.Palette.line(0.1)), 0.1, accuracy: 0.001, "A line as faint as it is drawn")
+
         Contrast.shared.isIncreased = true
-        XCTAssertEqual(Palette.text(0.4), Palette.ink.opacity(0.85), "Faint text, made legible")
-        XCTAssertEqual(Palette.text(0.95), Palette.ink.opacity(0.95), "Bright text, as it was")
+        let raised = asked.map { drawn(NullmereKit.Palette.text($0)) }
+        XCTAssertGreaterThanOrEqual(raised.min() ?? 0, 0.8 - 0.001, "Every text plain")
+        XCTAssertEqual(raised, raised.sorted(), "What is fainter stays fainter")
+        XCTAssertLessThan(drawn(NullmereKit.Palette.text(0.55)), drawn(NullmereKit.Palette.text(0.9)))
+        XCTAssertEqual(drawn(NullmereKit.Palette.line(0.1)), 0.2, accuracy: 0.001, "A track twice as plain")
+        XCTAssertEqual(drawn(NullmereKit.Palette.line(0.3)), 0.4, accuracy: 0.001, "But no brighter than 0.4")
+        XCTAssertEqual(drawn(NullmereKit.Palette.line(0.7)), 0.7, accuracy: 0.001, "A bright line as it was")
     }
 
     func testWhatColourSaysIsSaidInShape() throws {
@@ -287,7 +305,9 @@ final class QuittingTests: XCTestCase {
                           opensAtOnce: false, transport: nil, pollInterval: 1)
         XCTAssertTrue(GameApp.current === app)
         XCTAssertEqual(app.ordersWaiting, 0)
-        app.woke()
+        // The Mac waking is heard (with no realm across the network to ask).
+        NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.didWakeNotification, object: nil)
+        try? await Task.sleep(for: .milliseconds(100))
         let done = expectation(description: "quit")
         let start = Date()
         app.sendWaiting(within: 3) { done.fulfill() }

@@ -17,7 +17,7 @@ struct OutcomeOverlay: View {
             ZStack {
                 Color.black.opacity(0.6).ignoresSafeArea()
                 VStack(spacing: 16) {
-                    Caps(won ? "The lake is yours" : "The lake is lost", size: 26, weight: .thin, tracking: 0.4)
+                    Caps(won ? "The lake is yours" : "The lake is lost", size: 26, weight: .thin, tracking: 0.4, centred: true)
                         .foregroundStyle(won ? Palette.ink : Palette.bad.opacity(0.9))
                         .accessibilityAddTraits(.isHeader)
                     Rule(opacity: 0.4).frame(width: 280)
@@ -100,7 +100,7 @@ struct FallenOverlay: View {
             ZStack {
                 Color.black.opacity(0.6).ignoresSafeArea()
                 VStack(spacing: 16) {
-                    Caps("Your House has fallen", size: 26, weight: .thin, tracking: 0.4)
+                    Caps("Your House has fallen", size: 26, weight: .thin, tracking: 0.4, centred: true)
                         .foregroundStyle(Palette.bad.opacity(0.9))
                         .accessibilityAddTraits(.isHeader)
                     Rule(opacity: 0.4).frame(width: 280)

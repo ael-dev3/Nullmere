@@ -63,6 +63,9 @@ public final class Ambience {
     /// The engine is running and not fading out: for tests.
     var isPlaying: Bool { started && winding == nil }
 
+    /// The engine is running, fading out or not: for tests.
+    var isRunning: Bool { started }
+
     /// When each cue last sounded. The same cue again within a tenth of a
     /// second is one sound, not a pile of them: ten watches turned at once
     /// toll one bell.

@@ -5,68 +5,76 @@ import LauncherKit
 import SwiftUI
 
 /// Shown instead of the game until Apple's on-device model is ready: what
-/// is missing, and where to fix it.
+/// is missing, and where to fix it, as the launcher shows it on the water.
 struct ModelGate: View {
     let app: GameApp
 
     private static let settingsURL = URL(string: "x-apple.systempreferences:com.apple.Siri-Settings.extension")!
 
+    @State private var appeared = false
+    /// The lit choice, the one Return performs.
+    @State private var selection = 0
+
+    /// What the gate offers: the requirement's own choices, and, crossed in
+    /// from the launcher, the way back to it.
+    private var choices: [(title: String, perform: () -> Void)] {
+        var choices: [(title: String, perform: () -> Void)] = app.readiness.actions.map { action in
+            switch action {
+            case .openSystemSettings: return (action.title, { NSWorkspace.shared.open(Self.settingsURL) })
+            case .quit: return (action.title, { NSApp.terminate(nil) })
+            }
+        }
+        if app.onLeave != nil {
+            choices.append(("Back", { app.leaveDoor() }))
+        }
+        return choices
+    }
+
     var body: some View {
+        let choices = self.choices
         ZStack {
             MoonlitLake(settings: app.displaySettings).ignoresSafeArea()
-            // Darken the water beneath the words, as the launcher does.
-            EllipticalGradient(
-                colors: [.black.opacity(0.75), .black.opacity(0.45), .clear],
-                center: UnitPoint(x: 0.5, y: 0.62),
-                startRadiusFraction: 0,
-                endRadiusFraction: 0.6
-            )
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
-            // The name where the launcher sets it, exactly; what is missing
-            // on the water below, as the launcher shows it.
             GeometryReader { proxy in
-                LakeTitle(size: proxy.size)
-                VStack(spacing: 18) {
-                    Spacer(minLength: 0)
-                        .frame(height: LakeTitle.waterline(for: proxy.size) + 12)
-                    Caps(app.readiness.headline, size: 12, weight: .medium)
-                        .foregroundStyle(Palette.ink)
-                        .accessibilityAddTraits(.isHeader)
-                    Text(verbatim: app.readiness.explanation)
-                        .font(.nm(13, weight: .light))
-                        .foregroundStyle(Palette.text(0.7))
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 440)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if app.readiness == .checking {
-                        ProgressView().controlSize(.small).tint(Palette.ink)
-                    }
-                    HStack(spacing: 8) {
-                        ForEach(app.readiness.actions, id: \.title) { action in
-                            switch action {
-                            case .openSystemSettings:
-                                QuietButton(title: action.title, size: 10, prominent: true) {
-                                    NSWorkspace.shared.open(Self.settingsURL)
-                                }
-                            case .quit:
-                                QuietButton(title: action.title, size: 10) { NSApp.terminate(nil) }
-                            }
-                        }
-                        // Crossed in from the launcher: the way back to it.
-                        if app.onLeave != nil {
-                            QuietButton(title: "Back", size: 10) { app.leaveDoor() }
-                                .keyboardShortcut(.cancelAction)
-                        }
-                    }
-                    .padding(.top, 6)
-                    Spacer(minLength: 0)
+                // Below the waterline only, as the launcher darkens it under
+                // a panel: the sky and the title stay as bright as ever.
+                PanelScrim()
+                    .padding(.top, LakeTitle.waterline(for: proxy.size))
+                    .allowsHitTesting(false)
+                // The name where the launcher sets it, exactly; what is
+                // missing on the water below, as the launcher shows it.
+                LakeTitle(size: proxy.size, isRevealed: appeared)
+                RequirementView(readiness: app.readiness, choices: choices.map(\.title), selection: $selection) { index in
+                    choices[index].perform()
                 }
-                .padding(.horizontal, 40)
+                .padding(.top, LakeTitle.waterline(for: proxy.size) + 40 * LakeTitle.unit(for: proxy.size))
                 .frame(width: proxy.size.width)
+                .environment(\.launcherUnit, LakeTitle.unit(for: proxy.size))
             }
             // Measured over the whole window, as the launcher measures it.
             .ignoresSafeArea()
+        }
+        // Return performs the lit choice; Esc goes back where it can; the
+        // arrows move along the choices, as in the launcher.
+        .background {
+            Button("") { if choices.indices.contains(selection) { choices[selection].perform() } }
+                .keyboardShortcut(.defaultAction)
+                .opacity(0)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            if app.onLeave != nil {
+                Button("") { app.leaveDoor() }
+                    .keyboardShortcut(.cancelAction)
+                    .opacity(0)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
+        .focusable()
+        .focusEffectDisabled()
+        .modifier(ChoiceArrows(lit: $selection, count: choices.count))
+        .onChange(of: app.readiness) { _, _ in selection = 0 }
+        .onAppear {
+            withAnimation(.easeOut(duration: LakeTitle.revealSeconds)) { appeared = true }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             app.checkModel()

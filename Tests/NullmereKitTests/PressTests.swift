@@ -1054,6 +1054,42 @@ final class PressDoorTests: XCTestCase {
         XCTAssertNotEqual(app.door, .unreachable("No answer from the realm."))
     }
 
+    /// The door in a window, as the app shows it: each thing that changes
+    /// at the door (a problem, the realm out of reach, the wait for a seat)
+    /// comes as the door redraws, and the way in waits on a seat.
+    func testTheDoorInAWindowFollowsTheRealm() throws {
+        let app = app("door in a window")
+        var left = 0
+        app.onLeave = { left += 1 }
+        app.checkModel()
+        let size = NSSize(width: 1100, height: 720)
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: FrontDoor(app: app).frame(width: size.width, height: size.height))
+        window.orderFrontRegardless()
+        defer { window.close() }
+        func spin() { RunLoop.main.run(until: Date().addingTimeInterval(0.2)) }
+        spin()
+
+        app.hear(.refused(.nameTaken))
+        spin()
+        XCTAssertEqual(app.arrivalProblem, RealmError.nameTaken.description)
+        app.hear(.unreachable("No answer from the realm."))
+        spin()
+        XCTAssertEqual(FrontDoor.spokenState(of: app.door), "The realm is out of reach. No answer from the realm.")
+
+        // Known to the realm, but no seat open: the door waits for one.
+        let world = GameState(settings: GameSettings(seedText: "door in a window", houseCount: 4, radius: 16, keepers: 1))
+        app.hear(.arrived(Keeper(id: "id-bel", name: "Bel", house: nil, isReady: false, isOnline: true, arrival: 1), world))
+        spin()
+        XCTAssertTrue(app.isWaitingForSeat)
+        XCTAssertEqual(app.keeperName, "Bel")
+        XCTAssertFalse(app.canEnter(with: ""), "Waiting, not entering")
+        app.leaveDoor()
+        XCTAssertEqual(left, 1)
+        XCTAssertFalse(app.isWaitingForSeat)
+    }
+
     func testAnEndingsButtons() throws {
         let app = app("ending buttons")
         app.checkModel()

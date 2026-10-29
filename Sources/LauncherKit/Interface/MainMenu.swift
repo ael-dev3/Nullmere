@@ -24,12 +24,8 @@ struct MainMenu: View {
                 .accessibilityHint(hint(for: item))
             }
         }
-        .onChange(of: focused) { _, item in
-            if let item { model.menuSelection = item }
-        }
-        .onChange(of: model.menuSelection) { _, item in
-            if focused != nil { focused = item }
-        }
+        .onChange(of: focused) { _, item in if let item { model.menuSelection = item } }
+        .onChange(of: model.menuSelection) { _, item in if focused != nil { focused = item } }
     }
 
     private func hint(for item: MenuItem) -> String {
@@ -44,21 +40,31 @@ struct MainMenu: View {
 }
 
 /// A word in light, spaced capitals. When selected it brightens, glows
-/// faintly and draws a hairline beneath itself.
-struct MenuButton: View {
+/// faintly and draws a hairline beneath itself. The realm's door offers its
+/// choices with it too.
+public struct MenuButton: View {
     let title: String
     let isSelected: Bool
     var size: CGFloat = 13
+    /// A choice that can't be made yet stays faint and does nothing.
+    var enabled = true
     let action: () -> Void
 
     @Environment(\.launcherUnit) private var unit
-    @Environment(\.colorSchemeContrast) private var contrast
 
-    var body: some View {
-        let _ = PressableButtons.note(title, enabled: true, action)
+    public init(title: String, isSelected: Bool, size: CGFloat = 13, enabled: Bool = true, action: @escaping () -> Void) {
+        self.title = title
+        self.isSelected = isSelected
+        self.size = size
+        self.enabled = enabled
+        self.action = action
+    }
+
+    public var body: some View {
+        let _ = PressableButtons.note(title, enabled: enabled, action)
         Button(action: action) {
-            SpacedText(title, size: size * unit, weight: .light, tracking: 0.42)
-                .foregroundStyle(Palette.ink.opacity(isSelected ? 1 : restingOpacity))
+            SpacedText(title, size: .launcherType(size, unit: unit), weight: .light, tracking: 0.42)
+                .foregroundStyle(enabled ? Palette.text(isSelected ? 1 : 0.52) : Palette.ink.opacity(0.28))
                 .shadow(color: Palette.glow.opacity(isSelected ? 0.55 : 0), radius: 12 * unit)
                 .overlay(alignment: .bottom) {
                     Underline()
@@ -70,12 +76,9 @@ struct MenuButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(!enabled)
         .animation(.easeOut(duration: 0.35), value: isSelected)
         .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-
-    private var restingOpacity: Double {
-        contrast == .increased ? 0.78 : 0.52
     }
 }

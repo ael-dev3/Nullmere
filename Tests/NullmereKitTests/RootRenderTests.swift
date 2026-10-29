@@ -56,6 +56,12 @@ final class RootRenderTests: XCTestCase {
         try draw(GameRootView(app: app))
         session.dismissSeatBriefing()
         try draw(PlayView(app: app, session: session))
+        // Each panel open over the map.
+        for panel in [GameSession.Panel.houses, .chronicle, .guide] {
+            session.panel = panel
+            try draw(PlayView(app: app, session: session))
+        }
+        session.panel = nil
         app.showsSettings = true
         try draw(GameRootView(app: app))
         app.showsSettings = false

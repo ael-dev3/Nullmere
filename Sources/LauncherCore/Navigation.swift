@@ -53,6 +53,24 @@ public enum KeyCommand: Sendable, Equatable {
     }
 }
 
+/// A row of choices on the water, one lit at a time, the one Return
+/// performs: the launcher's requirement screen, and the realm's gate and
+/// door. The arrows step the lit one along, stopping at either end.
+public enum ChoiceRow {
+    /// The lit choice after `key` among `count` choices: left or up steps
+    /// back, right or down on, anything else leaves it; never past either
+    /// end, nor beyond a row grown shorter.
+    public static func step(_ lit: Int, by key: KeyCommand, among count: Int) -> Int {
+        guard count > 0 else { return 0 }
+        let lit = min(max(lit, 0), count - 1)
+        switch key {
+        case .left, .up: return max(lit - 1, 0)
+        case .right, .down: return min(lit + 1, count - 1)
+        case .confirm, .back: return lit
+        }
+    }
+}
+
 extension CaseIterable where Self: Equatable, AllCases.Index == Int {
     /// The case `delta` positions away, wrapping around the ends by default.
     public func moved(by delta: Int, wrapping: Bool = true) -> Self {

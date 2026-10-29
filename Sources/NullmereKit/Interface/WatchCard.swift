@@ -11,7 +11,7 @@ struct WatchCard: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Caps("Watch \(summary.watch)", size: 26, weight: .thin, tracking: 0.45)
+            Caps("Watch \(summary.watch)", size: 26, weight: .thin, tracking: 0.45, centred: true)
                 .foregroundStyle(Palette.ink)
                 .shadow(color: .black.opacity(0.9), radius: 12)
             Rule(opacity: 0.4).frame(width: 220)

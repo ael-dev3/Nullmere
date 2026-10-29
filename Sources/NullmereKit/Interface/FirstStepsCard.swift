@@ -22,7 +22,7 @@ struct FirstStepsCard: View {
                     Text(verbatim: step.title)
                         .font(.nm(11.5, weight: .light))
                         .foregroundStyle(Palette.text(done ? 0.45 : 0.9))
-                        .strikethrough(done, color: Palette.text(0.35))
+                        .strikethrough(done, color: Palette.line(0.35))
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityElement(children: .ignore)

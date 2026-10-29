@@ -35,6 +35,10 @@ final class LakeMetalView: MTKView {
 
     private(set) var renderer: LakeRenderer?
     private var isLoadingRenderer = false
+    /// The lake's time, carried from one lake to the next (the launcher's,
+    /// then the door's): the first falling star falls once, not at every
+    /// crossing.
+    private static var sceneTime = 0.0
     private var clock = SceneClock()
     /// How far the moon's image is veiled, as last drawn.
     private(set) var veil = ReflectionVeil()
@@ -46,6 +50,7 @@ final class LakeMetalView: MTKView {
         self.configuration = configuration
         // A lake made under a panel starts with the moon's image already sunk.
         veil = ReflectionVeil(configuration.veil)
+        clock = SceneClock(time: LakeMetalView.sceneTime)
         super.init(frame: .zero, device: LakeMetalView.systemDevice)
         colorPixelFormat = .bgra8Unorm
         colorspace = CGColorSpace(name: CGColorSpace.sRGB)
@@ -116,6 +121,7 @@ final class LakeMetalView: MTKView {
 
         let now = CACurrentMediaTime()
         let time = clock.advance(to: now, rate: configuration.motion.clockRate)
+        LakeMetalView.sceneTime = time
         // A paused lake draws one frame per change, so the veil settles at once.
         veil.advance(toward: configuration.veil, by: isPaused ? .infinity : now - (lastFrame ?? now))
         lastFrame = now

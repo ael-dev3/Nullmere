@@ -2,6 +2,7 @@ import AppKit
 import Metal
 import SwiftUI
 import LauncherCore
+import LauncherKit
 @testable import NullmereCore
 import NullmereRealm
 import XCTest

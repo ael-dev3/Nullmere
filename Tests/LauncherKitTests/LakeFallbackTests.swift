@@ -34,8 +34,8 @@ final class LakeFallbackTests: XCTestCase {
         let waterline = Double(height) * (1 - LakeComposition.horizon)
         var shore = 0, mirrored = 0
         for x in stride(from: 4, to: width - 4, by: 8) {
-            let rise = LakeFallbackView.mesas(Double(x) / Double(width)) * Double(height)
-            XCTAssertLessThanOrEqual(rise / Double(height), 0.0612, "No higher than the Metal lake's tallest mesa")
+            let rise = LakeFallbackView.mesas(Double(x) / Double(width), aspect: Double(width) / Double(height)) * Double(height)
+            XCTAssertLessThanOrEqual(rise / Double(height), LakeShore.tallest, "No higher than the Metal lake's tallest mesa")
             guard rise > 8 else { continue }
             // Halfway up the shore, and halfway down its image.
             let above = light(pixels, x, Int(waterline - rise / 2)), below = light(pixels, x, Int(waterline + rise / 2))

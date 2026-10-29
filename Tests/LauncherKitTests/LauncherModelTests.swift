@@ -330,4 +330,19 @@ final class LauncherModelTests: XCTestCase {
         XCTAssertEqual(model.frameRateNote(systemReducesMotion: false), "Held to 30 while this Mac saves energy")
         XCTAssertEqual(model.backdropConfiguration(systemReducesMotion: false).motion, .full, "What moves stays the same")
     }
+
+    /// The realm's Settings show and set the launcher's own display
+    /// settings: one Motion, Resolution and Frame rate for the lake and the
+    /// map, kept where the launcher keeps them.
+    func testTheRealmsSettingsSetTheLaunchersDisplay() {
+        let model = makeModel()
+        model.setDisplay(.motion, to: MotionPreference.allCases.firstIndex(of: .still)!)
+        model.setDisplay(.frameRate, to: 0)
+        XCTAssertEqual(model.displaySettings.motion, .still)
+        XCTAssertEqual(model.displaySettings, model.settings, "One set of settings, not two")
+        XCTAssertEqual(LauncherSettings(defaults: defaults).motion, .still, "Kept for the next launch")
+        XCTAssertEqual(model.backdropConfiguration(systemReducesMotion: false).motion, .still, "The launcher's lake keeps still too")
+        model.setDisplay(.motion, to: 99)
+        XCTAssertEqual(model.displaySettings.motion, .still, "No such choice: nothing changes")
+    }
 }

@@ -3,14 +3,20 @@ import LauncherKit
 import NullmereCore
 import SwiftUI
 
-/// The realm's front door, on the moonlit lake: the name of the game, who
-/// you are on the lake, how the realm stands, and the way in.
+/// The realm's front door, set on the moonlit lake as the launcher sets its
+/// panels: the name of the game above the far shore and, on the water below
+/// it, the realm and how it stands, who you are there, and the way in.
 struct FrontDoor: View {
     let app: GameApp
 
     @State private var name: String
     @State private var appeared = false
+    /// The lit choice, the one Return performs.
+    @State private var selection = 0
     @FocusState private var nameFocused: Bool
+    /// The choice with keyboard focus, when keyboard navigation is on: the
+    /// lit choice follows it, and it the lit choice, as in the launcher.
+    @FocusState private var focusedChoice: Int?
 
     /// `name` begins the name field: empty at the door, a name already
     /// written where one is given.
@@ -19,90 +25,87 @@ struct FrontDoor: View {
         _name = State(initialValue: name)
     }
 
-    var body: some View {
-        ZStack {
-            MoonlitLake(settings: app.displaySettings)
-                .ignoresSafeArea()
-            // Darken the water beneath the card, as the launcher's panels and
-            // the gate do, so the moon's reflection doesn't glow through it.
-            EllipticalGradient(
-                colors: [.black.opacity(0.8), .black.opacity(0.5), .clear],
-                center: UnitPoint(x: 0.5, y: 0.7),
-                startRadiusFraction: 0,
-                endRadiusFraction: 0.55
-            )
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
+    /// A choice the door offers, in the order it shows them.
+    private struct Choice {
+        let title: String
+        var enabled = true
+        let hint: String
+        let perform: () -> Void
+    }
 
-            GeometryReader { proxy in
-                // The name rests where the launcher sets it, to the point, so it
-                // doesn't move as the keeper steps from one to the other.
+    private var choices: [Choice] {
+        var choices = [Choice(title: enterTitle, enabled: app.canEnter(with: name), hint: enterHint) {
+            app.enterWorld(name: name)
+        }]
+        if case .unreachable = app.door {
+            choices.append(Choice(title: "Try again", hint: "Reaches for the realm again") { app.openDoor() })
+        }
+        choices.append(Choice(title: "Back", hint: "Returns to the launcher") { app.leaveDoor() })
+        return choices
+    }
+
+    var body: some View {
+        let choices = self.choices
+        GeometryReader { proxy in
+            let unit = LakeTitle.unit(for: proxy.size)
+            let waterline = LakeTitle.waterline(for: proxy.size)
+            ZStack(alignment: .top) {
+                MoonlitLake(settings: app.displaySettings)
+                // Below the waterline only, as the launcher darkens the water
+                // under a panel: the sky and the title stay as bright as ever.
+                PanelScrim()
+                    .padding(.top, waterline)
+                    .allowsHitTesting(false)
+                // The name rests where the launcher sets it, to the point, so
+                // it doesn't move as the keeper steps from one to the other.
                 LakeTitle(size: proxy.size, isRevealed: appeared)
-                    .animation(.easeOut(duration: 0.9), value: appeared)
                 VStack(spacing: 0) {
-                    // Below the waterline where there's room; where there
-                    // isn't (a small window, larger text, a note or a
-                    // problem to tell), the card rises rather than its
-                    // buttons run off the window.
+                    // At the depth the launcher's panels lie where there's
+                    // room; where there isn't (a small window, larger text,
+                    // a note or a problem to tell), the door rises rather
+                    // than its choices run off the window.
                     Spacer(minLength: 0)
-                        .frame(minHeight: 24, maxHeight: LakeTitle.waterline(for: proxy.size) + 8)
-                    VStack(alignment: .leading, spacing: 18) {
-                        RealmLine(door: app.door)
-                        Rule(opacity: 0.25)
-                        keeper
-                        if let note = seatNote {
-                            Text(verbatim: note)
-                                .font(.nm(11))
-                                .foregroundStyle(Palette.text(0.75))
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        if let problem = app.arrivalProblem {
-                            Text(verbatim: problem)
-                                .font(.nm(11))
-                                .foregroundStyle(Palette.bad)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .accessibilityLabel("Problem: \(problem)")
-                        }
-                        HStack(spacing: 10) {
-                            QuietButton(title: enterTitle, size: 11, prominent: true,
-                                        enabled: app.canEnter(with: name)) {
-                                app.enterWorld(name: name)
-                            }
-                            .keyboardShortcut(.defaultAction)
-                            if case .unreachable = app.door {
-                                QuietButton(title: "Try again", size: 11) { app.openDoor() }
-                            }
-                            Spacer()
-                            QuietButton(title: "Back", size: 11) { app.leaveDoor() }
-                                .keyboardShortcut(.cancelAction)
-                        }
-                    }
-                    .padding(26)
-                    .frame(width: 460)
-                    .panelBackground()
-                    // The note on identity goes first when room is short.
-                    ViewThatFits(in: .vertical) {
-                        Text(verbatim: "Your identity is a random key kept in this Mac's keychain. The realm knows you by it and by the name you choose; nothing else.")
-                            .font(.nm(10))
-                            .foregroundStyle(Palette.text(0.45))
-                            .multilineTextAlignment(.center)
-                            .frame(width: 420)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.top, 14)
-                        Color.clear.frame(height: 0)
-                    }
+                        .frame(minHeight: 24, maxHeight: waterline + 34 * unit)
+                    door(choices, unit: unit)
                     Spacer(minLength: 16)
                 }
                 .frame(width: proxy.size.width)
             }
-            // Measured over the whole window, title bar and all, as the
-            // launcher measures it, so the title rests at the same height.
-            .ignoresSafeArea()
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .environment(\.launcherUnit, unit)
         }
+        // Measured over the whole window, title bar and all, as the
+        // launcher measures it, so the title rests at the same height.
+        .ignoresSafeArea()
+        // Return performs the lit choice; Esc goes back; the arrows move
+        // along the choices, as in the launcher. In the name field, Return
+        // is the field's own, and the arrows move through the name.
+        .background {
+            if !nameFocused {
+                Button("") { perform(selection, of: choices) }
+                    .keyboardShortcut(.defaultAction)
+                    .opacity(0)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+            Button("") { app.leaveDoor() }
+                .keyboardShortcut(.cancelAction)
+                .opacity(0)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+        .focusable()
+        .focusEffectDisabled()
+        .modifier(ChoiceArrows(lit: $selection, count: choices.count))
         .onAppear {
-            withAnimation(.easeOut(duration: 1.6)) { appeared = true }
+            // As the launcher's title shows when its opening is past.
+            withAnimation(.easeOut(duration: LakeTitle.revealSeconds)) { appeared = true }
             nameFocused = app.keeperName == nil
         }
+        // Writing a name means to enter with it: Enter is lit again.
+        .onChange(of: name) { _, _ in selection = 0 }
+        .onChange(of: focusedChoice) { _, choice in if let choice { selection = choice } }
+        .onChange(of: selection) { _, choice in if focusedChoice != nil { focusedChoice = choice } }
         // What the door has to tell, said as it changes: a problem at the
         // door, the realm out of reach, the wait for a seat.
         .onChange(of: app.arrivalProblem) { _, problem in
@@ -116,6 +119,74 @@ struct FrontDoor: View {
         }
     }
 
+    /// Everything on the water, centred under the title as the launcher's
+    /// panels are.
+    private func door(_ choices: [Choice], unit: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            RealmLine(door: app.door)
+
+            keeper(unit: unit)
+                .padding(.top, 26 * unit)
+
+            if let note = seatNote {
+                Text(verbatim: note)
+                    .font(.system(size: .launcherType(11, unit: unit), weight: .light))
+                    .lineSpacing(4 * unit)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Palette.text(0.72))
+                    .frame(maxWidth: 460 * unit)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 16 * unit)
+            }
+            if let problem = app.arrivalProblem {
+                Text(verbatim: problem)
+                    .font(.system(size: .launcherType(11, unit: unit), weight: .regular))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Palette.bad)
+                    .frame(maxWidth: 460 * unit)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 14 * unit)
+                    .accessibilityLabel("Problem: \(problem)")
+            }
+
+            // One choice is lit at a time, and it is the one Return performs:
+            // the pointer chooses by resting on a word, the arrows by moving.
+            HStack(spacing: 48 * unit) {
+                ForEach(choices.indices, id: \.self) { index in
+                    MenuButton(title: choices[index].title, isSelected: index == min(selection, choices.count - 1),
+                               enabled: choices[index].enabled) {
+                        perform(index, of: choices)
+                    }
+                    .focused($focusedChoice, equals: index)
+                    .onPointer { inside in
+                        if inside { selection = index }
+                    }
+                    .accessibilityHint(choices[index].hint)
+                }
+            }
+            .padding(.top, 24 * unit)
+
+            // The note on identity goes first when room is short.
+            ViewThatFits(in: .vertical) {
+                Text(verbatim: "Your identity is a random key kept in this Mac's keychain. The realm knows you by it and by the name you choose; nothing else.")
+                    .font(.system(size: .launcherType(10, unit: unit), weight: .light))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Palette.text(0.5))
+                    .frame(maxWidth: 420 * unit)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 22 * unit)
+                Color.clear.frame(height: 0)
+            }
+        }
+        .padding(.horizontal, 24)
+    }
+
+    private func perform(_ index: Int, of choices: [Choice]) {
+        let index = min(index, choices.count - 1)
+        guard choices.indices.contains(index), choices[index].enabled else { return }
+        choices[index].perform()
+    }
+
     /// The door's state worth saying aloud when it changes: out of reach,
     /// and why; nothing for the ordinary comings and goings.
     static func spokenState(of door: GameApp.Door) -> String? {
@@ -126,6 +197,11 @@ struct FrontDoor: View {
     private var enterTitle: String {
         if app.isWaitingForSeat { return "Waiting for a seat…" }
         return app.isEntering ? "Entering…" : "Enter the world"
+    }
+
+    private var enterHint: String {
+        if app.keeperName != nil { return "Takes up your seat in the realm" }
+        return "Takes a seat in the realm under the name you wrote"
     }
 
     /// When no seat is open: why, and what waiting means.
@@ -143,60 +219,77 @@ struct FrontDoor: View {
     /// leading or near the end of the age, which no newcomer may take up.
     static let noSeatOpen = "No seat is open now: every House is held by a keeper, sworn to another, or leading the lake or near winning it."
 
+    /// Who you are on the lake: the name the realm knows you by, or the
+    /// field to write one in, on a hairline as the launcher underlines.
     @ViewBuilder
-    private var keeper: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Caps("Keeper", size: 8.5, weight: .medium).foregroundStyle(Palette.text(0.6))
-            if let known = app.keeperName {
-                Text(verbatim: "You are known here as \(known), of House \(known).")
-                    .font(.nm(13, weight: .light))
-                    .foregroundStyle(Palette.text(0.9))
-            } else {
+    private func keeper(unit: CGFloat) -> some View {
+        if let known = app.keeperName {
+            Text(verbatim: "You are known here as \(known), of House \(known).")
+                .font(.system(size: .launcherType(14, unit: unit), weight: .light))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Palette.text(0.9))
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            VStack(spacing: 10 * unit) {
                 TextField("The name you'll go by", text: $name)
                     .textFieldStyle(.plain)
-                    .font(.nm(14, weight: .light))
+                    .font(.system(size: .launcherType(16, unit: unit), weight: .light))
+                    .multilineTextAlignment(.center)
                     .foregroundStyle(Palette.ink)
                     .focused($nameFocused)
-                    .padding(.vertical, 6)
-                    .overlay(alignment: .bottom) { Rule(opacity: 0.35) }
+                    .padding(.vertical, 6 * unit)
+                    .frame(width: 320 * unit)
+                    .overlay(alignment: .bottom) { Underline(opacity: nameFocused ? 0.75 : 0.4) }
                     .onSubmit { app.enterWorld(name: name) }
                     .accessibilityLabel("Your name on the lake")
                     // What's wrong with the name, or what it must be, read
                     // with the field.
-                    .accessibilityHint(RealmState.nameProblem(name) ?? "Two to twenty letters. It names you and the House you'll hold.")
-                if let problem = RealmState.nameProblem(name) {
-                    Text(verbatim: problem)
-                        .font(.nm(10))
-                        .foregroundStyle(Palette.bad)
-                } else {
-                    Text(verbatim: "Two to twenty letters. It names you and the House you'll hold.")
-                        .font(.nm(10))
-                        .foregroundStyle(Palette.text(0.5))
-                }
+                    .accessibilityHint(RealmState.nameProblem(name) ?? Self.nameRule)
+                Text(verbatim: RealmState.nameProblem(name) ?? Self.nameRule)
+                    .font(.system(size: .launcherType(10, unit: unit), weight: .light))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(RealmState.nameProblem(name) == nil ? Palette.text(0.55) : Palette.bad)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityHidden(true)
             }
         }
     }
+
+    private static let nameRule = "Two to twenty letters. It names you and the House you'll hold."
 }
 
-/// How the realm stands: open or not, its age and watch, who is there.
+/// The realm's name as the launcher heads a panel, and how it stands beneath:
+/// lit when open, its age and watch, who is there.
 struct RealmLine: View {
     let door: GameApp.Door
 
+    @Environment(\.launcherUnit) private var unit
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Circle().fill(colour).frame(width: 6, height: 6)
-                Caps(title, size: 10.5, weight: .medium).foregroundStyle(Palette.ink)
-                Spacer()
-                Caps(state, size: 8.5).foregroundStyle(colour)
+        VStack(spacing: 0) {
+            PanelHeader(title: title)
+            VStack(spacing: 12 * unit) {
+                HStack(spacing: 8 * unit) {
+                    StatusDot(isLit: isOpen)
+                    SpacedText(state, size: .launcherType(9, unit: unit), weight: .regular, tracking: 0.3)
+                        .foregroundStyle(Palette.text(isOpen ? 0.72 : 0.55))
+                }
+                Text(verbatim: detail)
+                    .font(.system(size: .launcherType(13, unit: unit), weight: .light))
+                    .lineSpacing(6 * unit)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Palette.text(0.68))
+                    .frame(maxWidth: 460 * unit)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Text(verbatim: detail)
-                .font(.nm(11))
-                .foregroundStyle(Palette.text(0.65))
-                .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(state). \(detail)")
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(title), \(state). \(detail)")
+    }
+
+    private var isOpen: Bool {
+        if case .open = door { return true }
+        return false
     }
 
     private var title: String {
@@ -209,14 +302,6 @@ struct RealmLine: View {
         case .connecting: return "Reaching it…"
         case .open: return "Open"
         case .unreachable: return "Out of reach"
-        }
-    }
-
-    private var colour: Color {
-        switch door {
-        case .connecting: return Palette.text(0.5)
-        case .open: return Palette.good
-        case .unreachable: return Palette.bad
         }
     }
 

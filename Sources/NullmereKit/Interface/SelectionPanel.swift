@@ -52,7 +52,7 @@ struct Meter: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
-                Rectangle().fill(Palette.text(0.1))
+                Rectangle().fill(Palette.line(0.1))
                 Rectangle().fill(colour).frame(width: proxy.size.width * min(max(fraction, 0), 1))
             }
         }
@@ -200,7 +200,7 @@ struct LevelPips: View {
         HStack(spacing: 3) {
             ForEach(0..<maximum, id: \.self) { index in
                 Circle()
-                    .fill(index < level ? Palette.glow : Palette.text(0.15))
+                    .fill(index < level ? Palette.glow : Palette.line(0.15))
                     .frame(width: 4, height: 4)
             }
         }

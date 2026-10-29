@@ -44,7 +44,7 @@ struct AwayCard: View {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(Array(report.news.enumerated()), id: \.offset) { _, line in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Circle().fill(Palette.text(0.4)).frame(width: 3, height: 3)
+                            Circle().fill(Palette.line(0.4)).frame(width: 3, height: 3)
                             Text(verbatim: line)
                                 .font(.nm(12, weight: .light))
                                 .foregroundStyle(Palette.text(0.88))

@@ -9,6 +9,7 @@ public struct LauncherRootView: View {
     private let model: LauncherModel
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
 
     public init(model: LauncherModel) {
         self.model = model
@@ -80,6 +81,10 @@ public struct LauncherRootView: View {
                 model.completeIntro()
             }
         )
+        // The launcher's type and the realm's read by one rule of contrast.
+        .onChange(of: contrast, initial: true) { _, contrast in
+            Contrast.shared.isIncreased = contrast == .increased
+        }
         .onAppear {
             model.beginIntro(systemReducesMotion: reduceMotion)
             model.refreshReadiness()
@@ -146,8 +151,12 @@ private struct ScreenContent: View {
     }
 }
 
-/// A soft darkness on the water under an open panel.
-struct PanelScrim: View {
+/// A soft darkness on the water under an open panel: below the waterline
+/// only, so the sky and the title stay as bright as ever. The realm's door
+/// and gate lay the same under theirs.
+public struct PanelScrim: View {
+    public init() {}
+
     /// Where the moon's reflection lies, as a fraction of the water's
     /// height below the waterline: the moon stands as far above the
     /// horizon as its image lies below it.
@@ -155,7 +164,7 @@ struct PanelScrim: View {
         (LakeComposition.moonY - LakeComposition.horizon) / LakeComposition.horizon
     }
 
-    var body: some View {
+    public var body: some View {
         // Darkest over the moon's reflection, where the panels' text and
         // buttons lie, and clear toward the far edges of the lake.
         EllipticalGradient(

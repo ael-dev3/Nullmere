@@ -148,7 +148,7 @@ public final class LauncherModel {
     func beginIntro(systemReducesMotion: Bool) {
         guard introTask == nil, intro != .complete else { return }
         guard settings.motion.resolved(systemReducesMotion: systemReducesMotion) == .full else {
-            withAnimation(.easeOut(duration: 0.8)) { intro = .complete }
+            withAnimation(.easeOut(duration: LakeTitle.revealSeconds)) { intro = .complete }
             return
         }
         introTask = Task { [weak self] in
@@ -299,8 +299,8 @@ public final class LauncherModel {
     private func handleOnRequirement(_ key: KeyCommand) {
         let actions = readiness.actions
         switch key {
-        case .left, .up: requirementSelection = max(requirementSelection - 1, 0)
-        case .right, .down: requirementSelection = max(min(requirementSelection + 1, actions.count - 1), 0)
+        case .left, .up, .right, .down:
+            requirementSelection = ChoiceRow.step(requirementSelection, by: key, among: actions.count)
         case .confirm:
             if actions.indices.contains(requirementSelection) {
                 perform(actions[requirementSelection])

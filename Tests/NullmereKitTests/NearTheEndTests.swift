@@ -1,4 +1,5 @@
 import Foundation
+import LauncherKit
 import NullmereRealm
 import SwiftUI
 import XCTest
@@ -51,6 +52,15 @@ final class NearTheEndTests: XCTestCase {
         let line = try XCTUnwrap(Counsel.race(in: state, player: me))
         XCTAssertTrue(line.hasPrefix("You hold "), line)
         XCTAssertTrue(line.hasSuffix("and the lake is yours."), line)
+
+        // The race as the Houses panel shows it, near the end said in words
+        // as well as colour for those who ask it.
+        let session = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("race")))
+        Contrast.shared.differentiates = true
+        defer { Contrast.shared.differentiates = false }
+        XCTAssertTrue(RaceTable.spoken(try XCTUnwrap(state.standings().first { $0.house == me }), in: state, player: me).contains("near"),
+                      "Said to VoiceOver too")
+        try draw(RaceTable(session: session).frame(width: 360), width: 400, height: 300)
     }
 
     /// A rival's dominion, told to a keeper whose House still stands and to

@@ -72,6 +72,22 @@ final class AmbienceEngineTests: XCTestCase {
         XCTAssertEqual(ambience.isPlaying, hasOutput, "Playing on through the score's changes")
         ambience.isEnabled = false
         XCTAssertFalse(ambience.isPlaying, "Turned off, stopped")
+        XCTAssertEqual(ambience.isRunning, hasOutput, "Fading out first: a hard stop clicks")
+        ambience.play(.watch)
+
+        // Turned on again while it fades: it fades back in, not begun anew.
+        ambience.isEnabled = true
+        XCTAssertEqual(ambience.isPlaying, hasOutput, "Faded back in")
+        // Turned off and left: faded out, the engine stops.
+        ambience.isEnabled = false
+        try await Task.sleep(for: .seconds(Ambience.fadeOutSeconds + 0.6))
+        XCTAssertFalse(ambience.isRunning, "Faded out, stopped")
+        // And begun again, from silence.
+        ambience.isEnabled = true
+        XCTAssertEqual(ambience.isPlaying, hasOutput, "Begun again")
+        ambience.isEnabled = false
+        try await Task.sleep(for: .seconds(Ambience.fadeOutSeconds + 0.6))
+        XCTAssertFalse(ambience.isRunning)
         ambience.stop()
         XCTAssertFalse(ambience.isWanted)
         ambience.isEnabled = true

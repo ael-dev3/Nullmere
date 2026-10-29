@@ -20,7 +20,7 @@ struct TitleBlock: View {
             size: 60 * unit,
             tracking: isRevealed || !settlesLetters ? 0.32 : 0.5
         )
-        .foregroundStyle(Palette.ink.opacity(0.96))
+        .foregroundStyle(Palette.text(0.96))
         .shadow(color: Palette.glow.opacity(0.42), radius: 26 * unit)
         .shadow(color: Palette.glow.opacity(0.28), radius: 3 * unit)
         .opacity(isRevealed ? 1 : 0)
@@ -44,6 +44,10 @@ public struct LakeTitle: View {
         self.isRevealed = isRevealed
         self.settlesLetters = settlesLetters
     }
+
+    /// How long the title takes to show, past the launcher's opening: in
+    /// the launcher, at the realm's door and at the model's gate alike.
+    public static let revealSeconds = 0.8
 
     /// The scale of the launcher's type for a window of this size.
     public static func unit(for size: CGSize) -> CGFloat {

@@ -1,5 +1,6 @@
 import AppKit
 import LauncherCore
+import LauncherKit
 import NullmereCore
 import SwiftUI
 
@@ -170,15 +171,15 @@ struct WorldMarks: View {
                     var line = Path()
                     line.move(to: previous)
                     line.addLine(to: point)
-                    context.stroke(line, with: .color(Palette.ink.opacity(watch == 0 ? 0.55 : 0.28)), style: StrokeStyle(lineWidth: 1.2, dash: [3, 4]))
+                    context.stroke(line, with: .color(Palette.line(watch == 0 ? 0.55 : 0.28)), style: StrokeStyle(lineWidth: 1.2, dash: [3, 4]))
                     previous = point
                 }
                 let end = camera.viewPoint(of: session.pathPreview.last!, in: size)
                 let ring = Path(ellipseIn: CGRect(x: end.x - 6, y: end.y - 6, width: 12, height: 12))
-                context.stroke(ring, with: .color(Palette.ink.opacity(0.7)), lineWidth: 1.2)
+                context.stroke(ring, with: .color(Palette.line(0.7)), lineWidth: 1.2)
                 if watch > 0 {
                     context.draw(
-                        Text(verbatim: "\(watch + 1)").font(.nm(10, weight: .medium)).foregroundStyle(Palette.ink.opacity(0.85)),
+                        Text(verbatim: "\(watch + 1)").font(.nm(10, weight: .medium)).foregroundStyle(Palette.text(0.85)),
                         at: CGPoint(x: end.x, y: end.y - 14)
                     )
                 }
@@ -308,7 +309,7 @@ struct WorldMarks: View {
                     var shadow = context
                     shadow.addFilter(.blur(radius: 3))
                     shadow.draw(name.foregroundStyle(Color.black), at: at)
-                    context.draw(name.foregroundStyle(Palette.ink.opacity(hold.owner == player ? 0.92 : 0.7)), at: at)
+                    context.draw(name.foregroundStyle(Palette.text(hold.owner == player ? 0.92 : 0.7)), at: at)
                 }
             }
 
@@ -332,7 +333,7 @@ struct WorldMarks: View {
                 // pointer a faint one.
                 if isSelected || isHovered {
                     let halo = Path(ellipseIn: CGRect(x: point.x - r - 3, y: point.y - r - 3, width: (r + 3) * 2, height: (r + 3) * 2))
-                    context.stroke(halo, with: .color(Palette.ink.opacity(isSelected ? 0.9 : 0.4)), lineWidth: isSelected ? 1.4 : 1)
+                    context.stroke(halo, with: .color(Palette.line(isSelected ? 0.9 : 0.4)), lineWidth: isSelected ? 1.4 : 1)
                 }
                 context.stroke(glyph(for: unit.kind, at: point, radius: r * 0.55), with: .color(colour), lineWidth: 1.3)
                 if differentiate {
@@ -469,38 +470,66 @@ struct WorldFallback: View {
     }
 
     static let water = Color(red: 0.004, green: 0.006, blue: 0.012)
+    /// The unknown, as the Metal map's mist: paler than the black water.
+    static let mist = Color(red: 0.030, green: 0.034, blue: 0.048)
+    /// The moon's light, and its face in the water, as the Metal map has them.
+    static let moonlight = Color(red: 0.58, green: 0.68, blue: 0.86)
 
     static func paint(_ session: GameSession, in context: inout GraphicsContext, size: CGSize) {
-        context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(water))
+        context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(mist))
         let camera = session.camera
         let state = session.state
         let territory = session.territory
         for (index, hex) in state.map.hexes.enumerated() where session.playerHouse.explored[index] {
             guard let hexagon = path(of: hex, camera: camera, in: size) else { continue }
-            let tint = colour(for: state.map[index].terrain)
+            let terrain = state.map[index].terrain
+            let tint = colour(for: terrain)
             let seen = session.visible.indices.contains(index) && session.visible[index]
             context.fill(hexagon, with: .color(seen ? tint : tint.opacity(0.5)))
+            // Stars held in the still water, warm and cold, as the Metal map
+            // gives them back: one now and then, where it falls in the hex.
+            if terrain == .still {
+                let chance = ((hex.q &* 73_856_093) ^ (hex.r &* 19_349_663)) & 1023
+                if chance < 260 {
+                    let centre = HexLayout(size: 1).center(of: hex)
+                    let spot = camera.viewPoint(worldX: centre.x + Double(chance % 7) / 10 - 0.3,
+                                                worldY: centre.y + Double(chance % 5) / 8 - 0.25, in: size)
+                    let warm = Double(chance % 11) / 10
+                    let star = Color(red: 0.76 + 0.24 * warm * warm, green: 0.85 + 0.07 * warm * warm, blue: 1.0 - 0.18 * warm * warm)
+                    let radius = chance % 3 == 0 ? 1.2 : 0.7
+                    context.fill(Path(ellipseIn: CGRect(x: spot.x - radius, y: spot.y - radius, width: radius * 2, height: radius * 2)),
+                                 with: .color(star.opacity(0.35 + Double(chance % 13) / 26)))
+                }
+            }
             // Whose land it is, as a faint wash of the House's colour.
             if territory.indices.contains(index), let holdID = territory[index], let owner = state.hold(holdID)?.owner,
                state.houses.indices.contains(owner) {
                 context.fill(hexagon, with: .color(Palette.house(state.houses[owner]).opacity(seen ? 0.16 : 0.08)))
             }
         }
-        // The moon, lying in the still water, where the keeper knows it.
+        // The moon, lying in the still water, where the keeper knows it: its
+        // halo the Metal map's, layer by layer, and its face darker at the rim.
         let moon = session.moon
         let moonHex = HexLayout(size: 1).hex(atX: Double(moon.x), y: Double(moon.y))
         let moonKnown = state.map.index(of: moonHex).map { session.playerHouse.explored[$0] } ?? false
         if moon.w > 0, moonKnown {
             let centre = camera.viewPoint(worldX: Double(moon.x), worldY: Double(moon.y), in: size)
             let radius = max(Double(moon.z) * camera.scale, 2)
-            let glow = Path(ellipseIn: CGRect(x: centre.x - radius * 3, y: centre.y - radius * 3, width: radius * 6, height: radius * 6))
-            context.fill(glow, with: .radialGradient(Gradient(colors: [Color(white: 0.85, opacity: 0.18), .clear]),
-                                                     center: centre, startRadius: radius, endRadius: radius * 3))
+            let reach = radius * 20
+            context.fill(Path(ellipseIn: CGRect(x: centre.x - reach, y: centre.y - reach, width: reach * 2, height: reach * 2)),
+                         with: .radialGradient(Gradient(stops: [
+                             .init(color: moonlight.opacity(0.44), location: 0.05),
+                             .init(color: moonlight.opacity(0.11), location: 0.1),
+                             .init(color: moonlight.opacity(0.05), location: 0.2),
+                             .init(color: moonlight.opacity(0.018), location: 0.45),
+                             .init(color: .clear, location: 1),
+                         ]), center: centre, startRadius: 0, endRadius: reach))
             context.fill(Path(ellipseIn: CGRect(x: centre.x - radius, y: centre.y - radius, width: radius * 2, height: radius * 2)),
-                         with: .color(Color(red: 0.86, green: 0.88, blue: 0.92)))
+                         with: .radialGradient(Gradient(colors: [Color(red: 0.80, green: 0.82, blue: 0.84), Color(red: 0.70, green: 0.72, blue: 0.74)]),
+                                               center: centre, startRadius: 0, endRadius: radius))
         }
         if let hovered = session.hovered, let outline = path(of: hovered, camera: camera, in: size) {
-            context.stroke(outline, with: .color(Palette.ink.opacity(0.45)), lineWidth: 1)
+            context.stroke(outline, with: .color(Palette.line(0.45)), lineWidth: 1)
         }
         if let selected = session.selectedHex, let outline = path(of: selected, camera: camera, in: size) {
             context.stroke(outline, with: .color(Palette.glow), lineWidth: 2)
@@ -585,12 +614,12 @@ struct ForecastCard: View {
             Caps("Strike \(targetName)", size: 8.5, weight: .medium)
                 .foregroundStyle(Palette.ink)
             line(isHold ? "Ward" : "They take", range: forecast.dealt, of: forecast.defenderHealth,
-                 colour: forecast.mayFinish ? Palette.good : Palette.ink.opacity(0.8))
+                 colour: forecast.mayFinish ? Palette.good : Palette.text(0.8))
             if forecast.taken.upperBound > 0 {
                 line("You take", range: forecast.taken, of: forecast.attackerHealth,
-                     colour: forecast.mayFall ? Palette.bad : Palette.ink.opacity(0.8))
+                     colour: forecast.mayFall ? Palette.bad : Palette.text(0.8))
             } else {
-                Text(verbatim: "Out of their reach").font(.nm(10)).foregroundStyle(Palette.ink.opacity(0.55))
+                Text(verbatim: "Out of their reach").font(.nm(10)).foregroundStyle(Palette.text(0.55))
             }
             if let verdict {
                 Text(verbatim: verdict).font(.nm(10, weight: .medium)).foregroundStyle(Palette.glow)
@@ -620,11 +649,11 @@ struct ForecastCard: View {
 
     private func line(_ label: String, range: ClosedRange<Int>, of total: Int, colour: Color) -> some View {
         HStack(spacing: 6) {
-            Caps(label, size: 7.5).foregroundStyle(Palette.ink.opacity(0.5))
+            Caps(label, size: 7.5).foregroundStyle(Palette.text(0.5))
             Text(verbatim: range.lowerBound == range.upperBound ? "\(range.lowerBound)" : "\(range.lowerBound)–\(range.upperBound)")
                 .font(.nm(11).monospacedDigit())
                 .foregroundStyle(colour)
-            Text(verbatim: "of \(total)").font(.nm(10)).foregroundStyle(Palette.ink.opacity(0.45))
+            Text(verbatim: "of \(total)").font(.nm(10)).foregroundStyle(Palette.text(0.45))
         }
     }
 }

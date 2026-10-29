@@ -506,7 +506,7 @@ struct HouseRow: View {
                     Figure(label: "Renown", value: state.renown(of: house.id))
                 }
                 // In a row when they fit, wrapping onto the next when not.
-                FlowLayout(spacing: 4, lineSpacing: 2) { actions(stance: stance) }
+                FlowLayout { actions(stance: stance) }
             }
         }
         .accessibilityElement(children: .contain)
@@ -644,7 +644,7 @@ private struct Figure: View {
 
 struct CloseButton: View {
     /// What it closes, as VoiceOver says it: "Close the Houses", "Hide counsel".
-    var label = "Close"
+    let label: String
     let action: () -> Void
 
     @State private var hovering = false
