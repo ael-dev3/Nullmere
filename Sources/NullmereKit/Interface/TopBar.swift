@@ -121,7 +121,7 @@ private struct ResourceReadout: View {
                 }
                 if named {
                     Caps(amount >= room ? "\(resource.title) · full" : resource.title, size: 7.5, tracking: 0.26)
-                        .foregroundStyle(Palette.ink.opacity(0.45))
+                        .foregroundStyle(Palette.text(0.45))
                 }
             }
         }
@@ -143,17 +143,17 @@ struct IncomeCard: View {
                 Spacer()
                 Text(verbatim: "\(breakdown.stored) of \(breakdown.room)")
                     .font(.nm(10).monospacedDigit())
-                    .foregroundStyle(Palette.ink.opacity(0.55))
+                    .foregroundStyle(Palette.text(0.55))
             }
             Rule(opacity: 0.25)
             if breakdown.lines.isEmpty {
                 Text(verbatim: "Nothing comes in or goes out.")
                     .font(.nm(11, weight: .light))
-                    .foregroundStyle(Palette.ink.opacity(0.7))
+                    .foregroundStyle(Palette.text(0.7))
             }
             ForEach(Array(breakdown.lines.enumerated()), id: \.offset) { _, line in
                 HStack {
-                    Text(verbatim: line.label).font(.nm(11, weight: .light)).foregroundStyle(Palette.ink.opacity(0.85))
+                    Text(verbatim: line.label).font(.nm(11, weight: .light)).foregroundStyle(Palette.text(0.85))
                     Spacer(minLength: 16)
                     Text(verbatim: line.amount >= 0 ? "+\(line.amount)" : "\(line.amount)")
                         .font(.nm(11).monospacedDigit())
@@ -162,7 +162,7 @@ struct IncomeCard: View {
             }
             Rule(opacity: 0.25)
             HStack {
-                Caps("Each watch", size: 8).foregroundStyle(Palette.ink.opacity(0.55))
+                Caps("Each watch", size: 8).foregroundStyle(Palette.text(0.55))
                 Spacer()
                 Text(verbatim: breakdown.net >= 0 ? "+\(breakdown.net)" : "\(breakdown.net)")
                     .font(.nm(12, weight: .medium).monospacedDigit())
@@ -206,7 +206,7 @@ struct EndWatchButton: View {
             if let waits, !compact {
                 Text(verbatim: waits)
                     .font(.nm(9))
-                    .foregroundStyle(Palette.ink.opacity(0.5))
+                    .foregroundStyle(Palette.text(0.5))
                     .lineLimit(1)
                     .fixedSize()
             }
@@ -246,7 +246,7 @@ struct WatchClock: View {
         TimelineView(.periodic(from: .now, by: session.realmStatus == nil ? 3_600 : 1)) { context in
             HStack(spacing: 0) {
                 Caps("Watch \(session.state.watch)", size: 8.5, tracking: 0.3)
-                    .foregroundStyle(Palette.ink.opacity(0.55))
+                    .foregroundStyle(Palette.text(0.55))
                 if session.isOutOfReach {
                     Text(verbatim: "  ·  Out of reach, trying again…")
                         .font(.nm(9))
@@ -254,7 +254,7 @@ struct WatchClock: View {
                 } else if let line = EndWatchButton.realmLine(status: session.realmStatus, secondsLeft: session.secondsLeft(at: context.date)) {
                     Text(verbatim: "  ·  " + line)
                         .font(.nm(9).monospacedDigit())
-                        .foregroundStyle(Palette.ink.opacity(0.55))
+                        .foregroundStyle(Palette.text(0.55))
                 }
             }
             .lineLimit(1)
@@ -284,12 +284,10 @@ struct NoticeFeed: View {
         VStack(alignment: .leading, spacing: 5) {
             ForEach(notices) { notice in
                 HStack(spacing: 8) {
-                    Circle()
-                        .fill(Palette.tone(notice.tone))
-                        .frame(width: 4, height: 4)
+                    ToneMark(tone: notice.tone)
                     Text(verbatim: notice.text)
                         .font(.nm(11.5, weight: .regular))
-                        .foregroundStyle(Palette.ink.opacity(0.88))
+                        .foregroundStyle(Palette.text(0.88))
                         .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -315,7 +313,7 @@ struct OmenBand: View {
                 .foregroundStyle(Palette.glow)
             Text(verbatim: "\(omen.kind.effect) \(OmenBand.lasting(left))")
                 .font(.nm(10.5))
-                .foregroundStyle(Palette.ink.opacity(0.75))
+                .foregroundStyle(Palette.text(0.75))
         }
         .lineLimit(1)
         .fixedSize()
@@ -329,5 +327,27 @@ struct OmenBand: View {
 
     static func lasting(_ left: Int) -> String {
         left <= 1 ? "It lifts as the watch turns." : "It lifts in \(left) watches."
+    }
+}
+
+/// A notice's tone: a coloured dot, or, with "Differentiate without
+/// colour" on, a sign that says it in shape: + good, ! bad.
+struct ToneMark: View {
+    let tone: GameSession.Notice.Tone
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
+
+    var body: some View {
+        if differentiate, tone != .neutral {
+            Text(verbatim: tone == .good ? "+" : "!")
+                .font(.nm(10, weight: .medium))
+                .foregroundStyle(Palette.tone(tone))
+                .frame(width: 8)
+                .accessibilityHidden(true)
+        } else {
+            Circle()
+                .fill(Palette.tone(tone))
+                .frame(width: 4, height: 4)
+                .accessibilityHidden(true)
+        }
     }
 }

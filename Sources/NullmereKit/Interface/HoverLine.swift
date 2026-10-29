@@ -41,7 +41,7 @@ struct HoverLine: View {
            let line = HoverInfo.line(for: hex, in: session.state, explored: session.isExplored(hex), territory: session.territory) {
             Text(verbatim: line)
                 .font(.nm(11, weight: .light))
-                .foregroundStyle(Palette.ink.opacity(0.85))
+                .foregroundStyle(Palette.text(0.85))
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 12)

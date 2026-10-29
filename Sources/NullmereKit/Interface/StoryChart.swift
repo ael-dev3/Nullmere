@@ -41,14 +41,14 @@ struct StoryChart: View {
         }
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: 4)) { _ in
-                AxisGridLine().foregroundStyle(Palette.ink.opacity(0.08))
-                AxisValueLabel().foregroundStyle(Palette.ink.opacity(0.45)).font(.nm(9))
+                AxisGridLine().foregroundStyle(Palette.text(0.08))
+                AxisValueLabel().foregroundStyle(Palette.text(0.45)).font(.nm(9))
             }
         }
         .chartYAxis {
             AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { _ in
-                AxisGridLine().foregroundStyle(Palette.ink.opacity(0.08))
-                AxisValueLabel().foregroundStyle(Palette.ink.opacity(0.45)).font(.nm(9))
+                AxisGridLine().foregroundStyle(Palette.text(0.08))
+                AxisValueLabel().foregroundStyle(Palette.text(0.45)).font(.nm(9))
             }
         }
         .frame(height: 130)

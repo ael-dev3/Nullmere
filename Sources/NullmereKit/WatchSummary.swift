@@ -14,6 +14,14 @@ struct WatchSummary: Equatable {
     /// At most three of the watch's events that touched the player.
     let events: [String]
 
+    /// The card as VoiceOver says it: the watch, what the stores did, and
+    /// what happened.
+    var spoken: String {
+        let stores = changes.map { "\($0.resource.title) \($0.delta > 0 ? "up" : "down") \(abs($0.delta))" }
+        return (["Watch \(watch)."] + (stores.isEmpty ? [] : [stores.joined(separator: ", ") + "."]) + events.map { $0 + "." })
+            .joined(separator: " ")
+    }
+
     init(before: GameState, after: GameState, events: [GameEvent], player: Int) {
         watch = after.watch
         let was = before.houses[player].stock

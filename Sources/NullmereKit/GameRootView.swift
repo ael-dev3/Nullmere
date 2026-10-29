@@ -5,6 +5,7 @@ import SwiftUI
 /// The world's window: the model gate, the realm's front door, or the lake.
 public struct GameRootView: View {
     let app: GameApp
+    @Environment(\.colorSchemeContrast) private var contrast
 
     public init(app: GameApp) {
         self.app = app
@@ -39,6 +40,9 @@ public struct GameRootView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .onChange(of: contrast, initial: true) { _, contrast in
+            Contrast.shared.isIncreased = contrast == .increased
+        }
         .frame(minWidth: 960, minHeight: 600)
         .background(WindowFitter())
     }
@@ -61,6 +65,7 @@ struct PlayView: View {
         ZStack {
             WorldView(session: session)
                 .ignoresSafeArea()
+                .accessibilityHidden(session.isShowingCard)
             MapVignette()
                 .ignoresSafeArea()
 
@@ -112,6 +117,8 @@ struct PlayView: View {
                 .animation(.easeOut(duration: 0.2), value: session.panel)
                 .animation(.easeOut(duration: 0.3), value: session.envoys)
             }
+            // A card before the world: VoiceOver reads the card alone.
+            .accessibilityHidden(session.isShowingCard)
 
             if let card = session.watchCard {
                 // High in the view, above where the seat is centred.
@@ -161,7 +168,7 @@ private struct KeyHints: View {
     var body: some View {
         Text(verbatim: "? guide · Tab next company · ⌘↩ ready")
             .font(.nm(10))
-            .foregroundStyle(Palette.ink.opacity(0.4))
+            .foregroundStyle(Palette.text(0.4))
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(Color.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 3))
@@ -183,11 +190,11 @@ private struct CounselCard: View {
                     .padding(.top, 2)
                 Text(verbatim: advice)
                     .font(.nm(11.5, weight: .light))
-                    .foregroundStyle(Palette.ink.opacity(0.85))
+                    .foregroundStyle(Palette.text(0.85))
                     .fixedSize(horizontal: false, vertical: true)
                     .id(advice)
                     .transition(.opacity)
-                CloseButton { withAnimation(.easeOut(duration: 0.2)) { hidden = true } }
+                CloseButton(label: "Hide counsel") { withAnimation(.easeOut(duration: 0.2)) { hidden = true } }
                     .help("Hide counsel")
             }
             .padding(.horizontal, 14)

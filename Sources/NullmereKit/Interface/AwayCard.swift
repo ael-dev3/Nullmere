@@ -6,9 +6,14 @@ struct AwayCard: View {
     let report: AwayReport
     let dismiss: () -> Void
 
+    /// VoiceOver goes to the card as it appears, its title first.
+    @AccessibilityFocusState private var focused: Bool
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Caps(report.title, size: 11, weight: .medium, tracking: 0.3)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused($focused)
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
             Rule(opacity: 0.3)
@@ -34,15 +39,15 @@ struct AwayCard: View {
             if report.news.isEmpty {
                 Text(verbatim: "Your House stood quiet; nothing touched it.")
                     .font(.nm(12, weight: .light))
-                    .foregroundStyle(Palette.ink.opacity(0.75))
+                    .foregroundStyle(Palette.text(0.75))
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(Array(report.news.enumerated()), id: \.offset) { _, line in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Circle().fill(Palette.ink.opacity(0.4)).frame(width: 3, height: 3)
+                            Circle().fill(Palette.text(0.4)).frame(width: 3, height: 3)
                             Text(verbatim: line)
                                 .font(.nm(12, weight: .light))
-                                .foregroundStyle(Palette.ink.opacity(0.88))
+                                .foregroundStyle(Palette.text(0.88))
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
@@ -59,5 +64,6 @@ struct AwayCard: View {
         .panelBackground()
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
+        .onAppear { focused = true }
     }
 }

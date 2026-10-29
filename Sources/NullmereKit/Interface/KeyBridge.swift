@@ -22,6 +22,16 @@ enum GameKey: Equatable {
 extension GameSession {
     /// What a key does in the world. False leaves the key to the window.
     func handle(_ key: GameKey) -> Bool {
+        // A card before the world (the seat's briefing, what passed while
+        // away) has the keys: Escape puts it away, and nothing reaches the
+        // map behind it.
+        if isShowingCard {
+            guard key == .escape else { return false }
+            if seatBriefing != nil { dismissSeatBriefing() } else { dismissAwayReport() }
+            return true
+        }
+        // The age's ending has its own way out, by Escape.
+        if key == .escape, state.outcome != nil { return false }
         switch key {
         case .nextUnit:
             selectNextReadyUnit()
@@ -34,11 +44,7 @@ extension GameSession {
         case .home:
             focusOnSeat()
         case .escape:
-            if seatBriefing != nil {
-                dismissSeatBriefing()
-            } else if awayReport != nil {
-                dismissAwayReport()
-            } else if panel != nil {
+            if panel != nil {
                 panel = nil
             } else if selection != Selection.none {
                 selection = Selection.none
@@ -51,6 +57,9 @@ extension GameSession {
             // A company chosen: where the view is centred is where it would
             // go, shown as a pointer would show it.
             if let unit = selectedUnit, unit.owner == player { hover(camera.centreHex) }
+            // VoiceOver says what lies there: the line under a pointer, or
+            // the odds of a strike.
+            if NSWorkspace.shared.isVoiceOverEnabled, let words = centreWords { sayNow(words) }
         case .orderAtCentre:
             guard let unit = selectedUnit, unit.owner == player else { return false }
             order(camera.centreHex)
@@ -64,6 +73,18 @@ extension GameSession {
             panel = panel == .guide ? nil : .guide
         }
         return true
+    }
+}
+
+extension GameSession {
+    /// What lies where the view is centred, in words.
+    var centreWords: String? {
+        let hex = camera.centreHex
+        if let forecast = hoverForecast, hovered == hex {
+            return "Strike: " + MapAccessibility.odds(forecast)
+        }
+        return HoverInfo.line(for: hex, in: state, explored: isExplored(hex), territory: territory)?
+            .replacingOccurrences(of: " · ", with: ", ")
     }
 }
 

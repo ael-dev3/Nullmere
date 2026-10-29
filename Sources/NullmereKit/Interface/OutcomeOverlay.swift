@@ -23,23 +23,23 @@ struct OutcomeOverlay: View {
                     Rule(opacity: 0.4).frame(width: 280)
                     Text(verbatim: description(winner: winner, won: won))
                         .font(.nm(13, weight: .light))
-                        .foregroundStyle(Palette.ink.opacity(0.75))
+                        .foregroundStyle(Palette.text(0.75))
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 440)
                         .fixedSize(horizontal: false, vertical: true)
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         Text(verbatim: OutcomeOverlay.nextAge(secondsLeft: session.secondsLeft(at: context.date)))
                             .font(.nm(11).monospacedDigit())
-                            .foregroundStyle(Palette.ink.opacity(0.55))
+                            .foregroundStyle(Palette.text(0.55))
                             .multilineTextAlignment(.center)
                     }
                     VStack(alignment: .leading, spacing: 8) {
                         Caps("Holds around the lake, watch by watch", size: 8, weight: .medium)
-                            .foregroundStyle(Palette.ink.opacity(0.55))
+                            .foregroundStyle(Palette.text(0.55))
                         StoryChart(state: state, player: session.player)
                         Text(verbatim: StoryChart.summary(of: state, player: session.player))
                             .font(.nm(10.5))
-                            .foregroundStyle(Palette.ink.opacity(0.6))
+                            .foregroundStyle(Palette.text(0.6))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(width: 440)
@@ -107,7 +107,7 @@ struct FallenOverlay: View {
                     Text(verbatim: FallenOverlay.words(for: session.playerHouse, watch: session.state.watch,
                                                        freeHouse: session.mayTakeUpAFreeHouse))
                         .font(.nm(13, weight: .light))
-                        .foregroundStyle(Palette.ink.opacity(0.75))
+                        .foregroundStyle(Palette.text(0.75))
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 440)
                         .fixedSize(horizontal: false, vertical: true)
@@ -133,7 +133,7 @@ struct FallenOverlay: View {
             HStack(spacing: 10) {
                 Text(verbatim: "A House stands without a keeper.")
                     .font(.nm(11))
-                    .foregroundStyle(Palette.ink.opacity(0.75))
+                    .foregroundStyle(Palette.text(0.75))
                 QuietButton(title: "Take up a free House", size: 9.5, prominent: true) { session.takeUpAFreeHouse() }
             }
             .padding(.horizontal, 14)

@@ -604,7 +604,7 @@ struct RivalMind {
     }
 
     /// The most promising place to found a hold that this House knows of.
-    private func bestSite(from origin: Hex, in state: GameState) -> Hex? {
+    func bestSite(from origin: Hex, in state: GameState) -> Hex? {
         let explored = state.houses[house].explored
         let owners = state.territory()
         let anchors = state.holds(of: house).map(\.position)
@@ -638,5 +638,14 @@ struct RivalMind {
             other.owner != house && other.kind.isMilitary && state.isAtWar(house, other.owner)
                 && other.position.distance(to: hex) <= distance
         }
+    }
+}
+
+extension GameState {
+    /// The most promising place a House knows of to found a hold, as its
+    /// steward would choose it, from where a founder stands: for a keeper
+    /// who can't point at the map.
+    public func bestFoundingSite(for house: Int, from origin: Hex) -> Hex? {
+        RivalMind(house: house).bestSite(from: origin, in: self)
     }
 }

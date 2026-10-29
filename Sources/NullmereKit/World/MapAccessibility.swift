@@ -1,3 +1,4 @@
+import Foundation
 import NullmereCore
 
 /// The map as VoiceOver reads it: one element for each hold the player
@@ -16,10 +17,46 @@ enum MapAccessibility {
     struct Order: Equatable, Hashable {
         let name: String
         let hex: Hex
+        /// Found a hold where the company stands, rather than go to `hex`.
+        var founds = false
     }
 
-    /// The most places offered to march to.
-    static let ordersOffered = 6
+    /// The most orders offered for one company.
+    static let ordersOffered = 8
+
+    /// Which way one hex lies from another, as a compass would say it:
+    /// north is up the map.
+    static func direction(from origin: Hex, to target: Hex) -> String {
+        let layout = HexLayout(size: 1)
+        let a = layout.center(of: origin), b = layout.center(of: target)
+        let angle = atan2(-(b.y - a.y), b.x - a.x) * 180 / .pi
+        let names = ["east", "north-east", "north", "north-west", "west", "south-west", "south", "south-east"]
+        let sector = Int(((angle + 360 + 22.5).truncatingRemainder(dividingBy: 360)) / 45)
+        return names[sector % 8]
+    }
+
+    /// "3 tiles north-east"; "beside it, south".
+    static func way(from origin: Hex, to target: Hex) -> String {
+        let distance = origin.distance(to: target)
+        let direction = direction(from: origin, to: target)
+        return distance == 1 ? "beside it, \(direction)" : "\(distance) tiles \(direction)"
+    }
+
+    /// What a strike would do, as the forecast card says it.
+    static func odds(_ forecast: Forecast) -> String {
+        func range(_ r: ClosedRange<Int>) -> String { r.lowerBound == r.upperBound ? "\(r.lowerBound)" : "\(r.lowerBound) to \(r.upperBound)" }
+        var parts: [String] = []
+        if case .hold = forecast.target {
+            parts.append("the ward loses \(range(forecast.dealt)) of \(forecast.defenderHealth)")
+        } else {
+            parts.append("they take \(range(forecast.dealt)) of \(forecast.defenderHealth)")
+        }
+        parts.append(forecast.taken.upperBound > 0 ? "you take \(range(forecast.taken)) of \(forecast.attackerHealth)" : "out of their reach")
+        if forecast.surelyFinishes { parts.append(forecast.couldCapture ? "the hold is taken" : "they fall") }
+        else if forecast.mayFinish { parts.append("they may fall") }
+        if forecast.mayFall { parts.append("you may fall") }
+        return parts.joined(separator: "; ")
+    }
 
     @MainActor
     static func items(for session: GameSession) -> [Item] {
@@ -35,17 +72,36 @@ enum MapAccessibility {
         }
 
         func orders(for unit: Unit, in session: GameSession) -> [Order] {
-            // Foes it can strike now, then the nearest holds it knows of.
             var offered: [Order] = []
+            // Foes it can strike now, with the odds the forecast gives.
             for hex in state.strikeTargets(of: unit).sorted(by: { unit.position.distance(to: $0) < unit.position.distance(to: $1) }) {
                 let what = state.hold(at: hex).map { $0.name } ?? state.unit(at: hex).map { "the \($0.kind.title) of \(state.houses[$0.owner].title)" } ?? "the foe"
-                offered.append(Order(name: "Strike \(what)", hex: hex))
+                let odds = state.forecast(unit: unit.id, at: hex).map { ": " + MapAccessibility.odds($0) } ?? ""
+                offered.append(Order(name: "Strike \(what), \(way(from: unit.position, to: hex))\(odds)", hex: hex))
             }
+            // A founder: found here, or go to the best site it knows of.
+            if unit.kind == .founder {
+                if state.canFound(at: unit.position, for: player) == nil {
+                    offered.append(Order(name: "Found a hold here", hex: unit.position, founds: true))
+                } else if let site = state.bestFoundingSite(for: player, from: unit.position), site != unit.position {
+                    offered.append(Order(name: "March to a site to found a hold, \(way(from: unit.position, to: site)), \(place(site))", hex: site))
+                }
+            }
+            // Into the unknown: the nearest known ground in reach that
+            // borders country not yet seen.
+            let frontier = state.reach(of: unit).keys.filter { hex in
+                hex != unit.position && session.isExplored(hex)
+                    && state.map.neighbors(of: hex).contains { !session.isExplored($0) }
+            }
+            if let edge = frontier.min(by: { (unit.position.distance(to: $0), $0) < (unit.position.distance(to: $1), $1) }) {
+                offered.append(Order(name: "Explore toward the unknown, \(way(from: unit.position, to: edge))", hex: edge))
+            }
+            // The nearest holds it knows of.
             let known = state.holds
                 .filter { session.isExplored($0.position) && $0.position != unit.position }
                 .sorted { (unit.position.distance(to: $0.position), $0.id) < (unit.position.distance(to: $1.position), $1.id) }
             for hold in known where !offered.contains(where: { $0.hex == hold.position }) {
-                offered.append(Order(name: "March to \(hold.name)", hex: hold.position))
+                offered.append(Order(name: "March to \(hold.name), \(way(from: unit.position, to: hold.position))", hex: hold.position))
             }
             return Array(offered.prefix(ordersOffered))
         }

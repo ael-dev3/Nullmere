@@ -30,7 +30,7 @@ struct WatchCard: View {
             if !summary.events.isEmpty {
                 Text(verbatim: summary.events.joined(separator: "  ·  "))
                     .font(.nm(12, weight: .light))
-                    .foregroundStyle(Palette.ink.opacity(0.85))
+                    .foregroundStyle(Palette.text(0.85))
             }
         }
         .padding(.horizontal, 30)
@@ -45,7 +45,6 @@ struct WatchCard: View {
         .offset(y: risen || reduceMotion ? 0 : 10)
         .onAppear {
             withAnimation(.easeOut(duration: 0.7)) { risen = true }
-            AccessibilityNotification.Announcement("Watch \(summary.watch). " + summary.events.joined(separator: ". ")).post()
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Watch \(summary.watch). \(summary.events.joined(separator: ". "))")

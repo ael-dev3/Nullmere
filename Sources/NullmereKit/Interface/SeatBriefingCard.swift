@@ -8,11 +8,16 @@ struct SeatBriefingCard: View {
     let colour: Color
     let begin: () -> Void
 
+    /// VoiceOver goes to the card as it appears, its title first.
+    @AccessibilityFocusState private var focused: Bool
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 RoundedRectangle(cornerRadius: 1).fill(colour).frame(width: 3, height: 16)
                 Caps(briefing.title, size: 12, weight: .medium, tracking: 0.3)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused($focused)
                     .foregroundStyle(Palette.ink)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -21,11 +26,11 @@ struct SeatBriefingCard: View {
                 ForEach(Array(briefing.facts.enumerated()), id: \.offset) { _, fact in
                     Text(verbatim: fact)
                         .font(.nm(12, weight: .light))
-                        .foregroundStyle(Palette.ink.opacity(0.88))
+                        .foregroundStyle(Palette.text(0.88))
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Caps("First", size: 8.5, weight: .medium).foregroundStyle(Palette.ink.opacity(0.55))
+            Caps("First", size: 8.5, weight: .medium).foregroundStyle(Palette.text(0.55))
                 .padding(.top, 4)
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(Array(briefing.steps.enumerated()), id: \.offset) { index, step in
@@ -35,7 +40,7 @@ struct SeatBriefingCard: View {
                             .foregroundStyle(Palette.glow)
                         Text(verbatim: step)
                             .font(.nm(12, weight: .light))
-                            .foregroundStyle(Palette.ink.opacity(0.88))
+                            .foregroundStyle(Palette.text(0.88))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -43,7 +48,7 @@ struct SeatBriefingCard: View {
             HStack {
                 Text(verbatim: "The Guide (?) holds the rest.")
                     .font(.nm(10))
-                    .foregroundStyle(Palette.ink.opacity(0.45))
+                    .foregroundStyle(Palette.text(0.45))
                 Spacer()
                 QuietButton(title: "Begin", size: 10.5, prominent: true, action: begin)
                     .keyboardShortcut(.defaultAction)
@@ -54,5 +59,6 @@ struct SeatBriefingCard: View {
         .panelBackground()
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
+        .onAppear { focused = true }
     }
 }

@@ -8,7 +8,7 @@ struct GuidePanel: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 PanelTitle(title: "Guide", subtitle: "How the lake is held")
-                CloseButton { session.panel = nil }
+                CloseButton(label: "Close the Guide") { session.panel = nil }
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
@@ -20,7 +20,7 @@ struct GuidePanel: View {
                             ForEach(section.lines, id: \.self) { line in
                                 Text(verbatim: line)
                                     .font(.nm(11.5, weight: .light))
-                                    .foregroundStyle(Palette.ink.opacity(0.82))
+                                    .foregroundStyle(Palette.text(0.82))
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }

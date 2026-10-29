@@ -53,7 +53,7 @@ struct FrontDoor: View {
                         if let note = seatNote {
                             Text(verbatim: note)
                                 .font(.nm(11))
-                                .foregroundStyle(Palette.ink.opacity(0.75))
+                                .foregroundStyle(Palette.text(0.75))
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         if let problem = app.arrivalProblem {
@@ -61,6 +61,7 @@ struct FrontDoor: View {
                                 .font(.nm(11))
                                 .foregroundStyle(Palette.bad)
                                 .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityLabel("Problem: \(problem)")
                         }
                         HStack(spacing: 10) {
                             QuietButton(title: enterTitle, size: 11, prominent: true,
@@ -83,7 +84,7 @@ struct FrontDoor: View {
                     ViewThatFits(in: .vertical) {
                         Text(verbatim: "Your identity is a random key kept in this Mac's keychain. The realm knows you by it and by the name you choose; nothing else.")
                             .font(.nm(10))
-                            .foregroundStyle(Palette.ink.opacity(0.45))
+                            .foregroundStyle(Palette.text(0.45))
                             .multilineTextAlignment(.center)
                             .frame(width: 420)
                             .fixedSize(horizontal: false, vertical: true)
@@ -102,6 +103,24 @@ struct FrontDoor: View {
             withAnimation(.easeOut(duration: 1.6)) { appeared = true }
             nameFocused = app.keeperName == nil
         }
+        // What the door has to tell, said as it changes: a problem at the
+        // door, the realm out of reach, the wait for a seat.
+        .onChange(of: app.arrivalProblem) { _, problem in
+            if let problem { AccessibilityNotification.Announcement(problem).post() }
+        }
+        .onChange(of: Self.spokenState(of: app.door)) { _, words in
+            if let words { AccessibilityNotification.Announcement(words).post() }
+        }
+        .onChange(of: app.isWaitingForSeat) { _, waiting in
+            if waiting, let note = seatNote { AccessibilityNotification.Announcement(note).post() }
+        }
+    }
+
+    /// The door's state worth saying aloud when it changes: out of reach,
+    /// and why; nothing for the ordinary comings and goings.
+    static func spokenState(of door: GameApp.Door) -> String? {
+        if case .unreachable(let reason) = door { return "The realm is out of reach. \(reason)" }
+        return nil
     }
 
     private var enterTitle: String {
@@ -123,11 +142,11 @@ struct FrontDoor: View {
     @ViewBuilder
     private var keeper: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Caps("Keeper", size: 8.5, weight: .medium).foregroundStyle(Palette.ink.opacity(0.6))
+            Caps("Keeper", size: 8.5, weight: .medium).foregroundStyle(Palette.text(0.6))
             if let known = app.keeperName {
                 Text(verbatim: "You are known here as \(known), of House \(known).")
                     .font(.nm(13, weight: .light))
-                    .foregroundStyle(Palette.ink.opacity(0.9))
+                    .foregroundStyle(Palette.text(0.9))
             } else {
                 TextField("The name you'll go by", text: $name)
                     .textFieldStyle(.plain)
@@ -138,6 +157,9 @@ struct FrontDoor: View {
                     .overlay(alignment: .bottom) { Rule(opacity: 0.35) }
                     .onSubmit { app.enterWorld(name: name) }
                     .accessibilityLabel("Your name on the lake")
+                    // What's wrong with the name, or what it must be, read
+                    // with the field.
+                    .accessibilityHint(RealmState.nameProblem(name) ?? "Two to twenty letters. It names you and the House you'll hold.")
                 if let problem = RealmState.nameProblem(name) {
                     Text(verbatim: problem)
                         .font(.nm(10))
@@ -145,7 +167,7 @@ struct FrontDoor: View {
                 } else {
                     Text(verbatim: "Two to twenty letters. It names you and the House you'll hold.")
                         .font(.nm(10))
-                        .foregroundStyle(Palette.ink.opacity(0.5))
+                        .foregroundStyle(Palette.text(0.5))
                 }
             }
         }
@@ -166,7 +188,7 @@ struct RealmLine: View {
             }
             Text(verbatim: detail)
                 .font(.nm(11))
-                .foregroundStyle(Palette.ink.opacity(0.65))
+                .foregroundStyle(Palette.text(0.65))
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .ignore)
@@ -188,7 +210,7 @@ struct RealmLine: View {
 
     private var colour: Color {
         switch door {
-        case .connecting: return Palette.ink.opacity(0.5)
+        case .connecting: return Palette.text(0.5)
         case .open: return Palette.good
         case .unreachable: return Palette.bad
         }

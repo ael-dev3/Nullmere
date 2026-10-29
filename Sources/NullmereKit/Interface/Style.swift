@@ -1,5 +1,7 @@
+import AppKit
 import NullmereCore
 import LauncherKit
+import Observation
 import SwiftUI
 
 /// Nullmere's few colours: pale, cold type over the dark, and the colours
@@ -27,6 +29,12 @@ enum Palette {
         Color(red: 0.40, green: 0.78, blue: 0.86),
         Color(red: 0.88, green: 0.36, blue: 0.50),
     ]
+
+    /// The pale type, as faint as the design asks, or, with Increase
+    /// Contrast on, no fainter than reads clearly over the dark.
+    static func text(_ opacity: Double) -> Color {
+        ink.opacity(Contrast.shared.isIncreased ? max(opacity, 0.85) : opacity)
+    }
 
     static func house(_ house: House) -> Color {
         houses[house.sigil % houses.count]
@@ -109,6 +117,7 @@ struct QuietButton: View {
     let action: () -> Void
 
     @State private var hovering = false
+    @FocusState private var focused: Bool
 
     var body: some View {
         let _ = pressable ? PressableButtons.note(title, enabled: enabled, action) : ()
@@ -127,12 +136,29 @@ struct QuietButton: View {
                     RoundedRectangle(cornerRadius: 2)
                         .strokeBorder(Palette.ink.opacity(prominent ? 0.35 : 0), lineWidth: 1)
                 )
+                .overlay(FocusRing(isFocused: focused))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .focused($focused)
         .disabled(!enabled)
         .onPointer { hovering = $0 }
         .accessibilityLabel(title)
+    }
+}
+
+/// The ring a control with the keyboard wears, as the plain button style
+/// leaves none: for those who move by Tab rather than pointer.
+struct FocusRing: View {
+    let isFocused: Bool
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 3)
+            .strokeBorder(Palette.glow, lineWidth: 1.5)
+            .padding(-2)
+            .opacity(isFocused ? 1 : 0)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 }
 
@@ -186,7 +212,15 @@ struct ResourceGlyph: View {
 /// what can't be taken back, such as war.
 struct Confirmation: Equatable {
     static let window = 3.0
+    /// Longer with VoiceOver, which takes time to say what was armed.
+    static let spokenWindow = 10.0
+    /// How long an armed press waits for the second.
+    var span = Confirmation.window
     private(set) var armedAt: Date?
+
+    init(span: Double = Confirmation.window) {
+        self.span = span
+    }
 
     /// Returns whether this press acts.
     mutating func press(at now: Date = Date()) -> Bool {
@@ -205,7 +239,7 @@ struct Confirmation: Equatable {
 
     func isArmed(at now: Date = Date()) -> Bool {
         guard let armedAt else { return false }
-        return now.timeIntervalSince(armedAt) <= Confirmation.window
+        return now.timeIntervalSince(armedAt) <= span
     }
 }
 
@@ -223,12 +257,16 @@ struct ConfirmButton: View {
         let armed = confirmation.isArmed()
         let _ = PressableButtons.note(title, enabled: true, action)
         QuietButton(title: armed ? confirm : title, size: size, tint: armed ? Palette.bad : nil, pressable: false) {
+            confirmation.span = NSWorkspace.shared.isVoiceOverEnabled ? Confirmation.spokenWindow : Confirmation.window
             if confirmation.press() {
                 action()
             } else {
+                // Armed: said, for those who can't see the words change.
+                AccessibilityNotification.Announcement("\(confirm) Press again to confirm.").post()
                 // Disarms on its own, unpressed.
+                let span = confirmation.span
                 Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(Confirmation.window + 0.1))
+                    try? await Task.sleep(for: .seconds(span + 0.1))
                     confirmation.lapse()
                 }
             }
@@ -305,4 +343,12 @@ extension View {
                 }
             }
     }
+}
+
+/// Whether the Mac asks for more contrast: read by `Palette.text`, set
+/// where the interface begins from the environment, on the main thread.
+@Observable
+final class Contrast: @unchecked Sendable {
+    static let shared = Contrast()
+    var isIncreased = false
 }

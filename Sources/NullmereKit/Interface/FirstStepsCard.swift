@@ -11,18 +11,18 @@ struct FirstStepsCard: View {
             HStack {
                 Caps("First steps", size: 8.5, weight: .medium).foregroundStyle(Palette.glow)
                 Spacer()
-                CloseButton(action: dismiss)
+                CloseButton(label: "Hide first steps", action: dismiss)
             }
             ForEach(FirstSteps.Step.allCases, id: \.self) { step in
                 let done = steps.done.contains(step)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: done ? "checkmark.circle.fill" : "circle")
                         .font(.nm(10))
-                        .foregroundStyle(done ? Palette.good : Palette.ink.opacity(0.45))
+                        .foregroundStyle(done ? Palette.good : Palette.text(0.45))
                     Text(verbatim: step.title)
                         .font(.nm(11.5, weight: .light))
-                        .foregroundStyle(Palette.ink.opacity(done ? 0.45 : 0.9))
-                        .strikethrough(done, color: Palette.ink.opacity(0.35))
+                        .foregroundStyle(Palette.text(done ? 0.45 : 0.9))
+                        .strikethrough(done, color: Palette.text(0.35))
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityElement(children: .ignore)

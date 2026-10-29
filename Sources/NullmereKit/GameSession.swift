@@ -585,6 +585,12 @@ public final class GameSession {
         withAnimation(.easeOut(duration: 0.3)) { seatBriefing = nil }
     }
 
+    /// A card stands before the world, as the keeper enters: their seat's
+    /// briefing, or what passed while they were away.
+    public var isShowingCard: Bool {
+        state.outcome == nil && (seatBriefing != nil || awayReport != nil)
+    }
+
     public func dismissAwayReport() {
         withAnimation(.easeOut(duration: 0.3)) { awayReport = nil }
     }
@@ -900,6 +906,9 @@ public final class GameSession {
 
     private func showWatchCard(_ summary: WatchSummary) {
         guard state.outcome == nil else { return }
+        // Said first, with the notices the watch brings, in one
+        // announcement, so neither cuts the other off.
+        announce(summary.spoken)
         watchCardCounter += 1
         let id = watchCardCounter
         withAnimation(.easeOut(duration: 0.5)) { watchCard = (id, summary) }
@@ -1043,6 +1052,12 @@ public final class GameSession {
         if notices.count > 6 {
             notices.removeFirst(notices.count - 6)
         }
+    }
+
+    /// Says something to VoiceOver at once, as the keeper moves about the
+    /// map: not a notice, and not kept.
+    func sayNow(_ text: String) {
+        AccessibilityNotification.Announcement(text).post()
     }
 
     /// VoiceOver says what happened as the notices appear: those posted

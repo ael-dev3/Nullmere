@@ -35,7 +35,17 @@ struct WorldView: View {
                         ForEach(item.orders, id: \.self) { order in
                             Button(order.name) {
                                 session.selection = item.selection
-                                session.order(order.hex)
+                                let before = session.selectedUnit
+                                if order.founds, case .unit(let id) = item.selection {
+                                    session.perform(.found(unit: id))
+                                } else {
+                                    session.order(order.hex)
+                                }
+                                // Carried out: said so. (A refusal says itself, as a notice.)
+                                let after = session.selectedUnit
+                                if before != after || (order.founds && after == nil) {
+                                    session.sayNow("Done: \(order.name.prefix { $0 != "," && $0 != ":" }).")
+                                }
                             }
                         }
                     }
@@ -89,6 +99,9 @@ struct WorldMarks: View {
     var moment: Date?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// With "Differentiate without colour" on, whose a company is shows in
+    /// its shape too: a tick above the keeper's own, a cross on a foe's.
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
 
     var body: some View {
         if let moment {
@@ -320,6 +333,11 @@ struct WorldMarks: View {
                     context.stroke(halo, with: .color(Palette.ink.opacity(isSelected ? 0.9 : 0.4)), lineWidth: isSelected ? 1.4 : 1)
                 }
                 context.stroke(glyph(for: unit.kind, at: point, radius: r * 0.55), with: .color(colour), lineWidth: 1.3)
+                if differentiate {
+                    context.stroke(WorldMarks.ownership(unit.owner == player ? .own : state.isAtWar(player, unit.owner) ? .foe : .other,
+                                                        at: point, radius: r),
+                                   with: .color(Palette.ink), lineWidth: 1.4)
+                }
                 // Rank: a small chevron for each, beneath the token.
                 for chevron in 0..<unit.rank {
                     var mark = Path()
@@ -342,6 +360,28 @@ struct WorldMarks: View {
                 }
             }
         }
+    }
+
+    enum Ownership { case own, foe, other }
+
+    /// The mark that says whose a company is without colour: a bar above
+    /// the keeper's own, a cross at a foe's shoulder, nothing for others.
+    static func ownership(_ whose: Ownership, at c: CGPoint, radius r: CGFloat) -> Path {
+        var p = Path()
+        switch whose {
+        case .own:
+            p.move(to: CGPoint(x: c.x - r * 0.5, y: c.y - r - 4))
+            p.addLine(to: CGPoint(x: c.x + r * 0.5, y: c.y - r - 4))
+        case .foe:
+            let x = c.x - r * 0.95, y = c.y - r * 0.95, d: CGFloat = 3.5
+            p.move(to: CGPoint(x: x - d, y: y - d))
+            p.addLine(to: CGPoint(x: x + d, y: y + d))
+            p.move(to: CGPoint(x: x + d, y: y - d))
+            p.addLine(to: CGPoint(x: x - d, y: y + d))
+        case .other:
+            break
+        }
+        return p
     }
 
     /// A simple line drawing for each kind of company.

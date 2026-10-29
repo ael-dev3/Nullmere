@@ -17,7 +17,7 @@ struct HousesPanel: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 PanelTitle(title: "Houses", subtitle: "\(state.livingHouses.count) still stand around the lake")
-                CloseButton { session.panel = nil }
+                CloseButton(label: "Close Houses") { session.panel = nil }
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
@@ -43,19 +43,20 @@ struct HousesPanel: View {
 /// stages of the Moonspire toward ascendancy.
 struct RaceTable: View {
     let session: GameSession
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
 
     var body: some View {
         let state = session.state
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Caps("The race for the lake", size: 8.5, weight: .medium).foregroundStyle(Palette.ink.opacity(0.7))
+                Caps("The race for the lake", size: 8.5, weight: .medium).foregroundStyle(Palette.text(0.7))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     .layoutPriority(1)
                 Spacer(minLength: 4)
-                Caps("Holds of \(state.dominionNeed)", size: 7.5).foregroundStyle(Palette.ink.opacity(0.45))
+                Caps("Holds of \(state.dominionNeed)", size: 7.5).foregroundStyle(Palette.text(0.45))
                     .frame(width: 92, alignment: .leading)
-                Caps("Spire", size: 7.5).foregroundStyle(Palette.ink.opacity(0.45))
+                Caps("Spire", size: 7.5).foregroundStyle(Palette.text(0.45))
                     .frame(width: 44, alignment: .leading)
             }
             ForEach(session.standings, id: \.house) { standing in
@@ -64,17 +65,21 @@ struct RaceTable: View {
                     RoundedRectangle(cornerRadius: 1).fill(Palette.house(house)).frame(width: 3, height: 10)
                     Text(verbatim: standing.house == session.player ? "You" : house.name)
                         .font(.nm(10.5, weight: standing.house == session.player ? .medium : .regular))
-                        .foregroundStyle(standing.threat == nil ? Palette.ink.opacity(0.8) : (standing.house == session.player ? Palette.good : Palette.bad))
+                        .foregroundStyle(standing.threat == nil ? Palette.text(0.8) : (standing.house == session.player ? Palette.good : Palette.bad))
                         .lineLimit(1)
                     if standing.isVassal {
-                        Caps("Sworn", size: 7).foregroundStyle(Palette.ink.opacity(0.4))
+                        Caps("Sworn", size: 7).foregroundStyle(Palette.text(0.4))
+                    }
+                    if standing.threat != nil, differentiate {
+                        // Near the end of a road, said in words, not colour alone.
+                        Caps("Near", size: 7).foregroundStyle(Palette.text(0.7))
                     }
                     Spacer(minLength: 4)
                     HStack(spacing: 5) {
                         Meter(fraction: Double(standing.dominionPercent) / 100,
                               colour: standing.threat == .dominion ? Palette.bad : Palette.glow)
                             .frame(width: 60)
-                        Text(verbatim: "\(standing.realm)").font(.nm(10).monospacedDigit()).foregroundStyle(Palette.ink.opacity(0.7))
+                        Text(verbatim: "\(standing.realm)").font(.nm(10).monospacedDigit()).foregroundStyle(Palette.text(0.7))
                     }
                     .frame(width: 92, alignment: .leading)
                     LevelPips(level: standing.spire, maximum: BuildingKind.moonspire.maxLevel)
@@ -230,7 +235,8 @@ struct EnvoyWordsField: NSViewRepresentable {
         field.isBordered = false
         field.isBezeled = false
         field.drawsBackground = false
-        field.focusRingType = .none
+        // The system's ring, so one typing (or moving by Tab) sees where.
+        field.focusRingType = .exterior
         field.cell?.isScrollable = true
         field.cell?.wraps = false
         // Typing is undone as in any field, within one draft; what came
@@ -469,19 +475,19 @@ struct HouseRow: View {
                     .fill(Palette.house(house))
                     .frame(width: 3, height: 12)
                 Caps(house.title, size: 10.5, weight: .medium)
-                    .foregroundStyle(house.isEliminated ? Palette.ink.opacity(0.35) : Palette.ink)
+                    .foregroundStyle(house.isEliminated ? Palette.text(0.35) : Palette.ink)
                 Spacer()
                 if house.isEliminated {
-                    Caps("Fallen", size: 8.5).foregroundStyle(Palette.ink.opacity(0.4))
+                    Caps("Fallen", size: 8.5).foregroundStyle(Palette.text(0.4))
                 } else {
                     Caps(stance.title, size: 8.5, weight: .medium)
-                        .foregroundStyle(stance == .war ? Palette.bad : (stance == .pact ? Palette.good : Palette.ink.opacity(0.65)))
+                        .foregroundStyle(stance == .war ? Palette.bad : (stance == .pact ? Palette.good : Palette.text(0.65)))
                 }
             }
             if !house.isEliminated {
                 Text(verbatim: summary(stance: stance, relation: relation, spire: spire))
                     .font(.nm(10.5))
-                    .foregroundStyle(Palette.ink.opacity(0.55))
+                    .foregroundStyle(Palette.text(0.55))
                     .fixedSize(horizontal: false, vertical: true)
                 if house.isPlayer {
                     // Words for the keeper there, sent with the next offer.
@@ -552,7 +558,7 @@ struct HouseRow: View {
             } label: {
                 // Set as the buttons beside it are.
                 Caps("Send a gift", size: 8.5)
-                    .foregroundStyle(Palette.ink.opacity(0.72))
+                    .foregroundStyle(Palette.text(0.72))
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)
             }
@@ -625,29 +631,34 @@ private struct Figure: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Caps(label, size: 7.5).foregroundStyle(Palette.ink.opacity(0.45))
-            Text(verbatim: "\(value)").font(.nm(10.5).monospacedDigit()).foregroundStyle(Palette.ink.opacity(0.8))
+            Caps(label, size: 7.5).foregroundStyle(Palette.text(0.45))
+            Text(verbatim: "\(value)").font(.nm(10.5).monospacedDigit()).foregroundStyle(Palette.text(0.8))
         }
         .accessibilityElement(children: .combine)
     }
 }
 
 struct CloseButton: View {
+    /// What it closes, as VoiceOver says it: "Close Houses", "Hide counsel".
+    var label = "Close"
     let action: () -> Void
 
     @State private var hovering = false
+    @FocusState private var focused: Bool
 
     var body: some View {
         Button(action: action) {
             Image(systemName: "xmark")
                 .font(.nm(9, weight: .light))
-                .foregroundStyle(Palette.ink.opacity(hovering ? 0.95 : 0.5))
+                .foregroundStyle(Palette.text(hovering || focused ? 0.95 : 0.5))
                 .frame(width: 22, height: 22)
                 .contentShape(Rectangle())
+                .overlay(FocusRing(isFocused: focused))
         }
         .buttonStyle(.plain)
+        .focused($focused)
         .onPointer { hovering = $0 }
-        .accessibilityLabel("Close")
+        .accessibilityLabel(label)
     }
 }
 
@@ -669,25 +680,25 @@ struct EnvoyCards: View {
                     if let spoken = session.spoken[.envoy(envoy.id)] {
                         Text(verbatim: "“\(spoken)”")
                             .font(.nm(12, weight: .light).italic())
-                            .foregroundStyle(Palette.ink.opacity(0.88))
+                            .foregroundStyle(Palette.text(0.88))
                             .fixedSize(horizontal: false, vertical: true)
                             .transition(.opacity)
                     }
                     if let words = session.words(of: envoy) {
                         Text(verbatim: "“\(words)”")
                             .font(.nm(12, weight: .light).italic())
-                            .foregroundStyle(Palette.ink.opacity(0.88))
+                            .foregroundStyle(Palette.text(0.88))
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityLabel("\(house.name) writes: \(words)")
                     }
                     Text(verbatim: EnvoyCards.words(for: envoy, from: house, in: state, player: session.player))
                         .font(.nm(10.5))
-                        .foregroundStyle(Palette.ink.opacity(session.spoken[.envoy(envoy.id)] == nil ? 0.7 : 0.5))
+                        .foregroundStyle(Palette.text(session.spoken[.envoy(envoy.id)] == nil ? 0.7 : 0.5))
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 4) {
                         Text(verbatim: left == 1 ? "Leaves after this watch" : "Waits \(left) watches")
                             .font(.nm(10))
-                            .foregroundStyle(Palette.ink.opacity(0.4))
+                            .foregroundStyle(Palette.text(0.4))
                         Spacer()
                         if envoy.words != nil {
                             let muted = session.mutedHouses.contains(house.name)
@@ -776,7 +787,7 @@ struct TradeComposer: View {
             row("For", resource: $take, amount: $takeAmount, most: Stock.cap)
             Text(verbatim: TradeComposer.line(for: trade, stock: stock, keeper: house.isPlayer))
                 .font(.nm(10.5))
-                .foregroundStyle(Palette.ink.opacity(0.7))
+                .foregroundStyle(Palette.text(0.7))
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
                 Spacer()
@@ -791,7 +802,7 @@ struct TradeComposer: View {
 
     private func row(_ label: String, resource: Binding<Resource>, amount: Binding<Int>, most: Int) -> some View {
         HStack(spacing: 8) {
-            Caps(label, size: 8).foregroundStyle(Palette.ink.opacity(0.5)).frame(width: 34, alignment: .leading)
+            Caps(label, size: 8).foregroundStyle(Palette.text(0.5)).frame(width: 34, alignment: .leading)
             Picker(label, selection: resource) {
                 ForEach(Resource.allCases, id: \.self) { Text($0.title).tag($0) }
             }
