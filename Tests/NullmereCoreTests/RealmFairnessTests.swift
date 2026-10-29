@@ -50,6 +50,27 @@ final class RealmFairnessTests: XCTestCase {
         XCTAssertEqual(realm.world.watch, watch + 1)
     }
 
+    func testAFallenKeeperMayTakeUpAFreeHouse() throws {
+        var realm = realm()
+        let ama = try XCTUnwrap(realm.arrive("id-ama", name: "Ama", now: 1).house)
+        let bel = try XCTUnwrap(realm.arrive("id-bel", name: "Bel", now: 1).house)
+        fell(bel, to: ama, in: &realm.world)
+        XCTAssertTrue(realm.hasFreeSeat)
+        XCTAssertEqual(try realm.arrive("id-bel", name: nil, now: 2, reseatsTheFallen: false).house, bel, "Heard from, not asking")
+        let taken = try XCTUnwrap(realm.arrive("id-bel", name: nil, now: 3).house, "Asking, seated anew")
+        XCTAssertNotEqual(taken, bel)
+        XCTAssertFalse(realm.world.houses[taken].isEliminated)
+        XCTAssertEqual(realm.world.houses[taken].name, "Bel")
+
+        // With no House free, the fallen keep their fallen House and look on.
+        var two = self.realm(seats: 2)
+        let first = try XCTUnwrap(two.arrive("id-ama", name: "Ama", now: 1).house)
+        let second = try XCTUnwrap(two.arrive("id-bel", name: "Bel", now: 1).house)
+        fell(second, to: first, in: &two.world)
+        XCTAssertFalse(two.hasFreeSeat)
+        XCTAssertEqual(try two.arrive("id-bel", name: nil, now: 2).house, second)
+    }
+
     func testASeatCountedFreeCanBeTaken() throws {
         var realm = realm(seats: 3)
         let ama = try XCTUnwrap(realm.arrive("id-ama", name: "Ama", now: 1).house)

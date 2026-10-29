@@ -116,6 +116,23 @@ final class LauncherViewTests: XCTestCase {
         XCTAssertEqual(swift.framesPerSecond, 120)
     }
 
+    /// The game's lake in a window hears the app go behind another and come
+    /// back, and the Mac start and stop saving energy, as the launcher's does.
+    func testTheGamesLakeHearsTheAppAndTheMac() throws {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 640, height: 400), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: MoonlitLake())
+        window.orderFrontRegardless()
+        defer { window.close() }
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        for name in [NSApplication.didResignActiveNotification, NSApplication.didBecomeActiveNotification,
+                     Notification.Name.NSProcessInfoPowerStateDidChange, ProcessInfo.thermalStateDidChangeNotification] {
+            NotificationCenter.default.post(name: name, object: nil)
+            RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        }
+        XCTAssertNotNil(window.contentView)
+    }
+
     func testTheTitleAndItsPartsDraw() throws {
         for revealed in [false, true] {
             try draw(TitleBlock(isRevealed: revealed, settlesLetters: true), width: 1200, height: 200)

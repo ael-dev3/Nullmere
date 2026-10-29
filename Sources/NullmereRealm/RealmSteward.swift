@@ -153,7 +153,7 @@ public actor RealmSteward {
             // starting anew) who is still playing is back: any request but
             // leaving says so, so their readiness counts again.
             if request.kind != "arrive", request.kind != "leave", state.keeper(request.keeper)?.isOnline == false {
-                _ = try? state.arrive(request.keeper, name: nil, now: now)
+                _ = try? state.arrive(request.keeper, name: nil, now: now, reseatsTheFallen: false)
                 changed = true
             }
             let (reply, didChange, turned) = handle(kind: request.kind, keeper: request.keeper, payload: request.payload, now: now)

@@ -92,7 +92,8 @@ struct FallenOverlay: View {
                         .foregroundStyle(Palette.bad.opacity(0.9))
                         .accessibilityAddTraits(.isHeader)
                     Rule(opacity: 0.4).frame(width: 280)
-                    Text(verbatim: FallenOverlay.words(for: session.playerHouse, watch: session.state.watch))
+                    Text(verbatim: FallenOverlay.words(for: session.playerHouse, watch: session.state.watch,
+                                                       freeHouse: session.mayTakeUpAFreeHouse))
                         .font(.nm(13, weight: .light))
                         .foregroundStyle(Palette.ink.opacity(0.75))
                         .multilineTextAlignment(.center)
@@ -102,7 +103,11 @@ struct FallenOverlay: View {
                         QuietButton(title: "Look upon the lake", size: 10) {
                             withAnimation(.easeOut(duration: 0.3)) { dismissed = true }
                         }
-                        QuietButton(title: "Leave the world", size: 10, prominent: true) { app.leaveWorld() }
+                        if session.mayTakeUpAFreeHouse {
+                            QuietButton(title: "Take up a free House", size: 10, prominent: true) { session.takeUpAFreeHouse() }
+                        } else {
+                            QuietButton(title: "Leave the world", size: 10, prominent: true) { app.leaveWorld() }
+                        }
                     }
                     .padding(.top, 6)
                 }
@@ -113,8 +118,11 @@ struct FallenOverlay: View {
         }
     }
 
-    static func words(for house: House, watch: Int) -> String {
-        "The last hold of \(house.title) is lost at watch \(watch). The age goes on for the Houses still standing; "
-            + "when it ends, a new one begins on a fresh lake and you are seated again."
+    static func words(for house: House, watch: Int, freeHouse: Bool = false) -> String {
+        let lost = "The last hold of \(house.title) is lost at watch \(watch). "
+        if freeHouse {
+            return lost + "A House still stands without a keeper: take it up and play on, or look on until the age ends."
+        }
+        return lost + "The age goes on for the Houses still standing; when it ends, a new one begins on a fresh lake and you are seated again."
     }
 }

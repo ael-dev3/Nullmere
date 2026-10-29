@@ -709,6 +709,18 @@ public final class GameSession {
         glide(to: next.position)
     }
 
+    /// The keeper's House has fallen while the age goes on, and a House
+    /// stands without a keeper: they may take it up.
+    public var mayTakeUpAFreeHouse: Bool {
+        playerHouse.isEliminated && state.outcome == nil && (realmStatus?.freeSeats ?? 0) > 0
+    }
+
+    /// Asks the realm for a free House; it comes as a new arrival.
+    public func takeUpAFreeHouse() {
+        guard mayTakeUpAFreeHouse else { return }
+        link.arrive(name: nil)
+    }
+
     public func focusOnSeat() {
         guard let seat = state.seat(of: player) else { return }
         selection = .hold(seat.id)

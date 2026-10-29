@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
@@ -115,6 +116,38 @@ final class KeyBridgeTests: XCTestCase {
             XCTAssertFalse(KeyBridgeView.controlHasFocus(in: window))
             XCTAssertTrue(bridge.handle(tab, keyboardNavigation: true))
         }
+        bridge.removeFromSuperview()
+    }
+
+    /// The interface as the app draws it, in a SwiftUI hosting view set
+    /// within the window: that view holding the keyboard is the game's, not
+    /// a control's, so Tab and the arrows stay with the game.
+    func testSwiftUIsOwnViewIsNoFocusedControl() throws {
+        var heard: [GameKey] = []
+        let bridge = KeyBridgeView()
+        bridge.onKey = { heard.append($0); return true }
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 500, height: 300), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 500, height: 300))
+        window.contentView = content
+        let hosting = NSHostingView(rootView: HStack {
+            Button("Houses") {}
+            Button("Ready") {}
+        })
+        hosting.frame = content.bounds
+        content.addSubview(hosting)
+        content.addSubview(bridge)
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        XCTAssertFalse(KeyBridgeView.controlHasFocus(in: window), "As the window opens: \(String(describing: window.firstResponder))")
+        if window.makeFirstResponder(hosting) {
+            XCTAssertFalse(KeyBridgeView.controlHasFocus(in: window))
+        }
+        let tab = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
+                                   context: nil, characters: "\t", charactersIgnoringModifiers: "\t", isARepeat: false, keyCode: 48)!
+        XCTAssertTrue(bridge.handle(tab, keyboardNavigation: true))
+        XCTAssertEqual(heard, [.nextUnit])
         bridge.removeFromSuperview()
     }
 

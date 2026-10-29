@@ -204,9 +204,10 @@ public struct RealmState: Codable, Equatable, Sendable {
 
     /// A keeper arrives: a returning one by their identity, a new one with
     /// the name they chose. Either takes a seat if they have none and one
-    /// is free.
+    /// is free; one whose House has fallen takes up a free one when
+    /// `reseatsTheFallen`, as when they ask to.
     @discardableResult
-    public mutating func arrive(_ id: String, name: String?, now: Double) throws(RealmError) -> Keeper {
+    public mutating func arrive(_ id: String, name: String?, now: Double, reseatsTheFallen: Bool = true) throws(RealmError) -> Keeper {
         let index: Int
         if let known = keepers.firstIndex(where: { $0.id == id }) {
             index = known
@@ -225,6 +226,11 @@ public struct RealmState: Codable, Equatable, Sendable {
         }
         keepers[index].isOnline = true
         keepers[index].awaySince = nil
+        // A keeper whose House has fallen may take up one standing free,
+        // rather than look on until the age ends.
+        if reseatsTheFallen, let house = keepers[index].house, world.houses[house].isEliminated, hasFreeSeat {
+            keepers[index].house = nil
+        }
         if keepers[index].house == nil {
             claimSeat(for: index)
         }
@@ -255,6 +261,11 @@ public struct RealmState: Codable, Equatable, Sendable {
         let span = keepers[index].hasPlayed == true ? "a week" : "a day"
         world.record(.founding, [house], "\(world.houses[house].title) has stood \(span) without its keeper; the stewards keep it for another.")
         return true
+    }
+
+    /// A living House no keeper holds stands free, and the age goes on.
+    var hasFreeSeat: Bool {
+        world.outcome == nil && world.livingHouses.contains { !$0.isPlayer && $0.liege == nil }
     }
 
     /// Gives a keeper the first free seat: a living House no keeper holds.

@@ -87,6 +87,38 @@ final class NearTheEndTests: XCTestCase {
         try draw(PlayView(app: app, session: session))
     }
 
+    /// A fallen keeper with a House standing free is offered it, takes it
+    /// up, and arrives in it, by the realm's own word.
+    func testAFallenKeeperTakesUpAFreeHouse() throws {
+        var realm = RealmState(name: "The Nullmere", seed: "a free House", seats: 4, radius: 18, watchLength: 600, now: 0)
+        let ama = try XCTUnwrap(realm.arrive("id-ama", name: "Ama", now: 1).house)
+        let bel = try XCTUnwrap(realm.arrive("id-bel", name: "Bel", now: 1).house)
+        for index in realm.world.holds.indices where realm.world.holds[index].owner == bel {
+            realm.world.holds[index].owner = ama
+            realm.world.holds[index].isSeat = false
+        }
+        realm.world.units.removeAll { $0.owner == bel }
+        realm.world.houses[bel].isEliminated = true
+        let host = LocalRealm(state: realm)
+        let link = host.link(identity: "id-bel")
+        let session = GameSession(link: link, house: bel, world: try XCTUnwrap(realm.view(for: "id-bel")).world,
+                                  store: LocalStore(directory: dir), host: host)
+        XCTAssertFalse(session.mayTakeUpAFreeHouse, "Not before the realm has said how it stands")
+        link.connect()
+        XCTAssertTrue(session.mayTakeUpAFreeHouse)
+        XCTAssertTrue(FallenOverlay.words(for: session.playerHouse, watch: 1, freeHouse: true).contains("take it up and play on"))
+        try draw(FallenOverlay(app: GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false,
+                                            address: .hosted(seed: "a free House"),
+                                            identity: FileIdentityStore(url: dir.appendingPathComponent("identity-free"))),
+                               session: session))
+        var seated: Keeper?
+        session.onNewAge = { keeper, _ in seated = keeper }
+        session.takeUpAFreeHouse()
+        let house = try XCTUnwrap(seated?.house)
+        XCTAssertNotEqual(house, bel)
+        XCTAssertFalse(host.state.world.houses[house].isEliminated)
+    }
+
     /// The story's line runs to the present watch, recorded or not yet.
     func testTheStoryRunsToTheWatchNotYetRecorded() {
         var state = GameState(settings: GameSettings(seedText: "a story", houseCount: 3, radius: 16))
