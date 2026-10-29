@@ -79,6 +79,27 @@ final class NetworkRealmTests: XCTestCase {
         return (link, listener)
     }
 
+    /// Connecting again while already connected, as when the app comes back
+    /// to the front, keeps the one line and tells the realm's status afresh.
+    func testConnectingAgainTellsTheStatusAfresh() async throws {
+        let db = FakeSpacetime()
+        let (_, running, _) = try await steward(db)
+        defer { running.cancel() }
+        let (link, ear) = await MainActor.run { keeper(db) }
+        try await until("the realm's status") { ear.hasStatus }
+        // Unchanged, the status isn't told again.
+        try await Task.sleep(nanoseconds: 300_000_000)
+        let told = await MainActor.run { ear.events.filter { if case .status = $0 { return true } else { return false } }.count }
+        try await Task.sleep(nanoseconds: 300_000_000)
+        let still = await MainActor.run { ear.events.filter { if case .status = $0 { return true } else { return false } }.count }
+        XCTAssertEqual(still, told, "Told once while it stands still")
+        await MainActor.run { link.connect() }
+        try await until("the status told afresh") {
+            ear.events.filter { if case .status = $0 { return true } else { return false } }.count > told
+        }
+        await MainActor.run { link.leave() }
+    }
+
     func testKeepersMeetThroughTheSteward() async throws {
         let db = FakeSpacetime()
         let (_, running, _) = try await steward(db)
