@@ -36,11 +36,15 @@ final class NearTheEndTests: XCTestCase {
         XCTAssertEqual(Counsel.race(in: state, player: me),
                        "One stage more on your Moonspire and the lake is yours. Every rival will march on your seat: keep its walls manned.")
 
-        // Houses sworn to the keeper, until the realm is two holds short.
+        // Holds founded, until the realm is two short of dominion (never
+        // fewer than ten, so more than a young lake's seats).
         state.holds[seat].levels[.moonspire] = 0
-        for other in state.houses.map(\.id) where other != me {
-            if state.standings().first(where: { $0.house == me })?.threat == .dominion { break }
-            state.houses[other].liege = me
+        var free = state.map.hexes.filter { hex in
+            state.map[hex]?.terrain.isPassable == true && state.hold(at: hex) == nil && state.unit(at: hex) == nil
+        }
+        while state.realm(of: me) < state.dominionNeed - 2, let hex = free.popLast() {
+            state.holds.append(Hold(id: state.nextID, name: "Hold \(state.nextID)", owner: me, position: hex, isSeat: false, foundedWatch: 1))
+            state.nextID += 1
         }
         XCTAssertEqual(state.standings().first { $0.house == me }?.threat, .dominion)
         let line = try XCTUnwrap(Counsel.race(in: state, player: me))
