@@ -68,8 +68,6 @@ extension GameState {
 struct MinHeap<Element: Comparable> {
     private var items: [Element] = []
 
-    var isEmpty: Bool { items.isEmpty }
-
     mutating func push(_ element: Element) {
         items.append(element)
         var child = items.count - 1
