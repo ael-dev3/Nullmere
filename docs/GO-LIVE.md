@@ -1,9 +1,9 @@
 # Going live
 
-Everything Nullmere Online needs is built and rehearsed in CI on every push.
-What remains needs accounts, hardware or people only its keeper has. Each step
-below is one command, says plainly whether it worked, and can be run alone, in
-any order.
+Everything Nullmere Online needs is built and rehearsed in CI on every push that
+changes the code, the scripts or the news. What remains needs accounts,
+hardware or people only its keeper has. Each step below is one command, says
+plainly whether it worked, and can be run alone, in any order.
 
 To see where every step stands, and the command for each one not yet done:
 
@@ -29,11 +29,15 @@ It worked when the last lines read:
 == Asking the realm how it stands, as a keeper would
 The realm answers: it stands at watch 1.
 == The realm is up at https://maincloud.spacetimedb.com/nullmere
+Release builds of Nullmere Online go here already: scripts/build-app.sh
 ```
 
-The steward runs in a container that restarts with the machine
-(`docker logs -f nullmere-steward-nullmere` shows it; every ten minutes it
-says how the realm stands). Release builds already point at
+Where Docker is installed, the steward runs in a container that restarts
+with the machine (`docker logs -f nullmere-steward-nullmere` shows it; every
+ten minutes it says how the realm stands). Without Docker, or with
+`STEWARD=background`, it runs as a process in the background, writing to
+`~/.config/nullmere/steward-maincloud.log`; `STEWARD=foreground` keeps it in
+the terminal. Release builds already point at
 `https://maincloud.spacetimedb.com/nullmere`; nothing in the app changes.
 `scripts/raise-realm.sh maincloud --stop` stops the steward. The module can
 also be published from GitHub (Actions > Publish the realm) once the

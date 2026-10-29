@@ -21,7 +21,6 @@ EXECUTABLE="NullmereLauncher"
 WAIT="${WAIT:-24}"
 SUBSYSTEM="online.nullmere.game"
 SEED="${SEED:-black moon}"
-REALM_FILE="$HOME/Library/Application Support/Nullmere Online/hosted-realm.json"
 IDENTITY="$PWD/build/smoke-identity"
 mkdir -p build
 
@@ -61,18 +60,15 @@ run() {
 $(grep -h "renders with Metal" build/game-stdout.log 2>/dev/null || true)"
 }
 
-# A fresh realm, and a fresh keeper; whatever was here is put back after.
-[ -f "$REALM_FILE" ] && mv "$REALM_FILE" "$REALM_FILE.smoke-backup"
-defaults delete "$EXECUTABLE" keeper.name.hosted >/dev/null 2>&1 || true
-rm -f "$IDENTITY"
+# A fresh realm, and a fresh keeper; whatever was here is put back
+# however the test ends.
+. scripts/smoke-realm.sh
+set_aside_realm "$EXECUTABLE" "$IDENTITY"
 run build/game-world.png 0 unit,houses
 WORLD_LOG="$LOG"
 # The same realm later on, the keeper returning by identity alone, with the
 # larger type a reader can choose.
 NULLMERE_TEXT=larger NULLMERE_WATCH_AFTER=3 WAIT=30 run build/game-later.png 40 seat,watch
-rm -f "$REALM_FILE" "$IDENTITY"
-defaults delete "$EXECUTABLE" keeper.name.hosted >/dev/null 2>&1 || true
-[ -f "$REALM_FILE.smoke-backup" ] && mv "$REALM_FILE.smoke-backup" "$REALM_FILE"
 
 LOG="$WORLD_LOG
 $LOG"

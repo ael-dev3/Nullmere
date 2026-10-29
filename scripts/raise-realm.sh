@@ -45,13 +45,37 @@ ADDRESS="$HOST/$DB"
 STATE_DIR="${NULLMERE_STATE_DIR:-$HOME/.config/nullmere}"
 TOKEN_FILE="$STATE_DIR/steward-token-$TARGET"
 LOG="${STEWARD_LOG:-$STATE_DIR/steward-$TARGET.log}"
+PID_FILE="$STATE_DIR/steward-$TARGET-$DB.pid"
 mkdir -p "$STATE_DIR"
 chmod 700 "$STATE_DIR"
 
 say() { printf '\n== %s\n' "$*"; }
+# A steward in a container can't reach a realm on this machine's 127.0.0.1.
+docker_reaches_realm() {
+    if [ "$MODE" = docker ] && [ "$TARGET" = local ]; then
+        echo "error: a steward in a container can't reach a realm on this machine; use STEWARD=background or foreground" >&2
+        exit 2
+    fi
+}
 plan() { printf '   would: %s\n' "$*"; }
 need() {
     command -v "$1" >/dev/null 2>&1 || { echo "error: $1 is needed. $2" >&2; exit 1; }
+}
+
+# The background steward this script started for this realm, by the pid it
+# kept: only that process, never another that happens to share its words.
+stop_background_steward() {
+    local pid
+    pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+    rm -f "$PID_FILE"
+    case "$pid" in ""|*[!0-9]*) return 1 ;; esac
+    ps -p "$pid" -o command= 2>/dev/null | grep -q "NullmereSteward" || return 1
+    kill "$pid" 2>/dev/null || return 1
+    for _ in $(seq 1 20); do
+        kill -0 "$pid" 2>/dev/null || return 0
+        sleep 0.25
+    done
+    kill -9 "$pid" 2>/dev/null || true
 }
 
 case "$DB" in
@@ -61,7 +85,7 @@ esac
 if [ "$ACTION" = --stop ]; then
     say "Stopping the steward of $ADDRESS"
     docker rm -f "nullmere-steward-$DB" >/dev/null 2>&1 && echo "Stopped its container." || true
-    pkill -f "NullmereSteward $ADDRESS" 2>/dev/null && echo "Stopped it." || echo "No steward of $ADDRESS was running here."
+    if stop_background_steward; then echo "Stopped it."; else echo "No steward of $ADDRESS was running here."; fi
     exit 0
 fi
 
@@ -98,6 +122,7 @@ if [ "$ACTION" = --dry-run ]; then
     if [ -z "$MODE" ]; then
         if [ "$TARGET" = maincloud ] && command -v docker >/dev/null 2>&1; then MODE=docker; else MODE=background; fi
     fi
+    docker_reaches_realm
     case "$MODE" in
         docker)
             say "Building the steward's container"
@@ -154,6 +179,7 @@ MODE="${STEWARD:-}"
 if [ -z "$MODE" ]; then
     if [ "$TARGET" = maincloud ] && command -v docker >/dev/null 2>&1; then MODE=docker; else MODE=background; fi
 fi
+docker_reaches_realm
 
 steward_env() {
     env NULLMERE_STEWARD_TOKEN_FILE="$TOKEN_FILE" \
@@ -172,8 +198,12 @@ case "$MODE" in
         say "Building and starting the steward container"
         docker build -q -f Dockerfile.steward -t nullmere-steward . >/dev/null
         docker rm -f "nullmere-steward-$DB" >/dev/null 2>&1 || true
+        # The token is read from its file, mounted read-only, so it is never
+        # kept in the container's settings for `docker inspect` to show.
         docker run -d --name "nullmere-steward-$DB" --restart unless-stopped \
-            -e NULLMERE_STEWARD_TOKEN="$token" \
+            --user "$(id -u):$(id -g)" \
+            -v "$TOKEN_FILE:/run/nullmere/steward-token:ro" \
+            -e NULLMERE_STEWARD_TOKEN_FILE=/run/nullmere/steward-token \
             ${NULLMERE_REALM_NAME:+-e NULLMERE_REALM_NAME="$NULLMERE_REALM_NAME"} \
             ${NULLMERE_REALM_SEED:+-e NULLMERE_REALM_SEED="$NULLMERE_REALM_SEED"} \
             ${NULLMERE_REALM_SEATS:+-e NULLMERE_REALM_SEATS="$NULLMERE_REALM_SEATS"} \
@@ -196,10 +226,16 @@ case "$MODE" in
             steward_env "$BIN" "$ADDRESS"
             exit $?
         fi
-        pkill -f "NullmereSteward $ADDRESS" 2>/dev/null || true
-        steward_env nohup "$BIN" "$ADDRESS" > "$LOG" 2>&1 &
+        stop_background_steward || true
+        # Emptied first, so a line from an earlier steward can't pass for
+        # this one's.
+        : > "$LOG"
+        steward_env nohup "$BIN" "$ADDRESS" >> "$LOG" 2>&1 &
+        pid=$!
+        echo "$pid" > "$PID_FILE"
         for _ in $(seq 1 90); do
             grep -q "Stewarding" "$LOG" 2>/dev/null && break
+            kill -0 "$pid" 2>/dev/null || break
             sleep 1
         done
         tail -n 5 "$LOG"

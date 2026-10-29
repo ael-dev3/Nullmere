@@ -58,11 +58,16 @@ fi
 # 2. The release: signed and notarized, or not yet.
 secrets="MACOS_CERTIFICATE MACOS_CERTIFICATE_PASSWORD APPLE_API_KEY APPLE_API_KEY_ID APPLE_API_ISSUER"
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-    have="$(gh secret list 2>/dev/null | awk '{print $1}' || true)"
+    # Listing secrets needs admin rights to the repository; without them
+    # the secrets can't be told from missing ones.
+    readable=1
+    have="$(gh secret list 2>/dev/null | awk '{print $1}')" || readable=0
     missing=""
-    for secret in $secrets; do
-        echo "$have" | grep -qx "$secret" || missing="$missing $secret"
-    done
+    if [ "$readable" = 1 ]; then
+        for secret in $secrets; do
+            echo "$have" | grep -qx "$secret" || missing="$missing $secret"
+        done
+    fi
     release="$(gh release view --json tagName,body --jq '.tagName + "|" + (.body | test("ad-hoc"; "i") | tostring)' 2>/dev/null || true)"
     if [ -n "$release" ] && [ "${release##*|}" = false ]; then
         line "2. The release" "NOTARIZED: ${release%|*}"
@@ -72,7 +77,9 @@ if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
     else
         line "2. The release" "NONE YET"
     fi
-    if [ -n "$missing" ]; then
+    if [ "$readable" = 0 ]; then
+        also "can't read the repository's secrets here (they need admin rights to list)"
+    elif [ -n "$missing" ]; then
         also "secrets missing:$missing"
         also "scripts/set-release-secrets.sh DeveloperID.p12 AuthKey_XXXXXXXXXX.p8 <issuer id>"
     elif [ "${release##*|}" != false ]; then

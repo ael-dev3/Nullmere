@@ -1,10 +1,13 @@
 # The realm's steward, ready to run beside a SpacetimeDB database:
 #
 #   docker build -f Dockerfile.steward -t nullmere-steward .
-#   docker run -d --restart unless-stopped -e NULLMERE_STEWARD_TOKEN=... \
+#   docker run -d --restart unless-stopped --user "$(id -u):$(id -g)" \
+#       -v ~/.config/nullmere/steward-token-maincloud:/run/nullmere/steward-token:ro \
+#       -e NULLMERE_STEWARD_TOKEN_FILE=/run/nullmere/steward-token \
 #       nullmere-steward https://maincloud.spacetimedb.com/nullmere
 #
-# The token is that of the identity that published the realm module.
+# The token is that of the identity that published the realm module;
+# scripts/raise-realm.sh keeps it in that file and runs exactly this.
 FROM swift:6.2-noble AS build
 WORKDIR /src
 COPY Package.swift ./

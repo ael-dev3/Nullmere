@@ -89,7 +89,10 @@ bundle() {
     rm -rf "$app"
     mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
     cp "$BIN_DIR/$executable" "$app/Contents/MacOS/$executable"
-    sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD_NUMBER/" -e "s|__REALM__|$REALM_ADDRESS|" "$3" > "$app/Contents/Info.plist"
+    sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD_NUMBER/" "$3" > "$app/Contents/Info.plist"
+    # The address is set by plutil, which escapes it: an & or a | in it
+    # can't break the plist the way it would break a sed replacement.
+    plutil -replace NullmereRealm -string "$REALM_ADDRESS" "$app/Contents/Info.plist"
     plutil -lint -s "$app/Contents/Info.plist"
     cp "$ICNS" "$app/Contents/Resources/AppIcon.icns"
     if [ -n "$CATALOG" ]; then

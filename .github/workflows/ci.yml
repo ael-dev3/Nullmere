@@ -1,8 +1,8 @@
 name: CI
 
 # One macOS job per pull request update, and per push to main or a working
-# branch. Changes that only touch documentation or the browser preview don't
-# start a run.
+# branch. Changes that only touch documentation or the lake's browser preview
+# don't start a run.
 on:
   pull_request:
     paths:
@@ -14,6 +14,9 @@ on:
       - perf/**
       - realm-server/**
       - Dockerfile.steward
+      - news/**
+      - Tools/world-preview/**
+      - Makefile
       - .github/workflows/ci.yml
   push:
     branches: [main, "claude/**"]
@@ -26,6 +29,9 @@ on:
       - perf/**
       - realm-server/**
       - Dockerfile.steward
+      - news/**
+      - Tools/world-preview/**
+      - Makefile
       - .github/workflows/ci.yml
   workflow_dispatch:
 

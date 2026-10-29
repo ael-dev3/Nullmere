@@ -73,12 +73,10 @@ fi
 run build/launcher-settings.png right,right,return,down
 # Play: Return on the lit Play crosses into the realm's front door, in the
 # same window, with a realm hosted on this Mac and a throwaway identity.
-REALM_FILE="$HOME/Library/Application Support/Nullmere Online/hosted-realm.json"
-[ -f "$REALM_FILE" ] && mv "$REALM_FILE" "$REALM_FILE.smoke-backup"
-defaults delete "$EXECUTABLE" keeper.name.hosted >/dev/null 2>&1 || true
+# Whatever realm and keeper this Mac had are put back however it ends.
+. scripts/smoke-realm.sh
+set_aside_realm "$EXECUTABLE" "$PWD/build/smoke-identity-door"
 NULLMERE_REALM=local NULLMERE_IDENTITY_FILE="$PWD/build/smoke-identity-door" run build/launcher-play.png return
-rm -f "$REALM_FILE" "$PWD/build/smoke-identity-door"
-[ -f "$REALM_FILE.smoke-backup" ] && mv "$REALM_FILE.smoke-backup" "$REALM_FILE"
 echo "$LOG" | grep -E "Crossing into the realm" || true
 if ! echo "$LOG" | grep -q "Crossing into the realm"; then
     echo "error: Play did not cross into the realm" >&2

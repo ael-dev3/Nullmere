@@ -21,11 +21,12 @@ break pacts, and win the age by dominion or by raising the Moonspire.
 
 Website: [nullmere.online](https://nullmere.online)
 
-**Going live** takes four steps that need an account, a Mac or people only
+**Going live** takes five steps that need an account, a Mac or people only
 the realm's keeper has: raising the realm on maincloud, signing and
 notarizing the release, hearing the voices on a Mac with Apple Intelligence,
-and measuring on real Apple silicon. Each is one command, rehearsed in CI
-where it can be: see [docs/GO-LIVE.md](docs/GO-LIVE.md).
+measuring on real Apple silicon (those two are one command together), and
+its first players. Each is rehearsed in CI where it can be: see
+[docs/GO-LIVE.md](docs/GO-LIVE.md).
 `scripts/go-live-status.sh` says where each step stands.
 
 ## Requirements
@@ -123,7 +124,7 @@ Tests and checks:
 ```sh
 swift test                 # unit tests; on a Mac with Metal, the shader is also compiled on the GPU
 make check-shader          # compile the shader with the offline Metal compiler
-make smoke                 # build the apps, open the launcher, check it starts and renders with Metal, take a screenshot
+make smoke                 # build the app, open the launcher, check it starts and renders with Metal, take a screenshot
 make smoke-menu            # open a debug build of the launcher in each model state, type into it, photograph every screen
 make smoke-game            # open a debug build, press Play, enter a realm hosted on the Mac as a keeper, take screenshots
 ```
@@ -132,8 +133,9 @@ CI runs all of these on a macOS 26 runner for every pull request, and keeps
 the screenshots of the launcher, the realm's front door and the world.
 
 Line coverage is held to a floor for each module, on macOS and, for the
-rules and the realm, on Linux too (`scripts/coverage.py`); CI's summary
-lists every line no test runs. What remains is mostly what a test can't
+rules, the realm and the launcher's logic, on Linux too (`scripts/coverage.py`); CI's summary
+lists every line no test runs (the command-line entry points, the
+launcher's and the steward's, have no floor: CI runs both whole). What remains is mostly what a test can't
 reach: `init(coder:)` stubs no window calls, SwiftUI state's initial values,
 the fallbacks drawn when Metal or sound fails, the live environment's
 closures (downloading the news, opening a link, quitting), trackpad
@@ -142,7 +144,7 @@ on a Mac with Apple Intelligence. A few more are reached only by hand: a
 menu's items, and VoiceOver's actions on the map (a test process has no
 assistive technology to build SwiftUI's accessibility tree for).
 
-Both apps ask the Foundation Models framework through one
+The launcher and the game ask the Foundation Models framework through one
 `ModelAvailabilityProvider`; tests stand in a fake one and walk every state
 (ready, not eligible, Apple Intelligence off, downloading, and a reason
 macOS hasn't named), including the launcher and the realm's front door
@@ -540,22 +542,25 @@ Sources/
   NullmereLauncher/   The Nullmere Online app's entry point
   NullmereCore/       The rules and the realm's authority: world generation, economy, war, diplomacy, stewards, keepers, watches, ages. Pure, deterministic Swift
   NullmereRealm/      The client's line to the realm over SpacetimeDB or in-process, the steward, keeper identity. Foundation only
-  NullmereSteward/    The steward's command-line entry point
-realm-server/         The SpacetimeDB module (Rust): keepers, requests, answers, the world
   NullmereKit/        The world's interface: front door, Metal world, panels, sound
+  NullmereSteward/    The steward's command-line entry point
 Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereRealmTests, NullmereKitTests
+realm-server/         The SpacetimeDB module (Rust): keepers, requests, answers, the world
+Dockerfile.steward    The steward in a container, as raise-realm.sh runs it
 news/                 news.json, the launcher's news feed
+perf/                 CI's performance baseline, and figures measured on real Macs (perf/mac/)
 Packaging/            Info.plist templates, the Liquid Glass icon (AppIcon.icon) and the classic 1024 px icon
+scripts/              Building, packing and checking a release; smoke tests; raising the realm; going live
 Tools/icon/           Draws the icon's layers (make-layers.py)
-scripts/              build-app.sh, check-shader.sh, smoke-test-app.sh, smoke-test-game.sh
 Tools/scene-preview/  Browser preview of the lake shader
-docs/                 Project notes, starting with what carries over from Warpkeep
+Tools/world-preview/  Browser preview of the world map's tiles
+docs/                 Going live, and project notes, starting with what carries over from Warpkeep
 ```
 
 ## Direction
 
 - **Client:** native Swift on macOS, using SwiftUI and AppKit for the
-  interface, and Metal for the world if it earns its place.
+  interface, and Metal for the lake and the world.
 - **Server:** [SpacetimeDB](https://spacetimedb.com) as the authoritative
   multiplayer backend, as it was for Warpkeep.
 - **Characters:** non-player characters voiced by Apple's on-device model,

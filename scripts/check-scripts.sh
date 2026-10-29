@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Checks the shell scripts as macOS's bash 3.2 reads them: each parses, and
+# Checks the shell scripts as macOS's bash 3.2 reads them (/bin/bash on a
+# Mac; whatever bash is first on the PATH elsewhere): each parses, and
 # no variable runs into a non-ASCII character: bash 3.2 reads an ellipsis
 # straight after a variable as part of its name. Brace the name instead.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 status=0
 for script in scripts/*.sh; do
-    bash -n "$script" || status=1
+    /bin/bash -n "$script" || status=1
     if LC_ALL=C grep -nE '\$[A-Za-z_][A-Za-z0-9_]*[^ -~]' "$script"; then
         echo "error: $script: brace the variable before a non-ASCII character" >&2
         status=1
