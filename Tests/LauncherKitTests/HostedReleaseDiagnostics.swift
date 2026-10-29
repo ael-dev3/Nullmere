@@ -48,8 +48,9 @@ final class HostedReleaseDiagnostics: XCTestCase {
     /// window go. Says how many of the views `watched` finds are still held
     /// after each, and whether the host is.
     private func probe(_ name: String, _ content: AnyView, size: NSSize = NSSize(width: 400, height: 300),
-                       touch: (NSWindow) -> Void = { _ in }, afterTakingOut: (NSWindow) -> Void = { _ in },
-                       watched: (NSView) -> [NSView] = { HostedReleaseDiagnostics.views(ProbeView.self, in: $0) as [NSView] }) -> String {
+                       touch: @MainActor (NSWindow) -> Void = { _ in }, afterTakingOut: @MainActor (NSWindow) -> Void = { _ in },
+                       watched: (@MainActor (NSView) -> [NSView])? = nil) -> String {
+        let watched = watched ?? { Self.views(ProbeView.self, in: $0) }
         var window: NSWindow? = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled], backing: .buffered, defer: false)
         window?.isReleasedWhenClosed = false
         var host: NSHostingView<AnyView>? = NSHostingView(rootView: content)
