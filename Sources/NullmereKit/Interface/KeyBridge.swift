@@ -98,13 +98,32 @@ final class KeyBridgeView: NSView {
         super.removeFromSuperview()
     }
 
-    func handle(_ event: NSEvent) -> Bool {
+    func handle(_ event: NSEvent, keyboardNavigation: Bool = NSApp.isFullKeyboardAccessEnabled) -> Bool {
         guard let window, event.window === window else { return false }
         // Leave typing, and anything with ⌘ or ⌃, to the controls and menus.
         if window.firstResponder is NSText { return false }
         let modifiers = event.modifierFlags.intersection([.command, .control, .option])
         guard modifiers.isEmpty, let key = Self.key(for: event) else { return false }
+        // With keyboard navigation on, a control with focus keeps Tab, to
+        // move focus on, and the arrows, to step its value or its choice.
+        if keyboardNavigation, Self.movesFocus(key), Self.controlHasFocus(in: window) { return false }
         return onKey?(key) ?? false
+    }
+
+    private static func movesFocus(_ key: GameKey) -> Bool {
+        switch key {
+        case .nextUnit: return true
+        case .pan: return true
+        default: return false
+        }
+    }
+
+    /// A control of its own has the keyboard: not the window, the view the
+    /// whole interface is drawn in, nor the map, which takes it when clicked.
+    static func controlHasFocus(in window: NSWindow) -> Bool {
+        guard let responder = window.firstResponder, responder !== window, responder !== window.contentView,
+              !(responder is WorldMetalView) else { return false }
+        return responder is NSView
     }
 
     static func key(for event: NSEvent) -> GameKey? {

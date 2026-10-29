@@ -25,9 +25,10 @@ struct TopBar: View {
     private func bar(compact: Bool) -> some View {
         let state = session.state
         let house = session.playerHouse
-        let income = state.income(of: house.id)
-        let upkeep = state.upkeep(of: house.id)
-        let room = state.storage(of: house.id)
+        let ledger = session.ledger
+        let income = ledger.income
+        let upkeep = ledger.upkeep
+        let room = ledger.room
 
         HStack(spacing: 0) {
             HStack(spacing: 10) {
@@ -50,6 +51,7 @@ struct TopBar: View {
                 ForEach(Resource.allCases, id: \.self) { resource in
                     let net = income[resource] - (resource == .grain ? upkeep : 0)
                     ResourceReadout(resource: resource, amount: house.stock[resource], net: net, room: room, named: !compact,
+                                    summary: ledger.summaries[resource] ?? "",
                                     breakdown: { IncomeBreakdown(state: state, house: house.id, resource: resource, territory: session.territory) })
                 }
             }
@@ -88,7 +90,9 @@ private struct ResourceReadout: View {
     let net: Int
     let room: Int
     var named = true
-    /// Where it comes from, worked out when asked.
+    /// Where it comes from, in a line, for the tooltip.
+    let summary: String
+    /// Where it comes from, in full, worked out when asked.
     let breakdown: () -> IncomeBreakdown
 
     @State private var showing = false
@@ -97,7 +101,7 @@ private struct ResourceReadout: View {
         Button { showing.toggle() } label: { readout }
             .buttonStyle(.plain)
             .popover(isPresented: $showing, arrowEdge: .bottom) { IncomeCard(breakdown: breakdown()) }
-            .help(breakdown().summary)
+            .help(summary)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(resource.title) \(amount), \(net >= 0 ? "gaining" : "losing") \(abs(net)) each watch, storage \(room)")
             .accessibilityHint("Shows where it comes from.")

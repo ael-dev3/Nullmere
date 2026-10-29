@@ -2,7 +2,7 @@ import AppKit
 import Metal
 import SwiftUI
 import LauncherCore
-import NullmereCore
+@testable import NullmereCore
 import NullmereRealm
 import XCTest
 @testable import NullmereKit
@@ -237,6 +237,28 @@ final class NarrationTests: XCTestCase {
         XCTAssertEqual(hungry.text, "Your granaries are empty; your companies go hungry.")
         XCTAssertEqual(hungry.tone, .bad)
         XCTAssertNil(Narration.line(for: .starving(house: other), in: state, viewer: me))
+    }
+
+    /// The keeper's own envoys are told as theirs, going out; another's as
+    /// coming in. An age is won by ascendancy or by dominion, each named.
+    func testEnvoysAndEndingsAreToldAsTheyAre() throws {
+        let state = GameState(settings: GameSettings(seedText: "envoys", houseCount: 3, radius: 16))
+        let me = state.player, other = (state.player + 1) % state.houses.count
+        let them = state.houses[other].title
+        func said(_ event: GameEvent) throws -> Narration.Line { try XCTUnwrap(Narration.line(for: event, in: state, viewer: me)) }
+
+        let pact = try said(.envoyArrived(Envoy(id: 1, from: me, to: other, proposal: .pact, arrived: 1)))
+        XCTAssertEqual(pact.text, "Your envoy takes \(them) an offer of pact.")
+        XCTAssertEqual(pact.tone, .neutral)
+        let demand = try said(.envoyArrived(Envoy(id: 2, from: me, to: other, proposal: .tribute, arrived: 1)))
+        XCTAssertEqual(demand.text, "Your envoy takes \(them) a demand for tribute.")
+        XCTAssertEqual(demand.tone, .neutral, "Their own demand is no threat to them")
+        let theirs = try said(.envoyArrived(Envoy(id: 3, from: other, to: me, proposal: .tribute, arrived: 1)))
+        XCTAssertEqual(theirs.text, "An envoy from \(them) demands tribute, or war.")
+
+        XCTAssertEqual(try said(.gameEnded(Outcome(winner: other, kind: .ascendancy, watch: 9))).text, "\(them) is ascendant.")
+        XCTAssertEqual(try said(.gameEnded(Outcome(winner: other, kind: .dominion, watch: 9))).text, "\(them) holds dominion over the lake.")
+        XCTAssertEqual(try said(.gameEnded(Outcome(winner: me, kind: .dominion, watch: 9))).text, "The Nullmere is yours.")
     }
 }
 
@@ -657,6 +679,84 @@ final class TextSizeTests: XCTestCase {
         let watch = try size(of: WatchClock(session: session))
         XCTAssertGreaterThan(watch.width, 40, "The watch is never squeezed")
         XCTAssertLessThan(watch.height, 30, "and stays on one line")
+    }
+
+    /// The camera glides to the seat, eased; at once where motion is
+    /// reduced; and a pan by the keeper on the way has the last word.
+    @MainActor
+    func testTheCameraGlidesAndGivesWayToThePlayer() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "a glide")), store: LocalStore(directory: dir))
+        let seat = try XCTUnwrap(session.state.seat(of: session.player)).position
+        var target = session.camera
+        target.focus(on: seat)
+        let far = Camera(centerX: target.centerX + 40, centerY: target.centerY - 30, scale: target.scale)
+
+        session.camera = far
+        session.glide(to: seat, reducesMotion: true)
+        XCTAssertEqual(session.camera, target, "At once")
+
+        session.camera = far
+        session.glide(to: seat, reducesMotion: false)
+        XCTAssertEqual(session.camera, far, "Not yet")
+        let deadline = Date().addingTimeInterval(3)
+        while session.camera != target, Date() < deadline { try await Task.sleep(nanoseconds: 20_000_000) }
+        XCTAssertEqual(session.camera, target, "There after a moment")
+
+        session.camera = far
+        session.glide(to: seat, reducesMotion: false)
+        try await Task.sleep(nanoseconds: 60_000_000)
+        var panned = session.camera
+        panned.centerX += 5
+        session.camera = panned
+        try await Task.sleep(nanoseconds: 600_000_000)
+        XCTAssertEqual(session.camera, panned, "The keeper's pan stands")
+    }
+
+    /// The top bar's ledger is the world's own, and kept until it changes.
+    @MainActor
+    func testTheLedgerIsTheWorldsOwn() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "a ledger")), store: LocalStore(directory: dir))
+        let state = session.state, me = session.player
+        let ledger = session.ledger
+        XCTAssertEqual(ledger.income, state.income(of: me))
+        XCTAssertEqual(ledger.upkeep, state.upkeep(of: me))
+        XCTAssertEqual(ledger.room, state.storage(of: me))
+        for resource in Resource.allCases {
+            XCTAssertEqual(ledger.summaries[resource],
+                           IncomeBreakdown(state: state, house: me, resource: resource, territory: session.territory).summary)
+        }
+        let version = session.tilesVersion
+        _ = session.ledger
+        XCTAssertEqual(session.tilesVersion, version)
+    }
+
+    /// A company's march is told in words, never in coordinates.
+    func testAMarchIsToldInWords() throws {
+        var state = GameState(settings: GameSettings(seedText: "a march told", houseCount: 3, radius: 16))
+        let me = state.player
+        let index = try XCTUnwrap(state.units.firstIndex { $0.owner == me })
+        XCTAssertNil(UnitPanel.march(of: state.units[index], in: state, viewer: me))
+        let seat = try XCTUnwrap(state.seat(of: me))
+        state.units[index].destination = seat.position
+        let distance = state.units[index].position.distance(to: seat.position)
+        XCTAssertEqual(UnitPanel.march(of: state.units[index], in: state, viewer: me),
+                       "Marching to \(seat.name), \(distance) tile\(distance == 1 ? "" : "s") away.")
+        let dark = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map.index(of: hex).map { !state.houses[me].explored[$0] } ?? false
+        })
+        state.units[index].destination = dark
+        XCTAssertTrue(try XCTUnwrap(UnitPanel.march(of: state.units[index], in: state, viewer: me)).hasPrefix("Marching into the dark, "))
+        let open = try XCTUnwrap(state.map.hexes.first { hex in
+            state.hold(at: hex) == nil && (state.map.index(of: hex).map { state.houses[me].explored[$0] } ?? false)
+        })
+        state.units[index].destination = open
+        let words = try XCTUnwrap(UnitPanel.march(of: state.units[index], in: state, viewer: me))
+        XCTAssertTrue(words.hasPrefix("Marching, ") && words.hasSuffix(" to go."), words)
+        XCTAssertFalse(words.contains("("), "No coordinates")
     }
 
     /// A hold's long panel scrolls within its height rather than run off the window.

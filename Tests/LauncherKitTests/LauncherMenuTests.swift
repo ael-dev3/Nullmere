@@ -30,6 +30,11 @@ final class LauncherMenuTests: XCTestCase {
             XCTAssertEqual(item.isEnabled(gated: true), item == .website || item == .repository, item.title)
             XCTAssertTrue(item.isEnabled(gated: false), item.title)
             XCTAssertEqual(item.isEnabled(gated: nil), item == .website || item == .repository, "No window, no settings")
+            // Settings… routed to whatever has the window: the realm's own,
+            // once the launcher has made way for it.
+            XCTAssertEqual(item.isEnabled(gated: nil, routed: true), item != .news, item.title)
+            XCTAssertEqual(item.isEnabled(gated: true, routed: true), item == .website || item == .repository, item.title)
+            XCTAssertTrue(item.isEnabled(gated: false, routed: true), item.title)
         }
 
         LauncherMenu.settings.perform(model: model, settings: nil)

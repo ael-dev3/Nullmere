@@ -12,8 +12,6 @@ public final class Ambience {
         case select
         /// A company given its march.
         case order
-        /// Blows exchanged.
-        case battle
         /// The watch turns: a low bell over the water.
         case watch
         /// A hold founded, a work completed.
@@ -36,7 +34,7 @@ public final class Ambience {
         case ride
 
         /// Every cue, for tests and previews.
-        public static let all: [Cue] = [.select, .order, .battle, .watch, .rise, .dread, .envoy, .triumph, .accord, .toll,
+        public static let all: [Cue] = [.select, .order, .watch, .rise, .dread, .envoy, .triumph, .accord, .toll,
                                         .clash, .loose, .ride]
     }
 
@@ -46,9 +44,18 @@ public final class Ambience {
     private let synth = Synth()
     private var started = false
 
+    /// The player has sound turned on.
     public var isEnabled: Bool {
         didSet { apply() }
     }
+
+    /// The game wants its sound now, from `start()` to `stop()`: at the
+    /// realm's door and in the world, not in the launcher. Sound turned on
+    /// meanwhile waits for it.
+    public private(set) var isWanted = false
+
+    /// The engine is running.
+    public var isPlaying: Bool { started }
 
     public init(enabled: Bool) {
         isEnabled = enabled
@@ -83,11 +90,16 @@ public final class Ambience {
     }
 
     private func apply() {
-        if isEnabled { start() } else { stop() }
+        if isEnabled { begin() } else { end() }
     }
 
     public func start() {
-        guard isEnabled, !started else { return }
+        isWanted = true
+        begin()
+    }
+
+    private func begin() {
+        guard isEnabled, isWanted, !started else { return }
         let format = engine.outputNode.inputFormat(forBus: 0)
         let rate = format.sampleRate > 0 ? format.sampleRate : 48_000
         let stereo = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 2)!
@@ -116,6 +128,11 @@ public final class Ambience {
     }
 
     public func stop() {
+        isWanted = false
+        end()
+    }
+
+    private func end() {
         guard started else { return }
         engine.stop()
         for node in engine.attachedNodes where node is AVAudioSourceNode {
@@ -200,8 +217,6 @@ final class Synth: @unchecked Sendable {
             note = Note(partials: [Partial(frequency: 1320, amplitude: 0.10, decay: 30)], noise: 0.03, noiseDecay: 90)
         case .order:
             note = Note(partials: [Partial(frequency: 660, amplitude: 0.09, decay: 14), Partial(frequency: 990, amplitude: 0.04, decay: 18)], noise: 0.02, noiseDecay: 60)
-        case .battle:
-            note = Note(partials: [Partial(frequency: 58, amplitude: 0.16, decay: 7), Partial(frequency: 91, amplitude: 0.06, decay: 9)], noise: 0.09, noiseDecay: 22)
         case .watch:
             // An inharmonic bell, low and long.
             let f: Float = 98

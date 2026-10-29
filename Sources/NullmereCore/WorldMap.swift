@@ -190,3 +190,44 @@ public struct WorldMap: Codable, Equatable, Sendable {
         hex.neighbors.filter(contains)
     }
 }
+
+/// The open water farthest from any shore, and how far: where the full
+/// moon's reflection lies.
+public struct DeepWater: Codable, Equatable, Sendable {
+    public let hex: Hex
+    public let depth: Int
+
+    public init(hex: Hex, depth: Int) {
+        self.hex = hex
+        self.depth = depth
+    }
+}
+
+extension WorldMap {
+    /// The hex of open water farthest from any shore; of equals, the
+    /// nearest the middle of the world. Nil when there is no open water.
+    public func deepestWater() -> DeepWater? {
+        // Hexes of open water, by their distance from anything that isn't.
+        var depth = [Int](repeating: -1, count: count)
+        var frontier: [Int] = []
+        for index in 0..<count where self[index].terrain != .still {
+            depth[index] = 0
+            frontier.append(index)
+        }
+        let hexes = self.hexes
+        var head = 0
+        while head < frontier.count {
+            let index = frontier[head]
+            head += 1
+            for neighbour in neighbors(of: hexes[index]) {
+                guard let next = self.index(of: neighbour), depth[next] < 0 else { continue }
+                depth[next] = depth[index] + 1
+                frontier.append(next)
+            }
+        }
+        guard let deepest = depth.indices.max(by: { a, b in
+            (depth[a], -hexes[a].length, -a) < (depth[b], -hexes[b].length, -b)
+        }), depth[deepest] > 0 else { return nil }
+        return DeepWater(hex: hexes[deepest], depth: depth[deepest])
+    }
+}

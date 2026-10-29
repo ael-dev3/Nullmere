@@ -57,7 +57,7 @@ public final class GameApp {
     private let readModel: () -> ModelReadiness
     public let ambience: Ambience
     private var recheckTask: Task<Void, Never>?
-    private var link: (any RealmLink)?
+    private(set) var link: (any RealmLink)?
     private var hosted: LocalRealm?
     /// The line to a realm across the network: SpacetimeDB's HTTP API, or
     /// what a test gives in its place.
@@ -109,12 +109,14 @@ public final class GameApp {
         ambience.effectsVolume = Float(effectsVolume)
         ambience.ambienceVolume = Float(ambienceVolume)
         ambience.musicVolume = Float(musicVolume)
+        ambience.isMusicOn = isMusicOn
         if opensAtOnce { checkModel() }
     }
 
     /// Crossing in from the launcher: the gate, then the realm's front door.
     public func open() {
         if case .frontDoor = phase {
+            ambience.start()
             openDoor()
         } else {
             checkModel()
@@ -232,6 +234,12 @@ public final class GameApp {
                 return
             }
             link = NetworkRealmLink(transport: transport, credentials: identityStore, pollInterval: pollInterval)
+        }
+        // A link replaced (Try Again) is let go: nothing it still has on
+        // its way can be taken for the new one's.
+        if let old = self.link {
+            old.onEvent = nil
+            old.leave()
         }
         self.link = link
         link.onEvent = { [weak self] event in self?.hear(event) }
@@ -356,8 +364,10 @@ public final class GameApp {
     /// Leaves the world for the front door; the keeper's House stands as
     /// they left it.
     public func leaveWorld() {
+        link?.onEvent = nil
         link?.leave()
         link = nil
+        ambience.isAtWar = false
         phase = .frontDoor
         openDoor()
     }
@@ -365,8 +375,11 @@ public final class GameApp {
     /// Leaves the front door for the launcher.
     public func leaveDoor() {
         stopWaiting()
+        link?.onEvent = nil
         link?.leave()
         link = nil
+        ambience.isAtWar = false
+        ambience.stop()
         onLeave?()
     }
 

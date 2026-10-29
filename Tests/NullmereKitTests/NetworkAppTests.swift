@@ -198,6 +198,37 @@ final class NetworkAppTests: XCTestCase {
         second.leaveWorld()
     }
 
+    /// A door tried again lets the old link go, so nothing it still has on
+    /// its way can be taken for the new one's; the game's sound is wanted
+    /// at the door and let go in the launcher, the score as the keeper left it.
+    func testTheDoorLetsGoWhatItLeaves() async throws {
+        let db = FakeSpacetime()
+        let running = try await steward(db, seats: 4)
+        defer { running.cancel() }
+        let defaults = UserDefaults.standard
+        let kept = defaults.object(forKey: "music.enabled")
+        defaults.set(false, forKey: "music.enabled")
+        defer { kept == nil ? defaults.removeObject(forKey: "music.enabled") : defaults.set(kept, forKey: "music.enabled") }
+        let app = app(db, identity: MemoryStore(), realm: "lets go")
+        XCTAssertFalse(app.ambience.isMusicOn, "The score stays off from the first")
+        app.open()
+        XCTAssertTrue(app.ambience.isWanted, "Sound is wanted at the door")
+        try await until("the door open") { if case .open = app.door { return true } else { return false } }
+        let old = try XCTUnwrap(app.link)
+        XCTAssertNotNil(old.onEvent)
+        app.openDoor()
+        XCTAssertNil(old.onEvent, "The old link is let go")
+        XCTAssertFalse(app.link === old)
+        try await until("the door open again") { if case .open = app.door { return true } else { return false } }
+
+        app.leaveDoor()
+        XCTAssertFalse(app.ambience.isWanted, "Back in the launcher, the game's sound goes")
+        XCTAssertFalse(app.ambience.isAtWar)
+        app.open()
+        XCTAssertTrue(app.ambience.isWanted, "and comes back with the door")
+        app.leaveDoor()
+    }
+
     func testAnAddressWithoutADatabaseIsSaidPlainly() {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         dirs.append(dir)

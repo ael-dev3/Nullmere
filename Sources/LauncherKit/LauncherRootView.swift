@@ -98,7 +98,7 @@ public struct LauncherRootView: View {
 
     /// Low Power Mode turning on or off, or the Mac heating up or cooling
     /// down. macOS announces these on other threads.
-    private static let energyStateChanges: AnyPublisher<Notification, Never> =
+    static let energyStateChanges: AnyPublisher<Notification, Never> =
         NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)
             .merge(with: NotificationCenter.default.publisher(for: ProcessInfo.thermalStateDidChangeNotification))
             .receive(on: DispatchQueue.main)

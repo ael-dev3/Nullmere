@@ -101,7 +101,19 @@ final class LauncherViewTests: XCTestCase {
             XCTAssertEqual(configuration.veil, 1)
             XCTAssertEqual(configuration.motion, reduces ? .reduced : .full)
             XCTAssertEqual(configuration.horizon, LakeComposition.horizon)
+            XCTAssertEqual(configuration.framesPerSecond, reduces ? 30 : 60)
         }
+        // Slowed as the launcher's lake is, while another app is in front or
+        // the Mac saves energy.
+        XCTAssertEqual(MoonlitLake.configuration(systemReducesMotion: false, isSavingEnergy: true).framesPerSecond, 30)
+        // And drawn as the launcher's settings say.
+        let chosen = LauncherSettings(motion: .reduced, quality: .balanced, frameRate: .oneTwenty)
+        let drawn = MoonlitLake.configuration(settings: chosen, systemReducesMotion: false)
+        XCTAssertEqual(drawn.motion, .reduced)
+        XCTAssertEqual(drawn.renderScale, RenderQuality.balanced.scale)
+        XCTAssertEqual(drawn.framesPerSecond, 30)
+        let swift = MoonlitLake.configuration(settings: LauncherSettings(frameRate: .oneTwenty), systemReducesMotion: false)
+        XCTAssertEqual(swift.framesPerSecond, 120)
     }
 
     func testTheTitleAndItsPartsDraw() throws {

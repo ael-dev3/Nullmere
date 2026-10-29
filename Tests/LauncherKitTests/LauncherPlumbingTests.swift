@@ -270,9 +270,20 @@ final class WindowBridgeTests: XCTestCase {
         XCTAssertEqual(entered.count, 1)
         XCTAssertTrue(entered.first === window)
 
+        // Back from the realm, a new bridge: the window stays as the
+        // player has since left it.
+        let returned = WindowBridgeView(startsInFullScreen: true, onKey: { _ in }, onClick: {})
+        returned.enterFullScreen = { entered.append($0) }
+        content.addSubview(returned)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        XCTAssertEqual(entered.count, 1, "Entered as the window first opened, not again")
+
+        let other = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 400), styleMask: [.titled], backing: .buffered, defer: false)
+        other.isReleasedWhenClosed = false
+        defer { other.close() }
         let windowed = WindowBridgeView(startsInFullScreen: false, onKey: { _ in }, onClick: {})
         windowed.enterFullScreen = { entered.append($0) }
-        content.addSubview(windowed)
+        other.contentView?.addSubview(windowed)
         RunLoop.main.run(until: Date().addingTimeInterval(0.2))
         XCTAssertEqual(entered.count, 1, "Not asked for, not entered")
     }

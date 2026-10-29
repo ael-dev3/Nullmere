@@ -42,6 +42,10 @@ final class WindowBridgeView: NSView {
     /// How the window enters full screen; tests watch it instead.
     var enterFullScreen: (NSWindow) -> Void = { $0.toggleFullScreen(nil) }
     private weak var configuredWindow: NSWindow?
+    /// The windows already opened once. Full screen is entered only as a
+    /// window first opens: a bridge made anew (as on coming back from the
+    /// realm) leaves the window as the player has since left it.
+    private static let opened = NSHashTable<NSWindow>.weakObjects()
     private var eventMonitor: Any?
 
     init(startsInFullScreen: Bool, onKey: @escaping (KeyCommand) -> Void, onClick: @escaping () -> Void) {
@@ -76,7 +80,9 @@ final class WindowBridgeView: NSView {
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isMovableByWindowBackground = true
-        if startsInFullScreen {
+        let opening = !Self.opened.contains(window)
+        Self.opened.add(window)
+        if startsInFullScreen, opening {
             // Toggle once the window has finished setting up, and look again
             // then: macOS may already have restored it in full screen.
             DispatchQueue.main.async { [enterFullScreen] in

@@ -21,10 +21,13 @@ enum LauncherMenu: CaseIterable {
     }
 
     /// While the window shows only the requirement screen, Settings… and
-    /// the news wait; the links don't.
-    func isEnabled(gated: Bool?) -> Bool {
+    /// the news wait; the links don't. With nothing said of the launcher
+    /// (the window shows the realm), Settings… opens the realm's own when
+    /// it is `routed` there.
+    func isEnabled(gated: Bool?, routed: Bool = false) -> Bool {
         switch self {
-        case .settings, .news: return gated == false
+        case .settings: return routed ? gated != true : gated == false
+        case .news: return gated == false
         case .website, .repository: return true
         }
     }
@@ -73,7 +76,7 @@ public struct LauncherCommands: Commands {
     private func item(_ item: LauncherMenu) -> some View {
         Button(item.title) { item.perform(model: model, settings: settings) }
             .keyboardShortcut(item.shortcut)
-            .disabled(!item.isEnabled(gated: isGated))
+            .disabled(!item.isEnabled(gated: isGated, routed: settings != nil))
     }
 }
 

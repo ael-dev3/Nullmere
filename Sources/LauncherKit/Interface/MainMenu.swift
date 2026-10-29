@@ -6,6 +6,10 @@ struct MainMenu: View {
     let model: LauncherModel
 
     @Environment(\.launcherUnit) private var unit
+    /// The word with keyboard focus, when keyboard navigation is on: the
+    /// lit word follows it, and it the lit word, so Return and the focus
+    /// ring always mean the same one.
+    @FocusState private var focused: MenuItem?
 
     var body: some View {
         HStack(spacing: 54 * unit) {
@@ -13,11 +17,18 @@ struct MainMenu: View {
                 MenuButton(title: item.title, isSelected: model.menuSelection == item) {
                     model.activate(item)
                 }
+                .focused($focused, equals: item)
                 .onPointer { inside in
                     if inside { model.menuSelection = item }
                 }
                 .accessibilityHint(hint(for: item))
             }
+        }
+        .onChange(of: focused) { _, item in
+            if let item { model.menuSelection = item }
+        }
+        .onChange(of: model.menuSelection) { _, item in
+            if focused != nil { focused = item }
         }
     }
 

@@ -1,3 +1,4 @@
+import AppKit
 import LauncherCore
 import SwiftUI
 
@@ -40,24 +41,43 @@ private struct LakeMetalRepresentable: NSViewRepresentable {
     }
 }
 
-/// The launcher's moonlit lake, for the game to stand its title screen on.
+/// The launcher's moonlit lake, for the game to stand its title screen on:
+/// drawn as the launcher's settings say, and slowed as the launcher's is
+/// while another app is in front or the Mac saves energy.
 public struct MoonlitLake: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isInFront = true
+    @State private var savesEnergy = LauncherEnvironment.live.systemSavesEnergy()
+    private let settings: LauncherSettings
 
-    public init() {}
+    public init(defaults: UserDefaults = .standard) {
+        settings = LauncherSettings(defaults: defaults)
+    }
 
     public var body: some View {
-        LakeBackdrop(configuration: MoonlitLake.configuration(systemReducesMotion: reduceMotion))
+        LakeBackdrop(configuration: MoonlitLake.configuration(settings: settings, systemReducesMotion: reduceMotion,
+                                                              isSavingEnergy: !isInFront || savesEnergy))
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                isInFront = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+                isInFront = false
+            }
+            .onReceive(LauncherRootView.energyStateChanges) { _ in
+                savesEnergy = LauncherEnvironment.live.systemSavesEnergy()
+            }
     }
 
     /// The game's title screens, the realm's door and the model's gate, each
     /// stand a panel on the water, so the moon's image lies sunk beneath it
     /// as under the launcher's own panels.
-    static func configuration(systemReducesMotion: Bool) -> LakeConfiguration {
-        LakeConfiguration(
-            motion: systemReducesMotion ? .reduced : .full,
-            renderScale: 1,
-            framesPerSecond: 60,
+    static func configuration(settings: LauncherSettings = LauncherSettings(), systemReducesMotion: Bool,
+                              isSavingEnergy: Bool = false) -> LakeConfiguration {
+        let motion = settings.motion.resolved(systemReducesMotion: systemReducesMotion)
+        return LakeConfiguration(
+            motion: motion,
+            renderScale: settings.quality.scale,
+            framesPerSecond: settings.frameRate.framesPerSecond(motion: motion, isSavingEnergy: isSavingEnergy),
             horizon: LakeComposition.horizon,
             veil: 1
         )

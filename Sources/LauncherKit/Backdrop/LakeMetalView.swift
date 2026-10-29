@@ -170,10 +170,19 @@ final class LakeMetalView: MTKView {
 
     // MARK: Shader
 
+    /// The shader as compiled for each GPU: every lake after the first (the
+    /// front door's, or the launcher's on coming back from the realm) draws
+    /// from its first frame instead of compiling it again.
+    private static var compiled: [UInt64: any MTLLibrary] = [:]
+
     private func loadRendererIfNeeded() {
         guard renderer == nil, !isLoadingRenderer else { return }
         guard let device else {
             reportFailure("No Metal device is available.")
+            return
+        }
+        if let library = Self.compiled[device.registryID] {
+            finishLoading(device: device, library: library, error: nil, pixelFormat: colorPixelFormat)
             return
         }
         isLoadingRenderer = true
@@ -198,6 +207,7 @@ final class LakeMetalView: MTKView {
         }
         do {
             renderer = try LakeRenderer(device: device, library: library, pixelFormat: pixelFormat)
+            Self.compiled[device.registryID] = library
             Self.logger.notice("The lake renders with Metal on \(device.name, privacy: .public).")
             Reporting.say("The lake renders with Metal on \(device.name).")
             clock.resetInterval()

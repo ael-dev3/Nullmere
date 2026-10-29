@@ -323,9 +323,25 @@ private struct ForeignHoldPanel: View {
 
 // MARK: Units
 
-private struct UnitPanel: View {
+struct UnitPanel: View {
     let session: GameSession
     let unit: Unit
+
+    /// Where a company marches, as a keeper would say it: to a hold by its
+    /// name, into ground not yet seen, or simply on, and how far.
+    static func march(of unit: Unit, in state: GameState, viewer: Int) -> String? {
+        guard let destination = unit.destination else { return nil }
+        let distance = unit.position.distance(to: destination)
+        let away = "\(distance) tile\(distance == 1 ? "" : "s")"
+        if let hold = state.hold(at: destination) {
+            return "Marching to \(hold.name), \(away) away."
+        }
+        let explored = state.houses.indices.contains(viewer) ? state.houses[viewer].explored : []
+        if let index = state.map.index(of: destination), explored.indices.contains(index), !explored[index] {
+            return "Marching into the dark, \(away) away."
+        }
+        return "Marching, \(away) to go."
+    }
 
     var body: some View {
         let state = session.state
@@ -386,8 +402,8 @@ private struct UnitPanel: View {
     }
 
     private func hint(for unit: Unit) -> String {
-        if let destination = unit.destination {
-            return "Marching to \(destination). Right-click elsewhere to change course."
+        if let march = UnitPanel.march(of: unit, in: session.state, viewer: session.player) {
+            return march + " Right-click elsewhere to change course."
         }
         switch unit.kind {
         case .founder: return "Right-click to march. Found a hold on open land three tiles from any other."

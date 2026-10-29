@@ -69,6 +69,10 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The omen on the realm, and when the last lifted.
     var omen: Omen?
     var omenLifted: Int?
+    /// Where the moon's reflection lies: found on the whole map as the world
+    /// is made, so a keeper's view, the unexplored left as land, shows it
+    /// in the same place from the first watch. Absent in older saves.
+    public internal(set) var moonWater: DeepWater?
 
     public var player: Int { houses.first { $0.isPlayer }?.id ?? 0 }
 
@@ -82,6 +86,7 @@ public struct GameState: Codable, Equatable, Sendable {
         self.settings = settings
         watch = 1
         map = world.map
+        moonWater = world.map.deepestWater()
         houses = []
         holds = []
         units = []

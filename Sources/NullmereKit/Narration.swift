@@ -78,6 +78,10 @@ enum Narration {
                 if envoy.from == viewer { return Line(text: "Your envoy takes \(house(envoy.to)) an offer: \(trade).", tone: .neutral) }
                 return Line(text: "An envoy from \(house(envoy.from)) offers a trade: \(trade.given) for \(trade.taken) of yours.", tone: .neutral)
             }
+            if envoy.from == viewer {
+                let errand = envoy.proposal == .tribute ? "a demand for tribute" : "an offer of \(envoy.proposal.title.lowercased())"
+                return Line(text: "Your envoy takes \(house(envoy.to)) \(errand).", tone: .neutral)
+            }
             if envoy.proposal == .tribute {
                 return Line(text: "An envoy from \(house(envoy.from)) demands tribute, or war.", tone: .bad)
             }
@@ -116,7 +120,11 @@ enum Narration {
         case .houseFell(let fallen):
             return Line(text: fallen == viewer ? "Your House has fallen." : "\(house(fallen)) has fallen.", tone: fallen == viewer ? .bad : .neutral)
         case .gameEnded(let outcome):
-            return Line(text: outcome.winner == viewer ? "The Nullmere is yours." : "\(house(outcome.winner)) is ascendant.", tone: outcome.winner == viewer ? .good : .bad)
+            if outcome.winner == viewer { return Line(text: "The Nullmere is yours.", tone: .good) }
+            switch outcome.kind {
+            case .ascendancy: return Line(text: "\(house(outcome.winner)) is ascendant.", tone: .bad)
+            case .dominion: return Line(text: "\(house(outcome.winner)) holds dominion over the lake.", tone: .bad)
+            }
         }
     }
 }

@@ -69,6 +69,24 @@ final class AmbienceEngineTests: XCTestCase {
         ambience.isEnabled = true
         ambience.isEnabled = false
     }
+
+    /// Sound turned on where the game doesn't want it (the launcher) waits
+    /// for the game, and goes with it.
+    func testSoundTurnedOnWaitsForTheGame() {
+        let ambience = Ambience(enabled: false)
+        ambience.isEnabled = true
+        XCTAssertFalse(ambience.isWanted)
+        XCTAssertFalse(ambience.isPlaying, "Not wanted yet: nothing plays")
+        ambience.start()
+        XCTAssertTrue(ambience.isWanted)
+        ambience.stop()
+        XCTAssertFalse(ambience.isWanted)
+        XCTAssertFalse(ambience.isPlaying)
+        ambience.isEnabled = false
+        ambience.isEnabled = true
+        XCTAssertFalse(ambience.isPlaying, "Turned on again in the launcher: still nothing")
+        ambience.isEnabled = false
+    }
 }
 
 /// The on-device voice's own work, with a stand-in for Apple's model: it

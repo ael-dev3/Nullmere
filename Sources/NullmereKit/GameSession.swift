@@ -40,6 +40,7 @@ public final class GameSession {
 
     public private(set) var state: GameState
     public var camera: Camera
+    @ObservationIgnored private var glideTask: Task<Void, Never>?
     public var hovered: Hex?
     public var selection: Selection = .none {
         didSet {
@@ -61,6 +62,9 @@ public final class GameSession {
     public private(set) var tilesVersion = 0
     /// Which hold's land each tile is, by map index.
     public private(set) var territory: [Int?] = []
+    /// The keeper's ledger as the top bar shows it, worked out once for each
+    /// change of the world rather than at every redraw.
+    @ObservationIgnored private var ledgerKept: (version: Int, ledger: Ledger)?
     /// The texture's unchanging ground, made again only when the map changes.
     @ObservationIgnored private var ground: TileTexture.Ground?
     /// Where the moon lies in this lake's water.
@@ -702,16 +706,40 @@ public final class GameSession {
         let current = selectedUnit?.id ?? -1
         let next = ready.first { $0.id > current } ?? ready[0]
         selection = .unit(next.id)
-        withAnimation(.easeInOut(duration: 0.4)) {
-            camera.focus(on: next.position)
-        }
+        glide(to: next.position)
     }
 
     public func focusOnSeat() {
         guard let seat = state.seat(of: player) else { return }
         selection = .hold(seat.id)
-        withAnimation(.easeInOut(duration: 0.4)) {
-            camera.focus(on: seat.position)
+        glide(to: seat.position)
+    }
+
+    /// Carries the camera to a hex over a moment, eased in and out; at once
+    /// where motion is reduced. The camera reaches the map as a plain value,
+    /// so it is moved step by step here rather than by SwiftUI. A pan or a
+    /// zoom by the keeper meanwhile has the last word.
+    func glide(to hex: Hex, reducesMotion: Bool = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) {
+        glideTask?.cancel()
+        var target = camera
+        target.focus(on: hex)
+        guard !reducesMotion else {
+            camera = target
+            return
+        }
+        let start = camera
+        glideTask = Task { [weak self] in
+            let steps = 20
+            var placed = start
+            for step in 1...steps {
+                try? await Task.sleep(nanoseconds: 17_000_000)
+                guard let self, !Task.isCancelled, self.camera == placed else { return }
+                let t = Double(step) / Double(steps)
+                let eased = t * t * (3 - 2 * t)
+                placed.centerX = start.centerX + (target.centerX - start.centerX) * eased
+                placed.centerY = start.centerY + (target.centerY - start.centerY) * eased
+                self.camera = placed
+            }
         }
     }
 
@@ -747,7 +775,7 @@ public final class GameSession {
         }
         if ground?.map != state.map {
             ground = TileTexture.Ground(map: state.map)
-            moon = MoonMirror.place(in: state.map)
+            moon = MoonMirror.place(for: state)
         }
         tileBytes = TileTexture.bytes(for: state, viewer: player, visible: visible, owners: territory, ground: ground)
         tilesVersion += 1
@@ -992,3 +1020,27 @@ public final class GameSession {
 /// Foundation also exports a `Unit` (measurement units); in this module the
 /// word means a company in the field.
 typealias Unit = NullmereCore.Unit
+
+/// What the top bar shows of the keeper's stores: each resource's income,
+/// the companies' upkeep, the room to store, and where each comes from.
+struct Ledger {
+    let income: Stock
+    let upkeep: Int
+    let room: Int
+    let summaries: [Resource: String]
+}
+
+extension GameSession {
+    var ledger: Ledger {
+        if let kept = ledgerKept, kept.version == tilesVersion { return kept.ledger }
+        let house = player
+        let income = state.holds(of: house).reduce(Stock.zero) { $0 + state.income(of: $1, territory: territory) }
+        var summaries: [Resource: String] = [:]
+        for resource in Resource.allCases {
+            summaries[resource] = IncomeBreakdown(state: state, house: house, resource: resource, territory: territory).summary
+        }
+        let ledger = Ledger(income: income, upkeep: state.upkeep(of: house), room: state.storage(of: house), summaries: summaries)
+        ledgerKept = (tilesVersion, ledger)
+        return ledger
+    }
+}

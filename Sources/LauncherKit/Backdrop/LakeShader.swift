@@ -69,8 +69,9 @@ enum LakeShader {
     }
 
     // One layer of point stars on a jittered grid. Each cell holds at most one
-    // star kept a little way from the cell border, so a single cell lookup is
-    // exact. Each layer's grid is turned to an angle of its own and every row
+    // star, its core kept clear of the cell's border and its halo fading out
+    // before it, so a single cell lookup draws every star whole, at any
+    // window size. Each layer's grid is turned to an angle of its own and every row
     // slid along by chance, so no lattice of rows and columns shows through
     // the sky. `pt` is the size of one point in scene units; star sizes are in
     // points so they stay crisp at every window size and backing scale.
@@ -86,17 +87,22 @@ enum LakeShader {
         if (nm_hash12(id + seed) > density) {
             return float3(0.0);
         }
-        float2 pos = 0.08 + 0.84 * nm_hash22(id + seed * 1.7 + 11.0);
+        // The core reaches about three sigma, in points; a cell in a small
+        // window is only a few points across.
+        float margin = clamp(3.0 * sigma * scale * pt, 0.08, 0.45);
+        float2 pos = margin + (1.0 - 2.0 * margin) * nm_hash22(id + seed * 1.7 + 11.0);
         float r = length(f - pos) / (scale * pt);
         if (r > 20.0 * sigma) {
             return float3(0.0);
         }
         float k = nm_hash12(id * 1.31 + seed + 5.0);
         float b = mix(minB, maxB, k * k * k);
+        // The room to the nearest border, in points: the halo is gone by then.
+        float room = min(min(pos.x, 1.0 - pos.x), min(pos.y, 1.0 - pos.y)) / (scale * pt);
         float ph = nm_hash12(id + seed + 23.0);
         float tw = max(1.0 + twinkle * nm_flicker(time, ph), 0.05);
         float core = exp(-r * r / (2.0 * sigma * sigma));
-        float halo = 0.10 * exp(-r / (sigma * 4.0)) * smoothstep(0.55, 1.0, k);
+        float halo = 0.10 * exp(-r / (sigma * 4.0)) * smoothstep(0.55, 1.0, k) * (1.0 - smoothstep(0.5 * room, room, r));
         float temp = nm_hash12(id + seed + 41.0);
         float3 tint = mix(float3(0.76, 0.85, 1.0), float3(1.0, 0.92, 0.82), temp * temp);
         return tint * b * tw * (core + halo);
@@ -207,16 +213,19 @@ enum LakeShader {
         }
 
         // Thin haze drifting past the moon catches its light.
-        if (dm < 0.45) {
+        if (dm < 0.45 && moonlight > 0.0) {
             float haze = smoothstep(0.50, 0.82, nm_fbm(float2(p.x * 2.3 - time * 0.012, p.y * 7.5 + 2.0)));
             c += float3(0.55, 0.64, 0.80) * 0.11 * haze * exp(-dm * 9.0) * (0.85 + 0.3 * breath) * moonlight;
         }
 
-        // Moon: a cold full disc with soft limb darkening, maria and a wide halo.
+        // Moon: a cold full disc with soft limb darkening, maria and a wide
+        // halo; none of it worked out where a veil hides the moon's image.
         float rim = max(dm - NM_MOON_R, 0.0);
-        float3 glowTint = float3(0.58, 0.68, 0.86);
-        float glow = 0.050 * exp(-rim * 2.2) + 0.080 * exp(-rim * 7.5) + 0.15 * exp(-rim * 24.0) + 0.26 * exp(-rim * 90.0);
-        c += glowTint * glow * (0.86 + 0.28 * breath) * moonlight;
+        if (moonlight > 0.0) {
+            float3 glowTint = float3(0.58, 0.68, 0.86);
+            float glow = 0.050 * exp(-rim * 2.2) + 0.080 * exp(-rim * 7.5) + 0.15 * exp(-rim * 24.0) + 0.26 * exp(-rim * 90.0);
+            c += glowTint * glow * (0.86 + 0.28 * breath) * moonlight;
+        }
         float disc = (1.0 - smoothstep(NM_MOON_R - pt, NM_MOON_R + pt, dm)) * moonlight;
         if (disc > 0.0) {
             float2 q = (p - m) / NM_MOON_R;
@@ -380,8 +389,10 @@ enum LakeShader {
             float ringLight = max(ring.y, 0.0) * (0.35 + 0.65 * exp(-lateral * lateral));
             c += float3(0.55, 0.64, 0.80) * 0.45 * ringLight * moonlight;
 
-            float lit = dot(c, float3(0.33, 0.34, 0.33));
-            c += nm_glints(p, m, horizon, depth, pt, time) * (0.35 + 0.65 * reflectance) * (1.0 - smoothstep(0.15, 0.40, lit)) * moonlight;
+            if (moonlight > 0.0) {
+                float lit = dot(c, float3(0.33, 0.34, 0.33));
+                c += nm_glints(p, m, horizon, depth, pt, time) * (0.35 + 0.65 * reflectance) * (1.0 - smoothstep(0.15, 0.40, lit)) * moonlight;
+            }
 
             c += float3(0.0015, 0.0022, 0.0035);
         }

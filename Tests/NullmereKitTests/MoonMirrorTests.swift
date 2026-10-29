@@ -1,5 +1,5 @@
-import NullmereCore
 import XCTest
+@testable import NullmereCore
 @testable import NullmereKit
 
 final class MoonMirrorTests: XCTestCase {
@@ -26,5 +26,19 @@ final class MoonMirrorTests: XCTestCase {
         // A world with no open water has no moon in it.
         let dry = WorldMap(radius: 3, fill: Tile(terrain: .greyfield))
         XCTAssertEqual(MoonMirror.place(in: dry).w, 0)
+    }
+
+    /// A keeper's view, the unexplored left as land, still shows the moon
+    /// where the whole lake puts it, from the first watch; a world from
+    /// before the realm found it falls back to the map as known.
+    func testTheMoonStaysPutAsTheLakeIsExplored() throws {
+        var world = GameState(settings: GameSettings(seedText: "moon in the fog", keepers: 0))
+        let whole = MoonMirror.place(in: world.map)
+        XCTAssertEqual(world.moonWater?.hex, MoonMirror.deepest(in: world.map)?.0)
+        let view = world.view(for: 0)
+        XCTAssertNotEqual(MoonMirror.place(in: view.map), whole, "The fogged map alone would put it elsewhere")
+        XCTAssertEqual(MoonMirror.place(for: view), whole)
+        world.moonWater = nil
+        XCTAssertEqual(MoonMirror.place(for: world), whole)
     }
 }

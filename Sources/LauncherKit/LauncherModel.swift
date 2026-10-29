@@ -110,7 +110,8 @@ public final class LauncherModel {
         guard !isGated else { return nil }
         switch screen {
         case .title, .play: return nil
-        case .news: return "↑ ↓ choose  ·  return open  ·  esc back"
+        // Return opens a story's page; a story without one has none to open.
+        case .news: return selectedNews?.link == nil ? "↑ ↓ choose  ·  esc back" : "↑ ↓ choose  ·  return open  ·  esc back"
         case .settings: return "← → change  ·  esc back"
         }
     }
