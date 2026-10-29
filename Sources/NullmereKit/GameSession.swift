@@ -1086,9 +1086,10 @@ extension GameSession {
     /// A value worked out once for each change of the world.
     private func keptForThisWorld<Value>(_ key: String, _ make: () -> Value) -> Value {
         if keptForWorld.version != tilesVersion { keptForWorld = (tilesVersion, [:]) }
-        if let value = keptForWorld.values[key] as? Value { return value }
+        // Kept as it was made, nothing included: counsel may have none to give.
+        if let kept = keptForWorld.values[key] { return kept as! Value }
         let value = make()
-        keptForWorld.values[key] = value
+        keptForWorld.values[key] = value as Any
         return value
     }
 

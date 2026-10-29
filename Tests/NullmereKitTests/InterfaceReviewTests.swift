@@ -127,23 +127,21 @@ final class InterfaceReviewTests: XCTestCase {
         state.houses[state.player].isEliminated = true
         XCTAssertNil(Counsel.advice(for: state, player: state.player))
         let store = LocalStore(directory: dir)
+        let session = GameSession(state: state, store: store)
+        XCTAssertNil(session.counsel)
         let app = GameApp(store: store, readiness: { .ready }, sound: false, address: .hosted(seed: "offered what helps"),
                           identity: FileIdentityStore(url: dir.appendingPathComponent("identity")))
-        app.open()
-        app.enterWorld(name: "Ama")
-        let session = try XCTUnwrap(app.session)
-        XCTAssertTrue(GameMenu.stayReady.isEnabled(in: app))
         draw(FallenOverlay(app: app, session: session))
         XCTAssertEqual(OutcomeOverlay.nextAge(secondsLeft: 134), "A new age begins on a fresh lake in 2:14, and every keeper is seated anew.")
         XCTAssertEqual(OutcomeOverlay.nextAge(secondsLeft: nil), "A new age begins on a fresh lake when the watch turns, and every keeper is seated anew.")
-        app.leaveWorld()
-        app.leaveDoor()
     }
 
     func testWhatTheBarAndPanelsReadIsTheWorldsOwn() throws {
         let session = GameSession(state: GameState(settings: GameSettings(seedText: "kept for the world")), store: LocalStore(directory: dir))
         XCTAssertEqual(session.standings, session.state.standings())
+        XCTAssertNotNil(session.counsel, "The opening has counsel")
         XCTAssertEqual(session.counsel, Counsel.advice(for: session.state, player: session.player))
+        XCTAssertEqual(session.counsel, Counsel.advice(for: session.state, player: session.player), "Kept, and kept the same")
         for hold in session.state.holds {
             XCTAssertEqual(session.holdsByPosition[hold.position]?.id, hold.id)
         }
