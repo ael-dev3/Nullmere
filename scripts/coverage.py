@@ -104,7 +104,7 @@ def main(argv):
         floor = floors.get(module)
         note = ""
         if floor is not None:
-            note = f" (floor {floor:.0f}%)"
+            note = f" (floor {floor:g}%)"
             if percent < floor:
                 note += " BELOW"
                 failed = True
