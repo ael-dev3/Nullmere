@@ -8,6 +8,23 @@ import XCTest
 /// of the wrong size left aside, and the drawing scale following the zoom.
 @MainActor
 final class WorldMetalViewTests: XCTestCase {
+    /// A shader library missing the world's vertex or fragment function is
+    /// refused by name, so a broken build says what it lacks.
+    func testARendererWithoutItsFunctionsSaysWhichIsMissing() throws {
+        guard let device = WorldMetalView.systemDevice else { throw XCTSkip("No Metal device available") }
+        func library(_ functions: String) throws -> any MTLLibrary {
+            try device.makeLibrary(source: "#include <metal_stdlib>\nusing namespace metal;\n" + functions, options: nil)
+        }
+        let noVertex = try library("fragment float4 other_fragment() { return float4(0); }")
+        let onlyVertex = try library("vertex float4 \(WorldShader.vertexFunction)() { return float4(0); }")
+        for (lib, missing) in [(noVertex, WorldShader.vertexFunction), (onlyVertex, WorldShader.fragmentFunction)] {
+            XCTAssertThrowsError(try WorldRenderer(device: device, library: lib, pixelFormat: .bgra8Unorm)) { error in
+                guard case WorldRenderer.Failure.missingFunction(let name) = error else { return XCTFail("\(error)") }
+                XCTAssertEqual(name, missing)
+            }
+        }
+    }
+
     func testTilesWaitForTheShaderAndFailuresAreSaidOnce() throws {
         guard let device = WorldMetalView.systemDevice else { throw XCTSkip("No Metal device available") }
         let state = GameState(settings: GameSettings(seedText: "waiting tiles", houseCount: 3, radius: 16))
