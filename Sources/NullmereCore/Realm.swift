@@ -156,8 +156,8 @@ public struct RealmState: Codable, Equatable, Sendable {
 
     public func status(now: Double) -> RealmStatus {
         let held = Set(keepers.compactMap(\.house))
-        // As a seat is claimed: a living House no keeper holds, sworn to no liege.
-        let free = world.livingHouses.filter { !held.contains($0.id) && !$0.isPlayer && $0.liege == nil }.count
+        // As a seat is claimed: a House open to a keeper, which no keeper holds.
+        let free = openSeats.filter { !held.contains($0.id) }.count
         let online = keepers.filter(\.isOnline)
         return RealmStatus(name: name, age: age, watch: world.watch, seats: seats, freeSeats: free,
                            keepers: keepers.count, online: online.count, ready: online.filter(\.isReady).count,
@@ -269,23 +269,40 @@ public struct RealmState: Codable, Equatable, Sendable {
         return true
     }
 
-    /// A living House no keeper holds stands free, and the age goes on.
+    /// A House open to a keeper stands free, and the age goes on.
     var hasFreeSeat: Bool {
-        world.outcome == nil && world.livingHouses.contains { !$0.isPlayer && $0.liege == nil }
+        world.outcome == nil && !openSeats.isEmpty
     }
 
-    /// Gives a keeper the first free seat: a living House no keeper holds.
+    /// How a House stands, to rank it: its realm, then its renown.
+    private func standing(_ house: Int) -> [Int] {
+        [world.realm(of: house), world.renown(of: house)]
+    }
+
+    /// The Houses a keeper may take up: living, kept by no keeper, sworn
+    /// to no liege, and not near the end of the age. Never the House
+    /// leading the lake, nor one within reach of dominion or with its
+    /// Moonspire risen: a keeper coming under a new name, as often as they
+    /// like, can't take a House on the point of winning.
+    var openSeats: [House] {
+        let living = world.livingHouses
+        let best = living.map { standing($0.id) }.max { $0.lexicographicallyPrecedes($1) }
+        let leaders = living.filter { standing($0.id) == best }
+        let leader = leaders.count == 1 ? leaders.first?.id : nil
+        return living.filter { house in
+            !house.isPlayer && house.liege == nil && house.id != leader
+                && world.realm(of: house.id) * 3 < world.dominionNeed * 2
+                && (world.seat(of: house.id)?.level(.moonspire) ?? 0) < 3
+        }
+    }
+
+    /// Gives a keeper a seat: a middling House of those open, or, at an
+    /// age's start, all alike, the first.
     private mutating func claimSeat(for index: Int) {
-        // A middling House of those free: one coming late to an age takes
-        // up a House with a road still open, but never the strongest, which
-        // a keeper could otherwise seize by coming again under a new name,
-        // nor, as a rule, the House that took their own. At an age's start,
-        // all alike, the first.
-        let free = world.livingHouses.filter { !$0.isPlayer && $0.liege == nil }
-        func standing(_ house: House) -> [Int] { [world.realm(of: house.id), world.renown(of: house.id)] }
-        let ranked = free.map(standing).sorted { $0.lexicographicallyPrecedes($1) }
+        let open = openSeats
+        let ranked = open.map { standing($0.id) }.sorted { $0.lexicographicallyPrecedes($1) }
         guard world.outcome == nil, !ranked.isEmpty,
-              let seat = free.first(where: { standing($0) == ranked[(ranked.count - 1) / 2] }) else { return }
+              let seat = open.first(where: { standing($0.id) == ranked[(ranked.count - 1) / 2] }) else { return }
         world.houses[seat.id].isPlayer = true
         world.houses[seat.id].name = keepers[index].name
         keepers[index].house = seat.id

@@ -146,11 +146,15 @@ public actor RealmSteward {
                 throw StewardError.unreadableWorld(String(describing: error))
             }
             self.state.fillIn()
-        } else if let legacy = try? await transport.query("SELECT version, state FROM world", token: token).first,
-                  legacy.count == 2, let text = legacy[1].string,
-                  let state = try? JSONDecoder().decode(RealmState.self, from: Data(text.utf8)) {
+        } else if let legacy = try await transport.query("SELECT version, state FROM world", token: token).first {
             // A realm kept whole, from before the world was kept in parts:
-            // taken up, and kept in parts from now on.
+            // taken up, and kept in parts from now on. As with parts, one
+            // that can't be read is refused, never begun anew over; and a
+            // failure to ask is a failure, not an empty realm.
+            guard legacy.count == 2, let text = legacy[1].string,
+                  let state = try? JSONDecoder().decode(RealmState.self, from: Data(text.utf8)) else {
+                throw StewardError.unreadableWorld("the world kept whole, from before parts")
+            }
             self.state = state
             self.state.fillIn()
         } else {
@@ -313,6 +317,22 @@ public actor RealmSteward {
     /// back is shown it as they arrive. Nothing is taken as published until
     /// the server has it.
     private func publish(now: Double = Date().timeIntervalSince1970) async throws {
+        // A publication that failed may have been kept all the same, its
+        // answer lost on the way back: what SpacetimeDB holds is read
+        // again first, so this publication's version, and the version of
+        // what keepers hear with it, run on from it, and the parts sent are
+        // those that differ from it.
+        if unsure {
+            let kept = try await RealmSteward.statusVersion(transport, token: token)
+            let parts = try await RealmSteward.keptParts(transport, token: token)
+            // Kept: it is done as if its answer had come, so what it carried
+            // isn't carried again under a new version and heard twice.
+            if let attempt = lastAttempt, kept >= attempt.version { settle(attempt) }
+            version = max(version, kept)
+            keptParts = parts
+            lastAttempt = nil
+            unsure = false
+        }
         // Keys in a fixed order, so a view unchanged encodes the same and
         // isn't sent again: unsorted, Foundation on Linux orders them anew
         // each time, and every view went out with every publication.
@@ -338,19 +358,12 @@ public actor RealmSteward {
             heard.append(String(decoding: try encoder.encode(batches.map(\.batch)), as: UTF8.self))
         }
         let answers = unanswered
-        // A publication that failed may have been kept all the same, its
-        // answer lost on the way back: what SpacetimeDB holds is read
-        // again, so the versions run on from it and the parts sent are
-        // those that differ from it.
-        if unsure {
-            version = max(version, try await RealmSteward.statusVersion(transport, token: token))
-            keptParts = try await RealmSteward.keptParts(transport, token: token)
-            unsure = false
-        }
         // The world's parts that changed, and those no longer there.
         let parts = worldChanged ? try state.parts(using: encoder) : keptParts
         let changed = parts.filter { keptParts[$0.key] != $0.value }.sorted { $0.key < $1.key }
         let gone = keptParts.keys.filter { parts[$0] == nil }.sorted()
+        let attempt = Attempt(version: version + 1, at: now, status: status, shown: shown, parts: parts, heard: lately,
+                              events: pendingEvents.count, acts: pendingActs.count, answers: answers.map(\.nonce))
         do {
             try await transport.call("publish", [
                 .integer(version + 1),
@@ -368,19 +381,43 @@ public actor RealmSteward {
         } catch {
             if RealmSteward.isHeldByAnother(error) { isDisplaced = true }
             unsure = true
+            lastAttempt = attempt
             throw error
         }
-        lastPublished = now
-        version += 1
-        lastStatus = status
-        published.merge(shown) { $1 }
-        keptParts = parts
-        recentlyHeard = lately
-        pendingEvents = []
-        pendingActs = []
+        settle(attempt)
         worldChanged = false
-        unanswered.removeFirst(answers.count)
-        answered += answers.map { ($0.nonce, now) }
+    }
+
+    /// A publication, as sent: what it settles once it is known to be kept.
+    private struct Attempt {
+        let version: UInt64
+        let at: Double
+        let status: RealmStatus
+        let shown: [String: String]
+        let parts: [String: String]
+        let heard: [String: [(at: Double, batch: HeardBatch)]]
+        /// How many of the pending events, acts and answers it carried.
+        let events: Int
+        let acts: Int
+        let answers: [String]
+    }
+
+    /// The publication sent last, if whether it was kept is unknown.
+    private var lastAttempt: Attempt?
+
+    /// Settles a publication kept: its version, views, parts and what it
+    /// told are the steward's record now, and what it carried is done.
+    private func settle(_ attempt: Attempt) {
+        lastPublished = attempt.at
+        version = max(version, attempt.version)
+        lastStatus = attempt.status
+        published.merge(attempt.shown) { $1 }
+        keptParts = attempt.parts
+        recentlyHeard = attempt.heard
+        pendingEvents.removeFirst(min(attempt.events, pendingEvents.count))
+        pendingActs.removeFirst(min(attempt.acts, pendingActs.count))
+        unanswered.removeFirst(min(attempt.answers.count, unanswered.count))
+        answered += attempt.answers.map { ($0, attempt.at) }
     }
 
     /// Runs the realm until cancelled, a step every quarter second.

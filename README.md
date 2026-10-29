@@ -243,8 +243,9 @@ as the realm will, and takes the realm's word as final.
   your name. The front door
   shows the realm's state: its age and watch, how many keepers are there,
   and how many seats are free. Enter World seats you in a middling House of
-  those free, never the strongest (at an age's start, all alike, the
-  first); returning, you go straight back to yours.
+  those free (at an age's start, all alike, the first); returning, you go
+  straight back to yours. The House leading the lake, or one within reach
+  of dominion or with its Moonspire risen, is open to no one.
 - **Seats.** The lake has twelve seats. Seats no keeper holds are played by
   stewards, the same minds that once played rivals, until a keeper claims
   them. When every seat is held, a newcomer waits at the front door and

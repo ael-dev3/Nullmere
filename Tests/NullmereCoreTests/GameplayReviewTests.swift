@@ -222,11 +222,32 @@ final class StewardBalanceTests: XCTestCase {
                 realm.world.nextID += 1
             }
         }
-        XCTAssertEqual(try realm.arrive("id-bel", name: "Bel", now: 1).house, free[2], "The middling House of five")
-        // Again under another name: still not the strongest.
-        let again = try XCTUnwrap(realm.arrive("id-bel-again", name: "Belle", now: 2).house)
-        XCTAssertNotEqual(again, free[4], "Never the strongest House, however often a keeper comes")
-        XCTAssertEqual(again, free[1], "The middling House of those left")
+        // The strongest, leading the lake, is open to no one: of the four
+        // others, the middling.
+        XCTAssertEqual(realm.status(now: 1).freeSeats, 4)
+        XCTAssertEqual(try realm.arrive("id-bel", name: "Bel", now: 1).house, free[1], "The middling House of four")
+        // Again and again under new names: every other House in turn, never
+        // the strongest; then the door stays shut.
+        var taken: [Int?] = []
+        for (n, name) in ["Corin", "Dara", "Ewan", "Fenn", "Gale"].enumerated() {
+            taken.append(try realm.arrive("id-new-\(n)", name: name, now: Double(2 + n)).house)
+        }
+        XCTAssertFalse(taken.contains(free[4]), "Never the House leading the lake, however often a keeper comes: \(taken)")
+        XCTAssertEqual(Set(taken.compactMap { $0 }), Set([free[0], free[2], free[3]]))
+        XCTAssertEqual(realm.status(now: 9).freeSeats, 0, "None open, and none said to be")
+    }
+
+    func testNoOneTakesUpAHouseOnThePointOfWinning() throws {
+        var realm = RealmState(name: "The Nullmere", seed: "near the end", seats: 6, radius: 20, watchLength: 180, now: 0)
+        _ = try realm.arrive("id-ama", name: "Ama", now: 0)
+        let free = realm.world.houses.filter { !$0.isPlayer }.map(\.id)
+        // One free House's Moonspire has risen; the others, alike.
+        let spire = try XCTUnwrap(realm.world.holds.firstIndex { $0.owner == free[0] && $0.isSeat })
+        realm.world.holds[spire].levels[.moonspire] = 3
+        realm.world.holds[spire].levels[.granary] = 0
+        let seated = try XCTUnwrap(realm.arrive("id-bel", name: "Bel", now: 1).house)
+        XCTAssertNotEqual(seated, free[0])
+        XCTAssertFalse(realm.openSeats.contains { $0.id == free[0] })
     }
 }
 

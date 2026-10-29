@@ -83,6 +83,20 @@ final class WorldPartsTests: XCTestCase {
         XCTAssertEqual(try RealmState(parts: parts).keepers.map(\.name), ["Ama"], "now kept in parts")
     }
 
+    func testARealmKeptWholeButUnreadableIsRefusedToo() async throws {
+        let db = FakeSpacetime()
+        await db.seed(legacyWorld: "{\"from\": \"rules this steward doesn't know\"}")
+        let key = try await db.createIdentity()
+        do {
+            _ = try await RealmSteward(transport: db, token: key.token, name: "N", seed: "s", seats: 4, watchLength: 600, now: 1)
+            XCTFail("A steward began a new realm over one kept whole that it couldn't read")
+        } catch {
+            XCTAssertTrue(error is StewardError, "\(error)")
+        }
+        let parts = await db.worldParts
+        XCTAssertTrue(parts.isEmpty, "Nothing written over it")
+    }
+
     func testAPublicationKeptWhoseAnswerWasLostDoesntStopTheSteward() async throws {
         let db = FakeSpacetime()
         let line = Flaky(db)
@@ -103,5 +117,49 @@ final class WorldPartsTests: XCTestCase {
         let state = await steward.state
         let kept = await db.worldParts
         XCTAssertEqual(try RealmState(parts: kept), state, "and what is kept is the realm as it stands")
+    }
+
+    /// What a keeper's client reads of their view: its version, and the
+    /// batches of what they heard.
+    private func heard(_ db: FakeSpacetime, _ keeper: SpacetimeCredentials) async throws -> (version: UInt64, batches: [HeardBatch]) {
+        let rows = try await db.query("SELECT * FROM my_view", token: keeper.token)
+        let row = try XCTUnwrap(rows.first)
+        return (UInt64(try XCTUnwrap(row[1].number)), try JSONDecoder().decode([HeardBatch].self, from: Data(try XCTUnwrap(row[3].string).utf8)))
+    }
+
+    func testWhatAKeptPublicationToldIsNotToldAgainUnderANewVersion() async throws {
+        let db = FakeSpacetime()
+        let line = Flaky(db)
+        let key = try await db.createIdentity()
+        let steward = try await RealmSteward(transport: line, token: key.token, name: "N", seed: "told once", seats: 4, watchLength: 600, now: 0)
+        let ama = try await db.createIdentity(), bel = try await db.createIdentity()
+        try await db.call("arrive", [.string("a1"), .string("Ama")], token: ama.token)
+        try await db.call("arrive", [.string("b1"), .string("Bel")], token: bel.token)
+        try await steward.step(now: 1)
+        let keepers = await steward.state.keepers
+        let amaHouse = try XCTUnwrap(keepers.first { $0.name == "Ama" }?.house)
+        func gift(_ nonce: String) async throws {
+            let order = Command.gift(to: amaHouse, resource: .grain, amount: 1)
+            try await db.call("order", [.string(nonce), .string(String(decoding: try JSONEncoder().encode(order), as: UTF8.self))], token: bel.token)
+        }
+        // Bel's gift is published and kept, but the answer is lost; Ama's
+        // client reads it.
+        try await gift("b2")
+        await line.loseAnswer(to: "publish")
+        do { try await steward.step(now: 2) } catch {}
+        let first = try await heard(db, ama)
+        let gifted = { (batch: HeardBatch) in batch.events.contains { if case .gifted = $0 { return true } else { return false } } }
+        XCTAssertTrue(first.batches.contains(where: gifted), "Ama hears the first gift")
+        // A second gift, and the steward goes on.
+        try await gift("b3")
+        try await steward.step(now: 3)
+        let second = try await heard(db, ama)
+        XCTAssertGreaterThan(second.version, first.version)
+        let new = second.batches.filter { $0.version > first.version }
+        XCTAssertEqual(new.count, 1, "The second gift, heard in a batch Ama's client hasn't read: \(second.batches.map(\.version))")
+        XCTAssertEqual(new.first?.events.filter { if case .gifted = $0 { return true } else { return false } }.count, 1,
+                       "and only the second: the first isn't told again")
+        XCTAssertEqual(second.batches.filter { $0.version <= first.version }, first.batches.filter { $0.version <= first.version },
+                       "What was told before is kept as it was")
     }
 }
