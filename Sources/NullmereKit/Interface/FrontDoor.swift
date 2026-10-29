@@ -8,9 +8,16 @@ import SwiftUI
 struct FrontDoor: View {
     let app: GameApp
 
-    @State private var name = ""
+    @State private var name: String
     @State private var appeared = false
     @FocusState private var nameFocused: Bool
+
+    /// `name` begins the name field: empty at the door, a name already
+    /// written where one is given.
+    init(app: GameApp, name: String = "") {
+        self.app = app
+        _name = State(initialValue: name)
+    }
 
     var body: some View {
         ZStack {

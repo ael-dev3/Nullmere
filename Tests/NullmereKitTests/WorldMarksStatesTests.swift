@@ -56,6 +56,9 @@ final class WorldMarksStatesTests: XCTestCase {
         let veteran = place(.spear, of: me, at: try XCTUnwrap(free(near: theirs.position, in: state)), experience: 9)
         let ward = try XCTUnwrap(state.holds.firstIndex { $0.id == theirs.id })
         state.holds[ward].ward = max(1, state.holds[ward].maximumWard / 3)
+        // Its gates bare, and the ground around it known: its broken ward in sight.
+        state.units.removeAll { $0.position == theirs.position }
+        state.reveal(around: theirs.position, range: 2, for: me)
         // A bow two hexes from a foe at death's door; a rider and a founder at home.
         let bowAt = try XCTUnwrap(free(near: mine.position, in: state, distance: 2))
         let bow = place(.bow, of: me, at: bowAt)
@@ -66,6 +69,7 @@ final class WorldMarksStatesTests: XCTestCase {
         let session = GameSession(state: state, store: LocalStore(directory: dir))
         session.dismissSeatBriefing()
         session.camera = Camera(scale: 12)
+        XCTAssertTrue(session.isExplored(theirs.position) && session.isVisible(theirs.position), "The foe's seat in sight")
         XCTAssertTrue(session.threatened.contains(mine.id), "Foes at the gates")
         XCTAssertEqual(session.state.unit(veteran)?.rank, 3, "A sworn veteran")
         try draw(WorldMarks(session: session))
@@ -75,7 +79,16 @@ final class WorldMarksStatesTests: XCTestCase {
         session.selection = .unit(veteran)
         session.hover(theirs.position)
         let onHold = try XCTUnwrap(session.hoverForecast, "A hold in reach is forecast")
+        XCTAssertEqual(onHold.target, .hold(theirs.id), "Its gates bare, the strike falls on its ward")
+        try draw(ForecastOverlay(session: session))
         try draw(ForecastCard(forecast: onHold, targetName: theirs.name), width: 300, height: 200)
+        // Each way a strike on a ward can go: broken and the hold taken,
+        // broken, perhaps broken, or holding.
+        for (dealt, ward, capture) in [(9...12, 8, true), (9...12, 8, false), (4...12, 8, false), (2...4, 8, false)] {
+            let forecast = Forecast(target: .hold(theirs.id), dealt: dealt, taken: 0...0, defenderHealth: ward, attackerHealth: 100,
+                                    couldCapture: capture)
+            try draw(ForecastCard(forecast: forecast, targetName: theirs.name), width: 300, height: 200)
+        }
 
         // A bow's shot from beyond the foe's reach.
         let weakAt = try XCTUnwrap(session.state.unit(weak)?.position)
@@ -91,6 +104,9 @@ final class WorldMarksStatesTests: XCTestCase {
         let blow = try XCTUnwrap(session.blows.last)
         XCTAssertTrue(blow.isRanged)
         XCTAssertFalse(blow.fallen.isEmpty, "The foe falls")
+        // The arrow crossing the gap, in the first tenth of the blow.
+        XCTAssertLessThan(Date().timeIntervalSince(blow.start), GameSession.Blow.duration * 0.1)
+        try draw(WorldMarks(session: session))
         // A moment after it lands, the blow's flash; then as it fades.
         RunLoop.main.run(until: blow.start.addingTimeInterval(0.1))
         XCTAssertGreaterThan(GameSession.Blow.flash(at: Date().timeIntervalSince(blow.start)), 0)

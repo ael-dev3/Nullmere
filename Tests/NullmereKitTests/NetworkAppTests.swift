@@ -1,4 +1,5 @@
 import Foundation
+import LauncherKit
 import NullmereRealm
 import NullmereTestSupport
 import SwiftUI
@@ -64,7 +65,16 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertTrue(app.canEnter(with: "Ama"))
         draw(FrontDoor(app: app))
 
-        app.enterWorld(name: "Ama")
+        // The keeper writes a name at the door and presses Enter: one letter
+        // is refused, and said so; a good name goes in.
+        PressableButtons.isListening = true
+        defer { PressableButtons.isListening = false }
+        XCTAssertNotNil(RealmState.nameProblem("A"))
+        PressableButtons.forget("Enter World")
+        draw(FrontDoor(app: app, name: "A"))
+        XCTAssertFalse(PressableButtons.press("Enter World"), "Not with a name of one letter")
+        draw(FrontDoor(app: app, name: "Ama"))
+        XCTAssertTrue(PressableButtons.press("Enter World"))
         XCTAssertTrue(app.isEntering)
         draw(FrontDoor(app: app))
         try await until("the world") { app.session != nil }

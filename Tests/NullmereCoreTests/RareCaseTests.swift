@@ -96,6 +96,36 @@ final class RareCaseTests: XCTestCase {
         }
     }
 
+    /// A company trained where every hex near the hold is taken waits, its
+    /// training done, and musters the watch a hex falls free.
+    func testATrainedCompanyWaitsForRoomToStand() throws {
+        var state = GameState(settings: GameSettings(seedText: "no room", houseCount: 3, radius: 16))
+        let me = state.player
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+        state.holds[seat].training = Hold.Training(kind: .spear, watchesLeft: 1)
+        let around = state.holds[seat].position.spiral(3).filter { hex in
+            state.map[hex]?.terrain.isPassable == true && state.unit(at: hex) == nil
+        }
+        var blockers: [Int] = []
+        for hex in around {
+            var lantern = Unit(id: state.nextID, kind: .lantern, owner: me, position: hex)
+            lantern.fortified = true
+            state.units.append(lantern)
+            blockers.append(state.nextID)
+            state.nextID += 1
+        }
+        let mustered = { (events: [GameEvent]) in
+            events.contains { if case .unitTrained(_, let hold) = $0 { return hold == state.holds[seat].id } else { return false } }
+        }
+        let first = state.endWatch()
+        XCTAssertFalse(mustered(first), "No room to stand")
+        XCTAssertEqual(state.holds[seat].training?.watchesLeft, 0, "Its training done, it waits")
+        state.units.removeAll { $0.id == blockers[0] }
+        let second = state.endWatch()
+        XCTAssertTrue(mustered(second), "A hex free, it musters")
+        XCTAssertNil(state.holds[seat].training)
+    }
+
     /// A trade is weighed on its terms alone, never accepted as a proposal.
     func testATradeIsNotAcceptedAsAProposal() {
         let state = GameState(settings: GameSettings(seedText: "terms", houseCount: 3, radius: 16))

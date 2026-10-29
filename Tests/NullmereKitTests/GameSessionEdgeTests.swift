@@ -170,6 +170,43 @@ final class GameSessionEdgeTests: XCTestCase {
         XCTAssertEqual(session.selection, .none, "A company that is gone is chosen no longer")
     }
 
+    /// The last first step taken by an order, not by saying ready: the
+    /// welcome is said at once, with no watch to wait for.
+    func testTheWelcomeIsSaidAtOnceWhenAnOrderTakesTheLastStep() throws {
+        let world = GameState(settings: GameSettings(seedText: "a last march", houseCount: 3, radius: 18))
+        let me = world.player
+        let store = LocalStore(directory: dir)
+        _ = GameSession(link: QuietLink(), house: me, world: world.view(for: me), store: store)
+        var steps = FirstSteps()
+        steps.mark(.work)
+        steps.mark(.ready)
+        store.saveFirstSteps(steps)
+        let session = GameSession(link: QuietLink(), house: me, world: world.view(for: me), store: store)
+        XCTAssertNotNil(session.firstSteps)
+        let lantern = try XCTUnwrap(world.units(of: me).first { $0.kind == .lantern })
+        let step = try XCTUnwrap(world.map.neighbors(of: lantern.position).first { hex in
+            world.map[hex]?.terrain.isPassable == true && world.unit(at: hex) == nil && world.hold(at: hex) == nil
+        })
+        XCTAssertTrue(session.perform(.move(unit: lantern.id, to: step)))
+        XCTAssertNil(session.firstSteps, "The last step taken")
+        XCTAssertTrue(session.notices.contains { $0.text == GameSession.welcome }, "and the welcome said at once")
+    }
+
+    /// A new age seats the keeper afresh: the session hands the new world to
+    /// the app, which begins it.
+    func testANewAgeIsHandedToTheApp() throws {
+        var realm = RealmState(name: "The Nullmere", seed: "a new age", seats: 4, radius: 18, watchLength: 60, now: 0)
+        let keeper = try realm.arrive("a", name: "Ama", now: 0)
+        let world = try XCTUnwrap(realm.view(for: "a")).world
+        let link = QuietLink()
+        let session = GameSession(link: link, house: try XCTUnwrap(keeper.house), world: world, store: LocalStore(directory: dir))
+        var handed: (Keeper, GameState)?
+        session.onNewAge = { handed = ($0, $1) }
+        link.onEvent?(.arrived(keeper, world))
+        XCTAssertEqual(handed?.0, keeper)
+        XCTAssertEqual(handed?.1, world)
+    }
+
     func testATakenHoldIsATriumphAndAFallenAttackerIsDrawnWhereItStood() throws {
         let (state, spear, beside, foe) = try warWorld()
         let me = state.player

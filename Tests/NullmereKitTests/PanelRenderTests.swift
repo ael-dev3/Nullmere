@@ -176,6 +176,18 @@ final class PanelRenderTests: XCTestCase {
         try draw(EnvoyCards(session: session), width: 360)
     }
 
+    /// A chronicle's entry with the words the chronicler spoke for it,
+    /// kept from before.
+    func testTheChronicleShowsWhatWasSpokenOfIt() throws {
+        let state = GameState(settings: GameSettings(seedText: "spoken chronicle", houseCount: 4, radius: 18))
+        XCTAssertFalse(state.chronicle.isEmpty, "The age's first entry")
+        let store = LocalStore(directory: dir.appendingPathComponent("chronicle"))
+        store.saveVoices([GameSession.Spoken.chronicle(0).key: "The lake took the first of them without a sound."])
+        let session = GameSession(state: state, store: store)
+        XCTAssertEqual(session.spoken[.chronicle(0)], "The lake took the first of them without a sound.")
+        try draw(ChroniclePanel(session: session), width: 360, height: 700)
+    }
+
     /// What the selection panel shows of a hold whose works are all built,
     /// a foreign hold out of sight with its Moonspire rising, and ground
     /// no lantern has seen.
