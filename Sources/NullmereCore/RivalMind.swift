@@ -350,8 +350,11 @@ struct RivalMind {
             if hold.level(.musterHall) < 2, state.watch >= 14 { wishes.append(.musterHall) }
             // Riders, for a House at war or with stores to spare.
             if hold.level(.musterHall) < 3, state.watch >= 40, atWar || plenty { wishes.append(.musterHall) }
-            // A rising Moonspire draws every army on the lake: wall it.
-            if hold.level(.moonspire) >= 2, hold.level(.walls) < 4 { wishes.append(.walls) }
+            // A rising Moonspire draws every army on the lake: wall it, the
+            // builders (who raise theirs first, and draw the lake first)
+            // to the last stone.
+            let builder = me.temperament == .steadfast || me.temperament == .wary
+            if hold.level(.moonspire) >= 2, hold.level(.walls) < (builder ? 5 : 4) { wishes.append(.walls) }
         }
         if hold.level(.walls) < 1, state.watch >= 10 { wishes.append(.walls) }
         // A hold on the border, another House's hold near, walls itself.
@@ -396,7 +399,10 @@ struct RivalMind {
         case .cunning, .steadfast, .wary: wantedHolds = 5
         }
         let wealthy = me.stock.grain > 250 && me.stock.timber > 150 ? holds : 0
-        let wantedArmy = holds * 2 + 1 + (atWar ? 3 + holds : 0) + (me.temperament == .ambitious ? 2 : 0) + wealthy
+        // A builder with its Moonspire risen keeps a guard to match.
+        let spire = state.seat(of: house)?.level(.moonspire) ?? 0
+        let guardsSpire = (me.temperament == .steadfast || me.temperament == .wary) && spire >= 2 ? 2 + spire : 0
+        let wantedArmy = holds * 2 + 1 + (atWar ? 3 + holds : 0) + (me.temperament == .ambitious ? 2 : 0) + wealthy + guardsSpire
 
         var choice: UnitKind?
         if lanterns < (state.watch < 20 ? 2 : 1), hold.isSeat {
