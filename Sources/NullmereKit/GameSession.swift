@@ -210,6 +210,11 @@ public final class GameSession {
     /// Whether the keeper is looking, and how the Dock is told; tests
     /// supply their own.
     var isLooking: () -> Bool = { NSApplication.shared.isActive }
+    /// Whether VoiceOver is running. Only then are each company's orders
+    /// worked out (the way to the unknown, the odds of each strike): some
+    /// milliseconds at every change of the world, for no one without it.
+    /// Tests say yes.
+    @ObservationIgnored var voiceOverRunning: () -> Bool = { NSWorkspace.shared.isVoiceOverEnabled }
     var signal: (Attention.Signal) -> Void = { Attention.show($0) }
     private var watchCardCounter = 0
     /// Keeps the watch's card on screen, for photographs.
@@ -1138,12 +1143,6 @@ extension GameSession {
     var holdsByPosition: [Hex: Hold] {
         keptForThisWorld("holds") { Dictionary(state.holds.map { ($0.position, $0) }, uniquingKeysWith: { first, _ in first }) }
     }
-
-    /// Whether VoiceOver is running. Only then are each company's orders
-    /// worked out (the way to the unknown, the odds of each strike): some
-    /// milliseconds at every change of the world, for no one without it.
-    /// Tests say yes.
-    @ObservationIgnored var voiceOverRunning: () -> Bool = { NSWorkspace.shared.isVoiceOverEnabled }
 
     /// The map as VoiceOver reads it.
     var mapItems: [MapAccessibility.Item] {
