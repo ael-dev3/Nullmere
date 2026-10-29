@@ -1,0 +1,100 @@
+import Foundation
+import NullmereCore
+import NullmereTestSupport
+import XCTest
+@testable import NullmereRealm
+
+/// The steward fair to keepers whose connection falters: one taken to have
+/// left who is still playing counts again as soon as they are heard, what
+/// a keeper heard is kept with their view until they can have read it, the
+/// keepers away cost nothing to publish, and a link left with an answer on
+/// its way doesn't trip over it.
+final class StewardFairnessTests: XCTestCase {
+    private func stewarded(_ seed: String) async throws
+        -> (FakeSpacetime, RealmSteward, SpacetimeCredentials, SpacetimeCredentials, SpacetimeCredentials) {
+        let db = FakeSpacetime()
+        let key = try await db.createIdentity()
+        let steward = try await RealmSteward(transport: db, token: key.token, name: "N", seed: seed, seats: 4, watchLength: 600, now: 0)
+        let ama = try await db.createIdentity()
+        let bel = try await db.createIdentity()
+        try await db.call("arrive", [.string("a1"), .string("Ama")], token: ama.token)
+        try await db.call("arrive", [.string("b1"), .string("Bel")], token: bel.token)
+        try await steward.step(now: 1)
+        return (db, steward, ama, bel, key)
+    }
+
+    private func heard(_ db: FakeSpacetime, _ keeper: SpacetimeCredentials) async throws -> (version: UInt64, batches: [HeardBatch]) {
+        let rows = try await db.query("SELECT * FROM my_view", token: keeper.token)
+        let row = try XCTUnwrap(rows.first)
+        let version = UInt64(try XCTUnwrap(row[1].number))
+        return (version, try JSONDecoder().decode([HeardBatch].self, from: Data(try XCTUnwrap(row[3].string).utf8)))
+    }
+
+    func testAKeeperStillPlayingAfterARestartCountsAgain() async throws {
+        let (db, _, ama, bel, key) = try await stewarded("a restart")
+        await db.advance(61)
+        let steward = try await RealmSteward(transport: db, token: key.token,
+                                             name: "N", seed: "a restart", seats: 4, watchLength: 600, now: 100)
+        let away = await steward.state.keepers
+        XCTAssertTrue(away.allSatisfy { !$0.isOnline }, "Whoever was there is taken to have gone")
+        // Their clients never knew: they say they're here, and are ready.
+        try await db.call("here", [.string("a2")], token: ama.token)
+        try await db.call("ready", [.string("b2"), .bool(true)], token: bel.token)
+        try await steward.step(now: 101)
+        let back = await steward.state.keepers
+        XCTAssertTrue(back.allSatisfy(\.isOnline), "Heard from, so there")
+        try await db.call("ready", [.string("a3"), .bool(true)], token: ama.token)
+        try await steward.step(now: 102)
+        let watch = await steward.state.world.watch
+        XCTAssertEqual(watch, 2, "Both ready: the watch turns")
+    }
+
+    func testWhatAKeeperHeardOutlivesTheirOwnNextOrder() async throws {
+        let (db, steward, ama, bel, _) = try await stewarded("a gift heard")
+        let state = await steward.state
+        let amaHouse = try XCTUnwrap(state.keepers[0].house)
+        let belHouse = try XCTUnwrap(state.keepers[1].house)
+        let order = Command.gift(to: amaHouse, resource: .grain, amount: 5)
+        let back = Command.gift(to: belHouse, resource: .grain, amount: 1)
+        try await db.call("order", [.string("b2"), .string(String(decoding: try JSONEncoder().encode(order), as: UTF8.self))], token: bel.token)
+        try await steward.step(now: 2)
+        let first = try await heard(db, ama)
+        let gift = try XCTUnwrap(first.batches.last)
+        XCTAssertTrue(gift.events.contains { if case .gifted = $0 { return true } else { return false } })
+
+        // Ama orders before her client reads it: her view is published again,
+        // the gift still with it, under the version it first came with.
+        try await db.call("order", [.string("a2"), .string(String(decoding: try JSONEncoder().encode(back), as: UTF8.self))], token: ama.token)
+        try await steward.step(now: 3)
+        let second = try await heard(db, ama)
+        XCTAssertGreaterThan(second.version, first.version)
+        XCTAssertEqual(second.batches.first, gift)
+
+        // Long after, it is no longer carried.
+        try await db.call("here", [.string("a3")], token: ama.token)
+        try await db.call("order", [.string("b3"), .string(String(decoding: try JSONEncoder().encode(order), as: UTF8.self))], token: bel.token)
+        try await steward.step(now: 3 + RealmSteward.heardKept + 1)
+        let later = try await heard(db, ama)
+        XCTAssertFalse(later.batches.contains(gift))
+        XCTAssertEqual(later.batches.count, 1, "The new gift alone")
+    }
+
+    func testAKeeperAwayIsNotShownTheirView() async throws {
+        let (db, steward, ama, bel, _) = try await stewarded("one away")
+        try await db.call("leave", [.string("b2")], token: bel.token)
+        try await steward.step(now: 2)
+        let before = try await heard(db, bel).version
+        let state = await steward.state
+        let belHouse = try XCTUnwrap(state.keepers[1].house)
+        let gift = Command.gift(to: belHouse, resource: .grain, amount: 1)
+        try await db.call("order", [.string("a2"), .string(String(decoding: try JSONEncoder().encode(gift), as: UTF8.self))], token: ama.token)
+        try await steward.step(now: 3)
+        let after = try await heard(db, bel).version
+        XCTAssertEqual(after, before, "Bel's view waits for Bel")
+        // Back, and shown it at once.
+        try await db.call("arrive", [.string("b3"), .string("")], token: bel.token)
+        try await steward.step(now: 4)
+        let back = try await heard(db, bel).version
+        XCTAssertGreaterThan(back, after)
+    }
+}

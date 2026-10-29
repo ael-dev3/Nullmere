@@ -74,3 +74,47 @@ struct OutcomeOverlay: View {
         }
     }
 }
+
+/// A keeper's House fallen while the age goes on for the others: they may
+/// look on until it ends, and are seated again when the next begins.
+struct FallenOverlay: View {
+    let app: GameApp
+    let session: GameSession
+
+    @State private var dismissed = false
+
+    var body: some View {
+        if !dismissed {
+            ZStack {
+                Color.black.opacity(0.6).ignoresSafeArea()
+                VStack(spacing: 16) {
+                    Caps("Your House has fallen", size: 26, weight: .thin, tracking: 0.4)
+                        .foregroundStyle(Palette.bad.opacity(0.9))
+                        .accessibilityAddTraits(.isHeader)
+                    Rule(opacity: 0.4).frame(width: 280)
+                    Text(verbatim: FallenOverlay.words(for: session.playerHouse, watch: session.state.watch))
+                        .font(.nm(13, weight: .light))
+                        .foregroundStyle(Palette.ink.opacity(0.75))
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 440)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 8) {
+                        QuietButton(title: "Look upon the lake", size: 10) {
+                            withAnimation(.easeOut(duration: 0.3)) { dismissed = true }
+                        }
+                        QuietButton(title: "Leave the world", size: 10, prominent: true) { app.leaveWorld() }
+                    }
+                    .padding(.top, 6)
+                }
+                .padding(36)
+                .panelBackground()
+            }
+            .transition(.opacity)
+        }
+    }
+
+    static func words(for house: House, watch: Int) -> String {
+        "The last hold of \(house.title) is lost at watch \(watch). The age goes on for the Houses still standing; "
+            + "when it ends, a new one begins on a fresh lake and you are seated again."
+    }
+}

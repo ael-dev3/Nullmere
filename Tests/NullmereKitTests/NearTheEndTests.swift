@@ -8,7 +8,8 @@ import XCTest
 /// The game near its end and at it: counsel when the keeper is close to
 /// winning, a rival's dominion told to a keeper still standing and to one
 /// fallen, the story's line running to a watch not yet recorded; a foreign
-/// hold in sight; and the app as it starts, its sound off.
+/// hold in sight; a keeper whose House fell looking on; and the app as it
+/// starts, its sound off.
 @MainActor
 final class NearTheEndTests: XCTestCase {
     private var dir: URL!
@@ -68,6 +69,22 @@ final class NearTheEndTests: XCTestCase {
             XCTAssertEqual(session.playerHouse.isEliminated, fallen)
             try draw(OutcomeOverlay(app: app, session: session, outcome: outcome))
         }
+    }
+
+    /// A keeper whose House falls while the age goes on looks on, and is
+    /// told they'll be seated again when the next begins.
+    func testAFallenKeeperLooksOnUntilTheAgeEnds() throws {
+        var state = GameState(settings: GameSettings(seedText: "fallen, looking on"))
+        state.houses[state.player].isEliminated = true
+        let store = LocalStore(directory: dir.appendingPathComponent("fallen"))
+        let session = GameSession(state: state, store: store)
+        let app = GameApp(store: store, readiness: { .ready }, sound: false, address: .hosted(seed: "fallen, looking on"),
+                          identity: FileIdentityStore(url: dir.appendingPathComponent("identity-fallen")))
+        XCTAssertNil(session.state.outcome)
+        let words = FallenOverlay.words(for: session.playerHouse, watch: session.state.watch)
+        XCTAssertTrue(words.hasPrefix("The last hold of \(session.playerHouse.title) is lost at watch \(session.state.watch)."), words)
+        try draw(FallenOverlay(app: app, session: session))
+        try draw(PlayView(app: app, session: session))
     }
 
     /// The story's line runs to the present watch, recorded or not yet.

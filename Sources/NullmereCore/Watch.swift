@@ -188,7 +188,9 @@ extension GameState {
             record(.ending, [last.id], "\(last.title) alone remains on the shores of the Nullmere.")
             return [.gameEnded(result)]
         }
-        if houses[player].isEliminated {
+        // A House's own game ends with its House. A realm's age goes on for
+        // the keepers still standing; its fallen wait for the next.
+        if settings.keepers > 0, houses[player].isEliminated {
             let strongest = living.max { renown(of: $0.id) < renown(of: $1.id) }!
             let result = Outcome(winner: strongest.id, kind: .dominion, watch: watch)
             outcome = result

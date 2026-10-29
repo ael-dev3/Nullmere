@@ -81,15 +81,6 @@ public actor FakeSpacetime: SpacetimeTransport {
             guard requests.filter({ $0.keeper == me }).count < 32 else { throw SpacetimeError("Too many requests are waiting") }
             requests.append(Request(id: nextID, keeper: me, kind: reducer, nonce: nonce, payload: payload))
             nextID += 1
-        case "settle":
-            guard me == steward else { throw SpacetimeError("Only the steward settles requests.") }
-            guard case .integer(let id)? = arguments.first else { throw SpacetimeError("bad arguments") }
-            let reply = try string(1)
-            if let index = requests.firstIndex(where: { $0.id == id }) {
-                replies[requests[index].nonce] = (requests[index].keeper, reply)
-                settled[requests[index].kind, default: 0] += 1
-                requests.remove(at: index)
-            }
         case "forget":
             guard me == steward else { throw SpacetimeError("Only the steward forgets answers.") }
             if case .strings(let nonces)? = arguments.first { nonces.forEach { replies[$0] = nil } }

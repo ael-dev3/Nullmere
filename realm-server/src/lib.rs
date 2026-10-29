@@ -105,8 +105,9 @@ pub struct Stamp {
     pub at_micros: i64,
 }
 
-/// One keeper's view of the realm, and the events they heard in the last
-/// change.
+/// One keeper's view of the realm, and what they heard lately: the events
+/// of the last few publications, each with its version, so a client that
+/// missed one still hears it, and only once.
 #[table(accessor = keeper_view)]
 pub struct KeeperView {
     #[primary_key]
@@ -192,21 +193,6 @@ pub fn here(ctx: &ReducerContext, nonce: String) -> Result<(), String> {
 #[reducer]
 pub fn leave(ctx: &ReducerContext, nonce: String) -> Result<(), String> {
     ask(ctx, "leave", nonce, String::new())
-}
-
-/// The steward answers a request.
-#[reducer]
-pub fn settle(ctx: &ReducerContext, request: u64, reply: String) -> Result<(), String> {
-    if !is_steward(ctx) {
-        return Err("Only the steward settles requests.".into());
-    }
-    let Some(asked) = ctx.db.request().id().find(request) else {
-        return Ok(());
-    };
-    ctx.db.request().id().delete(request);
-    ctx.db.reply().nonce().delete(asked.nonce.clone());
-    ctx.db.reply().insert(Reply { nonce: asked.nonce, keeper: asked.keeper, payload: reply });
-    Ok(())
 }
 
 /// The steward forgets answers that have been read.

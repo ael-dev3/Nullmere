@@ -20,6 +20,10 @@ extension GameState {
         view.units = units.filter { unit in
             unit.owner == house || (map.index(of: unit.position).map { seen[$0] } ?? false)
         }
+        // A company in sight shows where it stands, not where it is bound.
+        for index in view.units.indices where view.units[index].owner != house {
+            view.units[index].destination = nil
+        }
         for index in view.houses.indices where view.houses[index].id != house {
             view.houses[index].stock = .zero
             view.houses[index].explored = Array(repeating: false, count: map.count)
@@ -29,6 +33,8 @@ extension GameState {
             view.holds[index].training = nil
         }
         view.envoys = envoys.filter { $0.from == house || $0.to == house }
+        // Gifts too small for the chronicle are known only to the two Houses.
+        view.gifts = gifts?.filter { $0.from == house || $0.to == house }
         view.reputed = houses.map { strength(of: $0.id) }
         return view
     }

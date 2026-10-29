@@ -25,6 +25,20 @@ public struct RealmReply: Codable, Equatable, Sendable {
     }
 }
 
+/// What a keeper heard with one publication. A keeper's view carries the
+/// last few, so a client that missed a publication (its own order on the
+/// way, a slow poll) still hears what it brought, and each once: those up
+/// to the version it last read are passed over.
+public struct HeardBatch: Codable, Equatable, Sendable {
+    public let version: UInt64
+    public let events: [GameEvent]
+
+    public init(version: UInt64, events: [GameEvent]) {
+        self.version = version
+        self.events = events
+    }
+}
+
 /// The realm as published: its whole state, its status, and what the last
 /// change brought.
 public struct PublishedRealm: Equatable, Sendable {
@@ -75,6 +89,11 @@ public actor RealmSteward {
     private var lastForgotten = 0.0
     /// Each keeper's view as last published, to send only what changed.
     private var published: [String: String] = [:]
+    /// What each keeper there heard lately, and when: published with their
+    /// view until it is old enough to have been read.
+    private var recentlyHeard: [String: [(at: Double, batch: HeardBatch)]] = [:]
+    /// How long what a keeper heard is published with their view.
+    public static let heardKept = 120.0
 
     /// Seconds of silence after which a keeper is taken to have left.
     public static let silence = 90.0
@@ -130,6 +149,13 @@ public actor RealmSteward {
         let waiting = Set(unanswered.map(\.id))
         for request in fair where !waiting.contains(request.id) {
             heard[request.keeper] = now
+            // A keeper taken to have left (by silence, or a steward
+            // starting anew) who is still playing is back: any request but
+            // leaving says so, so their readiness counts again.
+            if request.kind != "arrive", request.kind != "leave", state.keeper(request.keeper)?.isOnline == false {
+                _ = try? state.arrive(request.keeper, name: nil, now: now)
+                changed = true
+            }
             let (reply, didChange, turned) = handle(kind: request.kind, keeper: request.keeper, payload: request.payload, now: now)
             changed = changed || didChange
             pendingEvents += turned
@@ -205,9 +231,6 @@ public actor RealmSteward {
         }
     }
 
-    /// Publishes the realm: whole, for the steward; its status, for
-    /// everyone; and each keeper's own view, where it changed, with the
-    /// events they heard.
     /// The realm refused a publication because another steward holds it.
     public static func isHeldByAnother(_ error: any Error) -> Bool {
         String(describing: error).contains("Another steward holds the realm")
@@ -231,23 +254,30 @@ public actor RealmSteward {
     }
 
     /// Publishes the realm: the world if it changed, the status, the views
-    /// that changed with what each keeper heard, and the answers waiting.
-    /// Nothing is taken as published until the server has it.
+    /// that changed with what each keeper heard lately, and the answers
+    /// waiting. Only the keepers there are shown their view: one who comes
+    /// back is shown it as they arrive. Nothing is taken as published until
+    /// the server has it.
     private func publish(now: Double = Date().timeIntervalSince1970) async throws {
         let encoder = JSONEncoder()
         let status = state.status(now: now)
         var keepers: [String] = [], views: [String] = [], heard: [String] = []
         var shown: [String: String] = [:]
-        for keeper in state.keepers {
+        var lately: [String: [(at: Double, batch: HeardBatch)]] = [:]
+        for keeper in state.keepers where keeper.isOnline {
             guard let view = state.view(for: keeper.id) else { continue }
             let text = String(decoding: try encoder.encode(view), as: UTF8.self)
             let others = pendingActs.filter { $0.by != keeper.id }.flatMap(\.events)
             let events = keeper.house.map { state.world.events(others + pendingEvents, heardBy: $0) } ?? []
+            var batches = (recentlyHeard[keeper.id] ?? []).filter { now - $0.at <= RealmSteward.heardKept }
+            lately[keeper.id] = batches
             guard text != published[keeper.id] || !events.isEmpty else { continue }
+            if !events.isEmpty { batches.append((now, HeardBatch(version: version + 1, events: events))) }
+            lately[keeper.id] = batches
             shown[keeper.id] = text
             keepers.append(keeper.id)
             views.append(text)
-            heard.append(String(decoding: try encoder.encode(events), as: UTF8.self))
+            heard.append(String(decoding: try encoder.encode(batches.map(\.batch)), as: UTF8.self))
         }
         let answers = unanswered
         do {
@@ -270,6 +300,7 @@ public actor RealmSteward {
         version += 1
         lastStatus = status
         published.merge(shown) { $1 }
+        recentlyHeard = lately
         pendingEvents = []
         pendingActs = []
         worldChanged = false

@@ -524,7 +524,8 @@ extension GameState {
         case .trade: stillValid = false
         case .peace: stillValid = stance(house, envoy.from) == .war
         case .pact: stillValid = stance(house, envoy.from) == .peace
-        case .fealty: stillValid = houses[envoy.from].liege == nil && houses[house].liege == nil
+        // A House a keeper has since taken up never bends the knee for them.
+        case .fealty: stillValid = houses[envoy.from].liege == nil && houses[house].liege == nil && !houses[envoy.from].isPlayer
         case .tribute: stillValid = stance(house, envoy.from) == .peace
         }
         let accepted = accept && stillValid && !houses[envoy.from].isEliminated

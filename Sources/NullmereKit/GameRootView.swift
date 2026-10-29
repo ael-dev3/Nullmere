@@ -140,6 +140,8 @@ struct PlayView: View {
 
             if let outcome = session.state.outcome {
                 OutcomeOverlay(app: app, session: session, outcome: outcome)
+            } else if session.playerHouse.isEliminated {
+                FallenOverlay(app: app, session: session)
             }
         }
         .background(KeyBridge { key in session.handle(key) })

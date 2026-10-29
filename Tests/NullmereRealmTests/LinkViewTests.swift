@@ -105,6 +105,27 @@ final class LinkViewTests: XCTestCase {
         XCTAssertFalse(ear.events.contains { if case .unreachable = $0 { return true } else { return false } })
     }
 
+    /// Left while an order's answer is on its way: the link drops the
+    /// errand rather than tripping over it.
+    func testALinkLeftWithAnAnswerOnItsWayDropsTheErrand() async throws {
+        let (_, _, link, ear, running) = try await realm("left mid-answer")
+        defer { running.cancel() }
+        link.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        let world = try XCTUnwrap(ear.world)
+        let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
+        let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
+        for _ in 0..<5 {
+            link.send(.fortify(unit: spear.id))
+            try await Task.sleep(nanoseconds: 30_000_000)
+            link.leave()
+            XCTAssertEqual(link.waiting, 0)
+        }
+        // The answers come, to no one.
+        try await Task.sleep(nanoseconds: 600_000_000)
+        XCTAssertEqual(link.waiting, 0)
+    }
+
     func testANewAgeIsANewArrival() async throws {
         let (_, tamper, link, ear, running) = try await realm("a new age")
         defer { running.cancel(); link.leave() }

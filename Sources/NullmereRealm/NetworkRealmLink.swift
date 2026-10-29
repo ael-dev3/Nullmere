@@ -18,6 +18,8 @@ public final class NetworkRealmLink: RealmLink {
     private var polling: Task<Void, Never>?
     private var statusVersion: UInt64 = 0
     private var viewVersion: UInt64 = 0
+    /// The last publication whose events the keeper has heard.
+    private var heardThrough: UInt64 = 0
     /// The realm's publication the keeper's view was last read against:
     /// views change only when the realm publishes, so it's read only then.
     private var viewReadAt: UInt64?
@@ -33,6 +35,8 @@ public final class NetworkRealmLink: RealmLink {
     /// isn't undone by news that came before it.
     private var outbox: [Outgoing] = []
     private var sending: Task<Void, Never>?
+    /// Which sender is the present one.
+    private var senderNumber = 0
     /// The last poll failed: the next that succeeds says so.
     private var wasUnreachable = false
     /// Seconds before sending again what the realm didn't answer; doubles
@@ -171,7 +175,7 @@ public final class NetworkRealmLink: RealmLink {
     }
 
     /// The keeper's own view: `my_view` holds one row, theirs.
-    private func fetchView(_ credentials: SpacetimeCredentials) async throws -> (UInt64, RealmView, [GameEvent])? {
+    private func fetchView(_ credentials: SpacetimeCredentials) async throws -> (UInt64, RealmView, [HeardBatch])? {
         viewReads += 1
         let rows = try await transport.query("SELECT * FROM my_view", token: credentials.token)
         guard let row = rows.first, row.count == 4, let number = row[1].number, let text = row[2].string, let heard = row[3].string else {
@@ -179,25 +183,27 @@ public final class NetworkRealmLink: RealmLink {
         }
         let decoder = JSONDecoder()
         let view = try decoder.decode(RealmView.self, from: Data(text.utf8))
-        let events = (try? decoder.decode([GameEvent].self, from: Data(heard.utf8))) ?? []
-        return (UInt64(number), view, events)
+        let batches = (try? decoder.decode([HeardBatch].self, from: Data(heard.utf8))) ?? []
+        return (UInt64(number), view, batches)
     }
 
     /// Reads the keeper's view, unless their own orders are on their way.
     /// Returns whether it was read.
     private func readView(_ credentials: SpacetimeCredentials) async throws -> Bool {
         guard outbox.isEmpty else { return false }
-        guard let (number, fresh, events) = try await fetchView(credentials) else { return true }
-        if number != viewVersion { deliver(fresh, version: number, events: events) }
+        guard let (number, fresh, batches) = try await fetchView(credentials) else { return true }
+        if number != viewVersion { deliver(fresh, version: number, heard: batches) }
         return true
     }
 
     /// Takes a fresh view, and tells what it brought: a new age, a turned
-    /// watch, or a changed world.
-    private func deliver(_ fresh: RealmView, version number: UInt64, events: [GameEvent]) {
+    /// watch, or a changed world, with what the keeper hasn't yet heard.
+    private func deliver(_ fresh: RealmView, version number: UInt64, heard batches: [HeardBatch]) {
         let previous = view
         view = fresh
         viewVersion = number
+        let events = batches.filter { $0.version > heardThrough }.flatMap(\.events)
+        heardThrough = max(heardThrough, batches.map(\.version).max() ?? 0)
         guard let previous else { return }
         if fresh.age != previous.age {
             onEvent?(.arrived(fresh.keeper, fresh.world))
@@ -230,8 +236,8 @@ public final class NetworkRealmLink: RealmLink {
         let credentials = try await ensureCredentials()
         let seen = viewVersion
         for _ in 0..<50 {
-            if let (number, fresh, events) = try await fetchView(credentials), number != seen {
-                deliver(fresh, version: number, events: events)
+            if let (number, fresh, batches) = try await fetchView(credentials), number != seen {
+                deliver(fresh, version: number, heard: batches)
                 return
             }
             try await Task.sleep(nanoseconds: 100_000_000)
@@ -278,6 +284,8 @@ public final class NetworkRealmLink: RealmLink {
     /// answer is sent again, the same, until it does.
     private func sendWaiting() {
         guard sending == nil else { return }
+        senderNumber += 1
+        let number = senderNumber
         sending = Task { [weak self] in
             var delay = self?.retryDelay ?? 1
             while let self, let next = self.outbox.first {
@@ -297,6 +305,9 @@ public final class NetworkRealmLink: RealmLink {
                     case .ready(let ready):
                         reply = try await self.request("ready", [.bool(ready)], nonce: next.nonce)
                     }
+                    // Left while the answer came: the outbox is gone, and
+                    // so is this sender's errand.
+                    guard !Task.isCancelled, self.outbox.first?.nonce == next.nonce else { break }
                     delay = self.retryDelay
                     self.outbox.removeFirst()
                     if self.wasUnreachable {
@@ -327,7 +338,9 @@ public final class NetworkRealmLink: RealmLink {
                     delay = min(delay * 2, Self.retryLimit)
                 }
             }
-            self?.sending = nil
+            // Only this sender's own handle: one started after a leave is
+            // another's.
+            if self?.senderNumber == number { self?.sending = nil }
         }
     }
 

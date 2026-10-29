@@ -150,7 +150,8 @@ public struct RealmState: Codable, Equatable, Sendable {
 
     public func status(now: Double) -> RealmStatus {
         let held = Set(keepers.compactMap(\.house))
-        let free = world.livingHouses.filter { !held.contains($0.id) && !$0.isPlayer }.count
+        // As a seat is claimed: a living House no keeper holds, sworn to no liege.
+        let free = world.livingHouses.filter { !held.contains($0.id) && !$0.isPlayer && $0.liege == nil }.count
         let online = keepers.filter(\.isOnline)
         return RealmStatus(name: name, age: age, watch: world.watch, seats: seats, freeSeats: free,
                            keepers: keepers.count, online: online.count, ready: online.filter(\.isReady).count,
@@ -180,7 +181,9 @@ public struct RealmState: Codable, Equatable, Sendable {
             return "A name begins and ends with a letter."
         }
         if trimmed.count < 2 { return "At least two letters." }
-        if trimmed.count > 20 { return "No more than twenty letters." }
+        // Counted as written too, so letters stacked with marks can't
+        // carry a name far past twenty.
+        if trimmed.count > 20 || trimmed.unicodeScalars.count > 40 { return "No more than twenty letters." }
         return nil
     }
 
@@ -285,13 +288,16 @@ public struct RealmState: Codable, Equatable, Sendable {
         guard let index = keepers.firstIndex(where: { $0.id == id }), keepers[index].house != nil else { return nil }
         keepers[index].isReady = ready
         if ready { keepers[index].hasPlayed = true }
-        let online = keepers.filter { $0.isOnline && $0.house != nil }
+        // Those whose House has fallen look on; the watch doesn't wait for them.
+        let online = keepers.filter { keeper in
+            keeper.isOnline && keeper.house.map { !world.houses[$0].isEliminated } == true
+        }
         guard ready, !online.isEmpty, online.allSatisfy(\.isReady) else { return nil }
         return turn(now: now)
     }
 
-    /// A steward gives this watch's orders for a keeper's House: while
-    /// they're away, or when they ask it to.
+    /// A steward gives this watch's orders for a keeper's House, as a realm
+    /// hosted on one Mac does when its keeper lets the watches run.
     @discardableResult
     public mutating func stewardOrders(for id: String) -> [GameEvent] {
         guard let house = keeper(id)?.house, world.outcome == nil else { return [] }
@@ -308,19 +314,23 @@ public struct RealmState: Codable, Equatable, Sendable {
         watchBegan = now
         for index in keepers.indices { keepers[index].isReady = false }
         if world.outcome != nil {
-            beginAge()
+            beginAge(now: now)
             return []
         }
         return world.endWatch()
     }
 
     /// The next age: a fresh lake, and every keeper seated again in the
-    /// order they first came.
-    private mutating func beginAge() {
+    /// order they first came, but for those away longer than a seat is
+    /// held: they are seated as they come back, if a seat is free.
+    private mutating func beginAge(now: Double) {
         age += 1
         world = RealmState.world(seed: seedText, age: age, seats: seats, radius: radius)
         for index in keepers.indices { keepers[index].house = nil }
-        for index in keepers.indices.sorted(by: { keepers[$0].arrival < keepers[$1].arrival }) {
+        let staying = keepers.indices.filter { index in
+            keepers[index].isOnline || now - (keepers[index].awaySince ?? now) < seatHeld(by: keepers[index])
+        }
+        for index in staying.sorted(by: { keepers[$0].arrival < keepers[$1].arrival }) {
             claimSeat(for: index)
         }
     }
