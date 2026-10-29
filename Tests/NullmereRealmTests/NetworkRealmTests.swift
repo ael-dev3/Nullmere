@@ -252,7 +252,14 @@ final class NetworkRealmTests: XCTestCase {
 
     func testASilentStewardIsToldAndItsReturnToo() async throws {
         let db = FakeSpacetime()
-        let (_, running, credentials) = try await steward(db)
+        // A steward at work: its clock runs on past a heartbeat each round,
+        // so it publishes every round, as a running realm always does
+        // within the silence a keeper is told of.
+        let credentials = try await db.createIdentity()
+        let first = try await RealmSteward(transport: db, token: credentials.token, name: "The Nullmere", seed: "network test",
+                                           seats: 4, watchLength: 600, now: 0)
+        let clock = SteppingClock(step: RealmSteward.heartbeat + 1)
+        let running = Task { await first.run(clock: { clock.next() }) }
         let (link, ear) = await MainActor.run { () -> (NetworkRealmLink, Listener) in
             let link = NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 0.05, stewardSilence: 0.6)
             let listener = Listener()
@@ -262,7 +269,8 @@ final class NetworkRealmTests: XCTestCase {
             return (link, listener)
         }
         try await until("arrival") { ear.keeper != nil }
-        try await Task.sleep(nanoseconds: 300_000_000)
+        // Twice the silence, and never silent.
+        try await Task.sleep(nanoseconds: 1_200_000_000)
         let early = await MainActor.run { ear.silenceTold }
         XCTAssertFalse(early, "A steward at work isn't silent")
 
@@ -637,5 +645,23 @@ private final class Said: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return kept
+    }
+}
+
+/// A steward's clock that runs on by a step at every reading.
+private final class SteppingClock: @unchecked Sendable {
+    private let lock = NSLock()
+    private var now = 0.0
+    private let step: Double
+
+    init(step: Double) {
+        self.step = step
+    }
+
+    func next() -> Double {
+        lock.lock()
+        defer { lock.unlock() }
+        now += step
+        return now
     }
 }
