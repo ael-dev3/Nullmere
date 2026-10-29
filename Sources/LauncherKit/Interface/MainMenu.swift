@@ -13,7 +13,7 @@ struct MainMenu: View {
                 MenuButton(title: item.title, isSelected: model.menuSelection == item) {
                     model.activate(item)
                 }
-                .onHover { inside in
+                .onPointer { inside in
                     if inside { model.menuSelection = item }
                 }
                 .accessibilityHint(hint(for: item))

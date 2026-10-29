@@ -29,7 +29,7 @@ struct PlayPanel: View {
                     MenuButton(title: title(for: choice), isSelected: model.playSelection == choice) {
                         model.choose(choice)
                     }
-                    .onHover { inside in
+                    .onPointer { inside in
                         if inside { model.playSelection = choice }
                     }
                 }

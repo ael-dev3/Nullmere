@@ -31,7 +31,7 @@ struct LauncherFooter: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .pointerStyle(.link)
+                .linkPointer()
                 .accessibilityLabel("Open nullmere.online")
 
                 SpacedText(version, size: 9.5 * unit, weight: .light, tracking: 0.3)

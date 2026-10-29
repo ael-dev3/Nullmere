@@ -18,7 +18,7 @@ struct NewsPanel: View {
                         NewsHeadline(item: item, isSelected: item.id == model.selectedNews?.id) {
                             model.selectNews(item)
                         }
-                        .onHover { inside in
+                        .onPointer { inside in
                             if inside { model.selectNews(item) }
                         }
                     }
@@ -36,7 +36,7 @@ struct NewsPanel: View {
             MenuButton(title: "Return", isSelected: isReturnHovered) {
                 model.returnToTitle()
             }
-            .onHover { isReturnHovered = $0 }
+            .onPointer { isReturnHovered = $0 }
             .padding(.top, 16 * unit)
         }
     }
@@ -122,7 +122,7 @@ private struct NewsStory: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .pointerStyle(.link)
+                        .linkPointer()
                         .accessibilityLabel("Read more about \(item.title)")
                         .padding(.top, 14 * unit)
                     }

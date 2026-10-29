@@ -33,7 +33,7 @@ struct RequirementPanel: View {
                     MenuButton(title: action.title, isSelected: index == model.requirementSelection) {
                         model.perform(action)
                     }
-                    .onHover { inside in
+                    .onPointer { inside in
                         if inside { model.requirementSelection = index }
                     }
                 }

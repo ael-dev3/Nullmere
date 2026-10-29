@@ -22,7 +22,7 @@ struct SettingsPanel: View {
                 ) { index in
                     model.choose(index, for: row)
                 }
-                .onHover { inside in
+                .onPointer { inside in
                     if inside { model.settingsSelection = row }
                 }
 
@@ -34,7 +34,7 @@ struct SettingsPanel: View {
             MenuButton(title: "Return", isSelected: isReturnHovered) {
                 model.returnToTitle()
             }
-            .onHover { isReturnHovered = $0 }
+            .onPointer { isReturnHovered = $0 }
             .padding(.top, 18 * unit)
         }
         .frame(width: 560 * unit)
