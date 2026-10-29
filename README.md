@@ -523,6 +523,7 @@ world, so there is nothing to save.
 | ⌘↩ | Ready: done with this watch's orders (click Waiting to take it back) |
 | ⇧⌘↩ | Stay ready until something needs you, up to ten watches |
 | ⌘, | Settings: display and text (the launcher's), sound and volumes, counsel |
+| ⇧⌘M / ⇧⌘U / ⇧⌘+ | Sound on or off / the music / larger text |
 | ⇧⌘W | Leave the world for the front door |
 
 ## Design

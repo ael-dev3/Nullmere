@@ -472,7 +472,7 @@ final class GuideTests: XCTestCase {
         XCTAssertEqual(titles, ["The watch", "The land", "Holds", "Companies", "Houses", "Omens", "Winning", "Keys"])
         XCTAssertTrue(Guide.sections.allSatisfy { !$0.lines.isEmpty && $0.lines.allSatisfy { $0.count > 10 } })
         let keys = Guide.sections.last!.lines.joined(separator: " ")
-        for key in ["Tab", "H:", "F:", "B:", "Esc", "1:", "2:", "?:", "⌘↩", "⇧⌘↩", "⇧⌘W"] {
+        for key in ["Tab", "H:", "F:", "B:", "Esc", "1:", "2:", "?:", "⌘↩", "⇧⌘↩", "⇧⌘W", "⇧⌘M", "⇧⌘U", "⇧⌘+"] {
             XCTAssertTrue(keys.contains(key), "The guide names \(key)")
         }
         // The Moonspire's last stage, and the holds it takes to store for it.

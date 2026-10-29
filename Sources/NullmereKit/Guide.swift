@@ -66,6 +66,7 @@ enum Guide {
             "Without a pointer: choose a company, pan until where it should go is in the middle of the view, then M to march there, or strike",
             "1: Houses · 2: Chronicle · ? or ⌘?: this Guide · ⇧⌘W: leave the world · ⌘,: Settings",
             "⌘↩: ready · ⇧⌘↩: stay ready until something needs you, up to ten watches",
+            "⇧⌘M: sound on or off · ⇧⌘U: the music · ⇧⌘+: larger text",
         ]),
     ]
 }
