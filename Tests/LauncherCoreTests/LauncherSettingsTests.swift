@@ -18,6 +18,14 @@ final class LauncherSettingsTests: XCTestCase {
         super.tearDown()
     }
 
+    /// Each resolution draws the lake at its share of the display's pixels,
+    /// finest first, and each row of the panel is named as it is shown.
+    func testResolutionsAndRowsAreNamedAndScaled() {
+        XCTAssertEqual(RenderQuality.allCases.map(\.scale), [1, 0.75, 0.5])
+        XCTAssertEqual(RenderQuality.allCases.map(\.title), ["Native", "Balanced", "Efficient"])
+        XCTAssertEqual(SettingsRow.allCases.map(\.title), ["Motion", "Resolution", "Frame rate", "Full screen at launch"])
+    }
+
     func testEmptyDefaultsProduceDefaultSettings() {
         XCTAssertEqual(LauncherSettings(defaults: defaults), LauncherSettings())
         XCTAssertEqual(LauncherSettings().motion, .system)
