@@ -460,6 +460,10 @@ final class GuideTests: XCTestCase {
         for key in ["Tab", "H:", "F:", "B:", "Esc", "1:", "2:", "?:", "⌘↩", "⇧⌘↩", "⇧⌘W"] {
             XCTAssertTrue(keys.contains(key), "The guide names \(key)")
         }
+        // The Moonspire's last stage, and the holds it takes to store for it.
+        XCTAssertEqual(Guide.holdsForTheLastSpire, 4)
+        let winning = Guide.sections.first { $0.title == "Winning" }?.lines.joined(separator: " ") ?? ""
+        XCTAssertTrue(winning.contains("960 stone, more than a House of fewer than 4 holds can keep"), winning)
     }
 
     @MainActor

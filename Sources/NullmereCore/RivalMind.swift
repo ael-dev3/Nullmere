@@ -3,6 +3,11 @@
 /// how strong they are, its temperament, and what it remembers of them.
 struct RivalMind {
     let house: Int
+    /// Keeping a House for its keeper while they are away: it answers
+    /// envoys, tends the holds and defends them, and sues for peace in a
+    /// war going badly, but begins nothing the keeper would have to undo:
+    /// no war, no demand, no pact, no bending the knee.
+    var caretaking = false
 
     // MARK: Answering offers
 
@@ -68,7 +73,7 @@ struct RivalMind {
         var events: [GameEvent] = []
         var random = state.random()
 
-        events += conductDiplomacy(in: &state, random: &random)
+        events += caretaking ? keepThePeace(in: &state, random: &random) : conductDiplomacy(in: &state, random: &random)
         events += balanceStores(in: &state)
         for hold in state.holds(of: house).sorted(by: { $0.id < $1.id }) {
             events += manage(hold.id, in: &state, random: &random)
@@ -176,6 +181,30 @@ struct RivalMind {
                     events += perform(.declareWar(on: other.id), in: &state)
                     declared = true
                 }
+            }
+        }
+        return events
+    }
+
+    /// A caretaker's diplomacy: the envoys waiting on the House answered as
+    /// a steward would, but never bending the knee, and pacts left for the
+    /// keeper; a war going badly ended if it can be.
+    private func keepThePeace(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
+        var events: [GameEvent] = []
+        for envoy in state.envoys where envoy.to == house && envoy.proposal != .pact {
+            let accept: Bool
+            switch envoy.proposal {
+            case .fealty: accept = false
+            case .trade: accept = envoy.trade.map { acceptsTrade($0, from: envoy.from, in: state) } ?? false
+            default: accept = accepts(envoy.proposal, from: envoy.from, in: state)
+            }
+            events += perform(.answer(envoy: envoy.id, accept: accept), in: &state)
+        }
+        let mine = max(1, state.strength(of: house))
+        for other in state.livingHouses where state.isAtWar(house, other.id) {
+            guard let relation = state.relation(house, other.id), state.watch - relation.since >= 4 else { continue }
+            if mine * 10 < max(1, state.strength(of: other.id)) * 9, random.chance(40) {
+                events += perform(.propose(.peace, to: other.id), in: &state)
             }
         }
         return events

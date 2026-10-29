@@ -48,9 +48,9 @@ extension GameState {
     /// Lets a House's steward play its watch, deciding as the rival Houses
     /// do: what to build and train, where to march, whom to fight.
     @discardableResult
-    public mutating func stewardTurn(for house: Int) -> [GameEvent] {
+    public mutating func stewardTurn(for house: Int, caretaking: Bool = false) -> [GameEvent] {
         guard outcome == nil else { return [] }
-        return RivalMind(house: house).takeTurn(in: &self)
+        return RivalMind(house: house, caretaking: caretaking).takeTurn(in: &self)
     }
 
     private mutating func harvest(for house: Int, territory owners: [Int?]) -> [GameEvent] {
@@ -169,10 +169,13 @@ extension GameState {
     private mutating func checkForEnd() -> [GameEvent] {
         guard outcome == nil else { return [] }
         let living = livingHouses
-        if let builder = holds.first(where: { $0.level(.moonspire) >= BuildingKind.moonspire.maxLevel }) {
-            let result = Outcome(winner: builder.owner, kind: .ascendancy, watch: watch)
+        // Two Moonspires finished in one watch: as with dominion, the
+        // greater realm, then the greater renown, not the earlier seat.
+        let builders = Set(holds.filter { $0.level(.moonspire) >= BuildingKind.moonspire.maxLevel }.map(\.owner))
+        if let builder = builders.max(by: { a, b in (realm(of: a), renown(of: a), -a) < (realm(of: b), renown(of: b), -b) }) {
+            let result = Outcome(winner: builder, kind: .ascendancy, watch: watch)
             outcome = result
-            record(.ending, [builder.owner], "The Moonspire of \(houses[builder.owner].title) stands complete. The lake is theirs.")
+            record(.ending, [builder], "The Moonspire of \(houses[builder].title) stands complete. The lake is theirs.")
             return [.gameEnded(result)]
         }
         // Supremacy: a House ruling most of the lake's holds holds the lake.

@@ -126,7 +126,7 @@ extension RivalMind {
         if me.stock[trade.take] > room * 3 / 5 { margin -= 15 }
         let received = trade.giveAmount * trade.give.worth
         let paid = trade.takeAmount * trade.take.worth
-        return received * 100 >= paid * max(70, margin)
+        return received * 100 >= paid * max(100, margin)
     }
 
     /// Terms a steward offers for what it lacks: a little over even, so

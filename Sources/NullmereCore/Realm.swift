@@ -324,12 +324,32 @@ public struct RealmState: Codable, Equatable, Sendable {
         if ready { keepers[index].hasPlayed = true }
         // Those whose House has fallen look on; the watch doesn't wait for
         // them, unless none still standing is there.
+        guard ready, everyoneThereIsReady, now - watchBegan >= shortestWatch else { return nil }
+        return turn(now: now)
+    }
+
+    /// Whether every keeper there is ready. Those whose House has fallen
+    /// look on; the watch doesn't wait for them, unless none still
+    /// standing is there.
+    private var everyoneThereIsReady: Bool {
         let seated = keepers.filter { $0.isOnline && $0.house != nil }
         let standing = seated.filter { keeper in keeper.house.map { !world.houses[$0].isEliminated } == true }
         let online = standing.isEmpty ? seated : standing
-        guard ready, !online.isEmpty, online.allSatisfy(\.isReady) else { return nil }
-        return turn(now: now)
+        return !online.isEmpty && online.allSatisfy(\.isReady)
     }
+
+    /// The least a watch lasts, however ready those there are: nothing,
+    /// unless fewer than half the keepers whose Houses stand are there,
+    /// when a third of a watch, so the few can't hurry the lake past the
+    /// many away.
+    var shortestWatch: Double {
+        let standing = keepers.filter { keeper in keeper.house.map { !world.houses[$0].isEliminated } == true }
+        let there = standing.filter(\.isOnline).count
+        return there * 2 < standing.count ? watchLength / 3 : 0
+    }
+
+    /// Watches a keeper is away before a caretaker keeps their House.
+    public static let caretakerAfter = 2.0
 
     /// A steward gives this watch's orders for a keeper's House, as a realm
     /// hosted on one Mac does when its keeper lets the watches run.
@@ -341,7 +361,10 @@ public struct RealmState: Codable, Equatable, Sendable {
 
     /// Turns the watch once its time is up, if anyone is there to see it.
     public mutating func tick(now: Double) -> [GameEvent]? {
-        guard keepers.contains(where: \.isOnline), now - watchBegan >= watchLength else { return nil }
+        guard keepers.contains(where: \.isOnline) else { return nil }
+        let elapsed = now - watchBegan
+        // Its time up, or everyone there ready and the shortest watch past.
+        guard elapsed >= watchLength || (everyoneThereIsReady && elapsed >= shortestWatch) else { return nil }
         return turn(now: now)
     }
 
@@ -352,7 +375,15 @@ public struct RealmState: Codable, Equatable, Sendable {
             beginAge(now: now)
             return []
         }
-        return world.endWatch()
+        // A House whose keeper has been away a while is kept for them, so
+        // it doesn't stand idle while its neighbours act.
+        var events: [GameEvent] = []
+        for keeper in keepers where !keeper.isOnline {
+            guard let house = keeper.house, !world.houses[house].isEliminated,
+                  now - (keeper.awaySince ?? now) >= RealmState.caretakerAfter * watchLength else { continue }
+            events += world.stewardTurn(for: house, caretaking: true)
+        }
+        return events + world.endWatch()
     }
 
     /// The next age: a fresh lake, and every keeper seated again in the
