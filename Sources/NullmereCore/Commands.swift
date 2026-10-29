@@ -56,6 +56,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case alreadyStance(Stance)
     case notApplicable
     case unknownEnvoy
+    case envoyWaiting
     case invalidAmount
     case storageFull
     case atWarWith(Int)
@@ -88,6 +89,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .alreadyStance(let stance): return "Already at \(stance.title.lowercased())."
         case .notApplicable: return "That isn't possible now."
         case .unknownEnvoy: return "That envoy has gone."
+        case .envoyWaiting: return "An envoy with that offer already waits on their answer."
         case .invalidAmount: return "Choose an amount to trade."
         case .storageFull: return "There's no room to store that much."
         case .atWarWith: return "A gift across a war is no gift."

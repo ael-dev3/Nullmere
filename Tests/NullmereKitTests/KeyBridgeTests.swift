@@ -115,6 +115,8 @@ final class KeyBridgeTests: XCTestCase {
             XCTAssertTrue(window.makeFirstResponder(map))
             XCTAssertFalse(KeyBridgeView.controlHasFocus(in: window))
             XCTAssertTrue(bridge.handle(tab, keyboardNavigation: true))
+            // Out of the window, so it draws no more for the tests after.
+            map.removeFromSuperview()
         }
         bridge.removeFromSuperview()
     }

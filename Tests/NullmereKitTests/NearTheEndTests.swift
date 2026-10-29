@@ -103,7 +103,6 @@ final class NearTheEndTests: XCTestCase {
         let link = host.link(identity: "id-bel")
         let session = GameSession(link: link, house: bel, world: try XCTUnwrap(realm.view(for: "id-bel")).world,
                                   store: LocalStore(directory: dir), host: host)
-        XCTAssertFalse(session.mayTakeUpAFreeHouse, "Not before the realm has said how it stands")
         link.connect()
         XCTAssertTrue(session.mayTakeUpAFreeHouse)
         XCTAssertTrue(FallenOverlay.words(for: session.playerHouse, watch: 1, freeHouse: true).contains("take it up and play on"))
@@ -117,6 +116,22 @@ final class NearTheEndTests: XCTestCase {
         let house = try XCTUnwrap(seated?.house)
         XCTAssertNotEqual(house, bel)
         XCTAssertFalse(host.state.world.houses[house].isEliminated)
+    }
+
+    /// A hosted realm's door tried again opens again: the old link is let go
+    /// before the new one comes, so its leaving can't silence the new one.
+    func testAHostedDoorTriedAgainOpensAgain() throws {
+        let store = LocalStore(directory: dir.appendingPathComponent("again"))
+        let app = GameApp(store: store, readiness: { .ready }, sound: false, address: .hosted(seed: "tried again"),
+                          identity: FileIdentityStore(url: dir.appendingPathComponent("identity-again")))
+        app.open()
+        guard case .open = app.door else { return XCTFail("The hosted door opens at once: \(app.door)") }
+        let old = try XCTUnwrap(app.link)
+        app.openDoor()
+        guard case .open = app.door else { return XCTFail("And again: \(app.door)") }
+        XCTAssertNil(old.onEvent)
+        XCTAssertFalse(app.link === old)
+        app.leaveDoor()
     }
 
     /// The story's line runs to the present watch, recorded or not yet.

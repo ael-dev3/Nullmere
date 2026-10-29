@@ -77,6 +77,12 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
     public var sight: Int { Hold.sight(beaconLevel: level(.beacon)) }
     public var territoryRadius: Int { Hold.territoryRadius(isSeat: isSeat, beaconLevel: level(.beacon)) }
 
+    /// How much stronger a garrison stands within its own hold's walls, in
+    /// percent of its defence.
+    public static func garrisonBonus(wallLevel: Int) -> Int {
+        15 + 10 * wallLevel
+    }
+
     public static func maximumWard(wallLevel: Int, isSeat: Bool = false) -> Int {
         30 + 30 * wallLevel + (isSeat ? 20 : 0)
     }

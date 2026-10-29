@@ -105,6 +105,41 @@ final class LinkViewTests: XCTestCase {
         XCTAssertFalse(ear.events.contains { if case .unreachable = $0 { return true } else { return false } })
     }
 
+    /// What a keeper heard is carried with their view a while; the link
+    /// tells it once, though their own next order brings the view again.
+    func testWhatIsHeardIsToldOnce() async throws {
+        let (db, _, link, ear, running) = try await realm("told once")
+        defer { running.cancel(); link.leave() }
+        link.connect()
+        link.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        let ama = try XCTUnwrap(ear.keeper?.house)
+        let bel = try await db.createIdentity()
+        try await db.call("arrive", [.string("b1"), .string("Bel")], token: bel.token)
+        let gift = Command.gift(to: ama, resource: .grain, amount: 5)
+        try await db.call("order", [.string("b2"), .string(String(decoding: try JSONEncoder().encode(gift), as: UTF8.self))], token: bel.token)
+        func gifts() -> Int {
+            ear.events.reduce(0) { count, event in
+                switch event {
+                case .heard(let events), .watchTurned(_, let events), .answered(let events):
+                    return count + events.filter { if case .gifted = $0 { return true } else { return false } }.count
+                default: return count
+                }
+            }
+        }
+        try await until("the gift heard") { gifts() == 1 }
+        // Her own order: the realm shows her view again, the gift with it.
+        let world = try XCTUnwrap(ear.world)
+        let spear = try XCTUnwrap(world.units(of: ama).first { $0.kind == .spear })
+        let answered = ear.events.count
+        link.send(.fortify(unit: spear.id))
+        try await until("the order answered") {
+            ear.events.dropFirst(answered).contains { if case .answered = $0 { return true } else { return false } }
+        }
+        try await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertEqual(gifts(), 1, "Told once")
+    }
+
     /// Left while an order's answer is on its way: the link drops the
     /// errand rather than tripping over it.
     func testALinkLeftWithAnAnswerOnItsWayDropsTheErrand() async throws {

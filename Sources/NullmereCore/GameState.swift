@@ -306,7 +306,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The tiles a House sees right now, with its allies' sight.
     public func visibility(for house: Int) -> [Bool] {
         var visible = [Bool](repeating: false, count: map.count)
-        let watchers = houses.filter { $0.id == house || stance($0.id, house) == .pact }.map(\.id)
+        // Allies lend their sight; a fallen House has none to lend or borrow.
+        let fallen = houses.indices.contains(house) && houses[house].isEliminated
+        let watchers = houses.filter { $0.id == house || (!fallen && !$0.isEliminated && stance($0.id, house) == .pact) }.map(\.id)
         for watcher in watchers {
             for unit in units(of: watcher) {
                 let range = sight(of: unit)

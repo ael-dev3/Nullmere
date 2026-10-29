@@ -40,6 +40,31 @@ final class RealmFairnessTests: XCTestCase {
         XCTAssertNotNil(own.outcome)
     }
 
+    func testTheAgeEndsWhenEveryKeepersHouseHasFallen() throws {
+        var realm = realm()
+        let ama = try XCTUnwrap(realm.arrive("id-ama", name: "Ama", now: 1).house)
+        let steward = try XCTUnwrap(realm.world.houses.first { !$0.isPlayer }).id
+        fell(ama, to: steward, in: &realm.world)
+        // Alone and fallen, her readiness still turns the watch, and the age
+        // ends: the greatest House left holds the lake.
+        XCTAssertNotNil(realm.setReady("id-ama", true, now: 2))
+        let outcome = try XCTUnwrap(realm.world.outcome)
+        XCTAssertEqual(outcome.kind, .dominion)
+        XCTAssertFalse(realm.world.houses[outcome.winner].isPlayer)
+        // A realm no keeper has come to yet goes on.
+        var empty = self.realm()
+        _ = empty.world.endWatch()
+        XCTAssertNil(empty.world.outcome)
+    }
+
+    func testAWorldFromBeforeHasItsMoonFoundAgain() throws {
+        var realm = realm()
+        let water = realm.world.moonWater
+        realm.world.moonWater = nil
+        realm.fillIn()
+        XCTAssertEqual(realm.world.moonWater, water)
+    }
+
     func testTheFallenDontHoldUpTheWatch() throws {
         var realm = realm()
         let ama = try XCTUnwrap(realm.arrive("id-ama", name: "Ama", now: 1).house)

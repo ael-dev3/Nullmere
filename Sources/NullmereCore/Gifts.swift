@@ -37,8 +37,14 @@ extension GameState {
         houses[house].stock.debit(gift)
         houses[target].stock.credit(gift)
         let worth = GameState.worth(of: resource, amount: amount)
+        // One gift between two Houses a watch goes into the chronicle, so
+        // gifts sent back and forth can't fill it.
+        let notedAlready = (gifts ?? []).contains { gift in
+            gift.watch == watch && gift.worth >= GameState.notedGift
+                && Set([gift.from, gift.to]) == Set([house, target])
+        }
         gifts = (gifts ?? []) + [Gift(from: house, to: target, worth: worth, watch: watch)]
-        if worth >= GameState.notedGift {
+        if worth >= GameState.notedGift, !notedAlready {
             record(.gift, [house, target], "\(houses[house].title) sends \(houses[target].title) a gift of \(gift).")
         }
         return [.gifted(from: house, to: target, gift: gift)]

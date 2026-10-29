@@ -30,6 +30,8 @@ public struct Relation: Codable, Equatable, Sendable {
     public var betrayals: Int
     /// The watch tribute last passed between them.
     public var tributePaid: Int?
+    /// The watch a demand for tribute between them was last refused.
+    public var tributeRefused: Int?
 
     public init(first: Int, second: Int, stance: Stance = .peace, since: Int = 1) {
         self.first = min(first, second)
@@ -39,10 +41,7 @@ public struct Relation: Codable, Equatable, Sendable {
         self.aggressor = nil
         self.betrayals = 0
         self.tributePaid = nil
-    }
-
-    public func involves(_ house: Int) -> Bool {
-        first == house || second == house
+        self.tributeRefused = nil
     }
 
     public func other(than house: Int) -> Int {

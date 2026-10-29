@@ -13,6 +13,8 @@ for script in scripts/*.sh; do
         status=1
     fi
 done
+# What the scripts do, against stand-ins.
+scripts/test-scripts.sh || status=1
 # The Python helpers' own checks.
 python3 scripts/perf-check.py --self-test || status=1
 python3 scripts/coverage.py --self-test || status=1

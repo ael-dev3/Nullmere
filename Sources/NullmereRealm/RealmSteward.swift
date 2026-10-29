@@ -60,6 +60,11 @@ public actor RealmSteward {
     private var lastStatus: RealmStatus?
     /// When each keeper was last heard from.
     private var heard: [String: Double] = [:]
+    /// When each keeper last left by their own request.
+    private var left: [String: Double] = [:]
+    /// How long after leaving a keeper's "here" is taken as one already on
+    /// its way when they left, not as their return.
+    public static let leavingGrace = 15.0
     /// Requests carried out whose answers wait for the next publication,
     /// which keeps the world and gives them in one transaction.
     private var unanswered: [(id: UInt64, nonce: String, reply: String)] = []
@@ -112,6 +117,7 @@ public actor RealmSteward {
         if let row = rows.first, row.count == 2, let version = row[0].number, let text = row[1].string,
            let state = try? JSONDecoder().decode(RealmState.self, from: Data(text.utf8)) {
             self.state = state
+            self.state.fillIn()
             // Versions run on past the last status, never back.
             let status = try await transport.query("SELECT version FROM status", token: token)
             self.version = max(UInt64(version), status.first?.first?.number.map { UInt64($0) } ?? 0)
@@ -152,7 +158,9 @@ public actor RealmSteward {
             // A keeper taken to have left (by silence, or a steward
             // starting anew) who is still playing is back: any request but
             // leaving says so, so their readiness counts again.
-            if request.kind != "arrive", request.kind != "leave", state.keeper(request.keeper)?.isOnline == false {
+            let justLeft = now - (left[request.keeper] ?? -.infinity) < RealmSteward.leavingGrace
+            if request.kind != "arrive", request.kind != "leave", !(request.kind == "here" && justLeft),
+               state.keeper(request.keeper)?.isOnline == false {
                 _ = try? state.arrive(request.keeper, name: nil, now: now, reseatsTheFallen: false)
                 changed = true
             }
@@ -224,6 +232,7 @@ public actor RealmSteward {
         case "here":
             return (.done, false, [])
         case "leave":
+            left[keeper] = now
             state.depart(keeper, now: now)
             return (.done, true, [])
         default:

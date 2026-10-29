@@ -102,7 +102,9 @@ final class TradeTests: XCTestCase {
         XCTAssertEqual(envoy.proposal, .trade)
         XCTAssertEqual(envoy.trade, trade)
         XCTAssertEqual(envoy.words, "Grain for your timber, neighbour. b", "A keeper's words, plainly")
-        XCTAssertEqual(try state.perform(.offerTrade(trade, to: other, words: nil), as: me), [], "One offer at a time")
+        XCTAssertThrowsError(try state.perform(.offerTrade(trade, to: other, words: nil), as: me), "One offer at a time") { error in
+            XCTAssertEqual(error as? RuleError, .envoyWaiting)
+        }
         // It travels whole, as the realm keeps it.
         let kept = try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(state))
         XCTAssertEqual(kept.envoys.first?.trade, trade)

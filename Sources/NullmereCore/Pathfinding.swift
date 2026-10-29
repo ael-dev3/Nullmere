@@ -1,7 +1,8 @@
 extension GameState {
     /// The cheapest route for a unit from its position to `target`, as the
     /// hexes to step through, not including the start. Hexes holding other
-    /// units are avoided, except the target itself.
+    /// units, and other Houses' holds, are avoided, except the target
+    /// itself: a march stops at a foreign hold.
     public func path(for unit: Unit, to target: Hex) -> [Hex]? {
         guard unit.position != target,
               let start = map.index(of: unit.position),
@@ -21,6 +22,11 @@ extension GameState {
         var blocked = [Bool](repeating: false, count: count)
         for other in units where other.id != unit.id {
             if let index = map.index(of: other.position), index != goal {
+                blocked[index] = true
+            }
+        }
+        for hold in holds where hold.owner != unit.owner {
+            if let index = map.index(of: hold.position), index != goal {
                 blocked[index] = true
             }
         }
@@ -61,6 +67,50 @@ extension GameState {
             }
         }
         return nil
+    }
+}
+
+extension GameState {
+    /// A way toward a hex that can't be reached: to the hex nearest it that
+    /// can, keeping clear of other companies and of other Houses' holds.
+    /// Nil when the unit already stands as near as it can come.
+    public func approach(for unit: Unit, toward target: Hex) -> [Hex]? {
+        guard let start = map.index(of: unit.position) else { return nil }
+        var blocked = [Bool](repeating: false, count: map.count)
+        for other in units where other.id != unit.id {
+            if let index = map.index(of: other.position) { blocked[index] = true }
+        }
+        for hold in holds where hold.owner != unit.owner {
+            if let index = map.index(of: hold.position) { blocked[index] = true }
+        }
+        let hexes = map.hexes
+        var cameFrom = [Int](repeating: -2, count: map.count)
+        cameFrom[start] = -1
+        var queue = [start]
+        var head = 0
+        var best = start
+        func nearer(_ a: Int, than b: Int) -> Bool {
+            (hexes[a].distance(to: target), a) < (hexes[b].distance(to: target), b)
+        }
+        while head < queue.count, head < 6_000 {
+            let tile = queue[head]
+            head += 1
+            if nearer(tile, than: best) { best = tile }
+            for direction in Hex.directions {
+                guard let next = map.index(of: hexes[tile] + direction), cameFrom[next] == -2, !blocked[next],
+                      map[next].terrain.isPassable else { continue }
+                cameFrom[next] = tile
+                queue.append(next)
+            }
+        }
+        guard best != start else { return nil }
+        var route: [Hex] = []
+        var cursor = best
+        while cursor != start {
+            route.append(hexes[cursor])
+            cursor = cameFrom[cursor]
+        }
+        return route.reversed()
     }
 }
 

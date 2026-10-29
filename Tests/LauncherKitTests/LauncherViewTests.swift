@@ -131,6 +131,7 @@ final class LauncherViewTests: XCTestCase {
             RunLoop.main.run(until: Date().addingTimeInterval(0.1))
         }
         XCTAssertNotNil(window.contentView)
+        window.contentView = nil
     }
 
     func testTheTitleAndItsPartsDraw() throws {

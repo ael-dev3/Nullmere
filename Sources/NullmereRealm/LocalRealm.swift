@@ -24,7 +24,8 @@ public final class LocalRealm {
     /// Opens the realm kept at `url`, or begins a new one there.
     public static func open(at url: URL, name: String, seed: String, seats: Int = RealmState.defaultSeats, watchLength: Double = RealmState.defaultWatchLength,
                             clock: @escaping () -> Double = { Date().timeIntervalSince1970 }) -> LocalRealm {
-        if let data = try? Data(contentsOf: url), let state = try? JSONDecoder().decode(RealmState.self, from: data) {
+        if let data = try? Data(contentsOf: url), var state = try? JSONDecoder().decode(RealmState.self, from: data) {
+            state.fillIn()
             return LocalRealm(state: state, clock: clock, storeURL: url)
         }
         let realm = LocalRealm(state: RealmState(name: name, seed: seed, seats: seats, watchLength: watchLength, now: clock()),
@@ -109,9 +110,15 @@ public final class LocalRealm {
         }
     }
 
-    func leave(_ identity: String) {
+    /// A link let go without leaving.
+    func forget(_ link: LocalLink, of identity: String) {
+        if links[identity]?.link === link { links[identity] = nil }
+    }
+
+    func leave(_ identity: String, link: LocalLink) {
         state.depart(identity, now: clock())
-        links[identity] = nil
+        // Only that link goes: one made since for the same keeper stays.
+        if links[identity]?.link === link { links[identity] = nil }
         persist()
         broadcastStatus()
     }
@@ -196,6 +203,11 @@ public final class LocalLink: RealmLink {
     }
 
     public func leave() {
-        realm?.leave(identity)
+        realm?.leave(identity, link: self)
+    }
+
+    public func close() {
+        onEvent = nil
+        realm?.forget(self, of: identity)
     }
 }

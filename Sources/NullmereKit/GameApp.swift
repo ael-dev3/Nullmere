@@ -221,6 +221,10 @@ public final class GameApp {
         arrivalProblem = nil
         isEntering = false
         stopWaiting()
+        // A link replaced (Try Again) is let go first: nothing it still has
+        // on its way can be taken for the new one's, and its leaving can't
+        // undo the new one's coming.
+        releaseLink()
         let link: any RealmLink
         switch address {
         case .hosted(let seed):
@@ -234,12 +238,6 @@ public final class GameApp {
                 return
             }
             link = NetworkRealmLink(transport: transport, credentials: identityStore, pollInterval: pollInterval)
-        }
-        // A link replaced (Try Again) is let go: nothing it still has on
-        // its way can be taken for the new one's.
-        if let old = self.link {
-            old.onEvent = nil
-            old.leave()
         }
         self.link = link
         link.onEvent = { [weak self] event in self?.hear(event) }
@@ -352,10 +350,19 @@ public final class GameApp {
 
     /// The realm no longer knows this Mac's key (its database was made anew):
     /// back to the front door, to enter under a name again.
+    /// Lets the link go: it tells nothing more, and leaves the realm, or,
+    /// when the realm no longer knows its key, simply stops.
+    private func releaseLink(leaving: Bool = true) {
+        if leaving { link?.leave() } else { link?.close() }
+        link?.onEvent = nil
+        link = nil
+    }
+
     private func forgotten() {
         keeperName = nil
         UserDefaults.standard.removeObject(forKey: Self.nameKey(for: address))
-        link = nil
+        releaseLink(leaving: false)
+        ambience.isAtWar = false
         phase = .frontDoor
         openDoor()
         arrivalProblem = "The realm no longer knows this Mac's key, as when a realm is begun anew. Choose the name you'll go by."
@@ -364,9 +371,7 @@ public final class GameApp {
     /// Leaves the world for the front door; the keeper's House stands as
     /// they left it.
     public func leaveWorld() {
-        link?.onEvent = nil
-        link?.leave()
-        link = nil
+        releaseLink()
         ambience.isAtWar = false
         phase = .frontDoor
         openDoor()
@@ -375,9 +380,7 @@ public final class GameApp {
     /// Leaves the front door for the launcher.
     public func leaveDoor() {
         stopWaiting()
-        link?.onEvent = nil
-        link?.leave()
-        link = nil
+        releaseLink()
         ambience.isAtWar = false
         ambience.stop()
         onLeave?()

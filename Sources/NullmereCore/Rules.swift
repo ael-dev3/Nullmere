@@ -73,8 +73,14 @@ extension GameState {
     private mutating func move(_ unitID: Int, to target: Hex, as house: Int) throws(RuleError) -> [GameEvent] {
         let index = try ownedUnit(unitID, of: house)
         guard map.contains(target) else { throw .outsideTheWorld }
-        guard let tile = map[target], tile.terrain.isPassable else {
-            throw .impassable(map[target]?.terrain ?? .spine)
+        // Ground not yet explored is ordered into as the keeper sees it:
+        // the realm says nothing of what lies there, and the march goes as
+        // near as it can come.
+        let unknown = !isExplored(target, by: house)
+        if !unknown {
+            guard let tile = map[target], tile.terrain.isPassable else {
+                throw .impassable(map[target]?.terrain ?? .spine)
+            }
         }
         let unit = units[index]
         guard unit.position != target else { throw .alreadyThere }
@@ -84,7 +90,7 @@ extension GameState {
            unit.position.distance(to: target) <= unit.kind.range {
             return try attack(with: unitID, at: target, as: house)
         }
-        guard path(for: unit, to: target) != nil else { throw .noPath }
+        guard unknown || path(for: unit, to: target) != nil else { throw .noPath }
         units[index].destination = target
         units[index].fortified = false
         return march(unitID)
@@ -101,7 +107,11 @@ extension GameState {
         while let destination = units[index].destination, units[index].movesLeft > 0 {
             let unit = units[index]
             if route.isEmpty {
-                guard let planned = path(for: unit, to: destination), !planned.isEmpty else {
+                // No way there: into ground still unknown to its House, it
+                // goes as near as it can; known ground unreachable ends it.
+                let way = path(for: unit, to: destination)
+                    ?? (isExplored(destination, by: unit.owner) ? nil : approach(for: unit, toward: destination))
+                guard let planned = way, !planned.isEmpty else {
                     units[index].destination = nil
                     break
                 }
@@ -134,6 +144,12 @@ extension GameState {
             events.insert(.moved(unit: unitID, path: steps), at: 0)
         }
         return events
+    }
+
+    /// Whether a House has explored a hex.
+    func isExplored(_ hex: Hex, by house: Int) -> Bool {
+        guard houses.indices.contains(house), let index = map.index(of: hex) else { return false }
+        return houses[house].explored.indices.contains(index) && houses[house].explored[index]
     }
 
     mutating func reveal(around hex: Hex, range: Int, for house: Int) {
@@ -229,7 +245,7 @@ extension GameState {
         }
         var defenseBonus = 100 + (map[hex]?.terrain.defenseBonus ?? 0) + (defender.fortified ? 25 : 0)
         if let hold = hold(at: hex), hold.owner == defender.owner {
-            defenseBonus += 15 + 10 * hold.level(.walls)
+            defenseBonus += Hold.garrisonBonus(wallLevel: hold.level(.walls))
         }
         if attacker.kind == .rider {
             defenseBonus += defender.kind.bonusAgainstRiders
@@ -295,7 +311,7 @@ extension GameState {
         // seat holds half of them.
         let plunder = houses[previous].stock.share(1, of: wasSeat ? 2 : max(holds(of: previous).count, 1))
         houses[previous].stock.debit(plunder)
-        houses[taker].stock.credit(plunder)
+        store(plunder, for: taker)
 
         holds[holdIndex].owner = taker
         holds[holdIndex].isSeat = false
@@ -341,18 +357,21 @@ extension GameState {
     /// left swears fealty to the House that took it.
     public static let brokenAtHolds = 4
 
-    mutating func eliminate(_ house: Int, by conqueror: Int?) -> [GameEvent] {
+    mutating func eliminate(_ house: Int, by conqueror: Int) -> [GameEvent] {
         guard !houses[house].isEliminated else { return [] }
         houses[house].isEliminated = true
         houses[house].liege = nil
+        // Its pacts end with it: a fallen House sees through no ally's eyes.
+        for index in relations.indices where relations[index].first == house || relations[index].second == house {
+            if relations[index].stance == .pact { relations[index].stance = .peace }
+        }
         // A fallen liege's vassals are free again.
         for index in houses.indices where houses[index].liege == house {
             houses[index].liege = nil
         }
         units.removeAll { $0.owner == house }
         envoys.removeAll { $0.from == house || $0.to == house }
-        let by = conqueror.map { " to \(houses[$0].title)" } ?? ""
-        record(.fall, [house] + (conqueror.map { [$0] } ?? []), "\(houses[house].title) falls\(by). Its name passes into the chronicle.")
+        record(.fall, [house, conqueror], "\(houses[house].title) falls to \(houses[conqueror].title). Its name passes into the chronicle.")
         return [.houseFell(house)]
     }
 
@@ -484,19 +503,25 @@ extension GameState {
         case .pact:
             guard current == .peace else { throw current == .pact ? .alreadyStance(.pact) : .notApplicable }
         case .fealty:
-            guard houses[house].liege == nil, houses[target].liege == nil, !houses[house].isPlayer else { throw .notApplicable }
+            // A liege of others can't bend the knee itself.
+            guard houses[house].liege == nil, houses[target].liege == nil, !houses[house].isPlayer,
+                  !houses.contains(where: { $0.liege == house }) else { throw .notApplicable }
         case .trade:
             // A trade goes with its terms, by `offerTrade`.
             throw .notApplicable
         case .tribute:
             guard current == .peace else { throw current == .pact ? .alreadyStance(.pact) : .notApplicable }
-            guard houses[house].liege != target, houses[target].liege != house, !paidTributeLately(house, target) else {
+            guard houses[house].liege != target, houses[target].liege != house, !paidTributeLately(house, target),
+                  !refusedTributeLately(house, target) else {
                 throw .notApplicable
             }
         }
 
         if houses[target].isPlayer {
-            guard !envoys.contains(where: { $0.from == house && $0.to == target }) else { return [] }
+            // One envoy of each kind on the road between two Houses.
+            guard !envoys.contains(where: { $0.from == house && $0.to == target && $0.proposal == proposal }) else {
+                throw .envoyWaiting
+            }
             // Words go only between keepers: a steward has no use for them.
             let envoy = Envoy(id: takeID(), from: house, to: target, proposal: proposal, arrived: watch,
                               words: houses[house].isPlayer ? words : nil)
@@ -526,6 +551,7 @@ extension GameState {
         case .pact: stillValid = stance(house, envoy.from) == .peace
         // A House a keeper has since taken up never bends the knee for them.
         case .fealty: stillValid = houses[envoy.from].liege == nil && houses[house].liege == nil && !houses[envoy.from].isPlayer
+            && !houses.contains(where: { $0.liege == envoy.from })
         case .tribute: stillValid = stance(house, envoy.from) == .peace
         }
         let accepted = accept && stillValid && !houses[envoy.from].isEliminated
@@ -539,7 +565,7 @@ extension GameState {
         return events
     }
 
-    private mutating func settle(_ proposal: Proposal, between proposer: Int, and other: Int, by actor: Int) {
+    mutating func settle(_ proposal: Proposal, between proposer: Int, and other: Int, by actor: Int) {
         switch proposal {
         case .trade:
             break
@@ -556,7 +582,8 @@ extension GameState {
         case .tribute:
             let paid = tribute(from: other)
             houses[other].stock.debit(paid)
-            houses[proposer].stock.credit(paid)
+            // What the demander has no room for is lost on the road.
+            store(paid, for: proposer)
             if let index = relations.firstIndex(where: { $0.first == min(proposer, other) && $0.second == max(proposer, other) }) {
                 relations[index].tributePaid = watch
             }
@@ -578,9 +605,21 @@ extension GameState {
         return watch - paid < GameState.tributeRespite
     }
 
+    /// Watches before a refused demand can be made again.
+    public static let tributeRefusedRespite = 5
+
+    /// Whether a demand for tribute between two Houses was refused lately.
+    public func refusedTributeLately(_ a: Int, _ b: Int) -> Bool {
+        guard let refused = relation(a, b)?.tributeRefused else { return false }
+        return watch - refused < GameState.tributeRefusedRespite
+    }
+
     /// A refused demand: a rival that demanded marches; the player who
-    /// demanded is only refused.
+    /// demanded is only refused, and can't demand again for a while.
     mutating func refuseTribute(demandedBy demander: Int, of refuser: Int) -> [GameEvent] {
+        if let index = relations.firstIndex(where: { $0.first == min(demander, refuser) && $0.second == max(demander, refuser) }) {
+            relations[index].tributeRefused = watch
+        }
         record(.tribute, [refuser, demander], "\(houses[refuser].title) refuses tribute to \(houses[demander].title).")
         guard !houses[demander].isPlayer else { return [] }
         return (try? declareWar(by: demander, on: refuser)) ?? []

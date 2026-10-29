@@ -144,6 +144,12 @@ public struct RealmState: Codable, Equatable, Sendable {
                                          lake: Lake.of(age: age)))
     }
 
+    /// A realm kept from before the moon's water was found as the world was
+    /// made: found now, on the whole map.
+    public mutating func fillIn() {
+        if world.moonWater == nil { world.moonWater = world.map.deepestWater() }
+    }
+
     public func keeper(_ id: String) -> Keeper? {
         keepers.first { $0.id == id }
     }
@@ -275,7 +281,24 @@ public struct RealmState: Codable, Equatable, Sendable {
         world.houses[seat.id].isPlayer = true
         world.houses[seat.id].name = keepers[index].name
         keepers[index].house = seat.id
+        // A House the stewards keep under the same name, as a keeper named
+        // after one of the lake's Houses meets it in a new age, takes
+        // another, so no two standing Houses share a name.
+        let lowered = keepers[index].name.lowercased()
+        for other in world.houses.indices where other != seat.id && !world.houses[other].isEliminated
+            && world.houses[other].name.lowercased() == lowered {
+            world.houses[other].name = unusedHouseName()
+        }
         world.record(.founding, [seat.id], "\(world.houses[seat.id].title) takes its seat by the still water.")
+    }
+
+    /// Names held in reserve for a House whose own a keeper has taken.
+    static let reserveNames = ["Corve", "Ashen", "Merrow", "Tarn", "Hollin", "Wyke"]
+
+    private func unusedHouseName() -> String {
+        let used = Set(world.houses.map { $0.name.lowercased() } + keepers.map { $0.name.lowercased() })
+        let spare = (Names.houses + RealmState.reserveNames).first { !used.contains($0.lowercased()) }
+        return spare ?? "Nameless \(world.houses.count)"
     }
 
     // MARK: Orders and watches
@@ -299,10 +322,11 @@ public struct RealmState: Codable, Equatable, Sendable {
         guard let index = keepers.firstIndex(where: { $0.id == id }), keepers[index].house != nil else { return nil }
         keepers[index].isReady = ready
         if ready { keepers[index].hasPlayed = true }
-        // Those whose House has fallen look on; the watch doesn't wait for them.
-        let online = keepers.filter { keeper in
-            keeper.isOnline && keeper.house.map { !world.houses[$0].isEliminated } == true
-        }
+        // Those whose House has fallen look on; the watch doesn't wait for
+        // them, unless none still standing is there.
+        let seated = keepers.filter { $0.isOnline && $0.house != nil }
+        let standing = seated.filter { keeper in keeper.house.map { !world.houses[$0].isEliminated } == true }
+        let online = standing.isEmpty ? seated : standing
         guard ready, !online.isEmpty, online.allSatisfy(\.isReady) else { return nil }
         return turn(now: now)
     }

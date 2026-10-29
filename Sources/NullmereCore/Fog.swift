@@ -47,10 +47,16 @@ extension GameState {
     public func events(_ events: [GameEvent], heardBy house: Int) -> [GameEvent] {
         let seen = visibility(for: house)
         func visible(_ hex: Hex) -> Bool { map.index(of: hex).map { seen[$0] } ?? false }
-        return events.filter { event in
+        // Another House's march is heard only where it is seen.
+        let cut = events.compactMap { event -> GameEvent? in
+            guard case .moved(let id, let path) = event, unit(id)?.owner != house else { return event }
+            let shown = path.filter(visible)
+            return shown.isEmpty ? nil : .moved(unit: id, path: shown)
+        }
+        return cut.filter { event in
             switch event {
-            case .moved(let id, let path):
-                return unit(id)?.owner == house || path.contains(where: visible)
+            case .moved:
+                return true
             case .battle(let battle):
                 return battle.attackerOwner == house || battle.defenderOwner == house || visible(battle.at)
             case .unitLost(_, _, let owner, let at):

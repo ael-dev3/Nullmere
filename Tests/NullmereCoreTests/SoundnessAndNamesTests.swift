@@ -79,8 +79,6 @@ final class RuleNamesTests: XCTestCase {
         XCTAssertEqual([Stance.war, .peace, .pact].map(\.title), ["War", "Peace", "Pact"])
         XCTAssertEqual(Proposal.allCases.map(\.title), ["Peace", "Pact", "Fealty", "Tribute", "Trade"])
         let relation = Relation(first: 1, second: 3)
-        XCTAssertTrue(relation.involves(3))
-        XCTAssertFalse(relation.involves(2))
         XCTAssertEqual(relation.other(than: 1), 3)
         XCTAssertEqual(relation.other(than: 3), 1)
     }

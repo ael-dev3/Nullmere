@@ -79,7 +79,7 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
     }
 
     /// One line on what the next level does.
-    public func effect(atLevel level: Int) -> String {
+    public func effect(atLevel level: Int, isSeat: Bool = false) -> String {
         switch self {
         case .granary, .sawpit, .quarry, .saltworks:
             let resource = boostedResource!.title.lowercased()
@@ -88,7 +88,7 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
             let unlocked = UnitKind.allCases.filter { $0.requiredMuster == level }.map(\.title)
             return unlocked.isEmpty ? "Trains faster" : "Trains " + unlocked.joined(separator: " and ")
         case .walls:
-            return "Ward \(Hold.maximumWard(wallLevel: level)), garrison +\(level * 20)% defence"
+            return "Ward \(Hold.maximumWard(wallLevel: level, isSeat: isSeat)), garrison +\(Hold.garrisonBonus(wallLevel: level))% defence"
         case .beacon:
             return "Sight \(Hold.sight(beaconLevel: level)) and +\(level) territory"
         case .moonspire:

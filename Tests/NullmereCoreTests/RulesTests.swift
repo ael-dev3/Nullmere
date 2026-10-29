@@ -43,7 +43,9 @@ final class RulesTests: XCTestCase {
         guard case .moved(_, let path)? = events.first else { return XCTFail("expected a march") }
         XCTAssertEqual(path.last, target)
 
+        // The Spine, once seen, can't be crossed.
         let spine = state.map.hexes.first { state.map[$0]?.terrain == .spine }!
+        state.reveal(around: spine, range: 0, for: 0)
         XCTAssertThrowsError(try state.perform(.move(unit: lantern.id, to: spine), as: 0)) { error in
             XCTAssertEqual(error as? RuleError, .impassable(.spine))
         }

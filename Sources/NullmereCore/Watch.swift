@@ -176,7 +176,10 @@ extension GameState {
             return [.gameEnded(result)]
         }
         // Supremacy: a House ruling most of the lake's holds holds the lake.
-        if let ruler = living.first(where: { isSupreme($0.id) }) {
+        // Two at once: the greater realm, then the greater renown.
+        if let ruler = living.filter({ isSupreme($0.id) }).max(by: { a, b in
+            (realm(of: a.id), renown(of: a.id), -a.id) < (realm(of: b.id), renown(of: b.id), -b.id)
+        }) {
             let result = Outcome(winner: ruler.id, kind: .dominion, watch: watch)
             outcome = result
             record(.ending, [ruler.id], "\(ruler.title) rules \(realm(of: ruler.id)) of the \(holds.count) holds around the Nullmere. The others bend the knee.")
@@ -188,9 +191,12 @@ extension GameState {
             record(.ending, [last.id], "\(last.title) alone remains on the shores of the Nullmere.")
             return [.gameEnded(result)]
         }
-        // A House's own game ends with its House. A realm's age goes on for
-        // the keepers still standing; its fallen wait for the next.
-        if settings.keepers > 0, houses[player].isEliminated {
+        // A House's own game ends with its House. A realm's age goes on
+        // while any keeper's House stands; once every one has fallen, the
+        // greatest House left holds the lake and a new age begins.
+        let kept = houses.filter(\.isPlayer)
+        let keepersAllFallen = settings.keepers > 0 ? houses[player].isEliminated : (!kept.isEmpty && kept.allSatisfy(\.isEliminated))
+        if keepersAllFallen {
             let strongest = living.max { renown(of: $0.id) < renown(of: $1.id) }!
             let result = Outcome(winner: strongest.id, kind: .dominion, watch: watch)
             outcome = result

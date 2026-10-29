@@ -175,7 +175,7 @@ private struct BuildingRow: View {
                 }
             }
             if next <= kind.maxLevel {
-                Text(verbatim: kind.effect(atLevel: next))
+                Text(verbatim: kind.effect(atLevel: next, isSeat: hold.isSeat))
                     .font(.nm(10.5))
                     .foregroundStyle(Palette.ink.opacity(0.55))
                 HStack(spacing: 10) {

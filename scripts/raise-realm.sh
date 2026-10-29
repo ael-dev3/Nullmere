@@ -68,7 +68,14 @@ stop_background_steward() {
     local pid
     pid="$(cat "$PID_FILE" 2>/dev/null || true)"
     rm -f "$PID_FILE"
-    case "$pid" in ""|*[!0-9]*) return 1 ;; esac
+    case "$pid" in
+        "")
+            # Started before pids were kept: by its command line, whole.
+            pkill -f "(^|/)NullmereSteward $ADDRESS\$" 2>/dev/null
+            return
+            ;;
+        *[!0-9]*) return 1 ;;
+    esac
     ps -p "$pid" -o command= 2>/dev/null | grep -q "NullmereSteward" || return 1
     kill "$pid" 2>/dev/null || return 1
     for _ in $(seq 1 20); do
@@ -198,8 +205,10 @@ if [ -z "$MODE" ]; then
 fi
 docker_reaches_realm
 
+# `exec`, so the steward takes this shell's place: a steward started in the
+# background is then the very process whose pid is kept.
 steward_env() {
-    env NULLMERE_STEWARD_TOKEN_FILE="$TOKEN_FILE" \
+    exec env NULLMERE_STEWARD_TOKEN_FILE="$TOKEN_FILE" \
         ${NULLMERE_REALM_NAME:+NULLMERE_REALM_NAME="$NULLMERE_REALM_NAME"} \
         ${NULLMERE_REALM_SEED:+NULLMERE_REALM_SEED="$NULLMERE_REALM_SEED"} \
         ${NULLMERE_REALM_SEATS:+NULLMERE_REALM_SEATS="$NULLMERE_REALM_SEATS"} \
@@ -241,13 +250,12 @@ case "$MODE" in
         if [ "$MODE" = foreground ]; then
             say "Stewarding $ADDRESS (Ctrl-C to stop)"
             steward_env "$BIN" "$ADDRESS"
-            exit $?
         fi
         stop_background_steward || true
         # Emptied first, so a line from an earlier steward can't pass for
         # this one's.
         : > "$LOG"
-        steward_env nohup "$BIN" "$ADDRESS" >> "$LOG" 2>&1 &
+        ( steward_env nohup "$BIN" "$ADDRESS" ) >> "$LOG" 2>&1 &
         pid=$!
         echo "$pid" > "$PID_FILE"
         for _ in $(seq 1 90); do

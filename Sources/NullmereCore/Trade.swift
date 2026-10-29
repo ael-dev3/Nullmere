@@ -55,7 +55,7 @@ extension GameState {
 
         if houses[target].isPlayer {
             // One offer of trade at a time waits on a keeper from each House.
-            guard !envoys.contains(where: { $0.from == house && $0.to == target && $0.proposal == .trade }) else { return [] }
+            guard !envoys.contains(where: { $0.from == house && $0.to == target && $0.proposal == .trade }) else { throw .envoyWaiting }
             let envoy = Envoy(id: takeID(), from: house, to: target, proposal: .trade, arrived: watch,
                               words: houses[house].isPlayer ? words : nil, trade: trade)
             envoys.append(envoy)

@@ -44,4 +44,13 @@ public protocol RealmLink: AnyObject {
     func setReady(_ ready: Bool)
     /// Leaves the realm; the keeper's House stands as they left it.
     func leave()
+    /// Stops listening and asking, without a word to the realm: for a link
+    /// whose key the realm no longer knows.
+    func close()
+}
+
+extension RealmLink {
+    public func close() {
+        onEvent = nil
+    }
 }

@@ -345,15 +345,20 @@ public final class NetworkRealmLink: RealmLink {
     }
 
     public func leave() {
+        close()
+        Task {
+            _ = try? await request("leave", [])
+        }
+    }
+
+    public func close() {
+        onEvent = nil
         arrived = false
         polling?.cancel()
         polling = nil
         sending?.cancel()
         sending = nil
         outbox.removeAll()
-        Task {
-            _ = try? await request("leave", [])
-        }
     }
 
     nonisolated static func nonce() -> String {

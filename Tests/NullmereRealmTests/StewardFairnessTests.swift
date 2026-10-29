@@ -79,6 +79,21 @@ final class StewardFairnessTests: XCTestCase {
         XCTAssertEqual(later.batches.count, 1, "The new gift alone")
     }
 
+    func testAHereOnItsWayAsAKeeperLeftDoesntBringThemBack() async throws {
+        let (db, steward, ama, _, _) = try await stewarded("a late here")
+        try await db.call("leave", [.string("a2")], token: ama.token)
+        try await steward.step(now: 2)
+        try await db.call("here", [.string("a3")], token: ama.token)
+        try await steward.step(now: 3)
+        let state = await steward.state
+        XCTAssertEqual(state.keepers.first { $0.name == "Ama" }?.isOnline, false, "Still gone")
+        // Heard from long after, she is back.
+        try await db.call("here", [.string("a4")], token: ama.token)
+        try await steward.step(now: 3 + RealmSteward.leavingGrace)
+        let later = await steward.state
+        XCTAssertEqual(later.keepers.first { $0.name == "Ama" }?.isOnline, true)
+    }
+
     func testAKeeperAwayIsNotShownTheirView() async throws {
         let (db, steward, ama, bel, _) = try await stewarded("one away")
         try await db.call("leave", [.string("b2")], token: bel.token)
