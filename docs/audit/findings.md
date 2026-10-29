@@ -61,16 +61,16 @@ Each finding below has an ID, what was wrong, and its status: **fixed**
 | ID | Finding | Status |
 | --- | --- | --- |
 | C1 | The map's lake is not the launcher's: a bright moon path, a greyer moon image, another glow and breath, other stars | fixed: the map's water is the launcher's still glass, no path; its moon, halo, breath and stars are the launcher's |
-| C2 | The front door and model gate darken the whole window, sky and title too; the launcher darkens only the water | open |
-| C3 | The front door and model gate box their content in cards; the launcher sets it on the water | open |
-| C4 | Status dots differ between the launcher and the front door | open |
-| C5 | Capitals: other weights, no lead-in padding (centred caps sit left of their rule), shadow vs glow | open |
-| C6 | Launcher text shrinks with the window to 6–7 pt; the game's small sizes ignore a floor; Larger Text not in the launcher | open |
-| C7 | Increase Contrast raises some texts and not others, and brightens empty meters, pips and gridlines | open |
-| C8 | The map ignores the Motion setting and the frame rate cap, jumps under Reduce Motion, and its clock wraps out of step | open |
-| C9 | The title's fades differ between screens, and every crossing replays the first falling star | open |
-| C10 | The fallbacks drawn without Metal differ from the Metal scenes (shore, stars, unexplored ground) | open |
-| C11 | Colours copied by hand between launcher and game; README describes moving water; the icon shows a broken reflection | open |
+| C2 | The front door and model gate darken the whole window, sky and title too; the launcher darkens only the water | fixed: the door and the gate darken only the water below the waterline, with the launcher's own scrim |
+| C3 | The front door and model gate box their content in cards; the launcher sets it on the water | fixed: the door and the gate stand on the water in the launcher's type: its heading, status line and lit choices, the gate through the launcher's own requirement view |
+| C4 | Status dots differ between the launcher and the front door | fixed: the door shows the realm's state with the launcher's status dot |
+| C5 | Capitals: other weights, no lead-in padding (centred caps sit left of their rule), shadow vs glow | fixed: centred capitals take the launcher's lead-in, so they sit centred over their rule. Kept: the map's dense panels keep their heavier weights and a dark shadow over the busy map, where the lake screens' thin type and glow wouldn't read |
+| C6 | Launcher text shrinks with the window to 6–7 pt; the game's small sizes ignore a floor; Larger Text not in the launcher | fixed: the launcher's type keeps 9 points at the least and the game's 8, both 11 with Larger Text, which sets the launcher's type too |
+| C7 | Increase Contrast raises some texts and not others, and brightens empty meters, pips and gridlines | fixed: one rule for every text in both faces (never under 4.5 to 1; with Increase Contrast 10 to 1 or more, the order kept), and a gentler one for lines, tracks, pips and gridlines |
+| C8 | The map ignores the Motion setting and the frame rate cap, jumps under Reduce Motion, and its clock wraps out of step | fixed: the map follows Motion, Frame rate and Resolution, its clock is the launcher's, and below full motion panels fade rather than slide |
+| C9 | The title's fades differ between screens, and every crossing replays the first falling star | fixed: one reveal time for the title on every lake screen, and the lake's time carries from one lake to the next, so the first falling star falls once. The letters settle only in the launcher's opening, by design |
+| C10 | The fallbacks drawn without Metal differ from the Metal scenes (shore, stars, unexplored ground) | fixed: the lake without Metal draws the shader's own mesas and bank (LakeShore), its tinted stars, mist and vignette; the map without Metal its mist, the stars in the still water and the moon's layered halo |
+| C11 | Colours copied by hand between launcher and game; README describes moving water; the icon shows a broken reflection | fixed: the game's ink and glow are the launcher's; the README describes still water; the icon is redrawn by `Tools/icon/make-icon.py` as the launcher's still lake, the moon given back whole |
 | C12 | The shaders' hash functions are Dave Hoskins' "Hash without Sine" (MIT), copied uncredited; the project wants original work only | fixed: both shaders use a hash written for Nullmere, tested even and free of lattices in float32; the far shore's noise offsets were refitted so the scene keeps its mesas |
 | C13 | `realm-server/Cargo.toml` says MIT; the project is Apache-2.0 | fixed |
 

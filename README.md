@@ -85,7 +85,8 @@ open "build/Nullmere Online.app"
 The icon is a Liquid Glass document, `Packaging/AppIcon.icon` (night,
 reflection and a glass moon), compiled with `actool` into the app's asset
 catalog; the classic `AppIcon.png` is the fallback where `actool` isn't
-available. It signs the app ad hoc,
+available. Both are drawn by `Tools/icon/make-icon.py`: the launcher's own
+still lake, framed square around the moon. It signs the app ad hoc,
 which is enough to run it on the Mac that built it. To sign with a
 Developer ID instead, set `CODESIGN_IDENTITY`: the app is then signed with
 the hardened runtime and a secure timestamp, ready to notarize. `VERSION`
@@ -252,9 +253,11 @@ as the realm will, and takes the realm's word as final.
 - **The front door.** Choose the name you'll go by: two to twenty letters.
   It names you and the House you'll hold, and nothing else is asked. The
   realm knows you by an identity your Mac keeps in its keychain, and by
-  your name. The front door
-  shows the realm's state: its age and watch, how many keepers are there,
-  and how many seats are open. Entering seats you in a middling House of
+  your name. The front door, set on the water as the launcher's panels
+  are, shows the realm's state: its age and watch, how many keepers are
+  there, and how many seats are open. Its choices are the launcher's: one
+  lit at a time, the one Return takes, the arrows moving along them and
+  Esc going back. Entering seats you in a middling House of
   those open (at an age's start, all alike, the first); returning, you go
   straight back to yours. No newcomer may take up a House sworn to another,
   the House leading the lake, or one within reach of dominion or with its
@@ -494,9 +497,12 @@ twice.
 - **Holds that grow.** A hold raises a side tower after a few works and a
   second after many, so a glance at the map shows which holds are built up.
 
-Larger Text (⇧⌘+, in the Watch menu) sets all the game's type a fifth
-larger; the panels grow to hold it. VoiceOver reads the map, the panels
-and every notice.
+Larger Text (⇧⌘+ in the Watch menu, or the realm's Settings) sets all
+the type a fifth larger, the launcher's and the game's, none of it under
+eleven points; the panels grow to hold it. Every text reads by one rule
+of contrast, in the launcher as in the game: never fainter than 4.5 to 1
+over the dark and, with Increase Contrast, 10 to 1 or more, the fainter
+still fainter. VoiceOver reads the map, the panels and every notice.
 
 Each age's lake grows from the realm's private words; the realm keeps the
 world, so there is nothing to save.
@@ -556,8 +562,8 @@ There is no music in the launcher; the game makes its own sound as it plays.
   runs hot. If the shader fails, a still SwiftUI painting of the scene
   replaces it.
 - **Accessibility.** The launcher honours Reduce Motion and Increase
-  Contrast, has VoiceOver labels and selection traits, and works fully from
-  the keyboard.
+  Contrast, reads its type at the game's Larger Text, has VoiceOver labels
+  and selection traits, and works fully from the keyboard.
 
 ### Tuning the scene in a browser
 
@@ -606,7 +612,7 @@ news/                 news.json, the launcher's news feed
 perf/                 CI's performance baseline; scripts/measure-mac.sh adds figures from real Macs in perf/mac/
 Packaging/            The Info.plist template, the Liquid Glass icon (AppIcon.icon) and the classic 1024 px icon
 scripts/              Building, packing and checking a release; smoke tests; raising the realm; going live
-Tools/icon/           Draws the icon's layers (make-layers.py)
+Tools/icon/           Draws the icon, its Liquid Glass layers and the classic one (make-icon.py)
 Tools/scene-preview/  Browser preview of the lake shader
 Tools/world-preview/  Browser preview of the world map's tiles
 docs/                 Going live; the consistency audit of October 2026 (docs/audit/); the plan made before the build for what carries over from Warpkeep
