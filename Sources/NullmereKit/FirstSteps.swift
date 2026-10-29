@@ -44,7 +44,8 @@ struct FirstSteps: Codable, Equatable {
 }
 
 extension LocalStore {
-    var firstStepsURL: URL { directory.appendingPathComponent("first-steps.json") }
+    /// Kept across ages and realms: a keeper learns them once.
+    var firstStepsURL: URL { root.appendingPathComponent("first-steps.json") }
 
     func loadFirstSteps() -> FirstSteps? {
         guard let data = try? Data(contentsOf: firstStepsURL) else { return nil }
@@ -52,7 +53,7 @@ extension LocalStore {
     }
 
     func saveFirstSteps(_ steps: FirstSteps) {
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         try? JSONEncoder().encode(steps).write(to: firstStepsURL, options: .atomic)
     }
 }

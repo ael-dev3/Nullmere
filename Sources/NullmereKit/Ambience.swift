@@ -54,8 +54,8 @@ public final class Ambience {
     /// meanwhile waits for it.
     public private(set) var isWanted = false
 
-    /// The engine is running.
-    public var isPlaying: Bool { started }
+    /// The engine is running: for tests.
+    var isPlaying: Bool { started }
 
     public init(enabled: Bool) {
         isEnabled = enabled

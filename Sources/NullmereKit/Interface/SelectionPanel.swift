@@ -204,6 +204,7 @@ struct LevelPips: View {
                     .frame(width: 4, height: 4)
             }
         }
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Level \(level) of \(maximum)")
     }
 }
@@ -245,16 +246,27 @@ private struct TrainingRow: View {
 }
 
 /// Trade a surplus for what is lacking, three to one.
-private struct BarterRow: View {
+struct BarterRow: View {
     let session: GameSession
 
     @State private var give: Resource = .grain
     @State private var take: Resource = .timber
     @State private var amount = 20
 
+    /// Why a barter would be refused, as the realm would refuse it; nil when
+    /// it would be carried out.
+    static func problem(give: Resource, take: Resource, amount: Int, stock: Stock, room: Int) -> String? {
+        if give == take { return "Choose two different stores." }
+        let price = take.barterCost(of: amount, paidIn: give)
+        if stock[give] < price { return "You have only \(stock[give]) \(give.title.lowercased())." }
+        if stock[take] + amount > room { return "No room to store that much \(take.title.lowercased())." }
+        return nil
+    }
+
     var body: some View {
         let price = take.barterCost(of: amount, paidIn: give)
         let stock = session.playerHouse.stock
+        let problem = BarterRow.problem(give: give, take: take, amount: amount, stock: stock, room: session.ledger.room)
         VStack(alignment: .leading, spacing: 8) {
             Caps("Barter", size: 9, weight: .medium).foregroundStyle(Palette.ink.opacity(0.7))
             HStack(spacing: 8) {
@@ -266,6 +278,8 @@ private struct BarterRow: View {
                 Stepper(value: $amount, in: 10...500, step: 10) {
                     Text(verbatim: "\(amount)").font(.nm(11).monospacedDigit())
                 }
+                .accessibilityLabel("Amount to take")
+                .accessibilityValue("\(amount)")
                 Text(verbatim: "for").font(.nm(10.5)).foregroundStyle(Palette.ink.opacity(0.5))
                 Picker("Give", selection: $give) {
                     ForEach(Resource.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -274,11 +288,12 @@ private struct BarterRow: View {
                 .frame(width: 96)
             }
             HStack {
-                Text(verbatim: "Costs \(price) \(give.title.lowercased())")
+                Text(verbatim: problem ?? "Costs \(price) \(give.title.lowercased())")
                     .font(.nm(10.5))
-                    .foregroundStyle(stock[give] >= price ? Palette.ink.opacity(0.6) : Palette.bad)
+                    .foregroundStyle(problem == nil ? Palette.ink.opacity(0.6) : Palette.bad)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer()
-                QuietButton(title: "Barter", size: 8.5, enabled: give != take && stock[give] >= price) {
+                QuietButton(title: "Barter", size: 8.5, enabled: problem == nil) {
                     session.perform(.barter(give: give, take: take, amount: amount))
                 }
             }

@@ -35,7 +35,9 @@ enum GameMenu: CaseIterable {
     func isEnabled(in app: GameApp) -> Bool {
         guard let session = app.session else { return false }
         switch self {
-        case .ready, .stayReady: return session.state.outcome == nil
+        case .ready: return session.state.outcome == nil
+        // A fallen House has no companies, no seat, and nothing to wait on.
+        case .stayReady, .nextCompany, .goToSeat: return session.state.outcome == nil && !session.playerHouse.isEliminated
         default: return true
         }
     }

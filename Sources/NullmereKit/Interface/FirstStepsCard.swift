@@ -17,7 +17,7 @@ struct FirstStepsCard: View {
                 let done = steps.done.contains(step)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: done ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 10))
+                        .font(.nm(10))
                         .foregroundStyle(done ? Palette.good : Palette.ink.opacity(0.45))
                     Text(verbatim: step.title)
                         .font(.nm(11.5, weight: .light))
@@ -30,7 +30,7 @@ struct FirstStepsCard: View {
             }
         }
         .padding(14)
-        .frame(width: 300)
+        .frame(width: 330)
         .panelBackground()
     }
 }

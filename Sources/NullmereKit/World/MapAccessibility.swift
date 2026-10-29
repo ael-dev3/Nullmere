@@ -8,7 +8,18 @@ enum MapAccessibility {
         let id: String
         let label: String
         let selection: GameSession.Selection
+        /// For a company of the player's: where VoiceOver can send it, each
+        /// as an action on it, as a right-click would.
+        var orders: [Order] = []
     }
+
+    struct Order: Equatable, Hashable {
+        let name: String
+        let hex: Hex
+    }
+
+    /// The most places offered to march to.
+    static let ordersOffered = 6
 
     @MainActor
     static func items(for session: GameSession) -> [Item] {
@@ -21,6 +32,22 @@ enum MapAccessibility {
             if let hold = state.hold(at: hex) { return "at \(hold.name)" }
             if let terrain = state.map[hex]?.terrain { return "on \(terrain.title.lowercased())" }
             return ""
+        }
+
+        func orders(for unit: Unit, in session: GameSession) -> [Order] {
+            // Foes it can strike now, then the nearest holds it knows of.
+            var offered: [Order] = []
+            for hex in state.strikeTargets(of: unit).sorted(by: { unit.position.distance(to: $0) < unit.position.distance(to: $1) }) {
+                let what = state.hold(at: hex).map { $0.name } ?? state.unit(at: hex).map { "the \($0.kind.title) of \(state.houses[$0.owner].title)" } ?? "the foe"
+                offered.append(Order(name: "Strike \(what)", hex: hex))
+            }
+            let known = state.holds
+                .filter { session.isExplored($0.position) && $0.position != unit.position }
+                .sorted { (unit.position.distance(to: $0.position), $0.id) < (unit.position.distance(to: $1.position), $1.id) }
+            for hold in known where !offered.contains(where: { $0.hex == hold.position }) {
+                offered.append(Order(name: "March to \(hold.name)", hex: hold.position))
+            }
+            return Array(offered.prefix(ordersOffered))
         }
 
         var holds: [Item] = []
@@ -48,7 +75,8 @@ enum MapAccessibility {
                 else if unit.movesLeft > 0 { parts.append("\(unit.movesLeft) moves left, awaiting orders") }
                 else { parts.append("no moves left") }
             }
-            companies.append(Item(id: "unit-\(unit.id)", label: parts.joined(separator: ", "), selection: .unit(unit.id)))
+            companies.append(Item(id: "unit-\(unit.id)", label: parts.joined(separator: ", "), selection: .unit(unit.id),
+                                  orders: unit.owner == player && unit.movesLeft > 0 ? orders(for: unit, in: session) : []))
         }
 
         func mineFirst(_ items: [Item]) -> [Item] {

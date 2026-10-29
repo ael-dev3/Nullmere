@@ -29,8 +29,16 @@ struct WorldView: View {
         // VoiceOver reads the map as its holds and companies; choosing one
         // selects it, and its panel opens as it would by a click.
         .accessibilityChildren {
-            ForEach(MapAccessibility.items(for: session)) { item in
+            ForEach(session.mapItems) { item in
                 Button(item.label) { session.selection = item.selection }
+                    .accessibilityActions {
+                        ForEach(item.orders, id: \.self) { order in
+                            Button(order.name) {
+                                session.selection = item.selection
+                                session.order(order.hex)
+                            }
+                        }
+                    }
             }
         }
     }
@@ -288,7 +296,7 @@ struct WorldMarks: View {
                 var point = position(of: unit, at: date, camera: camera, size: size)
                 guard point.x > -40, point.y > -40, point.x < size.width + 40, point.y < size.height + 40 else { continue }
                 // A company in a hold stands at its foot, smaller, so the hold stays legible.
-                let inHold = state.hold(at: unit.position) != nil && session.marches[unit.id] == nil
+                let inHold = session.holdsByPosition[unit.position] != nil && session.marches[unit.id] == nil
                 let colour = Palette.house(state.houses[unit.owner])
                 let r = min(max(scale * 0.34, 7), 16) * (inHold ? 0.62 : 1)
                 let isSelected = session.selectedUnit?.id == unit.id
@@ -394,9 +402,26 @@ struct WorldFallback: View {
                 }
             }
             .contentShape(Rectangle())
+            // Without Metal there is no right-click: a click where the
+            // chosen company would march or strike gives that order, as
+            // the pointer shows; anywhere else it selects. The keys pan and
+            // zoom as on the full map.
             .gesture(SpatialTapGesture().onEnded { value in
-                session.click(session.camera.hex(at: value.location, in: proxy.size))
+                WorldFallback.tap(session.camera.hex(at: value.location, in: proxy.size), in: session)
             })
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let point): session.hover(session.camera.hex(at: point, in: proxy.size))
+                case .ended: session.hover(nil)
+                }
+            }
+        }
+    }
+
+    static func tap(_ hex: Hex, in session: GameSession) {
+        switch session.pointerAction(at: hex) {
+        case .march, .strike: session.order(hex)
+        case .select, .none: session.click(hex)
         }
     }
 

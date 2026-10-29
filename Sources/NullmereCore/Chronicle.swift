@@ -20,6 +20,8 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         case gift
         /// Two Houses trade stores in quantity.
         case trade
+        /// A keeper takes up a House, or a House waits for another keeper.
+        case seating
     }
 
     public let watch: Int

@@ -6,6 +6,8 @@ struct LastSeen: Codable, Equatable {
     let watch: Int
     let stock: Stock
     let holds: Int
+    /// The House it was: absent in what was kept before it was noted.
+    var house: Int?
 }
 
 /// What happened while the keeper was away: how many watches passed, how

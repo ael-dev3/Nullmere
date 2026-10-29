@@ -52,6 +52,7 @@ enum Guide {
         Section(title: "Keys", lines: [
             "Tab: the next company waiting · H: your seat · F: fortify · B: found a hold",
             "Arrows or WASD: pan · + and −: zoom · Esc: close, then clear the selection",
+            "Without a pointer: choose a company, pan until where it should go is in the middle of the view, then M to march there, or strike",
             "1: Houses · 2: Chronicle · ?: this guide · ⇧⌘W: leave the world · ⌘,: settings",
             "⌘↩: ready · ⇧⌘↩: stay ready until something needs you, up to ten watches",
         ]),

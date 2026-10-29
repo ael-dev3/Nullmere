@@ -41,6 +41,7 @@ public final class GameSession {
     public private(set) var state: GameState
     public var camera: Camera
     @ObservationIgnored private var glideTask: Task<Void, Never>?
+    @ObservationIgnored private var unannounced: [String] = []
     public var hovered: Hex?
     public var selection: Selection = .none {
         didSet {
@@ -65,6 +66,9 @@ public final class GameSession {
     /// The keeper's ledger as the top bar shows it, worked out once for each
     /// change of the world rather than at every redraw.
     @ObservationIgnored private var ledgerKept: (version: Int, ledger: Ledger)?
+    /// Other things the interface reads at every redraw, worked out once
+    /// for each change of the world.
+    @ObservationIgnored private var keptForWorld: (version: Int, values: [String: Any]) = (-1, [:])
     /// The texture's unchanging ground, made again only when the map changes.
     @ObservationIgnored private var ground: TileTexture.Ground?
     /// Where the moon lies in this lake's water.
@@ -228,6 +232,7 @@ public final class GameSession {
     private var isSpeaking = false
 
     /// Whether any character is still to speak, or speaking.
+    /// Words still to be asked for or spoken: for tests to wait on.
     var voicesPending: Bool { isSpeaking || !voiceQueue.isEmpty }
 
     /// A keeper's session in a realm, as they arrive in it.
@@ -254,11 +259,14 @@ public final class GameSession {
             }
         }
         refreshWorld()
-        if let seen = store.loadLastSeen() {
+        // Back to the House last seen: what changed while away. A House new
+        // to the keeper (a new age, a seat that lapsed, a free House taken
+        // up): its briefing, and the first steps if never yet taken.
+        if let seen = store.loadLastSeen(), seen.house == nil || seen.house == house {
             awayReport = AwayReport(since: seen, now: world, player: house)
         } else if world.houses.indices.contains(house) {
             seatBriefing = SeatBriefing(world: world, player: house)
-            store.saveFirstSteps(FirstSteps())
+            if store.loadFirstSteps() == nil { store.saveFirstSteps(FirstSteps()) }
         }
         firstSteps = store.loadFirstSteps().flatMap { $0.isComplete ? nil : $0 }
         noteStepsInWorld()
@@ -482,7 +490,7 @@ public final class GameSession {
     /// when they return.
     private func rememberSeen() {
         guard state.houses.indices.contains(player) else { return }
-        store.saveLastSeen(LastSeen(watch: state.watch, stock: state.houses[player].stock, holds: state.holds(of: player).count))
+        store.saveLastSeen(LastSeen(watch: state.watch, stock: state.houses[player].stock, holds: state.holds(of: player).count, house: player))
     }
 
     // MARK: Keepers' words
@@ -589,7 +597,7 @@ public final class GameSession {
             if !isOutOfReach {
                 isOutOfReach = true
                 post(reason == NetworkRealmLink.silentSteward ? reason
-                     : "The realm is out of reach: \(reason) Orders given now wait, and go when it answers.", tone: .bad)
+                     : "The realm is out of reach. \(reason) Orders given now wait, and go when it answers.", tone: .bad)
             }
             return
         }
@@ -625,13 +633,15 @@ public final class GameSession {
         case .unreachable:
             break
         case .arrived(let keeper, let world):
-            // Only a new age seats a keeper already in the world.
+            // A keeper already in the world is seated anew: in a new age, or
+            // in a free House taken up after their own fell.
             onNewAge?(keeper, world)
         case .refused(.unknownKeeper):
             // The realm has forgotten this keeper altogether.
             onForgotten?()
-        case .refused:
-            break
+        case .refused(let error):
+            // In the world, only a free House asked for can be refused.
+            post(error.description, tone: .bad)
         }
     }
 
@@ -1017,10 +1027,21 @@ public final class GameSession {
     public func post(_ text: String, tone: Notice.Tone) {
         noticeCounter += 1
         notices.append(Notice(id: noticeCounter, text: text, tone: tone))
-        // VoiceOver says what happened, as the notice appears.
-        AccessibilityNotification.Announcement(text).post()
+        announce(text)
         if notices.count > 6 {
             notices.removeFirst(notices.count - 6)
+        }
+    }
+
+    /// VoiceOver says what happened as the notices appear: those posted
+    /// together (a watch's worth) in one announcement, not one each.
+    private func announce(_ text: String) {
+        unannounced.append(text)
+        guard unannounced.count == 1 else { return }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            AccessibilityNotification.Announcement(self.unannounced.joined(separator: " ")).post()
+            self.unannounced = []
         }
     }
 
@@ -1058,5 +1079,36 @@ extension GameSession {
         let ledger = Ledger(income: income, upkeep: state.upkeep(of: house), room: state.storage(of: house), summaries: summaries)
         ledgerKept = (tilesVersion, ledger)
         return ledger
+    }
+}
+
+extension GameSession {
+    /// A value worked out once for each change of the world.
+    private func keptForThisWorld<Value>(_ key: String, _ make: () -> Value) -> Value {
+        if keptForWorld.version != tilesVersion { keptForWorld = (tilesVersion, [:]) }
+        if let value = keptForWorld.values[key] as? Value { return value }
+        let value = make()
+        keptForWorld.values[key] = value
+        return value
+    }
+
+    /// Counsel's advice for the world as it stands.
+    var counsel: String? {
+        keptForThisWorld("counsel") { Counsel.advice(for: state, player: player) }
+    }
+
+    /// The race around the lake, House by House.
+    var standings: [Standing] {
+        keptForThisWorld("standings") { state.standings() }
+    }
+
+    /// The holds by where they stand, for the map's marks.
+    var holdsByPosition: [Hex: Hold] {
+        keptForThisWorld("holds") { Dictionary(state.holds.map { ($0.position, $0) }, uniquingKeysWith: { first, _ in first }) }
+    }
+
+    /// The map as VoiceOver reads it.
+    var mapItems: [MapAccessibility.Item] {
+        keptForThisWorld("map") { MapAccessibility.items(for: self) }
     }
 }

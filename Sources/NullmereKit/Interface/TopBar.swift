@@ -63,7 +63,7 @@ struct TopBar: View {
                 QuietButton(title: "Houses", action: { toggle(.houses) })
                 QuietButton(title: "Chronicle", action: { toggle(.chronicle) })
                 QuietButton(title: "Guide", action: { toggle(.guide) })
-                EndWatchButton(session: session)
+                EndWatchButton(session: session, compact: compact)
                     .padding(.leading, 8)
             }
             // Only the space between gives way; nothing in the bar wraps.
@@ -174,30 +174,37 @@ struct IncomeCard: View {
         }
         .padding(14)
         .frame(width: 240)
-        .background(Color(red: 0.05, green: 0.06, blue: 0.08))
+        .background(Palette.panel)
     }
 }
 
 /// Ready for the watch to turn, and what still waits for orders.
 struct EndWatchButton: View {
     let session: GameSession
+    /// In the narrow bar, what still waits is a tooltip, not a line.
+    var compact = false
 
     var body: some View {
         let waiting = session.readyUnits.count
         let idle = session.idleHolds.count
+        let waits = waiting > 0 || idle > 0 ? waitingText(units: waiting, holds: idle) : nil
         VStack(alignment: .trailing, spacing: 3) {
             if session.isReady {
                 QuietButton(title: "Waiting", size: 10.5) { session.cancelReady() }
                     .help("Waiting for the other keepers. Click to take back being ready.")
+                    .accessibilityHint("Takes back being ready.")
             } else {
                 QuietButton(title: "Ready", size: 10.5, prominent: true, enabled: session.state.outcome == nil) {
                     session.endWatch()
                 }
                 .keyboardShortcut(.return, modifiers: .command)
-                .help("Done with this watch's orders. The watch turns when every keeper there is ready, or when its time runs out.")
+                .help(session.playerHouse.isEliminated
+                      ? "Your House has fallen: the watch waits on the keepers still standing, and on you only when none is there."
+                      : [waits, "Done with this watch's orders. The watch turns when every keeper there is ready, or when its time runs out."]
+                        .compactMap { $0 }.joined(separator: ". "))
             }
-            if waiting > 0 || idle > 0 {
-                Text(verbatim: waitingText(units: waiting, holds: idle))
+            if let waits, !compact {
+                Text(verbatim: waits)
                     .font(.nm(9))
                     .foregroundStyle(Palette.ink.opacity(0.5))
                     .lineLimit(1)
@@ -235,7 +242,8 @@ struct WatchClock: View {
     let session: GameSession
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
+        // A clock that ticks only while there is a realm's clock to show.
+        TimelineView(.periodic(from: .now, by: session.realmStatus == nil ? 3_600 : 1)) { context in
             HStack(spacing: 0) {
                 Caps("Watch \(session.state.watch)", size: 8.5, tracking: 0.3)
                     .foregroundStyle(Palette.ink.opacity(0.55))
@@ -260,8 +268,21 @@ struct NoticeFeed: View {
     let session: GameSession
 
     var body: some View {
+        // As many of the latest as the column has room for, after the
+        // panels below have theirs.
+        ViewThatFits(in: .vertical) {
+            feed(session.notices)
+            feed(Array(session.notices.suffix(3)))
+            feed(Array(session.notices.suffix(1)))
+            Color.clear.frame(height: 0)
+        }
+        .animation(.easeOut(duration: 0.25), value: session.notices)
+        .frame(maxWidth: 420, alignment: .leading)
+    }
+
+    private func feed(_ notices: [GameSession.Notice]) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            ForEach(session.notices) { notice in
+            ForEach(notices) { notice in
                 HStack(spacing: 8) {
                     Circle()
                         .fill(Palette.tone(notice.tone))
@@ -269,7 +290,8 @@ struct NoticeFeed: View {
                     Text(verbatim: notice.text)
                         .font(.nm(11.5, weight: .regular))
                         .foregroundStyle(Palette.ink.opacity(0.88))
-                        .lineLimit(2)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
@@ -277,8 +299,6 @@ struct NoticeFeed: View {
                 .transition(.opacity.combined(with: .move(edge: .leading)))
             }
         }
-        .animation(.easeOut(duration: 0.25), value: session.notices)
-        .frame(maxWidth: 420, alignment: .leading)
     }
 }
 
@@ -301,8 +321,8 @@ struct OmenBand: View {
         .fixedSize()
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
-        .background(Capsule().fill(Color.black.opacity(0.55)))
-        .overlay(Capsule().strokeBorder(Palette.glow.opacity(0.25), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 3).fill(Palette.panel.opacity(0.82)))
+        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Palette.glow.opacity(0.25), lineWidth: 1))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Omen: \(omen.kind.title). \(omen.kind.effect) \(OmenBand.lasting(left))")
     }

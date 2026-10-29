@@ -19,11 +19,6 @@ enum MoonMirror {
         return place(water)
     }
 
-    /// The hex of open water farthest from any shore, and how far.
-    static func deepest(in map: WorldMap) -> (Hex, Int)? {
-        map.deepestWater().map { ($0.hex, $0.depth) }
-    }
-
     private static func place(_ water: DeepWater) -> SIMD4<Float> {
         guard water.depth >= 2 else { return SIMD4(0, 0, 0, 0) }
         let centre = HexLayout(size: 1).center(of: water.hex)

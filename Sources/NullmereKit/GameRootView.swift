@@ -39,7 +39,7 @@ public struct GameRootView: View {
             }
         }
         .preferredColorScheme(.dark)
-        .frame(minWidth: 960, minHeight: 620)
+        .frame(minWidth: 960, minHeight: 600)
         .background(WindowFitter())
     }
 
@@ -66,9 +66,17 @@ struct PlayView: View {
 
             VStack(spacing: 0) {
                 TopBar(session: session)
+                // The omen under the bar, in the flow, so nothing sits beneath it.
+                if let omen = session.state.currentOmen {
+                    OmenBand(omen: omen, watch: session.state.watch)
+                        .padding(.top, 8)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
                 HStack(alignment: .top, spacing: 0) {
                     VStack(alignment: .leading, spacing: 12) {
                         NoticeFeed(session: session)
+                            .layoutPriority(-1)
                         Spacer(minLength: 0)
                         // The briefing says it first; then the first steps,
                         // and counsel once they're done.
@@ -105,14 +113,6 @@ struct PlayView: View {
                 .animation(.easeOut(duration: 0.3), value: session.envoys)
             }
 
-            if let omen = session.state.currentOmen {
-                OmenBand(omen: omen, watch: session.state.watch)
-                    .frame(maxHeight: .infinity, alignment: .top)
-                    .padding(.top, 76)
-                    .allowsHitTesting(false)
-                    .transition(.opacity)
-            }
-
             if let card = session.watchCard {
                 // High in the view, above where the seat is centred.
                 WatchCard(summary: card.summary)
@@ -123,8 +123,12 @@ struct PlayView: View {
                     .allowsHitTesting(false)
             }
 
+            // Between the selection panel on the left and the hints on the
+            // right, so it never lies over either.
             HoverLine(session: session)
-                .frame(maxHeight: .infinity, alignment: .bottom)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .padding(.leading, 362)
+                .padding(.trailing, 240)
                 .padding(.bottom, 18)
                 .allowsHitTesting(false)
 
@@ -172,7 +176,7 @@ private struct CounselCard: View {
     @AppStorage("counsel.hidden") private var hidden = false
 
     var body: some View {
-        if !hidden, let advice = Counsel.advice(for: session.state, player: session.player) {
+        if !hidden, let advice = session.counsel {
             HStack(alignment: .top, spacing: 10) {
                 Caps("Counsel", size: 8, weight: .medium)
                     .foregroundStyle(Palette.glow)

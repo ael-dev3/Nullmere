@@ -53,6 +53,11 @@ struct ModelGate: View {
                                 QuietButton(title: action.title, size: 10) { NSApp.terminate(nil) }
                             }
                         }
+                        // Crossed in from the launcher: the way back to it.
+                        if app.onLeave != nil {
+                            QuietButton(title: "Back", size: 10) { app.leaveDoor() }
+                                .keyboardShortcut(.cancelAction)
+                        }
                     }
                     .padding(.top, 6)
                     Spacer(minLength: 0)

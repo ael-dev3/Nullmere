@@ -40,8 +40,12 @@ struct FrontDoor: View {
                 LakeTitle(size: proxy.size, isRevealed: appeared)
                     .animation(.easeOut(duration: 0.9), value: appeared)
                 VStack(spacing: 0) {
+                    // Below the waterline where there's room; where there
+                    // isn't (a small window, larger text, a note or a
+                    // problem to tell), the card rises rather than its
+                    // buttons run off the window.
                     Spacer(minLength: 0)
-                        .frame(height: LakeTitle.waterline(for: proxy.size) + 8)
+                        .frame(minHeight: 24, maxHeight: LakeTitle.waterline(for: proxy.size) + 8)
                     VStack(alignment: .leading, spacing: 18) {
                         RealmLine(door: app.door)
                         Rule(opacity: 0.25)
@@ -75,13 +79,17 @@ struct FrontDoor: View {
                     .padding(26)
                     .frame(width: 460)
                     .panelBackground()
-                    Text(verbatim: "Your identity is a random key kept in this Mac's keychain. The realm knows you by it and by the name you choose; nothing else.")
-                        .font(.nm(10))
-                        .foregroundStyle(Palette.ink.opacity(0.45))
-                        .multilineTextAlignment(.center)
-                        .frame(width: 420)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 14)
+                    // The note on identity goes first when room is short.
+                    ViewThatFits(in: .vertical) {
+                        Text(verbatim: "Your identity is a random key kept in this Mac's keychain. The realm knows you by it and by the name you choose; nothing else.")
+                            .font(.nm(10))
+                            .foregroundStyle(Palette.ink.opacity(0.45))
+                            .multilineTextAlignment(.center)
+                            .frame(width: 420)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 14)
+                        Color.clear.frame(height: 0)
+                    }
                     Spacer(minLength: 16)
                 }
                 .frame(width: proxy.size.width)

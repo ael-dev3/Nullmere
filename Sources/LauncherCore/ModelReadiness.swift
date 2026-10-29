@@ -63,17 +63,17 @@ public enum ModelReadiness: Equatable, Sendable {
     public var explanation: String {
         switch self {
         case .checking:
-            return "Nullmere needs Apple's on-device model. The launcher is checking for it."
+            return "Nullmere needs Apple's on-device model. This Mac is being checked for it."
         case .ready:
             return "Apple's on-device model is here, and Nullmere's characters will speak through it."
         case .deviceNotEligible:
             return "Nullmere's characters speak through Apple's on-device model, which needs a Mac that supports Apple Intelligence. This Mac doesn't, so Nullmere can't run here."
         case .appleIntelligenceNotEnabled:
-            return "Nullmere's characters speak through Apple's on-device model. Turn on Apple Intelligence in System Settings, and the launcher opens by itself."
+            return "Nullmere's characters speak through Apple's on-device model. Turn on Apple Intelligence in System Settings, and Nullmere opens by itself."
         case .modelNotReady:
-            return "Apple's on-device model isn't ready yet, usually because it's still downloading. The launcher opens by itself once it is."
+            return "Apple's on-device model isn't ready yet, usually because it's still downloading. Nullmere opens by itself once it is."
         case .unavailable:
-            return "macOS reports that Apple's on-device model can't be used right now. Check Apple Intelligence in System Settings; the launcher opens by itself once the model is available."
+            return "macOS reports that Apple's on-device model can't be used right now. Check Apple Intelligence in System Settings; Nullmere opens by itself once the model is available."
         }
     }
 

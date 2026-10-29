@@ -6,7 +6,8 @@ final class MoonMirrorTests: XCTestCase {
     func testTheMoonLiesInTheDeepestWaterOfEveryLake() throws {
         for lake in Lake.allCases {
             let world = WorldGenerator(seed: Seed.from("moon on \(lake.rawValue)"), radius: 36, houseCount: 12, lake: lake).generate()
-            let (hex, depth) = try XCTUnwrap(MoonMirror.deepest(in: world.map), "\(lake)")
+            let water = try XCTUnwrap(world.map.deepestWater(), "\(lake)")
+            let (hex, depth) = (water.hex, water.depth)
             XCTAssertEqual(world.map[hex]?.terrain, .still, "\(lake): in open water")
             XCTAssertGreaterThanOrEqual(depth, 2, "\(lake): deep enough to hold it")
             let moon = MoonMirror.place(in: world.map)
@@ -34,7 +35,7 @@ final class MoonMirrorTests: XCTestCase {
     func testTheMoonStaysPutAsTheLakeIsExplored() throws {
         var world = GameState(settings: GameSettings(seedText: "moon in the fog", keepers: 0))
         let whole = MoonMirror.place(in: world.map)
-        XCTAssertEqual(world.moonWater?.hex, MoonMirror.deepest(in: world.map)?.0)
+        XCTAssertEqual(world.moonWater, world.map.deepestWater())
         let view = world.view(for: 0)
         XCTAssertNotEqual(MoonMirror.place(in: view.map), whole, "The fogged map alone would put it elsewhere")
         XCTAssertEqual(MoonMirror.place(for: view), whole)

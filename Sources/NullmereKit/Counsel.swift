@@ -8,7 +8,8 @@ enum Counsel {
     static let lastWatch = 40
 
     static func advice(for state: GameState, player: Int) -> String? {
-        guard state.outcome == nil else { return nil }
+        // A fallen House has nothing left to be counselled on.
+        guard state.outcome == nil, state.houses.indices.contains(player), !state.houses[player].isEliminated else { return nil }
         if let warning = race(in: state, player: player) { return warning }
         guard state.watch <= lastWatch else { return nil }
         let holds = state.holds(of: player)

@@ -27,10 +27,12 @@ struct OutcomeOverlay: View {
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 440)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(verbatim: "A new age begins on a fresh lake when the watch turns, and every keeper is seated anew.")
-                        .font(.nm(11))
-                        .foregroundStyle(Palette.ink.opacity(0.55))
-                        .multilineTextAlignment(.center)
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        Text(verbatim: OutcomeOverlay.nextAge(secondsLeft: session.secondsLeft(at: context.date)))
+                            .font(.nm(11).monospacedDigit())
+                            .foregroundStyle(Palette.ink.opacity(0.55))
+                            .multilineTextAlignment(.center)
+                    }
                     VStack(alignment: .leading, spacing: 8) {
                         Caps("Holds around the lake, watch by watch", size: 8, weight: .medium)
                             .foregroundStyle(Palette.ink.opacity(0.55))
@@ -46,15 +48,25 @@ struct OutcomeOverlay: View {
                         QuietButton(title: "Look upon the lake", size: 10) {
                             withAnimation(.easeOut(duration: 0.3)) { dismissed = true }
                         }
+                        .keyboardShortcut(.cancelAction)
                         QuietButton(title: "Leave the world", size: 10, prominent: true) { app.leaveWorld() }
                     }
                     .padding(.top, 6)
                 }
                 .padding(36)
                 .panelBackground()
+                .accessibilityAddTraits(.isModal)
             }
             .transition(.opacity)
         }
+    }
+
+    /// When the next age begins, as the realm's clock says.
+    static func nextAge(secondsLeft: Int?) -> String {
+        guard let left = secondsLeft, left < 3_600 else {
+            return "A new age begins on a fresh lake when the watch turns, and every keeper is seated anew."
+        }
+        return "A new age begins on a fresh lake in \(left / 60):\(String(format: "%02d", left % 60)), and every keeper is seated anew."
     }
 
     private func description(winner: House, won: Bool) -> String {
@@ -103,17 +115,32 @@ struct FallenOverlay: View {
                         QuietButton(title: "Look upon the lake", size: 10) {
                             withAnimation(.easeOut(duration: 0.3)) { dismissed = true }
                         }
+                        .keyboardShortcut(.cancelAction)
+                        QuietButton(title: "Leave the world", size: 10) { app.leaveWorld() }
                         if session.mayTakeUpAFreeHouse {
                             QuietButton(title: "Take up a free House", size: 10, prominent: true) { session.takeUpAFreeHouse() }
-                        } else {
-                            QuietButton(title: "Leave the world", size: 10, prominent: true) { app.leaveWorld() }
                         }
                     }
                     .padding(.top, 6)
                 }
                 .padding(36)
                 .panelBackground()
+                .accessibilityAddTraits(.isModal)
             }
+            .transition(.opacity)
+        } else if session.mayTakeUpAFreeHouse {
+            // Looking on, the way back into play stays in reach.
+            HStack(spacing: 10) {
+                Text(verbatim: "A House stands without a keeper.")
+                    .font(.nm(11))
+                    .foregroundStyle(Palette.ink.opacity(0.75))
+                QuietButton(title: "Take up a free House", size: 9.5, prominent: true) { session.takeUpAFreeHouse() }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .panelBackground()
+            .frame(maxHeight: .infinity, alignment: .bottom)
+            .padding(.bottom, 56)
             .transition(.opacity)
         }
     }

@@ -265,7 +265,7 @@ public struct RealmState: Codable, Equatable, Sendable {
         world.houses[house].isPlayer = false
         keepers[index].house = nil
         let span = keepers[index].hasPlayed == true ? "a week" : "a day"
-        world.record(.founding, [house], "\(world.houses[house].title) has stood \(span) without its keeper; the stewards keep it for another.")
+        world.record(.seating, [house], "\(world.houses[house].title) has stood \(span) without its keeper; the stewards keep it for another.")
         return true
     }
 
@@ -289,7 +289,7 @@ public struct RealmState: Codable, Equatable, Sendable {
             && world.houses[other].name.lowercased() == lowered {
             world.houses[other].name = unusedHouseName()
         }
-        world.record(.founding, [seat.id], "\(world.houses[seat.id].title) takes its seat by the still water.")
+        world.record(.seating, [seat.id], "\(world.houses[seat.id].title) takes its seat by the still water.")
     }
 
     /// Names held in reserve for a House whose own a keeper has taken.

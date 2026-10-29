@@ -32,6 +32,11 @@ public struct Camera: Equatable, Sendable {
         ((point.x - size.width / 2) / scale + centerX, (point.y - size.height / 2) / scale + centerY)
     }
 
+    /// The hex at the middle of the view.
+    public var centreHex: Hex {
+        Camera.layout.hex(atX: centerX, y: centerY)
+    }
+
     public func hex(at point: CGPoint, in size: CGSize) -> Hex {
         let w = world(at: point, in: size)
         return Camera.layout.hex(atX: w.x, y: w.y)

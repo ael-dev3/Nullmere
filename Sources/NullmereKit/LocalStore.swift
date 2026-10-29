@@ -8,6 +8,9 @@ public struct LocalStore: Sendable {
     private static let logger = Logger(subsystem: "online.nullmere.game", category: "store")
 
     public let directory: URL
+    /// The store an age's store was made from: what is kept across ages,
+    /// as the first steps a keeper has taken, is kept there.
+    let root: URL
 
     public init(directory: URL? = nil) {
         if let directory {
@@ -17,12 +20,18 @@ public struct LocalStore: Sendable {
                 ?? URL(fileURLWithPath: NSTemporaryDirectory())
             self.directory = base.appendingPathComponent("Nullmere Online", isDirectory: true)
         }
+        root = self.directory
+    }
+
+    private init(directory: URL, root: URL) {
+        self.directory = directory
+        self.root = root
     }
 
     /// The store for one age of one realm: its words are its own.
     public func forAge(_ age: Int, of realm: String) -> LocalStore {
         let folder = realm.map { $0.isLetter || $0.isNumber ? $0 : "-" }
-        return LocalStore(directory: directory.appendingPathComponent("realms/\(String(folder))/age-\(age)", isDirectory: true))
+        return LocalStore(directory: directory.appendingPathComponent("realms/\(String(folder))/age-\(age)", isDirectory: true), root: root)
     }
 
     /// Where a realm hosted on this Mac is kept.

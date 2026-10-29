@@ -10,6 +10,9 @@ enum GameKey: Equatable {
     case home
     case escape
     case pan(dx: Double, dy: Double)
+    /// The selected company marches, or strikes, where the view is centred:
+    /// the keyboard's right-click.
+    case orderAtCentre
     case zoom(Double)
     case houses
     case chronicle
@@ -45,6 +48,12 @@ extension GameSession {
         case .pan(let dx, let dy):
             camera.pan(dx: dx, dy: dy)
             camera.clamp(toRadius: state.map.radius)
+            // A company chosen: where the view is centred is where it would
+            // go, shown as a pointer would show it.
+            if let unit = selectedUnit, unit.owner == player { hover(camera.centreHex) }
+        case .orderAtCentre:
+            guard let unit = selectedUnit, unit.owner == player else { return false }
+            order(camera.centreHex)
         case .zoom(let factor):
             camera.zoom(by: factor, around: .zero, in: .zero)
         case .houses:
@@ -100,7 +109,7 @@ final class KeyBridgeView: NSView {
 
     func handle(_ event: NSEvent, keyboardNavigation: Bool = NSApp.isFullKeyboardAccessEnabled) -> Bool {
         guard let window, event.window === window else { return false }
-        // Leave typing, and anything with ⌘ or ⌃, to the controls and menus.
+        // Leave typing, and anything with ⌘, ⌃ or ⌥, to the controls and menus.
         if window.firstResponder is NSText { return false }
         let modifiers = event.modifierFlags.intersection([.command, .control, .option])
         guard modifiers.isEmpty, let key = Self.key(for: event) else { return false }
@@ -141,6 +150,7 @@ final class KeyBridgeView: NSView {
         if event.keyCode == 53 { return .escape }
         switch event.charactersIgnoringModifiers?.lowercased() {
         case "f": return .fortify
+        case "m": return .orderAtCentre
         case "b": return .found
         case "h": return .home
         case "=", "+": return .zoom(1.25)

@@ -58,7 +58,7 @@ struct RaceTable: View {
                 Caps("Spire", size: 7.5).foregroundStyle(Palette.ink.opacity(0.45))
                     .frame(width: 44, alignment: .leading)
             }
-            ForEach(state.standings(), id: \.house) { standing in
+            ForEach(session.standings, id: \.house) { standing in
                 let house = state.houses[standing.house]
                 HStack(spacing: 8) {
                     RoundedRectangle(cornerRadius: 1).fill(Palette.house(house)).frame(width: 3, height: 10)
@@ -687,8 +687,18 @@ struct EnvoyCards: View {
                             QuietButton(title: muted ? "Show Words" : "Hide Words", size: 8.5) { session.setMuted(!muted, house: house) }
                                 .help(muted ? "Read \(house.name)'s words again." : "Hide \(house.name)'s words from now on, on this Mac.")
                         }
-                        QuietButton(title: "Refuse", size: 8.5) { session.perform(.answer(envoy: envoy.id, accept: false)) }
-                        QuietButton(title: "Accept", size: 8.5, prominent: true) { session.perform(.answer(envoy: envoy.id, accept: true)) }
+                        if envoy.proposal == .tribute, !house.isPlayer {
+                            // Refusing a steward's demand is war: asked twice, as war is.
+                            ConfirmButton(title: "Refuse", confirm: "Refuse, and war?") {
+                                session.perform(.answer(envoy: envoy.id, accept: false))
+                            }
+                        } else {
+                            QuietButton(title: "Refuse", size: 8.5) { session.perform(.answer(envoy: envoy.id, accept: false)) }
+                        }
+                        QuietButton(title: "Accept", size: 8.5, prominent: true, enabled: EnvoyCards.canAccept(envoy, in: state, player: session.player)) {
+                            session.perform(.answer(envoy: envoy.id, accept: true))
+                        }
+                        .help(EnvoyCards.canAccept(envoy, in: state, player: session.player) ? "" : "You haven't what it asks.")
                     }
                 }
                 .padding(14)
@@ -698,6 +708,14 @@ struct EnvoyCards: View {
                 .accessibilityElement(children: .contain)
             }
         }
+    }
+
+    /// Whether the keeper can keep the terms: for a trade, what it asks of
+    /// them is in their stores. Accepting a trade they can't pay would only
+    /// send the envoy away.
+    static func canAccept(_ envoy: Envoy, in state: GameState, player: Int) -> Bool {
+        guard envoy.proposal == .trade, let trade = envoy.trade else { return true }
+        return state.houses[player].stock[trade.take] >= trade.takeAmount
     }
 
     static func words(for envoy: Envoy, from house: House, in state: GameState, player: Int) -> String {

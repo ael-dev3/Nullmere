@@ -42,6 +42,8 @@ struct HoverLine: View {
             Text(verbatim: line)
                 .font(.nm(11, weight: .light))
                 .foregroundStyle(Palette.ink.opacity(0.85))
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(Color.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 3))

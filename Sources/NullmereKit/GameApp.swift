@@ -380,6 +380,9 @@ public final class GameApp {
     /// Leaves the front door for the launcher.
     public func leaveDoor() {
         stopWaiting()
+        // Back in the launcher, the model is the launcher's to watch for.
+        recheckTask?.cancel()
+        recheckTask = nil
         releaseLink()
         ambience.isAtWar = false
         ambience.stop()
