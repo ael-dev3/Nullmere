@@ -237,6 +237,7 @@ final class PressTests: XCTestCase {
         XCTAssertEqual(afresh, [""], "Once is enough: drawn again, the field is left alone")
 
         // The next offer carries nothing of it.
+        offersAnswered(in: session, link: link)
         draft.propose(.pact, through: session)
         XCTAssertEqual(link.sent.count, before + 2)
         XCTAssertEqual(link.sent.last, .propose(.pact, to: house.id))
@@ -420,6 +421,14 @@ final class PressTests: XCTestCase {
     }
 
     /// A keeper-held House's row in a window, its words field to type in.
+    /// The realm answers the keeper's envoys on the road: they are gone from
+    /// the world, and another of each kind may go.
+    private func offersAnswered(in session: GameSession, link: RecordingLink) {
+        var world = session.state
+        world.envoys.removeAll { $0.from == session.player }
+        link.onEvent?(.changed(world))
+    }
+
     private func rowInAWindow(_ seed: String) -> (session: GameSession, link: RecordingLink, house: House, draft: OfferDraft, window: NSWindow) {
         let (session, link, house) = keepersHouse(seed)
         let draft = OfferDraft(for: house)
@@ -522,7 +531,9 @@ final class PressTests: XCTestCase {
         XCTAssertEqual(offered()?.words, kept)
         XCTAssertEqual(draft.words, "")
 
-        // Again: the field starts empty, and the new words go, not the old.
+        // Again, once the first is answered: the field starts empty, and the
+        // new words go, not the old.
+        offersAnswered(in: session, link: link)
         let again = try XCTUnwrap(tabToTextField(in: window), "The words' field, a second time")
         XCTAssertEqual(again.string, "", "No stale words in the field")
         type("Timber for grain.", into: again)
@@ -745,6 +756,7 @@ final class PressTests: XCTestCase {
         XCTAssertEqual(link.sent.last, .propose(.pact, to: house.id), "Bel's draft holds nothing of Ama's")
 
         // What is typed now is Bel's, and only that.
+        offersAnswered(in: session, link: link)
         type("Bel", into: editor)
         spin(until: "Bel's words") { editor.string == "Bel" }
         XCTAssertTrue(PressableButtons.press("Offer a pact"))
@@ -863,7 +875,8 @@ final class PressTests: XCTestCase {
         spin(until: "the composition dropped") { field.stringValue.isEmpty && !editor.hasMarkedText() }
 
         // An input method committing afterwards: nothing is left to commit,
-        // and the next offer carries nothing of it.
+        // and the next offer, once the first is answered, carries nothing of it.
+        offersAnswered(in: row.session, link: row.link)
         editor.unmarkText()
         RunLoop.main.run(until: Date().addingTimeInterval(0.2))
         XCTAssertEqual(field.stringValue, "")

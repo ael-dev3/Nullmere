@@ -502,13 +502,20 @@ struct HouseRow: View {
         .accessibilityElement(children: .contain)
     }
 
+    /// An envoy of the keeper's with this offer is on the road to the House:
+    /// one of each kind at a time.
+    private func awaits(_ proposal: Proposal) -> Bool {
+        session.state.envoys.contains { $0.from == session.player && $0.to == house.id && $0.proposal == proposal }
+    }
+
     @ViewBuilder
     private func actions(stance: Stance) -> some View {
         switch stance {
         case .war:
             QuietButton(title: "Offer peace", size: 8.5) { offer(.peace) }
         case .peace:
-            QuietButton(title: "Offer a pact", size: 8.5) { offer(.pact) }
+            QuietButton(title: "Offer a pact", size: 8.5, enabled: !awaits(.pact)) { offer(.pact) }
+                .help(awaits(.pact) ? "Your envoy with a pact waits on their answer." : "Shared sight across the water, and no blade between you.")
             giftMenu
             tradeButton
             if session.canDemandTribute(from: house.id) {
@@ -557,8 +564,8 @@ struct HouseRow: View {
     }
 
     private var tradeButton: some View {
-        QuietButton(title: "Offer a trade", size: 8.5) { draft.isComposingTrade = true }
-            .help("So much of one store for so much of another.")
+        QuietButton(title: "Offer a trade", size: 8.5, enabled: !awaits(.trade)) { draft.isComposingTrade = true }
+            .help(awaits(.trade) ? "Your envoy with a trade waits on their answer." : "So much of one store for so much of another.")
             .popover(isPresented: Bindable(draft).isComposingTrade, arrowEdge: .leading) {
                 TradeOffer(session: session, house: house, draft: draft)
             }
