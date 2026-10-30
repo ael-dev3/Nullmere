@@ -216,6 +216,11 @@ public final class GameSession {
     public var onCue: ((Ambience.Cue) -> Void)?
     /// Called with each sound the game makes and where it is heard from.
     public var onPlacedCue: ((Ambience.Cue, SoundPlace) -> Void)?
+    /// Called with the advisor's counsel as each new charge comes.
+    public var onCounsel: ((String) -> Void)?
+    /// The charge last counselled: the one the keeper had as the session
+    /// began, so only a new one is spoken unbidden.
+    @ObservationIgnored private var counselled: Charge??
     /// Called when the player goes to war, or the last of their wars ends.
     public var onWarChanged: ((Bool) -> Void)? {
         didSet { onWarChanged?(isAtWar) }
@@ -739,6 +744,23 @@ public final class GameSession {
 
     public func dismissSeatBriefing() {
         withAnimation(.easeOut(duration: 0.3)) { seatBriefing = nil }
+        // Into the world: the charge the keeper begins with, counselled.
+        if let charge = state.charge(of: player) {
+            counselled = .some(charge)
+            onCounsel?(ChargeGuide.counsel(charge))
+        }
+    }
+
+    /// A new charge come: its counsel, spoken.
+    private func counselNewCharge() {
+        let charge = state.charge(of: player)
+        guard let before = counselled else {
+            counselled = .some(charge)
+            return
+        }
+        guard charge != before else { return }
+        counselled = .some(charge)
+        if let charge { onCounsel?(ChargeGuide.counsel(charge)) }
     }
 
     /// A card stands before the world, as the keeper enters: their seat's
@@ -1048,6 +1070,7 @@ public final class GameSession {
     // MARK: Bookkeeping
 
     private func refreshWorld() {
+        counselNewCharge()
         visible = state.visibility(for: player)
         threatened = Set(Sentinel.threats(in: state, player: player, visible: visible).map(\.hold))
         territory = state.territory()

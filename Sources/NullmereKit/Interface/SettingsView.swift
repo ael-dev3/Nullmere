@@ -35,6 +35,10 @@ public struct GameSettingsView: View {
                 }
                 VolumeLine(title: "The score", help: "The music, written as it plays", value: $app.musicVolume,
                            enabled: app.isSoundOn && app.isMusicOn)
+                ChoiceLine(title: "The advisor", options: ["Silent", "Speaks"], chosen: app.isAdvisorOn ? 1 : 0, enabled: app.isSoundOn) {
+                    app.isAdvisorOn = $0 == 1
+                }
+                Note("The advisor reads each new charge aloud in your Mac's voice; silent while VoiceOver speaks.")
             }
             part("Keys") {
                 ChoiceLine(title: "Letter keys", options: ["Alone", "With ⌥"], chosen: lettersAlone ? 0 : 1) { lettersAlone = $0 == 0 }

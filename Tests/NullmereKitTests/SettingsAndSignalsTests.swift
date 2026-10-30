@@ -230,3 +230,38 @@ final class GrowingHoldTests: XCTestCase {
         XCTAssertTrue(TokenArt.towers(at: c, radius: 12, count: 0).isEmpty)
     }
 }
+
+/// The advisor: new counsel spoken in the Mac's voice, when it may be.
+@MainActor
+final class AdvisorTests: XCTestCase {
+    private final class Ear: Speaking {
+        var heard: [String] = []
+        var hushed = 0
+        func say(_ words: String) { heard.append(words) }
+        func hush() { hushed += 1 }
+    }
+
+    func testTheAdvisorSpeaksNewCounselWhenItMay() {
+        let ear = Ear()
+        var voiceOver = false
+        let advisor = Advisor(voice: ear, enabled: true, voiceOver: { voiceOver })
+        XCTAssertTrue(advisor.counsel("Raise a Granary."))
+        XCTAssertFalse(advisor.counsel("Raise a Granary."), "Never the same counsel twice running")
+        voiceOver = true
+        XCTAssertFalse(advisor.counsel("Muster a company."), "VoiceOver reads the charges itself")
+        voiceOver = false
+        advisor.isSoundOn = false
+        XCTAssertFalse(advisor.counsel("Muster a company."), "Silent with the sound")
+        XCTAssertEqual(ear.hushed, 1, "and hushed as it goes")
+        advisor.isSoundOn = true
+        advisor.isEnabled = false
+        XCTAssertFalse(advisor.counsel("Muster a company."))
+        XCTAssertEqual(ear.hushed, 2)
+        advisor.isEnabled = true
+        XCTAssertTrue(advisor.counsel("Muster a company."))
+        XCTAssertEqual(ear.heard, ["Raise a Granary.", "Muster a company."])
+        // The Mac's own voice is made and hushed without a word said.
+        MacVoice().hush()
+        XCTAssertEqual(Advisor.defaultsKey, "advisor.speaks")
+    }
+}

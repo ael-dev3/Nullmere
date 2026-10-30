@@ -750,6 +750,12 @@ realm; keepers are told in plain words, never a status code.
   view turned turns the sound with it; what has no place (an order, the
   watch's bell, a choice) sounds in the middle. Sound fades out with the
   picture, and as the app quits, and back in from silence.
+- **The advisor.** The House's steward reads each new charge aloud as it
+  comes, what it is and how to keep it, in the Mac's own voice, a little
+  low and unhurried; the first as the keeper enters the world. It is
+  silent while VoiceOver speaks (which reads the charges itself), while
+  the sound is off, or when Settings says so, and never says the same
+  counsel twice running.
 - **Watchmen.** When an enemy's companies gather near one of your holds,
   you're told, and a broken red ring marks the hold on the map.
 - **Holds that grow.** A hold raises a side tower after a few works and a

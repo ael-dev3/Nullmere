@@ -153,6 +153,29 @@ final class GameSessionTests: XCTestCase {
         XCTAssertEqual(session.notices.last?.tone, .bad)
     }
 
+    func testEachNewChargeIsCounselled() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        var state = GameState(settings: GameSettings(seedText: "counselled", houseCount: 3, radius: 16, keepers: 1))
+        // The first charge kept already: it is done as the watch turns.
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == state.player && $0.isSeat })
+        state.holds[seat].levels[.granary] = 1
+        let session = GameSession(state: state, store: LocalStore(directory: directory))
+        var said: [String] = []
+        session.onCounsel = { said.append($0) }
+        XCTAssertEqual(said, [], "Nothing said before the keeper is in the world")
+        session.dismissSeatBriefing()
+        XCTAssertEqual(said, [ChargeGuide.counsel(.raiseGranary)])
+        XCTAssertEqual(said.first, "A new charge, keeper. Raise a Granary at your seat. Choose your seat and build a Granary: it keeps more of every store.")
+        session.endWatch()
+        XCTAssertEqual(said.count, 2, "The next charge, counselled as it comes")
+        let next = try XCTUnwrap(session.state.charge(of: session.player))
+        XCTAssertNotEqual(next, .raiseGranary)
+        XCTAssertEqual(said.last, ChargeGuide.counsel(next))
+        session.endWatch()
+        XCTAssertEqual(said.count, 2, "The same charge isn't said again")
+    }
+
     func testBeingReadyTurnsTheWatchInTheRealm() {
         let (session, directory) = session()
         defer { try? FileManager.default.removeItem(at: directory) }

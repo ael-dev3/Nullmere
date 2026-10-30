@@ -523,7 +523,19 @@ public final class GameApp {
     public var isSoundOn: Bool {
         didSet {
             ambience.isEnabled = isSoundOn
+            advisor.isSoundOn = isSoundOn
             UserDefaults.standard.set(isSoundOn, forKey: "sound.enabled")
+        }
+    }
+
+    /// The advisor, who reads each new charge aloud.
+    public let advisor = Advisor(enabled: UserDefaults.standard.object(forKey: Advisor.defaultsKey) as? Bool ?? true)
+
+    /// The keeper lets the advisor speak.
+    public var isAdvisorOn: Bool = UserDefaults.standard.object(forKey: Advisor.defaultsKey) as? Bool ?? true {
+        didSet {
+            advisor.isEnabled = isAdvisorOn
+            UserDefaults.standard.set(isAdvisorOn, forKey: Advisor.defaultsKey)
         }
     }
 
@@ -553,6 +565,8 @@ public final class GameApp {
 
     private func play(_ session: GameSession) {
         session.onPlacedCue = { [weak self] cue, place in self?.ambience.play(cue, at: place) }
+        session.onCounsel = { [weak self] words in self?.advisor.counsel(words) }
+        advisor.isSoundOn = isSoundOn
         ambience.isMusicOn = isMusicOn
         session.onWarChanged = { [weak self] atWar in self?.ambience.isAtWar = atWar }
         ambience.start()

@@ -34,6 +34,11 @@ enum ChargeGuide {
         }
     }
 
+    /// The advisor's words for a charge as it comes: what it is, and how.
+    static func counsel(_ charge: Charge) -> String {
+        "A new charge, keeper. \(charge.title). \(how(charge).replacingOccurrences(of: " (H)", with: "").replacingOccurrences(of: " (B)", with: ""))"
+    }
+
     /// What "Show me" does for a charge: the panel it is kept in opened,
     /// or what keeps it chosen and brought into view.
     @MainActor
