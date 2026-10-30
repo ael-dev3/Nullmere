@@ -150,6 +150,55 @@ final class PaceTests: XCTestCase {
         XCTAssertEqual(state.walk(to: 11, keptFor: []), [], "Walked already")
     }
 
+    private func battles(_ events: [GameEvent]) -> Int {
+        events.filter { if case .battle = $0 { return true } else { return false } }.count
+    }
+
+    /// Two Houses at war, every House kept, a company of each face to face.
+    private func lockedInBattle(_ seed: String, paced: Bool) throws -> (state: GameState, mine: Int, theirs: Int, at: Hex) {
+        var state = Scene.world(seed, houses: 3, radius: 16)
+        for index in state.houses.indices { state.houses[index].isPlayer = true }
+        if paced { state.pacing = Pacing() }
+        let me = state.player
+        _ = try state.declareWar(by: me, on: 1)
+        let ground = try XCTUnwrap(state.openGround())
+        let mine = state.put(.spear, of: me, at: ground)
+        let there = ground + Hex.directions[0]
+        let theirs = state.put(.spear, of: 1, at: there)
+        return (state, mine, theirs, there)
+    }
+
+    func testInARealmABattleGoesOnPaceByPace() throws {
+        var (state, mine, theirs, there) = try lockedInBattle("lasting battle", paced: true)
+        let me = state.player
+        XCTAssertEqual(battles(try state.perform(.attack(unit: mine, target: there), as: me)), 1)
+        XCTAssertEqual(state.battlesJoined.map(\.rounds), [GameState.engagementRounds], "Joined, with more blows to come")
+        XCTAssertEqual(state.view(for: me).battlesJoined.count, 1, "Seen by those who see a side of it")
+        var later = 0
+        for pace in 1...4 {
+            later += battles(state.walk(to: pace))
+        }
+        XCTAssertTrue((1...GameState.engagementRounds).contains(later), "Blows again at the paces after: \(later)")
+        XCTAssertEqual(state.battlesJoined, [], "Over: its rounds run, or a side fallen")
+        XCTAssertTrue(state.unit(mine) == nil || state.unit(theirs) == nil || later == GameState.engagementRounds)
+        XCTAssertEqual(state.problems(), [])
+
+        // Outside a realm, a strike is one exchange.
+        var (turned, mine3, _, there3) = try lockedInBattle("one exchange", paced: false)
+        try turned.perform(.attack(unit: mine3, target: there3), as: turned.player)
+        XCTAssertEqual(turned.battlesJoined, [])
+
+        // One that draws off ends it.
+        var (drawn, mine2, theirs2, there2) = try lockedInBattle("drawn off", paced: true)
+        try drawn.perform(.attack(unit: mine2, target: there2), as: drawn.player)
+        XCTAssertNotNil(drawn.unit(mine2))
+        XCTAssertNotNil(drawn.unit(theirs2), "Whole companies both stand the first exchange")
+        let away = try XCTUnwrap(drawn.freeHex(near: there2, within: 3...4))
+        drawn.units[try XCTUnwrap(drawn.unitIndex(theirs2))].position = away
+        XCTAssertEqual(battles(drawn.walk(to: 1)), 0)
+        XCTAssertEqual(drawn.battlesJoined, [])
+    }
+
     func testARealmsWatchIsWalkedOnItsClock() throws {
         var realm = RealmState(name: "The Nullmere", seed: "paced realm", seats: 4, radius: 16, watchLength: 120, now: 0)
         XCTAssertEqual(realm.world.pacing, Pacing(), "A realm's watch passes pace by pace")

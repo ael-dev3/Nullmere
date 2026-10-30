@@ -539,6 +539,13 @@ struct UnitPanel: View {
 
     /// What a company has been sent to do beyond its march, and what it carries.
     static func errand(of unit: Unit, in state: GameState) -> String? {
+        // Locked in battle: it fights on through the watch where it stands.
+        if let battle = state.battlesJoined.first(where: { $0.attacker == unit.id || $0.defender == unit.id }) {
+            let foe = state.unit(battle.attacker == unit.id ? battle.defender : battle.attacker)
+            let whose = foe.map { state.houses.indices.contains($0.owner) ? "\(state.houses[$0.owner].title)'s \($0.kind.title)" : $0.kind.title }
+            let blows = battle.rounds == 1 ? "one more exchange" : "\(battle.rounds) more exchanges"
+            return "Locked in battle with \(whose ?? "the foe"): \(blows) of blows this watch, unless one side draws off."
+        }
         let load = unit.load.flatMap { carried -> String? in
             guard let store = Resource.allCases.first(where: { carried[$0] > 0 }) else { return nil }
             return "\(carried[store]) \(store.title.lowercased())"

@@ -73,6 +73,8 @@ extension GameState {
         view.rallies = rallies?.filter { rally in
             isOfRally(house, rally) || (rally.marching && hold(rally.target)?.owner == house)
         }
+        // The battles going on that they can see a side of.
+        view.engagements = engagements?.filter { view.unit($0.attacker) != nil || view.unit($0.defender) != nil }
         // The marches they may know of, worked out on what they see.
         view.marches = marches(seenBy: house, in: view)
         return view

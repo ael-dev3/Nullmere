@@ -271,6 +271,8 @@ extension GameState {
         var events: [GameEvent]
         if let defenderID = foe.unit {
             events = fight(attacker: unitID, defender: defenderID, at: target)
+            // In a realm, the battle goes on through the watch while both stand.
+            if let attacker = unit(unitID), let defender = unit(defenderID) { join(attacker, against: defender) }
         } else {
             events = strike(hold: foe.hold!, with: unitID)
         }
@@ -295,6 +297,11 @@ extension GameState {
             events += fight(attacker: id, defender: strikerID, at: striker.position, holdingGround: true)
         }
         return events
+    }
+
+    /// Another exchange of blows in a battle going on.
+    mutating func exchange(attacker attackerID: Int, defender defenderID: Int, at hex: Hex) -> [GameEvent] {
+        fight(attacker: attackerID, defender: defenderID, at: hex)
     }
 
     /// Two units exchange blows. A company holding its ground never steps

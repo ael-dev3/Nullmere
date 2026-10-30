@@ -630,6 +630,10 @@ realm; keepers are told in plain words, never a status code.
   the steps as they are taken. As the watch turns, whatever the paces left
   (the watch turning early, a way shut for a while) is walked first, so a
   march goes as far in a watch as ever; the last pace is the turn's own.
+  A battle between two companies goes on through the watch: after the
+  first exchange, blows fall again at each of the next two paces, unless
+  one side falls, draws off (moves) or makes peace first; a company's
+  panel says it is locked in battle and how many exchanges are left.
 - **Happenings.** From the tenth watch, and every thirty after, the realm
   holds a happening for ten watches: the Long Hunt (companies of the wilds
   struck down, the greater the more), the Harvest Fair (stores brought home

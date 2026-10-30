@@ -567,6 +567,18 @@ final class DepthPanelTests: XCTestCase {
         state.units[index].errand = nil
         XCTAssertNil(UnitPanel.errand(of: state.units[index], in: state))
         XCTAssertNil(UnitPanel.leader(of: state.units[index], in: state))
+        // Locked in battle, in a realm's watch.
+        let foe = state.units.first { $0.owner != me && $0.kind.isMilitary }!
+        state.engagements = [Engagement(attacker: state.units[index].id, defender: foe.id, attackerAt: state.units[index].position,
+                                        defenderAt: foe.position, rounds: 2)]
+        XCTAssertEqual(UnitPanel.errand(of: state.units[index], in: state),
+                       "Locked in battle with \(state.houses[foe.owner].title)'s \(foe.kind.title): 2 more exchanges of blows this watch, unless one side draws off.")
+        state.engagements = [Engagement(attacker: foe.id, defender: state.units[index].id, attackerAt: foe.position,
+                                        defenderAt: state.units[index].position, rounds: 1)]
+        XCTAssertTrue(UnitPanel.errand(of: state.units[index], in: state)?.contains(": one more exchange of blows") == true)
+        state.engagements = [Engagement(attacker: 9_999, defender: state.units[index].id, attackerAt: .origin, defenderAt: .origin, rounds: 1)]
+        XCTAssertTrue(UnitPanel.errand(of: state.units[index], in: state)?.hasPrefix("Locked in battle with the foe") == true)
+        state.engagements = nil
         let (session, _) = session(state)
         session.selection = .unit(state.units[index].id)
         draw(SelectionPanel(session: session), width: 330, height: 600)
