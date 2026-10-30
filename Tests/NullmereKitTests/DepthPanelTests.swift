@@ -300,8 +300,9 @@ final class DepthPanelTests: XCTestCase {
         _ = try state.perform(.say(words: "Well met", toAlliance: false), as: other)
         _ = try state.perform(.say(words: "The ford is ours", toAlliance: true), as: me)
 
-        // A company carrying stores home.
-        let carrier = try XCTUnwrap(state.units.firstIndex { $0.owner == me && $0.kind.isMilitary && $0.id != company.id })
+        // A second company, carrying stores home.
+        let placed = try XCTUnwrap(state.placeUnit(.bow, for: me, near: state.holds[seat].position))
+        let carrier = try XCTUnwrap(state.units.firstIndex { $0.id == placed.id })
         state.units[carrier].load = Stock(timber: 30)
         state.units[carrier].errand = .homeward
 
