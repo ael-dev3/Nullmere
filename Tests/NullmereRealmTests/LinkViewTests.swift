@@ -155,9 +155,9 @@ final class LinkViewTests: XCTestCase {
         XCTAssertEqual(gifts(), 1, "Told once")
     }
 
-    /// Left while an order's answer is on its way: the link drops the
-    /// errand rather than tripping over it.
-    func testALinkLeftWithAnAnswerOnItsWayDropsTheErrand() async throws {
+    /// Left while an order's answer is on its way: the link sees the
+    /// errand through, telling no one, rather than tripping over it.
+    func testALinkLeftWithAnAnswerOnItsWayTellsNoOne() async throws {
         let (db, _, link, ear, running) = try await realm("left mid-answer")
         defer { running.cancel() }
         link.arrive(name: "Ama")
