@@ -359,7 +359,7 @@ public final class WorldStage: @unchecked Sendable {
     }
 
     /// A House's colour by its sigil, grey if there are none.
-    static func colour(_ houses: [Vec4], sigil: Int) -> Vec4 {
+    public static func colour(_ houses: [Vec4], sigil: Int) -> Vec4 {
         houses.isEmpty ? Vec4(0.6, 0.6, 0.6, 1) : houses[(sigil % houses.count + houses.count) % houses.count]
     }
 
