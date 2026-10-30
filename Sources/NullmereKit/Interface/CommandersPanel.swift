@@ -84,6 +84,7 @@ private struct CommanderRow: View {
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Experience \(line.progress) of \(span) to level \(line.level + 1)")
+                .accessibilityAddTraits(.isStaticText)
             }
             HStack(alignment: .firstTextBaseline) {
                 Text(verbatim: CommandersPanel.standing(of: line))

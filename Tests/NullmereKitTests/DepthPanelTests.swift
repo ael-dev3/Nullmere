@@ -226,6 +226,108 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(GameSession.cues(for: .say(words: "Hail", toAlliance: false), events: [], in: session.state, player: me), [.parley])
     }
 
+    // MARK: Every state drawn
+
+    /// Each new screen drawn in each of its states: an Archive not yet
+    /// raised and a study mastered; a roster empty, wounded, ready to fire;
+    /// an alliance asked to, rallying, its gates to keep; the realm between
+    /// happenings and in one, with a keeper's renown; words none and many;
+    /// a company carrying and led; tiers to choose; a rally with no hall.
+    func testEveryNewScreenDrawsInEachOfItsStates() throws {
+        var state = world("every state")
+        let me = state.player
+        let (other, foe) = ((me + 1) % 6, (me + 2) % 6)
+        state.houses[other].isPlayer = true
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+
+        // The Archive: none raised; then a study mastered, another under way.
+        do {
+            let (session, _) = self.session(state)
+            draw(ArchivePanel(session: session))
+            XCTAssertEqual(ArchivePanel.subtitle(session.state.archiveBoard(for: me)), "No Archive yet")
+        }
+        state.holds[seat].levels[.archive] = 4
+        state.holds[seat].levels[.musterHall] = 3
+        state.houses[me].stock = Stock(grain: 900, timber: 900, stone: 900, moonsalt: 90)
+        state.houses[me].research = Research(known: [Learned(study: .drill, grade: 1), Learned(study: .spearwork, grade: 1),
+                                                     Learned(study: .ironRanks, grade: 1)])
+        _ = try state.perform(.study(.furrowLore), as: me)
+
+        // Commanders: one wounded, one ready to fire at a company's head.
+        var random = SeededRandom(seed: 5)
+        state.raiseCommander(for: me, archetype: .vanguard, using: &random)
+        let roster = state.commanders(of: me).map(\.id)
+        let company = try XCTUnwrap(state.units(of: me).first { $0.kind.isMilitary })
+        _ = try state.perform(.assign(commander: roster[0], unit: company.id), as: me)
+        let led = try XCTUnwrap(state.commanderIndex(roster[0]))
+        state.commanders![led].experience = Commander.experience(forLevel: 12)
+        state.commanders![led].fury = 5
+        state.commanders![try XCTUnwrap(state.commanderIndex(roster[1]))].woundedUntil = state.watch + 2
+
+        // An alliance of the keeper's, asked to by another keeper, rallying against a foe.
+        _ = try state.perform(.foundAlliance(name: "The Ashen Ring"), as: me)
+        let banner = try XCTUnwrap(state.alliance(of: me)).id
+        _ = try state.perform(.askToJoin(alliance: banner), as: other)
+        let ally = (me + 3) % 6
+        let index = try XCTUnwrap(state.alliances?.firstIndex { $0.id == banner })
+        state.alliances![index].members.append(ally)
+        _ = try state.declareWar(by: me, on: foe)
+        let target = try XCTUnwrap(state.holds.first { $0.owner == foe })
+        state.reveal(around: target.position, range: 1, for: me)
+        _ = try state.perform(.callRally(from: state.holds[seat].id, against: target.id, watches: 3), as: me)
+
+        // The realm in a happening, with the keeper and others scoring.
+        var happening = Happening(number: 0, kind: .harvestFair, begins: state.watch, houses: state.houses.count)
+        happening.points[me] = 12
+        happening.points[foe] = 30
+        state.happening = happening
+        _ = try state.perform(.say(words: "Well met", toAlliance: false), as: other)
+        _ = try state.perform(.say(words: "The ford is ours", toAlliance: true), as: me)
+
+        // A company carrying stores home.
+        let carrier = try XCTUnwrap(state.units.firstIndex { $0.owner == me && $0.kind.isMilitary && $0.id != company.id })
+        state.units[carrier].load = Stock(timber: 30)
+        state.units[carrier].errand = .homeward
+
+        let (session, _) = self.session(state)
+        session.keeper = try JSONDecoder().decode(Keeper.self, from: Data("""
+            {"id":"k","name":"Ama","house":\(me),"isReady":false,"isOnline":true,"arrival":0,"renown":25,"titles":["Lord of the Lake, Age 1"]}
+            """.utf8))
+        draw(ArchivePanel(session: session))
+        draw(CommandersPanel(session: session))
+        session.selection = .unit(company.id)
+        draw(CommandersPanel(session: session))
+        draw(AlliancePanel(session: session))
+        XCTAssertTrue(PressableButtons.press("Admit"), "Among \(shown)")
+        draw(RealmPanel(session: session))
+        draw(WordsPanel(session: session))
+        draw(SelectionPanel(session: session), width: 330, height: 700)
+        session.selection = .unit(state.units[carrier].id)
+        draw(SelectionPanel(session: session), width: 330, height: 700)
+        session.focusOnSeat()
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        draw(ChargeCard(session: session), width: 330, height: 200)
+
+        // Between happenings, with no commanders, and with no Muster Hall to rally from.
+        state.happening = nil
+        state.commanders = state.commanders?.filter { $0.owner != me }
+        state.holds[seat].levels[.musterHall] = nil
+        state.rallies = []
+        let (bare, _) = self.session(state)
+        draw(RealmPanel(session: bare))
+        draw(CommandersPanel(session: bare))
+        bare.selection = .hold(target.id)
+        draw(SelectionPanel(session: bare), width: 330, height: 700)
+        XCTAssertEqual(AlliancePanel.when(RallyLine(rally: Rally(id: 1, caller: 0, muster: 1, target: 2, called: 0, setsOut: 3),
+                                                    watchesLeft: 0, companies: 1, capacity: 4, isCaller: true)), "Sets out as the watch turns")
+        let board = bare.state.realmBoard(for: me)
+        XCTAssertNotNil(board.nextBegins)
+        XCTAssertEqual(CommandersPanel.standing(of: CommanderLine(commander: Commander(id: 9, name: "Ysra", archetype: .warden, owner: me),
+                                                                  level: 1, progress: 0, span: 50, skills: [], leads: nil,
+                                                                  woundedFor: 1, furyReady: false)),
+                       "Wounded: whole again next watch")
+    }
+
     // MARK: The map
 
     func testASiteRightClickedIsGatheredAndTheLandIsReadAloud() throws {

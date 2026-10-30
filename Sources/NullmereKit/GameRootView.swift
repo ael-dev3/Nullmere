@@ -148,7 +148,12 @@ struct PlayView: View {
                         }
                         Spacer(minLength: 0)
                         EnvoyCards(session: session)
-                        PanelRail(session: session)
+                        // With a panel open, its keys and its close button
+                        // serve, and the panel keeps the column's height.
+                        if session.panel == nil {
+                            PanelRail(session: session)
+                                .transition(.opacity)
+                        }
                         KeyHints()
                     }
                 }
