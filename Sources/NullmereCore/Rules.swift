@@ -529,10 +529,7 @@ extension GameState {
             throw .notApplicable
         case .tribute:
             guard current == .peace else { throw current == .pact ? .alreadyStance(.pact) : .notApplicable }
-            guard houses[house].liege != target, houses[target].liege != house, !paidTributeLately(house, target),
-                  !refusedTributeLately(house, target) else {
-                throw .notApplicable
-            }
+            guard mayDemandTribute(by: house, of: target) else { throw .notApplicable }
         }
 
         if houses[target].isPlayer {
@@ -636,14 +633,25 @@ extension GameState {
         return watch - refused < GameState.tributeRefusedRespite
     }
 
-    /// A refused demand: a rival that demanded marches; the player who
-    /// demanded is only refused, and can't demand again for a while.
+    /// Whether one House may demand tribute of another now: both standing,
+    /// at peace, neither sworn to the other, and no demand paid or refused
+    /// between them lately.
+    public func mayDemandTribute(by demander: Int, of target: Int) -> Bool {
+        guard demander != target, let me = house(demander), let other = house(target), !me.isEliminated, !other.isEliminated else { return false }
+        return stance(demander, target) == .peace && me.liege != target && other.liege != demander
+            && !paidTributeLately(demander, target) && !refusedTributeLately(demander, target)
+    }
+
+    /// A refused demand: the demander marches, as a steward always does,
+    /// and as a keeper must when a steward refuses them, for a steward
+    /// answers a demand as it makes one. Only a keeper refused by a keeper
+    /// is left to choose war or not, and can't demand again for a while.
     mutating func refuseTribute(demandedBy demander: Int, of refuser: Int) -> [GameEvent] {
         if let index = relations.firstIndex(where: { $0.first == min(demander, refuser) && $0.second == max(demander, refuser) }) {
             relations[index].tributeRefused = watch
         }
         record(.tribute, [refuser, demander], "\(houses[refuser].title) refuses tribute to \(houses[demander].title).")
-        guard !houses[demander].isPlayer else { return [] }
+        guard !houses[demander].isPlayer || !houses[refuser].isPlayer else { return [] }
         return (try? declareWar(by: demander, on: refuser)) ?? []
     }
 }

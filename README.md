@@ -329,8 +329,9 @@ as the realm will, and takes the realm's word as final.
   what happened while you were away: your stores and holds, and the news
   that touched your House.
 - **What can't be undone asks twice.** Declaring war, breaking a pact,
-  disbanding a company and refusing a steward's demand for tribute each want
-  a second press within three seconds (ten while VoiceOver runs).
+  disbanding a company, refusing a steward's demand for tribute and
+  demanding tribute of a steward each want a second press within three
+  seconds (ten while VoiceOver runs).
 - **Elsewhere.** While you are in another app, the Dock counts the
   watches that turned, and bounces once when something needs you.
 - **The watch.** Each turn is a watch. Your orders take effect as you give
@@ -495,8 +496,9 @@ twice.
 - **Tribute.** From watch twenty, an ambitious or cunning steward a quarter
   stronger than a neighbour may demand a fifth of its stores. Paid, it keeps
   the peace for twenty watches, unless that neighbour's Moonspire rises;
-  refused or ignored, it marches. You can demand tribute too: a keeper who
-  refuses you owes nothing more, and war is yours to choose.
+  refused or ignored, it marches. You can demand tribute too: a steward
+  that refuses you is at once at war with you, the war of your making; a
+  keeper who refuses you owes nothing more, and war is yours to choose.
 - **The race.** The Houses panel shows each House's holds towards dominion
   and its Moonspire's stages, and the game warns you, once, whenever any
   House comes near the end of either road. At the end of an age, a chart

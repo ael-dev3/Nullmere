@@ -532,7 +532,13 @@ struct HouseRow: View {
             giftMenu
             tradeButton
             if session.canDemandTribute(from: house.id) {
-                QuietButton(title: "Demand tribute", size: 8.5) { offer(.tribute) }
+                if house.isPlayer {
+                    QuietButton(title: "Demand tribute", size: 8.5) { offer(.tribute) }
+                } else {
+                    // A steward that refuses is at war with you at once:
+                    // asked twice, as war is.
+                    ConfirmButton(title: "Demand tribute", confirm: "Tribute, or war?") { offer(.tribute) }
+                }
             }
             ConfirmButton(title: "Declare war", confirm: "War on \(house.title)?") { session.perform(.declareWar(on: house.id)) }
         case .pact:
