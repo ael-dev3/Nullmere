@@ -37,6 +37,35 @@ final class CompactWorldTests: XCTestCase {
         XCTAssertLessThan(later, 192 * 1024)
     }
 
+    func testAMarchTravelsAsItsWay() throws {
+        let route = [Hex(3, -2), Hex(4, -2), Hex(4, -1), Hex(3, 0), Hex(3, -1)]
+        let march = March(unit: 7, owner: 1, route: route, destination: Hex(9, 9), arrives: 12)
+        let data = try JSONEncoder().encode(march)
+        XCTAssertTrue(String(decoding: data, as: UTF8.self).contains(#""way":"3,-2:0542""#))
+        XCTAssertEqual(try JSONDecoder().decode(March.self, from: data), march)
+
+        let alone = March(unit: 7, owner: 1, route: [Hex(-5, 2)], destination: nil, arrives: nil)
+        XCTAssertEqual(March.way(of: alone.route), "-5,2")
+        XCTAssertEqual(try JSONDecoder().decode(March.self, from: try JSONEncoder().encode(alone)), alone)
+
+        // A route that leaps, or none, is written out whole.
+        for odd in [[Hex(0, 0), Hex(2, 0)], []] {
+            let kept = March(unit: 1, owner: 0, route: odd, destination: nil, arrives: nil)
+            XCTAssertNil(March.way(of: odd))
+            XCTAssertEqual(try JSONDecoder().decode(March.self, from: try JSONEncoder().encode(kept)), kept)
+        }
+
+        // Views from before ways still open.
+        let old: [String: Any] = ["unit": 4, "owner": 2, "route": [["q": 1, "r": 1], ["q": 2, "r": 1]], "arrives": 9]
+        let opened = try JSONDecoder().decode(March.self, from: try JSONSerialization.data(withJSONObject: old))
+        XCTAssertEqual(opened, March(unit: 4, owner: 2, route: [Hex(1, 1), Hex(2, 1)], destination: nil, arrives: 9))
+
+        for bad in ["", "3", "3,x", "1,2:9", "1,2:0a"] {
+            let text = #"{"unit":1,"owner":0,"way":"\#(bad)"}"#
+            XCTAssertThrowsError(try JSONDecoder().decode(March.self, from: Data(text.utf8)), bad)
+        }
+    }
+
     func testWorldsKeptInTheOldFormStillOpen() throws {
         let house: [String: Any] = [
             "id": 0, "name": "Ama", "sigil": 0, "isPlayer": true, "temperament": "ambitious",

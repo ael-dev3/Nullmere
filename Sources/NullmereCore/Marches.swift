@@ -24,6 +24,67 @@ public struct March: Codable, Equatable, Sendable {
         self.destination = destination
         self.arrives = arrives
     }
+
+    // A way travels as its first hex and a digit for each step after, the
+    // direction it goes: a keeper's view goes across the network whenever
+    // it changes, and a hex written out whole is a dozen bytes.
+    private enum CodingKeys: String, CodingKey {
+        case unit, owner, route, way, destination, arrives
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        unit = try container.decode(Int.self, forKey: .unit)
+        owner = try container.decode(Int.self, forKey: .owner)
+        if let way = try container.decodeIfPresent(String.self, forKey: .way) {
+            guard let route = March.route(fromWay: way) else {
+                throw DecodingError.dataCorruptedError(forKey: .way, in: container, debugDescription: "Unreadable way")
+            }
+            self.route = route
+        } else {
+            route = try container.decode([Hex].self, forKey: .route)
+        }
+        destination = try container.decodeIfPresent(Hex.self, forKey: .destination)
+        arrives = try container.decodeIfPresent(Int.self, forKey: .arrives)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(unit, forKey: .unit)
+        try container.encode(owner, forKey: .owner)
+        if let way = March.way(of: route) {
+            try container.encode(way, forKey: .way)
+        } else {
+            try container.encode(route, forKey: .route)
+        }
+        try container.encodeIfPresent(destination, forKey: .destination)
+        try container.encodeIfPresent(arrives, forKey: .arrives)
+    }
+
+    /// A route as "q,r" and a digit for each step after, from 0 for east
+    /// clockwise; nil for none, or for one that leaps.
+    static func way(of route: [Hex]) -> String? {
+        guard let first = route.first else { return nil }
+        var digits = ""
+        for (from, to) in zip(route, route.dropFirst()) {
+            guard let direction = Hex.directions.firstIndex(of: to - from) else { return nil }
+            digits.append(Character(String(direction)))
+        }
+        return "\(first.q),\(first.r)" + (digits.isEmpty ? "" : ":" + digits)
+    }
+
+    /// The route a way writes; nil for one unreadable.
+    static func route(fromWay way: String) -> [Hex]? {
+        let parts = way.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+        let start = parts[0].split(separator: ",", omittingEmptySubsequences: false)
+        guard start.count == 2, let q = Int(start[0]), let r = Int(start[1]) else { return nil }
+        var route = [Hex(q, r)]
+        for digit in parts.count > 1 ? parts[1] : "" {
+            guard let direction = digit.wholeNumberValue, Hex.directions.indices.contains(direction) else { return nil }
+            route.append(route[route.count - 1] + Hex.directions[direction])
+        }
+        return route
+    }
 }
 
 extension GameState {
