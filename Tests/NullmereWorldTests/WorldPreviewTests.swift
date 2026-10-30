@@ -38,6 +38,60 @@ final class WorldPreviewTests: XCTestCase {
                 "heights": v(frame.heights), "houses": frame.houseColours.flatMap(v)]
     }
 
+    /// Every model a world's keeper sees, staged as the app stages them:
+    /// the land's furniture, the holds with their works, the companies in
+    /// formation, the birds over the water.
+    static func stage(_ state: GameState) -> SceneFrame {
+        let relief = Relief(map: state.map)
+        let stage = WorldStage(map: state.map, relief: relief)
+        let houses = (0..<16).map { index -> Vec4 in
+            let hue = Double(index) / 16 * 6.283
+            return Vec4(Float(0.35 + 0.3 * cos(hue)), Float(0.3 + 0.25 * cos(hue + 2.1)), Float(0.3 + 0.25 * cos(hue + 4.2)), 1)
+        }
+        var frame = SceneFrame()
+        let sights = state.holds.map { HoldSight(hold: $0, colour: WorldStage.colour(houses, sigil: state.houses[$0.owner].sigil)) }
+        let (holds, hearths) = stage.holds(sights, time: 20, into: &frame)
+        let visible = state.visibility(for: state.player)
+        let poses = state.units.filter { $0.owner == state.player || (state.map.index(of: $0.position).map { visible[$0] } ?? false) }
+            .enumerated().map { index, unit -> CompanyPose in
+                let centre = Relief.centre(of: unit.position)
+                return CompanyPose(unit: unit.id, key: .figure(unit.kind, tier: 1 + index % ModelKey.tiers(of: unit.kind)),
+                                   sigil: state.houses[unit.owner].sigil, health: unit.health, hex: unit.position,
+                                   position: Vec3(centre.x, max(relief.height(of: unit.position), Relief.waterline), centre.z),
+                                   heading: Float(index) * 0.7, clipTime: Float(index) * 0.4, isOwn: unit.owner == state.player,
+                                   commander: index % 3 == 0 ? index % ModelKey.commanderVariants : nil,
+                                   spread: state.hold(at: unit.position) == nil ? 1 : 0.3)
+            }
+        let companies = stage.companies(poses, houses: houses, into: &frame)
+        let lake = Relief.centre(of: Hex(0, 0))
+        let flights = WorldStage.flights(arrows: [], birdsOver: Vec3(lake.x, 0, lake.z), hearths: hearths, time: 20, into: &frame)
+        frame.fixed = stage.furnish(occupied: Set(poses.map(\.hex)), holds: Set(state.holds.map(\.position)))
+        frame.batches = holds + companies + flights
+        return frame
+    }
+
+    /// A frame's models as the preview reads them: each kind's instances,
+    /// as the GPU takes them, and the poses.
+    static func export(_ scene: SceneFrame) -> [String: Any] {
+        func bytes<T>(_ values: [T]) -> String { values.withUnsafeBytes { Data($0) }.base64EncodedString() }
+        return [
+            "batches": (scene.fixed + scene.batches).map { ["key": $0.key.description, "instances": bytes($0.instances), "count": $0.instances.count] },
+            "palette": bytes(scene.palette), "poses": scene.palette.count,
+        ]
+    }
+
+    /// Each kind of model the scene draws, as the GPU takes it.
+    static func meshes(for scene: SceneFrame) -> [String: Any] {
+        var models: [String: Any] = [:]
+        for batch in scene.fixed + scene.batches where models[batch.key.description] == nil {
+            let mesh = Library.model(batch.key).mesh
+            models[batch.key.description] = ["vertices": mesh.packed.withUnsafeBytes { Data($0) }.base64EncodedString(),
+                                             "indices": mesh.indices.withUnsafeBytes { Data($0) }.base64EncodedString(),
+                                             "count": mesh.indices.count]
+        }
+        return models
+    }
+
     func testAWorldExportsForThePreview() throws {
         var state = GameState(settings: GameSettings(seedText: "preview", houseCount: 12, radius: 24, keepers: 1))
         let opening = TileTexture.bytes(for: state, viewer: state.player)
@@ -58,13 +112,23 @@ final class WorldPreviewTests: XCTestCase {
         // Opposite the moon and as high, looking down on its image in the water.
         var moonView = Camera(scale: 16, tilt: acos(Double(Sky.moon.y)), heading: atan2(-Double(Sky.moon.x), -Double(Sky.moon.z)))
         moonView.focus(on: lake)
-        let views: [(String, Camera, [UInt8])] = [("seat", near, opening), ("lake", lakeView, whole), ("whole", far, whole),
-                                                 ("turned", turned, whole), ("moon", moonView, whole)]
+        // Close in on the seat, and closer on a company, with every model staged.
+        var close = Camera(scale: 70, tilt: 0.95)
+        close.focus(on: seat)
+        let company = try XCTUnwrap(state.units(of: state.player).first { $0.kind.isMilitary })
+        var companyView = Camera(scale: 150, tilt: 0.85, heading: 0.5)
+        companyView.focus(on: company.position)
+        let scene = WorldPreviewTests.stage(state)
+        let views: [(String, Camera, [UInt8], SceneFrame?)] = [
+            ("seat", near, opening, nil), ("lake", lakeView, whole, nil), ("whole", far, whole, nil), ("turned", turned, whole, nil),
+            ("moon", moonView, whole, nil), ("close", close, whole, scene), ("company", companyView, whole, scene),
+        ]
         var frames: [[String: Any]] = []
-        for (name, camera, tiles) in views {
+        for (name, camera, tiles, scene) in views {
             var entry = WorldPreviewTests.uniforms(WorldPreviewTests.frame(camera, terrain: terrain, radius: state.map.radius, time: 20))
             entry["name"] = name
             entry["tiles"] = Data(tiles).base64EncodedString()
+            if let scene { entry["scene"] = WorldPreviewTests.export(scene) }
             frames.append(entry)
         }
         let mesh = terrain.mesh
@@ -75,11 +139,12 @@ final class WorldPreviewTests: XCTestCase {
             "indices": mesh.indices.withUnsafeBufferPointer { Data(buffer: $0) }.base64EncodedString(),
             "heights": terrain.heights.withUnsafeBufferPointer { Data(buffer: $0) }.base64EncodedString(),
             "columns": terrain.columns, "rows": terrain.rows, "side": TileTexture.side(for: state.map), "frames": frames,
+            "models": WorldPreviewTests.meshes(for: scene),
             "viewport": [Double(WorldPreviewTests.viewport.width), Double(WorldPreviewTests.viewport.height)],
         ]
         let data = try JSONSerialization.data(withJSONObject: json)
         XCTAssertGreaterThan(data.count, 100_000)
-        XCTAssertEqual(frames.count, 5)
+        XCTAssertEqual(frames.count, 7)
         if let folder = ProcessInfo.processInfo.environment["NULLMERE_WORLD_PREVIEW"] {
             let url = URL(fileURLWithPath: folder, isDirectory: true)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

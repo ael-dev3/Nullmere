@@ -688,7 +688,7 @@ NullmereWorld tests write out (Playwright's Chromium draws it headless):
 
 ```sh
 NULLMERE_WORLD_PREVIEW=build/world3d swift test --filter WorldPreviewTests
-node Tools/world3d-preview/shoot.js build/world3d/world.json world.png seat   # or lake, whole, turned
+node Tools/world3d-preview/shoot.js build/world3d/world.json world.png seat   # or lake, whole, turned, moon, close, company
 ```
 
 The models are previewed the same way: `NULLMERE_MODEL_PREVIEW=build/models
@@ -720,7 +720,7 @@ Packaging/            The Info.plist template, the Liquid Glass icon (AppIcon.ic
 scripts/              Building, packing and checking a release; smoke tests; raising the realm; going live
 Tools/icon/           Draws the icon, its Liquid Glass layers and the classic one (make-icon.py)
 Tools/scene-preview/  Browser preview of the lake shader
-Tools/world3d-preview/ Browser preview of the world's land, mist and water, from the shaders' shared section
+Tools/world3d-preview/ Browser preview of the world's land, mist, water and staged models, from the shaders' shared section
 Tools/model-preview/  Browser preview of the models, on a sheet
 Tools/msl-check/      Checks Metal source with clang away from a Mac
 docs/                 Going live; the consistency audit of October 2026 (docs/audit/); the plan made before the build for what carries over from Warpkeep

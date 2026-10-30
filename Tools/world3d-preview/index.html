@@ -6,7 +6,7 @@
   can be judged without a Mac. The world comes from the NullmereWorld
   tests (set NULLMERE_WORLD_PREVIEW to a folder).
 
-    index.html?data=<world.json>&frame=seat|lake|whole|turned
+    index.html?data=<world.json>&frame=seat|lake|whole|turned|moon|close|company
 -->
 <meta charset="utf-8">
 <title>Nullmere world</title>
@@ -146,6 +146,77 @@ void main() {
   outColour = vec4(nm_encode(colour * haze.z), clear);
 }`;
 
+const modelVertex = header + `
+uniform sampler2D palette;
+in vec3 position; in vec4 normalMaterial; in vec4 colorSway; in float part;
+in vec4 m0; in vec4 m1; in vec4 m2; in vec4 m3; in vec4 iColour; in vec4 iParams; in ivec2 iHex; in uint iPalette; in uint iFlags;
+out vec3 vWorld; out vec3 vNormal; out vec3 vColour; out float vLocalY;
+flat out float vMaterial; flat out vec4 vParams; flat out float vWatched;
+void main() {
+  float material = normalMaterial.w;
+  float sway = colorSway.w / 255.0;
+  float time = eye.w + iParams.z;
+  vec3 local = position;
+  if (sway > 0.0) { local += nm_wind(local, sway, material, time) * world.w; }
+  int row = int(iPalette) + int(part);
+  mat4 posing = mat4(texelFetch(palette, ivec2(0, row), 0), texelFetch(palette, ivec2(1, row), 0),
+                     texelFetch(palette, ivec2(2, row), 0), texelFetch(palette, ivec2(3, row), 0));
+  vec4 posed = posing * vec4(local, 1.0);
+  mat4 model = mat4(m0, m1, m2, m3);
+  vec4 place = model * posed;
+  vec3 normal = (model * (posing * vec4(normalMaterial.xyz / 127.0, 0.0))).xyz;
+  float watched = 1.0;
+  if ((iFlags & 1u) == 0u) {
+    vec2 knowledge = nm_knowledge(iHex, world.x);
+    watched = knowledge.y > 0.5 ? 1.0 : (knowledge.x > 0.5 ? 0.5 : 0.0);
+  }
+  vec3 albedo = nm_linear(colorSway.xyz / 255.0);
+  if ((material > 0.5 && material < 1.5) || (material > 3.5 && material < 4.5)) {
+    if (iColour.a > 0.5) {
+      float shade = dot(albedo, vec3(0.30, 0.55, 0.15));
+      albedo = iColour.rgb * shade * 2.0;
+    }
+  }
+  gl_Position = watched > 0.25 ? viewProjection * place : vec4(0.0, 0.0, 2.0, 1.0);
+  vWorld = place.xyz;
+  vNormal = normalize(normal);
+  vColour = albedo;
+  vLocalY = posed.y;
+  vMaterial = material;
+  vParams = iParams;
+  vWatched = watched;
+}`;
+const modelFragment = header + `
+in vec3 vWorld; in vec3 vNormal; in vec3 vColour; in float vLocalY;
+flat in float vMaterial; flat in vec4 vParams; flat in float vWatched;
+out vec4 outColour;
+void main() {
+  if (vLocalY > vParams.x) { discard; }
+  if (vParams.y < 0.999 && vParams.y <= nm_bayer(gl_FragCoord.xy)) { discard; }
+  float time = eye.w + vParams.z;
+  vec3 n = normalize(vNormal);
+  vec3 toEye = normalize(eye.xyz - vWorld);
+  if (dot(n, toEye) < 0.0) { n = -n; }
+  vec3 lit = nm_light(vColour, n, moon.xyz, moon.w);
+  float facing = 1.0 - max(dot(n, toEye), 0.0);
+  float behind = max(dot(-toEye, moon.xyz), 0.0);
+  lit += kMoonColour * facing * facing * facing * (0.04 + 0.22 * behind) * moon.w;
+  if (vMaterial > 5.5) {
+    vec3 halfway = normalize(toEye + moon.xyz);
+    lit += kMoonColour * pow(max(dot(n, halfway), 0.0), 48.0) * 0.9 * moon.w;
+  } else if (vMaterial > 4.5) {
+    float glint = pow(max(dot(n, normalize(toEye + moon.xyz)), 0.0), 20.0);
+    lit += vColour * (0.16 + 0.1 * sin(nm_spin(time, 1.7) + vWorld.x * 5.0)) + vec3(0.6, 0.7, 0.9) * glint * 0.5;
+  } else if (vMaterial > 1.5 && vMaterial < 2.5) {
+    lit = vColour * (1.55 + 0.35 * nm_flicker(time + vWorld.x * 3.0 + vWorld.z * 2.0) * world.w);
+  }
+  if (vParams.x < 50.0 && vLocalY > vParams.x - 0.025) { lit += vec3(0.05, 0.042, 0.03); }
+  lit += kGlow * vParams.w * facing * facing * 0.45;
+  if (vWatched < 0.75) { lit = nm_remembered(lit); }
+  lit = nm_haze(lit, distance(vWorld, eye.xyz), haze.x, haze.y);
+  outColour = vec4(nm_encode(lit * haze.z), 1.0);
+}`;
+
 function compile(type, source) {
   const shader = gl.createShader(type);
   gl.shaderSource(shader, source);
@@ -217,6 +288,59 @@ const indices = decode(data.indices, Uint32Array);
 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
 gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
 gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_INT, 0);
+
+// The models: each kind's mesh, drawn once for each of its instances,
+// posed from the palette, as the Metal renderer draws them.
+if (frame.scene) {
+  const models = program(modelVertex, modelFragment);
+  uniforms(models);
+  const poses = decode(frame.scene.palette, Float32Array);
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, 4, frame.scene.poses, 0, gl.RGBA, gl.FLOAT, poses);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.uniform1i(gl.getUniformLocation(models, 'palette'), 2);
+  const at = (name) => gl.getAttribLocation(models, name);
+  for (const batch of frame.scene.batches) {
+    const mesh = data.models[batch.key];
+    if (!mesh || batch.count === 0) continue;
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, decode(mesh.vertices, Uint8Array), gl.STATIC_DRAW);
+    const vertex = (name, size, type, offset, integer) => {
+      const index = at(name);
+      if (index < 0) return;
+      gl.enableVertexAttribArray(index);
+      if (integer) gl.vertexAttribIPointer(index, size, type, 24, offset);
+      else gl.vertexAttribPointer(index, size, type, false, 24, offset);
+    };
+    vertex('position', 3, gl.FLOAT, 0);
+    vertex('normalMaterial', 4, gl.BYTE, 12);
+    vertex('colorSway', 4, gl.UNSIGNED_BYTE, 16);
+    vertex('part', 1, gl.UNSIGNED_SHORT, 20);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, decode(batch.instances, Uint8Array), gl.STATIC_DRAW);
+    const instance = (name, size, type, offset, integer) => {
+      const index = at(name);
+      if (index < 0) return;
+      gl.enableVertexAttribArray(index);
+      if (integer) gl.vertexAttribIPointer(index, size, type, 112, offset);
+      else gl.vertexAttribPointer(index, size, type, false, 112, offset);
+      gl.vertexAttribDivisor(index, 1);
+    };
+    ['m0', 'm1', 'm2', 'm3'].forEach((name, column) => instance(name, 4, gl.FLOAT, column * 16));
+    instance('iColour', 4, gl.FLOAT, 64);
+    instance('iParams', 4, gl.FLOAT, 80);
+    instance('iHex', 2, gl.INT, 96, true);
+    instance('iPalette', 1, gl.UNSIGNED_INT, 104, true);
+    instance('iFlags', 1, gl.UNSIGNED_INT, 108, true);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, decode(mesh.indices, Uint32Array), gl.STATIC_DRAW);
+    gl.drawElementsInstanced(gl.TRIANGLES, mesh.count, gl.UNSIGNED_INT, 0, batch.count);
+  }
+}
 
 const water = program(waterVertex, waterFragment);
 uniforms(water);
