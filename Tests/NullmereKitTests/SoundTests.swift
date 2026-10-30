@@ -135,8 +135,10 @@ final class SoundTests: XCTestCase {
         XCTAssertEqual(Synth.softened(0.5), 0.5)
         XCTAssertEqual(Synth.softened(-0.7), -0.7)
         XCTAssertLessThan(Synth.softened(1.5), 1)
-        XCTAssertLessThan(Synth.softened(3), 1)
-        XCTAssertGreaterThan(Synth.softened(3), Synth.softened(1.5), "Louder still sounds louder")
+        // Far past the knee it meets full scale, in a Float, and never passes it.
+        XCTAssertLessThanOrEqual(Synth.softened(3), 1)
+        XCTAssertGreaterThanOrEqual(Synth.softened(-30), -1)
+        XCTAssertGreaterThan(Synth.softened(1.5), Synth.softened(1.1), "Louder still sounds louder")
         XCTAssertEqual(Synth.softened(-1.2), -Synth.softened(1.2))
         XCTAssertEqual(Synth.softened(0.75), 0.75, accuracy: 0.0001, "No step at the knee")
         XCTAssertEqual(Synth.softened(0.7501), 0.7501, accuracy: 0.0002)

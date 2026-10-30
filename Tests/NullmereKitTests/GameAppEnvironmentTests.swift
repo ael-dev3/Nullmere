@@ -77,8 +77,9 @@ final class GameAppEnvironmentTests: XCTestCase {
 
         XCTAssertEqual(LocalStore().directory.lastPathComponent, "Nullmere Online", "In Application Support, by default")
         setenv("NULLMERE_STORE", dir.path, 1)
-        XCTAssertEqual(LocalStore().directory.standardizedFileURL, dir.standardizedFileURL, "Or in the UI tests' own folder")
-        XCTAssertEqual(LocalStore().hostedRealmURL.deletingLastPathComponent().standardizedFileURL, dir.standardizedFileURL)
+        // Compared by path: a folder's URL may or may not end in a slash.
+        XCTAssertEqual(LocalStore().directory.path, dir.path, "Or in the UI tests' own folder")
+        XCTAssertEqual(LocalStore().hostedRealmURL.deletingLastPathComponent().path, dir.path)
     }
 
     func testATestBuildStepsInAndSetsTheScene() async throws {
@@ -125,16 +126,25 @@ final class GameAppEnvironmentTests: XCTestCase {
         app.leaveDoor()
     }
 
+    /// The app asks after the model by itself, every few seconds while it is
+    /// in front, and opens the door the moment it is ready; never while it is
+    /// behind another app.
     func testTheModelIsAskedAfterUntilItIsReady() async throws {
         var readiness = ModelReadiness.modelNotReady
+        var inFront = false
         let app = hostedApp("asked after", readiness: { readiness })
+        app.recheckSeconds = 0.05
+        app.isFrontmost = { inFront }
         app.checkModel()
         guard case .gate = app.phase else { return XCTFail("The gate, while the model downloads") }
-        // The app asks again every few seconds while it is in front.
-        try await Task.sleep(nanoseconds: 3_400_000_000)
         readiness = .ready
-        app.checkModel()
-        guard case .frontDoor = app.phase else { return XCTFail("The front door, once the model is ready") }
+        try await Task.sleep(nanoseconds: 400_000_000)
+        guard case .gate = app.phase else { return XCTFail("Not asked after while the app is behind another") }
+        inFront = true
+        try await until("the model asked after, in front") {
+            if case .frontDoor = app.phase { return true }
+            return false
+        }
         app.leaveDoor()
     }
 }

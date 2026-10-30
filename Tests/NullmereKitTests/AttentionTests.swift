@@ -26,6 +26,16 @@ final class AttentionTests: XCTestCase {
         var signals: [Attention.Signal] = []
         session.isLooking = { looking }
         session.signal = { signals.append($0) }
+        // A company that walks its watch out: when the watch turns it waits
+        // anew.
+        let unit = try XCTUnwrap(session.state.units(of: session.player).first { $0.movesLeft > 0 })
+        while let here = session.state.unit(unit.id), here.movesLeft > 0 {
+            let step = try XCTUnwrap(session.state.map.neighbors(of: here.position).first { hex in
+                (session.state.map[hex]?.terrain.moveCost ?? 99) <= here.movesLeft
+                    && session.state.unit(at: hex) == nil && session.state.hold(at: hex) == nil
+            }, "Room to walk")
+            XCTAssertTrue(session.perform(.move(unit: unit.id, to: step)))
+        }
         session.endWatch()
         XCTAssertEqual(signals.first?.badge, "1", "The watch turned while the keeper was elsewhere")
         XCTAssertEqual(signals.first?.bounce, true, "A fresh watch has orders to give")
@@ -35,5 +45,25 @@ final class AttentionTests: XCTestCase {
         let count = signals.count
         session.endWatch()
         XCTAssertEqual(signals.count, count, "Seen: the Dock stays quiet")
+    }
+
+    /// What the keeper left as it was when they made ready is no call; what
+    /// waits anew is: a company at the end of its march, a hold that can now
+    /// pay for work it couldn't.
+    func testOnlyWhatWaitsAnewCallsTheKeeper() throws {
+        let state = GameState(settings: GameSettings(seedText: "left waiting", houseCount: 3, radius: 16, keepers: 1))
+        let me = state.player
+        XCTAssertTrue(state.units(of: me).contains { $0.movesLeft > 0 }, "Companies left waiting")
+        XCTAssertTrue(state.holds(of: me).contains { $0.project == nil && GameSession.couldBuild($0, in: state) }, "A hold left idle")
+        XCTAssertFalse(GameSession.needsPlayer(after: [], from: state, to: state, player: me, threatened: []), "Nothing new")
+
+        var marched = state
+        let index = try XCTUnwrap(marched.units.firstIndex { $0.owner == me })
+        marched.units[index].movesLeft = 0
+        XCTAssertTrue(GameSession.needsPlayer(after: [], from: marched, to: state, player: me, threatened: []), "Its march done, it waits")
+
+        var poor = state
+        poor.houses[me].stock = Stock()
+        XCTAssertTrue(GameSession.needsPlayer(after: [], from: poor, to: state, player: me, threatened: []), "Work it can now pay for")
     }
 }

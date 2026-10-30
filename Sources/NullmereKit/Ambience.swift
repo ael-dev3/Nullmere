@@ -263,8 +263,10 @@ final class Synth: @unchecked Sendable {
     private var pendingMusic: (on: Bool, mood: Score.Mood)?
     private var volumes: (effects: Float, ambience: Float, music: Float) = (1, 1, 1)
     /// The volumes as they sound: easing toward `volumes` over a few
-    /// hundredths of a second, so a slider dragged doesn't step.
+    /// hundredths of a second, so a slider dragged doesn't step; at once the
+    /// first time, so sound begins at the volumes it was given.
     private var heard: (effects: Float, ambience: Float, music: Float) = (1, 1, 1)
+    private var heardBegun = false
     private var pendingVolumes: (effects: Float, ambience: Float, music: Float)?
 
     /// The drone's partials.
@@ -456,6 +458,10 @@ final class Synth: @unchecked Sendable {
         }
         let volume = volumes
         lock.unlock()
+        if !heardBegun {
+            heard = volume
+            heardBegun = true
+        }
 
         guard buffers.count >= 2,
               let left = buffers[0].mData?.assumingMemoryBound(to: Float.self),

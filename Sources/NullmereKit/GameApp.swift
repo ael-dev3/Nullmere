@@ -69,6 +69,10 @@ public final class GameApp {
     private let readModel: () -> ModelReadiness
     public let ambience: Ambience
     private var recheckTask: Task<Void, Never>?
+    /// Whether the app is in front, where the model is asked after while it
+    /// isn't ready; tests supply their own, and their own pace.
+    @ObservationIgnored var isFrontmost: () -> Bool = { NSApplication.shared.isActive }
+    @ObservationIgnored var recheckSeconds: Double = 3
     private(set) var link: (any RealmLink)?
     private var hosted: LocalRealm?
     /// The line to a realm across the network: SpacetimeDB's HTTP API, or
@@ -251,11 +255,12 @@ public final class GameApp {
                 openDoor()
             }
         } else if readiness.needsRecheck, recheckTask == nil {
+            let pace = recheckSeconds
             recheckTask = Task { [weak self] in
                 while !Task.isCancelled {
-                    try? await Task.sleep(for: .seconds(3))
+                    try? await Task.sleep(for: .seconds(pace))
                     guard let self, !Task.isCancelled else { return }
-                    if NSApplication.shared.isActive { self.checkModel() }
+                    if self.isFrontmost() { self.checkModel() }
                 }
             }
         }
@@ -296,7 +301,9 @@ public final class GameApp {
     /// A realm hosted here turns its watch on time, as a server would.
     private func startTicking(_ realm: LocalRealm) {
         guard ticker == nil else { return }
-        ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak realm] _ in
+        ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak realm] timer in
+            // Gone with the realm it keeps time for.
+            guard realm != nil else { return timer.invalidate() }
             MainActor.assumeIsolated { realm?.tick() }
         }
     }
@@ -433,9 +440,12 @@ public final class GameApp {
     /// Leaves the front door for the launcher.
     public func leaveDoor() {
         stopWaiting()
-        // Back in the launcher, the model is the launcher's to watch for.
+        // Back in the launcher, the model is the launcher's to watch for,
+        // and a realm hosted here rests until the door is opened again.
         recheckTask?.cancel()
         recheckTask = nil
+        ticker?.invalidate()
+        ticker = nil
         releaseLink()
         ambience.isAtWar = false
         ambience.stop()
