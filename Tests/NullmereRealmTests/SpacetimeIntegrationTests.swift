@@ -239,5 +239,71 @@ final class SpacetimeIntegrationTests: XCTestCase {
         try await until("the pushed word", timeout: 20) { c.pushes > 0 && (earC.lastStatus?.watch ?? 0) > watch }
         await MainActor.run { c.close() }
         print("REALM SpacetimeDB pushed the realm's changes to a client over its WebSocket")
+
+        // Keeper to keeper: Ama's envoy carries an offer of trade to Bel,
+        // who takes it, and the stores change hands.
+        let houseB = try await MainActor.run { try XCTUnwrap(earB.keeper?.house) }
+        await MainActor.run { a.send(.offerTrade(Trade(give: .grain, 10, for: .stone, 10), to: houseB, words: nil)) }
+        try await until("Ama's envoy at Bel's gate") {
+            earB.world?.envoys.contains { $0.from == houseA && $0.to == houseB && $0.proposal == .trade } == true
+        }
+        let envoy = try await MainActor.run {
+            try XCTUnwrap(earB.world?.envoys.first { $0.from == houseA && $0.to == houseB && $0.proposal == .trade })
+        }
+        let grain = try await MainActor.run { try XCTUnwrap(earB.world?.houses[houseB].stock.grain) }
+        await MainActor.run { b.send(.answer(envoy: envoy.id, accept: true)) }
+        try await until("the trade kept, as Bel's stores show it") { (earB.world?.houses[houseB].stock.grain ?? 0) >= grain + 10 }
+        print("REALM one keeper's envoy carried a trade to another, who took it, and the stores changed hands")
+
+        // Then war between them, as both see it.
+        await MainActor.run { a.send(.declareWar(on: houseB)) }
+        try await until("war, as both keepers see it") {
+            earA.world?.isAtWar(houseA, houseB) == true && earB.world?.isAtWar(houseA, houseB) == true
+        }
+        print("REALM one keeper declared war on another, and both saw it")
+
+        // Ama marches on Bel's seat, watch by watch as both keepers turn
+        // them, and strikes at it.
+        let realm: GameState = await steward.state.world
+        let belsSeat: Hold = try XCTUnwrap(realm.seat(of: houseB))
+        let target: Hex = belsSeat.position
+        let soldiers: [NullmereCore.Unit] = realm.units(of: houseA).filter { $0.kind.isMilitary }
+        let marcher: NullmereCore.Unit = try XCTUnwrap(soldiers.min { $0.position.distance(to: target) < $1.position.distance(to: target) })
+        let free: [Hex] = target.neighbors.filter { hex in
+            realm.map[hex]?.terrain.isPassable == true && realm.unit(at: hex) == nil && realm.hold(at: hex) == nil
+        }
+        let gate: Hex = try XCTUnwrap(free.min { $0.distance(to: marcher.position) < $1.distance(to: marcher.position) })
+        await MainActor.run { a.send(.move(unit: marcher.id, to: gate)) }
+        var watches = 0
+        while try await MainActor.run(body: { try XCTUnwrap(earA.world?.unit(marcher.id), "Ama's company lives").position != gate }) {
+            guard watches < 30 else { return XCTFail("Ama's company never reached Bel's gate") }
+            let now = try await MainActor.run { try XCTUnwrap(earA.world?.watch) }
+            await MainActor.run {
+                a.setReady(true)
+                b.setReady(true)
+            }
+            try await until("watch \(now + 1)") { (earA.world?.watch ?? 0) > now && (earB.world?.watch ?? 0) > now }
+            watches += 1
+            // Its way blocked a while, it is sent on again.
+            if await MainActor.run(body: { earA.world?.unit(marcher.id)?.destination == nil && earA.world?.unit(marcher.id)?.position != gate }) {
+                await MainActor.run { a.send(.move(unit: marcher.id, to: gate)) }
+            }
+        }
+        await MainActor.run { a.send(.attack(unit: marcher.id, target: belsSeat.position)) }
+        try await until("the blow, as Ama is told it") {
+            earA.events.contains { event in
+                if case .answered(let events) = event { return events.contains { if case .battle = $0 { return true } else { return false } } }
+                return false
+            }
+        }
+        try await until("the blow, as Bel hears it") {
+            earB.events.contains { event in
+                if case .heard(let events) = event {
+                    return events.contains { if case .battle(let battle) = $0 { return battle.defenderOwner == houseB } else { return false } }
+                }
+                return false
+            }
+        }
+        print("REALM one keeper marched on another's seat over \(watches) watches and struck it, and both saw the blow")
     }
 }
