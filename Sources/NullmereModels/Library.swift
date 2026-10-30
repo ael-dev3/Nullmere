@@ -43,6 +43,9 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     case lair(WildKind)
     /// An alliance's standard, its banner in the alliance's colour.
     case standard
+    /// An alliance's hall, its roof, cone and banners in the alliance's
+    /// colour.
+    case allianceHall
 
     public var description: String {
         switch self {
@@ -62,6 +65,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .shrine(let kind): return "\(kind.rawValue) shrine"
         case .lair(let kind): return "\(kind.rawValue) lair"
         case .standard: return "standard"
+        case .allianceHall: return "alliance hall"
         }
     }
 
@@ -102,7 +106,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
             let count = ModelKey.commanderVariants
             return .commander(variant: (variant % count + count) % count)
         case .study(let level): return .study(level: clamp(level, ModelKey.studyLevels))
-        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .standard, .signature: return self
+        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .standard, .allianceHall, .signature: return self
         }
     }
 
@@ -117,7 +121,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         switch self {
         case .figure, .signature, .wild, .commander: return 700
         case .furnishing, .prop: return 300
-        case .keep, .keepOf: return 4500
+        case .keep, .keepOf, .allianceHall: return 4500
         case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .standard: return 3000
         }
     }
@@ -237,6 +241,7 @@ public enum Library {
         keys += ShrineKind.allCases.map { .shrine($0) }
         keys += WildKind.allCases.map { .lair($0) }
         keys.append(.standard)
+        keys.append(.allianceHall)
         keys += Heritage.allCases.map { .signature($0) }
         return keys
     }()
@@ -261,6 +266,7 @@ public enum Library {
         case .shrine(let kind): return Land.shrine(kind, name: key.canonical.description)
         case .lair(let kind): return Lairs.build(kind, name: key.canonical.description)
         case .standard: return Land.standard(name: key.canonical.description)
+        case .allianceHall: return Halls.hall(name: key.canonical.description)
         }
         return Model(name: key.canonical.description, mesh: mesh)
     }
@@ -274,6 +280,7 @@ public enum Library {
         case .work(.saltworks, let level) where level >= 2: return [Works.saltChimney(level)]
         case .lair(let kind): return Lairs.fire(of: kind).map { [$0] } ?? []
         case .work(.infirmary, let level) where level >= 2: return [Works.infirmaryChimney(level)]
+        case .allianceHall: return [Halls.smoke]
         default: return []
         }
     }

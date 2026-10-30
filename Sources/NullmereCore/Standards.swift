@@ -27,7 +27,8 @@ public struct Standard: Codable, Equatable, Identifiable, Sendable {
     public static let maximumWard = 60
     /// How far about it its land reaches.
     public static let reach = 2
-    /// How near one of the alliance's holds or standards a new one must stand.
+    /// How near one of the alliance's holds, standards or its hall a new one
+    /// must stand.
     public static let tether = 4
     /// How near another House's hold it may stand, and no nearer.
     public static let fromOthers = 3
@@ -66,10 +67,22 @@ extension GameState {
     }
 
     /// The alliance whose land a hex is, if any: that of the nearest
-    /// standard within its reach.
+    /// standard, or hall standing whole, within its reach.
     public func allianceLand(at hex: Hex) -> Int? {
-        standardsStanding.filter { $0.position.distance(to: hex) <= Standard.reach }
-            .min { ($0.position.distance(to: hex), $0.id) < ($1.position.distance(to: hex), $1.id) }?.alliance
+        var nearest: (distance: Int, id: Int, alliance: Int)?
+        func consider(_ position: Hex, reach: Int, id: Int, alliance: Int) {
+            let distance = position.distance(to: hex)
+            guard distance <= reach else { return }
+            if let best = nearest, (best.distance, best.id) <= (distance, id) { return }
+            nearest = (distance, id, alliance)
+        }
+        for standard in standards ?? [] {
+            consider(standard.position, reach: Standard.reach, id: standard.id, alliance: standard.alliance)
+        }
+        for hall in halls ?? [] where hall.isWhole {
+            consider(hall.position, reach: AllianceHall.reach, id: hall.id, alliance: hall.alliance)
+        }
+        return nearest?.alliance
     }
 
     /// Whether a company stands on its own alliance's land.
@@ -86,12 +99,14 @@ extension GameState {
         guard tile.terrain.isPassable, !tile.terrain.isWater else { return .impassable(tile.terrain) }
         guard !isOccupied(hex), site(at: hex) == nil, shrine(at: hex) == nil, standard(at: hex) == nil else { return .standardGround }
         let own = holds.filter { sworn.members.contains($0.owner) }.map(\.position) + standards(of: sworn.id).map(\.position)
+            + (hall(of: sworn.id).map { [$0.position] } ?? [])
         guard own.contains(where: { $0.distance(to: hex) <= Standard.tether }) else { return .standardTooFar }
         guard holds.allSatisfy({ sworn.members.contains($0.owner) || $0.position.distance(to: hex) > Standard.fromOthers }),
-              standardsStanding.allSatisfy({ $0.alliance == sworn.id || $0.position.distance(to: hex) > 2 * Standard.reach }) else {
+              standardsStanding.allSatisfy({ $0.alliance == sworn.id || $0.position.distance(to: hex) > 2 * Standard.reach }),
+              hallsStanding.allSatisfy({ $0.alliance == sworn.id || $0.position.distance(to: hex) > AllianceHall.reach + Standard.reach }) else {
             return .foreignTerritory
         }
-        guard standards(of: sworn.id).count < Standard.allowed(members: sworn.members.count) else { return .standardsEnough }
+        guard standards(of: sworn.id).count < standardsAllowed(for: sworn) else { return .standardsEnough }
         guard houses[house].stock.covers(Standard.cost) else { return .shortOf(houses[house].stock.shortfall(for: Standard.cost)) }
         return nil
     }

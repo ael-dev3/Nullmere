@@ -14,6 +14,8 @@ extension GameState {
         var events: [GameEvent] = []
         // A world from before commanders takes them up now.
         if commanders == nil { raiseFirstCommanders() }
+        // A world from before its rounds were kept keeps them from now on.
+        if dealing == nil { dealing = dealt }
         // In a realm, whose watch passes pace by pace, what the paces left
         // unwalked (the watch turning early, or a pace's way shut) is
         // walked now, before the stewards still to act look at the lake.
@@ -67,6 +69,7 @@ extension GameState {
         raiseShrines()
         events += holdShrines()
         events += keepStandards()
+        events += keepHalls()
         raiseWilds()
         raiseLairs()
         raiseSites()

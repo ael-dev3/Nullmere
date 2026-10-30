@@ -82,7 +82,8 @@ public enum Command: Codable, Equatable, Sendable {
     /// their moves, and bring back what they saw.
     case scout(unit: Int, hold: Int)
     /// A House of an alliance raises a standard on open land near the
-    /// alliance's holds or standards: the land about it is the alliance's.
+    /// alliance's holds, standards or hall: the land about it is the
+    /// alliance's.
     case raiseStandard(at: Hex)
     /// A House uses an item from its satchel: a ward stone, or an hourglass
     /// that hastens a hold's work and muster, on one of its holds; caches,
@@ -95,6 +96,8 @@ public enum Command: Codable, Equatable, Sendable {
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
     case giveToAlliance(Stock)
+    /// An alliance's leader begins its hall on the alliance's own land.
+    case raiseAllianceHall(at: Hex)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -258,6 +261,14 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case noAllianceStudy
     /// A gift to the alliance of nothing, or of less than nothing.
     case nothingGiven
+    /// A hall begun by an alliance that has one standing or rising.
+    case hallStanding
+    /// A hall begun where something stands already.
+    case hallGround
+    /// A hall begun off the alliance's own land.
+    case notAllianceLand
+    /// A hold founded on a standard's or a hall's ground.
+    case allianceGround
     /// Words from a House no keeper holds.
     case notAKeeper
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -358,7 +369,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .unknownLair: return "No such lair is known to your House."
         case .unexplored: return "Your House hasn't seen that ground."
         case .standardGround: return "A standard stands only on open land, with nothing on it."
-        case .standardTooFar: return "A standard stands within four tiles of your alliance's holds or standards."
+        case .standardTooFar: return "A standard stands within four tiles of your alliance's holds, standards or hall."
         case .standardsEnough: return "Your alliance keeps as many standards as it may: one, and one more for each of its Houses."
         case .noItem: return "Your House has none of that."
         case .nothingToHasten: return "Nothing under way there has a watch to spare: what has one left is done as the watch turns."
@@ -369,6 +380,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .alreadyPursued: return "Your alliance pursues that study already."
         case .noAllianceStudy: return "Your alliance pursues no study: its leader chooses one in the Alliance screen."
         case .nothingGiven: return "Give some of your stores, and none of them less than nothing."
+        case .hallStanding: return "Your alliance has its hall already: it raises one, and another only once that one falls."
+        case .hallGround: return "A hall stands only on open land, with nothing on it."
+        case .notAllianceLand: return "A hall stands on your alliance's own land, within reach of its standards."
+        case .allianceGround: return "An alliance's standard or hall stands here: a hold is founded on open land."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
         case .notAKeeper: return "Only a keeper's words are carried."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -466,6 +481,15 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case allianceGift(house: Int, alliance: Int, stock: Stock, study: AllianceStudy, grade: Int)
     /// An alliance learns a grade of a study together.
     case allianceStudied(alliance: Int, study: AllianceStudy, grade: Int)
+    /// An alliance's leader begins its hall.
+    case hallRaised(hall: Int, alliance: Int, house: Int, at: Hex)
+    /// An alliance's hall has risen whole.
+    case hallRisen(hall: Int, alliance: Int, at: Hex)
+    /// A company strikes an alliance's hall.
+    case hallStruck(hall: Int, alliance: Int, ward: Int, by: Int, at: Hex)
+    /// An alliance's hall comes down: torn down by a House, or by none,
+    /// its alliance no more.
+    case hallTorn(hall: Int, alliance: Int, by: Int?, at: Hex)
     /// A company strikes a company of the wilds.
     case hunted(Hunt)
     /// A company sets out to work a site.

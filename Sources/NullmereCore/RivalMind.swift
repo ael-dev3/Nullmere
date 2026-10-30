@@ -86,6 +86,7 @@ struct RivalMind {
         if !caretaking {
             events += studyTogether(in: &state)
             events += raiseStandard(in: &state)
+            events += raiseHall(in: &state)
             events += callRally(in: &state, random: &random)
             events += sendToRallies(in: &state)
             events += keepAlliesGates(in: &state)
@@ -124,7 +125,7 @@ struct RivalMind {
     /// in none.
     private func raiseStandard(in state: inout GameState) -> [GameEvent] {
         guard state.watch >= RivalMind.standardsFrom, (state.watch + house) % 6 == 0, let sworn = state.alliance(of: house),
-              state.standards(of: sworn.id).count < Standard.allowed(members: sworn.members.count),
+              state.standards(of: sworn.id).count < state.standardsAllowed(for: sworn),
               state.houses[house].stock.covers(Standard.cost * 2) else { return [] }
         let mine = state.holds(of: house).map(\.position)
         let sites = state.sitesInLand.map(\.position)
@@ -134,6 +135,26 @@ struct RivalMind {
         }.max { a, b in (a.sites, -a.near, b.hex) < (b.sites, -b.near, a.hex) }
         guard let best, best.sites > 0 else { return [] }
         return perform(.raiseStandard(at: best.hex), in: &state)
+    }
+
+    /// The watch from which stewards raise their alliances' halls.
+    static let hallsFrom = 40
+    /// What a steward keeps back beyond a hall's cost before it begins one.
+    static let hallReserve = Stock(grain: 100, timber: 100, stone: 100, moonsalt: 10)
+
+    /// An alliance's leader with stores to spare begins the alliance's hall
+    /// one watch in four, on the alliance's land nearest its own holds.
+    private func raiseHall(in state: inout GameState) -> [GameEvent] {
+        guard state.watch >= RivalMind.hallsFrom, (state.watch + house) % 4 == 0, let sworn = state.alliance(of: house),
+              sworn.leader == house, state.hall(of: sworn.id) == nil,
+              state.houses[house].stock.covers(AllianceHall.cost + RivalMind.hallReserve) else { return [] }
+        let mine = state.holds(of: house).map(\.position)
+        let spots = Set(state.standards(of: sworn.id).flatMap { $0.position.spiral(Standard.reach) })
+            .filter { state.hallRefusal(at: $0, by: house) == nil }
+        let best = spots.map { hex in (hex: hex, near: mine.map { $0.distance(to: hex) }.min() ?? 99) }
+            .min { a, b in (a.near, a.hex) < (b.near, b.hex) }
+        guard let best else { return [] }
+        return perform(.raiseAllianceHall(at: best.hex), in: &state)
     }
 
     /// What a steward holds of each store before it gives to its alliance's
@@ -957,9 +978,10 @@ struct RivalMind {
         if let target = foeInReach(of: unit, in: state) {
             return perform(.attack(unit: unit.id, target: target), in: &state)
         }
-        // A foe's standard within reach, with no company on it, is torn down.
+        // A foe's standard or hall within reach, with no company on it, is torn down.
         if unit.movesLeft > 0, let flag = unit.position.spiral(unit.kind.range).dropFirst().first(where: { hex in
-            state.unit(at: hex) == nil && state.standard(at: hex).map { state.isAtWar(house, $0.raisedBy) } == true
+            state.unit(at: hex) == nil && (state.standard(at: hex).map { state.isAtWar(house, $0.raisedBy) } == true
+                || state.hall(at: hex).map { state.isFoe(house, of: $0) } == true)
         }) {
             return perform(.attack(unit: unit.id, target: flag), in: &state)
         }

@@ -238,6 +238,24 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(stage.standards([]).isEmpty)
     }
 
+    func testHallsStandInTheirAlliancesColoursRisingInTheirScaffolds() throws {
+        let stage = stage()
+        let hexes = Array(Self.state.map.hexes.filter { hex in
+            Self.state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true
+        }.prefix(2))
+        let blue = Vec4(0.1, 0.2, 0.9, 1), gold = Vec4(0.8, 0.7, 0.2, 1)
+        let (batches, hearths) = stage.halls([HallSight(hex: hexes[0], colour: blue), HallSight(hex: hexes[1], colour: gold, progress: 0.25)])
+        XCTAssertEqual(Set(batches.map(\.key)), [.allianceHall, .scaffold])
+        let halls = try XCTUnwrap(batches.first { $0.key == .allianceHall }).instances
+        XCTAssertEqual(halls.map(\.colour), [blue, gold])
+        XCTAssertEqual(halls[0].params.x, WorldStage.whole, "Whole, drawn whole")
+        XCTAssertLessThan(halls[1].params.x, WorldStage.whole, "Rising, drawn so far")
+        XCTAssertEqual(try XCTUnwrap(batches.first { $0.key == .scaffold }).instances.count, 1, "A scaffold about the one rising")
+        XCTAssertEqual(hearths.map(\.hex), [hexes[0]], "Only a whole hall's louvre smokes")
+        XCTAssertEqual(stage.risingHalls([HallSight(hex: hexes[0], colour: blue), HallSight(hex: hexes[1], colour: gold, progress: 0.25)]).count, 1)
+        XCTAssertTrue(stage.halls([]).batches.isEmpty)
+    }
+
     func testFirefliesWanderOverTheReedsAndGrassNearest() {
         let stage = stage()
         _ = stage.furnish(occupied: [], holds: [])

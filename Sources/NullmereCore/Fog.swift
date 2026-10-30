@@ -10,7 +10,9 @@ extension GameState {
 
     public func view(for house: Int) -> GameState {
         var view = self
-        // The realm's words would grow the whole map again.
+        // The realm's words would grow the whole map again; where its
+        // rounds begin is all the keeper's copy needs of them.
+        view.dealing = dealt
         view.settings.seedText = ""
         let explored = houses.indices.contains(house) ? houses[house].explored : []
         for index in 0..<map.count where !(explored.indices.contains(index) && explored[index]) {
@@ -85,8 +87,9 @@ extension GameState {
         view.lairs = lairs?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
         // The holy sites on ground they have explored, and who holds them.
         view.shrines = shrines?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
-        // The alliances' standards on ground they have explored.
+        // The alliances' standards and halls on ground they have explored.
         view.standards = standards?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
+        view.halls = halls?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
         // The battles going on that they can see a side of.
         view.engagements = engagements?.filter { view.unit($0.attacker) != nil || view.unit($0.defender) != nil }
         // The marches they may know of, worked out on what they see.
@@ -143,6 +146,12 @@ extension GameState {
                 return by == house || alliance(id)?.members.contains(house) == true || visible(at)
             case .standardStruck(let id, _, let by, let at):
                 return by == house || standard(id).flatMap { alliance($0.alliance) }?.members.contains(house) == true || visible(at)
+            case .hallRaised(_, let id, _, let at), .hallRisen(_, let id, let at):
+                return alliance(id)?.members.contains(house) == true || visible(at)
+            case .hallStruck(_, let id, _, let by, let at):
+                return by == house || alliance(id)?.members.contains(house) == true || visible(at)
+            case .hallTorn(_, let id, let by, let at):
+                return by == house || alliance(id)?.members.contains(house) == true || visible(at)
             case .commanderAssigned(let id, _), .commanderReleased(let id):
                 return commander(id)?.owner == house
             case .skillFired(_, let owner, _, let at):

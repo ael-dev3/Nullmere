@@ -391,6 +391,8 @@ final class AllianceTests: XCTestCase {
         XCTAssertNil(said(.allianceAnswered(alliance: id, house: 1, accepted: true)), "Told by its joining")
         XCTAssertEqual(said(.allianceAnswered(alliance: id, house: 1, accepted: false), to: 1), "There is no place for you in Greycloak now.")
         XCTAssertEqual(said(.allianceAnswered(alliance: id, house: 1, accepted: false)), "\(them) stays outside Greycloak.")
+        XCTAssertEqual(said(.allianceAnswered(alliance: 777, house: 1, accepted: false)), "\(them) stays outside the alliance.",
+                       "Told even of an alliance gone")
         XCTAssertEqual(said(.allianceJoined(alliance: id, house: 1), to: 1), "You are sworn to Greycloak.")
         XCTAssertEqual(state.tidings(of: .allianceJoined(alliance: id, house: 1), for: me), Tidings("\(them) joins Greycloak.", .good))
         XCTAssertEqual(state.tidings(of: .allianceJoined(alliance: id, house: 1), for: 2)?.tone, .neutral)

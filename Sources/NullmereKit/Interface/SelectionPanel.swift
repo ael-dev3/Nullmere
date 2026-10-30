@@ -848,6 +848,41 @@ struct StandardRow: View {
     }
 }
 
+/// Beginning the keeper's alliance's hall on its land, for its cost, or
+/// why it can't be begun there: offered to the alliance's leader on the
+/// alliance's land while it has none.
+struct HallRow: View {
+    let session: GameSession
+    let hex: Hex
+
+    /// Whether the row is offered on a hex: to the leader, on the
+    /// alliance's land, while the alliance has no hall.
+    static func offered(at hex: Hex, to house: Int, of alliance: Alliance, in state: GameState) -> Bool {
+        alliance.leader == house && state.hall(of: alliance.id) == nil && state.allianceLand(at: hex) == alliance.id
+    }
+
+    var body: some View {
+        let state = session.state
+        let refusal = state.refusal(of: .raiseAllianceHall(at: hex), as: session.player)
+        VStack(alignment: .leading, spacing: 5) {
+            Text(verbatim: "Begin your alliance's hall here. It rises over \(AllianceHall.raising) watches; whole, the land "
+                 + "\(AllianceHall.reach) tiles about it is the alliance's, its keepers stand a quarter firmer, your alliance's rallies "
+                 + "take \(AllianceHall.rallyCompanies) more companies and it may keep \(AllianceHall.standards) more standards.")
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                CostLine(cost: AllianceHall.cost, available: state.houses[session.player].stock)
+                Spacer()
+                QuietButton(title: "Begin the hall", size: 8.5, enabled: refusal == nil, name: "Begin your alliance's hall here",
+                            why: refusal?.description) {
+                    session.perform(.raiseAllianceHall(at: hex))
+                }
+            }
+        }
+    }
+}
+
 private struct TilePanel: View {
     let session: GameSession
     let hex: Hex
@@ -904,7 +939,15 @@ private struct TilePanel: View {
                     Rule(opacity: 0.18)
                     LairRally(session: session, lair: lair)
                 }
-                if let standard = state.standard(at: hex) {
+                if let hall = state.hall(at: hex) {
+                    Rule(opacity: 0.18)
+                    Caps("The hall of \(state.alliance(hall.alliance)?.name ?? "a fallen alliance")", size: 9.5, weight: .medium)
+                        .foregroundStyle(Palette.glowWords)
+                    Text(verbatim: HoverInfo.described(hall, in: state))
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if let standard = state.standard(at: hex) {
                     Rule(opacity: 0.18)
                     Caps("A standard of \(state.alliance(standard.alliance)?.name ?? "a fallen alliance")", size: 9.5, weight: .medium)
                         .foregroundStyle(Palette.glowWords)
@@ -914,9 +957,12 @@ private struct TilePanel: View {
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.text(0.6))
                         .fixedSize(horizontal: false, vertical: true)
-                } else if state.alliance(of: session.player) != nil {
+                } else if let sworn = state.alliance(of: session.player) {
                     Rule(opacity: 0.18)
                     StandardRow(session: session, hex: hex)
+                    if HallRow.offered(at: hex, to: session.player, of: sworn, in: state) {
+                        HallRow(session: session, hex: hex)
+                    }
                 }
                 if let site = state.site(at: hex) {
                     Rule(opacity: 0.18)

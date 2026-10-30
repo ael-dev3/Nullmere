@@ -78,9 +78,11 @@ extension GameState {
         rallies?.firstIndex { $0.id == id }
     }
 
-    /// The companies a rally's muster takes.
+    /// The companies a rally's muster takes: more while its caller's
+    /// alliance's hall stands whole.
     public func capacity(of rally: Rally) -> Int {
         Rally.capacity(musterHall: hold(rally.muster)?.level(.musterHall) ?? 0)
+            + (wholeHall(for: rally.caller) != nil ? AllianceHall.rallyCompanies : 0)
     }
 
     /// Whether a House is of a rally's side: its caller, or sworn with it.
@@ -330,6 +332,18 @@ extension GameState {
         release(units.filter { $0.errand == .rally(rallyID) }.map(\.id), from: rallyID)
         rallies!.removeAll { $0.id == rallyID }
         return [.rallyDispersed(rally: rallyID, caller: rally.caller)]
+    }
+
+    /// Rallies holding more companies than their musters now take, their
+    /// alliance's hall fallen or their caller gone from it, send the last
+    /// sent back to their Houses' orders.
+    mutating func fitRallies() {
+        for rally in ralliesStanding {
+            let room = capacity(of: rally)
+            guard rally.companies.count > room, let index = rallyIndex(rally.id) else { continue }
+            release(Array(rally.companies[room...]), from: rally.id)
+            rallies![index].companies = Array(rally.companies.prefix(room))
+        }
     }
 
     /// Companies sent to a rally go back to their House's orders, where

@@ -181,6 +181,8 @@ final class RootRenderTests: XCTestCase {
                    .gifted(from: 0, to: 1, gift: Stock(grain: 5)), .gifted(from: 1, to: 0, gift: Stock(grain: 5))]
         var told = 0, kinds = Set<String>(), toldKinds = Set<String>()
         for event in events {
+            // A House taken in is told by its joining, not its answer.
+            if case .allianceAnswered(_, _, true) = event { continue }
             let kind = String(describing: event).prefix { $0 != "(" }.description
             kinds.insert(kind)
             for viewer in state.houses.indices {

@@ -91,6 +91,8 @@ extension GameState {
             return try pursue(study, by: house)
         case let .giveToAlliance(stock):
             return try giveToAlliance(stock, by: house)
+        case let .raiseAllianceHall(hex):
+            return try raiseHall(at: hex, by: house)
         case let .inviteToAlliance(target):
             return try invite(target, by: house)
         case let .askToJoin(allianceID):
@@ -154,7 +156,8 @@ extension GameState {
         // Marching onto an enemy within reach is an attack, and onto the wilds.
         if unit.kind.isMilitary, unit.position.distance(to: target) <= unit.kind.range,
            wild(at: target) != nil || lair(at: target) != nil || foe(at: target, for: house).map({ isAtWar(house, $0.owner) }) == true
-            || (self.unit(at: target) == nil && standard(at: target).map { isAtWar(house, $0.raisedBy) } == true) {
+            || (self.unit(at: target) == nil && standard(at: target).map { isAtWar(house, $0.raisedBy) } == true)
+            || (self.unit(at: target) == nil && hall(at: target).map { isFoe(house, of: $0) } == true) {
             return try attack(with: unitID, at: target, as: house)
         }
         guard unknown || path(for: unit, to: target) != nil else { throw .noPath }
@@ -193,6 +196,11 @@ extension GameState {
             // Another company holds the destination, or the wilds or their lair: wait beside it.
             if self.unit(at: next) != nil || wild(at: next) != nil || lair(at: next) != nil { break }
             if let hold = hold(at: next), hold.owner != unit.owner {
+                units[index].destination = nil
+                break
+            }
+            // Only its alliance's companies enter a hall.
+            if let hall = hall(at: next), !isOfHall(unit.owner, hall) {
                 units[index].destination = nil
                 break
             }
@@ -263,6 +271,12 @@ extension GameState {
             guard isAtWar(house, standard.raisedBy) else { throw .notAtWar(standard.raisedBy) }
             guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
             return strike(standard: standard.id, with: unitID)
+        }
+        // An alliance's hall with no company keeping it.
+        if unit(at: target) == nil, let hall = hall(at: target), !isOfHall(house, hall) {
+            guard isFoe(house, of: hall) else { throw .notAtWar(alliance(hall.alliance)?.leader ?? hall.raisedBy) }
+            guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
+            return strike(hall: hall.id, with: unitID)
         }
         // The wilds are every House's foe: no war is needed to strike them.
         if let wild = wild(at: target) {
@@ -386,6 +400,7 @@ extension GameState {
     /// ground, so no foe dying at its gates can empty its hold.
     func takesTheField(_ attacker: Unit, at hex: Hex) -> Bool {
         attacker.position.distance(to: hex) == 1 && hold(at: attacker.position) == nil && hold(at: hex) == nil
+            && hall(at: hex).map { isOfHall(attacker.owner, $0) } != false
     }
 
     /// Attack and defence in a fight between two units, before chance.
@@ -399,6 +414,9 @@ extension GameState {
             + (isOnOwnLand(defender) ? Standard.defence : 0)
         if let hold = hold(at: hex), hold.owner == defender.owner {
             defenseBonus += Hold.garrisonBonus(wallLevel: hold.level(.walls)) + bonus(.garrison, for: defender)
+        }
+        if let hall = hall(at: hex), hall.isWhole, isOfHall(defender.owner, hall) {
+            defenseBonus += AllianceHall.garrison
         }
         if attacker.kind == .rider {
             defenseBonus += defender.kind.bonusAgainstRiders
@@ -551,6 +569,7 @@ extension GameState {
         if holds.contains(where: { $0.position.distance(to: hex) < 3 }) { return .tooCloseToHold }
         if let owner = territoryOwner(of: hex), owner != house { return .foreignTerritory }
         if shrine(at: hex) != nil { return .holySite }
+        if standard(at: hex) != nil || hall(at: hex) != nil { return .allianceGround }
         return nil
     }
 

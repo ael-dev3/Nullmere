@@ -652,13 +652,14 @@ realm; keepers are told in plain words, never a status code.
   round apse and a well, a covered walk with lanterns, and at the fifth a
   bell-cote and a moonsalt lamp. The healers' work has its own sound.
 - **Alliance land.** A House of an alliance raises a standard on open
-  ground it has explored, within four tiles of the alliance's holds or
-  standards and more than three from any other House's hold, for 60
+  ground it has explored, within four tiles of the alliance's holds,
+  standards or hall and more than three from any other House's hold, for 60
   timber, 40 stone and 2 moonsalt: the land two tiles about it is the
   alliance's. There the alliance's companies stand a tenth firmer, mend
   five more each watch and gather a fifth more at the land's sites. An
   alliance keeps one standard, and one more for each of its Houses, eight
-  at most; no two alliances' lands overlap. A standard has a ward of 60
+  at most (two more while its hall stands); no two alliances' lands
+  overlap, and no hold is founded on a standard's ground. A standard has a ward of 60
   that mends ten a watch; a House at war with the one that raised it
   strikes it and tears it down when it breaks, as the chronicle tells. A
   House gone from the alliance, or fallen, takes its standards down as the
@@ -703,6 +704,29 @@ realm; keepers are told in plain words, never a status code.
   steward that leads an alliance chooses a study by its temper, and every
   steward of one gives a tenth of what it holds beyond plenty, one watch
   in three.
+- **Alliance hall.** An alliance's leader begins its hall, its fortress,
+  on open ground of the alliance's own land (within reach of its
+  standards), more than three tiles from any other House's hold and clear
+  of other alliances' land, for 200 grain, 400 timber, 400 stone and 20
+  moonsalt; an alliance has one. It rises over four watches, its ward with
+  it from 40 to 240. Whole, the land three tiles about it is the
+  alliance's, the alliance's companies keeping it stand a quarter firmer,
+  the rallies its Houses call take two more companies, and the alliance
+  may keep two more standards; its ward mends fifteen a watch. Only the
+  alliance's companies enter it or pass through it; a House at war with
+  any of its Houses strikes it when none keeps it and tears it down when
+  its ward breaks, and a hall whose alliance is no more falls into ruin.
+  When it falls, its alliance's rallies send home the companies they no
+  longer have room for. A steward that leads an alliance with stores to
+  spare begins one from the fortieth watch on its land nearest its own
+  holds; stewards at war tear down a foe's hall left unkept. The hall is
+  modelled: a timbered hall on a platform of dressed stone, its roof, its
+  tower's cone and its banners in the leader's colour, braziers burning at
+  its door and smoke from its louvre; it rises from its platform within a
+  scaffold, a watch's height at a time, the dust of its building about
+  it, and burns when struck low. It is named on hover; its ground's panel
+  describes it or, to the leader, begins it; the Alliance screen tells how
+  it stands; and each of its happenings has its sound and its place.
 - **Heritages.** Every House comes of one of the lake's six peoples,
   dealt round the lake as an age begins, from a seat the seed chooses, so
   each has its seats: the Saltborn (half again the moonsalt from their

@@ -125,6 +125,8 @@ public final class GameSession {
     @ObservationIgnored var beforeAdopted: [Int: Hex] = [:]
     /// Each hold's work rising, as last drawn.
     @ObservationIgnored var risings: [Int: Rising] = [:]
+    /// Each alliance's hall rising, as last drawn, by its id.
+    @ObservationIgnored var hallRisings: [Int: HallRising] = [:]
     /// Each company's clip as last drawn, and the one it is easing out of.
     @ObservationIgnored var clipsShown: [Int: ClipShown] = [:]
     /// Works finished lately, for the dust of their last course.
@@ -696,7 +698,8 @@ public final class GameSession {
         switch event {
         case .battle, .unitLost, .holdStruck, .holdCaptured, .seatMoved, .promoted, .ruinSearched, .holdFounded,
              .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired, .hunted,
-             .gearFound, .carriedToInfirmary, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted, .standardStruck, .standardTorn:
+             .gearFound, .carriedToInfirmary, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted, .standardStruck, .standardTorn,
+             .hallStruck, .hallTorn:
             return true
         default:
             return false
@@ -1101,6 +1104,7 @@ public final class GameSession {
             stage = nil
             headings = [:]
             risings = [:]
+            hallRisings = [:]
             clipsShown = [:]
             completions = []
         }
@@ -1186,6 +1190,7 @@ public final class GameSession {
         case .takeHeritage: return .banner
         case .pursueAllianceStudy: return .lore
         case .giveToAlliance: return .coin
+        case .raiseAllianceHall: return .rise
         default: return .select
         }
     }
@@ -1244,6 +1249,11 @@ public final class GameSession {
             && state?.standard(standard).map({ $0.alliance == state?.alliance(of: player)?.id }) == true: return .batter
         case .standardTorn(_, _, let by, _) where by == player: return .triumph
         case .standardTorn(_, let alliance, _, _) where state?.alliance(of: player)?.id == alliance: return .dread
+        case .hallRaised(_, let id, _, _) where alliance == id: return .rise
+        case .hallRisen(_, let id, _) where alliance == id: return .complete
+        case .hallStruck(_, let id, _, let by, _) where by != player && alliance == id: return .batter
+        case .hallTorn(_, _, let by, _) where by == player: return .triumph
+        case .hallTorn(_, let id, _, _) where alliance == id: return .dread
         case .scoutSeen(let hold, _) where state?.hold(hold)?.owner == player: return .envoy
         case .hunted(let hunt) where hunt.attackerOwner == player: return hunt.attackerKind == .bow ? .loose : .clash
         case .sentToGather(let unit, _) where ours(unit): return .order
@@ -1371,6 +1381,8 @@ public final class GameSession {
         case .lairAssaulted(let assault):
             return assault.at
         case .standardRaised(_, _, _, let at), .standardStruck(_, _, _, let at), .standardTorn(_, _, _, let at):
+            return at
+        case .hallRaised(_, _, _, let at), .hallRisen(_, _, let at), .hallStruck(_, _, _, _, let at), .hallTorn(_, _, _, let at):
             return at
         case .itemUsed(_, _, let hold):
             return hold.flatMap { state.hold($0)?.position }

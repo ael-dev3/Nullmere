@@ -40,6 +40,12 @@ extension GameState {
                 blocked[index] = true
             }
         }
+        // Only its alliance's companies pass through a hall.
+        for hall in hallsStanding where !isOfHall(unit.owner, hall) {
+            if let index = map.index(of: hall.position), index != goal {
+                blocked[index] = true
+            }
+        }
         var best = [Int](repeating: Int.max, count: count)
         var cameFrom = [Int](repeating: -1, count: count)
         let hexes = map.hexes
@@ -167,9 +173,12 @@ struct MinHeap<Element: Comparable> {
 extension GameState {
     /// Every hex the unit could march to and stop on this watch, with the
     /// moves it would have left there: by the same steps a march takes, so
-    /// through no other unit and into no foreign hold.
+    /// through no other unit and into no foreign hold or other alliance's
+    /// hall.
     public func reach(of unit: Unit) -> [Hex: Int] {
         guard unit.movesLeft > 0, let start = map.index(of: unit.position) else { return [:] }
+        // What stands in the way: other companies, the wilds and their
+        // lairs, others' holds and other alliances' halls.
         var occupied = Set<Int>()
         for other in units where other.id != unit.id {
             if let index = map.index(of: other.position) { occupied.insert(index) }
@@ -180,6 +189,13 @@ extension GameState {
         for lair in lairsStanding {
             if let index = map.index(of: lair.position) { occupied.insert(index) }
         }
+        for hold in holds where hold.owner != unit.owner {
+            if let index = map.index(of: hold.position) { occupied.insert(index) }
+        }
+        for hall in hallsStanding where !isOfHall(unit.owner, hall) {
+            if let index = map.index(of: hall.position) { occupied.insert(index) }
+        }
+        let full = movement(of: unit)
         let hexes = map.hexes
         var left = [Int](repeating: -1, count: map.count)
         left[start] = unit.movesLeft
@@ -195,10 +211,9 @@ extension GameState {
                 guard let next = map.index(of: hexes[tile] + direction), !occupied.contains(next) else { continue }
                 let terrain = map[next].terrain
                 guard terrain.isPassable else { continue }
-                if let hold = hold(at: hexes[next]), hold.owner != unit.owner { continue }
                 // A step costs its terrain's moves; with all its moves a
                 // company can always take one step.
-                guard remaining >= terrain.moveCost || remaining == movement(of: unit) else { continue }
+                guard remaining >= terrain.moveCost || remaining == full else { continue }
                 let after = max(0, remaining - terrain.moveCost)
                 if after > left[next] {
                     left[next] = after

@@ -257,6 +257,47 @@ final class PlacementTests: XCTestCase {
         XCTAssertTrue(HoldLayout.pieces(study, relief: relief).contains { $0.key == .study(level: 1) && $0.progress == 0.6 })
     }
 
+    /// An alliance's hall fills its hex's heart, every stone within the hex
+    /// however it is turned; it stands on the lowest of its ground, its
+    /// platform from the first, the hall rising above it in a scaffold.
+    func testAnAlliancesHallRisesOnItsPlatformWithinItsHex() throws {
+        let layout = HexLayout(size: 1)
+        let hall = Library.model(.allianceHall).mesh
+        for front in 0..<6 {
+            let turn = Mat4.rotationY(Float.pi / 2 - Float(front) * .pi / 3)
+            for vertex in hall.vertices {
+                let p = turn.transformPoint(vertex.position)
+                XCTAssertEqual(layout.hex(atX: Double(p.x), y: Double(p.z)), .origin, "the hall within its hex")
+            }
+        }
+        XCTAssertGreaterThan(PlacementTests.reach(.allianceHall), PlacementTests.reach(.keep(seat: true)), "Broader than a seat's keep")
+        let state = PlacementTests.worlds[0]
+        let relief = Relief(map: state.map)
+        let hex = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && hex.distance(to: .origin) > 3
+        })
+        let whole = HoldLayout.hall(at: hex, progress: 1, relief: relief)
+        XCTAssertEqual(whole.map(\.key), [.allianceHall])
+        XCTAssertEqual(whole[0].progress, 1)
+        XCTAssertNil(whole[0].risen, "Whole, it is drawn whole")
+        let centre = Relief.centre(of: hex)
+        XCTAssertEqual(whole[0].position.x, centre.x, accuracy: 1e-4)
+        XCTAssertEqual(whole[0].position.z, centre.z, accuracy: 1e-4)
+        XCTAssertLessThanOrEqual(whole[0].position.y, relief.height(atX: centre.x, z: centre.z) + 1e-4, "On the lowest of its ground")
+        XCTAssertEqual(whole[0].smoke.count, 1, "Its louvre smokes")
+        // Begun: its platform stands, the hall not yet, a scaffold about it.
+        let begun = HoldLayout.hall(at: hex, progress: 0, relief: relief)
+        XCTAssertEqual(begun.map(\.key), [.allianceHall, .scaffold])
+        let bounds = Library.model(.allianceHall).mesh.bounds
+        XCTAssertEqual(try XCTUnwrap(begun[0].risen), Halls.floor, accuracy: 1e-4, "Drawn up to its floor")
+        let stretch = Vec3(begun[1].transform.c0.x, begun[1].transform.c0.y, begun[1].transform.c0.z).length
+        XCTAssertEqual(stretch, HoldLayout.hallScaffold, accuracy: 1e-4)
+        let half = HoldLayout.hall(at: hex, progress: 0.5, relief: relief)
+        XCTAssertGreaterThan(try XCTUnwrap(half[0].risen), Halls.floor)
+        XCTAssertLessThan(try XCTUnwrap(half[0].risen), bounds.max.y)
+        XCTAssertGreaterThan(half[1].transform.c1.y, begun[1].transform.c1.y, "The scaffold climbs with it")
+    }
+
     func testAHoldAsTheRulesKeepIt() throws {
         let state = PlacementTests.worlds[1]
         let relief = Relief(map: state.map)

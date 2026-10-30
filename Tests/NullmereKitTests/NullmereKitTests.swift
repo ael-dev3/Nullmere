@@ -509,6 +509,9 @@ final class GuideTests: XCTestCase {
         XCTAssertEqual(Heritage.signatureEdge, 5)
         XCTAssertTrue(all.contains("every 300 given, in barter worth, brings the giver a Salt Hourglass"), all)
         XCTAssertEqual(AllianceStudy.grades, 3)
+        XCTAssertTrue(all.contains("it rises over four watches. Whole, the land three tiles about it is the alliance's"), all)
+        XCTAssertEqual([AllianceHall.raising, AllianceHall.reach, AllianceHall.rallyCompanies, AllianceHall.standards, AllianceHall.garrison],
+                       [4, 3, 2, 2, 25])
         XCTAssertEqual(Heritage.allCases.map(\.name), ["The Saltborn", "The Fenfolk", "The Blackwood Kin", "The Spinewardens", "The Mound Clans", "The Strandfolk"])
         XCTAssertEqual(Rally.gatherings, 1...4)
         XCTAssertEqual(Study.opening(tier: 2), .drill)
@@ -741,6 +744,11 @@ final class CueMappingTests: XCTestCase {
             (.allianceStudied(alliance: alliance, study: .fieldcraft, grade: 1), .lore),
             (.allianceGift(house: player, alliance: alliance, stock: Stock(grain: 50), study: .fieldcraft, grade: 1), .coin),
             (.allianceStudyChosen(alliance: alliance, study: .fieldcraft), .banner),
+            (.hallRaised(hall: 90, alliance: alliance, house: foe, at: unit.position), .rise),
+            (.hallRisen(hall: 90, alliance: alliance, at: unit.position), .complete),
+            (.hallStruck(hall: 90, alliance: alliance, ward: 30, by: foe, at: unit.position), .batter),
+            (.hallTorn(hall: 91, alliance: 77, by: player, at: unit.position), .triumph),
+            (.hallTorn(hall: 90, alliance: alliance, by: foe, at: unit.position), .dread),
             (.itemUsed(house: player, kind: .hourglass, hold: seat.id), .sift),
             (.itemUsed(house: player, kind: .mendingDraught, hold: nil), .tend),
             (.studyBegun(house: player, study: .furrowLore, grade: 1), .rise),
@@ -837,6 +845,9 @@ final class CueMappingTests: XCTestCase {
             .heritageTaken(house: foe, heritage: .moundClans),
             .allianceStudied(alliance: 77, study: .drillYards, grade: 2), .allianceStudyChosen(alliance: 77, study: .drillYards),
             .allianceGift(house: foe, alliance: 77, stock: Stock(stone: 5), study: .drillYards, grade: 2),
+            .hallRaised(hall: 92, alliance: 77, house: foe, at: unit.position), .hallRisen(hall: 92, alliance: 77, at: unit.position),
+            .hallStruck(hall: 92, alliance: 77, ward: 10, by: others, at: unit.position),
+            .hallTorn(hall: 92, alliance: 77, by: others, at: unit.position),
         ]
         XCTAssertEqual(GameSession.cues(for: quiet, in: state, player: player), [.watch])
         // Every new order has its own sound, not the plain click.
@@ -858,6 +869,7 @@ final class CueMappingTests: XCTestCase {
             (.useItem(.moonsaltCache, hold: nil), .coin), (.useItem(.wardStone, hold: seat.id), .complete),
             (.useItem(.mendingDraught, hold: nil), .tend), (.takeHeritage(.strandfolk), .banner),
             (.pursueAllianceStudy(.shieldOath), .lore), (.giveToAlliance(Stock(grain: 50)), .coin),
+            (.raiseAllianceHall(at: unit.position), .rise),
         ]
         for (command, cue) in orders {
             XCTAssertEqual(GameSession.cues(for: command, events: [], in: state, player: player), [cue], "\(command)")

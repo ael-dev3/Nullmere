@@ -161,6 +161,18 @@ extension GameState {
             }
             if map[standard.position]?.terrain.isPassable != true { found.append("Standard \(standard.id) stands where none can") }
         }
+        var halled: Set<Int> = []
+        for hall in hallsStanding {
+            if alliance(hall.alliance) == nil { found.append("Hall \(hall.id) stands for no alliance") }
+            if !halled.insert(hall.alliance).inserted { found.append("Alliance \(hall.alliance) has two halls") }
+            if !(0...AllianceHall.raising).contains(hall.built) { found.append("Hall \(hall.id) is built \(hall.built) of \(AllianceHall.raising)") }
+            if !(0...hall.wardLimit).contains(hall.ward) { found.append("Hall \(hall.id) has ward \(hall.ward) of \(hall.wardLimit)") }
+            if hold(at: hall.position) != nil || wild(at: hall.position) != nil || lair(at: hall.position) != nil
+                || !flags.insert(hall.position).inserted {
+                found.append("Hall \(hall.id) shares its ground at \(hall.position)")
+            }
+            if map[hall.position]?.terrain.isPassable != true { found.append("Hall \(hall.id) stands where none can") }
+        }
         var stacks: Set<String> = []
         for stack in satchel ?? [] {
             if !houseIDs.contains(stack.house) { found.append("A satchel is of no House (\(stack.house))") }

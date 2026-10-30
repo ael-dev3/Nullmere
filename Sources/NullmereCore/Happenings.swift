@@ -121,9 +121,18 @@ public struct Happening: Codable, Equatable, Sendable {
     /// The kind of an age's happening by its number: the kinds come round
     /// in turn, from one the seed chooses.
     public static func kind(number: Int, seed: UInt64) -> HappeningKind {
+        kind(number: number, from: start(seed: seed))
+    }
+
+    /// The kind of an age's happening by its number, the round begun at `start`.
+    static func kind(number: Int, from start: Int) -> HappeningKind {
         let kinds = HappeningKind.allCases
-        let start = Int(Seed.mix(seed, 0x4A99) % UInt64(kinds.count))
         return kinds[(start + number) % kinds.count]
+    }
+
+    /// Where in the round of kinds a world's seed has its happenings begin.
+    static func start(seed: UInt64) -> Int {
+        Int(Seed.mix(seed, 0x4A99) % UInt64(HappeningKind.allCases.count))
     }
 
     /// The Houses with points, foremost first, ties to the lower id.
@@ -184,7 +193,7 @@ extension GameState {
             }
         }
         if happening == nil, let number = Happening.number(beginningAt: watch) {
-            let begun = Happening(number: number, kind: Happening.kind(number: number, seed: settings.seed), begins: watch, houses: houses.count)
+            let begun = Happening(number: number, kind: Happening.kind(number: number, from: dealt.firstHappening), begins: watch, houses: houses.count)
             happening = begun
             record(.happening, [], "\(begun.kind.title) begins: \(begun.kind.goal), until the \(ordinal(begun.ends)) watch.")
             events.append(.happeningBegun(kind: begun.kind, ends: begun.ends))

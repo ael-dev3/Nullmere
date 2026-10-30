@@ -106,6 +106,37 @@ extension GameState {
             }
             guard let by else { return Tidings("A standard of \(name) \(placeName(of: at)) comes down, its House gone from the alliance.", .neutral) }
             return Tidings("\(houses[by].title) tears down your alliance's standard \(placeName(of: at)).", .bad)
+        case .hallRaised(_, let id, let house, let at):
+            guard let alliance = alliance(id), houses.indices.contains(house) else { return nil }
+            let place = placeName(of: at)
+            if house == viewer {
+                return Tidings("You begin the hall of \(alliance.name) \(place): it rises over \(AllianceHall.raising) watches.", .good)
+            }
+            if alliance.members.contains(viewer) {
+                return Tidings("\(houses[house].title) begins your alliance's hall \(place): it rises over \(AllianceHall.raising) watches.", .good)
+            }
+            return Tidings("\(houses[house].title) begins a hall of \(alliance.name) \(place).", .neutral)
+        case .hallRisen(_, let id, let at):
+            guard let alliance = alliance(id) else { return nil }
+            guard alliance.members.contains(viewer) else { return Tidings("The hall of \(alliance.name) stands whole \(placeName(of: at)).", .neutral) }
+            return Tidings("Your alliance's hall stands whole \(placeName(of: at)): its land reaches \(AllianceHall.reach) tiles about it, "
+                           + "your rallies take \(AllianceHall.rallyCompanies) more companies, and the alliance may keep "
+                           + "\(AllianceHall.standards) more standards.", .good)
+        case .hallStruck(_, let id, let ward, let by, let at):
+            guard let alliance = alliance(id), houses.indices.contains(by) else { return nil }
+            let whole = hall(at: at)?.wardLimit ?? AllianceHall.maximumWard
+            if by == viewer { return Tidings("Your company strikes the hall of \(alliance.name): its ward \(ward) of \(whole).", .neutral) }
+            guard alliance.members.contains(viewer) else { return nil }
+            return Tidings("\(houses[by].title) strikes your alliance's hall \(placeName(of: at)): its ward \(ward) of \(whole).", .bad)
+        case .hallTorn(_, let id, let by, let at):
+            let name = alliance(id)?.name ?? "a fallen alliance"
+            if let by, by == viewer { return Tidings("Your company tears down the hall of \(name).", .good) }
+            guard alliance(id)?.members.contains(viewer) == true else {
+                guard let by else { return Tidings("A hall \(placeName(of: at)) falls into ruin, its alliance no more.", .neutral) }
+                return Tidings("\(houses[by].title) tears down the hall of \(name) \(placeName(of: at)).", .neutral)
+            }
+            guard let by else { return nil }
+            return Tidings("\(houses[by].title) tears down your alliance's hall \(placeName(of: at)).", .bad)
         case .allianceStudyChosen(let id, let study):
             guard let alliance = alliance(id), alliance.members.contains(viewer) else { return nil }
             let grade = min((alliance.lore?.grade(of: study) ?? 0) + 1, AllianceStudy.grades)
@@ -184,10 +215,12 @@ extension GameState {
             if house == viewer { return Tidings("You ask to join \(alliance.name).", .neutral) }
             return Tidings("\(houses[house].title) asks to join \(alliance.name).", .neutral)
         case .allianceAnswered(let id, let house, let accepted):
-            // A House taken in is told by its joining.
-            guard !accepted, let alliance = alliance(id) else { return nil }
-            if house == viewer { return Tidings("There is no place for you in \(alliance.name) now.", .bad) }
-            return Tidings("\(houses[house].title) stays outside \(alliance.name).", .neutral)
+            // A House taken in is told by its joining; one turned away is
+            // told so even once the alliance is no more.
+            guard !accepted else { return nil }
+            let name = alliance(id)?.name ?? "the alliance"
+            if house == viewer { return Tidings("There is no place for you in \(name) now.", .bad) }
+            return Tidings("\(houses[house].title) stays outside \(name).", .neutral)
         case .allianceJoined(let id, let house):
             let name = alliance(id)?.name ?? "the alliance"
             if house == viewer { return Tidings("You are sworn to \(name).", .good) }

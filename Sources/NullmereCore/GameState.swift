@@ -103,6 +103,8 @@ public struct GameState: Codable, Equatable, Sendable {
     var lairs: [Lair]?
     /// The alliances' standards; absent before any was raised.
     var standards: [Standard]?
+    /// The alliances' halls, standing or rising; absent before any was begun.
+    var halls: [AllianceHall]?
     /// The gear the Houses hold, worn by their commanders or kept; absent
     /// in saves from before gear.
     var armoury: [Gear]?
@@ -122,7 +124,17 @@ public struct GameState: Codable, Equatable, Sendable {
     /// others in sight are going. Absent in the world itself.
     public internal(set) var marches: [March]?
 
+    /// Where the realm's rounds begin, as its seed sets them: kept so a
+    /// keeper's copy, which has no seed, deals heritages and foretells
+    /// happenings as the realm does. Absent in saves from before it, which
+    /// find them from their seed.
+    var dealing: Dealing?
+
     public var player: Int { houses.first { $0.isPlayer }?.id ?? 0 }
+
+    /// Where the realm's rounds begin: as kept, or as a save from before
+    /// they were kept finds them from its seed.
+    var dealt: Dealing { dealing ?? Dealing(seed: settings.seed) }
 
     /// Makes an age's world: its lake, its Houses at their seats.
     public init(settings: GameSettings) {
@@ -132,6 +144,7 @@ public struct GameState: Codable, Equatable, Sendable {
 
         formatVersion = GameState.formatVersion
         self.settings = settings
+        dealing = Dealing(seed: seed)
         watch = 1
         map = world.map
         moonWater = world.map.deepestWater()

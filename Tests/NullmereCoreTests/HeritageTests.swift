@@ -153,4 +153,28 @@ final class HeritageTests: XCTestCase {
         XCTAssertEqual(RuleError.alreadyOfHeritage.description, "Your House is of that heritage already.")
         XCTAssertEqual(state.problems(), [])
     }
+
+    /// A keeper's copy has no seed, so the realm gives it where its rounds
+    /// begin: it deals every House the heritage the realm does, and
+    /// foretells the happening the realm will raise.
+    func testAKeepersCopyDealsAndForetellsAsTheRealmDoes() throws {
+        let state = Scene.world("rounds given", houses: 6)
+        let view = state.view(for: state.player)
+        XCTAssertEqual(view.settings.seedText, "", "The copy has no seed")
+        XCTAssertEqual(state.houses.indices.map(view.heritage(of:)), state.houses.indices.map(state.heritage(of:)))
+        XCTAssertEqual(view.realmBoard(for: state.player).nextKind, state.realmBoard(for: state.player).nextKind)
+        XCTAssertEqual(view.realmBoard(for: state.player).nextKind, Happening.kind(number: 0, seed: state.settings.seed))
+        // As sent across the network, and from a copy of a copy.
+        let sent = try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(view))
+        XCTAssertEqual(sent.heritage(of: 4), state.heritage(of: 4))
+        XCTAssertEqual(sent.view(for: state.player).heritage(of: 5), state.heritage(of: 5))
+        // A save from before the rounds were kept finds them from its seed.
+        let older = try JSONDecoder().decode(GameState.self, from: try Scene.without(["dealing"], in: state))
+        XCTAssertNil(older.dealing)
+        XCTAssertEqual(older.heritage(of: 2), state.heritage(of: 2))
+        XCTAssertEqual(older.view(for: 0).heritage(of: 3), state.heritage(of: 3))
+        var turned = older
+        _ = turned.endWatch()
+        XCTAssertEqual(turned.dealing, state.dealing, "Kept from its next watch")
+    }
 }

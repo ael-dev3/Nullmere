@@ -197,6 +197,8 @@ extension GameState {
     /// and an alliance left with none is no more.
     mutating func part(_ house: Int, from allianceID: Int) -> [GameEvent] {
         guard let index = allianceIndex(allianceID) else { return [] }
+        // Its rallies lose the room their alliance's hall gave them.
+        defer { fitRallies() }
         alliances![index].members.removeAll { $0 == house }
         let alliance = alliances![index]
         guard !alliance.members.isEmpty else {

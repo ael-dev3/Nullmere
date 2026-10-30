@@ -1,5 +1,6 @@
 import AppKit
 @testable import LauncherKit
+import NullmereModels
 import NullmereRealm
 import NullmereWorld
 import SwiftUI
@@ -747,6 +748,73 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(GameSession.place(of: .standardRaised(standard: standard.id, alliance: alliance.id, house: me, at: spot),
                                          in: session.state), spot)
         XCTAssertTrue(GameSession.isRealmsToTell(.standardTorn(standard: standard.id, alliance: alliance.id, by: 2, at: spot)))
+    }
+
+    func testAHallIsBegunOnItsAlliancesLandAndDrawnRising() throws {
+        var state = world("hall shown")
+        let me = state.player
+        _ = try state.perform(.foundAlliance(name: "The Tall Hall"), as: me)
+        let seat = try XCTUnwrap(state.holds.first { $0.owner == me && $0.isSeat })
+        state.reveal(around: seat.position, range: 6, for: me)
+        state.houses[me].stock = Stock(grain: 900, timber: 900, stone: 900, moonsalt: 90)
+        let flag = try XCTUnwrap(seat.position.spiral(3).first { hex in
+            (2...3).contains(hex.distance(to: seat.position)) && state.refusal(of: .raiseStandard(at: hex), as: me) == nil
+        })
+        _ = try state.perform(.raiseStandard(at: flag), as: me)
+        let spot = try XCTUnwrap(flag.spiral(Standard.reach).first { state.refusal(of: .raiseAllianceHall(at: $0), as: me) == nil })
+        let (session, link) = session(state)
+        let sworn = try XCTUnwrap(session.state.alliance(of: me))
+        XCTAssertTrue(HallRow.offered(at: spot, to: me, of: sworn, in: session.state))
+        XCTAssertFalse(HallRow.offered(at: spot, to: (me + 1) % 6, of: sworn, in: session.state), "To its leader alone")
+        XCTAssertTrue(AlliancePanel.hallLine(sworn, in: session.state).hasPrefix("Hall: none yet. Its leader begins it"))
+        session.selection = .tile(spot)
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        XCTAssertTrue(PressableButtons.press("Begin the hall"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .raiseAllianceHall(at: spot))
+        let hall = try XCTUnwrap(session.state.hall(at: spot), "Begun at once on the keeper's copy")
+        // Named on hover and in its tile's panel, counted on the Alliance screen.
+        let named = try XCTUnwrap(HoverInfo.line(for: spot, in: session.state, explored: true, territory: session.state.territory()))
+        XCTAssertTrue(named.contains("the hall of The Tall Hall, rising, 0 of 4 watches done, ward 40 of 40"), named)
+        XCTAssertTrue(HoverInfo.described(hall, in: session.state).hasPrefix("Begun by "))
+        PressableButtons.isListening = true
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        XCTAssertFalse(PressableButtons.press("Begin the hall"), "Not where it stands")
+        XCTAssertTrue(AlliancePanel.hallLine(try XCTUnwrap(session.state.alliance(of: me)), in: session.state).hasPrefix("Hall: rising "))
+        draw(AlliancePanel(session: session))
+        // Drawn in the world rising within its scaffold.
+        let frame = session.sceneFrame(at: 1)
+        XCTAssertTrue(frame.batches.contains { $0.key == .allianceHall })
+        XCTAssertTrue(frame.batches.contains { $0.key == .scaffold })
+        // A watch's height at a time, eased.
+        let start = Date()
+        XCTAssertEqual(session.risen(hall, at: start, animated: true), 0)
+        var further = hall
+        further.built = 1
+        XCTAssertEqual(session.risen(further, at: start, animated: true), 0, accuracy: 1e-5, "From where it stood")
+        let halfway = session.risen(further, at: start.addingTimeInterval(WorldStage.riseSeconds / 2), animated: true)
+        XCTAssertGreaterThan(halfway, 0)
+        XCTAssertLessThan(halfway, 0.25)
+        XCTAssertEqual(session.risen(further, at: start.addingTimeInterval(WorldStage.riseSeconds), animated: true), 0.25, accuracy: 1e-5)
+        XCTAssertEqual(session.risen(further, at: start, animated: false), 0.25)
+        // Whole, and struck low, it burns.
+        var whole = state
+        _ = try whole.perform(.raiseAllianceHall(at: spot), as: me)
+        whole.halls![0].built = AllianceHall.raising
+        whole.halls![0].ward = 30
+        // A company of the keeper's keeping it, to see it burn.
+        let keeperID = whole.takeID()
+        whole.units.append(NullmereCore.Unit(id: keeperID, kind: .spear, owner: me, position: spot, tier: 1))
+        let (struck, _) = self.session(whole)
+        let standing = try XCTUnwrap(struck.state.hall(at: spot))
+        XCTAssertTrue(HoverInfo.named(standing, in: struck.state).contains("ward 30 of 240: the land 3 tiles about it is the alliance's"))
+        XCTAssertTrue(HoverInfo.described(standing, in: struck.state).hasPrefix("Raised by "))
+        XCTAssertTrue(AlliancePanel.hallLine(try XCTUnwrap(struck.state.alliance(of: me)), in: struck.state).hasPrefix("Hall: standing "))
+        let stage = WorldStage(map: struck.state.map, relief: Relief(map: struck.state.map))
+        let blazes = struck.happenings(poses: [], sights: [], stage: stage, at: Date(), time: 1).blazes
+        XCTAssertTrue(blazes.contains { abs($0.at.x - Relief.centre(of: spot).x) < 1e-3 }, "\(blazes)")
+        // Placed for its sound; the realm's to tell when struck.
+        XCTAssertEqual(GameSession.place(of: .hallRaised(hall: hall.id, alliance: sworn.id, house: me, at: spot), in: session.state), spot)
+        XCTAssertTrue(GameSession.isRealmsToTell(.hallStruck(hall: hall.id, alliance: sworn.id, ward: 10, by: 2, at: spot)))
     }
 
     func testTheSatchelIsShownAndItsItemsUsed() throws {

@@ -94,7 +94,7 @@ final class StandardTests: XCTestCase {
         many.standards = (0..<3).map { Standard(id: 900 + $0, alliance: alliance, raisedBy: me, position: Hex(50 + $0, 0), raised: 0) }
         XCTAssertEqual(many.refusal(of: .raiseStandard(at: near), as: me), .standardsEnough)
         XCTAssertEqual(Standard.allowed(members: 30), 8, "Eight at most")
-        XCTAssertEqual(RuleError.standardTooFar.description, "A standard stands within four tiles of your alliance's holds or standards.")
+        XCTAssertEqual(RuleError.standardTooFar.description, "A standard stands within four tiles of your alliance's holds, standards or hall.")
     }
 
     func testOnItsLandTheAlliancesCompaniesStandFirmerMendSoonerAndGatherMore() throws {

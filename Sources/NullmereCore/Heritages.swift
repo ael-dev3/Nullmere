@@ -109,8 +109,17 @@ public enum Heritage: String, CaseIterable, Codable, Sendable {
     /// The heritage the realm deals a seat as an age begins: round the lake
     /// in turn, from one the seed chooses, so every heritage has its seats.
     static func dealt(seat: Int, seed: UInt64) -> Heritage {
-        let start = Int(Seed.finalize(seed ^ 0x4E7A_5EED_D1A1_0000) % UInt64(round.count))
-        return round[(start + seat) % round.count]
+        dealt(seat: seat, from: start(seed: seed))
+    }
+
+    /// The heritage dealt a seat, the round begun at `start`.
+    static func dealt(seat: Int, from start: Int) -> Heritage {
+        round[(start + seat) % round.count]
+    }
+
+    /// Where in the round a world's seed has the dealing begin.
+    static func start(seed: UInt64) -> Int {
+        Int(Seed.finalize(seed ^ 0x4E7A_5EED_D1A1_0000) % UInt64(round.count))
     }
 }
 
@@ -118,7 +127,7 @@ extension GameState {
     /// A House's heritage: the one it took up, or the one the realm dealt it.
     public func heritage(of house: Int) -> Heritage {
         guard houses.indices.contains(house), let taken = houses[house].heritage else {
-            return Heritage.dealt(seat: house, seed: settings.seed)
+            return Heritage.dealt(seat: house, from: dealing?.firstHeritage ?? Heritage.start(seed: settings.seed))
         }
         return taken
     }
@@ -150,5 +159,17 @@ extension GameState {
         houses[house].heritage = heritage
         record(.seating, [house], "\(houses[house].title) takes up the ways of \(heritage.title).")
         return [.heritageTaken(house: house, heritage: heritage)]
+    }
+}
+
+/// Where a realm's rounds begin, as its seed sets them: the heritage dealt
+/// the first seat, and the kind of happening that opens the age.
+struct Dealing: Codable, Equatable, Sendable {
+    var firstHeritage: Int
+    var firstHappening: Int
+
+    init(seed: UInt64) {
+        firstHeritage = Heritage.start(seed: seed)
+        firstHappening = Happening.start(seed: seed)
     }
 }

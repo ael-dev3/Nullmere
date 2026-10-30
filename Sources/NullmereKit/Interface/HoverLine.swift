@@ -25,7 +25,9 @@ enum HoverInfo {
         if let lair = state.lair(at: hex) {
             parts.append(HoverInfo.named(lair))
         }
-        if let standard = state.standard(at: hex) {
+        if let hall = state.hall(at: hex) {
+            parts.append(HoverInfo.named(hall, in: state))
+        } else if let standard = state.standard(at: hex) {
             parts.append(HoverInfo.named(standard, in: state))
         } else if let land = state.allianceLand(at: hex).flatMap({ state.alliance($0) }) {
             parts.append("land of \(land.name)")
@@ -72,6 +74,31 @@ enum HoverInfo {
     static func named(_ standard: Standard, in state: GameState) -> String {
         let name = state.alliance(standard.alliance)?.name ?? "a fallen alliance"
         return "a standard of \(name), ward \(standard.ward) of \(Standard.maximumWard): the land about it is the alliance's"
+    }
+
+    /// An alliance's hall as the map names it: rising, how far, or whole,
+    /// with its ward.
+    static func named(_ hall: AllianceHall, in state: GameState) -> String {
+        let name = state.alliance(hall.alliance)?.name ?? "a fallen alliance"
+        guard hall.isWhole else {
+            return "the hall of \(name), rising, \(hall.built) of \(AllianceHall.raising) watches done, ward \(hall.ward) of \(hall.wardLimit)"
+        }
+        return "the hall of \(name), ward \(hall.ward) of \(AllianceHall.maximumWard): the land \(AllianceHall.reach) tiles about it is the alliance's"
+    }
+
+    /// An alliance's hall in words: who began it, how far it has risen,
+    /// its ward, and what it gives its alliance.
+    static func described(_ hall: AllianceHall, in state: GameState) -> String {
+        let raiser = state.houses.indices.contains(hall.raisedBy) ? state.houses[hall.raisedBy].title : "a fallen House"
+        let gives = "the land \(AllianceHall.reach) tiles about it is the alliance's, its companies keeping it stand a quarter firmer, "
+            + "its Houses' rallies take \(AllianceHall.rallyCompanies) more companies and it may keep \(AllianceHall.standards) more standards. "
+            + "Only its companies enter it; a House at war with one of its Houses may strike it when none keeps it."
+        guard hall.isWhole else {
+            return "Begun by \(raiser); rising, \(hall.built) of \(AllianceHall.raising) watches done, its ward \(hall.ward) of \(hall.wardLimit). "
+                + "Whole, " + gives
+        }
+        return "Raised by \(raiser); its ward \(hall.ward) of \(AllianceHall.maximumWard), mending \(AllianceHall.mending) a watch. "
+            + gives.prefix(1).uppercased() + gives.dropFirst()
     }
 
     /// A site of the land as the map names it, with what is left in it.

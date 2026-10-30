@@ -44,9 +44,24 @@ struct AlliancePanel: View {
     /// The alliance's standards, as many as it may keep, and how to raise one.
     static func standardsLine(_ alliance: Alliance, in state: GameState) -> String {
         let raised = state.standards(of: alliance.id).count
-        let allowed = Standard.allowed(members: alliance.members.count)
+        let allowed = state.standardsAllowed(for: alliance)
         return "Standards: \(raised) of \(allowed). Raise one on open ground near your alliance's holds from that ground's panel; "
             + "the land about it is the alliance's."
+    }
+
+    /// The alliance's hall: none yet and how one is begun, rising, or
+    /// whole, with its ward.
+    static func hallLine(_ alliance: Alliance, in state: GameState) -> String {
+        guard let hall = state.hall(of: alliance.id) else {
+            return "Hall: none yet. Its leader begins it on the alliance's land, from that ground's panel, for \(AllianceHall.cost); "
+                + "it rises over \(AllianceHall.raising) watches."
+        }
+        let place = state.placeName(of: hall.position)
+        guard hall.isWhole else {
+            return "Hall: rising \(place), \(hall.built) of \(AllianceHall.raising) watches done; its ward \(hall.ward) of \(hall.wardLimit)."
+        }
+        return "Hall: standing \(place), its ward \(hall.ward) of \(AllianceHall.maximumWard). Its land reaches \(AllianceHall.reach) tiles, "
+            + "your rallies take \(AllianceHall.rallyCompanies) more companies, and the alliance may keep \(AllianceHall.standards) more standards."
     }
 
     // MARK: Sworn
@@ -55,6 +70,10 @@ struct AlliancePanel: View {
     private func sworn(_ board: AllianceBoard, chosen: Unit?) -> some View {
         if let alliance = board.alliance {
             Text(verbatim: AlliancePanel.standardsLine(alliance, in: session.state))
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            Text(verbatim: AlliancePanel.hallLine(alliance, in: session.state))
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)

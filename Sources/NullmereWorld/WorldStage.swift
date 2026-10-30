@@ -157,6 +157,21 @@ public struct HoldSight: Equatable, Sendable {
     }
 }
 
+/// An alliance's hall as a frame draws it: where it stands, in its
+/// alliance's colour, and how far it has risen.
+public struct HallSight: Equatable, Sendable {
+    public var hex: Hex
+    public var colour: Vec4
+    /// How far it has risen, 0 to 1.
+    public var progress: Float
+
+    public init(hex: Hex, colour: Vec4, progress: Float = 1) {
+        self.hex = hex
+        self.colour = colour
+        self.progress = progress
+    }
+}
+
 /// The world's models for a frame, gathered kind by kind for the GPU: the
 /// land's furniture, every hold the keeper knows with its works, every
 /// company in sight posed at its moment, and what flies over them all.
@@ -271,6 +286,33 @@ public final class WorldStage: @unchecked Sendable {
                                              colour: standard.colour, phase: WorldStage.phase(of: standard.hex, salt: 31),
                                              hex: SIMD2(Int32(standard.hex.q), Int32(standard.hex.r))))
         })
+    }
+
+    /// The alliances' halls the keeper has found, each in its alliance's
+    /// colour, one rising drawn up as far as it has come within its
+    /// scaffold; and where the whole ones' louvres smoke.
+    public func halls(_ halls: [HallSight]) -> (batches: [ModelBatch], hearths: [Hearth]) {
+        var placed: [(ModelKey, ModelInstance)] = []
+        var hearths: [Hearth] = []
+        for sight in halls {
+            let phase = WorldStage.phase(of: sight.hex, salt: 37)
+            for piece in HoldLayout.hall(at: sight.hex, progress: sight.progress, relief: relief) {
+                placed.append((piece.key, ModelInstance(model: piece.transform, colour: sight.colour, rise: piece.risen ?? WorldStage.whole,
+                                                        phase: phase, hex: SIMD2(Int32(piece.hex.q), Int32(piece.hex.r)))))
+                if piece.progress >= 1 {
+                    hearths += piece.smoke.map { Hearth(point: $0, hex: piece.hex) }
+                }
+            }
+        }
+        return (WorldStage.batches(placed), hearths)
+    }
+
+    /// Where each hall being raised stands, for the dust of its building.
+    public func risingHalls(_ halls: [HallSight]) -> [Vec3] {
+        halls.filter { $0.progress < 1 }.map { sight in
+            let centre = Relief.centre(of: sight.hex)
+            return Vec3(centre.x, ground(atX: centre.x, z: centre.z), centre.z)
+        }
     }
 
     // MARK: Where the night's small lights wander

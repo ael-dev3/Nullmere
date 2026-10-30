@@ -97,10 +97,21 @@ extension GameState {
     /// What the shrines held by a House's side add to one of its figures.
     func shrineBonus(_ bonus: Bonus, for house: Int) -> Int {
         guard let shrines, !shrines.isEmpty else { return 0 }
-        let side = Set([house] + (alliance(of: house)?.members ?? []))
-        return shrines.reduce(0) { total, shrine in
-            total + (shrine.holder.map(side.contains) == true ? shrine.kind.bonus(bonus) : 0)
+        // Asked for every figure of every company: only a gift there is
+        // asks who holds it, and the House's alliance is found once.
+        var total = 0
+        var sworn: [Int]?
+        for shrine in shrines {
+            guard let holder = shrine.holder else { continue }
+            let gift = shrine.kind.bonus(bonus)
+            guard gift != 0 else { continue }
+            if holder != house {
+                if sworn == nil { sworn = alliance(of: house)?.members ?? [] }
+                guard sworn!.contains(holder) else { continue }
+            }
+            total += gift
         }
+        return total
     }
 
     /// As the watch turns: a shrine whose holder has fallen is held by none;

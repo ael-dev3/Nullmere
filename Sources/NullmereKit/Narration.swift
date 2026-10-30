@@ -146,7 +146,8 @@ enum Narration {
              .commanderWounded, .skillFired, .talentLearned, .talentsForgotten, .gearFound, .gearWorn, .gearTakenOff, .gearScrapped, .shrineTaken,
              .carriedToInfirmary, .healingBegun, .unitHealed, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted,
              .standardRaised, .standardStruck, .standardTorn, .itemsGiven, .itemUsed, .heritageTaken,
-             .allianceStudyChosen, .allianceGift, .allianceStudied, .hunted, .sentToGather, .gathered, .delivered, .siteWorkedOut,
+             .allianceStudyChosen, .allianceGift, .allianceStudied, .hallRaised, .hallRisen, .hallStruck, .hallTorn,
+             .hunted, .sentToGather, .gathered, .delivered, .siteWorkedOut,
              .allianceFounded, .allianceInvited, .allianceAsked, .allianceAnswered, .allianceJoined, .allianceLeft, .allianceLed,
              .allianceDisbanded, .helpGiven, .rallyCalled, .rallyJoined, .rallySetOut, .rallyStruck, .rallyDispersed, .sentToReinforce,
              .happeningBegun, .happeningMark, .happeningEnded, .deedDone, .chargeDone, .said:

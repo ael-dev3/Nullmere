@@ -18,12 +18,25 @@ extension GameSession {
         let start: Date
 
         /// How high it stands at `now`, eased in and out.
-        func shown(at now: Date) -> Float {
-            let t = Float(min(max(now.timeIntervalSince(start) / WorldStage.riseSeconds, 0), 1))
-            return from + (to - from) * t * t * (3 - 2 * t)
-        }
+        func shown(at now: Date) -> Float { GameSession.eased(from: from, to: to, since: start, at: now) }
 
         func isDone(at now: Date) -> Bool { now.timeIntervalSince(start) >= WorldStage.riseSeconds }
+    }
+
+    /// An alliance's hall rising a watch further: from where it stood
+    /// toward where the watch has brought it, over a moment.
+    struct HallRising: Equatable {
+        let from: Float
+        let to: Float
+        let start: Date
+
+        func shown(at now: Date) -> Float { GameSession.eased(from: from, to: to, since: start, at: now) }
+    }
+
+    /// From one height toward another over a rise's moment, eased in and out.
+    static func eased(from: Float, to: Float, since start: Date, at now: Date) -> Float {
+        let t = Float(min(max(now.timeIntervalSince(start) / WorldStage.riseSeconds, 0), 1))
+        return from + (to - from) * t * t * (3 - 2 * t)
     }
 
     /// How fast a company's feet go on the march, strides a second.
@@ -69,6 +82,13 @@ extension GameSession {
                                     heritage: state.heritage(of: hold.owner)))
         }
         let (holds, hearths) = stage.holds(sights, time: t, into: &frame)
+        // The alliances' halls the keeper knows of, each in its leader's
+        // colour, one rising easing up a watch's height as the watch turns.
+        let hallSights = state.hallsStanding.filter { isExplored($0.position) }.map { hall in
+            HallSight(hex: hall.position, colour: allianceColour(hall.alliance, else: hall.raisedBy, houses),
+                      progress: risen(hall, at: now, animated: full))
+        }
+        let (halls, hallHearths) = stage.halls(hallSights)
 
         // The companies in sight, and the fallen.
         let poses = companyPoses(at: now, animated: full, time: time)
@@ -88,24 +108,22 @@ extension GameSession {
         let lairs = stage.lairs(found.map { ($0.kind, $0.position) })
         // The alliances' standards, each in its leader's colour.
         let flags = state.standardsStanding.filter { isExplored($0.position) }
-        let standards = stage.standards(flags.map { standard in
-            let leader = state.alliance(standard.alliance)?.leader ?? standard.raisedBy
-            let colour = state.houses.indices.contains(leader) ? WorldStage.colour(houses, sigil: state.houses[leader].sigil) : Vec4(0.6, 0.6, 0.6, 1)
-            return (standard.position, colour)
-        })
+        let standards = stage.standards(flags.map { ($0.position, allianceColour($0.alliance, else: $0.raisedBy, houses)) })
         let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position) + found.map(\.position) + flags.map(\.position))
-        let furniture = stage.furnish(occupied: standing, holds: Set(sights.map(\.hold.position)))
+        let furniture = stage.furnish(occupied: standing, holds: Set(sights.map(\.hold.position) + hallSights.map(\.hex)))
 
         // Arrows in flight, birds over the water, smoke from the hearths in sight.
         let lake = Relief.centre(of: Hex(0, 0))
         let flights = WorldStage.flights(arrows: full ? arrows(at: now) : [],
                                          birdsOver: full ? Vec3(lake.x, Relief.waterline, lake.z) : nil,
-                                         hearths: full ? (hearths + lairs.hearths).filter { isVisible($0.hex) } : [], time: t, into: &frame)
+                                         hearths: full ? (hearths + lairs.hearths + hallHearths).filter { isVisible($0.hex) } : [], time: t,
+                                         into: &frame)
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
-        frame.batches = holds + siteBatches + lairs.batches + standards + companies + flights
+        frame.batches = holds + halls + siteBatches + lairs.batches + standards + companies + flights
         if full {
-            (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, stage: stage, at: now, time: time).effects(at: t)
+            (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights, stage: stage, at: now, time: time)
+                .effects(at: t)
         }
         // The omen's weather: rain or mist about the middle of the view.
         frame.weather = Weather.of(state.currentOmen?.kind)
@@ -114,6 +132,31 @@ extension GameSession {
             frame.motes += frame.weather.motes(around: camera.focus, extent: extent, time: t)
         }
         return frame
+    }
+
+    /// An alliance's colour: its leader's House's, or else the given
+    /// House's; grey for none.
+    func allianceColour(_ alliance: Int, else house: Int, _ houses: [Vec4]) -> Vec4 {
+        let leader = state.alliance(alliance)?.leader ?? house
+        return state.houses.indices.contains(leader) ? WorldStage.colour(houses, sigil: state.houses[leader].sigil) : Vec4(0.6, 0.6, 0.6, 1)
+    }
+
+    /// How far a hall has risen at `now`: eased toward the share of its
+    /// raising done, a watch's height at a time.
+    func risen(_ hall: AllianceHall, at now: Date, animated: Bool) -> Float {
+        let target = Float(hall.progress)
+        guard animated else {
+            hallRisings[hall.id] = nil
+            return target
+        }
+        if let kept = hallRisings[hall.id] {
+            if kept.to != target {
+                hallRisings[hall.id] = HallRising(from: kept.shown(at: now), to: target, start: now)
+            }
+        } else {
+            hallRisings[hall.id] = HallRising(from: target, to: target, start: now)
+        }
+        return hallRisings[hall.id]!.shown(at: now)
     }
 
     // MARK: Works rising
@@ -271,7 +314,8 @@ extension GameSession {
     /// companies falling, commanders' furies, holds scouted, marches, works
     /// rising and finished, holds burning with their wards broken, and
     /// fireflies over the reeds near the eye.
-    func happenings(poses: [CompanyPose], sights: [HoldSight], stage: WorldStage, at now: Date, time: Double) -> Happenings {
+    func happenings(poses: [CompanyPose], sights: [HoldSight], halls: [HallSight] = [], stage: WorldStage, at now: Date,
+                    time: Double) -> Happenings {
         var happenings = Happenings()
         func clock(_ date: Date) -> Float { Float(time - now.timeIntervalSince(date)) }
         func ground(_ hex: Hex) -> Vec3 {
@@ -303,7 +347,7 @@ extension GameSession {
             }
             happenings.marching.append(Happenings.Spot(at: pose.position, strength: riders ? 1.4 : 1, seed: UInt32(truncatingIfNeeded: pose.unit)))
         }
-        happenings.rising = stage.risingWorks(sights).enumerated().map { Happenings.Spot(at: $1, seed: UInt32($0)) }
+        happenings.rising = (stage.risingWorks(sights) + stage.risingHalls(halls)).enumerated().map { Happenings.Spot(at: $1, seed: UInt32($0)) }
         completions.removeAll { now.timeIntervalSince($0.at) > 3 }
         for done in completions {
             guard let hold = state.hold(done.hold) else { continue }
@@ -315,6 +359,11 @@ extension GameSession {
         for hold in state.holds where isVisible(hold.position) && hold.ward * 2 < hold.maximumWard {
             let broken = 1 - Float(hold.ward) / Float(max(hold.maximumWard, 1)) * 2
             happenings.blazes.append(Happenings.Spot(at: ground(hold.position), strength: 0.35 + 0.65 * broken, seed: UInt32(hold.id)))
+        }
+        // A hall struck below half its ward burns as a hold does.
+        for hall in state.hallsStanding where isVisible(hall.position) && hall.ward * 2 < hall.wardLimit {
+            let broken = 1 - Float(hall.ward) / Float(max(hall.wardLimit, 1)) * 2
+            happenings.blazes.append(Happenings.Spot(at: ground(hall.position), strength: 0.35 + 0.65 * broken, seed: UInt32(truncatingIfNeeded: hall.id)))
         }
         if camera.scale >= 40 {
             happenings.fireflies = stage.fireflySpots(near: camera.focus).enumerated().map { Happenings.Spot(at: $1, seed: UInt32($0) &+ 17) }

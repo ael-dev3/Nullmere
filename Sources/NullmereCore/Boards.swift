@@ -304,7 +304,7 @@ extension GameState {
             foremost: leaderboard.prefix(5).map { Placing(house: $0, points: happening!.points[$0]) },
             place: leaderboard.firstIndex(of: house).map { $0 + 1 },
             nextBegins: next,
-            nextKind: next.flatMap(Happening.number(beginningAt:)).map { Happening.kind(number: $0, seed: settings.seed) },
+            nextKind: next.flatMap(Happening.number(beginningAt:)).map { Happening.kind(number: $0, from: dealt.firstHappening) },
             charge: current, chargesKept: current?.rawValue ?? Charge.allCases.count,
             deeds: done, deedsLeft: Deed.allCases.filter { !done.contains($0) },
             might: might(of: house), mightPlace: byMight.firstIndex(of: house).map { $0 + 1 })
