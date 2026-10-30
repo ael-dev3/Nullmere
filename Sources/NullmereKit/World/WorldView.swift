@@ -35,16 +35,22 @@ struct WorldView: View {
         .accessibilityRotor("Your companies", entries: session.mapItems.filter(\.isOwnCompany), entryID: \.id, entryLabel: \.label)
         .accessibilityRotor("Enemies in sight", entries: session.mapItems.filter(\.isFoe), entryID: \.id, entryLabel: \.label)
         .accessibilityRotor("Holds", entries: session.mapItems.filter(\.isHold), entryID: \.id, entryLabel: \.label)
-        // VoiceOver reads the map as its holds and companies; choosing one
-        // selects it, and its panel opens as it would by a click.
+        // VoiceOver reads the map as its holds and companies, each where it
+        // lies, so its cursor rings it on the map and a click there chooses
+        // it; choosing one selects it, and its panel opens as by a click.
         .accessibilityChildren {
-            ForEach(session.mapItems) { item in
-                Button(item.label) { session.selection = item.selection }
-                    .accessibilityActions {
-                        ForEach(item.orders, id: \.self) { order in
-                            Button(order.name) { MapAccessibility.carryOut(order, for: item, in: session) }
+            GeometryReader { proxy in
+                let ring = MapAccessibility.ring(at: session.camera.scale)
+                ForEach(session.mapItems) { item in
+                    Button(item.label) { session.selection = item.selection }
+                        .accessibilityActions {
+                            ForEach(item.orders, id: \.self) { order in
+                                Button(order.name) { MapAccessibility.carryOut(order, for: item, in: session) }
+                            }
                         }
-                    }
+                        .frame(width: ring, height: ring)
+                        .position(session.camera.viewPoint(of: item.hex, in: proxy.size))
+                }
             }
         }
     }

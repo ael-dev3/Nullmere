@@ -67,6 +67,9 @@ extension EnvironmentValues {
 /// left-aligned text doesn't, so it lines up with the text around it.
 public struct SpacedText: View {
     private let text: String
+    /// The words as written, for VoiceOver: it reads them as words, not as
+    /// capitals to be spelled.
+    private let spoken: String
     private let size: CGFloat
     private let weight: Font.Weight
     private let tracking: CGFloat
@@ -77,6 +80,7 @@ public struct SpacedText: View {
     ///   - balanced: whether to pad the leading edge to match the trailing tracking.
     public init(_ text: String, size: CGFloat, weight: Font.Weight = .light, tracking: CGFloat, balanced: Bool = true) {
         self.text = text.uppercased()
+        self.spoken = text
         self.size = size
         self.weight = weight
         self.tracking = tracking
@@ -89,6 +93,7 @@ public struct SpacedText: View {
             .tracking(size * tracking)
             .padding(.leading, balanced ? size * tracking : 0)
             .fixedSize()
+            .accessibilityLabel(Text(verbatim: spoken))
     }
 }
 

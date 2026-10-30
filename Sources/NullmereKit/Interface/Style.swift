@@ -80,6 +80,8 @@ struct Caps: View {
             .font(.nm(size, weight: weight))
             .tracking(drawn * tracking)
             .padding(.leading, centred ? drawn * tracking : 0)
+            // Read as words, not as capitals to be spelled.
+            .accessibilityLabel(Text(verbatim: text))
     }
 }
 

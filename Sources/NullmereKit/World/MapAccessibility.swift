@@ -9,6 +9,8 @@ enum MapAccessibility {
         let id: String
         let label: String
         let selection: GameSession.Selection
+        /// Where it lies: VoiceOver's cursor rings it there.
+        let hex: Hex
         /// For a company of the player's: where VoiceOver can send it, each
         /// as an action on it, as a right-click would.
         var orders: [Order] = []
@@ -28,6 +30,12 @@ enum MapAccessibility {
 
     /// The most orders offered for one company.
     static let ordersOffered = 8
+
+    /// How wide VoiceOver's cursor rings a hold or a company: about a hex,
+    /// and never less than can be clicked.
+    static func ring(at scale: Double) -> CGFloat {
+        CGFloat(max(scale * 1.6, 24))
+    }
 
     /// Which way one hex lies from another, as a compass would say it:
     /// north is up the map.
@@ -141,7 +149,8 @@ enum MapAccessibility {
                 parts.append("idle")
             }
             if hold.level(.moonspire) > 0 { parts.append("Moonspire stage \(hold.level(.moonspire))") }
-            holds.append(Item(id: "hold-\(hold.id)", label: parts.joined(separator: ", "), selection: .hold(hold.id), isHold: true))
+            holds.append(Item(id: "hold-\(hold.id)", label: parts.joined(separator: ", "), selection: .hold(hold.id), hex: hold.position,
+                              isHold: true))
         }
 
         var companies: [Item] = []
@@ -154,7 +163,7 @@ enum MapAccessibility {
                 else if unit.movesLeft > 0 { parts.append("\(unit.movesLeft) moves left, awaiting orders") }
                 else { parts.append("no moves left") }
             }
-            companies.append(Item(id: "unit-\(unit.id)", label: parts.joined(separator: ", "), selection: .unit(unit.id),
+            companies.append(Item(id: "unit-\(unit.id)", label: parts.joined(separator: ", "), selection: .unit(unit.id), hex: unit.position,
                                   orders: withOrders && unit.owner == player && unit.movesLeft > 0 ? orders(for: unit, in: session) : [],
                                   isOwnCompany: unit.owner == player, isFoe: unit.owner != player && state.isAtWar(player, unit.owner)))
         }

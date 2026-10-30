@@ -1,0 +1,221 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		4E554C4C4D45524500000007 /* NullmereUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E554C4C4D45524500000005 /* NullmereUITests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		4E554C4C4D45524500000005 /* NullmereUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NullmereUITests.swift; sourceTree = "<group>"; };
+		4E554C4C4D45524500000006 /* NullmereUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NullmereUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4E554C4C4D4552450000000A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4E554C4C4D45524500000002 = {
+			isa = PBXGroup;
+			children = (
+				4E554C4C4D45524500000003 /* NullmereUITests */,
+				4E554C4C4D45524500000004 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4E554C4C4D45524500000003 /* NullmereUITests */ = {
+			isa = PBXGroup;
+			children = (
+				4E554C4C4D45524500000005 /* NullmereUITests.swift */,
+			);
+			path = NullmereUITests;
+			sourceTree = "<group>";
+		};
+		4E554C4C4D45524500000004 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4E554C4C4D45524500000006 /* NullmereUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4E554C4C4D45524500000008 /* NullmereUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4E554C4C4D4552450000000D /* Build configuration list for PBXNativeTarget "NullmereUITests" */;
+			buildPhases = (
+				4E554C4C4D45524500000009 /* Sources */,
+				4E554C4C4D4552450000000A /* Frameworks */,
+				4E554C4C4D4552450000000B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NullmereUITests;
+			productName = NullmereUITests;
+			productReference = 4E554C4C4D45524500000006 /* NullmereUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4E554C4C4D45524500000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					4E554C4C4D45524500000008 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+				};
+			};
+			buildConfigurationList = 4E554C4C4D4552450000000C /* Build configuration list for PBXProject "NullmereUITests" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 4E554C4C4D45524500000002;
+			productRefGroup = 4E554C4C4D45524500000004 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4E554C4C4D45524500000008 /* NullmereUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4E554C4C4D4552450000000B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4E554C4C4D45524500000009 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4E554C4C4D45524500000007 /* NullmereUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		4E554C4C4D4552450000000E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		4E554C4C4D4552450000000F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		4E554C4C4D45524500000010 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = online.nullmere.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+			};
+			name = Debug;
+		};
+		4E554C4C4D45524500000011 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = online.nullmere.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4E554C4C4D4552450000000C /* Build configuration list for PBXProject "NullmereUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4E554C4C4D4552450000000E /* Debug */,
+				4E554C4C4D4552450000000F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4E554C4C4D4552450000000D /* Build configuration list for PBXNativeTarget "NullmereUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4E554C4C4D45524500000010 /* Debug */,
+				4E554C4C4D45524500000011 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 4E554C4C4D45524500000001 /* Project object */;
+}

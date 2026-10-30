@@ -370,6 +370,10 @@ public final class GameApp {
         let session = GameSession(link: link, house: house, world: world, store: store.forAge(age, of: Self.storeKey(for: address)),
                                   voice: Self.voice(), host: hosted)
         session.onNewAge = { [weak self] keeper, world in self?.arrived(keeper, in: world) }
+        #if DEBUG
+        // For the UI tests: the map offers VoiceOver's orders, as when it runs.
+        if ProcessInfo.processInfo.environment["NULLMERE_VOICEOVER"] == "1" { session.voiceOverRunning = { true } }
+        #endif
         session.onForgotten = { [weak self] in self?.forgotten() }
         play(session)
         showFromEnvironment()

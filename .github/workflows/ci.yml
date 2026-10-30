@@ -17,6 +17,7 @@ on:
       - Dockerfile.steward
       - news/**
       - Tools/world-preview/**
+      - UITests/**
       - Makefile
       - .github/workflows/ci.yml
   push:
@@ -32,6 +33,7 @@ on:
       - Dockerfile.steward
       - news/**
       - Tools/world-preview/**
+      - UITests/**
       - Makefile
       - .github/workflows/ci.yml
   workflow_dispatch:
@@ -296,6 +298,41 @@ jobs:
           grep -hE "error|warning" build/smoke-*.log 2>/dev/null | head -20 || true
           tail -n 15 build/game-stdout.log 2>/dev/null || true
           tail -n 15 build/steward.log 2>/dev/null || true
+          echo "::endgroup::"
+
+  # The app as VoiceOver and Accessibility Inspector meet it, through the
+  # Mac's own accessibility: Xcode's UI testing opens the debug build as a
+  # keeper would, puts every screen to its accessibility audit, and walks
+  # the lake's map through the elements VoiceOver reads.
+  accessibility:
+    name: Accessibility audit
+    runs-on: macos-26
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show toolchain
+        run: xcodebuild -version
+
+      # UI tests drive the Mac: let them, without a password prompt.
+      - name: Let UI tests drive the Mac
+        run: sudo automationmodetool enable-automationmode-without-authentication || echo "::warning::Could not enable automation mode"
+
+      # The debug app built and registered, then the UI tests: one command,
+      # as on a contributor's Mac.
+      - name: Audit every screen and walk the map
+        run: scripts/ui-test.sh
+
+      # Last, so a short read of the log holds it: what the audit and the
+      # walk found, and how the tests ended.
+      - name: Summary
+        if: always()
+        run: |
+          echo "::group::Summary"
+          grep -hE "UIAUDIT|UIWALK|UIMAP|error:|Test Case .* (passed|failed)|\*\* TEST" build/ui-test.log 2>/dev/null | cut -c1-900 | tail -n 150 || true
           echo "::endgroup::"
 
   # The launcher's screens, printed where the long macOS log can't trim

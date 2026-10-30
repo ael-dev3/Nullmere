@@ -93,58 +93,6 @@ final class WorldViewHostTests: XCTestCase {
         XCTAssertGreaterThan(session.camera.scale, pinched, "A pinch outward zooms in")
         map.draw(map.bounds)
     }
-
-    /// The map as VoiceOver meets it, through the Mac's own accessibility:
-    /// an element for each of the keeper's companies, choosing one selects
-    /// it, and its orders are actions on it that carry the order out.
-    func testVoiceOverPlaysTheMapThroughTheMacsAccessibility() throws {
-        guard WorldMetalView.systemDevice != nil else { throw XCTSkip("No Metal device available") }
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let session = GameSession(state: GameState(settings: GameSettings(seedText: "a map heard", keepers: 1)), store: LocalStore(directory: dir))
-        session.voiceOverRunning = { true }
-        let item = try XCTUnwrap(session.mapItems.first { $0.isOwnCompany && $0.orders.contains { !$0.founds } },
-                                 "A company of the keeper's, with somewhere to go")
-        let order = try XCTUnwrap(item.orders.first { !$0.founds })
-
-        let size = NSSize(width: 1000, height: 700)
-        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled], backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
-        let host = NSHostingView(rootView: WorldView(session: session).frame(width: size.width, height: size.height))
-        window.contentView = host
-        window.orderFrontRegardless()
-        defer { window.close() }
-        spin(1.0)
-
-        // Every element under the window, as VoiceOver walks them.
-        func walk(_ element: AnyObject, depth: Int = 0) -> [AnyObject] {
-            guard depth < 16, let children = element.accessibilityChildren?() ?? nil else { return [] }
-            let found = children.map { $0 as AnyObject }
-            return found + found.flatMap { walk($0, depth: depth + 1) }
-        }
-        let elements = walk(host)
-        guard let company = elements.first(where: { ($0.accessibilityLabel?() ?? nil) == item.label }) else {
-            throw XCTSkip("SwiftUI built no accessibility elements for the map in this process (\(elements.count) found), "
-                          + "as where no assistive app is running; run it with VoiceOver on to drive the map through them")
-        }
-
-        session.selection = .none
-        XCTAssertEqual(company.accessibilityPerformPress?(), true, "Chosen, as VoiceOver chooses")
-        spin(0.1)
-        XCTAssertEqual(session.selection, item.selection, "Choosing it selects it")
-
-        let actions = (company.accessibilityCustomActions?() ?? nil) ?? []
-        let action = try XCTUnwrap(actions.first { $0.name == order.name }, "Its orders are actions on it, among \(actions.map(\.name))")
-        // Performed as VoiceOver performs it: by its handler, or by its target.
-        if let handler = action.handler {
-            XCTAssertTrue(handler())
-        } else {
-            let target = try XCTUnwrap(action.target as? NSObject, "The action has someone to carry it out")
-            _ = target.perform(try XCTUnwrap(action.selector), with: action)
-        }
-        spin(0.1)
-        XCTAssertEqual(session.lastSaid?.hasPrefix("Done:"), true, "Carried out, and said so: \(session.lastSaid ?? "nothing")")
-    }
 }
 
 /// The map without Metal, and the forecast over an enemy in reach.

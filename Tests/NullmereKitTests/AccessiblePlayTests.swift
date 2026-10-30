@@ -214,6 +214,14 @@ final class AccessiblePlayTests: XCTestCase {
         XCTAssertEqual(drawn(NullmereKit.Palette.line(0.7)), 0.7, accuracy: 0.001, "A bright line as it was")
     }
 
+    /// VoiceOver's cursor rings a hold or a company where it lies, about a
+    /// hex across, and never smaller than a click can find.
+    func testVoiceOversCursorRingsAHex() {
+        XCTAssertEqual(MapAccessibility.ring(at: 30), 48, accuracy: 0.001)
+        XCTAssertEqual(MapAccessibility.ring(at: Camera.minimumScale), 24, "Never smaller than a click's target")
+        XCTAssertEqual(MapAccessibility.ring(at: Camera.maximumScale), 153.6, accuracy: 0.001)
+    }
+
     func testWhatColourSaysIsSaidInShape() throws {
         XCTAssertFalse(WorldMarks.ownership(.own, at: .zero, radius: 10).isEmpty, "A bar over the keeper's own")
         XCTAssertFalse(WorldMarks.ownership(.foe, at: .zero, radius: 10).isEmpty, "A cross on a foe's")

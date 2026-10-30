@@ -129,6 +129,7 @@ make check-shader          # compile the lake's and the map's shaders with the o
 make smoke                 # build the app, open the launcher, check it starts and renders with Metal, take a screenshot
 make smoke-menu            # open a debug build of the launcher with the model ready, Apple Intelligence off and the model downloading; type into it, photograph every screen
 make smoke-game            # open a debug build, press Play, enter a realm hosted on the Mac as a keeper, take screenshots
+scripts/ui-test.sh         # through Xcode's UI testing: every screen put to its accessibility audit, the map walked as VoiceOver walks it
 ```
 
 CI runs all of these on a macOS 26 runner for every pull request and every
@@ -167,6 +168,7 @@ builds also take:
 | `NULLMERE_TEXT` | `larger`: show the larger type without remembering it |
 | `NULLMERE_SHOW` | With `NULLMERE_KEEPER`: `seat`, `unit`, `houses`, `chronicle`, `guide`: select the seat or a company, open a panel; `briefing`: keep the card a keeper first meets; `watch`: be ready after `NULLMERE_WATCH_AFTER` seconds (12.5) |
 | `NULLMERE_AUTOPLAY` | With `NULLMERE_KEEPER`, in a hosted realm: let a steward play the keeper's House this many watches first |
+| `NULLMERE_VOICEOVER` | `1`: the map offers its orders to the accessibility tree as when VoiceOver runs, for the UI tests |
 
 Release builds ignore them all and always require the model.
 
