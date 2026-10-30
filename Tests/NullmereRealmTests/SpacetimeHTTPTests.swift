@@ -96,11 +96,16 @@ final class SpacetimeHTTPTests: XCTestCase {
         let forgotten = await refusal(StubHTTP.Answer(status: 401))
         XCTAssertEqual(forgotten, .unauthorized)
         XCTAssertTrue(forgotten?.isUnauthorized == true)
+        // The server's own words are kept for whoever runs the realm; the
+        // keeper is told plainly.
         let said = await refusal(StubHTTP.Answer(status: 530, text: "  The reducer panicked: no such keeper\n"))
         XCTAssertEqual(said?.description, "The reducer panicked: no such keeper")
+        XCTAssertEqual(said?.status, 530)
+        XCTAssertEqual(said.map { RealmTrouble.words(for: $0) }, "The realm couldn't answer just now.")
         XCTAssertFalse(said?.isUnauthorized ?? true)
         let silent = await refusal(StubHTTP.Answer(status: 503))
         XCTAssertEqual(silent?.description, "The realm answered 503.")
+        XCTAssertEqual(silent.map { RealmTrouble.words(for: $0) }, "The realm couldn't answer just now.")
     }
 
     func testAServerOutOfReachIsAnError() async {

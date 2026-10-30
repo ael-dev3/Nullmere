@@ -10,8 +10,9 @@ import XCTest
 /// A keeper's line through sleep, drops and restarts: readiness counts only
 /// for the watch it was given in, an order the realm carried out is never
 /// called lost, readiness the realm lost is put right, a keeper the realm
-/// no longer knows goes back to the door, a realm that is down isn't
-/// hammered, one failed poll isn't told, and a Mac waking asks at once.
+/// no longer knows goes back to the door, even one who gives no order, a
+/// realm that is down isn't hammered, one failed poll isn't told, a Mac
+/// waking asks at once, and a link let go mid-question drops its errand.
 @MainActor
 final class LinkResilienceTests: XCTestCase {
     private func until(_ what: String, timeout: Double = 20, _ condition: () async -> Bool) async throws {
@@ -109,7 +110,7 @@ final class LinkResilienceTests: XCTestCase {
         ama.send(.fortify(unit: spear.id))
         try await until("the order sent") { await db.calls.contains("order") }
         clock += NetworkRealmLink.orderLifetime + 1
-        try await db.waitFor(3, more: "SELECT nonce FROM my_requests")
+        try await db.waitFor(3, more: FakeSpacetime.requestAsked)
         XCTAssertEqual(ama.waiting, 1, "Still waiting on the realm's word")
         XCTAssertTrue(ear.refusals.isEmpty, "Never said to be lost: \(ear.refusals)")
         let sent = await db.calls.filter { $0 == "order" }.count
@@ -207,6 +208,70 @@ final class LinkResilienceTests: XCTestCase {
             ear.events.contains { if case .refused(.unknownKeeper) = $0 { return true } else { return false } }
         }
         XCTAssertEqual(link.waiting, 0, "Nothing left to send for no one")
+    }
+
+    /// A realm begun anew is noticed from its answer to "here": a keeper who
+    /// only looks on, giving no order, goes back to the door all the same.
+    func testARealmBegunAnewIsNoticedFromItsAnswerToHere() async throws {
+        let db = FakeSpacetime()
+        let (_, first, key) = try await steward(db, seed: "begun anew")
+        let (ama, ear) = try await keeper(db, name: "Ama")
+        defer { ama.close() }
+        var clock = 1_000.0
+        ama.now = { clock }
+        // Its database is cleared and a new realm raised in it, which has
+        // never heard of Ama.
+        first.cancel()
+        await first.value
+        await db.clear()
+        let second = try await RealmSteward(transport: db, token: key.token, name: "The Nullmere", seed: "another realm",
+                                            seats: 4, watchLength: 600, now: 100)
+        let running = Task { await second.run(clock: { 101 }) }
+        defer { running.cancel() }
+        clock += NetworkRealmLink.hereInterval + 1
+        try await until("the door") {
+            ear.events.contains { if case .refused(.unknownKeeper) = $0 { return true } else { return false } }
+        }
+        XCTAssertEqual(ama.waiting, 0)
+        let asked = await db.queried(FakeSpacetime.answerAsked, by: try XCTUnwrap(ama.credentials?.token))
+        XCTAssertGreaterThan(asked, 0, "Its answer read by its nonce alone")
+    }
+
+    /// An order past its time is asked after; let go as it is (the keeper
+    /// leaves the world), the link finds its outbox empty and drops the
+    /// errand, rather than tripping over it.
+    func testALinkLetGoWhileAnOrderIsAskedAfterDropsTheErrand() async throws {
+        let db = FakeSpacetime()
+        let (_, running, _) = try await steward(db, seed: "let go mid-question")
+        defer { running.cancel() }
+        let line = Flaky(db)
+        // No polls, so the order alone asks after answers; slow to send
+        // again, so the order outlives its lifetime first.
+        let ama = NetworkRealmLink(transport: line, credentials: MemoryStore(), pollInterval: 60, retryDelay: 2)
+        let ear = Listener()
+        ear.listen(to: ama)
+        var clock = 1_000.0
+        ama.now = { clock }
+        ama.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        let world = try XCTUnwrap(ear.world)
+        let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
+        let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
+        // The order reaches the realm, but its answer is lost; the realm
+        // forgets the answer, and the order passes its time.
+        await line.loseNextCall()
+        ama.send(.fortify(unit: spear.id))
+        try await until("the order carried out") { await db.handled(kind: "order") == 1 }
+        await db.forgetReplies()
+        await line.holdAnswers(true)
+        clock += NetworkRealmLink.orderLifetime + 1
+        try await until("the order asked after") { await line.isHoldingAnAnswer }
+        ama.close()
+        await line.holdAnswers(false)
+        try await db.waitFor(3, more: FakeSpacetime.stewardRound)
+        XCTAssertEqual(ama.waiting, 0)
+        let sent = await db.calls.filter { $0 == "order" }.count
+        XCTAssertEqual(sent, 1, "Past its time, never sent again")
     }
 
     func testARealmOutOfReachIsAskedLessOftenAndOneFailureIsntTold() async throws {

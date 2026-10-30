@@ -29,6 +29,10 @@ public actor FakeSpacetime: SpacetimeTransport {
     public static let statusPoll = "SELECT version, status FROM status"
     /// A steward's round begins by reading the requests waiting.
     public static let stewardRound = "SELECT id, keeper, kind, nonce, payload FROM request"
+    /// A keeper asks after one answer, or one request still waiting, by its
+    /// nonce; counted as one statement, whatever the nonce.
+    public static let answerAsked = "SELECT * FROM my_replies WHERE nonce = ?"
+    public static let requestAsked = "SELECT nonce FROM my_requests WHERE nonce = ?"
 
     /// How many times a statement has been queried, by anyone or by the
     /// holder of one token.
@@ -82,8 +86,27 @@ public actor FakeSpacetime: SpacetimeTransport {
     /// The steward forgets every answer it gave, as it does ten minutes on.
     public func forgetReplies() { replies.removeAll() }
 
-    /// The server forgets an identity, as when its database is made anew.
+    /// The server forgets an identity, as when it is made anew, or is out of
+    /// sorts and refuses every key.
     public func forget(token: String) { identities[token] = nil }
+
+    /// The server takes a key again.
+    public func remember(_ credentials: SpacetimeCredentials) { identities[credentials.token] = credentials.identity }
+
+    /// The database made anew, as a publication with `--delete-data` makes
+    /// it: every table emptied, the publisher its steward again, and the
+    /// identities the server knows kept.
+    public func clear() {
+        requests = []
+        replies = [:]
+        parts = [:]
+        status = nil
+        stamp = nil
+        views = [:]
+        lease = nil
+        legacyWorld = nil
+        nextID = 1
+    }
 
     /// A world already kept, as a realm's own steward left it.
     public func seed(world parts: [String: String], version: UInt64) {
@@ -137,7 +160,9 @@ public actor FakeSpacetime: SpacetimeTransport {
             // As the module asks it: readiness in a watch is a "ready" request.
             let kind = reducer == "ready_in_watch" ? "ready" : reducer
             if requests.contains(where: { $0.nonce == nonce && $0.keeper == me }) || replies[nonce]?.keeper == me { return }
-            guard requests.filter({ $0.keeper == me }).count < 32 else { throw SpacetimeError("Too many requests are waiting") }
+            guard requests.filter({ $0.keeper == me }).count < 32 else {
+                throw SpacetimeError("Too many of your requests are waiting; give the realm a moment.", status: 530)
+            }
             requests.append(Request(id: nextID, keeper: me, kind: kind, nonce: nonce, payload: payload))
             nextID += 1
         case "forget":
@@ -185,10 +210,25 @@ public actor FakeSpacetime: SpacetimeTransport {
     public func query(_ sql: String, token: String) async throws -> [[JSONValue]] {
         try answering()
         let me = try sender(token)
-        queryCounts[sql, default: 0] += 1
-        queryCounts[sql + "\u{0}" + me, default: 0] += 1
+        // A row asked for by its nonce: the statement with the nonce taken out.
+        let byNonce = [Self.answerAsked, Self.requestAsked].lazy.compactMap { pattern -> (String, String)? in
+            let prefix = String(pattern.dropLast())
+            guard sql.hasPrefix(prefix) else { return nil }
+            let literal = sql.dropFirst(prefix.count)
+            guard literal.count >= 2, literal.hasPrefix("'"), literal.hasSuffix("'") else { return nil }
+            return (pattern, String(literal.dropFirst().dropLast()).replacingOccurrences(of: "''", with: "'"))
+        }.first
+        let counted = byNonce?.0 ?? sql
+        queryCounts[counted, default: 0] += 1
+        queryCounts[counted + "\u{0}" + me, default: 0] += 1
         func owner() throws {
             guard me == steward else { throw SpacetimeError("Table is private") }
+        }
+        if let (pattern, nonce) = byNonce {
+            if pattern == Self.answerAsked {
+                return replies[nonce].flatMap { $0.keeper == me ? [[.string(nonce), .string($0.keeper), .string($0.payload)]] : nil } ?? []
+            }
+            return requests.filter { $0.keeper == me && $0.nonce == nonce }.map { [.string($0.nonce)] }
         }
         switch sql {
         case "SELECT version, state FROM world":

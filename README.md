@@ -360,7 +360,8 @@ as the realm will, and takes the realm's word as final.
   steward write it. The steward runs the same Swift rules core the clients
   carry, so there is one set of rules. A keeper's client carries out their
   orders at once, as the realm will, and takes the realm's word as final.
-  Your identity is made once and kept in your keychain. For
+  Your identity is made once and kept in your keychain, and never erased
+  by the game, even should the realm's server stop taking it. For
   development a realm can also be hosted in-process (`NULLMERE_REALM=local`).
 
 ### Raising the realm
@@ -428,7 +429,15 @@ still, and told again when it returns. An order that reached the realm
 waits there for its answer, however long; one that can't reach it within
 five minutes is let go, and its keeper told. Past those five minutes an
 order is never sent again, only asked after, so none is carried out
-twice.
+twice. A client asks after each answer by its nonce alone, waits for what
+came of an order by its view's version, fetching the whole view only once
+that has moved on, and never takes a view older than the one it has. The
+realm answers each "here" too: a keeper it no longer knows, as after it is
+begun anew, goes back to the front door within half a minute, though they
+give no order. A key the server won't take is kept, never erased or made
+anew: the keeper is told so, plainly, and it is offered again as the realm
+is asked again. What a server says as it refuses is for whoever runs the
+realm; keepers are told in plain words, never a status code.
 
 ## Playing Nullmere Online
 

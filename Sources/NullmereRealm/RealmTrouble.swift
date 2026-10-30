@@ -6,8 +6,14 @@ import FoundationNetworking
 /// What went wrong between a keeper and the realm, in plain words: never
 /// an error's raw description, its domain and code and user info.
 public enum RealmTrouble {
+    /// The realm module's own refusals a keeper may meet, written for them.
+    public static let realmRefusals: Set<String> = [
+        "Too many of your requests are waiting; give the realm a moment.",
+        "The request is too long.",
+    ]
+
     public static func words(for error: any Error) -> String {
-        if let spacetime = error as? SpacetimeError { return spacetime.description }
+        if let spacetime = error as? SpacetimeError { return words(for: spacetime) }
         if let url = error as? URLError {
             switch url.code {
             case .notConnectedToInternet, .dataNotAllowed, .internationalRoamingOff:
@@ -31,5 +37,15 @@ public enum RealmTrouble {
             return "This Mac's keychain wouldn't keep your key. Unlock the keychain, then try again."
         }
         return "The realm can't be reached."
+    }
+
+    /// The link's own words, and the realm's own refusals, as they are;
+    /// whatever else the server said, which is for whoever runs it, in plain
+    /// words: never a status code, a stack or the server's own wording.
+    private static func words(for spacetime: SpacetimeError) -> String {
+        guard let status = spacetime.status, status != 401, status != 404, !realmRefusals.contains(spacetime.description) else {
+            return spacetime.description
+        }
+        return status >= 500 ? "The realm couldn't answer just now." : "The realm couldn't take that request."
     }
 }

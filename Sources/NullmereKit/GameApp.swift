@@ -402,15 +402,15 @@ public final class GameApp {
     }
 
     /// Lets the link go: it tells nothing more, and leaves the realm, or,
-    /// when the realm no longer knows its key, simply stops.
+    /// when the realm no longer knows the keeper, simply stops.
     private func releaseLink(leaving: Bool = true) {
         if leaving { link?.leave() } else { link?.close() }
         link?.onEvent = nil
         link = nil
     }
 
-    /// The realm no longer knows this Mac's key (its database was made anew):
-    /// back to the front door, to enter under a name again.
+    /// The realm no longer knows this keeper (it was begun anew): back to the
+    /// front door, to enter under a name again. The key is the same.
     private func forgotten() {
         keeperName = nil
         UserDefaults.standard.removeObject(forKey: Self.nameKey(for: address))
@@ -418,7 +418,7 @@ public final class GameApp {
         ambience.isAtWar = false
         phase = .frontDoor
         openDoor()
-        arrivalProblem = "The realm no longer knows this Mac's key, as when a realm is begun anew. Choose the name you'll go by."
+        arrivalProblem = "The realm no longer knows you, as when a realm is begun anew. Choose the name you'll go by."
     }
 
     /// Leaves the world for the front door; after two watches a caretaker

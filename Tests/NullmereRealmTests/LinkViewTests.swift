@@ -5,17 +5,26 @@ import XCTest
 @testable import NullmereRealm
 
 /// What the server says of a keeper's view, bent as a test needs: a row
-/// that can't be read, a view never shown, or the realm in a new age.
+/// that can't be read, a view never shown, the realm in a new age, or an
+/// older view read out of turn, as if it were newer.
 actor ViewTamper {
     var malformed = false
     var newAge = false
+    var stale: [[JSONValue]]?
 
-    func set(malformed: Bool = false, newAge: Bool = false) {
+    func set(malformed: Bool = false, newAge: Bool = false, stale: [[JSONValue]]? = nil) {
         self.malformed = malformed
         self.newAge = newAge
+        self.stale = stale
+    }
+
+    /// The view's version: far ahead, while an older view is being passed off.
+    func bend(head rows: [[JSONValue]]) -> [[JSONValue]] {
+        stale == nil ? rows : [[.number(1e9)]]
     }
 
     func bend(_ rows: [[JSONValue]]) throws -> [[JSONValue]] {
+        if let stale { return stale }
         if malformed { return [[.string("keeper"), .string("not a version")]] }
         guard newAge, let row = rows.first, row.count == 4, let number = row[1].number, let text = row[2].string else { return rows }
         let view = try JSONDecoder().decode(RealmView.self, from: Data(text.utf8))
@@ -36,7 +45,11 @@ struct TamperedSpacetime: SpacetimeTransport {
 
     func query(_ sql: String, token: String) async throws -> [[JSONValue]] {
         let rows = try await inner.query(sql, token: token)
-        return sql == "SELECT * FROM my_view" ? try await tamper.bend(rows) : rows
+        switch sql {
+        case "SELECT * FROM my_view": return try await tamper.bend(rows)
+        case "SELECT version FROM my_view": return await tamper.bend(head: rows)
+        default: return rows
+        }
     }
 
     func queryDated(_ sql: String, token: String) async throws -> (rows: [[JSONValue]], date: Date?) {
@@ -46,8 +59,9 @@ struct TamperedSpacetime: SpacetimeTransport {
 
 /// The keeper's view as the link reads it: a row it can't read is passed
 /// over, a realm that takes a keeper in but never shows them the world is
-/// said so, a new age is a new arrival, and an order kept through an
-/// outage is carried once the realm answers again.
+/// said so, a new age is a new arrival, an order kept through an outage is
+/// carried once the realm answers again, an older view never stands over a
+/// newer, and an order's answer is waited for by the view's version alone.
 @MainActor
 final class LinkViewTests: XCTestCase {
     private func until(_ what: String, timeout: Double = 20, _ condition: () async -> Bool) async throws {
@@ -197,5 +211,60 @@ final class LinkViewTests: XCTestCase {
         try await until("the order carried") { await db.handled(kind: "order") == 1 }
         try await until("the outbox empty") { link.waiting == 0 }
         try await until("the answer") { ear.events.contains { if case .answered = $0 { return true } else { return false } } }
+    }
+
+    /// A view read out of turn, older than one the keeper already has, as
+    /// when a slow read comes back after a quicker one, never stands over it.
+    func testAnOlderViewNeverStandsOverANewerOne() async throws {
+        let (db, tamper, link, ear, running) = try await realm("older views")
+        defer { running.cancel(); link.leave() }
+        link.connect()
+        link.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        let world = try XCTUnwrap(ear.world)
+        let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
+        let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
+        let token = try XCTUnwrap(link.credentials?.token)
+        let old = try await db.query("SELECT * FROM my_view", token: token)
+        link.send(.fortify(unit: spear.id))
+        try await until("the order carried out") { ear.world?.unit(spear.id)?.fortified == true }
+
+        // The view as it stood before the order is read again, out of turn,
+        // as the realm publishes for another keeper's arrival.
+        await tamper.set(stale: old)
+        let reads = link.viewReads
+        let bel = try await db.createIdentity()
+        try await db.call("arrive", [.string("b1"), .string("Bel")], token: bel.token)
+        try await until("the view read again") { link.viewReads > reads }
+        try await db.waitFor(3, more: FakeSpacetime.statusPoll, by: token)
+        XCTAssertEqual(ear.world?.unit(spear.id)?.fortified, true, "The newer view stands")
+    }
+
+    /// An order that changes nothing the keeper sees: the link waits for
+    /// what came of it by the view's version, never fetching the whole view
+    /// again and again, and asks after its answer by its nonce alone.
+    func testAnAnswerIsWaitedForByTheViewsVersion() async throws {
+        let (db, _, link, ear, running) = try await realm("by version")
+        defer { running.cancel(); link.leave() }
+        link.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        let world = try XCTUnwrap(ear.world)
+        let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
+        let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
+        func answered() -> Int { ear.events.filter { if case .answered = $0 { return true } else { return false } }.count }
+        // The first order marks Ama as one who came to play; the second,
+        // a march halted that was never begun, changes nothing.
+        link.send(.halt(unit: spear.id))
+        try await until("the first answer") { answered() == 1 }
+        let token = try XCTUnwrap(link.credentials?.token)
+        let fetched = await db.queried("SELECT * FROM my_view", by: token)
+        link.send(.halt(unit: spear.id))
+        try await until("the second answer") { answered() == 2 }
+        let again = await db.queried("SELECT * FROM my_view", by: token) - fetched
+        XCTAssertEqual(again, 0, "The view's version read, not the whole view")
+        let asked = await db.queried(FakeSpacetime.answerAsked, by: token)
+        let everything = await db.queried("SELECT * FROM my_replies", by: token)
+        XCTAssertGreaterThan(asked, 0)
+        XCTAssertEqual(everything, 0, "Never every answer kept for the keeper")
     }
 }

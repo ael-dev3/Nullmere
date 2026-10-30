@@ -9,8 +9,9 @@ import XCTest
 
 /// The app against a realm across the network, as a keeper meets it: the
 /// front door reaching the realm, a new keeper entering by name, playing,
-/// the realm forgetting this Mac's key, and a keeper waiting for a seat.
-/// SpacetimeDB is held in memory, with the realm's own steward beside it.
+/// the server refusing this Mac's key, which is kept, and a keeper waiting
+/// for a seat. SpacetimeDB is held in memory, with the realm's own steward
+/// beside it.
 @MainActor
 final class NetworkAppTests: XCTestCase {
     private var dirs: [URL] = []
@@ -49,7 +50,7 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertNotNil(renderer.cgImage)
     }
 
-    func testAKeeperEntersPlaysAndIsForgotten() async throws {
+    func testAKeeperEntersPlaysAndKeepsTheirKey() async throws {
         let db = FakeSpacetime()
         let running = try await steward(db, seats: 4)
         defer { running.cancel() }
@@ -93,15 +94,17 @@ final class NetworkAppTests: XCTestCase {
         }
         XCTAssertGreaterThanOrEqual(handled, 1, "The steward carried the order out")
 
-        // The realm is begun anew and forgets this Mac's key: back to the
-        // door, to choose a name again.
-        let credentials = try JSONDecoder().decode(SpacetimeCredentials.self, from: Data(try XCTUnwrap(identity.value).utf8))
+        // The server stops taking this Mac's key: the keeper is told, and
+        // the key is kept, never erased, in case the server takes it again.
+        let key = try XCTUnwrap(identity.value)
+        let credentials = try JSONDecoder().decode(SpacetimeCredentials.self, from: Data(key.utf8))
         await db.forget(token: credentials.token)
-        try await until("the realm to forget the keeper") { app.session == nil && app.arrivalProblem != nil }
-        XCTAssertNil(app.keeperName)
-        XCTAssertTrue(app.arrivalProblem?.contains("no longer knows") == true, app.arrivalProblem ?? "")
-        draw(FrontDoor(app: app))
-        app.leaveDoor()
+        try await until("the keeper to be told") { session.isOutOfReach }
+        XCTAssertEqual(identity.value, key, "The key is kept")
+        XCTAssertTrue(app.session === session, "and the keeper stays in the world while the realm is asked again")
+        XCTAssertEqual(app.keeperName, "Ama")
+        draw(GameRootView(app: app))
+        app.leaveWorld()
     }
 
     func testAKeeperWaitsForASeat() async throws {

@@ -5,13 +5,13 @@ import XCTest
 @testable import NullmereRealm
 
 /// The link at the realm's edges: a database with no realm in it yet, a
-/// server out of reach as a keeper arrives, and a key the realm has
-/// forgotten, at the door and in play.
+/// server out of reach as a keeper arrives, and a key the server won't
+/// take, at the door and in play, kept all the same.
 @MainActor
 final class LinkEdgeTests: XCTestCase {
-    private func until(_ what: String, timeout: Double = 15, _ condition: () -> Bool) async throws {
+    private func until(_ what: String, timeout: Double = 15, _ condition: () async -> Bool) async throws {
         let deadline = Date().addingTimeInterval(timeout)
-        while !condition() {
+        while !(await condition()) {
             if Date() > deadline { throw SpacetimeError("Timed out waiting for \(what)") }
             try await Task.sleep(nanoseconds: 20_000_000)
         }
@@ -50,23 +50,24 @@ final class LinkEdgeTests: XCTestCase {
         link.leave()
     }
 
-    func testAForgottenKeyAtTheDoorAsksForANameAgain() async throws {
+    func testAKeyTheServerWontTakeAtTheDoorIsKeptAndSaidPlainly() async throws {
         let db = FakeSpacetime()
         let running = try await steward(db)
         defer { running.cancel() }
         let kept = try await db.createIdentity()
         await db.forget(token: kept.token)
-        let store = MemoryStore(value: String(decoding: try JSONEncoder().encode(kept), as: UTF8.self))
+        let key = String(decoding: try JSONEncoder().encode(kept), as: UTF8.self)
+        let store = MemoryStore(value: key)
         let (link, ear) = link(db, store: store)
         link.arrive(name: nil)
-        try await until("the realm not to know the keeper") {
-            ear.events.contains { if case .refused(.unknownKeeper) = $0 { return true } else { return false } }
-        }
-        XCTAssertEqual(store.value, "", "The forgotten key is let go")
-        link.leave()
+        try await until("the refusal") { !ear.refusals.isEmpty }
+        XCTAssertEqual(ear.refusals.first, SpacetimeError.unauthorized.description)
+        XCTAssertEqual(store.value, key, "The key is kept, never erased")
+        XCTAssertEqual(link.credentials, kept, "nor made anew")
+        link.close()
     }
 
-    func testAKeyForgottenInPlayIsTold() async throws {
+    func testAKeyTheServerWontTakeInPlayIsToldAndTheOrderWaits() async throws {
         let db = FakeSpacetime()
         let running = try await steward(db)
         defer { running.cancel() }
@@ -78,13 +79,22 @@ final class LinkEdgeTests: XCTestCase {
         let world = try XCTUnwrap(ear.world)
         let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
         let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
-        let kept = try JSONDecoder().decode(SpacetimeCredentials.self, from: Data(try XCTUnwrap(store.value).utf8))
+        let key = try XCTUnwrap(store.value)
+        let kept = try JSONDecoder().decode(SpacetimeCredentials.self, from: Data(key.utf8))
         await db.forget(token: kept.token)
         link.send(.fortify(unit: spear.id))
-        try await until("the realm not to know the keeper") {
-            ear.events.contains { if case .refused(.unknownKeeper) = $0 { return true } else { return false } }
+        try await until("the keeper told") {
+            ear.events.contains { if case .unreachable(SpacetimeError.unauthorized.description) = $0 { return true } else { return false } }
         }
-        link.leave()
+        XCTAssertFalse(ear.events.contains { if case .refused = $0 { return true } else { return false } }, "Still in the world")
+        XCTAssertEqual(link.waiting, 1, "The order waits")
+        XCTAssertEqual(store.value, key, "and the key is kept")
+        // The server takes the key again: the order goes, once.
+        await db.remember(kept)
+        try await until("the order carried out") { await db.handled(kind: "order") == 1 }
+        try await until("the outbox empty") { link.waiting == 0 }
+        XCTAssertEqual(link.credentials, kept)
+        link.close()
     }
 }
 

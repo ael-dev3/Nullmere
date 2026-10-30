@@ -179,7 +179,7 @@ fn ask(ctx: &ReducerContext, kind: &str, nonce: String, payload: String) -> Resu
     }
     let waiting = ctx.db.request().keeper().filter(&keeper).count();
     if waiting >= MAX_WAITING {
-        return Err("Too many requests are waiting; give the steward a moment.".into());
+        return Err("Too many of your requests are waiting; give the realm a moment.".into());
     }
     ctx.db.request().insert(Request { id: 0, keeper, kind: kind.into(), nonce, payload });
     Ok(())

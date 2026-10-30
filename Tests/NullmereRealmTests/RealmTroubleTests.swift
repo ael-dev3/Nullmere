@@ -24,6 +24,16 @@ final class RealmTroubleTests: XCTestCase {
             (NSError(domain: "NSOSStatusErrorDomain", code: -25308),
              "This Mac's keychain wouldn't keep your key. Unlock the keychain, then try again."),
             (NSError(domain: "Elsewhere", code: 7), "The realm can't be reached."),
+            // What the server says is for whoever runs it; the keeper hears
+            // plain words, but for the realm's own refusals, written for them.
+            (SpacetimeError("The realm isn't open yet.", status: 404), "The realm isn't open yet."),
+            (SpacetimeError.unauthorized, SpacetimeError.unauthorized.description),
+            (SpacetimeError("The reducer panicked: index out of bounds", status: 530), "The realm couldn't answer just now."),
+            (SpacetimeError("The realm answered 503.", status: 503), "The realm couldn't answer just now."),
+            (SpacetimeError("expected value at line 1 column 1", status: 400), "The realm couldn't take that request."),
+            (SpacetimeError("Too many of your requests are waiting; give the realm a moment.", status: 530),
+             "Too many of your requests are waiting; give the realm a moment."),
+            (SpacetimeError("The realm didn't answer in time."), "The realm didn't answer in time."),
         ]
         for (error, words) in said {
             XCTAssertEqual(RealmTrouble.words(for: error), words, "\(error)")
