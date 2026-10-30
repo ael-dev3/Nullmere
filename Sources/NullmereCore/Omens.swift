@@ -85,15 +85,16 @@ extension GameState {
         record(.omen, [], "\(kind.beginning) \(kind.effect)")
     }
 
-    /// How far a company sees, under the omen there is.
+    /// How far a company sees, with its House's studies, under the omen there is.
     func sight(of unit: Unit) -> Int {
-        let range = unit.kind.sight + (map[unit.position]?.terrain.visionBonus ?? 0)
+        let range = unit.kind.sight + (map[unit.position]?.terrain.visionBonus ?? 0) + bonus(.sight, for: unit.owner)
         return omen?.kind == .risingMist ? max(1, range - 1) : range
     }
 
-    /// How far a hold sees, under the omen there is.
+    /// How far a hold sees, with its House's studies, under the omen there is.
     func sight(of hold: Hold) -> Int {
-        omen?.kind == .risingMist ? max(1, hold.sight - 1) : hold.sight
+        let range = hold.sight + bonus(.holdSight, for: hold.owner)
+        return omen?.kind == .risingMist ? max(1, range - 1) : range
     }
 
     /// A hold's yield, under the omen there is.
@@ -110,5 +111,10 @@ extension GameState {
     /// Ward mended in a watch, under the omen there is.
     var wardMending: Int {
         omen?.kind == .stillNight ? Hold.wardRecovery * 2 : Hold.wardRecovery
+    }
+
+    /// Ward a House's hold mends in a watch, with its studies.
+    func wardMending(for house: Int) -> Int {
+        wardMending * (100 + bonus(.wardMending, for: house)) / 100
     }
 }

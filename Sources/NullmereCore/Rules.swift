@@ -45,6 +45,8 @@ extension GameState {
             return try give(resource, amount: amount, from: house, to: target)
         case let .offerTrade(trade, target, words):
             return try offerTrade(trade, from: house, to: target, words: words.flatMap(Envoy.carried))
+        case let .study(study):
+            return try beginStudy(study, as: house)
         }
     }
 
@@ -254,7 +256,7 @@ extension GameState {
         }
         var defenseBonus = 100 + (map[hex]?.terrain.defenseBonus ?? 0) + (defender.fortified ? 25 : 0)
         if let hold = hold(at: hex), hold.owner == defender.owner {
-            defenseBonus += Hold.garrisonBonus(wallLevel: hold.level(.walls))
+            defenseBonus += Hold.garrisonBonus(wallLevel: hold.level(.walls)) + bonus(.garrison, for: defender.owner)
         }
         if attacker.kind == .rider {
             defenseBonus += defender.kind.bonusAgainstRiders
@@ -412,11 +414,22 @@ extension GameState {
         return [.holdFounded(hold: hold.id)]
     }
 
-    /// The cost of raising a building one level in a hold, or nil at its top.
+    /// The cost of raising a building one level in a hold, or nil at its top:
+    /// its price, lessened by its House's studies.
     public func nextLevelCost(of kind: BuildingKind, in hold: Hold) -> Stock? {
         let next = hold.level(kind) + 1
         guard next <= kind.maxLevel else { return nil }
-        return kind.cost(toLevel: next)
+        return buildCost(of: kind, toLevel: next, for: hold.owner)
+    }
+
+    /// What raising a work to a level costs a House.
+    public func buildCost(of kind: BuildingKind, toLevel level: Int, for house: Int) -> Stock {
+        GameState.lessened(kind.cost(toLevel: level), by: bonus(.buildCost, for: house))
+    }
+
+    /// Watches raising a work to a level takes a House.
+    public func buildWatches(of kind: BuildingKind, toLevel level: Int, for house: Int) -> Int {
+        GameState.hastened(kind.buildWatches(toLevel: level), by: bonus(.buildSpeed, for: house))
     }
 
     private mutating func build(_ kind: BuildingKind, in holdID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
@@ -428,11 +441,11 @@ extension GameState {
         if kind == .moonspire, houses[house].liege != nil { throw .notApplicable }
         let level = hold.level(kind) + 1
         guard level <= kind.maxLevel else { throw .maxLevel }
-        let cost = kind.cost(toLevel: level)
+        let cost = buildCost(of: kind, toLevel: level, for: house)
         guard houses[house].stock.covers(cost) else { throw .shortOf(houses[house].stock.shortfall(for: cost)) }
 
         houses[house].stock.debit(cost)
-        holds[index].project = Hold.Project(kind: kind, targetLevel: level, watchesLeft: kind.buildWatches(toLevel: level))
+        holds[index].project = Hold.Project(kind: kind, targetLevel: level, watchesLeft: buildWatches(of: kind, toLevel: level, for: house))
         return [.buildingStarted(hold: holdID, kind: kind, level: level)]
     }
 
@@ -441,16 +454,17 @@ extension GameState {
     /// every Founder already on the march or mustering, so each new hold is
     /// dearer than the last and a realm can't sprawl for nothing.
     public func trainingCost(of kind: UnitKind, tier: Int = 1, for house: Int) -> Stock {
-        guard kind == .founder else { return kind.cost(tier: tier) }
+        let discount = bonus(.trainingCost, for: house)
+        guard kind == .founder else { return GameState.lessened(kind.cost(tier: tier), by: discount) }
         let mustering = holds.filter { $0.owner == house && $0.training?.kind == .founder }.count
         let marching = units.filter { $0.owner == house && $0.kind == .founder }.count
         let extra = max(0, holds(of: house).count - 1) + mustering + marching
-        return kind.cost.scaled(percent: 100 + 50 * extra)
+        return GameState.lessened(kind.cost.scaled(percent: 100 + 50 * extra), by: discount)
     }
 
     /// Watches a company of a tier takes to muster at a hold.
     public func trainingWatches(of kind: UnitKind, tier: Int = 1, at hold: Hold) -> Int {
-        hold.trainingWatches(for: kind, tier: tier)
+        GameState.hastened(hold.trainingWatches(for: kind, tier: tier), by: bonus(.trainingSpeed, for: hold.owner))
     }
 
     private mutating func train(_ kind: UnitKind, tier: Int, in holdID: Int, as house: Int) throws(RuleError) -> [GameEvent] {

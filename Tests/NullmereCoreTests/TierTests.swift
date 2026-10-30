@@ -4,11 +4,17 @@ import XCTest
 
 /// Companies of war muster in tiers I to V: each stronger, hardier, dearer,
 /// hungrier and slower to train than the last, and each needing a Muster
-/// Hall as high as itself. Lanterns and Founders muster in one.
+/// Hall as high as itself and the study that opens it. Lanterns and
+/// Founders muster in one.
 final class TierTests: XCTestCase {
+    /// A keeper's House that has studied every tier: here only its hall
+    /// stands between it and a tier.
     private func world() throws -> (GameState, seat: Hold) {
         var state = Scene.world("tiers")
         state.richen(state.player)
+        for study in [Study.drill, .ironRanks, .greyCompanies, .moonsteel] {
+            state.houses[state.player].research.learn(study, grade: 1)
+        }
         let seat = try XCTUnwrap(state.seat(of: state.player))
         return (state, seat)
     }
@@ -204,7 +210,29 @@ final class TierTests: XCTestCase {
     /// The Muster Hall's line names the tiers only its last two levels add;
     /// the first three open theirs with their own companies.
     func testTheMusterHallSaysTheTiersItOpens() {
-        XCTAssertEqual(BuildingKind.musterHall.effect(atLevel: 4), "Trains companies of war of tier IV")
-        XCTAssertEqual(BuildingKind.musterHall.effect(atLevel: 5), "Trains companies of war of tier V")
+        XCTAssertEqual(BuildingKind.musterHall.effect(atLevel: 4), "Trains companies of war of tier IV, once studied")
+        XCTAssertEqual(BuildingKind.musterHall.effect(atLevel: 5), "Trains companies of war of tier V, once studied")
+    }
+
+    /// A steward with the studies, stores to spare and a high enough hall
+    /// musters above the first tier; a poor one, or one unstudied, the first.
+    func testAWealthyStewardMustersHigherTiers() throws {
+        var state = Scene.world("tiered stewards")
+        let steward = try XCTUnwrap(state.houses.first { !$0.isPlayer }?.id)
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == steward && $0.isSeat })
+        state.holds[seat].levels[.musterHall] = 3
+        state.holds[seat].levels[.granary] = 5
+        state.watch = 30
+        state.richen(steward)
+        let hold = state.holds[seat]
+        XCTAssertEqual(RivalMind(house: steward).chooseTier(of: .spear, at: hold, in: state), 1, "Unstudied, the first")
+        state.houses[steward].research.learn(.drill, grade: 1)
+        state.houses[steward].research.learn(.ironRanks, grade: 1)
+        XCTAssertEqual(RivalMind(house: steward).chooseTier(of: .spear, at: hold, in: state), 3)
+        state.houses[steward].stock = UnitKind.spear.cost(tier: 2) * 2
+        XCTAssertEqual(RivalMind(house: steward).chooseTier(of: .spear, at: hold, in: state), 2, "Not its last stores")
+        state.houses[steward].stock = UnitKind.spear.cost
+        XCTAssertEqual(RivalMind(house: steward).chooseTier(of: .spear, at: hold, in: state), 1)
+        XCTAssertEqual(RivalMind(house: steward).chooseTier(of: .lantern, at: hold, in: state), 1)
     }
 }

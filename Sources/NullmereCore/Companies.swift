@@ -1,16 +1,16 @@
 /// A company's figures as the rules reckon them: its kind's, raised by its
-/// tier. Every rule that weighs a company asks here, so what raises one
-/// raises it everywhere: in battle, on the march, in the forecast, and in
-/// its House's strength.
+/// tier and its House's studies. Every rule that weighs a company asks
+/// here, so what raises one raises it everywhere: in battle, on the march,
+/// in the forecast, and in its House's strength.
 extension GameState {
     /// A company's attack, in percent of its kind's at the first tier.
     public func attackPercent(of unit: Unit) -> Int {
-        Unit.tierMight[Unit.tierIndex(unit.tier, of: unit.kind)]
+        Unit.tierMight[Unit.tierIndex(unit.tier, of: unit.kind)] * (100 + bonus(.attack(unit.kind), for: unit.owner)) / 100
     }
 
     /// A company's defence, in percent of its kind's at the first tier.
     public func defensePercent(of unit: Unit) -> Int {
-        Unit.tierMight[Unit.tierIndex(unit.tier, of: unit.kind)]
+        Unit.tierMight[Unit.tierIndex(unit.tier, of: unit.kind)] * (100 + bonus(.defense(unit.kind), for: unit.owner)) / 100
     }
 
     /// A company's body, in percent of the first tier's: a blow takes that
@@ -21,7 +21,7 @@ extension GameState {
 
     /// Moves a company has in a watch.
     public func movement(of unit: Unit) -> Int {
-        unit.kind.movement
+        unit.kind.movement + bonus(.moves(unit.kind), for: unit.owner)
     }
 
     /// Grain a company eats each watch.
@@ -43,21 +43,29 @@ extension GameState {
 
     /// What a company's blow takes from a ward, before chance.
     public func wardDamage(by unit: Unit) -> Int {
-        12 + unit.kind.attack * 4 * unit.health * attackPercent(of: unit) / 10_000
+        let damage = 12 + unit.kind.attack * 4 * unit.health * attackPercent(of: unit) / 10_000
+        return damage * (100 + bonus(.wardDamage, for: unit.owner)) / 100
+    }
+
+    /// The highest tier of a kind a House has studied.
+    public func studiedTier(for house: Int) -> Int {
+        min(1 + bonus(.tier, for: house), Unit.highestTier)
     }
 
     /// The highest tier of a kind a House may muster at a hold now: as high
-    /// as the hold's Muster Hall allows.
+    /// as its studies and the hold's Muster Hall allow.
     public func highestTier(of kind: UnitKind, at hold: Hold, for house: Int) -> Int {
         guard kind.hasTiers else { return 1 }
         let muster = hold.level(.musterHall)
-        return (1...kind.highestTier).last { muster >= kind.requiredMuster(tier: $0) } ?? 1
+        let studied = studiedTier(for: house)
+        return (1...kind.highestTier).last { muster >= kind.requiredMuster(tier: $0) && $0 <= studied } ?? 1
     }
 
     /// Why a House can't muster a tier of a kind at a hold, if it can't.
     public func tierRefusal(of kind: UnitKind, tier: Int, at hold: Hold, for house: Int) -> RuleError? {
         guard (1...Unit.highestTier).contains(tier) else { return .noSuchTier }
         guard tier <= kind.highestTier else { return .oneTierOnly(kind) }
+        if tier > studiedTier(for: house), let study = Study.opening(tier: tier) { return .needsStudy(study, 1) }
         let muster = kind.requiredMuster(tier: tier)
         guard hold.level(.musterHall) >= muster else { return .needsMusterHall(muster) }
         return nil

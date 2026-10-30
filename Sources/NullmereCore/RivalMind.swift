@@ -86,6 +86,7 @@ struct RivalMind {
         for hold in state.holds(of: house).sorted(by: { $0.id < $1.id }) {
             events += manage(hold.id, in: &state, random: &random)
         }
+        events += pursueStudies(in: &state)
         let garrisons = assignGarrisons(in: state)
         let visible = state.visibility(for: house)
         for unit in state.units(of: house).sorted(by: { $0.id < $1.id }) {
@@ -300,7 +301,8 @@ struct RivalMind {
             events += perform(.build(hold: holdID, kind: kind), in: &state)
         }
         if let hold = state.hold(holdID), hold.training == nil, let kind = chooseTraining(for: hold, in: state, random: &random) {
-            events += perform(.train(hold: holdID, kind: kind), in: &state)
+            let tier = chooseTier(of: kind, at: hold, in: state)
+            events += perform(.train(hold: holdID, kind: kind, tier: tier > 1 ? tier : nil), in: &state)
         }
         return events
     }
@@ -363,6 +365,13 @@ struct RivalMind {
         if hold.level(.beacon) < 1, state.watch >= 18 { wishes.append(.beacon) }
         // With stores to spare, beacons for the land (and the yield) they claim.
         if plenty, hold.level(.beacon) < (state.watch >= 60 ? 3 : 2), state.watch >= 35 { wishes.append(.beacon) }
+        if hold.isSeat {
+            // An Archive at the seat, the deeper as the age goes on, for
+            // its studies; and a hall as high as the tiers they open.
+            if hold.level(.archive) < RivalMind.archiveWanted(at: state.watch) { wishes.append(.archive) }
+            let studied = state.studiedTier(for: house)
+            if hold.level(.musterHall) >= Hold.fasterTrainingAt, hold.level(.musterHall) < studied { wishes.append(.musterHall) }
+        }
         wishes += economy.dropFirst()
 
         for kind in wishes {
@@ -375,6 +384,43 @@ struct RivalMind {
             if kind == .moonspire { return nil }
         }
         return nil
+    }
+
+    /// The Archive a steward wants at its seat as the age goes on.
+    static func archiveWanted(at watch: Int) -> Int {
+        switch watch {
+        case ..<12: return 0
+        case ..<40: return 1
+        case ..<70: return 2
+        case ..<100: return 3
+        default: return 4
+        }
+    }
+
+    /// The branches of study in the order a temper pursues them.
+    static func studyOrder(for temperament: Temperament) -> [Branch] {
+        switch temperament {
+        case .steadfast: return [.husbandry, .masonry, .lore, .arms]
+        case .wary: return [.masonry, .husbandry, .lore, .arms]
+        case .ambitious: return [.arms, .husbandry, .masonry, .lore]
+        case .cunning: return [.husbandry, .lore, .arms, .masonry]
+        }
+    }
+
+    /// With no study under way and an Archive to pursue one at, the first
+    /// study open to it in its temper's order whose price it could pay
+    /// twice over.
+    func pursueStudies(in state: inout GameState) -> [GameEvent] {
+        guard state.houses[house].research.pursuit == nil, state.archiveLevel(of: house) > 0 else { return [] }
+        let stock = state.houses[house].stock
+        for branch in RivalMind.studyOrder(for: state.houses[house].temperament) {
+            for study in Study.of(branch) where state.studyRefusal(of: study, for: house) == nil {
+                let grade = state.houses[house].research.grade(of: study) + 1
+                guard stock.covers(state.studyPrice(of: study, grade: grade, for: house) * 2) else { continue }
+                return perform(.study(study), in: &state)
+            }
+        }
+        return []
     }
 
     /// Whether another House's hold stands within eight tiles of this one.
@@ -428,6 +474,21 @@ struct RivalMind {
         if !me.stock.covers(state.trainingCost(of: kind, for: house)), kind == .rider || kind == .bow { kind = .spear }
         guard me.stock.covers(state.trainingCost(of: kind, for: house)) else { return nil }
         return kind
+    }
+
+    /// The tier to muster a company at: the highest the hold can, whose
+    /// price the House could pay twice over and whose hunger its grain can
+    /// bear; else the first.
+    func chooseTier(of kind: UnitKind, at hold: Hold, in state: GameState) -> Int {
+        let highest = state.highestTier(of: kind, at: hold, for: house)
+        guard highest > 1 else { return 1 }
+        let stock = state.houses[house].stock
+        let netGrain = state.income(of: house).grain - state.upkeep(of: house)
+        for tier in stride(from: highest, to: 1, by: -1) {
+            let cost = state.trainingCost(of: kind, tier: tier, for: house)
+            if stock.covers(cost * 2), netGrain > kind.upkeep(tier: tier) + 1 { return tier }
+        }
+        return 1
     }
 
     // MARK: Units

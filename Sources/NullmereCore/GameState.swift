@@ -250,6 +250,11 @@ public struct GameState: Codable, Equatable, Sendable {
             guard level > 0 else { continue }
             total[resource] = total[resource] * (100 + BuildingKind.yieldBoostPerLevel * level) / 100
         }
+        // Then what its House's studies add.
+        let studied = yieldBonuses(for: hold.owner)
+        for resource in Resource.allCases where studied[resource] > 0 {
+            total[resource] = total[resource] * (100 + studied[resource]) / 100
+        }
         return underOmen(total)
     }
 
@@ -259,10 +264,10 @@ public struct GameState: Codable, Equatable, Sendable {
         return holds(of: house).reduce(Stock.zero) { $0 + income(of: $1, territory: owners) }
     }
 
-    /// How much of each resource a House can keep. Holds add storehouses;
-    /// whatever comes in beyond this is lost.
+    /// How much of each resource a House can keep. Holds add storehouses,
+    /// and its studies deeper cellars; whatever comes in beyond this is lost.
     public func storage(of house: Int) -> Int {
-        GameState.baseStorage + GameState.storagePerHold * holds(of: house).count
+        (GameState.baseStorage + GameState.storagePerHold * holds(of: house).count) * (100 + bonus(.storage, for: house)) / 100
     }
 
     /// How far around its seat each House knows the land when a game begins.

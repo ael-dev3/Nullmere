@@ -29,6 +29,8 @@ public enum Command: Codable, Equatable, Sendable {
     case gift(to: Int, resource: Resource, amount: Int)
     /// An offer of trade, with a keeper's own words if it goes to a keeper.
     case offerTrade(Trade, to: Int, words: String?)
+    /// Begin the next grade of a study at the House's Archive.
+    case study(Study)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -76,6 +78,14 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case oneTierOnly(UnitKind)
     /// A tier that isn't one of I to V.
     case noSuchTier
+    /// A study begun while another is under way.
+    case studyUnderWay(Study)
+    /// A study already known to its last grade.
+    case studiedFully
+    /// A study, or a tier, that needs an Archive of this level.
+    case needsArchive(Int)
+    /// A study, or a tier, that needs another study first, to this grade.
+    case needsStudy(Study, Int)
 
     public var description: String {
         switch self {
@@ -118,6 +128,11 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .noTradeAcrossWar: return "No trade crosses a war."
         case .oneTierOnly(let kind): return "\(kind.title) muster in one tier only."
         case .noSuchTier: return "Companies muster in tiers I to V."
+        case .studyUnderWay(let study): return "Your House already studies \(study.title); one study at a time."
+        case .studiedFully: return "That study is known to its last grade."
+        case .needsArchive(let level): return "Needs an Archive \(BuildingKind.numeral(level))."
+        case .needsStudy(let study, let grade):
+            return "Needs the study of \(study.title)" + (study.grades > 1 ? " \(BuildingKind.numeral(grade))." : ".")
         }
     }
 }
@@ -148,6 +163,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case starving(house: Int)
     case houseFell(Int)
     case gameEnded(Outcome)
+    /// A House begins a grade of a study.
+    case studyBegun(house: Int, study: Study, grade: Int)
+    /// A House learns a grade of a study.
+    case studyCompleted(house: Int, study: Study, grade: Int)
 }
 
 /// One exchange of blows.

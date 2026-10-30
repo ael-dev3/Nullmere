@@ -23,6 +23,7 @@ extension GameState {
             events += harvest(for: house.id, territory: owners)
         }
         events += advanceWorks()
+        events += advanceStudies()
         mendAndHeal(territory: owners)
 
         for index in units.indices {
@@ -144,13 +145,13 @@ extension GameState {
                     && unit.position.distance(to: hold.position) == 1
             }
             if !hold.struck && !besieged {
-                holds[index].ward = min(holds[index].maximumWard, holds[index].ward + wardMending)
+                holds[index].ward = min(holds[index].maximumWard, holds[index].ward + wardMending(for: hold.owner))
             }
             holds[index].struck = false
         }
         for index in units.indices where !units[index].acted && units[index].health < 100 {
             let unit = units[index]
-            var amount = 10
+            var amount = 10 + bonus(.healing, for: unit.owner)
             if let tile = map.index(of: unit.position), let holdID = owners[tile], hold(holdID)?.owner == unit.owner {
                 amount += 10
             }

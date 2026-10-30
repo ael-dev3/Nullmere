@@ -27,6 +27,7 @@ extension GameState {
         for index in view.houses.indices where view.houses[index].id != house {
             view.houses[index].stock = .zero
             view.houses[index].explored = Array(repeating: false, count: map.count)
+            view.houses[index].research = Research()
         }
         for index in view.holds.indices where view.holds[index].owner != house {
             view.holds[index].project = nil
@@ -67,7 +68,7 @@ extension GameState {
                 return hold(id)?.owner == house
             case .gifted(let from, let to, _), .tradeAnswered(_, let from, let to, _):
                 return from == house || to == house
-            case .bartered(let owner, _, _), .starving(let owner):
+            case .bartered(let owner, _, _), .starving(let owner), .studyBegun(let owner, _, _), .studyCompleted(let owner, _, _):
                 return owner == house
             case .promoted(_, let owner, _):
                 return owner == house

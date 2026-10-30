@@ -511,7 +511,8 @@ realm; keepers are told in plain words, never a status code.
   Bows strike from two tiles, Riders are fast, and Founders found new holds.
   Every company but Lanterns eats a grain each watch. Spears, Bows and
   Riders muster in tiers I to V, each needing a Muster Hall as high as
-  itself: a higher tier strikes harder, stands firmer and takes less of a
+  itself and the study that opens it (Drill, Iron Ranks, Grey Companies,
+  Moonsteel): a higher tier strikes harder, stands firmer and takes less of a
   blow, but costs more (moonsalt from tier III), eats more and takes longer
   to train. Lanterns and Founders muster in one. Companies that
   live through battles rise in rank (Blooded, Hardened, Sworn), each rank
@@ -520,6 +521,14 @@ realm; keepers are told in plain words, never a status code.
   out of a hold, for a garrison holds its ground, nor into a hold it can't
   take. The odds shown before a strike say when the striker will take the
   ground or the hold, and never promise either to a company that may fall.
+- **Studies.** An Archive opens a House's studies, one at a time: twenty-eight
+  in four branches (Husbandry, Arms, Masonry, Lore), each needing an Archive
+  of its circle, the studies it builds on, and its price. Each grade changes
+  the rule it names: what the land yields, what a House can store, how soon
+  works rise and companies muster and what they cost, attack and defence,
+  wards, moves, sight, healing, commanders, and the tiers of companies of war.
+  A higher Archive makes every study sooner. Stewards study too, each by its
+  temper.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is
