@@ -36,6 +36,7 @@ enum Guide {
         Section(title: "Companies", lines: [
             "Lanterns scout. Spears hold the line and take holds. Bows strike from two tiles. Riders are fast. Founders found new holds.",
             "Select a company, then right-click to march, or to strike an enemy within reach. Hovering an enemy shows the battle's odds first.",
+            "A company that wins a close fight steps onto the fallen's ground, unless it fought from within a hold: a garrison holds its ground.",
             "Every company but Lanterns eats a grain each watch. Those that live through battles rise in rank.",
             "To take a hold, break its ward, then march Spears or Riders in. You carry off its share of their stores; a seat holds half.",
         ]),

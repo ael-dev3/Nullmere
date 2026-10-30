@@ -455,13 +455,18 @@ twice.
   Bows strike from two tiles, Riders are fast, and Founders found new holds.
   Every company but Lanterns eats a grain each watch. Companies that
   live through battles rise in rank (Blooded, Hardened, Sworn), each rank
-  adding a tenth to attack and defence; chevrons under a token show it.
+  adding a tenth to attack and defence; chevrons under a token show it. A
+  company that wins a close fight steps onto the fallen's ground, unless it
+  fought from within a hold: a garrison holds its ground. The odds shown
+  before a strike say when the striker will take the ground or the hold.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is
   remembered. A steward makes no peace before it has had a watch of its own
   at war, and one far the stronger none until the war has run thirty
-  watches, whatever you gave it.
+  watches, whatever you gave it. A steward's garrison strikes only
+  companies of war at its gates, and its army meets those that come close,
+  but no scout draws it off a siege.
 - **Conquest.** Taking a hold carries off its share of the loser's stores;
   a seat holds half of them. A House that loses its seat is shaken: every
   hold it has left loses most of its ward. A House that loses every hold

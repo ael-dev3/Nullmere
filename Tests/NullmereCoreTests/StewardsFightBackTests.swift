@@ -158,3 +158,107 @@ final class VassalSpireTests: XCTestCase {
     }
 }
 
+/// A garrison holds its ground, and stewards aren't drawn by bait: a
+/// steward's garrison strikes only companies of war at its gates, and a
+/// scout can't lead its army off a siege.
+final class GarrisonAndBaitTests: XCTestCase {
+    private func world(_ seed: String = "held ground") -> GameState {
+        GameState(settings: GameSettings(seedText: seed, houseCount: 3, radius: 16, keepers: 1))
+    }
+
+    private func beside(_ hex: Hex, in state: GameState) throws -> Hex {
+        try XCTUnwrap(state.map.neighbors(of: hex).first { candidate in
+            state.map[candidate]?.terrain.isPassable == true && state.unit(at: candidate) == nil && state.hold(at: candidate) == nil
+        })
+    }
+
+    private func put(_ kind: UnitKind, of house: Int, at hex: Hex, health: Int = 100, in state: inout GameState) -> Int {
+        var unit = Unit(id: state.nextID, kind: kind, owner: house, position: hex)
+        unit.health = health
+        state.units.append(unit)
+        state.nextID += 1
+        return unit.id
+    }
+
+    func testAGarrisonThatWinsAFightHoldsItsGround() throws {
+        var state = world()
+        let me = state.player, foe = 1
+        let seat = try XCTUnwrap(state.seat(of: me)).position
+        state.units.removeAll()
+        let garrison = put(.spear, of: me, at: seat, in: &state)
+        let near = try beside(seat, in: state)
+        let wounded = put(.spear, of: foe, at: near, health: 5, in: &state)
+        _ = try state.perform(.declareWar(on: foe), as: me)
+        let forecast = try XCTUnwrap(state.forecast(unit: garrison, at: near))
+        XCTAssertTrue(forecast.surelyFinishes)
+        XCTAssertFalse(forecast.takesTheField, "From its own hold it doesn't step out")
+        _ = try state.perform(.attack(unit: garrison, target: near), as: me)
+        XCTAssertNil(state.unit(wounded), "The foe falls")
+        XCTAssertEqual(state.unit(garrison)?.position, seat, "and the garrison holds its ground")
+
+        // Out in the field, the victor takes the ground, as the forecast says.
+        var field = world()
+        field.units.removeAll()
+        let ground = try XCTUnwrap(field.map.hexes.first { hex in
+            field.map[hex]?.terrain == .greyfield && field.map.neighbors(of: hex).allSatisfy { field.map[$0]?.terrain == .greyfield }
+                && hex.spiral(2).allSatisfy { field.hold(at: $0) == nil }
+        })
+        let spear = put(.spear, of: me, at: ground, in: &field)
+        let there = ground + Hex.directions[0]
+        _ = put(.spear, of: foe, at: there, health: 5, in: &field)
+        _ = try field.perform(.declareWar(on: foe), as: me)
+        XCTAssertEqual(field.forecast(unit: spear, at: there)?.takesTheField, true)
+        _ = try field.perform(.attack(unit: spear, target: there), as: me)
+        XCTAssertEqual(field.unit(spear)?.position, there, "The victor takes the field")
+    }
+
+    func testAStewardsGarrisonIsNotDrawnOutByAScout() throws {
+        var state = world()
+        let me = state.player, steward = 1
+        let seat = try XCTUnwrap(state.seat(of: steward)).position
+        state.units.removeAll { $0.owner == steward }
+        let garrison = put(.spear, of: steward, at: seat, in: &state)
+        let scout = put(.lantern, of: me, at: try beside(seat, in: state), health: 20, in: &state)
+        _ = try state.perform(.declareWar(on: steward), as: me)
+        _ = state.stewardTurn(for: steward)
+        XCTAssertEqual(state.unit(garrison)?.position, seat, "The garrison keeps its post")
+        XCTAssertEqual(state.unit(scout)?.health, 20, "and lets a scout be")
+        XCTAssertEqual(state.unit(garrison)?.fortified, true, "dug in")
+
+        // A company of war at the gates it strikes, and stays.
+        let raider = put(.spear, of: me, at: try beside(seat, in: state), health: 5, in: &state)
+        state.units[try XCTUnwrap(state.unitIndex(garrison))].movesLeft = UnitKind.spear.movement
+        _ = state.stewardTurn(for: steward)
+        XCTAssertNil(state.unit(raider), "It strikes a company of war")
+        XCTAssertEqual(state.unit(garrison)?.position, seat, "and holds its ground")
+    }
+
+    func testAScoutDrawsNoStewardArmyOffItsSiege() throws {
+        var state = world("no lure")
+        let me = state.player, steward = 1
+        let target = try XCTUnwrap(state.seat(of: me)).position
+        let home = try XCTUnwrap(state.seat(of: steward)).position
+        state.units.removeAll()
+        _ = put(.spear, of: steward, at: home, in: &state)
+        // A company of the steward's on its way to the keeper's seat, the
+        // seat known to it, and a scout in its sight behind it.
+        let company = try XCTUnwrap(home.line(to: target).first { hex in
+            hex.distance(to: home) >= 3 && hex.distance(to: target) >= 5 && state.map[hex]?.terrain.isPassable == true && state.hold(at: hex) == nil
+        })
+        let spear = put(.spear, of: steward, at: company, in: &state)
+        state.reveal(around: target, range: 1, for: steward)
+        let lure = try XCTUnwrap(company.ring(2).filter { hex in
+            state.map[hex]?.terrain.isPassable == true && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        }.max { ($0.distance(to: target), $0) < ($1.distance(to: target), $1) })
+        XCTAssertGreaterThan(lure.distance(to: target), company.distance(to: target), "Behind it")
+        let scout = put(.lantern, of: me, at: lure, in: &state)
+        _ = try state.perform(.declareWar(on: steward), as: me)
+        XCTAssertNotNil(RivalMind(house: steward).siegePlan(in: state), "A siege to press")
+        XCTAssertTrue(state.visibility(for: steward)[try XCTUnwrap(state.map.index(of: lure))], "The scout in its sight")
+        _ = state.stewardTurn(for: steward)
+        let after = try XCTUnwrap(state.unit(spear)).position
+        XCTAssertGreaterThanOrEqual(after.distance(to: lure), company.distance(to: lure), "Not drawn toward the scout")
+        XCTAssertLessThan(after.distance(to: target), company.distance(to: target), "but on to the siege")
+        XCTAssertNotNil(state.unit(scout))
+    }
+}

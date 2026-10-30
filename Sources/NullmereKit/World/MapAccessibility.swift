@@ -83,8 +83,14 @@ enum MapAccessibility {
             parts.append("they take \(range(forecast.dealt)) of \(forecast.defenderHealth)")
         }
         parts.append(forecast.taken.upperBound > 0 ? "you take \(range(forecast.taken)) of \(forecast.attackerHealth)" : "out of their reach")
-        if forecast.surelyFinishes { parts.append(forecast.couldCapture ? "the hold is taken" : "they fall") }
-        else if forecast.mayFinish { parts.append("they may fall") }
+        if case .hold = forecast.target {
+            if forecast.surelyFinishes { parts.append(forecast.couldCapture ? "the hold is taken" : "the ward breaks") }
+            else if forecast.mayFinish { parts.append("the ward may break") }
+        } else if forecast.surelyFinishes {
+            parts.append(forecast.couldCapture ? "they fall and the hold is taken" : forecast.takesTheField ? "they fall and you take their ground" : "they fall")
+        } else if forecast.mayFinish {
+            parts.append("they may fall")
+        }
         if forecast.mayFall { parts.append("you may fall") }
         return parts.joined(separator: "; ")
     }

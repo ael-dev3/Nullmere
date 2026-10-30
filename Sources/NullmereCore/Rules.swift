@@ -223,18 +223,26 @@ extension GameState {
             attackerFell: attackerFell, defenderFell: defenderFell
         )), at: 0)
 
-        // The victor in close combat takes the field, unless a hold's ward still stands.
+        // The victor in close combat takes the field, unless a hold's ward
+        // still stands, or it fought from within its own hold.
         if defenderFell, !attackerFell, !ranged, let index = unitIndex(attackerID) {
             if let hold = hold(at: hex) {
                 if hold.ward == 0, attacker.kind.canCapture {
                     events += capture(hold: hold.id, with: attackerID)
                 }
-            } else if unit(at: hex) == nil {
+            } else if unit(at: hex) == nil, takesTheField(attacker, at: hex) {
                 units[index].position = hex
                 reveal(around: hex, range: omen?.kind == .risingMist ? max(1, attacker.kind.sight - 1) : attacker.kind.sight, for: attacker.owner)
             }
         }
         return events
+    }
+
+    /// Whether a company that wins a close fight here steps onto the
+    /// fallen's ground: only out in the field. A garrison holds its
+    /// ground, so no foe dying at its gates can empty its hold.
+    func takesTheField(_ attacker: Unit, at hex: Hex) -> Bool {
+        attacker.position.distance(to: hex) == 1 && hold(at: attacker.position) == nil && hold(at: hex) == nil
     }
 
     /// Attack and defence in a fight between two units, before chance.

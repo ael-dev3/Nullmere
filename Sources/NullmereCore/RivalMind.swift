@@ -468,7 +468,10 @@ struct RivalMind {
         case .spear, .bow, .rider:
             if let post {
                 if unit.position == post {
-                    if let target = foeInReach(of: unit, in: state) {
+                    // A garrison strikes only companies of war in its reach:
+                    // a scout or Founders at the gates are no reason to give
+                    // up its guard.
+                    if let target = foeInReach(of: unit, companiesOfWarOnly: true, in: state) {
                         return perform(.attack(unit: unitID, target: target), in: &state)
                     }
                     return unit.fortified ? [] : perform(.fortify(unit: unitID), in: &state)
@@ -479,11 +482,13 @@ struct RivalMind {
         }
     }
 
-    private func foeInReach(of unit: Unit, in state: GameState) -> Hex? {
+    private func foeInReach(of unit: Unit, companiesOfWarOnly: Bool = false, in state: GameState) -> Hex? {
         guard unit.movesLeft > 0 else { return nil }
         return unit.position.spiral(unit.kind.range).dropFirst().first { hex in
-            if let other = state.unit(at: hex), other.owner != house, state.isAtWar(house, other.owner) { return true }
-            if let hold = state.hold(at: hex), hold.owner != house, state.isAtWar(house, hold.owner) { return true }
+            if let other = state.unit(at: hex), other.owner != house, state.isAtWar(house, other.owner) {
+                return other.kind.isMilitary || !companiesOfWarOnly
+            }
+            if let hold = state.hold(at: hex), hold.owner != house, state.isAtWar(house, hold.owner) { return !companiesOfWarOnly }
             return false
         }
     }
@@ -492,15 +497,24 @@ struct RivalMind {
         if let target = foeInReach(of: unit, in: state) {
             return perform(.attack(unit: unit.id, target: target), in: &state)
         }
-        // Meet enemies who come close.
+        // Meet enemy companies of war who come close: never a scout or
+        // Founders, and with a siege to press, only one in the way or at
+        // this House's own gates, never one that would lead it off.
+        let siege = siegePlan(in: state)
+        let gates = state.holds(of: house).map(\.position)
         let skirmish = state.units
-            .filter { $0.owner != house && state.isAtWar(house, $0.owner) && $0.position.distance(to: unit.position) <= 3 }
+            .filter { $0.owner != house && $0.kind.isMilitary && state.isAtWar(house, $0.owner) && $0.position.distance(to: unit.position) <= 3 }
+            .filter { foe in
+                guard let siege else { return true }
+                return foe.position.distance(to: siege.target) <= unit.position.distance(to: siege.target)
+                    || gates.contains { $0.distance(to: foe.position) <= 3 }
+            }
             .filter { state.map.index(of: $0.position).map { visible[$0] } ?? false }
             .min { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
         if let skirmish {
             return perform(.move(unit: unit.id, to: skirmish.position), in: &state)
         }
-        if let siege = siegePlan(in: state) {
+        if let siege {
             let near = unit.position.distance(to: siege.target) <= RivalMind.siegeReach
             if siege.ready || (near && unit.position.distance(to: siege.target) <= unit.kind.range + 1) {
                 return perform(.move(unit: unit.id, to: siege.target), in: &state)
