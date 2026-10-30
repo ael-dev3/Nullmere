@@ -173,9 +173,12 @@ public struct Piece: Equatable, Sendable {
 /// nearly nothing), then with its piece's transform. Clips loop with
 /// `Clip.period`, so figures are phased by adding a fraction of it to the
 /// time; the death plays once. A piece's `progress` below 1 is a work
-/// rising: draw it up to that fraction of its height. House-coloured
-/// banners, cloaks and plumes are `Material.house` and move in the wind
-/// by their vertices' `sway`, as foliage does.
+/// rising: draw it up to `Piece.risen` in its own frame. The House's
+/// banners, pennants, cloaks and caparisons are `Material.cloth`, its
+/// shields, tabards, roofs and plumes `Material.house`: a grey for the
+/// House's colour to tint, light or dark. Whatever has `sway` moves in the
+/// wind, from a fir's crown to a cloak's hem; the far country's shrouds
+/// sway too, but are no House's and plain.
 public enum Library {
     /// The model for a key, as its canonical key builds it. Safe to ask
     /// from any thread; each is built once.
@@ -243,6 +246,15 @@ public extension Piece {
     /// Where smoke rises from it, in the world.
     var smoke: [Vec3] {
         Library.smoke(of: key).map(transform.transformPoint)
+    }
+
+    /// How high a work being raised stands, in its model's own frame (as
+    /// its posed vertices are, before its transform): it is drawn up to
+    /// here, the rest not yet built. Nil when whole.
+    var risen: Float? {
+        guard progress < 1 else { return nil }
+        let bounds = Library.model(key).mesh.bounds
+        return bounds.min.y + max(progress, 0) * (bounds.max.y - bounds.min.y)
     }
 }
 

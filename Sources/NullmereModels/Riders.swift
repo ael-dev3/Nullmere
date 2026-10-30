@@ -92,7 +92,7 @@ enum Riders {
                     } else {
                         // A caparison draped from the saddle, to the knees or near the ground.
                         let hem: Float = m.cloth == 2 ? 0.11 : 0.07
-                        $0.with(sway: 0.12) {
+                        $0.with(material: .cloth, sway: 0.12) {
                             $0.place(.translation(Vec3(0, 0, -0.015)) * .scale(Vec3(1, 1, 2.15))) {
                                 $0.tube([(0.068, hem), (0.06, 0.2), (0.025, 0.222)], sides: 8, color: Palette.house, twist: .pi / 8)
                             }

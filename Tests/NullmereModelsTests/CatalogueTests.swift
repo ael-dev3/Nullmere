@@ -17,6 +17,9 @@ final class CatalogueTests: XCTestCase {
         }
     }
 
+    /// The materials the renderer shows in a House's colour.
+    static let housely: Set<Material> = [.house, .cloth]
+
     /// The surface of a model's triangles in these materials.
     static func area(_ mesh: Mesh, _ materials: Set<Material>) -> Float {
         mesh.triangles.reduce(0) { total, triangle in
@@ -31,7 +34,7 @@ final class CatalogueTests: XCTestCase {
     static func cells(_ mesh: Mesh, size: Float = 0.03) -> Set<SIMD4<Int32>> {
         var cells: Set<SIMD4<Int32>> = []
         for (a, b, c) in mesh.triangles {
-            let look: Int32 = a.material == .house ? 1 : a.material == .metal ? 2 : 0
+            let look: Int32 = CatalogueTests.housely.contains(a.material) ? 1 : a.material == .metal ? 2 : 0
             for (u, v) in [(Float(0), Float(0)), (1, 0), (0, 1), (0.33, 0.33), (0.5, 0), (0, 0.5), (0.5, 0.5)] {
                 let p = a.position + (b.position - a.position) * u + (c.position - a.position) * v
                 cells.insert(SIMD4<Int32>(Int32((p.x / size).rounded(.down)), Int32((p.y / size).rounded(.down)),
@@ -170,7 +173,7 @@ final class CatalogueTests: XCTestCase {
             case .figure, .commander, .keep:
                 XCTAssertTrue(materials.contains(.house), "\(key) wears its House's colour")
             case .wild:
-                XCTAssertFalse(materials.contains(.house), "\(key) answers to no House")
+                XCTAssertTrue(materials.isDisjoint(with: CatalogueTests.housely), "\(key) answers to no House")
                 XCTAssertTrue(materials.contains(.glow), "\(key)'s eyes are lit")
             default:
                 break
@@ -178,7 +181,14 @@ final class CatalogueTests: XCTestCase {
         }
         // Walls from the fifth level fly the House's colours; works raised high show them too.
         XCTAssertTrue(Library.model(.walls(level: 5)).mesh.vertices.contains { $0.material == .house })
-        XCTAssertTrue(Library.model(.work(.moonspire, level: 5)).mesh.vertices.contains { $0.material == .house })
+        XCTAssertTrue(Library.model(.work(.moonspire, level: 5)).mesh.vertices.contains { CatalogueTests.housely.contains($0.material) })
+        // Banners, pennants and cloaks are the House's cloth, rippling from where they hang.
+        for key: ModelKey in [.prop(.banner), .figure(.spear, tier: 5), .keep(seat: true), .commander(variant: 4)] {
+            let cloth = Library.model(key).mesh.vertices.filter { $0.material == .cloth }
+            XCTAssertFalse(cloth.isEmpty, "\(key) flies cloth")
+            XCTAssertGreaterThan(cloth.map(\.sway).max() ?? 0, 0.5, "\(key)'s cloth moves at its end")
+            XCTAssertLessThan(cloth.map(\.sway).min() ?? 1, 0.1, "\(key)'s cloth is held where it hangs")
+        }
     }
 
     func testLanternsAndFiresGiveLight() {
@@ -195,7 +205,6 @@ final class CatalogueTests: XCTestCase {
             XCTAssertTrue(Library.model(key).mesh.vertices.contains { $0.material == .crystal }, "\(key) has moonsalt")
         }
         XCTAssertTrue(Library.model(.furnishing(.fir)).mesh.vertices.contains { $0.material == .foliage && $0.sway > 0.5 })
-        XCTAssertTrue(Library.model(.prop(.banner)).mesh.vertices.contains { $0.material == .house && $0.sway > 0.5 })
     }
 
     /// From a padded coat and a bare spear to plate, crests, the House's
@@ -205,12 +214,12 @@ final class CatalogueTests: XCTestCase {
             var last: Float = 0
             for tier in 1...5 {
                 let mesh = Library.model(.figure(kind, tier: tier)).mesh
-                let gear = CatalogueTests.area(mesh, [.metal, .house])
+                let gear = CatalogueTests.area(mesh, CatalogueTests.housely.union([.metal]))
                 XCTAssertGreaterThan(gear, last * 1.08, "\(kind) \(tier) is better equipped than the tier below")
                 last = gear
             }
-            let first = CatalogueTests.area(Library.model(.figure(kind, tier: 1)).mesh, [.house])
-            let fifth = CatalogueTests.area(Library.model(.figure(kind, tier: 5)).mesh, [.house])
+            let first = CatalogueTests.area(Library.model(.figure(kind, tier: 1)).mesh, CatalogueTests.housely)
+            let fifth = CatalogueTests.area(Library.model(.figure(kind, tier: 5)).mesh, CatalogueTests.housely)
             XCTAssertGreaterThan(fifth, first * 3, "\(kind)'s fifth tier is clad in its House's colours")
         }
     }
@@ -292,7 +301,12 @@ final class CatalogueTests: XCTestCase {
         let piece = Piece(key: .scaffold, transform: .translation(Vec3(1, 2, 3)), hex: Hex(4, 5))
         XCTAssertEqual(piece.position, Vec3(1, 2, 3))
         XCTAssertEqual(piece.progress, 1, "whole unless rising")
-        XCTAssertEqual(Piece(key: .scaffold, transform: .identity, hex: .origin, progress: 0.25).progress, 0.25)
+        XCTAssertNil(piece.risen, "a whole piece is drawn whole")
+        let spire = Piece(key: .work(.moonspire, level: 5), transform: .identity, hex: .origin, progress: 0.25)
+        let bounds = Library.model(spire.key).mesh.bounds
+        XCTAssertEqual(spire.progress, 0.25)
+        XCTAssertEqual(spire.risen ?? 0, bounds.min.y + 0.25 * (bounds.max.y - bounds.min.y), accuracy: 1e-5)
+        XCTAssertEqual(Piece(key: spire.key, transform: .identity, hex: .origin, progress: 0).risen, bounds.min.y, "begun from its footings")
     }
 }
 

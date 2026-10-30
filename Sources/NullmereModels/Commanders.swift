@@ -118,6 +118,7 @@ extension Figures {
         o.tunic = Palette.stoneWhite
         o.pauldrons = (Palette.moonsalt, .crystal)
         o.cloak = 0.3
+        o.tabard = true
         o.hair = Palette.stonePale
         return Riders.model(name, ride.mount, ride) { b, f in
             Person.body(&b, f, o)
@@ -217,6 +218,7 @@ extension Figures {
         o.pauldrons = (Palette.steel, .metal)
         o.head = .greatHelm
         o.cloak = 0.3
+        o.belt = (Palette.house, .house)
         return Riders.model(name, ride.mount, ride) { b, f in
             Person.body(&b, f, o)
             // A crest like a breaking wave.

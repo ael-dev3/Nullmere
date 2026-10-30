@@ -3,16 +3,14 @@ public enum Material: UInt8, CaseIterable, Sendable {
     /// Lit by the moon and the sky, nothing more.
     case plain = 0
     /// Its colour is the owning House's: banners, shields, cloaks, roofs.
-    /// Its vertices' colour is a grey the House's colour tints; its banners
-    /// and cloaks move in the wind by their sway.
     case house = 1
     /// Gives light of its own colour: windows, torches, lanterns, braziers.
     /// It flickers.
     case glow = 2
     /// Leaves and grass: it sways in the night wind, more at its tips.
     case foliage = 3
-    /// Banners and pennants: they ripple. Cloth in no House's colours: the
-    /// far country's shrouds and rags.
+    /// Banners and pennants: they ripple. Their colour is the owning
+    /// House's, as `house` is.
     case cloth = 4
     /// Moonsalt: pale, faintly lit from within, glinting.
     case crystal = 5

@@ -207,7 +207,7 @@ enum Person {
             }
         }
         if let hem = o.cloak {
-            b.with(part: Limb.cloak, material: .house, sway: 0.6) {
+            b.with(part: Limb.cloak, material: .cloth, sway: 0.6) {
                 $0.swayRange = (0, f.shoulder - hem)
                 $0.beam(from: Vec3(0, f.shoulder + 0.02, -0.088 * g), to: Vec3(0, hem, -0.175 * g), width: 0.31 * g, depth: 0.025,
                         color: Palette.house)

@@ -98,7 +98,7 @@ extension MeshBuilder {
     /// +x (turned about the vertical by `turn`) and `height` down, moving
     /// more toward its free end. House-coloured unless told otherwise.
     mutating func flag(at top: Vec3, width: Float, height: Float, turn: Float = 0, color: Vec3 = Palette.house,
-                       material: Material = .house, tail: Bool = false) {
+                       material: Material = .cloth, tail: Bool = false) {
         with(material: material, sway: 1) {
             // Built along its own y, from the pole outward, for the sway to rise along it.
             $0.swayRange = (0, width)

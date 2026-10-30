@@ -295,16 +295,14 @@ enum Figures {
         o.skin = Palette.ash
         o.hands = Palette.bone
         o.tunic = Palette.shroud
-        o.tunicMaterial = .cloth
         o.sleeves = Palette.ash
-        o.sleevesMaterial = .cloth
         o.hose = Palette.ash
         o.shins = Palette.ash
         o.boots = Palette.ash
-        o.skirt = (Palette.woolDark, .cloth, 0.08)
+        o.skirt = (Palette.woolDark, .plain, 0.08)
         o.belt = nil
-        o.head = .hood(Palette.woolDark, .cloth)
-        o.mantle = (Palette.woolDark, .cloth)
+        o.head = .hood(Palette.woolDark, .plain)
+        o.mantle = (Palette.woolDark, .plain)
         let gait = wildGait(1)
         return model(name, f, gait) { b in
             Person.body(&b, f, o)
@@ -315,7 +313,7 @@ enum Figures {
             eyes(&b, f, forward: 0.082)
             // Rags hanging from the arms.
             for (part, x) in [(Limb.forearmL, f.shoulderX), (Limb.forearmR, -f.shoulderX)] {
-                b.with(part: part, material: .cloth, sway: 0.5) {
+                b.with(part: part, sway: 0.5) {
                     $0.sheet([Vec3(x, f.elbow, -0.03), Vec3(x, f.elbow, -0.075), Vec3(x, f.wrist - 0.16, -0.06),
                               Vec3(x, f.wrist - 0.05, -0.03)], normal: Vec3(1, 0, 0), color: Palette.shroud)
                 }
@@ -349,10 +347,10 @@ enum Figures {
         o.hose = Palette.barkBlack
         o.shins = Palette.barkBlack
         o.boots = Palette.bark
-        o.skirt = (Palette.moss, .cloth, 0.2)
+        o.skirt = (Palette.moss, .plain, 0.2)
         o.belt = nil
         o.hair = Palette.barkBlack
-        o.mantle = (Palette.moss, .cloth)
+        o.mantle = (Palette.moss, .plain)
         let gait = wildGait(2)
         return model(name, f, gait) { b in
             Person.body(&b, f, o)
