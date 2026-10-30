@@ -138,7 +138,7 @@ private struct NewsSourceLine: View {
 
     var body: some View {
         SpacedText(text, size: .launcherType(9, unit: unit), weight: .regular, tracking: 0.28, balanced: false)
-            .foregroundStyle(Palette.text(0.7))
+            .foregroundStyle(Palette.text(0.8))
             .padding(.leading, 13 * unit)
             .animation(.easeInOut(duration: 0.3), value: status)
     }

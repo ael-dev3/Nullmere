@@ -687,6 +687,15 @@ final class TextSizeTests: XCTestCase {
         XCTAssertGreaterThan(larger.height, standard.height)
     }
 
+    /// Thin type only at display sizes: small text is never thinner than
+    /// regular, so its strokes hold their contrast.
+    func testSmallTypeIsNeverThin() {
+        XCTAssertEqual(Font.readable(.light, at: 11.5), .regular)
+        XCTAssertEqual(Font.readable(.thin, at: 9), .regular)
+        XCTAssertEqual(Font.readable(.medium, at: 9), .medium, "Heavier than regular, as asked")
+        XCTAssertEqual(Font.readable(.thin, at: 26), .thin, "Display sizes keep their thin type")
+    }
+
     /// The panels keep their width and grow downward: nothing is cut off.
     func testThePanelsGrowWithTheType() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

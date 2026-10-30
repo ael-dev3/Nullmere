@@ -332,7 +332,10 @@ jobs:
         if: always()
         run: |
           echo "::group::Summary"
-          grep -hE "UIAUDIT|UIWALK|UIMAP|error:|Test Case .* (passed|failed)|\*\* TEST" build/ui-test.log 2>/dev/null | cut -c1-900 | tail -n 150 || true
+          # Each finding once, however many times it was said.
+          grep -hoE "(UIAUDIT|UIWALK).*" build/ui-test.log 2>/dev/null | cut -c1-240 | sort -u | head -n 120 || true
+          grep -hE "UIMAP" build/ui-test.log 2>/dev/null | cut -c1-1500 | head -n 2 || true
+          grep -hE "Test Case .* (passed|failed)|\*\* TEST" build/ui-test.log 2>/dev/null || true
           echo "::endgroup::"
 
   # The launcher's screens, printed where the long macOS log can't trim

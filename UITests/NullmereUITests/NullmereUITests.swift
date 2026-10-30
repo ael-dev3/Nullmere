@@ -13,6 +13,7 @@ final class NullmereUITests: XCTestCase {
     private static let bundleIdentifier = "online.nullmere.launcher"
 
     private var app: XCUIApplication!
+    private var window: XCUIElement!
     /// What the audits and the walk find, said together at the end, so one
     /// run shows all of it.
     private var findings: [String] = []
@@ -141,7 +142,7 @@ final class NullmereUITests: XCTestCase {
 
     private func openTheLauncher() throws -> XCUIElement {
         app.launch()
-        let window = app.windows["Nullmere Online"]
+        window = app.windows["Nullmere Online"]
         XCTAssertTrue(window.waitForExistence(timeout: 30), "One window, named Nullmere Online")
         // A click skips the opening, as it does for a keeper.
         window.click()
@@ -150,21 +151,35 @@ final class NullmereUITests: XCTestCase {
         return window
     }
 
-    /// The first element under `root` with these words, of any kind.
+    /// The first element under `root` with these words, of any kind: as its
+    /// label, its title, or, for text, its value.
     private func labelled(_ label: String, in root: XCUIElement) -> XCUIElement {
-        root.descendants(matching: .any).matching(NSPredicate(format: "label == %@", label)).firstMatch
+        root.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@ OR title == %@ OR value == %@", label, label, label)).firstMatch
+    }
+
+    /// The Mac's own window furniture, which the app neither draws nor
+    /// names: the Touch Bar macOS keeps for every window, and the buttons
+    /// in the title bar's corner.
+    private func isMacChrome(_ element: XCUIElement) -> Bool {
+        if element.elementType == .touchBar { return true }
+        let titleBar = CGRect(x: window.frame.minX, y: window.frame.minY, width: 100, height: 32)
+        return element.elementType == .group && element.label.isEmpty && titleBar.contains(element.frame)
     }
 
     /// Xcode's accessibility audit of what is on screen: every issue it
     /// finds is kept, so each screen is still audited, and all are told.
     private func audit(_ screen: String) {
+        // What fades in is audited once it has.
+        Thread.sleep(forTimeInterval: 1.2)
         do {
             try app.performAccessibilityAudit { issue in
+                if let element = issue.element, self.isMacChrome(element) { return true }
                 let element = issue.element.map { element in
-                    let described = element.debugDescription.split(separator: "\n").prefix(2).joined(separator: " / ")
-                    return "\(element.elementType.rawValue) '\(element.label)' \(element.frame) [\(described.prefix(300))]"
+                    let words = element.label.isEmpty ? (element.value as? String ?? "") : element.label
+                    return "type \(element.elementType.rawValue) '\(words.prefix(70))' at \(element.frame.integral)"
                 } ?? "the screen"
-                self.found("UIAUDIT \(screen): \(issue.compactDescription). \(issue.detailedDescription) Element: \(element)")
+                self.found("UIAUDIT \(screen): \(issue.compactDescription): \(element)")
                 return true
             }
         } catch {

@@ -174,7 +174,7 @@ struct FrontDoor: View {
                 Text(verbatim: "Your identity is a random key kept in this Mac's keychain. The realm knows you by it and by the name you choose; nothing else.")
                     .font(.system(size: .launcherType(10, unit: unit), weight: .regular))
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(Palette.text(0.66))
+                    .foregroundStyle(Palette.text(0.75))
                     .frame(maxWidth: 420 * unit)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 22 * unit)

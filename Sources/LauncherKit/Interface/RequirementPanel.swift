@@ -100,7 +100,7 @@ struct RequirementsLine: View {
         HStack(spacing: 8 * unit) {
             StatusDot(isLit: isMet)
             SpacedText(title, size: .launcherType(9, unit: unit), weight: .regular, tracking: 0.3)
-                .foregroundStyle(Palette.text(isMet ? 0.82 : 0.62))
+                .foregroundStyle(Palette.text(isMet ? 0.86 : 0.72))
         }
     }
 

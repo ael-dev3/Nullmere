@@ -44,7 +44,7 @@ struct LauncherFooter: View {
                     .accessibilityHidden(true)
             }
         }
-        .foregroundStyle(Palette.text(0.62))
+        .foregroundStyle(Palette.text(0.8))
         .padding(.horizontal, 36 * unit)
         .padding(.bottom, 26 * unit)
     }

@@ -69,11 +69,11 @@ private struct SettingsRowView: View {
                 .padding(.trailing, isFocused ? 10 * unit : 0)
             VStack(alignment: .leading, spacing: 4 * unit) {
                 SpacedText(title, size: .launcherType(10.5, unit: unit), weight: .regular, tracking: 0.32)
-                    .foregroundStyle(Palette.text(isFocused ? 0.95 : 0.55))
+                    .foregroundStyle(Palette.text(isFocused ? 1 : 0.8))
                 if let note {
                     Text(verbatim: note)
                         .font(.system(size: .launcherType(9, unit: unit), weight: .regular))
-                        .foregroundStyle(Palette.text(0.66))
+                        .foregroundStyle(Palette.text(0.75))
                 }
             }
             Spacer(minLength: 24 * unit)

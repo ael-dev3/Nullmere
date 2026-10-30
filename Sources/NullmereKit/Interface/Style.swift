@@ -87,10 +87,16 @@ struct Caps: View {
 
 extension Font {
     /// The interface's type at a size, scaled by the reader's choice, and
-    /// never under the least that reads.
+    /// never under the least that reads. Thin type is for display sizes:
+    /// below 14 points it is never thinner than regular, whose strokes
+    /// hold their contrast on any display.
     @MainActor
     static func nm(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: TextSize.shared.size(size), weight: weight)
+        .system(size: TextSize.shared.size(size), weight: Font.readable(weight, at: size))
+    }
+
+    static func readable(_ weight: Font.Weight, at size: CGFloat) -> Font.Weight {
+        size < 14 && [.ultraLight, .thin, .light].contains(weight) ? .regular : weight
     }
 }
 

@@ -21,7 +21,7 @@ struct FirstStepsCard: View {
                         .foregroundStyle(done ? Palette.good : Palette.text(0.45))
                     Text(verbatim: step.title)
                         .font(.nm(11.5, weight: .light))
-                        .foregroundStyle(Palette.text(done ? 0.45 : 0.9))
+                        .foregroundStyle(Palette.text(done ? 0.7 : 0.9))
                         .strikethrough(done, color: Palette.line(0.35))
                         .fixedSize(horizontal: false, vertical: true)
                 }

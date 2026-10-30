@@ -189,7 +189,7 @@ private struct KeyHints: View {
     var body: some View {
         Text(verbatim: "? Guide · Tab next company · ⌘↩ ready")
             .font(.nm(10))
-            .foregroundStyle(Palette.text(0.4))
+            .foregroundStyle(Palette.text(0.75))
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(Color.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 3))
