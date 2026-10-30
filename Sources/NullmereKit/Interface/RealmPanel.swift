@@ -2,8 +2,9 @@ import NullmereCore
 import SwiftUI
 
 /// The realm's course as the House stands in it: the happening under way
-/// and the foremost in it, or the next to come; the charge set it; its
-/// deeds; its might among the Houses; and the keeper's renown over ages.
+/// and the foremost in it, or the next to come; the charge set it; what
+/// its satchel holds; its deeds; its might among the Houses; and the
+/// keeper's renown over ages.
 struct RealmPanel: View {
     let session: GameSession
 
@@ -20,6 +21,8 @@ struct RealmPanel: View {
                     happening(board)
                     Rule(opacity: 0.18)
                     charge(board)
+                    Rule(opacity: 0.18)
+                    satchel(state)
                     Rule(opacity: 0.18)
                     deeds(board)
                     if !state.holySites.isEmpty {
@@ -102,6 +105,49 @@ struct RealmPanel: View {
             .font(.nm(10))
             .foregroundStyle(Palette.text(0.55))
             .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// What the House keeps in its satchel, and what each does: what is
+    /// used on the House is used from here, what is used on a hold from
+    /// that hold's panel.
+    @ViewBuilder
+    private func satchel(_ state: GameState) -> some View {
+        let stacks = state.satchel(of: session.player)
+        Caps("Satchel", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
+        if stacks.isEmpty {
+            Text(verbatim: "Empty. Charges kept, a happening's marks and lairs broken fill it.")
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.55))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        ForEach(stacks, id: \.kind) { stack in
+            SatchelRow(session: session, stack: stack)
+        }
+    }
+
+    /// The order that uses an item on the House itself; none for one used
+    /// only on a hold.
+    static func use(_ kind: ItemKind) -> Command? {
+        kind.needsHold ? nil : .useItem(kind, hold: nil)
+    }
+
+    /// What an item does, and where it is used.
+    static func about(_ kind: ItemKind) -> String {
+        let effect = kind.effect.prefix(1).uppercased() + kind.effect.dropFirst()
+        switch kind {
+        case .hourglass: return "\(effect). Use it from a hold's panel, or here on your study."
+        case .wardStone: return "\(effect). Use it from the hold's panel."
+        default: return "\(effect)."
+        }
+    }
+
+    /// The title of an item's use here.
+    static func useTitle(_ kind: ItemKind) -> String {
+        switch kind {
+        case .hourglass: return "Hasten your study"
+        case .mendingDraught: return "Share it out"
+        default: return "Open"
+        }
     }
 
     /// What stands of a lair, as the panel says it.
@@ -207,6 +253,35 @@ struct RealmPanel: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
+        }
+    }
+}
+
+/// One kind of item in the House's satchel: how many, what it does, and
+/// its use from here when it is used on the House.
+private struct SatchelRow: View {
+    let session: GameSession
+    let stack: ItemStack
+
+    var body: some View {
+        let kind = stack.kind
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: "\(kind.title) × \(stack.count)").font(.nm(11, weight: .medium)).foregroundStyle(Palette.text(0.85))
+                Text(verbatim: RealmPanel.about(kind))
+                    .font(.nm(10))
+                    .foregroundStyle(Palette.text(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            Spacer()
+            if let command = RealmPanel.use(kind) {
+                let refusal = session.state.refusal(of: command, as: session.player)
+                QuietButton(title: RealmPanel.useTitle(kind), size: 8.5, enabled: refusal == nil,
+                            name: kind == .hourglass ? "Use a Salt Hourglass on your study" : "Use a \(kind.title)", why: refusal?.description) {
+                    session.perform(command)
+                }
+            }
         }
     }
 }

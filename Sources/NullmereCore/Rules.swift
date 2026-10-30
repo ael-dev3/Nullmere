@@ -83,6 +83,8 @@ extension GameState {
             return try scout(holdID, with: unitID, as: house)
         case let .raiseStandard(hex):
             return try raiseStandard(at: hex, by: house)
+        case let .useItem(kind, holdID):
+            return try use(kind, on: holdID, as: house)
         case let .inviteToAlliance(target):
             return try invite(target, by: house)
         case let .askToJoin(allianceID):

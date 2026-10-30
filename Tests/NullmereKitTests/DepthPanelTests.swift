@@ -749,6 +749,53 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(GameSession.isRealmsToTell(.standardTorn(standard: standard.id, alliance: alliance.id, by: 2, at: spot)))
     }
 
+    func testTheSatchelIsShownAndItsItemsUsed() throws {
+        var state = world("satchel shown")
+        let me = state.player
+        let seat = try XCTUnwrap(state.holds.first { $0.owner == me && $0.isSeat })
+        let index = try XCTUnwrap(state.holdIndex(seat.id))
+        // Empty, it says what fills it, and nothing is offered.
+        let (empty, _) = session(state)
+        PressableButtons.isListening = true
+        draw(RealmPanel(session: empty))
+        XCTAssertFalse(PressableButtons.press("Open"))
+        _ = state.give(.hourglass, 2, to: me)
+        _ = state.give(.timberCache, to: me)
+        _ = state.give(.wardStone, to: me)
+        state.holds[index].project = Hold.Project(kind: .granary, targetLevel: 1, watchesLeft: 3)
+        state.holds[index].ward = 2
+        state.houses[me].stock = .zero
+        let (session, link) = session(state)
+        PressableButtons.isListening = true
+        draw(RealmPanel(session: session))
+        XCTAssertTrue(PressableButtons.press("Open"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .useItem(.timberCache, hold: nil))
+        XCTAssertEqual(session.state.houses[me].stock.timber, 120, "Opened at once on the keeper's copy")
+        XCTAssertFalse(PressableButtons.press("Hasten your study"), "No study under way")
+        XCTAssertFalse(PressableButtons.press("Make the ward whole"), "A ward stone is used from its hold's panel")
+        // The hold's own panel hastens its work and makes its ward whole.
+        session.selection = .hold(seat.id)
+        PressableButtons.isListening = true
+        draw(SelectionPanel(session: session), width: 330, height: 1400)
+        XCTAssertTrue(PressableButtons.press("Hasten"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .useItem(.hourglass, hold: seat.id))
+        XCTAssertEqual(session.state.hold(seat.id)?.project?.watchesLeft, 2)
+        XCTAssertTrue(PressableButtons.press("Make the ward whole"))
+        XCTAssertEqual(link.sent.last, .useItem(.wardStone, hold: seat.id))
+        XCTAssertEqual(session.state.hold(seat.id)?.ward, session.state.hold(seat.id)?.maximumWard)
+        // What each says, and where it is used.
+        XCTAssertEqual(RealmPanel.about(.hourglass),
+                       "A hold's work and muster a watch nearer, or the House's study. Use it from a hold's panel, or here on your study.")
+        XCTAssertEqual(RealmPanel.about(.wardStone), "A hold's ward made whole. Use it from the hold's panel.")
+        XCTAssertEqual(RealmPanel.about(.timberCache), "120 timber to the House's stores.")
+        XCTAssertNil(RealmPanel.use(.wardStone))
+        XCTAssertEqual(RealmPanel.use(.mendingDraught), .useItem(.mendingDraught, hold: nil))
+        XCTAssertEqual(ItemKind.allCases.filter { RealmPanel.use($0) != nil }.map(RealmPanel.useTitle),
+                       ["Hasten your study", "Open", "Open", "Open", "Open", "Share it out"])
+        XCTAssertEqual(GameSession.place(of: .itemUsed(house: me, kind: .wardStone, hold: seat.id), in: session.state), seat.position)
+        XCTAssertNil(GameSession.place(of: .itemUsed(house: me, kind: .timberCache, hold: nil), in: session.state))
+    }
+
     func testACompanySaysWhatItWasSentToDo() throws {
         var state = world("errands")
         let me = state.player

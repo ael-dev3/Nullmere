@@ -163,6 +163,24 @@ final class StandardTests: XCTestCase {
         XCTAssertEqual(stage.state.problems(), [])
     }
 
+    /// Standards and lairs out of true are found: two standards on one
+    /// ground, a lair on a hold, a lair with no strength left standing.
+    func testStandardsAndLairsOutOfTrueAreFound() throws {
+        var stage = try staged("unsound ground")
+        let spot = try ground(near: stage.seat.position, in: stage.state)
+        _ = try stage.state.perform(.raiseStandard(at: spot), as: stage.me)
+        let raised = try XCTUnwrap(stage.state.standard(at: spot))
+        XCTAssertEqual(stage.state.standard(raised.id), raised)
+        XCTAssertNil(stage.state.standard(raised.id + 1_000))
+        stage.state.standards!.append(Standard(id: 9_001, alliance: raised.alliance, raisedBy: stage.me, position: spot, raised: 0))
+        stage.state.lairs = [Lair(id: 9_002, kind: .reavers, level: 1, position: stage.seat.position, raised: 0)]
+        stage.state.lairs![0].strength = 0
+        let problems = stage.state.problems()
+        XCTAssertTrue(problems.contains("The Reavers' Stockade 9002 stands at 0 of \(Lair.might(level: 1)), level 1"), "\(problems)")
+        XCTAssertTrue(problems.contains("The Reavers' Stockade 9002 shares its ground at \(stage.seat.position)"), "\(problems)")
+        XCTAssertTrue(problems.contains("Standard 9001 shares its ground at \(spot)"), "\(problems)")
+    }
+
     func testAStewardOfAnAllianceRaisesAStandardWhereItTakesInSites() throws {
         var state = Scene.world("steward standards", houses: 4, radius: 18)
         let steward = 2

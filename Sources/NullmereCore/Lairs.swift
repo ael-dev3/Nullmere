@@ -200,7 +200,8 @@ extension GameState {
     /// first, until it breaks; those beside it take its blow back. Broken,
     /// it is gone, and its spoils are shared among the host's Houses by the
     /// companies each brought up to it, its caller finding gear among the
-    /// ruins. Then the rally is done, whatever came of it.
+    /// ruins, and items fill the host's satchels. Then the rally is done,
+    /// whatever came of it.
     mutating func strikeLair(_ rallyID: Int, at target: Lair) -> [GameEvent] {
         guard let rally = rally(rallyID), let lairAt = lairIndex(target.id) else { return [] }
         var random = random()
@@ -258,10 +259,11 @@ extension GameState {
             let named = host.count == 1 ? host[0] : host.dropLast().joined(separator: ", ") + " and " + host.last!
             record(.hunt, sides, "A host of \(named) breaks the \(target.title) of the \(ordinal(target.level)) level \(placeName(of: target.position)).")
         }
-        events.insert(.lairAssaulted(LairAssault(rally: rallyID, caller: rally.caller, lair: target.id, kind: target.kind,
-                                                 level: target.level, at: target.position, strikes: strikes, before: before,
-                                                 strength: broken ? 0 : lairs![lairAt].strength, might: target.might,
-                                                 shares: shares)), at: 0)
+        let assault = LairAssault(rally: rallyID, caller: rally.caller, lair: target.id, kind: target.kind,
+                                  level: target.level, at: target.position, strikes: strikes, before: before,
+                                  strength: broken ? 0 : lairs![lairAt].strength, might: target.might, shares: shares)
+        events.insert(.lairAssaulted(assault), at: 0)
+        if broken { events += rewardLair(assault) }
         return events
     }
 }

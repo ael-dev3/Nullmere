@@ -96,6 +96,7 @@ struct RivalMind {
             events += manage(hold.id, owners: owners, in: &state, random: &random)
         }
         events += pursueStudies(in: &state)
+        if !caretaking { events += useItems(in: &state) }
         events += appointCommanders(in: &state)
         events += state.growTalents(for: house)
         events += state.armCommanders(for: house)
@@ -133,6 +134,43 @@ struct RivalMind {
         guard let best, best.sites > 0 else { return [] }
         return perform(.raiseStandard(at: best.hex), in: &state)
     }
+
+    /// How many of its companies must be hurt for a steward to share out a
+    /// mending draught, and how hurt.
+    static let draughtWhen = (companies: 3, health: 60)
+
+    /// A steward uses what its satchel holds: a ward stone on its hold
+    /// whose ward is lowest, under half; an hourglass a watch on its holds'
+    /// work and muster, its seat's first, or else on its study; a cache
+    /// whose stores all fit; a draught when enough of its companies are hurt.
+    private func useItems(in state: inout GameState) -> [GameEvent] {
+        var events: [GameEvent] = []
+        if state.items(.wardStone, of: house) > 0,
+           let low = state.holds(of: house).filter({ $0.ward * 2 < $0.maximumWard }).min(by: { ($0.ward, $0.id) < ($1.ward, $1.id) }) {
+            events += perform(.useItem(.wardStone, hold: low.id), in: &state)
+        }
+        if state.items(.hourglass, of: house) > 0 {
+            let holds = state.holds(of: house).sorted { ($0.isSeat ? 0 : 1, $0.id) < ($1.isSeat ? 0 : 1, $1.id) }
+            if let hold = holds.first(where: { ($0.project?.watchesLeft ?? 0) > 1 || ($0.training?.watchesLeft ?? 0) > 1 }) {
+                events += perform(.useItem(.hourglass, hold: hold.id), in: &state)
+            } else if (state.houses[house].research.pursuit?.watchesLeft ?? 0) > 1 {
+                events += perform(.useItem(.hourglass, hold: nil), in: &state)
+            }
+        }
+        let room = state.storage(of: house)
+        for kind in Resource.allCases.map(ItemKind.cache(of:)) where state.items(kind, of: house) > 0 {
+            let stock = state.houses[house].stock
+            if Resource.allCases.allSatisfy({ stock[$0] + kind.stores[$0] <= room }) {
+                events += perform(.useItem(kind, hold: nil), in: &state)
+            }
+        }
+        if state.items(.mendingDraught, of: house) > 0,
+           state.units(of: house).filter({ $0.health < RivalMind.draughtWhen.health }).count >= RivalMind.draughtWhen.companies {
+            events += perform(.useItem(.mendingDraught, hold: nil), in: &state)
+        }
+        return events
+    }
+
     /// A steward's Lantern within reach of a foe's hold scouts it one
     /// watch in this many.
     static let scoutEvery = 4

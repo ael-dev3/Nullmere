@@ -93,11 +93,23 @@ public struct Happening: Codable, Equatable, Sendable {
         Stock(grain: 0, timber: 30, stone: 30, moonsalt: 2),
         Stock(grain: 40, timber: 0, stone: 40, moonsalt: 4),
     ]
+    /// The items each mark brings beside its stores.
+    public static let markItems: [[ItemKind]] = [
+        [.hourglass],
+        [.hourglass, .mendingDraught],
+        [.hourglass, .hourglass, .wardStone],
+    ]
     /// What the three foremost are given as it ends.
     public static let honours = [
         Stock(grain: 50, timber: 50, stone: 50, moonsalt: 6),
         Stock(grain: 35, timber: 35, stone: 35, moonsalt: 3),
         Stock(grain: 20, timber: 20, stone: 20, moonsalt: 0),
+    ]
+    /// The items the three foremost are given beside their stores.
+    public static let honourItems: [[ItemKind]] = [
+        [.hourglass, .hourglass, .hourglass, .wardStone],
+        [.hourglass, .hourglass, .mendingDraught],
+        [.hourglass],
     ]
 
     /// The happening that begins at a watch, by its number, if one does.
@@ -142,16 +154,20 @@ extension GameState {
             for house in happening.points.indices where !houses[house].isEliminated {
                 while happening.passed[house] < Happening.marks.count, happening.points[house] >= Happening.marks[happening.passed[house]] {
                     let reward = Happening.markRewards[happening.passed[house]]
+                    let items = Happening.markItems[happening.passed[house]]
                     happening.passed[house] += 1
                     store(reward, for: house)
                     events.append(.happeningMark(house: house, kind: happening.kind, mark: happening.passed[house], reward: reward))
+                    events += give(items, to: house)
                 }
             }
             self.happening = happening
             if watch >= happening.ends {
                 let leaders = Array(happening.leaderboard.filter { !houses[$0].isEliminated }.prefix(Happening.honours.count))
+                var honoured: [GameEvent] = []
                 for (place, house) in leaders.enumerated() {
                     store(Happening.honours[place], for: house)
+                    honoured += give(Happening.honourItems[place], to: house)
                 }
                 let named = leaders.map { houses[$0].title }
                 let text: String
@@ -163,6 +179,7 @@ extension GameState {
                 }
                 record(.happening, leaders, text)
                 events.append(.happeningEnded(kind: happening.kind, leaders: leaders))
+                events += honoured
                 self.happening = nil
             }
         }

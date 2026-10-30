@@ -76,8 +76,9 @@ enum Guide {
             "Call a rally from an enemy hold's panel: your alliance's companies gather at your hold with a Muster Hall for one to four watches, then march together at the slowest's pace and strike together the moment all are there. Send a company to keep an ally's gates, and it strikes back at those who strike them.",
         ]),
         Section(title: "Happenings and charges", lines: [
-            "From the tenth watch, a happening comes round every thirty, for ten watches: the Long Hunt, the Harvest Fair, the Raising, the Great Muster and the Learned Season. Points bring stores at 10, 25 and 50, and the three foremost are honoured as it ends. The Realm (6) shows it.",
+            "From the tenth watch, a happening comes round every thirty, for ten watches: the Long Hunt, the Harvest Fair, the Raising, the Great Muster and the Learned Season. Points bring stores and items at 10, 25 and 50, and the three foremost are honoured as it ends. The Realm (6) shows it.",
             "Charges set your House one thing at a time, each rewarded: the card in the corner says how, and Show me takes you there. Deeds are remembered across ages, and win the keeper renown.",
+            "Charges, a happening's marks and lairs broken fill your satchel, shown in the Realm (6). A Salt Hourglass brings a hold's work and muster a watch nearer, from the hold's panel, or your study; caches open into your stores; a Ward Stone makes a hold's ward whole; a Mending Draught mends every hurt company of yours by 30.",
         ]),
         Section(title: "Omens", lines: [
             "Now and then the lake turns, for every House at once, for three to five watches: Moonsalt Bloom doubles moonsalt, Rising Mist shortens every sight by a tile, a Lean Watch takes a third of the grain, and a Still Night mends wards twice as fast.",

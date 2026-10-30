@@ -84,6 +84,10 @@ public enum Command: Codable, Equatable, Sendable {
     /// A House of an alliance raises a standard on open land near the
     /// alliance's holds or standards: the land about it is the alliance's.
     case raiseStandard(at: Hex)
+    /// A House uses an item from its satchel: a ward stone, or an hourglass
+    /// that hastens a hold's work and muster, on one of its holds; caches,
+    /// draughts and an hourglass naming no hold, on the House itself.
+    case useItem(ItemKind, hold: Int?)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -229,6 +233,14 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case standardTooFar
     /// An alliance with as many standards as it may keep.
     case standardsEnough
+    /// An item the House has none of.
+    case noItem
+    /// An hourglass used where nothing is under way that has a watch to lose.
+    case nothingToHasten
+    /// A ward stone used on a hold whose ward is whole.
+    case wardWhole
+    /// A mending draught used when no company of the House is hurt.
+    case noneHurt
     /// Words from a House no keeper holds.
     case notAKeeper
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -331,6 +343,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .standardGround: return "A standard stands only on open land, with nothing on it."
         case .standardTooFar: return "A standard stands within four tiles of your alliance's holds or standards."
         case .standardsEnough: return "Your alliance keeps as many standards as it may: one, and one more for each of its Houses."
+        case .noItem: return "Your House has none of that."
+        case .nothingToHasten: return "Nothing under way there has a watch to spare: what has one left is done as the watch turns."
+        case .wardWhole: return "That hold's ward is whole."
+        case .noneHurt: return "None of your companies is hurt."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
         case .notAKeeper: return "Only a keeper's words are carried."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -416,6 +432,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// A standard comes down: torn down by a House, or by none, its House
     /// gone from its alliance.
     case standardTorn(standard: Int, alliance: Int, by: Int?, at: Hex)
+    /// A House is given items for its satchel.
+    case itemsGiven(house: Int, kind: ItemKind, count: Int)
+    /// A House uses an item, on one of its holds or on the House.
+    case itemUsed(house: Int, kind: ItemKind, hold: Int?)
     /// A company strikes a company of the wilds.
     case hunted(Hunt)
     /// A company sets out to work a site.

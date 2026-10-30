@@ -1182,7 +1182,20 @@ public final class GameSession {
         case .heal: return .tend
         case .scout: return .ride
         case .raiseStandard: return .banner
+        case .useItem(let kind, _): return cue(using: kind)
         default: return .select
+        }
+    }
+
+    /// The sound of an item used: salt running for an hourglass, coins for
+    /// a cache, a work finished for a ward made whole, the healers for a
+    /// draught.
+    static func cue(using kind: ItemKind) -> Ambience.Cue {
+        switch kind {
+        case .hourglass: return .sift
+        case .grainCache, .timberCache, .stoneCache, .moonsaltCache: return .coin
+        case .wardStone: return .complete
+        case .mendingDraught: return .tend
         }
     }
 
@@ -1216,6 +1229,8 @@ public final class GameSession {
         case .unitHealed(let unit, _) where ours(unit): return .muster
         case .woundedLost(_, let house, _) where house == player: return .dread
         case .holdScouted(let report) where report.by == player: return .lore
+        case .itemsGiven(let house, _, _) where house == player: return .coin
+        case .itemUsed(let house, let kind, _) where house == player: return cue(using: kind)
         case .lairAssaulted(let assault) where assault.houses.contains(player): return assault.broken ? .triumph : .batter
         case .standardRaised(_, let alliance, _, _) where state?.alliance(of: player)?.id == alliance: return .banner
         case .standardStruck(let standard, _, let by, _) where by != player
@@ -1350,6 +1365,8 @@ public final class GameSession {
             return assault.at
         case .standardRaised(_, _, _, let at), .standardStruck(_, _, _, let at), .standardTorn(_, _, _, let at):
             return at
+        case .itemUsed(_, _, let hold):
+            return hold.flatMap { state.hold($0)?.position }
         case .rallyStruck(_, _, let target, _, _), .rallySetOut(_, _, let target, _, _):
             return state.hold(target)?.position ?? state.lair(target)?.position
         case .shrineTaken(let shrine, _, _):

@@ -139,6 +139,8 @@ struct OwnHoldDetails: View {
                 )
             }
 
+            HoldItems(session: session, hold: hold)
+
             if hold.beds > 0 {
                 InfirmaryRows(session: session, hold: hold, stock: stock)
             }
@@ -781,6 +783,42 @@ struct LairRally: View {
     static func muster(for lair: Lair, in state: GameState, player: Int) -> Hold? {
         state.holds(of: player).filter { $0.level(.musterHall) >= 1 }
             .min { ($0.position.distance(to: lair.position), $0.id) < ($1.position.distance(to: lair.position), $1.id) }
+    }
+}
+
+/// The House's items that work on a hold, offered on its own panel: an
+/// hourglass while it has work or a muster under way, a ward stone while
+/// its ward is broken.
+struct HoldItems: View {
+    let session: GameSession
+    let hold: Hold
+
+    var body: some View {
+        let hourglasses = session.state.items(.hourglass, of: session.player)
+        let stones = session.state.items(.wardStone, of: session.player)
+        if hourglasses > 0, hold.project != nil || hold.training != nil {
+            row(.hourglass, title: "Hasten",
+                text: "\(ItemKind.hourglass.counted(hourglasses)) in your satchel: one brings this hold's work and muster a watch nearer.")
+        }
+        if stones > 0, hold.ward < hold.maximumWard {
+            row(.wardStone, title: "Make the ward whole",
+                text: "\(ItemKind.wardStone.counted(stones)) in your satchel: one makes this hold's ward whole.")
+        }
+    }
+
+    private func row(_ kind: ItemKind, title: String, text: String) -> some View {
+        let command = Command.useItem(kind, hold: hold.id)
+        let refusal = session.state.refusal(of: command, as: session.player)
+        return HStack(alignment: .firstTextBaseline) {
+            Text(verbatim: text)
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            QuietButton(title: title, size: 8.5, enabled: refusal == nil, name: "Use a \(kind.title) at \(hold.name)", why: refusal?.description) {
+                session.perform(command)
+            }
+        }
     }
 }
 

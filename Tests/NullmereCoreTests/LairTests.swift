@@ -197,6 +197,11 @@ final class LairTests: XCTestCase {
         XCTAssertEqual(stage.state.houses[ally].stock, before.theirs + theirs)
         // Gear for its caller among the ruins, and the chronicle tells it.
         XCTAssertTrue(events.contains { if case .gearFound(me, _, .reavers) = $0 { return true } else { return false } })
+        // Hourglasses for its caller, one a level; the Reavers' timber in a
+        // cache for every House of the host.
+        let given = events.filter { if case .itemsGiven = $0 { return true } else { return false } }
+        XCTAssertEqual(given, [.itemsGiven(house: me, kind: .hourglass, count: lair.level), .itemsGiven(house: me, kind: .timberCache, count: 1),
+                               .itemsGiven(house: ally, kind: .timberCache, count: 1)])
         let line = try XCTUnwrap(stage.state.chronicle.last)
         XCTAssertEqual(line.kind, .hunt)
         XCTAssertTrue(line.text.hasPrefix("A host of \(stage.state.houses[me].title) and \(stage.state.houses[ally].title) breaks the Reavers' Stockade of the first level"),

@@ -65,8 +65,10 @@ final class HappeningTests: XCTestCase {
         XCTAssertEqual(state.happening?.leaderboard, [me, 1, 2])
         state.houses[me].stock = .zero
         let marks = state.turnHappenings()
-        XCTAssertEqual(marks, [.happeningMark(house: me, kind: .raising, mark: 1, reward: Happening.markRewards[0])])
+        XCTAssertEqual(marks, [.happeningMark(house: me, kind: .raising, mark: 1, reward: Happening.markRewards[0]),
+                               .itemsGiven(house: me, kind: .hourglass, count: 1)], "Its stores, and an hourglass")
         XCTAssertEqual(state.houses[me].stock, Happening.markRewards[0])
+        XCTAssertEqual(state.items(.hourglass, of: me), 1)
         XCTAssertEqual(state.happening?.passed, [1, 0, 0, 0])
         XCTAssertEqual(state.turnHappenings(), [], "A mark is passed once")
         XCTAssertEqual(state.events(marks, heardBy: me), marks)
@@ -74,16 +76,24 @@ final class HappeningTests: XCTestCase {
         XCTAssertEqual(state.tidings(of: marks[0], for: me)?.text, "Your House passes the first mark of The Raising: \(Happening.markRewards[0]).")
         XCTAssertNil(state.tidings(of: marks[0], for: 1))
 
-        // Two marks at once, passed in turn.
+        // Two marks at once, passed in turn, each with its items.
         state.tally([.buildingCompleted(hold: theirs, kind: .granary, level: 5), .buildingCompleted(hold: theirs, kind: .walls, level: 5)])
-        XCTAssertEqual(state.turnHappenings().count, 2)
+        XCTAssertEqual(state.turnHappenings(), [
+            .happeningMark(house: 1, kind: .raising, mark: 1, reward: Happening.markRewards[0]), .itemsGiven(house: 1, kind: .hourglass, count: 1),
+            .happeningMark(house: 1, kind: .raising, mark: 2, reward: Happening.markRewards[1]), .itemsGiven(house: 1, kind: .hourglass, count: 1),
+            .itemsGiven(house: 1, kind: .mendingDraught, count: 1),
+        ])
         XCTAssertEqual(state.happening?.passed[1], 2)
+        XCTAssertEqual(state.satchel(of: 1).map(\.count), [2, 1])
 
         // Its end: the foremost honoured, in the chronicle and in stores.
         state.watch = try XCTUnwrap(state.happening).ends
         for house in 0..<4 { state.houses[house].stock = .zero }
         let ended = state.turnHappenings()
-        XCTAssertEqual(ended, [.happeningEnded(kind: .raising, leaders: [1, me, 2])])
+        XCTAssertEqual(ended, [.happeningEnded(kind: .raising, leaders: [1, me, 2]),
+                               .itemsGiven(house: 1, kind: .hourglass, count: 3), .itemsGiven(house: 1, kind: .wardStone, count: 1),
+                               .itemsGiven(house: me, kind: .hourglass, count: 2), .itemsGiven(house: me, kind: .mendingDraught, count: 1),
+                               .itemsGiven(house: 2, kind: .hourglass, count: 1)], "Its end told, then the honours' items")
         XCTAssertNil(state.happening)
         XCTAssertEqual(state.houses[1].stock, Happening.honours[0])
         XCTAssertEqual(state.houses[me].stock, Happening.honours[1])
@@ -94,7 +104,8 @@ final class HappeningTests: XCTestCase {
         XCTAssertEqual(state.tidings(of: ended[0], for: me), Tidings("The Raising ends: your House stands second, and is honoured.", .good))
         XCTAssertEqual(state.tidings(of: ended[0], for: 3)?.text, "The Raising ends: \(names[0]) takes the honours.")
         XCTAssertEqual(state.tidings(of: .happeningEnded(kind: .muster, leaders: []), for: 3)?.text, "The Great Muster ends with no House to honour.")
-        XCTAssertEqual(state.events(ended, heardBy: 3), ended)
+        XCTAssertEqual(state.events(ended, heardBy: 3), [ended[0]], "Each hears of its own items only")
+        XCTAssertEqual(state.events(ended, heardBy: me), [ended[0], ended[3], ended[4]])
 
         // The next comes at its watch, and not before.
         state.watch = Happening.first + Happening.every - 1
@@ -109,7 +120,7 @@ final class HappeningTests: XCTestCase {
             state.happening = Happening(number: 0, kind: .learnedSeason, begins: state.watch, houses: 3)
             state.tally(completed)
             state.watch = state.happening!.ends
-            return state.turnHappenings()
+            return state.turnHappenings().filter { if case .happeningEnded = $0 { return true } else { return false } }
         }
         XCTAssertEqual(season([.studyCompleted(house: 2, study: .drill, grade: 1)]), [.happeningEnded(kind: .learnedSeason, leaders: [2])])
         XCTAssertEqual(state.chronicle.last?.text, "The Learned Season ends: \(state.houses[2].title) takes the honours.")

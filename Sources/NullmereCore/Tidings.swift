@@ -106,6 +106,17 @@ extension GameState {
             }
             guard let by else { return Tidings("A standard of \(name) \(placeName(of: at)) comes down, its House gone from the alliance.", .neutral) }
             return Tidings("\(houses[by].title) tears down your alliance's standard \(placeName(of: at)).", .bad)
+        case .itemsGiven(let house, let kind, let count):
+            guard house == viewer else { return nil }
+            return Tidings("Your House gains \(kind.counted(count)): \(kind.effect).", .good)
+        case .itemUsed(let house, let kind, let holdID):
+            guard house == viewer else { return nil }
+            if let holdID { return Tidings("You use a \(kind.title) at \(hold(holdID)?.name ?? "your hold").", .neutral) }
+            switch kind {
+            case .hourglass: return Tidings("You use a Salt Hourglass on your House's study.", .neutral)
+            case .mendingDraught: return Tidings("You share out a Mending Draught: every hurt company of yours mends.", .good)
+            default: return Tidings("You open a \(kind.title): \(kind.stores) to your stores.", .good)
+            }
         case .lairAssaulted(let assault):
             let lair = "the \(assault.kind.lairTitle) of the \(ordinal(assault.level)) level"
             if assault.houses.contains(viewer) {

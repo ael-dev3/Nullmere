@@ -504,6 +504,7 @@ final class GuideTests: XCTestCase {
         XCTAssertEqual(GameState.rosterLimit, 5, "up to five commanders")
         XCTAssertEqual(GameState.captainsAt, [3, 5])
         XCTAssertEqual(GameState.woundWatches, 4)
+        XCTAssertTrue(all.contains("a Mending Draught mends every hurt company of yours by \(GameState.draughtMending)"), all)
         XCTAssertEqual(Rally.gatherings, 1...4)
         XCTAssertEqual(Study.opening(tier: 2), .drill)
         XCTAssertEqual(Study.opening(tier: 5), .moonsteel)
@@ -730,6 +731,9 @@ final class CueMappingTests: XCTestCase {
             (.standardStruck(standard: 82, ward: 30, by: foe, at: unit.position), .batter),
             (.standardTorn(standard: 80, alliance: 77, by: player, at: unit.position), .triumph),
             (.standardTorn(standard: 81, alliance: alliance, by: foe, at: unit.position), .dread),
+            (.itemsGiven(house: player, kind: .hourglass, count: 2), .coin),
+            (.itemUsed(house: player, kind: .hourglass, hold: seat.id), .sift),
+            (.itemUsed(house: player, kind: .mendingDraught, hold: nil), .tend),
             (.studyBegun(house: player, study: .furrowLore, grade: 1), .rise),
             (.studyCompleted(house: player, study: .furrowLore, grade: 1), .lore),
             (.commanderJoined(commander: commander, house: player), .honour),
@@ -820,6 +824,7 @@ final class CueMappingTests: XCTestCase {
                                        before: 200, strength: 0, might: 200, shares: [.init(house: foe, spoils: .zero)])),
             .standardRaised(standard: 83, alliance: 77, house: foe, at: unit.position),
             .standardTorn(standard: 84, alliance: 77, by: others, at: unit.position),
+            .itemsGiven(house: foe, kind: .wardStone, count: 1), .itemUsed(house: foe, kind: .hourglass, hold: 41),
         ]
         XCTAssertEqual(GameSession.cues(for: quiet, in: state, player: player), [.watch])
         // Every new order has its own sound, not the plain click.
@@ -837,6 +842,9 @@ final class CueMappingTests: XCTestCase {
             (.wear(gear: 70, commander: commander), .order), (.takeOff(gear: 70), .stand), (.breakUp(gear: 70), .coin),
             (.say(words: "Well met", toAlliance: false), .parley), (.heal(hold: seat.id), .tend),
             (.scout(unit: unit.id, hold: 40), .ride), (.raiseStandard(at: unit.position), .banner),
+            (.useItem(.hourglass, hold: seat.id), .sift), (.useItem(.hourglass, hold: nil), .sift), (.useItem(.grainCache, hold: nil), .coin),
+            (.useItem(.moonsaltCache, hold: nil), .coin), (.useItem(.wardStone, hold: seat.id), .complete),
+            (.useItem(.mendingDraught, hold: nil), .tend),
         ]
         for (command, cue) in orders {
             XCTAssertEqual(GameSession.cues(for: command, events: [], in: state, player: player), [cue], "\(command)")

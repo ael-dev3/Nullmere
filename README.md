@@ -690,6 +690,24 @@ realm; keepers are told in plain words, never a status code.
   model, with its fire smoking or its cold light burning; it is named on
   hover, its ground's panel shows what stands of it and calls the rally,
   and each blow on it is drawn and reported.
+- **The satchel.** Each House keeps items to use when it will, twenty of
+  a kind at most: a Salt Hourglass brings a hold's work and muster a watch
+  nearer, or the House's study (never its last watch: what is done is done
+  as the watch turns); a Cache of Grain, Timber or Stone opens into 120 of
+  it, a Cache of Moonsalt into 20, while the stores have room; a Ward Stone
+  makes a hold's ward whole; a Mending Draught mends every hurt company of
+  the House by 30. The charges bring them, the first steps hourglasses to
+  learn by; each mark of a happening brings an hourglass or more, and its
+  three foremost more again; a lair broken gives its caller an hourglass
+  for each of its levels, and every House of the host a cache of what its
+  wilds carry most of. Only its own House knows what is in a satchel. The
+  Realm screen lists it and uses what works on the House; a hold's panel
+  offers an hourglass while it has something under way and a ward stone
+  while its ward is broken. Stewards turn an hourglass a watch on their
+  works, their seat's first, mend a ward under half, open caches their
+  stores can take, and share out a draught when three companies or more
+  are badly hurt. An hourglass sounds as salt running out and a small
+  glass chime.
 - **Scouting.** Lanterns standing within two tiles of another House's
   hold scout it, at peace or at war, for all their moves. Their report
   goes to their House alone: every company of war at its gates (its own

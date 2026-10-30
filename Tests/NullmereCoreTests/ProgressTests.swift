@@ -87,8 +87,10 @@ final class ProgressTests: XCTestCase {
         state.holds[seat].levels[.granary] = 1
         state.houses[me].stock = .zero
         let first = state.fulfilCharges()
-        XCTAssertEqual(first, [.chargeDone(house: me, charge: .raiseGranary, reward: Charge.raiseGranary.reward)])
+        XCTAssertEqual(first, [.chargeDone(house: me, charge: .raiseGranary, reward: Charge.raiseGranary.reward),
+                               .itemsGiven(house: me, kind: .hourglass, count: 1)])
         XCTAssertEqual(state.houses[me].stock, Charge.raiseGranary.reward)
+        XCTAssertEqual(state.satchel(of: me), [ItemStack(house: me, kind: .hourglass, count: 1)])
         XCTAssertEqual(state.charge(of: me), .musterCompany)
         XCTAssertEqual(state.charge(of: 1), .raiseGranary)
         XCTAssertEqual(state.tidings(of: first[0], for: me)?.text,
@@ -100,14 +102,17 @@ final class ProgressTests: XCTestCase {
         state.put(.spear, of: me, at: try XCTUnwrap(state.freeHex(near: state.holds[seat].position, within: 1...2)))
         state.holds[seat].levels[.archive] = 1
         state.houses[me].research.known = [Learned(study: .furrowLore, grade: 1)]
-        XCTAssertEqual(state.fulfilCharges().map { event -> Charge? in if case .chargeDone(_, let charge, _) = event { return charge } else { return nil } },
+        XCTAssertEqual(state.fulfilCharges().compactMap { event -> Charge? in if case .chargeDone(_, let charge, _) = event { return charge } else { return nil } },
                        [.musterCompany, .raiseArchive, .learnStudy])
+        XCTAssertEqual(state.items(.hourglass, of: me), 4, "One, one more, and two for the Archive")
+        XCTAssertEqual(state.items(.grainCache, of: me), 1)
         XCTAssertEqual(state.charge(of: me), .foundHold)
 
         // All done: none left to set.
         state.chargesDone![me] = Charge.allCases.count - 1
         state.holds[seat].levels[.musterHall] = 3
-        XCTAssertEqual(state.fulfilCharges().count, 1)
+        XCTAssertEqual(state.fulfilCharges(), [.chargeDone(house: me, charge: .raiseMusterHall, reward: Charge.raiseMusterHall.reward),
+                                               .itemsGiven(house: me, kind: .hourglass, count: 2), .itemsGiven(house: me, kind: .moonsaltCache, count: 1)])
         XCTAssertNil(state.charge(of: me))
         XCTAssertEqual(state.fulfilCharges(), [])
         XCTAssertEqual(state.tidings(of: .chargeDone(house: me, charge: .raiseMusterHall, reward: Charge.raiseMusterHall.reward), for: me)?.text,

@@ -110,6 +110,21 @@ public enum Charge: Int, Codable, CaseIterable, Sendable {
         }
     }
 
+    /// The items it brings beside its stores: the first steps bring
+    /// hourglasses, to learn to hasten what is under way by.
+    public var items: [ItemKind] {
+        switch self {
+        case .raiseGranary, .musterCompany: return [.hourglass]
+        case .raiseArchive: return [.hourglass, .hourglass]
+        case .learnStudy: return [.grainCache]
+        case .foundHold: return [.hourglass, .timberCache]
+        case .leadCompany, .huntWild: return [.mendingDraught]
+        case .gatherSite: return [.stoneCache]
+        case .swearBanner: return [.wardStone]
+        case .raiseMusterHall: return [.hourglass, .hourglass, .moonsaltCache]
+        }
+    }
+
     /// Whether a House has done it.
     func isMet(by house: Int, in state: GameState) -> Bool {
         switch self {
@@ -219,8 +234,8 @@ extension GameState {
         return Charge(rawValue: done)
     }
 
-    /// As the watch turns: each charge done brings its stores, and the
-    /// next is set, perhaps done already too.
+    /// As the watch turns: each charge done brings its stores and items,
+    /// and the next is set, perhaps done already too.
     mutating func fulfilCharges() -> [GameEvent] {
         var done = chargesDone ?? []
         if done.count < houses.count { done += Array(repeating: 0, count: houses.count - done.count) }
@@ -230,6 +245,7 @@ extension GameState {
                 store(charge.reward, for: house)
                 done[house] += 1
                 events.append(.chargeDone(house: house, charge: charge, reward: charge.reward))
+                events += give(charge.items, to: house)
             }
         }
         if chargesDone != done { chargesDone = done }

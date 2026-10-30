@@ -84,11 +84,14 @@ public final class Ambience {
         /// The healers at work: a small bell over a warm, low hum, as the
         /// fallen are carried in and their healing paid for.
         case tend
+        /// Salt running through an hourglass, then a small glass chime: an
+        /// hourglass turned to hasten what is under way.
+        case sift
 
         /// Every cue, for tests and previews.
         public static let all: [Cue] = [.select, .order, .watch, .rise, .dread, .envoy, .triumph, .accord, .toll,
                                         .clash, .loose, .ride, .dig, .coin, .parley, .stand, .complete, .muster,
-                                        .refusal, .batter, .lore, .horn, .banner, .herald, .honour, .tend]
+                                        .refusal, .batter, .lore, .horn, .banner, .herald, .honour, .tend, .sift]
     }
 
     private static let logger = Logger(subsystem: "online.nullmere.game", category: "sound")
@@ -611,6 +614,22 @@ final class Synth: @unchecked Sendable {
                 Partial(frequency: 1174.7, amplitude: 0.026, decay: 2.8, delay: 0.32),
                 Partial(frequency: 1174.7 * 2.76, amplitude: 0.007, decay: 4.2, delay: 0.32),
             ], noise: 0.004, noiseDecay: 8)
+        case .sift:
+            // A fine patter of salt grains through the glass's waist, swelling
+            // and thinning, then a small glass chime as the last of it falls.
+            func grains(_ delay: Float, _ strength: Float) -> Note {
+                Note(partials: [
+                    Partial(frequency: 4_700, amplitude: 0.012 * strength, decay: 60),
+                    Partial(frequency: 6_300, amplitude: 0.008 * strength, decay: 70),
+                ], noise: 0.03 * strength, noiseDecay: 55, delay: delay)
+            }
+            note = grains(0, 0.7)
+            more = [grains(0.05, 0.9), grains(0.11, 1), grains(0.16, 0.85), grains(0.22, 0.7), grains(0.27, 0.5),
+                    Note(partials: [
+                        Partial(frequency: 1_568, amplitude: 0.05, decay: 1.6),
+                        Partial(frequency: 1_568 * 2.76, amplitude: 0.016, decay: 2.6),
+                        Partial(frequency: 2_093, amplitude: 0.02, decay: 2, delay: 0.08),
+                    ], noise: 0, noiseDecay: 1, delay: 0.36)]
         case .honour:
             // A quick fanfare up a major arpeggio to the octave.
             note = Note(partials: [
