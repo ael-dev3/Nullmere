@@ -274,15 +274,16 @@ final class StewardBalanceTests: XCTestCase {
         // others, the middling.
         XCTAssertEqual(realm.status(now: 1).freeSeats, 4)
         XCTAssertEqual(try realm.arrive("id-bel", name: "Bel", now: 1).house, free[1], "The middling House of four")
-        // Again and again under new names: every other House in turn, never
-        // the strongest; then the door stays shut.
+        // Again and again under new names, a watch apart, as new keepers
+        // are taken in: every other House in turn, never the strongest;
+        // then the door stays shut.
         var taken: [Int?] = []
         for (n, name) in ["Corin", "Dara", "Ewan", "Fenn", "Gale"].enumerated() {
-            taken.append(try realm.arrive("id-new-\(n)", name: name, now: Double(2 + n)).house)
+            taken.append(try realm.arrive("id-new-\(n)", name: name, now: 200 * Double(1 + n)).house)
         }
         XCTAssertFalse(taken.contains(free[4]), "Never the House leading the lake, however often a keeper comes: \(taken)")
         XCTAssertEqual(Set(taken.compactMap { $0 }), Set([free[0], free[2], free[3]]))
-        XCTAssertEqual(realm.status(now: 9).freeSeats, 0, "None open, and none said to be")
+        XCTAssertEqual(realm.status(now: 1_100).freeSeats, 0, "None open, and none said to be")
     }
 
     func testNoOneTakesUpAHouseOnThePointOfWinning() throws {

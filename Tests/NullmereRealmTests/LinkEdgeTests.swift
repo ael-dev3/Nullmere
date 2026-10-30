@@ -131,7 +131,7 @@ final class LinkEdgeTests: XCTestCase {
 
 /// The link on its own clock: an order kept through a long outage is let
 /// go, not sent stale; and a keeper in the world says they are still
-/// there, every half minute.
+/// there, every half minute, while someone is at their Mac.
 @MainActor
 final class LinkClockTests: XCTestCase {
     private func until(_ what: String, timeout: Double = 15, _ condition: () async -> Bool) async throws {
@@ -190,6 +190,25 @@ final class LinkClockTests: XCTestCase {
         // clock stands still here) seems silent.
         let now = link.now()
         link.now = { now + NetworkRealmLink.hereInterval + 1 }
+        try await until("the keeper to say they are here") { await db.calls.filter { $0 == "here" }.count > before }
+    }
+
+    /// An app left open with no one at the Mac says nothing, so the realm
+    /// takes its keeper to have gone and a caretaker keeps their House; at
+    /// the Mac again, they say they are here at once.
+    func testAnAppLeftOpenWithNoOneAtItSaysNothing() async throws {
+        let db = FakeSpacetime()
+        let (link, _, running, _) = try await arrived(db)
+        defer { running.cancel(); link.leave() }
+        var idle = NetworkRealmLink.presenceWindow + 1
+        link.idleSeconds = { idle }
+        let before = await db.calls.filter { $0 == "here" }.count
+        let now = link.now()
+        link.now = { now + NetworkRealmLink.hereInterval + 1 }
+        try await db.waitFor(10, more: FakeSpacetime.statusPoll, by: try XCTUnwrap(link.credentials?.token))
+        let silent = await db.calls.filter { $0 == "here" }.count
+        XCTAssertEqual(silent, before, "No one at the Mac: nothing said")
+        idle = 0
         try await until("the keeper to say they are here") { await db.calls.filter { $0 == "here" }.count > before }
     }
 }

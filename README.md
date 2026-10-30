@@ -275,15 +275,22 @@ as the realm will, and takes the realm's word as final.
   those open (at an age's start, all alike, the first); returning, you go
   straight back to yours. No newcomer may take up a House sworn to another,
   the House leading the lake, or one within reach of dominion or with its
-  Moonspire risen.
+  Moonspire risen. A name and an identity are had for the asking, so the
+  realm takes in keepers new to it a few at a time, three in any watch's
+  length; one who comes just after is asked to try again in a few minutes.
 - **Seats.** The lake has twelve seats. Seats no keeper holds are played by
   stewards, the same minds that once played rivals, until a keeper claims
   them. When every seat is held, a newcomer waits at the front door and
   steps in the moment one falls free. A seat whose keeper has been away a
-  week goes back to the stewards for whoever is waiting (a day, for a seat
-  taken and never played); its House stands as it was, and the keeper,
-  returning, waits in turn. Meanwhile, after two watches away (counted in
-  watches, however quickly they turn), a caretaker keeps the House: it
+  week goes back to the stewards for whoever is waiting (an hour, for a
+  seat taken and never played); its House stands as it was, and the
+  keeper, returning, waits in turn. You are there while your Mac is in
+  use: the game tells the realm so, and stops when no one has used the Mac
+  for five minutes, so a game left open with no one at it counts as gone.
+  A keeper whose House falls may take up an open seat once an age, and
+  otherwise looks on until the next. Meanwhile, after two watches away
+  (counted in watches, however quickly they turn), a caretaker keeps the
+  House: it
   answers envoys, builds and trains, guards the holds, fights on in wars
   already begun and sues for peace in one going badly, but begins no war,
   demand or pact and never bends the knee, though it takes a House offering

@@ -87,6 +87,17 @@ final class RealmFairnessTests: XCTestCase {
         XCTAssertNotEqual(taken, bel)
         XCTAssertFalse(realm.world.houses[taken].isEliminated)
         XCTAssertEqual(realm.world.houses[taken].name, "Bel")
+        // Once an age: fallen again, Bel looks on, though a seat stands open.
+        fell(taken, to: ama, in: &realm.world)
+        XCTAssertTrue(realm.hasFreeSeat)
+        XCTAssertEqual(try realm.arrive("id-bel", name: nil, now: 4).house, taken, "No House after House")
+        // A new age seats Bel afresh, and Bel may rise once more in it.
+        realm.world.outcome = Outcome(winner: ama, kind: .dominion, watch: realm.world.watch)
+        _ = realm.tick(now: 1e9)
+        XCTAssertEqual(realm.age, 2)
+        let anew = try XCTUnwrap(realm.keeper("id-bel")?.house)
+        fell(anew, to: try XCTUnwrap(realm.keeper("id-ama")?.house), in: &realm.world)
+        XCTAssertNotEqual(try realm.arrive("id-bel", name: nil, now: 1e9 + 1).house, anew)
 
         // With no House free, the fallen keep their fallen House and look on.
         var two = self.realm(seats: 2)

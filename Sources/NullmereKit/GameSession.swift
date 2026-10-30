@@ -738,10 +738,15 @@ public final class GameSession {
         glide(to: next.position)
     }
 
-    /// The keeper's House has fallen while the age goes on, and a House
-    /// stands without a keeper: they may take it up.
+    /// The age in which the keeper took up an open seat after their own
+    /// House fell, as the realm last said: once an age.
+    public var risenInAge: Int?
+
+    /// The keeper's House has fallen while the age goes on, a House stands
+    /// without a keeper, and they haven't taken up one already this age:
+    /// they may take it up.
     public var mayTakeUpAFreeHouse: Bool {
-        playerHouse.isEliminated && state.outcome == nil && (realmStatus?.freeSeats ?? 0) > 0
+        playerHouse.isEliminated && state.outcome == nil && (realmStatus?.freeSeats ?? 0) > 0 && risenInAge != realmStatus?.age
     }
 
     /// Asks the realm for a free House; it comes as a new arrival.

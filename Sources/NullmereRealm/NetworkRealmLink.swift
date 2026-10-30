@@ -17,6 +17,14 @@ public final class NetworkRealmLink: RealmLink {
     public let pollInterval: Double
     /// How often the client tells the realm it is still there.
     public static let hereInterval = 30.0
+    /// Seconds since the person at this Mac last used it, as the app can
+    /// tell: nothing, by default, for a client that can't.
+    public var idleSeconds: () -> Double = { 0 }
+    /// The keeper is there while this Mac has been used within this long,
+    /// and says so. An app left open with no one at it falls silent; the
+    /// realm takes its keeper to have gone, and after two watches a
+    /// caretaker keeps their House. Back at the Mac, they are there again.
+    public static let presenceWindow = 300.0
 
     private var polling: Task<Void, Never>?
     private var statusVersion: UInt64 = 0
@@ -183,8 +191,9 @@ public final class NetworkRealmLink: RealmLink {
                 onEvent?(.status(status.aged(by: await age(of: UInt64(number), credentials))))
             }
             guard arrived else { return }
-            // "Here" while the steward is silent would only pile up for it.
-            if !toldSilence, now() - lastHere > Self.hereInterval {
+            // "Here" while the steward is silent would only pile up for it;
+            // and it is said only while someone is at this Mac.
+            if !toldSilence, idleSeconds() < Self.presenceWindow, now() - lastHere > Self.hereInterval {
                 lastHere = now()
                 let nonce = Self.nonce()
                 if (try? await transport.call("here", [.string(nonce)], token: credentials.token)) != nil {

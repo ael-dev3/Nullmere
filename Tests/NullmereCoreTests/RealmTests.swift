@@ -81,6 +81,26 @@ final class RealmTests: XCTestCase {
         XCTAssertThrowsError(try realm.arrive("id-stranger", name: nil, now: 3)) { XCTAssertEqual($0 as? RealmError, .nameInvalid) }
     }
 
+    /// A name and an identity are had for the asking, so the realm takes in
+    /// new keepers a few at a time: one person can't fill the lake with
+    /// names in a moment. Keepers it knows come and go as they please.
+    func testKeepersNewToTheRealmComeInAFewAtATime() throws {
+        var realm = realm()
+        for (index, name) in ["Ama", "Bel", "Cor"].enumerated() {
+            XCTAssertNotNil(try realm.arrive("id-\(index)", name: name, now: Double(index)).house)
+        }
+        XCTAssertThrowsError(try realm.arrive("id-dee", name: "Dee", now: 30)) {
+            XCTAssertEqual($0 as? RealmError, .manyNewcomers)
+        }
+        XCTAssertNil(realm.keeper("id-dee"), "Not taken in, so no name held")
+        realm.depart("id-0", now: 31)
+        XCTAssertNotNil(try realm.arrive("id-0", name: nil, now: 32).house, "Ama, known, comes back at once")
+        // A watch's length after the first came in, another may.
+        XCTAssertNotNil(try realm.arrive("id-dee", name: "Dee", now: 60).house)
+        XCTAssertThrowsError(try realm.arrive("id-eno", name: "Eno", now: 60))
+        XCTAssertEqual(realm.keepers.map(\.arrival), [0, 1, 2, 3], "Each in the order they came")
+    }
+
     func testAFullRealmSeatsNoMore() throws {
         var realm = realm(seats: 2)
         try realm.arrive("a", name: "Ama", now: 0)
@@ -122,17 +142,17 @@ final class RealmTests: XCTestCase {
         XCTAssertNil(try realm.arrive("e", name: "Eno", now: RealmState.seatHeldFor * 9).house, "Cor and Dee never left")
     }
 
-    func testASeatTakenAndNeverPlayedIsHeldOnlyADay() throws {
+    func testASeatTakenAndNeverPlayedIsHeldOnlyAnHour() throws {
         var realm = realm(seats: 2)
         let ama = try realm.arrive("a", name: "Ama", now: 0)
         try realm.arrive("b", name: "Bel", now: 0)
         _ = realm.setReady("b", true, now: 1)
         realm.depart("a", now: 10)
         realm.depart("b", now: 10)
-        XCTAssertNil(try realm.arrive("c", name: "Cor", now: 3600).house, "An hour: Ama's seat is kept")
+        XCTAssertNil(try realm.arrive("c", name: "Cor", now: 1800).house, "Half an hour: Ama's seat is kept")
         let cor = try realm.arrive("c", name: nil, now: 10 + RealmState.unplayedSeatHeldFor)
-        XCTAssertEqual(cor.house, ama.house, "A day, and Ama never played: Cor takes the seat")
-        XCTAssertTrue(realm.world.chronicle.contains { $0.text.contains("stood a day without its keeper") })
+        XCTAssertEqual(cor.house, ama.house, "An hour, and Ama never played: Cor takes the seat")
+        XCTAssertTrue(realm.world.chronicle.contains { $0.text.contains("stood an hour without its keeper") })
         XCTAssertNil(try realm.arrive("d", name: "Dee", now: 20 + RealmState.unplayedSeatHeldFor).house, "Bel was ready once: a week")
     }
 

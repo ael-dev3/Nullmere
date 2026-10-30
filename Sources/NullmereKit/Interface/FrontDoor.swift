@@ -215,7 +215,7 @@ struct FrontDoor: View {
     /// When no seat is open: why, and what waiting means.
     private var seatNote: String? {
         if app.isWaitingForSeat {
-            return "\(Self.noSeatOpen) Stay at the door: you'll step in the moment one opens. A seat left a week goes to whoever waits."
+            return "\(Self.noSeatOpen) Stay at the door: you'll step in the moment one opens. A seat left a week, or an hour if never played, goes to whoever waits."
         }
         if case .open(let status) = app.door, status.freeSeats == 0, !status.isEnding {
             return "\(Self.noSeatOpen) Enter to wait for the next to open."

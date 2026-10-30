@@ -286,7 +286,11 @@ public final class GameApp {
                 door = .unreachable("The realm's address can't be read.")
                 return
             }
-            link = NetworkRealmLink(transport: transport, credentials: identityStore, pollInterval: pollInterval)
+            let network = NetworkRealmLink(transport: transport, credentials: identityStore, pollInterval: pollInterval)
+            // There while this Mac is in use: an app left open with no one
+            // at it falls silent, and a caretaker keeps the House.
+            network.idleSeconds = { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!) }
+            link = network
         }
         self.link = link
         link.onEvent = { [weak self] event in self?.hear(event) }
@@ -370,6 +374,7 @@ public final class GameApp {
         let session = GameSession(link: link, house: house, world: world, store: store.forAge(age, of: Self.storeKey(for: address)),
                                   voice: Self.voice(), host: hosted)
         session.onNewAge = { [weak self] keeper, world in self?.arrived(keeper, in: world) }
+        session.risenInAge = keeper.reseatedInAge
         #if DEBUG
         // For the UI tests: the map offers VoiceOver's orders, as when it runs.
         if ProcessInfo.processInfo.environment["NULLMERE_VOICEOVER"] == "1" { session.voiceOverRunning = { true } }
@@ -384,7 +389,7 @@ public final class GameApp {
         isWaitingForSeat = true
         arrivalProblem = nil
         // A seat can fall free with the clock alone, when its keeper has
-        // been away a week.
+        // been away a week, or an hour if they never played.
         seatTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.askForSeat() }
         }
