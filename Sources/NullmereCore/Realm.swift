@@ -377,14 +377,13 @@ public struct RealmState: Codable, Equatable, Sendable {
         return !online.isEmpty && online.allSatisfy(\.isReady)
     }
 
-    /// The least a watch lasts, however ready those there are: nothing,
-    /// unless fewer than half the keepers whose Houses stand are there,
-    /// when a third of a watch, so the few can't hurry the lake past the
-    /// many away.
+    /// The least a watch lasts, however ready those there are: nothing
+    /// while every keeper whose House stands is there; a third of a watch
+    /// while any one of them is away, so those there can't hurry the lake
+    /// past a House whose keeper isn't.
     var shortestWatch: Double {
         let standing = keepers.filter { keeper in keeper.house.map { !world.houses[$0].isEliminated } == true }
-        let there = standing.filter(\.isOnline).count
-        return there * 2 < standing.count ? watchLength / 3 : 0
+        return standing.allSatisfy(\.isOnline) ? 0 : watchLength / 3
     }
 
     /// Watches a keeper is away before a caretaker keeps their House.

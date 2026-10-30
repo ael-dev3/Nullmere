@@ -107,15 +107,20 @@ final class StewardFairnessTests: XCTestCase {
         try await steward.step(now: 1 + RealmSteward.silence + 1)
         let past = await online()
         XCTAssertEqual(past, ["Ama": false, "Bel": true])
-        // Gone, she holds up no watch: Bel's readiness turns it.
+        // Gone, she holds up no watch past a third of it: Bel's readiness
+        // turns it then.
         let watch = await steward.state.world.watch
         try await db.call("ready", [.string("b3"), .bool(true)], token: bel.token)
         try await steward.step(now: 3 + RealmSteward.silence)
+        let early = await steward.state.world.watch
+        XCTAssertEqual(early, watch, "Not before a third of the watch")
+        try await db.call("here", [.string("b4")], token: bel.token)
+        try await steward.step(now: 1 + 600 / 3)
         let turned = await steward.state.world.watch
         XCTAssertEqual(turned, watch + 1)
         // Heard from again, she is back.
         try await db.call("here", [.string("a2")], token: ama.token)
-        try await steward.step(now: 4 + RealmSteward.silence)
+        try await steward.step(now: 2 + 600 / 3)
         let back = await online()
         XCTAssertEqual(back["Ama"], true)
     }

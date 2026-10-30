@@ -116,8 +116,13 @@ final class LocalRealmTests: XCTestCase {
             realm.tick()
             XCTAssertEqual(realm.state.world.watch, 2)
             XCTAssertTrue(earA.events.contains { if case .watchTurned = $0 { return true } else { return false } })
+            // Bel leaves: Ama's readiness doesn't wait for Bel, but can't
+            // hurry the watch past Bel's House before a third of it is gone.
             b.leave()
             a.setReady(true)
+            XCTAssertEqual(realm.state.world.watch, 2)
+            now = 61 + 20
+            realm.tick()
             XCTAssertEqual(realm.state.world.watch, 3)
         }
     }

@@ -165,23 +165,23 @@ final class AbsentKeeperTests: XCTestCase {
         XCTAssertEqual(realm.world.units(of: ama).map(\.position), units.map(\.position), "Not yet kept: nothing moved for it")
     }
 
-    func testTheFewThereCantHurryTheLakePastTheManyAway() throws {
+    func testThoseThereCantHurryTheLakePastAKeeperAway() throws {
         var (realm, _, _) = try realm()
         // Both there: ready, the watch turns at once.
         _ = realm.setReady("id-ama", true, now: 1)
         XCTAssertNotNil(realm.setReady("id-bel", true, now: 1))
         XCTAssertEqual(realm.world.watch, 2)
-        // Bel away: Ama alone is fewer than half? No: one of two is half,
-        // and half may hurry it.
+        // Bel away: Ama, though half of those seated, can't hurry it past
+        // Bel's House.
         realm.depart("id-bel", now: 2)
-        XCTAssertNotNil(realm.setReady("id-ama", true, now: 3))
+        XCTAssertNil(realm.setReady("id-ama", true, now: 3), "Not before a third of a watch")
+        XCTAssertNil(realm.tick(now: 1 + 59))
+        XCTAssertNotNil(realm.tick(now: 1 + 60), "Ready, and the shortest watch past: it turns")
         XCTAssertEqual(realm.world.watch, 3)
-        // A third keeper seated and away: one of three can't.
-        _ = try realm.arrive("id-cor", name: "Cor", now: 4)
-        realm.depart("id-cor", now: 4)
-        XCTAssertNil(realm.setReady("id-ama", true, now: 5), "Not before a third of a watch")
-        XCTAssertNil(realm.tick(now: 3 + 59))
-        XCTAssertNotNil(realm.tick(now: 3 + 60), "Ready, and the shortest watch past: it turns")
+        // Bel back: those seated all there, ready turns it at once again.
+        _ = try realm.arrive("id-bel", name: nil, now: 62)
+        _ = realm.setReady("id-ama", true, now: 63)
+        XCTAssertNotNil(realm.setReady("id-bel", true, now: 63))
         XCTAssertEqual(realm.world.watch, 4)
     }
 }

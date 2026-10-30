@@ -205,9 +205,10 @@ final class RealmTests: XCTestCase {
         XCTAssertTrue(realm.keepers.allSatisfy { !$0.isReady }, "A new watch, no one ready")
         XCTAssertEqual(realm.status(now: 6).secondsLeft, 60)
 
-        // One who leaves holds no one up.
+        // One who leaves holds no one up past a third of the watch.
         realm.depart("b", now: 0)
-        XCTAssertNotNil(realm.setReady("a", true, now: 7))
+        XCTAssertNil(realm.setReady("a", true, now: 7))
+        XCTAssertNotNil(realm.tick(now: 6 + 20))
         XCTAssertEqual(realm.world.watch, 3)
     }
 
@@ -259,7 +260,7 @@ final class RealmTests: XCTestCase {
         realm.world.outcome = Outcome(winner: a.house!, kind: .dominion, watch: 1)
         XCTAssertTrue(realm.status(now: 0).isEnding)
         realm.depart("b", now: 0)
-        XCTAssertNotNil(realm.setReady("a", true, now: 10))
+        XCTAssertNotNil(realm.setReady("a", true, now: 20))
         XCTAssertEqual(realm.age, 2)
         XCTAssertNil(realm.world.outcome)
         XCTAssertEqual(realm.world.watch, 1)

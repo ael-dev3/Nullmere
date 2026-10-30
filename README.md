@@ -289,8 +289,8 @@ as the realm will, and takes the realm's word as final.
   demand or pact and never bends the knee, though it takes a House offering
   fealty as a vassal. A pact offered it swears as a steward would, but
   never with a House at war with the keeper's allies or one whose Moonspire
-  is rising. While fewer than half the keepers are there, a watch lasts at
-  least a third of its time, however ready they are.
+  is rising. While any keeper whose House stands is away, a watch lasts
+  at least a third of its time, however ready those there are.
 - **Fair seats.** Seats are spread evenly round the lake, none hemmed in
   with little land of its own; which House takes which is the luck of the
   draw, and the stewards take their turns starting one seat further round
