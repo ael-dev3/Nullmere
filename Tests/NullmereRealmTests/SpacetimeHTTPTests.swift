@@ -19,6 +19,13 @@ final class SpacetimeHTTPTests: XCTestCase {
         let http = try XCTUnwrap(SpacetimeHTTP(address: URL(string: "http://127.0.0.1:3000/nullmere")!))
         XCTAssertEqual(http.server.absoluteString, "http://127.0.0.1:3000")
         XCTAssertEqual(http.database, "nullmere")
+        // The realm proper, where a build goes that names no other: the
+        // database nullmere on maincloud's own server.
+        let proper = try XCTUnwrap(SpacetimeHTTP(address: URL(string: "https://maincloud.spacetimedb.com/nullmere")!))
+        XCTAssertEqual(proper.server.absoluteString, "https://maincloud.spacetimedb.com")
+        XCTAssertEqual(proper.database, "nullmere")
+        let slashed = try XCTUnwrap(SpacetimeHTTP(address: URL(string: "https://maincloud.spacetimedb.com/nullmere/")!))
+        XCTAssertEqual(slashed.database, "nullmere")
         XCTAssertNil(SpacetimeHTTP(address: URL(string: "https://realm.test")!), "No database named")
     }
 
