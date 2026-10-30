@@ -1,3 +1,5 @@
+import CoreGraphics
+import Foundation
 import LauncherCore
 import SwiftUI
 
@@ -44,6 +46,39 @@ struct LakeFallbackView: View {
         let warmth = (star.x * 9301 + star.altitude * 49297).truncatingRemainder(dividingBy: 1)
         let w = warmth * warmth
         return Color(red: 0.76 + 0.24 * w, green: 0.85 + 0.07 * w, blue: 1.0 - 0.18 * w)
+    }
+
+    /// The moon's face as the shader draws it, `diameter` pixels across, in
+    /// its own colour and a still night's breath; the edge eased over a
+    /// pixel. Mirrored, it is the face the water gives back.
+    static func moonFace(diameter: Int, mirrored: Bool = false) -> CGImage? {
+        guard diameter > 0, diameter <= 2048, let space = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
+        var bytes = [UInt8](repeating: 0, count: diameter * diameter * 4)
+        let half = Float(diameter) / 2
+        let colour: (Float, Float, Float) = (0.93, 0.95, 0.98)
+        // The shader's breath, 0.985 + 0.02 at its swell, at its middle.
+        let breath: Float = 0.995
+        for row in 0..<diameter {
+            for column in 0..<diameter {
+                // The disc's own coordinates, y upward as the shader has them.
+                let x = (Float(column) + 0.5 - half) / half
+                let y = (half - Float(row) - 0.5) / half * (mirrored ? -1 : 1)
+                let reach = (x * x + y * y).squareRoot()
+                let cover = min(max((1 - reach) * half + 0.5, 0), 1)
+                guard cover > 0 else { continue }
+                let shade = MoonFace.shade(x, y), crater = MoonFace.crater(x, y)
+                let index = (row * diameter + column) * 4
+                for (channel, part) in [colour.0, colour.1, colour.2].enumerated() {
+                    let value = min((part * shade + crater) * breath, 1) * cover
+                    bytes[index + channel] = UInt8((value * 255).rounded())
+                }
+                bytes[index + 3] = UInt8((cover * 255).rounded())
+            }
+        }
+        guard let provider = CGDataProvider(data: Data(bytes) as CFData) else { return nil }
+        return CGImage(width: diameter, height: diameter, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: diameter * 4,
+                       space: space, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                       provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
     }
 
     var body: some View {
@@ -93,10 +128,17 @@ struct LakeFallbackView: View {
                         endRadius: radius * 12
                     )
                 )
-                context.fill(
-                    Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)),
-                    with: .color(Self.moonFace.opacity(strength))
-                )
+                // Its face, the shader's own: seas, grain and crater, the
+                // image in the water upside down as the water gives it back.
+                let disc = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
+                let pixels = Int((radius * 2 * context.environment.displayScale).rounded(.up))
+                if let face = Self.moonFace(diameter: pixels, mirrored: center == reflection) {
+                    var layer = context
+                    layer.opacity = strength
+                    layer.draw(Image(decorative: face, scale: 1), in: disc)
+                } else {
+                    context.fill(Path(ellipseIn: disc), with: .color(Self.moonFace.opacity(strength)))
+                }
             }
 
             // The far shore, flat-topped mesas and a darker bank before
