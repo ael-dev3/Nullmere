@@ -69,6 +69,8 @@ extension GameState {
                 var known = alliance
                 known.invited = alliance.invited.filter { $0 == house }
                 known.asking = alliance.asking.filter { $0 == house }
+                // What it studies together is its own Houses' to know.
+                known.lore = nil
                 return known
             }
         }
@@ -169,6 +171,8 @@ extension GameState {
                 return owner == house || hold(holdID)?.owner == house
             case .happeningBegun, .happeningEnded, .heritageTaken:
                 return true
+            case .allianceStudyChosen(let id, _), .allianceGift(_, let id, _, _, _), .allianceStudied(let id, _, _):
+                return alliance(id)?.members.contains(house) == true
             case .happeningMark(let owner, _, _, _), .deedDone(let owner, _), .chargeDone(let owner, _, _):
                 return owner == house
             case .said(let word):

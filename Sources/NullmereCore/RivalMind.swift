@@ -84,6 +84,7 @@ struct RivalMind {
         events += caretaking ? keepThePeace(in: &state, random: &random) : conductDiplomacy(in: &state, random: &random)
         events += tendAlliance(in: &state, random: &random)
         if !caretaking {
+            events += studyTogether(in: &state)
             events += raiseStandard(in: &state)
             events += callRally(in: &state, random: &random)
             events += sendToRallies(in: &state)
@@ -133,6 +134,41 @@ struct RivalMind {
         }.max { a, b in (a.sites, -a.near, b.hex) < (b.sites, -b.near, a.hex) }
         guard let best, best.sites > 0 else { return [] }
         return perform(.raiseStandard(at: best.hex), in: &state)
+    }
+
+    /// What a steward holds of each store before it gives to its alliance's
+    /// study: plenty, and no less.
+    static let plenty = Stock(grain: 300, timber: 250, stone: 250, moonsalt: 20)
+
+    /// The studies a steward's alliance pursues, by its leader's temper.
+    static func allianceStudyOrder(for temperament: Temperament) -> [AllianceStudy] {
+        switch temperament {
+        case .ambitious: return [.oathOfSteel, .drillYards, .shieldOath, .fieldcraft, .masonsCompact, .sharedScrolls]
+        case .steadfast: return [.shieldOath, .masonsCompact, .fieldcraft, .drillYards, .sharedScrolls, .oathOfSteel]
+        case .wary: return [.shieldOath, .fieldcraft, .masonsCompact, .sharedScrolls, .drillYards, .oathOfSteel]
+        case .cunning: return [.fieldcraft, .sharedScrolls, .masonsCompact, .drillYards, .oathOfSteel, .shieldOath]
+        }
+    }
+
+    /// A steward studies with its alliance: as its leader it sets a study to
+    /// pursue when none is, by its temper; and one watch in three it gives
+    /// a tenth of whatever it holds beyond plenty.
+    private func studyTogether(in state: inout GameState) -> [GameEvent] {
+        guard let sworn = state.alliance(of: house) else { return [] }
+        var events: [GameEvent] = []
+        let lore = sworn.lore ?? AllianceLore()
+        if sworn.leader == house, lore.pursuit == nil,
+           let study = RivalMind.allianceStudyOrder(for: state.houses[house].temperament).first(where: { lore.grade(of: $0) < AllianceStudy.grades }) {
+            events += perform(.pursueAllianceStudy(study), in: &state)
+        }
+        guard (state.watch + house) % 3 == 0, state.alliance(of: house)?.lore?.pursuit != nil else { return events }
+        let stock = state.houses[house].stock
+        var gift = Stock.zero
+        for resource in Resource.allCases where stock[resource] > RivalMind.plenty[resource] {
+            gift[resource] = (stock[resource] - RivalMind.plenty[resource]) / 10
+        }
+        if !gift.isZero { events += perform(.giveToAlliance(gift), in: &state) }
+        return events
     }
 
     /// How many of its companies must be hurt for a steward to share out a

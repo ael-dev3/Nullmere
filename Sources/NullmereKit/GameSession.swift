@@ -1184,6 +1184,8 @@ public final class GameSession {
         case .raiseStandard: return .banner
         case .useItem(let kind, _): return cue(using: kind)
         case .takeHeritage: return .banner
+        case .pursueAllianceStudy: return .lore
+        case .giveToAlliance: return .coin
         default: return .select
         }
     }
@@ -1232,6 +1234,9 @@ public final class GameSession {
         case .holdScouted(let report) where report.by == player: return .lore
         case .itemsGiven(let house, _, _) where house == player: return .coin
         case .heritageTaken(let house, _) where house == player: return .banner
+        case .allianceStudied(let id, _, _) where state?.alliance(of: player)?.id == id: return .lore
+        case .allianceGift(let house, _, _, _, _) where house == player: return .coin
+        case .allianceStudyChosen(let id, _) where state?.alliance(of: player)?.id == id: return .banner
         case .itemUsed(let house, let kind, _) where house == player: return cue(using: kind)
         case .lairAssaulted(let assault) where assault.houses.contains(player): return assault.broken ? .triumph : .batter
         case .standardRaised(_, let alliance, _, _) where state?.alliance(of: player)?.id == alliance: return .banner

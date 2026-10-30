@@ -137,6 +137,18 @@ extension GameState {
             for waiting in alliance.invited + alliance.asking where !houseIDs.contains(waiting) || alliance.members.contains(waiting) {
                 found.append("\(alliance.name) waits on House \(waiting)")
             }
+            if let lore = alliance.lore {
+                for (name, grade) in lore.grades {
+                    guard let study = AllianceStudy(rawValue: name) else {
+                        found.append("\(alliance.name) knows a study called \(name)")
+                        continue
+                    }
+                    if !(1...AllianceStudy.grades).contains(grade) { found.append("\(alliance.name) knows \(study.title) at grade \(grade)") }
+                }
+                if let pursuit = lore.pursuit, lore.grade(of: pursuit) >= AllianceStudy.grades {
+                    found.append("\(alliance.name) pursues \(pursuit.title), mastered")
+                }
+            }
         }
         var callers: Set<Int> = []
         var flags: Set<Hex> = []

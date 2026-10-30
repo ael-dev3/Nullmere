@@ -58,6 +58,8 @@ struct AlliancePanel: View {
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)
+            StudiesTogether(session: session, alliance: alliance, isLeader: board.isLeader)
+            Rule(opacity: 0.18)
         }
         Caps("Its Houses", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
         ForEach(board.members) { member in
@@ -257,7 +259,91 @@ private struct RallyRow: View {
     }
 }
 
+/// What the alliance learns together: the study it pursues and how much of
+/// its next grade its Houses have paid for, the House's gifts toward it,
+/// and every study's grade, its leader choosing which to pursue.
+private struct StudiesTogether: View {
+    let session: GameSession
+    let alliance: Alliance
+    let isLeader: Bool
+
+    var body: some View {
+        let lore = alliance.lore ?? AllianceLore()
+        Caps("Studies together", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
+        if let next = lore.next {
+            let cost = next.study.cost(grade: next.grade)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(verbatim: "\(next.study.title) \(Narration.roman(next.grade)): \(next.study.effect(grade: next.grade))")
+                    .font(.nm(11, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Meter(fraction: AlliancePanel.paid(lore.given, of: cost), label: "Paid for")
+                Text(verbatim: "Given \(AlliancePanel.given(lore.given, of: cost)).")
+                    .font(.nm(10))
+                    .foregroundStyle(Palette.text(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            FlowLayout(spacing: 4) {
+                ForEach(AlliancePanel.gifts, id: \.self) { gift in
+                    let refusal = session.state.refusal(of: .giveToAlliance(gift), as: session.player)
+                    QuietButton(title: "Give \(gift)", size: 8.5, enabled: refusal == nil,
+                                name: "Give \(gift) toward \(next.study.title)", why: refusal?.description) {
+                        session.perform(.giveToAlliance(gift))
+                    }
+                }
+            }
+            Text(verbatim: "Every \(GameState.givenPerHourglass) given, in barter worth, brings you a Salt Hourglass.")
+                .font(.nm(10))
+                .foregroundStyle(Palette.text(0.5))
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            Text(verbatim: isLeader ? "Choose a study below for the alliance to pursue." : "Its leader chooses what the alliance studies.")
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.55))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        ForEach(AllianceStudy.allCases, id: \.self) { study in
+            let grade = lore.grade(of: study)
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: "\(study.title) · \(grade) of \(AllianceStudy.grades)")
+                        .font(.nm(10.5, weight: lore.pursuit == study ? .medium : .regular))
+                        .foregroundStyle(Palette.text(grade > 0 ? 0.85 : 0.6))
+                    Text(verbatim: grade > 0 ? study.effect(grade: grade) : "Not yet learned: \(study.effect(grade: 1)) at its first grade")
+                        .font(.nm(10))
+                        .foregroundStyle(Palette.text(0.5))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+                Spacer()
+                if isLeader, grade < AllianceStudy.grades, lore.pursuit != study {
+                    QuietButton(title: "Pursue", size: 8.5, name: "Pursue \(study.title)") {
+                        session.perform(.pursueAllianceStudy(study))
+                    }
+                }
+            }
+        }
+    }
+}
+
 extension AlliancePanel {
+    /// What a House may give toward its alliance's study at a time.
+    static let gifts = [Stock(grain: 50), Stock(timber: 50), Stock(stone: 50), Stock(moonsalt: 5)]
+
+    /// How much of a grade's cost is given, by barter worth, 0 to 1.
+    static func paid(_ given: Stock, of cost: Stock) -> Double {
+        let owed = Resource.allCases.reduce(0) { $0 + cost[$1] * $1.worth }
+        let paid = Resource.allCases.reduce(0) { $0 + min(given[$1], cost[$1]) * $1.worth }
+        return owed == 0 ? 1 : Double(paid) / Double(owed)
+    }
+
+    /// What is given of a grade's cost, store by store: "40 of 160 grain, ...".
+    static func given(_ given: Stock, of cost: Stock) -> String {
+        Resource.allCases.filter { cost[$0] > 0 }.map { "\(min(given[$0], cost[$0])) of \(cost[$0]) \($0.title.lowercased())" }
+            .joined(separator: ", ")
+    }
+
     /// When a rally sets out, or that it has.
     static func when(_ line: RallyLine) -> String {
         if line.rally.marching { return "On the march" }

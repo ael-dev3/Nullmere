@@ -303,11 +303,12 @@ public struct Research: Codable, Equatable, Sendable {
 extension GameState {
     /// A House's figure for something its studies and works change: the
     /// sum of what each study known gives at its grade, with what its side's
-    /// holy sites and its heritage give, and the Archive's own pace for
-    /// studies.
+    /// holy sites, its heritage and its alliance's studies give, and the
+    /// Archive's own pace for studies.
     public func bonus(_ bonus: Bonus, for house: Int) -> Int {
         guard houses.indices.contains(house) else { return 0 }
         let studied = houses[house].research.total(bonus) + shrineBonus(bonus, for: house) + heritage(of: house).bonus(bonus)
+            + allianceLoreBonus(bonus, for: house)
         return bonus == .studySpeed ? studied + GameState.archivePace * archiveLevel(of: house) : studied
     }
 

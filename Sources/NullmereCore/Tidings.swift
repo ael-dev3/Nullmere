@@ -106,6 +106,17 @@ extension GameState {
             }
             guard let by else { return Tidings("A standard of \(name) \(placeName(of: at)) comes down, its House gone from the alliance.", .neutral) }
             return Tidings("\(houses[by].title) tears down your alliance's standard \(placeName(of: at)).", .bad)
+        case .allianceStudyChosen(let id, let study):
+            guard let alliance = alliance(id), alliance.members.contains(viewer) else { return nil }
+            let grade = min((alliance.lore?.grade(of: study) ?? 0) + 1, AllianceStudy.grades)
+            return Tidings("Your alliance pursues \(study.title) \(BuildingKind.numeral(grade)): \(study.effect(grade: grade)).", .neutral)
+        case .allianceGift(let house, let id, let stock, let study, let grade):
+            guard alliance(id)?.members.contains(viewer) == true else { return nil }
+            let who = house == viewer ? "You give" : "\(houses[house].title) gives"
+            return Tidings("\(who) \(stock) toward \(study.title) \(BuildingKind.numeral(grade)).", house == viewer ? .neutral : .good)
+        case .allianceStudied(let id, let study, let grade):
+            guard alliance(id)?.members.contains(viewer) == true else { return nil }
+            return Tidings("Your alliance learns \(study.title) \(BuildingKind.numeral(grade)): \(study.effect(grade: grade)).", .good)
         case .heritageTaken(let house, let heritage):
             guard house == viewer else { return Tidings("\(houses[house].title) takes up the ways of \(heritage.title).", .neutral) }
             return Tidings("Your House takes up the ways of \(heritage.title): \(heritage.strengths[0]), and \(heritage.strengths[1]).", .good)

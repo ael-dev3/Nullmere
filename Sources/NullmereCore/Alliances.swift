@@ -14,6 +14,9 @@ public struct Alliance: Codable, Equatable, Identifiable, Sendable {
     public internal(set) var invited: [Int]
     /// Houses asking to join, awaiting its leader's answer.
     public internal(set) var asking: [Int]
+    /// What it has learned together, and what its Houses have given toward
+    /// what it pursues; absent before its leader chose a study.
+    public internal(set) var lore: AllianceLore?
 
     public init(id: Int, name: String, leader: Int, founded: Int) {
         self.id = id

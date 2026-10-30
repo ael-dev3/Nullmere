@@ -690,6 +690,19 @@ realm; keepers are told in plain words, never a status code.
   model, with its fire smoking or its cold light burning; it is named on
   hover, its ground's panel shows what stands of it and calls the rally,
   and each blow on it is drawn and reported.
+- **Alliance studies.** An alliance studies together. Its leader chooses
+  one of six studies to pursue from the Alliance screen (Fieldcraft,
+  Masons' Compact, Drill Yards, Oath of Steel, Shield Oath and Shared
+  Scrolls), and every House of it gives stores toward its next grade, fifty
+  of a store or five moonsalt at a time; once the gifts together pay for
+  a grade, it is learned at once and raises every House of the alliance:
+  more gathered, works and musters sooner, every company of war striking
+  harder or standing firmer, studies sooner, three grades a study. Every
+  300 given, in barter worth, brings the giver a Salt Hourglass. What an
+  alliance studies, and who gave what, is its own Houses' to know. A
+  steward that leads an alliance chooses a study by its temper, and every
+  steward of one gives a tenth of what it holds beyond plenty, one watch
+  in three.
 - **Heritages.** Every House comes of one of the lake's six peoples,
   dealt round the lake as an age begins, from a seat the seed chooses, so
   each has its seats: the Saltborn (half again the moonsalt from their

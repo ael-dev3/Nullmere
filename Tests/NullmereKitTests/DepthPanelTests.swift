@@ -836,6 +836,30 @@ final class DepthPanelTests: XCTestCase {
         draw(HousesPanel(session: keeper), width: 360, height: 900)
     }
 
+    func testAnAllianceStudiesTogetherFromItsScreen() throws {
+        var state = world("studies shown")
+        let me = state.player
+        _ = try state.perform(.foundAlliance(name: "The Long Table"), as: me)
+        state.houses[me].stock = Stock(grain: 400, timber: 400, stone: 400, moonsalt: 20)
+        // Nothing pursued: its leader is shown the studies to choose from.
+        let (session, link) = session(state)
+        PressableButtons.isListening = true
+        draw(AlliancePanel(session: session), width: 360, height: 1600)
+        XCTAssertFalse(PressableButtons.press("Give 50 grain"), "Nothing to give toward")
+        XCTAssertTrue(PressableButtons.press("Pursue"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .pursueAllianceStudy(.sharedScrolls))
+        // Pursued: the House gives toward it.
+        PressableButtons.isListening = true
+        draw(AlliancePanel(session: session), width: 360, height: 1600)
+        XCTAssertTrue(PressableButtons.press("Give 50 grain"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .giveToAlliance(Stock(grain: 50)))
+        XCTAssertEqual(session.state.alliance(of: me)?.lore?.given, Stock(grain: 50))
+        XCTAssertEqual(AlliancePanel.paid(Stock(grain: 60, moonsalt: 6), of: Stock(grain: 120, moonsalt: 6)), Double(60 + 18) / Double(120 + 18))
+        XCTAssertEqual(AlliancePanel.paid(.zero, of: .zero), 1)
+        XCTAssertEqual(AlliancePanel.given(Stock(grain: 60, timber: 500), of: Stock(grain: 120, timber: 100)), "60 of 120 grain, 100 of 100 timber")
+        XCTAssertEqual(AlliancePanel.gifts.count, 4)
+    }
+
     func testACompanySaysWhatItWasSentToDo() throws {
         var state = world("errands")
         let me = state.player

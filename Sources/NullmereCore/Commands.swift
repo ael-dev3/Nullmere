@@ -91,6 +91,10 @@ public enum Command: Codable, Equatable, Sendable {
     /// A House takes up a heritage: the first time freely, after that for
     /// moonsalt.
     case takeHeritage(Heritage)
+    /// An alliance's leader sets it to pursue a study together.
+    case pursueAllianceStudy(AllianceStudy)
+    /// A House gives stores toward its alliance's study.
+    case giveToAlliance(Stock)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -246,6 +250,14 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case noneHurt
     /// A heritage taken up by a House already of it.
     case alreadyOfHeritage
+    /// An alliance study learned to its last grade.
+    case allianceStudyMastered
+    /// The study the alliance pursues already.
+    case alreadyPursued
+    /// Stores given when the alliance pursues no study.
+    case noAllianceStudy
+    /// A gift to the alliance of nothing, or of less than nothing.
+    case nothingGiven
     /// Words from a House no keeper holds.
     case notAKeeper
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -353,6 +365,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .wardWhole: return "That hold's ward is whole."
         case .noneHurt: return "None of your companies is hurt."
         case .alreadyOfHeritage: return "Your House is of that heritage already."
+        case .allianceStudyMastered: return "Your alliance has learned that study to its last grade."
+        case .alreadyPursued: return "Your alliance pursues that study already."
+        case .noAllianceStudy: return "Your alliance pursues no study: its leader chooses one in the Alliance screen."
+        case .nothingGiven: return "Give some of your stores, and none of them less than nothing."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
         case .notAKeeper: return "Only a keeper's words are carried."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -444,6 +460,12 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case itemUsed(house: Int, kind: ItemKind, hold: Int?)
     /// A House takes up a heritage.
     case heritageTaken(house: Int, heritage: Heritage)
+    /// An alliance's leader sets it to pursue a study.
+    case allianceStudyChosen(alliance: Int, study: AllianceStudy)
+    /// A House gives stores toward a grade of its alliance's study.
+    case allianceGift(house: Int, alliance: Int, stock: Stock, study: AllianceStudy, grade: Int)
+    /// An alliance learns a grade of a study together.
+    case allianceStudied(alliance: Int, study: AllianceStudy, grade: Int)
     /// A company strikes a company of the wilds.
     case hunted(Hunt)
     /// A company sets out to work a site.
