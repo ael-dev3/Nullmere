@@ -231,23 +231,17 @@ struct WorldMarks: View {
             }
 
             // The flashes where blows land, the world's own where it is
-            // drawn: blurred together in one layer, not each on its own.
+            // drawn: a glow fading to its edge, with no filter to pay for.
             if !reduceMotion, !modelsDrawn {
-                let flashes = session.blows.compactMap { blow -> (point: CGPoint, flash: Double)? in
+                for blow in session.blows {
                     let flash = GameSession.Blow.flash(at: min(max(date.timeIntervalSince(blow.start) / GameSession.Blow.duration, 0), 1))
-                    guard flash > 0 else { return nil }
-                    return (point: session.viewPoint(of: blow.at, in: size), flash: flash)
-                }
-                if !flashes.isEmpty {
-                    var bright = context
-                    bright.addFilter(.blur(radius: 4))
-                    bright.drawLayer { layer in
-                        for (point, flash) in flashes {
-                            let glow = scale * 0.32 * CGFloat(1.6 - flash * 0.6)
-                            let disc = Path(ellipseIn: CGRect(x: point.x - glow, y: point.y - glow, width: glow * 2, height: glow * 2))
-                            layer.fill(disc, with: .color(Color(red: 1, green: 0.88, blue: 0.68).opacity(0.7 * flash)))
-                        }
-                    }
+                    guard flash > 0 else { continue }
+                    let point = session.viewPoint(of: blow.at, in: size)
+                    let glow = scale * 0.4 * CGFloat(1.6 - flash * 0.6)
+                    let disc = Path(ellipseIn: CGRect(x: point.x - glow, y: point.y - glow, width: glow * 2, height: glow * 2))
+                    let warm = Color(red: 1, green: 0.88, blue: 0.68)
+                    context.fill(disc, with: .radialGradient(Gradient(colors: [warm.opacity(0.7 * flash), warm.opacity(0)]),
+                                                             center: point, startRadius: 0, endRadius: glow))
                 }
             }
 
@@ -291,8 +285,8 @@ struct WorldMarks: View {
                 )
             }
 
-            // Holds the player knows of; their names drawn after them, their
-            // shadows blurred together in one layer.
+            // Holds the player knows of; their names drawn after them, over
+            // a dark shadow a hair below, unblurred.
             var names: [(text: Text, at: CGPoint, opacity: Double)] = []
             for hold in state.holds where session.isExplored(hold.position) {
                 let point = session.viewPoint(of: hold.position, in: size)
@@ -335,13 +329,13 @@ struct WorldMarks: View {
                                   opacity: hold.owner == player ? 0.92 : 0.7))
                 }
             }
-            if !names.isEmpty {
-                var shadow = context
-                shadow.addFilter(.blur(radius: 3))
-                shadow.drawLayer { layer in
-                    for name in names { layer.draw(name.text.foregroundStyle(Color.black), at: name.at) }
-                }
-                for name in names { context.draw(name.text.foregroundStyle(Palette.text(name.opacity)), at: name.at) }
+            for name in names {
+                // Laid out once, drawn twice.
+                var resolved = context.resolve(name.text)
+                resolved.shading = .color(Color.black.opacity(0.85))
+                context.draw(resolved, at: CGPoint(x: name.at.x + 0.9, y: name.at.y + 0.9))
+                resolved.shading = .color(Palette.text(name.opacity))
+                context.draw(resolved, at: name.at)
             }
 
             // Companies the player can see.
@@ -394,10 +388,12 @@ struct WorldMarks: View {
                 }
                 // In a field of battle, its troops beneath it.
                 if fighting.contains(unit.id) {
-                    let troops = Text(verbatim: GameState.counted(state.troops(of: unit))).font(.nm(8.5, weight: .medium))
+                    var troops = context.resolve(Text(verbatim: GameState.counted(state.troops(of: unit))).font(.nm(8.5, weight: .medium)))
                     let at = CGPoint(x: point.x, y: point.y + r + 11)
-                    context.draw(troops.foregroundStyle(Color.black.opacity(0.85)), at: CGPoint(x: at.x + 0.7, y: at.y + 0.7))
-                    context.draw(troops.foregroundStyle(Palette.text(0.9)), at: at)
+                    troops.shading = .color(Color.black.opacity(0.85))
+                    context.draw(troops, at: CGPoint(x: at.x + 0.7, y: at.y + 0.7))
+                    troops.shading = .color(Palette.text(0.9))
+                    context.draw(troops, at: at)
                 }
             }
 

@@ -938,7 +938,13 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(yard.isYard)
         XCTAssertEqual(SelectionPanel.siteTitle(yard, in: session.state), "Timber Yard of The Deep Barn")
         XCTAssertTrue(SelectionPanel.siteLine(yard, in: session.state).hasPrefix("1500 timber left to gather. Only its alliance's companies work it"))
-        // A site of the land: the whole world's, as the keeper's view knows only what it has explored.
+        // A site of the land: none has come up yet at the first watch, so one is put there.
+        let acre = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex].map { $0.terrain.isPassable && $0.feature == nil && Site.store(of: $0.terrain) != nil } == true
+                && state.unit(at: hex) == nil && state.hold(at: hex) == nil && hex.distance(to: seat.position) > 6
+        })
+        let store = try XCTUnwrap(state.map[acre].flatMap { Site.store(of: $0.terrain) })
+        state.sites = state.sitesInLand + [Site(id: state.takeID(), store: store, level: 2, position: acre, found: 0)]
         let land = try XCTUnwrap(state.sitesInLand.first { !$0.isYard })
         XCTAssertEqual(SelectionPanel.siteTitle(land, in: session.state), land.title + " " + Narration.roman(land.level))
         XCTAssertTrue(SelectionPanel.siteLine(land, in: session.state).hasSuffix("Choose a company of war and right-click here to send it."))
