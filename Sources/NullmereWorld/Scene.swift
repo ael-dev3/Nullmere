@@ -43,7 +43,7 @@ extension FrameUniforms {
                             radius: Int, terrain: TerrainMesh, hovered: Hex?, selected: Hex?, houses: [Vec4],
                             exposure: Float = 1) -> FrameUniforms {
         let eye = camera.eye(in: size)
-        let low = terrain.mesh.bounds.min, high = terrain.mesh.bounds.max
+        let low = terrain.low, high = terrain.high
         return FrameUniforms(
             viewProjection: camera.viewProjection(in: size),
             eye: Vec4(eye.x, eye.y, eye.z, time),

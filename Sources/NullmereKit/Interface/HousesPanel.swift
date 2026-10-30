@@ -68,7 +68,7 @@ struct RaceTable: View {
             ForEach(session.standings, id: \.house) { standing in
                 let house = state.houses[standing.house]
                 HStack(spacing: 8) {
-                    RoundedRectangle(cornerRadius: 1).fill(Palette.house(house)).frame(width: 3, height: 10)
+                    RoundedRectangle(cornerRadius: 1).fill(Palette.house(house)).frame(width: 3, height: 12)
                     Text(verbatim: standing.house == session.player ? "You" : house.name)
                         .font(.nm(10.5, weight: standing.house == session.player ? .medium : .regular))
                         .foregroundStyle(standing.threat == nil ? Palette.text(0.8) : (standing.house == session.player ? Palette.good : Palette.bad))

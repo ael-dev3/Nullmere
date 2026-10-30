@@ -27,11 +27,12 @@ final class KeyBridgeTests: XCTestCase {
             ("]", .anyUnit(forward: true)), ("[", .anyUnit(forward: false)), (" ", .chooseAtCentre),
             ("w", .pan(dx: 0, dy: 90)), ("s", .pan(dx: 0, dy: -90)), ("a", .pan(dx: 90, dy: 0)), ("d", .pan(dx: -90, dy: 0)),
             ("1", .houses), ("2", .chronicle), ("?", .guide), ("/", .guide),
+            ("q", .turn(-.pi / 6)), ("e", .turn(.pi / 6)), ("r", .lean(-0.12)), ("t", .lean(0.12)),
         ]
         for (characters, meaning) in letters {
             XCTAssertEqual(KeyBridgeView.key(for: key(characters, in: nil)), meaning, characters)
         }
-        XCTAssertNil(KeyBridgeView.key(for: key("q", in: nil)))
+        XCTAssertNil(KeyBridgeView.key(for: key("z", in: nil)))
         XCTAssertEqual(KeyBridgeView.key(for: key("\u{1b}", code: 53, in: nil)), .escape)
         XCTAssertEqual(KeyBridgeView.key(for: special(.tab, code: 48)), .nextUnit)
         XCTAssertEqual(KeyBridgeView.key(for: special(.upArrow, code: 126)), .pan(dx: 0, dy: 90))
@@ -91,7 +92,7 @@ final class KeyBridgeTests: XCTestCase {
 
         XCTAssertTrue(bridge.handle(key("f", in: window)))
         XCTAssertFalse(bridge.handle(key("f", in: window, modifiers: .command)), "⌘F is the menus'")
-        XCTAssertFalse(bridge.handle(key("q", in: window)), "No meaning, not taken")
+        XCTAssertFalse(bridge.handle(key("z", in: window)), "No meaning, not taken")
         let other = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 100, height: 100), styleMask: [.titled], backing: .buffered, defer: false)
         other.isReleasedWhenClosed = false
         other.orderFrontRegardless()
@@ -205,7 +206,7 @@ final class KeyBridgeTests: XCTestCase {
         // The app's own dispatch, where its event monitors see each key first.
         NSApplication.shared.sendEvent(key("f", in: window))
         XCTAssertEqual(heard, [.fortify])
-        NSApplication.shared.sendEvent(key("q", in: window))
+        NSApplication.shared.sendEvent(key("z", in: window))
         XCTAssertEqual(heard, [.fortify], "A key with no meaning is left to the window")
     }
 

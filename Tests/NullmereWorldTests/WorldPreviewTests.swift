@@ -13,7 +13,7 @@ final class WorldPreviewTests: XCTestCase {
     static func frame(_ camera: Camera, terrain: TerrainMesh, radius: Int, time: Float) -> FrameUniforms {
         let size = viewport
         let eye = camera.eye(in: size)
-        let low = terrain.mesh.bounds.min, high = terrain.mesh.bounds.max
+        let low = terrain.low, high = terrain.high
         return FrameUniforms(
             viewProjection: camera.viewProjection(in: size),
             eye: Vec4(eye.x, eye.y, eye.z, time),

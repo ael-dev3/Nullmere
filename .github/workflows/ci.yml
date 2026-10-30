@@ -317,6 +317,10 @@ jobs:
           tail -n 15 build/game-stdout.log 2>/dev/null || true
           tail -n 15 build/steward.log 2>/dev/null || true
           echo "::endgroup::"
+          # The world's frames, small, last: a line each, read from the log's foot.
+          for thumb in build/*.thumb.b64; do
+            [ -f "$thumb" ] && echo "RENDER64 $(basename "$thumb" .thumb.b64) $(cat "$thumb")"
+          done
 
   # The app as VoiceOver and Accessibility Inspector meet it, through the
   # Mac's own accessibility: Xcode's UI testing opens the debug build as a

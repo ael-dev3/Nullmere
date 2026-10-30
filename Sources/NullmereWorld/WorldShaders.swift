@@ -220,8 +220,10 @@ public enum WorldShaders {
         float3 cell = floor(grid);
         float chance = nm_hash13(cell);
         if (chance > 0.9) {
+            // The star's place in its cell, carried onto the sky's sphere,
+            // so every star whose cell the sky passes through shows.
             float3 spot = cell + 0.5 + (float3(nm_hash13(cell + 7.1), nm_hash13(cell + 3.7), nm_hash13(cell + 1.3)) - 0.5) * 0.6;
-            float far = length(grid - spot);
+            float far = length(grid - normalize(spot) * 150.0);
             float bright = (chance - 0.9) / 0.1;
             float twinkle = 0.75 + 0.25 * sin(nm_spin(time, 1.3 + 2.0 * chance) + chance * 40.0);
             float warm = nm_hash13(cell + 11.0);
@@ -238,7 +240,7 @@ public enum WorldShaders {
             face = kMoonFace * (0.78 + 0.22 * smoothstep(0.35, 0.7, seas));
         }
         float halo = pow(max(facing, 0.0), 2400.0) * 0.55 + pow(max(facing, 0.0), 160.0) * 0.07 + pow(max(facing, 0.0), 18.0) * 0.012;
-        return colour + face * disc * 1.6 + kMoonColour * halo;
+        return colour + face * disc * 2.6 + kMoonColour * halo;
     }
 
     // The night's haze between the eye and what it sees far off.

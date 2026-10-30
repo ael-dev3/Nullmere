@@ -30,6 +30,8 @@ final class WorldRenderTests: XCTestCase {
     struct World {
         let state: GameState
         let opening: [UInt8]
+        /// What the keeper knows as the age opens, by map index.
+        let openingKnown: [Bool]
         let whole: [UInt8]
         let terrain: TerrainMesh
         let relief: Relief
@@ -37,6 +39,7 @@ final class WorldRenderTests: XCTestCase {
         init() {
             var state = GameState(settings: GameSettings(seedText: "drawn in the round", houseCount: 12, radius: 24, keepers: 1))
             opening = TileTexture.bytes(for: state, viewer: state.player)
+            openingKnown = state.houses[state.player].explored
             state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
             whole = TileTexture.bytes(for: state, viewer: state.player)
             self.state = state
@@ -78,11 +81,18 @@ final class WorldRenderTests: XCTestCase {
     func testTheStillWaterHoldsTheMoonAndTheStars() throws {
         let renderer = try renderer()
         let world = WorldRenderTests.world
+        // Looking down on the deepest water from where it holds the moon:
+        // the eye set opposite the moon, as high as the moon is.
         let lake = try XCTUnwrap(world.state.moonWater).hex
-        var camera = Camera(scale: 16)
+        var camera = Camera(scale: 16, tilt: acos(Double(Sky.moon.y)), heading: atan2(-Double(Sky.moon.x), -Double(Sky.moon.z)))
         camera.focus(on: lake)
-        camera.centerY += 6
         let drawn = try draw(renderer, "lake", camera: camera, tiles: world.whole)
+        // The moon's image lies at the middle of the view, round and bright.
+        var middle = 0.0
+        for dy in -4...4 {
+            for dx in -4...4 { middle = max(middle, drawn.luminance(WorldRenderTests.width / 2 + dx, WorldRenderTests.height / 2 + dy)) }
+        }
+        XCTAssertGreaterThan(middle, 170, "the moon lies in the water where the eye sees it")
         try keep([drawn], as: "world-lake")
 
         // Over the open water, deep from any shore: black, but for the
@@ -102,7 +112,19 @@ final class WorldRenderTests: XCTestCase {
         let sorted = water.sorted()
         XCTAssertLessThan(sorted[sorted.count / 2], 26, "the still water is black")
         XCTAssertGreaterThan(brightest.value, 170, "the moon lies in it")
-        let stars = water.filter { $0 > 45 }.count
+        // And the stars, small bright points in the black away from it.
+        var stars = 0
+        for y in stride(from: 2, to: WorldRenderTests.height - 2, by: 2) {
+            for x in stride(from: 2, to: WorldRenderTests.width - 2, by: 2) {
+                let dx = x - WorldRenderTests.width / 2, dy = y - WorldRenderTests.height / 2
+                guard dx * dx + dy * dy > 120 * 120, drawn.luminance(x, y) > 40 else { continue }
+                guard let found = ground(at: x, y, in: drawn), found.terrain == .still else { continue }
+                // A point: brighter than what lies three pixels round it.
+                if [(3, 0), (-3, 0), (0, 3), (0, -3)].allSatisfy({ drawn.luminance(x + $0.0, y + $0.1) < drawn.luminance(x, y) - 12 }) {
+                    stars += 1
+                }
+            }
+        }
         XCTAssertGreaterThan(stars, 6, "and the stars")
     }
 
@@ -114,7 +136,7 @@ final class WorldRenderTests: XCTestCase {
         camera.focus(on: seat)
         let opening = try draw(renderer, "opening", camera: camera, tiles: world.opening, selected: seat)
         try keep([opening], as: "world-opening")
-        let explored = world.state.houses[world.state.player].explored
+        let explored = world.openingKnown
         // As the keeper first sees it: their own land lit, the rest unknown.
         var mist: [Double] = [], land: [Double] = []
         for y in stride(from: 0, to: WorldRenderTests.height, by: 4) {
@@ -161,15 +183,16 @@ final class WorldRenderTests: XCTestCase {
         let side = try draw(renderer, "turned", camera: turned, tiles: world.whole)
         try keep([far, side], as: "world-afar")
         for drawn in [far, side] {
-            var lit = 0, total = 0
+            var values: [Double] = []
             for y in stride(from: 0, to: WorldRenderTests.height, by: 5) {
-                for x in stride(from: 0, to: WorldRenderTests.width, by: 5) {
-                    total += 1
-                    if drawn.luminance(x, y) > 14 { lit += 1 }
-                }
+                for x in stride(from: 0, to: WorldRenderTests.width, by: 5) { values.append(drawn.luminance(x, y)) }
             }
-            let share = Double(lit) / Double(total)
-            XCTAssertTrue((0.15...0.97).contains(share), "\(drawn.name): \(Int(share * 100))% of the view lit")
+            let lit = Double(values.filter { $0 > 14 }.count) / Double(values.count)
+            let mean = values.reduce(0, +) / Double(values.count)
+            let spread = (values.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(values.count)).squareRoot()
+            XCTAssertGreaterThan(lit, 0.15, "\(drawn.name): the world is drawn")
+            XCTAssertGreaterThan(spread, 6, "\(drawn.name): land, water and mist told apart, never one flat field")
+            XCTAssertLessThan(mean, 140, "\(drawn.name): a night scene")
         }
     }
 
@@ -197,22 +220,18 @@ final class WorldRenderTests: XCTestCase {
             try FileManager.default.createDirectory(at: URL(fileURLWithPath: path), withIntermediateDirectories: true)
             try png.write(to: URL(fileURLWithPath: path).appendingPathComponent("\(name).png"))
         }
-        // Small enough to print: a fifth of each side, as a JPEG.
-        let small = NSImage(size: NSSize(width: width * images.count / 2, height: height / 2))
+        // Small enough to print at the foot of CI's log: a thumbnail of
+        // each frame, as a JPEG, kept beside the full sheet.
+        guard let path = ProcessInfo.processInfo.environment["NULLMERE_KEEP_RENDERS"] else { return }
+        let thumbWidth = 288 * images.count, thumbHeight = 180
+        let small = NSImage(size: NSSize(width: thumbWidth, height: thumbHeight))
         small.lockFocus()
-        sheet.draw(in: NSRect(x: 0, y: 0, width: width * images.count / 2, height: height / 2))
+        sheet.draw(in: NSRect(x: 0, y: 0, width: thumbWidth, height: thumbHeight))
         small.unlockFocus()
         if let smallTIFF = small.tiffRepresentation, let smallRep = NSBitmapImageRep(data: smallTIFF),
-           let jpeg = smallRep.representation(using: .jpeg, properties: [.compressionFactor: 0.6]) {
-            let text = jpeg.base64EncodedString()
-            var start = text.startIndex
-            var line = 0
-            while start < text.endIndex {
-                let end = text.index(start, offsetBy: 2000, limitedBy: text.endIndex) ?? text.endIndex
-                print("RENDER64 \(name) \(String(format: "%03d", line)) \(text[start..<end])")
-                start = end
-                line += 1
-            }
+           let jpeg = smallRep.representation(using: .jpeg, properties: [.compressionFactor: 0.55]) {
+            try jpeg.base64EncodedString().write(to: URL(fileURLWithPath: path).appendingPathComponent("\(name).thumb.b64"),
+                                                 atomically: true, encoding: .utf8)
         }
     }
 }

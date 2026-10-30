@@ -15,6 +15,10 @@ public struct TerrainMesh: Sendable {
     public let originX: Float
     public let originZ: Float
     public let spacing: Float
+    /// The land's corner and far corner, worked out once: a frame asks for
+    /// them, and a hundred thousand vertices are not to be counted each time.
+    public let low: Vec3
+    public let high: Vec3
 
     /// The colour each terrain shows in plain white light, in sRGB.
     public static func colour(_ terrain: Terrain) -> Vec3 {
@@ -101,7 +105,11 @@ public struct TerrainMesh: Sendable {
                 }
             }
         }
-        self.mesh = Mesh(vertices: vertices, indices: indices)
+        let built = Mesh(vertices: vertices, indices: indices)
+        let bounds = built.bounds
+        self.mesh = built
+        self.low = bounds.min
+        self.high = bounds.max
         self.heights = heights
         self.columns = columns
         self.rows = rows
