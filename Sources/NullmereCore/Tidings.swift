@@ -187,6 +187,9 @@ extension GameState {
             }
             guard let by else { return nil }
             return Tidings("\(houses[by].title) tears down your alliance's storehouse \(placeName(of: at)), and carries off what was laid up in it.", .bad)
+        case .favourRose(let house, let level):
+            guard house == viewer else { return nil }
+            return Tidings("Your favour with the lake rises to \(BuildingKind.numeral(level)): \(Favour.effect(level: level)).", .good)
         case .laidUp(let house, let stock):
             guard house == viewer else { return nil }
             return Tidings("You lay up \(stock) in your alliance's storehouse.", .neutral)
@@ -346,6 +349,19 @@ extension GameState {
             }
             guard let first = leaders.first else { return Tidings("\(kind.title) ends with no House to honour.", .neutral) }
             return Tidings("\(kind.title) ends: \(houses[first].title) takes the honours.", .neutral)
+        case .sunderingBegun(let ends):
+            let begun = "The Sundering begins: the Eastern and the Western Shore war as kingdoms until the \(ordinal(ends)) watch."
+            guard let shore = sundering?.shore(of: viewer) else { return Tidings(begun, .neutral) }
+            return Tidings(begun + " You stand with \(shore.title): troops of \(shore.other.title) slain, its holds taken and its "
+                           + "alliances' works torn down count for your kingdom.", .neutral)
+        case .sunderingEnded(let winner, let eastern, let western, let hailed):
+            guard let winner else { return Tidings("The Sundering ends with neither shore ahead, \(eastern) to \(western).", .neutral) }
+            let score = "\(max(eastern, western)) to \(min(eastern, western))"
+            guard sundering?.shore(of: viewer) == winner else {
+                return Tidings("The Sundering ends: \(winner.title) prevails, \(score).", sundering?.shore(of: viewer) == nil ? .neutral : .bad)
+            }
+            let sword = hailed == viewer ? " Your House is hailed its sword." : ""
+            return Tidings("The Sundering ends: your kingdom, \(winner.title), prevails, \(score); its Houses share its spoils.\(sword)", .good)
         case .deedDone(let house, let deed):
             guard house == viewer else { return nil }
             return Tidings("A deed of your House, \(deed.title): it has \(deed.deed).", .good)

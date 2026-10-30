@@ -26,6 +26,12 @@ public struct Keeper: Codable, Equatable, Identifiable, Sendable {
     public internal(set) var titles: [String]?
     /// Every deed their Houses have done, in any age, once each.
     public internal(set) var deeds: [Deed]?
+    /// Their favour with the lake, won watch by watch over every age (see
+    /// `Favour`); absent before any.
+    public internal(set) var favour: Int?
+    /// The watches they have kept unbroken, to the last; absent when they
+    /// were away as the last watch turned.
+    public internal(set) var streak: Int?
 }
 
 /// What anyone may know of the realm before entering it.
@@ -361,6 +367,7 @@ public struct RealmState: Codable, Equatable, Sendable {
         world.houses[seat.id].isPlayer = true
         world.houses[seat.id].name = keepers[index].name
         keepers[index].house = seat.id
+        seatInFavour(index)
         // A House the stewards keep under the same name, as a keeper named
         // after one of the lake's Houses meets it in a new age, takes
         // another, so no two standing Houses share a name.
@@ -480,7 +487,8 @@ public struct RealmState: Codable, Equatable, Sendable {
         for index in keepers.indices where !keepers[index].isOnline {
             keepers[index].watchesAway = (keepers[index].watchesAway ?? 0) + 1
         }
-        return world.endWatch(keptFor: caretaken)
+        // Those there as it turns keep the watch, and stand the higher in favour.
+        return world.endWatch(keptFor: caretaken) + keepFavour()
     }
 
     /// The Houses kept for keepers away two watches or more.

@@ -34,12 +34,16 @@ enum Narration {
             guard battle.attackerOwner == viewer || battle.defenderOwner == viewer else { return nil }
             let target = battle.defenderKind.map { "\(house(battle.defenderOwner))'s \($0.title)" }
                 ?? (battle.hold.map(holdName) ?? "the hold")
+            // The troops slain, where the realm counted them.
+            let slaying = battle.slain.map { $0 > 0 ? ", slaying \(GameState.counted($0))" : "" } ?? ""
             if battle.attackerOwner == viewer {
                 let outcome = battle.defenderFell ? (battle.defenderKind == nil ? "; its ward breaks" : "; they fall") : ""
-                return Line(text: "Your \(battle.attackerKind.title) strike \(target) for \(battle.damageDealt)\(outcome).", tone: battle.attackerFell ? .bad : .good)
+                return Line(text: "Your \(battle.attackerKind.title) strike \(target) for \(battle.damageDealt)\(slaying)\(outcome).",
+                            tone: battle.attackerFell ? .bad : .good)
             }
             let what = battle.defenderKind.map { "your \($0.title)" } ?? (battle.hold.map(holdName) ?? "your hold")
-            return Line(text: "\(house(battle.attackerOwner))'s \(battle.attackerKind.title) strike \(what) for \(battle.damageDealt).", tone: .bad)
+            return Line(text: "\(house(battle.attackerOwner))'s \(battle.attackerKind.title) strike \(what) for \(battle.damageDealt)\(slaying).",
+                        tone: .bad)
         case .unitLost(_, let kind, let owner, let at):
             guard owner == viewer else { return nil }
             return Line(text: "Your \(kind.title) are lost \(place(of: at, in: state)).", tone: .bad)
@@ -147,12 +151,12 @@ enum Narration {
              .carriedToInfirmary, .healingBegun, .unitHealed, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted,
              .standardRaised, .standardStruck, .standardTorn, .itemsGiven, .itemUsed, .heritageTaken,
              .allianceStudyChosen, .allianceGift, .allianceStudied, .hallRaised, .hallRisen, .hallStruck, .hallTorn,
-             .storehouseRaised, .storehouseRisen, .storehouseStruck, .storehouseTorn, .laidUp, .tookBack, .yardRaised,
+             .storehouseRaised, .storehouseRisen, .storehouseStruck, .storehouseTorn, .laidUp, .tookBack, .yardRaised, .favourRose,
              .makingsFound, .gearForged,
              .hunted, .sentToGather, .gathered, .delivered, .siteWorkedOut,
              .allianceFounded, .allianceInvited, .allianceAsked, .allianceAnswered, .allianceJoined, .allianceLeft, .allianceLed,
              .allianceDisbanded, .helpGiven, .rallyCalled, .rallyJoined, .rallySetOut, .rallyStruck, .rallyDispersed, .sentToReinforce,
-             .happeningBegun, .happeningMark, .happeningEnded, .deedDone, .chargeDone, .said:
+             .happeningBegun, .happeningMark, .happeningEnded, .sunderingBegun, .sunderingEnded, .deedDone, .chargeDone, .said:
             // The deeper systems' words are the rules' own.
             return state.tidings(of: event, for: viewer).map { Line(text: $0.text, tone: Narration.tone($0.tone)) }
         }

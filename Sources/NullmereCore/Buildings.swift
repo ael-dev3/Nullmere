@@ -133,8 +133,8 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
     /// The deepest circle of studies.
     public static let deepestCircle = 4
 
-    /// A level as the game writes it: I, II, III.
+    /// A level as the game writes it: I, II, III, up to X.
     public static func numeral(_ level: Int) -> String {
-        ["", "I", "II", "III", "IV", "V", "VI"][min(max(level, 0), 6)]
+        ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][min(max(level, 0), 10)]
     }
 }

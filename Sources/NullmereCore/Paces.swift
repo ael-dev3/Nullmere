@@ -134,6 +134,7 @@ extension GameState {
         }
         events += walkRallies(by: nil)
         tally(events)
+        tallySundering(events)
         noteDeeds(events)
         return events
     }

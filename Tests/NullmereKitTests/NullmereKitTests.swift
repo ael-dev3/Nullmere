@@ -227,7 +227,10 @@ final class NarrationTests: XCTestCase {
     func testRomanNumerals() {
         XCTAssertEqual(Narration.roman(1), "I")
         XCTAssertEqual(Narration.roman(5), "V")
-        XCTAssertEqual(Narration.roman(9), "VI")
+        XCTAssertEqual(Narration.roman(9), "IX", "The wilds and favour run to X")
+        XCTAssertEqual(Narration.roman(10), "X")
+        XCTAssertEqual(Narration.roman(14), "X")
+        XCTAssertEqual(Narration.roman(-1), "")
     }
 
     /// A seat moved and empty granaries are told to their own House alone.
@@ -509,6 +512,12 @@ final class GuideTests: XCTestCase {
         XCTAssertEqual(Heritage.signatureEdge, 5)
         XCTAssertTrue(all.contains("every 300 given, in barter worth, brings the giver a Salt Hourglass"), all)
         XCTAssertTrue(all.contains("Its companies alone work them, a quarter faster than anywhere else"), all)
+        XCTAssertTrue(all.contains("wins you favour with the lake, the more for every watch kept unbroken"), all)
+        XCTAssertTrue(all.contains("From the fifty-fifth watch, and every ninety after, comes the Sundering: for twelve watches"), all)
+        XCTAssertEqual([Sundering.first, Sundering.every, Sundering.lasts], [55, 90, 12])
+        XCTAssertTrue(all.contains("Spears 1,200 at I to 2,400 at V, Bows 1,000 to 2,000, Riders 800 to 1,600"), all)
+        XCTAssertEqual([UnitKind.spear, .bow, .rider].map { [$0.troops(tier: 1), $0.troops(tier: 5)] }, [[1_200, 2_400], [1_000, 2_000], [800, 1_600]])
+        XCTAssertEqual([Favour.chestEvery, Favour.highest], [10, 10])
         XCTAssertEqual(Yard.gathering, 25)
         XCTAssertEqual(AllianceStudy.grades, 3)
         XCTAssertTrue(all.contains("it rises over four watches. Whole, the land three tiles about it is the alliance's"), all)
@@ -761,6 +770,9 @@ final class CueMappingTests: XCTestCase {
             (.laidUp(house: player, stock: Stock(grain: 100)), .coin),
             (.tookBack(house: player, stock: Stock(grain: 100)), .coin),
             (.yardRaised(site: 95, alliance: alliance, house: foe, store: .timber, at: unit.position), .rise),
+            (.favourRose(house: player, level: 2), .honour),
+            (.sunderingBegun(ends: 67), .herald),
+            (.sunderingEnded(winner: .eastern, eastern: 5, western: 2, hailed: nil), .herald),
             (.gearForged(house: player, gear: Gear(id: 72, kind: .wardensBlade, quality: .plain, owner: player)), .anvil),
             (.itemUsed(house: player, kind: .hourglass, hold: seat.id), .sift),
             (.itemUsed(house: player, kind: .mendingDraught, hold: nil), .tend),
@@ -867,6 +879,7 @@ final class CueMappingTests: XCTestCase {
             .storehouseTorn(storehouse: 96, alliance: 77, by: others, at: unit.position, carried: .zero),
             .laidUp(house: foe, stock: Stock(grain: 5)), .tookBack(house: foe, stock: Stock(grain: 5)),
             .yardRaised(site: 97, alliance: 77, house: foe, store: .stone, at: unit.position),
+            .favourRose(house: foe, level: 2),
             .gearForged(house: foe, gear: Gear(id: 73, kind: .raidersHorn, quality: .fine, owner: foe)),
             .makingsFound(house: player, making: .iron, count: 2), .makingsFound(house: foe, making: .hide, count: 1),
         ]

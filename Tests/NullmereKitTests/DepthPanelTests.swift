@@ -923,6 +923,84 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(HoverInfo.described(try XCTUnwrap(burning.state.storehouse(at: spot)), in: burning.state).hasPrefix("Raised by "))
     }
 
+    func testCompaniesAndArmiesAreCountedInTroops() throws {
+        var state = world("troops shown")
+        let me = state.player
+        let index = try XCTUnwrap(state.units.firstIndex { $0.owner == me && $0.kind.isMilitary })
+        state.units[index].health = 50
+        let unit = state.units[index]
+        let (session, _) = session(state)
+        let full = unit.kind.troops(tier: unit.tier)
+        XCTAssertEqual(UnitPanel.troopsLine(unit, in: session.state),
+                       "\(GameState.counted(full / 2)) of \(GameState.counted(full)) troops standing")
+        let companies = session.state.units(of: me).filter(\.kind.isMilitary).count
+        XCTAssertTrue(RealmPanel.armyLine(session.state, player: me)
+            .hasPrefix("Your army: \(GameState.counted(session.state.army(of: me))) troops in \(companies) compan"))
+        session.selection = .unit(unit.id)
+        draw(SelectionPanel(session: session), width: 330, height: 700)
+        draw(RealmPanel(session: session))
+        // A blow is told in the troops it slew.
+        let foe = (me + 1) % session.state.houses.count
+        let blow = Battle(attacker: unit.id, attackerOwner: me, attackerKind: unit.kind, defender: 900, defenderOwner: foe, defenderKind: .bow,
+                          hold: nil, at: unit.position, damageDealt: 30, damageTaken: 0, attackerFell: false, defenderFell: false,
+                          slain: 300, lost: 0)
+        let told = try XCTUnwrap(Narration.line(for: .battle(blow), in: session.state, viewer: me)?.text)
+        XCTAssertTrue(told.contains("for 30, slaying 300"), told)
+        let struck = try XCTUnwrap(Narration.line(for: .battle(blow), in: session.state, viewer: foe)?.text)
+        XCTAssertTrue(struck.hasSuffix("for 30, slaying 300."), struck)
+    }
+
+    func testTheRealmScreenTellsHowTheShoresStand() throws {
+        var state = world("shores shown")
+        let me = state.player
+        XCTAssertEqual(RealmPanel.sunderingLine(state, player: me), "The Sundering comes at the 55th watch: the shores war as kingdoms.")
+        state.watch = Sundering.first
+        _ = state.turnSundering()
+        let shore = try XCTUnwrap(state.sundering?.shore(of: me))
+        state.sundering!.points[me] = 12
+        let east = state.sundering!.score(of: .eastern), west = state.sundering!.score(of: .western)
+        let stands = "the Eastern Shore \(east), the Western \(west), until the 67th watch."
+        XCTAssertEqual(RealmPanel.sunderingLine(state, player: me), "The Sundering: you stand with \(shore.title), your House 12 points; \(stands)")
+        XCTAssertEqual(RealmPanel.sunderingLine(state, player: 99), "The Sundering: \(stands)")
+        let (session, _) = session(state)
+        draw(RealmPanel(session: session))
+        XCTAssertEqual(GameSession.cues(for: [.sunderingEnded(winner: shore, eastern: 12, western: 0, hailed: me)], in: session.state, player: me),
+                       [.watch, .triumph], "Its own kingdom prevailing is a triumph")
+        XCTAssertEqual(GameSession.cues(for: [.sunderingEnded(winner: shore.other, eastern: 12, western: 0, hailed: nil)], in: session.state,
+                                        player: me), [.watch, .herald])
+        state.watch = state.sundering!.ends
+        _ = state.turnSundering()
+        let settled = RealmPanel.sunderingLine(state, player: me)
+        XCTAssertTrue(settled.hasPrefix("The last Sundering: \(shore.title) prevailed, 12 to 0; the next at the 145th watch"), settled)
+        state.sundering = Sundering(begins: 55, shores: state.houses.map { _ in nil })
+        state.sundering!.settled = true
+        XCTAssertEqual(RealmPanel.sunderingLine(state, player: me), "The last Sundering ended with neither shore ahead; the next at the 145th watch.")
+    }
+
+    func testTheRealmScreenShowsTheKeepersFavour() throws {
+        let state = world("favour shown")
+        let (session, _) = session(state)
+        var keeper = Keeper(id: "k", name: "Ama", house: state.player, isReady: false, isOnline: true, arrival: 0)
+        XCTAssertEqual(RealmPanel.favourLine(keeper), "No favour yet: 0 won; 60 more to I.")
+        XCTAssertEqual(RealmPanel.favourProgress(0), 0)
+        XCTAssertEqual(RealmPanel.streakLine(keeper),
+                       "0 watches kept unbroken: the next brings 10 favour, and a favour chest comes in 10 watches.")
+        keeper.favour = 300
+        keeper.streak = 9
+        XCTAssertEqual(RealmPanel.favourLine(keeper), "Favour II: 300 won; 100 more to III.")
+        XCTAssertEqual(RealmPanel.favourProgress(300), Double(300 - 180) / Double(400 - 180), accuracy: 1e-9)
+        XCTAssertEqual(RealmPanel.streakLine(keeper), "9 watches kept unbroken: the next brings 28 favour, and a favour chest comes in 1 watch.")
+        session.keeper = keeper
+        draw(RealmPanel(session: session))
+        keeper.favour = 12_000
+        keeper.streak = 1
+        XCTAssertEqual(RealmPanel.favourLine(keeper), "Favour X: 12000 won, the highest there is.")
+        XCTAssertEqual(RealmPanel.favourProgress(12_000), 1)
+        XCTAssertEqual(RealmPanel.streakLine(keeper), "1 watch kept unbroken: the next brings 12 favour, and a favour chest comes in 9 watches.")
+        session.keeper = keeper
+        draw(RealmPanel(session: session))
+    }
+
     func testTheForgeShowsItsMakingsAndForgesAPieceOfASet() throws {
         var state = world("forge shown")
         let me = state.player

@@ -782,6 +782,41 @@ realm; keepers are told in plain words, never a status code.
   mail, and at the fifth a moonglass furnace, a turning grindstone and the
   House's banner on its chimney; smoke rises from its chimney, and forging
   rings with three blows of the hammer.
+- **Favour.** A keeper's favour with the lake, won each watch they keep
+  in the realm (there as it turns): ten favour a watch, two more for
+  every watch kept unbroken before it up to ten of them, a watch away
+  breaking the streak. Favour raises the House they hold by levels, I at
+  60 to X at 9000: each level 2% more gathered at the land's sites, works
+  and studies 2% sooner, and musters 1% sooner. Every tenth watch kept
+  unbroken brings a favour chest: a Salt Hourglass; from the fourth level
+  caches of grain and timber; from the seventh a cache of stone and a
+  Mending Draught; at the tenth a Ward Stone and a cache of moonsalt. It
+  is the keeper's across ages, their House standing as high as it from
+  the watch they take their seat; the Realm screen shows their level,
+  what the next asks, their streak and when the next chest comes, and
+  each level risen is told and heard.
+- **The Sundering.** Kingdom against kingdom: from the fifty-fifth watch,
+  and every ninety after, the lake's Houses stand for twelve watches as two
+  kingdoms, the Eastern and the Western Shore, each by where its seat
+  stands as it begins (a House fallen before it stands with neither).
+  Deeds across the shores score for the striker's kingdom and House: a
+  point for every hundred troops of the other shore slain and five for a
+  company felled, twenty-five for a hold taken, and five, thirty and
+  twenty for a standard, a hall and a storehouse of the other shore's
+  alliances torn down. When it ends, every standing House of the kingdom
+  ahead is given 150 grain, timber and stone, 10 moonsalt, two Salt
+  Hourglasses and a Ward Stone, and its foremost House is hailed its sword
+  with a hundred more of each; a draw gives no spoils. It is told and
+  heard as it begins and ends, kept on the Realm screen (your shore, your
+  points, how the shores stand, or how the last ended), and its tally is
+  known to all.
+- **Troops.** A company is so many troops at full muster, by its kind and
+  tier: Spears 1,200 at the first tier to 2,400 at the fifth, Bows 1,000
+  to 2,000, Riders 800 to 1,600, Lanterns 60 and Founders 250, as many
+  standing as its health is a share of. Every battle counts the troops
+  each side slew and lost, and its report, its tidings and its notice
+  tell them; a company's panel shows its troops standing, and the Realm
+  screen the House's army, all its companies of war together.
 - **Heritages.** Every House comes of one of the lake's six peoples,
   dealt round the lake as an age begins, from a seat the seed chooses, so
   each has its seats: the Saltborn (half again the moonsalt from their

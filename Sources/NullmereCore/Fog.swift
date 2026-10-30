@@ -149,7 +149,7 @@ extension GameState {
                  .gearFound(let owner, _, _), .gearWorn(_, let owner, _), .gearTakenOff(_, let owner, _), .gearScrapped(let owner, _, _),
                  .carriedToInfirmary(_, let owner, _), .healingBegun(_, let owner, _), .woundedLost(_, let owner, _),
                  .itemsGiven(let owner, _, _), .itemUsed(let owner, _, _), .makingsFound(let owner, _, _), .gearForged(let owner, _),
-                 .laidUp(let owner, _), .tookBack(let owner, _):
+                 .laidUp(let owner, _), .tookBack(let owner, _), .favourRose(let owner, _):
                 return owner == house
             case .unitHealed(let id, _):
                 return unit(id)?.owner == house
@@ -203,7 +203,7 @@ extension GameState {
                 return caller == house || defender == house || areAllied(caller, house)
             case .sentToReinforce(_, let owner, let holdID):
                 return owner == house || hold(holdID)?.owner == house
-            case .happeningBegun, .happeningEnded, .heritageTaken:
+            case .happeningBegun, .happeningEnded, .heritageTaken, .sunderingBegun, .sunderingEnded:
                 return true
             case .allianceStudyChosen(let id, _), .allianceGift(_, let id, _, _, _), .allianceStudied(let id, _, _):
                 return alliance(id)?.members.contains(house) == true

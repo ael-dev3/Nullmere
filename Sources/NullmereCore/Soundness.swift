@@ -202,6 +202,12 @@ extension GameState {
                 found.append("The coffers of \(sworn.name) hold \(coffers)")
             }
         }
+        if let sundering {
+            if sundering.shores.count != houses.count { found.append("The Sundering has shores for \(sundering.shores.count) Houses of \(houses.count)") }
+            if sundering.points.count != houses.count { found.append("The Sundering has points for \(sundering.points.count) Houses of \(houses.count)") }
+            if sundering.points.contains(where: { $0 < 0 }) { found.append("The Sundering has points below none") }
+            if sundering.ends != sundering.begins + Sundering.lasts { found.append("The Sundering lasts \(sundering.ends - sundering.begins) watches") }
+        }
         var yarded: Set<String> = []
         for yard in sitesInLand {
             guard let owner = yard.alliance else { continue }

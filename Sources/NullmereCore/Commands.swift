@@ -550,6 +550,13 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case tookBack(house: Int, stock: Stock)
     /// An alliance's leader raises a yard on its land.
     case yardRaised(site: Int, alliance: Int, house: Int, store: Resource, at: Hex)
+    /// A House's favour, its keeper's, rises a level.
+    case favourRose(house: Int, level: Int)
+    /// The lake's shores stand as kingdoms until a watch.
+    case sunderingBegun(ends: Int)
+    /// A Sundering ends: the kingdom that prevailed, if one did, each
+    /// kingdom's points, and the House hailed its sword.
+    case sunderingEnded(winner: Shore?, eastern: Int, western: Int, hailed: Int?)
     /// A House is given makings for its Forge.
     case makingsFound(house: Int, making: Making, count: Int)
     /// A House's smiths forge a piece of gear.
@@ -623,12 +630,16 @@ public struct Battle: Codable, Equatable, Sendable {
     public let damageTaken: Int
     public let attackerFell: Bool
     public let defenderFell: Bool
+    /// The defender's troops the blow felled; none when a ward was struck.
+    public let slain: Int?
+    /// The attacker's troops lost to the blow struck back.
+    public let lost: Int?
 
     public init(
         attacker: Int, attackerOwner: Int, attackerKind: UnitKind,
         defender: Int?, defenderOwner: Int, defenderKind: UnitKind?,
         hold: Int?, at: Hex, damageDealt: Int, damageTaken: Int,
-        attackerFell: Bool, defenderFell: Bool
+        attackerFell: Bool, defenderFell: Bool, slain: Int? = nil, lost: Int? = nil
     ) {
         self.attacker = attacker
         self.attackerOwner = attackerOwner
@@ -642,5 +653,7 @@ public struct Battle: Codable, Equatable, Sendable {
         self.damageTaken = damageTaken
         self.attackerFell = attackerFell
         self.defenderFell = defenderFell
+        self.slain = slain
+        self.lost = lost
     }
 }

@@ -220,6 +220,10 @@ final class LairTests: XCTestCase {
         XCTAssertEqual(told.title, "Your host broke the Reavers' Stockade of the first level")
         XCTAssertEqual(told.lines.filter { $0.hasPrefix("Your Spears") }.count, 3)
         XCTAssertEqual(told.lines.last, "It broke, and your House carried off \(mine)")
+        // Its ally is told what the keeper's companies dealt beside its own.
+        let mineDealt = struck.strikes.filter { $0.owner == me }.reduce(0) { $0 + $1.dealt }
+        let alliesTold = try XCTUnwrap(stage.state.report(of: struck, id: 1, for: ally))
+        XCTAssertTrue(alliesTold.lines.contains("Your allies' 3 companies dealt \(mineDealt)"), "\(alliesTold.lines)")
         XCTAssertNil(stage.state.report(of: struck, id: 1, for: far))
         XCTAssertEqual(HappeningKind.longHunt.points(for: event, in: stage.state)?.house, me)
         XCTAssertEqual(HappeningKind.longHunt.points(for: event, in: stage.state)?.points, 10)

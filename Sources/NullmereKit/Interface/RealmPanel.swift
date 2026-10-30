@@ -4,7 +4,7 @@ import SwiftUI
 /// The realm's course as the House stands in it: the happening under way
 /// and the foremost in it, or the next to come; the charge set it; what
 /// its satchel holds; the people it comes of; its deeds; its might among
-/// the Houses; and the keeper's renown over ages.
+/// the Houses; and the keeper's favour with the lake and renown over ages.
 struct RealmPanel: View {
     let session: GameSession
 
@@ -16,6 +16,13 @@ struct RealmPanel: View {
                 PanelTitle(title: "The Realm", subtitle: RealmPanel.mightLine(board, standing: state.livingHouses.count))
                 CloseButton(label: "Close the Realm") { session.panel = nil }
             }
+            Text(verbatim: RealmPanel.armyLine(state, player: session.player))
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+            Text(verbatim: RealmPanel.sunderingLine(state, player: session.player))
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     happening(board)
@@ -34,6 +41,10 @@ struct RealmPanel: View {
                     if !state.lairsStanding.isEmpty {
                         Rule(opacity: 0.18)
                         lairs(state)
+                    }
+                    if let keeper = session.keeper {
+                        Rule(opacity: 0.18)
+                        favour(keeper)
                     }
                     if let keeper = session.keeper, (keeper.renown ?? 0) > 0 || !(keeper.titles ?? []).isEmpty {
                         Rule(opacity: 0.18)
@@ -200,9 +211,81 @@ struct RealmPanel: View {
         return "Held by \(state.houses[holder].title)"
     }
 
+    /// The keeper's favour: its level, what they have won, and what the
+    /// next level asks.
+    static func favourLine(_ keeper: Keeper) -> String {
+        let favour = keeper.favour ?? 0
+        let level = Favour.level(of: favour)
+        let standing = level > 0 ? "Favour \(BuildingKind.numeral(level))" : "No favour yet"
+        let next = Favour.next(after: favour).map { "; \($0 - favour) more to \(BuildingKind.numeral(level + 1))" } ?? ", the highest there is"
+        return "\(standing): \(favour) won\(next)."
+    }
+
+    /// How far the keeper's favour has come toward its next level, 0 to 1.
+    static func favourProgress(_ favour: Int) -> Double {
+        guard let next = Favour.next(after: favour) else { return 1 }
+        let level = Favour.level(of: favour)
+        let from = level > 0 ? Favour.levels[level - 1] : 0
+        return Double(favour - from) / Double(next - from)
+    }
+
+    /// The watches the keeper has kept unbroken: what the next brings, and
+    /// when the next favour chest comes.
+    static func streakLine(_ keeper: Keeper) -> String {
+        let streak = keeper.streak ?? 0
+        let chest = Favour.chestEvery - streak % Favour.chestEvery
+        return "\(streak) watch\(streak == 1 ? "" : "es") kept unbroken: the next brings \(Favour.earned(streak: streak)) favour, "
+            + "and a favour chest comes in \(chest) watch\(chest == 1 ? "" : "es")."
+    }
+
+    /// The Sundering: under way, how the shores stand and where the House
+    /// stands; settled, how the last ended; or when the next comes.
+    static func sunderingLine(_ state: GameState, player: Int) -> String {
+        guard let sundering = state.sundering else {
+            return "The Sundering comes at the \(SeatBriefing.ordinal(Sundering.next(from: state.watch))) watch: the shores war as kingdoms."
+        }
+        let east = sundering.score(of: .eastern), west = sundering.score(of: .western)
+        guard !sundering.settled else {
+            let next = "the next at the \(SeatBriefing.ordinal(Sundering.next(from: state.watch + 1))) watch"
+            guard let winner = sundering.leading else { return "The last Sundering ended with neither shore ahead; \(next)." }
+            return "The last Sundering: \(winner.title) prevailed, \(max(east, west)) to \(min(east, west)); \(next)."
+        }
+        let stands = "the Eastern Shore \(east), the Western \(west), until the \(SeatBriefing.ordinal(sundering.ends)) watch"
+        guard let shore = sundering.shore(of: player) else { return "The Sundering: \(stands)." }
+        return "The Sundering: you stand with \(shore.title), your House \(sundering.points[player]) points; \(stands)."
+    }
+
+    /// The House's army: its troops, and the companies of war they stand in.
+    static func armyLine(_ state: GameState, player: Int) -> String {
+        let companies = state.units(of: player).filter(\.kind.isMilitary).count
+        return "Your army: \(GameState.counted(state.army(of: player))) troops in \(companies) compan\(companies == 1 ? "y" : "ies") of war."
+    }
+
     static func mightLine(_ board: RealmBoard, standing: Int) -> String {
         guard let place = board.mightPlace else { return "Might \(board.might)" }
         return "Might \(board.might) · \(SeatBriefing.ordinal(place)) of \(standing) Houses"
+    }
+
+    /// The keeper's favour with the lake, won by keeping the watches.
+    @ViewBuilder
+    private func favour(_ keeper: Keeper) -> some View {
+        let level = Favour.level(of: keeper.favour ?? 0)
+        Caps("Your favour", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(verbatim: RealmPanel.favourLine(keeper))
+                .font(.nm(11, weight: .medium))
+                .foregroundStyle(Palette.ink)
+            Meter(fraction: RealmPanel.favourProgress(keeper.favour ?? 0), label: "Toward the next")
+            Text(verbatim: "It gives your House \(Favour.effect(level: level)).")
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            Text(verbatim: RealmPanel.streakLine(keeper))
+                .font(.nm(10))
+                .foregroundStyle(Palette.text(0.5))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func title(_ house: Int) -> String {

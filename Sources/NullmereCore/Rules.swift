@@ -8,6 +8,7 @@ extension GameState {
         let events = try carryOut(command, as: house)
         // What it did counts to the happening under way, and may be a deed.
         tally(events)
+        tallySundering(events)
         noteDeeds(events)
         return events
     }
@@ -382,8 +383,12 @@ extension GameState {
                                                           dealtBy: defenderFury, takenBy: attackerFury), on: attacker)
 
         var events: [GameEvent] = []
+        let attackerTroops = troops(of: attacker), defenderTroops = troops(of: defender)
         let defenderFell = applyDamage(dealt, to: defenderID, events: &events)
         let attackerFell = taken > 0 && applyDamage(taken, to: attackerID, events: &events)
+        // The troops each side lost, as many as stand no more.
+        let slain = defenderTroops - (unit(defenderID).map(troops(of:)) ?? 0)
+        let lost = attackerTroops - (unit(attackerID).map(troops(of:)) ?? 0)
         // A company that falls carrying the land's stores leaves half of
         // them to its foe, if its foe lives.
         if defenderFell, !attackerFell, let load = defender.load, !load.isZero {
@@ -400,7 +405,7 @@ extension GameState {
             attacker: attackerID, attackerOwner: attacker.owner, attackerKind: attacker.kind,
             defender: defenderID, defenderOwner: defender.owner, defenderKind: defender.kind,
             hold: nil, at: hex, damageDealt: dealt, damageTaken: taken,
-            attackerFell: attackerFell, defenderFell: defenderFell
+            attackerFell: attackerFell, defenderFell: defenderFell, slain: slain, lost: lost
         )), at: 0)
 
         // The victor in close combat takes the field, unless a hold's ward
@@ -487,14 +492,16 @@ extension GameState {
         var events: [GameEvent] = [.holdStruck(hold: holdID, ward: holds[holdIndex].ward)]
 
         let returned = ranged ? 0 : GameState.furious(bodily(5 + 4 * hold.level(.walls), on: attacker), dealtBy: GameState.calm, takenBy: furyOf)
+        let attackerTroops = troops(of: attacker)
         let attackerFell = returned > 0 && applyDamage(returned, to: unitID, events: &events)
+        let lost = attackerTroops - (unit(unitID).map(troops(of:)) ?? 0)
         events += stirCommanders([Stir(unit: attacker, fired: fired, fell: attackerFell,
                                        experience: GameState.battleExperience(dealt: damage, felled: holds[holdIndex].ward == 0))], at: hold.position)
         events.insert(.battle(Battle(
             attacker: unitID, attackerOwner: attacker.owner, attackerKind: attacker.kind,
             defender: nil, defenderOwner: hold.owner, defenderKind: nil,
             hold: holdID, at: hold.position, damageDealt: damage, damageTaken: returned,
-            attackerFell: attackerFell, defenderFell: holds[holdIndex].ward == 0
+            attackerFell: attackerFell, defenderFell: holds[holdIndex].ward == 0, lost: lost
         )), at: 0)
 
         if holds[holdIndex].ward == 0, !attackerFell, !ranged, attacker.kind.canCapture {

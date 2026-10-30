@@ -118,6 +118,8 @@ public struct GameState: Codable, Equatable, Sendable {
     var makings: [MakingStack]?
     /// The happening of the realm under way, if any.
     public internal(set) var happening: Happening?
+    /// The Sundering under way, or the last, settled, until the next.
+    public internal(set) var sundering: Sundering?
     /// The deeds the Houses have done this age; absent before any.
     public internal(set) var deedsDone: [DeedDone]?
     /// How many of their charges each House has done, by its id; absent

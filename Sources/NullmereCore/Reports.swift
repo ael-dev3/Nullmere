@@ -53,8 +53,11 @@ extension GameState {
         } else {
             struck = "the walls of \(battle.hold.flatMap { hold($0)?.name } ?? "a hold")"
         }
-        var lines = ["\(striker) dealt \(battle.damageDealt)" + (battle.defenderKind == nil ? " to the ward" : ""),
-                     "\(striker) took \(battle.damageTaken) back"]
+        // In troops, where the realm counted them.
+        let slaying = battle.slain.map { $0 > 0 ? ", slaying \(GameState.counted($0))" : "" } ?? ""
+        let losing = battle.lost.map { $0 > 0 ? ", losing \(GameState.counted($0))" : "" } ?? ""
+        var lines = ["\(striker) dealt \(battle.damageDealt)" + (battle.defenderKind == nil ? " to the ward" : "") + slaying,
+                     "\(striker) took \(battle.damageTaken) back" + losing]
         if battle.defenderFell, let kind = battle.defenderKind {
             lines.append("\(whose(battle.defenderOwner, for: viewer)) \(kind.title) fell")
         }

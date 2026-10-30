@@ -593,6 +593,9 @@ struct UnitPanel: View {
                 }
             }
             Meter(fraction: Double(unit.health) / 100, colour: unit.health > 50 ? Palette.good : Palette.bad, label: "Health")
+            Text(verbatim: UnitPanel.troopsLine(unit, in: state))
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
 
             if let words = UnitPanel.leader(of: unit, in: state) {
                 Text(verbatim: words)
@@ -654,6 +657,11 @@ struct UnitPanel: View {
     }
 
     /// The commander at a company's head, as its panel says it.
+    /// Its troops: how many stand of its whole muster.
+    static func troopsLine(_ unit: Unit, in state: GameState) -> String {
+        "\(GameState.counted(state.troops(of: unit))) of \(GameState.counted(unit.kind.troops(tier: unit.tier))) troops standing"
+    }
+
     static func leader(of unit: Unit, in state: GameState) -> String? {
         guard let id = unit.leader, let commander = state.commander(id) else { return nil }
         return "Led by \(commander.name), \(commander.archetype.named) of level \(commander.level)"

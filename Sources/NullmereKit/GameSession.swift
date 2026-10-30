@@ -1264,6 +1264,7 @@ public final class GameSession {
         case .laidUp(let house, _) where house == player: return .coin
         case .tookBack(let house, _) where house == player: return .coin
         case .yardRaised(_, let id, _, _, _) where alliance == id: return .rise
+        case .favourRose(let house, _) where house == player: return .honour
         case .gearForged(let house, _) where house == player: return .anvil
         case .scoutSeen(let hold, _) where state?.hold(hold)?.owner == player: return .envoy
         case .hunted(let hunt) where hunt.attackerOwner == player: return hunt.attackerKind == .bow ? .loose : .clash
@@ -1292,6 +1293,8 @@ public final class GameSession {
         case .happeningBegun: return .herald
         case .happeningMark(let house, _, _, _) where house == player: return .honour
         case .happeningEnded(_, let leaders): return leaders.contains(player) ? .triumph : .herald
+        case .sunderingBegun: return .herald
+        case .sunderingEnded(let winner, _, _, _): return winner != nil && state?.sundering?.shore(of: player) == winner ? .triumph : .herald
         case .deedDone(let house, _) where house == player: return .honour
         case .chargeDone(let house, _, _) where house == player: return .honour
         case .said(let word) where word.from != player: return .parley

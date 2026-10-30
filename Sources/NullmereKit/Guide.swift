@@ -35,6 +35,7 @@ enum Guide {
         ]),
         Section(title: "Companies", lines: [
             "Lanterns scout. Spears hold the line and take holds. Bows strike from two tiles. Riders are fast. Founders found new holds.",
+            "A company is so many troops at full muster, by its kind and tier: Spears 1,200 at I to 2,400 at V, Bows 1,000 to 2,000, Riders 800 to 1,600. As many stand as its health is a share of, and every battle is told in the troops each side slew and lost. Your army, all your companies of war, is counted in the Realm (6).",
             "Lanterns within two tiles of another House's hold can scout it from its panel, for all their moves: their report, in the Chronicle's Reports and on the hold's panel, tells the companies at its gates and who leads them, its ward, what it raises and musters, the stores its taking would carry off, and how many lie in its Infirmary. Its House sees them watching.",
             "Select a company, then right-click to march, or to strike an enemy within reach. Hovering an enemy shows the battle's odds first.",
             "A company that wins a close fight steps onto the fallen's ground, but never out of a hold, for a garrison holds its ground, nor into a hold it can't take.",
@@ -83,6 +84,8 @@ enum Guide {
         ]),
         Section(title: "Happenings and charges", lines: [
             "From the tenth watch, a happening comes round every thirty, for ten watches: the Long Hunt, the Harvest Fair, the Raising, the Great Muster and the Learned Season. Points bring stores and items at 10, 25 and 50, and the three foremost are honoured as it ends. The Realm (6) shows it.",
+            "Each watch you keep in the realm, there as it turns, wins you favour with the lake, the more for every watch kept unbroken. Favour raises your House by levels, I to X: more gathered at the land's sites, works and studies sooner, companies mustered sooner; every tenth watch kept unbroken brings a favour chest, the richer the higher you stand. It is yours across ages; the Realm (6) shows it.",
+            "From the fifty-fifth watch, and every ninety after, comes the Sundering: for twelve watches the lake's Houses stand as two kingdoms, the Eastern and the Western Shore, each by where its seat stands. Troops of the other shore slain, its holds taken and its alliances' works torn down count for your kingdom; every House of the kingdom that prevails shares its spoils, and its foremost is hailed its sword. The Realm (6) shows how the shores stand.",
             "Charges set your House one thing at a time, each rewarded: the card in the corner says how, and Show me takes you there. Deeds are remembered across ages, and win the keeper renown.",
             "Charges, a happening's marks and lairs broken fill your satchel, shown in the Realm (6). A Salt Hourglass brings a hold's work and muster a watch nearer, from the hold's panel, or your study; caches open into your stores; a Ward Stone makes a hold's ward whole; a Mending Draught mends every hurt company of yours by 30.",
         ]),

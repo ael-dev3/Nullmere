@@ -308,7 +308,7 @@ extension GameState {
     public func bonus(_ bonus: Bonus, for house: Int) -> Int {
         guard houses.indices.contains(house) else { return 0 }
         let studied = houses[house].research.total(bonus) + shrineBonus(bonus, for: house) + heritage(of: house).bonus(bonus)
-            + allianceLoreBonus(bonus, for: house)
+            + allianceLoreBonus(bonus, for: house) + Favour.bonus(bonus, level: houses[house].favour ?? 0)
         return bonus == .studySpeed ? studied + GameState.archivePace * archiveLevel(of: house) : studied
     }
 
