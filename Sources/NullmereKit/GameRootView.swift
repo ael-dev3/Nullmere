@@ -31,6 +31,9 @@ public struct GameRootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.8), value: phaseKey)
+        // The settings sheet is modal: what lies behind it, dimmed and out
+        // of reach, is out of VoiceOver's reach too until it's put away.
+        .accessibilityHidden(app.showsSettings)
         .sheet(isPresented: Binding(get: { app.showsSettings }, set: { app.showsSettings = $0 })) {
             VStack(spacing: 0) {
                 GameSettingsView(app: app)
@@ -44,6 +47,9 @@ public struct GameRootView: View {
             // On the realm's own dark, as its panels are.
             .background(Palette.panel)
             .preferredColorScheme(.dark)
+            // One sheet, named to VoiceOver for what it holds.
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Settings")
         }
         .preferredColorScheme(.dark)
         .onChange(of: contrast, initial: true) { _, contrast in

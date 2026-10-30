@@ -197,7 +197,10 @@ unit.
 | U16 | In a window as short as CI's (1024 by 674 points) the launcher's News and Settings ran under the footer: Back lay beneath the key hint's pill, which took its click; at 960 by 600, or with Larger type, worse | fixed: the open screen lies at its depth where there's room, rises toward the title's foot where there isn't, and draws its lines closer where even that isn't enough, never into the footer; the pill and the water's dark behind words take no clicks. The UI test holds Back above the footer and answering, with Larger type too |
 | U17 | Xcode's contrast audit called faint the light words on the night water that its own pixels show at about sixteen to one, their faintest stroke above eight to one | fixed in how it's judged: each text the audit calls faint is measured from the screen's pixels by WCAG's formula, and fails if its type is under 4.5:1 or can't be measured; where a crowded screen holds more than the audit can judge in its time, every text on it is measured so |
 | U18 | A hold's works and companies read as seventy-odd pieces: a work's name, its level, what it does, its cost and its watches each apart | fixed: each row reads as what it is, what the next step does and costs, and its button |
-| U19 | The app was lost under the audit once ("Lost connection to the application") | watched: the audit job tells any crash report of the app, why and where |
+| U19 | The app was lost under the audit once ("Lost connection to the application") | watched: the audit job tells any crash report of the app, why and where; it hasn't happened again |
+| U20 | With the realm's Settings open, the world behind the sheet stayed within VoiceOver's reach, dimmed by the sheet to three to one; the sheet itself had no name | fixed: what lies behind the modal sheet is hidden from VoiceOver until it's put away, and the sheet reads as Settings |
+| U21 | The UI test's check that the title reads Nullmere Online could be met by the window, named for the app | fixed: it finds the title's own words, smaller than the window |
+| U22 | The pixel measure took a race row's red meter for its type | fixed: a mark far longer than it is thick (a bar, a rule) is judged as a graphic, at WCAG's 3:1, not as type |
 
 ## V: the look
 

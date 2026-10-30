@@ -79,9 +79,8 @@ final class NullmereUITests: XCTestCase {
             window.buttons[panel].click()
             XCTAssertTrue(window.buttons["Back"].waitForExistence(timeout: 10), "\(panel) opens")
             Thread.sleep(forTimeInterval: 1)
-            let title = labelled("Nullmere Online", in: window)
             let heading = window.staticTexts[panel]
-            if heading.exists, title.exists, heading.frame.minY < title.frame.maxY {
+            if let title = titleWord(in: window), heading.exists, heading.frame.minY < title.frame.maxY {
                 found("UIWALK with Larger type, \(panel)'s heading at \(heading.frame.integral) runs into the title at \(title.frame.integral)")
             }
             back(from: "\(panel), with Larger type,", in: window)
@@ -273,7 +272,7 @@ final class NullmereUITests: XCTestCase {
         // A click skips the opening, as it does for a keeper.
         window.click()
         XCTAssertTrue(window.buttons["Play"].waitForExistence(timeout: 20), "The menu, Play first")
-        XCTAssertTrue(labelled("Nullmere Online", in: window).exists, "The title reads Nullmere Online")
+        XCTAssertNotNil(titleWord(in: window), "The title reads Nullmere Online")
         if let screen = NSScreen.main {
             print("UISCREEN \(screen.frame.size) at \(screen.backingScaleFactor)x; the window \(window.frame)")
         }
@@ -292,6 +291,13 @@ final class NullmereUITests: XCTestCase {
         if !window.buttons["Play"].waitForExistence(timeout: 5) {
             found("UIWALK \(panel)'s Back, clicked, didn't return to the menu")
         }
+    }
+
+    /// The title's own words on the lake, a header reading Nullmere Online:
+    /// not the window, nor anything else as large, that bears the name.
+    private func titleWord(in window: XCUIElement) -> XCUIElement? {
+        window.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Nullmere Online"))
+            .allElementsBoundByIndex.first { $0.frame.height < window.frame.height / 2 && $0.frame.width < window.frame.width }
     }
 
     /// The first element under `root` with these words, of any kind: as its
@@ -513,23 +519,27 @@ final class NullmereUITests: XCTestCase {
             0.2126 * linear(UInt8(colour >> 16 & 0xFF)) + 0.7152 * linear(UInt8(colour >> 8 & 0xFF)) + 0.0722 * linear(UInt8(colour & 0xFF))
         }
         func ratio(_ a: Double, _ b: Double) -> Double { (max(a, b) + 0.05) / (min(a, b) + 0.05) }
+        func colour(at pixel: Int) -> UInt32 {
+            UInt32(bytes[pixel * 4]) << 16 | UInt32(bytes[pixel * 4 + 1]) << 8 | UInt32(bytes[pixel * 4 + 2])
+        }
         guard let ground = counts.max(by: { $0.value < $1.value })?.key else { return nil }
         let groundLuminance = luminance(ground)
-        let type = counts.filter { ratio(luminance($0.key), groundLuminance) > 1.5 }
-        guard let mode = type.max(by: { $0.value < $1.value })?.key,
-              let peak = type.keys.max(by: { ratio(luminance($0), groundLuminance) < ratio(luminance($1), groundLuminance) }) else {
-            return Measure(ground: ground, body: ground, bodyRatio: 1, peak: ground, peakRatio: 1, weakest: 1, marks: 0)
-        }
         // The marks: pixels apart from the ground, joined where they touch,
-        // corners and all.
+        // corners and all. A mark far longer than it is thick (a meter's
+        // bar, a rule) is drawn, not written, and judged as a graphic, at
+        // WCAG's 3:1 for those, not as type.
         var seen = [Bool](repeating: false, count: width * height)
+        var written: [Int] = [], drawn: [Int] = []
         var weakest = Double.infinity, marks = 0
         for start in 0..<(width * height) where !seen[start] && ratio(lum[start], groundLuminance) > 1.5 {
-            var stack = [start], brightest = 0.0
+            var stack = [start], members: [Int] = [], brightest = 0.0
+            var left = Int.max, right = Int.min, top = Int.max, bottom = Int.min
             seen[start] = true
             while let pixel = stack.popLast() {
+                members.append(pixel)
                 brightest = max(brightest, ratio(lum[pixel], groundLuminance))
                 let x = pixel % width, y = pixel / width
+                left = min(left, x); right = max(right, x); top = min(top, y); bottom = max(bottom, y)
                 for dy in -1...1 {
                     for dx in -1...1 where dx != 0 || dy != 0 {
                         let nx = x + dx, ny = y + dy
@@ -542,8 +552,22 @@ final class NullmereUITests: XCTestCase {
                     }
                 }
             }
+            let wide = right - left + 1, tall = bottom - top + 1
+            if (wide >= 12 && wide >= 3 * tall) || (tall >= 12 && tall >= 3 * wide) {
+                drawn += members
+                continue
+            }
+            written += members
             marks += 1
             weakest = min(weakest, brightest)
+        }
+        // The type's colours: its commonest, taken for its body, and its
+        // brightest, against the ground.
+        var type: [UInt32: Int] = [:]
+        for pixel in written.isEmpty ? drawn : written { type[colour(at: pixel), default: 0] += 1 }
+        guard let mode = type.max(by: { $0.value < $1.value })?.key,
+              let peak = type.keys.max(by: { ratio(luminance($0), groundLuminance) < ratio(luminance($1), groundLuminance) }) else {
+            return Measure(ground: ground, body: ground, bodyRatio: 1, peak: ground, peakRatio: 1, weakest: 1, marks: 0)
         }
         return Measure(ground: ground, body: mode, bodyRatio: ratio(luminance(mode), groundLuminance),
                        peak: peak, peakRatio: ratio(luminance(peak), groundLuminance), weakest: weakest, marks: marks)
