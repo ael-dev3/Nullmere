@@ -75,6 +75,8 @@ final class WorldRenderer {
     private var tiles: (any MTLTexture)?
     private(set) var land: Land?
     private var meshes: [ModelKey: GPUMesh] = [:]
+    /// What stands still, as the GPU holds it, and the version it was sent at.
+    private var fixed: (buffer: any MTLBuffer, version: Int)?
     /// Where a model's mesh comes from: the library, unless a test says otherwise.
     var meshSource: (ModelKey) -> NullmereModels.Mesh? = { _ in nil }
 
@@ -147,6 +149,8 @@ final class WorldRenderer {
                             bytesPerRow: terrain.columns * MemoryLayout<Float16>.stride)
         }
         land = Land(map: map, terrain: terrain, vertices: vertexBuffer, indices: indexBuffer, indexCount: indices.count, heights: heights)
+        // Another map's furniture is not this one's.
+        fixed = nil
     }
 
     /// Replaces the tile data, creating the texture when the world's size changes.
@@ -212,23 +216,29 @@ final class WorldRenderer {
         encoder.drawIndexedPrimitives(type: .triangle, indexCount: land.indexCount, indexType: .uint32,
                                       indexBuffer: land.indices, indexBufferOffset: 0)
 
-        // What stands on it, kind by kind.
+        // What stands on it, kind by kind: what stands still from the
+        // buffer kept for it, the rest sent afresh.
+        if scene.fixed.isEmpty {
+            fixed = nil
+        } else if fixed?.version != scene.fixedVersion {
+            let still = scene.fixed.flatMap(\.instances)
+            fixed = device.makeBuffer(bytes: still, length: still.count * MemoryLayout<ModelInstance>.stride,
+                                      options: .storageModeShared).map { ($0, scene.fixedVersion) }
+            fixed?.buffer.label = "Nullmere furniture"
+        }
         let instances = scene.batches.flatMap(\.instances)
-        if !instances.isEmpty,
-           let instanceBuffer = device.makeBuffer(bytes: instances, length: instances.count * MemoryLayout<ModelInstance>.stride,
-                                                  options: .storageModeShared),
+        if !instances.isEmpty || fixed != nil,
            let paletteBuffer = device.makeBuffer(bytes: scene.palette, length: scene.palette.count * MemoryLayout<Mat4>.stride,
                                                  options: .storageModeShared) {
             encoder.setRenderPipelineState(modelPipeline)
             encoder.setVertexBuffer(paletteBuffer, offset: 0, index: 2)
-            var first = 0
-            for batch in scene.batches {
-                defer { first += batch.instances.count }
-                guard !batch.instances.isEmpty, let mesh = mesh(for: batch.key) else { continue }
-                encoder.setVertexBuffer(mesh.vertices, offset: 0, index: 0)
-                encoder.setVertexBuffer(instanceBuffer, offset: first * MemoryLayout<ModelInstance>.stride, index: 1)
-                encoder.drawIndexedPrimitives(type: .triangle, indexCount: mesh.indexCount, indexType: .uint32,
-                                              indexBuffer: mesh.indices, indexBufferOffset: 0, instanceCount: batch.instances.count)
+            if let fixed {
+                draw(scene.fixed, from: fixed.buffer, with: encoder)
+            }
+            if !instances.isEmpty,
+               let moving = device.makeBuffer(bytes: instances, length: instances.count * MemoryLayout<ModelInstance>.stride,
+                                              options: .storageModeShared) {
+                draw(scene.batches, from: moving, with: encoder)
             }
         }
 
@@ -240,6 +250,20 @@ final class WorldRenderer {
         encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         encoder.endEncoding()
         return commandBuffer
+    }
+
+    /// Each batch's mesh, once for each of its instances, which lie in
+    /// `buffer` one batch after another.
+    private func draw(_ batches: [ModelBatch], from buffer: any MTLBuffer, with encoder: any MTLRenderCommandEncoder) {
+        var first = 0
+        for batch in batches {
+            defer { first += batch.instances.count }
+            guard !batch.instances.isEmpty, let mesh = mesh(for: batch.key) else { continue }
+            encoder.setVertexBuffer(mesh.vertices, offset: 0, index: 0)
+            encoder.setVertexBuffer(buffer, offset: first * MemoryLayout<ModelInstance>.stride, index: 1)
+            encoder.drawIndexedPrimitives(type: .triangle, indexCount: mesh.indexCount, indexType: .uint32,
+                                          indexBuffer: mesh.indices, indexBufferOffset: 0, instanceCount: batch.instances.count)
+        }
     }
 
     // MARK: Away from the screen

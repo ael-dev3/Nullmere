@@ -32,7 +32,9 @@ final class WorldStagingTests: XCTestCase {
     func testTheWorldIsStagedFromWhatTheKeeperKnows() throws {
         let session = try session()
         let frame = session.sceneFrame(at: 4)
-        let keys = Set(frame.batches.map(\.key))
+        let keys = Set((frame.fixed + frame.batches).map(\.key))
+        XCTAssertTrue(frame.fixed.allSatisfy { if case .furnishing = $0.key { return true } else { return false } },
+                      "only the land's furniture stands still")
         XCTAssertTrue(keys.contains(.keep(seat: true)), "the keeper's seat")
         XCTAssertTrue(keys.contains { if case .furnishing = $0 { return true } else { return false } }, "the land's furniture")
         XCTAssertTrue(keys.contains { if case .figure = $0 { return true } else { return false } }, "the keeper's companies")
@@ -42,10 +44,10 @@ final class WorldStagingTests: XCTestCase {
                        "a keep for each hold the keeper knows, and none for the rest")
         XCTAssertLessThan(known, session.state.holds.count)
         XCTAssertGreaterThan(frame.palette.count, 1, "the figures posed")
-        // Laid out once: drawn again, the same land.
+        // Laid out once: drawn again, the same land, not sent again.
         let again = session.sceneFrame(at: 4)
-        XCTAssertEqual(again.batches.filter { if case .furnishing = $0.key { return true } else { return false } },
-                       frame.batches.filter { if case .furnishing = $0.key { return true } else { return false } })
+        XCTAssertEqual(again.fixed, frame.fixed)
+        XCTAssertEqual(again.fixedVersion, frame.fixedVersion)
         // Still, nothing flies.
         session.motion = .still
         let still = session.sceneFrame(at: 4)

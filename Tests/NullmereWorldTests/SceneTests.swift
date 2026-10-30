@@ -35,6 +35,10 @@ final class SceneTests: XCTestCase {
         frame.batches = [ModelBatch(key: .scaffold, instances: [ModelInstance(model: .identity), ModelInstance(model: .identity)]),
                          ModelBatch(key: .prop(.arrow), instances: [ModelInstance(model: .identity)])]
         XCTAssertEqual(frame.instanceCount, 3)
+        frame.fixed = [ModelBatch(key: .furnishing(.fir), instances: [ModelInstance(model: .identity)])]
+        frame.fixedVersion = 2
+        XCTAssertEqual(frame.instanceCount, 4, "what stands still counts too")
+        XCTAssertEqual(SceneFrame(fixed: frame.fixed, fixedVersion: 2).fixedVersion, 2)
     }
 
     func testAFramesUniformsFollowTheCameraAndTheLand() throws {

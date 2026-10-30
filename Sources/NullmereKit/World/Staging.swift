@@ -63,7 +63,9 @@ extension GameSession {
         let flights = WorldStage.flights(arrows: full ? arrows(at: now) : [],
                                          birdsOver: full ? Vec3(lake.x, Relief.waterline, lake.z) : nil,
                                          hearths: full ? hearths.filter { isVisible($0.hex) } : [], time: t, into: &frame)
-        frame.batches = furniture + holds + companies + flights
+        frame.fixed = furniture
+        frame.fixedVersion = stage.furnitureVersion
+        frame.batches = holds + companies + flights
         return frame
     }
 

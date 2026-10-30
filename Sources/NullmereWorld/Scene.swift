@@ -18,13 +18,20 @@ public struct ModelBatch: Equatable, Sendable {
 public struct SceneFrame: Equatable, Sendable {
     public var batches: [ModelBatch]
     public var palette: [Mat4]
+    /// What stands still from frame to frame, the land's furniture, at rest
+    /// in the palette's first pose; the GPU keeps it, sent again only when
+    /// `fixedVersion` moves.
+    public var fixed: [ModelBatch]
+    public var fixedVersion: Int
 
-    public init(batches: [ModelBatch] = [], palette: [Mat4] = [.identity]) {
+    public init(batches: [ModelBatch] = [], palette: [Mat4] = [.identity], fixed: [ModelBatch] = [], fixedVersion: Int = 0) {
         self.batches = batches
         self.palette = palette.isEmpty ? [.identity] : palette
+        self.fixed = fixed
+        self.fixedVersion = fixedVersion
     }
 
-    public var instanceCount: Int { batches.reduce(0) { $0 + $1.instances.count } }
+    public var instanceCount: Int { (fixed + batches).reduce(0) { $0 + $1.instances.count } }
 
     /// Adds a model's pose to the palette and returns where it begins.
     public mutating func add(pose: [Mat4]) -> UInt32 {

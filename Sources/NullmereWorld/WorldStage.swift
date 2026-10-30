@@ -147,6 +147,8 @@ public final class WorldStage: @unchecked Sendable {
     private var furnitureByHex: [Hex: [Piece]] = [:]
     private var furnished: (occupied: Set<Hex>, holds: Set<Hex>)?
     private var furniture: [ModelBatch] = []
+    /// Moves each time the furniture is laid out again.
+    public private(set) var furnitureVersion = 0
     private var laid: [Int: (hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising?, pieces: [Piece])] = [:]
     /// The land's height where figures have stood, by the 64th of a unit:
     /// worked out once, not each frame.
@@ -191,6 +193,7 @@ public final class WorldStage: @unchecked Sendable {
         }
         furniture = WorldStage.batches(placed)
         furnished = (occupied, holds)
+        furnitureVersion += 1
         return furniture
     }
 

@@ -32,6 +32,7 @@ final class StageTests: XCTestCase {
             XCTAssertTrue(batch.instances.allSatisfy { $0.palette == 0 && $0.colour.w == 0 && $0.flags == 0 })
         }
         XCTAssertEqual(stage.furnish(occupied: [], holds: []), all, "kept, not laid out again")
+        XCTAssertEqual(stage.furnitureVersion, 1)
 
         // A company comes to a wooded hex: its heart is cleared, and nothing else moves.
         let wooded = try XCTUnwrap(Self.state.map.hexes.first { hex in
@@ -42,6 +43,7 @@ final class StageTests: XCTestCase {
             }
         })
         let cleared = stage.furnish(occupied: [wooded], holds: [])
+        XCTAssertEqual(stage.furnitureVersion, 2, "laid out again, and sent again")
         let centre = Relief.centre(of: wooded)
         for instance in cleared.flatMap(\.instances) where instance.hex == SIMD2(Int32(wooded.q), Int32(wooded.r)) {
             let p = instance.model.c3
