@@ -34,7 +34,7 @@ extension GameSession {
     }
 
     /// From one height toward another over a rise's moment, eased in and out.
-    static func eased(from: Float, to: Float, since start: Date, at now: Date) -> Float {
+    nonisolated static func eased(from: Float, to: Float, since start: Date, at now: Date) -> Float {
         let t = Float(min(max(now.timeIntervalSince(start) / WorldStage.riseSeconds, 0), 1))
         return from + (to - from) * t * t * (3 - 2 * t)
     }
