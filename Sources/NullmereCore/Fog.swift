@@ -41,6 +41,8 @@ extension GameState {
         // company in sight.
         let leading = Set(view.units.compactMap(\.leader))
         view.commanders = commanders?.filter { $0.owner == house || leading.contains($0.id) }
+        // The wilds in sight.
+        view.wilds = wilds?.filter { map.index(of: $0.position).map { seen[$0] } ?? false }
         return view
     }
 }
@@ -79,6 +81,8 @@ extension GameState {
                 return commander(id)?.owner == house
             case .skillFired(_, let owner, _, let at):
                 return owner == house || visible(at)
+            case .hunted(let hunt):
+                return hunt.attackerOwner == house || visible(hunt.at)
             case .promoted(_, let owner, _):
                 return owner == house
             case .ruinSearched(let at, let by, _):

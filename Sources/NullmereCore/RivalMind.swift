@@ -600,7 +600,11 @@ struct RivalMind {
             }
             return unit.fortified ? [] : perform(.fortify(unit: unit.id), in: &state)
         }
-        // At peace: wait near the nearest hold.
+        // At peace: hunt the wilds near its land, if the odds are good.
+        if let prey = prey(for: unit, in: state) {
+            return perform(.move(unit: unit.id, to: prey), in: &state)
+        }
+        // Or wait near the nearest hold.
         if let home = state.holds(of: house).min(by: { $0.position.distance(to: unit.position) < $1.position.distance(to: unit.position) }),
            home.position.distance(to: unit.position) > 2 {
             return perform(.move(unit: unit.id, to: home.position), in: &state)
@@ -610,6 +614,32 @@ struct RivalMind {
 
     /// How close to a besieged hold the army gathers before it goes in.
     static let siegeReach = 4
+    /// How far from its own holds a steward's company goes hunting.
+    static let huntingGround = 9
+
+    /// The wilds a company would hunt: the nearest within its hunting
+    /// ground that it would strike down, blow on blow from its reach, with
+    /// a tenth of its health to spare. The ambitious and the cunning go
+    /// further afield.
+    func prey(for unit: Unit, in state: GameState) -> Hex? {
+        guard unit.health >= 60, !state.wildsStanding.isEmpty else { return nil }
+        let temper = state.houses[house].temperament
+        let ground = RivalMind.huntingGround + (temper == .ambitious || temper == .cunning ? 3 : 0)
+        let holds = state.holds(of: house).map(\.position)
+        let near = state.wildsStanding.filter { wild in
+            wild.position.distance(to: unit.position) <= ground && holds.contains { $0.distance(to: wild.position) <= ground }
+        }
+        let fit = near.filter { wild in
+            let odds = state.forecast(unit, against: wild, fromReach: true)
+            // Each blow less what it mends between them.
+            let dealt = (odds.dealt.lowerBound + odds.dealt.upperBound) / 2 - GameState.wildsMending
+            let taken = (odds.taken.lowerBound + odds.taken.upperBound) / 2
+            guard dealt > 0 else { return false }
+            let blows = (wild.health + dealt - 1) / dealt
+            return taken * blows * 10 < unit.health * 9
+        }
+        return fit.min { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }?.position
+    }
 
     struct Siege {
         let target: Hex
@@ -666,7 +696,7 @@ struct RivalMind {
         guard unit.destination == nil else { return [] }
         let explored = state.houses[house].explored
         let map = state.map
-        let occupied = Set(state.units.map(\.position))
+        let occupied = Set(state.units.map(\.position) + state.wildsStanding.map(\.position))
         // Known ruins first, then the nearest edge of the unknown.
         var seen: Set<Hex> = [unit.position]
         var queue = [unit.position]
@@ -720,6 +750,7 @@ struct RivalMind {
                 if owners[index].map({ state.hold($0)?.owner != house }) ?? false { continue }
                 if state.holds.contains(where: { $0.position.distance(to: hex) < 4 }) { continue }
                 if let other = state.unit(at: hex), other.owner != house { continue }
+                if state.wild(at: hex) != nil { continue }
                 let score = siteScore(hex, in: state) * 3 - hex.distance(to: origin)
                 if best == nil || (score, hex) > (best!.score, best!.hex) {
                     best = (score, hex)

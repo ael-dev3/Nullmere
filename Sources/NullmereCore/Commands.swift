@@ -205,6 +205,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case commanderWounded(commander: Int, house: Int)
     /// A commander's active skill fires in a battle.
     case skillFired(commander: Int, house: Int, skill: Skill, at: Hex)
+    /// A company strikes a company of the wilds.
+    case hunted(Hunt)
 }
 
 /// One exchange of blows.

@@ -91,9 +91,9 @@ extension GameState {
         let unit = units[index]
         guard unit.position != target else { throw .alreadyThere }
 
-        // Marching onto an enemy within reach is an attack.
-        if let foe = foe(at: target, for: house), isAtWar(house, foe.owner), unit.kind.isMilitary,
-           unit.position.distance(to: target) <= unit.kind.range {
+        // Marching onto an enemy within reach is an attack, and onto the wilds.
+        if unit.kind.isMilitary, unit.position.distance(to: target) <= unit.kind.range,
+           wild(at: target) != nil || foe(at: target, for: house).map({ isAtWar(house, $0.owner) }) == true {
             return try attack(with: unitID, at: target, as: house)
         }
         guard unknown || path(for: unit, to: target) != nil else { throw .noPath }
@@ -124,8 +124,8 @@ extension GameState {
                 route = planned
             }
             let next = route[0]
-            // Another company holds the destination: wait beside it.
-            if self.unit(at: next) != nil { break }
+            // Another company holds the destination, or the wilds: wait beside it.
+            if self.unit(at: next) != nil || wild(at: next) != nil { break }
             if let hold = hold(at: next), hold.owner != unit.owner {
                 units[index].destination = nil
                 break
@@ -190,6 +190,15 @@ extension GameState {
         let attacker = units[index]
         guard attacker.kind.isMilitary else { throw .cannotFight }
         guard attacker.movesLeft > 0 else { throw .noMovesLeft }
+        // The wilds are every House's foe: no war is needed to strike them.
+        if let wild = wild(at: target) {
+            guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
+            units[index].movesLeft = 0
+            units[index].acted = true
+            units[index].fortified = false
+            units[index].destination = nil
+            return strike(wild: wild.id, with: unitID)
+        }
         guard let foe = foe(at: target, for: house) else { throw .nothingToAttack }
         guard isAtWar(house, foe.owner) else { throw .notAtWar(foe.owner) }
         guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
@@ -279,7 +288,7 @@ extension GameState {
         return (attack, defense)
     }
 
-    private mutating func gainExperience(_ unitID: Int) -> [GameEvent] {
+    mutating func gainExperience(_ unitID: Int) -> [GameEvent] {
         guard let index = unitIndex(unitID) else { return [] }
         let rank = units[index].rank
         units[index].experience += 1
@@ -288,7 +297,7 @@ extension GameState {
     }
 
     /// Returns whether the unit fell.
-    private mutating func applyDamage(_ damage: Int, to unitID: Int, events: inout [GameEvent]) -> Bool {
+    mutating func applyDamage(_ damage: Int, to unitID: Int, events: inout [GameEvent]) -> Bool {
         guard let index = unitIndex(unitID) else { return false }
         units[index].health -= damage
         guard units[index].health <= 0 else { return false }

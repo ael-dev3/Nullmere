@@ -4,6 +4,8 @@ public struct Forecast: Equatable, Sendable {
     public enum Target: Equatable, Sendable {
         case unit(UnitKind)
         case hold(Int)
+        /// A company of the wilds, of its kind and level.
+        case wild(WildKind, level: Int)
     }
 
     public let target: Target
@@ -35,9 +37,10 @@ extension GameState {
     /// there now.
     public func forecast(unit unitID: Int, at target: Hex) -> Forecast? {
         guard let attacker = unit(unitID), attacker.kind.isMilitary, attacker.movesLeft > 0,
-              attacker.position.distance(to: target) <= attacker.kind.range,
-              let foe = foe(at: target, for: attacker.owner), isAtWar(attacker.owner, foe.owner)
-        else { return nil }
+              attacker.position.distance(to: target) <= attacker.kind.range else { return nil }
+        // The wilds are every House's foe.
+        if let wild = wild(at: target) { return forecast(attacker, against: wild) }
+        guard let foe = foe(at: target, for: attacker.owner), isAtWar(attacker.owner, foe.owner) else { return nil }
         let ranged = attacker.position.distance(to: target) > 1
 
         // A commander's fury is no chance: whether it fires is known.

@@ -78,6 +78,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// Every commander of the realm, each at its id's place; absent in
     /// saves from before commanders, which raise them at the next watch.
     var commanders: [Commander]?
+    /// The wilds of the far country; absent in saves from before them,
+    /// which raise them as the watch turns.
+    var wilds: [Wild]?
 
     public var player: Int { houses.first { $0.isPlayer }?.id ?? 0 }
 
@@ -369,7 +372,7 @@ public struct GameState: Codable, Equatable, Sendable {
     mutating func placeUnit(_ kind: UnitKind, tier: Int = 1, for house: Int, near hex: Hex) -> Unit? {
         let spot = hex.spiral(3).first { candidate in
             guard let tile = map[candidate], tile.terrain.isPassable else { return false }
-            return unit(at: candidate) == nil && (hold(at: candidate).map { $0.owner == house } ?? true)
+            return unit(at: candidate) == nil && wild(at: candidate) == nil && (hold(at: candidate).map { $0.owner == house } ?? true)
         }
         guard let spot else { return nil }
         let placed = Unit(id: takeID(), kind: kind, owner: house, position: spot, tier: tier)

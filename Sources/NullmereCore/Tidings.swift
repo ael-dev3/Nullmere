@@ -46,6 +46,15 @@ extension GameState {
             guard let commander = commander(id) else { return nil }
             if house == viewer { return Tidings("\(commander.name) calls \(skill.title).", .good) }
             return Tidings("\(commander.name) of \(houses[house].title) calls \(skill.title).", .bad)
+        case .hunted(let hunt):
+            let prey = "\(hunt.wildKind.title) of level \(hunt.level)"
+            guard hunt.attackerOwner == viewer else {
+                let felled = hunt.wildFell ? ", and they fall" : ""
+                return Tidings("\(houses[hunt.attackerOwner].title)'s \(hunt.attackerKind.title) strike \(prey)\(felled).", .neutral)
+            }
+            let fall = hunt.wildFell ? (hunt.spoils.isZero ? "; they fall" : "; they fall, and leave \(hunt.spoils)") : ""
+            let lost = hunt.attackerFell ? "; your company is lost" : ""
+            return Tidings("Your \(hunt.attackerKind.title) strike \(prey) for \(hunt.damageDealt)\(fall)\(lost).", hunt.attackerFell ? .bad : .good)
         default:
             return nil
         }

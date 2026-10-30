@@ -538,6 +538,16 @@ realm; keepers are told in plain words, never a status code.
   enough battles. A commander takes up a company of war at or beside one of
   its House's holds; if the company falls, it is carried home wounded for
   four watches.
+- **The wilds.** The realm raises hostile companies in the far country, six
+  tiles or more from any hold: Saltwights on the flats, Blackwood Reavers,
+  Barrowkin, Spine Hunters, the Drowned on the strand. They are of levels I
+  to X, stronger the further from the holds and the later in the age, two
+  for each seat at most. They never march and take no hold, and stand in
+  the way. Any House may strike them without a war; they strike back at a
+  company beside them, and mend while left be. What falls with them is
+  stores for the House, and experience for the company's commander, more
+  than any other battle gives. Stewards hunt the wilds near their land when
+  they would strike them down with health to spare.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is

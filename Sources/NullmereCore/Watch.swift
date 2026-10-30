@@ -46,6 +46,7 @@ extension GameState {
         for unit in units.sorted(by: { $0.id < $1.id }) where unit.destination != nil {
             events += march(unit.id)
         }
+        raiseWilds()
         refreshSight()
         events += checkForEnd()
         takeSnapshot()
@@ -238,6 +239,11 @@ func ordinal(_ number: Int) -> String {
     case 3: return "third"
     case 4: return "fourth"
     case 5: return "fifth"
+    case 6: return "sixth"
+    case 7: return "seventh"
+    case 8: return "eighth"
+    case 9: return "ninth"
+    case 10: return "tenth"
     default: return "\(number)th"
     }
 }

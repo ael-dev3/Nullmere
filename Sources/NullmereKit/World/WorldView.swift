@@ -615,6 +615,7 @@ struct ForecastOverlay: View {
         switch forecast.target {
         case .unit(let kind): return kind.title
         case .hold(let id): return session.state.hold(id)?.name ?? "the hold"
+        case .wild(let kind, _): return kind.title
         }
     }
 }

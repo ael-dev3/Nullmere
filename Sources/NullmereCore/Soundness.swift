@@ -49,6 +49,22 @@ extension GameState {
         for envoy in envoys where !houseIDs.contains(envoy.from) || !houseIDs.contains(envoy.to) || envoy.from == envoy.to {
             found.append("Envoy \(envoy.id) runs from \(envoy.from) to \(envoy.to)")
         }
+        var wildIDs: Set<Int> = []
+        for wild in wildsStanding {
+            if !wildIDs.insert(wild.id).inserted || unitIDs.contains(wild.id) || holdIDs.contains(wild.id) {
+                found.append("The wilds' id \(wild.id) is given twice")
+            }
+            if wild.id >= nextID { found.append("The wilds' id \(wild.id) was given out before the next id \(nextID)") }
+            guard let tile = map[wild.position], tile.terrain.isPassable, !tile.terrain.isWater else {
+                found.append("Wilds \(wild.id) stand where none can, at \(wild.position)")
+                continue
+            }
+            if unit(at: wild.position) != nil || hold(at: wild.position) != nil || !places.insert(wild.position).inserted {
+                found.append("Wilds \(wild.id) share their ground at \(wild.position)")
+            }
+            if !(1...100).contains(wild.health) { found.append("Wilds \(wild.id) have \(wild.health) health") }
+            if !(1...Wild.highestLevel).contains(wild.level) { found.append("Wilds \(wild.id) are of level \(wild.level)") }
+        }
         for (index, commander) in roster.enumerated() {
             if commander.id != index + 1 { found.append("Commander \(commander.id) stands numbered \(index + 1)") }
             if !houseIDs.contains(commander.owner) { found.append("Commander \(commander.name) serves no House (\(commander.owner))") }

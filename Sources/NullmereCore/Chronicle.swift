@@ -26,6 +26,8 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         case learning
         /// A commander comes to a House, or rises to renown.
         case commander
+        /// A great company of the wilds falls.
+        case hunt
     }
 
     public let watch: Int

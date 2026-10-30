@@ -14,15 +14,19 @@ final class DepthPartsTests: XCTestCase {
         for house in realm.world.houses.indices {
             for _ in 0..<3 { realm.world.raiseCommander(for: house, using: &random) }
         }
+        // The wilds risen to their number.
+        for _ in 0..<30 { realm.world.raiseWilds() }
         return realm
     }
 
     func testTheDeeperListsComeBackFromTheirPages() throws {
         let realm = try realm()
         XCTAssertGreaterThan(realm.world.roster.count, RealmState.partPage)
+        XCTAssertEqual(realm.world.wildsStanding.count, 24)
         let parts = try realm.parts(using: Scene.encoder)
         XCTAssertNotNil(parts["commanders.0"])
         XCTAssertNotNil(parts["commanders.1"])
+        XCTAssertNotNil(parts["wilds.0"])
         XCTAssertFalse(parts["head"]?.contains("Saltborn") ?? true, "No commander kept in the head")
         XCTAssertEqual(try RealmState(parts: parts), realm)
     }
@@ -30,13 +34,17 @@ final class DepthPartsTests: XCTestCase {
     func testARealmFromBeforeTheDeeperListsComesBackWithoutThem() throws {
         var older = try realm()
         older.world.commanders = nil
+        older.world.wilds = nil
         let parts = try older.parts(using: Scene.encoder)
         XCTAssertNil(parts["commanders.0"])
+        XCTAssertNil(parts["wilds.0"])
         let back = try RealmState(parts: parts)
         XCTAssertNil(back.world.commanders)
+        XCTAssertNil(back.world.wilds)
         var played = back
         _ = played.world.endWatch()
         XCTAssertTrue(played.world.livingHouses.allSatisfy { !played.world.commanders(of: $0.id).isEmpty }, "Taken up as it plays on")
+        XCTAssertFalse(played.world.wildsStanding.isEmpty)
     }
 
     func testAPageMissingIsRefused() throws {

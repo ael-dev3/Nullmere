@@ -41,6 +41,8 @@ extension RealmState {
         // Lists a realm from before them doesn't have stay absent from it.
         try paged("commanders", world.commanders)
         head.world.commanders = world.commanders.map { _ in [] }
+        try paged("wilds", world.wilds)
+        head.world.wilds = world.wilds.map { _ in [] }
         parts["head"] = try text(head)
         return parts
     }
@@ -69,6 +71,9 @@ extension RealmState {
         }
         if realm.world.commanders != nil {
             realm.world.commanders = try pages("commanders", of: Commander.self)
+        }
+        if realm.world.wilds != nil {
+            realm.world.wilds = try pages("wilds", of: Wild.self)
         }
         self = realm
     }

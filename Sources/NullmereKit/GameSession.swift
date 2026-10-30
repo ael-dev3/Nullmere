@@ -588,7 +588,7 @@ public final class GameSession {
     static func isRealmsToTell(_ event: GameEvent) -> Bool {
         switch event {
         case .battle, .unitLost, .holdStruck, .holdCaptured, .seatMoved, .promoted, .ruinSearched, .holdFounded,
-             .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired:
+             .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired, .hunted:
             return true
         default:
             return false

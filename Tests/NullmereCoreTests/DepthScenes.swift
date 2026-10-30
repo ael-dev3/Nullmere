@@ -63,6 +63,23 @@ extension GameState {
         return unit.id
     }
 
+    /// Raises a company of the wilds at a hex; its id.
+    @discardableResult
+    mutating func raise(_ kind: WildKind, level: Int, at hex: Hex) -> Int {
+        let wild = Wild(id: takeID(), kind: kind, level: level, position: hex, raised: watch)
+        wilds = (wilds ?? []) + [wild]
+        return wild.id
+    }
+
+    /// Open greyfield with greyfield all round, well away from every hold.
+    func openGround(awayFromHolds distance: Int = 3) -> Hex? {
+        map.hexes.first { hex in
+            map[hex]?.terrain == .greyfield && map.neighbors(of: hex).allSatisfy { map[$0]?.terrain == .greyfield }
+                && hex.spiral(distance).allSatisfy { hold(at: $0) == nil } && isClear(hex)
+                && map.neighbors(of: hex).allSatisfy { isClear($0) && wild(at: $0) == nil }
+        }
+    }
+
     /// Fills a House's stores to what it can keep.
     mutating func richen(_ house: Int) {
         let room = storage(of: house)
