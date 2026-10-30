@@ -333,6 +333,7 @@ final class NullmereUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 2.5)
         print("UIAUDIT-SIZE \(screen): \(app.staticTexts.count) texts, \(app.buttons.count) buttons")
         faint = []
+        sheet = app.sheets.allElementsBoundByIndex.first?.frame
         // In parts, each with its own time, so a crowded screen is judged
         // whole: the checks in four, then the contrast of every text,
         // worked out from the screen's pixels and so the longest.
@@ -363,6 +364,11 @@ final class NullmereUITests: XCTestCase {
     /// The texts the audit last found faint, to be measured.
     private var faint: [XCUIElement] = []
 
+    /// Where a modal sheet lies over the window, while one is up: what lies
+    /// outside it is the window behind, which the Mac dims and holds out of
+    /// reach until the sheet is put away.
+    private var sheet: CGRect?
+
     /// How far up from its foot a scrolling panel fades its rows (the
     /// game's `scrollEdgeFade`).
     private static let scrollFade: CGFloat = 18
@@ -380,6 +386,13 @@ final class NullmereUITests: XCTestCase {
         // shown isn't judged, unless the audit judged it.
         guard window.frame.contains(frame), frame.width >= 4, frame.height >= 4 else {
             if flagged { found("UIAUDIT \(screen): Contrast failed, and '\(words.prefix(60))' lies where it can't be measured: \(frame.integral)") }
+            return
+        }
+        // Behind a modal sheet, not in it: inactive, dimmed by the Mac, and
+        // out of reach until the sheet is put away; WCAG asks no contrast
+        // of it.
+        if let sheet, !sheet.contains(frame) {
+            print("UIAUDIT-NOTE \(screen): '\(words.prefix(40))' lies behind the sheet, inactive until it is put away")
             return
         }
         if let panel = scrolling.first(where: { $0.intersects(frame) }),
@@ -410,6 +423,13 @@ final class NullmereUITests: XCTestCase {
                 // field doesn't list it: the Mac's own, in every app.
                 if editing, issue.auditType == .parentChild, issue.element == nil {
                     print("UIAUDIT-NOTE \(screen): the field editor's parentage, AppKit's own, left aside")
+                    return true
+                }
+                // A sheet's own container, which SwiftUI makes for it and
+                // names nothing: the sheet reads by what it holds.
+                if issue.auditType == .sufficientElementDescription, let element = issue.element, element.elementType == .group,
+                   element.label.isEmpty, let sheet = self.sheet, element.frame == sheet {
+                    print("UIAUDIT-NOTE \(screen): the sheet's own container, SwiftUI's, left aside")
                     return true
                 }
                 // Type called faint is measured, and judged by that.

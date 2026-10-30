@@ -31,9 +31,6 @@ public struct GameRootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.8), value: phaseKey)
-        // The settings sheet is modal: what lies behind it, dimmed and out
-        // of reach, is out of VoiceOver's reach too until it's put away.
-        .accessibilityHidden(app.showsSettings)
         .sheet(isPresented: Binding(get: { app.showsSettings }, set: { app.showsSettings = $0 })) {
             VStack(spacing: 0) {
                 GameSettingsView(app: app)
@@ -221,7 +218,8 @@ private struct KeyHints: View {
             .padding(.vertical, 6)
             // As dark as a panel, so it reads over the palest ground.
             .background(Palette.panel, in: RoundedRectangle(cornerRadius: 3))
-            .accessibilityHidden(true)
+            // Read as VoiceOver says keys, not as marks to spell.
+            .accessibilityLabel("Keys: question mark for the Guide, Tab for the next company, Command-Return when you're ready")
     }
 }
 
