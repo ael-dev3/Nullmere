@@ -298,7 +298,10 @@ as the realm will, and takes the realm's word as final.
 - **What you see.** The realm tells each keeper only what their House
   could know: the ground they've explored, the companies in their sight,
   their own stores, and the envoys and news that reach them. The world
-  itself never leaves the server.
+  itself never leaves the server. An order the realm refuses is refused in
+  the words your own view of the world would give, so a refusal never
+  tells of a company out of your sight: one you can't see is, to an order,
+  not there, and a strike where you can't see finds nothing to strike.
 - **Gifts.** Send stores to any House you aren't at war with. Stewards
   remember gifts for twenty watches: a war seems older to them, and enough
   goodwill wins a pact, unless you once made war on them or a pact between

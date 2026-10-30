@@ -334,16 +334,24 @@ public struct RealmState: Codable, Equatable, Sendable {
 
     // MARK: Orders and watches
 
-    /// A keeper's order, for the House they hold.
+    /// A keeper's order, for the House they hold. One refused is refused in
+    /// the words the keeper's own view of the world would give, whenever
+    /// that view refuses it too: never for a reason only what their House
+    /// can't see could give, such as a company out of its sight.
     public mutating func perform(_ command: Command, by id: String) throws(RealmError) -> [GameEvent] {
         guard let keeper = keeper(id) else { throw .unknownKeeper }
         guard let house = keeper.house, !world.houses[house].isEliminated else { throw .noSeat }
+        // A strike only at what their House can see: one loosed into the
+        // dark would tell them what stood there.
+        if case .attack = command, let refusal = world.view(for: house).refusal(of: command, as: house) {
+            throw .rule(refusal)
+        }
         do {
             let events = try world.perform(command, as: house)
             if let index = keepers.firstIndex(where: { $0.id == id }) { keepers[index].hasPlayed = true }
             return events
         } catch {
-            throw .rule(error)
+            throw .rule(world.view(for: house).refusal(of: command, as: house) ?? error)
         }
     }
 

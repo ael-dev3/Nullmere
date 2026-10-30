@@ -6,7 +6,8 @@ import XCTest
 /// else's age, the fallen don't hold up a watch, a seat counted free can be
 /// taken, a new age seats those still coming, a name is short however it
 /// is written, a House a keeper takes up never bends the knee for them, and
-/// a keeper's view tells nothing another House keeps to itself.
+/// neither a keeper's view nor the words of a refusal tell anything another
+/// House keeps to itself.
 final class RealmFairnessTests: XCTestCase {
     private func realm(seats: Int = 4) -> RealmState {
         RealmState(name: "The Nullmere", seed: "fair realm", seats: seats, radius: 18, watchLength: 60, now: 0)
@@ -145,6 +146,82 @@ final class RealmFairnessTests: XCTestCase {
         let events = try realm.perform(.answer(envoy: envoy.id, accept: true), by: "id-ama")
         XCTAssertNil(realm.world.houses[bel].liege)
         XCTAssertTrue(events.contains(.proposalAnswered(proposal: .fealty, from: bel, to: ama, accepted: false)))
+    }
+
+    /// An order naming a company out of the keeper's sight, or striking where
+    /// they can't see, is refused just as if nothing stood there: a refusal
+    /// is no spyglass.
+    func testARefusalTellsNoMoreThanTheKeepersOwnView() throws {
+        var realm = realm()
+        let ama = try XCTUnwrap(realm.arrive("id-ama", name: "Ama", now: 1).house)
+        let bel = try XCTUnwrap(realm.arrive("id-bel", name: "Bel", now: 1).house)
+        let seen = realm.world.visibility(for: ama)
+        func inSight(_ hex: Hex) -> Bool { realm.world.map.index(of: hex).map { seen[$0] } ?? false }
+        // Out of sight, and in no hold, whose walls every House knows.
+        let hidden = try XCTUnwrap(realm.world.units(of: bel).first { !inSight($0.position) && realm.world.hold(at: $0.position) == nil })
+        let empty = try XCTUnwrap(realm.world.map.hexes.first { hex in
+            !inSight(hex) && realm.world.unit(at: hex) == nil && realm.world.hold(at: hex) == nil
+        })
+        let spear = try XCTUnwrap(realm.world.units(of: ama).first { $0.kind == .spear })
+        func refusal(_ command: Command) -> String? {
+            do {
+                _ = try realm.perform(command, by: "id-ama")
+                return nil
+            } catch {
+                return error.description
+            }
+        }
+        // Their company, out of sight, is no more there than one never made.
+        XCTAssertEqual(refusal(.fortify(unit: hidden.id)), refusal(.fortify(unit: 987_654)))
+        XCTAssertEqual(refusal(.fortify(unit: hidden.id)), RuleError.unknownUnit.description)
+        // A strike where Ama can't see, at peace and at war.
+        XCTAssertEqual(refusal(.attack(unit: spear.id, target: hidden.position)), refusal(.attack(unit: spear.id, target: empty)))
+        _ = try realm.perform(.declareWar(on: bel), by: "id-ama")
+        XCTAssertEqual(refusal(.attack(unit: spear.id, target: hidden.position)), refusal(.attack(unit: spear.id, target: empty)))
+        XCTAssertEqual(refusal(.attack(unit: spear.id, target: empty)), RuleError.nothingToAttack.description)
+
+        // A company in sight is another's, and said so.
+        let mine = try XCTUnwrap(realm.world.seat(of: ama)?.position)
+        let beside = try XCTUnwrap(realm.world.map.neighbors(of: mine).first { hex in
+            realm.world.map[hex]?.terrain.isPassable == true && realm.world.unit(at: hex) == nil && realm.world.hold(at: hex) == nil
+        })
+        let index = try XCTUnwrap(realm.world.units.firstIndex { $0.id == hidden.id })
+        realm.world.units[index].position = beside
+        XCTAssertEqual(refusal(.fortify(unit: hidden.id)), RuleError.notYours.description)
+    }
+
+    /// A bow in the mist, its foe in reach but out of its sight: the realm
+    /// strikes only what the keeper's House can see.
+    func testNoStrikeIsLoosedIntoTheDark() throws {
+        var realm = realm()
+        let ama = try XCTUnwrap(realm.arrive("id-ama", name: "Ama", now: 1).house)
+        let bel = try XCTUnwrap(realm.arrive("id-bel", name: "Bel", now: 1).house)
+        _ = try realm.perform(.declareWar(on: bel), by: "id-ama")
+        // A bow of Ama's stands alone by Bel's seat, a company of Bel's two
+        // tiles off; Rising Mist shortens the bow's sight to one.
+        let world = realm.world
+        func free(_ hex: Hex) -> Bool {
+            world.map[hex]?.terrain.isPassable == true && world.map[hex]?.terrain != .barrow
+                && world.unit(at: hex) == nil && world.hold(at: hex) == nil
+        }
+        let theirs = try XCTUnwrap(world.seat(of: bel)?.position)
+        let (stand, foe) = try XCTUnwrap(world.map.hexes.lazy.filter { $0.distance(to: theirs) == 4 && free($0) }.compactMap { stand in
+            stand.spiral(2).first { $0.distance(to: stand) == 2 && free($0) }.map { (stand, $0) }
+        }.first)
+        let bow = Unit(id: realm.world.takeID(), kind: .bow, owner: ama, position: stand)
+        let enemy = Unit(id: realm.world.takeID(), kind: .spear, owner: bel, position: foe)
+        realm.world.units += [bow, enemy]
+        realm.world.omen = Omen(kind: .risingMist, began: realm.world.watch, ends: realm.world.watch + 3)
+        let seen = realm.world.visibility(for: ama)
+        XCTAssertEqual(realm.world.map.index(of: foe).map { seen[$0] }, false, "Out of sight in the mist")
+        XCTAssertThrowsError(try realm.perform(.attack(unit: bow.id, target: foe), by: "id-ama")) {
+            XCTAssertEqual(($0 as? RealmError)?.description, RuleError.nothingToAttack.description)
+        }
+        XCTAssertEqual(realm.world.unit(enemy.id)?.health, 100, "Untouched")
+        // The mist lifts: in sight, it is struck.
+        realm.world.omen = nil
+        XCTAssertNoThrow(try realm.perform(.attack(unit: bow.id, target: foe), by: "id-ama"))
+        XCTAssertLessThan(realm.world.unit(enemy.id)?.health ?? 0, 100)
     }
 
     func testAViewKeepsOtherHousesCounsel() throws {
