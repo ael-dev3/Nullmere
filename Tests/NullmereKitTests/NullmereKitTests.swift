@@ -593,6 +593,53 @@ final class CueMappingTests: XCTestCase {
                        "Others' wars are silent")
     }
 
+    /// Whatever befalls the keeper's House, or comes of its doings at the
+    /// watch's turning, is heard: none of it passes in silence.
+    func testNothingThatConcernsTheKeeperIsSilent() throws {
+        let state = GameState(settings: GameSettings(seedText: "nothing silent", keepers: 1))
+        let player = state.player
+        let seat = try XCTUnwrap(state.seat(of: player))
+        let unit = try XCTUnwrap(state.units(of: player).first)
+        let foe = (player + 1) % state.houses.count
+        let trade = Trade(give: .grain, 10, for: .stone, 5)
+        let struck = Battle(attacker: 90, attackerOwner: foe, attackerKind: .spear, defender: unit.id, defenderOwner: player,
+                            defenderKind: unit.kind, hold: nil, at: unit.position, damageDealt: 10, damageTaken: 4,
+                            attackerFell: false, defenderFell: false)
+        let concerning: [(GameEvent, Ambience.Cue)] = [
+            (.moved(unit: unit.id, path: [unit.position]), .order),
+            (.battle(struck), .clash),
+            (.unitLost(unit: unit.id, kind: unit.kind, owner: player, at: unit.position), .dread),
+            (.holdStruck(hold: seat.id, ward: 3), .batter),
+            (.holdCaptured(hold: seat.id, from: player, by: foe), .dread),
+            (.seatMoved(house: player, to: 9), .dread),
+            (.holdFounded(hold: seat.id), .rise),
+            (.buildingStarted(hold: seat.id, kind: .granary, level: 1), .rise),
+            (.buildingCompleted(hold: seat.id, kind: .granary, level: 1), .complete),
+            (.trainingStarted(hold: seat.id, kind: .spear), .rise),
+            (.bartered(house: player, gave: Stock(grain: 5), took: Stock(stone: 2)), .coin),
+            (.gifted(from: foe, to: player, gift: Stock(grain: 5)), .accord),
+            (.tradeAnswered(trade: trade, from: player, to: foe, accepted: false), .refusal),
+            (.tradeAnswered(trade: trade, from: player, to: foe, accepted: true), .accord),
+            (.unitTrained(unit: unit.id, hold: seat.id), .muster),
+            (.promoted(unit: unit.id, owner: player, rank: 1), .rise),
+            (.ruinSearched(at: unit.position, by: player, reward: Stock(grain: 5)), .rise),
+            (.stanceChanged(first: player, second: foe, stance: .war, by: foe), .dread),
+            (.envoyArrived(Envoy(id: 1, from: foe, proposal: .peace, arrived: 3)), .envoy),
+            (.proposalAnswered(proposal: .peace, from: player, to: foe, accepted: false), .refusal),
+            (.proposalAnswered(proposal: .peace, from: player, to: foe, accepted: true), .accord),
+            (.starving(house: player), .dread),
+            (.houseFell(foe), .toll),
+        ]
+        for (event, cue) in concerning {
+            XCTAssertEqual(GameSession.cues(for: [event], in: state, player: player), [.watch, cue], "\(event)")
+        }
+        // Others' doings among themselves pass quietly.
+        let others = (foe + 1) % state.houses.count
+        XCTAssertEqual(GameSession.cues(for: [.proposalAnswered(proposal: .peace, from: foe, to: others, accepted: false),
+                                              .bartered(house: foe, gave: Stock(grain: 5), took: Stock(stone: 2))],
+                                        in: state, player: player), [.watch])
+    }
+
     /// Blows taken are heard as blows dealt are, losses and hunger as
     /// dread, and works and companies finished as they were begun.
     func testWhatBefallsTheKeepersHouseIsHeard() throws {
@@ -617,16 +664,16 @@ final class CueMappingTests: XCTestCase {
                        "Others' losses are silent")
         let seat = try XCTUnwrap(state.seat(of: player))
         let done = GameEvent.buildingCompleted(hold: seat.id, kind: .granary, level: 1)
-        XCTAssertEqual(GameSession.cues(for: [done], in: state, player: player), [.watch, .rise])
+        XCTAssertEqual(GameSession.cues(for: [done], in: state, player: player), [.watch, .complete])
         let theirs = try XCTUnwrap(state.holds.first { $0.owner != player })
         XCTAssertEqual(GameSession.cues(for: [.buildingCompleted(hold: theirs.id, kind: .granary, level: 1)], in: state, player: player), [.watch])
         let unit = try XCTUnwrap(state.units(of: player).first)
-        XCTAssertEqual(GameSession.cues(for: [.unitTrained(unit: unit.id, hold: seat.id)], in: state, player: player), [.watch, .rise])
+        XCTAssertEqual(GameSession.cues(for: [.unitTrained(unit: unit.id, hold: seat.id)], in: state, player: player), [.watch, .muster])
         // Refusing a steward's tribute begins a war, and sounds as war does.
         let refusal = GameSession.cues(for: .answer(envoy: 1, accept: false),
                                        events: [.stanceChanged(first: player, second: 2, stance: .war, by: 2)], in: state, player: player)
         XCTAssertEqual(refusal, [.dread])
-        XCTAssertEqual(GameSession.cues(for: .answer(envoy: 1, accept: false), events: [], in: state, player: player), [.select])
+        XCTAssertEqual(GameSession.cues(for: .answer(envoy: 1, accept: false), events: [], in: state, player: player), [.refusal])
         // Every other order has a sound of its own: earth, coin, a call, a drum.
         let mine = try XCTUnwrap(state.units(of: player).first).id
         let heard: [(Command, Ambience.Cue)] = [

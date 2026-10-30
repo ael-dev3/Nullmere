@@ -41,10 +41,19 @@ public final class Ambience {
         case parley
         /// A company halted or sent home: a drum's two strokes, the second softer.
         case stand
+        /// A work finished: the last knocks of the mallet, and a bright chord.
+        case complete
+        /// Companies mustered and ready: a horn's call, rising.
+        case muster
+        /// An offer refused: two soft notes falling.
+        case refusal
+        /// A hold's walls battered: a heavy blow on timber and stone.
+        case batter
 
         /// Every cue, for tests and previews.
         public static let all: [Cue] = [.select, .order, .watch, .rise, .dread, .envoy, .triumph, .accord, .toll,
-                                        .clash, .loose, .ride, .dig, .coin, .parley, .stand]
+                                        .clash, .loose, .ride, .dig, .coin, .parley, .stand, .complete, .muster,
+                                        .refusal, .batter]
     }
 
     private static let logger = Logger(subsystem: "online.nullmere.game", category: "sound")
@@ -474,6 +483,47 @@ final class Synth: @unchecked Sendable {
             }
             note = stroke(0, 1)
             more = [stroke(0.26, 0.6)]
+        case .complete:
+            // Two knocks of the mallet, then a major chord rung bright.
+            func knock(_ delay: Float) -> Note {
+                Note(partials: [
+                    Partial(frequency: 180, amplitude: 0.07, decay: 30),
+                    Partial(frequency: 720, amplitude: 0.03, decay: 38),
+                ], noise: 0.05, noiseDecay: 60, delay: delay)
+            }
+            note = knock(0)
+            more = [knock(0.15), Note(partials: [
+                Partial(frequency: 392, amplitude: 0.05, decay: 1.6),
+                Partial(frequency: 493.9, amplitude: 0.04, decay: 1.8),
+                Partial(frequency: 587.3, amplitude: 0.04, decay: 2),
+                Partial(frequency: 784, amplitude: 0.015, decay: 2.6),
+            ], noise: 0, noiseDecay: 1, delay: 0.32)]
+        case .muster:
+            // A horn's call up a fifth, its overtones rich and falling away.
+            func horn(_ frequency: Float, _ delay: Float, _ length: Float) -> [Partial] {
+                [1, 2, 3, 4].map { (harmonic: Float) in
+                    Partial(frequency: frequency * harmonic, amplitude: 0.06 / (harmonic * harmonic * 0.6 + 0.4),
+                            decay: length * (0.8 + harmonic * 0.4), delay: delay)
+                }
+            }
+            note = Note(partials: horn(196, 0, 2.4) + horn(293.7, 0.32, 1.6), noise: 0.006, noiseDecay: 6)
+        case .refusal:
+            // A minor third falling, soft and reedy: not this time.
+            note = Note(partials: [
+                Partial(frequency: 329.6, amplitude: 0.07, decay: 3.2),
+                Partial(frequency: 988.8, amplitude: 0.018, decay: 4.4),
+                Partial(frequency: 277.2, amplitude: 0.07, decay: 2, delay: 0.28),
+                Partial(frequency: 831.6, amplitude: 0.018, decay: 3, delay: 0.28),
+            ], noise: 0, noiseDecay: 1)
+        case .batter:
+            // A ram on the gate: the deep thud, the timber's crack, the dust.
+            note = Note(partials: [
+                Partial(frequency: 58, amplitude: 0.13, decay: 8),
+                Partial(frequency: 92, amplitude: 0.07, decay: 10),
+                Partial(frequency: 174, amplitude: 0.05, decay: 13),
+                Partial(frequency: 1_130, amplitude: 0.025, decay: 34),
+            ], noise: 0.09, noiseDecay: 22)
+            more = [Note(partials: [], noise: 0.025, noiseDecay: 4, delay: 0.06)]
         }
         note.delay += delay
         note.end = note.delay + note.length

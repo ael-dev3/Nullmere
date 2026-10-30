@@ -1033,6 +1033,7 @@ public final class GameSession {
         case .declareWar: return .dread
         case .answer(_, true) where events.contains(where: { if case .proposalAnswered(_, _, _, true) = $0 { return true } else { return false } }):
             return .accord
+        case .answer(_, false): return .refusal
         case .fortify: return .dig
         case .barter, .gift, .offerTrade: return .coin
         case .propose, .proposeWithWords: return .parley
@@ -1052,14 +1053,30 @@ public final class GameSession {
             case .battle(let battle) where battle.defenderOwner == player:
                 // Struck: steel, or arrows, as the blow came.
                 add(battle.attackerKind == .bow ? .loose : .clash)
+            case .holdStruck(let hold, _) where state?.hold(hold)?.owner == player:
+                add(.batter)
             case .unitLost(_, _, let owner, _) where owner == player:
                 add(.dread)
             case .starving(let house) where house == player:
                 add(.dread)
             case .buildingCompleted(let hold, _, _) where state?.hold(hold)?.owner == player:
+                add(.complete)
+            case .buildingStarted(let hold, _, _) where state?.hold(hold)?.owner == player:
+                add(.rise)
+            case .trainingStarted(let hold, _) where state?.hold(hold)?.owner == player:
+                add(.rise)
+            case .holdFounded(let hold) where state?.hold(hold)?.owner == player:
                 add(.rise)
             case .unitTrained(let unit, _) where state?.unit(unit)?.owner == player:
+                add(.muster)
+            case .moved(let unit, _) where state?.unit(unit)?.owner == player:
+                // A march carried on into the new watch.
+                add(.order)
+            case .ruinSearched(_, let by, _) where by == player:
+                // As when found on the march ordered.
                 add(.rise)
+            case .bartered(let house, _, _) where house == player:
+                add(.coin)
             case .houseFell: add(.toll)
             case .gameEnded(let outcome): add(outcome.winner == player ? .triumph : .toll)
             case .holdCaptured(_, let from, let by):
@@ -1068,8 +1085,12 @@ public final class GameSession {
                 add(stance == .war ? .dread : .accord)
             case .proposalAnswered(_, let from, let to, true) where from == player || to == player:
                 add(.accord)
+            case .proposalAnswered(_, let from, _, false) where from == player:
+                add(.refusal)
             case .tradeAnswered(_, let from, let to, true) where from == player || to == player:
                 add(.accord)
+            case .tradeAnswered(_, let from, _, false) where from == player:
+                add(.refusal)
             case .envoyArrived:
                 add(.envoy)
             case .gifted(_, let to, _) where to == player:
