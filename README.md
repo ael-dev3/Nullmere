@@ -371,6 +371,10 @@ as the realm will, and takes the realm's word as final.
   steward write it. The steward runs the same Swift rules core the clients
   carry, so there is one set of rules. A keeper's client carries out their
   orders at once, as the realm will, and takes the realm's word as final.
+  What chance decides, or what your copy can't see, is told and drawn as
+  the realm decided it, when it answers, never as your Mac guessed it: a
+  strike's blows and losses, a ruin's spoils, a new hold's name, a
+  steward's answer.
   Your identity is made once and kept in your keychain, and never erased
   by the game, even should the realm's server stop taking it. For
   development a realm can also be hosted in-process (`NULLMERE_REALM=local`).
