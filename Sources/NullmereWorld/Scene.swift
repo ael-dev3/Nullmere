@@ -27,6 +27,8 @@ public struct SceneFrame: Equatable, Sendable {
     public var motes: [Mote]
     /// The world's own lights this frame: fires burning, blows landing.
     public var lights: [PointLight]
+    /// The weather over the lake this frame.
+    public var weather: Weather = .clear
 
     public init(batches: [ModelBatch] = [], palette: [Mat4] = [.identity], fixed: [ModelBatch] = [], fixedVersion: Int = 0,
                 motes: [Mote] = [], lights: [PointLight] = []) {

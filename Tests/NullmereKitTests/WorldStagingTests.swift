@@ -54,6 +54,20 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertFalse(still.batches.contains { $0.key == .prop(.bird) || $0.key == .prop(.puff) })
     }
 
+    func testTheOmensWeatherFallsOnTheWorld() throws {
+        let clear = try session()
+        XCTAssertEqual(clear.sceneFrame(at: 2).weather, .clear)
+        let rainy = try session { $0.omen = Omen(kind: .leanWatch, began: 1, ends: 4) }
+        let frame = rainy.sceneFrame(at: 2)
+        XCTAssertEqual(frame.weather, .rain)
+        XCTAssertGreaterThanOrEqual(frame.motes.count, Weather.drops * 2, "The rain falls about the middle of the view")
+        let misty = try session { $0.omen = Omen(kind: .risingMist, began: 1, ends: 4) }
+        XCTAssertEqual(misty.sceneFrame(at: 2).weather, .mist)
+        misty.motion = .still
+        XCTAssertEqual(misty.sceneFrame(at: 2).motes.count, 0, "Still, no weather moves, though it is known")
+        XCTAssertEqual(misty.sceneFrame(at: 2).weather, .mist)
+    }
+
     /// Staging a frame of a full realm, every hold known, takes a small
     /// share of a frame on the main thread once the land is laid out.
     func testStagingAFrameKeepsWithinItsShare() throws {

@@ -91,6 +91,12 @@ extension GameSession {
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, stage: stage, at: now, time: time).effects(at: t)
         }
+        // The omen's weather: rain or mist about the middle of the view.
+        frame.weather = Weather.of(state.currentOmen?.kind)
+        if full {
+            let extent = Float(min(max(600 / max(camera.scale, 1), 3), 14))
+            frame.motes += frame.weather.motes(around: camera.focus, extent: extent, time: t)
+        }
         return frame
     }
 

@@ -305,6 +305,7 @@ final class WorldMetalView: MTKView {
                                        hovered: hovered, selected: selected, houses: houseColours)
         let staged = scene?(time) ?? SceneFrame()
         frame.light(with: PointLight.strongest(staged.lights, near: camera.focus))
+        frame.weather(staged.weather)
         renderer.draw(frame, scene: staged, in: pass, to: drawable)
     }
 

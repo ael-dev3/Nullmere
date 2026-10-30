@@ -866,6 +866,12 @@ There is no music in the launcher; the game makes its own sound as it plays.
   straws; slates in rows; earth in clods. Grain finer than a pixel fades
   to its mean, so nothing shimmers as the view draws back; the ground has
   its own grain of earth and moss.
+- **The weather is the omen's.** While a Lean Watch lies on the realm,
+  cold rain falls about the middle of the view and the moon is dimmed;
+  under Rising Mist, banks of mist drift low over the land and the haze
+  lies thick; a Still Night is clearer than most, and a Moonsalt Bloom
+  brightens the moon. Where motion is still, the weather is drawn but not
+  moved.
 - **It moves.** Companies breathe at rest, march along their routes with
   their feet going, strike, turn to face their foe and fall; works rise
   under scaffolds as the watches pass; bows loose arrows that arc to their

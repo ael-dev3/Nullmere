@@ -165,3 +165,47 @@ extension Happenings {
         self.falls = falls
     }
 }
+
+/// The weather an omen brings, seen in the world.
+final class WeatherTests: XCTestCase {
+    func testEachOmenBringsItsWeather() {
+        XCTAssertEqual(Weather.of(nil), .clear)
+        XCTAssertEqual(Weather.of(.leanWatch), .rain)
+        XCTAssertEqual(Weather.of(.risingMist), .mist)
+        XCTAssertEqual(Weather.of(.stillNight), .still)
+        XCTAssertEqual(Weather.of(.moonsaltBloom), .bloom)
+        XCTAssertEqual(Set(OmenKind.allCases.map { Weather.of($0) }).count, OmenKind.allCases.count, "Each omen its own")
+        var frame = FrameUniforms.make(camera: Camera(), size: CGSize(width: 800, height: 600), pixelsPerPoint: 2, time: 0, motion: 1,
+                                       radius: 8, terrain: TerrainMesh(relief: Relief(map: WorldMap(radius: 8, fill: Tile(terrain: .greyfield)))),
+                                       hovered: nil, selected: nil, houses: [])
+        let (haze, moon) = (frame.haze.y, frame.moon.w)
+        frame.weather(.rain)
+        XCTAssertEqual(frame.haze.y, haze * 1.6, accuracy: 1e-6)
+        XCTAssertEqual(frame.moon.w, moon * 0.55, accuracy: 1e-6, "The moon dimmed by the rain")
+        var misty = frame
+        misty.weather(.mist)
+        XCTAssertGreaterThan(misty.haze.y, frame.haze.y, "Mist lies thicker still")
+    }
+
+    func testRainFallsAndMistDriftsAboutTheView() {
+        let focus = Vec3(3, 0, -2)
+        let rain = Weather.rain.motes(around: focus, extent: 5, time: 10)
+        XCTAssertEqual(rain.count, Weather.drops * 2, "A drop and its streak")
+        XCTAssertTrue(rain.allSatisfy { abs($0.place.x - focus.x) <= 5.001 && abs($0.place.z - focus.z) <= 5.001 })
+        XCTAssertTrue(rain.allSatisfy { $0.place.y >= Relief.waterline && $0.place.y <= Relief.waterline + Weather.rainTop + 0.06 })
+        XCTAssertEqual(rain, Weather.rain.motes(around: focus, extent: 5, time: 10), "The same moment, the same rain")
+        // A moment on, each drop lower, unless it has begun again at the top.
+        let later = Weather.rain.motes(around: focus, extent: 5, time: 10.1)
+        let fell = zip(rain, later).filter { $0.place.y > $1.place.y }.count
+        XCTAssertGreaterThan(fell, rain.count * 3 / 4)
+
+        let mist = Weather.mist.motes(around: focus, extent: 5, time: 4)
+        XCTAssertEqual(mist.count, Weather.banks)
+        XCTAssertTrue(mist.allSatisfy { $0.place.w >= 0.7 && $0.colour.w > 0 }, "Wide, and hiding a little of what lies behind")
+        let drifted = Weather.mist.motes(around: focus, extent: 5, time: 6)
+        XCTAssertNotEqual(mist, drifted, "It drifts")
+        XCTAssertTrue(Weather.clear.motes(around: focus, extent: 5, time: 1).isEmpty)
+        XCTAssertTrue(Weather.still.motes(around: focus, extent: 5, time: 1).isEmpty)
+        XCTAssertTrue(Weather.allCases.allSatisfy { $0.hazeFactor > 0 && $0.moonFactor > 0 })
+    }
+}

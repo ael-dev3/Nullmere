@@ -14,7 +14,7 @@ planned, and what CI has shown of it.
 | | Requirement | Score now | What is there | What Rise of Kingdoms has that this lacks |
 |---|---|---|---|---|
 | 1 | Live realm, real multiplayer | 5 | A SpacetimeDB module and a steward that runs the rules; keepers' Macs hear the realm's changes pushed over SpacetimeDB's WebSocket subscription, the reads kept as a fallback. CI raises a real SpacetimeDB server where two keepers' clients meet, give orders and turn the watch, trade through an envoy, ally, speak to the realm and to their alliance, go to war, and march one on the other's seat over thirty watches and strike it, both seeing every step. A realm's watch passes in twelve paces: marches step through it, hosts strike the moment they arrive, and stewards give their orders at paces spread through it, nothing saved for a burst at the turn; a battle goes on, blow after blow, through the paces | A realm that is up for everyone (it waits on the maintainer's maincloud sign-in); battles of whole armies, troops by the thousand; kingdoms of thousands |
-| 2 | 3D world in Metal | 5 | Terrain as a 3D mesh with relief and its own grain of earth and moss; stone, timber, thatch, slate and earth drawn with their grain on every model; the still lake mirroring the stars and the moon; a camera that pans, zooms, tilts and turns; picking and VoiceOver through it; original models built from code for every company in five tiers, every hold, work and wall at every level, the wilds, the sites of the land and the commanders; four lights of the world's own with the moon's; rendered on the GPU in CI | Hand-modelled detail at RoK's density; day, night and weather; a city view inside the world |
+| 2 | 3D world in Metal | 5 | Terrain as a 3D mesh with relief and its own grain of earth and moss; stone, timber, thatch, slate and earth drawn with their grain on every model; each omen's weather, rain or mist, over the world; the still lake mirroring the stars and the moon; a camera that pans, zooms, tilts and turns; picking and VoiceOver through it; original models built from code for every company in five tiers, every hold, work and wall at every level, the wilds, the sites of the land and the commanders; four lights of the world's own with the moon's; rendered on the GPU in CI | Hand-modelled detail at RoK's density; a city view inside the world |
 | 3 | Animation | 6 | Companies idle, march, strike, gather and fall, easing from one clip to the next; works rise from scaffolds and finish in dust; blows land with sparks, a flash and light on the ground, the struck reel, arrows arc and kick up dust, wards splinter, the fallen raise dust; a commander's skill fires in a ring of gold; broken holds burn and smoke; fireflies, birds, banners and hearth smoke | Spell-like effects at RoK's scale; crowds and city life |
 | 4 | Sound and music | 6 | A synthesised night, a score written as it plays that turns to war, and twenty-five cues made as they play, a sound for every order and every event that concerns the keeper, each held by tests above the night and all at once under clipping; every sound heard from where it happened, left or right of the view and fainter far off | Recorded orchestral music and foley |
 | 5 | Depth of systems | 5 | Studies (28 in four branches, an Archive's circles), troop tiers I to V, commanders (five archetypes, twenty skills, thirty levels, fury, three talent trees, gear in three slots), the wilds at levels I to X, gathering at the land's sites, alliances with help and their own words, rallies, marches that take watches and say when they arrive, happenings with marks and honours, deeds, charges, might and renown across ages; every rule tested on Linux and played by the stewards | VIP, items, crafted equipment and sets, civilizations, kingdom against kingdom, alliance territory and buildings, holy sites, barbarian forts, hospitals and healing, scouting |
@@ -45,7 +45,8 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 - [x] A model for every company kind and tier, every work at every level, every hold, and every feature of the land
 - [x] Moonlight, firelight and the world's own lights; the render's frame times measured in CI
 - [x] Textured detail: every model's stone, timber, thatch, slate and earth drawn with its grain in the shader, fading to its mean with distance; the ground's own grain
-- [ ] Hand-modelled detail at RoK's density; day and weather
+- [x] Weather: each omen's own over the world, rain and dimmed moon, banks of mist and thick haze, a clearer still night
+- [ ] Hand-modelled detail at RoK's density
 
 ### 3. Animation
 - [x] Companies: idle, march, attack, gather and death, eased from clip to clip
@@ -88,7 +89,7 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 4. The live connection and the multiplayer test.
 5. Sound for every action, and music by the state of the realm.
 6. The onboarding over all of it.
-7. Next: alliance territory; weather; illustrated portraits from the models.
+7. Next: alliance territory; illustrated portraits from the models.
 
 What only a person can do stays as it was: raising the realm on maincloud
 with the maintainer's account, signing and notarizing the release, and
