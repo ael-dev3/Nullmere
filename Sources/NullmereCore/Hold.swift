@@ -43,6 +43,9 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
     /// Struck this watch, so its ward doesn't recover.
     public var struck: Bool
     public let foundedWatch: Int
+    /// Its House's companies of war carried here from the field, in the
+    /// beds of its Infirmary until they are healed; absent while none are.
+    public var wounded: [Wounded]?
 
     public init(id: Int, name: String, owner: Int, position: Hex, isSeat: Bool, foundedWatch: Int) {
         self.id = id
@@ -56,6 +59,7 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
         self.ward = Hold.maximumWard(wallLevel: 0, isSeat: isSeat)
         self.struck = false
         self.foundedWatch = foundedWatch
+        self.wounded = nil
     }
 
     public func level(_ kind: BuildingKind) -> Int {
@@ -65,7 +69,7 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
     // Written in a fixed order, as a dictionary would be in any order: the
     // steward sends a keeper's view only when its words change.
     private enum CodingKeys: String, CodingKey {
-        case id, name, owner, position, isSeat, levels, project, training, ward, struck, foundedWatch
+        case id, name, owner, position, isSeat, levels, project, training, ward, struck, foundedWatch, wounded
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -87,9 +91,20 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
         try container.encode(ward, forKey: .ward)
         try container.encode(struck, forKey: .struck)
         try container.encode(foundedWatch, forKey: .foundedWatch)
+        try container.encodeIfPresent(wounded, forKey: .wounded)
     }
 
     public var maximumWard: Int { Hold.maximumWard(wallLevel: level(.walls), isSeat: isSeat) }
+    /// The companies its Infirmary can keep.
+    public var beds: Int { Hold.beds(infirmaryLevel: level(.infirmary)) }
+    /// Its beds no company lies in.
+    public var freeBeds: Int { max(0, beds - (wounded?.count ?? 0)) }
+
+    /// The companies an Infirmary of a level can keep: two at the first,
+    /// one more at each level after.
+    public static func beds(infirmaryLevel level: Int) -> Int {
+        level > 0 ? level + 1 : 0
+    }
     public var sight: Int { Hold.sight(beaconLevel: level(.beacon)) }
     public var territoryRadius: Int { Hold.territoryRadius(isSeat: isSeat, beaconLevel: level(.beacon)) }
 

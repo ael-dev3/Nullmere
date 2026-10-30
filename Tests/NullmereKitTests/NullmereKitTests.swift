@@ -741,6 +741,10 @@ final class CueMappingTests: XCTestCase {
             (.gearScrapped(house: player, gear: 70, moonsalt: 10), .coin),
             (.shrineTaken(shrine: 1, house: player, from: nil), .banner),
             (.shrineTaken(shrine: 1, house: foe, from: player), .dread),
+            (.carriedToInfirmary(kind: .spear, owner: player, hold: seat.id), .tend),
+            (.healingBegun(hold: seat.id, house: player, count: 2), .tend),
+            (.unitHealed(unit: unit.id, hold: seat.id), .muster),
+            (.woundedLost(hold: seat.id, house: player, count: 1), .dread),
             (hunt(by: player, .spear), .clash),
             (hunt(by: player, .bow), .loose),
             (.sentToGather(unit: unit.id, site: 1), .order),
@@ -794,6 +798,8 @@ final class CueMappingTests: XCTestCase {
             .gearFound(house: foe, gear: Gear(id: 71, kind: .reaverAxe, quality: .plain, owner: foe), from: .reavers),
             .gearWorn(commander: 99, house: foe, gear: 71), .gearScrapped(house: foe, gear: 71, moonsalt: 5),
             .shrineTaken(shrine: 1, house: foe, from: others),
+            .carriedToInfirmary(kind: .bow, owner: foe, hold: 41), .healingBegun(hold: 41, house: foe, count: 1),
+            .woundedLost(hold: 41, house: foe, count: 2),
         ]
         XCTAssertEqual(GameSession.cues(for: quiet, in: state, player: player), [.watch])
         // Every new order has its own sound, not the plain click.
@@ -809,7 +815,7 @@ final class CueMappingTests: XCTestCase {
             (.callRally(from: seat.id, against: 40, watches: 2), .horn),
             (.learnTalent(commander: commander, talent: .keenEdge), .lore), (.forgetTalents(commander: commander), .stand),
             (.wear(gear: 70, commander: commander), .order), (.takeOff(gear: 70), .stand), (.breakUp(gear: 70), .coin),
-            (.say(words: "Well met", toAlliance: false), .parley),
+            (.say(words: "Well met", toAlliance: false), .parley), (.heal(hold: seat.id), .tend),
         ]
         for (command, cue) in orders {
             XCTAssertEqual(GameSession.cues(for: command, events: [], in: state, player: player), [cue], "\(command)")

@@ -41,6 +41,12 @@ extension GameState {
             for (kind, level) in hold.levels where level < 0 || level > kind.maxLevel {
                 found.append("\(hold.name) has \(kind) at level \(level)")
             }
+            if let wounded = hold.wounded {
+                if wounded.isEmpty || wounded.count > hold.beds { found.append("\(hold.name) keeps \(wounded.count) wounded in \(hold.beds) beds") }
+                for company in wounded where !company.kind.isMilitary || !(1...company.kind.highestTier).contains(company.tier) {
+                    found.append("\(hold.name) keeps wounded \(company.kind.title) of tier \(company.tier)")
+                }
+            }
         }
         if !unitIDs.isDisjoint(with: holdIDs) { found.append("A company and a hold share an id") }
         if let highest = (unitIDs.union(holdIDs).union(envoys.map(\.id))).max(), highest >= nextID {

@@ -139,6 +139,10 @@ struct OwnHoldDetails: View {
                 )
             }
 
+            if hold.beds > 0 {
+                InfirmaryRows(session: session, hold: hold, stock: stock)
+            }
+
             Rule()
             Caps("Works", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7))
             ForEach(BuildingKind.allCases, id: \.self) { kind in
@@ -157,6 +161,53 @@ struct OwnHoldDetails: View {
             BarterRow(session: session)
         }
         .padding(16)
+    }
+}
+
+/// A hold's Infirmary: its beds, the companies lying in them, and the
+/// healing of those still waiting, for half what mustering them anew costs.
+struct InfirmaryRows: View {
+    let session: GameSession
+    let hold: Hold
+    let stock: Stock
+
+    var body: some View {
+        let wounded = hold.wounded ?? []
+        let waiting = wounded.filter { !$0.healing }.count
+        let refusal = session.state.refusal(of: .heal(hold: hold.id), as: session.player)
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Caps("Infirmary", size: 8.5).foregroundStyle(Palette.text(0.5))
+                Spacer()
+                Text(verbatim: "\(wounded.count) of \(hold.beds) beds")
+                    .font(.nm(10.5).monospacedDigit())
+                    .foregroundStyle(Palette.text(0.75))
+            }
+            .accessibilityElement(children: .combine)
+            if !wounded.isEmpty {
+                Text(verbatim: InfirmaryRows.lying(wounded))
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.65))
+                HStack(spacing: 10) {
+                    if waiting > 0 {
+                        CostLine(cost: session.state.healingCost(at: hold), available: stock)
+                    }
+                    Spacer()
+                    QuietButton(title: waiting > 0 ? "Heal \(waiting)" : "Healing", size: 8.5, enabled: refusal == nil,
+                                name: "Heal the wounded at \(hold.name)", why: refusal?.description) {
+                        session.perform(.heal(hold: hold.id))
+                    }
+                }
+            }
+        }
+    }
+
+    /// Who lies in the beds, each with its tier, and those being healed.
+    static func lying(_ wounded: [Wounded]) -> String {
+        wounded.map { company in
+            let tier = company.kind.hasTiers ? " \(Narration.roman(company.tier))" : ""
+            return company.kind.title + tier + (company.healing ? ", healing" : "")
+        }.joined(separator: " · ")
     }
 }
 

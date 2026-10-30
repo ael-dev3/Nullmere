@@ -343,6 +343,11 @@ struct RivalMind {
     /// territory, which nothing done here changes.
     private func manage(_ holdID: Int, owners: [Int?], in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
         var events: [GameEvent] = []
+        // The fallen in its beds healed first, for half what mustering them
+        // anew would cost.
+        if state.hold(holdID)?.wounded?.contains(where: { !$0.healing }) == true {
+            events += perform(.heal(hold: holdID), in: &state)
+        }
         guard let hold = state.hold(holdID) else { return events }
         if hold.project == nil, let kind = chooseBuilding(for: hold, owners: owners, in: state) {
             events += perform(.build(hold: holdID, kind: kind), in: &state)
@@ -412,6 +417,11 @@ struct RivalMind {
         if hold.level(.beacon) < 1, state.watch >= 18 { wishes.append(.beacon) }
         // With stores to spare, beacons for the land (and the yield) they claim.
         if plenty, hold.level(.beacon) < (state.watch >= 60 ? 3 : 2), state.watch >= 35 { wishes.append(.beacon) }
+        // An Infirmary at the seat once it musters, a larger one at war, so
+        // its fallen are healed rather than lost.
+        if hold.isSeat, hold.level(.musterHall) > 0, state.watch >= 16, hold.level(.infirmary) < (atWar ? 2 : 1) {
+            wishes.append(.infirmary)
+        }
         if hold.isSeat {
             // An Archive at the seat, the deeper as the age goes on, for
             // its studies; and a hall as high as the tiers they open.

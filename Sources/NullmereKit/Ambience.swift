@@ -81,11 +81,14 @@ public final class Ambience {
         case herald
         /// A bright fanfare: a deed done, a charge kept, a commander risen.
         case honour
+        /// The healers at work: a small bell over a warm, low hum, as the
+        /// fallen are carried in and their healing paid for.
+        case tend
 
         /// Every cue, for tests and previews.
         public static let all: [Cue] = [.select, .order, .watch, .rise, .dread, .envoy, .triumph, .accord, .toll,
                                         .clash, .loose, .ride, .dig, .coin, .parley, .stand, .complete, .muster,
-                                        .refusal, .batter, .lore, .horn, .banner, .herald, .honour]
+                                        .refusal, .batter, .lore, .horn, .banner, .herald, .honour, .tend]
     }
 
     private static let logger = Logger(subsystem: "online.nullmere.game", category: "sound")
@@ -596,6 +599,18 @@ final class Synth: @unchecked Sendable {
                 Partial(frequency: 784, amplitude: 0.05, decay: 1.2),
                 Partial(frequency: 784 * 2.76, amplitude: 0.018, decay: 2),
             ], noise: 0, noiseDecay: 1, delay: 0.46)]
+        case .tend:
+            // A warm hum a fifth deep, and over it a small bell struck
+            // twice, the second softer: the healers at their work.
+            note = Note(partials: [
+                Partial(frequency: 174.6, amplitude: 0.04, decay: 1.4),
+                Partial(frequency: 261.6, amplitude: 0.028, decay: 1.6),
+                Partial(frequency: 349.2, amplitude: 0.01, decay: 1.9),
+                Partial(frequency: 1046.5, amplitude: 0.04, decay: 2.6, delay: 0.05),
+                Partial(frequency: 1046.5 * 2.76, amplitude: 0.01, decay: 4, delay: 0.05),
+                Partial(frequency: 1174.7, amplitude: 0.026, decay: 2.8, delay: 0.32),
+                Partial(frequency: 1174.7 * 2.76, amplitude: 0.007, decay: 4.2, delay: 0.32),
+            ], noise: 0.004, noiseDecay: 8)
         case .honour:
             // A quick fanfare up a major arpeggio to the octave.
             note = Note(partials: [

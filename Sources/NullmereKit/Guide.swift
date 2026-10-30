@@ -40,6 +40,7 @@ enum Guide {
             "Every company but Lanterns eats a grain each watch. Those that live through battles rise in rank.",
             "A company trained with no free tile within three of its hold waits, trained, and the hold trains no other until it has room to stand.",
             "To take a hold, break its ward, then march Spears or Riders in; one that falls to the walls' blow back takes nothing. You carry off its share of their stores; a seat holds half.",
+            "Raise an Infirmary, and your companies of war that fall are carried to the nearest hold with a bed free, two beds at I and one more at each level, rather than lost. Heal them from the hold's panel for half what mustering them anew costs: they rise whole, their rank kept, as the watch turns. A hold taken loses those in its beds.",
         ]),
         Section(title: "Tiers and studies", lines: [
             "Spears, Bows and Riders muster in five tiers, each stronger and dearer than the last: a tier needs its study (Drill for II, Iron Ranks for III, Grey Companies for IV, Moonsteel for V) and a Muster Hall as high as the tier. Choose the tier as you train.",

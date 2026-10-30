@@ -66,6 +66,20 @@ extension GameState {
         case .gearScrapped(let house, _, let moonsalt):
             guard house == viewer else { return nil }
             return Tidings("A piece of gear is broken up for \(moonsalt) moonsalt.", .neutral)
+        case .carriedToInfirmary(let kind, let owner, let holdID):
+            guard owner == viewer, let hold = hold(holdID) else { return nil }
+            return Tidings("Your fallen \(kind.title) are carried to the Infirmary at \(hold.name), to be healed there.", .neutral)
+        case .healingBegun(let holdID, let house, let count):
+            guard house == viewer, let hold = hold(holdID) else { return nil }
+            let companies = count == 1 ? "a company" : "\(count) companies"
+            return Tidings("The healers at \(hold.name) tend \(companies); they rise as the watch turns.", .neutral)
+        case .unitHealed(let unitID, let holdID):
+            guard let unit = unit(unitID), unit.owner == viewer, let hold = hold(holdID) else { return nil }
+            return Tidings("Your \(unit.kind.title) rise healed at \(hold.name).", .good)
+        case .woundedLost(let holdID, let house, let count):
+            guard house == viewer, let hold = hold(holdID) else { return nil }
+            let companies = count == 1 ? "The company" : "The \(count) companies"
+            return Tidings("\(companies) in the Infirmary at \(hold.name) are lost with it.", .bad)
         case .skillFired(let id, let house, let skill, _):
             guard let commander = commander(id) else { return nil }
             if house == viewer { return Tidings("\(commander.name) calls \(skill.title).", .good) }

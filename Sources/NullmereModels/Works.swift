@@ -157,6 +157,7 @@ enum Works {
         case .musterHall: return musterHall(level, name)
         case .walls: return Holds.walls(level: level, name: name)
         case .beacon: return beacon(level, name)
+        case .infirmary: return infirmary(level, name)
         case .moonspire: return moonspire(level, name)
         case .archive: return study(level: level, name: name)
         }
@@ -539,6 +540,136 @@ enum Works {
             for index in 0..<4 {
                 let x = Float(index) * 0.035 - 0.052
                 $0.limb(from: Vec3(x, 0, -0.012), to: Vec3(x + 0.01, 0.22, 0.01), radius: 0.005, sides: 3, color: Palette.timberDark)
+            }
+        }
+        return model(name, b)
+    }
+
+    // MARK: Infirmary
+
+    /// How high an Infirmary's ward stands at a level.
+    static func wardHeight(_ level: Int) -> Float {
+        level >= 4 ? 0.16 : (level >= 2 ? 0.14 : 0.12)
+    }
+
+    /// Where smoke rises from an Infirmary's chimney, from its second level:
+    /// the healers' fire under their kettles.
+    static func infirmaryChimney(_ level: Int) -> Vec3 {
+        Vec3(-0.15, wardHeight(level) + 0.13, -0.135)
+    }
+
+    /// A long, low ward where the fallen lie, lamplit, with its herb garden
+    /// before it: thatch and timber at first, then a footing of stone and a
+    /// chimney for the kettles, linen drying on a line; from the third, a
+    /// ward of pale stone with a round apse and a well; then a covered walk
+    /// and lanterns; at the fifth, a bell-cote and a moonsalt lamp over the
+    /// apse, burning through the night.
+    static func infirmary(_ level: Int, _ name: String) -> Model {
+        var b = MeshBuilder()
+        b.pad(radius: 0.31)
+        let height = wardHeight(level)
+        let stone = level >= 3
+        b.hall(at: Vec3(-0.02, 0, -0.1), width: 0.38, depth: 0.16, height: height,
+               wall: stone ? Palette.stonePale : (level == 2 ? Palette.timberGrey : Palette.timber),
+               roof: level == 1 ? Palette.thatch : Palette.slate, pitch: level == 1 ? 0.75 : 0.6,
+               footing: level >= 2 ? Palette.stone : nil)
+        b.door(Vec3(0.07, 0.055, -0.018), width: 0.05, height: 0.1, facing: 0)
+        // Its lamps never go out.
+        for x in [Float(-0.06), -0.15] {
+            b.window(Vec3(x, height * 0.62, -0.018), width: 0.026, height: 0.038, facing: 0)
+        }
+        if level >= 2 {
+            // The chimney for the healers' fire, rising above the ridge.
+            let top = infirmaryChimney(level)
+            b.box(min: Vec3(top.x - 0.028, height - 0.02, top.z - 0.025), max: Vec3(top.x + 0.028, top.y, top.z + 0.025),
+                  color: Palette.stoneDark)
+        }
+        if stone {
+            // The apse at its east end, round under a cone of slate.
+            b.roundHouse(at: Vec3(0.17, 0, -0.1), radius: 0.065, height: height + 0.03, wall: Palette.stonePale, roof: Palette.slate)
+            b.place(.translation(Vec3(0.17, 0, -0.1))) {
+                for angle in [Float(0), -.pi / 2] {
+                    $0.window(onRound: 0.066, y: height * 0.7, angle: angle, width: 0.022, height: 0.04)
+                }
+            }
+        }
+        if level >= 5 {
+            // A bell-cote on the ridge, and a moonsalt lamp over the apse.
+            let ridge = height + 0.16 * 0.6
+            for x in [Float(-0.05), -0.01] {
+                b.limb(from: Vec3(x, ridge - 0.01, -0.1), to: Vec3(x, ridge + 0.07, -0.1), radius: 0.006, color: Palette.stone)
+            }
+            b.box(min: Vec3(-0.058, ridge + 0.07, -0.112), max: Vec3(-0.002, ridge + 0.08, -0.088), color: Palette.slate)
+            b.with(material: .metal) {
+                $0.place(.translation(Vec3(-0.03, ridge + 0.025, -0.1))) {
+                    $0.lathe([(0.0, 0.045), (0.012, 0.04), (0.018, 0.012), (0.02, 0.0)], sides: 6, color: Palette.bronze)
+                }
+            }
+            let apseTop = height + 0.03 + 0.065 * 1.5
+            b.with(material: .crystal) {
+                $0.place(.translation(Vec3(0.17, apseTop - 0.01, -0.1))) {
+                    $0.lathe([(0.0, 0.0), (0.02, 0.03), (0.0, 0.07)], sides: 6, color: Palette.moonsalt)
+                }
+            }
+        }
+        // The herb garden before it: beds of leaf in rows, more at each level.
+        let rows = min(level + 1, 4)
+        for row in 0..<rows {
+            let z = Float(0.065) + Float(row) * 0.045
+            b.box(min: Vec3(-0.23, -0.02, z - 0.017), max: Vec3(-0.03, 0.012, z + 0.017), color: Palette.loam)
+            b.with(material: .foliage, sway: 0.6) {
+                $0.swayRange = (0, 0.06)
+                for plant in 0..<5 {
+                    let x = -0.21 + Float(plant) * 0.042
+                    let tall = 0.03 + 0.02 * Noise.unit(Int32(plant), Int32(row), 31)
+                    $0.place(.translation(Vec3(x, 0.01, z))) {
+                        $0.lathe([(0.016, 0), (0.02, tall * 0.5), (0.0, tall)], sides: 5,
+                                 color: (plant + row) % 3 == 0 ? Palette.moss : ((plant + row) % 3 == 1 ? Palette.leaf : Palette.grass),
+                                 twist: Float(plant))
+                    }
+                }
+            }
+        }
+        if level >= 2 {
+            // Linen drying on a line between two poles, stirring in the wind.
+            let left = Vec3(0.04, 0, 0.12), right = Vec3(0.24, 0, 0.12)
+            for pole in [left, right] {
+                b.limb(from: pole - Vec3(0, 0.03, 0), to: pole + Vec3(0, 0.15, 0), radius: 0.007, color: Palette.timberDark)
+            }
+            b.beam(from: left + Vec3(0, 0.145, 0), to: right + Vec3(0, 0.145, 0), width: 0.003, color: Palette.timberPale)
+            for x in [Float(0.07), 0.15] {
+                b.flag(at: Vec3(x, 0.145, 0.12), width: 0.06, height: 0.08, color: Palette.linen, material: .foliage)
+            }
+        }
+        if stone {
+            // A well for the healers' water, roofed.
+            let well = Vec3(0.13, 0, 0.23)
+            b.place(.translation(well)) {
+                $0.lathe([(0.04, -0.03), (0.04, 0.05), (0.032, 0.05), (0.032, 0.02)], sides: 8, color: Palette.stone)
+                $0.box(min: Vec3(-0.03, 0.02, -0.03), max: Vec3(0.03, 0.03, 0.03), color: Palette.loam)
+                for x in [Float(-0.035), 0.035] {
+                    $0.limb(from: Vec3(x, 0.03, 0), to: Vec3(x, 0.12, 0), radius: 0.005, color: Palette.timberDark)
+                }
+                $0.gableRoof(width: 0.09, depth: 0.06, base: 0.12, height: 0.035, color: Palette.slate, overhang: 0.008)
+            }
+        } else {
+            // A water butt by the door.
+            b.place(.translation(Vec3(0.13, 0, 0.0))) {
+                $0.lathe([(0.022, -0.02), (0.026, 0.03), (0.022, 0.06)], sides: 7, color: Palette.timber)
+            }
+        }
+        if level >= 4 {
+            // A covered walk along the ward's front, lanterns at its ends.
+            b.box(min: Vec3(-0.22, height * 0.75, -0.02), max: Vec3(0.14, height * 0.75 + 0.012, 0.035), color: Palette.slate)
+            for x in [Float(-0.2), -0.06, 0.12] {
+                b.limb(from: Vec3(x, -0.02, 0.03), to: Vec3(x, height * 0.75, 0.03), radius: 0.006, color: Palette.timberDark)
+            }
+            for x in [Float(-0.2), 0.12] {
+                b.with(material: .glow) {
+                    $0.place(.translation(Vec3(x, height * 0.75 - 0.03, 0.04))) {
+                        $0.lathe([(0.0, 0.0), (0.012, 0.012), (0.0, 0.026)], sides: 5, color: Palette.candle)
+                    }
+                }
             }
         }
         return model(name, b)

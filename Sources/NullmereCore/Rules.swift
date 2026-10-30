@@ -77,6 +77,8 @@ extension GameState {
             return try takeOff(gearID, as: house)
         case let .breakUp(gearID):
             return try breakUp(gearID, as: house)
+        case let .heal(holdID):
+            return try heal(at: holdID, as: house)
         case let .inviteToAlliance(target):
             return try invite(target, by: house)
         case let .askToJoin(allianceID):
@@ -400,6 +402,7 @@ extension GameState {
         let unit = units.remove(at: index)
         events.append(.unitLost(unit: unit.id, kind: unit.kind, owner: unit.owner, at: unit.position))
         events += woundCommander(of: unit)
+        events += carryToInfirmary(unit)
         return true
     }
 
@@ -448,6 +451,7 @@ extension GameState {
         houses[previous].stock.debit(plunder)
         store(plunder, for: taker)
 
+        var events = loseTheWounded(at: holdIndex, from: previous)
         holds[holdIndex].owner = taker
         holds[holdIndex].isSeat = false
         holds[holdIndex].project = nil
@@ -457,7 +461,7 @@ extension GameState {
         units[unitIndex].position = holds[holdIndex].position
         reveal(around: holds[holdIndex].position, range: sight(of: holds[holdIndex]), for: taker)
 
-        var events: [GameEvent] = [.holdCaptured(hold: holdID, from: previous, by: taker)]
+        events.insert(.holdCaptured(hold: holdID, from: previous, by: taker), at: 0)
         let seatWords = wasSeat ? ", the seat of \(houses[previous].title)," : ""
         let spoils = plunder.isZero ? "" : ", and carries off its stores"
         record(.capture, [taker, previous], "\(houses[taker].title) takes \(name)\(seatWords) from \(houses[previous].title)\(spoils).")

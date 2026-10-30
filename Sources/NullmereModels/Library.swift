@@ -243,6 +243,7 @@ public enum Library {
         switch key.canonical {
         case .keep(let seat): return [Holds.chimney(seat: seat)]
         case .work(.saltworks, let level) where level >= 2: return [Works.saltChimney(level)]
+        case .work(.infirmary, let level) where level >= 2: return [Works.infirmaryChimney(level)]
         default: return []
         }
     }

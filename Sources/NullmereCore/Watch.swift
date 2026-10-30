@@ -36,6 +36,7 @@ extension GameState {
             events += harvest(for: house.id, territory: owners)
         }
         events += advanceWorks()
+        events += raiseTheHealed()
         events += advanceStudies()
         mendAndHeal(territory: owners)
 
@@ -173,11 +174,7 @@ extension GameState {
             // A ward can't be mended while it is struck, or while an enemy
             // army stands at its walls.
             let hold = holds[index]
-            let besieged = units.contains { unit in
-                unit.kind.isMilitary && unit.owner != hold.owner && isAtWar(unit.owner, hold.owner)
-                    && unit.position.distance(to: hold.position) == 1
-            }
-            if !hold.struck && !besieged {
+            if !hold.struck && !isBesieged(hold) {
                 holds[index].ward = min(holds[index].maximumWard, holds[index].ward + wardMending(for: hold.owner))
             }
             holds[index].struck = false
@@ -192,6 +189,14 @@ extension GameState {
                 amount += 10
             }
             units[index].health = min(100, unit.health + amount)
+        }
+    }
+
+    /// Whether an enemy company of war stands at a hold's gates.
+    func isBesieged(_ hold: Hold) -> Bool {
+        units.contains { unit in
+            unit.kind.isMilitary && unit.owner != hold.owner && isAtWar(unit.owner, hold.owner)
+                && unit.position.distance(to: hold.position) == 1
         }
     }
 

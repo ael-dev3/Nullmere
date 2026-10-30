@@ -41,6 +41,10 @@ extension GameState {
             view.holds[index].project = nil
             view.holds[index].training = nil
         }
+        // Who lies in a hold's beds is its own House's to know.
+        for index in view.holds.indices where view.holds[index].owner != house {
+            view.holds[index].wounded = nil
+        }
         view.envoys = envoys.filter { $0.from == house || $0.to == house }
         // Gifts too small for the chronicle are known only to the two Houses.
         view.gifts = gifts?.filter { $0.from == house || $0.to == house }
@@ -113,8 +117,11 @@ extension GameState {
             case .bartered(let owner, _, _), .starving(let owner), .studyBegun(let owner, _, _), .studyCompleted(let owner, _, _),
                  .commanderJoined(_, let owner), .commanderRose(_, let owner, _), .commanderWounded(_, let owner),
                  .talentLearned(_, let owner, _, _), .talentsForgotten(_, let owner),
-                 .gearFound(let owner, _, _), .gearWorn(_, let owner, _), .gearTakenOff(_, let owner, _), .gearScrapped(let owner, _, _):
+                 .gearFound(let owner, _, _), .gearWorn(_, let owner, _), .gearTakenOff(_, let owner, _), .gearScrapped(let owner, _, _),
+                 .carriedToInfirmary(_, let owner, _), .healingBegun(_, let owner, _), .woundedLost(_, let owner, _):
                 return owner == house
+            case .unitHealed(let id, _):
+                return unit(id)?.owner == house
             case .commanderAssigned(let id, _), .commanderReleased(let id):
                 return commander(id)?.owner == house
             case .skillFired(_, let owner, _, let at):

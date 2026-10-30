@@ -635,6 +635,22 @@ realm; keepers are told in plain words, never a status code.
   a line for each); each is drawn in the world as a ring of
   standing stones about its heart, its pennant in its holder's colour,
   and listed in the Realm (6).
+- **The Infirmary.** A work every hold can raise, with two beds at its
+  first level and one more at each level after. A House's company of war
+  that falls (in battle, to a hold's walls, or to the wilds) is carried to
+  the nearest of its holds with a bed free, if one has, and kept there as
+  it was, its tier and rank with it; Founders and Lanterns aren't. From
+  the hold's panel the keeper heals those waiting, as many as the House's
+  stores pay for, each for half what mustering it anew would cost; healed
+  companies rise whole beside the hold as the watch turns, their rank
+  kept, their commander not (it is carried home wounded, as ever). A hold
+  taken loses those in its beds. Only its own House knows who lies there.
+  Stewards raise one at the seat once they muster, a larger one at war, and
+  heal their fallen first. Each level has its own model: a lamplit ward of
+  timber and thatch with its herb garden, then slate, a chimney for the
+  healers' fire and linen drying on a line, a ward of pale stone with a
+  round apse and a well, a covered walk with lanterns, and at the fifth a
+  bell-cote and a moonsalt lamp. The healers' work has its own sound.
 - **Paces.** A realm's watch isn't resolved all at once as it turns; it
   passes in twelve paces. At each, every company on the march takes its
   share of the watch's moves, a step at a time, and every host on the

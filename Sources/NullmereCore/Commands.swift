@@ -75,6 +75,9 @@ public enum Command: Codable, Equatable, Sendable {
     case takeOff(gear: Int)
     /// A piece of gear broken up for its moonsalt.
     case breakUp(gear: Int)
+    /// Pay for the healing of the companies lying in a hold's Infirmary,
+    /// as many as the House's stores cover; they rise as the watch turns.
+    case heal(hold: Int)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -202,6 +205,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case notWorn
     /// A hold founded on a holy site.
     case holySite
+    /// Healing for a hold with no company in its beds waiting for it.
+    case noneWounded
     /// Words from a House no keeper holds.
     case notAKeeper
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -295,6 +300,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .alreadyWorn: return "That commander wears it already."
         case .notWorn: return "No commander wears it."
         case .holySite: return "No hold is raised on a holy site."
+        case .noneWounded: return "No company lies in that hold's Infirmary waiting to be healed."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
         case .notAKeeper: return "Only a keeper's words are carried."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -359,6 +365,14 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case gearScrapped(house: Int, gear: Int, moonsalt: Int)
     /// A House takes a holy site, from another or from none.
     case shrineTaken(shrine: Int, house: Int, from: Int?)
+    /// A company of war that fell is carried to a hold's Infirmary.
+    case carriedToInfirmary(kind: UnitKind, owner: Int, hold: Int)
+    /// A House pays for the healing of companies in a hold's Infirmary.
+    case healingBegun(hold: Int, house: Int, count: Int)
+    /// A company healed rises whole beside its hold.
+    case unitHealed(unit: Int, hold: Int)
+    /// A hold taken with companies in its beds: they are lost with it.
+    case woundedLost(hold: Int, house: Int, count: Int)
     /// A company strikes a company of the wilds.
     case hunted(Hunt)
     /// A company sets out to work a site.

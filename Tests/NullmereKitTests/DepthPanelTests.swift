@@ -574,6 +574,34 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(GameSession.place(of: .shrineTaken(shrine: shrine.id, house: me, from: nil), in: session.state), shrine.position)
     }
 
+    func testTheInfirmaryShowsItsBedsAndHealsItsWounded() throws {
+        var state = world("infirmary shown")
+        let me = state.player
+        let index = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+        let seat = state.holds[index]
+        state.holds[index].levels[.infirmary] = 2
+        state.holds[index].wounded = [Wounded(kind: .spear, tier: 2, experience: 3, since: 0),
+                                      Wounded(kind: .bow, tier: 1, experience: 0, since: 0, healing: true)]
+        state.houses[me].stock = Stock(grain: 900, timber: 900, stone: 900, moonsalt: 90)
+        let (session, link) = session(state)
+        session.selection = .hold(seat.id)
+        draw(SelectionPanel(session: session), width: 330, height: 1100)
+        XCTAssertEqual(InfirmaryRows.lying(try XCTUnwrap(session.state.hold(seat.id)?.wounded)), "Spears II · Bows I, healing")
+        XCTAssertTrue(PressableButtons.press("Heal 1"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .heal(hold: seat.id))
+        XCTAssertEqual(session.state.hold(seat.id)?.wounded?.map(\.healing), [true, true], "Paid for at once on the keeper's copy")
+        // All being healed: nothing more to pay for.
+        PressableButtons.isListening = true
+        draw(SelectionPanel(session: session), width: 330, height: 1100)
+        XCTAssertFalse(PressableButtons.press("Healing"))
+        XCTAssertEqual(session.state.refusal(of: .heal(hold: seat.id), as: me), .noneWounded)
+        XCTAssertEqual(GameSession.place(of: .healingBegun(hold: seat.id, house: me, count: 1), in: session.state), seat.position)
+        // The Infirmary stands in the world beside the hold.
+        let frame = session.sceneFrame(at: 1)
+        XCTAssertTrue(frame.batches.contains { $0.key == .work(.infirmary, level: 2) } || frame.fixed.contains { $0.key == .work(.infirmary, level: 2) },
+                      "Drawn by the hold")
+    }
+
     func testACompanySaysWhatItWasSentToDo() throws {
         var state = world("errands")
         let me = state.player

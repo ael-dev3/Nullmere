@@ -1165,6 +1165,7 @@ public final class GameSession {
         case .wear: return .order
         case .takeOff: return .stand
         case .breakUp: return .coin
+        case .heal: return .tend
         default: return .select
         }
     }
@@ -1194,6 +1195,10 @@ public final class GameSession {
         case .gearScrapped(let house, _, _) where house == player: return .coin
         case .shrineTaken(_, let house, _) where allied(house): return .banner
         case .shrineTaken(_, _, let from) where from == player: return .dread
+        case .carriedToInfirmary(_, let owner, _) where owner == player: return .tend
+        case .healingBegun(_, let house, _) where house == player: return .tend
+        case .unitHealed(let unit, _) where ours(unit): return .muster
+        case .woundedLost(_, let house, _) where house == player: return .dread
         case .hunted(let hunt) where hunt.attackerOwner == player: return hunt.attackerKind == .bow ? .loose : .clash
         case .sentToGather(let unit, _) where ours(unit): return .order
         case .gathered(_, let owner, _) where owner == player: return .dig
@@ -1311,7 +1316,8 @@ public final class GameSession {
             return at
         case .moved(_, let path): return path.last
         case .holdStruck(let hold, _), .holdCaptured(let hold, _, _), .buildingCompleted(let hold, _, _), .buildingStarted(let hold, _, _),
-             .trainingStarted(let hold, _), .holdFounded(let hold), .unitTrained(_, let hold), .delivered(_, _, let hold, _):
+             .trainingStarted(let hold, _), .holdFounded(let hold), .unitTrained(_, let hold), .delivered(_, _, let hold, _),
+             .carriedToInfirmary(_, _, let hold), .healingBegun(let hold, _, _), .unitHealed(_, let hold), .woundedLost(let hold, _, _):
             return state.hold(hold)?.position
         case .rallyStruck(_, _, let target, _, _), .rallySetOut(_, _, let target, _, _):
             return state.hold(target)?.position

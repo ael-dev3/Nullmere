@@ -8,6 +8,9 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
     case musterHall
     case walls
     case beacon
+    /// Where a House's fallen companies of war are carried from the field
+    /// and laid in its beds, to be healed for stores rather than lost.
+    case infirmary
     /// Where a House's studies are pursued: the higher it stands, the
     /// deeper the circle of studies open to the House, and the sooner each
     /// is done.
@@ -25,6 +28,7 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
         case .musterHall: return "Muster Hall"
         case .walls: return "Walls"
         case .beacon: return "Beacon"
+        case .infirmary: return "Infirmary"
         case .archive: return "Archive"
         case .moonspire: return "Moonspire"
         }
@@ -63,6 +67,7 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
         case .musterHall: return Stock(grain: 30, timber: 40, stone: 30)
         case .walls: return Stock(grain: 10, timber: 15, stone: 45)
         case .beacon: return Stock(grain: 10, timber: 30, stone: 20, moonsalt: 5)
+        case .infirmary: return Stock(grain: 30, timber: 30, stone: 20)
         case .archive: return Stock(grain: 20, timber: 40, stone: 30, moonsalt: 3)
         case .moonspire: return Stock(grain: 60, timber: 60, stone: 80, moonsalt: 24)
         }
@@ -105,6 +110,8 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
         case .beacon:
             let wider = Hold.territoryRadius(isSeat: isSeat, beaconLevel: level) > Hold.territoryRadius(isSeat: isSeat, beaconLevel: level - 1)
             return "Sight \(Hold.sight(beaconLevel: level))" + (wider ? "; its land reaches a tile further" : "")
+        case .infirmary:
+            return "Beds for \(Hold.beds(infirmaryLevel: level)) of the House's fallen companies of war"
         case .archive:
             let circle = min(level, BuildingKind.deepestCircle)
             return "Studies of the \(ordinal(circle)) circle; every study \(GameState.archivePace * level)% sooner"
