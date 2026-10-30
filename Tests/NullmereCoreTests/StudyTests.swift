@@ -105,6 +105,15 @@ final class StudyTests: XCTestCase {
     }
 
     /// A House that loses its Archive studies on only once it has another.
+    /// What a study gives at a grade is its gains, once for each grade.
+    func testAGradeGivesItsGainsAgain() {
+        for study in Study.allCases {
+            XCTAssertEqual(study.gains(atGrade: 1), study.profile.gains, "\(study)")
+            XCTAssertEqual(study.gains(atGrade: study.grades), study.profile.gains.mapValues { $0 * study.grades }, "\(study)")
+        }
+        XCTAssertEqual(Study.furrowLore.gains(atGrade: 0).values.allSatisfy { $0 == 0 }, true)
+    }
+
     func testAStudyWaitsWhileItsHouseHasNoArchive() throws {
         var (state, me, seat) = try world(archive: 1)
         _ = try state.perform(.study(.drill), as: me)

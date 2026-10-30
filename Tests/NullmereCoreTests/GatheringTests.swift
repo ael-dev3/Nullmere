@@ -87,6 +87,23 @@ final class GatheringTests: XCTestCase {
         XCTAssertEqual(state.problems(), [])
     }
 
+    /// A gatherer full with no hold of its House's left to bring it to is
+    /// done with its errand where it stands, load and all.
+    func testAGathererWithNoHoldToGoHomeToStandsWithItsLoad() throws {
+        var (state, me, spear, site, there) = try field("no home")
+        _ = try state.perform(.gather(unit: spear, site: site), as: me)
+        XCTAssertEqual(state.unit(spear)?.position, there)
+        let unit = try XCTUnwrap(state.unit(spear))
+        let index = try XCTUnwrap(state.unitIndex(spear))
+        state.units[index].load = Stock(grain: state.capacity(of: unit, for: .grain) - 1)
+        state.holds.removeAll { $0.owner == me }
+        let events = state.workTheLand()
+        XCTAssertTrue(events.contains { if case .gathered(spear, me, _) = $0 { return true } else { return false } })
+        XCTAssertNil(state.unit(spear)?.errand)
+        XCTAssertNil(state.unit(spear)?.destination)
+        XCTAssertEqual(state.unit(spear)?.load?.grain, state.capacity(of: unit, for: .grain))
+    }
+
     func testAGatheringOrderIsRefusedAsTheGameSaysIt() throws {
         var (state, me, spear, site, there) = try field("refused gathering")
         let lantern = state.put(.lantern, of: me, at: try XCTUnwrap(state.freeHex(near: there, within: 2...3)))
