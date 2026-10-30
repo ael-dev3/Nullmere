@@ -68,6 +68,8 @@ extension GameState {
         view.rallies = rallies?.filter { rally in
             isOfRally(house, rally) || (rally.marching && hold(rally.target)?.owner == house)
         }
+        // The marches they may know of, worked out on what they see.
+        view.marches = marches(seenBy: house, in: view)
         return view
     }
 }

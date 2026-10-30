@@ -589,6 +589,14 @@ realm; keepers are told in plain words, never a status code.
   Stewards call rallies by their temper, send companies they can spare to
   their side's rallies, and keep the gates of an ally's hold while a foe of
   both is near them.
+- **Marches.** A keeper's view of the world lists the marches they may
+  know of: for each of their companies on the march, the way it will go,
+  where it is bound and the watch it should be there; for a host of their
+  side, or one marching on a hold of theirs, the hold and the watch each
+  company should be in reach of it; and for any other company in their
+  sight on the march, the way it goes as far as they see it, never where
+  it is bound. The ways are worked out on the keeper's own view of the
+  land, so none bends round what they can't see.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is

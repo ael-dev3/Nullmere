@@ -88,6 +88,10 @@ public struct GameState: Codable, Equatable, Sendable {
     var alliances: [Alliance]?
     /// The rallies gathering or on the march; absent in saves from before them.
     var rallies: [Rally]?
+    /// In a keeper's view, the marches they may know of: where their
+    /// companies are bound and when they should be there, and the way
+    /// others in sight are going. Absent in the world itself.
+    public internal(set) var marches: [March]?
 
     public var player: Int { houses.first { $0.isPlayer }?.id ?? 0 }
 
