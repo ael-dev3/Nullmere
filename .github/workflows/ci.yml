@@ -51,7 +51,10 @@ jobs:
     # macOS 26 and Xcode 26: the launcher needs the Foundation Models
     # framework, and its tests only run on the OS they target.
     runs-on: macos-26
-    timeout-minutes: 30
+    # The tests alone take some eighteen minutes now that the world's
+    # models, motes and lights are rendered on the GPU; then the bundle,
+    # the release rehearsal and the screenshots of the game and the realm.
+    timeout-minutes: 45
     # "bash" runs with -o pipefail, so a failure piped through tee still fails.
     defaults:
       run:
