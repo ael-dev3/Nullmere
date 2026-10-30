@@ -228,6 +228,22 @@ struct EndWatchButton: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
+    /// The same, as VoiceOver says it: by the minute, so what it reads holds
+    /// still for a minute at a time rather than changing under it each
+    /// second. "Turns in about 2 minutes, 1 of 3 ready".
+    static func spokenRealmLine(status: RealmStatus?, secondsLeft: Int?) -> String? {
+        guard let status else { return nil }
+        var parts: [String] = []
+        if let left = secondsLeft, left < 3_600 {
+            let minutes = (left + 30) / 60
+            parts.append(left < 30 ? "Turns in under a minute" : minutes == 1 ? "Turns in about a minute" : "Turns in about \(minutes) minutes")
+        }
+        if status.online > 1 {
+            parts.append("\(status.ready) of \(status.online) ready")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: ", ")
+    }
+
     private func waitingText(units: Int, holds: Int) -> String {
         var parts: [String] = []
         if units > 0 { parts.append(units == 1 ? "1 company waits" : "\(units) companies wait") }
@@ -253,10 +269,11 @@ struct WatchClock: View {
                         .foregroundStyle(Palette.bad)
                         .accessibilityLabel("Out of reach, trying again")
                 } else if let line = EndWatchButton.realmLine(status: session.realmStatus, secondsLeft: session.secondsLeft(at: context.date)) {
+                    let left = session.secondsLeft(at: context.date)
                     Text(verbatim: "  ·  " + line)
                         .font(.nm(9).monospacedDigit())
                         .foregroundStyle(Palette.text(0.55))
-                        .accessibilityLabel(line.replacingOccurrences(of: " · ", with: ", "))
+                        .accessibilityLabel(EndWatchButton.spokenRealmLine(status: session.realmStatus, secondsLeft: left) ?? line)
                 }
             }
             .lineLimit(1)

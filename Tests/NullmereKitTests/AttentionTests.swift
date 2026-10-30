@@ -1,4 +1,4 @@
-import NullmereCore
+@testable import NullmereCore
 import XCTest
 @testable import NullmereKit
 

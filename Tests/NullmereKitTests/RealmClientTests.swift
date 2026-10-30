@@ -59,6 +59,7 @@ final class RealmClientTests: XCTestCase {
         XCTAssertEqual(ama.state.watch, 1, "Bel isn't ready yet")
         XCTAssertEqual(bel.realmStatus?.ready, 1)
         XCTAssertEqual(EndWatchButton.realmLine(status: bel.realmStatus, secondsLeft: 95), "Turns in 1:35 · 1 of 2 ready")
+        XCTAssertEqual(EndWatchButton.spokenRealmLine(status: bel.realmStatus, secondsLeft: 95), "Turns in about 2 minutes, 1 of 2 ready")
 
         ama.cancelReady()
         XCTAssertFalse(ama.isReady)
@@ -90,6 +91,12 @@ final class RealmClientTests: XCTestCase {
                                 secondsLeft: 999_999_999, isEnding: false)
         XCTAssertNil(EndWatchButton.realmLine(status: alone, secondsLeft: 999_999_999), "Alone, with no clock: nothing to say")
         XCTAssertEqual(EndWatchButton.realmLine(status: alone, secondsLeft: 61), "Turns in 1:01")
+        // Said by the minute, so VoiceOver's reading holds still between.
+        XCTAssertEqual(EndWatchButton.spokenRealmLine(status: alone, secondsLeft: 61), "Turns in about a minute")
+        XCTAssertEqual(EndWatchButton.spokenRealmLine(status: alone, secondsLeft: 134), "Turns in about 2 minutes")
+        XCTAssertEqual(EndWatchButton.spokenRealmLine(status: alone, secondsLeft: 151), "Turns in about 3 minutes")
+        XCTAssertEqual(EndWatchButton.spokenRealmLine(status: alone, secondsLeft: 12), "Turns in under a minute")
+        XCTAssertNil(EndWatchButton.spokenRealmLine(status: alone, secondsLeft: 999_999_999))
         XCTAssertEqual(RealmLine.describe(alone), "Age 1, watch 3 · 1 keeper there · 3 seats open of 4.")
     }
 
