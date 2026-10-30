@@ -5,6 +5,7 @@ import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
 @testable import NullmereRealm
+import NullmereWorld
 
 /// The game played without sight or pointer: VoiceOver is offered every
 /// order a company has (to found, to explore, to strike with its odds, each

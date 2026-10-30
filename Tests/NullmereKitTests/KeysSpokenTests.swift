@@ -3,6 +3,7 @@ import LauncherCore
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
+import NullmereWorld
 
 /// What the keys choose and do, as VoiceOver hears it, and what they say
 /// when there is nothing for them to do: ground no lantern has seen,

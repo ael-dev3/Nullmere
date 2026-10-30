@@ -1,0 +1,228 @@
+<!doctype html>
+<!--
+  Nullmere Online's world in three dimensions, drawn in a browser with the
+  SCENE section of Sources/NullmereWorld/WorldShaders.swift, the code the
+  Metal shaders share with GLSL, so the land, the mist and the still water
+  can be judged without a Mac. The world comes from the NullmereWorld
+  tests (set NULLMERE_WORLD_PREVIEW to a folder).
+
+    index.html?data=<world.json>&frame=seat|lake|whole|turned
+-->
+<meta charset="utf-8">
+<title>Nullmere world</title>
+<style>html, body { margin: 0; background: #000; } #error { color: #f88; white-space: pre; font: 12px monospace; }</style>
+<canvas id="world"></canvas>
+<div id="error"></div>
+<script type="module">
+const query = new URLSearchParams(location.search);
+const fail = (message) => { document.getElementById('error').textContent = message; throw new Error(message); };
+const data = await fetch(query.get('data')).then((r) => r.json());
+const swift = await fetch(query.get('shaders') || 'WorldShaders.swift').then((r) => r.text());
+const scene = swift.match(/\/\/ BEGIN SCENE\n([\s\S]*?)\/\/ END SCENE/)?.[1] ?? fail('SCENE markers not found.');
+const frame = data.frames.find((f) => f.name === (query.get('frame') || 'seat')) ?? data.frames[0];
+const [width, height] = data.viewport;
+const canvas = document.getElementById('world');
+canvas.width = width;
+canvas.height = height;
+const gl = canvas.getContext('webgl2', { antialias: true, preserveDrawingBuffer: true });
+if (!gl) fail('no WebGL2');
+
+const header = `#version 300 es
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+#define float2 vec2
+#define float3 vec3
+#define float4 vec4
+#define int2 ivec2
+#define NM_CONST const
+#define NM_TEXTURE_ARGUMENT
+#define NM_TEXTURE_PASS
+#define NM_TILE(cell) texelFetch(tiles, ivec2(cell), 0)
+#define NM_ATAN2(y, x) atan(y, x)
+uniform sampler2D tiles;
+uniform sampler2D heights;
+uniform mat4 viewProjection;
+uniform vec4 eye, moon, viewport, world, highlight, extent, haze, heightsGrid;
+uniform vec4 houses[16];
+${scene}
+`;
+const landVertex = header + `
+in vec3 position; in vec3 normal; in vec3 colour;
+out vec3 vWorld; out vec3 vNormal; out vec3 vColour; out float vKnown; out float vWatched;
+void main() {
+  vec3 p = position;
+  vec2 knowledge = nm_knowledgeAround(p.xz, world.x);
+  float known = smoothstep(0.0, 1.0, knowledge.x);
+  p.y = mix(kMistLevel, p.y, known);
+  gl_Position = viewProjection * vec4(p, 1.0);
+  vWorld = p;
+  vNormal = normalize(mix(vec3(0.0, 1.0, 0.0), normal, known));
+  vColour = nm_linear(colour);
+  vKnown = knowledge.x;
+  vWatched = knowledge.y;
+}`;
+const landFragment = header + `
+in vec3 vWorld; in vec3 vNormal; in vec3 vColour; in float vKnown; in float vWatched;
+out vec4 outColour;
+void main() {
+  float time = eye.w;
+  float radius = world.x;
+  vec3 n = normalize(vNormal);
+  vec2 p = vWorld.xz;
+  ivec2 h = nm_hexRound(nm_axial(p));
+  vec4 tile = nm_tileAt(h, radius);
+  float owner = tile.w - 16.0 * floor(tile.w / 16.0);
+  vec3 albedo = vColour;
+  vec3 edge = nm_hexEdge(p, h);
+  float pixel = max(fwidth(p.x), fwidth(p.y));
+  vec3 lit = vec3(0.0);
+  if (owner > 0.5 && vKnown > 0.5) {
+    vec3 house = houses[int(owner)].rgb;
+    albedo = mix(albedo, house * 0.5, 0.14);
+    ivec2 across = h + ivec2(int(edge.y), int(edge.z));
+    vec4 other = nm_tileAt(across, radius);
+    float otherOwner = other.w - 16.0 * floor(other.w / 16.0);
+    if (abs(otherOwner - owner) > 0.5) {
+      float line = 1.0 - smoothstep(pixel * 0.6, pixel * 2.2, edge.x);
+      lit += house * line * 0.35;
+    }
+  }
+  lit += nm_light(albedo, n, moon.xyz, moon.w);
+  for (int i = 0; i < 7; i++) {
+    ivec2 toward = ivec2(0, 0);
+    if (i == 1) { toward = ivec2(1, 0); }
+    if (i == 2) { toward = ivec2(-1, 0); }
+    if (i == 3) { toward = ivec2(0, 1); }
+    if (i == 4) { toward = ivec2(0, -1); }
+    if (i == 5) { toward = ivec2(1, -1); }
+    if (i == 6) { toward = ivec2(-1, 1); }
+    vec4 near = nm_tileAt(h + toward, radius);
+    if (near.y >= 128.0) {
+      float far = length(p - nm_hexCentre(h + toward));
+      lit += albedo * kHearth * 0.55 * exp(-far * far * 1.6);
+    }
+  }
+  float hovered = (abs(float(h.x) - highlight.x) < 0.5 && abs(float(h.y) - highlight.y) < 0.5) ? 1.0 : 0.0;
+  float chosen = (abs(float(h.x) - highlight.z) < 0.5 && abs(float(h.y) - highlight.w) < 0.5) ? 1.0 : 0.0;
+  float ring = 1.0 - smoothstep(pixel * 0.8, pixel * 2.4, edge.x);
+  lit += vec3(0.20, 0.22, 0.26) * ring * hovered * 0.6;
+  lit += kGlow * (ring * 0.9 + (1.0 - smoothstep(0.0, 0.35, edge.x)) * 0.08) * chosen;
+  lit = mix(nm_remembered(lit), lit, smoothstep(0.15, 0.85, vWatched));
+  lit = mix(nm_mist(p, time), lit, smoothstep(0.0, 1.0, vKnown));
+  float beyond = float(nm_hexDistance(h)) - radius;
+  lit *= clamp(1.0 - 0.13 * beyond, 0.18, 1.0);
+  lit = nm_haze(lit, distance(vWorld, eye.xyz), haze.x, haze.y);
+  outColour = vec4(nm_encode(lit * haze.z), 1.0);
+}`;
+const waterVertex = header + `
+out vec3 vWorld;
+void main() {
+  vec2 corner = vec2(float(gl_VertexID & 1), float(gl_VertexID >> 1));
+  vec2 xz = mix(extent.xy, extent.zw, corner);
+  vWorld = vec3(xz.x, 0.0, xz.y);
+  gl_Position = viewProjection * vec4(vWorld, 1.0);
+}`;
+const waterFragment = header + `
+in vec3 vWorld;
+out vec4 outColour;
+void main() {
+  vec2 grid = (vWorld.xz - heightsGrid.xy) / haze.w + 0.5;
+  float ground = texture(heights, grid / heightsGrid.zw).r;
+  float depth = -ground;
+  if (depth <= 0.0) { discard; }
+  float time = eye.w;
+  vec3 look = normalize(vWorld - eye.xyz);
+  vec3 mirrored = vec3(look.x, -look.y, look.z);
+  float facing = 1.0 - max(-look.y, 0.0);
+  float fresnel = 0.30 + 0.70 * facing * facing * facing * facing * facing;
+  vec3 colour = kDeepWater + nm_sky(mirrored, moon.xyz, time) * fresnel;
+  float clear = smoothstep(0.0, 0.14, depth);
+  ivec2 h = nm_hexRound(nm_axial(vWorld.xz));
+  vec2 knowledge = nm_knowledge(h, world.x);
+  colour = mix(nm_remembered(colour), colour, knowledge.y);
+  colour = nm_haze(colour, distance(vWorld, eye.xyz), haze.x, haze.y);
+  outColour = vec4(nm_encode(colour * haze.z), clear);
+}`;
+
+function compile(type, source) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    const lines = source.split('\n').map((l, i) => `${i + 1}: ${l}`).join('\n');
+    fail(gl.getShaderInfoLog(shader) + '\n' + lines.slice(0, 200));
+  }
+  return shader;
+}
+function program(vertex, fragment) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, vertex));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fragment));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) fail(gl.getProgramInfoLog(p));
+  return p;
+}
+const decode = (b64, Type) => { const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)); return new Type(bytes.buffer); };
+
+function uniforms(p) {
+  gl.useProgram(p);
+  const set = (name, f, value) => { const at = gl.getUniformLocation(p, name); if (at) f.call(gl, at, value); };
+  set('viewProjection', (at, v) => gl.uniformMatrix4fv(at, false, v), new Float32Array(frame.viewProjection));
+  for (const name of ['eye', 'moon', 'viewport', 'world', 'highlight', 'extent', 'haze']) set(name, gl.uniform4fv, new Float32Array(frame[name]));
+  set('heightsGrid', gl.uniform4fv, new Float32Array(frame.heights));
+  set('houses', gl.uniform4fv, new Float32Array(frame.houses));
+  set('tiles', gl.uniform1i, 0);
+  set('heights', gl.uniform1i, 1);
+}
+
+// The tiles, as bytes the shader reads back to the byte.
+const tileBytes = Uint8Array.from(atob(frame.tiles), (c) => c.charCodeAt(0));
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, data.side, data.side, 0, gl.RGBA, gl.UNSIGNED_BYTE, tileBytes);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+// The heights, as half floats so they filter everywhere, as on the Mac.
+gl.activeTexture(gl.TEXTURE1);
+gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+const heights = decode(data.heights, Float32Array);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.R16F, data.columns, data.rows, 0, gl.RED, gl.FLOAT, heights);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+gl.viewport(0, 0, width, height);
+gl.clearColor(0.06, 0.065, 0.09, 1);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+gl.enable(gl.DEPTH_TEST);
+gl.depthFunc(gl.LEQUAL);
+
+const land = program(landVertex, landFragment);
+uniforms(land);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+for (const [name, b64] of [['position', data.positions], ['normal', data.normals], ['colour', data.colors]]) {
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, decode(b64, Float32Array), gl.STATIC_DRAW);
+  const at = gl.getAttribLocation(land, name);
+  gl.enableVertexAttribArray(at);
+  gl.vertexAttribPointer(at, 3, gl.FLOAT, false, 0, 0);
+}
+const indices = decode(data.indices, Uint32Array);
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_INT, 0);
+
+const water = program(waterVertex, waterFragment);
+uniforms(water);
+gl.bindVertexArray(gl.createVertexArray());
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+gl.depthMask(false);
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+document.title = 'ready';
+</script>

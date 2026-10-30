@@ -3,6 +3,7 @@ import SwiftUI
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
+import NullmereWorld
 
 /// The map painted without Metal plays as the full map does: the moon lies
 /// in its water, a hold's land shows whose it is, and the tile chosen and

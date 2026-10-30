@@ -2,6 +2,7 @@ import NullmereCore
 import SwiftUI
 import XCTest
 @testable import NullmereKit
+import NullmereWorld
 
 /// The marks drawn over the map (holds, companies, names, routes, reach)
 /// must leave the GPU its frame: measured offscreen over a busy late game.

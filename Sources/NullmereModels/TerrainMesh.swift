@@ -1,3 +1,4 @@
+import Foundation
 import NullmereCore
 
 /// The land as one mesh: a grid of points over the map and the Spine round
@@ -25,13 +26,13 @@ public struct TerrainMesh: Sendable {
         case .greyfield: return Vec3(0.33, 0.36, 0.30)
         case .blackwood: return Vec3(0.13, 0.16, 0.13)
         case .barrow: return Vec3(0.34, 0.33, 0.27)
-        case .spine: return Vec3(0.27, 0.27, 0.30)
+        case .spine: return Vec3(0.21, 0.21, 0.24)
         }
     }
 
     /// Frost on the Spine's heights.
     static let frost = Vec3(0.5, 0.52, 0.57)
-    static let frostLine: Float = 2.4
+    static let frostLine: Float = 2.7
 
     /// How far past the map's outermost hexes the land is drawn.
     public static let margin: Float = 7
@@ -54,20 +55,19 @@ public struct TerrainMesh: Sendable {
                 let height = relief.height(atX: x, z: z)
                 heights[index] = height
                 // The colour keeps each hex's own ground until near its edge.
-                var colour = Vec3.zero
-                var strongest: (terrain: Terrain, weight: Float) = (.spine, -1)
-                for (hex, weight) in Relief.sharpened(Relief.surrounding(x: x, z: z), power: 6) {
-                    let terrain = relief.terrain(of: hex)
-                    colour += TerrainMesh.colour(terrain) * weight
-                    if weight > strongest.weight { strongest = (terrain, weight) }
-                }
+                let t = Relief.triangle(x: x, z: z)
+                let wa = Relief.raise(t.wa, 6), wb = Relief.raise(t.wb, 6), wc = Relief.raise(t.wc, 6)
+                let total = max(wa + wb + wc, 1e-12)
+                let ta = relief.terrain(of: t.a), tb = relief.terrain(of: t.b), tc = relief.terrain(of: t.c)
+                var colour = (TerrainMesh.colour(ta) * wa + TerrainMesh.colour(tb) * wb + TerrainMesh.colour(tc) * wc) / total
+                let strongest = wa >= wb && wa >= wc ? ta : (wb >= wc ? tb : tc)
                 if height > TerrainMesh.frostLine {
                     colour = colour.mix(TerrainMesh.frost, min((height - TerrainMesh.frostLine) / 0.8, 1))
                 }
                 // A little mottling, so no field is one flat colour.
                 colour *= 0.9 + 0.2 * Noise.value(x * 2.3, z * 2.3, seed: 21)
                 colours[index] = colour
-                grounds[index] = strongest.terrain.code
+                grounds[index] = strongest.code
             }
         }
 
@@ -109,6 +109,28 @@ public struct TerrainMesh: Sendable {
         self.originZ = originZ
         self.spacing = spacing
     }
+
+    /// The land of a map, made once and kept: every view of the same map
+    /// shares it.
+    public static func shared(for map: WorldMap, spacing: Float = 0.3) -> TerrainMesh {
+        TerrainMesh.store.lock.lock()
+        defer { TerrainMesh.store.lock.unlock() }
+        if let kept = TerrainMesh.store.kept.first(where: { $0.map == map && $0.spacing == spacing }) {
+            return kept.terrain
+        }
+        let terrain = TerrainMesh(relief: Relief(map: map), spacing: spacing)
+        TerrainMesh.store.kept.append((map, spacing, terrain))
+        // A few maps are kept: an age's, and the next as it begins.
+        if TerrainMesh.store.kept.count > 3 { TerrainMesh.store.kept.removeFirst() }
+        return terrain
+    }
+
+    private final class Store: @unchecked Sendable {
+        let lock = NSLock()
+        var kept: [(map: WorldMap, spacing: Float, terrain: TerrainMesh)] = []
+    }
+
+    private static let store = Store()
 
     /// The height at a point, read from the grid between its points.
     public func height(atX x: Float, z: Float) -> Float {

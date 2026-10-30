@@ -7,6 +7,7 @@ import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
 import NullmereTestSupport
+import NullmereWorld
 
 /// The world's interface as a fresh review found it wanting, put right: the
 /// away report knows whose House it tells of, the first steps are taken

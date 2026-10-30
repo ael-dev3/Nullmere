@@ -27,6 +27,11 @@ var targets: [Target] = [
     // Swift, so every shape is built and tested on Linux too.
     .target(name: "NullmereModels", dependencies: ["NullmereCore"]),
     .testTarget(name: "NullmereModelsTests", dependencies: ["NullmereModels", "NullmereCore"]),
+    // The world as the GPU draws it, apart from the GPU: the camera, the
+    // shaders' source, the data they read and how a frame's models are
+    // gathered. Pure Swift, so tested on Linux too.
+    .target(name: "NullmereWorld", dependencies: ["NullmereCore", "NullmereModels"]),
+    .testTarget(name: "NullmereWorldTests", dependencies: ["NullmereWorld", "NullmereModels", "NullmereCore"]),
     // SpacetimeDB in memory, and credentials kept in memory, for tests of
     // the realm across the network: the realm's and the app's.
     .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm"], path: "Tests/NullmereTestSupport"),
@@ -44,11 +49,11 @@ targets += [
     // The SwiftUI/AppKit/Metal launcher interface.
     .target(name: "LauncherKit", dependencies: ["LauncherCore"]),
     // The world's interface: the front door, the Metal world, the panels.
-    .target(name: "NullmereKit", dependencies: ["NullmereCore", "NullmereModels", "NullmereRealm", "LauncherCore", "LauncherKit"]),
+    .target(name: "NullmereKit", dependencies: ["NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "LauncherCore", "LauncherKit"]),
     // The "Nullmere Online" app: the launcher, and through Play, the realm.
     .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherKit", "NullmereKit"]),
     .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore", "NullmereTestSupport"]),
-    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereModels", "NullmereRealm", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
+    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
 ]
 #endif
 

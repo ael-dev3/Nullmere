@@ -3,6 +3,7 @@ import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
 import NullmereTestSupport
+import NullmereWorld
 
 /// The marks on the map in the states a war brings: an arrow in flight and
 /// a company falling where it stood, a hold with foes at its gates, a ward

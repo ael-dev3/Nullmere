@@ -1,4 +1,5 @@
 import AppKit
+import NullmereWorld
 import SwiftUI
 
 /// The game's keys, read from the window's key events while no text field
@@ -22,6 +23,10 @@ enum GameKey: Equatable {
     /// the keyboard's right-click.
     case orderAtCentre
     case zoom(Double)
+    /// Turns the view about its middle, by a twelfth of a circle either way.
+    case turn(Double)
+    /// Leans the view toward the horizon (more) or toward looking straight down.
+    case lean(Double)
     /// The open panel, or the chosen hold's, a page up (-1) or down (1).
     case page(Int)
     case houses
@@ -108,7 +113,11 @@ extension GameSession {
                 sayDone("\(unit.kind.title) march \(distance) tile\(distance == 1 ? "" : "s") \(MapAccessibility.direction(from: unit.position, to: target))")
             }
         case .zoom(let factor):
-            camera.zoom(by: factor, around: .zero, in: .zero)
+            camera.zoom(by: factor)
+        case .turn(let angle):
+            camera.turn(by: angle)
+        case .lean(let angle):
+            camera.lean(by: angle)
         case .page(let direction):
             guard panel != nil || selectedHold != nil else { return false }
             pageRequest = PageRequest(serial: pageRequest.serial + 1, direction: direction, target: panel.map(PageTarget.panel) ?? .selection)
@@ -256,6 +265,10 @@ final class KeyBridgeView: NSView {
         case "h": return .nextHold
         case "=", "+": return .zoom(1.25)
         case "-", "_": return .zoom(0.8)
+        case "q": return .turn(-.pi / 6)
+        case "e": return .turn(.pi / 6)
+        case "r": return .lean(-0.12)
+        case "t": return .lean(0.12)
         case "w": return .pan(dx: 0, dy: step)
         case "s": return .pan(dx: 0, dy: -step)
         case "a": return .pan(dx: step, dy: 0)

@@ -4,6 +4,8 @@ import Metal
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
+import NullmereModels
+import NullmereWorld
 
 /// The map's Metal view outside the happy path: tiles that come before
 /// the shader is ready kept for it, a shader that fails said once, tiles
@@ -11,57 +13,25 @@ import XCTest
 @MainActor
 final class WorldMetalViewTests: XCTestCase {
     /// The map starts over with the scene's clock without a jump: every
-    /// motion in it comes round a whole number of times in the period, and
-    /// the lanterns flicker with no seam across the land.
+    /// motion in it comes round a whole number of times in the period.
     func testTheMapStartsOverWithoutAJump() throws {
-        let source = WorldShader.source
-        XCTAssertTrue(source.contains("#define NM_CLOCK_PERIOD \(String(format: "%.1f", SceneClock.period))"))
-        for straight in ["sin(time *", "time * 0.012", "nm_hash(floor(w))"] {
-            XCTAssertFalse(source.contains(straight), "No \(straight) left to jump or seam")
-        }
-        XCTAssertFalse(source.contains("trembling"), "The water is still")
-        XCTAssertFalse(source.contains("float2(0.0, -2.2)"), "The moonlight pools round the moon's image, not a fixed point")
-    }
-
-    /// Each House's colour is one colour, on the map and in the panels: the
-    /// shader's table and the interface's are the same, entry for entry.
-    func testAHousesColourIsOneColourEverywhere() throws {
-        let source = WorldShader.source
-        let start = try XCTUnwrap(source.range(of: "float3 nm_houseColour(float index) {"))
-        // The body up to its closing brace, a line of its own, each colour a
-        // float3( r, g, b ); however the shader's source is indented.
-        let lines = source[start.upperBound...].split(separator: "\n", omittingEmptySubsequences: false)
-        let body = lines.prefix { $0.trimmingCharacters(in: .whitespaces) != "}" }.joined(separator: "\n")
-        let found = body.components(separatedBy: "float3(").dropFirst().map { piece in
-            let parts = (piece.components(separatedBy: ")").first ?? "").split(separator: ",").compactMap {
-                Double($0.trimmingCharacters(in: .whitespaces))
-            }
-            return NullmereKit.Palette.RGB(parts[0], parts[1], parts[2])
-        }
-        XCTAssertEqual(found, NullmereKit.Palette.houseRGB, "The shader's House colours are the interface's")
-    }
-
-    /// The moon in the map's water wears the launcher's moon's face: the same
-    /// seas, drawn from the same noise turn for turn.
-    func testTheMapsMoonIsTheLaunchersMoon() {
-        let turn = "p = p * 2.03 + float2(17.1, 9.3);"
-        XCTAssertTrue(LakeShader.source.contains(turn), "The launcher's moon's noise")
-        XCTAssertTrue(WorldShader.source.contains(turn), "and the map's moon's")
-        for face in ["(mq * 1.6 + float2(5.2, 1.3))", "(mq * 6.0 + float2(1.7, 8.1))"] {
-            XCTAssertTrue(WorldShader.source.contains("nm_moonFbm\(face)"), face)
+        let source = WorldShaders.source
+        XCTAssertTrue(source.contains("kClockPeriod = \(String(format: "%.1f", SceneClock.period));"))
+        for straight in ["sin(time *", "sin(t *", "cos(t *", "time * 0.0"] {
+            XCTAssertFalse(source.contains(straight), "No \(straight) left to jump as the clock starts over")
         }
     }
 
-    /// A shader library missing the world's vertex or fragment function is
-    /// refused by name, so a broken build says what it lacks.
+    /// A shader library missing one of the world's functions is refused by
+    /// name, so a broken build says what it lacks.
     func testARendererWithoutItsFunctionsSaysWhichIsMissing() throws {
         guard let device = WorldMetalView.systemDevice else { throw XCTSkip("No Metal device available") }
         func library(_ functions: String) throws -> any MTLLibrary {
             try device.makeLibrary(source: "#include <metal_stdlib>\nusing namespace metal;\n" + functions, options: nil)
         }
-        let noVertex = try library("fragment float4 other_fragment() { return float4(0); }")
-        let onlyVertex = try library("vertex float4 \(WorldShader.vertexFunction)() { return float4(0); }")
-        for (lib, missing) in [(noVertex, WorldShader.vertexFunction), (onlyVertex, WorldShader.fragmentFunction)] {
+        let noLand = try library("fragment float4 other_fragment() { return float4(0); }")
+        let onlyLandVertex = try library("vertex float4 \(WorldShaders.landVertex)() { return float4(0); }")
+        for (lib, missing) in [(noLand, WorldShaders.landVertex), (onlyLandVertex, WorldShaders.landFragment)] {
             XCTAssertThrowsError(try WorldRenderer(device: device, library: lib, pixelFormat: .bgra8Unorm)) { error in
                 guard case WorldRenderer.Failure.missingFunction(let name) = error else { return XCTFail("\(error)") }
                 XCTAssertEqual(name, missing)
@@ -81,9 +51,14 @@ final class WorldMetalViewTests: XCTestCase {
         view.onFailure = { failures += 1 }
         view.setTiles(bytes, side: side, version: 1)
         view.setTiles(bytes, side: side, version: 1)
-        let library = try device.makeLibrary(source: WorldShader.source, options: nil)
+        // The land, too, waits for the shader, and is sent once for its map.
+        let terrain = TerrainMesh.shared(for: state.map, spacing: 0.6)
+        view.setLand(terrain, for: state.map)
+        view.setLand(terrain, for: state.map)
+        let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
         view.finishLoading(device: device, library: library, error: nil, pixelFormat: .bgra8Unorm)
         XCTAssertNotNil(view.renderer)
+        XCTAssertEqual(view.renderer?.land?.map, state.map, "the land kept for the shader, then sent")
         view.setTiles(bytes, side: side, version: 2)
         XCTAssertEqual(failures, 0)
         // Tiles too few for their side are left aside, the last good ones kept.
@@ -121,6 +96,20 @@ final class WorldMetalViewTests: XCTestCase {
         XCTAssertGreaterThan(view.drawableSize.width, close, "Farther out, drawn at full resolution")
         XCTAssertTrue(view.isOpaque)
         XCTAssertTrue(view.acceptsFirstResponder)
+        XCTAssertEqual(view.sampleCount, WorldRenderer.sampleCount, "edges drawn clean against the night")
+        XCTAssertEqual(view.depthStencilPixelFormat, WorldRenderer.depthFormat, "what is nearer hides what is farther")
+    }
+
+    /// A twist of two fingers turns the world with them, and says so.
+    func testATwistTurnsTheWorld() {
+        let view = WorldMetalView()
+        var told: [Camera] = []
+        view.onCameraChange = { told.append($0) }
+        view.twist(by: 0.4)
+        XCTAssertEqual(view.camera.heading, -0.4, accuracy: 1e-9)
+        XCTAssertEqual(told.last, view.camera)
+        view.pinch(by: 1.5, around: CGPoint(x: 10, y: 10))
+        XCTAssertEqual(told.count, 2)
     }
 
     func testInAWindowItListensAndLetsGoWhenItLeaves() throws {

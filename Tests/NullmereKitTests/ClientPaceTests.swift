@@ -5,6 +5,7 @@ import SwiftUI
 import XCTest
 @testable import NullmereKit
 import NullmereTestSupport
+import NullmereWorld
 
 /// The client carries out every order on its own copy of the world at once
 /// and redraws it; the realm's answer comes later, across the network. On

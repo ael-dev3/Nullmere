@@ -65,7 +65,8 @@ enum Guide {
         Section(title: "Keys", lines: [
             "Tab or .: the next company waiting · ] and [: every company in turn, marching or fortified too · H: your holds in turn, the seat first",
             "F: fortify · B: found a hold, B again to be sure · Space or Return: choose whatever lies in the middle of the view",
-            "Arrows or WASD: pan · + and −: zoom · Page Up and Page Down: scroll the open panel · Esc: close, then clear the selection",
+            "Arrows or WASD: pan · + and −: zoom · Q and E: turn the view · R and T: look down more or toward the horizon · Page Up and Page Down: scroll the open panel · Esc: close, then clear the selection",
+            "With the pointer: drag to pan, pinch or ⌘-scroll to zoom, twist two fingers or ⌥-drag to turn and lean the view",
             "With Keyboard navigation on in System Settings, Tab, the arrows, Space and Return move through and press the controls as everywhere on the Mac: . and WASD stay the game's, and the arrows pan once the map has the keyboard",
             "Without a pointer: choose a company, pan until where it should go is in the middle of the view, then M to march there; to strike, M shows the odds and M again strikes. VoiceOver says what lies in the middle as you pan, and how far it is from your company",
             "In Settings, Letter keys set to With ⌥ makes every letter, number and mark key need ⌥, so a stray key does nothing",

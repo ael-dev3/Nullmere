@@ -4,6 +4,7 @@ import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
 import NullmereTestSupport
+import NullmereWorld
 
 /// The map in a real window, as the app shows it: the Metal view made and
 /// fed its tiles, its renderer loaded, and the pointer's hovering, clicks,

@@ -2,6 +2,8 @@ import AppKit
 import LauncherCore
 import LauncherKit
 import NullmereCore
+import NullmereModels
+import NullmereWorld
 import SwiftUI
 
 /// The map: the Metal world, with holds, companies and the marching route
@@ -49,7 +51,7 @@ struct WorldView: View {
                             }
                         }
                         .frame(width: ring, height: ring)
-                        .position(session.camera.viewPoint(of: item.hex, in: proxy.size))
+                        .position(session.viewPoint(of: item.hex, in: proxy.size))
                 }
             }
         }
@@ -87,7 +89,9 @@ private struct WorldMetalRepresentable: NSViewRepresentable {
 
     private func update(_ view: WorldMetalView) {
         view.radius = session.state.map.radius
-        view.moon = session.moon
+        view.relief = session.relief
+        view.houseColours = WorldView.houseColours
+        view.setLand(TerrainMesh.shared(for: session.state.map), for: session.state.map)
         view.camera = session.camera
         view.hovered = session.hovered
         view.selected = session.selectedHex
@@ -130,7 +134,7 @@ struct WorldMarks: View {
         for blow in session.blows where blow.attacker == unit.id || blow.defender == unit.id {
             let age = date.timeIntervalSince(blow.start) / GameSession.Blow.duration
             if blow.attacker == unit.id, !blow.isRanged {
-                let foe = camera.viewPoint(of: blow.at, in: size)
+                let foe = session.viewPoint(of: blow.at, in: size)
                 let lean = CGFloat(GameSession.Blow.lunge(at: age))
                 point = CGPoint(x: point.x + (foe.x - point.x) * lean, y: point.y + (foe.y - point.y) * lean)
             } else if blow.defender == unit.id {
@@ -142,14 +146,14 @@ struct WorldMarks: View {
 
     private func marchPoint(of unit: NullmereCore.Unit, at date: Date, camera: Camera, size: CGSize) -> CGPoint {
         guard !reduceMotion, let march = session.marches[unit.id], march.path.count > 1 else {
-            return camera.viewPoint(of: unit.position, in: size)
+            return session.viewPoint(of: unit.position, in: size)
         }
         let progress = min(max(date.timeIntervalSince(march.start) / march.duration, 0), 1)
         let eased = progress * progress * (3 - 2 * progress)
         let along = eased * Double(march.path.count - 1)
         let step = min(Int(along), march.path.count - 2)
-        let a = camera.viewPoint(of: march.path[step], in: size)
-        let b = camera.viewPoint(of: march.path[step + 1], in: size)
+        let a = session.viewPoint(of: march.path[step], in: size)
+        let b = session.viewPoint(of: march.path[step + 1], in: size)
         let f = along - Double(step)
         return CGPoint(x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f)
     }
@@ -165,7 +169,7 @@ struct WorldMarks: View {
             if !session.pathPreview.isEmpty, let unit = session.selectedUnit {
                 var moves = unit.movesLeft
                 var watch = 0
-                var previous = camera.viewPoint(of: unit.position, in: size)
+                var previous = session.viewPoint(of: unit.position, in: size)
                 for hex in session.pathPreview {
                     let cost = state.map[hex]?.terrain.moveCost ?? 1
                     if moves < cost && moves < unit.kind.movement {
@@ -173,14 +177,14 @@ struct WorldMarks: View {
                         moves = unit.kind.movement
                     }
                     moves = max(0, moves - cost)
-                    let point = camera.viewPoint(of: hex, in: size)
+                    let point = session.viewPoint(of: hex, in: size)
                     var line = Path()
                     line.move(to: previous)
                     line.addLine(to: point)
                     context.stroke(line, with: .color(Palette.line(watch == 0 ? 0.55 : 0.28)), style: StrokeStyle(lineWidth: 1.2, dash: [3, 4]))
                     previous = point
                 }
-                let end = camera.viewPoint(of: session.pathPreview.last!, in: size)
+                let end = session.viewPoint(of: session.pathPreview.last!, in: size)
                 let ring = Path(ellipseIn: CGRect(x: end.x - 6, y: end.y - 6, width: 12, height: 12))
                 context.stroke(ring, with: .color(Palette.line(0.7)), lineWidth: 1.2)
                 if watch > 0 {
@@ -197,7 +201,7 @@ struct WorldMarks: View {
                 let layout = HexLayout(size: 1)
                 var area = Path()
                 for hex in session.reach {
-                    let corners = layout.corners(of: hex).map { camera.viewPoint(worldX: $0.x, worldY: $0.y, in: size) }
+                    let corners = layout.corners(of: hex).map { session.viewPoint(worldX: $0.x, worldY: $0.y, onHex: hex, in: size) }
                     guard let first = corners.first else { continue }
                     area.move(to: first)
                     for corner in corners.dropFirst() { area.addLine(to: corner) }
@@ -206,7 +210,7 @@ struct WorldMarks: View {
                 context.fill(area, with: .color(Palette.glow.opacity(0.09)))
                 context.stroke(area, with: .color(Palette.glow.opacity(0.22)), lineWidth: 0.6)
                 for hex in session.strikeTargets {
-                    let point = camera.viewPoint(of: hex, in: size)
+                    let point = session.viewPoint(of: hex, in: size)
                     let r = scale * 0.62
                     let ring = Path(ellipseIn: CGRect(x: point.x - r, y: point.y - r, width: r * 2, height: r * 2))
                     context.stroke(ring, with: .color(Palette.bad.opacity(0.85)), style: StrokeStyle(lineWidth: 1.4, dash: [4, 3]))
@@ -217,11 +221,11 @@ struct WorldMarks: View {
             // rising and fading above it. Still, under Reduce Motion.
             for blow in session.blows {
                 let age = reduceMotion ? 0.5 : min(max(date.timeIntervalSince(blow.start) / GameSession.Blow.duration, 0), 1)
-                let point = camera.viewPoint(of: blow.at, in: size)
+                let point = session.viewPoint(of: blow.at, in: size)
                 let fade = 1 - age
                 // A bow's shot crossing the gap.
                 if blow.isRanged, !reduceMotion, age < 0.1 {
-                    let origin = camera.viewPoint(of: blow.from, in: size)
+                    let origin = session.viewPoint(of: blow.from, in: size)
                     let t = CGFloat(age / 0.1)
                     let head = CGPoint(x: origin.x + (point.x - origin.x) * t, y: origin.y + (point.y - origin.y) * t)
                     let tail = CGPoint(x: origin.x + (point.x - origin.x) * max(t - 0.35, 0), y: origin.y + (point.y - origin.y) * max(t - 0.35, 0))
@@ -241,7 +245,7 @@ struct WorldMarks: View {
                 }
                 // The fallen fade and sink where they stood.
                 for fell in blow.fallen {
-                    let at = camera.viewPoint(of: fell.at, in: size)
+                    let at = session.viewPoint(of: fell.at, in: size)
                     let r = min(max(scale * 0.34, 7), 16) * CGFloat(1 - 0.25 * age)
                     let sunk = CGPoint(x: at.x, y: at.y + CGFloat(8 * age))
                     let colour = Palette.house(state.houses[fell.owner]).opacity(0.8 * fade)
@@ -262,7 +266,7 @@ struct WorldMarks: View {
 
             // Holds the player knows of.
             for hold in state.holds where session.isExplored(hold.position) {
-                let point = camera.viewPoint(of: hold.position, in: size)
+                let point = session.viewPoint(of: hold.position, in: size)
                 guard point.x > -80, point.y > -80, point.x < size.width + 80, point.y < size.height + 80 else { continue }
                 let colour = Palette.house(state.houses[hold.owner])
                 let r = min(max(scale * 0.36, 7), 18)
@@ -601,7 +605,7 @@ struct ForecastOverlay: View {
     var body: some View {
         GeometryReader { proxy in
             if let forecast = session.hoverForecast, let hex = session.hovered {
-                let point = session.camera.viewPoint(of: hex, in: proxy.size)
+                let point = session.viewPoint(of: hex, in: proxy.size)
                 ForecastCard(forecast: forecast, targetName: targetName(forecast))
                     .fixedSize()
                     .position(x: point.x, y: point.y - max(session.camera.scale * 0.9, 26) - 30)
@@ -672,5 +676,13 @@ struct ForecastCard: View {
                 .foregroundStyle(colour)
             Text(verbatim: "of \(total)").font(.nm(10)).foregroundStyle(Palette.text(0.45))
         }
+    }
+}
+
+extension WorldView {
+    /// Each House's colour by its sigil, as the world's shaders take it:
+    /// the interface's own colours, made linear.
+    nonisolated static let houseColours: [Vec4] = Palette.houseRGB.map {
+        Vec4(Float(pow($0.red, 2.2)), Float(pow($0.green, 2.2)), Float(pow($0.blue, 2.2)), 1)
     }
 }

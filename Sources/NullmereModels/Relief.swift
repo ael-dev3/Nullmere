@@ -60,7 +60,13 @@ public struct Relief: Sendable {
         case .barrow:
             let mound = Noise.fractal(x * 1.4, z * 1.4, octaves: 2, seed: 17)
             return 0.3 * mound * mound
-        case .spine: return 1.15 * Noise.ridged(x * 0.42, z * 0.42, octaves: 4, seed: 18)
+        case .spine:
+            // Ridges bent by a broad warp, sharpened by squaring: long
+            // crests and steep valleys, not a field of bumps.
+            let wx = x + 1.8 * Noise.fractal(x * 0.19, z * 0.19, octaves: 2, seed: 31)
+            let wz = z + 1.8 * Noise.fractal(x * 0.19 + 5.3, z * 0.19 - 3.1, octaves: 2, seed: 32)
+            let ridge = Noise.ridged(wx * 0.3, wz * 0.3, octaves: 5, seed: 18)
+            return 1.7 * ridge * ridge + 0.22 * Noise.fractal(x * 1.3, z * 1.3, octaves: 3, seed: 33)
         }
     }
 
@@ -86,37 +92,45 @@ public struct Relief: Sendable {
     /// The three hexes whose hearts surround a point, with how near the
     /// point lies to each: weights that sum to one.
     public static func surrounding(x: Float, z: Float) -> [(hex: Hex, weight: Float)] {
+        let t = Relief.triangle(x: x, z: z)
+        return [(t.a, t.wa), (t.b, t.wb), (t.c, t.wc)]
+    }
+
+    /// The lattice triangle of hearts round a point and the point's weights,
+    /// without making an array: the land is asked this a hundred thousand
+    /// times as it is built.
+    static func triangle(x: Float, z: Float) -> (a: Hex, wa: Float, b: Hex, wb: Float, c: Hex, wc: Float) {
         let qf = (Relief.hexSpacing / 3 * x - z / 3)
         let rf = 2 * z / 3
         let q0 = qf.rounded(.down), r0 = rf.rounded(.down)
         let fq = qf - q0, fr = rf - r0
         let q = Int(q0), r = Int(r0)
         if fq + fr <= 1 {
-            return [(Hex(q, r), 1 - fq - fr), (Hex(q + 1, r), fq), (Hex(q, r + 1), fr)]
+            return (Hex(q, r), 1 - fq - fr, Hex(q + 1, r), fq, Hex(q, r + 1), fr)
         }
-        return [(Hex(q + 1, r + 1), fq + fr - 1), (Hex(q, r + 1), 1 - fq), (Hex(q + 1, r), 1 - fr)]
+        return (Hex(q + 1, r + 1), fq + fr - 1, Hex(q, r + 1), 1 - fq, Hex(q + 1, r), 1 - fr)
     }
 
-    /// The surrounding weights sharpened: near its heart a hex holds its own
+    /// A weight raised to a power: near its heart a hex holds its own
     /// height or colour, and the change comes toward its edge.
-    static func sharpened(_ weights: [(hex: Hex, weight: Float)], power: Int) -> [(hex: Hex, weight: Float)] {
-        let raised = weights.map { item -> (hex: Hex, weight: Float) in
-            var w: Float = 1
-            for _ in 0..<power { w *= max(item.weight, 0) }
-            return (item.hex, w)
-        }
-        let total = raised.reduce(0) { $0 + $1.weight }
-        guard total > 0 else { return weights }
-        return raised.map { ($0.hex, $0.weight / total) }
+    static func raise(_ value: Float, _ power: Int) -> Float {
+        var w: Float = 1
+        for _ in 0..<power { w *= max(value, 0) }
+        return w
     }
 
     /// The height of the land at a point of the map.
     public func height(atX x: Float, z: Float) -> Float {
-        var height: Float = 0
-        for (hex, weight) in Relief.sharpened(Relief.surrounding(x: x, z: z), power: 3) where weight > 0 {
-            height += weight * (heartHeight(hex) + Relief.grain(terrain(of: hex), x, z))
+        let t = Relief.triangle(x: x, z: z)
+        let wa = Relief.raise(t.wa, 3), wb = Relief.raise(t.wb, 3), wc = Relief.raise(t.wc, 3)
+        let total = wa + wb + wc
+        guard total > 0 else { return 0 }
+        // A hex too far from the point to matter adds nothing, and its grain
+        // isn't worked out.
+        func share(_ hex: Hex, _ weight: Float) -> Float {
+            weight > 1e-4 ? weight * (heartHeight(hex) + Relief.grain(terrain(of: hex), x, z)) : 0
         }
-        return height
+        return share(t.a, wa / total) + share(t.b, wb / total) + share(t.c, wc / total)
     }
 
     /// Which way the land faces at a point.

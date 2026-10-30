@@ -4,64 +4,69 @@
   "slack_ms": 1.0,
   "metrics": {
     "world.gpu.scale12.p50": {
-      "baseline": 9.7,
+      "baseline": null,
       "gpu": true,
-      "limit": 16.7
+      "limit": 16.7,
+      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
     },
     "world.gpu.scale12.p95": {
-      "baseline": 11.8,
+      "baseline": null,
       "gpu": true,
       "ratio": 1.5,
       "limit": 16.7,
-      "note": "the worst frames: half again the baseline, and never over a 60 Hz frame"
+      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
     },
     "world.gpu.scale28.p50": {
-      "baseline": 12.4,
+      "baseline": null,
       "gpu": true,
-      "limit": 16.7
+      "limit": 16.7,
+      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
     },
     "world.gpu.scale28.p95": {
-      "baseline": 12.4,
+      "baseline": null,
       "gpu": true,
       "ratio": 1.5,
       "limit": 16.7,
-      "note": "the worst frames: half again the baseline, and never over a 60 Hz frame"
+      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
     },
     "world.gpu.scale60.p50": {
-      "baseline": 10.5,
+      "baseline": null,
       "gpu": true,
-      "limit": 16.7
+      "limit": 16.7,
+      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
     },
     "world.gpu.scale60.p95": {
-      "baseline": 12.3,
+      "baseline": null,
       "gpu": true,
       "ratio": 1.5,
       "limit": 16.7,
-      "note": "the worst frames: half again the baseline, and never over a 60 Hz frame"
+      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
     },
     "pan.frame.p50": {
-      "baseline": 11.9,
+      "baseline": null,
       "gpu": true,
-      "limit": 16.7
+      "limit": 16.7,
+      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
     },
     "pan.frame.p95": {
-      "baseline": 12.4,
+      "baseline": null,
       "gpu": true,
       "ratio": 1.5,
       "limit": 16.7,
-      "note": "the worst frames: half again the baseline, and never over a 60 Hz frame"
+      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
     },
     "pan.gpu.p50": {
-      "baseline": 11.5,
+      "baseline": null,
       "gpu": true,
-      "limit": 16.7
+      "limit": 16.7,
+      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
     },
     "pan.gpu.p95": {
-      "baseline": 12.0,
+      "baseline": null,
       "gpu": true,
       "ratio": 1.5,
       "limit": 16.7,
-      "note": "the worst frames: half again the baseline, and never over a 60 Hz frame"
+      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
     },
     "lake.gpu.p50": {
       "baseline": 8.3,

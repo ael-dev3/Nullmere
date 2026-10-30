@@ -7,17 +7,21 @@ import LauncherKit
 import NullmereRealm
 import XCTest
 @testable import NullmereKit
+import NullmereModels
+import NullmereWorld
 
 final class WorldShaderTests: XCTestCase {
     /// Every House that may sit around the lake has its colour, the same
-    /// in the interface and on the map.
+    /// in the interface and on the map: the map's are the interface's,
+    /// made linear for the shaders.
     func testEachHouseHasOneColourEverywhere() throws {
         XCTAssertEqual(Palette.houses.count, Names.houses.count)
         XCTAssertEqual(Names.houses.count, WorldGenerator.mostHouses)
-        for colour in Palette.houses {
-            let rgb = try XCTUnwrap(NSColor(colour).usingColorSpace(.sRGB))
-            let triple = String(format: "float3(%.2f, %.2f, %.2f)", rgb.redComponent, rgb.greenComponent, rgb.blueComponent)
-            XCTAssertTrue(WorldShader.source.contains(triple), "The map knows \(triple)")
+        XCTAssertEqual(WorldView.houseColours.count, Palette.houseRGB.count)
+        for (shader, interface) in zip(WorldView.houseColours, Palette.houseRGB) {
+            XCTAssertEqual(Double(shader.x), pow(interface.red, 2.2), accuracy: 1e-5)
+            XCTAssertEqual(Double(shader.y), pow(interface.green, 2.2), accuracy: 1e-5)
+            XCTAssertEqual(Double(shader.z), pow(interface.blue, 2.2), accuracy: 1e-5)
         }
         // Each a colour of its own.
         let components = Palette.houses.compactMap { NSColor($0).usingColorSpace(.sRGB) }
@@ -29,72 +33,16 @@ final class WorldShaderTests: XCTestCase {
         }
     }
 
-    func testUniformsAreFourFloat4s() {
-        XCTAssertEqual(MemoryLayout<WorldUniforms>.stride, 64)
-        XCTAssertEqual(MemoryLayout<WorldUniforms>.alignment, 16)
-    }
-
-    /// Compiles the world shader and builds its pipeline on this Mac's GPU.
-    func testShaderCompilesAndBuildsAPipeline() throws {
+    /// Compiles the world's shaders and builds their pipelines on this Mac's GPU.
+    func testShadersCompileAndBuildTheirPipelines() throws {
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw XCTSkip("No Metal device available")
         }
-        let library = try device.makeLibrary(source: WorldShader.source, options: nil)
+        let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
+        for name in WorldShaders.functions {
+            XCTAssertNotNil(library.makeFunction(name: name), name)
+        }
         XCTAssertNoThrow(try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm))
-    }
-}
-
-final class TileTextureTests: XCTestCase {
-    func testEachTileLandsAtItsAxialTexel() {
-        let state = GameState(settings: GameSettings(seedText: "tile texture", houseCount: 3, radius: 14, keepers: 1))
-        let side = TileTexture.side(for: state.map)
-        let bytes = TileTexture.bytes(for: state, viewer: state.player)
-        XCTAssertEqual(side, 29)
-        XCTAssertEqual(bytes.count, side * side * 4)
-        let visible = state.visibility(for: state.player)
-        for (index, hex) in state.map.hexes.enumerated() {
-            let offset = ((hex.r + 14) * side + (hex.q + 14)) * 4
-            XCTAssertEqual(Int(bytes[offset]), Terrain.allCases.firstIndex(of: state.map[index].terrain))
-            if visible[index] {
-                XCTAssertEqual(bytes[offset + 3] / 16, 2)
-            }
-        }
-        let seat = try! XCTUnwrap(state.seat(of: state.player))
-        let offset = ((seat.position.r + 14) * side + (seat.position.q + 14)) * 4
-        XCTAssertEqual(Int(bytes[offset + 3] % 16), state.playerHouse.sigil + 1, "the seat is in its House's colour")
-        XCTAssertEqual(bytes[offset + 1] & TileTexture.holdFlag, TileTexture.holdFlag, "the seat is lit")
-        let explored = state.houses[state.player].explored
-        for hold in state.holds where hold.owner != state.player {
-            let index = try! XCTUnwrap(state.map.index(of: hold.position))
-            let o = ((hold.position.r + 14) * side + (hold.position.q + 14)) * 4
-            XCTAssertEqual(bytes[o + 1] & TileTexture.holdFlag != 0, explored[index], "only known holds are lit")
-        }
-    }
-}
-
-private extension GameState {
-    var playerHouse: House { houses[player] }
-}
-
-final class CameraTests: XCTestCase {
-    func testPointsAndHexesRoundTrip() {
-        var camera = Camera(centerX: 3, centerY: -2, scale: 30)
-        let size = CGSize(width: 1200, height: 800)
-        for hex in Hex(1, -1).spiral(6) {
-            XCTAssertEqual(camera.hex(at: camera.viewPoint(of: hex, in: size), in: size), hex)
-        }
-        let anchor = CGPoint(x: 300, y: 200)
-        let before = camera.world(at: anchor, in: size)
-        camera.zoom(by: 1.7, around: anchor, in: size)
-        let after = camera.world(at: anchor, in: size)
-        XCTAssertEqual(before.x, after.x, accuracy: 1e-9)
-        XCTAssertEqual(before.y, after.y, accuracy: 1e-9)
-        camera.zoom(by: 1000, around: anchor, in: size)
-        XCTAssertEqual(camera.scale, Camera.maximumScale)
-        camera.pan(dx: 1e7, dy: -1e7)
-        camera.clamp(toRadius: 20)
-        XCTAssertLessThanOrEqual(abs(camera.centerX), 3.0.squareRoot() * 20)
-        XCTAssertLessThanOrEqual(abs(camera.centerY), 30)
     }
 }
 

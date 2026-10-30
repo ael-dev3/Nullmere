@@ -4,6 +4,7 @@ import SwiftUI
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
+import NullmereWorld
 
 /// The game's keys as the window reads them: each key's meaning, typing
 /// and shortcuts left alone, and the window fitted to a small screen.

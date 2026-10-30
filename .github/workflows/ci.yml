@@ -83,7 +83,7 @@ jobs:
       # How much of each module the tests run, held to a floor.
       - name: Coverage
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        run: mkdir -p build && python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereCore=98 NullmereModels=98 NullmereRealm=98 NullmereKit=97.5 LauncherCore=98.5 LauncherKit=98 --worst 40 --lines 40 | tee build/coverage.log
+        run: mkdir -p build && python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereCore=98 NullmereModels=98 NullmereWorld=98 NullmereRealm=98 NullmereKit=97.5 LauncherCore=98.5 LauncherKit=98 --worst 40 --lines 40 | tee build/coverage.log
 
       # How long each scene takes the GPU at a MacBook Pro's native
       # resolution, a whole frame while the camera pans, an order and a
@@ -430,7 +430,7 @@ jobs:
       - name: Coverage
         run: |
           apt-get update -qq && apt-get install -y -qq python3 >/dev/null
-          python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereCore=97 NullmereModels=97 NullmereRealm=97 LauncherCore=97
+          python3 scripts/coverage.py "$(swift test --show-codecov-path)" NullmereCore=97 NullmereModels=97 NullmereWorld=97 NullmereRealm=97 LauncherCore=97
 
       - name: Install Rust and SpacetimeDB
         run: |

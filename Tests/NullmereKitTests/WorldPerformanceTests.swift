@@ -1,7 +1,9 @@
 import Metal
-import NullmereCore
-import XCTest
+@testable import NullmereCore
 @testable import NullmereKit
+import NullmereModels
+import NullmereWorld
+import XCTest
 
 /// How long the GPU takes to draw the world at a 14-inch MacBook Pro's
 /// native resolution, over a game well under way. Prints the time for the
@@ -12,43 +14,40 @@ final class WorldPerformanceTests: XCTestCase {
 
     func testTheWorldFitsAFrameAtSixtyHertz() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
-        let library = try device.makeLibrary(source: WorldShader.source, options: nil)
+        let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
         var state = GameState(settings: GameSettings(seedText: "measured water", keepers: 1))
         for _ in 0..<60 {
             _ = state.stewardTurn(for: state.player)
             _ = state.endWatch()
         }
+        try renderer.setLand(TerrainMesh.shared(for: state.map), for: state.map)
         try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
         // The keeper's seat, or, should their House have fallen in sixty
         // watches of stewards, the first seat still standing.
         let seat = try XCTUnwrap(state.seat(of: state.player) ?? state.livingHouses.lazy.compactMap { state.seat(of: $0.id) }.first).position
-        let centre = HexLayout(size: 1).center(of: seat)
+        let terrain = try XCTUnwrap(renderer.land).terrain
 
         var results: [String] = []
-        // Zoomed out is the most work: the most tiles, edges and mist on screen.
+        // Zoomed out is the most work: the most land, mist and water in view.
         for scale in [12.0, 28.0, 60.0] {
             // At the resolution the view draws at for this zoom.
             let fraction = WorldMetalView.renderScale(forCameraScale: scale)
             let width = Int((Double(Self.width) * fraction).rounded())
             let height = Int((Double(Self.height) * fraction).rounded())
-            let descriptor = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false
-            )
-            descriptor.usage = .renderTarget
-            descriptor.storageMode = .private
-            let target = try XCTUnwrap(device.makeTexture(descriptor: descriptor))
+            let target = try renderer.makeTarget(width: width, height: height)
+            var camera = Camera(scale: scale)
+            camera.focus(on: seat)
+            // The view as the window has it, in points: half the pixels each way.
+            let size = CGSize(width: Double(Self.width) / 2, height: Double(Self.height) / 2)
             // Eighty frames once it has settled, as the pan is measured: over
             // fewer, the worst twentieth is a frame or two, and one hiccup of
             // a shared GPU reads as the world's own.
             var times: [Double] = []
             for frame in 0..<85 {
-                let uniforms = WorldUniforms(
-                    view: SIMD4(Float(width), Float(height), Float(scale * 2 * fraction), Float(3 + Double(frame) / 60)),
-                    camera: SIMD4(Float(centre.x), Float(centre.y), Float(state.map.radius), Float(2 * fraction)),
-                    highlight: SIMD4(Float(seat.q), Float(seat.r), Float(seat.q), Float(seat.r)),
-                    moon: MoonMirror.place(in: state.map)
-                )
+                let uniforms = FrameUniforms.make(camera: camera, size: size, pixelsPerPoint: 2 * fraction, time: Float(3 + Double(frame) / 60),
+                                                  motion: 1, radius: state.map.radius, terrain: terrain, hovered: seat, selected: seat,
+                                                  houses: WorldView.houseColours)
                 if let ms = renderer.measureFrame(uniforms, into: target) { times.append(ms) }
             }
             let settled = Array(times.dropFirst(5)).sorted()

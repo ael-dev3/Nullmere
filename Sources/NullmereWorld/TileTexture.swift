@@ -5,23 +5,23 @@ import NullmereCore
 /// terrain, feature, relief, and what the viewer knows of it (whether the
 /// tile is unknown, remembered or watched) with the colour of the House
 /// whose territory it is.
-enum TileTexture {
+public enum TileTexture {
     /// Set in the feature byte where a hold stands.
-    static let holdFlag: UInt8 = 0x80
+    public static let holdFlag: UInt8 = 0x80
 
-    static func side(for map: WorldMap) -> Int {
+    public static func side(for map: WorldMap) -> Int {
         2 * map.radius + 1
     }
 
     /// What never changes from watch to watch: each tile's terrain, feature
     /// and relief, and where in the texture each tile lies. Made once for a
     /// map; each change of the world fills in only what the keeper knows.
-    struct Ground {
-        let map: WorldMap
-        let bytes: [UInt8]
-        let offsets: [Int]
+    public struct Ground: Sendable {
+        public let map: WorldMap
+        public let bytes: [UInt8]
+        public let offsets: [Int]
 
-        init(map: WorldMap) {
+        public init(map: WorldMap) {
             self.map = map
             let side = TileTexture.side(for: map)
             var bytes = [UInt8](repeating: 0, count: side * side * 4)
@@ -43,7 +43,7 @@ enum TileTexture {
     /// `visible` and `owners` may be passed when already worked out, and
     /// `ground` when the map hasn't changed, as the session does on every
     /// change.
-    static func bytes(for state: GameState, viewer: Int, visible: [Bool]? = nil, owners: [Int?]? = nil,
+    public static func bytes(for state: GameState, viewer: Int, visible: [Bool]? = nil, owners: [Int?]? = nil,
                       ground: Ground? = nil) -> [UInt8] {
         let map = state.map
         let ground = ground.flatMap { $0.map == map ? $0 : nil } ?? Ground(map: map)

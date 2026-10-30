@@ -1,7 +1,9 @@
 import Metal
-import NullmereCore
-import XCTest
+@testable import NullmereCore
 @testable import NullmereKit
+import NullmereModels
+import NullmereWorld
+import XCTest
 
 /// The frame as the keeper waits for it: a world frame's whole time, from
 /// encoding to the GPU finishing, and the GPU's share of it, over a game
@@ -10,24 +12,23 @@ import XCTest
 final class FrameHarnessTests: XCTestCase {
     func testAFrameWhileTheCameraPans() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
-        let library = try device.makeLibrary(source: WorldShader.source, options: nil)
+        let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
         var state = GameState(settings: GameSettings(seedText: "panning frames", keepers: 1))
         for _ in 0..<40 {
             _ = state.stewardTurn(for: state.player)
             _ = state.endWatch()
         }
+        try renderer.setLand(TerrainMesh.shared(for: state.map), for: state.map)
         try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
+        let terrain = try XCTUnwrap(renderer.land).terrain
         let seat = try XCTUnwrap(state.seat(of: state.player)).position
         let start = HexLayout(size: 1).center(of: seat)
         let scale = 28.0
         let fraction = WorldMetalView.renderScale(forCameraScale: scale)
         let width = Int((3024 * fraction).rounded()), height = Int((1964 * fraction).rounded())
-        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
-        descriptor.usage = .renderTarget
-        descriptor.storageMode = .private
-        let target = try XCTUnwrap(device.makeTexture(descriptor: descriptor))
-        let moon = MoonMirror.place(in: state.map)
+        let target = try renderer.makeTarget(width: width, height: height)
+        let size = CGSize(width: 1512, height: 982)
 
         // Two hundred and forty frames once warm, so the slowest twentieth is
         // a dozen frames, not the few a shared runner's hiccup can spoil.
@@ -44,16 +45,13 @@ final class FrameHarnessTests: XCTestCase {
         for _ in 0..<3 {
             var frames: [Double] = [], gpu: [Double] = []
             for frame in 0..<250 {
-                // A slow pan across the lake, as a keeper drags the map, over
-                // the same stretch of it as ninety frames once covered.
+                // A slow pan across the lake, as a keeper drags the map.
                 let t = Double(frame) / 60 * 90 / 250
-                let uniforms = WorldUniforms(
-                    view: SIMD4(Float(width), Float(height), Float(scale * 2 * fraction), Float(3 + t)),
-                    camera: SIMD4(Float(start.x + t * 6), Float(start.y + t * 2), Float(state.map.radius), Float(2 * fraction)),
-                    highlight: SIMD4(999, 999, 999, 999),
-                    moon: moon
-                )
+                let camera = Camera(centerX: start.x + t * 6, centerY: start.y + t * 2, scale: scale)
                 let began = ContinuousClock.now
+                let uniforms = FrameUniforms.make(camera: camera, size: size, pixelsPerPoint: 2 * fraction, time: Float(3 + t), motion: 1,
+                                                  radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil,
+                                                  houses: WorldView.houseColours)
                 guard let ms = renderer.measureFrame(uniforms, into: target) else { continue }
                 let took = ContinuousClock.now - began
                 if frame >= 10 {

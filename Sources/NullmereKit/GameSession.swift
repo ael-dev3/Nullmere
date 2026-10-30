@@ -2,7 +2,9 @@ import AppKit
 import Foundation
 import LauncherCore
 import NullmereCore
+import NullmereModels
 import NullmereRealm
+import NullmereWorld
 import Observation
 import SwiftUI
 
@@ -95,8 +97,15 @@ public final class GameSession {
     @ObservationIgnored private var keptForWorld: (version: Int, values: [String: Any]) = (-1, [:])
     /// The texture's unchanging ground, made again only when the map changes.
     @ObservationIgnored private var ground: TileTexture.Ground?
-    /// Where the moon lies in this lake's water.
+    /// Where the moon lies in this lake's water, for the map drawn without Metal.
     private(set) var moon = SIMD4<Float>(0, -2.2, 1.05, 1)
+    /// The lie of the land under the map, made again only when the map
+    /// changes: where things stand, and the hex under the pointer.
+    @ObservationIgnored public private(set) var relief: Relief {
+        didSet { heartHeights = [] }
+    }
+    /// The height of each hex's heart, by map index, worked out when first asked.
+    @ObservationIgnored var heartHeights: [Double] = []
     /// Holds and units the player can see right now, by map index.
     public private(set) var visible: [Bool] = []
     public private(set) var isEndingWatch = false
@@ -283,6 +292,7 @@ public final class GameSession {
         self.state = world
         self.store = store
         self.voice = voice
+        self.relief = Relief(map: world.map)
         var camera = Camera(scale: 28)
         if let seat = world.seat(of: house) {
             camera.focus(on: seat.position)
@@ -963,6 +973,7 @@ public final class GameSession {
         if ground?.map != state.map {
             ground = TileTexture.Ground(map: state.map)
             moon = MoonMirror.place(for: state)
+            relief = Relief(map: state.map)
         }
         tileBytes = TileTexture.bytes(for: state, viewer: player, visible: visible, owners: territory, ground: ground)
         tilesVersion += 1
