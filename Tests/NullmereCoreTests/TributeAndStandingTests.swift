@@ -62,12 +62,29 @@ final class TributeTests: XCTestCase {
         XCTAssertTrue(events.contains(.proposalAnswered(proposal: .tribute, from: state.player, to: rival, accepted: true)))
         XCTAssertEqual(state.houses[rival].stock + theirs.share(1, of: 5), theirs)
 
-        // The other rival is as strong as the player was at the start: no tribute,
-        // and the player is only refused, not at war.
+        // The other rival is as strong as the player was at the start: no
+        // tribute, and a steward that refuses is marched on, the war the
+        // demander's own.
         var even = game()
+        even.gifts = [Gift(from: even.player, to: 2, worth: 50, watch: even.watch)]
         let refused = try even.propose(.tribute, from: even.player, to: 2)
         XCTAssertTrue(refused.contains(.proposalAnswered(proposal: .tribute, from: even.player, to: 2, accepted: false)))
-        XCTAssertEqual(even.stance(even.player, 2), .peace, "Only a rival that demands marches when refused")
+        XCTAssertTrue(refused.contains(.stanceChanged(first: even.player, second: 2, stance: .war, by: even.player)))
+        XCTAssertEqual(even.relation(even.player, 2)?.aggressor, even.player, "A demand refused is no free throw")
+        XCTAssertEqual(even.goodwill(from: even.player, to: 2), 0, "and the war throws away the goodwill")
+    }
+
+    /// Between two keepers, a refusal is the end of it: the demander may
+    /// choose war, but none follows of itself.
+    func testAKeeperRefusedByAKeeperIsNotAtWar() throws {
+        var state = game()
+        let me = state.player, other = 1
+        state.houses[other].isPlayer = true
+        _ = try state.propose(.tribute, from: me, to: other)
+        let demand = try XCTUnwrap(state.envoys.first { $0.from == me && $0.to == other })
+        let events = try state.perform(.answer(envoy: demand.id, accept: false), as: other)
+        XCTAssertTrue(events.contains(.proposalAnswered(proposal: .tribute, from: me, to: other, accepted: false)))
+        XCTAssertEqual(state.stance(me, other), .peace)
     }
 
     func testTributeIsOnlyAskedInPeace() throws {

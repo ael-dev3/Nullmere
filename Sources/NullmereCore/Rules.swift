@@ -223,18 +223,26 @@ extension GameState {
             attackerFell: attackerFell, defenderFell: defenderFell
         )), at: 0)
 
-        // The victor in close combat takes the field, unless a hold's ward still stands.
+        // The victor in close combat takes the field, unless a hold's ward
+        // still stands, or it fought from within its own hold.
         if defenderFell, !attackerFell, !ranged, let index = unitIndex(attackerID) {
             if let hold = hold(at: hex) {
                 if hold.ward == 0, attacker.kind.canCapture {
                     events += capture(hold: hold.id, with: attackerID)
                 }
-            } else if unit(at: hex) == nil {
+            } else if unit(at: hex) == nil, takesTheField(attacker, at: hex) {
                 units[index].position = hex
                 reveal(around: hex, range: omen?.kind == .risingMist ? max(1, attacker.kind.sight - 1) : attacker.kind.sight, for: attacker.owner)
             }
         }
         return events
+    }
+
+    /// Whether a company that wins a close fight here steps onto the
+    /// fallen's ground: only out in the field. A garrison holds its
+    /// ground, so no foe dying at its gates can empty its hold.
+    func takesTheField(_ attacker: Unit, at hex: Hex) -> Bool {
+        attacker.position.distance(to: hex) == 1 && hold(at: attacker.position) == nil && hold(at: hex) == nil
     }
 
     /// Attack and defence in a fight between two units, before chance.
@@ -414,6 +422,8 @@ extension GameState {
         let hold = holds[index]
         guard hold.project == nil else { throw .busy }
         if kind.requiresSeat, !hold.isSeat { throw .seatOnly }
+        // A vassal raises no Moonspire while it serves.
+        if kind == .moonspire, houses[house].liege != nil { throw .notApplicable }
         let level = hold.level(kind) + 1
         guard level <= kind.maxLevel else { throw .maxLevel }
         let cost = kind.cost(toLevel: level)
@@ -483,6 +493,14 @@ extension GameState {
             houses[target].liege = nil
         }
         setStance(.war, between: house, and: target, by: house)
+        // War throws away what gifts bought: the goodwill of every gift the
+        // declarer sent the House it turns on is forfeit.
+        if var sent = gifts {
+            for index in sent.indices where sent[index].from == house && sent[index].to == target {
+                sent[index].forfeit = true
+            }
+            gifts = sent
+        }
         envoys.removeAll { ($0.from == target && $0.to == house) || ($0.from == house && $0.to == target) }
         if fearingSpire {
             record(.war, [house, target], "Fearing the white tower rising at \(seat(of: target)?.name ?? "their seat"), \(houses[house].title) goes to war against \(houses[target].title).")
@@ -511,10 +529,7 @@ extension GameState {
             throw .notApplicable
         case .tribute:
             guard current == .peace else { throw current == .pact ? .alreadyStance(.pact) : .notApplicable }
-            guard houses[house].liege != target, houses[target].liege != house, !paidTributeLately(house, target),
-                  !refusedTributeLately(house, target) else {
-                throw .notApplicable
-            }
+            guard mayDemandTribute(by: house, of: target) else { throw .notApplicable }
         }
 
         if houses[target].isPlayer {
@@ -578,6 +593,10 @@ extension GameState {
         case .fealty:
             setStance(.pact, between: proposer, and: other, by: actor)
             houses[proposer].liege = other
+            // A vassal raises no Moonspire: the works on its tower stop.
+            for index in holds.indices where holds[index].owner == proposer && holds[index].project?.kind == .moonspire {
+                holds[index].project = nil
+            }
             record(.pact, [proposer, other], "\(houses[proposer].title) bends the knee and swears fealty to \(houses[other].title).")
         case .tribute:
             let paid = tribute(from: other)
@@ -614,14 +633,25 @@ extension GameState {
         return watch - refused < GameState.tributeRefusedRespite
     }
 
-    /// A refused demand: a rival that demanded marches; the player who
-    /// demanded is only refused, and can't demand again for a while.
+    /// Whether one House may demand tribute of another now: both standing,
+    /// at peace, neither sworn to the other, and no demand paid or refused
+    /// between them lately.
+    public func mayDemandTribute(by demander: Int, of target: Int) -> Bool {
+        guard demander != target, let me = house(demander), let other = house(target), !me.isEliminated, !other.isEliminated else { return false }
+        return stance(demander, target) == .peace && me.liege != target && other.liege != demander
+            && !paidTributeLately(demander, target) && !refusedTributeLately(demander, target)
+    }
+
+    /// A refused demand: the demander marches, as a steward always does,
+    /// and as a keeper must when a steward refuses them, for a steward
+    /// answers a demand as it makes one. Only a keeper refused by a keeper
+    /// is left to choose war or not, and can't demand again for a while.
     mutating func refuseTribute(demandedBy demander: Int, of refuser: Int) -> [GameEvent] {
         if let index = relations.firstIndex(where: { $0.first == min(demander, refuser) && $0.second == max(demander, refuser) }) {
             relations[index].tributeRefused = watch
         }
         record(.tribute, [refuser, demander], "\(houses[refuser].title) refuses tribute to \(houses[demander].title).")
-        guard !houses[demander].isPlayer else { return [] }
+        guard !houses[demander].isPlayer || !houses[refuser].isPlayer else { return [] }
         return (try? declareWar(by: demander, on: refuser)) ?? []
     }
 }

@@ -656,7 +656,10 @@ struct ForecastCard: View {
             if forecast.mayFinish { return "The ward may break" }
             return nil
         }
-        if forecast.surelyFinishes { return "They fall" }
+        if forecast.surelyFinishes {
+            if forecast.couldCapture { return "They fall; the hold is taken" }
+            return forecast.takesTheField ? "They fall; you take their ground" : "They fall"
+        }
         if forecast.mayFinish { return "They may fall" }
         return nil
     }

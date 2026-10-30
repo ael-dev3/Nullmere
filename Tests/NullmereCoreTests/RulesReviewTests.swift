@@ -16,9 +16,15 @@ final class RulesReviewTests: XCTestCase {
         var state = newGame()
         let me = state.player
         let other = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
-        // Matched as at the start, a steward refuses.
+        // Another keeper refuses: no war follows between keepers, only a
+        // wait before the demand can be made again.
+        state.houses[other].isPlayer = true
         _ = try state.perform(.propose(.tribute, to: other), as: me)
+        let demand = try XCTUnwrap(state.envoys.first { $0.from == me && $0.to == other })
+        _ = try state.perform(.answer(envoy: demand.id, accept: false), as: other)
         XCTAssertNotNil(state.relation(me, other)?.tributeRefused, "Refused")
+        XCTAssertEqual(state.stance(me, other), .peace)
+        XCTAssertFalse(state.mayDemandTribute(by: me, of: other), "The demand can't be made, nor offered")
         let lines = state.chronicle.count
         XCTAssertThrowsError(try state.perform(.propose(.tribute, to: other), as: me))
         XCTAssertEqual(state.chronicle.count, lines, "Nothing more in the chronicle")
@@ -26,7 +32,9 @@ final class RulesReviewTests: XCTestCase {
         XCTAssertTrue(state.refusedTributeLately(me, other), "Not before the respite")
         state.watch += 1
         XCTAssertFalse(state.refusedTributeLately(me, other), "After it, it may be made again")
+        XCTAssertTrue(state.mayDemandTribute(by: me, of: other))
         XCTAssertNoThrow(try state.perform(.propose(.tribute, to: other), as: me))
+        XCTAssertFalse(state.mayDemandTribute(by: me, of: me), "Never of itself")
     }
 
     func testAPaidDemandWaitsBeforeItsMadeAgain() throws {
@@ -48,7 +56,8 @@ final class RulesReviewTests: XCTestCase {
         let me = state.player
         let other = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
         let lines = state.chronicle.count
-        for _ in 0..<4 {
+        // As many as each may take in a watch.
+        for _ in 0..<(GameState.giftsTakenPerWatch / GameState.notedGift) {
             _ = try state.perform(.gift(to: other, resource: .grain, amount: GameState.notedGift), as: me)
             _ = try state.perform(.gift(to: me, resource: .grain, amount: GameState.notedGift), as: other)
         }

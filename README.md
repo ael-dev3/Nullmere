@@ -291,10 +291,10 @@ as the realm will, and takes the realm's word as final.
   answers envoys, builds and trains, guards the holds, fights on in wars
   already begun and sues for peace in one going badly, but begins no war,
   demand or pact and never bends the knee, though it takes a House offering
-  fealty as a vassal. A pact offered it swears as a steward would, but
-  never with a House at war with the keeper's allies or one whose Moonspire
-  is rising. While fewer than half the keepers are there, a watch lasts at
-  least a third of its time, however ready they are.
+  fealty as a vassal. Peace offered to end a war it takes as a steward
+  would; a pact offered it never swears, for a pact would lend the
+  keeper's sight to another. While fewer than half the keepers are there, a
+  watch lasts at least a third of its time, however ready they are.
 - **Fair seats.** Seats are spread evenly round the lake, none hemmed in
   with little land of its own; which House takes which is the luck of the
   draw, and the stewards take their turns starting one seat further round
@@ -306,15 +306,20 @@ as the realm will, and takes the realm's word as final.
 - **Gifts.** Send stores to any House you aren't at war with. Stewards
   remember gifts for twenty watches: a war seems older to them, and enough
   goodwill wins a pact, unless you once made war on them or a pact between
-  you was broken. A keeper hears of a gift, a war declared or an
+  you was broken. War on a House throws away the goodwill your gifts bought
+  with it, and no gift moves a steward that fears your rising Moonspire. A
+  House takes in gifts worth a hundred a watch at most, from every giver
+  together, moonsalt counting four: enough to help an ally, never enough
+  for Houses one keeper holds under other names to pour their stores into
+  one. A keeper hears of a gift, a war declared or an
   envoy sent the moment it happens, not when the watch turns.
 - **Trade.** Offer any House you aren't at war with so much of one store
   for so much of another. Stewards weigh it by barter worth, the cunning
   asking most; allies, givers of gifts and a House short of what you offer
   ask less, though never below even, and none trades away the grain its
   companies need. A keeper
-  answers by envoy. Stewards trade among themselves before bartering at
-  three to one. The answer is always the realm's: your copy of the world
+  answers by envoy. Stewards trade among themselves before they barter.
+  The answer is always the realm's: your copy of the world
   can't see the others' stores, so it doesn't guess.
 - **Who is there.** The front door names the keepers in the realm now,
   and each House in the Houses panel says who gives its orders: its
@@ -328,11 +333,12 @@ as the realm will, and takes the realm's word as final.
   what happened while you were away: your stores and holds, and the news
   that touched your House.
 - **What can't be undone asks twice.** Declaring war, breaking a pact,
-  disbanding a company and refusing a steward's demand for tribute each want
-  a second press, with no clock to beat: the button keeps its name for
-  VoiceOver and Voice Control, says what it asks, and lets go when another
-  is pressed or it leaves the view. By the keys, B asks before founding a
-  hold and M before a strike; the same key again carries it out.
+  disbanding a company, refusing a steward's demand for tribute and
+  demanding tribute of a steward each want a second press, with no clock
+  to beat: the button keeps its name for VoiceOver and Voice Control, says
+  what it asks, and lets go when another is pressed or it leaves the view.
+  By the keys, B asks before founding a hold and M before a strike; the
+  same key again carries it out.
 - **Elsewhere.** While you are in another app, the Dock counts the
   watches that turned, and bounces once when something needs you.
 - **The watch.** Each turn is a watch. Your orders take effect as you give
@@ -406,7 +412,9 @@ If the name `nullmere` is taken on maincloud, choose another with
 `REALM_ADDRESS=https://maincloud.spacetimedb.com/<name> scripts/build-app.sh`;
 the address is kept in the app's Info.plist. `NULLMERE_REALM_NAME`,
 `NULLMERE_REALM_SEED`, `NULLMERE_REALM_SEATS` and `NULLMERE_WATCH_SECONDS`
-shape a new realm; `STEWARD=foreground` keeps the steward in the terminal.
+shape a new realm; a realm has two to twelve seats, and the steward
+refuses to start, saying why, when asked for any other number.
+`STEWARD=foreground` keeps the steward in the terminal.
 
 `scripts/raise-realm.sh local` raises the same realm on your own machine
 (starting SpacetimeDB if it isn't running); open a debug build with
@@ -451,17 +459,28 @@ twice.
   level II, a hold's land reaches a tile further too), and a Muster Hall to
   train stronger companies, and at level III to train all but Lanterns a
   watch sooner. Barter a surplus
-  for what you lack, three to one. Each new hold costs more to found than
-  the last, so a House grows by choice, not by habit.
+  for what you lack, three to one; moonsalt counts as three of any other
+  store, so one costs nine of them, and fetches one. Each new hold costs
+  more to found than the last, so a House grows by choice, not by habit. A
+  company trained with no free tile within three of its hold waits,
+  trained, and the hold trains no other until it has room to stand.
 - **Companies.** Lanterns scout, Spears hold the line and take holds,
   Bows strike from two tiles, Riders are fast, and Founders found new holds.
   Every company but Lanterns eats a grain each watch. Companies that
   live through battles rise in rank (Blooded, Hardened, Sworn), each rank
-  adding a tenth to attack and defence; chevrons under a token show it.
+  adding a tenth to attack and defence; chevrons under a token show it. A
+  company that wins a close fight steps onto the fallen's ground, but never
+  out of a hold, for a garrison holds its ground, nor into a hold it can't
+  take. The odds shown before a strike say when the striker will take the
+  ground or the hold, and never promise either to a company that may fall.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is
-  remembered.
+  remembered. A steward makes no peace before it has had a watch of its own
+  at war, and one far the stronger none until the war has run past thirty
+  watches, whatever you gave it. A steward's garrison strikes only
+  companies of war at its gates, and its army meets those that come close,
+  but no scout draws it off a siege.
 - **Conquest.** Taking a hold carries off its share of the loser's stores;
   a seat holds half of them. A House that loses its seat is shaken: every
   hold it has left loses most of its ward. A House that loses every hold
@@ -475,22 +494,23 @@ twice.
 - **Fealty.** A steward's House that loses its seat with four holds or
   fewer left, and no vassals of its own, bends the knee to the House that
   took it, if that House is sworn to no one; and a beaten House may offer
-  fealty rather than fall. A vassal's holds count with its liege's and it
-  can never turn on its liege; a liege who turns on a vassal frees it, and
-  a liege's fall frees all its vassals. A far stronger steward will not
-  make peace until the war has run long.
+  fealty rather than fall. A vassal's holds count with its liege's, and it
+  can never turn on its liege, nor win, nor raise its Moonspire while it
+  serves: the works on its tower stop when it bends the knee. A liege who
+  turns on a vassal frees it, and a liege's fall frees all its vassals.
 - **How ages end.** In 528 ages played through by stewards alone, the
-  Moonspire decided seven in ten and dominion the rest; an age ran 157
-  watches at the median, and two in five saw a House fall outright. The
-  seats won alike, within chance. The tempers win differently: the
-  ambitious (37%) and the cunning (28%), quick to war, take most
-  dominions, while the steadfast (17%) and the wary (19%) win almost only by
-  the Moonspire.
+  Moonspire decided three in four and dominion the rest; an age ran 157
+  watches at the median, and more than a third saw a House fall outright.
+  The seats won alike, within chance. The tempers win differently: the
+  ambitious (39%) and the cunning (28%), quick to war, take most
+  dominions, while the steadfast (18%) and the wary (16%) win mostly by
+  the Moonspire, the wary almost only by it.
 - **Tribute.** From watch twenty, an ambitious or cunning steward a quarter
   stronger than a neighbour may demand a fifth of its stores. Paid, it keeps
   the peace for twenty watches, unless that neighbour's Moonspire rises;
-  refused or ignored, it marches. You can demand tribute too: a keeper who
-  refuses you owes nothing more, and war is yours to choose.
+  refused or ignored, it marches. You can demand tribute too: a steward
+  that refuses you is at once at war with you, the war of your making; a
+  keeper who refuses you owes nothing more, and war is yours to choose.
 - **The race.** The Houses panel shows each House's holds towards dominion
   and its Moonspire's stages, and the game warns you, once, whenever any
   House comes near the end of either road. At the end of an age, a chart

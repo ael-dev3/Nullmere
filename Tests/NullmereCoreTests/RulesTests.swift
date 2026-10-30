@@ -275,6 +275,20 @@ final class EconomyTests: XCTestCase {
         XCTAssertThrowsError(try state.perform(.barter(give: .grain, take: .grain, amount: 10), as: 0))
     }
 
+    /// As the Guide and the README tell it: three to one between grain,
+    /// timber and stone; moonsalt, worth three of any of them, costs nine
+    /// and fetches one.
+    func testBarterIsThreeToOneButMoonsaltCostsNineAndFetchesOne() {
+        let common: [Resource] = [.grain, .timber, .stone]
+        for take in common {
+            for give in common where give != take {
+                XCTAssertEqual(take.barterCost(of: 1, paidIn: give), 3, "\(give) for \(take)")
+            }
+            XCTAssertEqual(Resource.moonsalt.barterCost(of: 1, paidIn: take), 9, "\(take) for moonsalt")
+            XCTAssertEqual(take.barterCost(of: 1, paidIn: .moonsalt), 1, "moonsalt for \(take)")
+        }
+    }
+
     func testStorageLimitsWhatAHouseKeeps() {
         var state = GameState(settings: GameSettings(seedText: "storage", keepers: 1))
         let room = state.storage(of: 0)
@@ -330,6 +344,44 @@ final class ForecastTests: XCTestCase {
             }
         }
         XCTAssertGreaterThan(checked, 20, "enough attacks were tried")
+    }
+
+    /// A blow that breaks a ward takes the hold only if the striker lives
+    /// through the walls' return blow, and the forecast promises no more.
+    func testAStrikerFellByTheWallsIsPromisedNoHold() throws {
+        var state = GameState(settings: GameSettings(seedText: "the last blow", houseCount: 3, radius: 16, keepers: 1))
+        let me = state.player, rival = 1
+        let seat = try XCTUnwrap(state.seat(of: rival))
+        let index = try XCTUnwrap(state.holdIndex(seat.id))
+        state.units.removeAll { $0.owner == rival }
+        state.holds[index].levels[.walls] = 1
+        state.holds[index].ward = 5
+        let spot = try XCTUnwrap(state.map.neighbors(of: seat.position).first { hex in
+            state.map[hex]?.terrain.isPassable == true && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        })
+        var spear = Unit(id: state.nextID, kind: .spear, owner: me, position: spot)
+        spear.health = 8
+        state.units.append(spear)
+        state.nextID += 1
+        _ = try state.declareWar(by: me, on: rival)
+        let forecast = try XCTUnwrap(state.forecast(unit: spear.id, at: seat.position))
+        XCTAssertTrue(forecast.surelyFinishes, "The ward breaks")
+        XCTAssertEqual(forecast.taken, 9...9, "and the walls strike back for nine")
+        XCTAssertTrue(forecast.mayFall)
+        XCTAssertFalse(forecast.couldCapture, "No hold promised to a company that falls at its gate")
+        let events = try state.perform(.attack(unit: spear.id, target: seat.position), as: me)
+        XCTAssertFalse(events.contains { if case .holdCaptured = $0 { return true } else { return false } })
+        XCTAssertEqual(state.hold(seat.id)?.ward, 0)
+        XCTAssertEqual(state.hold(seat.id)?.owner, rival)
+        XCTAssertNil(state.unit(spear.id))
+        // A striker that lives through it is promised the hold, and takes it.
+        state.holds[index].ward = 5
+        spear = Unit(id: state.nextID, kind: .spear, owner: me, position: spot)
+        state.units.append(spear)
+        state.nextID += 1
+        XCTAssertEqual(state.forecast(unit: spear.id, at: seat.position)?.couldCapture, true)
+        _ = try state.perform(.attack(unit: spear.id, target: seat.position), as: me)
+        XCTAssertEqual(state.hold(seat.id)?.owner, me)
     }
 
     func testNoForecastWithoutAWar() {

@@ -354,12 +354,13 @@ public struct GameState: Codable, Equatable, Sendable {
         chronicle.append(ChronicleEntry(watch: watch, kind: kind, houses: houses, text: text))
     }
 
-    /// Puts a new unit on the hex, or the nearest free passable hex.
+    /// Puts a new unit on the hex, or the nearest free passable hex within
+    /// three, never in another House's hold.
     @discardableResult
     mutating func placeUnit(_ kind: UnitKind, for house: Int, near hex: Hex) -> Unit? {
         let spot = hex.spiral(3).first { candidate in
             guard let tile = map[candidate], tile.terrain.isPassable else { return false }
-            return unit(at: candidate) == nil
+            return unit(at: candidate) == nil && (hold(at: candidate).map { $0.owner == house } ?? true)
         }
         guard let spot else { return nil }
         let placed = Unit(id: takeID(), kind: kind, owner: house, position: spot)

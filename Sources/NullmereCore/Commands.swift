@@ -10,7 +10,8 @@ public enum Command: Codable, Equatable, Sendable {
     /// Start raising a building one level.
     case build(hold: Int, kind: BuildingKind)
     case train(hold: Int, kind: UnitKind)
-    /// Trade a surplus away for something lacking, at three to one.
+    /// Trade a surplus away for something lacking, at three to one,
+    /// moonsalt counted as three of any other store.
     case barter(give: Resource, take: Resource, amount: Int)
     /// Dig in: +25% defence until the unit moves.
     case fortify(unit: Int)
@@ -63,6 +64,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case storageFull
     /// A gift the receiving House has no room to keep.
     case noRoomWithThem
+    /// A gift beyond what the receiving House may take in this watch, with
+    /// the worth it may still take.
+    case giftsThisWatch(left: Int)
     case atWarWith(Int)
     /// An offer of trade to a House at war with the trader.
     case noTradeAcrossWar(Int)
@@ -100,6 +104,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .sameStore: return "Choose two different stores."
         case .storageFull: return "There's no room to store that much."
         case .noRoomWithThem: return "They have no room to store that much."
+        case .giftsThisWatch(let left):
+            return left == 0 ? "They can take no more gifts this watch." : "They can take gifts worth only \(left) more this watch; moonsalt counts four."
         case .atWarWith: return "A gift across a war is no gift."
         case .noTradeAcrossWar: return "No trade crosses a war."
         }

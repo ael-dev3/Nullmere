@@ -113,12 +113,17 @@ public struct RealmState: Codable, Equatable, Sendable {
     /// The realm proper: twelve seats around a wide lake.
     public static let defaultSeats = 12
     public static let defaultRadius = 36
+    /// The seats a realm may have: as many Houses as one lake can seat.
+    public static let seatRange = 2...min(Names.houses.count, WorldGenerator.mostHouses)
 
     public init(name: String, seed: String, seats: Int = RealmState.defaultSeats, radius: Int = RealmState.defaultRadius, watchLength: Double = RealmState.defaultWatchLength,
                 now: Double) {
+        // A realm of a size no lake can seat is refused aloud, never quietly
+        // made another size.
+        precondition(RealmState.seatRange.contains(seats), "A realm has two to twelve seats, not \(seats).")
         self.name = name
         self.seedText = seed
-        self.seats = min(max(seats, 2), Names.houses.count, WorldGenerator.mostHouses)
+        self.seats = seats
         self.radius = radius
         self.watchLength = watchLength
         age = 1

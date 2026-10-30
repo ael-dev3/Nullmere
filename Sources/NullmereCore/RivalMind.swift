@@ -6,7 +6,8 @@ struct RivalMind {
     /// Keeping a House for its keeper while they are away: it answers
     /// envoys, tends the holds and defends them, and sues for peace in a
     /// war going badly, but begins nothing the keeper would have to undo:
-    /// no war, no demand, no pact, no bending the knee.
+    /// no war, no demand, no pact, no bending the knee; nor does it swear
+    /// a pact offered, which would lend the keeper's sight to another.
     var caretaking = false
 
     // MARK: Answering offers
@@ -17,21 +18,28 @@ struct RivalMind {
         let mine = max(1, state.strength(of: house))
         let theirs = max(1, state.strength(of: proposer))
         // Gifts lately sent soften a steward: the war seems older, the
-        // giver more worth a pact.
-        let goodwill = state.goodwill(from: proposer, to: house)
-        let lasted = state.watch - relation.since + goodwill / 10
+        // giver more worth a pact. No gift softens it toward a House whose
+        // rising Moonspire it fears.
+        let goodwill = spireThreats(in: state).contains(proposer) ? 0 : state.goodwill(from: proposer, to: house)
+        // Watches the stance has truly stood, and as the gifts make it seem.
+        let stood = state.watch - relation.since
+        let lasted = stood + goodwill / 10
 
         switch proposal {
         case .peace:
-            guard lasted >= 3 else { return false }
+            // Never before it has had a watch of its own at war: a war
+            // begun and ended between two of its watches is one it never
+            // had the chance to fight.
+            guard stood >= 1, lasted >= 3 else { return false }
             // The ambitious and the cunning show no mercy to a House on its
             // last holds when they are clearly the stronger.
             let nearlyFallen = state.holds(of: proposer).count <= 2 && mine * 2 > theirs * 3
             if nearlyFallen, me.temperament == .ambitious || me.temperament == .cunning {
                 return false
             }
-            // A House far the stronger fights on until the war is long.
-            if mine * 2 > theirs * 3, lasted <= 30 { return false }
+            // A House far the stronger fights on until the war is long, and
+            // no gift makes it seem so.
+            if mine * 2 > theirs * 3, stood <= 30 { return false }
             switch me.temperament {
             case .ambitious: return mine * 10 < theirs * 11 || lasted > 16
             case .cunning: return mine < theirs || lasted > 10
@@ -192,16 +200,18 @@ struct RivalMind {
     }
 
     /// A caretaker's diplomacy: the envoys waiting on the House answered as
-    /// a steward would (a House offering fealty is taken as a vassal), and
-    /// a war going badly ended if it can be. It offers nothing itself, so
-    /// it never bends the knee for its keeper.
+    /// a steward would (peace to end a war, a House offering fealty taken
+    /// as a vassal), but for a pact: one shares the keeper's sight, which
+    /// is theirs alone to give, so it is refused. A war going badly is
+    /// ended if it can be. It offers nothing itself, so it never bends the
+    /// knee for its keeper.
     private func keepThePeace(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
         var events: [GameEvent] = []
         for envoy in state.envoys where envoy.to == house {
             let accept: Bool
             switch envoy.proposal {
             case .trade: accept = envoy.trade.map { acceptsTrade($0, from: envoy.from, in: state) } ?? false
-            case .pact: accept = acceptsPactForKeeper(from: envoy.from, in: state)
+            case .pact: accept = false
             default: accept = accepts(envoy.proposal, from: envoy.from, in: state)
             }
             events += perform(.answer(envoy: envoy.id, accept: accept), in: &state)
@@ -214,16 +224,6 @@ struct RivalMind {
             }
         }
         return events
-    }
-
-    /// A pact a caretaker swears for its keeper: one a steward would take,
-    /// but not with a House at war with the keeper's allies, which would
-    /// set two pacts against each other, nor with one whose rising
-    /// Moonspire the lake should be stopping.
-    func acceptsPactForKeeper(from proposer: Int, in state: GameState) -> Bool {
-        guard accepts(.pact, from: proposer, in: state), !spireThreats(in: state).contains(proposer) else { return false }
-        let allies = state.livingHouses.filter { $0.id != proposer && state.stance(house, $0.id) == .pact }
-        return !allies.contains { state.isAtWar(proposer, $0.id) }
     }
 
     /// A tie broken by no one's seat or hold number: the same for the same
@@ -247,10 +247,10 @@ struct RivalMind {
     }
 
     /// Every other House whose Moonspire has reached its third stage, the
-    /// highest first.
+    /// highest first: never a vassal's, which can't rise while it serves.
     func spireThreats(in state: GameState) -> [Int] {
         state.holds
-            .filter { $0.owner != house && $0.isSeat && $0.level(.moonspire) >= 3 }
+            .filter { $0.owner != house && $0.isSeat && $0.level(.moonspire) >= 3 && state.houses[$0.owner].liege == nil }
             .sorted { ($0.level(.moonspire), tieBreak($0.owner, in: state)) > ($1.level(.moonspire), tieBreak($1.owner, in: state)) }
             .map(\.owner)
     }
@@ -333,7 +333,8 @@ struct RivalMind {
 
         if hold.isSeat {
             // Only a House that can see it through: one of holds enough to
-            // store its last stage, or the most renowned on the lake.
+            // store its last stage, or the most renowned on the lake, and
+            // never a vassal, which raises none while it serves.
             // The builders begin early, the wary soon after, behind walls;
             // the warlike first take the land.
             let spireFrom: Int
@@ -345,7 +346,7 @@ struct RivalMind {
             let renown = state.renown(of: house)
             let foremost = state.livingHouses.allSatisfy { $0.id == house || state.renown(of: $0.id) <= renown }
             let able = state.holds(of: house).count >= 4 || foremost
-            if state.watch >= spireFrom, !threatened, able || hold.level(.moonspire) > 0 { wishes.append(.moonspire) }
+            if state.watch >= spireFrom, !threatened, me.liege == nil, able || hold.level(.moonspire) > 0 { wishes.append(.moonspire) }
             if me.temperament == .ambitious, hold.level(.musterHall) < 3 { wishes.append(.musterHall) }
             if hold.level(.musterHall) < 2, state.watch >= 14 { wishes.append(.musterHall) }
             // Riders, for a House at war or with stores to spare.
@@ -460,7 +461,10 @@ struct RivalMind {
         case .spear, .bow, .rider:
             if let post {
                 if unit.position == post {
-                    if let target = foeInReach(of: unit, in: state) {
+                    // A garrison strikes only companies of war in its reach:
+                    // a scout or Founders at the gates are no reason to give
+                    // up its guard.
+                    if let target = foeInReach(of: unit, companiesOfWarOnly: true, in: state) {
                         return perform(.attack(unit: unitID, target: target), in: &state)
                     }
                     return unit.fortified ? [] : perform(.fortify(unit: unitID), in: &state)
@@ -471,11 +475,13 @@ struct RivalMind {
         }
     }
 
-    private func foeInReach(of unit: Unit, in state: GameState) -> Hex? {
+    private func foeInReach(of unit: Unit, companiesOfWarOnly: Bool = false, in state: GameState) -> Hex? {
         guard unit.movesLeft > 0 else { return nil }
         return unit.position.spiral(unit.kind.range).dropFirst().first { hex in
-            if let other = state.unit(at: hex), other.owner != house, state.isAtWar(house, other.owner) { return true }
-            if let hold = state.hold(at: hex), hold.owner != house, state.isAtWar(house, hold.owner) { return true }
+            if let other = state.unit(at: hex), other.owner != house, state.isAtWar(house, other.owner) {
+                return other.kind.isMilitary || !companiesOfWarOnly
+            }
+            if let hold = state.hold(at: hex), hold.owner != house, state.isAtWar(house, hold.owner) { return !companiesOfWarOnly }
             return false
         }
     }
@@ -484,15 +490,24 @@ struct RivalMind {
         if let target = foeInReach(of: unit, in: state) {
             return perform(.attack(unit: unit.id, target: target), in: &state)
         }
-        // Meet enemies who come close.
+        // Meet enemy companies of war who come close: never a scout or
+        // Founders, and with a siege to press, only one in the way or at
+        // this House's own gates, never one that would lead it off.
+        let siege = siegePlan(in: state)
+        let gates = state.holds(of: house).map(\.position)
         let skirmish = state.units
-            .filter { $0.owner != house && state.isAtWar(house, $0.owner) && $0.position.distance(to: unit.position) <= 3 }
+            .filter { $0.owner != house && $0.kind.isMilitary && state.isAtWar(house, $0.owner) && $0.position.distance(to: unit.position) <= 3 }
+            .filter { foe in
+                guard let siege else { return true }
+                return foe.position.distance(to: siege.target) <= unit.position.distance(to: siege.target)
+                    || gates.contains { $0.distance(to: foe.position) <= 3 }
+            }
             .filter { state.map.index(of: $0.position).map { visible[$0] } ?? false }
             .min { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
         if let skirmish {
             return perform(.move(unit: unit.id, to: skirmish.position), in: &state)
         }
-        if let siege = siegePlan(in: state) {
+        if let siege {
             let near = unit.position.distance(to: siege.target) <= RivalMind.siegeReach
             if siege.ready || (near && unit.position.distance(to: siege.target) <= unit.kind.range + 1) {
                 return perform(.move(unit: unit.id, to: siege.target), in: &state)

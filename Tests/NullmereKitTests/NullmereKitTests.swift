@@ -489,6 +489,16 @@ final class GuideTests: XCTestCase {
         XCTAssertEqual(Guide.holdsForTheLastSpire, 4)
         let winning = Guide.sections.first { $0.title == "Winning" }?.lines.joined(separator: " ") ?? ""
         XCTAssertTrue(winning.contains("960 stone, more than a House of fewer than 4 holds can keep"), winning)
+        XCTAssertTrue(winning.contains("nor win, nor raise its Moonspire while it serves"), winning)
+        // The rules said as they stand.
+        let all = Guide.sections.flatMap(\.lines).joined(separator: " ")
+        XCTAssertTrue(all.contains("gifts worth \(GameState.giftsTakenPerWatch) a watch at most"), all)
+        XCTAssertTrue(all.contains("swears you no pact"), all)
+        // Barter as the rules price it: three to one, but moonsalt costs
+        // nine and fetches one.
+        XCTAssertEqual(Resource.moonsalt.barterCost(of: 1, paidIn: .grain), 9)
+        XCTAssertEqual(Resource.grain.barterCost(of: 1, paidIn: .moonsalt), 1)
+        XCTAssertTrue(all.contains("three to one. Moonsalt counts as three of any other store, so one costs nine of them, and fetches one."), all)
     }
 
     @MainActor

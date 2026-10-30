@@ -19,7 +19,7 @@ enum Guide {
         Section(title: "The watch", lines: [
             "The lake is one world, shared by every keeper in the realm. Each turn is a watch: give your orders, then say you're ready with ⌘↩.",
             "The watch turns when every keeper there is ready, or when its time runs out; while fewer than half the keepers are there, it lasts at least a third of its time. Your orders take effect as you give them; when the watch turns, the stewards play the seats no keeper holds, holds yield, works rise and companies march on.",
-            "The realm keeps the world. Leave, and after two watches away a caretaker keeps your House for you: it answers envoys, builds and trains, guards your holds, fights on in wars already begun and sues for peace in one going badly, but begins no war, demand or pact. It swears a pact a steward would take, but never with a House at war with your allies or one whose Moonspire is rising, and never bends the knee for you, though it takes a House offering fealty as your vassal. An empty realm sleeps until a keeper returns.",
+            "The realm keeps the world. Leave, and after two watches away a caretaker keeps your House for you: it answers envoys, builds and trains, guards your holds, fights on in wars already begun and sues for peace in one going badly, but begins no war, demand or pact. It takes the peace a steward would take to end a war, but swears you no pact, which would lend your sight to another, and never bends the knee for you, though it takes a House offering fealty as your vassal. An empty realm sleeps until a keeper returns.",
         ]),
         Section(title: "The land", lines: [
             "Strand, salt flats, greyfields, blackwood and barrows ring the lake.",
@@ -31,21 +31,24 @@ enum Guide {
         Section(title: "Holds", lines: [
             "Holds gather what their land yields and store it, up to a limit that grows with every hold.",
             "Build works: a Granary, Sawpit, Quarry or Saltworks to yield more of one store, Walls for a thicker ward, a Beacon to see further (at II, its land reaches a tile further too), and a Muster Hall for stronger companies, all but Lanterns trained a watch sooner at III.",
-            "Short of something? Barter a surplus for it, three to one.",
+            "Short of something? Barter a surplus for it, three to one. Moonsalt counts as three of any other store, so one costs nine of them, and fetches one.",
         ]),
         Section(title: "Companies", lines: [
             "Lanterns scout. Spears hold the line and take holds. Bows strike from two tiles. Riders are fast. Founders found new holds.",
             "Select a company, then right-click to march, or to strike an enemy within reach. Hovering an enemy shows the battle's odds first.",
+            "A company that wins a close fight steps onto the fallen's ground, but never out of a hold, for a garrison holds its ground, nor into a hold it can't take.",
             "Every company but Lanterns eats a grain each watch. Those that live through battles rise in rank.",
-            "To take a hold, break its ward, then march Spears or Riders in. You carry off its share of their stores; a seat holds half.",
+            "A company trained with no free tile within three of its hold waits, trained, and the hold trains no other until it has room to stand.",
+            "To take a hold, break its ward, then march Spears or Riders in; one that falls to the walls' blow back takes nothing. You carry off its share of their stores; a seat holds half.",
         ]),
         Section(title: "Houses", lines: [
             "Other Houses are held by keepers, or by stewards until a keeper claims them. Stewards are ambitious, steadfast, wary or cunning, and remember who wronged them.",
             "Offers to a keeper wait as envoys for their answer, as theirs wait for yours.",
-            "Declare war, offer peace or a pact, and answer their envoys. A pact shares sight; breaking one is not forgotten.",
-            "Send a gift to a House you aren't at war with. Stewards remember gifts for twenty watches: a war seems older to them, and enough goodwill wins a pact, unless you once made war on them or a pact between you was broken.",
-            "Offer a trade to any House you aren't at war with: so much of one store for so much of another. Stewards weigh it by barter worth, the cunning asking most; allies and givers of gifts ask less, and a House takes less for what it lacks. A keeper answers by envoy. Stewards trade among themselves, too, before bartering at three to one.",
-            "From watch twenty, an ambitious or cunning steward a quarter stronger than you may demand tribute, a fifth of your stores: pay, and it keeps the peace for twenty watches, unless your Moonspire rises; refuse, or let its envoy wait out, and it marches. You may demand tribute too; a keeper who refuses you owes you nothing more, and war is yours to choose.",
+            "Declare war, offer peace or a pact, and answer their envoys. A pact shares sight; breaking one is not forgotten. A steward makes no peace before it has had a watch of its own at war, and one far the stronger none until the war has run past thirty watches.",
+            "Send a gift to a House you aren't at war with. Stewards remember gifts for twenty watches: a war seems older to them, and enough goodwill wins a pact, unless you once made war on them or a pact between you was broken. War on a House throws away the goodwill your gifts bought, and no gift moves a steward that fears your rising Moonspire.",
+            "A House takes in gifts worth \(GameState.giftsTakenPerWatch) a watch at most, from every giver together, moonsalt counting four: enough to help an ally, never enough for Houses one keeper holds under other names to pour their stores into one.",
+            "Offer a trade to any House you aren't at war with: so much of one store for so much of another. Stewards weigh it by barter worth, the cunning asking most; allies and givers of gifts ask less, and a House takes less for what it lacks. A keeper answers by envoy. Stewards trade among themselves, too, before they barter.",
+            "From watch twenty, an ambitious or cunning steward a quarter stronger than you may demand tribute, a fifth of your stores: pay, and it keeps the peace for twenty watches, unless your Moonspire rises; refuse, or let its envoy wait out, and it marches. You may demand tribute too: a steward that refuses is at once at war with you, the war of your making; a keeper who refuses you owes you nothing more, and war is yours to choose.",
             "Envoys and the chronicle speak in words written on your Mac by Apple's on-device model. They only speak; the rules decide.",
         ]),
         Section(title: "Omens", lines: [
@@ -54,7 +57,7 @@ enum Guide {
         ]),
         Section(title: "Winning", lines: [
             "Raise the five stages of the Moonspire at your seat (ascendancy), or rule the lake (dominion): five of every twenty holds and at least ten, your vassals' counted with your own, or be the last House standing.",
-            "Take a steward's seat while it has four holds or fewer left and no vassals of its own, and, if you are sworn to no one, it swears you fealty; beaten Houses may offer it too. A vassal's holds count with yours, and it can never turn on you. Turn on it, and it is free; it goes free, too, if you fall.",
+            "Take a steward's seat while it has four holds or fewer left and no vassals of its own, and, if you are sworn to no one, it swears you fealty; beaten Houses may offer it too. A vassal's holds count with yours, and it can never turn on you, nor win, nor raise its Moonspire while it serves: the works on it stop when it bends the knee. Turn on it, and it is free; it goes free, too, if you fall.",
             "Stewards fear a rising Moonspire, and will march on it.",
             "Each hold stores more: the Moonspire's last stage asks for \(BuildingKind.moonspire.cost(toLevel: BuildingKind.moonspire.maxLevel).stone) stone, more than a House of fewer than \(Guide.holdsForTheLastSpire) holds can keep.",
             "The Houses panel shows the race: each House's holds towards dominion and its Moonspire's stages. You are warned when anyone nears the end of either road, and counsel says what to do.",

@@ -54,6 +54,34 @@ final class GiftTests: XCTestCase {
         XCTAssertEqual(state.problems(), [])
     }
 
+    /// What a House takes in from gifts in a watch is bounded, all givers
+    /// together, so Houses one keeper holds under other names can't pour
+    /// their stores into one; the next watch it may take as much again.
+    func testAHouseTakesInOnlySoMuchInGiftsAWatch() throws {
+        var state = world()
+        let me = state.player
+        let others = state.houses.filter { !$0.isPlayer }.map(\.id)
+        let (receiver, second) = (others[0], others[1])
+        // Another House held by a keeper, both sending to a third.
+        state.houses[second].isPlayer = true
+        for giver in [me, second] { state.houses[giver].stock = Stock(grain: 300, timber: 300, stone: 300, moonsalt: 50) }
+        XCTAssertEqual(GameState.giftsTakenPerWatch, 100)
+        _ = try state.perform(.gift(to: receiver, resource: .grain, amount: 50), as: me)
+        _ = try state.perform(.gift(to: receiver, resource: .moonsalt, amount: 5), as: second)
+        XCTAssertThrowsError(try state.perform(.gift(to: receiver, resource: .timber, amount: 31), as: second)) { error in
+            XCTAssertEqual(error as? RuleError, .giftsThisWatch(left: 30), "Moonsalt counts four")
+        }
+        _ = try state.perform(.gift(to: receiver, resource: .timber, amount: 30), as: second)
+        XCTAssertThrowsError(try state.perform(.gift(to: receiver, resource: .stone, amount: 1), as: me)) { error in
+            XCTAssertEqual(error as? RuleError, .giftsThisWatch(left: 0))
+        }
+        XCTAssertNoThrow(try state.perform(.gift(to: second, resource: .stone, amount: 10), as: me), "Another House takes its own")
+        _ = state.endWatch()
+        XCTAssertNoThrow(try state.perform(.gift(to: receiver, resource: .stone, amount: 50), as: me), "A new watch, a new bound")
+        XCTAssertEqual(RuleError.giftsThisWatch(left: 0).description, "They can take no more gifts this watch.")
+        XCTAssertEqual(RuleError.giftsThisWatch(left: 20).description, "They can take gifts worth only 20 more this watch; moonsalt counts four.")
+    }
+
     func testGoodwillWinsAPactAStewardWouldRefuse() throws {
         var state = world()
         let me = state.player

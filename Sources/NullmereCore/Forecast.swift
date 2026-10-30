@@ -14,8 +14,15 @@ public struct Forecast: Equatable, Sendable {
     /// The defender's health, or the hold's ward, before the blow.
     public let defenderHealth: Int
     public let attackerHealth: Int
-    /// Whether a hold would fall to this attacker if its ward breaks.
+    /// Whether the hold falls to this attacker when its ward breaks, or
+    /// when the garrison falls with the ward down: only a company that can
+    /// take holds, striking close, and sure to live through the blow it
+    /// takes in return.
     public let couldCapture: Bool
+    /// Whether the attacker steps onto the fallen's ground when they fall:
+    /// a close blow struck out in the field, never from within a hold, by
+    /// a company sure to live through it.
+    public var takesTheField = false
 
     /// Whether the blow can finish the defender (or break the ward).
     public var mayFinish: Bool { dealt.upperBound >= defenderHealth }
@@ -37,13 +44,16 @@ extension GameState {
             let (attack, defense) = strengths(of: attacker, against: defender, at: target)
             let dealt = 70 * attack / (attack + defense)
             let taken = ranged ? 0 : 70 * defense / (attack + defense)
+            let stands = taken * 120 / 100 < attacker.health
+            let wardDown = hold(at: target).map { $0.ward == 0 } ?? false
             return Forecast(
                 target: .unit(defender.kind),
                 dealt: max(5, dealt * 80 / 100)...max(5, dealt * 120 / 100),
                 taken: (taken * 80 / 100)...(taken * 120 / 100),
                 defenderHealth: defender.health,
                 attackerHealth: attacker.health,
-                couldCapture: false
+                couldCapture: !ranged && attacker.kind.canCapture && wardDown && stands,
+                takesTheField: takesTheField(attacker, at: target) && stands
             )
         }
         guard let holdID = foe.hold, let hold = hold(holdID) else { return nil }
@@ -55,7 +65,7 @@ extension GameState {
             taken: returned...returned,
             defenderHealth: hold.ward,
             attackerHealth: attacker.health,
-            couldCapture: !ranged && attacker.kind.canCapture
+            couldCapture: !ranged && attacker.kind.canCapture && returned < attacker.health
         )
     }
 }
