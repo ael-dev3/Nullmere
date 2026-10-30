@@ -163,7 +163,7 @@ extension GameSession {
         var poses: [CompanyPose] = []
         let resting = Float(time.truncatingRemainder(dividingBy: Double(Clip.idle.period) * 64))
         for unit in state.units where unit.owner == player || isVisible(unit.position) {
-            let key = ModelKey.figure(unit.kind, tier: unit.tier)
+            let key = ModelKey.company(unit.kind, tier: unit.tier, heritage: state.heritage(of: unit.owner))
             let centre = Relief.centre(of: unit.position)
             var position = Vec3(centre.x, Float(groundHeight(of: unit.position)), centre.z)
             var heading = headings[unit.id] ?? 0
@@ -295,7 +295,11 @@ extension GameSession {
         }
         for pose in poses where pose.clip == .march {
             var riders = false
-            if case .figure(.rider, _) = pose.key { riders = true }
+            switch pose.key {
+            case .figure(.rider, _): riders = true
+            case .signature(let heritage): riders = heritage.signature == .rider
+            default: break
+            }
             happenings.marching.append(Happenings.Spot(at: pose.position, strength: riders ? 1.4 : 1, seed: UInt32(truncatingIfNeeded: pose.unit)))
         }
         happenings.rising = stage.risingWorks(sights).enumerated().map { Happenings.Spot(at: $1, seed: UInt32($0)) }

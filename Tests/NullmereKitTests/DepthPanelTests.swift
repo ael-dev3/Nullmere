@@ -796,6 +796,46 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertNil(GameSession.place(of: .itemUsed(house: me, kind: .timberCache, hold: nil), in: session.state))
     }
 
+    func testAHeritageIsShownAndAnotherTakenUp() throws {
+        var state = world("heritage shown")
+        let me = state.player
+        let dealt = state.heritage(of: me)
+        let other = try XCTUnwrap(Heritage.allCases.first { $0 != dealt })
+        state.houses[me].stock[.moonsalt] = 0
+        // The briefing says what the House comes of.
+        let briefing = SeatBriefing(world: state, player: me)
+        XCTAssertEqual(briefing.facts[1], SeatBriefing.heritageLine(state, me))
+        XCTAssertTrue(briefing.facts[1].hasPrefix("Your House comes of \(dealt.title): \(dealt.strengths[0]), and \(dealt.strengths[1])."))
+        XCTAssertTrue(briefing.facts[1].hasSuffix("take up another from the Realm (6), the first time freely."), briefing.facts[1])
+        // The Realm shows it, and takes up another, the first time freely.
+        let (session, link) = session(state)
+        PressableButtons.isListening = true
+        draw(RealmPanel(session: session), width: 360, height: 1600)
+        XCTAssertTrue(PressableButtons.press("Take up \(other.title)"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .takeHeritage(other))
+        XCTAssertEqual(session.state.heritage(of: me), other, "Taken up at once on the keeper's copy")
+        XCTAssertFalse(PressableButtons.press("Take up \(dealt.title)"), "Its own is not offered")
+        // Then for moonsalt, which the House lacks: the rows say so.
+        let third = try XCTUnwrap(Heritage.allCases.first { $0 != dealt && $0 != other })
+        PressableButtons.isListening = true
+        draw(RealmPanel(session: session), width: 360, height: 1600)
+        XCTAssertFalse(PressableButtons.press("Take up \(third.title)"), "Short of moonsalt")
+        XCTAssertEqual(RealmPanel.heritageChange(session.state, player: me), "Take up another instead, for 30 moonsalt:")
+        XCTAssertEqual(RealmPanel.heritageChange(state, player: me), "Take up another instead, the first time freely:")
+        XCTAssertTrue(SeatBriefing.heritageLine(session.state, me).hasSuffix("another costs 30 moonsalt in the Realm (6)."))
+        XCTAssertEqual(RealmPanel.heritageLine(.fenfolk),
+                       "Its Bows strike a tenth harder; its companies see a tile further. Its own company: the Reed Bows, Bows of the fifth tier.")
+        // A company of its own is named so in its panel.
+        var armed = session.state
+        let seat = try XCTUnwrap(armed.holds.first { $0.owner == me && $0.isSeat })
+        let own = try XCTUnwrap(armed.placeUnit(other.signature, tier: 5, for: me, near: seat.position))
+        let (keeper, _) = self.session(armed)
+        keeper.selection = .unit(own.id)
+        draw(SelectionPanel(session: keeper), width: 330, height: 700)
+        XCTAssertEqual(keeper.state.title(of: try XCTUnwrap(keeper.state.unit(own.id))), other.signatureTitle)
+        draw(HousesPanel(session: keeper), width: 360, height: 900)
+    }
+
     func testACompanySaysWhatItWasSentToDo() throws {
         var state = world("errands")
         let me = state.player

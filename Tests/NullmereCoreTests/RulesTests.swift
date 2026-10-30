@@ -497,7 +497,8 @@ final class ExpansionAndFallTests: XCTestCase {
     /// A House can be destroyed outright.
     func testAHouseCanBeDestroyed() {
         // In one of a few worlds, played out, a House falls outright: the
-        // first of them to see one is enough (32, as the rules now stand).
+        // first of them to see one is enough (33, as the rules now stand;
+        // about one world in seven sees a House fall by the 170th watch).
         var state = GameState(settings: GameSettings(seedText: "siege check 31", keepers: 1))
         var fallen: ChronicleEntry?
         for seed in 31..<41 where fallen == nil {

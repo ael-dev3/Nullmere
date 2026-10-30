@@ -184,6 +184,9 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
     public var liege: Int?
     /// What it has studied, and what it studies now.
     public var research = Research()
+    /// The heritage it took up; none while it keeps the one the realm
+    /// dealt its seat (see `GameState.heritage(of:)`).
+    public var heritage: Heritage?
 
     public var title: String { "House \(name)" }
 
@@ -201,7 +204,7 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
     // The explored ground travels as bits, eight tiles to a byte: a keeper's
     // view goes across the network whenever it changes.
     private enum CodingKeys: String, CodingKey {
-        case id, name, sigil, isPlayer, temperament, stock, explored, exploredBits, isEliminated, liege, research
+        case id, name, sigil, isPlayer, temperament, stock, explored, exploredBits, isEliminated, liege, research, heritage
     }
 
     public init(from decoder: any Decoder) throws {
@@ -224,6 +227,7 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
         liege = try container.decodeIfPresent(Int.self, forKey: .liege)
         // Saves from before studies know none.
         research = try container.decodeIfPresent(Research.self, forKey: .research) ?? Research()
+        heritage = try container.decodeIfPresent(Heritage.self, forKey: .heritage)
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -238,6 +242,7 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
         try container.encode(isEliminated, forKey: .isEliminated)
         try container.encodeIfPresent(liege, forKey: .liege)
         if !research.isEmpty { try container.encode(research, forKey: .research) }
+        try container.encodeIfPresent(heritage, forKey: .heritage)
     }
 }
 

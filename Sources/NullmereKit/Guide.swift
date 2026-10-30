@@ -61,6 +61,7 @@ enum Guide {
         ]),
         Section(title: "Houses", lines: [
             "Other Houses are held by keepers, or by stewards until a keeper claims them. Stewards are ambitious, steadfast, wary or cunning, and remember who wronged them.",
+            "Every House comes of one of the lake's six peoples, dealt round the lake as the age begins: the Saltborn, the Fenfolk, the Blackwood Kin, the Spinewardens, the Mound Clans and the Strandfolk. Each has two strengths and a company of its own at the fifth tier, a twentieth stronger and firmer than others of its kind. Take up another in the Realm (6): the first time freely, then for \(Heritage.changeCost).",
             "Offers to a keeper wait as envoys for their answer, as theirs wait for yours.",
             "Declare war, offer peace or a pact, and answer their envoys. A pact shares sight; breaking one is not forgotten. A steward makes no peace before it has had a watch of its own at war, and one far the stronger none until the war has run past thirty watches.",
             "Send a gift to a House you aren't at war with. Stewards remember gifts for twenty watches: a war seems older to them, and enough goodwill wins a pact, unless you once made war on them or a pact between you was broken. War on a House throws away the goodwill your gifts bought, and no gift moves a steward that fears your rising Moonspire.",

@@ -36,7 +36,7 @@ final class PreviewTests: XCTestCase {
         func family(_ test: (ModelKey) -> Bool) -> [ModelKey] { keys.filter(test) }
         let figures = family {
             switch $0 {
-            case .figure, .wild, .commander: return true
+            case .figure, .signature, .wild, .commander: return true
             default: return false
             }
         }
@@ -105,7 +105,7 @@ final class PreviewTests: XCTestCase {
     static func companies() -> Mesh {
         let keys = Library.catalogue.filter {
             switch $0 {
-            case .figure, .wild: return true
+            case .figure, .signature, .wild: return true
             default: return false
             }
         }

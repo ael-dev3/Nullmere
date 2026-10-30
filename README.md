@@ -690,6 +690,23 @@ realm; keepers are told in plain words, never a status code.
   model, with its fire smoking or its cold light burning; it is named on
   hover, its ground's panel shows what stands of it and calls the rally,
   and each blow on it is drawn and reported.
+- **Heritages.** Every House comes of one of the lake's six peoples,
+  dealt round the lake as an age begins, from a seat the seed chooses, so
+  each has its seats: the Saltborn (half again the moonsalt from their
+  holds; wards that mend half again as fast), the Fenfolk (Bows that strike
+  a tenth harder; companies that see a tile further), the Blackwood Kin (a
+  quarter more timber; Riders a tenth harder), the Spinewardens (a quarter
+  more stone; Spears a tenth firmer), the Mound Clans (commanders who
+  learn a quarter faster; studies a tenth sooner) and the Strandfolk (a
+  quarter more grain; a fifth more gathered at the land's sites). Each has
+  a company of its own at the fifth tier, the Salt Wardens, Reed Bows,
+  Wood Riders, Spine Guard, Barrow Riders and Strand Bows, a twentieth
+  stronger and firmer than others of its kind and named so wherever it is
+  shown. A keeper takes up another heritage from the Realm screen, the
+  first time freely and after that for 30 moonsalt; every House hears of
+  it and the chronicle keeps it. The seat briefing and the Houses screen
+  say what each House comes of, and stewards able to muster their own
+  company at the fifth tier reach for it more often than not.
 - **The satchel.** Each House keeps items to use when it will, twenty of
   a kind at most: a Salt Hourglass brings a hold's work and muster a watch
   nearer, or the House's study (never its last watch: what is done is done

@@ -819,6 +819,12 @@ struct RivalMind {
                 choice = .spear
             }
         }
+        // A House that can muster its own company, at the fifth tier, reaches
+        // for it more often than not.
+        let own = state.heritage(of: house).signature
+        if choice?.isMilitary == true, state.highestTier(of: own, at: hold, for: house) == Unit.highestTier, random.chance(60) {
+            choice = own
+        }
         guard var kind = choice, hold.level(.musterHall) >= kind.requiredMuster else { return nil }
         // Riders or bows it can't pay for: spears, rather than nothing.
         if !me.stock.covers(state.trainingCost(of: kind, for: house)), kind == .rider || kind == .bow { kind = .spear }

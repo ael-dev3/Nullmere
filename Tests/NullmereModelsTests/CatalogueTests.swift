@@ -12,7 +12,7 @@ final class CatalogueTests: XCTestCase {
 
     static func isCompany(_ key: ModelKey) -> Bool {
         switch key {
-        case .figure, .wild, .commander: return true
+        case .figure, .signature, .wild, .commander: return true
         default: return false
         }
     }
@@ -166,11 +166,37 @@ final class CatalogueTests: XCTestCase {
         }
     }
 
+    /// Each heritage's own company: its kind's body, rig, ranks and pace at
+    /// the fifth tier, in its people's own gear, none like another's.
+    func testEachHeritagesOwnCompanyIsItsKindInItsOwnGear() throws {
+        var looks: [[Vec3]] = []
+        for heritage in Heritage.allCases {
+            let key = ModelKey.signature(heritage)
+            let plain = ModelKey.figure(heritage.signature, tier: 5)
+            let own = Library.model(key), base = Library.model(plain)
+            XCTAssertEqual(own.rig.count, base.rig.count, "\(heritage) moves as its kind does")
+            XCTAssertNotNil(own.motion)
+            let colours = own.mesh.vertices.map(\.color)
+            XCTAssertNotEqual(colours, base.mesh.vertices.map(\.color), "\(heritage) in its own gear")
+            XCTAssertFalse(looks.contains(colours), "\(heritage) like no other")
+            looks.append(colours)
+            XCTAssertEqual(key.marchSpeed, plain.marchSpeed)
+            XCTAssertEqual(Formation.offsets(key, health: 100), Formation.offsets(plain, health: 100))
+            XCTAssertEqual(key.canonical, key)
+            XCTAssertLessThanOrEqual(own.mesh.triangleCount, key.budget, "\(heritage)")
+            XCTAssertEqual(ModelKey.company(heritage.signature, tier: 5, heritage: heritage), key)
+            XCTAssertEqual(ModelKey.company(heritage.signature, tier: 4, heritage: heritage), .figure(heritage.signature, tier: 4))
+            let other = try XCTUnwrap(UnitKind.allCases.first { $0.isMilitary && $0 != heritage.signature })
+            XCTAssertEqual(ModelKey.company(other, tier: 5, heritage: heritage), .figure(other, tier: 5))
+            XCTAssertEqual(ModelKey.company(.lantern, tier: 1, heritage: heritage), .figure(.lantern, tier: 1))
+        }
+    }
+
     func testFiguresAndKeepsWearTheirHouse() {
         for key in CatalogueTests.keys {
             let materials = Set(Library.model(key).mesh.vertices.map(\.material))
             switch key {
-            case .figure, .commander, .keep:
+            case .figure, .signature, .commander, .keep:
                 XCTAssertTrue(materials.contains(.house), "\(key) wears its House's colour")
             case .wild:
                 XCTAssertTrue(materials.isDisjoint(with: CatalogueTests.housely), "\(key) answers to no House")
@@ -260,7 +286,7 @@ final class CatalogueTests: XCTestCase {
         for key in CatalogueTests.keys {
             let model = Library.model(key)
             switch key {
-            case .figure, .wild, .commander:
+            case .figure, .signature, .wild, .commander:
                 XCTAssertNotNil(model.motion, "\(key)")
                 XCTAssertGreaterThanOrEqual(model.rig.count, 17, "\(key) has a body's parts")
             case .furnishing, .scaffold, .site, .keep, .walls, .prop(.arrow), .shrine, .lair, .standard:

@@ -6,6 +6,9 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// One of a company: a soldier, a scout, a settler. A company is drawn
     /// as several, fewer as it is worn down (see `Formation`).
     case figure(UnitKind, tier: Int)
+    /// One of a House's own company: its heritage's kind at the fifth
+    /// tier, in that people's own gear.
+    case signature(Heritage)
     /// A hold's keep; a seat's stands taller and flies the House's banner.
     case keep(seat: Bool)
     /// A hold's walls at their level.
@@ -41,6 +44,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     public var description: String {
         switch self {
         case .figure(let kind, let tier): return "\(kind.rawValue) \(tier)"
+        case .signature(let heritage): return "\(heritage.rawValue) own"
         case .keep(let seat): return seat ? "seat keep" : "keep"
         case .walls(let level): return "walls \(level)"
         case .work(let kind, let level): return "\(kind.rawValue) \(level)"
@@ -66,6 +70,13 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         }
     }
 
+    /// The model a company is drawn as: its House's own company, at its
+    /// heritage's kind and the highest tier, in that people's gear; else its
+    /// kind's at its tier.
+    public static func company(_ kind: UnitKind, tier: Int, heritage: Heritage) -> ModelKey {
+        kind == heritage.signature && tier >= tiers(of: kind) ? .signature(heritage) : .figure(kind, tier: tier)
+    }
+
     public static let wildTiers = 3
     public static let commanderVariants = 6
     public static let wallLevels = 5
@@ -87,7 +98,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
             let count = ModelKey.commanderVariants
             return .commander(variant: (variant % count + count) % count)
         case .study(let level): return .study(level: clamp(level, ModelKey.studyLevels))
-        case .keep, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .standard: return self
+        case .keep, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .standard, .signature: return self
         }
     }
 
@@ -100,7 +111,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// times, keeps once a hold.
     public var budget: Int {
         switch self {
-        case .figure, .wild, .commander: return 700
+        case .figure, .signature, .wild, .commander: return 700
         case .furnishing, .prop: return 300
         case .keep: return 4500
         case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .standard: return 3000
@@ -221,6 +232,7 @@ public enum Library {
         keys += ShrineKind.allCases.map { .shrine($0) }
         keys += WildKind.allCases.map { .lair($0) }
         keys.append(.standard)
+        keys += Heritage.allCases.map { .signature($0) }
         return keys
     }()
 
@@ -229,6 +241,7 @@ public enum Library {
         let mesh: Mesh
         switch key.canonical {
         case .figure(let kind, let tier): return Figures.build(kind, tier: tier, name: key.canonical.description)
+        case .signature(let heritage): return Figures.signature(heritage, name: key.canonical.description)
         case .wild(let tier): return Figures.wild(tier: tier, name: key.canonical.description)
         case .commander(let variant): return Figures.commander(variant, name: key.canonical.description)
         case .keep(let seat): return Holds.keep(seat: seat, name: key.canonical.description)

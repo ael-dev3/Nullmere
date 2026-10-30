@@ -3,8 +3,8 @@ import SwiftUI
 
 /// The realm's course as the House stands in it: the happening under way
 /// and the foremost in it, or the next to come; the charge set it; what
-/// its satchel holds; its deeds; its might among the Houses; and the
-/// keeper's renown over ages.
+/// its satchel holds; the people it comes of; its deeds; its might among
+/// the Houses; and the keeper's renown over ages.
 struct RealmPanel: View {
     let session: GameSession
 
@@ -23,6 +23,8 @@ struct RealmPanel: View {
                     charge(board)
                     Rule(opacity: 0.18)
                     satchel(state)
+                    Rule(opacity: 0.18)
+                    heritage(state)
                     Rule(opacity: 0.18)
                     deeds(board)
                     if !state.holySites.isEmpty {
@@ -123,6 +125,42 @@ struct RealmPanel: View {
         ForEach(stacks, id: \.kind) { stack in
             SatchelRow(session: session, stack: stack)
         }
+    }
+
+    /// The people the House comes of and what that gives it, and the others
+    /// it may take up instead.
+    @ViewBuilder
+    private func heritage(_ state: GameState) -> some View {
+        let mine = state.heritage(of: session.player)
+        Caps("Heritage", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(verbatim: mine.name).font(.nm(11, weight: .medium)).foregroundStyle(Palette.glowWords)
+            Text(verbatim: "\(mine.origin). " + RealmPanel.heritageLine(mine))
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.65))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        Text(verbatim: RealmPanel.heritageChange(state, player: session.player))
+            .font(.nm(10))
+            .foregroundStyle(Palette.text(0.55))
+            .fixedSize(horizontal: false, vertical: true)
+        ForEach(Heritage.allCases.filter { $0 != mine }, id: \.self) { other in
+            HeritageRow(session: session, heritage: other)
+        }
+    }
+
+    /// What a heritage gives, and its own company.
+    static func heritageLine(_ heritage: Heritage) -> String {
+        let first = heritage.strengths[0].prefix(1).uppercased() + heritage.strengths[0].dropFirst()
+        return "\(first); \(heritage.strengths[1]). Its own company: the \(heritage.signatureTitle), "
+            + "\(heritage.signature.title) of the fifth tier."
+    }
+
+    /// What taking up another heritage asks of the House.
+    static func heritageChange(_ state: GameState, player: Int) -> String {
+        state.houses[player].heritage == nil ? "Take up another instead, the first time freely:"
+            : "Take up another instead, for \(Heritage.changeCost):"
     }
 
     /// The order that uses an item on the House itself; none for one used
@@ -280,6 +318,37 @@ private struct SatchelRow: View {
                 QuietButton(title: RealmPanel.useTitle(kind), size: 8.5, enabled: refusal == nil,
                             name: kind == .hourglass ? "Use a Salt Hourglass on your study" : "Use a \(kind.title)", why: refusal?.description) {
                     session.perform(command)
+                }
+            }
+        }
+    }
+}
+
+/// A heritage the House may take up instead of its own: what it gives,
+/// and the order that takes it up, asked twice.
+private struct HeritageRow: View {
+    let session: GameSession
+    let heritage: Heritage
+
+    var body: some View {
+        let command = Command.takeHeritage(heritage)
+        let refusal = session.state.refusal(of: command, as: session.player)
+        let title = "Take up \(heritage.title)"
+        VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: heritage.name).font(.nm(10.5, weight: .medium)).foregroundStyle(Palette.text(0.8))
+                Text(verbatim: RealmPanel.heritageLine(heritage))
+                    .font(.nm(10))
+                    .foregroundStyle(Palette.text(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            HStack {
+                Spacer()
+                if let refusal {
+                    QuietButton(title: title, size: 8.5, enabled: false, why: refusal.description) {}
+                } else {
+                    ConfirmButton(title: title, confirm: "\(title)?") { session.perform(command) }
                 }
             }
         }

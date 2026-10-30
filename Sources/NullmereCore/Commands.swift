@@ -88,6 +88,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// that hastens a hold's work and muster, on one of its holds; caches,
     /// draughts and an hourglass naming no hold, on the House itself.
     case useItem(ItemKind, hold: Int?)
+    /// A House takes up a heritage: the first time freely, after that for
+    /// moonsalt.
+    case takeHeritage(Heritage)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -241,6 +244,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case wardWhole
     /// A mending draught used when no company of the House is hurt.
     case noneHurt
+    /// A heritage taken up by a House already of it.
+    case alreadyOfHeritage
     /// Words from a House no keeper holds.
     case notAKeeper
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -347,6 +352,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .nothingToHasten: return "Nothing under way there has a watch to spare: what has one left is done as the watch turns."
         case .wardWhole: return "That hold's ward is whole."
         case .noneHurt: return "None of your companies is hurt."
+        case .alreadyOfHeritage: return "Your House is of that heritage already."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
         case .notAKeeper: return "Only a keeper's words are carried."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -436,6 +442,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case itemsGiven(house: Int, kind: ItemKind, count: Int)
     /// A House uses an item, on one of its holds or on the House.
     case itemUsed(house: Int, kind: ItemKind, hold: Int?)
+    /// A House takes up a heritage.
+    case heritageTaken(house: Int, heritage: Heritage)
     /// A company strikes a company of the wilds.
     case hunted(Hunt)
     /// A company sets out to work a site.

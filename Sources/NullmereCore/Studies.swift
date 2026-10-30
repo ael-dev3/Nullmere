@@ -302,21 +302,24 @@ public struct Research: Codable, Equatable, Sendable {
 
 extension GameState {
     /// A House's figure for something its studies and works change: the
-    /// sum of what each study known gives at its grade, with the Archive's
-    /// own pace for studies.
+    /// sum of what each study known gives at its grade, with what its side's
+    /// holy sites and its heritage give, and the Archive's own pace for
+    /// studies.
     public func bonus(_ bonus: Bonus, for house: Int) -> Int {
         guard houses.indices.contains(house) else { return 0 }
-        let studied = houses[house].research.total(bonus) + shrineBonus(bonus, for: house)
+        let studied = houses[house].research.total(bonus) + shrineBonus(bonus, for: house) + heritage(of: house).bonus(bonus)
         return bonus == .studySpeed ? studied + GameState.archivePace * archiveLevel(of: house) : studied
     }
 
-    /// Each store's yield bonus for a House at once, in percent.
+    /// Each store's yield bonus for a House at once, in percent: its
+    /// studies' and its heritage's.
     func yieldBonuses(for house: Int) -> Stock {
         guard houses.indices.contains(house) else { return .zero }
         let research = houses[house].research
+        let heritage = heritage(of: house)
         var total = Stock.zero
         for resource in Resource.allCases {
-            total[resource] = research.total(.yield(resource))
+            total[resource] = research.total(.yield(resource)) + heritage.bonus(.yield(resource))
         }
         return total
     }

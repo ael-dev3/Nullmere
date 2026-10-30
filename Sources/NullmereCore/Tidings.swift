@@ -106,6 +106,9 @@ extension GameState {
             }
             guard let by else { return Tidings("A standard of \(name) \(placeName(of: at)) comes down, its House gone from the alliance.", .neutral) }
             return Tidings("\(houses[by].title) tears down your alliance's standard \(placeName(of: at)).", .bad)
+        case .heritageTaken(let house, let heritage):
+            guard house == viewer else { return Tidings("\(houses[house].title) takes up the ways of \(heritage.title).", .neutral) }
+            return Tidings("Your House takes up the ways of \(heritage.title): \(heritage.strengths[0]), and \(heritage.strengths[1]).", .good)
         case .itemsGiven(let house, let kind, let count):
             guard house == viewer else { return nil }
             return Tidings("Your House gains \(kind.counted(count)): \(kind.effect).", .good)

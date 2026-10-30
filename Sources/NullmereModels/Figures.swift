@@ -65,11 +65,11 @@ enum Figures {
         return o
     }
 
-    static func spearman(tier: Int, name: String) -> Model {
+    static func spearman(tier: Int, name: String, outfit: Outfit? = nil) -> Model {
         let f = Frame()
         let gait = Gait(hands: .spear, shield: tier >= 2, size: f.size)
         return model(name, f, gait) { b in
-            Person.body(&b, f, spearOutfit(tier))
+            Person.body(&b, f, outfit ?? spearOutfit(tier))
             Person.spear(&b, f, tier: tier)
             if tier >= 2 {
                 Person.shield(&b, f, tier: tier)
@@ -119,14 +119,112 @@ enum Figures {
         return o
     }
 
-    static func archer(tier: Int, name: String) -> Model {
+    static func archer(tier: Int, name: String, outfit: Outfit? = nil) -> Model {
         let f = Frame()
         let gait = Gait(hands: .bow, size: f.size, parts: Limb.count + 1)
         return model(name, f, gait, more: [("string", Limb.heldL, f.handL)]) { b in
-            Person.body(&b, f, bowOutfit(tier))
+            Person.body(&b, f, outfit ?? bowOutfit(tier))
             Person.bow(&b, f, tier: tier)
             Person.quiver(&b, f, color: tier >= 3 ? Palette.leatherDark : Palette.leather)
             Person.mattock(&b, f)
+        }
+    }
+
+    // MARK: The heritages' own companies
+
+    /// A House's own company, its heritage's kind at the fifth tier in
+    /// that people's gear: the Saltborn in salt-white plate, the
+    /// Spinewardens in dark iron under fur, the Fenfolk hooded in reed and
+    /// moss, the Strandfolk in sea-grey wool under kettle hats, the
+    /// Blackwood Kin cloaked in fir-green on black horses, the Mound Clans
+    /// in bone and black on ash-grey ones.
+    static func signature(_ heritage: Heritage, name: String) -> Model {
+        let tier = ModelKey.tiers(of: heritage.signature)
+        let o = signatureOutfit(heritage)
+        switch heritage.signature {
+        case .bow: return archer(tier: tier, name: name, outfit: o)
+        case .rider: return Riders.rider(tier: tier, name: name, outfit: o, mount: signatureMount(heritage))
+        default: return spearman(tier: tier, name: name, outfit: o)
+        }
+    }
+
+    static func signatureOutfit(_ heritage: Heritage) -> Outfit {
+        var o = Outfit()
+        o.sleeves = Palette.mail
+        o.sleevesMaterial = .metal
+        switch heritage {
+        case .saltborn:
+            // Salt-white surcoats over mail, crested, the House's cloak to the heel.
+            o.tunic = Palette.linen
+            o.skirt = (Palette.linen, .plain, 0.22)
+            o.hands = Palette.steel
+            o.shins = Palette.steel
+            o.shinsMaterial = .metal
+            o.mantle = (Palette.saltCrust, .plain)
+            o.head = .crested
+            o.cloak = 0.04
+        case .spinewardens:
+            // Dark iron plate from crown to shin, the House's colour on the
+            // shoulders, no cloak to catch on the rock.
+            o.tunic = Palette.iron
+            o.tunicMaterial = .metal
+            o.sleeves = Palette.iron
+            o.hands = Palette.iron
+            o.skirt = (Palette.iron, .metal, 0.4)
+            o.shins = Palette.stoneDark
+            o.shinsMaterial = .metal
+            o.mantle = (Palette.house, .house)
+            o.head = .greatHelm
+        case .fenfolk:
+            // Reed and moss, hooded in the House's colour, cloaked.
+            o.tunic = Palette.moss
+            o.sleeves = Palette.reed
+            o.sleevesMaterial = .plain
+            o.skirt = (Palette.reed, .plain, 0.2)
+            o.shins = Palette.leather
+            o.mantle = (Palette.reed, .plain)
+            o.head = .hood(Palette.house, .house)
+            o.cloak = 0.3
+        case .strandfolk:
+            // Sea-grey wool under kettle hats, bronze on the shoulders, the
+            // House on the chest.
+            o.tunic = Palette.seaWool
+            o.sleeves = Palette.canvas
+            o.sleevesMaterial = .plain
+            o.skirt = (Palette.canvas, .plain, 0.38)
+            o.pauldrons = (Palette.bronze, .metal)
+            o.head = .kettle
+            o.tabard = true
+        case .blackwood:
+            // Leather and fir-green, hooded, the House's cloak long behind.
+            o.tunic = Palette.leatherDark
+            o.sleeves = Palette.leather
+            o.sleevesMaterial = .plain
+            o.skirt = (Palette.leatherDark, .plain, 0.44)
+            o.mantle = (Palette.fir, .plain)
+            o.head = .hood(Palette.fir, .plain)
+            o.cloak = 0.12
+        case .moundClans:
+            // Black wool under bone, great-helmed, shrouded, the House on the chest.
+            o.tunic = Palette.woolDark
+            o.sleeves = Palette.barkBlack
+            o.sleevesMaterial = .plain
+            o.skirt = (Palette.woolDark, .plain, 0.3)
+            o.pauldrons = (Palette.bone, .plain)
+            o.mantle = (Palette.shroud, .plain)
+            o.head = .greatHelm
+            o.tabard = true
+        }
+        return o
+    }
+
+    /// The horses the riders of a heritage ride: the Blackwood Kin's black,
+    /// light and quick under a saddle cloth; the Mound Clans' ash-grey,
+    /// caparisoned to the hoof and unbarded.
+    static func signatureMount(_ heritage: Heritage) -> Mount {
+        switch heritage {
+        case .moundClans: return Mount(size: 1.06, coat: Palette.ash, mane: Palette.barkBlack, cloth: 3)
+        default: return Mount(size: 1.02, coat: Palette.horseBlack, mane: Palette.horseBlack, socks: Palette.horseGrey, cloth: 1)
         }
     }
 
@@ -191,6 +289,7 @@ enum Figures {
     /// ground; nil for what does not march.
     static func marchSpeed(_ key: ModelKey) -> Float? {
         switch key.canonical {
+        case .signature(let heritage): return marchSpeed(.figure(heritage.signature, tier: ModelKey.tiers(of: heritage.signature)))
         case .figure(.rider, let tier): return Ride(arms: .lance, mount: Riders.mount(tier: tier)).marchSpeed
         case .figure(.founder, _): return founderGait.marchSpeed
         case .figure, .prop(.cart): return Gait(hands: .spear).marchSpeed

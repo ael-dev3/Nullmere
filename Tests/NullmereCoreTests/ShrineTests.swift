@@ -27,6 +27,8 @@ final class ShrineTests: XCTestCase {
     func testAShrineIsTakenByStandingOnItAndGivesItsHoldersSide() throws {
         var state = Scene.world("taken shrine", houses: 4, radius: 18)
         let me = state.player
+        // Every House of one people, whose strengths touch no company's arms.
+        for house in state.houses.indices { state.houses[house].heritage = .strandfolk }
         let shrine = try XCTUnwrap(state.holySites.first { $0.kind == .moonwell })
         let attack = state.bonus(.attack(.spear), for: me)
         // A company stands on it as the watch turns: it is taken.

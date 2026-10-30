@@ -101,9 +101,11 @@ final class TierTests: XCTestCase {
     }
 
     /// The first tier fights, eats and weighs as every company did before
-    /// tiers: nothing of an older game changes.
+    /// tiers: nothing of an older game changes. (Its House's heritage is one
+    /// that changes no company's figures.)
     func testTheFirstTierIsWhatEveryCompanyWas() throws {
-        let (state, _) = try world()
+        var (state, _) = try world()
+        state.houses[0].heritage = .strandfolk
         for kind in UnitKind.allCases {
             var unit = Unit(id: 1, kind: kind, owner: 0, position: .origin)
             unit.health = 73

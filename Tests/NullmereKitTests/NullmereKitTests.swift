@@ -505,6 +505,9 @@ final class GuideTests: XCTestCase {
         XCTAssertEqual(GameState.captainsAt, [3, 5])
         XCTAssertEqual(GameState.woundWatches, 4)
         XCTAssertTrue(all.contains("a Mending Draught mends every hurt company of yours by \(GameState.draughtMending)"), all)
+        XCTAssertTrue(all.contains("a twentieth stronger and firmer than others of its kind. Take up another in the Realm (6): the first time freely, then for 30 moonsalt."), all)
+        XCTAssertEqual(Heritage.signatureEdge, 5)
+        XCTAssertEqual(Heritage.allCases.map(\.name), ["The Saltborn", "The Fenfolk", "The Blackwood Kin", "The Spinewardens", "The Mound Clans", "The Strandfolk"])
         XCTAssertEqual(Rally.gatherings, 1...4)
         XCTAssertEqual(Study.opening(tier: 2), .drill)
         XCTAssertEqual(Study.opening(tier: 5), .moonsteel)
@@ -732,6 +735,7 @@ final class CueMappingTests: XCTestCase {
             (.standardTorn(standard: 80, alliance: 77, by: player, at: unit.position), .triumph),
             (.standardTorn(standard: 81, alliance: alliance, by: foe, at: unit.position), .dread),
             (.itemsGiven(house: player, kind: .hourglass, count: 2), .coin),
+            (.heritageTaken(house: player, heritage: .fenfolk), .banner),
             (.itemUsed(house: player, kind: .hourglass, hold: seat.id), .sift),
             (.itemUsed(house: player, kind: .mendingDraught, hold: nil), .tend),
             (.studyBegun(house: player, study: .furrowLore, grade: 1), .rise),
@@ -825,6 +829,7 @@ final class CueMappingTests: XCTestCase {
             .standardRaised(standard: 83, alliance: 77, house: foe, at: unit.position),
             .standardTorn(standard: 84, alliance: 77, by: others, at: unit.position),
             .itemsGiven(house: foe, kind: .wardStone, count: 1), .itemUsed(house: foe, kind: .hourglass, hold: 41),
+            .heritageTaken(house: foe, heritage: .moundClans),
         ]
         XCTAssertEqual(GameSession.cues(for: quiet, in: state, player: player), [.watch])
         // Every new order has its own sound, not the plain click.
@@ -844,7 +849,7 @@ final class CueMappingTests: XCTestCase {
             (.scout(unit: unit.id, hold: 40), .ride), (.raiseStandard(at: unit.position), .banner),
             (.useItem(.hourglass, hold: seat.id), .sift), (.useItem(.hourglass, hold: nil), .sift), (.useItem(.grainCache, hold: nil), .coin),
             (.useItem(.moonsaltCache, hold: nil), .coin), (.useItem(.wardStone, hold: seat.id), .complete),
-            (.useItem(.mendingDraught, hold: nil), .tend),
+            (.useItem(.mendingDraught, hold: nil), .tend), (.takeHeritage(.strandfolk), .banner),
         ]
         for (command, cue) in orders {
             XCTAssertEqual(GameSession.cues(for: command, events: [], in: state, player: player), [cue], "\(command)")

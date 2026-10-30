@@ -38,6 +38,8 @@ enum Palette {
     static let wool = Vec3(0.39, 0.37, 0.33)
     static let woolDark = Vec3(0.24, 0.24, 0.25)
     static let linen = Vec3(0.70, 0.67, 0.60)
+    /// Grey-blue wool, dyed with the strand's sea-holly.
+    static let seaWool = Vec3(0.27, 0.33, 0.38)
     static let leather = Vec3(0.36, 0.25, 0.17)
     static let leatherDark = Vec3(0.22, 0.16, 0.12)
     static let fur = Vec3(0.33, 0.29, 0.25)

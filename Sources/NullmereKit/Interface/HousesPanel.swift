@@ -624,6 +624,7 @@ struct HouseRow: View {
         let state = session.state
         var parts = [house.isPlayer ? HouseRow.keeping(house, present: session.realmStatus?.present)
                                     : "\(house.temperament.title). \(HouseRow.keeping(house, present: nil))"]
+        parts.append("Of \(state.heritage(of: house.id).title).")
         if let liege = house.liege {
             parts.append(liege == session.player ? "Sworn to you." : "Sworn to \(state.houses[liege].title).")
         }

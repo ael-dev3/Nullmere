@@ -11,6 +11,8 @@ final class GatheringTests: XCTestCase {
     private func field(_ seed: String = "gathering", level: Int = 1) throws -> (GameState, me: Int, spear: Int, site: Int, at: Hex) {
         var state = Scene.world(seed)
         let me = state.player
+        // Of a people that gathers at no other pace.
+        state.houses[me].heritage = .fenfolk
         state.sites = []
         state.wilds = []
         let ground = try XCTUnwrap(state.openGround())

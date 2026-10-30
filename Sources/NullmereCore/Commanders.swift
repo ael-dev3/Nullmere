@@ -276,10 +276,17 @@ extension GameState {
     public static let woundWatches = 4
 
     /// A company's figure for something its House's studies and its
-    /// commander change: what `bonus(_:for:)` gives its House, and what its
-    /// commander's skills, talents and gear give it.
+    /// commander change: what `bonus(_:for:)` gives its House, what its
+    /// heritage gives its own company, and what its commander's skills,
+    /// talents and gear give it.
     public func bonus(_ bonus: Bonus, for unit: Unit) -> Int {
-        let house = self.bonus(bonus, for: unit.owner)
+        var house = self.bonus(bonus, for: unit.owner)
+        switch bonus {
+        case .attack(unit.kind), .defense(unit.kind):
+            if isSignature(unit) { house += Heritage.signatureEdge }
+        default:
+            break
+        }
         guard let id = unit.leader, let commander = commander(id) else { return house }
         switch bonus {
         case .attack(let kind) where kind == unit.kind: return house + edge(.attack, of: commander)

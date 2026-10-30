@@ -21,6 +21,7 @@ struct SeatBriefing: Equatable {
             facts.append(others == 0 ? "Your seat is \(seat.name), by the Still."
                                      : "Your seat is \(seat.name), with \(others == 1 ? "one hold" : "\(others) holds") besides.")
         }
+        facts.append(SeatBriefing.heritageLine(world, player))
         if world.watch > 1 {
             facts.append("The age is at watch \(world.watch); the stewards kept your House until now.")
         }
@@ -48,6 +49,17 @@ struct SeatBriefing: Equatable {
         steps.append("Select a company (Tab), then right-click where it should go. Lanterns find what lies in the mist.")
         steps.append("When your orders are given, say you're ready (⌘↩). The watch turns when every keeper there is ready, or when its time runs out.")
         self.steps = steps
+    }
+
+    /// The people the House comes of, what that gives it, and how to take
+    /// up another.
+    static func heritageLine(_ world: GameState, _ player: Int) -> String {
+        let heritage = world.heritage(of: player)
+        let another = world.houses[player].heritage == nil
+            ? "take up another from the Realm (6), the first time freely"
+            : "another costs \(Heritage.changeCost) in the Realm (6)"
+        return "Your House comes of \(heritage.title): \(heritage.strengths[0]), and \(heritage.strengths[1]). Its own company is the "
+            + "\(heritage.signatureTitle), \(heritage.signature.title) of the fifth tier; \(another)."
     }
 
     static func ordinal(_ n: Int) -> String {

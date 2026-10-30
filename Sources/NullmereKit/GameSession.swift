@@ -1183,6 +1183,7 @@ public final class GameSession {
         case .scout: return .ride
         case .raiseStandard: return .banner
         case .useItem(let kind, _): return cue(using: kind)
+        case .takeHeritage: return .banner
         default: return .select
         }
     }
@@ -1230,6 +1231,7 @@ public final class GameSession {
         case .woundedLost(_, let house, _) where house == player: return .dread
         case .holdScouted(let report) where report.by == player: return .lore
         case .itemsGiven(let house, _, _) where house == player: return .coin
+        case .heritageTaken(let house, _) where house == player: return .banner
         case .itemUsed(let house, let kind, _) where house == player: return cue(using: kind)
         case .lairAssaulted(let assault) where assault.houses.contains(player): return assault.broken ? .triumph : .batter
         case .standardRaised(_, let alliance, _, _) where state?.alliance(of: player)?.id == alliance: return .banner

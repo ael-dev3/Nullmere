@@ -163,6 +163,31 @@ final class StandardTests: XCTestCase {
         XCTAssertEqual(stage.state.problems(), [])
     }
 
+    /// A standard struck or torn down is told to each as it concerns them:
+    /// the striker, the alliance, and those only watching.
+    func testAStandardsBlowsAreToldAsTheyConcernEach() throws {
+        var stage = try staged("standards told")
+        let spot = try ground(near: stage.seat.position, in: stage.state)
+        _ = try stage.state.perform(.raiseStandard(at: spot), as: stage.me)
+        let standard = try XCTUnwrap(stage.state.standard(at: spot))
+        let alliance = try XCTUnwrap(stage.state.alliance(of: stage.me))
+        let foe = 3, outsider = 2
+        let struck = GameEvent.standardStruck(standard: standard.id, ward: 30, by: foe, at: spot)
+        XCTAssertEqual(stage.state.tidings(of: struck, for: foe)?.text, "Your company strikes a standard of \(alliance.name): its ward 30 of 60.")
+        XCTAssertEqual(stage.state.tidings(of: struck, for: stage.ally)?.tone, .bad)
+        XCTAssertNil(stage.state.tidings(of: struck, for: outsider))
+        XCTAssertNil(stage.state.tidings(of: .standardStruck(standard: 9_999, ward: 0, by: foe, at: spot), for: stage.me))
+        let torn = GameEvent.standardTorn(standard: standard.id, alliance: alliance.id, by: foe, at: spot)
+        XCTAssertEqual(stage.state.tidings(of: torn, for: outsider)?.text,
+                       "\(stage.state.houses[foe].title) tears down a standard of \(alliance.name) \(stage.state.placeName(of: spot)).")
+        XCTAssertNil(stage.state.tidings(of: .standardTorn(standard: standard.id, alliance: alliance.id, by: nil, at: spot), for: outsider))
+        // A lair's assault, to those who only watch it.
+        let assault = LairAssault(rally: 1, caller: 99, lair: 2, kind: .reavers, level: 2, at: .origin, strikes: [],
+                                  before: 450, strength: 300, might: 450, shares: [])
+        XCTAssertEqual(stage.state.tidings(of: .lairAssaulted(assault), for: outsider)?.text,
+                       "A host strikes the Reavers' Stockade of the second level, but it holds.")
+    }
+
     /// Standards and lairs out of true are found: two standards on one
     /// ground, a lair on a hold, a lair with no strength left standing.
     func testStandardsAndLairsOutOfTrueAreFound() throws {

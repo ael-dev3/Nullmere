@@ -242,11 +242,11 @@ enum Riders {
         return o
     }
 
-    static func rider(tier: Int, name: String) -> Model {
-        let m = mount(tier: tier)
+    static func rider(tier: Int, name: String, outfit: Outfit? = nil, mount chosen: Mount? = nil) -> Model {
+        let m = chosen ?? mount(tier: tier)
         let ride = Ride(arms: .lance, shield: tier >= 2, mount: m)
         return model(name, m, ride) { b, f in
-            Person.body(&b, f, riderOutfit(tier))
+            Person.body(&b, f, outfit ?? riderOutfit(tier))
             lance(&b, f, tier: tier)
             if tier >= 2 {
                 Person.shield(&b, f, tier: tier)

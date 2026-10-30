@@ -203,6 +203,7 @@ final class CommanderTests: XCTestCase {
         XCTAssertEqual(rose, [.commanderRose(commander: commander, house: me, level: 5)])
         XCTAssertEqual(state.commander(commander)?.skills.count, 2)
         state.houses[me].research.learn(.warChronicles, grade: 2)
+        state.houses[me].heritage = .strandfolk  // whose commanders learn at no other pace
         let before = try XCTUnwrap(state.commander(commander)).experience
         _ = state.teach(led, 100)
         XCTAssertEqual(state.commander(commander)?.experience, before + 130, "War Chronicles teach faster")

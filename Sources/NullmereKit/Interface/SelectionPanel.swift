@@ -327,7 +327,7 @@ private struct TrainingRow: View {
         let cost = state.trainingCost(of: kind, tier: tier, for: session.player)
         let named = kind.hasTiers ? "\(kind.title) \(Narration.roman(tier))" : kind.title
         HStack(alignment: .top, spacing: 8) {
-            Portrait(key: .figure(kind, tier: tier), colour: Portrait.colour(of: hold.owner, in: state), size: 34)
+            Portrait(key: .company(kind, tier: tier, heritage: state.heritage(of: hold.owner)), colour: Portrait.colour(of: hold.owner, in: state), size: 34)
             details(state: state, highest: highest, tier: tier, allowed: allowed, cost: cost, named: named)
         }
     }
@@ -575,7 +575,7 @@ struct UnitPanel: View {
         let mine = unit.owner == session.player
         VStack(alignment: .leading, spacing: 12) {
             PanelTitle(
-                title: unit.rank > 0 ? "\(Unit.rankTitles[unit.rank]) \(unit.kind.title)" : unit.kind.title,
+                title: unit.rank > 0 ? "\(Unit.rankTitles[unit.rank]) \(state.title(of: unit))" : state.title(of: unit),
                 subtitle: mine ? (unit.kind.isMilitary ? veterancy(of: unit) : nil) : owner.title,
                 accent: Palette.houseWords(owner)
             )

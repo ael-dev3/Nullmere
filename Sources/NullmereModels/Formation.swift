@@ -29,6 +29,8 @@ public enum Formation {
 
     static func ranks(_ key: ModelKey) -> Ranks? {
         switch key.canonical {
+        case .signature(let heritage):
+            return ranks(.figure(heritage.signature, tier: ModelKey.tiers(of: heritage.signature)))
         case .figure(let kind, _):
             switch kind {
             case .spear: return Ranks(strength: 9, file: 3, spacing: 0.2, depth: 0.2)
