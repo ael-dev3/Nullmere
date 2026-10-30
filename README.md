@@ -538,6 +538,18 @@ realm; keepers are told in plain words, never a status code.
   enough battles. A commander takes up a company of war at or beside one of
   its House's holds; if the company falls, it is carried home wounded for
   four watches.
+- **Talents.** A commander gains a talent point at each level past the
+  first, twenty-nine at the thirtieth, to spend a rank at a time in three
+  trees of five talents: Steel (Keen Edge, Hunter's Mark, Ramming Drill,
+  Blooded Steel, Battle Rage), Ward (Thick Hide, Field Surgeon, Gatewarden,
+  Iron Ranks, Unbroken) and Road (Keen Eyes, Gleaner's Hand, Deep
+  Saddlebags, Long Stride, Pathfinder). Each talent is opened by the one
+  before it in its tree and has one to three ranks, each giving its edge
+  again to the company the commander leads; Battle Rage fires its skill a
+  battle sooner. There are more ranks than points, so every commander is
+  grown one way. A commander's talents are forgotten all at once for 20
+  moonsalt, every point given back. Stewards spend their commanders'
+  points as they come, along the trees their archetype grows first.
 - **The wilds.** The realm raises hostile companies in the far country, six
   tiles or more from any hold: Saltwights on the flats, Blackwood Reavers,
   Barrowkin, Spine Hunters, the Drowned on the strand. They are of levels I

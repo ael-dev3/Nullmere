@@ -67,6 +67,10 @@ extension GameState {
             return try foundAlliance(named: name, by: house)
         case let .say(words, toAlliance):
             return try say(words, toAlliance: toAlliance, as: house)
+        case let .learnTalent(commanderID, talent):
+            return try learn(talent, by: commanderID, as: house)
+        case let .forgetTalents(commanderID):
+            return try forgetTalents(of: commanderID, as: house)
         case let .inviteToAlliance(target):
             return try invite(target, by: house)
         case let .askToJoin(allianceID):

@@ -676,6 +676,8 @@ final class CueMappingTests: XCTestCase {
             (.commanderRose(commander: commander, house: player, level: 2), .honour),
             (.commanderWounded(commander: commander, house: player), .dread),
             (.skillFired(commander: commander, house: player, skill: .shieldwall, at: unit.position), .horn),
+            (.talentLearned(commander: commander, house: player, talent: .keenEdge, rank: 1), .lore),
+            (.talentsForgotten(commander: commander, house: player), .stand),
             (hunt(by: player, .spear), .clash),
             (hunt(by: player, .bow), .loose),
             (.sentToGather(unit: unit.id, site: 1), .order),
@@ -725,6 +727,7 @@ final class CueMappingTests: XCTestCase {
             .happeningMark(house: foe, kind: .longHunt, mark: 1, reward: Stock(grain: 5)), .deedDone(house: foe, deed: .founder),
             .chargeDone(house: foe, charge: .raiseGranary, reward: Stock(grain: 5)),
             .said(Word(id: 6, from: player, watch: 1, text: "My own words", alliance: nil)),
+            .talentLearned(commander: 99, house: foe, talent: .keenEdge, rank: 1), .talentsForgotten(commander: 99, house: foe),
         ]
         XCTAssertEqual(GameSession.cues(for: quiet, in: state, player: player), [.watch])
         // Every new order has its own sound, not the plain click.
@@ -738,6 +741,7 @@ final class CueMappingTests: XCTestCase {
             (.answerInvitation(alliance: 77, accept: false), .refusal), (.answerRequest(house: foe, accept: true), .banner),
             (.answerRequest(house: foe, accept: false), .refusal), (.expel(house: foe), .refusal),
             (.callRally(from: seat.id, against: 40, watches: 2), .horn),
+            (.learnTalent(commander: commander, talent: .keenEdge), .lore), (.forgetTalents(commander: commander), .stand),
             (.say(words: "Well met", toAlliance: false), .parley),
         ]
         for (command, cue) in orders {

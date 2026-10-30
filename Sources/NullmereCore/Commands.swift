@@ -64,6 +64,11 @@ public enum Command: Codable, Equatable, Sendable {
     case reinforce(unit: Int, hold: Int)
     /// A keeper's words, to the whole realm or to their alliance alone.
     case say(words: String, toAlliance: Bool)
+    /// A commander learns the next rank of a talent, for a talent point.
+    case learnTalent(commander: Int, talent: Talent)
+    /// A commander forgets every talent it has learned, its points given
+    /// back to learn anew, for moonsalt.
+    case forgetTalents(commander: Int)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -175,6 +180,14 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case alreadyRallying
     /// A hold not of an ally's to keep.
     case notAnAllysHold
+    /// A commander with no talent point left to spend.
+    case noTalentPoints
+    /// A talent learned to its last rank.
+    case talentMastered
+    /// A talent opened only by another, learned first.
+    case needsTalent(Talent)
+    /// Talents forgotten by a commander that has learned none.
+    case nothingToForget
     /// Words from a House no keeper holds.
     case notAKeeper
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -260,6 +273,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .rallySetOut: return "That host has already set out."
         case .rallyFull: return "That rally's muster can take no more companies."
         case .alreadyRallying: return "That company is already sent to that rally."
+        case .noTalentPoints: return "That commander has no talent point left; it gains one at each level."
+        case .talentMastered: return "That talent is learned to its last rank."
+        case .needsTalent(let talent): return "Needs \(talent.title) first."
+        case .nothingToForget: return "That commander has learned no talents."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
         case .notAKeeper: return "Only a keeper's words are carried."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -310,6 +327,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case commanderWounded(commander: Int, house: Int)
     /// A commander's active skill fires in a battle.
     case skillFired(commander: Int, house: Int, skill: Skill, at: Hex)
+    /// A commander learns a rank of a talent.
+    case talentLearned(commander: Int, house: Int, talent: Talent, rank: Int)
+    /// A commander forgets its talents, to learn anew.
+    case talentsForgotten(commander: Int, house: Int)
     /// A company strikes a company of the wilds.
     case hunted(Hunt)
     /// A company sets out to work a site.

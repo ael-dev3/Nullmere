@@ -48,6 +48,7 @@ enum Guide {
         Section(title: "Commanders", lines: [
             "Your House keeps up to five commanders: one at the start, another with each Muster Hall of III and V, and with Banner Lore. Set one at the head of a company of war in Commanders (4); it leads it in every battle.",
             "A commander learns from every battle and every company of the wilds struck down, and rises in level; at levels V, X and XX its skills come to it. Its second skill fires in battle once its fury has risen. A commander whose company falls is carried home wounded, and mends in four watches.",
+            "At each level past the first a commander gains a talent point, to spend in Commanders (4) a rank at a time in three trees of five: Steel for the blow, Ward for the guard, Road for the way and the sites. Each talent is opened by the one before it in its tree. Forget them all for 20 moonsalt, to learn anew.",
         ]),
         Section(title: "The wilds and the sites", lines: [
             "Companies of the wilds rise in the far country: every House's foe. Strike them for their spoils and for your commanders' learning; the higher their level, the richer and the harder.",

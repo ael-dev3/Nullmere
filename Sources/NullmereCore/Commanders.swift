@@ -194,6 +194,9 @@ public struct Commander: Codable, Equatable, Identifiable, Sendable {
     public internal(set) var woundedUntil: Int?
     /// Battles fought since its active skill last fired.
     public internal(set) var fury: Int
+    /// The talents it has learned, a rank an entry, in the order learned;
+    /// absent in saves from before talents.
+    public internal(set) var talents: [Talent]?
 
     public init(id: Int, name: String, archetype: Archetype, owner: Int) {
         self.id = id
@@ -226,10 +229,10 @@ public struct Commander: Codable, Equatable, Identifiable, Sendable {
         (woundedUntil ?? 0) > watch
     }
 
-    /// What its skills always give the company it leads.
+    /// What its skills and its talents always give the company it leads.
     public func edge(_ edge: Edge) -> Int {
         let level = self.level
-        var total = 0
+        var total = talentEdge(edge)
         for skill in archetype.skills where skill.unlock <= level {
             total += skill.edges[edge] ?? 0
         }
@@ -297,7 +300,7 @@ extension GameState {
     public func furyReady(of unit: Unit) -> Skill? {
         guard let id = unit.leader, let commander = commander(id) else { return nil }
         let active = commander.archetype.active
-        guard commander.level >= active.unlock, commander.fury + 1 >= active.cadence else { return nil }
+        guard commander.level >= active.unlock, commander.fury + 1 >= commander.cadence else { return nil }
         return active
     }
 

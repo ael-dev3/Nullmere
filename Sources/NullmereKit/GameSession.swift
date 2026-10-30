@@ -1123,6 +1123,8 @@ public final class GameSession {
         case .expel: return .refusal
         case .callRally: return .horn
         case .say: return .parley
+        case .learnTalent: return .lore
+        case .forgetTalents: return .stand
         default: return .select
         }
     }
@@ -1144,6 +1146,8 @@ public final class GameSession {
         case .commanderAssigned(_, let unit) where ours(unit): return .order
         case .commanderReleased(let commander) where state?.commander(commander)?.owner == player: return .stand
         case .skillFired(_, let house, _, _) where house == player: return .horn
+        case .talentLearned(_, let house, _, _) where house == player: return .lore
+        case .talentsForgotten(_, let house) where house == player: return .stand
         case .hunted(let hunt) where hunt.attackerOwner == player: return hunt.attackerKind == .bow ? .loose : .clash
         case .sentToGather(let unit, _) where ours(unit): return .order
         case .gathered(_, let owner, _) where owner == player: return .dig

@@ -105,7 +105,8 @@ extension GameState {
             case .gifted(let from, let to, _), .tradeAnswered(_, let from, let to, _):
                 return from == house || to == house
             case .bartered(let owner, _, _), .starving(let owner), .studyBegun(let owner, _, _), .studyCompleted(let owner, _, _),
-                 .commanderJoined(_, let owner), .commanderRose(_, let owner, _), .commanderWounded(_, let owner):
+                 .commanderJoined(_, let owner), .commanderRose(_, let owner, _), .commanderWounded(_, let owner),
+                 .talentLearned(_, let owner, _, _), .talentsForgotten(_, let owner):
                 return owner == house
             case .commanderAssigned(let id, _), .commanderReleased(let id):
                 return commander(id)?.owner == house

@@ -123,6 +123,97 @@ private struct CommanderRow: View {
                     .accessibilityElement(children: .combine)
                 }
             }
+            TalentsView(session: session, commander: commander)
+        }
+    }
+}
+
+/// A commander's talents: its three trees, each talent's rank and what a
+/// rank does, a button to learn the next, and one to forget them all and
+/// learn anew. Shown of itself while points wait to be spent.
+struct TalentsView: View {
+    let session: GameSession
+    let commander: Commander
+    /// Shown or hidden by the keeper; nil, it follows the points waiting.
+    @State private var shown: Bool?
+
+    var body: some View {
+        let open = shown ?? (commander.pointsLeft > 0)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(verbatim: TalentsView.summary(of: commander))
+                    .font(.nm(10.5))
+                    .foregroundStyle(commander.pointsLeft > 0 ? Palette.glowWords : Palette.text(0.6))
+                Spacer()
+                QuietButton(title: open ? "Hide talents" : "Talents", size: 8.5,
+                            name: open ? "Hide \(commander.name)'s talents" : "Show \(commander.name)'s talents") {
+                    shown = !open
+                }
+            }
+            if open {
+                ForEach(commander.talentTrees) { tree in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Caps("\(tree.tree.title) · \(tree.spent) spent", size: 8.5, weight: .medium)
+                            .foregroundStyle(Palette.text(0.7))
+                            .accessibilityAddTraits(.isHeader)
+                        ForEach(tree.lines) { line in
+                            TalentRow(session: session, commander: commander, line: line)
+                        }
+                    }
+                }
+                if !(commander.talents ?? []).isEmpty {
+                    HStack {
+                        Spacer()
+                        ConfirmButton(title: TalentsView.forgetting, confirm: "Forget them all?") {
+                            session.perform(.forgetTalents(commander: commander.id))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    static let forgetting = "Forget all · \(GameState.forgettingCost.moonsalt) moonsalt"
+
+    /// The points it has to spend, or has spent.
+    static func summary(of commander: Commander) -> String {
+        let left = commander.pointsLeft
+        if left > 0 { return "\(left) talent point\(left == 1 ? "" : "s") to spend" }
+        let spent = commander.talents?.count ?? 0
+        return spent == 0 ? "A talent point comes with each level" : "\(spent) talent point\(spent == 1 ? "" : "s") spent"
+    }
+}
+
+/// A talent: its rank in pips, what a rank does, and the button that
+/// learns the next, or why it can't.
+private struct TalentRow: View {
+    let session: GameSession
+    let commander: Commander
+    let line: TalentLine
+
+    var body: some View {
+        let talent = line.talent
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Caps(talent.title, size: 8.5, weight: line.rank > 0 ? .medium : .regular)
+                        .foregroundStyle(Palette.text(line.rank > 0 ? 0.85 : 0.6))
+                    LevelPips(level: line.rank, maximum: talent.ranks)
+                }
+                Text(verbatim: talent.effect)
+                    .font(.nm(10))
+                    .foregroundStyle(Palette.text(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            Spacer()
+            if !line.isMastered {
+                QuietButton(title: "Learn", size: 8.5, enabled: line.refusal == nil,
+                            name: "Learn \(talent.title) \(Narration.roman(line.rank + 1)) for \(commander.name)",
+                            why: line.refusal?.description) {
+                    session.perform(.learnTalent(commander: commander.id, talent: talent))
+                }
+            }
         }
     }
 }

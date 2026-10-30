@@ -90,6 +90,8 @@ final class DepthPanelTests: XCTestCase {
         let commander = try XCTUnwrap(session.state.commanders(of: session.player).first)
         draw(CommandersPanel(session: session))
         XCTAssertFalse(PressableButtons.press("Lead them"), "No company chosen, none to lead")
+        XCTAssertTrue(PressableButtons.press("Talents"), "Its talents hidden while no point waits, among \(shown)")
+        XCTAssertFalse(PressableButtons.press("Learn"))
         session.selection = .unit(company.id)
         draw(CommandersPanel(session: session))
         XCTAssertTrue(PressableButtons.press("Lead them"), "Among \(shown)")
@@ -105,6 +107,42 @@ final class DepthPanelTests: XCTestCase {
         let board = session.state.commandersBoard(for: session.player)
         XCTAssertEqual(CommandersPanel.standing(of: try XCTUnwrap(board.lines.first)), "Free to lead a company of war")
         XCTAssertEqual(CommandersPanel.named(company), "\(company.kind.title) I")
+    }
+
+    func testACommanderLearnsATalentAndForgetsThemAll() throws {
+        var state = world("pressed talents")
+        let me = state.player
+        let id = try XCTUnwrap(state.commanders(of: me).first).id
+        state.commanders![id - 1].experience = Commander.experience(forLevel: 3)
+        state.houses[me].stock.moonsalt = 50
+        let (session, link) = session(state)
+        XCTAssertEqual(TalentsView.summary(of: try XCTUnwrap(session.state.commander(id))), "2 talent points to spend")
+        draw(CommandersPanel(session: session))
+        XCTAssertTrue(PressableButtons.press("Hide talents"), "Shown of itself while points wait, among \(shown)")
+        XCTAssertNil(PressableButtons.actions[TalentsView.forgetting], "Nothing learned, nothing to forget")
+        XCTAssertTrue(PressableButtons.press("Learn"), "Among \(shown)")
+        guard case .learnTalent(id, let talent)? = link.sent.last else { return XCTFail("A talent learned: \(String(describing: link.sent.last))") }
+        XCTAssertEqual(talent.place, 0, "Only a tree's first is open")
+        XCTAssertEqual(session.state.commander(id)?.rank(of: talent), 1)
+        XCTAssertEqual(TalentsView.summary(of: try XCTUnwrap(session.state.commander(id))), "1 talent point to spend")
+
+        draw(CommandersPanel(session: session))
+        XCTAssertTrue(PressableButtons.press(TalentsView.forgetting), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .forgetTalents(commander: id))
+        XCTAssertEqual(session.state.commander(id)?.talents, [])
+        XCTAssertEqual(session.state.houses[me].stock.moonsalt, 30)
+        XCTAssertEqual(TalentsView.forgetting, "Forget all · 20 moonsalt")
+
+        var spent = Commander(id: 9, name: "Ysra", archetype: .warden, owner: me)
+        XCTAssertEqual(TalentsView.summary(of: spent), "A talent point comes with each level")
+        spent.experience = Commander.experience(forLevel: 2)
+        spent.talents = [.thickHide]
+        XCTAssertEqual(TalentsView.summary(of: spent), "1 talent point spent")
+        spent.experience = Commander.experience(forLevel: 4)
+        spent.talents = [.thickHide, .thickHide, .thickHide]
+        XCTAssertEqual(TalentsView.summary(of: spent), "3 talent points spent")
+        draw(TalentsView(session: session, commander: spent))
+        XCTAssertTrue(PressableButtons.press("Talents"), "Every point spent: hidden of itself")
     }
 
     // MARK: Alliances

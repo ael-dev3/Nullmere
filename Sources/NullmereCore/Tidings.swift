@@ -42,6 +42,12 @@ extension GameState {
         case .commanderWounded(let id, let house):
             guard house == viewer, let commander = commander(id) else { return nil }
             return Tidings("\(commander.name) is carried home wounded; whole again in \(GameState.woundWatches) watches.", .bad)
+        case .talentLearned(let id, let house, let talent, let rank):
+            guard house == viewer, let commander = commander(id) else { return nil }
+            return Tidings("\(commander.name) learns \(talent.title)" + (talent.ranks > 1 ? " \(BuildingKind.numeral(rank))." : "."), .good)
+        case .talentsForgotten(let id, let house):
+            guard house == viewer, let commander = commander(id) else { return nil }
+            return Tidings("\(commander.name) forgets their talents, to learn them anew.", .neutral)
         case .skillFired(let id, let house, let skill, _):
             guard let commander = commander(id) else { return nil }
             if house == viewer { return Tidings("\(commander.name) calls \(skill.title).", .good) }

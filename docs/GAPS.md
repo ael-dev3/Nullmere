@@ -17,7 +17,7 @@ planned, and what CI has shown of it.
 | 2 | 3D world in Metal | 5 | Terrain as a 3D mesh with relief and its own grain of earth and moss; the still lake mirroring the stars and the moon; a camera that pans, zooms, tilts and turns; picking and VoiceOver through it; original models built from code for every company in five tiers, every hold, work and wall at every level, the wilds, the sites of the land and the commanders; four lights of the world's own with the moon's; rendered on the GPU in CI | Hand-modelled, textured detail at RoK's density; day, night and weather; a city view inside the world |
 | 3 | Animation | 6 | Companies idle, march, strike, gather and fall, easing from one clip to the next; works rise from scaffolds and finish in dust; blows land with sparks, a flash and light on the ground, the struck reel, arrows arc and kick up dust, wards splinter, the fallen raise dust; a commander's skill fires in a ring of gold; broken holds burn and smoke; fireflies, birds, banners and hearth smoke | Spell-like effects at RoK's scale; crowds and city life |
 | 4 | Sound and music | 6 | A synthesised night, a score written as it plays that turns to war, and twenty-five cues made as they play, a sound for every order and every event that concerns the keeper, each held by tests above the night and all at once under clipping | Recorded orchestral music and foley; sound placed in the world |
-| 5 | Depth of systems | 5 | Studies (28 in four branches, an Archive's circles), troop tiers I to V, commanders (five archetypes, twenty skills, thirty levels, fury), the wilds at levels I to X, gathering at the land's sites, alliances with help and their own words, rallies, marches that take watches and say when they arrive, happenings with marks and honours, deeds, charges, might and renown across ages; every rule tested on Linux and played by the stewards | VIP, items and equipment, talent trees for commanders, civilizations, kingdom against kingdom, alliance territory and buildings, holy sites, barbarian forts, hospitals and healing, scouting |
+| 5 | Depth of systems | 5 | Studies (28 in four branches, an Archive's circles), troop tiers I to V, commanders (five archetypes, twenty skills, thirty levels, fury, three talent trees), the wilds at levels I to X, gathering at the land's sites, alliances with help and their own words, rallies, marches that take watches and say when they arrive, happenings with marks and honours, deeds, charges, might and renown across ages; every rule tested on Linux and played by the stewards | VIP, items and equipment, civilizations, kingdom against kingdom, alliance territory and buildings, holy sites, barbarian forts, hospitals and healing, scouting |
 | 6 | Interface and onboarding | 5 | A screen for every system: the Archive (3), Commanders (4), Alliance (5), the Realm (6) and Words (7), on keys, in the menu and on a row of buttons; a small map of the whole lake; battle reports in the Chronicle; tiers chosen in training; a site gathered by a right-click; a rally called from an enemy hold; the wilds and the sites named on hover and read to VoiceOver; every screen through the Mac's accessibility audit in CI. The first hour taught in play: a briefing, three first steps, then ten charges one after another, each saying how, with Show me ringing the very control that keeps it, and a reward; a Guide for every system | RoK's illustrated interface and art; a voiced advisor |
 
 Overall against Rise of Kingdoms: **5 of 10**.
@@ -67,7 +67,8 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 - [x] Marches across the map that take time to arrive
 - [x] Events: realm-wide happenings with their own goals and rewards
 - [x] Progress: a keeper's renown and rewards that carry across ages
-- [ ] Equipment, talents, territory and the rest of RoK's breadth
+- [x] Talent trees for commanders: three trees of five, a point a level, learned a rank at a time, forgotten for moonsalt
+- [ ] Equipment, territory and the rest of RoK's breadth
 
 ### 6. Interface and onboarding
 - [x] A screen for every system above, keyboard and VoiceOver included
@@ -82,7 +83,7 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 4. The live connection and the multiplayer test.
 5. Sound for every action, and music by the state of the realm.
 6. The onboarding over all of it.
-7. Next: battles that last; textured detail; equipment and talents; sound placed in the world.
+7. Next: battles that last; textured detail; equipment; sound placed in the world.
 
 What only a person can do stays as it was: raising the realm on maincloud
 with the maintainer's account, signing and notarizing the release, and
