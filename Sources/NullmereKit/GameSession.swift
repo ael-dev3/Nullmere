@@ -103,6 +103,8 @@ public final class GameSession {
     /// Other things the interface reads at every redraw, worked out once
     /// for each change of the world.
     @ObservationIgnored private var keptForWorld: (version: Int, values: [String: Any]) = (-1, [:])
+    /// The small map's ground, drawn for one change of the world.
+    @ObservationIgnored var miniGround: (version: Int, image: CGImage)?
     /// The texture's unchanging ground, made again only when the map changes.
     @ObservationIgnored private var ground: TileTexture.Ground?
     /// Where the moon lies in this lake's water, for the map drawn without Metal.

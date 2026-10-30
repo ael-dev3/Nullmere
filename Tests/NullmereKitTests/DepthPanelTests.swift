@@ -345,6 +345,33 @@ final class DepthPanelTests: XCTestCase {
                        "Wounded: whole again next watch")
     }
 
+    // MARK: The small map
+
+    func testTheSmallMapShowsTheLakeAndCarriesTheViewThere() throws {
+        let (session, _) = session(world("small map"))
+        session.motion = .still
+        let radius = session.state.map.radius
+        // Every hex lies where the map puts it, and is found there again.
+        for hex in session.state.map.hexes {
+            let point = MiniMap.point(of: hex, radius: radius)
+            XCTAssertEqual(MiniMap.hex(at: point, radius: radius), hex)
+            XCTAssertTrue((0...MiniMap.side).contains(point.x) && (0...MiniMap.side).contains(point.y), "\(hex) within the square")
+        }
+        // Its ground is drawn once for each change of the world.
+        let ground = try XCTUnwrap(session.miniMapGround(side: MiniMap.side))
+        XCTAssertEqual(ground.width, Int(MiniMap.side * 2))
+        XCTAssertTrue(session.miniMapGround(side: MiniMap.side) === ground, "kept while the world stands")
+        draw(MiniMap(session: session), width: 170, height: 170)
+        // A click carries the view there; off the lake, nowhere.
+        let seat = try XCTUnwrap(session.state.seat(of: session.player))
+        let far = try XCTUnwrap(session.state.map.hexes.max { $0.distance(to: seat.position) < $1.distance(to: seat.position) })
+        MiniMap.look(at: MiniMap.point(of: far, radius: radius), in: session)
+        XCTAssertEqual(session.camera.centreHex, far)
+        MiniMap.look(at: CGPoint(x: -500, y: -500), in: session)
+        XCTAssertEqual(session.camera.centreHex, far, "off the lake, the view stays")
+        XCTAssertTrue(MiniMap.spoken(session).hasPrefix("1 hold of yours"))
+    }
+
     // MARK: The map
 
     func testASiteRightClickedIsGatheredAndTheLandIsReadAloud() throws {

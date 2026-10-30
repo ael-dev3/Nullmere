@@ -151,6 +151,8 @@ struct PlayView: View {
                         // With a panel open, its keys and its close button
                         // serve, and the panel keeps the column's height.
                         if session.panel == nil {
+                            MiniMap(session: session)
+                                .transition(.opacity)
                             PanelRail(session: session)
                                 .transition(.opacity)
                         }
