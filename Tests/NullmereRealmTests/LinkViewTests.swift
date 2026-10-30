@@ -6,16 +6,27 @@ import XCTest
 
 /// What the server says of a keeper's view, bent as a test needs: a row
 /// that can't be read, a view never shown, the realm in a new age, or an
-/// older view read out of turn, as if it were newer.
+/// older view read out of turn, as if it were newer; and identities made
+/// slowly, counted.
 actor ViewTamper {
     var malformed = false
     var newAge = false
     var stale: [[JSONValue]]?
+    var slowIdentities = false
+    private(set) var identitiesMade = 0
 
-    func set(malformed: Bool = false, newAge: Bool = false, stale: [[JSONValue]]? = nil) {
+    func set(malformed: Bool = false, newAge: Bool = false, stale: [[JSONValue]]? = nil, slowIdentities: Bool = false) {
         self.malformed = malformed
         self.newAge = newAge
         self.stale = stale
+        self.slowIdentities = slowIdentities
+    }
+
+    /// An identity is being made: counted, and, when they are slow, made
+    /// a tenth of a second late.
+    func making() async throws {
+        identitiesMade += 1
+        if slowIdentities { try await Task.sleep(nanoseconds: 100_000_000) }
     }
 
     /// The view's version: far ahead, while an older view is being passed off.
@@ -37,7 +48,10 @@ struct TamperedSpacetime: SpacetimeTransport {
     let inner: FakeSpacetime
     let tamper: ViewTamper
 
-    func createIdentity() async throws -> SpacetimeCredentials { try await inner.createIdentity() }
+    func createIdentity() async throws -> SpacetimeCredentials {
+        try await tamper.making()
+        return try await inner.createIdentity()
+    }
 
     func call(_ reducer: String, _ arguments: [ReducerArgument], token: String) async throws {
         try await inner.call(reducer, arguments, token: token)
@@ -238,6 +252,21 @@ final class LinkViewTests: XCTestCase {
         try await until("the view read again") { link.viewReads > reads }
         try await db.waitFor(3, more: FakeSpacetime.statusPoll, by: token)
         XCTAssertEqual(ear.world?.unit(spear.id)?.fortified, true, "The newer view stands")
+    }
+
+    /// The link's first poll and the keeper's arrival ask for its
+    /// credentials at once, before any is made: the realm makes the keeper
+    /// one identity, not one for each, and the keeper arrives under it.
+    func testAnArrivalAsTheFirstPollAsksMakesOneIdentity() async throws {
+        let (_, tamper, link, ear, running) = try await realm("one identity")
+        defer { running.cancel(); link.leave() }
+        await tamper.set(slowIdentities: true)
+        link.connect()
+        link.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        let made = await tamper.identitiesMade
+        XCTAssertEqual(made, 1, "One identity, however many ask while it is made")
+        XCTAssertEqual(ear.world?.houses.first { $0.title == "House Ama" }?.isPlayer, true)
     }
 
     /// An order that changes nothing the keeper sees: the link waits for

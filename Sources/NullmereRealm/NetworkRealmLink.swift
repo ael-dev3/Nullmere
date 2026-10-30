@@ -125,6 +125,13 @@ public final class NetworkRealmLink: RealmLink {
 
     public static let silentSteward = "The realm has been silent for a minute: it stands still, and orders sent to it wait until it returns."
 
+    /// The identity being made, while it is. The first poll, an arrival and
+    /// an order may all ask for the keeper's credentials before any is made:
+    /// they wait on the one making, or the realm would make an identity for
+    /// each, and the keeper would arrive under one and read the world under
+    /// another, which no keeper holds.
+    private var making: Task<SpacetimeCredentials, any Error>?
+
     /// The keeper's credentials, made once and kept. A key the server won't
     /// take is kept all the same, never erased nor made anew: the server may
     /// be out of sorts for a while, and the key is the keeper's only way back
@@ -136,8 +143,15 @@ public final class NetworkRealmLink: RealmLink {
             credentials = decoded
             return decoded
         }
-        let made = try await transport.createIdentity()
-        try credentialStore.save(String(decoding: try JSONEncoder().encode(made), as: UTF8.self))
+        if let making { return try await making.value }
+        let task = Task { () async throws -> SpacetimeCredentials in
+            let made = try await self.transport.createIdentity()
+            try self.credentialStore.save(String(decoding: try JSONEncoder().encode(made), as: UTF8.self))
+            return made
+        }
+        making = task
+        defer { making = nil }
+        let made = try await task.value
         credentials = made
         return made
     }
