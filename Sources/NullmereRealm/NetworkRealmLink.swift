@@ -514,9 +514,18 @@ public final class NetworkRealmLink: RealmLink {
         }
     }
 
+    /// Leaves the realm. What the keeper ordered and hasn't yet seen answered
+    /// is sent first, as it would be in the world, then the leaving: an
+    /// order given just before leaving is carried out, not dropped. The link
+    /// stays until both are done, though nothing more is told.
     public func leave() {
-        close()
-        Task {
+        onEvent = nil
+        arrived = false
+        polling?.cancel()
+        polling = nil
+        let waiting = sending
+        Task { [self] in
+            await waiting?.value
             _ = try? await request("leave", [])
         }
     }

@@ -332,8 +332,9 @@ as the realm will, and takes the realm's word as final.
   them; say you're ready (⌘↩) when they're given. The watch turns when
   every keeper there is ready, or when its time runs out, three minutes;
   then the stewards act, and the lake yields, eats and mends. An empty
-  realm sleeps until a keeper returns. Leave, and after two watches away a
-  caretaker keeps your House.
+  realm sleeps until a keeper returns. Leave, and what you ordered still
+  on its way goes to the realm first; after two watches away a caretaker
+  keeps your House.
 - **Treating with keepers.** Offers to another keeper wait as envoys for
   their answer, as theirs wait for yours. Envoys of stewards speak, in
   words written on your Mac; a keeper's envoy carries their own words, if

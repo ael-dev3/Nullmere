@@ -5,8 +5,9 @@ import XCTest
 @testable import NullmereRealm
 
 /// The link at the realm's edges: a database with no realm in it yet, a
-/// server out of reach as a keeper arrives, and a key the server won't
-/// take, at the door and in play, kept all the same.
+/// server out of reach as a keeper arrives, a key the server won't take,
+/// at the door and in play, kept all the same, and a keeper leaving with an
+/// order still on its way.
 @MainActor
 final class LinkEdgeTests: XCTestCase {
     private func until(_ what: String, timeout: Double = 15, _ condition: () async -> Bool) async throws {
@@ -95,6 +96,36 @@ final class LinkEdgeTests: XCTestCase {
         try await until("the outbox empty") { link.waiting == 0 }
         XCTAssertEqual(link.credentials, kept)
         link.close()
+    }
+
+    /// A keeper leaves the world with an order still on its way: it is sent
+    /// first, then the leaving, though the app lets the link go at once.
+    func testLeavingSendsWhatWaitsFirst() async throws {
+        let db = FakeSpacetime()
+        let running = try await steward(db)
+        defer { running.cancel() }
+        // Held here alone, as the app holds its link.
+        let ear = Listener()
+        var ama: NetworkRealmLink? = NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 0.05, retryDelay: 0.05)
+        if let ama { ear.listen(to: ama) }
+        ama?.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        let world = try XCTUnwrap(ear.world)
+        let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
+        let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
+        await db.setReachable(false)
+        ama?.send(.fortify(unit: spear.id))
+        XCTAssertEqual(ama?.waiting, 1)
+        ama?.leave()
+        ama = nil
+        await db.setReachable(true)
+        try await until("the order carried out") { await db.handled(kind: "order") == 1 }
+        try await until("then the leaving") { await db.handled(kind: "leave") == 1 }
+        let calls = await db.calls
+        XCTAssertLessThan(try XCTUnwrap(calls.firstIndex(of: "order")), try XCTUnwrap(calls.lastIndex(of: "leave")),
+                          "The order before the leaving")
+        XCTAssertTrue(ear.events.allSatisfy { if case .answered = $0 { return false } else { return true } },
+                      "Nothing told once gone")
     }
 }
 
