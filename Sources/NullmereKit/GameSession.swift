@@ -226,9 +226,17 @@ public final class GameSession {
     /// The last first step was saying ready: the word waits for the watch
     /// to turn, which clears what was said before it.
     private var welcomeAfterWatch = false
-    /// For each order sent and not yet answered, in order: whether its
-    /// outcome is the realm's to decide, so its answer is told when it comes.
-    private var answersAwaited: [Bool] = []
+    /// An order sent and not yet answered: what it was, where the companies
+    /// stood as it was given, and whether all that came of it is the realm's
+    /// to tell, as a steward's answer is.
+    private struct Awaited {
+        let command: Command
+        let from: [Int: Hex]
+        let decided: Bool
+    }
+    /// The orders sent and not yet answered, in order: what came of each is
+    /// told as the realm decided it, when its answer comes.
+    private var answersAwaited: [Awaited] = []
     /// The Dock's count of watches turned while the keeper was elsewhere.
     private(set) var attention = Attention()
     /// Whether the keeper is looking, and how the Dock is told; tests
@@ -436,14 +444,18 @@ public final class GameSession {
             // Carried out here at once, as the realm will; its word follows.
             let decided = Self.decidedByRealm(command, in: state)
             let events = try state.perform(command, as: player)
-            answersAwaited.append(decided)
+            answersAwaited.append(Awaited(command: command, from: before, decided: decided))
             link.send(command)
             if var steps = firstSteps, steps.note(command) { advance(steps) }
             showMarches(events, from: before)
-            showBlows(events, from: before)
-            // A steward's answer, or a trade's, is the realm's to tell.
-            report(decided ? events.filter { !Self.isAnswer($0) } : events)
-            sound(for: command, events: events)
+            // What chance decides, or what turns on what this copy can't
+            // see (a strike's blows, a ruin's spoils, a new hold's name, a
+            // steward's answer), is told as the realm decided it, when it
+            // answers: this copy's guess is never told as what happened.
+            let sure = decided ? [] : events.filter { !Self.isRealmsToTell($0) }
+            report(sure)
+            // A strike sounds as its blow lands, with the realm's answer.
+            if !Self.isStrike(command) { sound(for: command, events: sure) }
             if case .found = command, let hold = events.compactMap(holdFounded).first {
                 selection = .hold(hold)
             }
@@ -569,11 +581,23 @@ public final class GameSession {
         }
     }
 
-    static func isAnswer(_ event: GameEvent) -> Bool {
+    /// What came of an order that the keeper's copy can only guess at: what
+    /// chance decides (a blow, its losses, a company's rise, a ruin's spoils,
+    /// a new hold's name), what follows from it (a hold taken, a House
+    /// fallen, an age won), and an answer. Told when the realm answers.
+    static func isRealmsToTell(_ event: GameEvent) -> Bool {
         switch event {
-        case .proposalAnswered, .tradeAnswered: return true
-        default: return false
+        case .battle, .unitLost, .holdStruck, .holdCaptured, .seatMoved, .promoted, .ruinSearched, .holdFounded,
+             .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered:
+            return true
+        default:
+            return false
         }
+    }
+
+    static func isStrike(_ command: Command) -> Bool {
+        if case .attack = command { return true }
+        return false
     }
 
     /// An offer of trade, with words when it goes to a keeper.
@@ -668,10 +692,19 @@ public final class GameSession {
                 onCue?(cue)
             }
         case .answered(let events):
-            guard !answersAwaited.isEmpty, answersAwaited.removeFirst() else { break }
-            let answers = events.filter(Self.isAnswer)
-            report(answers)
-            for cue in Self.cues(for: answers, player: player) where cue != .watch {
+            // What came of the keeper's order, as the realm decided it.
+            guard !answersAwaited.isEmpty else { break }
+            let awaited = answersAwaited.removeFirst()
+            let told = awaited.decided ? events : events.filter(Self.isRealmsToTell)
+            showBlows(told, from: awaited.from)
+            report(told)
+            var cues = Self.isStrike(awaited.command) ? Self.cues(for: awaited.command, events: told, in: state, player: player) : []
+            if awaited.decided {
+                for cue in Self.cues(for: told, player: player) where cue != .watch && !cues.contains(cue) {
+                    cues.append(cue)
+                }
+            }
+            for cue in cues {
                 onCue?(cue)
             }
         case .orderRefused(let error, let world):
@@ -781,10 +814,15 @@ public final class GameSession {
         glide(to: next.position)
     }
 
-    /// The keeper's House has fallen while the age goes on, and a House
-    /// stands without a keeper: they may take it up.
+    /// The age in which the keeper took up an open seat after their own
+    /// House fell, as the realm last said: once an age.
+    public var risenInAge: Int?
+
+    /// The keeper's House has fallen while the age goes on, a House stands
+    /// without a keeper, and they haven't taken up one already this age:
+    /// they may take it up.
     public var mayTakeUpAFreeHouse: Bool {
-        playerHouse.isEliminated && state.outcome == nil && (realmStatus?.freeSeats ?? 0) > 0
+        playerHouse.isEliminated && state.outcome == nil && (realmStatus?.freeSeats ?? 0) > 0 && risenInAge != realmStatus?.age
     }
 
     /// Asks the realm for a free House; it comes as a new arrival.

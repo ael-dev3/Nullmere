@@ -122,6 +122,13 @@ public actor RealmSteward {
     private var recentlyHeard: [String: [(at: Double, batch: HeardBatch)]] = [:]
     /// How long what a keeper heard is published with their view.
     public static let heardKept = 120.0
+    /// The most publications' worth of what a keeper heard that goes with
+    /// their view, however busy the realm: the latest.
+    public static let heardBatches = 16
+    /// Views worked out and written for publication, for tests.
+    private(set) var viewsWorkedOut = 0
+    /// Keepers the steward keeps anything of, for tests: those there alone.
+    var keepersRemembered: Int { Set(heard.keys).union(left.keys).union(published.keys).union(recentlyHeard.keys).count }
 
     /// Seconds of silence after which a keeper is taken to have left.
     public static let silence = 90.0
@@ -130,6 +137,8 @@ public actor RealmSteward {
     /// How long an answer is kept: longer than a client keeps an order
     /// waiting to be sent again, so an order sent twice is carried out once.
     public static let answerKept = 600.0
+    /// Most answers forgotten in one call.
+    public static let forgottenAtOnce = 512
 
     /// Takes up the realm where SpacetimeDB holds it, or begins a new one.
     public init(transport: any SpacetimeTransport, token: String, name: String, seed: String, seats: Int = RealmState.defaultSeats,
@@ -168,6 +177,10 @@ public actor RealmSteward {
         for keeper in state.keepers where keeper.isOnline {
             state.depart(keeper.id, now: now)
         }
+        // Answers an earlier steward gave are forgotten in their time too,
+        // not kept for ever.
+        let kept = try await transport.query("SELECT nonce FROM reply", token: token)
+        answered = kept.compactMap { $0.first?.string }.map { ($0, now) }
         worldChanged = true
         try await publish(now: now)
     }
@@ -214,6 +227,13 @@ public actor RealmSteward {
             state.depart(keeper.id, now: now)
             changed = true
         }
+        // Those long gone without a seat are forgotten; and of keepers the
+        // steward keeps only what it needs of those there, so neither the
+        // realm nor the steward grows with every identity ever heard from.
+        if state.forgetTheLongGone(now: now) { changed = true }
+        let there = Set(state.keepers.lazy.filter(\.isOnline).map(\.id))
+        heard = heard.filter { there.contains($0.key) }
+        left = left.filter { now - $0.value < RealmSteward.leavingGrace }
         if let turned = state.tick(now: now) {
             pendingEvents += turned
             changed = true
@@ -230,8 +250,9 @@ public actor RealmSteward {
             // Should it fail, the next round publishes all of it again.
             try await publish(now: now)
         }
-        // Answers old enough to have been read are forgotten.
-        let old = answered.prefix { now - $0.at > RealmSteward.answerKept }
+        // Answers old enough to have been read are forgotten, a few hundred
+        // at a time: those an earlier steward left may be many.
+        let old = answered.prefix { now - $0.at > RealmSteward.answerKept }.prefix(RealmSteward.forgottenAtOnce)
         if !old.isEmpty, old.count >= 64 || now - lastForgotten > 30 {
             try await transport.call("forget", [.strings(old.map(\.nonce))], token: token)
             answered.removeFirst(old.count)
@@ -353,15 +374,23 @@ public actor RealmSteward {
         var keepers: [String] = [], views: [String] = [], heard: [String] = []
         var shown: [String: String] = [:]
         var lately: [String: [(at: Double, batch: HeardBatch)]] = [:]
+        // Nothing changed since the last publication kept (a heartbeat, a
+        // "here" answered): every view as published stands, and none is
+        // worked out and written again only to be found the same.
+        let unchanged = !worldChanged && pendingEvents.isEmpty && pendingActs.isEmpty
         for keeper in state.keepers where keeper.isOnline {
+            var batches = Array((recentlyHeard[keeper.id] ?? []).filter { now - $0.at <= RealmSteward.heardKept }
+                .suffix(RealmSteward.heardBatches))
+            lately[keeper.id] = batches
+            if unchanged, published[keeper.id] != nil { continue }
             guard let view = state.view(for: keeper.id) else { continue }
+            viewsWorkedOut += 1
             let text = String(decoding: try encoder.encode(view), as: UTF8.self)
             let others = pendingActs.filter { $0.by != keeper.id }.flatMap(\.events)
             let events = keeper.house.map { state.world.events(others + pendingEvents, heardBy: $0) } ?? []
-            var batches = (recentlyHeard[keeper.id] ?? []).filter { now - $0.at <= RealmSteward.heardKept }
-            lately[keeper.id] = batches
             guard text != published[keeper.id] || !events.isEmpty else { continue }
             if !events.isEmpty { batches.append((now, HeardBatch(version: version + 1, events: events))) }
+            batches = Array(batches.suffix(RealmSteward.heardBatches))
             lately[keeper.id] = batches
             shown[keeper.id] = text
             keepers.append(keeper.id)
@@ -422,7 +451,10 @@ public actor RealmSteward {
         lastPublished = attempt.at
         version = max(version, attempt.version)
         lastStatus = attempt.status
-        published.merge(attempt.shown) { $1 }
+        // The views of those there alone: one who comes back is shown theirs
+        // as they arrive.
+        let there = Set(state.keepers.lazy.filter(\.isOnline).map(\.id))
+        published = published.merging(attempt.shown) { $1 }.filter { there.contains($0.key) }
         keptParts = attempt.parts
         recentlyHeard = attempt.heard
         pendingEvents.removeFirst(min(attempt.events, pendingEvents.count))

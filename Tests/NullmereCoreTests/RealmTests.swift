@@ -81,6 +81,42 @@ final class RealmTests: XCTestCase {
         XCTAssertThrowsError(try realm.arrive("id-stranger", name: nil, now: 3)) { XCTAssertEqual($0 as? RealmError, .nameInvalid) }
     }
 
+    /// A name and an identity are had for the asking, so the realm takes in
+    /// new keepers a few at a time: one person can't fill the lake with
+    /// names in a moment. Keepers it knows come and go as they please.
+    func testKeepersNewToTheRealmComeInAFewAtATime() throws {
+        var realm = realm()
+        for (index, name) in ["Ama", "Bel", "Cor"].enumerated() {
+            XCTAssertNotNil(try realm.arrive("id-\(index)", name: name, now: Double(index)).house)
+        }
+        XCTAssertThrowsError(try realm.arrive("id-dee", name: "Dee", now: 30)) {
+            XCTAssertEqual($0 as? RealmError, .manyNewcomers)
+        }
+        XCTAssertNil(realm.keeper("id-dee"), "Not taken in, so no name held")
+        realm.depart("id-0", now: 31)
+        XCTAssertNotNil(try realm.arrive("id-0", name: nil, now: 32).house, "Ama, known, comes back at once")
+        // A watch's length after the first came in, another may.
+        XCTAssertNotNil(try realm.arrive("id-dee", name: "Dee", now: 60).house)
+        XCTAssertThrowsError(try realm.arrive("id-eno", name: "Eno", now: 60))
+        XCTAssertEqual(realm.keepers.map(\.arrival), [0, 1, 2, 3], "Each in the order they came")
+    }
+
+    /// A keeper long gone with no seat is forgotten, their name free again;
+    /// a seat keeps its keeper's place however long they are away.
+    func testAKeeperLongGoneWithNoSeatIsForgotten() throws {
+        var realm = realm(seats: 2)
+        try realm.arrive("a", name: "Ama", now: 0)
+        try realm.arrive("b", name: "Bel", now: 0)
+        XCTAssertNil(try realm.arrive("c", name: "Cor", now: 0).house)
+        realm.depart("a", now: 10)
+        realm.depart("c", now: 10)
+        XCTAssertFalse(realm.forgetTheLongGone(now: 10 + RealmState.unplayedSeatHeldFor - 1))
+        XCTAssertTrue(realm.forgetTheLongGone(now: 10 + RealmState.unplayedSeatHeldFor))
+        XCTAssertEqual(realm.keepers.map(\.name), ["Ama", "Bel"], "Ama's seat keeps her place")
+        XCTAssertEqual(try realm.arrive("d", name: "Cor", now: 20 + RealmState.unplayedSeatHeldFor).name, "Cor", "The name free again")
+        XCTAssertEqual(realm.keeper("d")?.arrival, 2, "and its keeper after those still kept")
+    }
+
     func testAFullRealmSeatsNoMore() throws {
         var realm = realm(seats: 2)
         try realm.arrive("a", name: "Ama", now: 0)
@@ -134,17 +170,17 @@ final class RealmTests: XCTestCase {
         XCTAssertNil(try realm.arrive("e", name: "Eno", now: RealmState.seatHeldFor * 9).house, "Cor and Dee never left")
     }
 
-    func testASeatTakenAndNeverPlayedIsHeldOnlyADay() throws {
+    func testASeatTakenAndNeverPlayedIsHeldOnlyAnHour() throws {
         var realm = realm(seats: 2)
         let ama = try realm.arrive("a", name: "Ama", now: 0)
         try realm.arrive("b", name: "Bel", now: 0)
         _ = realm.setReady("b", true, now: 1)
         realm.depart("a", now: 10)
         realm.depart("b", now: 10)
-        XCTAssertNil(try realm.arrive("c", name: "Cor", now: 3600).house, "An hour: Ama's seat is kept")
+        XCTAssertNil(try realm.arrive("c", name: "Cor", now: 1800).house, "Half an hour: Ama's seat is kept")
         let cor = try realm.arrive("c", name: nil, now: 10 + RealmState.unplayedSeatHeldFor)
-        XCTAssertEqual(cor.house, ama.house, "A day, and Ama never played: Cor takes the seat")
-        XCTAssertTrue(realm.world.chronicle.contains { $0.text.contains("stood a day without its keeper") })
+        XCTAssertEqual(cor.house, ama.house, "An hour, and Ama never played: Cor takes the seat")
+        XCTAssertTrue(realm.world.chronicle.contains { $0.text.contains("stood an hour without its keeper") })
         XCTAssertNil(try realm.arrive("d", name: "Dee", now: 20 + RealmState.unplayedSeatHeldFor).house, "Bel was ready once: a week")
     }
 
@@ -217,9 +253,10 @@ final class RealmTests: XCTestCase {
         XCTAssertTrue(realm.keepers.allSatisfy { !$0.isReady }, "A new watch, no one ready")
         XCTAssertEqual(realm.status(now: 6).secondsLeft, 60)
 
-        // One who leaves holds no one up.
+        // One who leaves holds no one up past a third of the watch.
         realm.depart("b", now: 0)
-        XCTAssertNotNil(realm.setReady("a", true, now: 7))
+        XCTAssertNil(realm.setReady("a", true, now: 7))
+        XCTAssertNotNil(realm.tick(now: 6 + 20))
         XCTAssertEqual(realm.world.watch, 3)
     }
 
@@ -271,7 +308,7 @@ final class RealmTests: XCTestCase {
         realm.world.outcome = Outcome(winner: a.house!, kind: .dominion, watch: 1)
         XCTAssertTrue(realm.status(now: 0).isEnding)
         realm.depart("b", now: 0)
-        XCTAssertNotNil(realm.setReady("a", true, now: 10))
+        XCTAssertNotNil(realm.setReady("a", true, now: 20))
         XCTAssertEqual(realm.age, 2)
         XCTAssertNil(realm.world.outcome)
         XCTAssertEqual(realm.world.watch, 1)

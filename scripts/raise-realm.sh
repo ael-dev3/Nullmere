@@ -22,7 +22,8 @@
 #                            maincloud when Docker is there, else background)
 #   NULLMERE_REALM_NAME, NULLMERE_REALM_SEED, NULLMERE_REALM_SEATS,
 #   NULLMERE_WATCH_SECONDS   shape a new realm (an existing one is kept)
-#   SPACETIME_CLEAR=1        publish with --delete-data: a fresh realm
+#   SPACETIME_CLEAR=1        publish with --delete-data: a fresh realm,
+#                            its steward here stopped first
 #   CONFIGURATION=release    how the steward is built when run by Swift
 #   STEWARD_LOG=...          where a background steward writes
 #   NULLMERE_STATE_DIR=...   where the steward's token and log are kept
@@ -87,14 +88,20 @@ stop_background_steward() {
     kill -9 "$pid" 2>/dev/null || true
 }
 
+# This realm's steward as this script started it here: its container, or
+# the background process whose pid it kept.
+stop_steward() {
+    docker rm -f "nullmere-steward-$DB" >/dev/null 2>&1 && echo "Stopped its container." || true
+    if stop_background_steward; then echo "Stopped it."; else echo "No steward of $ADDRESS was running here."; fi
+}
+
 case "$DB" in
     *[!a-z0-9-]*|"") echo "error: REALM_DB may hold lowercase letters, digits and hyphens only" >&2; exit 1 ;;
 esac
 
 if [ "$ACTION" = --stop ]; then
     say "Stopping the steward of $ADDRESS"
-    docker rm -f "nullmere-steward-$DB" >/dev/null 2>&1 && echo "Stopped its container." || true
-    if stop_background_steward; then echo "Stopped it."; else echo "No steward of $ADDRESS was running here."; fi
+    stop_steward
     exit 0
 fi
 
@@ -161,6 +168,7 @@ if [ "$ACTION" = --dry-run ]; then
     esac
     say "The plan"
     [ "$TARGET" = local ] && plan "start SpacetimeDB on this machine if it isn't running"
+    [ "${SPACETIME_CLEAR:-}" = 1 ] && plan "stop this realm's steward here first, so it can't publish the old realm over the cleared one"
     plan "publish realm-server to $ADDRESS${SPACETIME_CLEAR:+, clearing its data}"
     plan "keep the publishing identity's token in $TOKEN_FILE (readable by you alone)"
     [ "$MODE" = none ] || plan "start the steward ($MODE) as that identity, and wait for it to take up the realm"
@@ -194,6 +202,14 @@ else
         echo "(A realm raised on this machine signs the CLI in with its own server's token, which maincloud won't take.)" >&2
         exit 1
     fi
+fi
+
+# A publication that clears the realm stops its steward first: one left
+# running holds the realm it had, and would publish it over the cleared
+# one, undoing the clearing. (A steward run elsewhere, stop yourself.)
+if [ "${SPACETIME_CLEAR:-}" = 1 ]; then
+    say "Stopping the steward of $ADDRESS before its realm is cleared"
+    stop_steward
 fi
 
 say "Publishing the realm module to $ADDRESS"

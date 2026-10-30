@@ -5,8 +5,9 @@ import XCTest
 @testable import NullmereKit
 
 /// The session at its edges: what a click chooses, what a right-click
-/// orders, a refused order told, a founding that chooses its new hold,
-/// a keeper whose companies all have their orders, and the notices kept.
+/// orders, a strike told as the realm struck it, a refused order told, a
+/// founding that chooses its new hold, a keeper whose companies all have
+/// their orders, and the notices kept.
 @MainActor
 final class GameSessionEdgeTests: XCTestCase {
     private var dir: URL!
@@ -62,6 +63,22 @@ final class GameSessionEdgeTests: XCTestCase {
         session.click(empty)
         XCTAssertEqual(session.selection, .tile(empty))
         XCTAssertTrue(cues.contains(.select))
+    }
+
+    /// A strike is told, and its blow drawn, as the realm struck it: never as
+    /// the keeper's own copy guessed, whose dice aren't the realm's.
+    func testAStrikeIsToldAsTheRealmStruckIt() throws {
+        let (state, spear, beside, _) = try warWorld()
+        let enemy = try XCTUnwrap(state.unit(at: beside))
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        XCTAssertTrue(session.perform(.attack(unit: spear.id, target: beside)))
+        let dealt = try XCTUnwrap(session.blows.last?.damage)
+        if let struck = session.state.unit(enemy.id) {
+            XCTAssertEqual(struck.health, enemy.health - dealt, "The blow drawn is the one the realm's world bears")
+        }
+        let told = session.notices.filter { $0.text.hasPrefix("Your Spears strike") }
+        XCTAssertEqual(told.count, 1, "Told once, by the realm")
+        XCTAssertTrue(told.first?.text.contains("for \(dealt)") == true, told.first?.text ?? "")
     }
 
     func testARightClickStrikesAFoeInReachAndARefusalIsTold() throws {

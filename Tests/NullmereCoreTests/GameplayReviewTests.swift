@@ -145,13 +145,15 @@ final class AbsentKeeperTests: XCTestCase {
         realm.world.envoys.append(Envoy(id: realm.world.nextID, from: friend, to: ama, proposal: .pact, arrived: realm.world.watch))
         realm.world.nextID += 1
         let waiting = { realm.world.envoys.contains { $0.from == friend && $0.to == ama } }
-        XCTAssertNotNil(realm.setReady("id-bel", true, now: 1), "Bel there, and ready: the watch turns at once")
+        // Bel there, and ready: each watch turns once the least a watch
+        // lasts with a keeper away, a third of it, is past.
+        XCTAssertNotNil(realm.setReady("id-bel", true, now: 60), "Bel there, and ready: the watch turns")
         XCTAssertEqual(realm.keeper("id-ama")?.watchesAway, 1)
         XCTAssertTrue(waiting(), "One watch away: not yet kept, and the envoy waits")
-        XCTAssertNotNil(realm.setReady("id-bel", true, now: 2))
+        XCTAssertNotNil(realm.setReady("id-bel", true, now: 120))
         XCTAssertEqual(realm.keeper("id-ama")?.watchesAway, 2)
-        XCTAssertFalse(waiting(), "Two watches away, two seconds in all: kept, and the envoy answered")
-        _ = try realm.arrive("id-ama", name: "Ama", now: 3)
+        XCTAssertFalse(waiting(), "Two watches away, two minutes in all: kept, and the envoy answered")
+        _ = try realm.arrive("id-ama", name: "Ama", now: 121)
         XCTAssertNil(realm.keeper("id-ama")?.watchesAway, "Back, and no longer counted away")
     }
 
@@ -163,23 +165,23 @@ final class AbsentKeeperTests: XCTestCase {
         XCTAssertEqual(realm.world.units(of: ama).map(\.position), units.map(\.position), "Not yet kept: nothing moved for it")
     }
 
-    func testTheFewThereCantHurryTheLakePastTheManyAway() throws {
+    func testThoseThereCantHurryTheLakePastAKeeperAway() throws {
         var (realm, _, _) = try realm()
         // Both there: ready, the watch turns at once.
         _ = realm.setReady("id-ama", true, now: 1)
         XCTAssertNotNil(realm.setReady("id-bel", true, now: 1))
         XCTAssertEqual(realm.world.watch, 2)
-        // Bel away: Ama alone is fewer than half? No: one of two is half,
-        // and half may hurry it.
+        // Bel away: Ama, though half of those seated, can't hurry it past
+        // Bel's House.
         realm.depart("id-bel", now: 2)
-        XCTAssertNotNil(realm.setReady("id-ama", true, now: 3))
+        XCTAssertNil(realm.setReady("id-ama", true, now: 3), "Not before a third of a watch")
+        XCTAssertNil(realm.tick(now: 1 + 59))
+        XCTAssertNotNil(realm.tick(now: 1 + 60), "Ready, and the shortest watch past: it turns")
         XCTAssertEqual(realm.world.watch, 3)
-        // A third keeper seated and away: one of three can't.
-        _ = try realm.arrive("id-cor", name: "Cor", now: 4)
-        realm.depart("id-cor", now: 4)
-        XCTAssertNil(realm.setReady("id-ama", true, now: 5), "Not before a third of a watch")
-        XCTAssertNil(realm.tick(now: 3 + 59))
-        XCTAssertNotNil(realm.tick(now: 3 + 60), "Ready, and the shortest watch past: it turns")
+        // Bel back: those seated all there, ready turns it at once again.
+        _ = try realm.arrive("id-bel", name: nil, now: 62)
+        _ = realm.setReady("id-ama", true, now: 63)
+        XCTAssertNotNil(realm.setReady("id-bel", true, now: 63))
         XCTAssertEqual(realm.world.watch, 4)
     }
 }
@@ -270,15 +272,16 @@ final class StewardBalanceTests: XCTestCase {
         // others, the middling.
         XCTAssertEqual(realm.status(now: 1).freeSeats, 4)
         XCTAssertEqual(try realm.arrive("id-bel", name: "Bel", now: 1).house, free[1], "The middling House of four")
-        // Again and again under new names: every other House in turn, never
-        // the strongest; then the door stays shut.
+        // Again and again under new names, a watch apart, as new keepers
+        // are taken in: every other House in turn, never the strongest;
+        // then the door stays shut.
         var taken: [Int?] = []
         for (n, name) in ["Corin", "Dara", "Ewan", "Fenn", "Gale"].enumerated() {
-            taken.append(try realm.arrive("id-new-\(n)", name: name, now: Double(2 + n)).house)
+            taken.append(try realm.arrive("id-new-\(n)", name: name, now: 200 * Double(1 + n)).house)
         }
         XCTAssertFalse(taken.contains(free[4]), "Never the House leading the lake, however often a keeper comes: \(taken)")
         XCTAssertEqual(Set(taken.compactMap { $0 }), Set([free[0], free[2], free[3]]))
-        XCTAssertEqual(realm.status(now: 9).freeSeats, 0, "None open, and none said to be")
+        XCTAssertEqual(realm.status(now: 1_100).freeSeats, 0, "None open, and none said to be")
     }
 
     func testNoOneTakesUpAHouseOnThePointOfWinning() throws {

@@ -57,17 +57,26 @@ public enum ReducerArgument: Sendable, Equatable {
 }
 
 public struct SpacetimeError: Error, Equatable, CustomStringConvertible, Sendable {
+    /// What went wrong, as the link or the server said it: for whoever runs
+    /// the realm. A keeper is told `RealmTrouble.words(for:)`.
     public let description: String
-    /// The server no longer takes the token: its database was made anew, or
-    /// the identity is gone.
+    /// The server doesn't take the token: it was made anew, or the identity
+    /// is gone, or it is out of sorts. The key is kept all the same.
     public let isUnauthorized: Bool
+    /// The status the server refused with, when it answered at all.
+    public let status: Int?
 
-    public init(_ description: String, isUnauthorized: Bool = false) {
+    public init(_ description: String, isUnauthorized: Bool = false, status: Int? = nil) {
         self.description = description
         self.isUnauthorized = isUnauthorized
+        self.status = status
     }
 
-    public static let unauthorized = SpacetimeError("The realm no longer knows this Mac's key.", isUnauthorized: true)
+    public static let unauthorized = SpacetimeError("The realm doesn't accept this Mac's key just now. The key is kept, and offered again in a while.",
+                                                    isUnauthorized: true, status: 401)
+    /// The realm's module has no such request: it and this version of the
+    /// game don't match.
+    public static let unknownRequest = "The realm doesn't know what this version of Nullmere Online asks of it: one of the two is newer than the other."
 }
 
 /// What the realm needs of SpacetimeDB: an identity, reducer calls, and
@@ -122,14 +131,19 @@ public struct SpacetimeHTTP: SpacetimeTransport, @unchecked Sendable {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw SpacetimeError("No answer from the realm.") }
         if http.statusCode == 404 {
-            throw SpacetimeError("The realm isn't open yet.")
+            // A database not there, or a request its module doesn't have.
+            let said = String(decoding: data, as: UTF8.self).lowercased()
+            if said.contains("procedure") || said.contains("reducer") {
+                throw SpacetimeError(SpacetimeError.unknownRequest, status: 404)
+            }
+            throw SpacetimeError("The realm isn't open yet.", status: 404)
         }
         if http.statusCode == 401 {
             throw SpacetimeError.unauthorized
         }
         guard (200..<300).contains(http.statusCode) else {
             let text = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            throw SpacetimeError(text.isEmpty ? "The realm answered \(http.statusCode)." : text)
+            throw SpacetimeError(text.isEmpty ? "The realm answered \(http.statusCode)." : text, status: http.statusCode)
         }
         return (data, (http.value(forHTTPHeaderField: "Date")).flatMap(Self.httpDate))
     }

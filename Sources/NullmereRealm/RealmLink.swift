@@ -45,10 +45,11 @@ public protocol RealmLink: AnyObject {
     func arrive(name: String?)
     func send(_ command: Command)
     func setReady(_ ready: Bool)
-    /// Leaves the realm; after two watches a caretaker keeps the keeper's House.
+    /// Leaves the realm, once what the keeper ordered has gone to it; after
+    /// two watches a caretaker keeps the keeper's House.
     func leave()
     /// Stops listening and asking, without a word to the realm: for a link
-    /// whose key the realm no longer knows.
+    /// let go at the door, or for a keeper the realm no longer knows.
     func close()
 }
 

@@ -11,6 +11,10 @@ public actor FakeSpacetime: SpacetimeTransport {
     struct Request { let id: UInt64; let keeper: String; let kind: String; let nonce: String; let payload: String }
 
     private var identities: [String: String] = [:] // token → identity
+    /// The identity that published the module, which owns the database
+    /// and alone reads its private tables; and the steward, the publisher
+    /// until the realm is handed to another.
+    private var owner: String?
     private var steward: String?
     private var requests: [Request] = []
     private var nextID: UInt64 = 1
@@ -29,6 +33,17 @@ public actor FakeSpacetime: SpacetimeTransport {
     public static let statusPoll = "SELECT version, status FROM status"
     /// A steward's round begins by reading the requests waiting.
     public static let stewardRound = "SELECT id, keeper, kind, nonce, payload FROM request"
+    /// A keeper asks after one answer, or one request still waiting, by its
+    /// nonce; counted as one statement, whatever the nonce.
+    public static let answerAsked = "SELECT * FROM my_replies WHERE nonce = ?"
+    public static let requestAsked = "SELECT nonce FROM my_requests WHERE nonce = ?"
+
+    /// The module's bounds (`MAX_NONCE`, `MAX_PAYLOAD`, `MAX_WAITING`, in
+    /// bytes and requests) and its steward's hold, in seconds.
+    public static let maxNonce = 64
+    public static let maxPayload = 4096
+    public static let maxWaiting = 32
+    public static let leaseSeconds = 60.0
 
     /// How many times a statement has been queried, by anyone or by the
     /// holder of one token.
@@ -82,8 +97,28 @@ public actor FakeSpacetime: SpacetimeTransport {
     /// The steward forgets every answer it gave, as it does ten minutes on.
     public func forgetReplies() { replies.removeAll() }
 
-    /// The server forgets an identity, as when its database is made anew.
+    /// The server forgets an identity, as when it is made anew, or is out of
+    /// sorts and refuses every key.
     public func forget(token: String) { identities[token] = nil }
+
+    /// The server takes a key again.
+    public func remember(_ credentials: SpacetimeCredentials) { identities[credentials.token] = credentials.identity }
+
+    /// The database made anew, as a publication with `--delete-data` makes
+    /// it: every table emptied, the publisher its steward again, and the
+    /// identities the server knows kept.
+    public func clear() {
+        requests = []
+        replies = [:]
+        parts = [:]
+        status = nil
+        stamp = nil
+        views = [:]
+        lease = nil
+        legacyWorld = nil
+        nextID = 1
+        steward = owner
+    }
 
     /// A world already kept, as a realm's own steward left it.
     public func seed(world parts: [String: String], version: UInt64) {
@@ -108,8 +143,12 @@ public actor FakeSpacetime: SpacetimeTransport {
         let identity = KeeperIdentity.make() + KeeperIdentity.make()
         let token = "token-" + identity
         identities[token] = identity
-        // The first identity made publishes the module, and so stewards it.
-        if steward == nil { steward = identity }
+        // The first identity made publishes the module, and so owns the
+        // database and stewards the realm.
+        if owner == nil {
+            owner = identity
+            steward = identity
+        }
         return SpacetimeCredentials(identity: identity, token: token)
     }
 
@@ -136,35 +175,52 @@ public actor FakeSpacetime: SpacetimeTransport {
             } else if reducer == "arrive" || reducer == "order" { payload = try string(1) }
             // As the module asks it: readiness in a watch is a "ready" request.
             let kind = reducer == "ready_in_watch" ? "ready" : reducer
+            // Its bounds, in bytes, as the module counts them.
+            guard !nonce.isEmpty, nonce.utf8.count <= Self.maxNonce else {
+                throw SpacetimeError("A request needs a nonce of 1 to 64 characters.", status: 530)
+            }
+            guard payload.utf8.count <= Self.maxPayload else { throw SpacetimeError("The request is too long.", status: 530) }
             if requests.contains(where: { $0.nonce == nonce && $0.keeper == me }) || replies[nonce]?.keeper == me { return }
-            guard requests.filter({ $0.keeper == me }).count < 32 else { throw SpacetimeError("Too many requests are waiting") }
+            guard requests.filter({ $0.keeper == me }).count < Self.maxWaiting else {
+                throw SpacetimeError("Too many of your requests are waiting; give the realm a moment.", status: 530)
+            }
             requests.append(Request(id: nextID, keeper: me, kind: kind, nonce: nonce, payload: payload))
             nextID += 1
         case "forget":
-            guard me == steward else { throw SpacetimeError("Only the steward forgets answers.") }
+            guard me == steward else { throw SpacetimeError("Only the steward forgets answers.", status: 530) }
             if case .strings(let nonces)? = arguments.first { nonces.forEach { replies[$0] = nil } }
+        case "hand_over":
+            guard me == steward else { throw SpacetimeError("Only the steward hands over the realm.", status: 530) }
+            steward = try string(0)
         case "publish":
-            guard me == steward else { throw SpacetimeError("Only the steward writes the world.") }
+            // A reducer that fails undoes all it did, its hold on the realm
+            // with the rest: every check before anything is kept, in the
+            // module's own order.
+            guard me == steward else { throw SpacetimeError("Only the steward writes the world.", status: 530) }
             guard case .integer(let version)? = arguments.first, arguments.count == 11, case .string(let holder) = arguments[10],
                   case .strings(let names) = arguments[1], case .strings(let texts) = arguments[2], case .strings(let gone) = arguments[3],
+                  case .string(let said) = arguments[4],
                   case .strings(let keepers) = arguments[5], case .strings(let shown) = arguments[6], case .strings(let heard) = arguments[7],
                   case .integers(let ids) = arguments[8], case .strings(let answers) = arguments[9]
-            else { throw SpacetimeError("bad arguments") }
-            guard keepers.count == shown.count, keepers.count == heard.count else { throw SpacetimeError("Every view needs its keeper and its events.") }
-            guard ids.count == answers.count else { throw SpacetimeError("Every answer needs its request.") }
-            guard names.count == texts.count else { throw SpacetimeError("Every part of the world needs its name.") }
+            else { throw SpacetimeError("bad arguments", status: 400) }
             if let lease, lease.holder != holder, lease.until > time {
-                throw SpacetimeError("Another steward holds the realm for \(Int(lease.until - time) + 1) s more.")
+                throw SpacetimeError("Another steward holds the realm for \(Int(lease.until - time) + 1) s more.", status: 530)
             }
-            lease = (holder, time + 60)
-            if let status, version <= status.version { throw SpacetimeError("Version \(version) is not after \(status.version).") }
+            guard keepers.count == shown.count, keepers.count == heard.count else {
+                throw SpacetimeError("Every view needs its keeper and its events.", status: 530)
+            }
+            guard ids.count == answers.count else { throw SpacetimeError("Every answer needs its request.", status: 530) }
+            guard names.count == texts.count else { throw SpacetimeError("Every part of the world needs its name.", status: 530) }
+            let last = status?.version ?? 0
+            guard version > last else { throw SpacetimeError("Version \(version) is not after \(last).", status: 530) }
             var kept = parts
             gone.forEach { kept[$0] = nil }
             zip(names, texts).forEach { kept[$0] = $1 }
-            guard !kept.isEmpty else { throw SpacetimeError("The first publication holds the world.") }
+            guard !kept.isEmpty else { throw SpacetimeError("The first publication holds the world.", status: 530) }
+            lease = (holder, time + Self.leaseSeconds)
             parts = kept
             partsSent += names.count
-            status = (version, try string(4))
+            status = (version, said)
             stamp = (version, time)
             for (index, keeper) in keepers.enumerated() {
                 views[keeper] = (version, shown[index], heard[index])
@@ -181,25 +237,44 @@ public actor FakeSpacetime: SpacetimeTransport {
         }
     }
 
-    /// Private tables are the owner's, the steward's, alone to read.
+    /// Private tables are the owner's alone to read: the publisher's, steward
+    /// or not.
     public func query(_ sql: String, token: String) async throws -> [[JSONValue]] {
         try answering()
         let me = try sender(token)
-        queryCounts[sql, default: 0] += 1
-        queryCounts[sql + "\u{0}" + me, default: 0] += 1
-        func owner() throws {
-            guard me == steward else { throw SpacetimeError("Table is private") }
+        // A row asked for by its nonce: the statement with the nonce taken out.
+        let byNonce = [Self.answerAsked, Self.requestAsked].lazy.compactMap { pattern -> (String, String)? in
+            let prefix = String(pattern.dropLast())
+            guard sql.hasPrefix(prefix) else { return nil }
+            let literal = sql.dropFirst(prefix.count)
+            guard literal.count >= 2, literal.hasPrefix("'"), literal.hasSuffix("'") else { return nil }
+            return (pattern, String(literal.dropFirst().dropLast()).replacingOccurrences(of: "''", with: "'"))
+        }.first
+        let counted = byNonce?.0 ?? sql
+        queryCounts[counted, default: 0] += 1
+        queryCounts[counted + "\u{0}" + me, default: 0] += 1
+        func ownerOnly() throws {
+            guard me == self.owner else { throw SpacetimeError("Table is private", status: 400) }
+        }
+        if let (pattern, nonce) = byNonce {
+            if pattern == Self.answerAsked {
+                return replies[nonce].flatMap { $0.keeper == me ? [[.string(nonce), .string($0.keeper), .string($0.payload)]] : nil } ?? []
+            }
+            return requests.filter { $0.keeper == me && $0.nonce == nonce }.map { [.string($0.nonce)] }
         }
         switch sql {
         case "SELECT version, state FROM world":
-            try owner()
+            try ownerOnly()
             return legacyWorld.map { [[.number(1), .string($0)]] } ?? []
         case "SELECT name, text FROM world_part":
-            try owner()
+            try ownerOnly()
             return parts.map { [.string($0.key), .string($0.value)] }
         case "SELECT id, keeper, kind, nonce, payload FROM request":
-            try owner()
+            try ownerOnly()
             return requests.map { [.number(Double($0.id)), .string($0.keeper), .string($0.kind), .string($0.nonce), .string($0.payload)] }
+        case "SELECT nonce FROM reply":
+            try ownerOnly()
+            return replies.keys.sorted().map { [.string($0)] }
         case "SELECT version FROM status":
             return status.map { [[.number(Double($0.version))]] } ?? []
         case "SELECT version, status FROM status":
@@ -215,7 +290,7 @@ public actor FakeSpacetime: SpacetimeTransport {
         case "SELECT * FROM my_replies":
             return replies.filter { $0.value.keeper == me }.map { [.string($0.key), .string($0.value.keeper), .string($0.value.payload)] }
         case "SELECT * FROM world", "SELECT * FROM world_part", "SELECT * FROM keeper_view", "SELECT * FROM reply", "SELECT * FROM request":
-            try owner()
+            try ownerOnly()
             return []
         default:
             throw SpacetimeError("Unexpected query: \(sql)")

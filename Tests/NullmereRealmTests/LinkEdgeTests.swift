@@ -5,13 +5,14 @@ import XCTest
 @testable import NullmereRealm
 
 /// The link at the realm's edges: a database with no realm in it yet, a
-/// server out of reach as a keeper arrives, and a key the realm has
-/// forgotten, at the door and in play.
+/// server out of reach as a keeper arrives, a key the server won't take,
+/// at the door and in play, kept all the same, and a keeper leaving with an
+/// order still on its way.
 @MainActor
 final class LinkEdgeTests: XCTestCase {
-    private func until(_ what: String, timeout: Double = 15, _ condition: () -> Bool) async throws {
+    private func until(_ what: String, timeout: Double = 15, _ condition: () async -> Bool) async throws {
         let deadline = Date().addingTimeInterval(timeout)
-        while !condition() {
+        while !(await condition()) {
             if Date() > deadline { throw SpacetimeError("Timed out waiting for \(what)") }
             try await Task.sleep(nanoseconds: 20_000_000)
         }
@@ -50,23 +51,24 @@ final class LinkEdgeTests: XCTestCase {
         link.leave()
     }
 
-    func testAForgottenKeyAtTheDoorAsksForANameAgain() async throws {
+    func testAKeyTheServerWontTakeAtTheDoorIsKeptAndSaidPlainly() async throws {
         let db = FakeSpacetime()
         let running = try await steward(db)
         defer { running.cancel() }
         let kept = try await db.createIdentity()
         await db.forget(token: kept.token)
-        let store = MemoryStore(value: String(decoding: try JSONEncoder().encode(kept), as: UTF8.self))
+        let key = String(decoding: try JSONEncoder().encode(kept), as: UTF8.self)
+        let store = MemoryStore(value: key)
         let (link, ear) = link(db, store: store)
         link.arrive(name: nil)
-        try await until("the realm not to know the keeper") {
-            ear.events.contains { if case .refused(.unknownKeeper) = $0 { return true } else { return false } }
-        }
-        XCTAssertEqual(store.value, "", "The forgotten key is let go")
-        link.leave()
+        try await until("the refusal") { !ear.refusals.isEmpty }
+        XCTAssertEqual(ear.refusals.first, SpacetimeError.unauthorized.description)
+        XCTAssertEqual(store.value, key, "The key is kept, never erased")
+        XCTAssertEqual(link.credentials, kept, "nor made anew")
+        link.close()
     }
 
-    func testAKeyForgottenInPlayIsTold() async throws {
+    func testAKeyTheServerWontTakeInPlayIsToldAndTheOrderWaits() async throws {
         let db = FakeSpacetime()
         let running = try await steward(db)
         defer { running.cancel() }
@@ -78,19 +80,58 @@ final class LinkEdgeTests: XCTestCase {
         let world = try XCTUnwrap(ear.world)
         let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
         let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
-        let kept = try JSONDecoder().decode(SpacetimeCredentials.self, from: Data(try XCTUnwrap(store.value).utf8))
+        let key = try XCTUnwrap(store.value)
+        let kept = try JSONDecoder().decode(SpacetimeCredentials.self, from: Data(key.utf8))
         await db.forget(token: kept.token)
         link.send(.fortify(unit: spear.id))
-        try await until("the realm not to know the keeper") {
-            ear.events.contains { if case .refused(.unknownKeeper) = $0 { return true } else { return false } }
+        try await until("the keeper told") {
+            ear.events.contains { if case .unreachable(SpacetimeError.unauthorized.description) = $0 { return true } else { return false } }
         }
-        link.leave()
+        XCTAssertFalse(ear.events.contains { if case .refused = $0 { return true } else { return false } }, "Still in the world")
+        XCTAssertEqual(link.waiting, 1, "The order waits")
+        XCTAssertEqual(store.value, key, "and the key is kept")
+        // The server takes the key again: the order goes, once.
+        await db.remember(kept)
+        try await until("the order carried out") { await db.handled(kind: "order") == 1 }
+        try await until("the outbox empty") { link.waiting == 0 }
+        XCTAssertEqual(link.credentials, kept)
+        link.close()
+    }
+
+    /// A keeper leaves the world with an order still on its way: it is sent
+    /// first, then the leaving, though the app lets the link go at once.
+    func testLeavingSendsWhatWaitsFirst() async throws {
+        let db = FakeSpacetime()
+        let running = try await steward(db)
+        defer { running.cancel() }
+        // Held here alone, as the app holds its link.
+        let ear = Listener()
+        var ama: NetworkRealmLink? = NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 0.05, retryDelay: 0.05)
+        if let ama { ear.listen(to: ama) }
+        ama?.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        let world = try XCTUnwrap(ear.world)
+        let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
+        let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
+        await db.setReachable(false)
+        ama?.send(.fortify(unit: spear.id))
+        XCTAssertEqual(ama?.waiting, 1)
+        ama?.leave()
+        ama = nil
+        await db.setReachable(true)
+        try await until("the order carried out") { await db.handled(kind: "order") == 1 }
+        try await until("then the leaving") { await db.handled(kind: "leave") == 1 }
+        let calls = await db.calls
+        XCTAssertLessThan(try XCTUnwrap(calls.firstIndex(of: "order")), try XCTUnwrap(calls.lastIndex(of: "leave")),
+                          "The order before the leaving")
+        XCTAssertTrue(ear.events.allSatisfy { if case .answered = $0 { return false } else { return true } },
+                      "Nothing told once gone")
     }
 }
 
 /// The link on its own clock: an order kept through a long outage is let
 /// go, not sent stale; and a keeper in the world says they are still
-/// there, every half minute.
+/// there, every half minute, while someone is at their Mac.
 @MainActor
 final class LinkClockTests: XCTestCase {
     private func until(_ what: String, timeout: Double = 15, _ condition: () async -> Bool) async throws {
@@ -149,6 +190,25 @@ final class LinkClockTests: XCTestCase {
         // clock stands still here) seems silent.
         let now = link.now()
         link.now = { now + NetworkRealmLink.hereInterval + 1 }
+        try await until("the keeper to say they are here") { await db.calls.filter { $0 == "here" }.count > before }
+    }
+
+    /// An app left open with no one at the Mac says nothing, so the realm
+    /// takes its keeper to have gone and a caretaker keeps their House; at
+    /// the Mac again, they say they are here at once.
+    func testAnAppLeftOpenWithNoOneAtItSaysNothing() async throws {
+        let db = FakeSpacetime()
+        let (link, _, running, _) = try await arrived(db)
+        defer { running.cancel(); link.leave() }
+        var idle = NetworkRealmLink.presenceWindow + 1
+        link.idleSeconds = { idle }
+        let before = await db.calls.filter { $0 == "here" }.count
+        let now = link.now()
+        link.now = { now + NetworkRealmLink.hereInterval + 1 }
+        try await db.waitFor(10, more: FakeSpacetime.statusPoll, by: try XCTUnwrap(link.credentials?.token))
+        let silent = await db.calls.filter { $0 == "here" }.count
+        XCTAssertEqual(silent, before, "No one at the Mac: nothing said")
+        idle = 0
         try await until("the keeper to say they are here") { await db.calls.filter { $0 == "here" }.count > before }
     }
 }

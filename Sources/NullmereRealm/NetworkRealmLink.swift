@@ -17,6 +17,14 @@ public final class NetworkRealmLink: RealmLink {
     public let pollInterval: Double
     /// How often the client tells the realm it is still there.
     public static let hereInterval = 30.0
+    /// Seconds since the person at this Mac last used it, as the app can
+    /// tell: nothing, by default, for a client that can't.
+    public var idleSeconds: () -> Double = { 0 }
+    /// The keeper is there while this Mac has been used within this long,
+    /// and says so. An app left open with no one at it falls silent; the
+    /// realm takes its keeper to have gone, and after two watches a
+    /// caretaker keeps their House. Back at the Mac, they are there again.
+    public static let presenceWindow = 300.0
 
     private var polling: Task<Void, Never>?
     private var statusVersion: UInt64 = 0
@@ -31,6 +39,9 @@ public final class NetworkRealmLink: RealmLink {
     private var view: RealmView?
     private var arrived = false
     private var lastHere = -Double.infinity
+    /// The last "here" whose answer is still to be read: a realm begun anew
+    /// answers that it doesn't know the keeper.
+    private var hereAwaited: String?
     /// What the keeper asked of the realm, waiting to be sent or answered,
     /// in the order they asked it: orders, and being ready, which comes
     /// after the orders before it. While any wait, changes from others
@@ -103,24 +114,10 @@ public final class NetworkRealmLink: RealmLink {
 
     public static let silentSteward = "The realm has been silent for a minute: it stands still, and orders sent to it wait until it returns."
 
-    /// The server refused the keeper's key: it is forgotten, and a new one
-    /// made at the next asking. Returns whether that was the trouble.
-    @discardableResult
-    func forgetKeyIfRefused(_ error: any Error) -> Bool {
-        guard (error as? SpacetimeError)?.isUnauthorized == true else { return false }
-        credentials = nil
-        try? credentialStore.save("")
-        arrived = false
-        // The realm as it stands is told afresh, to the keeper at its door.
-        statusVersion = 0
-        view = nil
-        viewVersion = 0
-        viewReadAt = nil
-        outbox.removeAll()
-        return true
-    }
-
-    /// The keeper's credentials, made once and kept.
+    /// The keeper's credentials, made once and kept. A key the server won't
+    /// take is kept all the same, never erased nor made anew: the server may
+    /// be out of sorts for a while, and the key is the keeper's only way back
+    /// to their House. It is offered again as the realm is asked again.
     private func ensureCredentials() async throws -> SpacetimeCredentials {
         if let credentials { return credentials }
         if let kept = credentialStore.load(), let data = kept.data(using: .utf8),
@@ -194,20 +191,29 @@ public final class NetworkRealmLink: RealmLink {
                 onEvent?(.status(status.aged(by: await age(of: UInt64(number), credentials))))
             }
             guard arrived else { return }
-            // "Here" while the steward is silent would only pile up for it.
-            if !toldSilence, now() - lastHere > Self.hereInterval {
+            // "Here" while the steward is silent would only pile up for it;
+            // and it is said only while someone is at this Mac.
+            if !toldSilence, idleSeconds() < Self.presenceWindow, now() - lastHere > Self.hereInterval {
                 lastHere = now()
-                try? await transport.call("here", [.string(Self.nonce())], token: credentials.token)
+                let nonce = Self.nonce()
+                if (try? await transport.call("here", [.string(nonce)], token: credentials.token)) != nil {
+                    hereAwaited = nonce
+                }
+            }
+            // The realm's word on the last "here": a realm begun anew no
+            // longer knows the keeper, who goes back to its door rather than
+            // look on at a world that is gone.
+            if let nonce = hereAwaited, let reply = try? await answer(to: nonce, credentials) {
+                hereAwaited = nil
+                if reply.unknownKeeper == true {
+                    forgottenByTheRealm()
+                    return
+                }
             }
             if viewReadAt != statusVersion, try await readView(credentials) {
                 viewReadAt = statusVersion
             }
         } catch {
-            if forgetKeyIfRefused(error) {
-                // A new key, a new keeper: the front door asks for a name.
-                onEvent?(.refused(.unknownKeeper))
-                return
-            }
             failures += 1
             guard failures > 1 else { return }
             wasUnreachable = true
@@ -230,10 +236,22 @@ public final class NetworkRealmLink: RealmLink {
         guard let row = rows.first, row.count == 4, let number = row[1].number, let text = row[2].string, let heard = row[3].string else {
             return nil
         }
+        // Tens of kilobytes of world, read away from the main thread, so
+        // the map doesn't falter while it is.
+        let (view, batches) = try await Task.detached(priority: .userInitiated) { try Self.decode(view: text, heard: heard) }.value
+        return (UInt64(number), view, batches)
+    }
+
+    nonisolated static func decode(view text: String, heard: String) throws -> (RealmView, [HeardBatch]) {
         let decoder = JSONDecoder()
         let view = try decoder.decode(RealmView.self, from: Data(text.utf8))
-        let batches = (try? decoder.decode([HeardBatch].self, from: Data(heard.utf8))) ?? []
-        return (UInt64(number), view, batches)
+        return (view, (try? decoder.decode([HeardBatch].self, from: Data(heard.utf8))) ?? [])
+    }
+
+    /// The version of the keeper's own view, if the realm shows them one.
+    private func viewHead(_ credentials: SpacetimeCredentials) async throws -> UInt64? {
+        let heads = try await transport.query("SELECT version FROM my_view", token: credentials.token)
+        return heads.first?.first?.number.map { UInt64($0) }
     }
 
     /// Reads the keeper's view, unless their own orders are on their way.
@@ -242,18 +260,20 @@ public final class NetworkRealmLink: RealmLink {
         guard outbox.isEmpty else { return false }
         viewReads += 1
         // The row's version first: the whole view, tens of kilobytes to
-        // fetch and decode, only when it has moved. Most publications move
-        // the status, not this keeper's view.
-        let heads = try await transport.query("SELECT version FROM my_view", token: credentials.token)
-        if let number = heads.first?.first?.number, UInt64(number) == viewVersion { return true }
+        // fetch and decode, only when it has moved on. Most publications
+        // move the status, not this keeper's view.
+        if let number = try await viewHead(credentials), number <= viewVersion { return true }
         guard let (number, fresh, batches) = try await fetchView(credentials) else { return true }
-        if number != viewVersion { deliver(fresh, version: number, heard: batches) }
+        deliver(fresh, version: number, heard: batches)
         return true
     }
 
     /// Takes a fresh view, and tells what it brought: a new age, a turned
     /// watch, or a changed world, with what the keeper hasn't yet heard.
+    /// Only a newer view: one read out of turn, while a later one was on its
+    /// way, never stands over it.
     private func deliver(_ fresh: RealmView, version number: UInt64, heard batches: [HeardBatch]) {
+        guard number > viewVersion else { return }
         let previous = view
         view = fresh
         viewVersion = number
@@ -282,14 +302,15 @@ public final class NetworkRealmLink: RealmLink {
     /// A request, and the steward's answer to it. Sent again with the same
     /// nonce, it is the same request. `mayReach` is told when the request
     /// may have reached the realm: always, unless the call failed in a way
-    /// that proves it never left this Mac.
+    /// that proves it never left this Mac, or was turned away at the
+    /// server's door with the key.
     private func request(_ reducer: String, _ arguments: [ReducerArgument], nonce: String = NetworkRealmLink.nonce(),
                          mayReach: (() -> Void)? = nil) async throws -> RealmReply {
         let credentials = try await ensureCredentials()
         do {
             try await transport.call(reducer, [.string(nonce)] + arguments, token: credentials.token)
         } catch {
-            if !Self.neverLeftThisMac(error) { mayReach?() }
+            if !Self.neverLeftThisMac(error), (error as? SpacetimeError)?.isUnauthorized != true { mayReach?() }
             throw error
         }
         mayReach?()
@@ -321,13 +342,14 @@ public final class NetworkRealmLink: RealmLink {
 
     /// Whether a request still waits at the realm for its steward.
     private func isWaitingAtRealm(_ nonce: String, _ credentials: SpacetimeCredentials) async throws -> Bool {
-        let rows = try await transport.query("SELECT nonce FROM my_requests", token: credentials.token)
+        let rows = try await transport.query("SELECT nonce FROM my_requests WHERE nonce = \(sqlString(nonce))", token: credentials.token)
         return rows.contains { $0.first?.string == nonce }
     }
 
-    /// The steward's answer to a request, if it has given one.
+    /// The steward's answer to a request, if it has given one: that answer's
+    /// row alone, not every answer still kept for the keeper.
     private func answer(to nonce: String, _ credentials: SpacetimeCredentials) async throws -> RealmReply? {
-        let rows = try await transport.query("SELECT * FROM my_replies", token: credentials.token)
+        let rows = try await transport.query("SELECT * FROM my_replies WHERE nonce = \(sqlString(nonce))", token: credentials.token)
         guard let row = rows.first(where: { $0.first?.string == nonce }), row.count == 3, let text = row[2].string else { return nil }
         return try JSONDecoder().decode(RealmReply.self, from: Data(text.utf8))
     }
@@ -338,12 +360,31 @@ public final class NetworkRealmLink: RealmLink {
         let credentials = try await ensureCredentials()
         let seen = viewVersion
         for _ in 0..<50 {
-            if let (number, fresh, batches) = try await fetchView(credentials), number != seen {
-                deliver(fresh, version: number, heard: batches)
+            // Taken meanwhile, by a poll.
+            if viewVersion > seen { return }
+            // Its version first: the whole view only once it has moved on.
+            if let number = try await viewHead(credentials), number > seen,
+               let (version, fresh, batches) = try await fetchView(credentials), version > seen {
+                deliver(fresh, version: version, heard: batches)
                 return
             }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
+    }
+
+    /// The realm was begun anew and doesn't know this keeper: what was asked
+    /// of it and what was read from it go, and the keeper goes back to the
+    /// door, not orders no one will carry out.
+    private func forgottenByTheRealm() {
+        arrived = false
+        outbox.removeAll()
+        hereAwaited = nil
+        view = nil
+        viewVersion = 0
+        viewReadAt = nil
+        heardThrough = 0
+        askedReady = nil
+        onEvent?(.refused(.unknownKeeper))
     }
 
     public func arrive(name: String?) {
@@ -363,10 +404,6 @@ public final class NetworkRealmLink: RealmLink {
                 lastHere = now()
                 onEvent?(.arrived(view.keeper, view.world))
             } catch {
-                if forgetKeyIfRefused(error) {
-                    onEvent?(.refused(.unknownKeeper))
-                    return
-                }
                 onEvent?(.refused(.refused(RealmTrouble.words(for: error))))
             }
         }
@@ -424,6 +461,10 @@ public final class NetworkRealmLink: RealmLink {
                             continue
                         }
                         guard let kept = try await self.answer(to: next.nonce, credentials) else {
+                            // Left, or forgotten by the realm, while it was
+                            // asked after: the outbox is gone, and so is
+                            // this sender's errand.
+                            guard !Task.isCancelled, self.outbox.first?.nonce == next.nonce else { break }
                             self.outbox.removeFirst()
                             if let world = self.view?.world {
                                 self.onEvent?(.orderRefused(.refused(Self.unanswered), world))
@@ -442,12 +483,9 @@ public final class NetworkRealmLink: RealmLink {
                             reply = try await self.request("ready", [.bool(ready)], nonce: next.nonce, mayReach: reached)
                         }
                     }
-                    // The realm was begun anew and doesn't know this keeper:
-                    // back to the door, not orders no one will carry out.
+                    // The realm was begun anew and doesn't know this keeper.
                     if reply.unknownKeeper == true {
-                        self.arrived = false
-                        self.outbox.removeAll()
-                        self.onEvent?(.refused(.unknownKeeper))
+                        self.forgottenByTheRealm()
                         break
                     }
                     // Left while the answer came: the outbox is gone, and
@@ -473,10 +511,6 @@ public final class NetworkRealmLink: RealmLink {
                     }
                 } catch {
                     if Task.isCancelled { break }
-                    if self.forgetKeyIfRefused(error) {
-                        self.onEvent?(.refused(.unknownKeeper))
-                        break
-                    }
                     self.wasUnreachable = true
                     self.onEvent?(.unreachable(RealmTrouble.words(for: error)))
                     try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
@@ -489,9 +523,18 @@ public final class NetworkRealmLink: RealmLink {
         }
     }
 
+    /// Leaves the realm. What the keeper ordered and hasn't yet seen answered
+    /// is sent first, as it would be in the world, then the leaving: an
+    /// order given just before leaving is carried out, not dropped. The link
+    /// stays until both are done, though nothing more is told.
     public func leave() {
-        close()
-        Task {
+        onEvent = nil
+        arrived = false
+        polling?.cancel()
+        polling = nil
+        let waiting = sending
+        Task { [self] in
+            await waiting?.value
             _ = try? await request("leave", [])
         }
     }

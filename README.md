@@ -279,22 +279,29 @@ as the realm will, and takes the realm's word as final.
   those open (at an age's start, all alike, the first); returning, you go
   straight back to yours. No newcomer may take up a House sworn to another,
   the House leading the lake, or one within reach of dominion or with its
-  Moonspire risen.
+  Moonspire risen. A name and an identity are had for the asking, so the
+  realm takes in keepers new to it a few at a time, three in any watch's
+  length; one who comes just after is asked to try again in a few minutes.
 - **Seats.** The lake has twelve seats. Seats no keeper holds are played by
   stewards, the same minds that once played rivals, until a keeper claims
   them. When every seat is held, a newcomer waits at the front door and
   steps in the moment one falls free. A seat whose keeper has been away a
-  week goes back to the stewards for whoever is waiting (a day, for a seat
-  taken and never played); its House stands as it was, and the keeper,
-  returning, waits in turn. Meanwhile, after two watches away (counted in
-  watches, however quickly they turn), a caretaker keeps the House: it
-  answers envoys, builds and trains, guards the holds, fights on in wars
-  already begun and sues for peace in one going badly, but begins no war,
-  demand or pact and never bends the knee, though it takes a House offering
-  fealty as a vassal. Peace offered to end a war it takes as a steward
-  would; a pact offered it never swears, for a pact would lend the
-  keeper's sight to another. While fewer than half the keepers are there, a
-  watch lasts at least a third of its time, however ready they are.
+  week goes back to the stewards for whoever is waiting (an hour, for a
+  seat taken and never played); its House stands as it was, and the
+  keeper, returning, waits in turn. You are there while your Mac is in
+  use: the game tells the realm so, and stops when no one has used the Mac
+  for five minutes, so a game left open with no one at it counts as gone.
+  A keeper whose House falls may take up an open seat once an age, and
+  otherwise looks on until the next. Meanwhile, after two watches away
+  (counted in watches, however quickly they turn), a caretaker keeps the
+  House: it answers envoys, builds and trains, guards the holds, fights on
+  in wars already begun and sues for peace in one going badly, but begins
+  no war, demand or pact and never bends the knee, though it takes a House
+  offering fealty as a vassal. Peace offered to end a war it takes as a
+  steward would; a pact offered it never swears, for a pact would lend the
+  keeper's sight to another. While any keeper whose House stands is away,
+  a watch lasts at least a third of its time, however ready those there
+  are.
 - **Fair seats.** Seats are spread evenly round the lake, none hemmed in
   with little land of its own; which House takes which is the luck of the
   draw, and the stewards take their turns starting one seat further round
@@ -302,7 +309,10 @@ as the realm will, and takes the realm's word as final.
 - **What you see.** The realm tells each keeper only what their House
   could know: the ground they've explored, the companies in their sight,
   their own stores, and the envoys and news that reach them. The world
-  itself never leaves the server.
+  itself never leaves the server. An order the realm refuses is refused in
+  the words your own view of the world would give, so a refusal never
+  tells of a company out of your sight: one you can't see is, to an order,
+  not there, and a strike where you can't see finds nothing to strike.
 - **Gifts.** Send stores to any House you aren't at war with. Stewards
   remember gifts for twenty watches: a war seems older to them, and enough
   goodwill wins a pact, unless you once made war on them or a pact between
@@ -347,8 +357,9 @@ as the realm will, and takes the realm's word as final.
   them; say you're ready (⌘↩) when they're given. The watch turns when
   every keeper there is ready, or when its time runs out, three minutes;
   then the stewards act, and the lake yields, eats and mends. An empty
-  realm sleeps until a keeper returns. Leave, and after two watches away a
-  caretaker keeps your House.
+  realm sleeps until a keeper returns. Leave, and what you ordered still
+  on its way goes to the realm first; after two watches away a caretaker
+  keeps your House.
 - **Treating with keepers.** Offers to another keeper wait as envoys for
   their answer, as theirs wait for yours. Envoys of stewards speak, in
   words written on your Mac; a keeper's envoy carries their own words, if
@@ -365,7 +376,9 @@ as the realm will, and takes the realm's word as final.
 - **Ages.** When a House wins, the age ends. When the watch next turns, a
   new age begins on a fresh lake, and keepers are seated anew in the order
   they first came, as seats allow, but for any away longer than a seat is
-  kept for them. Each age's lake has a shape of its own, in turn:
+  kept for them. One in the world when it begins, with no seat in it,
+  goes back to the front door to wait there for one, and steps in the
+  moment one falls free. Each age's lake has a shape of its own, in turn:
   the round Nullmere, the Twin Waters with a neck of land between them,
   the Sickle with land pushing in from one shore, and the Drowned Isles.
   The front door names the lake of the age, and the moon lies in the
@@ -375,8 +388,13 @@ as the realm will, and takes the realm's word as final.
   steward write it. The steward runs the same Swift rules core the clients
   carry, so there is one set of rules. A keeper's client carries out their
   orders at once, as the realm will, and takes the realm's word as final.
-  Your identity is made once and kept in your keychain. For
-  development a realm can also be hosted in-process (`NULLMERE_REALM=local`).
+  What chance decides, or what your copy can't see, is told and drawn as
+  the realm decided it, when it answers, never as your Mac guessed it: a
+  strike's blows and losses, a ruin's spoils, a new hold's name, a
+  steward's answer. Your identity is made once and kept in your keychain,
+  and never erased by the game, even should the realm's server stop
+  taking it. For development a realm can also be hosted in-process
+  (`NULLMERE_REALM=local`).
 
 ### Raising the realm
 
@@ -394,15 +412,21 @@ scripts/raise-realm.sh maincloud               # publishes the module, starts th
 
 When the steward is up, the script reads the realm's status back as any
 keeper would, and fails if the realm doesn't answer. CI runs the dry run
-for maincloud, and raises a whole realm standing alone on its own
-SpacetimeDB the same way (`scripts/raise-realm.sh local`, then `--stop`).
+for maincloud, building the steward's image from `Dockerfile.steward` as
+the realm proper's is built and starting it once, so the image can't fall
+out of step with the code; and it raises a whole realm standing alone on
+its own SpacetimeDB the same way (`scripts/raise-realm.sh local`, then
+`--stop`).
 
 The script checks its tools, publishes the module, keeps the steward's
 token in `~/.config/nullmere` (readable by you alone), and starts the
 steward: for maincloud, in a container (`Dockerfile.steward`, restarted with
 the machine) when Docker is there; otherwise, and always for a local realm,
 in the background, with its log beside the token. Run it again to update the module; the realm keeps its world. Ask
-for a fresh realm with `SPACETIME_CLEAR=1`.
+for a fresh realm with `SPACETIME_CLEAR=1`: the script stops the realm's
+steward on this machine before it clears the database, since a steward
+left running would publish the realm it held over the fresh one. Stop
+any steward of it you run elsewhere first yourself.
 
 The module can also be published from GitHub: put the token
 `spacetime login show --token` prints in the `SPACETIME_TOKEN` secret, and
@@ -427,14 +451,22 @@ enters the world across the network (`scripts/smoke-test-network.sh`).
 The steward takes up the realm where it stands after a restart. The
 realm's tables are private: keepers write requests through reducers and
 read only their own view and replies, through SpacetimeDB views
-(`my_view`, `my_replies`), and the realm's public status. A keeper may
+(`my_view`, `my_replies`), and the realm's public status. A request
+carries a nonce of 1 to 64 bytes and at most 4 KB besides; a keeper may
 have 32 requests waiting at most, and the steward carries out a few of
 each keeper's every round, so no one keeper can crowd out the rest. A
 request sent again, after its answer was lost, is carried out once. The
 steward keeps the world and gives its answers in one transaction, so a
 round it couldn't publish, or a steward stopped mid-round, loses and
 doubles nothing; it says when a round fails, and every ten minutes how
-the realm stands. One steward holds the realm at a time: any other finds it
+the realm stands. It keeps in memory only what it needs of the keepers
+there, and the realm forgets a keeper long gone with no seat (away a week,
+or an hour if they never played), their name free again, so neither
+grows with every identity ever heard from. It works out a keeper's view
+only when something may have changed it, and sends with it what they
+heard in the last two minutes, the latest sixteen publications' worth at
+most. Answers are forgotten ten minutes on, those an earlier steward gave
+too. One steward holds the realm at a time: any other finds it
 held, tries again for two and a half minutes (a steward started again
 waits the minute its old hold takes to lapse), then gives up. A container
 is restarted after it, so stop a second one with `--stop`. The server
@@ -445,7 +477,15 @@ still, and told again when it returns. An order that reached the realm
 waits there for its answer, however long; one that can't reach it within
 five minutes is let go, and its keeper told. Past those five minutes an
 order is never sent again, only asked after, so none is carried out
-twice.
+twice. A client asks after each answer by its nonce alone, waits for what
+came of an order by its view's version, fetching the whole view only once
+that has moved on, and never takes a view older than the one it has. The
+realm answers each "here" too: a keeper it no longer knows, as after it is
+begun anew, goes back to the front door within half a minute, though they
+give no order. A key the server won't take is kept, never erased or made
+anew: the keeper is told so, plainly, and it is offered again as the realm
+is asked again. What a server says as it refuses is for whoever runs the
+realm; keepers are told in plain words, never a status code.
 
 ## Playing Nullmere Online
 

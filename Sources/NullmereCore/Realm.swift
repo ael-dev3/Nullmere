@@ -17,6 +17,9 @@ public struct Keeper: Codable, Equatable, Identifiable, Sendable {
     public internal(set) var watchesAway: Int?
     /// They have given an order or been ready for a watch: they came to play.
     public internal(set) var hasPlayed: Bool?
+    /// The age in which their House fell and they took up an open seat:
+    /// once an age.
+    public internal(set) var reseatedInAge: Int?
 }
 
 /// What anyone may know of the realm before entering it.
@@ -70,6 +73,8 @@ public enum RealmError: Error, Equatable, Sendable, CustomStringConvertible {
     case unknownKeeper
     case nameInvalid
     case nameTaken
+    /// As many keepers new to the realm as it takes in at a time came in lately.
+    case manyNewcomers
     /// An order from a keeper who holds no standing House.
     case noSeat
     case rule(RuleError)
@@ -81,6 +86,7 @@ public enum RealmError: Error, Equatable, Sendable, CustomStringConvertible {
         case .unknownKeeper: return "The realm doesn't know you yet."
         case .nameInvalid: return "A name is two to twenty letters, spaces, hyphens or apostrophes."
         case .nameTaken: return "A keeper or a House already goes by that name."
+        case .manyNewcomers: return "The realm takes in a few new keepers at a time, and some came in just now. Try again in a few minutes."
         case .noSeat: return "You hold no House standing on the lake."
         case .rule(let error): return error.description
         case .refused(let reason): return reason
@@ -107,6 +113,8 @@ public struct RealmState: Codable, Equatable, Sendable {
     public internal(set) var keepers: [Keeper]
     /// When the current watch began, in seconds.
     public internal(set) var watchBegan: Double
+    /// When keepers new to the realm came in, within the last watch's length.
+    var newcomers: [Double]?
 
     public static let defaultWatchLength = 180.0
 
@@ -203,9 +211,13 @@ public struct RealmState: Codable, Equatable, Sendable {
     /// How long a seat waits for a keeper who is away before it goes to
     /// one who is waiting: a week.
     public static let seatHeldFor: Double = 7 * 24 * 3600
-    /// A seat taken and never played is held only a day, so names made in
-    /// passing can't hold the lake.
-    public static let unplayedSeatHeldFor: Double = 24 * 3600
+    /// A seat taken and never played is held only an hour, so names made
+    /// in passing can't hold the lake.
+    public static let unplayedSeatHeldFor: Double = 3600
+    /// Keepers new to the realm it takes in within any one watch's length
+    /// of time. A name and an identity are had for the asking, so they come
+    /// in a few at a time: no one can fill the lake with names in a moment.
+    public static let newcomersPerWatch = 3
 
     func seatHeld(by keeper: Keeper) -> Double {
         keeper.hasPlayed == true ? RealmState.seatHeldFor : RealmState.unplayedSeatHeldFor
@@ -216,9 +228,10 @@ public struct RealmState: Codable, Equatable, Sendable {
     }
 
     /// A keeper arrives: a returning one by their identity, a new one with
-    /// the name they chose. Either takes a seat if they have none and one
+    /// the name they chose, if the realm hasn't taken in as many new keepers
+    /// as it does at a time. Either takes a seat if they have none and one
     /// is free; one whose House has fallen takes up a free one when
-    /// `reseatsTheFallen`, as when they ask to.
+    /// `reseatsTheFallen`, as when they ask to, once an age.
     @discardableResult
     public mutating func arrive(_ id: String, name: String?, now: Double, reseatsTheFallen: Bool = true) throws(RealmError) -> Keeper {
         let index: Int
@@ -230,7 +243,11 @@ public struct RealmState: Codable, Equatable, Sendable {
             let lowered = chosen.lowercased()
             guard !keepers.contains(where: { $0.name.lowercased() == lowered }),
                   !world.houses.contains(where: { $0.name.lowercased() == lowered }) else { throw .nameTaken }
-            keepers.append(Keeper(id: id, name: chosen, house: nil, isReady: false, isOnline: true, arrival: keepers.count))
+            let lately = (newcomers ?? []).filter { now - $0 < watchLength }
+            guard lately.count < RealmState.newcomersPerWatch else { throw .manyNewcomers }
+            newcomers = lately + [now]
+            keepers.append(Keeper(id: id, name: chosen, house: nil, isReady: false, isOnline: true,
+                                  arrival: (keepers.map(\.arrival).max() ?? -1) + 1))
             index = keepers.count - 1
         }
         // The realm wakes: a sleeping watch starts anew.
@@ -241,9 +258,12 @@ public struct RealmState: Codable, Equatable, Sendable {
         keepers[index].awaySince = nil
         keepers[index].watchesAway = nil
         // A keeper whose House has fallen may take up one standing free,
-        // rather than look on until the age ends.
-        if reseatsTheFallen, let house = keepers[index].house, world.houses[house].isEliminated, hasFreeSeat {
+        // rather than look on until the age ends: once an age, so no one
+        // goes from House to House, falling and rising again.
+        if reseatsTheFallen, let house = keepers[index].house, world.houses[house].isEliminated, hasFreeSeat,
+           keepers[index].reseatedInAge != age {
             keepers[index].house = nil
+            keepers[index].reseatedInAge = age
         }
         if keepers[index].house == nil {
             claimSeat(for: index)
@@ -265,6 +285,19 @@ public struct RealmState: Codable, Equatable, Sendable {
         keepers[index].isReady = false
     }
 
+    /// Keepers who hold no seat and have been away longer than one would be
+    /// held for them are forgotten, and their names are free again: the
+    /// realm keeps no roll of every passer-by. One who comes back enters
+    /// anew. Returns whether any were.
+    public mutating func forgetTheLongGone(now: Double) -> Bool {
+        let gone = Set(keepers.filter { keeper in
+            keeper.house == nil && !keeper.isOnline && now - (keeper.awaySince ?? now) >= seatHeld(by: keeper)
+        }.map(\.id))
+        guard !gone.isEmpty else { return false }
+        keepers.removeAll { gone.contains($0.id) }
+        return true
+    }
+
     /// The seat of the keeper away longest, if a week or more, goes back to
     /// the stewards for a keeper who is waiting. Its House stands as it was.
     private mutating func releaseSeat(now: Double) -> Bool {
@@ -275,7 +308,7 @@ public struct RealmState: Codable, Equatable, Sendable {
               let house = keepers[index].house else { return false }
         world.houses[house].isPlayer = false
         keepers[index].house = nil
-        let span = keepers[index].hasPlayed == true ? "a week" : "a day"
+        let span = keepers[index].hasPlayed == true ? "a week" : "an hour"
         world.record(.seating, [house], "\(world.houses[house].title) has stood \(span) without its keeper; the stewards keep it for another.")
         return true
     }
@@ -293,8 +326,8 @@ public struct RealmState: Codable, Equatable, Sendable {
     /// The Houses a keeper may take up: living, kept by no keeper, sworn
     /// to no liege, and not near the end of the age. Never the House
     /// leading the lake, nor one within reach of dominion or with its
-    /// Moonspire risen: a keeper coming under a new name, as often as they
-    /// like, can't take a House on the point of winning.
+    /// Moonspire risen: a keeper coming again under new names can't take a
+    /// House on the point of winning.
     var openSeats: [House] {
         let living = world.livingHouses
         let best = living.map { standing($0.id) }.max { $0.lexicographicallyPrecedes($1) }
@@ -339,16 +372,24 @@ public struct RealmState: Codable, Equatable, Sendable {
 
     // MARK: Orders and watches
 
-    /// A keeper's order, for the House they hold.
+    /// A keeper's order, for the House they hold. One refused is refused in
+    /// the words the keeper's own view of the world would give, whenever
+    /// that view refuses it too: never for a reason only what their House
+    /// can't see could give, such as a company out of its sight.
     public mutating func perform(_ command: Command, by id: String) throws(RealmError) -> [GameEvent] {
         guard let keeper = keeper(id) else { throw .unknownKeeper }
         guard let house = keeper.house, !world.houses[house].isEliminated else { throw .noSeat }
+        // A strike only at what their House can see: one loosed into the
+        // dark would tell them what stood there.
+        if case .attack = command, let refusal = world.view(for: house).refusal(of: command, as: house) {
+            throw .rule(refusal)
+        }
         do {
             let events = try world.perform(command, as: house)
             if let index = keepers.firstIndex(where: { $0.id == id }) { keepers[index].hasPlayed = true }
             return events
         } catch {
-            throw .rule(error)
+            throw .rule(world.view(for: house).refusal(of: command, as: house) ?? error)
         }
     }
 
@@ -374,14 +415,13 @@ public struct RealmState: Codable, Equatable, Sendable {
         return !online.isEmpty && online.allSatisfy(\.isReady)
     }
 
-    /// The least a watch lasts, however ready those there are: nothing,
-    /// unless fewer than half the keepers whose Houses stand are there,
-    /// when a third of a watch, so the few can't hurry the lake past the
-    /// many away.
+    /// The least a watch lasts, however ready those there are: nothing
+    /// while every keeper whose House stands is there; a third of a watch
+    /// while any one of them is away, so those there can't hurry the lake
+    /// past a House whose keeper isn't.
     var shortestWatch: Double {
         let standing = keepers.filter { keeper in keeper.house.map { !world.houses[$0].isEliminated } == true }
-        let there = standing.filter(\.isOnline).count
-        return there * 2 < standing.count ? watchLength / 3 : 0
+        return standing.allSatisfy(\.isOnline) ? 0 : watchLength / 3
     }
 
     /// Watches a keeper is away before a caretaker keeps their House.

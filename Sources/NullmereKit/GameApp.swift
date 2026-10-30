@@ -291,7 +291,11 @@ public final class GameApp {
                 door = .unreachable("The realm's address can't be read.")
                 return
             }
-            link = NetworkRealmLink(transport: transport, credentials: identityStore, pollInterval: pollInterval)
+            let network = NetworkRealmLink(transport: transport, credentials: identityStore, pollInterval: pollInterval)
+            // There while this Mac is in use: an app left open with no one
+            // at it falls silent, and a caretaker keeps the House.
+            network.idleSeconds = { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!) }
+            link = network
         }
         self.link = link
         link.onEvent = { [weak self] event in self?.hear(event) }
@@ -369,6 +373,9 @@ public final class GameApp {
         UserDefaults.standard.set(keeper.name, forKey: Self.nameKey(for: address))
         guard let house = keeper.house, let link else {
             startWaiting()
+            // A new age begun with no seat for this keeper: back to the front
+            // door, to wait there for one, not left in an age that is gone.
+            if session != nil { backToTheDoor() }
             return
         }
         stopWaiting()
@@ -377,6 +384,7 @@ public final class GameApp {
         let session = GameSession(link: link, house: house, world: world, store: store.forAge(age, of: Self.storeKey(for: address)),
                                   voice: Self.voice(), host: hosted)
         session.onNewAge = { [weak self] keeper, world in self?.arrived(keeper, in: world) }
+        session.risenInAge = keeper.reseatedInAge
         #if DEBUG
         // For the UI tests: the map offers VoiceOver's orders, as when it runs.
         if ProcessInfo.processInfo.environment["NULLMERE_VOICEOVER"] == "1" { session.voiceOverRunning = { true } }
@@ -391,7 +399,7 @@ public final class GameApp {
         isWaitingForSeat = true
         arrivalProblem = nil
         // A seat can fall free with the clock alone, when its keeper has
-        // been away a week.
+        // been away a week, or an hour if they never played.
         seatTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.askForSeat() }
         }
@@ -409,15 +417,15 @@ public final class GameApp {
     }
 
     /// Lets the link go: it tells nothing more, and leaves the realm, or,
-    /// when the realm no longer knows its key, simply stops.
+    /// when the realm no longer knows the keeper, simply stops.
     private func releaseLink(leaving: Bool = true) {
         if leaving { link?.leave() } else { link?.close() }
         link?.onEvent = nil
         link = nil
     }
 
-    /// The realm no longer knows this Mac's key (its database was made anew):
-    /// back to the front door, to enter under a name again.
+    /// The realm no longer knows this keeper (it was begun anew): back to the
+    /// front door, to enter under a name again. The key is the same.
     private func forgotten() {
         keeperName = nil
         UserDefaults.standard.removeObject(forKey: Self.nameKey(for: address))
@@ -425,7 +433,16 @@ public final class GameApp {
         ambience.isAtWar = false
         phase = .frontDoor
         openDoor()
-        arrivalProblem = "The realm no longer knows this Mac's key, as when a realm is begun anew. Choose the name you'll go by."
+        arrivalProblem = "The realm no longer knows you, as when a realm is begun anew. Choose the name you'll go by."
+    }
+
+    /// From the world to the front door without leaving the realm: the
+    /// link, kept, tells the door how the realm stands from now on.
+    private func backToTheDoor() {
+        ambience.isAtWar = false
+        phase = .frontDoor
+        link?.onEvent = { [weak self] event in self?.hear(event) }
+        link?.connect()
     }
 
     /// Leaves the world for the front door; after two watches a caretaker

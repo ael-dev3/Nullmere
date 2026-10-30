@@ -505,36 +505,10 @@ final class NetworkRealmTests: XCTestCase {
         XCTAssertTrue(said.lines.contains { $0.hasPrefix("Another steward holds the realm; this one stops.") }, "\(said.lines)")
     }
 
-    /// An order carried to a realm that has forgotten this keeper's key is
-    /// refused as from a stranger: the key is let go, and the keeper told.
-    func testAnOrderFromAForgottenKeyIsToldSo() async throws {
-        let db = FakeSpacetime()
-        let (_, running, _) = try await steward(db)
-        defer { running.cancel() }
-        // Polling slowly, so the order is what meets the forgetting first.
-        let (link, ear) = await MainActor.run { () -> (NetworkRealmLink, Listener) in
-            let link = NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 60)
-            let ear = Listener()
-            ear.listen(to: link)
-            link.connect()
-            return (link, ear)
-        }
-        await MainActor.run { link.arrive(name: "Ama") }
-        try await until("arrival") { ear.keeper != nil }
-        let house = try await MainActor.run { try XCTUnwrap(ear.keeper?.house) }
-        let spear = try await MainActor.run { try XCTUnwrap(ear.world?.units(of: house).first { $0.kind == .spear }) }
-        let old = try await MainActor.run { try XCTUnwrap(link.credentials) }
-        await db.forget(token: old.token)
-        await MainActor.run { link.send(.fortify(unit: spear.id)) }
-        try await until("the keeper told the realm doesn't know them") {
-            ear.events.contains { if case .refused(.unknownKeeper) = $0 { return true } else { return false } }
-        }
-        let kept = await MainActor.run { link.credentials }
-        XCTAssertNil(kept, "The forgotten key is let go")
-        await MainActor.run { link.leave() }
-    }
-
-    func testAKeyTheRealmNoLongerKnowsIsMadeAnew() async throws {
+    /// A key the server won't take, as the keeper looks on, is kept: never
+    /// erased, never made anew. The keeper is told plainly, and when the
+    /// server takes the key again the realm answers as before.
+    func testAKeyTheServerWontTakeIsNeverMadeAnew() async throws {
         let db = FakeSpacetime()
         let (_, running, _) = try await steward(db)
         defer { running.cancel() }
@@ -544,24 +518,27 @@ final class NetworkRealmTests: XCTestCase {
         try await until("arrival") { ear.keeper != nil }
         let kept = await MainActor.run { link.credentials }
         let old = try XCTUnwrap(kept)
+        let key = try XCTUnwrap(store.value)
 
-        // The realm is begun anew: it forgets the key.
         await db.forget(token: old.token)
-        try await until("the keeper told the realm doesn't know them") {
-            ear.events.contains { if case .refused(.unknownKeeper) = $0 { return true } else { return false } }
+        try await until("the keeper told") {
+            ear.events.contains { if case .unreachable(SpacetimeError.unauthorized.description) = $0 { return true } else { return false } }
         }
-        // A new key is made at the next asking, and the keeper enters anew.
+        let still = await MainActor.run { link.credentials }
+        XCTAssertEqual(still, old, "The key is kept")
+        XCTAssertEqual(store.value, key, "and never erased")
+        let doors = await MainActor.run { ear.events.filter { if case .refused = $0 { return true } else { return false } }.count }
+        XCTAssertEqual(doors, 0, "The keeper isn't sent to the door to begin anew")
+
+        // The server takes it again: the realm answers, to the same keeper.
+        let told = await MainActor.run { ear.events.count }
+        await db.remember(old)
         try await until("the realm's status again") {
-            if case .status = ear.events.last { return true } else { return false }
+            ear.events.dropFirst(told).contains { if case .status = $0 { return true } else { return false } }
         }
-        let made = await MainActor.run { link.credentials }
-        let fresh = try XCTUnwrap(made)
-        XCTAssertNotEqual(fresh.token, old.token)
-        XCTAssertNotNil(store.value.flatMap { $0.isEmpty ? nil : $0 }, "and kept")
-        await MainActor.run { link.arrive(name: "Ama Anew") }
-        try await until("the second arrival") {
-            ear.events.contains { if case .arrived(let keeper, _) = $0 { return keeper.name == "Ama Anew" } else { return false } }
-        }
+        let after = await MainActor.run { link.credentials }
+        XCTAssertEqual(after, old)
+        await MainActor.run { link.leave() }
     }
 
     func testOneKeepersFloodDoesNotCrowdOutAnother() async throws {
@@ -626,6 +603,11 @@ actor Flaky: SpacetimeTransport {
     private var losingAnswers: Set<String> = []
     /// The next call to this reducer never reaches the server.
     func failNext(_ reducer: String) { failing.insert(reducer) }
+    /// Answers asked after by their nonce wait until let through.
+    func holdAnswers(_ hold: Bool) { holdingAnswers = hold }
+    private var holdingAnswers = false
+    /// An answer asked after is being held.
+    private(set) var isHoldingAnAnswer = false
 
     func createIdentity() async throws -> SpacetimeCredentials {
         if down { throw SpacetimeError("The network is down.") }
@@ -645,6 +627,13 @@ actor Flaky: SpacetimeTransport {
 
     func query(_ sql: String, token: String) async throws -> [[JSONValue]] {
         if down { throw SpacetimeError("The network is down.") }
+        if holdingAnswers, sql.hasPrefix("SELECT * FROM my_replies") {
+            // Held however the one asking fares meanwhile, as a slow
+            // server's answer is.
+            isHoldingAnAnswer = true
+            while holdingAnswers { await Task.detached { try? await Task.sleep(nanoseconds: 10_000_000) }.value }
+            isHoldingAnAnswer = false
+        }
         return try await db.query(sql, token: token)
     }
 }

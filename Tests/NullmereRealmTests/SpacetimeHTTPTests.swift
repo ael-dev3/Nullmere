@@ -19,6 +19,13 @@ final class SpacetimeHTTPTests: XCTestCase {
         let http = try XCTUnwrap(SpacetimeHTTP(address: URL(string: "http://127.0.0.1:3000/nullmere")!))
         XCTAssertEqual(http.server.absoluteString, "http://127.0.0.1:3000")
         XCTAssertEqual(http.database, "nullmere")
+        // The realm proper, where a build goes that names no other: the
+        // database nullmere on maincloud's own server.
+        let proper = try XCTUnwrap(SpacetimeHTTP(address: URL(string: "https://maincloud.spacetimedb.com/nullmere")!))
+        XCTAssertEqual(proper.server.absoluteString, "https://maincloud.spacetimedb.com")
+        XCTAssertEqual(proper.database, "nullmere")
+        let slashed = try XCTUnwrap(SpacetimeHTTP(address: URL(string: "https://maincloud.spacetimedb.com/nullmere/")!))
+        XCTAssertEqual(slashed.database, "nullmere")
         XCTAssertNil(SpacetimeHTTP(address: URL(string: "https://realm.test")!), "No database named")
     }
 
@@ -93,14 +100,25 @@ final class SpacetimeHTTPTests: XCTestCase {
         }
         let missing = await refusal(StubHTTP.Answer(status: 404))
         XCTAssertEqual(missing?.description, "The realm isn't open yet.")
+        let gone = await refusal(StubHTTP.Answer(status: 404, text: "`nullmere` not found"))
+        XCTAssertEqual(gone?.description, "The realm isn't open yet.")
+        // A request the realm's module doesn't have is no realm unopened.
+        let unknown = await refusal(StubHTTP.Answer(status: 404, text: "No such procedure"))
+        XCTAssertEqual(unknown?.description, SpacetimeError.unknownRequest)
+        XCTAssertEqual(unknown.map { RealmTrouble.words(for: $0) }, SpacetimeError.unknownRequest)
         let forgotten = await refusal(StubHTTP.Answer(status: 401))
         XCTAssertEqual(forgotten, .unauthorized)
         XCTAssertTrue(forgotten?.isUnauthorized == true)
+        // The server's own words are kept for whoever runs the realm; the
+        // keeper is told plainly.
         let said = await refusal(StubHTTP.Answer(status: 530, text: "  The reducer panicked: no such keeper\n"))
         XCTAssertEqual(said?.description, "The reducer panicked: no such keeper")
+        XCTAssertEqual(said?.status, 530)
+        XCTAssertEqual(said.map { RealmTrouble.words(for: $0) }, "The realm couldn't answer just now.")
         XCTAssertFalse(said?.isUnauthorized ?? true)
         let silent = await refusal(StubHTTP.Answer(status: 503))
         XCTAssertEqual(silent?.description, "The realm answered 503.")
+        XCTAssertEqual(silent.map { RealmTrouble.words(for: $0) }, "The realm couldn't answer just now.")
     }
 
     func testAServerOutOfReachIsAnError() async {
