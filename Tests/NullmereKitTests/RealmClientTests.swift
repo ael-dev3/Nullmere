@@ -74,6 +74,39 @@ final class RealmClientTests: XCTestCase {
         XCTAssertNotNil(bel.watchCard)
     }
 
+    func testAMarchWalksOnThroughTheWatchAndIsSeenToWalk() throws {
+        var now = 0.0
+        let realm = LocalRealm(state: RealmState(name: "The Nullmere", seed: "paced keepers", seats: 4, radius: 18, watchLength: 120, now: 0),
+                               clock: { now })
+        let ama = try enter(realm, as: "a", name: "Ama")
+        let world = realm.state.world
+        let spear = try XCTUnwrap(world.units(of: ama.player).first { $0.kind == .spear })
+        let far = try XCTUnwrap(world.map.hexes.first { hex in
+            hex.distance(to: spear.position) == 8 && world.map[hex]?.terrain.isPassable == true && world.unit(at: hex) == nil
+                && world.hold(at: hex) == nil && world.wild(at: hex) == nil && world.path(for: spear, to: hex) != nil
+        })
+        XCTAssertTrue(ama.perform(.move(unit: spear.id, to: far)))
+        // The only keeper there is ready: the watch turns, and the march,
+        // its moves spent, waits for the new watch's paces.
+        ama.endWatch()
+        XCTAssertEqual(ama.state.watch, 2)
+        let standing = try XCTUnwrap(ama.state.unit(spear.id)).position
+        var cues: [Ambience.Cue] = []
+        ama.onCue = { cues.append($0) }
+
+        now = 9
+        realm.tick()
+        XCTAssertEqual(ama.state.unit(spear.id)?.position, standing, "Not yet the first pace")
+        now = 10
+        realm.tick()
+        XCTAssertEqual(ama.state.watch, 2, "The watch hasn't turned")
+        let stepped = try XCTUnwrap(ama.state.unit(spear.id)).position
+        XCTAssertEqual(stepped.distance(to: standing), 1, "A step at the first pace")
+        XCTAssertEqual(ama.marches[spear.id]?.path, [standing, stepped], "Seen to walk it, from where it stood")
+        XCTAssertFalse(cues.contains(.order), "A step on the march is seen, not sounded")
+        XCTAssertEqual(realm.state.world.pacing?.walked, 1)
+    }
+
     func testKeepersTreatWithEachOtherThroughEnvoys() throws {
         let realm = realm()
         let ama = try enter(realm, as: "a", name: "Ama")

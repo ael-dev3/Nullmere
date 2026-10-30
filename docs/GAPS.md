@@ -7,20 +7,20 @@ placeholder, stubbed or simulated scores under ten. The rules hold
 throughout: one shared realm and nothing played alone, the launcher titled
 exactly Nullmere Online, and every asset original. This list is kept
 current as the work goes; each line says what is there now, not what is
-planned.
+planned, and what CI has shown of it.
 
 ## Where it stands
 
 | | Requirement | Score now | What is there | What Rise of Kingdoms has that this lacks |
 |---|---|---|---|---|
-| 1 | Live realm, real multiplayer | 3 | A SpacetimeDB module and a steward that runs the rules; keepers' Macs connect over HTTP, read the realm about once a second, and send orders; CI raises a real SpacetimeDB server and plays keepers through it | A realm that is up for everyone (it waits on the maintainer's maincloud sign-in); pushed updates over a live connection rather than reads once a second; play in real time rather than in ten-minute watches; chat |
-| 2 | 3D world in Metal | 0 | A 2D map: one fragment shader paints hex terrain and the still lake from a tile texture; holds and companies are flat vector line art | Everything: a 3D terrain with relief, a 3D lake, a camera that tilts and turns, and a 3D model for every company, work, hold and feature of the land |
-| 3 | Animation | 1 | The lake's light and mist move; pieces glide between tiles | Companies that idle, march, strike and fall; works that rise from scaffolds and grow with each level; combat effects; life in the world (smoke, banners, torches, birds) |
-| 4 | Sound and music | 4 | A synthesised night (drone, wind), a score written as it plays, and sounds for orders, battles, bells and envoys | A sound for every action and every event, and music that follows peace, war and the hour |
-| 5 | Depth of systems | 2 | Holds with eight works, five kinds of company, four stores, wars, pacts, peace, fealty, tribute, trade, gifts, omens, a chronicle, and two roads to winning an age | Research and a tech tree; troop tiers; commanders with skills and levels; gathering from the land; alliances of many Houses; rallies; marches that take time across the map; events; a keeper's progress across ages |
-| 6 | Interface and onboarding | 4 | A spare, consistent, accessible interface; a seat briefing, first steps, counsel and a guide | A screen for every system above, and an onboarding that walks a new keeper through the first hour |
+| 1 | Live realm, real multiplayer | 5 | A SpacetimeDB module and a steward that runs the rules; keepers' Macs hear the realm's changes pushed over SpacetimeDB's WebSocket subscription, the reads kept as a fallback. CI raises a real SpacetimeDB server where two keepers' clients meet, give orders and turn the watch, trade through an envoy, ally, speak to the realm and to their alliance, go to war, and march one on the other's seat over thirty watches and strike it, both seeing every step. A realm's watch passes in twelve paces: marches step through it, hosts strike the moment they arrive, and stewards give their orders at paces spread through it, nothing saved for a burst at the turn | A realm that is up for everyone (it waits on the maintainer's maincloud sign-in); battles that last, blow by blow, rather than one exchange each; kingdoms of thousands |
+| 2 | 3D world in Metal | 5 | Terrain as a 3D mesh with relief and its own grain of earth and moss; the still lake mirroring the stars and the moon; a camera that pans, zooms, tilts and turns; picking and VoiceOver through it; original models built from code for every company in five tiers, every hold, work and wall at every level, the wilds, the sites of the land and the commanders; four lights of the world's own with the moon's; rendered on the GPU in CI | Hand-modelled, textured detail at RoK's density; day, night and weather; a city view inside the world |
+| 3 | Animation | 6 | Companies idle, march, strike, gather and fall, easing from one clip to the next; works rise from scaffolds and finish in dust; blows land with sparks, a flash and light on the ground, the struck reel, arrows arc and kick up dust, wards splinter, the fallen raise dust; a commander's skill fires in a ring of gold; broken holds burn and smoke; fireflies, birds, banners and hearth smoke | Spell-like effects at RoK's scale; crowds and city life |
+| 4 | Sound and music | 6 | A synthesised night, a score written as it plays that turns to war, and twenty-five cues made as they play, a sound for every order and every event that concerns the keeper, each held by tests above the night and all at once under clipping | Recorded orchestral music and foley; sound placed in the world |
+| 5 | Depth of systems | 5 | Studies (28 in four branches, an Archive's circles), troop tiers I to V, commanders (five archetypes, twenty skills, thirty levels, fury), the wilds at levels I to X, gathering at the land's sites, alliances with help and their own words, rallies, marches that take watches and say when they arrive, happenings with marks and honours, deeds, charges, might and renown across ages; every rule tested on Linux and played by the stewards | VIP, items and equipment, talent trees for commanders, civilizations, kingdom against kingdom, alliance territory and buildings, holy sites, barbarian forts, hospitals and healing, scouting |
+| 6 | Interface and onboarding | 5 | A screen for every system: the Archive (3), Commanders (4), Alliance (5), the Realm (6) and Words (7), on keys, in the menu and on a row of buttons; a small map of the whole lake; battle reports in the Chronicle; tiers chosen in training; a site gathered by a right-click; a rally called from an enemy hold; the wilds and the sites named on hover and read to VoiceOver; every screen through the Mac's accessibility audit in CI. The first hour taught in play: a briefing, three first steps, then ten charges one after another, each saying how, with Show me ringing the very control that keeps it, and a reward; a Guide for every system | RoK's illustrated interface and art; a voiced advisor |
 
-Overall against Rise of Kingdoms: **2 of 10**.
+Overall against Rise of Kingdoms: **5 of 10**.
 
 ## What closes each gap
 
@@ -28,44 +28,51 @@ Each item is done when it is real, in the shipped app, tested, and shown in
 CI (a test, a figure, or a screenshot). Ticked items are done.
 
 ### 1. Live realm, real multiplayer
-- [ ] Several keepers' clients, as shipped, play together in CI against a real SpacetimeDB server: they arrive, see each other, trade, ally, march on each other and fight
-- [ ] A live connection: the realm's updates pushed to the client over SpacetimeDB's WebSocket subscription, the reads once a second kept only as a fallback
-- [ ] Marches and battles that play out across the watch in the client, not in a single jump at its turn
-- [ ] Words between keepers: a realm channel and an alliance channel
-- [ ] One workflow that raises the realm on maincloud from CI once the maintainer adds the token (the sign-in itself is the maintainer's)
+- [x] Several keepers' clients, as shipped, play together in CI against a real SpacetimeDB server: they arrive, see each other, trade, ally, speak, march on each other and fight
+- [x] A live connection: the realm's updates pushed to the client over SpacetimeDB's WebSocket subscription, the reads once a second kept only as a fallback
+- [x] Words between keepers: a realm channel and an alliance channel
+- [x] One workflow that publishes the realm to maincloud once the maintainer adds the token (the sign-in, and the machine the steward runs on, are the maintainer's)
+- [x] Marches and battles that play out across the watch, not resolved at its turn: twelve paces a watch, a host striking as it arrives, stewards acting through it
+- [ ] Battles that last, blow by blow, rather than one exchange of blows each
+- [ ] The realm up for everyone on maincloud
 
 ### 2. 3D world in Metal
-- [ ] A model library of original procedural meshes, built and tested on Linux, previewed as images
-- [ ] Terrain as a 3D mesh with relief: still water, shallows, strand, salt flats, greyfields, blackwood, barrows and the spine, each with its own form
-- [ ] The lake as a 3D surface that mirrors the moon and the stars, black and still
-- [ ] A camera that pans, zooms, tilts and turns, with the map's picking and VoiceOver's elements through it
-- [ ] A model for every company kind and tier, every work at every level, every hold, and every feature of the land
-- [ ] Moonlight, torchlight and mist; the render held to its frame budget in CI
+- [x] A model library of original procedural meshes, built and tested on Linux, previewed as images
+- [x] Terrain as a 3D mesh with relief: still water, shallows, strand, salt flats, greyfields, blackwood, barrows and the spine, each with its own form
+- [x] The lake as a 3D surface that mirrors the moon and the stars, black and still
+- [x] A camera that pans, zooms, tilts and turns, with the map's picking and VoiceOver's elements through it
+- [x] A model for every company kind and tier, every work at every level, every hold, and every feature of the land
+- [x] Moonlight, firelight and the world's own lights; the render's frame times measured in CI
+- [ ] Textured, hand-modelled detail; day and weather
 
 ### 3. Animation
-- [ ] Companies: idle, march, attack and death
-- [ ] Works: construction from scaffold to finish, and each upgrade
-- [ ] Combat: arrows, clashes, the fallen
-- [ ] Ambience: smoke, banners, torches, birds and the drift of mist
+- [x] Companies: idle, march, attack, gather and death, eased from clip to clip
+- [x] Works: construction from scaffold to finish, and each upgrade
+- [x] Combat: arrows, clashes, sparks, the flash and its light, splinters, the fallen
+- [x] Ambience: smoke, embers, fireflies, banners, torches, birds and the drift of mist
+- [x] Skill effects for commanders' fury
 
 ### 4. Sound and music
-- [ ] A sound for every order and every event, checked by a test that none is silent
-- [ ] Music that follows peace and war
+- [x] A sound for every order and every event, checked by a test that none is silent
+- [x] Music that follows peace and war
+- [ ] Recorded music and foley
 
 ### 5. Depth of systems
-- [ ] Research: a tree of studies with prerequisites, costs and time, each changing the rules it names
-- [ ] Troop tiers, unlocked by research and the Muster Hall
-- [ ] Commanders: heroes with skills, experience and levels, who lead marches
-- [ ] Gathering: stores in the land, worked by companies sent to them
-- [ ] Alliances of many Houses, with their own counsel and help
-- [ ] Rallies: several Houses' companies joined against one target
-- [ ] Marches across the map that take time to arrive
-- [ ] Events: realm-wide happenings with their own goals and rewards
-- [ ] Progress: a keeper's renown and rewards that carry across ages
+- [x] Research: a tree of studies with prerequisites, costs and time, each changing the rules it names
+- [x] Troop tiers, unlocked by research and the Muster Hall
+- [x] Commanders: heroes with skills, experience and levels, who lead companies
+- [x] Gathering: stores in the land, worked by companies sent to them
+- [x] Alliances of many Houses, with help and words of their own
+- [x] Rallies: several Houses' companies joined against one target
+- [x] Marches across the map that take time to arrive
+- [x] Events: realm-wide happenings with their own goals and rewards
+- [x] Progress: a keeper's renown and rewards that carry across ages
+- [ ] Equipment, talents, territory and the rest of RoK's breadth
 
 ### 6. Interface and onboarding
-- [ ] A screen for every system above, keyboard and VoiceOver included
-- [ ] An onboarding that teaches the first hour in play
+- [x] A screen for every system above, keyboard and VoiceOver included
+- [x] An onboarding that teaches the first hour in play
+- [ ] Illustrated art for the interface, and a voiced advisor
 
 ## The order of the work
 
@@ -75,6 +82,7 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 4. The live connection and the multiplayer test.
 5. Sound for every action, and music by the state of the realm.
 6. The onboarding over all of it.
+7. Next: battles that last; textured detail; equipment and talents; sound placed in the world.
 
 What only a person can do stays as it was: raising the realm on maincloud
 with the maintainer's account, signing and notarizing the release, and

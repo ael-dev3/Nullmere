@@ -140,23 +140,26 @@ extension GameState {
         return march(unitID)
     }
 
-    /// Moves a unit along its route as far as its moves allow this watch.
+    /// Moves a unit along its route as far as its moves allow this watch,
+    /// or, at a pace, keeping back so many of them for the paces to come.
     /// The route is planned once: it steers round every other company, so
     /// only its end, the destination itself, can be held by another.
-    mutating func march(_ unitID: Int) -> [GameEvent] {
+    mutating func march(_ unitID: Int, keeping reserve: Int? = nil) -> [GameEvent] {
         guard var index = unitIndex(unitID) else { return [] }
         var steps: [Hex] = []
         var events: [GameEvent] = []
         var route: [Hex] = []
-        while let destination = units[index].destination, units[index].movesLeft > 0 {
+        while let destination = units[index].destination, units[index].movesLeft > max(reserve ?? 0, 0) {
             let unit = units[index]
             if route.isEmpty {
                 // No way there: into ground still unknown to its House, it
-                // goes as near as it can; known ground unreachable ends it.
+                // goes as near as it can; known ground unreachable ends it,
+                // as the watch turns. At a pace, a way shut for a while
+                // (a company standing in a pass) is waited out.
                 let way = path(for: unit, to: destination)
                     ?? (isExplored(destination, by: unit.owner) ? nil : approach(for: unit, toward: destination))
                 guard let planned = way, !planned.isEmpty else {
-                    units[index].destination = nil
+                    if reserve == nil { units[index].destination = nil }
                     break
                 }
                 route = planned

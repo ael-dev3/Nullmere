@@ -138,10 +138,13 @@ extension GameState {
     /// it is in reach of its hold, or it can come no nearer, strikes it
     /// together. Companies keeping the gates of a hold no longer an ally's
     /// go back to their House's orders.
-    mutating func advanceRallies() -> [GameEvent] {
+    /// As the watch turns, rallies gather, set out, march and strike; in a
+    /// realm, whose watch passes pace by pace, the march and the strike
+    /// are the paces' (`marching` false), and the turn only gathers.
+    mutating func advanceRallies(marching: Bool = true) -> [GameEvent] {
         var events: [GameEvent] = []
         for rally in ralliesStanding.sorted(by: { $0.id < $1.id }) {
-            events += advance(rally.id)
+            events += advance(rally.id, marching: marching)
         }
         for index in units.indices {
             guard case .reinforce(let holdID)? = units[index].errand else { continue }
@@ -153,7 +156,18 @@ extension GameState {
         return events
     }
 
-    private mutating func advance(_ rallyID: Int) -> [GameEvent] {
+    /// The hosts on the march walk their share of the watch's moves by a
+    /// pace, or, as the watch turns (no pace), the rest of them; each
+    /// strikes the moment it is there.
+    mutating func walkRallies(by pace: Int?) -> [GameEvent] {
+        var events: [GameEvent] = []
+        for rally in ralliesStanding.sorted(by: { $0.id < $1.id }) where rally.marching {
+            events += advance(rally.id, by: pace)
+        }
+        return events
+    }
+
+    private mutating func advance(_ rallyID: Int, marching: Bool = true, by pace: Int? = nil) -> [GameEvent] {
         guard let index = rallyIndex(rallyID) else { return [] }
         let rally = rallies![index]
         // Its cause: a caller standing and sworn, its muster still its own,
@@ -186,13 +200,15 @@ extension GameState {
         } else if host.isEmpty || watch - rally.setsOut > Rally.marchLimit {
             return disperse(rallyID)
         }
-        return events + marchHost(rallyID, on: target)
+        guard marching else { return events }
+        return events + marchHost(rallyID, on: target, by: pace)
     }
 
-    /// The host's march this watch, and its strike once it is there.
-    private mutating func marchHost(_ rallyID: Int, on target: Hold) -> [GameEvent] {
+    /// The host's march this watch, or its share of it by a pace, and its
+    /// strike once it is there.
+    private mutating func marchHost(_ rallyID: Int, on target: Hold, by pace: Int? = nil) -> [GameEvent] {
         let host = rally(rallyID)!.companies
-        let pace = host.map { movement(of: unit($0)!) }.min()!
+        let slowest = host.map { movement(of: unit($0)!) }.min()!
         var events: [GameEvent] = []
         var moved = false
         for id in host {
@@ -201,16 +217,23 @@ extension GameState {
             guard unit.position.distance(to: target.position) > unit.kind.range,
                   let stop = path(for: unit, to: target.position)?.first(where: { $0.distance(to: target.position) <= unit.kind.range })
             else { continue }
-            units[index].movesLeft = min(unit.movesLeft, pace)
+            units[index].movesLeft = min(unit.movesLeft, slowest)
             units[index].destination = stop
-            let marched = march(id)
+            let marched = march(id, keeping: pace.map { slowest - GameState.allowance(of: slowest, by: $0) })
             // The host goes where the rally leads, not where it was last sent.
             if let after = unitIndex(id) { units[after].destination = nil }
             moved = moved || marched.contains { if case .moved = $0 { return true } else { return false } }
             events += marched
         }
         let inReach = host.filter { id in unit(id).map { $0.position.distance(to: target.position) <= $0.kind.range } ?? false }
-        guard inReach.count == host.count || (!moved && !inReach.isEmpty) else { return events }
+        // Short of the whole host there, it strikes with those in reach only
+        // if the rest can go no further this watch, though they could walk:
+        // the way shut. Never at a pace, when the rest may yet come up.
+        let shut = pace == nil && !moved && host.allSatisfy { id in
+            guard let unit = unit(id) else { return true }
+            return unit.position.distance(to: target.position) <= unit.kind.range || unit.movesLeft > 0
+        }
+        guard inReach.count == host.count || (shut && !inReach.isEmpty) else { return events }
         return events + strikeTogether(rallyID, at: target)
     }
 

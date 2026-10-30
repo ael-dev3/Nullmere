@@ -90,6 +90,9 @@ public struct GameState: Codable, Equatable, Sendable {
     var words: [Word]?
     /// The rallies gathering or on the march; absent in saves from before them.
     var rallies: [Rally]?
+    /// How far the watch has been walked, in a realm, whose watch passes
+    /// pace by pace; absent in a world whose marches go as each watch turns.
+    public internal(set) var pacing: Pacing?
     /// The happening of the realm under way, if any.
     public internal(set) var happening: Happening?
     /// The deeds the Houses have done this age; absent before any.

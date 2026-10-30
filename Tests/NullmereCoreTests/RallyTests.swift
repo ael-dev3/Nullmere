@@ -248,6 +248,58 @@ final class RallyTests: XCTestCase {
         XCTAssertEqual(state.problems(), [])
     }
 
+    func testInARealmAHostWalksThroughTheWatchAndStrikesAsItArrives() throws {
+        let stage = try staged("paced host")
+        var state = stage.state
+        let me = stage.me
+        // Every House kept by its keeper, so no steward stirs, and the
+        // watch walked pace by pace, as in a realm.
+        for index in state.houses.indices { state.houses[index].isPlayer = true }
+        state.pacing = Pacing()
+        state.holds[try XCTUnwrap(state.holdIndex(stage.seat))].levels[.musterHall] = 1
+        _ = try state.perform(.callRally(from: stage.seat, against: stage.target, watches: 1), as: me)
+        let id = try XCTUnwrap(state.ralliesStanding.first).id
+        let host = [try company(.spear, of: me, near: stage.seatHex, in: &state), try company(.bow, of: me, near: stage.seatHex, in: &state)]
+        for unit in host {
+            _ = try state.perform(.joinRally(rally: id, unit: unit), as: me)
+        }
+        func moved(_ events: [GameEvent]) -> Bool {
+            events.contains { event in
+                if case .moved(let unit, _) = event { return host.contains(unit) }
+                return false
+            }
+        }
+        var setOut: [GameEvent] = []
+        for _ in 0..<4 where !setOut.contains(where: { if case .rallySetOut = $0 { return true } else { return false } }) {
+            setOut = state.endWatch()
+        }
+        XCTAssertEqual(state.rally(id)?.marching, true, "Gathered and set out as the watch turned")
+        XCTAssertFalse(moved(setOut), "It walks through the watch, not in a burst at its turn")
+
+        var struckAt: (watch: Int, pace: Int)?
+        var paces: [Int] = []
+        for _ in 0..<Rally.marchLimit where struckAt == nil {
+            for pace in 1..<GameState.pacesPerWatch where struckAt == nil {
+                let events = state.walk(to: pace)
+                if moved(events) { paces.append(pace) }
+                if events.contains(where: { if case .rallyStruck = $0 { return true } else { return false } }) {
+                    struckAt = (state.watch, pace)
+                }
+            }
+            if struckAt == nil {
+                let turn = state.endWatch()
+                XCTAssertFalse(turn.contains { if case .rallyStruck = $0 { return true } else { return false } },
+                               "Struck as it arrived, not left for the turn")
+            }
+        }
+        let strike = try XCTUnwrap(struckAt, "The host never struck")
+        XCTAssertLessThan(strike.pace, GameState.pacesPerWatch, "Struck partway through a watch")
+        XCTAssertFalse(paces.isEmpty)
+        XCTAssertTrue(paces.allSatisfy { [1, 7].contains($0) }, "The Spears' pace sets the host's: steps at the first and seventh paces, not \(paces)")
+        XCTAssertNil(state.rally(id))
+        XCTAssertEqual(state.problems(), [])
+    }
+
     func testAHostTakesAHoldItBreaks() throws {
         let stage = try staged("a hold taken")
         var state = stage.state

@@ -18,7 +18,7 @@ enum Guide {
     static let sections: [Section] = [
         Section(title: "The watch", lines: [
             "The lake is one world, shared by every keeper in the realm. Each turn is a watch: give your orders, then say you're ready with ⌘↩.",
-            "The watch turns when every keeper there is ready, or when its time runs out; while any keeper whose House stands is away, it lasts at least a third of its time. Your orders take effect as you give them; when the watch turns, the stewards play the seats no keeper holds, holds yield, works rise and companies march on.",
+            "The watch turns when every keeper there is ready, or when its time runs out; while any keeper whose House stands is away, it lasts at least a third of its time. Your orders take effect as you give them. Through the watch, companies on the march walk on, a step at a time, hosts strike the moment they are there, and the stewards play the seats no keeper holds, each at its own moment; when it turns, holds yield, works rise and companies are fresh again.",
             "The realm keeps the world. Leave, or leave the game open with no one at your Mac for five minutes, and after two watches away a caretaker keeps your House for you: it answers envoys, builds and trains, guards your holds, fights on in wars already begun and sues for peace in one going badly, but begins no war, demand or pact. It takes the peace a steward would take to end a war, but swears you no pact, which would lend your sight to another, and never bends the knee for you, though it takes a House offering fealty as your vassal. An empty realm sleeps until a keeper returns.",
         ]),
         Section(title: "The land", lines: [
@@ -66,7 +66,7 @@ enum Guide {
         Section(title: "Alliances and rallies", lines: [
             "Raise a banner in Alliance (5), or ask to join one; its leader invites and admits. An alliance takes a third of the lake's seats at most. Allies share their sight, can't make war on each other, and help each other's works, musters and studies: every second help takes a watch off.",
             "Words (7) carry a line to every keeper of the realm, or to your alliance alone: plain words, with no addresses.",
-            "Call a rally from an enemy hold's panel: your alliance's companies gather at your hold with a Muster Hall for one to four watches, then march together at the slowest's pace and strike together. Send a company to keep an ally's gates, and it strikes back at those who strike them.",
+            "Call a rally from an enemy hold's panel: your alliance's companies gather at your hold with a Muster Hall for one to four watches, then march together at the slowest's pace and strike together the moment all are there. Send a company to keep an ally's gates, and it strikes back at those who strike them.",
         ]),
         Section(title: "Happenings and charges", lines: [
             "From the tenth watch, a happening comes round every thirty, for ten watches: the Long Hunt, the Harvest Fair, the Raising, the Great Muster and the Learned Season. Points bring stores at 10, 25 and 50, and the three foremost are honoured as it ends. The Realm (6) shows it.",

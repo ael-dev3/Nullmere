@@ -576,9 +576,9 @@ realm; keepers are told in plain words, never a status code.
   two more for each level of its Muster Hall. The caller and its allies at
   war with the same House send companies of war to it. When the gathering
   is done, those at the muster set out as one host, march at the pace of the
-  slowest, and once all of it is in reach strike the hold together in the
-  one watch, arrows first, before its ward can mend; a company that breaks
-  the ward takes the hold. Only the rally's side knows of it until it sets
+  slowest, and the moment all of it is in reach strike the hold together,
+  arrows first, before its ward can mend; a company that breaks the ward
+  takes the hold. Only the rally's side knows of it until it sets
   out; then the House it marches on knows too. A rally whose cause is gone
   (peace, its caller out of the alliance, its muster lost), whose muster is
   empty when it should set out, or whose host can't come to its hold within
@@ -597,6 +597,14 @@ realm; keepers are told in plain words, never a status code.
   sight on the march, the way it goes as far as they see it, never where
   it is bound. The ways are worked out on the keeper's own view of the
   land, so none bends round what they can't see.
+- **Paces.** A realm's watch isn't resolved all at once as it turns; it
+  passes in twelve paces. At each, every company on the march takes its
+  share of the watch's moves, a step at a time, and every host on the
+  march walks on and strikes the moment it is there; each steward gives
+  its orders at a pace of its own, spread through the watch. Keepers see
+  the steps as they are taken. As the watch turns, whatever the paces left
+  (the watch turning early, a way shut for a while) is walked first, so a
+  march goes as far in a watch as ever; the last pace is the turn's own.
 - **Happenings.** From the tenth watch, and every thirty after, the realm
   holds a happening for ten watches: the Long Hunt (companies of the wilds
   struck down, the greater the more), the Harvest Fair (stores brought home
@@ -623,6 +631,28 @@ realm; keepers are told in plain words, never a status code.
   did, ten if it stood at the end, fifty and a title for the age's victor,
   and its deeds join those of their other ages. Nothing else carries into
   the next age: there every House begins alike.
+- **Words.** A keeper says a line to every keeper of the realm, or to their
+  alliance alone: plain words, a hundred and forty letters at most, with no
+  addresses, twenty lines a watch. The realm keeps the latest eighty; an
+  alliance's words reach only its own Houses.
+- **The screens.** Each system has its panel, on a key, in the Watch menu
+  and on a row of buttons by the corner: the Archive (3) with the whole
+  tree of studies, each grade's gain, price and time and why one can't be
+  begun yet; Commanders (4), each with its level, experience and skills, set
+  at the head of the company chosen or called back; Alliance (5), to raise
+  a banner, ask, invite, answer, help, keep an ally's gates and send a
+  company to a rally; the Realm (6), with the happening under way and its
+  foremost, the charges kept, every deed, might and renown; and Words (7).
+  The Chronicle switches to the House's battle reports: each battle and
+  each blow on the wilds, how it came out, who struck whom, the blows and
+  the fallen. A small map of the whole lake sits in the corner; a click
+  there carries the view. Training chooses the tier; an enemy hold's panel
+  calls a rally against it; a company says its tier, its commander and what
+  it was sent to do;
+  the wilds and the sites are named on hover and read to VoiceOver. Once
+  the first steps are done, the charge before the House sits in the corner,
+  saying how to keep it, with Show me to open the panel or choose what
+  keeps it, and its reward: the first hour, taught in play.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is
@@ -714,7 +744,7 @@ world, so there is nothing to save.
 | Key | Action |
 | --- | --- |
 | Click | Select a company, hold or tile |
-| Right-click | March the selected company there, or strike the enemy there. Hovering an enemy in reach shows the battle's odds first |
+| Right-click | March the selected company there, strike the enemy or the wilds there, or gather at a site of the land. Hovering an enemy in reach shows the battle's odds first |
 | Drag, two-finger scroll | Pan; pinch, ⌘-scroll or a mouse wheel zooms |
 | Tab or . | Next company waiting for orders |
 | ] / [ | Every company in turn, forward or back, marching, fortified or spent too |
@@ -725,6 +755,7 @@ world, so there is nothing to save.
 | Arrows or WASD, + − | Pan, zoom |
 | Page Up / Page Down | Scroll the open panel, or the chosen hold's |
 | 1 / 2 / ? or ⌘? | Houses / Chronicle / Guide |
+| 3 / 4 / 5 / 6 / 7 | Archive / Commanders / Alliance / the Realm / Words |
 | Esc | Close a panel, then clear the selection |
 | ⌘↩ | Ready: done with this watch's orders (click Waiting to take it back) |
 | ⇧⌘↩ | Stay ready until something needs you, up to ten watches |

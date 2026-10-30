@@ -2,7 +2,10 @@ extension GameState {
     /// Ends the current watch: rival Houses act, then the world turns. Holds
     /// bring in their yield, armies eat, works and training advance, wards
     /// mend, the wounded heal, marches continue, rallies gather, march and
-    /// strike, and the chronicle notes whether anyone has won.
+    /// strike, and the chronicle notes whether anyone has won. In a realm,
+    /// whose watch passes pace by pace, marches and rallies have walked and
+    /// stewards given their orders through the watch; its turn walks only
+    /// what is left, and gathers the rallies setting out.
     /// `keptFor` names kept Houses whose keepers are away, which a
     /// caretaker plays in their turn among the stewards.
     @discardableResult
@@ -11,12 +14,17 @@ extension GameState {
         var events: [GameEvent] = []
         // A world from before commanders takes them up now.
         if commanders == nil { raiseFirstCommanders() }
+        // In a realm, whose watch passes pace by pace, what the paces left
+        // unwalked (the watch turning early, or a pace's way shut) is
+        // walked now, before the stewards still to act look at the lake.
+        if isPaced { events += walkTheRest() }
 
         // Rivals act first; whether anyone has won is weighed once the
         // watch has turned (checkForEnd), never partway through. Who goes
         // first goes round the lake, watch by watch: no seat always first
-        // to a site, a march or a trade.
-        for house in stewardOrder(keptFor: absent) {
+        // to a site, a march or a trade. In a realm, a steward that gave
+        // its orders at its pace has given them.
+        for house in stewardOrder(keptFor: absent) where pacing?.stewarded.contains(house) != true {
             events += RivalMind(house: house, caretaking: houses[house].isPlayer).takeTurn(in: &self)
         }
         // What the stewards did counted as they did it; what the watch
@@ -36,6 +44,7 @@ extension GameState {
             units[index].acted = false
         }
         watch += 1
+        if isPaced { pacing = Pacing() }
         turnOmens()
         forgetOldGifts()
         // An envoy unanswered is an envoy refused.
@@ -46,10 +55,13 @@ extension GameState {
             events += refuseTribute(demandedBy: envoy.from, of: envoy.to)
         }
 
-        for unit in units.sorted(by: { $0.id < $1.id }) where unit.destination != nil {
-            events += march(unit.id)
+        // Marches go on into the new watch: at once, or, in a realm, pace by pace.
+        if !isPaced {
+            for unit in units.sorted(by: { $0.id < $1.id }) where unit.destination != nil {
+                events += march(unit.id)
+            }
         }
-        events += advanceRallies()
+        events += advanceRallies(marching: !isPaced)
         events += workTheLand()
         raiseWilds()
         raiseSites()

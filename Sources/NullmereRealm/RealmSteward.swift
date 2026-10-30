@@ -242,6 +242,14 @@ public actor RealmSteward {
             if !problems.isEmpty {
                 report("The world is unsound at watch \(state.world.watch): " + problems.prefix(3).joined(separator: "; "))
             }
+        } else {
+            // The watch walked on a pace: what came of it is heard by every
+            // keeper there, as another's orders are, and the pace kept, so a
+            // steward starting anew doesn't walk it twice.
+            let walked = state.world.pacing
+            let paced = state.pace(now: now)
+            if !paced.isEmpty { pendingActs.append(("", paced)) }
+            if state.world.pacing != walked { changed = true }
         }
         if changed { worldChanged = true }
         let status = state.status(now: now)

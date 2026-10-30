@@ -161,14 +161,19 @@ public struct RealmState: Codable, Equatable, Sendable {
     }
 
     static func world(seed: String, age: Int, seats: Int, radius: Int) -> GameState {
-        GameState(settings: GameSettings(seedText: "\(seed) · age \(age)", houseCount: seats, radius: radius, keepers: 0,
-                                         lake: Lake.of(age: age)))
+        var world = GameState(settings: GameSettings(seedText: "\(seed) · age \(age)", houseCount: seats, radius: radius, keepers: 0,
+                                                     lake: Lake.of(age: age)))
+        // A realm's watch passes pace by pace: marches walk through it.
+        world.pacing = Pacing()
+        return world
     }
 
     /// A realm kept from before the moon's water was found as the world was
-    /// made: found now, on the whole map.
+    /// made: found now, on the whole map; and one from before its watches
+    /// passed pace by pace, walked so from now on.
     public mutating func fillIn() {
         if world.moonWater == nil { world.moonWater = world.map.deepestWater() }
+        if world.pacing == nil { world.pacing = Pacing() }
     }
 
     public func keeper(_ id: String) -> Keeper? {
@@ -441,6 +446,16 @@ public struct RealmState: Codable, Equatable, Sendable {
         return world.stewardTurn(for: house)
     }
 
+    /// Walks the watch on to the pace its time has come to, if anyone is
+    /// there to see it: companies on the march step, hosts walk and strike,
+    /// and stewards whose pace it is give their orders. What came of it;
+    /// nothing if no pace was due.
+    public mutating func pace(now: Double) -> [GameEvent] {
+        guard keepers.contains(where: \.isOnline), world.outcome == nil, watchLength > 0 else { return [] }
+        let due = Int(((now - watchBegan) / watchLength * Double(GameState.pacesPerWatch)).rounded(.down))
+        return world.walk(to: due, keptFor: caretaken)
+    }
+
     /// Turns the watch once its time is up, if anyone is there to see it.
     public mutating func tick(now: Double) -> [GameEvent]? {
         guard keepers.contains(where: \.isOnline) else { return nil }
@@ -465,10 +480,14 @@ public struct RealmState: Codable, Equatable, Sendable {
         for index in keepers.indices where !keepers[index].isOnline {
             keepers[index].watchesAway = (keepers[index].watchesAway ?? 0) + 1
         }
-        let absent = keepers.filter { keeper in
+        return world.endWatch(keptFor: caretaken)
+    }
+
+    /// The Houses kept for keepers away two watches or more.
+    private var caretaken: Set<Int> {
+        Set(keepers.filter { keeper in
             !keeper.isOnline && (keeper.watchesAway ?? 0) >= RealmState.caretakerAfter
-        }.compactMap(\.house)
-        return world.endWatch(keptFor: Set(absent))
+        }.compactMap(\.house))
     }
 
     /// The next age: a fresh lake, and every keeper seated again in the

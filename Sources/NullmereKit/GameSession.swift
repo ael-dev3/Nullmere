@@ -120,6 +120,9 @@ public final class GameSession {
     @ObservationIgnored var stage: WorldStage?
     /// Which way each company faces: toward where it last marched or struck.
     @ObservationIgnored var headings: [Int: Float] = [:]
+    /// Where each company stood before the realm's latest world was taken:
+    /// where the steps heard with it set out from.
+    @ObservationIgnored var beforeAdopted: [Int: Hex] = [:]
     /// Each hold's work rising, as last drawn.
     @ObservationIgnored var risings: [Int: Rising] = [:]
     /// Each company's clip as last drawn, and the one it is easing out of.
@@ -768,10 +771,15 @@ public final class GameSession {
         case .settled(let world, _), .changed(let world):
             adopt(world)
         case .heard(let events):
-            // Others' doings, told as they happen, and a blow seen as struck.
+            // Others' doings, told as they happen, a blow seen as struck,
+            // and companies on the march walking on through the watch, from
+            // where they stood before the world that came with them.
             report(events)
-            showBlows(events)
-            for cue in Self.cues(for: events, in: state, player: player) where cue != .watch {
+            showMarches(events, from: beforeAdopted)
+            showBlows(events, from: beforeAdopted)
+            // A step on the march is seen, not sounded: the order sounded once.
+            let sounded = events.filter { if case .moved = $0 { return false } else { return true } }
+            for cue in Self.cues(for: sounded, in: state, player: player) where cue != .watch {
                 onCue?(cue)
             }
         case .answered(let events):
@@ -820,6 +828,7 @@ public final class GameSession {
     /// Takes the realm's world as it is, where it differs from ours.
     private func adopt(_ world: GameState) {
         guard world != state else { return }
+        beforeAdopted = positions()
         state = world
         if case .unit(let id) = selection, state.unit(id) == nil { selection = .none }
         if case .hold(let id) = selection, state.hold(id) == nil { selection = .none }

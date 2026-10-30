@@ -43,11 +43,22 @@ public final class LocalRealm {
 
     public var status: RealmStatus { state.status(now: clock()) }
 
-    /// Turns the watch if its time has run out.
+    /// Turns the watch if its time has run out, or walks it on a pace.
     public func tick() {
         let age = state.age
-        guard let events = state.tick(now: clock()) else { return }
-        turned(events, since: age)
+        if let events = state.tick(now: clock()) {
+            turned(events, since: age)
+            return
+        }
+        let walked = state.world.pacing
+        let paced = state.pace(now: clock())
+        guard state.world.pacing != walked else { return }
+        persist()
+        for identity in links.keys {
+            deliver(.changed(world(for: identity)), to: identity)
+            let news = heard(paced, by: identity)
+            if !news.isEmpty { deliver(.heard(news), to: identity) }
+        }
     }
 
     /// A steward plays a keeper's House for some watches, the watch turning
