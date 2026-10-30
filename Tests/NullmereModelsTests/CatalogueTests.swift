@@ -192,11 +192,39 @@ final class CatalogueTests: XCTestCase {
         }
     }
 
+    /// Each people builds its keep its own way, its walls, roof and crown
+    /// over the common keep's shape; the common keep is as it was.
+    func testEachPeopleBuildsItsKeepItsOwnWay() {
+        var looks: [[Vec3]] = []
+        for heritage in Heritage.allCases {
+            for seat in [false, true] {
+                let key = ModelKey.keepOf(heritage, seat: seat)
+                let own = Library.model(key).mesh, common = Library.model(.keep(seat: seat)).mesh
+                let colours = own.vertices.map(\.color)
+                XCTAssertNotEqual(colours, common.vertices.map(\.color), "\(key) is not the common keep")
+                XCTAssertFalse(looks.contains(colours), "\(key) like no other")
+                looks.append(colours)
+                XCTAssertTrue(own.vertices.contains { $0.material == .house }, "\(key) keeps its House's roof and banner")
+                XCTAssertEqual(Library.smoke(of: key), Library.smoke(of: .keep(seat: seat)))
+                XCTAssertTrue(own.vertices.contains { $0.surface == .stone || $0.surface == .timber }, "\(key)'s walls keep their grain")
+                XCTAssertEqual(key.canonical, key)
+            }
+        }
+        func mesh(_ heritage: Heritage) -> Mesh { Library.model(.keepOf(heritage, seat: true)).mesh }
+        XCTAssertTrue(mesh(.saltborn).vertices.contains { $0.material == .crystal }, "Moonsalt crowns the Saltborn's")
+        XCTAssertTrue(mesh(.saltborn).vertices.contains { $0.color == Palette.saltCrust && $0.surface == .stone })
+        XCTAssertTrue(mesh(.strandfolk).vertices.contains { $0.material == .glow && $0.color == Palette.fire }, "A beacon burns on the Strandfolk's")
+        XCTAssertTrue(mesh(.moundClans).vertices.contains { $0.color == Palette.moss && $0.surface == .earth }, "Turf on the Mound Clans'")
+        XCTAssertTrue(mesh(.blackwood).vertices.contains { $0.color == Palette.barkBlack && $0.surface == .timber }, "Shingle on the Blackwood's")
+        XCTAssertGreaterThan(mesh(.blackwood).bounds.max.y, Library.model(.keep(seat: true)).mesh.bounds.max.y - 0.001)
+        XCTAssertEqual(Library.model(.keep(seat: true)).mesh, Holds.keep(seat: true, name: "seat keep").mesh, "The common keep as it was")
+    }
+
     func testFiguresAndKeepsWearTheirHouse() {
         for key in CatalogueTests.keys {
             let materials = Set(Library.model(key).mesh.vertices.map(\.material))
             switch key {
-            case .figure, .signature, .commander, .keep:
+            case .figure, .signature, .commander, .keep, .keepOf:
                 XCTAssertTrue(materials.contains(.house), "\(key) wears its House's colour")
             case .wild:
                 XCTAssertTrue(materials.isDisjoint(with: CatalogueTests.housely), "\(key) answers to no House")
@@ -289,7 +317,7 @@ final class CatalogueTests: XCTestCase {
             case .figure, .signature, .wild, .commander:
                 XCTAssertNotNil(model.motion, "\(key)")
                 XCTAssertGreaterThanOrEqual(model.rig.count, 17, "\(key) has a body's parts")
-            case .furnishing, .scaffold, .site, .keep, .walls, .prop(.arrow), .shrine, .lair, .standard:
+            case .furnishing, .scaffold, .site, .keep, .keepOf, .walls, .prop(.arrow), .shrine, .lair, .standard:
                 XCTAssertNil(model.motion, "\(key) stands still")
             case .prop:
                 XCTAssertNotNil(model.motion, "\(key)")

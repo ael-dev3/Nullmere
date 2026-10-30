@@ -46,6 +46,7 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 - [x] Moonlight, firelight and the world's own lights; the render's frame times measured in CI
 - [x] Textured detail: every model's stone, timber, thatch, slate and earth drawn with its grain in the shader, fading to its mean with distance; the ground's own grain
 - [x] Weather: each omen's own over the world, rain and dimmed moon, banks of mist and thick haze, a clearer still night
+- [x] Each heritage's own architecture: a keep for each people, its walls, roof and crown its own, and a company of its own at the fifth tier in its people's gear
 - [ ] Hand-modelled detail at RoK's density
 
 ### 3. Animation
@@ -97,7 +98,7 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 4. The live connection and the multiplayer test.
 5. Sound for every action, and music by the state of the realm.
 6. The onboarding over all of it.
-7. Next: gear sets and crafting; an alliance fortress and alliance studies; each heritage's own architecture.
+7. Next: alliance studies and an alliance fortress; gear sets and crafting; each people's works in its own style.
 
 What only a person can do stays as it was: raising the realm on maincloud
 with the maintainer's account, signing and notarizing the release, and

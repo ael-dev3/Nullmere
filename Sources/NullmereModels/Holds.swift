@@ -1,38 +1,123 @@
 import Foundation
+import NullmereCore
+
+/// How a people builds its keep: the stone or timber of its walls, the trim
+/// of its parapet and hall, its roof and how steep, and what crowns the
+/// tower. The common keep is dressed grey stone under slate.
+struct KeepStyle {
+    enum Crown {
+        case none
+        /// Moonsalt grown about the tower's peak.
+        case crystals
+        /// A beacon burning on the parapet, for boats on the dark water.
+        case beacon
+    }
+
+    var wall = Palette.stone
+    var dark = Palette.stoneDark
+    var trim = Palette.stonePale
+    var roof = Palette.slate
+    /// The grain drawn on the walls and on the roof, where their colours
+    /// alone would not say it.
+    var wallGrain: Surface?
+    var roofGrain: Surface?
+    /// The tower roof's height against the common keep's.
+    var pitch: Float = 1
+    var crown = Crown.none
+
+    static let common = KeepStyle()
+    /// The strand's blue-grey slate.
+    static let seaSlate = Vec3(0.26, 0.31, 0.37)
+
+    /// Each people's keep: the Saltborn's salt-white stone crowned with
+    /// moonsalt; the Fenfolk's weathered timber under steep reed; the
+    /// Blackwood Kin's dark timber under steeper shingle; the Spinewardens'
+    /// raw rock under a low slate roof; the Mound Clans' pale stone under
+    /// turf; the Strandfolk's whitewash under sea-slate, a beacon burning.
+    static func of(_ heritage: Heritage) -> KeepStyle {
+        switch heritage {
+        case .saltborn:
+            return KeepStyle(wall: Palette.saltCrust, dark: Palette.stonePale, trim: Palette.stoneWhite, roof: Palette.stoneWhite,
+                             wallGrain: .stone, roofGrain: .slate, crown: .crystals)
+        case .fenfolk:
+            return KeepStyle(wall: Palette.timberGrey, dark: Palette.timberDark, trim: Palette.timberPale, roof: Palette.reed,
+                             pitch: 1.5)
+        case .blackwood:
+            return KeepStyle(wall: Palette.timberDark, dark: Palette.bark, trim: Palette.timber, roof: Palette.barkBlack,
+                             roofGrain: .timber, pitch: 1.7)
+        case .spinewardens:
+            return KeepStyle(wall: Palette.rock, dark: Palette.stoneDark, trim: Palette.stone, roof: Palette.slate, pitch: 0.7)
+        case .moundClans:
+            return KeepStyle(wall: Palette.stonePale, dark: Palette.earth, trim: Palette.stoneWhite, roof: Palette.moss,
+                             roofGrain: .earth, pitch: 0.6)
+        case .strandfolk:
+            return KeepStyle(wall: Palette.linen, dark: Palette.stoneDark, trim: Palette.stoneWhite, roof: KeepStyle.seaSlate,
+                             wallGrain: .stone, roofGrain: .slate, crown: .beacon)
+        }
+    }
+}
 
 /// A hold's keep and walls, and the scaffold round a rising work.
 enum Holds {
     // MARK: The keep
 
-    /// A square stone tower over a hall, its roofs and pennant the House's;
-    /// a seat's tower stands higher between two round towers and flies the
-    /// House's great banner. It faces +z.
-    static func keep(seat: Bool, name: String) -> Model {
+    /// A square tower over a hall, its roofs and pennant the House's; a
+    /// seat's tower stands higher between two round towers and flies the
+    /// House's great banner. Its walls, roof and crown are its people's. It
+    /// faces +z.
+    static func keep(seat: Bool, name: String, style: KeepStyle = .common) -> Model {
         var b = MeshBuilder()
         let towerHeight: Float = seat ? 0.92 : 0.6
         let half: Float = seat ? 0.17 : 0.155
-        // A plinth of dressed stone, deep enough to stand on a slope.
-        b.lathe([(0.37, -0.3), (0.37, 0.025), (0.34, 0.045)], sides: 8, color: Palette.stoneDark, twist: .pi / 8)
-        // The tower, buttressed at its corners, its parapet corbelled out.
-        b.box(min: Vec3(-half, 0.03, -half - 0.05), max: Vec3(half, towerHeight, half - 0.05), color: Palette.stone)
-        for x in [-half, half] {
-            for z in [-half - 0.05, half - 0.05] {
-                b.place(.translation(Vec3(x, 0.03, z))) {
-                    $0.lathe([(0.045, 0), (0.035, towerHeight * 0.55), (0.0, towerHeight * 0.62)], sides: 4, color: Palette.stoneDark,
-                             twist: .pi / 4)
+        let parapet = half + 0.025
+        let roofHeight: Float = (seat ? 0.3 : 0.22) * style.pitch
+        b.with(surface: style.wallGrain) { b in
+            // A plinth of dressed stone, deep enough to stand on a slope.
+            b.lathe([(0.37, -0.3), (0.37, 0.025), (0.34, 0.045)], sides: 8, color: style.dark, twist: .pi / 8)
+            // The tower, buttressed at its corners, its parapet corbelled out.
+            b.box(min: Vec3(-half, 0.03, -half - 0.05), max: Vec3(half, towerHeight, half - 0.05), color: style.wall)
+            for x in [-half, half] {
+                for z in [-half - 0.05, half - 0.05] {
+                    b.place(.translation(Vec3(x, 0.03, z))) {
+                        $0.lathe([(0.045, 0), (0.035, towerHeight * 0.55), (0.0, towerHeight * 0.62)], sides: 4, color: style.dark,
+                                 twist: .pi / 4)
+                    }
                 }
             }
+            b.box(min: Vec3(-parapet, towerHeight - 0.01, -parapet - 0.05), max: Vec3(parapet, towerHeight + 0.06, parapet - 0.05),
+                  color: style.trim)
+            let corners = [Vec3(-parapet, 0, -parapet), Vec3(parapet, 0, -parapet), Vec3(parapet, 0, parapet), Vec3(-parapet, 0, parapet)]
+            for index in 0..<4 {
+                let a = corners[index] + Vec3(0, towerHeight + 0.06, -0.05), c = corners[(index + 1) % 4] + Vec3(0, towerHeight + 0.06, -0.05)
+                b.merlons(from: a, to: c, count: 3, size: Vec3(0.06, 0.05, 0.035), color: style.trim)
+            }
         }
-        let parapet = half + 0.025
-        b.box(min: Vec3(-parapet, towerHeight - 0.01, -parapet - 0.05), max: Vec3(parapet, towerHeight + 0.06, parapet - 0.05),
-              color: Palette.stonePale)
-        let corners = [Vec3(-parapet, 0, -parapet), Vec3(parapet, 0, -parapet), Vec3(parapet, 0, parapet), Vec3(-parapet, 0, parapet)]
-        for index in 0..<4 {
-            let a = corners[index] + Vec3(0, towerHeight + 0.06, -0.05), c = corners[(index + 1) % 4] + Vec3(0, towerHeight + 0.06, -0.05)
-            b.merlons(from: a, to: c, count: 3, size: Vec3(0.06, 0.05, 0.035), color: Palette.stonePale)
+        b.with(surface: style.roofGrain) {
+            $0.place(.translation(Vec3(0, 0, -0.05))) {
+                $0.hipRoof(width: half * 1.7, depth: half * 1.7, base: towerHeight + 0.04, height: roofHeight, color: style.roof)
+            }
         }
-        b.place(.translation(Vec3(0, 0, -0.05))) {
-            $0.hipRoof(width: half * 1.7, depth: half * 1.7, base: towerHeight + 0.04, height: seat ? 0.3 : 0.22, color: Palette.slate)
+        switch style.crown {
+        case .none:
+            break
+        case .crystals:
+            // Moonsalt grown about the peak, round the banner's pole.
+            let peak = towerHeight + 0.04 + roofHeight
+            b.with(material: .crystal) {
+                for (index, offset) in [Vec3(0.03, 0, -0.03), Vec3(-0.032, 0, -0.06), Vec3(0.006, 0, -0.088)].enumerated() {
+                    let tall = 0.07 + 0.025 * Float(index)
+                    $0.place(.translation(offset + Vec3(0, peak - 0.05, 0))) {
+                        $0.cone(sides: 5, radius: 0.016, to: tall, color: Palette.moonsalt, twist: Float(index))
+                    }
+                }
+            }
+        case .beacon:
+            // A brazier on the parapet's seaward corner, burning.
+            let corner = Vec3(parapet - 0.03, towerHeight + 0.06, parapet - 0.08)
+            b.box(min: corner + Vec3(-0.025, 0, -0.025), max: corner + Vec3(0.025, 0.035, 0.025), color: style.dark)
+            b.with(material: .glow) {
+                $0.box(min: corner + Vec3(-0.018, 0.035, -0.018), max: corner + Vec3(0.018, 0.07, 0.018), color: Palette.fire)
+            }
         }
         // Lit windows high on the tower, on every face.
         for (facing, offset) in [(Float(0), Vec3(0, 0, half - 0.05)), (.pi, Vec3(0, 0, -half - 0.05)), (.pi / 2, Vec3(half, 0, -0.05)),
@@ -43,15 +128,19 @@ enum Holds {
         }
         // The hall before it, roofed in the House's colour.
         let hallFront: Float = seat ? 0.34 : 0.3
-        b.box(min: Vec3(-0.2, 0.03, half - 0.06), max: Vec3(0.2, 0.25, hallFront), color: Palette.stonePale)
+        b.with(surface: style.wallGrain) {
+            $0.box(min: Vec3(-0.2, 0.03, half - 0.06), max: Vec3(0.2, 0.25, hallFront), color: style.trim)
+        }
         b.with(material: .house) {
             $0.place(.translation(Vec3(0, 0, (half - 0.06 + hallFront) / 2)) * .rotationY(.pi / 2)) {
                 $0.gableRoof(width: hallFront - half + 0.06, depth: 0.4, base: 0.25, height: 0.13, color: Palette.house, overhang: 0.025)
             }
         }
         let flue = chimney(seat: seat)
-        b.box(min: Vec3(flue.x - 0.026, 0.22, flue.z - 0.026), max: Vec3(flue.x + 0.026, flue.y - 0.01, flue.z + 0.026),
-              color: Palette.stoneDark)
+        b.with(surface: style.wallGrain) {
+            $0.box(min: Vec3(flue.x - 0.026, 0.22, flue.z - 0.026), max: Vec3(flue.x + 0.026, flue.y - 0.01, flue.z + 0.026),
+                   color: style.dark)
+        }
         b.door(Vec3(0, 0.1, hallFront), width: 0.07, height: 0.13, facing: 0)
         for x in [Float(-0.12), 0.12] {
             b.window(Vec3(x, 0.15, hallFront), width: 0.03, height: 0.05, facing: 0)
@@ -65,8 +154,10 @@ enum Holds {
             // Two round towers flanking the keep, their cones the House's.
             for x in [Float(-0.26), 0.26] {
                 b.place(.translation(Vec3(x, 0.03, -0.08))) {
-                    $0.lathe([(0.09, 0), (0.085, 0.62), (0.105, 0.64), (0.105, 0.7)], sides: 8, color: Palette.stone)
-                    $0.merlonRing(radius: 0.098, base: 0.7, count: 6, size: Vec3(0.04, 0.045, 0.03), color: Palette.stonePale)
+                    $0.with(surface: style.wallGrain) {
+                        $0.lathe([(0.09, 0), (0.085, 0.62), (0.105, 0.64), (0.105, 0.7)], sides: 8, color: style.wall)
+                        $0.merlonRing(radius: 0.098, base: 0.7, count: 6, size: Vec3(0.04, 0.045, 0.03), color: style.trim)
+                    }
                     $0.with(material: .house) {
                         $0.cone(sides: 8, radius: 0.1, from: 0.69, to: 0.98, color: Palette.house)
                     }
@@ -74,7 +165,9 @@ enum Holds {
                 }
             }
             // A curtain between them behind the keep.
-            b.box(min: Vec3(-0.26, 0.03, -0.17), max: Vec3(0.26, 0.4, -0.08), color: Palette.stoneDark)
+            b.with(surface: style.wallGrain) {
+                $0.box(min: Vec3(-0.26, 0.03, -0.17), max: Vec3(0.26, 0.4, -0.08), color: style.dark)
+            }
         }
         return Model(name: name, mesh: b.mesh)
     }

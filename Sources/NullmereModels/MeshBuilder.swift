@@ -81,6 +81,15 @@ public struct MeshBuilder: Sendable {
     }
 
     /// Builds `body` as another part of the rig, with another material.
+    /// Draws with a grain of its own where colours alone would not say it;
+    /// none given, as the colours say.
+    public mutating func with(surface: Surface?, _ body: (inout MeshBuilder) -> Void) {
+        let saved = self.surface
+        if let surface { self.surface = surface }
+        body(&self)
+        self.surface = saved
+    }
+
     public mutating func with(part: UInt16? = nil, material: Material? = nil, sway: Float? = nil,
                               _ body: (inout MeshBuilder) -> Void) {
         let saved = (self.part, self.material, self.sway, self.swayRange)

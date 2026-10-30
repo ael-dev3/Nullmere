@@ -65,7 +65,8 @@ extension GameSession {
         for hold in state.holds where isExplored(hold.position) {
             let colour = WorldStage.colour(houses, sigil: state.houses[hold.owner].sigil)
             let (progress, finishing) = rising(of: hold, at: now, animated: full)
-            sights.append(HoldSight(hold: hold, colour: colour, progress: progress, finishing: finishing))
+            sights.append(HoldSight(hold: hold, colour: colour, progress: progress, finishing: finishing,
+                                    heritage: state.heritage(of: hold.owner)))
         }
         let (holds, hearths) = stage.holds(sights, time: t, into: &frame)
 
@@ -307,7 +308,7 @@ extension GameSession {
         for done in completions {
             guard let hold = state.hold(done.hold) else { continue }
             let key = HoldLayout.Work(done.kind).key(level: done.level).canonical
-            if let piece = stage.pieces(of: hold, progress: nil).first(where: { $0.key.canonical == key }) {
+            if let piece = stage.pieces(of: hold, progress: nil, heritage: state.heritage(of: hold.owner)).first(where: { $0.key.canonical == key }) {
                 happenings.finished.append(Happenings.Spot(at: piece.position, start: clock(done.at), seed: UInt32(done.hold)))
             }
         }

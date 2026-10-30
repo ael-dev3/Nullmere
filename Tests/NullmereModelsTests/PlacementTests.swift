@@ -123,7 +123,7 @@ final class PlacementTests: XCTestCase {
         let heart = SIMD2(centre.x, centre.z)
         let land = HoldLayout.land(of: plan.hex, relief: relief)
         let layout = HexLayout(size: 1)
-        XCTAssertEqual(pieces.first?.key, .keep(seat: plan.isSeat), file: file, line: line)
+        XCTAssertEqual(pieces.first?.key, plan.heritage.map { .keepOf($0, seat: plan.isSeat) } ?? .keep(seat: plan.isSeat), file: file, line: line)
         var works: [(SIMD2<Float>, Piece)] = []
         func ground(_ point: Vec3) -> Float { relief.height(atX: point.x, z: point.z) }
         /// Points over a footprint: its middle and two rings, finer than the layout samples.
@@ -140,7 +140,7 @@ final class PlacementTests: XCTestCase {
             XCTAssertEqual(piece.hex, layout.hex(atX: Double(at.x), y: Double(at.y)), "\(piece.key) names its hex", file: file, line: line)
             XCTAssertGreaterThan(piece.position.y, ground(piece.position) - 0.4, "\(piece.key) is not buried", file: file, line: line)
             switch piece.key {
-            case .keep:
+            case .keep, .keepOf:
                 XCTAssertLessThan((at - heart).length, 1e-4, file: file, line: line)
                 for point in footprint(piece.position, 0.36) {
                     XCTAssertLessThanOrEqual(piece.position.y + model.mesh.bounds.min.y, ground(point) + 1e-3,
@@ -275,6 +275,13 @@ final class PlacementTests: XCTestCase {
         XCTAssertTrue(pieces.contains { $0.key == .work(.granary, level: 3) })
         XCTAssertTrue(pieces.contains { $0.key == .study(level: 2) })
         XCTAssertTrue(pieces.contains { $0.key == .scaffold })
+        XCTAssertTrue(pieces.contains { $0.key == .keep(seat: hold.isSeat) }, "The common keep, its people unnamed")
+        // A House's people raise their own keep, in the same place.
+        let theirs = HoldLayout.pieces(HoldLayout.Plan(hold: hold, study: 2, progress: 0.3, heritage: .blackwood), relief: relief)
+        PlacementTests.check(theirs, HoldLayout.Plan(hold: hold, study: 2, progress: 0.3, heritage: .blackwood), relief)
+        let keep = try XCTUnwrap(theirs.first { $0.key == .keepOf(.blackwood, seat: hold.isSeat) })
+        XCTAssertEqual(keep.transform, try XCTUnwrap(pieces.first { $0.key == .keep(seat: hold.isSeat) }).transform)
+        XCTAssertEqual(theirs.count, pieces.count)
     }
 
     /// With room for every work, each keeps its place whatever else is

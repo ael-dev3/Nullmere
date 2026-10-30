@@ -145,12 +145,15 @@ public struct HoldSight: Equatable, Sendable {
     public var progress: Float?
     /// A work finished since it was last seen, rising the rest of the way.
     public var finishing: HoldLayout.Plan.Rising?
+    /// The people its House comes of, whose keep it raises.
+    public var heritage: Heritage?
 
-    public init(hold: Hold, colour: Vec4, progress: Float? = nil, finishing: HoldLayout.Plan.Rising? = nil) {
+    public init(hold: Hold, colour: Vec4, progress: Float? = nil, finishing: HoldLayout.Plan.Rising? = nil, heritage: Heritage? = nil) {
         self.hold = hold
         self.colour = colour
         self.progress = progress
         self.finishing = finishing
+        self.heritage = heritage
     }
 }
 
@@ -167,7 +170,7 @@ public final class WorldStage: @unchecked Sendable {
     private var furniture: [ModelBatch] = []
     /// Moves each time the furniture is laid out again.
     public private(set) var furnitureVersion = 0
-    private var laid: [Int: (hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising?, pieces: [Piece])] = [:]
+    private var laid: [Int: (hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising?, heritage: Heritage?, pieces: [Piece])] = [:]
     /// The land's height where figures have stood, by the 64th of a unit:
     /// worked out once, not each frame.
     private var grounds: [SIMD2<Int32>: Float] = [:]
@@ -291,24 +294,27 @@ public final class WorldStage: @unchecked Sendable {
     /// Where each work being raised stands, for the dust of its building.
     public func risingWorks(_ sights: [HoldSight]) -> [Vec3] {
         sights.flatMap { sight in
-            pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing)
+            pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage)
                 .filter { $0.progress < 1 && $0.key != .scaffold }.map(\.position)
         }
     }
 
     // MARK: Holds
 
-    /// A hold's pieces, laid out again only when it or its rising changes.
-    /// A work `finishing` stands at the level below it until it has risen.
-    public func pieces(of hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising? = nil) -> [Piece] {
-        if let kept = laid[hold.id], kept.hold == hold, kept.progress == progress, kept.finishing == finishing { return kept.pieces }
-        var plan = HoldLayout.Plan(hold: hold, progress: progress)
+    /// A hold's pieces, laid out again only when it, its rising or its
+    /// House's people change. A work `finishing` stands at the level below
+    /// it until it has risen.
+    public func pieces(of hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising? = nil, heritage: Heritage? = nil) -> [Piece] {
+        if let kept = laid[hold.id], kept.hold == hold, kept.progress == progress, kept.finishing == finishing, kept.heritage == heritage {
+            return kept.pieces
+        }
+        var plan = HoldLayout.Plan(hold: hold, progress: progress, heritage: heritage)
         if let finishing, plan.rising == nil {
             plan.levels[finishing.work] = finishing.level > 1 ? finishing.level - 1 : nil
             plan.rising = finishing
         }
         let made = HoldLayout.pieces(plan, relief: relief)
-        laid[hold.id] = (hold, progress, finishing, made)
+        laid[hold.id] = (hold, progress, finishing, heritage, made)
         return made
     }
 
@@ -320,7 +326,7 @@ public final class WorldStage: @unchecked Sendable {
         var poses: [PoseKey: UInt32] = [:]
         for sight in sights {
             let phase = WorldStage.phase(of: sight.hold.position, salt: sight.hold.id)
-            for piece in pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing) {
+            for piece in pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage) {
                 let model = Library.model(piece.key)
                 let palette = model.rig.count > 1
                     ? WorldStage.pose(piece.key, .idle, at: time + phase, shared: &poses, into: &frame) : 0

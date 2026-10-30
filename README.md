@@ -706,7 +706,14 @@ realm; keepers are told in plain words, never a status code.
   first time freely and after that for 30 moonsalt; every House hears of
   it and the chronicle keeps it. The seat briefing and the Houses screen
   say what each House comes of, and stewards able to muster their own
-  company at the fifth tier reach for it more often than not.
+  company at the fifth tier reach for it more often than not. Each people
+  raises its keeps its own way: the Saltborn in salt-white stone crowned
+  with moonsalt, the Fenfolk in weathered timber under steep reed, the
+  Blackwood Kin in dark timber under steeper shingle, the Spinewardens in
+  raw rock under a low slate roof, the Mound Clans in pale stone under
+  turf, the Strandfolk whitewashed under sea-slate with a beacon burning
+  on the parapet; a House that takes up another heritage raises its keeps
+  anew.
 - **The satchel.** Each House keeps items to use when it will, twenty of
   a kind at most: a Salt Hourglass brings a hold's work and muster a watch
   nearer, or the House's study (never its last watch: what is done is done

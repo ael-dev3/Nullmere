@@ -111,6 +111,15 @@ final class StageTests: XCTestCase {
         let done = stage.holds([HoldSight(hold: hold, colour: red)], time: 3, into: &rising).batches
         XCTAssertEqual(done.first { $0.key == .work(.sawpit, level: 1) }?.instances.first?.params.x, WorldStage.whole)
         XCTAssertNil(done.first { $0.key == .scaffold })
+
+        // Its House's people raise their own keep, its hall smoking as any.
+        var theirs = SceneFrame()
+        let built = stage.holds([HoldSight(hold: hold, colour: red, heritage: .moundClans)], time: 3, into: &theirs)
+        let raised = Set(built.batches.map(\.key))
+        XCTAssertTrue(raised.contains(.keepOf(.moundClans, seat: true)))
+        XCTAssertFalse(raised.contains(.keep(seat: true)))
+        XCTAssertEqual(built.hearths.count, hearths.count, "its hall smokes as the common keep's does")
+        XCTAssertEqual(stage.pieces(of: hold, progress: nil, heritage: .moundClans).first?.key, .keepOf(.moundClans, seat: true))
     }
 
     func testCompaniesStandInFormationOnTheLandUnderEachFigure() throws {

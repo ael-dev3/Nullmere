@@ -11,6 +11,9 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     case signature(Heritage)
     /// A hold's keep; a seat's stands taller and flies the House's banner.
     case keep(seat: Bool)
+    /// A hold's keep as its House's people build one: their walls, roof
+    /// and crown (see `KeepStyle`).
+    case keepOf(Heritage, seat: Bool)
     /// A hold's walls at their level.
     case walls(level: Int)
     /// A work at its level. A hold's walls are `walls(level:)`.
@@ -46,6 +49,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .figure(let kind, let tier): return "\(kind.rawValue) \(tier)"
         case .signature(let heritage): return "\(heritage.rawValue) own"
         case .keep(let seat): return seat ? "seat keep" : "keep"
+        case .keepOf(let heritage, let seat): return "\(heritage.rawValue) \(seat ? "seat keep" : "keep")"
         case .walls(let level): return "walls \(level)"
         case .work(let kind, let level): return "\(kind.rawValue) \(level)"
         case .scaffold: return "scaffold"
@@ -98,7 +102,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
             let count = ModelKey.commanderVariants
             return .commander(variant: (variant % count + count) % count)
         case .study(let level): return .study(level: clamp(level, ModelKey.studyLevels))
-        case .keep, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .standard, .signature: return self
+        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .standard, .signature: return self
         }
     }
 
@@ -113,7 +117,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         switch self {
         case .figure, .signature, .wild, .commander: return 700
         case .furnishing, .prop: return 300
-        case .keep: return 4500
+        case .keep, .keepOf: return 4500
         case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .standard: return 3000
         }
     }
@@ -220,6 +224,7 @@ public enum Library {
         keys += (1...ModelKey.wildTiers).map { .wild(tier: $0) }
         keys += (0..<ModelKey.commanderVariants).map { .commander(variant: $0) }
         keys += [.keep(seat: false), .keep(seat: true)]
+        keys += Heritage.allCases.flatMap { [ModelKey.keepOf($0, seat: false), .keepOf($0, seat: true)] }
         keys += (1...ModelKey.wallLevels).map { .walls(level: $0) }
         for kind in BuildingKind.allCases where kind != .walls && kind != .archive {
             keys += (1...kind.maxLevel).map { .work(kind, level: $0) }
@@ -245,6 +250,7 @@ public enum Library {
         case .wild(let tier): return Figures.wild(tier: tier, name: key.canonical.description)
         case .commander(let variant): return Figures.commander(variant, name: key.canonical.description)
         case .keep(let seat): return Holds.keep(seat: seat, name: key.canonical.description)
+        case .keepOf(let heritage, let seat): return Holds.keep(seat: seat, name: key.canonical.description, style: .of(heritage))
         case .walls(let level): return Holds.walls(level: level, name: key.canonical.description)
         case .work(let kind, let level): return Works.build(kind, level: level, name: key.canonical.description)
         case .study(let level): return Works.study(level: level, name: key.canonical.description)
@@ -264,7 +270,7 @@ public enum Library {
     /// up from them.
     public static func smoke(of key: ModelKey) -> [Vec3] {
         switch key.canonical {
-        case .keep(let seat): return [Holds.chimney(seat: seat)]
+        case .keep(let seat), .keepOf(_, let seat): return [Holds.chimney(seat: seat)]
         case .work(.saltworks, let level) where level >= 2: return [Works.saltChimney(level)]
         case .lair(let kind): return Lairs.fire(of: kind).map { [$0] } ?? []
         case .work(.infirmary, let level) where level >= 2: return [Works.infirmaryChimney(level)]
