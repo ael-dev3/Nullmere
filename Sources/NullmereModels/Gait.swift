@@ -280,11 +280,10 @@ struct Gait: Sendable {
         let s = Motion.key(v, [(0, 0), (0.4, 1), (0.55, -0.15), (0.75, -0.15), (1, 0)])
         p.joints[Int(Limb.tool)].scale = Vec3(1, 1, 1)
         p.hide(Limb.heldR)
-        if hands != .lantern && hands != .cart {
+        if hands != .cart {
+            // What the left hand held is put away, and with it what hangs from it.
             p.hide(Limb.heldL)
-        }
-        if hands == .bow {
-            p.hide(Bowman.string)
+            p.joints[Int(Limb.extra)].scale = Vec3(1, 1, 1)
         }
         for joint in [Limb.armR, Limb.armL, Limb.forearmR, Limb.forearmL, Limb.torso] {
             p.joints[Int(joint)].rotation = .zero
@@ -304,10 +303,6 @@ struct Gait: Sendable {
     func gather(_ p: inout Pose, _ u: Float) {
         carry(&p)
         swing(&p, u, high: false)
-        if hands == .lantern {
-            p.hide(Limb.heldL)
-            p.hide(Limb.extra)
-        }
     }
 
     /// Struck: the knees go, and it falls and lies still. The far
@@ -316,7 +311,11 @@ struct Gait: Sendable {
     func death(_ p: inout Pose, _ u: Float) {
         carry(&p)
         let fall = Motion.key(u, [(0, 0), (0.25, 0.06), (0.8, 1), (1, 1)])
-        let buckle = Motion.key(u, [(0, 0), (0.3, 1), (0.75, 0.45), (1, 0.4)])
+        let buckle = Motion.key(u, [(0, 0), (0.3, 1), (0.75, 0.4), (1, 0.4)])
+        // The arms let go as it falls: what they carried lies along them.
+        for part in [Limb.armL, Limb.forearmL, Limb.armR, Limb.forearmR, Limb.heldL, Limb.heldR] {
+            p.joints[Int(part)].rotation *= 1 - fall
+        }
         let forward = hands == .wild || hands == .club || hands == .cart
         let lying = Float.pi / 2 * fall
         // Turned about the hips and lowered till the back, or the chest, lies on the ground.
@@ -326,6 +325,8 @@ struct Gait: Sendable {
             p.shift(Limb.hips, Vec3(0, -drop, 0.06 * size * fall))
             p.turn(Limb.armL, x: -2.4 * fall, z: 0.3 * fall)
             p.turn(Limb.armR, x: -2.4 * fall, z: -0.3 * fall)
+            p.turn(Limb.forearmL, x: -0.4 * fall)
+            p.turn(Limb.forearmR, x: -0.4 * fall)
         } else {
             p.turn(Limb.hips, x: -lying)
             p.shift(Limb.hips, Vec3(0, -drop, -0.06 * size * fall))
@@ -337,8 +338,6 @@ struct Gait: Sendable {
         p.turn(Limb.shinL, x: 0.9 * buckle)
         p.turn(Limb.thighR, x: -0.45 * buckle)
         p.turn(Limb.shinR, x: 0.8 * buckle)
-        p.turn(Limb.forearmL, x: -0.4 * fall)
-        p.turn(Limb.forearmR, x: -0.4 * fall)
     }
 }
 

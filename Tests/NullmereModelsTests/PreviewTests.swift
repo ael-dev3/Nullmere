@@ -4,30 +4,18 @@ import NullmereCore
 import XCTest
 
 /// The models as a browser previews them: always made and checked; written
-/// out for Tools/model-preview when NULLMERE_MODEL_PREVIEW names a folder.
+/// out for Tools/model-preview when NULLMERE_MODEL_PREVIEW names a folder,
+/// as sheets: every model at rest, every clip at moments through it, and
+/// the land round a seat with its pieces placed.
 final class PreviewTests: XCTestCase {
-    static func samples() -> [(name: String, model: Model)] {
-        var tower = MeshBuilder()
-        tower.lathe([(0.32, 0), (0.3, 0.7), (0.36, 0.72), (0.36, 0.8)], sides: 8, color: Vec3(0.62, 0.6, 0.56))
-        tower.place(.translation(Vec3(0, 0.8, 0))) { $0.cone(sides: 8, radius: 0.38, to: 0.45, color: Vec3(0.3, 0.3, 0.34)) }
-        tower.with(material: .glow) { $0.box(center: Vec3(0, 0.45, 0.31), size: Vec3(0.08, 0.12, 0.02), color: Vec3(1, 0.75, 0.42)) }
-        var fir = MeshBuilder()
-        fir.prism(sides: 5, radius: 0.03, to: 0.2, color: Vec3(0.22, 0.16, 0.12))
-        fir.with(material: .foliage, sway: 1) {
-            $0.swayRange = (0.1, 0.8)
-            for (index, base) in [Float(0.12), 0.3, 0.46].enumerated() {
-                $0.cone(sides: 7, radius: 0.2 - Float(index) * 0.045, from: base, to: base + 0.28, color: Vec3(0.12, 0.2, 0.15))
-            }
-        }
-        var hall = MeshBuilder()
-        hall.box(min: Vec3(-0.4, 0, -0.25), max: Vec3(0.4, 0.35, 0.25), color: Vec3(0.5, 0.45, 0.38))
-        hall.with(material: .house) { $0.gableRoof(width: 0.8, depth: 0.5, base: 0.35, height: 0.25, color: Vec3(0.6, 0.6, 0.6), overhang: 0.05) }
-        return [("tower", Model(name: "tower", mesh: tower.mesh)), ("fir", Model(name: "fir", mesh: fir.mesh)),
-                ("hall", Model(name: "hall", mesh: hall.mesh))]
+    static func entries(_ keys: [ModelKey], clip: Clip = .idle, time: Float = 0.3) -> [(name: String, model: Model, clip: Clip, time: Float)] {
+        keys.map { (name: $0.description, model: Library.model($0), clip: clip, time: time) }
     }
 
     func testModelsExportForThePreview() throws {
-        let samples = PreviewTests.samples()
+        let samples: [(name: String, model: Model)] = [ModelKey.figure(.spear, tier: 3), .keep(seat: true), .furnishing(.fir)].map {
+            (name: $0.description, model: Library.model($0))
+        }
         let data = try PreviewExport.json(samples)
         let decoded = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         let models = try XCTUnwrap(decoded["models"] as? [[String: Any]])
@@ -38,11 +26,155 @@ final class PreviewTests: XCTestCase {
             XCTAssertEqual((entry["indices"] as? [Int])?.count, sample.model.mesh.indices.count)
             XCTAssertEqual((entry["pose"] as? [[Double]])?.count, sample.model.rig.count)
         }
-        try write(data, as: "samples.json")
+    }
+
+    /// Every model in the catalogue, in sheets by family, and each clip of a
+    /// figure of every kind at moments through it.
+    func testTheCatalogueExportsForThePreview() throws {
+        guard ProcessInfo.processInfo.environment["NULLMERE_MODEL_PREVIEW"] != nil else { return }
+        let keys = Library.catalogue
+        func family(_ test: (ModelKey) -> Bool) -> [ModelKey] { keys.filter(test) }
+        let figures = family {
+            switch $0 {
+            case .figure, .wild, .commander: return true
+            default: return false
+            }
+        }
+        let holds = family {
+            switch $0 {
+            case .keep, .walls, .scaffold: return true
+            default: return false
+            }
+        }
+        let works = family {
+            switch $0 {
+            case .work, .study: return true
+            default: return false
+            }
+        }
+        let land = family {
+            switch $0 {
+            case .furnishing, .site, .prop: return true
+            default: return false
+            }
+        }
+        try write(try PreviewExport.json(PreviewTests.entries(figures)), as: "figures.json")
+        // The figures side by side at their true sizes, at idle.
+        var lineup = Mesh()
+        for (index, key) in figures.enumerated() {
+            let at = Vec3(Float(index % 9) * 0.5, 0, Float(index / 9) * 0.7)
+            lineup.append(PreviewTests.posed(Library.model(key), .idle, 0.3), transform: .translation(at))
+        }
+        try write(try PreviewExport.json([("lineup", Model(name: "lineup", mesh: lineup))]), as: "lineup.json")
+        try write(try PreviewExport.json(PreviewTests.entries(holds)), as: "holds.json")
+        try write(try PreviewExport.json(PreviewTests.entries(works)), as: "works.json")
+        try write(try PreviewExport.json(PreviewTests.entries(land)), as: "land.json")
+
+        let actors: [ModelKey] = [.figure(.spear, tier: 1), .figure(.spear, tier: 5), .figure(.bow, tier: 3), .figure(.rider, tier: 3),
+                                  .figure(.lantern, tier: 1), .figure(.founder, tier: 1), .wild(tier: 1), .wild(tier: 3),
+                                  .commander(variant: 1), .prop(.bird), .prop(.cart), .work(.sawpit, level: 3)]
+        for clip in Clip.allCases {
+            let moments: [Float] = (0..<4).map { clip.period * Float($0) / (clip.loops ? 4 : 3) }
+            var entries: [(name: String, model: Model, clip: Clip, time: Float)] = []
+            for key in actors {
+                for moment in moments {
+                    entries.append((name: "\(key) \(clip.rawValue) \(moment)", model: Library.model(key), clip: clip, time: moment))
+                }
+            }
+            try write(try PreviewExport.json(entries), as: "clip-\(clip.rawValue).json")
+        }
 
         let state = GameState(settings: GameSettings(seedText: "preview", houseCount: 6, radius: 14))
         let terrain = TerrainMesh(relief: Relief(map: state.map), spacing: 0.35)
-        try write(try PreviewExport.json([("land", Model(name: "land", mesh: terrain.mesh))]), as: "land.json")
+        try write(try PreviewExport.json([("terrain", Model(name: "terrain", mesh: terrain.mesh))]), as: "terrain.json")
+        for (index, seat) in state.holds.prefix(2).enumerated() {
+            try write(try PreviewExport.json([("scene", Model(name: "scene", mesh: PreviewTests.scene(state, around: seat.position,
+                                                                                                        grand: index == 0)))]),
+                      as: "scene\(index).json")
+        }
+    }
+
+    /// The land round a seat with its hold laid out, the land's furniture
+    /// and a few companies, baked into one mesh.
+    static func scene(_ state: GameState, around seat: Hex, grand: Bool) -> Mesh {
+        let relief = Relief(map: state.map)
+        var levels: [HoldLayout.Work: Int] = [.building(.walls): grand ? 5 : 2, .building(.granary): grand ? 5 : 1,
+                                              .building(.sawpit): 3, .building(.quarry): grand ? 5 : 2, .building(.musterHall): 3]
+        if grand {
+            levels[.building(.saltworks)] = 4
+            levels[.building(.beacon)] = 3
+            levels[.study] = 5
+            levels[.building(.moonspire)] = 3
+        }
+        let rising = HoldLayout.Plan.Rising(work: grand ? .building(.moonspire) : .building(.beacon), level: grand ? 4 : 1, progress: 0.4)
+        let plan = HoldLayout.Plan(hex: seat, isSeat: true, levels: levels, rising: rising)
+        var pieces = HoldLayout.pieces(plan, relief: relief)
+        // Companies on land a little way out, facing the hold.
+        let companies: [(key: ModelKey, health: Int, led: Int?)] = [
+            (.figure(.spear, tier: 5), 100, 0), (.figure(.bow, tier: 3), 80, nil), (.figure(.rider, tier: 4), 100, 4),
+            (.figure(.spear, tier: 2), 45, nil), (.wild(tier: 2), 100, nil), (.figure(.founder, tier: 1), 100, nil),
+            (.wild(tier: 3), 100, nil), (.figure(.lantern, tier: 1), 100, 1),
+        ]
+        let ground = seat.ring(3).filter { HoldLayout.isLand($0, relief) }
+        var occupied: Set<Hex> = []
+        for (company, hex) in zip(companies, ground.enumerated().filter { $0.offset % 2 == 0 }.map(\.element)) {
+            occupied.insert(hex)
+            let centre = Relief.centre(of: hex), heart = Relief.centre(of: seat)
+            let heading = Float(atan2(Double(heart.x - centre.x), Double(heart.z - centre.z)))
+            let turn = Mat4.rotationY(heading)
+            var figures = Formation.offsets(company.key, health: company.health, led: company.led != nil).map { (company.key, $0) }
+            if let variant = company.led {
+                figures.append((.commander(variant: variant), Formation.commander(company.key, health: company.health)))
+            }
+            for (key, offset) in figures {
+                let at = Vec3(centre.x, 0, centre.z) + turn.transformDirection(offset)
+                let y = relief.height(atX: at.x, z: at.z)
+                pieces.append(Piece(key: key, transform: .translation(Vec3(at.x, y, at.z)) * turn, hex: hex))
+            }
+        }
+        let near = state.map.hexes.filter { $0.distance(to: seat) <= 5 }
+        for hex in near {
+            pieces += Scatter.pieces(in: hex, map: state.map, relief: relief, clearHeart: occupied.contains(hex) || hex == seat,
+                                     holds: [seat])
+        }
+        var mesh = Mesh()
+        let centre = Relief.centre(of: seat)
+        let land = TerrainMesh(relief: relief, spacing: 0.25).mesh
+        for (a, b, c) in land.triangles {
+            let p = a.position
+            guard (p.x - centre.x) * (p.x - centre.x) + (p.z - centre.z) * (p.z - centre.z) < 70 else { continue }
+            for var corner in [a, b, c] {
+                corner.part = 0
+                // The still water's face, drawn over the lake bed.
+                if corner.position.y < Relief.waterline {
+                    corner.position.y = Relief.waterline - 0.002
+                    corner.color = Vec3(0.05, 0.06, 0.07)
+                    corner.normal = .up
+                }
+                mesh.vertices.append(corner)
+                mesh.indices.append(UInt32(mesh.vertices.count - 1))
+            }
+        }
+        for piece in pieces {
+            mesh.append(posed(Library.model(piece.key), .idle, 0.6), transform: piece.transform)
+        }
+        // About the seat's heart, for the preview to look at.
+        var centred = Mesh()
+        centred.append(mesh, transform: .translation(Vec3(-centre.x, 0, -centre.z)))
+        return centred
+    }
+
+    /// A model's mesh as it stands at a moment of a clip, all in one part.
+    static func posed(_ model: Model, _ clip: Clip, _ time: Float) -> Mesh {
+        let pose = model.pose(clip, at: time)
+        var mesh = model.mesh
+        for index in mesh.vertices.indices {
+            let m = pose[Int(mesh.vertices[index].part)]
+            mesh.vertices[index].position = m.transformPoint(mesh.vertices[index].position)
+            mesh.vertices[index].normal = m.normalMatrix.transformDirection(mesh.vertices[index].normal).normalized
+            mesh.vertices[index].part = 0
+        }
+        return mesh
     }
 
     private func write(_ data: Data, as name: String) throws {

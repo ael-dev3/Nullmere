@@ -33,7 +33,7 @@ public enum Formation {
             switch kind {
             case .spear: return Ranks(strength: 9, file: 3, spacing: 0.2, depth: 0.2)
             case .bow: return Ranks(strength: 8, file: 4, spacing: 0.18, depth: 0.22, staggered: true)
-            case .rider: return Ranks(strength: 4, file: 2, spacing: 0.27, depth: 0.5, lead: 0.55)
+            case .rider: return Ranks(strength: 3, file: 3, spacing: 0.27, depth: 0.6, lead: 0.58)
             case .lantern: return Ranks(strength: 3, file: 2, spacing: 0.28, depth: 0.26, staggered: true)
             case .founder: return Ranks(strength: 3, file: 3, spacing: 0.27, depth: 0.42, lead: 0.36)
             }

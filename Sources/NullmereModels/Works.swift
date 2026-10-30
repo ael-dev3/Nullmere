@@ -279,10 +279,10 @@ enum Works {
             }
             b.gableRoof(width: 0.34, depth: 0.24, base: 0.22, height: 0.12, color: Palette.thatch, overhang: 0.02)
             for index in 0..<3 {
-                let z = Float(index) * 0.045 - 0.21
-                b.log(from: Vec3(-0.22, 0.03 + Float(index % 2) * 0.01, z), to: Vec3(0.1, 0.03, z), radius: 0.025)
+                let z = Float(index) * 0.045 - 0.2
+                b.log(from: Vec3(-0.19, 0.03 + Float(index % 2) * 0.01, z), to: Vec3(0.1, 0.03, z), radius: 0.025)
             }
-            b.planks(at: Vec3(0.18, 0, 0.18), length: 0.18, layers: 4, turn: 0.3)
+            b.planks(at: Vec3(0.12, 0, 0.15), length: 0.16, layers: 4, turn: 0.3)
         default:
             // A saw-house, its saw driven by a great treadwheel at its side.
             let radius: Float = 0.1 + 0.015 * Float(level - 3)
@@ -306,12 +306,12 @@ enum Works {
                    color: Palette.timberDark)
             machinery = Machinery(wheels: [.init(part: wheel, axis: Vec3(1, 0, 0), turns: 1)], parts: rig.count)
             for index in 0..<(level >= 4 ? 4 : 3) {
-                let z = Float(index) * 0.042 + 0.13
-                b.log(from: Vec3(-0.25, 0.028 + Float(index % 2) * 0.008, z), to: Vec3(0.02, 0.028, z), radius: 0.024)
+                let z = Float(index) * 0.04 + 0.1
+                b.log(from: Vec3(-0.18, 0.028 + Float(index % 2) * 0.008, z), to: Vec3(0.04, 0.028, z), radius: 0.024)
             }
-            b.planks(at: Vec3(0.19, 0, 0.17), length: 0.16, layers: level, turn: 0.4)
+            b.planks(at: Vec3(0.13, 0, 0.14), length: 0.15, layers: level, turn: 0.4)
             if level >= 4 {
-                b.planks(at: Vec3(-0.2, 0, -0.2), length: 0.14, layers: 3, turn: 1.4)
+                b.planks(at: Vec3(-0.16, 0, -0.17), length: 0.12, layers: 3, turn: 1.4)
             }
             if level >= 5 {
                 b.banner(at: Vec3(-0.07, storeys + 0.1, -0.04), height: 0.2, width: 0.13, drop: 0.08)
@@ -383,11 +383,11 @@ enum Works {
                                   swings: [.init(part: crane, axis: Vec3(0, 1, 0), angle: 0.9)], parts: rig.count)
             if level >= 4 {
                 // A mason's shed.
-                b.hall(at: Vec3(-0.17, 0, 0.17), width: 0.14, depth: 0.12, height: 0.11, wall: Palette.stonePale, roof: Palette.slate,
+                b.hall(at: Vec3(-0.15, 0, 0.14), width: 0.12, depth: 0.1, height: 0.11, wall: Palette.stonePale, roof: Palette.slate,
                        turn: 0.5)
             }
             if level >= 5 {
-                b.window(Vec3(-0.12, 0.07, 0.22), width: 0.025, height: 0.035, facing: 0.5)
+                b.window(Vec3(-0.125, 0.07, 0.185), width: 0.025, height: 0.035, facing: 0.5)
             }
         }
         return model(name, b, rig: rig, machinery: machinery)
@@ -727,9 +727,8 @@ enum Works {
                 var swings: [Machinery.Swing] = [.init(part: glass, axis: Vec3(0, 1, 0), angle: 0.5)]
                 if level >= 5 {
                     // Two wings and an armillary on the court before them.
-                    b.hall(at: Vec3(0.12, 0, 0.17), width: 0.18, depth: 0.12, height: 0.14, wall: Palette.stone, roof: Palette.slate,
-                           turn: .pi / 2 * 0.0)
-                    b.window(Vec3(0.12, 0.08, 0.232), width: 0.025, height: 0.045, facing: 0)
+                    b.hall(at: Vec3(0.1, 0, 0.15), width: 0.16, depth: 0.1, height: 0.14, wall: Palette.stone, roof: Palette.slate)
+                    b.window(Vec3(0.1, 0.08, 0.2), width: 0.025, height: 0.045, facing: 0)
                     b.banner(at: Vec3(0.2, 0.18, -0.06), height: 0.22, width: 0.12, drop: 0.08, tail: true)
                     let centre = Vec3(-0.07, 0.17, 0.2)
                     b.limb(from: Vec3(-0.07, 0, 0.2), to: centre, radius: 0.014, color: Palette.stonePale)

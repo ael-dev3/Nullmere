@@ -102,7 +102,7 @@ public enum HoldLayout {
         let turn = Float.pi / 2 - front
         var pieces: [Piece] = []
         // The keep, on the lowest of the ground under it.
-        let keepY = lowest(relief, around: heart, radius: 0.3)
+        let keepY = lowest(relief, around: heart, radius: 0.36)
         pieces.append(Piece(key: .keep(seat: plan.isSeat), transform: .translation(Vec3(heart.x, keepY, heart.z)) * .rotationY(turn),
                             hex: plan.hex))
         // The walls, at the ring's mean height, their footings reaching below its lowest.
@@ -119,7 +119,7 @@ public enum HoldLayout {
             let standing = plan.levels[work] ?? 0
             let rising = plan.rising.flatMap { $0.work == work ? $0 : nil }
             let level = rising?.level ?? standing
-            let y = lowest(relief, around: slot.position, radius: workRadius * 0.9)
+            let y = lowest(relief, around: slot.position, radius: workRadius)
             let at = Vec3(slot.position.x, y, slot.position.z)
             // Facing the keep.
             let facing = Mat4.rotationY(-Float.pi / 2 - slot.angle)
@@ -187,10 +187,11 @@ public enum HoldLayout {
         [centre] + (0..<count).map { centre + MeshBuilder.ring(radius, 0, Float($0) * 2 * .pi / Float(count)) }
     }
 
-    /// The lowest ground under a footprint, for a piece to stand on without
-    /// floating.
+    /// The lowest ground under a footprint, at its middle and on two rings
+    /// round it, for a piece to stand on without floating.
     static func lowest(_ relief: Relief, around centre: Vec3, radius: Float) -> Float {
-        points(around: centre, radius: radius).map { relief.height(atX: $0.x, z: $0.z) }.min() ?? 0
+        (points(around: centre, radius: radius, count: 12) + points(around: centre, radius: radius / 2))
+            .map { relief.height(atX: $0.x, z: $0.z) }.min() ?? 0
     }
 
     static func wallsHeight(_ relief: Relief, at heart: Vec3) -> Float {
@@ -256,7 +257,6 @@ public enum HoldLayout {
         var around = abs(slot.angle - front).truncatingRemainder(dividingBy: 2 * .pi)
         if around > .pi { around = 2 * .pi - around }
         let hex = HexLayout(size: 1).hex(atX: Double(slot.position.x), y: Double(slot.position.z))
-        let tile = relief.map[hex]
         var score: Float = slot.inner ? 100 : 0
         score -= Float(slot.index) * 0.001
         switch work {
@@ -265,23 +265,22 @@ public enum HoldLayout {
         case .building(.beacon): score += 4 * relief.height(atX: slot.position.x, z: slot.position.z) + around * 0.1
         case .study: score += 10 - abs(around - 2.5)
         case .building(let kind):
-            score += affinity(kind, tile) * 10 + around * 0.2
+            score += affinity(kind, terrain: relief.terrain(of: hex), feature: relief.map[hex]?.feature) * 10 + around * 0.2
         }
         return score
     }
 
     /// How much a work that draws on the land likes the ground it stands on.
-    static func affinity(_ kind: BuildingKind, _ tile: Tile?) -> Float {
-        guard let tile else { return 0 }
+    static func affinity(_ kind: BuildingKind, terrain: Terrain, feature: Feature?) -> Float {
         switch kind {
         case .granary:
-            return (tile.terrain == .greyfield ? 1 : 0) + (tile.feature == .darkLoam ? 1 : 0) + (tile.terrain == .strand ? 0.3 : 0)
+            return (terrain == .greyfield ? 1 : 0) + (feature == .darkLoam ? 1 : 0) + (terrain == .strand ? 0.3 : 0)
         case .sawpit:
-            return (tile.terrain == .blackwood ? 1 : 0) + (tile.feature == .elderGrove ? 1 : 0)
+            return (terrain == .blackwood ? 1 : 0) + (feature == .elderGrove ? 1 : 0)
         case .quarry:
-            return (tile.terrain == .barrow ? 1 : 0) + (tile.feature == .stoneSeam ? 1 : 0)
+            return (terrain == .barrow ? 1 : 0) + (feature == .stoneSeam ? 1 : 0)
         case .saltworks:
-            return (tile.terrain == .saltFlat ? 1 : 0) + (tile.feature == .moonsaltBed ? 1 : 0) + (tile.terrain == .strand ? 0.3 : 0)
+            return (terrain == .saltFlat ? 1 : 0) + (feature == .moonsaltBed ? 1 : 0) + (terrain == .strand ? 0.3 : 0)
         default:
             return 0
         }

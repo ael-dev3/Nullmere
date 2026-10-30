@@ -88,9 +88,10 @@ enum Figures {
         case 1:
             o.tunic = Palette.wool
             o.sleeves = Palette.wool
-            o.skirt = (Palette.wool, .plain, 0.34)
+            o.skirt = (Palette.wool, .plain, 0.25)
             o.belt = (Palette.house, .house)
             o.head = .hood(Palette.padded, .plain)
+            o.mantle = (Palette.padded, .plain)
         case 2:
             o.tunic = Palette.leather
             o.sleeves = Palette.wool

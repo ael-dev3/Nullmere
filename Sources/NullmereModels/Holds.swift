@@ -12,7 +12,7 @@ enum Holds {
         let towerHeight: Float = seat ? 0.92 : 0.6
         let half: Float = seat ? 0.17 : 0.155
         // A plinth of dressed stone, deep enough to stand on a slope.
-        b.lathe([(0.37, -0.14), (0.37, 0.025), (0.34, 0.045)], sides: 8, color: Palette.stoneDark, twist: .pi / 8)
+        b.lathe([(0.37, -0.3), (0.37, 0.025), (0.34, 0.045)], sides: 8, color: Palette.stoneDark, twist: .pi / 8)
         // The tower, buttressed at its corners, its parapet corbelled out.
         b.box(min: Vec3(-half, 0.03, -half - 0.05), max: Vec3(half, towerHeight, half - 0.05), color: Palette.stone)
         for x in [-half, half] {
@@ -115,9 +115,9 @@ enum Holds {
                     let t = (Float(index) + 0.5) / Float(count)
                     let at = a.mix(c, t)
                     let tall = h * (0.9 + 0.2 * Noise.unit(Int32(index), Int32(at.x * 100), 7))
-                    b.place(.translation(at + Vec3(0, -0.08, 0))) {
-                        $0.tube([(0.02, 0), (0.02, tall + 0.08)], sides: 3, color: Palette.timber, twist: Float(index))
-                        $0.cone(sides: 3, radius: 0.02, from: tall + 0.08, to: tall + 0.13, color: Palette.timberPale,
+                    b.place(.translation(at + Vec3(0, -0.3, 0))) {
+                        $0.tube([(0.02, 0), (0.02, tall + 0.3)], sides: 3, color: Palette.timber, twist: Float(index))
+                        $0.cone(sides: 3, radius: 0.02, from: tall + 0.3, to: tall + 0.35, color: Palette.timberPale,
                                 twist: Float(index))
                     }
                 }
@@ -126,11 +126,11 @@ enum Holds {
             b.beam(from: Vec3(-gateHalf - 0.03, h + 0.03, wallCorner(1).z), to: Vec3(gateHalf + 0.03, h + 0.03, wallCorner(1).z),
                    width: 0.04, depth: 0.035, color: Palette.timber)
             for x in [-gateHalf - 0.01, gateHalf + 0.01] {
-                b.limb(from: Vec3(x, -0.08, wallCorner(1).z), to: Vec3(x, h + 0.06, wallCorner(1).z), radius: 0.024, color: Palette.timberDark)
+                b.limb(from: Vec3(x, -0.3, wallCorner(1).z), to: Vec3(x, h + 0.06, wallCorner(1).z), radius: 0.024, color: Palette.timberDark)
             }
         } else {
             for (a, c) in runs {
-                b.beam(from: a + Vec3(0, (h - 0.1) / 2, 0), to: c + Vec3(0, (h - 0.1) / 2, 0), width: thick, depth: h + 0.1,
+                b.beam(from: a + Vec3(0, (h - 0.3) / 2, 0), to: c + Vec3(0, (h - 0.3) / 2, 0), width: thick, depth: h + 0.3,
                        color: level == 2 ? Palette.stoneDark : Palette.stone)
                 if level >= 3 {
                     let count = max(Int(((c - a).length / 0.075).rounded()), 1)
@@ -142,7 +142,7 @@ enum Holds {
             if level == 2 {
                 for index in 0..<6 {
                     let at = wallCorner(index)
-                    b.box(center: at + Vec3(0, (h - 0.03) / 2, 0), size: Vec3(0.11, h + 0.13, 0.11), turn: Float(index) * .pi / 3,
+                    b.box(center: at + Vec3(0, (h - 0.25) / 2, 0), size: Vec3(0.11, h + 0.35, 0.11), turn: Float(index) * .pi / 3,
                           color: Palette.stone)
                     b.box(center: at + Vec3(0, h + 0.045, 0), size: Vec3(0.13, 0.02, 0.13), turn: Float(index) * .pi / 3,
                           color: Palette.stonePale)
@@ -157,11 +157,11 @@ enum Holds {
                 let at = wallCorner(index)
                 b.place(.translation(at + Vec3(0, -0.1, 0))) {
                     if level == 3 {
-                        $0.lathe([(radius * 1.3, 0), (radius * 1.25, towerHeight + 0.1)], sides: 4, color: Palette.stone, twist: .pi / 4)
+                        $0.lathe([(radius * 1.3, -0.2), (radius * 1.25, towerHeight + 0.1)], sides: 4, color: Palette.stone, twist: .pi / 4)
                         $0.merlonRing(radius: radius * 0.95, base: towerHeight + 0.1, count: 4, size: Vec3(0.04, 0.04, 0.03),
                                       color: Palette.stonePale)
                     } else {
-                        $0.lathe([(radius * 1.08, 0), (radius, towerHeight + 0.1), (radius * 1.12, towerHeight + 0.12),
+                        $0.lathe([(radius * 1.08, -0.2), (radius, towerHeight + 0.1), (radius * 1.12, towerHeight + 0.12),
                                   (radius * 1.12, towerHeight + 0.15)], sides: 8, color: Palette.stone)
                         $0.with(material: level == 5 ? .house : .plain) {
                             $0.cone(sides: 8, radius: radius * 1.16, from: towerHeight + 0.15, to: towerHeight + 0.15 + radius * 2.6,
@@ -193,9 +193,9 @@ enum Holds {
             let x = side * (half + towerHalf)
             b.place(.translation(Vec3(x, -0.1, z + 0.01))) {
                 if level == 3 {
-                    $0.box(min: Vec3(-towerHalf, 0, -towerHalf), max: Vec3(towerHalf, towerHeight + 0.1, towerHalf), color: Palette.stone)
+                    $0.box(min: Vec3(-towerHalf, -0.2, -towerHalf), max: Vec3(towerHalf, towerHeight + 0.1, towerHalf), color: Palette.stone)
                 } else {
-                    $0.lathe([(towerHalf * 1.15, 0), (towerHalf * 1.05, towerHeight + 0.1)], sides: 8, color: Palette.stone)
+                    $0.lathe([(towerHalf * 1.15, -0.2), (towerHalf * 1.05, towerHeight + 0.1)], sides: 8, color: Palette.stone)
                     $0.with(material: level == 5 ? .house : .plain) {
                         $0.cone(sides: 8, radius: towerHalf * 1.25, from: towerHeight + 0.1, to: towerHeight + 0.1 + towerHalf * 2.4,
                                 color: level == 5 ? Palette.house : Palette.slate)

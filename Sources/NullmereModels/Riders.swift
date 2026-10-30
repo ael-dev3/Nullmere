@@ -86,13 +86,12 @@ enum Riders {
                 }
                 $0.box(min: Vec3(-0.03, 0.214, -0.055), max: Vec3(0.03, 0.234, 0.03), color: Palette.leatherDark)
                 $0.with(material: .house) {
-                    switch m.cloth {
-                    case 1:
+                    if m.cloth <= 1 {
                         // A saddle cloth on the flanks.
                         $0.place(.translation(Vec3(0, 0, -0.012)) * .scale(Vec3(1, 1, 1.15))) {
                             $0.tube([(0.066, 0.15), (0.058, 0.216)], sides: 8, color: Palette.house, twist: .pi / 8)
                         }
-                    case 2, 3:
+                    } else {
                         // A caparison draped from the saddle, to the knees or near the ground.
                         let hem: Float = m.cloth == 2 ? 0.11 : 0.07
                         $0.with(sway: 0.12) {
@@ -100,8 +99,6 @@ enum Riders {
                                 $0.tube([(0.068, hem), (0.06, 0.2), (0.025, 0.222)], sides: 8, color: Palette.house, twist: .pi / 8)
                             }
                         }
-                    default:
-                        break
                     }
                 }
                 if m.barding >= 1 {
@@ -436,7 +433,7 @@ struct Ride: Sendable {
     func fall(_ p: inout Pose, _ u: Float) {
         carry(&p)
         level(&p)
-        let rear = Motion.key(u, [(0, 0), (0.2, 1), (0.45, 0.2), (1, 0)])
+        let rear = Motion.key(u, [(0, 0), (0.2, 1), (0.45, 0.2), (0.8, 0), (1, 0)])
         let fall = Motion.key(u, [(0, 0), (0.25, 0), (0.85, 1), (1, 1)])
         let h = mount.scale
         p.turn(Steed.body, x: -0.35 * rear, z: -Float.pi / 2 * fall)
