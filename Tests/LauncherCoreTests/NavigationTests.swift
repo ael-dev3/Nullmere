@@ -103,6 +103,20 @@ final class SceneTests: XCTestCase {
         XCTAssertEqual(LakeComposition.waterline(forHeight: 1000), 530, accuracy: 1e-9)
     }
 
+    /// A screen lies at its depth below the waterline where it ends above
+    /// the footer; rises just enough to end there where it wouldn't; and
+    /// never rises past the title's foot, whatever it holds.
+    func testAScreenRisesOnlyAsFarAsItMust() {
+        // Room to spare: at its depth.
+        XCTAssertEqual(LakeComposition.screenTop(depth: 424, ceiling: 378, floor: 750, height: 300), 424)
+        // Just enough room: at its depth still, ending at the floor.
+        XCTAssertEqual(LakeComposition.screenTop(depth: 424, ceiling: 378, floor: 724, height: 300), 424)
+        // Too little: risen to end at the floor.
+        XCTAssertEqual(LakeComposition.screenTop(depth: 424, ceiling: 378, floor: 700, height: 300), 400)
+        // Far too little: no higher than the title's foot.
+        XCTAssertEqual(LakeComposition.screenTop(depth: 424, ceiling: 378, floor: 600, height: 300), 378)
+    }
+
     func testMoonSitsHighAboveTheWaterAndItsReflectionStaysOnScreen() {
         let mirroredMoon = 2 * LakeComposition.horizon - LakeComposition.moonY
         XCTAssertGreaterThan(LakeComposition.moonY - LakeComposition.moonRadius, LakeComposition.horizon + 0.2)

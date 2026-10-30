@@ -18,5 +18,6 @@ scripts/test-scripts.sh || status=1
 # The Python helpers' own checks.
 python3 scripts/perf-check.py --self-test || status=1
 python3 scripts/coverage.py --self-test || status=1
+python3 scripts/crash-summary.py --self-test || status=1
 [ "$status" = 0 ] && echo "The scripts read cleanly."
 exit "$status"

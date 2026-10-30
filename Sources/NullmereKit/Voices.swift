@@ -82,6 +82,13 @@ public struct OnDeviceVoice: Voice {
         return false
     }
 
+    /// The model's state in words: ready, or why it isn't.
+    public static var availability: String {
+        let availability = SystemLanguageModel.default.availability
+        if case .available = availability { return "ready" }
+        return "not ready (\(availability))"
+    }
+
     /// One line from Apple's on-device model, in a fresh session.
     private static func askTheModel(instructions: String, prompt: String) async throws -> String {
         let session = LanguageModelSession(instructions: instructions)

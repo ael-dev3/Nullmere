@@ -29,4 +29,12 @@ public enum LakeComposition {
     public static func waterline(forHeight height: Double) -> Double {
         height * (1 - horizon)
     }
+
+    /// Where a screen `height` tall lies on the water, from the top: at its
+    /// `depth` where it ends at `floor` or above; where it doesn't (a short
+    /// window, larger type), risen just enough to end there, but never
+    /// above `ceiling`, the title's foot.
+    public static func screenTop(depth: Double, ceiling: Double, floor: Double, height: Double) -> Double {
+        max(ceiling, min(depth, floor - height))
+    }
 }

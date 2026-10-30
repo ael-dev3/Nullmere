@@ -49,6 +49,9 @@ struct LauncherFooter: View {
                     .background(Palette.night, in: Capsule())
                     .transition(.opacity)
                     .accessibilityHidden(true)
+                    // Words to read, not to press: a click there reaches
+                    // whatever lies beneath.
+                    .allowsHitTesting(false)
             }
         }
         .foregroundStyle(Palette.text(0.8))

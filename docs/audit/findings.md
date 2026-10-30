@@ -194,6 +194,10 @@ unit.
 | U13 | The door's name field: AppKit's field editor is not its parent's child | kept: AppKit's own; the UI test names it and leaves it aside, the field's own label and value audited |
 | U14 | Does the door's lit button weigh as the launcher's? | verified: it is the launcher's own menu button |
 | U15 | The watch's countdown changed what VoiceOver reads every second, so the tree never held still: the audit of a crowded panel ran out of time | fixed: said by the minute ("Turns in about 2 minutes"), still shown to the second; the world's audits run with Motion set to Still, and a timed-out audit is tried twice more |
+| U16 | In a window as short as CI's (1024 by 674 points) the launcher's News and Settings ran under the footer: Back lay beneath the key hint's pill, which took its click; at 960 by 600, or with Larger type, worse | fixed: the open screen lies at its depth where there's room, rises toward the title's foot where there isn't, and draws its lines closer where even that isn't enough, never into the footer; the pill and the water's dark behind words take no clicks. The UI test holds Back above the footer and answering, with Larger type too |
+| U17 | Xcode's contrast audit called faint the light words on the night water that its own pixels show at about sixteen to one, their faintest stroke above eight to one | fixed in how it's judged: each text the audit calls faint is measured from the screen's pixels by WCAG's formula, and fails if its type is under 4.5:1 or can't be measured; where a crowded screen holds more than the audit can judge in its time, every text on it is measured so |
+| U18 | A hold's works and companies read as seventy-odd pieces: a work's name, its level, what it does, its cost and its watches each apart | fixed: each row reads as what it is, what the next step does and costs, and its button |
+| U19 | The app was lost under the audit once ("Lost connection to the application") | watched: the audit job tells any crash report of the app, why and where |
 
 ## V: the look
 
@@ -240,6 +244,9 @@ unit.
 | T3 | Tests skipped when the dice gave no steward of a temperament | fixed: a steward is made so |
 | T4 | The soak test could run out CI's clock rather than fail | fixed: it fails past a second a watch on every lake |
 | T5 | The tests' own figures broke on the changes (a Float at full scale, a URL's slash, a mist sampled elsewhere, a top bar wider) | fixed, each checked against the render or the rule. Two bounds moved to what the scene now draws: the veiled image to a third (0.30 measured, against 0.3) and the moonless lake's moon to 580 at its heart, the Metal moon's being 620 to 640 with its seas |
+| T6 | The quiet realm's test held that the view is read again for an order, and raced the next poll for it | fixed: it waits for that read |
+| T7 | The voices' check ran in the test runner's bare process, which on CI's runner found Apple's model not ready while the app there found it ready: it could only fail there, or be skipped | fixed: the app asks the model, as on a keeper's Mac (`scripts/check-voices.sh`, run by CI on its runner's own model too); the rules it holds each line to are tested with stand-in voices |
+| T8 | The fixes of this review left new code untested: NullmereKit's coverage fell to 96.8%, under its floor | fixed: tested, back above the floor |
 
 ## K: docs, scripts and the release
 

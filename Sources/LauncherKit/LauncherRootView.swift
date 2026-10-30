@@ -41,23 +41,26 @@ public struct LauncherRootView: View {
 
                 LakeTitle(size: proxy.size, isRevealed: model.intro.showsTitle, settlesLetters: motion == .full)
 
-                ScreenContent(model: model)
+                // The open screen on the water, the footer beneath it, and
+                // never the one run into the other.
+                let stage = LauncherStage(depth: waterline, ceiling: LakeTitle.band(for: proxy.size), gap: 14 * unit)
+                stage {
+                    ScreenContent(model: model)
+                        .opacity(model.intro.showsMenu ? 1 : 0)
+                        .allowsHitTesting(model.intro.showsMenu)
+                        .disabled(!model.intro.showsMenu || model.isLeaving)
+                        .frame(maxWidth: .infinity)
+                        .animation(.easeInOut(duration: 0.5), value: model.screen)
+                        .animation(.easeInOut(duration: 0.6), value: model.isGated)
+
+                    LauncherFooter(version: model.version, readiness: model.readiness, hint: model.footerHint) {
+                        model.openWebsite()
+                    }
                     .opacity(model.intro.showsMenu ? 1 : 0)
                     .allowsHitTesting(model.intro.showsMenu)
                     .disabled(!model.intro.showsMenu || model.isLeaving)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, waterline)
-                    .animation(.easeInOut(duration: 0.5), value: model.screen)
-                    .animation(.easeInOut(duration: 0.6), value: model.isGated)
-
-                LauncherFooter(version: model.version, readiness: model.readiness, hint: model.footerHint) {
-                    model.openWebsite()
+                    .animation(.easeInOut(duration: 0.5), value: model.footerHint)
                 }
-                .opacity(model.intro.showsMenu ? 1 : 0)
-                .allowsHitTesting(model.intro.showsMenu)
-                .disabled(!model.intro.showsMenu || model.isLeaving)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .animation(.easeInOut(duration: 0.5), value: model.footerHint)
 
                 // Quitting, or crossing into the game, fades everything to black.
                 Color.black
@@ -110,18 +113,70 @@ public struct LauncherRootView: View {
             .eraseToAnyPublisher()
 }
 
-/// The menu or the open panel, or the requirement screen until this Mac's
-/// on-device model is ready. Each sits at its own depth below the waterline.
+/// The open screen and the footer beneath it. The screen lies at its depth
+/// below the waterline where there's room. Where there isn't (a short
+/// window, Larger type), it rises just enough to end a gap above the
+/// footer, but no higher than the title's foot; and where even that isn't
+/// room enough, it is offered only the room there is, and draws its lines
+/// closer to fit it (see `ScreenContent`).
+struct LauncherStage: Layout {
+    /// Where the screen's top lies when there's room: the waterline.
+    var depth: CGFloat
+    /// The highest the screen's top may rise: the title's foot.
+    var ceiling: CGFloat
+    /// The least water between the screen and the footer.
+    var gap: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        proposal.replacingUnspecifiedDimensions()
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 2 else { return }
+        let screen = subviews[0], footer = subviews[1]
+        let footerHeight = footer.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil)).height
+        footer.place(at: CGPoint(x: bounds.minX, y: bounds.maxY - footerHeight), anchor: .topLeading,
+                     proposal: ProposedViewSize(width: bounds.width, height: footerHeight))
+        let floor = bounds.height - footerHeight - gap
+        let height = screen.sizeThatFits(ProposedViewSize(width: bounds.width, height: max(floor - ceiling, 0))).height
+        let top = LakeComposition.screenTop(depth: Double(depth), ceiling: Double(ceiling), floor: Double(floor), height: Double(height))
+        screen.place(at: CGPoint(x: bounds.minX, y: bounds.minY + CGFloat(top)), anchor: .topLeading,
+                     proposal: ProposedViewSize(width: bounds.width, height: height))
+    }
+}
+
+/// The open screen at the launcher's own rhythm where it fits the room the
+/// stage offers it; its lines drawn closer, and closer again, where it
+/// doesn't. Only the one shown is made: one screen to see, to click and to
+/// read with VoiceOver.
 private struct ScreenContent: View {
     let model: LauncherModel
 
+    /// The rhythms tried, in turn.
+    static let rhythms: [CGFloat] = [1, 0.7, 0.45]
+
+    var body: some View {
+        ViewThatFits(in: .vertical) {
+            ScreenStack(model: model)
+            ScreenStack(model: model).environment(\.launcherRhythm, Self.rhythms[1])
+            ScreenStack(model: model).environment(\.launcherRhythm, Self.rhythms[2])
+        }
+    }
+}
+
+/// The menu or the open panel, or the requirement screen until this Mac's
+/// on-device model is ready. Each sits at its own depth below the waterline.
+private struct ScreenStack: View {
+    let model: LauncherModel
+
     @Environment(\.launcherUnit) private var unit
+    @Environment(\.launcherRhythm) private var rhythm
 
     var body: some View {
         ZStack(alignment: .top) {
             if model.isGated {
                 RequirementPanel(model: model)
-                    .padding(.top, 40 * unit)
+                    .padding(.top, 40 * unit * rhythm)
                     .transition(.opacity)
             } else {
                 screen
@@ -136,15 +191,15 @@ private struct ScreenContent: View {
             switch model.screen {
             case .title:
                 MainMenu(model: model)
-                    .padding(.top, 62 * unit)
+                    .padding(.top, 62 * unit * rhythm)
                     .transition(.opacity)
             case .news:
                 NewsPanel(model: model)
-                    .padding(.top, 28 * unit)
+                    .padding(.top, 28 * unit * rhythm)
                     .transition(.opacity)
             case .settings:
                 SettingsPanel(model: model)
-                    .padding(.top, 34 * unit)
+                    .padding(.top, 34 * unit * rhythm)
                     .transition(.opacity)
             }
         }

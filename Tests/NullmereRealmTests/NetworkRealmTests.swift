@@ -180,14 +180,15 @@ final class NetworkRealmTests: XCTestCase {
         let quiet = await MainActor.run { ama.viewReads } - before
         XCTAssertLessThanOrEqual(quiet, 1, "The view is read when the realm publishes, not on every poll")
 
-        // An order publishes, and the view is read again.
+        // An order publishes, and the view is read again: the order's own
+        // answer brings the world it made, and the next poll, finding the
+        // realm has published, reads the view for it.
         let world = try await MainActor.run { try XCTUnwrap(ear.world) }
         let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
         let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
         await MainActor.run { ama.send(.fortify(unit: spear.id)) }
         try await until("the order") { ear.world?.unit(spear.id)?.fortified == true }
-        let after = await MainActor.run { ama.viewReads }
-        XCTAssertGreaterThan(after, before + quiet, "and the view is read for it")
+        try await until("the view read for the publication") { ama.viewReads > before + quiet }
     }
 
     func testAKeeperHearsWhatAnotherDoesAsItHappens() async throws {

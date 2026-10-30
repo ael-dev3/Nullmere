@@ -189,8 +189,12 @@ private struct BuildingRow: View {
         let next = level + 1
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
-                Caps(kind.title, size: 9.5, weight: .medium).foregroundStyle(Palette.text(0.9))
-                LevelPips(level: level, maximum: kind.maxLevel)
+                // The work and how far it stands, read as one.
+                HStack(alignment: .firstTextBaseline) {
+                    Caps(kind.title, size: 9.5, weight: .medium).foregroundStyle(Palette.text(0.9))
+                    LevelPips(level: level, maximum: kind.maxLevel)
+                }
+                .accessibilityElement(children: .combine)
                 Spacer()
                 if next <= kind.maxLevel {
                     let cost = kind.cost(toLevel: next)
@@ -204,15 +208,19 @@ private struct BuildingRow: View {
                 }
             }
             if next <= kind.maxLevel {
-                Text(verbatim: kind.effect(atLevel: next, isSeat: hold.isSeat))
-                    .font(.nm(10.5))
-                    .foregroundStyle(Palette.text(0.55))
-                HStack(spacing: 10) {
-                    CostLine(cost: kind.cost(toLevel: next), available: stock)
-                    Text(verbatim: "\(kind.buildWatches(toLevel: next)) watches")
-                        .font(.nm(10))
-                        .foregroundStyle(Palette.text(0.45))
+                // What the next stage does, costs and takes, read as one.
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(verbatim: kind.effect(atLevel: next, isSeat: hold.isSeat))
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.55))
+                    HStack(spacing: 10) {
+                        CostLine(cost: kind.cost(toLevel: next), available: stock)
+                        Text(verbatim: "\(kind.buildWatches(toLevel: next)) watches")
+                            .font(.nm(10))
+                            .foregroundStyle(Palette.text(0.45))
+                    }
                 }
+                .accessibilityElement(children: .combine)
             } else {
                 Text(verbatim: "Complete").font(.nm(10.5)).foregroundStyle(Palette.text(0.45))
             }
@@ -250,10 +258,14 @@ private struct TrainingRow: View {
         let cost = session.state.trainingCost(of: kind, for: session.player)
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
-                Caps(kind.title, size: 9.5, weight: .medium).foregroundStyle(Palette.text(allowed ? 0.9 : 0.4))
-                Text(verbatim: kind.isMilitary ? "\(kind.attack) attack · \(kind.defense) defence · \(kind.movement) moves" : "\(kind.movement) moves")
-                    .font(.nm(10))
-                    .foregroundStyle(Palette.text(0.45))
+                // The company and what it is worth, read as one.
+                HStack(alignment: .firstTextBaseline) {
+                    Caps(kind.title, size: 9.5, weight: .medium).foregroundStyle(Palette.text(allowed ? 0.9 : 0.4))
+                    Text(verbatim: kind.isMilitary ? "\(kind.attack) attack · \(kind.defense) defence · \(kind.movement) moves" : "\(kind.movement) moves")
+                        .font(.nm(10))
+                        .foregroundStyle(Palette.text(0.45))
+                }
+                .accessibilityElement(children: .combine)
                 Spacer()
                 QuietButton(title: "Train", size: 8.5, enabled: allowed && hold.training == nil && stock.covers(cost),
                             name: "Train \(kind.title)",
@@ -264,6 +276,7 @@ private struct TrainingRow: View {
                 }
             }
             if allowed {
+                // What training it costs and takes, read as one.
                 HStack(spacing: 10) {
                     CostLine(cost: cost, available: stock)
                     let watches = hold.trainingWatches(for: kind)
@@ -271,6 +284,7 @@ private struct TrainingRow: View {
                         .font(.nm(10))
                         .foregroundStyle(Palette.text(0.45))
                 }
+                .accessibilityElement(children: .combine)
             } else {
                 Text(verbatim: "Needs a Muster Hall \(Narration.roman(kind.requiredMuster))")
                     .font(.nm(10.5))

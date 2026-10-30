@@ -265,4 +265,35 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertFalse(app.canEnter(with: "Ama"))
         draw(FrontDoor(app: app))
     }
+
+    /// Quitting just after an order the realm can't be reached for: the app
+    /// waits a moment for it, no longer, then lets the keeper go; the order
+    /// is kept, and goes once the realm answers again.
+    func testAnOrderThatCantGoHoldsTheQuitOnlyAMoment() async throws {
+        let db = FakeSpacetime()
+        let running = try await steward(db, seats: 4)
+        defer { running.cancel() }
+        let app = app(db, identity: MemoryStore(), realm: "quits")
+        app.open()
+        try await until("the realm's status") { if case .open = app.door { return true } else { return false } }
+        app.enterWorld(name: "Ama")
+        try await until("the world") { app.session != nil }
+        let session = try XCTUnwrap(app.session)
+        try await until("nothing left to send") { app.ordersWaiting == 0 }
+
+        await db.setReachable(false)
+        let spear = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .spear })
+        XCTAssertTrue(session.perform(.fortify(unit: spear.id)))
+        XCTAssertGreaterThan(app.ordersWaiting, 0, "The order waits for the realm")
+        let quit = expectation(description: "let go")
+        let start = Date()
+        app.sendWaiting(within: 0.6) { quit.fulfill() }
+        await fulfillment(of: [quit], timeout: 5)
+        XCTAssertGreaterThanOrEqual(Date().timeIntervalSince(start), 0.5, "It waited for the order")
+        XCTAssertGreaterThan(app.ordersWaiting, 0, "and let the keeper go without it")
+
+        await db.setReachable(true)
+        try await until("the order gone to the realm") { app.ordersWaiting == 0 }
+        app.leaveWorld()
+    }
 }

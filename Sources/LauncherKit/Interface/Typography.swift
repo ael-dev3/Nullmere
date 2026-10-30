@@ -81,13 +81,13 @@ extension Font {
 }
 
 extension View {
-    /// Words on the night water, set on the water's own dark, reaching a few
-    /// points past them: nothing to see, the water beneath them being as
-    /// dark, but a ground the Mac's accessibility audit can find around the
-    /// type, as it does on the realm's panels. Over the lake's own drawing
-    /// alone it finds none, and fails even the brightest words.
+    /// Words on the night water, set on the water's own dark: nothing to
+    /// see, the water beneath them being as dark, but a steady ground under
+    /// the type, whatever the lake beneath it is doing, for the eye and for
+    /// the Mac's accessibility audit alike. It takes no clicks: what lies
+    /// under its edge is still reached.
     public func onNight() -> some View {
-        background { Palette.night.padding(.horizontal, -8).padding(.vertical, -5) }
+        background { Palette.night.allowsHitTesting(false) }
     }
 }
 
@@ -96,6 +96,19 @@ extension EnvironmentValues {
         get { self[LauncherUnitKey.self] }
         set { self[LauncherUnitKey.self] = newValue }
     }
+
+    /// How much of its usual room the space between the launcher's lines
+    /// takes: all of it where the window has room, less where a short window
+    /// or Larger type would otherwise run a screen into the footer. Type
+    /// keeps its size; only the water between it narrows.
+    public var launcherRhythm: CGFloat {
+        get { self[LauncherRhythmKey.self] }
+        set { self[LauncherRhythmKey.self] = newValue }
+    }
+}
+
+private struct LauncherRhythmKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 1
 }
 
 /// Uppercase, widely tracked type.
@@ -234,18 +247,19 @@ public struct PanelHeader: View {
     let title: String
 
     @Environment(\.launcherUnit) private var unit
+    @Environment(\.launcherRhythm) private var rhythm
 
     public init(title: String) {
         self.title = title
     }
 
     public var body: some View {
-        VStack(spacing: 14 * unit) {
+        VStack(spacing: 14 * unit * rhythm) {
             SpacedText(title, size: .launcherType(12, unit: unit), weight: .regular, tracking: 0.6)
                 .foregroundStyle(Palette.text(0.86))
                 .accessibilityAddTraits(.isHeader)
             Hairline(width: 64 * unit)
         }
-        .padding(.bottom, 20 * unit)
+        .padding(.bottom, 20 * unit * rhythm)
     }
 }

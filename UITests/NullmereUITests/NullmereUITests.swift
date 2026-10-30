@@ -54,7 +54,7 @@ final class NullmereUITests: XCTestCase {
         window.buttons["News"].click()
         XCTAssertTrue(window.buttons["Back"].waitForExistence(timeout: 10), "News opens")
         audit("News")
-        window.buttons["Back"].click()
+        back(from: "News", in: window)
 
         window.buttons["Settings"].click()
         XCTAssertTrue(window.buttons["Back"].waitForExistence(timeout: 10), "Settings opens")
@@ -65,7 +65,27 @@ final class NullmereUITests: XCTestCase {
             if labelled(alone, in: window).exists { found("UIWALK Settings offers \(alone), a game played alone") }
         }
         audit("Settings")
-        window.buttons["Back"].click()
+        back(from: "Settings", in: window)
+        report()
+    }
+
+    /// With Larger type, in a window as small as this Mac's screen allows,
+    /// News and Settings still lie whole between the title and the footer,
+    /// and their Back still answers a click.
+    func testTheLauncherFitsWithLargerType() throws {
+        app.launchEnvironment["NULLMERE_TEXT"] = "larger"
+        let window = try openTheLauncher()
+        for panel in ["News", "Settings"] {
+            window.buttons[panel].click()
+            XCTAssertTrue(window.buttons["Back"].waitForExistence(timeout: 10), "\(panel) opens")
+            Thread.sleep(forTimeInterval: 1)
+            let title = labelled("Nullmere Online", in: window)
+            let heading = window.staticTexts[panel]
+            if heading.exists, title.exists, heading.frame.minY < title.frame.maxY {
+                found("UIWALK with Larger type, \(panel)'s heading at \(heading.frame.integral) runs into the title at \(title.frame.integral)")
+            }
+            back(from: "\(panel), with Larger type,", in: window)
+        }
         report()
     }
 
@@ -260,6 +280,20 @@ final class NullmereUITests: XCTestCase {
         return window
     }
 
+    /// Back, from a panel of the launcher: whole above the footer, where the
+    /// footer's words can't lie over it, and answering a click with the menu.
+    private func back(from panel: String, in window: XCUIElement) {
+        let back = window.buttons["Back"]
+        let link = window.buttons["Open nullmere.online"]
+        if back.exists, link.exists, back.frame.maxY > link.frame.minY {
+            found("UIWALK \(panel)'s Back at \(back.frame.integral) runs into the footer at \(link.frame.integral)")
+        }
+        back.click()
+        if !window.buttons["Play"].waitForExistence(timeout: 5) {
+            found("UIWALK \(panel)'s Back, clicked, didn't return to the menu")
+        }
+    }
+
     /// The first element under `root` with these words, of any kind: as its
     /// label, its title, or, for text, its value.
     private func labelled(_ label: String, in root: XCUIElement) -> XCUIElement {
@@ -279,29 +313,88 @@ final class NullmereUITests: XCTestCase {
 
     /// Xcode's accessibility audit of what is on screen: every issue it
     /// finds is kept, so each screen is still audited, and all are told.
-    /// Where it finds type too faint, the type is measured again from the
-    /// screen's own pixels, so what the audit saw is told beside it.
+    ///
+    /// Its contrast check is a heuristic, and calls type faint that its own
+    /// pixels show plainly apart from the ground (light type on the night
+    /// water at sixteen to one, by WCAG's formula). So the type it calls
+    /// faint is measured from the screen's pixels, and fails if it is faint
+    /// by that measure: its body under WCAG's 4.5:1 against its ground, or
+    /// it can't be measured at all. Where a screen holds more type than the
+    /// audit can judge in its time, every text on it is measured so.
     private func audit(_ screen: String, editing: Bool = false) {
         // What fades in, or is fetched as the screen opens (the news, the
         // realm's state), is audited once it has settled.
         Thread.sleep(forTimeInterval: 2.5)
         print("UIAUDIT-SIZE \(screen): \(app.staticTexts.count) texts, \(app.buttons.count) buttons")
         faint = []
-        // In two parts, each with its own time: the contrast of every text,
-        // worked out from the screen's pixels and so the longest, and the rest.
-        audit(screen, part: "checks", types: XCUIAccessibilityAuditType.all.subtracting(.contrast), editing: editing)
-        audit(screen, part: "contrast", types: .contrast, editing: editing)
-        // Type the audit finds faint, measured from the screen's own pixels,
-        // where it lies in the window to be measured.
-        for text in faint.prefix(12) where text.exists && window.frame.contains(text.frame) && text.frame.width >= 4 && text.frame.height >= 4 {
-            print("UITEXT \(screen) h\(Int(text.frame.height)) \(Self.measured(text)) '\(Self.words(of: text).prefix(28))'")
+        // In parts, each with its own time, so a crowded screen is judged
+        // whole: the checks in four, then the contrast of every text,
+        // worked out from the screen's pixels and so the longest.
+        for (part, types) in Self.checks {
+            if !audit(screen, part: part, types: types, editing: editing) {
+                found("UIAUDIT \(screen): its \(part) couldn't run in its time")
+            }
+        }
+        let judged = audit(screen, part: "contrast", types: .contrast, editing: editing)
+        if !judged {
+            print("UIAUDIT-NOTE \(screen): its contrast ran out of time; every text on it measured from the screen instead")
+        }
+        let scrolling = app.scrollViews.allElementsBoundByIndex.map(\.frame)
+        for text in judged ? faint : app.staticTexts.allElementsBoundByIndex {
+            measure(text, on: screen, flagged: judged, scrolling: scrolling)
         }
     }
+
+    /// The audit's checks but contrast, in four parts.
+    private static let checks: [(String, XCUIAccessibilityAuditType)] = {
+        let descriptions: XCUIAccessibilityAuditType = [.sufficientElementDescription, .trait]
+        let rest = XCUIAccessibilityAuditType.all.subtracting([.contrast, .elementDetection, .hitRegion, .sufficientElementDescription, .trait])
+        return [("check of what it shows", .elementDetection), ("check of what can be hit", .hitRegion),
+                ("checks of their descriptions", descriptions), ("checks of their actions and parents", rest)]
+    }()
 
     /// The texts the audit last found faint, to be measured.
     private var faint: [XCUIElement] = []
 
-    private func audit(_ screen: String, part: String, types: XCUIAccessibilityAuditType, editing: Bool, tries: Int = 3) {
+    /// How far up from its foot a scrolling panel fades its rows (the
+    /// game's `scrollEdgeFade`).
+    private static let scrollFade: CGFloat = 18
+
+    /// A text measured from the screen's pixels: told, with the audit's word
+    /// on it beside; a finding if its type is faint by WCAG's measure, or
+    /// can't be measured where it lies in the window. A text a scrolling
+    /// panel shows only in part, cut by its edge or under the fade at its
+    /// foot that says more lies below, is judged once scrolled into view.
+    private func measure(_ text: XCUIElement, on screen: String, flagged: Bool, scrolling: [CGRect]) {
+        let words = Self.words(of: text)
+        guard text.exists, !words.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        let frame = text.frame
+        // Scrolled out of the window, or hidden behind its edge: what isn't
+        // shown isn't judged, unless the audit judged it.
+        guard window.frame.contains(frame), frame.width >= 4, frame.height >= 4 else {
+            if flagged { found("UIAUDIT \(screen): Contrast failed, and '\(words.prefix(60))' lies where it can't be measured: \(frame.integral)") }
+            return
+        }
+        if let panel = scrolling.first(where: { $0.intersects(frame) }),
+           !panel.divided(atDistance: Self.scrollFade, from: .maxYEdge).remainder.contains(frame) {
+            print("UIAUDIT-NOTE \(screen): '\(words.prefix(40))' shown only in part by its scrolling panel, judged when scrolled into view")
+            return
+        }
+        let verdict = flagged ? "the audit called it faint" : "measured, the audit out of time"
+        guard let pixels = Self.measured(text) else {
+            found("UIAUDIT \(screen): '\(words.prefix(60))' couldn't be measured (\(verdict))")
+            return
+        }
+        print("UITEXT \(screen) h\(Int(frame.height)) \(pixels) '\(words.prefix(28))' (\(verdict))")
+        if !pixels.meetsWCAG {
+            found("UIAUDIT \(screen): Contrast failed: '\(words.prefix(60))' measures \(pixels) at \(frame.integral)")
+        }
+    }
+
+    /// Runs the audit for these types, keeping what it finds; false if it
+    /// couldn't run, out of time even after another try or two.
+    @discardableResult
+    private func audit(_ screen: String, part: String, types: XCUIAccessibilityAuditType, editing: Bool, tries: Int = 3) -> Bool {
         do {
             try app.performAccessibilityAudit(for: types) { issue in
                 if let element = issue.element, self.isMacChrome(element) { return true }
@@ -312,25 +405,30 @@ final class NullmereUITests: XCTestCase {
                     print("UIAUDIT-NOTE \(screen): the field editor's parentage, AppKit's own, left aside")
                     return true
                 }
-                let element = issue.element.map { element in
-                    "type \(element.elementType.rawValue) '\(Self.words(of: element).prefix(70))' at \(element.frame.integral)"
-                } ?? "the screen (\(issue.detailedDescription.prefix(160)))"
-                self.found("UIAUDIT \(screen): \(issue.compactDescription): \(element)")
+                // Type called faint is measured, and judged by that.
                 if issue.auditType == .contrast, let text = issue.element {
                     self.faint.append(text)
                     // The audit's own account of what it saw.
                     print("UIAUDIT-WHY \(screen) '\(Self.words(of: text).prefix(30))': \(issue.detailedDescription.prefix(300))")
+                    return true
                 }
+                let element = issue.element.map { element in
+                    "type \(element.elementType.rawValue) '\(Self.words(of: element).prefix(70))' at \(element.frame.integral)"
+                } ?? "the screen (\(issue.detailedDescription.prefix(160)))"
+                self.found("UIAUDIT \(screen): \(issue.compactDescription): \(element)")
                 return true
             }
-        } catch let error as NSError where tries > 1 && error.code == -56 {
+            return true
+        } catch let error as NSError where error.code == -56 {
             // Out of time on a crowded screen: again, after a pause, before it
             // counts against the screen; and what kept the Mac busy, told.
+            guard tries > 1 else { return false }
             print("UIAUDIT-NOTE \(screen): its \(part) ran out of time; again. Busiest: \(Self.busiest())")
             Thread.sleep(forTimeInterval: 4)
-            audit(screen, part: part, types: types, editing: editing, tries: tries - 1)
+            return audit(screen, part: part, types: types, editing: editing, tries: tries - 1)
         } catch {
             found("UIAUDIT \(screen): its \(part) couldn't run: \(error)")
+            return true
         }
     }
 
@@ -355,15 +453,40 @@ final class NullmereUITests: XCTestCase {
         element.label.isEmpty ? (element.value as? String ?? "") : element.label
     }
 
+    /// What a text's pixels show of its type, by WCAG's relative luminance.
+    struct Measure: CustomStringConvertible {
+        /// The commonest colour, taken for the ground.
+        var ground: UInt32
+        /// The type's commonest colour, and its contrast with the ground.
+        var body: UInt32, bodyRatio: Double
+        /// The type's brightest colour, and its contrast with the ground.
+        var peak: UInt32, peakRatio: Double
+        /// The faintest mark of the type (a letter's stroke, a full stop, a
+        /// middle dot): its brightest pixel's contrast with the ground.
+        var weakest: Double
+        var marks: Int
+
+        /// WCAG's least for type, 4.5:1, held by the type's body.
+        var meetsWCAG: Bool { marks > 0 && bodyRatio >= 4.5 }
+
+        var description: String {
+            func rgb(_ colour: UInt32) -> String { "\(colour >> 16 & 0xFF),\(colour >> 8 & 0xFF),\(colour & 0xFF)" }
+            guard marks > 0 else { return "g\(rgb(ground)) none apart" }
+            return "g\(rgb(ground)) m\(rgb(body))=\(String(format: "%.1f", bodyRatio)) "
+                + "p\(rgb(peak))=\(String(format: "%.1f", peakRatio)) w\(String(format: "%.1f", weakest))/\(marks)"
+        }
+    }
+
     /// An element's pixels as the screen draws them: the commonest colour,
     /// taken for the ground; of the rest, those plainly apart from it, taken
     /// for the type: their commonest colour and their brightest, against the
     /// ground; and each mark of the type on its own (a letter's stroke, a
     /// full stop, a middle dot), the weakest mark's brightest pixel against
-    /// the ground, which is what small type stands or falls by.
-    private static func measured(_ element: XCUIElement) -> String {
+    /// the ground, which is what small type stands or falls by. Nil if the
+    /// screen's pixels can't be had.
+    private static func measured(_ element: XCUIElement) -> Measure? {
         guard let image = element.screenshot().image.cgImage(forProposedRect: nil, context: nil, hints: nil),
-              let space = CGColorSpace(name: CGColorSpace.sRGB) else { return "unmeasured" }
+              let space = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
         let width = image.width, height = image.height
         var bytes = [UInt8](repeating: 0, count: width * height * 4)
         let drawn = bytes.withUnsafeMutableBytes { buffer -> Bool in
@@ -373,7 +496,7 @@ final class NullmereUITests: XCTestCase {
             context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
             return true
         }
-        guard drawn, width * height > 0 else { return "unmeasured" }
+        guard drawn, width * height > 0 else { return nil }
         func linear(_ byte: UInt8) -> Double {
             let value = Double(byte) / 255
             return value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
@@ -389,13 +512,12 @@ final class NullmereUITests: XCTestCase {
             0.2126 * linear(UInt8(colour >> 16 & 0xFF)) + 0.7152 * linear(UInt8(colour >> 8 & 0xFF)) + 0.0722 * linear(UInt8(colour & 0xFF))
         }
         func ratio(_ a: Double, _ b: Double) -> Double { (max(a, b) + 0.05) / (min(a, b) + 0.05) }
-        func rgb(_ colour: UInt32) -> String { "\(colour >> 16 & 0xFF),\(colour >> 8 & 0xFF),\(colour & 0xFF)" }
-        guard let ground = counts.max(by: { $0.value < $1.value })?.key else { return "unmeasured" }
+        guard let ground = counts.max(by: { $0.value < $1.value })?.key else { return nil }
         let groundLuminance = luminance(ground)
         let type = counts.filter { ratio(luminance($0.key), groundLuminance) > 1.5 }
         guard let mode = type.max(by: { $0.value < $1.value })?.key,
               let peak = type.keys.max(by: { ratio(luminance($0), groundLuminance) < ratio(luminance($1), groundLuminance) }) else {
-            return "g\(rgb(ground)) none apart"
+            return Measure(ground: ground, body: ground, bodyRatio: 1, peak: ground, peakRatio: 1, weakest: 1, marks: 0)
         }
         // The marks: pixels apart from the ground, joined where they touch,
         // corners and all.
@@ -422,9 +544,8 @@ final class NullmereUITests: XCTestCase {
             marks += 1
             weakest = min(weakest, brightest)
         }
-        return "g\(rgb(ground)) m\(rgb(mode))=\(String(format: "%.1f", ratio(luminance(mode), groundLuminance))) "
-            + "p\(rgb(peak))=\(String(format: "%.1f", ratio(luminance(peak), groundLuminance))) "
-            + "w\(String(format: "%.1f", weakest))/\(marks)"
+        return Measure(ground: ground, body: mode, bodyRatio: ratio(luminance(mode), groundLuminance),
+                       peak: peak, peakRatio: ratio(luminance(peak), groundLuminance), weakest: weakest, marks: marks)
     }
 
     /// Kept, and said at once, so a test that stops early still tells it.

@@ -51,6 +51,7 @@ public struct MenuButton: View {
     let action: () -> Void
 
     @Environment(\.launcherUnit) private var unit
+    @Environment(\.launcherRhythm) private var rhythm
 
     public init(title: String, isSelected: Bool, size: CGFloat = 13, enabled: Bool = true, action: @escaping () -> Void) {
         self.title = title
@@ -72,7 +73,7 @@ public struct MenuButton: View {
                         .opacity(isSelected ? 1 : 0)
                         .offset(y: 11 * unit)
                 }
-                .padding(.vertical, 8 * unit)
+                .padding(.vertical, 8 * unit * rhythm)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

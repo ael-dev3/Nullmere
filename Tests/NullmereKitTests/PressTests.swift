@@ -917,6 +917,129 @@ final class PressTests: XCTestCase {
         XCTAssertEqual(field.accessibilityValue(), "Grain for stone, as before.")
     }
 
+    /// Words sent while the event that brought them still gathers its undo
+    /// group are forgotten all the same, once that group closes: nothing
+    /// typed before the offer can be undone back into the field.
+    func testWordsSentWhileTheirEventIsUnderWayAreForgottenOnceItCloses() throws {
+        let row = rowInAWindow("forgotten as the event closes")
+        defer { row.window.close() }
+        let editor = try XCTUnwrap(tabToTextField(in: row.window), "The words' field")
+        let field = try XCTUnwrap(editor.delegate as? NSTextField, "The field being typed in")
+        let history = try XCTUnwrap(editor.undoManager, "The field's history")
+        type("Salt for stone.", into: editor)
+        spin(until: "the words kept") { row.draft.words == "Salt for stone." }
+        XCTAssertTrue(history.canUndo)
+
+        // The offer goes, and the row is drawn again, inside an event whose
+        // undo group is still open.
+        history.beginUndoGrouping()
+        row.draft.propose(.pact, through: row.session)
+        row.window.contentView?.layoutSubtreeIfNeeded()
+        row.window.displayIfNeeded()
+        history.endUndoGrouping()
+        XCTAssertEqual(row.link.sent.last, .proposeWithWords(.pact, to: row.house.id, words: "Salt for stone."))
+        spin(until: "the field emptied, nothing from before the offer left to undo") { field.stringValue.isEmpty && !history.canUndo }
+        history.undo()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        XCTAssertEqual(field.stringValue, "", "Undo brings back nothing that was sent")
+        XCTAssertEqual(row.draft.words, "")
+    }
+
+    /// Send a gift opens the gifts there are to send in a popover beside
+    /// the button, and the button puts it away again.
+    func testTheGiftsOpenBesideTheirButton() throws {
+        let (session, _, house) = keepersHouse("gifts beside their button")
+        let window = window(hosting: HouseRow(session: session, house: house, draft: OfferDraft(for: house))
+            .frame(width: 340).padding(20).background(Color.black), width: 380, height: 460)
+        defer { window.close() }
+        spin(until: "the row's gift button") { PressableButtons.actions["Send a gift"] != nil }
+        let before = windowsShowing
+        XCTAssertTrue(PressableButtons.press("Send a gift"))
+        spin(until: "the gifts' popover") { windowShown(since: before, over: window) != nil }
+        weak let popover = windowShown(since: before, over: window)
+        XCTAssertNotNil(popover, "The popover's window")
+        XCTAssertTrue(PressableButtons.press("Send a gift"), "Pressed again")
+        spin(until: "the popover put away") { popover?.isVisible != true }
+    }
+
+    /// Page Down pages the open panel most of a height on, in its window;
+    /// Page Up brings it back.
+    func testThePageKeysScrollTheOpenPanel() throws {
+        let state = GameState(settings: GameSettings(seedText: "paged by the keys", houseCount: 8, radius: 22, keepers: 1))
+        let (session, _) = session(state)
+        session.panel = .houses
+        let window = window(hosting: HousesPanelHost(session: session), width: 420, height: 760)
+        defer { window.close() }
+        spin(until: "the panel's scrolling") { scrollView(in: window.contentView) != nil }
+        let scroll = try XCTUnwrap(scrollView(in: window.contentView), "A panel with more than it shows")
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        let top = scroll.contentView.bounds.origin.y
+        XCTAssertTrue(session.handle(.page(1)))
+        spin(until: "a page down") { abs(scroll.contentView.bounds.origin.y - top) > 100 }
+        XCTAssertTrue(session.handle(.page(-1)))
+        spin(until: "a page back up") { abs(scroll.contentView.bounds.origin.y - top) < 1 }
+    }
+
+    /// The first of AppKit's scrolling views in a view's hierarchy with more
+    /// to show than it shows.
+    private func scrollView(in view: NSView?) -> NSScrollView? {
+        guard let view else { return nil }
+        if let scroll = view as? NSScrollView, let document = scroll.documentView,
+           document.frame.height > scroll.contentView.bounds.height + 1 {
+            return scroll
+        }
+        for child in view.subviews {
+            if let found = scrollView(in: child) { return found }
+        }
+        return nil
+    }
+
+    /// A keeper clearly the stronger may demand tribute of another keeper's
+    /// House, asked once: what a refusal brings is that keeper's to choose.
+    func testAStrongerKeeperDemandsTributeOfAnotherKeepersHouse() throws {
+        var state = GameState(settings: GameSettings(seedText: "tribute demanded", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        let other = (me + 1) % state.houses.count
+        state.houses[other].isPlayer = true
+        // Its companies gone: the keeper here clearly the stronger.
+        state.units.removeAll { $0.owner == other }
+        let (session, link) = session(state)
+        XCTAssertTrue(session.canDemandTribute(from: other), "At peace, and clearly the stronger")
+        let house = session.state.houses[other]
+        draw(HouseRow(session: session, house: house, draft: OfferDraft(for: house)))
+        XCTAssertTrue(PressableButtons.press("Demand tribute"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .propose(.tribute, to: other))
+    }
+
+    /// A steward's demand refused is war at once, as its words said; a
+    /// keeper's, refused, leaves war theirs to choose.
+    func testRefusingTributeIsWarWithAStewardAndAChoiceForAKeeper() throws {
+        var state = GameState(settings: GameSettings(seedText: "tribute refused", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        let others = state.houses.map(\.id).filter { $0 != me }
+        let steward = others[0], keeper = others[1]
+        state.houses[keeper].isPlayer = true
+        state.envoys.append(Envoy(id: 801, from: steward, to: me, proposal: .tribute, arrived: state.watch))
+        let (session, link) = session(state)
+        draw(EnvoyCards(session: session))
+        XCTAssertTrue(PressableButtons.press("Refuse"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .answer(envoy: 801, accept: false))
+        XCTAssertEqual(session.state.stance(me, steward), .war, "Refused, the steward marches")
+
+        var demanded = session.state
+        demanded.envoys.append(Envoy(id: 802, from: keeper, to: me, proposal: .tribute, arrived: demanded.watch))
+        link.onEvent?(.changed(demanded))
+        let demand = try XCTUnwrap(session.envoys.first { $0.id == 802 })
+        let price = session.state.tribute(from: me)
+        XCTAssertEqual(EnvoyCards.words(for: demand, from: session.state.houses[keeper], in: session.state, player: me),
+                       "\(session.state.houses[keeper].title) demands tribute: \(price), a fifth of your stores. Pay, and they can't ask again "
+                       + "for \(GameState.tributeRespite) watches. Refuse, or send no answer, and war is theirs to choose.")
+        draw(EnvoyCards(session: session))
+        XCTAssertTrue(PressableButtons.press("Refuse"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .answer(envoy: 802, accept: false))
+        XCTAssertEqual(session.state.stance(me, keeper), .peace, "A keeper refused chooses war or not for themselves")
+    }
+
     func testATradeIsComposedAndOffered() throws {
         let state = GameState(settings: GameSettings(seedText: "pressed trade", houseCount: 4, radius: 18, keepers: 1))
         let (session, link) = session(state)

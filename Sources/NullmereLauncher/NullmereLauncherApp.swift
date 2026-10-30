@@ -25,6 +25,19 @@ struct NullmereOnlineApp: App {
 @MainActor
 final class OnlineAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        #if DEBUG
+        // scripts/check-voices.sh: the voices heard from this Mac's own
+        // model, asked by the app as it runs on a keeper's Mac, each line
+        // held to the voices' rules; the report written, the app goes.
+        if let path = ProcessInfo.processInfo.environment["NULLMERE_VOICES_REPORT"], !path.isEmpty {
+            Task { @MainActor in
+                let report = await VoiceCheck.run(OnDeviceVoice(), source: "Apple's on-device model on this Mac, \(OnDeviceVoice.availability)")
+                try? report.text.write(toFile: path, atomically: true, encoding: .utf8)
+                exit(report.failures.isEmpty ? 0 : 1)
+            }
+            return
+        }
+        #endif
         // A copy already running: it comes forward, and this one goes.
         if SingleInstance.handOver() {
             NSApp.terminate(nil)

@@ -45,7 +45,7 @@ echo "== Summary"
 printf '  %-28s %s\n' "The voices (Apple Intelligence)" "$voices" "The figures (Apple silicon)" "$figures"
 if [ "$voices" != passed ] || [ "$figures" != passed ]; then
     echo
-    echo "error: not everything passed; nothing was committed. See build/voices-test.log and build/mac-perf.log." >&2
+    echo "error: not everything passed; nothing was committed. See build/voices-report.txt and build/mac-perf.log." >&2
     exit 1
 fi
 

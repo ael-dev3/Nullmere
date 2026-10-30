@@ -7,6 +7,7 @@ struct SettingsPanel: View {
     let model: LauncherModel
 
     @Environment(\.launcherUnit) private var unit
+    @Environment(\.launcherRhythm) private var rhythm
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isReturnHovered = false
     /// The row whose option has keyboard focus, with keyboard navigation
@@ -43,7 +44,7 @@ struct SettingsPanel: View {
                 model.returnToTitle()
             }
             .onPointer { isReturnHovered = $0 }
-            .padding(.top, 18 * unit)
+            .padding(.top, 18 * unit * rhythm)
         }
         .frame(width: 560 * unit)
         .onChange(of: focusedRow) { _, row in if let row { model.settingsSelection = row } }
@@ -62,12 +63,13 @@ private struct SettingsRowView: View {
     let choose: (Int) -> Void
 
     @Environment(\.launcherUnit) private var unit
+    @Environment(\.launcherRhythm) private var rhythm
 
     var body: some View {
         HStack(spacing: 0) {
             SelectionTick(isVisible: isFocused, length: 10 * unit)
                 .padding(.trailing, isFocused ? 10 * unit : 0)
-            VStack(alignment: .leading, spacing: 4 * unit) {
+            VStack(alignment: .leading, spacing: 4 * unit * rhythm) {
                 SpacedText(title, size: .launcherType(10.5, unit: unit), weight: .regular, tracking: 0.32)
                     .foregroundStyle(Palette.text(isFocused ? 1 : 0.8))
                 if let note {
@@ -86,7 +88,7 @@ private struct SettingsRowView: View {
             }
         }
         .foregroundStyle(Palette.ink)
-        .padding(.vertical, 13 * unit)
+        .padding(.vertical, 13 * unit * rhythm)
         .onNight()
         .contentShape(Rectangle())
         .animation(.easeOut(duration: 0.3), value: isFocused)

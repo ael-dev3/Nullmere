@@ -27,6 +27,7 @@ public struct RequirementView: View {
     let choose: (Int) -> Void
 
     @Environment(\.launcherUnit) private var unit
+    @Environment(\.launcherRhythm) private var rhythm
 
     public init(readiness: ModelReadiness, choices: [String], selection: Binding<Int>, choose: @escaping (Int) -> Void) {
         self.readiness = readiness
@@ -41,7 +42,7 @@ public struct RequirementView: View {
 
             Text(verbatim: readiness.explanation)
                 .font(.launcher(.launcherType(13, unit: unit), weight: .regular))
-                .lineSpacing(6 * unit)
+                .lineSpacing(6 * unit * rhythm)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Palette.text(0.8))
                 .frame(maxWidth: 460 * unit)
@@ -49,7 +50,7 @@ public struct RequirementView: View {
                 .onNight()
 
             RequirementsLine(readiness: readiness)
-                .padding(.top, 24 * unit)
+                .padding(.top, 24 * unit * rhythm)
 
             // One choice is lit at a time, and it is the one Return performs:
             // the pointer chooses by resting on a word, the arrows by moving.
@@ -63,7 +64,7 @@ public struct RequirementView: View {
                     }
                 }
             }
-            .padding(.top, 22 * unit)
+            .padding(.top, 22 * unit * rhythm)
         }
         .animation(.easeInOut(duration: 0.4), value: readiness)
     }

@@ -95,20 +95,6 @@ jobs:
           mkdir -p build
           python3 scripts/perf-check.py build-test.log perf/baseline.json --json build/perf.json | tee build/perf-check.log
 
-      # The release app finds Apple's on-device model ready on this runner
-      # (the launch below asks the framework itself, as a keeper's Mac
-      # would): so the voices are heard here too, each kind of envoy and
-      # chronicle entry spoken by the model, every line held to the voices'
-      # rules and printed to be read. Watched before it is held to.
-      - name: The voices, from the runner's own model
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        continue-on-error: true
-        timeout-minutes: 15
-        run: |
-          mkdir -p build
-          NULLMERE_LIVE_VOICES=1 swift test --skip-build --enable-code-coverage --filter VoicesLiveTests 2>&1 | tee build/voices-test.log \
-            | grep -vE "^Test (Suite|Case)|^\s*Executed" | tail -n 60
-
       # Xcode 26 and later ship the Metal compiler separately. Fetch it only
       # when no installed Xcode has one; check-shader.sh also tries them all.
       # A slow or failed download only skips the offline compile (with a
@@ -308,7 +294,6 @@ jobs:
           grep -h "Test skipped" build-test.log 2>/dev/null | sed 's|^.*/Tests/||' | sort -u | head -20 || true
           cat build/coverage.log 2>/dev/null || true
           cat build/perf-check.log 2>/dev/null || true
-          cat build/voices-report.txt 2>/dev/null || tail -n 25 build/voices-test.log 2>/dev/null || true
           grep -h "REHEARSAL\|error:" build/rehearsal.log 2>/dev/null || true
           grep -hE "error|warning" build/smoke-*.log 2>/dev/null | head -20 || true
           tail -n 15 build/game-stdout.log 2>/dev/null || true
@@ -341,6 +326,18 @@ jobs:
       - name: Audit every screen and walk the map
         run: scripts/ui-test.sh
 
+      # The release app finds Apple's on-device model ready on this runner,
+      # though a test runner's bare process doesn't: the model answers an
+      # app. So the debug app the audit opened asks it for each kind of
+      # envoy and chronicle entry, as a keeper's Mac would, and every line
+      # is held to the voices' rules and printed to be read. Watched before
+      # it is held to.
+      - name: The voices, from the runner's own model
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        timeout-minutes: 15
+        run: scripts/check-voices.sh --app "build/ui/Nullmere Online.app"
+
       # Last, so a short read of the log holds it: what the audit and the
       # walk found, and how the tests ended.
       - name: Summary
@@ -353,6 +350,10 @@ jobs:
           grep -hoE "UISCREEN.*" build/ui-test.log 2>/dev/null | head -n 1 || true
           grep -hE "error: -\[|failed - " build/ui-test.log 2>/dev/null | cut -c1-300 | head -n 20 || true
           grep -hE "Test Case .* (passed|failed)|\*\* TEST" build/ui-test.log 2>/dev/null || true
+          # The voices' verdict, and any line out of bounds.
+          sed -n '/^Every line within the rules\.$/p;/^Out of bounds:$/,$p;/not ready/p' build/voices-report.txt 2>/dev/null | head -n 20 || true
+          # The app crashing under the tests, if it did: why, and where.
+          python3 scripts/crash-summary.py --only Nullmere ~/Library/Logs/DiagnosticReports || true
           echo "::endgroup::"
 
       # Each text on screen as measured from the pixels, the audit's verdict
@@ -493,6 +494,8 @@ jobs:
         if: always()
         run: |
           grep -hE "error: |warning: " realm-build.log 2>/dev/null | head -20 || true
+          # Failures first, so the skipped tests' lines never crowd them out.
+          grep -hE "error: |failed \(" realm-test.log realm-integration.log 2>/dev/null | awk '!seen[$0]++' | head -20 || true
           grep -hE "error|failed|skipped|Executed|REALM " realm-test.log realm-integration.log 2>/dev/null | tail -20 || true
           tail -n 30 realm-state/spacetime-local.log 2>/dev/null || true
           tail -n 10 realm-state/standalone.log 2>/dev/null || true

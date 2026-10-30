@@ -6,6 +6,7 @@ struct NewsPanel: View {
     let model: LauncherModel
 
     @Environment(\.launcherUnit) private var unit
+    @Environment(\.launcherRhythm) private var rhythm
     @State private var isReturnHovered = false
 
     var body: some View {
@@ -23,7 +24,7 @@ struct NewsPanel: View {
                         }
                     }
                     NewsSourceLine(status: model.newsStatus)
-                        .padding(.top, 14 * unit)
+                        .padding(.top, 14 * unit * rhythm)
                 }
                 .frame(width: 250 * unit, alignment: .leading)
 
@@ -37,7 +38,7 @@ struct NewsPanel: View {
                 model.returnToTitle()
             }
             .onPointer { isReturnHovered = $0 }
-            .padding(.top, 16 * unit)
+            .padding(.top, 16 * unit * rhythm)
         }
     }
 }
@@ -50,6 +51,7 @@ private struct NewsHeadline: View {
     let action: () -> Void
 
     @Environment(\.launcherUnit) private var unit
+    @Environment(\.launcherRhythm) private var rhythm
 
     var body: some View {
         let _ = PressableButtons.note(item.title, enabled: true, action)
@@ -59,7 +61,7 @@ private struct NewsHeadline: View {
                     .fill(Palette.line(0.7))
                     .frame(width: 1, height: 30 * unit)
                     .opacity(isSelected ? 1 : 0)
-                VStack(alignment: .leading, spacing: 4 * unit) {
+                VStack(alignment: .leading, spacing: 4 * unit * rhythm) {
                     SpacedText(item.date.shortText, size: .launcherType(9, unit: unit), weight: .regular, tracking: 0.3, balanced: false)
                         .foregroundStyle(Palette.text(isSelected ? 0.68 : 0.5))
                     let titleSize = CGFloat.launcherType(11.5, unit: unit)
@@ -73,7 +75,7 @@ private struct NewsHeadline: View {
                         .foregroundStyle(Palette.text(isSelected ? 1 : 0.55))
                 }
             }
-            .padding(.vertical, 7 * unit)
+            .padding(.vertical, 7 * unit * rhythm)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
@@ -90,6 +92,7 @@ private struct NewsStory: View {
     let openLink: () -> Void
 
     @Environment(\.launcherUnit) private var unit
+    @Environment(\.launcherRhythm) private var rhythm
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -106,12 +109,12 @@ private struct NewsStory: View {
 
                     Text(verbatim: item.body)
                         .font(.launcher(.launcherType(13, unit: unit), weight: .regular))
-                        .lineSpacing(5 * unit)
+                        .lineSpacing(5 * unit * rhythm)
                         .foregroundStyle(Palette.text(0.82))
                         .lineLimit(5)
                         .fixedSize(horizontal: false, vertical: true)
                         .onNight()
-                        .padding(.top, 10 * unit)
+                        .padding(.top, 10 * unit * rhythm)
 
                     if item.link != nil {
                         let _ = PressableButtons.note("Read more", enabled: true, openLink)
@@ -123,7 +126,7 @@ private struct NewsStory: View {
                         .buttonStyle(.plain)
                         .linkPointer()
                         .accessibilityLabel("Read more about \(item.title)")
-                        .padding(.top, 14 * unit)
+                        .padding(.top, 14 * unit * rhythm)
                     }
                 }
                 .id(item.id)

@@ -134,6 +134,7 @@ make smoke                 # build the app, open the launcher, check it starts a
 make smoke-menu            # open a debug build of the launcher with the model ready, Apple Intelligence off and the model downloading; type into it, photograph every screen
 make smoke-game            # open a debug build, press Play, enter a realm hosted on the Mac as a keeper, take screenshots
 scripts/ui-test.sh         # through Xcode's UI testing: every screen put to its accessibility audit, the map walked as VoiceOver walks it
+scripts/check-voices.sh    # the voices, spoken by this Mac's on-device model through the debug app, every line held to their rules
 ```
 
 CI runs all of these on a macOS 26 runner for every pull request and every
@@ -595,7 +596,9 @@ over the map showing through; words never under eleven points and spaced
 capitals never under nine and a half; nothing under fourteen points
 thinner than regular, nor under twelve lighter than medium. A House's
 colour colouring words is lifted toward the ink to read at ten to one.
-Xcode's accessibility audit holds every screen to it (`scripts/ui-test.sh`).
+Xcode's accessibility audit holds every screen to it, and the type it
+calls faint is measured from the screen's own pixels by WCAG's formula
+(`scripts/ui-test.sh`).
 VoiceOver reads the map, the panels and every notice.
 
 Each age's lake grows from the realm's private words; the realm keeps the
