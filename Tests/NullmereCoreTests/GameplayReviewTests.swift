@@ -108,33 +108,31 @@ final class AbsentKeeperTests: XCTestCase {
         XCTAssertGreaterThan(world.units(of: ama).count, 0, "Its companies kept up")
     }
 
-    func testACaretakerSwearsASensiblePactAndNoOther() throws {
+    /// A pact shares sight, and that is a keeper's alone to give: a
+    /// caretaker swears none for them, whatever the House offering it gave
+    /// and whatever its own temper, though it takes the peace a steward
+    /// would to end a war.
+    func testACaretakerSwearsNoPactButMakesPeace() throws {
         var (realm, ama, _) = try realm()
         realm.depart("id-ama", now: 0)
+        realm.world.houses[ama].temperament = .steadfast
         let others = realm.world.houses.filter { !$0.isPlayer }.map(\.id)
-        let (friend, ally, foe, builder) = (others[0], others[1], others[2], others[3])
-        func relate(_ a: Int, _ b: Int, _ stance: Stance) throws {
-            let index = try XCTUnwrap(realm.world.relations.firstIndex { $0.first == min(a, b) && $0.second == max(a, b) })
-            realm.world.relations[index].stance = stance
-        }
-        // Ama's House already sworn to one ally; the foe is at war with it.
-        try relate(ama, ally, .pact)
-        try relate(foe, ally, .war)
-        // Each asks for a pact, each having given gifts enough to win one.
-        realm.world.gifts = [friend, foe, builder].map { Gift(from: $0, to: ama, worth: 500, watch: realm.world.watch) }
-        // The builder's Moonspire rises.
-        let spire = try XCTUnwrap(realm.world.holds.firstIndex { $0.owner == builder && $0.isSeat })
-        realm.world.holds[spire].levels[.moonspire] = 3
-        for from in [friend, foe, builder] {
-            realm.world.envoys.append(Envoy(id: realm.world.nextID, from: from, to: ama, proposal: .pact, arrived: realm.world.watch))
-            realm.world.nextID += 1
-        }
+        let (friend, foe) = (others[0], others[1])
+        // A war five watches old, and the House that made it sues for peace.
+        _ = try realm.world.declareWar(by: foe, on: ama)
+        realm.world.watch += 5
+        realm.world.envoys.append(Envoy(id: realm.world.nextID, from: foe, to: ama, proposal: .peace, arrived: realm.world.watch))
+        realm.world.nextID += 1
+        // A friend who has given much asks for a pact.
+        realm.world.gifts = [Gift(from: friend, to: ama, worth: 500, watch: realm.world.watch)]
+        XCTAssertTrue(RivalMind(house: ama).accepts(.pact, from: friend, in: realm.world), "A steward in its place would swear it")
+        realm.world.envoys.append(Envoy(id: realm.world.nextID, from: friend, to: ama, proposal: .pact, arrived: realm.world.watch))
+        realm.world.nextID += 1
         // Kept from the second watch to turn after its keeper left.
         _ = realm.tick(now: 180)
         _ = realm.tick(now: 360)
-        XCTAssertEqual(realm.world.stance(ama, friend), .pact, "A friend's pact, sworn")
-        XCTAssertNotEqual(realm.world.stance(ama, foe), .pact, "Not with a House at war with an ally")
-        XCTAssertNotEqual(realm.world.stance(ama, builder), .pact, "Nor with one whose Moonspire the lake should stop")
+        XCTAssertEqual(realm.world.stance(ama, friend), .peace, "No pact sworn for a keeper away")
+        XCTAssertEqual(realm.world.stance(ama, foe), .peace, "The war ended")
         XCTAssertFalse(realm.world.envoys.contains { $0.to == ama }, "Every envoy answered")
     }
 
@@ -144,15 +142,15 @@ final class AbsentKeeperTests: XCTestCase {
         var (realm, ama, _) = try realm()
         realm.depart("id-ama", now: 0)
         let friend = try XCTUnwrap(realm.world.houses.first { !$0.isPlayer }?.id)
-        realm.world.gifts = [Gift(from: friend, to: ama, worth: 500, watch: realm.world.watch)]
         realm.world.envoys.append(Envoy(id: realm.world.nextID, from: friend, to: ama, proposal: .pact, arrived: realm.world.watch))
         realm.world.nextID += 1
+        let waiting = { realm.world.envoys.contains { $0.from == friend && $0.to == ama } }
         XCTAssertNotNil(realm.setReady("id-bel", true, now: 1), "Bel there, and ready: the watch turns at once")
         XCTAssertEqual(realm.keeper("id-ama")?.watchesAway, 1)
-        XCTAssertNotEqual(realm.world.stance(ama, friend), .pact, "One watch away: not yet kept")
+        XCTAssertTrue(waiting(), "One watch away: not yet kept, and the envoy waits")
         XCTAssertNotNil(realm.setReady("id-bel", true, now: 2))
         XCTAssertEqual(realm.keeper("id-ama")?.watchesAway, 2)
-        XCTAssertEqual(realm.world.stance(ama, friend), .pact, "Two watches away, two seconds in all: kept")
+        XCTAssertFalse(waiting(), "Two watches away, two seconds in all: kept, and the envoy answered")
         _ = try realm.arrive("id-ama", name: "Ama", now: 3)
         XCTAssertNil(realm.keeper("id-ama")?.watchesAway, "Back, and no longer counted away")
     }

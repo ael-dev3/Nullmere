@@ -483,6 +483,7 @@ final class GuideTests: XCTestCase {
         // The rules said as they stand.
         let all = Guide.sections.flatMap(\.lines).joined(separator: " ")
         XCTAssertTrue(all.contains("gifts worth \(GameState.giftsTakenPerWatch) a watch at most"), all)
+        XCTAssertTrue(all.contains("swears you no pact"), all)
     }
 
     @MainActor

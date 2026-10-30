@@ -287,10 +287,10 @@ as the realm will, and takes the realm's word as final.
   answers envoys, builds and trains, guards the holds, fights on in wars
   already begun and sues for peace in one going badly, but begins no war,
   demand or pact and never bends the knee, though it takes a House offering
-  fealty as a vassal. A pact offered it swears as a steward would, but
-  never with a House at war with the keeper's allies or one whose Moonspire
-  is rising. While fewer than half the keepers are there, a watch lasts at
-  least a third of its time, however ready they are.
+  fealty as a vassal. Peace offered to end a war it takes as a steward
+  would; a pact offered it never swears, for a pact would lend the
+  keeper's sight to another. While fewer than half the keepers are there, a
+  watch lasts at least a third of its time, however ready they are.
 - **Fair seats.** Seats are spread evenly round the lake, none hemmed in
   with little land of its own; which House takes which is the luck of the
   draw, and the stewards take their turns starting one seat further round

@@ -6,7 +6,8 @@ struct RivalMind {
     /// Keeping a House for its keeper while they are away: it answers
     /// envoys, tends the holds and defends them, and sues for peace in a
     /// war going badly, but begins nothing the keeper would have to undo:
-    /// no war, no demand, no pact, no bending the knee.
+    /// no war, no demand, no pact, no bending the knee; nor does it swear
+    /// a pact offered, which would lend the keeper's sight to another.
     var caretaking = false
 
     // MARK: Answering offers
@@ -199,16 +200,18 @@ struct RivalMind {
     }
 
     /// A caretaker's diplomacy: the envoys waiting on the House answered as
-    /// a steward would (a House offering fealty is taken as a vassal), and
-    /// a war going badly ended if it can be. It offers nothing itself, so
-    /// it never bends the knee for its keeper.
+    /// a steward would (peace to end a war, a House offering fealty taken
+    /// as a vassal), but for a pact: one shares the keeper's sight, which
+    /// is theirs alone to give, so it is refused. A war going badly is
+    /// ended if it can be. It offers nothing itself, so it never bends the
+    /// knee for its keeper.
     private func keepThePeace(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
         var events: [GameEvent] = []
         for envoy in state.envoys where envoy.to == house {
             let accept: Bool
             switch envoy.proposal {
             case .trade: accept = envoy.trade.map { acceptsTrade($0, from: envoy.from, in: state) } ?? false
-            case .pact: accept = acceptsPactForKeeper(from: envoy.from, in: state)
+            case .pact: accept = false
             default: accept = accepts(envoy.proposal, from: envoy.from, in: state)
             }
             events += perform(.answer(envoy: envoy.id, accept: accept), in: &state)
@@ -221,16 +224,6 @@ struct RivalMind {
             }
         }
         return events
-    }
-
-    /// A pact a caretaker swears for its keeper: one a steward would take,
-    /// but not with a House at war with the keeper's allies, which would
-    /// set two pacts against each other, nor with one whose rising
-    /// Moonspire the lake should be stopping.
-    func acceptsPactForKeeper(from proposer: Int, in state: GameState) -> Bool {
-        guard accepts(.pact, from: proposer, in: state), !spireThreats(in: state).contains(proposer) else { return false }
-        let allies = state.livingHouses.filter { $0.id != proposer && state.stance(house, $0.id) == .pact }
-        return !allies.contains { state.isAtWar(proposer, $0.id) }
     }
 
     /// A tie broken by no one's seat or hold number: the same for the same
