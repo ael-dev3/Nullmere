@@ -125,6 +125,8 @@ final class DepthPanelTests: XCTestCase {
         // Another keeper, the same invitation waiting, asks another alliance instead.
         let (asking, asked) = self.session(state)
         draw(AlliancePanel(session: asking))
+        XCTAssertTrue(PressableButtons.press("Refuse"), "Among \(shown)")
+        XCTAssertEqual(asked.sent.last, .answerInvitation(alliance: oath, accept: false))
         XCTAssertTrue(PressableButtons.press("Ask to join"), "Among \(shown)")
         guard case .askToJoin? = asked.sent.last else { return XCTFail("Asked: \(String(describing: asked.sent.last))") }
     }
@@ -132,7 +134,9 @@ final class DepthPanelTests: XCTestCase {
     func testASwornHouseInvitesHelpsAndLeaves() throws {
         let state = world("pressed alliance")
         let (session, link) = session(state)
-        XCTAssertTrue(session.perform(.foundAlliance(name: "The Ashen Ring")))
+        XCTAssertFalse(AlliancePanel.raise("x", in: session), "a name that won't do raises nothing")
+        XCTAssertTrue(AlliancePanel.raise("The Ashen Ring", in: session))
+        XCTAssertEqual(link.sent.last, .foundAlliance(name: "The Ashen Ring"))
         draw(AlliancePanel(session: session))
         XCTAssertTrue(PressableButtons.press("Invite"), "Among \(shown)")
         guard case .inviteToAlliance(let invited)? = link.sent.last else { return XCTFail("Invited: \(String(describing: link.sent.last))") }
@@ -237,6 +241,9 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(WordLine.speaker(try XCTUnwrap(said.last), in: session.state, player: me), "You")
         XCTAssertEqual(WordLine.speaker(try XCTUnwrap(said.first), in: session.state, player: me), session.state.houses[other].title)
         XCTAssertFalse(session.perform(.say(words: "   ", toAlliance: false)), "Nothing to say is refused")
+        XCTAssertFalse(WordsPanel.say("", toAlliance: false, in: session))
+        XCTAssertTrue(WordsPanel.say("Hold fast", toAlliance: true, in: session), "sworn to none, said to the realm")
+        XCTAssertEqual(link.sent.last, .say(words: "Hold fast", toAlliance: false))
         XCTAssertFalse(session.perform(.say(words: "Hail", toAlliance: true)), "Sworn to none, no alliance to say it to")
         draw(WordsPanel(session: session))
         XCTAssertEqual(GameSession.cues(for: .say(words: "Hail", toAlliance: false), events: [], in: session.state, player: me), [.parley])
@@ -287,6 +294,12 @@ final class DepthPanelTests: XCTestCase {
         let ally = (me + 3) % 6
         let index = try XCTUnwrap(state.alliances?.firstIndex { $0.id == banner })
         state.alliances![index].members.append(ally)
+        // The ally with a work rising to help, and its seat known.
+        let allySeat = try XCTUnwrap(state.holds.firstIndex { $0.owner == ally && $0.isSeat })
+        state.holds[allySeat].project = Hold.Project(kind: .granary, targetLevel: 1, watchesLeft: 3)
+        state.reveal(around: state.holds[allySeat].position, range: 1, for: me)
+        // Founders, for the charge that founds a hold.
+        _ = try XCTUnwrap(state.placeUnit(.founder, for: me, near: state.holds[seat].position))
         _ = try state.declareWar(by: me, on: foe)
         let target = try XCTUnwrap(state.holds.first { $0.owner == foe })
         state.reveal(around: target.position, range: 1, for: me)
@@ -315,12 +328,26 @@ final class DepthPanelTests: XCTestCase {
         session.selection = .unit(company.id)
         draw(CommandersPanel(session: session))
         draw(AlliancePanel(session: session))
-        XCTAssertTrue(PressableButtons.press("Admit"), "Among \(shown)")
+        let helpable = session.state.helpable(by: me, for: ally)
+        XCTAssertGreaterThan(helpable, 0)
+        for title in ["Help \(helpable)", "Keep their gates", "Send the chosen", "Refuse", "Admit", "Cast out"] {
+            XCTAssertTrue(PressableButtons.press(title), "\(title) among \(shown)")
+        }
         draw(RealmPanel(session: session))
         draw(WordsPanel(session: session))
         draw(SelectionPanel(session: session), width: 330, height: 700)
         session.selection = .unit(state.units[carrier].id)
         draw(SelectionPanel(session: session), width: 330, height: 700)
+        session.selection = .unit(company.id)
+        draw(SelectionPanel(session: session), width: 330, height: 700)
+        XCTAssertTrue(PressableButtons.press("Commanders"), "Among \(shown)")
+        XCTAssertEqual(session.panel, .commanders)
+        ChargeGuide.show(.foundHold, in: session)
+        if case .unit(let chosen) = session.selection {
+            XCTAssertEqual(session.state.unit(chosen)?.kind, .founder, "Founders chosen to found a hold")
+        } else {
+            XCTFail("Founders chosen: \(session.selection)")
+        }
         session.focusOnSeat()
         draw(SelectionPanel(session: session), width: 330, height: 900)
         draw(ChargeCard(session: session), width: 330, height: 200)
@@ -330,8 +357,13 @@ final class DepthPanelTests: XCTestCase {
         state.commanders = state.commanders?.filter { $0.owner != me }
         state.holds[seat].levels[.musterHall] = nil
         state.rallies = []
+        state.chargesDone = Array(repeating: Charge.allCases.count, count: state.houses.count)
+        state.units.removeAll { $0.owner == me && $0.kind.isMilitary }
         let (bare, _) = self.session(state)
         draw(RealmPanel(session: bare))
+        XCTAssertNil(bare.state.realmBoard(for: me).charge, "every charge kept")
+        ChargeGuide.show(.gatherSite, in: bare)
+        XCTAssertEqual(bare.selection, .hold(try XCTUnwrap(bare.state.seat(of: me)).id), "with no company of war, the seat to muster one")
         draw(CommandersPanel(session: bare))
         bare.selection = .hold(target.id)
         draw(SelectionPanel(session: bare), width: 330, height: 700)

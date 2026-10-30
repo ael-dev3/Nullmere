@@ -70,9 +70,16 @@ struct WordsPanel: View {
     }
 
     private func say() {
+        if Self.say(draft, toAlliance: toAlliance, in: session) { draft = "" }
+    }
+
+    /// Says the words to the realm, or to the keeper's alliance if they are
+    /// sworn to one and asked it; whether they were said.
+    @discardableResult
+    static func say(_ draft: String, toAlliance: Bool, in session: GameSession) -> Bool {
         let alliance = toAlliance && session.state.alliance(of: session.player) != nil
-        guard session.state.sayRefusal(draft, toAlliance: alliance, as: session.player) == nil else { return }
-        if session.perform(.say(words: draft, toAlliance: alliance)) { draft = "" }
+        guard session.state.sayRefusal(draft, toAlliance: alliance, as: session.player) == nil else { return false }
+        return session.perform(.say(words: draft, toAlliance: alliance))
     }
 }
 

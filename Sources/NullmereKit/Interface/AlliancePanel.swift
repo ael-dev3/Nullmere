@@ -196,8 +196,14 @@ struct AlliancePanel: View {
     }
 
     private func raise() {
-        guard Alliance.isValidName(banner) else { return }
-        if session.perform(.foundAlliance(name: banner)) { banner = "" }
+        if Self.raise(banner, in: session) { banner = "" }
+    }
+
+    /// Raises a banner of that name, if the name will do; whether it was raised.
+    @discardableResult
+    static func raise(_ name: String, in session: GameSession) -> Bool {
+        guard Alliance.isValidName(name) else { return false }
+        return session.perform(.foundAlliance(name: name))
     }
 }
 
