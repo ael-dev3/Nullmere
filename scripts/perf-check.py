@@ -19,14 +19,20 @@ Fails, too, if a figure is under a third of its baseline: either the
 work is no longer measured, or the baseline should come down.
 
 A shared runner is faster some days than others. The metric marked
-"calibration" times a fixed piece of the game's work; when this run's is
-slower than its baseline, every metric marked "cpu" is allowed that much
-more. A slower machine moves the calibration and the CPU figures alike; a
-slower path moves only its own figure, and still fails.
+"calibration" times a fixed piece of plain work, none of it the game's;
+when this run's is slower than its baseline, every metric marked "cpu" is
+allowed that much more, up to twice. A slower machine moves the
+calibration and the CPU figures alike; a slower path in the game moves
+only its own figure, and still fails, since the game's code can't slow
+the calibration down. A machine more than twice as slow as the
+baseline's isn't one to measure on: its CPU figures are held at twice.
 """
 import json
 import re
 import sys
+
+# The most a slow runner widens the CPU allowances.
+MOST_PACE = 2.0
 
 METRIC = re.compile(r"PERFMETRIC (\S+) ([0-9.]+)")
 
@@ -51,8 +57,10 @@ def check(found, baseline):
     for name, spec in metrics.items():
         if spec.get("calibration") and spec.get("baseline") and name in found:
             pace = max(1.0, found[name] / spec["baseline"])
-            lines.append(f"PERF-CHECK this runner runs the game's work at {found[name]:.1f} ms against {spec['baseline']:.1f}: "
-                         f"CPU figures allowed x{pace:.2f}")
+            held = " (held at most)" if pace > MOST_PACE else ""
+            pace = min(pace, MOST_PACE)
+            lines.append(f"PERF-CHECK this runner runs the plain work at {found[name]:.1f} ms against {spec['baseline']:.1f}: "
+                         f"CPU figures allowed x{pace:.2f}{held}")
     for name in sorted(set(metrics) | set(found)):
         spec = metrics.get(name)
         value = found.get(name)
@@ -122,6 +130,11 @@ def self_test():
     assert failed, "a path slower than the machine still fails"
     _, failed = check({"cal": 60.0, "w": 14.0}, paced)
     assert not failed, "a faster machine is held to the baseline as it is"
+    lines, failed = check({"cal": 500.0, "w": 31.0}, paced)
+    assert failed, "a machine five times slower widens the allowance twice, not five times: 31 is over 10 x 1.5 x 2"
+    assert any("held at most" in line for line in lines), lines
+    _, failed = check({"cal": 500.0, "w": 29.0}, paced)
+    assert not failed, "29 is within 10 x 1.5 x 2"
     print("perf-check self-test passed")
     return 0
 

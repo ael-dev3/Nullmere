@@ -150,6 +150,16 @@ on a Mac with Apple Intelligence. A few more are reached only by hand: a
 menu's items, and VoiceOver's actions on the map (a test process has no
 assistive technology to build SwiftUI's accessibility tree for).
 
+Speed is held too (`scripts/perf-check.py`, against `perf/baseline.json`):
+the tests print the GPU time of the map's and the lake's frames, panning,
+the marks over the map, an order's way through the realm and a watch of
+twelve keepers, and each must stay within half again its baseline, a frame
+never over a 60 Hz frame's 16.7 ms on CI's virtual GPU. A slow runner
+widens the CPU figures' allowance by its pace, timed on plain work none of
+it the game's, up to twice. `scripts/measure-mac.sh` takes the same figures
+on a real Mac, where a ProMotion display's 120 Hz is what to read them
+against.
+
 The launcher and the game ask the Foundation Models framework through one
 `ModelAvailabilityProvider`; tests stand in a fake one and walk every state
 (ready, not eligible, Apple Intelligence off, downloading, and a reason
