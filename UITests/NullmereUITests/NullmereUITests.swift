@@ -69,6 +69,22 @@ final class NullmereUITests: XCTestCase {
         report()
     }
 
+    /// The launcher with its lake held still (Motion: Still): whether the
+    /// audit finds the same over water that doesn't move.
+    func testTheLauncherHeldStill() throws {
+        app.launchArguments = ["-launcher.motion", "still"]
+        let window = try openTheLauncher()
+        audit("STILL the launcher's menu")
+        window.buttons["News"].click()
+        XCTAssertTrue(window.buttons["Back"].waitForExistence(timeout: 10), "News opens")
+        audit("STILL News")
+        window.buttons["Back"].click()
+        window.buttons["Settings"].click()
+        XCTAssertTrue(window.buttons["Back"].waitForExistence(timeout: 10), "Settings opens")
+        audit("STILL Settings")
+        report()
+    }
+
     /// Without Apple Intelligence the launcher offers only what is missing,
     /// a way to mend it and Quit; that passes the audit too.
     func testTheRequirementPassesTheAudit() throws {
@@ -290,12 +306,25 @@ final class NullmereUITests: XCTestCase {
                     "type \(element.elementType.rawValue) '\(Self.words(of: element).prefix(70))' at \(element.frame.integral)"
                 } ?? "the screen (\(issue.detailedDescription.prefix(160)))"
                 self.found("UIAUDIT \(screen): \(issue.compactDescription): \(element)")
-                if issue.auditType == .contrast, let text = issue.element { faint.insert(Self.key(of: text)) }
+                if issue.auditType == .contrast, let text = issue.element {
+                    if faint.count < 3 { print("UIWHY \(screen) '\(Self.words(of: text).prefix(30))': \(issue.detailedDescription.prefix(220))") }
+                    faint.insert(Self.key(of: text))
+                }
                 return true
             }
         } catch {
             found("UIAUDIT \(screen): the audit couldn't run: \(error)")
         }
+        // The same audit of contrast again, at once: whether it finds the
+        // same, on a screen that hasn't changed.
+        var again: Set<String> = []
+        try? app.performAccessibilityAudit(for: .contrast) { issue in
+            if let text = issue.element { again.insert(Self.key(of: text)) }
+            return true
+        }
+        let differ = faint.symmetricDifference(again)
+        print("UIDET \(screen): \(faint.count) then \(again.count), \(differ.count) differ"
+              + (differ.isEmpty ? "" : ": " + differ.map { String($0.prefix(30)) }.sorted().joined(separator: " | ")))
         // Every text on screen measured, those the audit passed beside those
         // it didn't, so the rule it holds them to can be read off.
         for text in app.staticTexts.allElementsBoundByIndex.prefix(70) where text.exists && !text.frame.isEmpty {

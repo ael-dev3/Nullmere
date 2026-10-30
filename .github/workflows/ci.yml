@@ -344,7 +344,9 @@ jobs:
       # beside it: last, so the end of the log holds it.
       - name: Texts measured
         if: always()
-        run: grep -hoE "UITEXT.*" build/ui-test.log 2>/dev/null | cut -c1-120 | sort -u | head -n 130 || true
+        run: |
+          grep -hoE "UITEXT.*" build/ui-test.log 2>/dev/null | cut -c1-120 | sort -u | head -n 40 || true
+          grep -hoE "(UIDET|UIWHY).*" build/ui-test.log 2>/dev/null | cut -c1-260 | sort -u | head -n 60 || true
 
   # The launcher's screens, printed where the long macOS log can't trim
   # them, for readers without access to the artifacts.
