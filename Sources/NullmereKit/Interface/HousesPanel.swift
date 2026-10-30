@@ -479,25 +479,31 @@ struct HouseRow: View {
         let relation = state.relation(player, house.id)
         let spire = state.seat(of: house.id)?.level(.moonspire) ?? 0
         VStack(alignment: .leading, spacing: 7) {
-            HStack(alignment: .firstTextBaseline) {
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(Palette.house(house))
-                    .frame(width: 3, height: 12)
-                Caps(house.title, size: 10.5, weight: .medium)
-                    .foregroundStyle(house.isEliminated ? Palette.text(0.35) : Palette.ink)
-                Spacer()
-                if house.isEliminated {
-                    Caps("Fallen", size: 8.5).foregroundStyle(Palette.text(0.4))
-                } else {
-                    Caps(stance.title, size: 8.5, weight: .medium)
-                        .foregroundStyle(stance == .war ? Palette.bad : (stance == .pact ? Palette.good : Palette.text(0.65)))
+            // Who the House is and how it stands with you, read as one.
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(alignment: .firstTextBaseline) {
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(Palette.house(house))
+                        .frame(width: 3, height: 12)
+                    Caps(house.title, size: 10.5, weight: .medium)
+                        .foregroundStyle(house.isEliminated ? Palette.text(0.35) : Palette.ink)
+                    Spacer()
+                    if house.isEliminated {
+                        Caps("Fallen", size: 8.5).foregroundStyle(Palette.text(0.4))
+                    } else {
+                        Caps(stance.title, size: 8.5, weight: .medium)
+                            .foregroundStyle(stance == .war ? Palette.bad : (stance == .pact ? Palette.good : Palette.text(0.65)))
+                    }
+                }
+                if !house.isEliminated {
+                    Text(verbatim: summary(stance: stance, relation: relation, spire: spire))
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.55))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .accessibilityElement(children: .combine)
             if !house.isEliminated {
-                Text(verbatim: summary(stance: stance, relation: relation, spire: spire))
-                    .font(.nm(10.5))
-                    .foregroundStyle(Palette.text(0.55))
-                    .fixedSize(horizontal: false, vertical: true)
                 if house.isPlayer {
                     // Words for the keeper there, sent with the next offer.
                     EnvoyWordsField(draft: draft, words: draft.words, sent: draft.sent, placeholder: "Words to send with an offer",
@@ -510,6 +516,7 @@ struct HouseRow: View {
                     Figure(label: "Strength", value: state.strength(of: house.id))
                     Figure(label: "Renown", value: state.renown(of: house.id))
                 }
+                .accessibilityElement(children: .combine)
                 // In a row when they fit, wrapping onto the next when not,
                 // far enough apart that one is never pressed for another.
                 FlowLayout(spacing: 8, lineSpacing: 6) { actions(stance: stance) }

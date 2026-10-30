@@ -111,12 +111,14 @@ struct OwnHoldDetails: View {
                         .font(.nm(10.5).monospacedDigit())
                         .foregroundStyle(Palette.text(0.75))
                 }
+                .accessibilityElement(children: .combine)
                 Meter(fraction: Double(hold.ward) / Double(max(hold.maximumWard, 1)), label: "Ward")
                 HStack {
                     Caps("Yield each watch", size: 8.5).foregroundStyle(Palette.text(0.5))
                     Spacer()
                     CostLine(cost: state.income(of: hold), available: Stock(grain: .max, timber: .max, stone: .max, moonsalt: .max))
                 }
+                .accessibilityElement(children: .combine)
             }
 
             if let project = hold.project {

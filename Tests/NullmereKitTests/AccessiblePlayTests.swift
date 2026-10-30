@@ -223,7 +223,7 @@ final class AccessiblePlayTests: XCTestCase {
         XCTAssertEqual(TextSize.shared.size(7.5), 9.5, "Capitals")
         XCTAssertEqual(TextSize.shared.size(9, words: true), 11, "Words")
         XCTAssertEqual(TextSize.shared.size(13, words: true), 13)
-        XCTAssertEqual(CGFloat.launcherType(9.5, unit: 0.72), 10.5, "The launcher's, in a small window")
+        XCTAssertEqual(CGFloat.launcherType(9.5, unit: 0.72), 11, "The launcher's, in a small window, the realm's least for words")
         XCTAssertEqual(TextSize.readable(.regular, at: 11), .medium)
         XCTAssertEqual(TextSize.readable(.light, at: 12.5), .regular)
         XCTAssertEqual(TextSize.readable(.semibold, at: 9.5), .semibold, "Heavier, as asked")

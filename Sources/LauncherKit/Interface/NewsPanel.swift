@@ -105,7 +105,7 @@ private struct NewsStory: View {
                         .accessibilityAddTraits(.isHeader)
 
                     Text(verbatim: item.body)
-                        .font(.launcher(.launcherType(12.5, unit: unit), weight: .regular))
+                        .font(.launcher(.launcherType(13, unit: unit), weight: .regular))
                         .lineSpacing(5 * unit)
                         .foregroundStyle(Palette.text(0.82))
                         .lineLimit(5)

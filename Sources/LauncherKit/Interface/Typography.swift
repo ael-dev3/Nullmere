@@ -81,12 +81,13 @@ extension Font {
 }
 
 extension View {
-    /// Words on the night water, set on the water's own dark: nothing to
-    /// see, the water beneath them being as dark, but a ground the Mac's
-    /// accessibility audit can find behind the type. Over the lake's own
-    /// drawing alone it finds none, and fails even the brightest words.
+    /// Words on the night water, set on the water's own dark, reaching a few
+    /// points past them: nothing to see, the water beneath them being as
+    /// dark, but a ground the Mac's accessibility audit can find around the
+    /// type, as it does on the realm's panels. Over the lake's own drawing
+    /// alone it finds none, and fails even the brightest words.
     public func onNight() -> some View {
-        background(Palette.night)
+        background { Palette.night.padding(.horizontal, -8).padding(.vertical, -5) }
     }
 }
 

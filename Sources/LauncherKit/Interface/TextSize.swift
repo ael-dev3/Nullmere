@@ -19,8 +19,10 @@ public final class TextSize {
     /// The least size the realm's words in lower case take, whose full
     /// stops, commas and dots are a pixel or two across on a 1x display.
     public static let smallestWords: CGFloat = 11
-    /// The least size the launcher's type takes, however small its window.
-    public static let smallestLauncher: CGFloat = 10.5
+    /// The least size the launcher's type takes, however small its window:
+    /// the realm's least for words, below which Xcode's accessibility audit
+    /// finds medium type too faint on a 1x display, whatever its colours.
+    public static let smallestLauncher: CGFloat = 11
 
     /// A weight that holds its contrast at a size: thin type is for display
     /// sizes only; below 14 points nothing is thinner than regular, and
