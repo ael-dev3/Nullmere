@@ -38,7 +38,7 @@ enum Guide {
             "Select a company, then right-click to march, or to strike an enemy within reach. Hovering an enemy shows the battle's odds first.",
             "A company that wins a close fight steps onto the fallen's ground, unless it fought from within a hold: a garrison holds its ground.",
             "Every company but Lanterns eats a grain each watch. Those that live through battles rise in rank.",
-            "To take a hold, break its ward, then march Spears or Riders in. You carry off its share of their stores; a seat holds half.",
+            "To take a hold, break its ward, then march Spears or Riders in; one that falls to the walls' blow back takes nothing. You carry off its share of their stores; a seat holds half.",
         ]),
         Section(title: "Houses", lines: [
             "Other Houses are held by keepers, or by stewards until a keeper claims them. Stewards are ambitious, steadfast, wary or cunning, and remember who wronged them.",

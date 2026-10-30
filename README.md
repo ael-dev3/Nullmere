@@ -458,7 +458,8 @@ twice.
   adding a tenth to attack and defence; chevrons under a token show it. A
   company that wins a close fight steps onto the fallen's ground, unless it
   fought from within a hold: a garrison holds its ground. The odds shown
-  before a strike say when the striker will take the ground or the hold.
+  before a strike say when the striker will take the ground or the hold,
+  and never promise either to a company that may fall.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is

@@ -16,7 +16,8 @@ public struct Forecast: Equatable, Sendable {
     public let attackerHealth: Int
     /// Whether the hold falls to this attacker when its ward breaks, or
     /// when the garrison falls with the ward down: only a company that can
-    /// take holds, striking close.
+    /// take holds, striking close, and sure to live through the blow it
+    /// takes in return.
     public let couldCapture: Bool
     /// Whether the attacker steps onto the fallen's ground when they fall:
     /// a close blow struck out in the field, never from within a hold, by
@@ -64,7 +65,7 @@ extension GameState {
             taken: returned...returned,
             defenderHealth: hold.ward,
             attackerHealth: attacker.health,
-            couldCapture: !ranged && attacker.kind.canCapture
+            couldCapture: !ranged && attacker.kind.canCapture && returned < attacker.health
         )
     }
 }
