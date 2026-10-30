@@ -124,7 +124,7 @@ extension GameState {
         var found: [March] = []
         var hosted: Set<Int> = []
         for rally in ralliesStanding where rally.marching {
-            guard let target = hold(rally.target), isOfRally(house, rally) || target.owner == house else { continue }
+            guard let target = self.target(of: rally), isOfRally(house, rally) || target.owner == house else { continue }
             let walkers = rally.companies.compactMap { view.unit($0) }
             guard let pace = walkers.map({ view.movement(of: $0) }).min() else { continue }
             for unit in walkers {

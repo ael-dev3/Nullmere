@@ -11,7 +11,7 @@ public struct Rally: Codable, Equatable, Identifiable, Sendable {
     public let caller: Int
     /// The caller's hold where it gathers.
     public let muster: Int
-    /// The hold it marches on.
+    /// The hold it marches on, or the lair of the wilds.
     public let target: Int
     public let called: Int
     /// The watch it sets out from its muster.
@@ -39,6 +39,31 @@ public struct Rally: Codable, Equatable, Identifiable, Sendable {
     /// The companies a muster takes: two, and two more for each level of
     /// its Muster Hall.
     public static func capacity(musterHall level: Int) -> Int { 2 + 2 * level }
+
+    /// The House a rally marches on, for a lair of the wilds: none.
+    public static let noHouse = -1
+}
+
+/// What a rally marches on: a hold of a House it is at war with, or a lair
+/// of the wilds.
+public enum RallyTarget: Equatable, Sendable {
+    case hold(Hold)
+    case lair(Lair)
+
+    public var position: Hex {
+        switch self {
+        case .hold(let hold): return hold.position
+        case .lair(let lair): return lair.position
+        }
+    }
+
+    /// The House whose hold it is; none for a lair.
+    public var owner: Int {
+        switch self {
+        case .hold(let hold): return hold.owner
+        case .lair: return Rally.noHouse
+        }
+    }
 }
 
 extension GameState {
@@ -63,13 +88,38 @@ extension GameState {
         house == rally.caller || areAllied(house, rally.caller)
     }
 
+    /// What a rally marches on, while it stands.
+    public func target(of rally: Rally) -> RallyTarget? {
+        if let hold = hold(rally.target) { return .hold(hold) }
+        return lair(rally.target).map(RallyTarget.lair)
+    }
+
+    /// A rally's target as a keeper names it: its hold, or the lair.
+    public func targetName(_ id: Int) -> String? {
+        hold(id)?.name ?? lair(id).map { "the \($0.title)" }
+    }
+
+    /// Whether a House's company may march with a host on its target: on
+    /// a lair, any of its side's; on a hold, those at war with its House.
+    func mayStrike(_ house: Int, _ target: RallyTarget) -> Bool {
+        switch target {
+        case .hold(let hold): return isAtWar(house, hold.owner)
+        case .lair: return true
+        }
+    }
+
     // MARK: Calling and joining
 
     mutating func callRally(from holdID: Int, against targetID: Int, gathering watches: Int, by house: Int) throws(RuleError) -> [GameEvent] {
         guard alliance(of: house) != nil else { throw .notInAlliance }
         let muster = holds[try ownedHold(holdID, of: house)]
-        guard let target = hold(targetID), isExplored(target.position, by: house) else { throw .unknownHold }
-        guard isAtWar(house, target.owner) else { throw .notAtWar(target.owner) }
+        if let lair = lair(targetID) {
+            // A lair is every House's foe: no war is needed to rally on it.
+            guard isExplored(lair.position, by: house) else { throw .unknownLair }
+        } else {
+            guard let target = hold(targetID), isExplored(target.position, by: house) else { throw .unknownHold }
+            guard isAtWar(house, target.owner) else { throw .notAtWar(target.owner) }
+        }
         guard muster.level(.musterHall) >= 1 else { throw .needsMusterHall(1) }
         guard Rally.gatherings.contains(watches) else { throw .rallyWatches }
         guard !ralliesStanding.contains(where: { $0.caller == house }) else { throw .rallyCalled }
@@ -86,8 +136,8 @@ extension GameState {
         guard !rally.marching else { throw .rallySetOut }
         let unit = units[index]
         guard unit.kind.isMilitary else { throw .cannotFight }
-        guard let target = hold(rally.target) else { throw .unknownHold }
-        guard isAtWar(house, target.owner) else { throw .notAtWar(target.owner) }
+        guard let target = self.target(of: rally) else { throw .unknownHold }
+        guard mayStrike(house, target) else { throw .notAtWar(target.owner) }
         guard unit.errand != .rally(rallyID) else { throw .alreadyRallying }
         let sent = rally.companies.filter { self.unit($0)?.errand == .rally(rallyID) }
         guard sent.count < capacity(of: rally) else { throw .rallyFull }
@@ -171,17 +221,17 @@ extension GameState {
         guard let index = rallyIndex(rallyID) else { return [] }
         let rally = rallies![index]
         // Its cause: a caller standing and sworn, its muster still its own,
-        // its target still a foe's.
+        // its target still a foe's hold, or a lair still standing.
         guard !houses[rally.caller].isEliminated, alliance(of: rally.caller) != nil,
               let muster = hold(rally.muster), muster.owner == rally.caller,
-              let target = hold(rally.target), isAtWar(rally.caller, target.owner) else {
+              let target = self.target(of: rally), mayStrike(rally.caller, target) else {
             return disperse(rallyID)
         }
-        // Its companies: those still sent to it, of its side, and at war
-        // with the hold's House.
+        // Its companies: those still sent to it, of its side, and, against
+        // a hold, at war with its House.
         let host = rally.companies.filter { id in
             guard let unit = unit(id), unit.errand == .rally(rallyID) else { return false }
-            return isOfRally(unit.owner, rally) && isAtWar(unit.owner, target.owner)
+            return isOfRally(unit.owner, rally) && mayStrike(unit.owner, target)
         }
         release(rally.companies.filter { !host.contains($0) }, from: rallyID)
         rallies![index].companies = host
@@ -196,7 +246,7 @@ extension GameState {
             for id in ready {
                 units[unitIndex(id)!].destination = nil
             }
-            events.append(.rallySetOut(rally: rallyID, caller: rally.caller, target: target.id, defender: target.owner, companies: ready.count))
+            events.append(.rallySetOut(rally: rallyID, caller: rally.caller, target: rally.target, defender: target.owner, companies: ready.count))
         } else if host.isEmpty || watch - rally.setsOut > Rally.marchLimit {
             return disperse(rallyID)
         }
@@ -206,7 +256,7 @@ extension GameState {
 
     /// The host's march this watch, or its share of it by a pace, and its
     /// strike once it is there.
-    private mutating func marchHost(_ rallyID: Int, on target: Hold, by pace: Int? = nil) -> [GameEvent] {
+    private mutating func marchHost(_ rallyID: Int, on target: RallyTarget, by pace: Int? = nil) -> [GameEvent] {
         let host = rally(rallyID)!.companies
         let slowest = host.map { movement(of: unit($0)!) }.min()!
         var events: [GameEvent] = []
@@ -234,7 +284,12 @@ extension GameState {
             return unit.position.distance(to: target.position) <= unit.kind.range || unit.movesLeft > 0
         }
         guard inReach.count == host.count || (shut && !inReach.isEmpty) else { return events }
-        return events + strikeTogether(rallyID, at: target)
+        switch target {
+        case .hold(let hold): events += strikeTogether(rallyID, at: hold)
+        case .lair(let lair): events += strikeLair(rallyID, at: lair)
+        }
+        finish(rallyID)
+        return events
     }
 
     /// The host strikes its hold, every company in reach in turn, arrows
@@ -259,9 +314,15 @@ extension GameState {
         let host = sides.map { houses[$0].title }
         let named = host.count == 1 ? host[0] : host.dropLast().joined(separator: ", ") + " and " + host.last!
         record(.rally, sides + [defender], "A host of \(named) falls upon \(target.name)" + (taken ? " and takes it." : ", but it holds."))
+        return events
+    }
+
+    /// A rally that has struck is done: its companies go back to their
+    /// Houses' orders where they stand.
+    private mutating func finish(_ rallyID: Int) {
+        guard let rally = rally(rallyID) else { return }
         release(rally.companies, from: rallyID)
         rallies!.removeAll { $0.id == rallyID }
-        return events
     }
 
     private mutating func disperse(_ rallyID: Int) -> [GameEvent] {

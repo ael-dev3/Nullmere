@@ -33,6 +33,8 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// A holy site of the lake: a ring of standing stones about its heart,
     /// a pennant in its holder's colour.
     case shrine(ShrineKind)
+    /// A lair of the wilds, one for each kind of them.
+    case lair(WildKind)
 
     public var description: String {
         switch self {
@@ -48,6 +50,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .commander(let variant): return "commander \(variant)"
         case .study(let level): return "study \(level)"
         case .shrine(let kind): return "\(kind.rawValue) shrine"
+        case .lair(let kind): return "\(kind.rawValue) lair"
         }
     }
 
@@ -81,7 +84,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
             let count = ModelKey.commanderVariants
             return .commander(variant: (variant % count + count) % count)
         case .study(let level): return .study(level: clamp(level, ModelKey.studyLevels))
-        case .keep, .scaffold, .furnishing, .prop, .site, .shrine: return self
+        case .keep, .scaffold, .furnishing, .prop, .site, .shrine, .lair: return self
         }
     }
 
@@ -97,7 +100,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .figure, .wild, .commander: return 700
         case .furnishing, .prop: return 300
         case .keep: return 4500
-        case .walls, .work, .scaffold, .site, .study, .shrine: return 3000
+        case .walls, .work, .scaffold, .site, .study, .shrine, .lair: return 3000
         }
     }
 }
@@ -213,6 +216,7 @@ public enum Library {
         keys += Resource.allCases.map { .site($0) }
         keys += Prop.allCases.map { .prop($0) }
         keys += ShrineKind.allCases.map { .shrine($0) }
+        keys += WildKind.allCases.map { .lair($0) }
         return keys
     }()
 
@@ -232,6 +236,7 @@ public enum Library {
         case .site(let resource): return Land.site(resource, name: key.canonical.description)
         case .prop(let prop): return Props.build(prop, name: key.canonical.description)
         case .shrine(let kind): return Land.shrine(kind, name: key.canonical.description)
+        case .lair(let kind): return Lairs.build(kind, name: key.canonical.description)
         }
         return Model(name: key.canonical.description, mesh: mesh)
     }
@@ -243,6 +248,7 @@ public enum Library {
         switch key.canonical {
         case .keep(let seat): return [Holds.chimney(seat: seat)]
         case .work(.saltworks, let level) where level >= 2: return [Works.saltChimney(level)]
+        case .lair(let kind): return Lairs.fire(of: kind).map { [$0] } ?? []
         case .work(.infirmary, let level) where level >= 2: return [Works.infirmaryChimney(level)]
         default: return []
         }

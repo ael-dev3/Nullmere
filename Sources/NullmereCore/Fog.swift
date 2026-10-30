@@ -77,6 +77,8 @@ extension GameState {
         view.rallies = rallies?.filter { rally in
             isOfRally(house, rally) || (rally.marching && hold(rally.target)?.owner == house)
         }
+        // The lairs of the wilds on ground they have explored.
+        view.lairs = lairs?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
         // The holy sites on ground they have explored, and who holds them.
         view.shrines = shrines?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
         // The battles going on that they can see a side of.
@@ -126,6 +128,8 @@ extension GameState {
                 return report.by == house
             case .scoutSeen(let holdID, _):
                 return hold(holdID)?.owner == house
+            case .lairAssaulted(let assault):
+                return assault.houses.contains(house) || visible(assault.at)
             case .commanderAssigned(let id, _), .commanderReleased(let id):
                 return commander(id)?.owner == house
             case .skillFired(_, let owner, _, let at):

@@ -677,7 +677,7 @@ struct UnitPanel: View {
         case .homeward?:
             return "Bringing \(load ?? "its load") home."
         case .rally(let id)?:
-            let target = state.rally(id).flatMap { state.hold($0.target) }.map { " against \($0.name)" } ?? ""
+            let target = state.rally(id).flatMap { state.targetName($0.target) }.map { " against \($0)" } ?? ""
             return "Sent to the rally\(target)."
         case .reinforce(let holdID)?:
             return "Keeping the gates of \(state.hold(holdID)?.name ?? "an ally's hold")."
@@ -722,6 +722,67 @@ private struct Stat: View {
 }
 
 // MARK: Ground
+
+/// A lair of the wilds on the map: what still stands of it, what falls
+/// with it, and a rally called against it from the keeper's hold with a
+/// Muster Hall nearest it.
+struct LairRally: View {
+    let session: GameSession
+    let lair: Lair
+    /// Watches the rally gathers before it sets out.
+    @State private var gathering = 2
+
+    var body: some View {
+        let state = session.state
+        VStack(alignment: .leading, spacing: 6) {
+            Caps("The \(lair.title) \(Narration.roman(lair.level))", size: 9.5, weight: .medium).foregroundStyle(Palette.bad)
+            Text(verbatim: "A lair of \(lair.kind.title.hasPrefix("the ") ? String(lair.kind.title.dropFirst(4)) : lair.kind.title), "
+                 + "too strong for any company alone; a rally's host, striking together, can break it. Broken, it gives up "
+                 + "\(lair.spoils), shared by the companies each House brought, and gear for the rally's caller.")
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Caps("Standing", size: 8.5).foregroundStyle(Palette.text(0.5))
+                Spacer()
+                Text(verbatim: "\(lair.strength) / \(lair.might)").font(.nm(10.5).monospacedDigit()).foregroundStyle(Palette.text(0.75))
+            }
+            .accessibilityElement(children: .combine)
+            Meter(fraction: Double(lair.strength) / Double(max(lair.might, 1)), label: "What stands of it")
+            if let muster = LairRally.muster(for: lair, in: state, player: session.player) {
+                let command = Command.callRally(from: muster.id, against: lair.id, watches: gathering)
+                let refusal = state.refusal(of: command, as: session.player)
+                Text(verbatim: "Call your alliance to gather at \(muster.name) and break it together.")
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack {
+                    Picker("Watches to gather", selection: $gathering) {
+                        ForEach(Array(Rally.gatherings), id: \.self) { Text(verbatim: "Gather \($0) watch\($0 == 1 ? "" : "es")").tag($0) }
+                    }
+                    .labelsHidden()
+                    .frame(width: 140)
+                    Spacer()
+                    QuietButton(title: "Call a rally", size: 8.5, enabled: refusal == nil, name: "Call a rally against the \(lair.title)",
+                                why: refusal?.description) {
+                        session.perform(command)
+                    }
+                }
+            } else {
+                Text(verbatim: "A rally gathers at a hold of yours with a Muster Hall.")
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.5))
+            }
+        }
+    }
+
+    /// The keeper's hold with a Muster Hall nearest a lair, where a rally
+    /// against it would gather.
+    static func muster(for lair: Lair, in state: GameState, player: Int) -> Hold? {
+        state.holds(of: player).filter { $0.level(.musterHall) >= 1 }
+            .min { ($0.position.distance(to: lair.position), $0.id) < ($1.position.distance(to: lair.position), $1.id) }
+    }
+}
 
 private struct TilePanel: View {
     let session: GameSession
@@ -774,6 +835,10 @@ private struct TilePanel: View {
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.text(0.6))
                         .fixedSize(horizontal: false, vertical: true)
+                }
+                if let lair = state.lair(at: hex) {
+                    Rule(opacity: 0.18)
+                    LairRally(session: session, lair: lair)
                 }
                 if let site = state.site(at: hex) {
                     Rule(opacity: 0.18)

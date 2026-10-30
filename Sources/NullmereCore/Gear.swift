@@ -188,13 +188,20 @@ extension GameState {
     /// its armoury, or, the armoury full, broken up for moonsalt at once.
     mutating func findGear(on wild: Wild, by house: Int) -> [GameEvent] {
         guard leavesGear(wild) else { return [] }
-        let piece = Gear(id: takeID(), kind: GearKind.left(by: wild.kind), quality: GearQuality.of(level: wild.level), owner: house)
+        return awardGear(from: wild.kind, level: wild.level, to: house)
+    }
+
+    /// A piece of gear a kind of the wilds leaves, as fine as its level,
+    /// for a House: into its armoury, or broken up for moonsalt if that
+    /// is full.
+    mutating func awardGear(from kind: WildKind, level: Int, to house: Int) -> [GameEvent] {
+        let piece = Gear(id: takeID(), kind: GearKind.left(by: kind), quality: GearQuality.of(level: level), owner: house)
         if gear(of: house).count >= GameState.armouryLimit {
             store(Stock(moonsalt: piece.scrap), for: house)
-            return [.gearFound(house: house, gear: piece, from: wild.kind), .gearScrapped(house: house, gear: piece.id, moonsalt: piece.scrap)]
+            return [.gearFound(house: house, gear: piece, from: kind), .gearScrapped(house: house, gear: piece.id, moonsalt: piece.scrap)]
         }
         armoury = gear + [piece]
-        return [.gearFound(house: house, gear: piece, from: wild.kind)]
+        return [.gearFound(house: house, gear: piece, from: kind)]
     }
 
     private func gearIndex(_ id: Int, of house: Int) throws(RuleError) -> Int {

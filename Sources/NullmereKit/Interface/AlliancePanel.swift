@@ -217,7 +217,7 @@ private struct RallyRow: View {
     var body: some View {
         let state = session.state
         let rally = line.rally
-        let target = state.hold(rally.target)?.name ?? "a hold"
+        let target = state.targetName(rally.target) ?? "a hold"
         let muster = state.hold(rally.muster)?.name ?? "a hold"
         VStack(alignment: .leading, spacing: 4) {
             Text(verbatim: "Against \(target), gathering at \(muster)")

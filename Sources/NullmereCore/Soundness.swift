@@ -55,6 +55,17 @@ extension GameState {
         for envoy in envoys where !houseIDs.contains(envoy.from) || !houseIDs.contains(envoy.to) || envoy.from == envoy.to {
             found.append("Envoy \(envoy.id) runs from \(envoy.from) to \(envoy.to)")
         }
+        var lairSpots: Set<Hex> = []
+        for lair in lairsStanding {
+            if !(1...Lair.highestLevel).contains(lair.level) || !(1...lair.might).contains(lair.strength) {
+                found.append("The \(lair.title) \(lair.id) stands at \(lair.strength) of \(lair.might), level \(lair.level)")
+            }
+            if unit(at: lair.position) != nil || hold(at: lair.position) != nil || wild(at: lair.position) != nil
+                || site(at: lair.position) != nil || !lairSpots.insert(lair.position).inserted {
+                found.append("The \(lair.title) \(lair.id) shares its ground at \(lair.position)")
+            }
+            if map[lair.position]?.terrain.isPassable != true { found.append("The \(lair.title) \(lair.id) stands where none can") }
+        }
         var wildIDs: Set<Int> = []
         for wild in wildsStanding {
             if !wildIDs.insert(wild.id).inserted || unitIDs.contains(wild.id) || holdIDs.contains(wild.id) {
@@ -131,7 +142,7 @@ extension GameState {
         for rally in ralliesStanding {
             if !callers.insert(rally.caller).inserted { found.append("House \(rally.caller) has called two rallies") }
             if hold(rally.muster)?.owner != rally.caller { found.append("Rally \(rally.id) gathers at a hold not its caller's") }
-            if hold(rally.target) == nil { found.append("Rally \(rally.id) marches on no hold") }
+            if target(of: rally) == nil { found.append("Rally \(rally.id) marches on no hold or lair") }
             if rally.companies.count > capacity(of: rally) { found.append("Rally \(rally.id) has \(rally.companies.count) companies") }
             // A company fallen since the rally last turned is let be.
             for id in rally.companies where unit(id).map({ $0.errand != .rally(rally.id) }) ?? false {

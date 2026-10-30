@@ -26,7 +26,7 @@ public enum HappeningKind: String, Codable, CaseIterable, Sendable {
     /// What earns points, as the realm proclaims it.
     public var goal: String {
         switch self {
-        case .longHunt: return "every company of the wilds struck down counts, the greater the more"
+        case .longHunt: return "every company of the wilds struck down counts, the greater the more, and a lair broken for its rally's caller most of all"
         case .harvestFair: return "every store brought home from the sites of the land counts"
         case .raising: return "every work raised counts, the higher the more"
         case .muster: return "every company mustered counts, the higher its tier the more"
@@ -40,6 +40,8 @@ public enum HappeningKind: String, Codable, CaseIterable, Sendable {
         switch (self, event) {
         case (.longHunt, .hunted(let hunt)) where hunt.wildFell:
             return (hunt.attackerOwner, 2 * hunt.level)
+        case (.longHunt, .lairAssaulted(let assault)) where assault.broken:
+            return (assault.caller, 10 * assault.level)
         case (.harvestFair, .delivered(_, let owner, _, let load)):
             return (owner, (load.grain + load.timber + load.stone + 4 * load.moonsalt) / 20)
         case (.raising, .buildingCompleted(let holdID, _, let level)):

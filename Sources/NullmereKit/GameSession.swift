@@ -696,7 +696,7 @@ public final class GameSession {
         switch event {
         case .battle, .unitLost, .holdStruck, .holdCaptured, .seatMoved, .promoted, .ruinSearched, .holdFounded,
              .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired, .hunted,
-             .gearFound, .carriedToInfirmary, .woundedLost, .holdScouted, .scoutSeen:
+             .gearFound, .carriedToInfirmary, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted:
             return true
         default:
             return false
@@ -1215,6 +1215,7 @@ public final class GameSession {
         case .unitHealed(let unit, _) where ours(unit): return .muster
         case .woundedLost(_, let house, _) where house == player: return .dread
         case .holdScouted(let report) where report.by == player: return .lore
+        case .lairAssaulted(let assault) where assault.houses.contains(player): return assault.broken ? .triumph : .batter
         case .scoutSeen(let hold, _) where state?.hold(hold)?.owner == player: return .envoy
         case .hunted(let hunt) where hunt.attackerOwner == player: return hunt.attackerKind == .bow ? .loose : .clash
         case .sentToGather(let unit, _) where ours(unit): return .order
@@ -1339,8 +1340,10 @@ public final class GameSession {
             return state.hold(hold)?.position
         case .holdScouted(let report):
             return state.hold(report.hold)?.position
+        case .lairAssaulted(let assault):
+            return assault.at
         case .rallyStruck(_, _, let target, _, _), .rallySetOut(_, _, let target, _, _):
-            return state.hold(target)?.position
+            return state.hold(target)?.position ?? state.lair(target)?.position
         case .shrineTaken(let shrine, _, _):
             return state.holySites.first { $0.id == shrine }?.position
         case .gathered(let unit, _, _), .sentToGather(let unit, _):
@@ -1422,6 +1425,17 @@ public final class GameSession {
             }
             shown = true
         }
+        // A host's blows on a lair, each from where it struck.
+        for case .lairAssaulted(let assault) in events where assault.houses.contains(player) || isVisible(assault.at) {
+            for strike in assault.strikes {
+                blowCounter += 1
+                let fallen = strike.fell ? [Blow.Fallen(kind: strike.kind, owner: strike.owner, at: strike.from)] : []
+                blows.append(Blow(id: blowCounter, at: assault.at, damage: strike.dealt, againstPlayer: false, start: now,
+                                  from: strike.from, attacker: strike.unit, defender: nil, fallen: fallen))
+                if strike.from != assault.at { headings[strike.unit] = CompanyPose.heading(from: strike.from, to: assault.at) }
+            }
+            shown = true
+        }
         for case .skillFired(_, let house, let skill, let at) in events where house == player || isVisible(at) {
             blowCounter += 1
             furies.append(Fury(id: blowCounter, at: at, skill: skill, start: now))
@@ -1461,6 +1475,7 @@ public final class GameSession {
             case .holdScouted(let scouting):
                 report = state.report(of: scouting, id: reportCounter + 1, for: player)
                 if scouting.by == player { scoutings[scouting.hold] = scouting }
+            case .lairAssaulted(let assault): report = state.report(of: assault, id: reportCounter + 1, for: player)
             default: report = nil
             }
             guard let report else { continue }

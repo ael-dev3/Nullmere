@@ -552,9 +552,11 @@ struct RivalMind {
     /// the wary least.
     func callRally(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
         guard state.watch >= RivalMind.alliancesFrom, let sworn = state.alliance(of: house),
-              !state.ralliesStanding.contains(where: { $0.caller == house }),
-              let plan = siegePlan(in: state), let target = state.hold(at: plan.target),
-              sworn.members.contains(where: { $0 != house && state.isAtWar($0, target.owner) }) else { return [] }
+              !state.ralliesStanding.contains(where: { $0.caller == house }) else { return [] }
+        guard let plan = siegePlan(in: state), let target = state.hold(at: plan.target),
+              sworn.members.contains(where: { $0 != house && state.isAtWar($0, target.owner) }) else {
+            return rallyOnALair(in: &state, random: &random)
+        }
         let musters = state.holds(of: house).filter { $0.level(.musterHall) >= 1 && $0.position.distance(to: target.position) <= RivalMind.rallyReach }
         guard let muster = musters.min(by: { a, b in
             (a.position.distance(to: target.position), a.id) < (b.position.distance(to: target.position), b.id)
@@ -570,14 +572,41 @@ struct RivalMind {
         return perform(.callRally(from: muster.id, against: target.id, watches: 2), in: &state)
     }
 
+    /// At peace with every House, a House rallies on a lair of the wilds it
+    /// knows near a hold of its with a Muster Hall, the lowest first, if it
+    /// has companies enough to spare to hope to break it.
+    private func rallyOnALair(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
+        guard !state.livingHouses.contains(where: { state.isAtWar(house, $0.id) }) else { return [] }
+        let free = state.units(of: house).filter { $0.kind.isMilitary && $0.errand == nil }.count
+        let spare = free - state.holds(of: house).count
+        guard spare >= 3 else { return [] }
+        let musters = state.holds(of: house).filter { $0.level(.musterHall) >= 1 }
+        let choices = state.lairsStanding
+            .filter { state.isExplored($0.position, by: house) && $0.level <= max(1, spare / 2) }
+            .flatMap { lair in musters.filter { $0.position.distance(to: lair.position) <= RivalMind.rallyReach }.map { (lair: lair, muster: $0) } }
+        guard let choice = choices.min(by: { a, b in
+            (a.lair.level, a.muster.position.distance(to: a.lair.position), a.lair.id)
+                < (b.lair.level, b.muster.position.distance(to: b.lair.position), b.lair.id)
+        }) else { return [] }
+        let chance: Int
+        switch state.houses[house].temperament {
+        case .ambitious: chance = 25
+        case .steadfast: chance = 20
+        case .cunning: chance = 15
+        case .wary: chance = 10
+        }
+        guard random.chance(chance) else { return [] }
+        return perform(.callRally(from: choice.muster.id, against: choice.lair.id, watches: 2), in: &state)
+    }
+
     /// Companies it can spare sent to the rallies of its side whose war it
-    /// shares: none standing in a hold or away on an errand, none from far
+    /// shares, or against a lair: none standing in a hold or away on an errand, none from far
     /// off, and never so many that a hold of its own would go without a
     /// garrison. To an ally's rally, as many as its temper gives.
     func sendToRallies(in state: inout GameState) -> [GameEvent] {
         var events: [GameEvent] = []
         for rally in state.ralliesStanding.sorted(by: { $0.id < $1.id }) where !rally.marching && state.isOfRally(house, rally) {
-            guard let target = state.hold(rally.target), state.isAtWar(house, target.owner), let muster = state.hold(rally.muster) else { continue }
+            guard let target = state.target(of: rally), state.mayStrike(house, target), let muster = state.hold(rally.muster) else { continue }
             let free = state.units(of: house).filter { $0.kind.isMilitary && $0.errand == nil }
             let spare = free.count - state.holds(of: house).count
             let given: Int
@@ -1002,6 +1031,7 @@ struct RivalMind {
         var occupied = [Bool](repeating: false, count: map.count)
         for other in state.units { if let index = map.index(of: other.position) { occupied[index] = true } }
         for wild in state.wildsStanding { if let index = map.index(of: wild.position) { occupied[index] = true } }
+        for lair in state.lairsStanding { if let index = map.index(of: lair.position) { occupied[index] = true } }
         // Known ruins first, then the nearest edge of the unknown.
         var seen = [Bool](repeating: false, count: map.count)
         seen[start] = true

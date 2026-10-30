@@ -26,6 +26,10 @@ struct RealmPanel: View {
                         Rule(opacity: 0.18)
                         shrines(state)
                     }
+                    if !state.lairsStanding.isEmpty {
+                        Rule(opacity: 0.18)
+                        lairs(state)
+                    }
                     if let keeper = session.keeper, (keeper.renown ?? 0) > 0 || !(keeper.titles ?? []).isEmpty {
                         Rule(opacity: 0.18)
                         Caps("Your renown", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
@@ -73,6 +77,36 @@ struct RealmPanel: View {
             .font(.nm(10))
             .foregroundStyle(Palette.text(0.55))
             .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// The lairs of the wilds the House has found: each one's level, what
+    /// stands of it, and where.
+    @ViewBuilder
+    private func lairs(_ state: GameState) -> some View {
+        Caps("Lairs of the wilds", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
+        ForEach(state.lairsStanding) { lair in
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(verbatim: "The \(lair.title) \(Narration.roman(lair.level))").font(.nm(11, weight: .medium)).foregroundStyle(Palette.text(0.85))
+                    Spacer()
+                    Text(verbatim: RealmPanel.standing(lair)).font(.nm(10.5)).foregroundStyle(Palette.text(0.6))
+                }
+                Text(verbatim: "Breaks for \(lair.spoils); \(state.placeName(of: lair.position))")
+                    .font(.nm(10))
+                    .foregroundStyle(Palette.text(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+        }
+        Text(verbatim: "Only a rally's host breaks a lair: select its ground and call one against it.")
+            .font(.nm(10))
+            .foregroundStyle(Palette.text(0.55))
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// What stands of a lair, as the panel says it.
+    static func standing(_ lair: Lair) -> String {
+        lair.strength == lair.might ? "Whole, \(lair.might)" : "\(lair.strength) of \(lair.might) standing"
     }
 
     /// Who holds a holy site, as the panel says it.

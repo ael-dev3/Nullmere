@@ -214,6 +214,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case notAScout
     /// Scouting a hold of the House's own.
     case ownHold
+    /// A lair struck by a company alone.
+    case lairNeedsRally
+    /// A lair the House hasn't found, or no more.
+    case unknownLair
     /// Words from a House no keeper holds.
     case notAKeeper
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -310,6 +314,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .noneWounded: return "No company lies in that hold's Infirmary waiting to be healed."
         case .notAScout: return "Only Lanterns scout."
         case .ownHold: return "That hold is your own."
+        case .lairNeedsRally: return "Only a rally's host can break a lair: call one against it."
+        case .unknownLair: return "No such lair is known to your House."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
         case .notAKeeper: return "Only a keeper's words are carried."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -386,6 +392,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case holdScouted(ScoutReport)
     /// A hold's House sees another's Lanterns watching it.
     case scoutSeen(hold: Int, by: Int)
+    /// A rally's host strikes a lair of the wilds.
+    case lairAssaulted(LairAssault)
     /// A company strikes a company of the wilds.
     case hunted(Hunt)
     /// A company sets out to work a site.

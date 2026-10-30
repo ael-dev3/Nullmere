@@ -748,6 +748,11 @@ final class CueMappingTests: XCTestCase {
             (.holdScouted(ScoutReport(hold: 40, owner: foe, by: player, watch: 1, garrison: [], ward: 30, maximumWard: 30,
                                       project: nil, training: nil, spoils: .zero, wounded: 0)), .lore),
             (.scoutSeen(hold: seat.id, by: foe), .envoy),
+            (.lairAssaulted(LairAssault(rally: 1, caller: player, lair: 60, kind: .reavers, level: 1, at: unit.position, strikes: [],
+                                        before: 200, strength: 0, might: 200, shares: [.init(house: player, spoils: .zero)])), .triumph),
+            (.lairAssaulted(LairAssault(rally: 1, caller: foe, lair: 60, kind: .reavers, level: 2, at: unit.position, strikes: [],
+                                        before: 450, strength: 300, might: 450,
+                                        shares: [.init(house: foe, spoils: .zero), .init(house: player, spoils: .zero)])), .batter),
             (hunt(by: player, .spear), .clash),
             (hunt(by: player, .bow), .loose),
             (.sentToGather(unit: unit.id, site: 1), .order),
@@ -806,6 +811,8 @@ final class CueMappingTests: XCTestCase {
             .holdScouted(ScoutReport(hold: seat.id, owner: player, by: foe, watch: 1, garrison: [], ward: 30, maximumWard: 30,
                                      project: nil, training: nil, spoils: .zero, wounded: 0)),
             .scoutSeen(hold: 41, by: others),
+            .lairAssaulted(LairAssault(rally: 3, caller: foe, lair: 61, kind: .drowned, level: 1, at: unit.position, strikes: [],
+                                       before: 200, strength: 0, might: 200, shares: [.init(house: foe, spoils: .zero)])),
         ]
         XCTAssertEqual(GameSession.cues(for: quiet, in: state, player: player), [.watch])
         // Every new order has its own sound, not the plain click.

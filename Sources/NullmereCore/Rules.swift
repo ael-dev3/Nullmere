@@ -143,7 +143,7 @@ extension GameState {
 
         // Marching onto an enemy within reach is an attack, and onto the wilds.
         if unit.kind.isMilitary, unit.position.distance(to: target) <= unit.kind.range,
-           wild(at: target) != nil || foe(at: target, for: house).map({ isAtWar(house, $0.owner) }) == true {
+           wild(at: target) != nil || lair(at: target) != nil || foe(at: target, for: house).map({ isAtWar(house, $0.owner) }) == true {
             return try attack(with: unitID, at: target, as: house)
         }
         guard unknown || path(for: unit, to: target) != nil else { throw .noPath }
@@ -179,8 +179,8 @@ extension GameState {
                 route = planned
             }
             let next = route[0]
-            // Another company holds the destination, or the wilds: wait beside it.
-            if self.unit(at: next) != nil || wild(at: next) != nil { break }
+            // Another company holds the destination, or the wilds or their lair: wait beside it.
+            if self.unit(at: next) != nil || wild(at: next) != nil || lair(at: next) != nil { break }
             if let hold = hold(at: next), hold.owner != unit.owner {
                 units[index].destination = nil
                 break
@@ -245,6 +245,8 @@ extension GameState {
         let attacker = units[index]
         guard attacker.kind.isMilitary else { throw .cannotFight }
         guard attacker.movesLeft > 0 else { throw .noMovesLeft }
+        // A lair stands against any company alone.
+        if lair(at: target) != nil { throw .lairNeedsRally }
         // The wilds are every House's foe: no war is needed to strike them.
         if let wild = wild(at: target) {
             guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }

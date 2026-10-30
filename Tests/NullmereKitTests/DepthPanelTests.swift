@@ -662,6 +662,56 @@ final class DepthPanelTests: XCTestCase {
                                          in: state, player: me), "None of another's within reach of its own seat")
     }
 
+    func testALairIsDrawnNamedAndRalliedOnAndItsBreakingShown() throws {
+        var state = world("lair shown")
+        let me = state.player
+        _ = try state.perform(.foundAlliance(name: "The Broken Gate"), as: me)
+        let index = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+        state.holds[index].levels[.musterHall] = 1
+        let seat = state.holds[index]
+        let spot = try XCTUnwrap(seat.position.ring(4).first { hex in
+            state.map[hex]?.terrain.isPassable == true && state.map[hex]?.terrain.isWater == false && state.unit(at: hex) == nil
+                && state.hold(at: hex) == nil && state.wild(at: hex) == nil && state.site(at: hex) == nil
+        })
+        let lair = Lair(id: state.takeID(), kind: .reavers, level: 2, position: spot, raised: 0)
+        state.lairs = [lair]
+        state.reveal(around: spot, range: 1, for: me)
+        let (session, link) = session(state)
+        // Named on hover, and in its tile's panel with a rally to call on it.
+        let line = try XCTUnwrap(HoverInfo.line(for: spot, in: session.state, explored: true, territory: session.state.territory()))
+        XCTAssertTrue(line.contains("the Reavers' Stockade, a lair of the wilds of level II, 450 of 450 standing"), line)
+        XCTAssertEqual(LairRally.muster(for: lair, in: session.state, player: me)?.id, seat.id)
+        session.selection = .tile(spot)
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        XCTAssertTrue(PressableButtons.press("Call a rally"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .callRally(from: seat.id, against: lair.id, watches: 2))
+        // Drawn in the world, its fire smoking.
+        let frame = session.sceneFrame(at: 1)
+        XCTAssertTrue(frame.batches.contains { $0.key == .lair(.reavers) }, "The lair stands in the world")
+        // Its breaking: each blow drawn from where it was struck, filed as a report, heard.
+        let striker = try XCTUnwrap(spot.neighbors.first { session.state.map[$0]?.terrain.isPassable == true })
+        let assault = LairAssault(rally: 9, caller: me, lair: lair.id, kind: .reavers, level: 2, at: spot,
+                                  strikes: [.init(unit: 77, owner: me, kind: .spear, from: striker, dealt: 450, taken: 20, fell: false)],
+                                  before: 450, strength: 0, might: 450, shares: [.init(house: me, spoils: Stock(grain: 90))])
+        session.showBlows([.lairAssaulted(assault)])
+        XCTAssertEqual(session.blows.last?.from, striker)
+        XCTAssertEqual(session.blows.last?.at, spot)
+        XCTAssertEqual(session.reports.first?.outcome, .won)
+        XCTAssertEqual(session.reports.first?.title, "Your host broke the Reavers' Stockade of the second level")
+        XCTAssertEqual(GameSession.place(of: .lairAssaulted(assault), in: session.state), spot)
+        XCTAssertEqual(GameSession.place(of: .rallySetOut(rally: 9, caller: me, target: lair.id, defender: Rally.noHouse, companies: 3),
+                                         in: session.state), spot)
+        XCTAssertTrue(GameSession.isRealmsToTell(.lairAssaulted(assault)))
+        // A keeper with no Muster Hall is told where a rally gathers.
+        XCTAssertNil(LairRally.muster(for: lair, in: session.state, player: (me + 1) % 6))
+        // The Realm lists the lairs found.
+        draw(RealmPanel(session: session))
+        XCTAssertEqual(RealmPanel.standing(lair), "Whole, 450")
+        var struck = lair
+        struck.strength = 120
+        XCTAssertEqual(RealmPanel.standing(struck), "120 of 450 standing")
+    }
+
     func testACompanySaysWhatItWasSentToDo() throws {
         var state = world("errands")
         let me = state.player

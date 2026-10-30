@@ -73,8 +73,9 @@ extension GameSession {
         let poses = companyPoses(at: now, animated: full, time: time)
         let companies = stage.companies(poses, houses: houses, into: &frame)
 
-        // The land's sites the keeper knows, and its furniture, cleared
-        // where companies, sites and holds stand.
+        // The land's sites the keeper knows, its holy sites and the lairs of
+        // the wilds, and its furniture, cleared where companies, sites,
+        // lairs and holds stand.
         let sites = state.sitesInLand.filter { isExplored($0.position) }
         let siteBatches = stage.sites(sites.map { ($0.store, $0.position) })
             + stage.shrines(state.holySites.filter { isExplored($0.position) }.map { shrine in
@@ -82,17 +83,19 @@ extension GameSession {
                     state.houses.indices.contains(holder) ? WorldStage.colour(houses, sigil: state.houses[holder].sigil) : nil
                 })
             })
-        let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position))
+        let found = state.lairsStanding.filter { isExplored($0.position) }
+        let lairs = stage.lairs(found.map { ($0.kind, $0.position) })
+        let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position) + found.map(\.position))
         let furniture = stage.furnish(occupied: standing, holds: Set(sights.map(\.hold.position)))
 
         // Arrows in flight, birds over the water, smoke from the hearths in sight.
         let lake = Relief.centre(of: Hex(0, 0))
         let flights = WorldStage.flights(arrows: full ? arrows(at: now) : [],
                                          birdsOver: full ? Vec3(lake.x, Relief.waterline, lake.z) : nil,
-                                         hearths: full ? hearths.filter { isVisible($0.hex) } : [], time: t, into: &frame)
+                                         hearths: full ? (hearths + lairs.hearths).filter { isVisible($0.hex) } : [], time: t, into: &frame)
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
-        frame.batches = holds + siteBatches + companies + flights
+        frame.batches = holds + siteBatches + lairs.batches + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, stage: stage, at: now, time: time).effects(at: t)
         }

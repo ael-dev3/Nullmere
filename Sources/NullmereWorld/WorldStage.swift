@@ -243,6 +243,21 @@ public final class WorldStage: @unchecked Sendable {
         })
     }
 
+    /// The lairs of the wilds the keeper has found, each filling its hex's
+    /// heart, and where their fires smoke.
+    public func lairs(_ lairs: [(kind: WildKind, hex: Hex)]) -> (batches: [ModelBatch], hearths: [Hearth]) {
+        var hearths: [Hearth] = []
+        let batches = WorldStage.batches(lairs.map { lair in
+            let centre = Relief.centre(of: lair.hex)
+            let at = Vec3(centre.x, ground(atX: centre.x, z: centre.z) - Scatter.sink, centre.z)
+            let transform = Mat4.translation(at) * .rotationY(WorldStage.phase(of: lair.hex, salt: 19) * .pi / 6)
+            hearths += Library.smoke(of: .lair(lair.kind)).map { Hearth(point: transform.transformPoint($0), hex: lair.hex) }
+            return (.lair(lair.kind), ModelInstance(model: transform, phase: WorldStage.phase(of: lair.hex, salt: 23),
+                                                    hex: SIMD2(Int32(lair.hex.q), Int32(lair.hex.r))))
+        })
+        return (batches, hearths)
+    }
+
     // MARK: Where the night's small lights wander
 
     /// Reed beds and tall grass near a point, the keeper's nearest: where

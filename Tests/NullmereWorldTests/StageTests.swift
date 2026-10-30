@@ -190,6 +190,28 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(stage.shrines([]).isEmpty)
     }
 
+    func testLairsStandInTheirHexesHeartsAndTheirFiresSmoke() throws {
+        let stage = stage()
+        let hexes = Array(Self.state.map.hexes.filter { Self.state.map[$0]?.terrain.isPassable == true }.prefix(3))
+        let (batches, hearths) = stage.lairs([(.reavers, hexes[0]), (.barrowkin, hexes[1]), (.reavers, hexes[2])])
+        XCTAssertEqual(batches.map(\.key), [.lair(.reavers), .lair(.barrowkin)])
+        XCTAssertEqual(batches.first?.instances.count, 2)
+        for (instance, hex) in zip(try XCTUnwrap(batches.first).instances, [hexes[0], hexes[2]]) {
+            let centre = Relief.centre(of: hex)
+            XCTAssertEqual(instance.model.c3.x, centre.x, accuracy: 1e-4)
+            XCTAssertEqual(instance.model.c3.z, centre.z, accuracy: 1e-4)
+            XCTAssertEqual(instance.model.c3.y, stage.ground(atX: centre.x, z: centre.z) - Scatter.sink, accuracy: 1e-4)
+            XCTAssertEqual(instance.colour, .zero, "No House's")
+        }
+        XCTAssertEqual(hearths.map(\.hex), [hexes[0], hexes[2]], "The Reavers' fires smoke; the barrow's cold light doesn't")
+        for (hearth, hex) in zip(hearths, [hexes[0], hexes[2]]) {
+            let centre = Relief.centre(of: hex)
+            XCTAssertLessThan(Vec3(hearth.point.x - centre.x, 0, hearth.point.z - centre.z).length, 0.2, "From its fire, by its heart")
+            XCTAssertGreaterThan(hearth.point.y, stage.ground(atX: centre.x, z: centre.z) - Scatter.sink)
+        }
+        XCTAssertTrue(stage.lairs([]).batches.isEmpty)
+    }
+
     func testFirefliesWanderOverTheReedsAndGrassNearest() {
         let stage = stage()
         _ = stage.furnish(occupied: [], holds: [])

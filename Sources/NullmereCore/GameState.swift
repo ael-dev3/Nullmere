@@ -98,6 +98,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The realm's holy sites; absent in saves from before them, which find
     /// them as the watch turns.
     var shrines: [Shrine]?
+    /// The lairs of the wilds standing; absent in saves from before them,
+    /// which find them as the watch turns.
+    var lairs: [Lair]?
     /// The gear the Houses hold, worn by their commanders or kept; absent
     /// in saves from before gear.
     var armoury: [Gear]?
@@ -414,7 +417,8 @@ public struct GameState: Codable, Equatable, Sendable {
     mutating func placeUnit(_ kind: UnitKind, tier: Int = 1, for house: Int, near hex: Hex) -> Unit? {
         let spot = hex.spiral(3).first { candidate in
             guard let tile = map[candidate], tile.terrain.isPassable else { return false }
-            return unit(at: candidate) == nil && wild(at: candidate) == nil && (hold(at: candidate).map { $0.owner == house } ?? true)
+            return unit(at: candidate) == nil && wild(at: candidate) == nil && lair(at: candidate) == nil
+                && (hold(at: candidate).map { $0.owner == house } ?? true)
         }
         guard let spot else { return nil }
         let placed = Unit(id: takeID(), kind: kind, owner: house, position: spot, tier: tier)

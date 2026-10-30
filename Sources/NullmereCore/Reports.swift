@@ -115,4 +115,33 @@ extension GameState {
         return BattleReport(id: id, watch: scouting.watch, title: "Your Lanterns scouted \(name), \(whose)",
                             place: hold(scouting.hold).map { placeName(of: $0.position) } ?? "", outcome: .scouted, lines: lines)
     }
+
+    /// A host's strike on a lair of the wilds, as a House of the host
+    /// reads it: its own companies' blows, its allies' together, and how
+    /// the lair stood after or what fell to the House with it; nil for a
+    /// House not of the host.
+    public func report(of assault: LairAssault, id: Int, for viewer: Int) -> BattleReport? {
+        guard assault.houses.contains(viewer) else { return nil }
+        let lair = "the \(assault.kind.lairTitle) of the \(ordinal(assault.level)) level"
+        var lines: [String] = []
+        for strike in assault.strikes where strike.owner == viewer {
+            lines.append("Your \(strike.kind.title) dealt \(strike.dealt)" + (strike.taken > 0 ? ", took \(strike.taken)" : "")
+                         + (strike.fell ? ", and fell" : ""))
+        }
+        let others = assault.strikes.filter { $0.owner != viewer }
+        if !others.isEmpty {
+            let companies = others.count == 1 ? "1 company" : "\(others.count) companies"
+            lines.append("Your allies' \(companies) dealt \(others.reduce(0) { $0 + $1.dealt })")
+        }
+        if assault.broken {
+            let share = assault.shares.first { $0.house == viewer }?.spoils ?? .zero
+            lines.append(share.isZero ? "It broke" : "It broke, and your House carried off \(share)")
+        } else {
+            lines.append("It holds, \(assault.strength) of \(assault.might) still standing")
+        }
+        let lost = assault.strikes.contains { $0.owner == viewer && $0.fell }
+        let outcome: BattleReport.Outcome = assault.broken ? .won : (lost ? .lost : .held)
+        return BattleReport(id: id, watch: watch, title: "Your host " + (assault.broken ? "broke " : "struck ") + lair,
+                            place: placeName(of: assault.at), outcome: outcome, lines: lines)
+    }
 }

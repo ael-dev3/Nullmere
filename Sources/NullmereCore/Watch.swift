@@ -67,6 +67,7 @@ extension GameState {
         raiseShrines()
         events += holdShrines()
         raiseWilds()
+        raiseLairs()
         raiseSites()
         refreshSight()
         tally(Array(events[turning...]))

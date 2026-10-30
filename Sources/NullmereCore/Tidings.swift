@@ -85,6 +85,17 @@ extension GameState {
         case .scoutSeen(let holdID, let by):
             guard let hold = hold(holdID), hold.owner == viewer, houses.indices.contains(by) else { return nil }
             return Tidings("Lanterns of \(houses[by].title) watch \(hold.name).", .bad)
+        case .lairAssaulted(let assault):
+            let lair = "the \(assault.kind.lairTitle) of the \(ordinal(assault.level)) level"
+            if assault.houses.contains(viewer) {
+                guard assault.broken else {
+                    return Tidings("Your host strikes \(lair) for \(assault.dealt); it holds, \(assault.strength) of \(assault.might) still standing.", .neutral)
+                }
+                let share = assault.shares.first { $0.house == viewer }?.spoils ?? .zero
+                return Tidings("Your host breaks \(lair)" + (share.isZero ? "!" : ", and your House carries off \(share)."), .good)
+            }
+            let host = houses.indices.contains(assault.caller) ? "A host of \(houses[assault.caller].title)" : "A host"
+            return Tidings("\(host) " + (assault.broken ? "breaks \(lair)." : "strikes \(lair), but it holds."), .neutral)
         case .woundedLost(let holdID, let house, let count):
             guard house == viewer, let hold = hold(holdID) else { return nil }
             let companies = count == 1 ? "The company" : "The \(count) companies"
@@ -152,17 +163,17 @@ extension GameState {
             if by == viewer { return Tidings("You help \(count) of \(houses[to].title)'s \(works).", .neutral) }
             return nil
         case .rallyCalled(let id, let caller, let targetID):
-            guard let rally = rally(id), let muster = hold(rally.muster), let target = hold(targetID) else { return nil }
-            if caller == viewer { return Tidings("You call a rally at \(muster.name) against \(target.name).", .neutral) }
+            guard let rally = rally(id), let muster = hold(rally.muster), let target = targetName(targetID) else { return nil }
+            if caller == viewer { return Tidings("You call a rally at \(muster.name) against \(target).", .neutral) }
             let watches = rally.setsOut - watch
-            return Tidings("\(houses[caller].title) calls a rally at \(muster.name) against \(target.name); "
+            return Tidings("\(houses[caller].title) calls a rally at \(muster.name) against \(target); "
                 + "it sets out in \(watches) watch\(watches == 1 ? "" : "es").", .neutral)
         case .rallyJoined(let id, let unitID, let owner):
             guard let rally = rally(id), let muster = hold(rally.muster), let unit = unit(unitID) else { return nil }
             if owner == viewer { return Tidings("Your \(unit.kind.title) march to the rally at \(muster.name).", .neutral) }
             return Tidings("\(houses[owner].title) sends \(unit.kind.title) to the rally at \(muster.name).", .neutral)
         case .rallySetOut(_, let caller, let targetID, let defender, let companies):
-            let target = hold(targetID)?.name ?? "their hold"
+            let target = targetName(targetID) ?? "their hold"
             let host = "\(companies) compan\(companies == 1 ? "y" : "ies")"
             if defender == viewer { return Tidings("A host of \(host) marches on \(target)!", .bad) }
             let whose = caller == viewer ? "Your" : "\(houses[caller].title)'s"

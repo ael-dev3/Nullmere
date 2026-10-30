@@ -22,6 +22,9 @@ enum HoverInfo {
         if let shrine = state.shrine(at: hex) {
             parts.append(HoverInfo.named(shrine, in: state))
         }
+        if let lair = state.lair(at: hex) {
+            parts.append(HoverInfo.named(lair))
+        }
         if tile.terrain.isWater, tile.terrain != .shallows {
             parts.append("yields nothing, impassable")
             return parts.joined(separator: " · ")
@@ -51,6 +54,13 @@ enum HoverInfo {
     static func named(_ shrine: Shrine, in state: GameState) -> String {
         let holder = shrine.holder.flatMap { state.houses.indices.contains($0) ? state.houses[$0].title : nil }
         return "the \(shrine.title), a holy site" + (holder.map { ", held by \($0)" } ?? ", held by none") + ": \(shrine.kind.effect)"
+    }
+
+    /// A lair of the wilds as the map names it: its level, what still
+    /// stands of it, and what alone breaks it.
+    static func named(_ lair: Lair) -> String {
+        "the \(lair.title), a lair of the wilds of level \(Narration.roman(lair.level)), \(lair.strength) of \(lair.might) standing; "
+            + "only a rally's host breaks it"
     }
 
     /// A site of the land as the map names it, with what is left in it.

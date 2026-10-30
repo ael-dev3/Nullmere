@@ -35,6 +35,11 @@ extension GameState {
                 blocked[index] = true
             }
         }
+        for lair in lairsStanding {
+            if let index = map.index(of: lair.position), index != goal {
+                blocked[index] = true
+            }
+        }
         var best = [Int](repeating: Int.max, count: count)
         var cameFrom = [Int](repeating: -1, count: count)
         let hexes = map.hexes
@@ -90,6 +95,9 @@ extension GameState {
         }
         for wild in wildsStanding {
             if let index = map.index(of: wild.position) { blocked[index] = true }
+        }
+        for lair in lairsStanding {
+            if let index = map.index(of: lair.position) { blocked[index] = true }
         }
         let hexes = map.hexes
         var cameFrom = [Int](repeating: -2, count: map.count)
@@ -168,6 +176,9 @@ extension GameState {
         }
         for wild in wildsStanding {
             if let index = map.index(of: wild.position) { occupied.insert(index) }
+        }
+        for lair in lairsStanding {
+            if let index = map.index(of: lair.position) { occupied.insert(index) }
         }
         let hexes = map.hexes
         var left = [Int](repeating: -1, count: map.count)

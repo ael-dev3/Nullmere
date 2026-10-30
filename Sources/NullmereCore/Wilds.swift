@@ -134,9 +134,9 @@ extension GameState {
     }
 
     /// Whether a hex is free of everything that stands: companies, holds,
-    /// the wilds.
+    /// the wilds and their lairs.
     func isOccupied(_ hex: Hex) -> Bool {
-        unit(at: hex) != nil || hold(at: hex) != nil || wild(at: hex) != nil
+        unit(at: hex) != nil || hold(at: hex) != nil || wild(at: hex) != nil || lair(at: hex) != nil
     }
 
     /// The fewest tiles from any hold at which the wilds rise.

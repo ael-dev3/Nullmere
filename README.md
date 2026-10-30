@@ -651,6 +651,28 @@ realm; keepers are told in plain words, never a status code.
   healers' fire and linen drying on a line, a ward of pale stone with a
   round apse and a well, a covered walk with lanterns, and at the fifth a
   bell-cote and a moonsalt lamp. The healers' work has its own sound.
+- **Lairs of the wilds.** From the twelfth watch the realm raises lairs
+  far out in the country, one every five watches while fewer stand than
+  one for every three seats (two at least), on open land at least seven
+  tiles from any hold and six from a holy site or another lair: a Salt
+  Hollow, a Reavers' Stockade, a Barrow Hall, a Hunters' Eyrie or a
+  Drowned Chapel, by the ground it rises on, of levels I to V, the later
+  in the age the higher (200 to 1,800 strength). Nothing walks through
+  one, and no company alone can strike it: a House of an alliance calls a
+  rally against it from its hold with a Muster Hall, at peace or at war,
+  and the host strikes it together, arrows first, those beside it taking
+  its blow back. Broken, it is gone; its spoils are shared among the
+  host's Houses by the companies each brought up to it, its caller finds a
+  piece of gear among the ruins, the commanders learn from it, the Long
+  Hunt counts it for the caller, and the chronicle tells it. A lair that
+  holds mends a twentieth of its strength each watch. A House knows the
+  lairs on ground it has explored; the host and those watching hear each
+  strike. Stewards with companies to spare and no foe to rally on rally
+  on the lowest lair they know near a hold with a Muster Hall, and send
+  their companies to their side's lair rallies. Each lair has its own
+  model, with its fire smoking or its cold light burning; it is named on
+  hover, its ground's panel shows what stands of it and calls the rally,
+  and each blow on it is drawn and reported.
 - **Scouting.** Lanterns standing within two tiles of another House's
   hold scout it, at peace or at war, for all their moves. Their report
   goes to their House alone: every company of war at its gates (its own
