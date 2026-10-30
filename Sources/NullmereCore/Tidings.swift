@@ -57,6 +57,12 @@ extension GameState {
         case .gearTakenOff(let id, let house, let gearID):
             guard house == viewer, let commander = commander(id) else { return nil }
             return Tidings("\(commander.name) lays down the \(gear(gearID)?.title ?? "gear").", .neutral)
+        case .shrineTaken(let id, let house, let from):
+            guard let shrine = holySites.first(where: { $0.id == id }) else { return nil }
+            if house == viewer { return Tidings("Your company takes the \(shrine.title): \(shrine.kind.effect).", .good) }
+            if from == viewer { return Tidings("\(houses[house].title) takes the \(shrine.title) from you.", .bad) }
+            if areAllied(house, viewer) { return Tidings("\(houses[house].title), your ally, takes the \(shrine.title): \(shrine.kind.effect).", .good) }
+            return Tidings("\(houses[house].title) takes the \(shrine.title).", .neutral)
         case .gearScrapped(let house, _, let moonsalt):
             guard house == viewer else { return nil }
             return Tidings("A piece of gear is broken up for \(moonsalt) moonsalt.", .neutral)

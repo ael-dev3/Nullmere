@@ -200,6 +200,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case alreadyWorn
     /// Gear no commander wears.
     case notWorn
+    /// A hold founded on a holy site.
+    case holySite
     /// Words from a House no keeper holds.
     case notAKeeper
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -292,6 +294,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .unknownGear: return "Your House holds no such gear."
         case .alreadyWorn: return "That commander wears it already."
         case .notWorn: return "No commander wears it."
+        case .holySite: return "No hold is raised on a holy site."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
         case .notAKeeper: return "Only a keeper's words are carried."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -354,6 +357,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case gearTakenOff(commander: Int, house: Int, gear: Int)
     /// A piece of gear broken up for moonsalt.
     case gearScrapped(house: Int, gear: Int, moonsalt: Int)
+    /// A House takes a holy site, from another or from none.
+    case shrineTaken(shrine: Int, house: Int, from: Int?)
     /// A company strikes a company of the wilds.
     case hunted(Hunt)
     /// A company sets out to work a site.

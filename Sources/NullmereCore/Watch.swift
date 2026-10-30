@@ -63,6 +63,8 @@ extension GameState {
         }
         events += advanceRallies(marching: !isPaced)
         events += workTheLand()
+        raiseShrines()
+        events += holdShrines()
         raiseWilds()
         raiseSites()
         refreshSight()

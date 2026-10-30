@@ -22,6 +22,10 @@ struct RealmPanel: View {
                     charge(board)
                     Rule(opacity: 0.18)
                     deeds(board)
+                    if !state.holySites.isEmpty {
+                        Rule(opacity: 0.18)
+                        shrines(state)
+                    }
                     if let keeper = session.keeper, (keeper.renown ?? 0) > 0 || !(keeper.titles ?? []).isEmpty {
                         Rule(opacity: 0.18)
                         Caps("Your renown", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
@@ -42,6 +46,40 @@ struct RealmPanel: View {
         .frame(width: 360)
         .frame(maxHeight: 620)
         .panelBackground()
+    }
+
+    /// The holy sites the House has found, who holds each, and what it gives.
+    @ViewBuilder
+    private func shrines(_ state: GameState) -> some View {
+        Caps("Holy sites", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
+        ForEach(state.holySites) { shrine in
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(verbatim: shrine.title).font(.nm(11, weight: .medium)).foregroundStyle(Palette.text(0.85))
+                    Spacer()
+                    Text(verbatim: RealmPanel.held(shrine, in: state, player: session.player))
+                        .font(.nm(10.5))
+                        .foregroundStyle(shrine.holder.map { state.areAllied($0, session.player) || $0 == session.player } == true
+                                         ? Palette.glowWords : Palette.text(0.6))
+                }
+                Text(verbatim: "\(shrine.kind.effect); \(state.placeName(of: shrine.position))")
+                    .font(.nm(10))
+                    .foregroundStyle(Palette.text(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+        }
+        Text(verbatim: "A company of war standing on a holy site as the watch turns, with no foe beside it, takes it for its House and alliance.")
+            .font(.nm(10))
+            .foregroundStyle(Palette.text(0.55))
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Who holds a holy site, as the panel says it.
+    static func held(_ shrine: Shrine, in state: GameState, player: Int) -> String {
+        guard let holder = shrine.holder, state.houses.indices.contains(holder) else { return "Held by none" }
+        if holder == player { return "Yours" }
+        return "Held by \(state.houses[holder].title)"
     }
 
     static func mightLine(_ board: RealmBoard, standing: Int) -> String {

@@ -548,6 +548,32 @@ final class DepthPanelTests: XCTestCase {
         draw(SelectionPanel(session: session), width: 330, height: 600)
     }
 
+    func testTheHolySitesAreShownNamedAndDrawn() throws {
+        var state = world("holy sites shown")
+        let me = state.player
+        let shrine = try XCTUnwrap(state.holySites.first)
+        state.reveal(around: shrine.position, range: 1, for: me)
+        state.units.append(Unit(id: state.takeID(), kind: .spear, owner: me, position: shrine.position))
+        _ = state.holdShrines()
+        let (session, _) = session(state)
+        draw(RealmPanel(session: session))
+        let held = try XCTUnwrap(session.state.holySites.first { $0.id == shrine.id })
+        XCTAssertEqual(RealmPanel.held(held, in: session.state, player: me), "Yours")
+        let other = (me + 1) % session.state.houses.count
+        XCTAssertEqual(RealmPanel.held(Shrine(id: 9, kind: .saltAltar, position: .origin, holder: other), in: session.state, player: me),
+                       "Held by \(session.state.houses[other].title)")
+        XCTAssertEqual(RealmPanel.held(Shrine(id: 9, kind: .saltAltar, position: .origin), in: session.state, player: me), "Held by none")
+        XCTAssertTrue(HoverInfo.named(held, in: session.state).hasPrefix("the \(held.title), a holy site, held by \(session.state.houses[me].title)"))
+        let line = try XCTUnwrap(HoverInfo.line(for: shrine.position, in: session.state, explored: true, territory: session.state.territory()))
+        XCTAssertTrue(line.contains("a holy site"), line)
+        // Drawn in the world, its pennant in its holder's colour.
+        let frame = session.sceneFrame(at: 1)
+        let drawn = frame.batches.first { $0.key == .shrine(held.kind) }
+        XCTAssertNotNil(drawn, "The shrine stands in the world")
+        XCTAssertEqual(drawn?.instances.first?.colour.w, 1, "Its holder's colour")
+        XCTAssertEqual(GameSession.place(of: .shrineTaken(shrine: shrine.id, house: me, from: nil), in: session.state), shrine.position)
+    }
+
     func testACompanySaysWhatItWasSentToDo() throws {
         var state = world("errands")
         let me = state.player

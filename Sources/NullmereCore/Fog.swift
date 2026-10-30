@@ -73,6 +73,8 @@ extension GameState {
         view.rallies = rallies?.filter { rally in
             isOfRally(house, rally) || (rally.marching && hold(rally.target)?.owner == house)
         }
+        // The holy sites on ground they have explored, and who holds them.
+        view.shrines = shrines?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
         // The battles going on that they can see a side of.
         view.engagements = engagements?.filter { view.unit($0.attacker) != nil || view.unit($0.defender) != nil }
         // The marches they may know of, worked out on what they see.
@@ -153,7 +155,7 @@ extension GameState {
                 return envoy.from == house || envoy.to == house
             case .proposalAnswered(_, let from, let to, _):
                 return from == house || to == house
-            case .holdCaptured, .seatMoved, .holdFounded, .buildingCompleted, .stanceChanged, .houseFell, .gameEnded:
+            case .holdCaptured, .seatMoved, .holdFounded, .buildingCompleted, .stanceChanged, .houseFell, .gameEnded, .shrineTaken:
                 return true
             }
         }

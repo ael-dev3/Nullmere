@@ -524,6 +524,7 @@ extension GameState {
         guard tile.terrain.isSettleable else { return .cannotSettle(tile.terrain) }
         if holds.contains(where: { $0.position.distance(to: hex) < 3 }) { return .tooCloseToHold }
         if let owner = territoryOwner(of: hex), owner != house { return .foreignTerritory }
+        if shrine(at: hex) != nil { return .holySite }
         return nil
     }
 

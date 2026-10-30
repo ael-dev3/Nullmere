@@ -95,6 +95,9 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var pacing: Pacing?
     /// The battles going on in a realm's watch; absent when none is.
     var engagements: [Engagement]?
+    /// The realm's holy sites; absent in saves from before them, which find
+    /// them as the watch turns.
+    var shrines: [Shrine]?
     /// The gear the Houses hold, worn by their commanders or kept; absent
     /// in saves from before gear.
     var armoury: [Gear]?
@@ -174,6 +177,7 @@ public struct GameState: Codable, Equatable, Sendable {
             }
         }
         raiseFirstCommanders()
+        raiseShrines()
         refreshSight()
         takeSnapshot()
     }

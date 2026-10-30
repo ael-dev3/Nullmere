@@ -19,6 +19,9 @@ enum HoverInfo {
         if let site = state.site(at: hex) {
             parts.append(HoverInfo.named(site))
         }
+        if let shrine = state.shrine(at: hex) {
+            parts.append(HoverInfo.named(shrine, in: state))
+        }
         if tile.terrain.isWater, tile.terrain != .shallows {
             parts.append("yields nothing, impassable")
             return parts.joined(separator: " · ")
@@ -42,6 +45,12 @@ enum HoverInfo {
     static func named(_ wild: Wild) -> String {
         let title = wild.kind.title
         return title.prefix(1).uppercased() + title.dropFirst() + ", level \(Narration.roman(wild.level))"
+    }
+
+    /// A holy site as the map names it: who holds it, and what it gives.
+    static func named(_ shrine: Shrine, in state: GameState) -> String {
+        let holder = shrine.holder.flatMap { state.houses.indices.contains($0) ? state.houses[$0].title : nil }
+        return "the \(shrine.title), a holy site" + (holder.map { ", held by \($0)" } ?? ", held by none") + ": \(shrine.kind.effect)"
     }
 
     /// A site of the land as the map names it, with what is left in it.

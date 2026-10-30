@@ -102,11 +102,39 @@ struct RivalMind {
         let visible = state.visibility(for: house)
         // Its companies' orders don't change whom it is at war with.
         let atWar = state.livingHouses.contains { state.isAtWar(house, $0.id) }
+        if !atWar { events += seekHolySite(garrisons: garrisons, in: &state) }
         for unit in state.units(of: house).sorted(by: { $0.id < $1.id }) {
             guard state.unit(unit.id) != nil else { continue }
             events += command(unit.id, garrisonFor: garrisons[unit.id], seeing: visible, atWar: atWar, in: &state)
         }
         return events
+    }
+
+    /// How near its holds a holy site lies for a steward to send for it.
+    static let holySiteReach = 8
+
+    /// At peace, a steward sends one company of war it doesn't need to the
+    /// nearest holy site near its holds that its side doesn't hold, with
+    /// none of its own already bound there.
+    private func seekHolySite(garrisons: [Int: Hex], in state: inout GameState) -> [GameEvent] {
+        let holds = state.holds(of: house).map(\.position)
+        let side = Set([house] + (state.alliance(of: house)?.members ?? []))
+        let mine = state.units(of: house)
+        let wanted = state.holySites.filter { shrine in
+            !(shrine.holder.map(side.contains) ?? false)
+                && holds.contains { $0.distance(to: shrine.position) <= RivalMind.holySiteReach }
+                && !mine.contains { $0.position == shrine.position || $0.destination == shrine.position }
+                && state.unit(at: shrine.position) == nil
+        }
+        guard !wanted.isEmpty else { return [] }
+        let idle = mine.filter { unit in
+            unit.kind.isMilitary && unit.errand == nil && unit.destination == nil && garrisons[unit.id] == nil && unit.movesLeft > 0
+        }
+        let choice = idle.flatMap { unit in wanted.map { (unit: unit, shrine: $0) } }.min { a, b in
+            (a.unit.position.distance(to: a.shrine.position), a.unit.id) < (b.unit.position.distance(to: b.shrine.position), b.unit.id)
+        }
+        guard let choice else { return [] }
+        return perform(.move(unit: choice.unit.id, to: choice.shrine.position), in: &state)
     }
 
     private func perform(_ command: Command, in state: inout GameState) -> [GameEvent] {
@@ -778,6 +806,12 @@ struct RivalMind {
     private func campaign(with unit: Unit, seeing visible: [Bool], atWar: Bool, in state: inout GameState) -> [GameEvent] {
         if let target = foeInReach(of: unit, in: state) {
             return perform(.attack(unit: unit.id, target: target), in: &state)
+        }
+        // On a holy site its side doesn't hold yet, it stands until the
+        // watch turns; bound for one, it goes on.
+        if let shrine = state.shrine(at: unit.position) ?? unit.destination.flatMap({ state.shrine(at: $0) }),
+           !(shrine.holder.map { $0 == house || state.areAllied($0, house) } ?? false) {
+            return []
         }
         // At peace, a company on an errand sees it through.
         if unit.errand != nil, !atWar { return [] }

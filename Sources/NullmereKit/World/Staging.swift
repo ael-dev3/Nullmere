@@ -77,6 +77,11 @@ extension GameSession {
         // where companies, sites and holds stand.
         let sites = state.sitesInLand.filter { isExplored($0.position) }
         let siteBatches = stage.sites(sites.map { ($0.store, $0.position) })
+            + stage.shrines(state.holySites.filter { isExplored($0.position) }.map { shrine in
+                (shrine.kind, shrine.position, shrine.holder.flatMap { holder in
+                    state.houses.indices.contains(holder) ? WorldStage.colour(houses, sigil: state.houses[holder].sigil) : nil
+                })
+            })
         let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position))
         let furniture = stage.furnish(occupied: standing, holds: Set(sights.map(\.hold.position)))
 

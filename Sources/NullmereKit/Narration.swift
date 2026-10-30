@@ -143,7 +143,7 @@ enum Narration {
             case .dominion: return Line(text: "\(house(outcome.winner)) holds dominion over the lake.", tone: .bad)
             }
         case .studyBegun, .studyCompleted, .commanderJoined, .commanderAssigned, .commanderReleased, .commanderRose,
-             .commanderWounded, .skillFired, .talentLearned, .talentsForgotten, .gearFound, .gearWorn, .gearTakenOff, .gearScrapped, .hunted, .sentToGather, .gathered, .delivered, .siteWorkedOut,
+             .commanderWounded, .skillFired, .talentLearned, .talentsForgotten, .gearFound, .gearWorn, .gearTakenOff, .gearScrapped, .shrineTaken, .hunted, .sentToGather, .gathered, .delivered, .siteWorkedOut,
              .allianceFounded, .allianceInvited, .allianceAsked, .allianceAnswered, .allianceJoined, .allianceLeft, .allianceLed,
              .allianceDisbanded, .helpGiven, .rallyCalled, .rallyJoined, .rallySetOut, .rallyStruck, .rallyDispersed, .sentToReinforce,
              .happeningBegun, .happeningMark, .happeningEnded, .deedDone, .chargeDone, .said:

@@ -53,6 +53,7 @@ enum Guide {
         ]),
         Section(title: "The wilds and the sites", lines: [
             "Companies of the wilds rise in the far country: every House's foe. Strike them for their spoils and for your commanders' learning; the higher their level, the richer and the harder.",
+            "Holy sites (Moonwells, Still Stones and Salt Altars) stand far out on the land. A company of war standing on one as the watch turns, with no foe beside it, takes it for your House: its gift is your whole alliance's while you hold it. The Realm (6) lists those you have found.",
             "Sites of the land (fallow fields, deadfalls, screes and salt pans) hold stores to gather. Choose a company of war and right-click a site: it works it until it carries all it can, then brings the stores home to your nearest hold.",
         ]),
         Section(title: "Houses", lines: [

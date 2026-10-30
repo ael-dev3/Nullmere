@@ -1192,6 +1192,8 @@ public final class GameSession {
         case .gearWorn(_, let house, _) where house == player: return .order
         case .gearTakenOff(_, let house, _) where house == player: return .stand
         case .gearScrapped(let house, _, _) where house == player: return .coin
+        case .shrineTaken(_, let house, _) where allied(house): return .banner
+        case .shrineTaken(_, _, let from) where from == player: return .dread
         case .hunted(let hunt) where hunt.attackerOwner == player: return hunt.attackerKind == .bow ? .loose : .clash
         case .sentToGather(let unit, _) where ours(unit): return .order
         case .gathered(_, let owner, _) where owner == player: return .dig
@@ -1313,6 +1315,8 @@ public final class GameSession {
             return state.hold(hold)?.position
         case .rallyStruck(_, _, let target, _, _), .rallySetOut(_, _, let target, _, _):
             return state.hold(target)?.position
+        case .shrineTaken(let shrine, _, _):
+            return state.holySites.first { $0.id == shrine }?.position
         case .gathered(let unit, _, _), .sentToGather(let unit, _):
             return state.unit(unit)?.position
         default:

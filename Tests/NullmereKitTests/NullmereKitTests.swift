@@ -739,6 +739,8 @@ final class CueMappingTests: XCTestCase {
             (.gearWorn(commander: commander, house: player, gear: 70), .order),
             (.gearTakenOff(commander: commander, house: player, gear: 70), .stand),
             (.gearScrapped(house: player, gear: 70, moonsalt: 10), .coin),
+            (.shrineTaken(shrine: 1, house: player, from: nil), .banner),
+            (.shrineTaken(shrine: 1, house: foe, from: player), .dread),
             (hunt(by: player, .spear), .clash),
             (hunt(by: player, .bow), .loose),
             (.sentToGather(unit: unit.id, site: 1), .order),
@@ -791,6 +793,7 @@ final class CueMappingTests: XCTestCase {
             .talentLearned(commander: 99, house: foe, talent: .keenEdge, rank: 1), .talentsForgotten(commander: 99, house: foe),
             .gearFound(house: foe, gear: Gear(id: 71, kind: .reaverAxe, quality: .plain, owner: foe), from: .reavers),
             .gearWorn(commander: 99, house: foe, gear: 71), .gearScrapped(house: foe, gear: 71, moonsalt: 5),
+            .shrineTaken(shrine: 1, house: foe, from: others),
         ]
         XCTAssertEqual(GameSession.cues(for: quiet, in: state, player: player), [.watch])
         // Every new order has its own sound, not the plain click.

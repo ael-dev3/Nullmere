@@ -229,6 +229,20 @@ public final class WorldStage: @unchecked Sendable {
         })
     }
 
+    /// The holy sites the keeper has found, each its pennant in its
+    /// holder's colour, or grey while none holds it.
+    public func shrines(_ shrines: [(kind: ShrineKind, hex: Hex, colour: Vec4?)]) -> [ModelBatch] {
+        WorldStage.batches(shrines.map { shrine in
+            let centre = Relief.centre(of: shrine.hex)
+            let at = Vec3(centre.x, ground(atX: centre.x, z: centre.z) - Scatter.sink, centre.z)
+            var instance = ModelInstance(model: .translation(at) * .rotationY(WorldStage.phase(of: shrine.hex, salt: 13) * .pi / 4),
+                                         phase: WorldStage.phase(of: shrine.hex, salt: 17),
+                                         hex: SIMD2(Int32(shrine.hex.q), Int32(shrine.hex.r)))
+            if let colour = shrine.colour { instance.colour = colour }
+            return (.shrine(shrine.kind), instance)
+        })
+    }
+
     // MARK: Where the night's small lights wander
 
     /// Reed beds and tall grass near a point, the keeper's nearest: where

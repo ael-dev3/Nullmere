@@ -233,6 +233,51 @@ enum Land {
     /// stooked; a stand of firs part-felled; a stone outcrop cut in faces
     /// with its blocks; a moonsalt pan crusted white. Each fills a hex's
     /// heart, about 0.6 from its middle.
+    /// A holy site: a ring of seven standing stones about its heart (a
+    /// well that holds the moon, a still dark stone, an altar crusted with
+    /// moonsalt), and a pennant on a pole in its holder's colour.
+    static func shrine(_ kind: ShrineKind, name: String) -> Model {
+        var b = MeshBuilder()
+        // The ring.
+        for index in 0..<7 {
+            let angle = Float(index) / 7 * 2 * .pi + 0.3
+            b.place(.translation(MeshBuilder.ring(0.36, 0, angle)) * .rotationY(angle) * .rotationZ(index % 2 == 0 ? 0.05 : -0.04)) {
+                $0.lathe([(0.05, -0.06), (0.05, 0.17), (0.035, 0.27), (0.0, 0.29)], sides: 4,
+                         color: index % 3 == 0 ? Palette.stone : Palette.stoneDark, twist: 0.3)
+            }
+        }
+        // A worn floor of flags within it.
+        b.lathe([(0.3, -0.03), (0.3, 0.012), (0.0, 0.02)], sides: 9, color: Palette.stonePale.mix(Palette.stone, 0.5))
+        // Its heart.
+        switch kind {
+        case .moonwell:
+            b.lathe([(0.13, 0.0), (0.13, 0.07), (0.11, 0.075), (0.11, 0.03), (0.0, 0.03)], sides: 9, color: Palette.stone)
+            b.material = .crystal
+            b.lathe([(0.105, 0.05), (0.0, 0.052)], sides: 9, color: Palette.moonGlow)
+            b.material = .plain
+        case .stillStone:
+            b.place(.rotationY(0.4)) {
+                $0.lathe([(0.11, 0.0), (0.12, 0.12), (0.08, 0.3), (0.0, 0.33)], sides: 5, color: Palette.slate, twist: 0.1)
+            }
+        case .saltAltar:
+            b.box(center: Vec3(0, 0.05, 0), size: Vec3(0.2, 0.1, 0.13), color: Palette.stonePale)
+            b.material = .crystal
+            for (x, z, h) in [(Float(-0.05), Float(0.0), Float(0.09)), (0.02, 0.02, 0.13), (0.06, -0.02, 0.07)] {
+                b.place(.translation(Vec3(x, 0, z))) { $0.cone(sides: 5, radius: 0.025, from: 0.1, to: 0.1 + h, color: Palette.moonsalt) }
+            }
+            b.material = .plain
+        }
+        // The pole, and its pennant in the holder's colour.
+        b.box(center: Vec3(0.2, 0.22, -0.2), size: Vec3(0.012, 0.44, 0.012), color: Palette.timberDark)
+        b.material = .cloth
+        b.sway = 0.6
+        b.quad(Vec3(0.206, 0.43, -0.2), Vec3(0.206, 0.35, -0.2), Vec3(0.34, 0.39, -0.2), Vec3(0.34, 0.43, -0.2), color: Palette.house)
+        b.quad(Vec3(0.206, 0.43, -0.2), Vec3(0.34, 0.43, -0.2), Vec3(0.34, 0.39, -0.2), Vec3(0.206, 0.35, -0.2), color: Palette.house)
+        b.material = .plain
+        b.sway = 0
+        return Model(name: name, mesh: b.mesh)
+    }
+
     static func site(_ resource: Resource, name: String) -> Model {
         var b = MeshBuilder()
         switch resource {

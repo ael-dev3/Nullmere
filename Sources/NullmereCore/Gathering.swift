@@ -94,7 +94,7 @@ extension GameState {
         for _ in 0..<12 where raised < 3 && sites!.count < sitesWanted {
             let hex = map.hex(at: random.int(below: map.count))
             guard let tile = map[hex], tile.terrain.isPassable, tile.feature == nil, let store = Site.store(of: tile.terrain),
-                  !isOccupied(hex), site(at: hex) == nil else { continue }
+                  !isOccupied(hex), site(at: hex) == nil, shrine(at: hex) == nil else { continue }
             let far = holds.map { $0.position.distance(to: hex) }.min() ?? Int.max
             guard far >= GameState.sitesFromHolds else { continue }
             let level = 1 + (min(far, 30) - GameState.sitesFromHolds) / 3 + random.int(below: 2)

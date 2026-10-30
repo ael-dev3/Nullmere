@@ -30,6 +30,9 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// Where a House's scholars study the lake's lore, levels 1 to 5: a
     /// scriptorium that grows into an observatory.
     case study(level: Int)
+    /// A holy site of the lake: a ring of standing stones about its heart,
+    /// a pennant in its holder's colour.
+    case shrine(ShrineKind)
 
     public var description: String {
         switch self {
@@ -44,6 +47,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .wild(let tier): return "wild \(tier)"
         case .commander(let variant): return "commander \(variant)"
         case .study(let level): return "study \(level)"
+        case .shrine(let kind): return "\(kind.rawValue) shrine"
         }
     }
 
@@ -77,7 +81,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
             let count = ModelKey.commanderVariants
             return .commander(variant: (variant % count + count) % count)
         case .study(let level): return .study(level: clamp(level, ModelKey.studyLevels))
-        case .keep, .scaffold, .furnishing, .prop, .site: return self
+        case .keep, .scaffold, .furnishing, .prop, .site, .shrine: return self
         }
     }
 
@@ -93,7 +97,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .figure, .wild, .commander: return 700
         case .furnishing, .prop: return 300
         case .keep: return 4500
-        case .walls, .work, .scaffold, .site, .study: return 3000
+        case .walls, .work, .scaffold, .site, .study, .shrine: return 3000
         }
     }
 }
@@ -208,6 +212,7 @@ public enum Library {
         keys += Furnishing.allCases.map { .furnishing($0) }
         keys += Resource.allCases.map { .site($0) }
         keys += Prop.allCases.map { .prop($0) }
+        keys += ShrineKind.allCases.map { .shrine($0) }
         return keys
     }()
 
@@ -226,6 +231,7 @@ public enum Library {
         case .furnishing(let furnishing): mesh = Land.furnishing(furnishing)
         case .site(let resource): return Land.site(resource, name: key.canonical.description)
         case .prop(let prop): return Props.build(prop, name: key.canonical.description)
+        case .shrine(let kind): return Land.shrine(kind, name: key.canonical.description)
         }
         return Model(name: key.canonical.description, mesh: mesh)
     }

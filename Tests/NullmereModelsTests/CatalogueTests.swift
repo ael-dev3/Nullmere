@@ -263,7 +263,7 @@ final class CatalogueTests: XCTestCase {
             case .figure, .wild, .commander:
                 XCTAssertNotNil(model.motion, "\(key)")
                 XCTAssertGreaterThanOrEqual(model.rig.count, 17, "\(key) has a body's parts")
-            case .furnishing, .scaffold, .site, .keep, .walls, .prop(.arrow):
+            case .furnishing, .scaffold, .site, .keep, .walls, .prop(.arrow), .shrine:
                 XCTAssertNil(model.motion, "\(key) stands still")
             case .prop:
                 XCTAssertNotNil(model.motion, "\(key)")
