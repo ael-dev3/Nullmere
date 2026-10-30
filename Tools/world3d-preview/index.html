@@ -74,7 +74,7 @@ void main() {
   ivec2 h = nm_hexRound(nm_axial(p));
   vec4 tile = nm_tileAt(h, radius);
   float owner = tile.w - 16.0 * floor(tile.w / 16.0);
-  vec3 albedo = vColour;
+  vec3 albedo = nm_grain(p, vColour);
   vec3 edge = nm_hexEdge(p, h);
   float pixel = max(fwidth(p.x), fwidth(p.y));
   vec3 lit = vec3(0.0);

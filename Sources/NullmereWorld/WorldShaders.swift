@@ -114,6 +114,19 @@ public enum WorldShaders {
         return pow(max(c, float3(0.0)), float3(2.2));
     }
 
+    // The ground's own grain: broad patches of richer and poorer earth, and
+    // a fine speckle over them, darker and lighter about the land's colour
+    // and never changing its mean.
+    float3 nm_grain(float2 p, float3 albedo) {
+        float patches = nm_fbm(p * 1.4 + float2(3.7, 1.3));
+        float speckle = nm_noise(p * 11.0 + float2(11.0, 5.0));
+        float shade = 0.72 + 0.4 * patches + 0.16 * speckle;
+        // The poorer patches lean a little toward earth, the richer toward moss.
+        float3 earth = albedo * float3(1.06, 0.98, 0.9);
+        float3 moss = albedo * float3(0.94, 1.04, 0.98);
+        return mix(earth, moss, smoothstep(0.35, 0.65, patches)) * shade;
+    }
+
     float3 nm_encode(float3 c) {
         return pow(clamp(c, float3(0.0), float3(1.0)), float3(1.0 / 2.2));
     }
@@ -381,7 +394,7 @@ public enum WorldShaders {
         int2 h = nm_hexRound(nm_axial(p));
         float4 tile = nm_tileAt(h, radius, tiles);
         float owner = tile.w - 16.0 * floor(tile.w / 16.0);
-        float3 albedo = in.colour;
+        float3 albedo = nm_grain(p, in.colour);
         float3 edge = nm_hexEdge(p, h);
         float pixel = max(fwidth(p.x), fwidth(p.y));
 
