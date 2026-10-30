@@ -377,6 +377,35 @@ final class DepthPanelTests: XCTestCase {
                        "Wounded: whole again next watch")
     }
 
+    // MARK: Battle reports
+
+    func testTheHousesBattlesAreReportedInTheChronicle() throws {
+        let (session, _) = session(world("reported"))
+        let me = session.player
+        let foe = (me + 1) % session.state.houses.count
+        let others = (me + 2) % session.state.houses.count
+        let company = try XCTUnwrap(session.state.units(of: me).first { $0.kind.isMilitary })
+        draw(ChroniclePanel(session: session, showingReports: true), width: 400)
+        func battle(_ attacker: Int, _ defender: Int, fell: Bool) -> GameEvent {
+            .battle(Battle(attacker: 90, attackerOwner: attacker, attackerKind: .rider, defender: company.id, defenderOwner: defender,
+                           defenderKind: .spear, hold: nil, at: company.position, damageDealt: 30, damageTaken: 8,
+                           attackerFell: false, defenderFell: fell))
+        }
+        session.showBlows([battle(foe, me, fell: false), battle(foe, others, fell: true),
+                           .hunted(Hunt(attacker: company.id, attackerOwner: me, attackerKind: .spear, wild: 900, wildKind: .reavers,
+                                        level: 2, at: company.position, damageDealt: 20, damageTaken: 4, attackerFell: false,
+                                        wildFell: true, spoils: Stock(timber: 30)))])
+        XCTAssertEqual(session.reports.count, 2, "the House's battle and its hunt; not others'")
+        XCTAssertEqual(session.reports.first?.outcome, .won, "the latest first: the hunt")
+        XCTAssertEqual(session.reports.last?.outcome, .held)
+        XCTAssertNotEqual(session.reports.first?.id, session.reports.last?.id)
+        draw(ChroniclePanel(session: session, showingReports: true), width: 400)
+        draw(ChroniclePanel(session: session), width: 400)
+        XCTAssertEqual(["Won", "Lost", "Both stood"], [BattleReport.Outcome.won, .lost, .held].map { ReportList.outcome($0) })
+        for _ in 0..<(GameSession.reportsKept + 5) { session.showBlows([battle(foe, me, fell: false)]) }
+        XCTAssertEqual(session.reports.count, GameSession.reportsKept, "the latest kept")
+    }
+
     // MARK: The small map
 
     func testTheSmallMapShowsTheLakeAndCarriesTheViewThere() throws {

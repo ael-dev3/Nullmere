@@ -321,6 +321,11 @@ public final class GameSession {
     public private(set) var blows: [Blow] = []
     /// Commanders' skills fired in sight, while their gold is drawn.
     public private(set) var furies: [Fury] = []
+    /// The House's battles and hunts as their reports tell them, the latest first.
+    public private(set) var reports: [BattleReport] = []
+    @ObservationIgnored private var reportCounter = 0
+    /// The most reports kept.
+    static let reportsKept = 40
     /// The player's holds with enemy companies gathering near them.
     public private(set) var threatened: Set<Int> = []
     private var blowCounter = 0
@@ -1260,6 +1265,7 @@ public final class GameSession {
 
     /// Draws the blows the player could see, then forgets them.
     func showBlows(_ events: [GameEvent], from before: [Int: Hex] = [:]) {
+        fileReports(events)
         let now = Date()
         var shown = false
         for case .battle(let battle) in events {
@@ -1296,6 +1302,24 @@ public final class GameSession {
             self.blows.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
             self.furies.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
         }
+    }
+
+    /// Files a report of each battle and hunt the House had a part in.
+    func fileReports(_ events: [GameEvent]) {
+        var filed: [BattleReport] = []
+        for event in events {
+            let report: BattleReport?
+            switch event {
+            case .battle(let battle): report = state.report(of: battle, id: reportCounter + 1, for: player)
+            case .hunted(let hunt): report = state.report(of: hunt, id: reportCounter + 1, for: player)
+            default: report = nil
+            }
+            guard let report else { continue }
+            reportCounter += 1
+            filed.append(report)
+        }
+        guard !filed.isEmpty else { return }
+        reports = Array((filed.reversed() + reports).prefix(Self.reportsKept))
     }
 
     // MARK: Marches
