@@ -38,7 +38,8 @@ final class OverlayPerformanceTests: XCTestCase {
         let median = times[times.count / 2]
         print("PERFMETRIC marks.cpu.p50 \(String(format: "%.3f", median))")
         let holds = session.state.holds.filter { session.isExplored($0.position) }.count
-        print("PERF marks \(Int(size.width))x\(Int(size.height))@2x, \(holds) holds and \(session.state.units.count) companies: median \(String(format: "%.2f", median)) ms")
+        print("PERF marks \(Int(size.width))x\(Int(size.height))@2x, \(holds) holds and \(session.state.units.count) companies, "
+              + "\(session.blows.count) blows, \(session.reach.count) tiles of reach: median \(String(format: "%.2f", median)) ms")
         XCTAssertLessThan(median, 5, "The marks must leave the frame to the world")
     }
 }

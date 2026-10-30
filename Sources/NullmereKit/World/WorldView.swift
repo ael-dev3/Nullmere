@@ -228,6 +228,27 @@ struct WorldMarks: View {
                 }
             }
 
+            // The flashes where blows land, the world's own where it is
+            // drawn: blurred together in one layer, not each on its own.
+            if !reduceMotion, !modelsDrawn {
+                let flashes = session.blows.compactMap { blow -> (point: CGPoint, flash: Double)? in
+                    let flash = GameSession.Blow.flash(at: min(max(date.timeIntervalSince(blow.start) / GameSession.Blow.duration, 0), 1))
+                    guard flash > 0 else { return nil }
+                    return (point: session.viewPoint(of: blow.at, in: size), flash: flash)
+                }
+                if !flashes.isEmpty {
+                    var bright = context
+                    bright.addFilter(.blur(radius: 4))
+                    bright.drawLayer { layer in
+                        for (point, flash) in flashes {
+                            let glow = scale * 0.32 * CGFloat(1.6 - flash * 0.6)
+                            let disc = Path(ellipseIn: CGRect(x: point.x - glow, y: point.y - glow, width: glow * 2, height: glow * 2))
+                            layer.fill(disc, with: .color(Color(red: 1, green: 0.88, blue: 0.68).opacity(0.7 * flash)))
+                        }
+                    }
+                }
+            }
+
             // Blows: a ring spreading from where each fell, and the damage
             // rising and fading above it. Still, under Reduce Motion.
             for blow in session.blows {
@@ -244,15 +265,6 @@ struct WorldMarks: View {
                     shot.move(to: tail)
                     shot.addLine(to: head)
                     context.stroke(shot, with: .color(Color(red: 1, green: 0.9, blue: 0.7).opacity(0.85)), lineWidth: 1.4)
-                }
-                // The flash where it lands; the world's own, where it is drawn.
-                let flash = reduceMotion || modelsDrawn ? 0 : GameSession.Blow.flash(at: age)
-                if flash > 0 {
-                    let glow = scale * 0.32 * CGFloat(1.6 - flash * 0.6)
-                    let disc = Path(ellipseIn: CGRect(x: point.x - glow, y: point.y - glow, width: glow * 2, height: glow * 2))
-                    var bright = context
-                    bright.addFilter(.blur(radius: 4))
-                    bright.fill(disc, with: .color(Color(red: 1, green: 0.88, blue: 0.68).opacity(0.7 * flash)))
                 }
                 // The fallen fade and sink where they stood; the models fall themselves.
                 for fell in blow.fallen where !modelsDrawn {
@@ -277,7 +289,9 @@ struct WorldMarks: View {
                 )
             }
 
-            // Holds the player knows of.
+            // Holds the player knows of; their names drawn after them, their
+            // shadows blurred together in one layer.
+            var names: [(text: Text, at: CGPoint, opacity: Double)] = []
             for hold in state.holds where session.isExplored(hold.position) {
                 let point = session.viewPoint(of: hold.position, in: size)
                 guard point.x > -80, point.y > -80, point.x < size.width + 80, point.y < size.height + 80 else { continue }
@@ -315,12 +329,17 @@ struct WorldMarks: View {
                         .font(.nm(min(max(scale * 0.3, 8.5), 12), weight: .medium))
                         .tracking(1.6)
                     // Below the token; over the keep, above its ward.
-                    let at = CGPoint(x: point.x, y: modelsDrawn ? marks - 10 : marks + 11)
-                    var shadow = context
-                    shadow.addFilter(.blur(radius: 3))
-                    shadow.draw(name.foregroundStyle(Color.black), at: at)
-                    context.draw(name.foregroundStyle(Palette.text(hold.owner == player ? 0.92 : 0.7)), at: at)
+                    names.append((text: name, at: CGPoint(x: point.x, y: modelsDrawn ? marks - 10 : marks + 11),
+                                  opacity: hold.owner == player ? 0.92 : 0.7))
                 }
+            }
+            if !names.isEmpty {
+                var shadow = context
+                shadow.addFilter(.blur(radius: 3))
+                shadow.drawLayer { layer in
+                    for name in names { layer.draw(name.text.foregroundStyle(Color.black), at: name.at) }
+                }
+                for name in names { context.draw(name.text.foregroundStyle(Palette.text(name.opacity)), at: name.at) }
             }
 
             // Companies the player can see.
