@@ -275,6 +275,20 @@ final class EconomyTests: XCTestCase {
         XCTAssertThrowsError(try state.perform(.barter(give: .grain, take: .grain, amount: 10), as: 0))
     }
 
+    /// As the Guide and the README tell it: three to one between grain,
+    /// timber and stone; moonsalt, worth three of any of them, costs nine
+    /// and fetches one.
+    func testBarterIsThreeToOneButMoonsaltCostsNineAndFetchesOne() {
+        let common: [Resource] = [.grain, .timber, .stone]
+        for take in common {
+            for give in common where give != take {
+                XCTAssertEqual(take.barterCost(of: 1, paidIn: give), 3, "\(give) for \(take)")
+            }
+            XCTAssertEqual(Resource.moonsalt.barterCost(of: 1, paidIn: take), 9, "\(take) for moonsalt")
+            XCTAssertEqual(take.barterCost(of: 1, paidIn: .moonsalt), 1, "moonsalt for \(take)")
+        }
+    }
+
     func testStorageLimitsWhatAHouseKeeps() {
         var state = GameState(settings: GameSettings(seedText: "storage", keepers: 1))
         let room = state.storage(of: 0)

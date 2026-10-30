@@ -31,7 +31,7 @@ enum Guide {
         Section(title: "Holds", lines: [
             "Holds gather what their land yields and store it, up to a limit that grows with every hold.",
             "Build works: a Granary, Sawpit, Quarry or Saltworks to yield more of one store, Walls for a thicker ward, a Beacon to see further (at II, its land reaches a tile further too), and a Muster Hall for stronger companies, all but Lanterns trained a watch sooner at III.",
-            "Short of something? Barter a surplus for it, three to one.",
+            "Short of something? Barter a surplus for it, three to one. Moonsalt counts as three of any other store, so one costs nine of them, and fetches one.",
         ]),
         Section(title: "Companies", lines: [
             "Lanterns scout. Spears hold the line and take holds. Bows strike from two tiles. Riders are fast. Founders found new holds.",
@@ -46,7 +46,7 @@ enum Guide {
             "Declare war, offer peace or a pact, and answer their envoys. A pact shares sight; breaking one is not forgotten. A steward makes no peace before it has had a watch of its own at war, and one far the stronger none until the war has run thirty watches.",
             "Send a gift to a House you aren't at war with. Stewards remember gifts for twenty watches: a war seems older to them, and enough goodwill wins a pact, unless you once made war on them or a pact between you was broken. War on a House throws away the goodwill your gifts bought, and no gift moves a steward that fears your rising Moonspire.",
             "A House takes in gifts worth \(GameState.giftsTakenPerWatch) a watch at most, from every giver together, moonsalt counting four: enough to help an ally, never enough for Houses one keeper holds under other names to pour their stores into one.",
-            "Offer a trade to any House you aren't at war with: so much of one store for so much of another. Stewards weigh it by barter worth, the cunning asking most; allies and givers of gifts ask less, and a House takes less for what it lacks. A keeper answers by envoy. Stewards trade among themselves, too, before bartering at three to one.",
+            "Offer a trade to any House you aren't at war with: so much of one store for so much of another. Stewards weigh it by barter worth, the cunning asking most; allies and givers of gifts ask less, and a House takes less for what it lacks. A keeper answers by envoy. Stewards trade among themselves, too, before they barter.",
             "From watch twenty, an ambitious or cunning steward a quarter stronger than you may demand tribute, a fifth of your stores: pay, and it keeps the peace for twenty watches, unless your Moonspire rises; refuse, or let its envoy wait out, and it marches. You may demand tribute too: a steward that refuses is at once at war with you, the war of your making; a keeper who refuses you owes you nothing more, and war is yours to choose.",
             "Envoys and the chronicle speak in words written on your Mac by Apple's on-device model. They only speak; the rules decide.",
         ]),

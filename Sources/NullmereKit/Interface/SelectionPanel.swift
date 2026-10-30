@@ -247,7 +247,8 @@ private struct TrainingRow: View {
     }
 }
 
-/// Trade a surplus for what is lacking, three to one.
+/// Trade a surplus for what is lacking, three to one, moonsalt counted as
+/// three of any other store.
 struct BarterRow: View {
     let session: GameSession
 

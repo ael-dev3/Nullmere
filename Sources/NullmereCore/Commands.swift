@@ -10,7 +10,8 @@ public enum Command: Codable, Equatable, Sendable {
     /// Start raising a building one level.
     case build(hold: Int, kind: BuildingKind)
     case train(hold: Int, kind: UnitKind)
-    /// Trade a surplus away for something lacking, at three to one.
+    /// Trade a surplus away for something lacking, at three to one,
+    /// moonsalt counted as three of any other store.
     case barter(give: Resource, take: Resource, amount: Int)
     /// Dig in: +25% defence until the unit moves.
     case fortify(unit: Int)

@@ -314,8 +314,8 @@ as the realm will, and takes the realm's word as final.
   asking most; allies, givers of gifts and a House short of what you offer
   ask less, though never below even, and none trades away the grain its
   companies need. A keeper
-  answers by envoy. Stewards trade among themselves before bartering at
-  three to one. The answer is always the realm's: your copy of the world
+  answers by envoy. Stewards trade among themselves before they barter.
+  The answer is always the realm's: your copy of the world
   can't see the others' stores, so it doesn't guess.
 - **Who is there.** The front door names the keepers in the realm now,
   and each House in the Houses panel says who gives its orders: its
@@ -450,8 +450,9 @@ twice.
   level II, a hold's land reaches a tile further too), and a Muster Hall to
   train stronger companies, and at level III to train all but Lanterns a
   watch sooner. Barter a surplus
-  for what you lack, three to one. Each new hold costs more to found than
-  the last, so a House grows by choice, not by habit.
+  for what you lack, three to one; moonsalt counts as three of any other
+  store, so one costs nine of them, and fetches one. Each new hold costs
+  more to found than the last, so a House grows by choice, not by habit.
 - **Companies.** Lanterns scout, Spears hold the line and take holds,
   Bows strike from two tiles, Riders are fast, and Founders found new holds.
   Every company but Lanterns eats a grain each watch. Companies that
