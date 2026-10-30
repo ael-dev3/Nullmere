@@ -295,6 +295,16 @@ jobs:
             build/door-small.jpg
           if-no-files-found: warn
 
+      # The world's frames, small: a line each, before the summary so the
+      # summary stays at the log's foot.
+      - name: Thumbnails
+        if: always()
+        run: |
+          for thumb in build/*.thumb.b64; do
+            [ -f "$thumb" ] && echo "RENDER64 $(basename "$thumb" .thumb.b64) $(cat "$thumb")"
+          done
+          true
+
       # Last, so it survives a trimmed log: frame times, test failures and
       # warnings, in a few lines.
       - name: Summary
@@ -302,13 +312,6 @@ jobs:
         run: |
           echo "::group::Summary"
           grep -h "PERF \|SOUND \|LAYOUT \|LAKECLOSE \|MOONPATH \|STARS \|STILL \|MIST \|LAKEAFAR \|PERF-CHECK " build-test.log 2>/dev/null || true
-          # Failures first, so warnings never crowd them out; each warning once.
-          grep -hE "error: |failed \(" build.log build-test.log 2>/dev/null | grep -v "^ *|" | awk '!seen[$0]++' | head -40 || true
-          grep -h ": warning:" build.log build-test.log 2>/dev/null | sort -u | head -20 || true
-          grep -h "Executed .* tests" build-test.log 2>/dev/null | tail -1 || true
-          # Which tests skipped, and why, so a skip can't hide a test.
-          grep -h "Test skipped" build-test.log 2>/dev/null | sed 's|^.*/Tests/||' | sort -u | head -20 || true
-          cat build/coverage.log 2>/dev/null || true
           cat build/perf-check.log 2>/dev/null || true
           # Whose voices were heard, and their verdict.
           sed -n '1p;/^Every line within the rules\.$/p;/^Out of bounds:$/,$p' build/voices-report.txt 2>/dev/null | head -n 20 || true
@@ -316,11 +319,14 @@ jobs:
           grep -hE "error|warning" build/smoke-*.log 2>/dev/null | head -20 || true
           tail -n 15 build/game-stdout.log 2>/dev/null || true
           tail -n 15 build/steward.log 2>/dev/null || true
+          # Each warning once; which tests skipped, and why, so a skip can't hide a test.
+          grep -h ": warning:" build.log build-test.log 2>/dev/null | sort -u | head -20 || true
+          grep -h "Test skipped" build-test.log 2>/dev/null | sed 's|^.*/Tests/||' | sort -u | head -20 || true
+          cat build/coverage.log 2>/dev/null || true
+          grep -h "Executed .* tests" build-test.log 2>/dev/null | tail -1 || true
+          # Failures last, at the log's very foot, where its tail finds them.
+          grep -hE "error: |failed \(" build.log build-test.log 2>/dev/null | grep -v "^ *|" | awk '!seen[$0]++' | head -40 || true
           echo "::endgroup::"
-          # The world's frames, small, last: a line each, read from the log's foot.
-          for thumb in build/*.thumb.b64; do
-            [ -f "$thumb" ] && echo "RENDER64 $(basename "$thumb" .thumb.b64) $(cat "$thumb")"
-          done
 
   # The app as VoiceOver and Accessibility Inspector meet it, through the
   # Mac's own accessibility: Xcode's UI testing opens the debug build as a
