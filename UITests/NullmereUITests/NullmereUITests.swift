@@ -103,13 +103,11 @@ final class NullmereUITests: XCTestCase {
         let name = window.textFields["Your name on the lake"]
         XCTAssertTrue(name.waitForExistence(timeout: 30), "Play crosses to the realm's door, which asks for a name")
         XCTAssertTrue(window.buttons["Enter the world"].waitForExistence(timeout: 30), "The way in")
-        let parentage = findings.count
-        audit("the realm's front door")
-        if findings[parentage...].contains(where: { $0.contains("Parent/Child") }) {
-            // Whose it is: the name field's, being written in, or the door's.
-            app.typeKey(XCUIKeyboardKey.tab.rawValue, modifierFlags: [])
-            audit("the realm's front door, the name field left")
-        }
+        // The name field is being written in as the door opens; then the
+        // door as it is with the field left.
+        audit("the realm's front door", editing: true)
+        app.typeKey(XCUIKeyboardKey.tab.rawValue, modifierFlags: [])
+        audit("the realm's front door, the name field left")
         name.click()
         name.typeText("Ama\r")
 
@@ -274,37 +272,52 @@ final class NullmereUITests: XCTestCase {
     /// finds is kept, so each screen is still audited, and all are told.
     /// Where it finds type too faint, the type is measured again from the
     /// screen's own pixels, so what the audit saw is told beside it.
-    private func audit(_ screen: String) {
+    private func audit(_ screen: String, editing: Bool = false) {
         // What fades in is audited once it has.
         Thread.sleep(forTimeInterval: 1.2)
-        var faint: [(String, XCUIElement)] = []
+        var faint: Set<String> = []
         do {
             try app.performAccessibilityAudit { issue in
                 if let element = issue.element, self.isMacChrome(element) { return true }
+                // A text field being written in hands its words to AppKit's
+                // field editor, which names the field its parent though the
+                // field doesn't list it: the Mac's own, in every app.
+                if editing, issue.auditType == .parentChild, issue.element == nil {
+                    print("UIAUDIT-NOTE \(screen): the field editor's parentage, AppKit's own, left aside")
+                    return true
+                }
                 let element = issue.element.map { element in
-                    let words = element.label.isEmpty ? (element.value as? String ?? "") : element.label
-                    return "type \(element.elementType.rawValue) '\(words.prefix(70))' at \(element.frame.integral)"
+                    "type \(element.elementType.rawValue) '\(Self.words(of: element).prefix(70))' at \(element.frame.integral)"
                 } ?? "the screen (\(issue.detailedDescription.prefix(160)))"
                 self.found("UIAUDIT \(screen): \(issue.compactDescription): \(element)")
-                if issue.auditType == .contrast, let text = issue.element, faint.count < 8 {
-                    faint.append((String(text.label.prefix(40)), text))
-                }
+                if issue.auditType == .contrast, let text = issue.element { faint.insert(Self.key(of: text)) }
                 return true
             }
         } catch {
             found("UIAUDIT \(screen): the audit couldn't run: \(error)")
         }
-        for (words, element) in faint {
-            print("UICONTRAST \(screen): '\(words)' \(Self.measured(element))")
+        // Every text on screen measured, those the audit passed beside those
+        // it didn't, so the rule it holds them to can be read off.
+        for text in app.staticTexts.allElementsBoundByIndex.prefix(70) where text.exists && !text.frame.isEmpty {
+            let verdict = faint.contains(Self.key(of: text)) ? "FAIL" : "pass"
+            print("UITEXT \(verdict) h\(Int(text.frame.height)) \(Self.measured(text)) '\(Self.words(of: text).prefix(28))'")
         }
     }
 
-    /// An element's pixels as the screen draws them: the median's colour,
-    /// taken for the ground; the brightest pixel and the one at the 98th
-    /// part in a hundred, taken for the type; their contrast with the
-    /// ground; and how many pixels the element's every point is drawn with.
+    private static func words(of element: XCUIElement) -> String {
+        element.label.isEmpty ? (element.value as? String ?? "") : element.label
+    }
+
+    private static func key(of element: XCUIElement) -> String {
+        "\(words(of: element))|\(element.frame.integral)"
+    }
+
+    /// An element's pixels as the screen draws them: the commonest colour,
+    /// taken for the ground; of the rest, those plainly apart from it, taken
+    /// for the type: their commonest colour, their brightest, and how many
+    /// reach nearly the brightest; each set against the ground.
     private static func measured(_ element: XCUIElement) -> String {
-        guard element.exists, let image = element.screenshot().image.cgImage(forProposedRect: nil, context: nil, hints: nil),
+        guard let image = element.screenshot().image.cgImage(forProposedRect: nil, context: nil, hints: nil),
               let space = CGColorSpace(name: CGColorSpace.sRGB) else { return "unmeasured" }
         let width = image.width, height = image.height
         var bytes = [UInt8](repeating: 0, count: width * height * 4)
@@ -320,23 +333,27 @@ final class NullmereUITests: XCTestCase {
             let value = Double(byte) / 255
             return value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
         }
-        var pixels: [(luminance: Double, index: Int)] = []
-        pixels.reserveCapacity(width * height)
+        var counts: [UInt32: Int] = [:]
         for index in stride(from: 0, to: bytes.count, by: 4) {
-            let luminance = 0.2126 * linear(bytes[index]) + 0.7152 * linear(bytes[index + 1]) + 0.0722 * linear(bytes[index + 2])
-            pixels.append((luminance, index))
+            counts[UInt32(bytes[index]) << 16 | UInt32(bytes[index + 1]) << 8 | UInt32(bytes[index + 2]), default: 0] += 1
         }
-        pixels.sort { $0.luminance < $1.luminance }
-        func colour(_ pixel: (luminance: Double, index: Int)) -> String {
-            "rgb(\(bytes[pixel.index]),\(bytes[pixel.index + 1]),\(bytes[pixel.index + 2]))"
+        func luminance(_ colour: UInt32) -> Double {
+            0.2126 * linear(UInt8(colour >> 16 & 0xFF)) + 0.7152 * linear(UInt8(colour >> 8 & 0xFF)) + 0.0722 * linear(UInt8(colour & 0xFF))
         }
-        let ground = pixels[pixels.count / 2], peak = pixels[pixels.count - 1], high = pixels[pixels.count * 98 / 100]
-        func ratio(_ pixel: (luminance: Double, index: Int)) -> String {
-            String(format: "%.1f", (max(pixel.luminance, ground.luminance) + 0.05) / (min(pixel.luminance, ground.luminance) + 0.05))
+        func ratio(_ a: Double, _ b: Double) -> Double { (max(a, b) + 0.05) / (min(a, b) + 0.05) }
+        func rgb(_ colour: UInt32) -> String { "\(colour >> 16 & 0xFF),\(colour >> 8 & 0xFF),\(colour & 0xFF)" }
+        guard let ground = counts.max(by: { $0.value < $1.value })?.key else { return "unmeasured" }
+        let groundLuminance = luminance(ground)
+        let type = counts.filter { ratio(luminance($0.key), groundLuminance) > 1.5 }
+        let total = type.values.reduce(0, +)
+        guard total > 0, let mode = type.max(by: { $0.value < $1.value })?.key,
+              let peak = type.keys.max(by: { ratio(luminance($0), groundLuminance) < ratio(luminance($1), groundLuminance) }) else {
+            return "g\(rgb(ground)) none apart"
         }
-        let scale = Double(width) / max(element.frame.width, 1)
-        return "ground \(colour(ground)); peak \(colour(peak)) \(ratio(peak)):1; 98th \(colour(high)) \(ratio(high)):1; "
-            + String(format: "%.1fx", scale)
+        let peakRatio = ratio(luminance(peak), groundLuminance)
+        let near = type.filter { ratio(luminance($0.key), groundLuminance) >= peakRatio * 0.85 }.values.reduce(0, +)
+        return "g\(rgb(ground)) m\(rgb(mode))=\(String(format: "%.1f", ratio(luminance(mode), groundLuminance))) "
+            + "p\(rgb(peak))=\(String(format: "%.1f", peakRatio)) n\(near * 100 / total)%/\(total)"
     }
 
     /// Kept, and said at once, so a test that stops early still tells it.
