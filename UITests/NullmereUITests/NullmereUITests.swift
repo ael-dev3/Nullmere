@@ -99,6 +99,10 @@ final class NullmereUITests: XCTestCase {
     /// each passes the audit, the map is walked as VoiceOver walks it, and
     /// what a keeper opens over the map passes too.
     func testTheDoorAndTheWorldPassTheAuditAndTheMapIsWalked() throws {
+        // The world held still (Motion: Still, as a keeper may set it), so
+        // each audit reads a screen that has settled, not one redrawn under
+        // it every frame.
+        app.launchArguments += ["-launcher.motion", "still"]
         let window = try openTheLauncher()
         window.buttons["Play"].click()
         let name = window.textFields["Your name on the lake"]
@@ -240,6 +244,35 @@ final class NullmereUITests: XCTestCase {
         }
     }
 
+    /// Not a test of the game: the same words set on the lake in each of the
+    /// ways the launcher sets its type (a debug build's probes, shown by
+    /// NULLMERE_AUDIT_PROBE), put to the audit's contrast check alone, with
+    /// the verdict and the screen's own pixels told for each. It says which
+    /// way of setting type the audit can read; it never fails.
+    func testWhatTheAuditAsksOfWordsOnTheLake() throws {
+        app.launchEnvironment["NULLMERE_AUDIT_PROBE"] = "1"
+        let window = try openTheLauncher()
+        Thread.sleep(forTimeInterval: 1.5)
+        var failed = Set<String>()
+        do {
+            try app.performAccessibilityAudit(for: .contrast) { issue in
+                if let label = issue.element?.label, label.hasPrefix("Probe ") { failed.insert(label) }
+                return true
+            }
+        } catch {
+            print("UIPROBE the audit couldn't run: \(error)")
+        }
+        for number in 1...12 {
+            let label = "Probe \(number)"
+            let element = window.staticTexts[label]
+            guard element.exists else {
+                print("UIPROBE \(label) not found")
+                continue
+            }
+            print("UIPROBE \(label) \(failed.contains(label) ? "FAIL" : "pass") \(element.frame.integral) \(Self.measured(element))")
+        }
+    }
+
     // MARK: Helpers
 
     private func openTheLauncher() throws -> XCUIElement {
@@ -277,9 +310,10 @@ final class NullmereUITests: XCTestCase {
     /// finds is kept, so each screen is still audited, and all are told.
     /// Where it finds type too faint, the type is measured again from the
     /// screen's own pixels, so what the audit saw is told beside it.
-    private func audit(_ screen: String, editing: Bool = false, again: Bool = true) {
-        // What fades in is audited once it has.
-        Thread.sleep(forTimeInterval: 1.2)
+    private func audit(_ screen: String, editing: Bool = false, tries: Int = 3) {
+        // What fades in is audited once it has; after a timed-out try, a
+        // longer pause for the Mac to settle.
+        Thread.sleep(forTimeInterval: tries == 3 ? 1.2 : 4)
         var faint: [XCUIElement] = []
         do {
             try app.performAccessibilityAudit { issue in
@@ -298,11 +332,11 @@ final class NullmereUITests: XCTestCase {
                 if issue.auditType == .contrast, let text = issue.element { faint.append(text) }
                 return true
             }
-        } catch let error as NSError where again && error.code == -56 {
-            // The audit ran out of time on a crowded screen: once more, after
-            // a moment, before it counts against the screen.
-            print("UIAUDIT-NOTE \(screen): the audit ran out of time; once more")
-            audit(screen, editing: editing, again: false)
+        } catch let error as NSError where tries > 1 && error.code == -56 {
+            // The audit ran out of time on a crowded screen: again, after a
+            // pause, before it counts against the screen.
+            print("UIAUDIT-NOTE \(screen): the audit ran out of time; again")
+            audit(screen, editing: editing, tries: tries - 1)
             return
         } catch {
             found("UIAUDIT \(screen): the audit couldn't run: \(error)")
