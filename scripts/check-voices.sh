@@ -9,6 +9,10 @@
 #   scripts/check-voices.sh               # builds the debug app, then asks it
 #   scripts/check-voices.sh --app <path>  # asks a debug app already built
 #
+# Exits 0 when every line keeps the rules, 1 when one doesn't, and 2 when
+# this Mac's model isn't ready to speak at all (CI's virtual runners often
+# aren't eligible), saying why.
+#
 # The model answers an app, not a bare process such as a test runner's, so
 # the debug app is opened as a keeper's Mac opens it, through Launch
 # Services; only a debug build takes NULLMERE_VOICES_REPORT, and with it it
@@ -40,6 +44,11 @@ rm -f "$report"
 echo "== Asking Apple's on-device model for each voice (a minute or two)"
 open -W -n --env NULLMERE_VOICES_REPORT="$report" "$app"
 [ -s "$report" ] || { echo "error: the app wrote no report of the voices" >&2; exit 1; }
+if head -n 1 "$report" | grep -q ", not ready ("; then
+    head -n 1 "$report"
+    echo "The voices weren't heard: this Mac's on-device model isn't ready to speak." >&2
+    exit 2
+fi
 cat "$report"
 
 if [ "$(tail -n 1 "$report")" = "Every line within the rules." ]; then

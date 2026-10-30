@@ -347,10 +347,11 @@ final class NullmereUITests: XCTestCase {
 
     /// The audit's checks but contrast, in four parts.
     private static let checks: [(String, XCUIAccessibilityAuditType)] = {
-        let descriptions: XCUIAccessibilityAuditType = [.sufficientElementDescription, .trait]
-        let rest = XCUIAccessibilityAuditType.all.subtracting([.contrast, .elementDetection, .hitRegion, .sufficientElementDescription, .trait])
+        // Every other check the Mac's audit makes: of actions, parents and
+        // children, and whatever else it learns.
+        let rest = XCUIAccessibilityAuditType.all.subtracting([.contrast, .elementDetection, .hitRegion, .sufficientElementDescription])
         return [("check of what it shows", .elementDetection), ("check of what can be hit", .hitRegion),
-                ("checks of their descriptions", descriptions), ("checks of their actions and parents", rest)]
+                ("check of their descriptions", .sufficientElementDescription), ("checks of their actions and parents", rest)]
     }()
 
     /// The texts the audit last found faint, to be measured.

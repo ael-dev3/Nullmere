@@ -234,6 +234,7 @@ unit.
 | P1 | The perf gate's calibration timed the game's own stewards, so a slower rules path raised its own allowance | fixed: it times plain work, none of it the game's |
 | P2 | A slow runner could widen the allowances without end; the worst frames had no bound of their own | fixed: held at twice; the p95 frames at half again their baselines and never past a 60 Hz frame |
 | P3 | The calibration's baseline is an estimate | kept as it stands: CI's first figure for it came on a slow day (its realm watches at 1.3 to 1.5 times their own); the note in `perf/baseline.json` says so |
+| P4 | The first of the twelve-seat realms timed also paid for the process's first realm (its tables, caches and first pages), and came within 2% of its bound on a slow runner | fixed: one realm is made and played first, untimed; the first realm's own seed is still a fifth heavier than the others', as its baseline allows |
 
 ## T: tests
 
@@ -245,7 +246,7 @@ unit.
 | T4 | The soak test could run out CI's clock rather than fail | fixed: it fails past a second a watch on every lake |
 | T5 | The tests' own figures broke on the changes (a Float at full scale, a URL's slash, a mist sampled elsewhere, a top bar wider) | fixed, each checked against the render or the rule. Two bounds moved to what the scene now draws: the veiled image to a third (0.30 measured, against 0.3) and the moonless lake's moon to 580 at its heart, the Metal moon's being 620 to 640 with its seas |
 | T6 | The quiet realm's test held that the view is read again for an order, and raced the next poll for it | fixed: it waits for that read |
-| T7 | The voices' check ran in the test runner's bare process, which on CI's runner found Apple's model not ready while the app there found it ready: it could only fail there, or be skipped | fixed: the app asks the model, as on a keeper's Mac (`scripts/check-voices.sh`, run by CI on its runner's own model too); the rules it holds each line to are tested with stand-in voices |
+| T7 | The voices' check ran in the test runner's bare process, which on CI's runner found Apple's model not ready while the app there found it ready: it could only fail there, or be skipped | fixed: the app asks the model, as on a keeper's Mac (`scripts/check-voices.sh`); the rules it holds each line to are tested with stand-in voices. CI asks its runner's own model so too, and holds every line to the rules when it speaks; a runner whose model isn't ready says so (the audit job's runner was found not eligible), so a real Mac's hearing stays on the go-live list |
 | T8 | The fixes of this review left new code untested: NullmereKit's coverage fell to 96.8%, under its floor | fixed: tested, back above the floor |
 
 ## K: docs, scripts and the release

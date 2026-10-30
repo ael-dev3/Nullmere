@@ -23,6 +23,12 @@ final class RealmTests: XCTestCase {
     }
 
     func testTheRealmProperSeatsTwelveFairly() throws {
+        // One realm made and played first, untimed: the first a process
+        // makes pays for what every later one finds made (tables, caches,
+        // the allocator's first pages), which is no part of a watch's cost.
+        var warming = RealmState(name: "The Nullmere", seed: "warming", now: 0)
+        warming.arriveIfNeeded()
+        _ = warming.tick(now: 1e12)
         for seed in ["twelve a", "twelve b", "twelve c"] {
             let started = Date()
             let cpuStarted = RealmTests.threadCPUSeconds()
