@@ -164,7 +164,7 @@ extension GameState {
         for _ in 0..<12 where raised < 2 && wilds!.count < wildsWanted {
             let hex = map.hex(at: random.int(below: map.count))
             guard let tile = map[hex], tile.terrain.isPassable, !tile.terrain.isWater, tile.feature == nil,
-                  !isOccupied(hex) else { continue }
+                  !isOccupied(hex), site(at: hex) == nil else { continue }
             let far = holds.map { $0.position.distance(to: hex) }.min() ?? Int.max
             guard far >= GameState.wildsFromHolds else { continue }
             let level = 1 + (min(far, 40) - GameState.wildsFromHolds) / 2 + watch / 40 + random.int(below: 2)

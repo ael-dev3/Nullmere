@@ -46,7 +46,9 @@ extension GameState {
         for unit in units.sorted(by: { $0.id < $1.id }) where unit.destination != nil {
             events += march(unit.id)
         }
+        events += workTheLand()
         raiseWilds()
+        raiseSites()
         refreshSight()
         events += checkForEnd()
         takeSnapshot()

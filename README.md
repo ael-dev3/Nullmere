@@ -548,6 +548,17 @@ realm; keepers are told in plain words, never a status code.
   stores for the House, and experience for the company's commander, more
   than any other battle gives. Stewards hunt the wilds near their land when
   they would strike them down with health to spare.
+- **Gathering.** Sites come up in the land outside the holds, three for each
+  seat: Fallow Fields of grain, Deadfall timber, Scree stone and Salt Pans of
+  moonsalt, each the store of its ground, richer further out, and finite;
+  when one is worked out another comes up elsewhere. Send a company of war
+  to gather and it marches there, gathers each watch at its rate (by kind
+  and tier, its House's studies and its commander), and once it carries all
+  it can, or the site is worked out, brings its load home to the nearest
+  hold. Any other order ends the errand, but a load is kept until the
+  company comes by one of its holds. A gatherer struck down by a House at
+  war with its own leaves half its load to the victor. Stewards at peace
+  send idle companies to sites of the stores they run short of.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is

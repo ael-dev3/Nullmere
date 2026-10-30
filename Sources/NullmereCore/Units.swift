@@ -161,6 +161,10 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
     public var tier: Int
     /// The commander leading it, if one does.
     public var leader: Int?
+    /// What it has been sent to do beyond a march, if anything.
+    public var errand: Errand?
+    /// What it carries home from the land's sites, if anything.
+    public var load: Stock?
 
     /// Veterancy: none, then Blooded, Hardened and Sworn as battles are
     /// survived. Each rank adds a tenth to attack and defence.
@@ -209,10 +213,12 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
         self.experience = 0
         self.tier = min(max(tier, 1), kind.highestTier)
         self.leader = nil
+        self.errand = nil
+        self.load = nil
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, kind, owner, position, health, movesLeft, destination, fortified, acted, experience, tier, leader
+        case id, kind, owner, position, health, movesLeft, destination, fortified, acted, experience, tier, leader, errand, load
     }
 
     /// Games saved before veterancy have no experience recorded; it starts at
@@ -231,5 +237,7 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
         experience = try container.decodeIfPresent(Int.self, forKey: .experience) ?? 0
         tier = try container.decodeIfPresent(Int.self, forKey: .tier) ?? 1
         leader = try container.decodeIfPresent(Int.self, forKey: .leader)
+        errand = try container.decodeIfPresent(Errand.self, forKey: .errand)
+        load = try container.decodeIfPresent(Stock.self, forKey: .load)
     }
 }

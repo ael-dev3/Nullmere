@@ -81,6 +81,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The wilds of the far country; absent in saves from before them,
     /// which raise them as the watch turns.
     var wilds: [Wild]?
+    /// The land's sites, where companies gather; absent in saves from
+    /// before them, which find them as the watch turns.
+    var sites: [Site]?
 
     public var player: Int { houses.first { $0.isPlayer }?.id ?? 0 }
 

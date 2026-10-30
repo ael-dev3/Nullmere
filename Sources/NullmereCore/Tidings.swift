@@ -55,6 +55,19 @@ extension GameState {
             let fall = hunt.wildFell ? (hunt.spoils.isZero ? "; they fall" : "; they fall, and leave \(hunt.spoils)") : ""
             let lost = hunt.attackerFell ? "; your company is lost" : ""
             return Tidings("Your \(hunt.attackerKind.title) strike \(prey) for \(hunt.damageDealt)\(fall)\(lost).", hunt.attackerFell ? .bad : .good)
+        case .sentToGather(let unitID, let siteID):
+            guard let unit = unit(unitID), unit.owner == viewer else { return nil }
+            let place = site(siteID).map { "the \($0.title.lowercased())" } ?? "the site"
+            return Tidings("Your \(unit.kind.title) set out to work \(place).", .neutral)
+        case .gathered(let unitID, let owner, let load):
+            guard owner == viewer else { return nil }
+            let who = unit(unitID).map { "Your \($0.kind.title)" } ?? "Your gatherers"
+            return Tidings("\(who) turn for home with \(load).", .neutral)
+        case .delivered(_, let owner, let holdID, let load):
+            guard owner == viewer else { return nil }
+            return Tidings("\(load.description.prefix(1).uppercased() + load.description.dropFirst()) brought home to \(hold(holdID)?.name ?? "your hold").", .good)
+        case .siteWorkedOut(_, let store, _):
+            return Tidings("The \(Site.title(of: store).lowercased()) is worked out.", .neutral)
         default:
             return nil
         }

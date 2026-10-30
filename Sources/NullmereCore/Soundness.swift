@@ -65,6 +65,23 @@ extension GameState {
             if !(1...100).contains(wild.health) { found.append("Wilds \(wild.id) have \(wild.health) health") }
             if !(1...Wild.highestLevel).contains(wild.level) { found.append("Wilds \(wild.id) are of level \(wild.level)") }
         }
+        var siteIDs: Set<Int> = [], siteSpots: Set<Hex> = []
+        for site in sitesInLand {
+            if !siteIDs.insert(site.id).inserted || unitIDs.contains(site.id) || holdIDs.contains(site.id) || wildIDs.contains(site.id) {
+                found.append("Site \(site.id) is numbered twice")
+            }
+            if site.id >= nextID { found.append("Site \(site.id) was given out before the next id \(nextID)") }
+            if map[site.position]?.terrain.isPassable != true { found.append("Site \(site.id) lies where none can go") }
+            if hold(at: site.position) != nil || wild(at: site.position) != nil || !siteSpots.insert(site.position).inserted {
+                found.append("Site \(site.id) lies under something else at \(site.position)")
+            }
+            if site.remaining <= 0 { found.append("Site \(site.id) is worked out but still there") }
+        }
+        for unit in units {
+            guard let load = unit.load else { continue }
+            if Resource.allCases.contains(where: { load[$0] < 0 }) { found.append("Company \(unit.id) carries \(load)") }
+            if !unit.kind.isMilitary, !load.isZero { found.append("Company \(unit.id) of \(unit.kind.title) carries stores") }
+        }
         for (index, commander) in roster.enumerated() {
             if commander.id != index + 1 { found.append("Commander \(commander.id) stands numbered \(index + 1)") }
             if !houseIDs.contains(commander.owner) { found.append("Commander \(commander.name) serves no House (\(commander.owner))") }

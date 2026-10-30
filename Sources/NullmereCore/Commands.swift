@@ -36,6 +36,9 @@ public enum Command: Codable, Equatable, Sendable {
     case assign(commander: Int, unit: Int)
     /// A commander leaves its company, wherever it is, and rides home.
     case unassign(commander: Int)
+    /// A company of war marches to a site of the land and works it until
+    /// it carries all it can, then brings it home to the nearest hold.
+    case gather(unit: Int, site: Int)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -105,6 +108,12 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case awayFromHolds
     /// A commander at the head of no company.
     case notLeading
+    /// A site the House doesn't know of, or no longer there.
+    case unknownSite
+    /// A kind of company that gathers nothing.
+    case cannotGather(UnitKind)
+    /// A company carrying all it can, or another store than the site's.
+    case loadFull
 
     public var description: String {
         switch self {
@@ -159,6 +168,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .cannotLead(let kind): return "\(kind.title) take no commander."
         case .awayFromHolds: return "A commander takes up a company at or beside one of your holds."
         case .notLeading: return "That commander leads no company."
+        case .unknownSite: return "Your House knows of no such site."
+        case .cannotGather(let kind): return "\(kind.title) gather nothing."
+        case .loadFull: return "It carries all it can; bring it home first."
         }
     }
 }
@@ -207,6 +219,15 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case skillFired(commander: Int, house: Int, skill: Skill, at: Hex)
     /// A company strikes a company of the wilds.
     case hunted(Hunt)
+    /// A company sets out to work a site.
+    case sentToGather(unit: Int, site: Int)
+    /// A company carries all it can, or its site is worked out: it turns
+    /// for home with its load.
+    case gathered(unit: Int, owner: Int, load: Stock)
+    /// A company gives up its load at one of its House's holds.
+    case delivered(unit: Int, owner: Int, hold: Int, load: Stock)
+    /// A site is worked out and gone.
+    case siteWorkedOut(site: Int, store: Resource, at: Hex)
 }
 
 /// One exchange of blows.

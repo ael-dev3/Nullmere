@@ -90,9 +90,11 @@ struct RivalMind {
         events += appointCommanders(in: &state)
         let garrisons = assignGarrisons(in: state)
         let visible = state.visibility(for: house)
+        // Its companies' orders don't change whom it is at war with.
+        let atWar = state.livingHouses.contains { state.isAtWar(house, $0.id) }
         for unit in state.units(of: house).sorted(by: { $0.id < $1.id }) {
             guard state.unit(unit.id) != nil else { continue }
-            events += command(unit.id, garrisonFor: garrisons[unit.id], seeing: visible, in: &state)
+            events += command(unit.id, garrisonFor: garrisons[unit.id], seeing: visible, atWar: atWar, in: &state)
         }
         return events
     }
@@ -515,10 +517,11 @@ struct RivalMind {
 
     // MARK: Units
 
-    /// Picks a defender for every hold that has none standing on it.
+    /// Picks a defender for every hold that has none standing on it, of the
+    /// companies not away on an errand.
     private func assignGarrisons(in state: GameState) -> [Int: Hex] {
         var result: [Int: Hex] = [:]
-        var free = state.units(of: house).filter { $0.kind.isMilitary }
+        var free = state.units(of: house).filter { $0.kind.isMilitary && $0.errand == nil }
         for hold in state.holds(of: house).sorted(by: { ($0.isSeat ? 0 : 1, $0.id) < ($1.isSeat ? 0 : 1, $1.id) }) {
             if let standing = free.firstIndex(where: { $0.position == hold.position }) {
                 result[free[standing].id] = hold.position
@@ -534,7 +537,7 @@ struct RivalMind {
         return result
     }
 
-    private func command(_ unitID: Int, garrisonFor post: Hex?, seeing visible: [Bool], in state: inout GameState) -> [GameEvent] {
+    private func command(_ unitID: Int, garrisonFor post: Hex?, seeing visible: [Bool], atWar: Bool, in state: inout GameState) -> [GameEvent] {
         guard let unit = state.unit(unitID) else { return [] }
         switch unit.kind {
         case .lantern:
@@ -554,7 +557,7 @@ struct RivalMind {
                 }
                 return perform(.move(unit: unitID, to: post), in: &state)
             }
-            return campaign(with: unit, seeing: visible, in: &state)
+            return campaign(with: unit, seeing: visible, atWar: atWar, in: &state)
         }
     }
 
@@ -569,10 +572,12 @@ struct RivalMind {
         }
     }
 
-    private func campaign(with unit: Unit, seeing visible: [Bool], in state: inout GameState) -> [GameEvent] {
+    private func campaign(with unit: Unit, seeing visible: [Bool], atWar: Bool, in state: inout GameState) -> [GameEvent] {
         if let target = foeInReach(of: unit, in: state) {
             return perform(.attack(unit: unit.id, target: target), in: &state)
         }
+        // At peace, a company on an errand sees it through.
+        if unit.errand != nil, !atWar { return [] }
         // Meet enemy companies of war who come close: never a scout or
         // Founders, and with a siege to press, only one in the way or at
         // this House's own gates, never one that would lead it off.
@@ -600,13 +605,21 @@ struct RivalMind {
             }
             return unit.fortified ? [] : perform(.fortify(unit: unit.id), in: &state)
         }
+        let home = state.holds(of: house).min { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
+        // Carrying the land's stores, home with them.
+        if let load = unit.load, !load.isZero, let home, home.position.distance(to: unit.position) > 1 {
+            return perform(.move(unit: unit.id, to: home.position), in: &state)
+        }
         // At peace: hunt the wilds near its land, if the odds are good.
         if let prey = prey(for: unit, in: state) {
             return perform(.move(unit: unit.id, to: prey), in: &state)
         }
+        // Or work a site for a store its House runs short of.
+        if !atWar, let site = site(for: unit, in: state) {
+            return perform(.gather(unit: unit.id, site: site), in: &state)
+        }
         // Or wait near the nearest hold.
-        if let home = state.holds(of: house).min(by: { $0.position.distance(to: unit.position) < $1.position.distance(to: unit.position) }),
-           home.position.distance(to: unit.position) > 2 {
+        if let home, home.position.distance(to: unit.position) > 2 {
             return perform(.move(unit: unit.id, to: home.position), in: &state)
         }
         return unit.fortified ? [] : perform(.fortify(unit: unit.id), in: &state)
@@ -614,8 +627,32 @@ struct RivalMind {
 
     /// How close to a besieged hold the army gathers before it goes in.
     static let siegeReach = 4
-    /// How far from its own holds a steward's company goes hunting.
+    /// How far from its own holds a steward's company goes hunting, or
+    /// gathering.
     static let huntingGround = 9
+
+    /// A site for a company at peace to work: the nearest in reach of its
+    /// House's land, of a store the House has less than half the room for,
+    /// with no company on it or bound for it.
+    func site(for unit: Unit, in state: GameState) -> Int? {
+        guard unit.load?.isZero ?? true, !state.sitesInLand.isEmpty else { return nil }
+        let stock = state.houses[house].stock
+        let room = state.storage(of: house)
+        let short = Resource.allCases.filter { stock[$0] < room / 2 }
+        guard !short.isEmpty else { return nil }
+        let holds = state.holds(of: house).map(\.position)
+        let explored = state.houses[house].explored
+        let bound = Set(state.units.compactMap { other -> Int? in
+            if case .gather(let site)? = other.errand { return site }
+            return nil
+        })
+        return state.sitesInLand.filter { site in
+            short.contains(site.store) && !bound.contains(site.id) && state.unit(at: site.position) == nil
+                && (state.map.index(of: site.position).map { explored[$0] } ?? false)
+                && site.position.distance(to: unit.position) <= RivalMind.huntingGround
+                && holds.contains { $0.distance(to: site.position) <= RivalMind.huntingGround }
+        }.min { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }?.id
+    }
 
     /// The wilds a company would hunt: the nearest within its hunting
     /// ground that it would strike down, blow on blow from its reach, with

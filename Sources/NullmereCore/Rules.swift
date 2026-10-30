@@ -24,6 +24,7 @@ extension GameState {
             units[index].fortified = true
             units[index].movesLeft = 0
             units[index].destination = nil
+            units[index].errand = nil
             return []
         case let .disband(unitID):
             let index = try ownedUnit(unitID, of: house)
@@ -32,6 +33,7 @@ extension GameState {
         case let .halt(unitID):
             let index = try ownedUnit(unitID, of: house)
             units[index].destination = nil
+            units[index].errand = nil
             return []
         case let .declareWar(target):
             return try declareWar(by: house, on: target)
@@ -51,6 +53,8 @@ extension GameState {
             return try assign(commanderID, to: unitID, as: house)
         case let .unassign(commanderID):
             return try unassign(commanderID, as: house)
+        case let .gather(unitID, siteID):
+            return try gather(unitID, at: siteID, as: house)
         }
     }
 
@@ -99,6 +103,8 @@ extension GameState {
         guard unknown || path(for: unit, to: target) != nil else { throw .noPath }
         units[index].destination = target
         units[index].fortified = false
+        // A new march is a new order: whatever errand it was on is done with.
+        units[index].errand = nil
         return march(unitID)
     }
 
@@ -197,6 +203,7 @@ extension GameState {
             units[index].acted = true
             units[index].fortified = false
             units[index].destination = nil
+            units[index].errand = nil
             return strike(wild: wild.id, with: unitID)
         }
         guard let foe = foe(at: target, for: house) else { throw .nothingToAttack }
@@ -207,6 +214,7 @@ extension GameState {
         units[index].acted = true
         units[index].fortified = false
         units[index].destination = nil
+        units[index].errand = nil
 
         if let defenderID = foe.unit {
             return fight(attacker: unitID, defender: defenderID, at: target)
@@ -233,6 +241,11 @@ extension GameState {
         var events: [GameEvent] = []
         let defenderFell = applyDamage(dealt, to: defenderID, events: &events)
         let attackerFell = taken > 0 && applyDamage(taken, to: attackerID, events: &events)
+        // A company that falls carrying the land's stores leaves half of
+        // them to its foe, if its foe lives.
+        if defenderFell, !attackerFell, let load = defender.load, !load.isZero {
+            store(load.share(1, of: 2), for: attacker.owner)
+        }
         // Those who live through a battle learn from it.
         events += gainExperience(attackerID)
         events += gainExperience(defenderID)
@@ -436,6 +449,8 @@ extension GameState {
         let hold = Hold(id: takeID(), name: name, owner: house, position: founder.position, isSeat: false, foundedWatch: watch)
         holds.append(hold)
         units.remove(at: index)
+        // A site under a new hold is settled ground now.
+        sites?.removeAll { $0.position == hold.position }
         reveal(around: hold.position, range: sight(of: hold), for: house)
         record(.founding, [house], "\(houses[house].title) founds \(name) on the \(map[hold.position]!.terrain.title.lowercased()).")
         return [.holdFounded(hold: hold.id)]

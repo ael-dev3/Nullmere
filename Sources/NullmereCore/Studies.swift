@@ -242,12 +242,44 @@ public struct Pursuit: Codable, Equatable, Sendable {
 /// A House's studies: what it knows, and what it is studying.
 public struct Research: Codable, Equatable, Sendable {
     /// Each study known, in the order it was first learned.
-    public internal(set) var known: [Learned]
+    public internal(set) var known: [Learned] {
+        didSet { totals = Research.sum(known) }
+    }
     public internal(set) var pursuit: Pursuit?
+    /// What its studies add, summed as they are learned: every rule asks
+    /// it, often. Never kept, for it follows from what is known.
+    private(set) var totals: [Bonus: Int]
+
+    private enum CodingKeys: String, CodingKey {
+        case known, pursuit
+    }
 
     public init(known: [Learned] = [], pursuit: Pursuit? = nil) {
         self.known = known
         self.pursuit = pursuit
+        self.totals = Research.sum(known)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        known = try container.decode([Learned].self, forKey: .known)
+        pursuit = try container.decodeIfPresent(Pursuit.self, forKey: .pursuit)
+        totals = Research.sum(known)
+    }
+
+    private static func sum(_ known: [Learned]) -> [Bonus: Int] {
+        var totals: [Bonus: Int] = [:]
+        for learned in known {
+            for (gain, amount) in learned.study.profile.gains {
+                totals[gain, default: 0] += amount * learned.grade
+            }
+        }
+        return totals
+    }
+
+    /// What its studies add to a bonus.
+    public func total(_ bonus: Bonus) -> Int {
+        totals[bonus] ?? 0
     }
 
     public var isEmpty: Bool { known.isEmpty && pursuit == nil }
@@ -272,24 +304,17 @@ extension GameState {
     /// own pace for studies.
     public func bonus(_ bonus: Bonus, for house: Int) -> Int {
         guard houses.indices.contains(house) else { return 0 }
-        var total = 0
-        for learned in houses[house].research.known {
-            total += learned.study.profile.gains[bonus].map { $0 * learned.grade } ?? 0
-        }
-        if bonus == .studySpeed {
-            total += GameState.archivePace * archiveLevel(of: house)
-        }
-        return total
+        let studied = houses[house].research.total(bonus)
+        return bonus == .studySpeed ? studied + GameState.archivePace * archiveLevel(of: house) : studied
     }
 
     /// Each store's yield bonus for a House at once, in percent.
     func yieldBonuses(for house: Int) -> Stock {
         guard houses.indices.contains(house) else { return .zero }
+        let research = houses[house].research
         var total = Stock.zero
-        for learned in houses[house].research.known {
-            for (gain, amount) in learned.study.profile.gains {
-                if case .yield(let resource) = gain { total[resource] += amount * learned.grade }
-            }
+        for resource in Resource.allCases {
+            total[resource] = research.total(.yield(resource))
         }
         return total
     }

@@ -20,9 +20,12 @@ extension GameState {
         view.units = units.filter { unit in
             unit.owner == house || (map.index(of: unit.position).map { seen[$0] } ?? false)
         }
-        // A company in sight shows where it stands, not where it is bound.
+        // A company in sight shows where it stands, not where it is bound,
+        // nor what it is about or carries.
         for index in view.units.indices where view.units[index].owner != house {
             view.units[index].destination = nil
+            view.units[index].errand = nil
+            view.units[index].load = nil
         }
         for index in view.houses.indices where view.houses[index].id != house {
             view.houses[index].stock = .zero
@@ -41,8 +44,9 @@ extension GameState {
         // company in sight.
         let leading = Set(view.units.compactMap(\.leader))
         view.commanders = commanders?.filter { $0.owner == house || leading.contains($0.id) }
-        // The wilds in sight.
+        // The wilds in sight; the sites on ground the House has explored.
         view.wilds = wilds?.filter { map.index(of: $0.position).map { seen[$0] } ?? false }
+        view.sites = sites?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
         return view
     }
 }
@@ -83,6 +87,12 @@ extension GameState {
                 return owner == house || visible(at)
             case .hunted(let hunt):
                 return hunt.attackerOwner == house || visible(hunt.at)
+            case .sentToGather(let id, _):
+                return unit(id)?.owner == house
+            case .gathered(_, let owner, _), .delivered(_, let owner, _, _):
+                return owner == house
+            case .siteWorkedOut(_, _, let at):
+                return visible(at)
             case .promoted(_, let owner, _):
                 return owner == house
             case .ruinSearched(let at, let by, _):
