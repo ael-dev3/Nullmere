@@ -78,11 +78,10 @@ struct MiniMap: View {
         .onTapGesture { location in Self.look(at: location, in: session) }
         .padding(6)
         .background(Palette.panel, in: RoundedRectangle(cornerRadius: 3))
-        .help("The whole lake: click to look there.")
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Map of the lake")
-        .accessibilityValue(Self.spoken(session))
-        .accessibilityAddTraits(.isImage)
+        .help("The whole lake: \(Self.spoken(session)). Click to look there.")
+        // For the eye: VoiceOver walks the lake by the map's own elements,
+        // every hold and company, and pans to them as they are chosen.
+        .accessibilityHidden(true)
     }
 }
 
