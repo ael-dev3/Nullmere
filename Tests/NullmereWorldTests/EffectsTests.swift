@@ -92,7 +92,7 @@ final class EffectsTests: XCTestCase {
         happenings.finished = [Happenings.Spot(at: Vec3(-7, 0, 0), start: 10, seed: 7)]
         happenings.blazes = [Happenings.Spot(at: Vec3(8, 0.2, 8), strength: 0.8, seed: 8)]
         happenings.fireflies = [Happenings.Spot(at: Vec3(-9, 0.1, -9), seed: 9)]
-        happenings.furies = [Happenings.Spot(at: Vec3(12, 0, 12), start: 10, seed: 10)]
+        happenings.furies = [Happenings.Fury(at: Vec3(12, 0, 12), start: 10, seed: 10)]
         let landing = 10 + Happenings.landing + 0.05
         let (motes, lights) = happenings.effects(at: landing)
         XCTAssertFalse(motes.isEmpty)
@@ -126,6 +126,46 @@ final class EffectsTests: XCTestCase {
         let thin = Happenings(battles: [Happenings.Spot(at: heart, strength: 1, seed: 31)]).effects(at: 20).motes
         XCTAssertLessThan(thin.count, thick.count, "The thicker the more companies stand in it")
         XCTAssertTrue(Happenings(battles: [Happenings.Spot(at: heart, strength: 8, seed: 31)]).effects(at: 20).lights.isEmpty)
+    }
+
+    func testEachArchetypesSkillFiresInItsOwnLook() {
+        // One look to each archetype, by the skill that fires in battle.
+        let looks = Archetype.allCases.map { archetype in FuryLook.of(Skill.allCases.first { $0.archetype == archetype }!) }
+        XCTAssertEqual(Set(looks), Set(FuryLook.allCases))
+        XCTAssertEqual(FuryLook.of(.holdFast), .ward)
+        XCTAssertEqual(FuryLook.of(.fellCharge), .blaze)
+        XCTAssertEqual(FuryLook.of(.harry), .volley)
+        XCTAssertEqual(FuryLook.of(.closeRanks), .ring)
+        XCTAssertEqual(FuryLook.of(.breach), .quake)
+        let origin = Vec3(3, 0.2, -1)
+        func fired(_ look: FuryLook, at time: Float) -> (motes: [Mote], lights: [PointLight]) {
+            var happenings = Happenings()
+            happenings.furies = [Happenings.Fury(at: origin, start: 10, look: look, seed: 17)]
+            return happenings.effects(at: time)
+        }
+        for look in FuryLook.allCases {
+            let (motes, lights) = fired(look, at: 10.3)
+            XCTAssertGreaterThan(motes.count, 10, "\(look)")
+            XCTAssertEqual(lights.count, 1, "\(look) lights the ground")
+            let expected = look.glow * (1 - 0.3 / Happenings.furyGlow)
+            XCTAssertEqual(lights.first.map { ($0.colour - expected).length } ?? 1, 0, accuracy: 1e-4, "\(look)")
+            XCTAssertTrue(fired(look, at: 12.5).motes.isEmpty, "\(look) is gone")
+        }
+        XCTAssertNotEqual(Set(FuryLook.allCases.map(\.glow.x)).count, 1, "Each its own light")
+        // A ward is a dome of cold light over the company.
+        let ward = positions(fired(.ward, at: 10.6).motes)
+        XCTAssertTrue(ward.allSatisfy { abs(($0 - origin).length - 0.62) < 0.2 }, "On the dome")
+        XCTAssertTrue(fired(.ward, at: 10.6).motes.allSatisfy { $0.colour.z > $0.colour.x })
+        // Fire is thrown out, warm.
+        XCTAssertTrue(fired(.blaze, at: 10.3).motes.contains { $0.colour.x > 1 && $0.colour.x > $0.colour.z * 3 })
+        // Light falls: lower as it goes.
+        let early = positions(fired(.volley, at: 10.1).motes), late = positions(fired(.volley, at: 10.4).motes)
+        XCTAssertGreaterThan(early.map(\.y).reduce(0, +) / Float(early.count), late.map(\.y).reduce(0, +) / Float(late.count))
+        // The ground breaks in a ring that runs out, of dust that hides what lies behind.
+        let near = positions(fired(.quake, at: 10.15).motes).map { Vec3($0.x - origin.x, 0, $0.z - origin.z).length }.max() ?? 0
+        let far = positions(fired(.quake, at: 10.6).motes).map { Vec3($0.x - origin.x, 0, $0.z - origin.z).length }.max() ?? 0
+        XCTAssertGreaterThan(far, near)
+        XCTAssertTrue(fired(.quake, at: 10.3).motes.contains { $0.colour.w > 0 })
     }
 
     func testAScoutedHoldIsCircledByItsLanternsLight() {

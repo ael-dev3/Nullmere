@@ -412,7 +412,7 @@ public final class WorldStage: @unchecked Sendable {
     /// Whether a piece of a hold is built the way its House's people build:
     /// its works and walls; the keep is its people's already, and a
     /// scaffold is a scaffold anywhere.
-    static func isPeoples(_ key: ModelKey) -> Bool {
+    public static func isPeoples(_ key: ModelKey) -> Bool {
         switch key {
         case .work, .study, .walls: return true
         default: return false

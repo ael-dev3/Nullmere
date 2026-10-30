@@ -535,7 +535,11 @@ realm; keepers are told in plain words, never a status code.
   and rises from level I to XXX with what its company lives through; its
   four skills come at levels I, V, X and XX: three always strengthen the
   company it leads, and one fires in battle once its fury has risen through
-  enough battles. A commander takes up a company of war at or beside one of
+  enough battles, in its archetype's own look in the world: a ward of pale
+  light closing over a warden's company, fire thrown out from a vanguard's,
+  shafts of light falling about an outrider's, a ring of gold round a
+  gleaner's, the ground breaking in a ring under a wallbreaker's, each with
+  its light on the ground. A commander takes up a company of war at or beside one of
   its House's holds; if the company falls, it is carried home wounded for
   four watches.
 - **Talents.** A commander gains a talent point at each level past the
@@ -1136,7 +1140,11 @@ There is no music in the launcher; the game makes its own sound as it plays.
   small stage of open ground under the moon, in the House's colours,
   framed by the model's size and kept once drawn. The stage's shaders are
   compiled away from the main thread the first time a portrait is asked
-  for; until then the panels show the frame alone.
+  for; until then the panels show the frame alone. Each of the keeper's
+  holds has its vista at the head of its panel: the whole hold drawn by
+  the same renderer from before its gate, its keep in its people's way,
+  its walls and works as they stand, in its House's colour, drawn again
+  as it grows.
 - **Every surface has its grain.** Each colour a model is built of is
   stone, timber, thatch, slate or earth, or smooth, and the shader draws
   that grain on it in the model's own coordinates, so it keeps to the

@@ -356,7 +356,8 @@ extension GameSession {
             }
         }
         for fury in furies {
-            happenings.furies.append(Happenings.Spot(at: ground(fury.at), start: clock(fury.start), seed: UInt32(truncatingIfNeeded: fury.id)))
+            happenings.furies.append(Happenings.Fury(at: ground(fury.at), start: clock(fury.start), look: .of(fury.skill),
+                                                     seed: UInt32(truncatingIfNeeded: fury.id)))
         }
         for sighting in sightings {
             happenings.sightings.append(Happenings.Spot(at: ground(sighting.at), start: clock(sighting.start),

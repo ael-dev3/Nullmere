@@ -56,6 +56,29 @@ final class PortraitTests: XCTestCase {
         XCTAssertNil(Portrait.colour(of: 99, in: state))
     }
 
+    func testAHoldIsSeenWholeAtTheHeadOfItsPanel() throws {
+        XCTAssertTrue(Portraits.shared.prepareNow())
+        var state = GameState(settings: GameSettings(seedText: "vistas", houseCount: 3, radius: 14, keepers: 1))
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == state.player && $0.isSeat })
+        state.holds[seat].levels = [.walls: 3, .granary: 2, .sawpit: 1, .beacon: 1]
+        let hold = state.holds[seat]
+        let colour = try XCTUnwrap(Portrait.colour(of: hold.owner, in: state))
+        let vista = try XCTUnwrap(Portraits.shared.vista(of: hold, heritage: state.heritage(of: hold.owner), colour: colour))
+        XCTAssertEqual(vista.width, Portraits.vistaWidth)
+        XCTAssertEqual(vista.height, Portraits.vistaHeight)
+        XCTAssertTrue(Portraits.shared.vista(of: hold, heritage: state.heritage(of: hold.owner), colour: colour) === vista, "Kept once drawn")
+        var raised = hold
+        raised.levels[.granary] = 3
+        XCTAssertFalse(Portraits.shared.vista(of: raised, heritage: state.heritage(of: hold.owner), colour: colour) === vista, "Drawn again as it grows")
+        // Framed whole: from before it and above, far enough to see all of it.
+        let framing = Portraits.vistaFraming(low: Vec3(-2, 0, -2), high: Vec3(2, 1, 2), aspect: 2.4)
+        XCTAssertGreaterThan(framing.eye.y, framing.target.y)
+        XCTAssertGreaterThan((framing.eye - framing.target).length, 2)
+        XCTAssertNil(Portraits.image(bgra: [1, 2, 3], width: 2, height: 1))
+        let renderer = ImageRenderer(content: Portrait.Vista(hold: hold, state: state).frame(width: 300).background(Color.black))
+        XCTAssertNotNil(renderer.cgImage)
+    }
+
     func testTheStageIsBuiltAwayFromTheMainThreadWhenFirstAskedFor() {
         let portraits = Portraits()
         XCTAssertNil(portraits.image(of: .keep(seat: false)), "Not until the stage is built; asking begins it")

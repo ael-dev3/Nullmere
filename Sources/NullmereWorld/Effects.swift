@@ -1,4 +1,5 @@
 import Foundation
+import NullmereCore
 import NullmereModels
 
 /// A mote of light, dust or smoke as the GPU draws it: a soft disc facing
@@ -34,6 +35,14 @@ public enum Effect: String, CaseIterable, Sendable {
     case fireflies
     /// A commander's skill fired: pale gold rising in a widening ring.
     case fury
+    /// A warden's skill fired: a ward of pale light closing over the company.
+    case ward
+    /// A vanguard's: fire thrown out low from the company as it charges.
+    case blaze
+    /// An outrider's: shafts of light falling about the company.
+    case volley
+    /// A wallbreaker's: the ground breaking, dust thrown out in a ring.
+    case quake
     /// A hold scouted: the Lanterns' cold light circling it slowly, low
     /// over its walls, then gone.
     case sighting
@@ -49,6 +58,10 @@ public enum Effect: String, CaseIterable, Sendable {
         case .splinters: return 0.9
         case .fireflies: return 6
         case .fury: return 1.1
+        case .ward: return 1.4
+        case .blaze: return 0.8
+        case .volley: return 0.7
+        case .quake: return 1.1
         case .sighting: return 1.8
         }
     }
@@ -213,6 +226,32 @@ public enum Effects {
             let show = Float(sin(Double(t) * .pi)) * (0.7 + 0.3 * c)
             return Mote(at: origin + around * ring + Vec3(0, rise, 0), size: (0.024 + 0.02 * t) * scale,
                         light: Vec3(2.0, 1.75, 0.95) * show, cover: 0)
+        case .ward:
+            // Points of pale light on a dome over the company, swelling a
+            // little as they come and go.
+            let rise = Double(b) * .pi / 2 * 0.95
+            let shell = Vec3(Float(cos(rise)) * around.x, Float(sin(rise)), Float(cos(rise)) * around.z) * (0.52 + 0.1 * t) * scale
+            let show = Float(sin(Double(t) * .pi)) * (0.6 + 0.4 * c)
+            return Mote(at: origin + shell + Vec3(0, 0.02, 0), size: 0.02 * scale, light: Vec3(0.9, 1.3, 2.1) * show, cover: 0)
+        case .blaze:
+            // Fire thrown out low from the company, slowing, rising a little, burning out.
+            let reach = (0.3 + 0.7 * b) * scale * (1 - Float(exp(-Double(age) * 4)))
+            let heat = (1 - t) * (1 - t * 0.5)
+            return Mote(at: origin + around * reach + Vec3(0, (0.05 + 0.35 * c * t) * scale, 0), size: (0.018 + 0.022 * t) * scale,
+                        light: Vec3(2.8, 1.1, 0.3) * heat, cover: 0)
+        case .volley:
+            // Shafts of light falling from on high about the company, each to the ground.
+            let high = (1.2 + 0.6 * b) * scale
+            let spot = around * (0.15 + 0.55 * c) * scale
+            let show = t < 0.85 ? Float(1) : (1 - t) / 0.15
+            return Mote(at: origin + spot + Vec3(0, high * (1 - t), 0), size: 0.018 * scale, light: Vec3(2.2, 1.9, 1.2) * show, cover: 0)
+        case .quake:
+            // The ground broken in a ring that runs out fast, dust thrown up and settling.
+            let ring = (0.2 + 1.3 * Float(pow(Double(t), 0.6))) * scale
+            let up = (0.03 + 0.12 * c * Float(sin(Double(t) * .pi))) * scale
+            let show = 0.5 * (1 - t)
+            return Mote(at: origin + around * ring + Vec3(0, up, 0), size: (0.06 + 0.12 * t) * scale,
+                        light: Vec3(0.06, 0.05, 0.04) * show, cover: show)
         case .sighting:
             // Points of cold light going round the hold a third of the way,
             // low over its walls, waxing and waning as they pass.
@@ -314,8 +353,23 @@ public struct Happenings: Equatable, Sendable {
     public var blazes: [Spot] = []
     /// Where the night's fireflies wander.
     public var fireflies: [Spot] = []
-    /// Where commanders' skills fired, and when.
-    public var furies: [Spot] = []
+    /// Where commanders' skills fired, when, and how each looks.
+    public var furies: [Fury] = []
+
+    /// A commander's skill fired: where, when, and how it looks.
+    public struct Fury: Equatable, Sendable {
+        public var at: Vec3
+        public var start: Float
+        public var look: FuryLook
+        public var seed: UInt32
+
+        public init(at: Vec3, start: Float, look: FuryLook = .ring, seed: UInt32) {
+            self.at = at
+            self.start = start
+            self.look = look
+            self.seed = seed
+        }
+    }
     /// Holds scouted, and when.
     public var sightings: [Spot] = []
     /// Fields of battle going on, as strongly as companies stand in them.
@@ -400,13 +454,28 @@ public struct Happenings: Equatable, Sendable {
             emitters.append(Emitter(.fireflies, at: spot.at, rate: 0.6, spread: 0.3, seed: spot.seed, strength: 1))
         }
         for fury in furies {
-            // A ring of gold round the company, a flash above it, and its light a moment on the ground.
-            bursts.append(Burst(.fury, at: fury.at + Vec3(0, 0.05, 0), start: fury.start, count: 28, seed: fury.seed, scale: 1.2))
-            bursts.append(Burst(.flash, at: fury.at + Vec3(0, 0.45, 0), start: fury.start, count: 1, seed: fury.seed &+ 3, scale: 1.6))
+            // Each archetype's skill its own: a ring of gold, a ward of
+            // light, fire thrown out, light falling, the ground breaking;
+            // and its light a moment on the ground.
+            switch fury.look {
+            case .ring:
+                bursts.append(Burst(.fury, at: fury.at + Vec3(0, 0.05, 0), start: fury.start, count: 28, seed: fury.seed, scale: 1.2))
+                bursts.append(Burst(.flash, at: fury.at + Vec3(0, 0.45, 0), start: fury.start, count: 1, seed: fury.seed &+ 3, scale: 1.6))
+            case .ward:
+                bursts.append(Burst(.ward, at: fury.at, start: fury.start, count: 40, seed: fury.seed, scale: 1.1))
+            case .blaze:
+                bursts.append(Burst(.blaze, at: fury.at + Vec3(0, 0.05, 0), start: fury.start, count: 36, seed: fury.seed, scale: 1.2))
+                bursts.append(Burst(.flash, at: fury.at + Vec3(0, 0.3, 0), start: fury.start, count: 1, seed: fury.seed &+ 3, scale: 1.4))
+            case .volley:
+                bursts.append(Burst(.volley, at: fury.at, start: fury.start, count: 30, seed: fury.seed, scale: 1.1))
+            case .quake:
+                bursts.append(Burst(.quake, at: fury.at, start: fury.start, count: 34, seed: fury.seed, scale: 1.2))
+                bursts.append(Burst(.splinters, at: fury.at, start: fury.start, count: 14, seed: fury.seed &+ 5, scale: 1.2))
+            }
             let age = time - fury.start
             if age >= 0, age < Happenings.furyGlow {
                 let fade = 1 - age / Happenings.furyGlow
-                lights.append(PointLight(at: fury.at + Vec3(0, 0.6, 0), reach: 2.8, colour: Vec3(2.0, 1.8, 1.1) * fade))
+                lights.append(PointLight(at: fury.at + Vec3(0, 0.6, 0), reach: 2.8, colour: fury.look.glow * fade))
             }
         }
         for sighting in sightings {
@@ -419,5 +488,34 @@ public struct Happenings: Equatable, Sendable {
             }
         }
         return (Effects.motes(bursts: bursts, emitters: emitters, at: time), lights)
+    }
+}
+
+/// How a commander's skill looks as it fires, by the commander's
+/// archetype: a ward of pale light for a warden's, fire thrown out for a
+/// vanguard's, shafts of light falling for an outrider's, a ring of gold
+/// for a gleaner's, the ground breaking for a wallbreaker's.
+public enum FuryLook: String, CaseIterable, Sendable {
+    case ward, blaze, volley, ring, quake
+
+    public static func of(_ skill: Skill) -> FuryLook {
+        switch skill.archetype {
+        case .warden: return .ward
+        case .vanguard: return .blaze
+        case .outrider: return .volley
+        case .gleaner: return .ring
+        case .wallbreaker: return .quake
+        }
+    }
+
+    /// The light it gives the ground about it, at its brightest.
+    public var glow: Vec3 {
+        switch self {
+        case .ward: return Vec3(0.9, 1.3, 2.2)
+        case .blaze: return Vec3(2.6, 1.2, 0.4)
+        case .volley: return Vec3(2.0, 1.8, 1.3)
+        case .ring: return Vec3(2.0, 1.8, 1.1)
+        case .quake: return Vec3(1.2, 0.8, 0.5)
+        }
     }
 }

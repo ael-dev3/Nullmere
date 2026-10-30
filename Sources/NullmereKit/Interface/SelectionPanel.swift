@@ -106,6 +106,7 @@ struct OwnHoldDetails: View {
         let state = session.state
         let stock = session.playerHouse.stock
         VStack(alignment: .leading, spacing: 14) {
+            Portrait.Vista(hold: hold, state: state)
             PanelTitle(
                 title: hold.name,
                 subtitle: hold.isSeat ? "Seat of \(session.playerHouse.title)" : "A hold of \(session.playerHouse.title)",

@@ -80,6 +80,9 @@ final class WorldPreviewTests: XCTestCase {
                                                         seed: 3)]
             }
             happenings.fireflies = stage.fireflySpots(near: heart, within: 3).map { Happenings.Spot(at: $0, seed: 5) }
+            // Two commanders' skills firing beside the seat: a warden's ward and a vanguard's fire.
+            happenings.furies = [Happenings.Fury(at: heart + Vec3(-1.6, 0, 1.1), start: 19.6, look: .ward, seed: 7),
+                                 Happenings.Fury(at: heart + Vec3(1.7, 0, 1.2), start: 19.75, look: .blaze, seed: 9)]
         }
         (frame.motes, frame.lights) = happenings.effects(at: 20)
         return frame
