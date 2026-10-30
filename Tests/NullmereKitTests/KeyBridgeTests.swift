@@ -23,7 +23,7 @@ final class KeyBridgeTests: XCTestCase {
 
     func testEveryKeyHasItsMeaning() {
         let letters: [(String, GameKey)] = [
-            ("f", .fortify), ("B", .found), ("h", .nextHold), ("=", .zoom(1.25)), ("+", .zoom(1.25)), ("-", .zoom(0.8)), ("_", .zoom(0.8)),
+            ("f", .fortify), ("B", .found), ("h", .nextHold), ("c", .city), ("=", .zoom(1.25)), ("+", .zoom(1.25)), ("-", .zoom(0.8)), ("_", .zoom(0.8)),
             ("]", .anyUnit(forward: true)), ("[", .anyUnit(forward: false)), (" ", .chooseAtCentre),
             ("w", .pan(dx: 0, dy: 90)), ("s", .pan(dx: 0, dy: -90)), ("a", .pan(dx: 90, dy: 0)), ("d", .pan(dx: -90, dy: 0)),
             ("1", .houses), ("2", .chronicle), ("?", .guide), ("/", .guide),

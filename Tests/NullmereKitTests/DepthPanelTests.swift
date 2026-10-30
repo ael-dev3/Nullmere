@@ -582,6 +582,50 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(folk(session.sceneFrame(at: 4)), 0, "Still, the holds are quiet")
     }
 
+    // MARK: The city view
+
+    func testTheCityViewComesCloseOverTheSeatAndNamesItsWorks() throws {
+        var state = world("city view")
+        let me = state.player
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+        state.holds[seat].levels = [.walls: 2, .granary: 2, .sawpit: 1]
+        state.holds[seat].project = Hold.Project(kind: .quarry, targetLevel: 1, watchesLeft: 2)
+        let hold = state.holds[seat]
+        let (session, _) = session(state)
+        session.motion = .still
+        XCTAssertNil(session.cityInView, "Over the lake")
+        XCTAssertTrue(session.handle(.city))
+        XCTAssertEqual(session.camera.scale, GameSession.cityScale, accuracy: 1e-9)
+        XCTAssertEqual(session.camera.tilt, GameSession.cityTilt, accuracy: 1e-9)
+        XCTAssertEqual(session.cityInView?.id, hold.id)
+        XCTAssertEqual(session.selection, .hold(hold.id))
+        // Each work named where it stands, in the view.
+        let size = CGSize(width: 1200, height: 800)
+        let works = session.cityWorks(in: size)
+        XCTAssertEqual(Set(works.map(\.kind)), [.walls, .granary, .sawpit, .quarry])
+        XCTAssertEqual(works.first { $0.kind == .granary }?.title, "\(BuildingKind.granary.title) II")
+        XCTAssertEqual(works.first { $0.kind == .quarry }?.title, "\(BuildingKind.quarry.title) I, rising")
+        XCTAssertTrue(works.allSatisfy { (0...size.width).contains($0.at.x) && (0...size.height).contains($0.at.y) }, "\(works)")
+        // A name chosen: the hold's panel opens on its row.
+        session.focus(work: .granary, at: hold)
+        XCTAssertEqual(session.workInFocus, .granary)
+        draw(CityLabels(session: session), width: size.width, height: size.height)
+        draw(SelectionPanel(session: session), width: 330, height: 700)
+        // C again: back out over the lake.
+        XCTAssertTrue(session.handle(.city))
+        XCTAssertEqual(session.camera.scale, GameSession.lakeScale, accuracy: 1e-9)
+        XCTAssertEqual(session.camera.tilt, Camera.defaultTilt, accuracy: 1e-9)
+        XCTAssertNil(session.cityInView)
+        XCTAssertNil(session.workInFocus)
+        XCTAssertEqual(session.cityWorks(in: size), [])
+        draw(CityLabels(session: session), width: size.width, height: size.height)
+        // Never over another House's hold.
+        let theirs = try XCTUnwrap(state.holds.first { $0.owner != me })
+        session.viewCity(theirs.id)
+        XCTAssertNil(session.cityInView)
+        XCTAssertEqual(GameMenu.viewCity.title, "View the Seat Close")
+    }
+
     // MARK: The small map
 
     func testTheSmallMapShowsTheLakeAndCarriesTheViewThere() throws {

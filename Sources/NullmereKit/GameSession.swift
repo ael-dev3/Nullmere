@@ -70,6 +70,8 @@ public final class GameSession {
     @ObservationIgnored public var motion: ResolvedMotion = .full
     @ObservationIgnored private var unannounced: [String] = []
     public var hovered: Hex?
+    /// A work chosen from its name in the city view: its hold's panel opens on its row.
+    public var workInFocus: BuildingKind?
     public var selection: Selection = .none {
         didSet {
             if selection != oldValue {
@@ -1038,10 +1040,12 @@ public final class GameSession {
     /// below full motion. The camera reaches the map as a plain value, so
     /// it is moved step by step here rather than by SwiftUI. A pan or a
     /// zoom by the keeper meanwhile has the last word.
-    func glide(to hex: Hex, reducesMotion: Bool? = nil) {
+    func glide(to hex: Hex, scale: Double? = nil, tilt: Double? = nil, reducesMotion: Bool? = nil) {
         glideTask?.cancel()
         var target = camera
         target.focus(on: hex)
+        if let scale { target.scale = min(max(scale, Camera.minimumScale), Camera.maximumScale) }
+        if let tilt { target.tilt = min(max(tilt, Camera.minimumTilt), Camera.maximumTilt) }
         guard !(reducesMotion ?? (motion != .full)) else {
             camera = target
             return
@@ -1060,6 +1064,8 @@ public final class GameSession {
                     let eased = t * t * (3 - 2 * t)
                     placed.centerX = start.centerX + (target.centerX - start.centerX) * eased
                     placed.centerY = start.centerY + (target.centerY - start.centerY) * eased
+                    placed.scale = start.scale + (target.scale - start.scale) * eased
+                    placed.tilt = start.tilt + (target.tilt - start.tilt) * eased
                 }
                 self.camera = placed
             }

@@ -1172,6 +1172,12 @@ There is no music in the launcher; the game makes its own sound as it plays.
   The map's marks (names, bars, ranks, the damage dealt) stand over the
   models; a Mac that cannot draw the world gets a still painting of it with
   flat marks instead.
+- **The city view.** C, or Watch ▸ View the Seat Close, takes the view low
+  over the keeper's seat, leaning in among its works and townsfolk: each
+  work is named over its roof at its level (a work being raised says so),
+  and a click on its name opens the hold's panel on its row, to raise it
+  further. Back to the lake, or C again, returns the view to where it
+  stood over the lake. It is never over another House's hold.
 
 ### Tuning the scene in a browser
 

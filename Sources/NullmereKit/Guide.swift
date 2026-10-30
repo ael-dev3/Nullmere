@@ -102,7 +102,7 @@ enum Guide {
             "The Houses panel shows the race: each House's holds towards dominion and its Moonspire's stages. You are warned when anyone nears the end of either road, and counsel says what to do.",
         ]),
         Section(title: "Keys", lines: [
-            "Tab or .: the next company waiting · ] and [: every company in turn, marching or fortified too · H: your holds in turn, the seat first",
+            "Tab or .: the next company waiting · ] and [: every company in turn, marching or fortified too · H: your holds in turn, the seat first · C: your seat close, its works named where they stand, and back out to the lake",
             "F: fortify · B: found a hold, B again to be sure · Space or Return: choose whatever lies in the middle of the view",
             "Arrows or WASD: pan · + and −: zoom · Q and E: turn the view · R and T: look down more or toward the horizon · Page Up and Page Down: scroll the open panel · Esc: close, then clear the selection",
             "With the pointer: drag to pan, pinch or ⌘-scroll to zoom, twist two fingers or ⌥-drag to turn and lean the view",

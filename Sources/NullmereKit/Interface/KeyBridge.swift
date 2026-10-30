@@ -14,6 +14,8 @@ enum GameKey: Equatable {
     case found
     /// The keeper's holds in turn, the seat first.
     case nextHold
+    /// The city view over the seat, or back out of it to the lake.
+    case city
     /// Whatever lies where the view is centred, chosen as a click there
     /// would choose it: the keyboard's click.
     case chooseAtCentre
@@ -77,6 +79,8 @@ extension GameSession {
             perform(.found(unit: unit.id))
         case .nextHold:
             selectNextHold()
+        case .city:
+            toggleCity()
         case .chooseAtCentre:
             click(camera.centreHex)
             sayChosen()
@@ -278,6 +282,7 @@ final class KeyBridgeView: NSView {
         case "m": return .orderAtCentre
         case "b": return .found
         case "h": return .nextHold
+        case "c": return .city
         case "=", "+": return .zoom(1.25)
         case "-", "_": return .zoom(0.8)
         case "q": return .turn(-.pi / 6)

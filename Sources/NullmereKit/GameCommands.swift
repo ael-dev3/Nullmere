@@ -7,7 +7,7 @@ import SwiftUI
 @MainActor
 enum GameMenu: CaseIterable {
     case leaveWorld
-    case ready, stayReady, nextCompany, goToSeat
+    case ready, stayReady, nextCompany, goToSeat, viewCity
     case houses, chronicle, guide
     case archive, commanders, alliance, realm, words
 
@@ -18,6 +18,7 @@ enum GameMenu: CaseIterable {
         case .stayReady: return "Stay Ready Until Needed"
         case .nextCompany: return "Next Company"
         case .goToSeat: return "Go to Seat"
+        case .viewCity: return "View the Seat Close"
         case .houses: return "Houses"
         case .chronicle: return "Chronicle"
         case .guide: return "Guide"
@@ -35,7 +36,7 @@ enum GameMenu: CaseIterable {
         case .ready: return KeyboardShortcut(.return, modifiers: .command)
         case .stayReady: return KeyboardShortcut(.return, modifiers: [.command, .shift])
         case .guide: return KeyboardShortcut("/", modifiers: [.command, .shift])
-        case .nextCompany, .goToSeat, .houses, .chronicle, .archive, .commanders, .alliance, .realm, .words: return nil
+        case .nextCompany, .goToSeat, .viewCity, .houses, .chronicle, .archive, .commanders, .alliance, .realm, .words: return nil
         }
     }
 
@@ -44,7 +45,7 @@ enum GameMenu: CaseIterable {
         switch self {
         case .ready: return session.state.outcome == nil
         // A fallen House has no companies, no seat, and nothing to wait on.
-        case .stayReady, .nextCompany, .goToSeat: return session.state.outcome == nil && !session.playerHouse.isEliminated
+        case .stayReady, .nextCompany, .goToSeat, .viewCity: return session.state.outcome == nil && !session.playerHouse.isEliminated
         default: return true
         }
     }
@@ -57,6 +58,7 @@ enum GameMenu: CaseIterable {
         case .stayReady: session.endWatchesUntilNeeded()
         case .nextCompany: session.selectNextReadyUnit()
         case .goToSeat: session.focusOnSeat()
+        case .viewCity: session.viewCity()
         case .houses: toggle(.houses, in: session)
         case .chronicle: toggle(.chronicle, in: session)
         case .guide: toggle(.guide, in: session)
@@ -90,6 +92,7 @@ public struct GameCommands: Commands {
             item(.stayReady)
             item(.nextCompany)
             item(.goToSeat)
+            item(.viewCity)
             Divider()
             // The launcher makes no sound: these wait for the realm's face.
             Toggle("Sound", isOn: Binding(get: { app.isSoundOn }, set: { app.isSoundOn = $0 }))

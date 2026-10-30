@@ -29,6 +29,7 @@ struct WorldView: View {
                 .allowsHitTesting(false)
             ForecastOverlay(session: session)
                 .allowsHitTesting(false)
+            CityLabels(session: session)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("The world map")

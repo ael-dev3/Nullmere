@@ -75,12 +75,21 @@ private struct OwnHoldPanel: View {
     let hold: Hold
 
     var body: some View {
-        ScrollView {
-            OwnHoldDetails(session: session, hold: hold)
+        // A work chosen in the city view: the panel opens on its row.
+        ScrollViewReader { reader in
+            ScrollView {
+                OwnHoldDetails(session: session, hold: hold)
+            }
+            .scrollEdgeFade()
+            .scrollIndicators(.never)
+            .pagedByKeys(session, as: .selection)
+            .onAppear {
+                if let work = session.workInFocus { reader.scrollTo(work, anchor: .center) }
+            }
+            .onChange(of: session.workInFocus) { _, work in
+                if let work { withAnimation(.easeOut(duration: 0.3)) { reader.scrollTo(work, anchor: .center) } }
+            }
         }
-        .scrollEdgeFade()
-        .scrollIndicators(.never)
-        .pagedByKeys(session, as: .selection)
         .frame(maxHeight: 640)
         .panelBackground()
     }
@@ -150,6 +159,9 @@ struct OwnHoldDetails: View {
             ForEach(BuildingKind.allCases, id: \.self) { kind in
                 if !kind.requiresSeat || hold.isSeat {
                     BuildingRow(session: session, hold: hold, kind: kind, stock: stock)
+                        .padding(.horizontal, 4)
+                        .background(RoundedRectangle(cornerRadius: 4).fill(session.workInFocus == kind ? Palette.line(0.08) : .clear))
+                        .id(kind)
                 }
             }
 

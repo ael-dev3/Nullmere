@@ -490,7 +490,7 @@ final class GuideTests: XCTestCase {
                                 "Houses", "Alliances and rallies", "Happenings and charges", "Omens", "Winning", "Keys"])
         XCTAssertTrue(Guide.sections.allSatisfy { !$0.lines.isEmpty && $0.lines.allSatisfy { $0.count > 10 } })
         let keys = Guide.sections.last!.lines.joined(separator: " ")
-        for key in ["Tab", "H:", "F:", "B:", "Esc", "1:", "2:", "3:", "4:", "5:", "6:", "7:", "?:", "⌘↩", "⇧⌘↩", "⇧⌘W", "⇧⌘M", "⇧⌘U", "⇧⌘+",
+        for key in ["Tab", "H:", "C:", "F:", "B:", "Esc", "1:", "2:", "3:", "4:", "5:", "6:", "7:", "?:", "⌘↩", "⇧⌘↩", "⇧⌘W", "⇧⌘M", "⇧⌘U", "⇧⌘+",
                     "] and [", "Space or Return", "Page Up", "With ⌥"] {
             XCTAssertTrue(keys.contains(key), "The guide names \(key)")
         }
