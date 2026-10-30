@@ -38,6 +38,9 @@ final class VoiceCheckTests: XCTestCase {
         XCTAssertEqual(VoiceCheck.problems(of: "War, at last!", for: moment), ["an exclamation"])
         XCTAssertEqual(VoiceCheck.problems(of: Array(repeating: "still", count: 61).joined(separator: " "), for: moment), ["61 words"])
         XCTAssertEqual(VoiceCheck.problems(of: "The game of Houses goes on.", for: moment), ["speaks of \"game\""])
+        XCTAssertEqual(VoiceCheck.problems(of: "Their turns are long.", for: moment), ["speaks of \"turn\""])
+        XCTAssertEqual(VoiceCheck.problems(of: "The tide turned at the return of the moon.", for: moment), [],
+                       "Words that only hold a forbidden one are the voices' own")
         XCTAssertEqual(VoiceCheck.problems(of: "Since watch 13 they war.", for: moment), ["invents the number 13"])
     }
 

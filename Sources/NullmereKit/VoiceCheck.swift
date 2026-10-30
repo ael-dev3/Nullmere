@@ -8,8 +8,9 @@ import NullmereCore
 /// Apple's on-device model through the app, as a keeper's Mac runs it; its
 /// tests ask it of stand-ins.
 public enum VoiceCheck {
-    /// Words a voice never says.
-    static let forbidden = ["game", "player", "turn", "rules", "level", "click", " ai ", "artificial"]
+    /// Words a voice never says, one or many: the tide may turn, but a
+    /// voice never speaks of turns.
+    static let forbidden = ["game", "player", "turn", "rule", "level", "click", "ai", "artificial"]
 
     /// Every moment spoken, each line with what it broke, and the verdict.
     public struct Report: Sendable {
@@ -54,9 +55,9 @@ public enum VoiceCheck {
         let words = line.split(separator: " ").count
         if words > 60 { problems.append("\(words) words") }
         if line.contains("!") { problems.append("an exclamation") }
-        let lowered = " " + line.lowercased() + " "
-        for word in forbidden where lowered.contains(word) {
-            problems.append("speaks of \"\(word.trimmingCharacters(in: .whitespaces))\"")
+        let said = Set(line.lowercased().split(whereSeparator: { !$0.isLetter }).map(String.init))
+        for word in forbidden where said.contains(word) || said.contains(word + "s") {
+            problems.append("speaks of \"\(word)\"")
         }
         let facts = moment.facts.joined(separator: " ")
         for number in line.split(whereSeparator: { !$0.isNumber }) where !facts.contains(number) {

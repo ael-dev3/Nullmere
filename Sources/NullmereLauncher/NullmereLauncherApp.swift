@@ -31,6 +31,13 @@ final class OnlineAppDelegate: NSObject, NSApplicationDelegate {
         // held to the voices' rules; the report written, the app goes.
         if let path = ProcessInfo.processInfo.environment["NULLMERE_VOICES_REPORT"], !path.isEmpty {
             Task { @MainActor in
+                // The model's state settles a moment after the app opens:
+                // asked at once, it can say this Mac isn't eligible while
+                // the launcher, asking later, finds it ready.
+                let opened = Date()
+                while !OnDeviceVoice.isAvailable, Date().timeIntervalSince(opened) < 30 {
+                    try? await Task.sleep(for: .seconds(1))
+                }
                 let report = await VoiceCheck.run(OnDeviceVoice(), source: "Apple's on-device model on this Mac, \(OnDeviceVoice.availability)")
                 try? report.text.write(toFile: path, atomically: true, encoding: .utf8)
                 exit(report.failures.isEmpty ? 0 : 1)
