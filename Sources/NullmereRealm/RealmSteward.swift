@@ -137,6 +137,8 @@ public actor RealmSteward {
     /// How long an answer is kept: longer than a client keeps an order
     /// waiting to be sent again, so an order sent twice is carried out once.
     public static let answerKept = 600.0
+    /// Most answers forgotten in one call.
+    public static let forgottenAtOnce = 512
 
     /// Takes up the realm where SpacetimeDB holds it, or begins a new one.
     public init(transport: any SpacetimeTransport, token: String, name: String, seed: String, seats: Int = RealmState.defaultSeats,
@@ -248,8 +250,9 @@ public actor RealmSteward {
             // Should it fail, the next round publishes all of it again.
             try await publish(now: now)
         }
-        // Answers old enough to have been read are forgotten.
-        let old = answered.prefix { now - $0.at > RealmSteward.answerKept }
+        // Answers old enough to have been read are forgotten, a few hundred
+        // at a time: those an earlier steward left may be many.
+        let old = answered.prefix { now - $0.at > RealmSteward.answerKept }.prefix(RealmSteward.forgottenAtOnce)
         if !old.isEmpty, old.count >= 64 || now - lastForgotten > 30 {
             try await transport.call("forget", [.strings(old.map(\.nonce))], token: token)
             answered.removeFirst(old.count)
