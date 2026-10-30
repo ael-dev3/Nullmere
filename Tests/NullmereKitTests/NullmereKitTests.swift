@@ -745,6 +745,9 @@ final class CueMappingTests: XCTestCase {
             (.healingBegun(hold: seat.id, house: player, count: 2), .tend),
             (.unitHealed(unit: unit.id, hold: seat.id), .muster),
             (.woundedLost(hold: seat.id, house: player, count: 1), .dread),
+            (.holdScouted(ScoutReport(hold: 40, owner: foe, by: player, watch: 1, garrison: [], ward: 30, maximumWard: 30,
+                                      project: nil, training: nil, spoils: .zero, wounded: 0)), .lore),
+            (.scoutSeen(hold: seat.id, by: foe), .envoy),
             (hunt(by: player, .spear), .clash),
             (hunt(by: player, .bow), .loose),
             (.sentToGather(unit: unit.id, site: 1), .order),
@@ -800,6 +803,9 @@ final class CueMappingTests: XCTestCase {
             .shrineTaken(shrine: 1, house: foe, from: others),
             .carriedToInfirmary(kind: .bow, owner: foe, hold: 41), .healingBegun(hold: 41, house: foe, count: 1),
             .woundedLost(hold: 41, house: foe, count: 2),
+            .holdScouted(ScoutReport(hold: seat.id, owner: player, by: foe, watch: 1, garrison: [], ward: 30, maximumWard: 30,
+                                     project: nil, training: nil, spoils: .zero, wounded: 0)),
+            .scoutSeen(hold: 41, by: others),
         ]
         XCTAssertEqual(GameSession.cues(for: quiet, in: state, player: player), [.watch])
         // Every new order has its own sound, not the plain click.
@@ -816,6 +822,7 @@ final class CueMappingTests: XCTestCase {
             (.learnTalent(commander: commander, talent: .keenEdge), .lore), (.forgetTalents(commander: commander), .stand),
             (.wear(gear: 70, commander: commander), .order), (.takeOff(gear: 70), .stand), (.breakUp(gear: 70), .coin),
             (.say(words: "Well met", toAlliance: false), .parley), (.heal(hold: seat.id), .tend),
+            (.scout(unit: unit.id, hold: 40), .ride),
         ]
         for (command, cue) in orders {
             XCTAssertEqual(GameSession.cues(for: command, events: [], in: state, player: player), [cue], "\(command)")

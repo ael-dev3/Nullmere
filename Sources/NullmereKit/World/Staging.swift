@@ -257,8 +257,9 @@ extension GameSession {
     // MARK: What throws up motes and gives light
 
     /// What happens in sight at `now`, on the map's clock: blows struck and
-    /// companies falling, marches, works rising and finished, holds burning
-    /// with their wards broken, and fireflies over the reeds near the eye.
+    /// companies falling, commanders' furies, holds scouted, marches, works
+    /// rising and finished, holds burning with their wards broken, and
+    /// fireflies over the reeds near the eye.
     func happenings(poses: [CompanyPose], sights: [HoldSight], stage: WorldStage, at now: Date, time: Double) -> Happenings {
         var happenings = Happenings()
         func clock(_ date: Date) -> Float { Float(time - now.timeIntervalSince(date)) }
@@ -277,6 +278,10 @@ extension GameSession {
         }
         for fury in furies {
             happenings.furies.append(Happenings.Spot(at: ground(fury.at), start: clock(fury.start), seed: UInt32(truncatingIfNeeded: fury.id)))
+        }
+        for sighting in sightings {
+            happenings.sightings.append(Happenings.Spot(at: ground(sighting.at), start: clock(sighting.start),
+                                                        seed: UInt32(truncatingIfNeeded: sighting.id)))
         }
         for pose in poses where pose.clip == .march {
             var riders = false

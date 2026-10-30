@@ -79,6 +79,8 @@ extension GameState {
             return try breakUp(gearID, as: house)
         case let .heal(holdID):
             return try heal(at: holdID, as: house)
+        case let .scout(unitID, holdID):
+            return try scout(holdID, with: unitID, as: house)
         case let .inviteToAlliance(target):
             return try invite(target, by: house)
         case let .askToJoin(allianceID):
@@ -447,7 +449,7 @@ extension GameState {
         let name = holds[holdIndex].name
         // The taker carries off the hold's share of its House's stores; a
         // seat holds half of them.
-        let plunder = houses[previous].stock.share(1, of: wasSeat ? 2 : max(holds(of: previous).count, 1))
+        let plunder = spoils(ofTaking: holds[holdIndex])
         houses[previous].stock.debit(plunder)
         store(plunder, for: taker)
 

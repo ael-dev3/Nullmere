@@ -122,6 +122,10 @@ extension GameState {
                 return owner == house
             case .unitHealed(let id, _):
                 return unit(id)?.owner == house
+            case .holdScouted(let report):
+                return report.by == house
+            case .scoutSeen(let holdID, _):
+                return hold(holdID)?.owner == house
             case .commanderAssigned(let id, _), .commanderReleased(let id):
                 return commander(id)?.owner == house
             case .skillFired(_, let owner, _, let at):

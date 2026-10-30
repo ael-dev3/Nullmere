@@ -35,6 +35,7 @@ enum Guide {
         ]),
         Section(title: "Companies", lines: [
             "Lanterns scout. Spears hold the line and take holds. Bows strike from two tiles. Riders are fast. Founders found new holds.",
+            "Lanterns within two tiles of another House's hold can scout it from its panel, for all their moves: their report, in the Chronicle's Reports and on the hold's panel, tells the companies at its gates and who leads them, its ward, what it raises and musters, the stores its taking would carry off, and how many lie in its Infirmary. Its House sees them watching.",
             "Select a company, then right-click to march, or to strike an enemy within reach. Hovering an enemy shows the battle's odds first.",
             "A company that wins a close fight steps onto the fallen's ground, but never out of a hold, for a garrison holds its ground, nor into a hold it can't take.",
             "Every company but Lanterns eats a grain each watch. Those that live through battles rise in rank.",

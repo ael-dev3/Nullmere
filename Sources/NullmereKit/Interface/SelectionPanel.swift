@@ -433,7 +433,7 @@ struct BarterRow: View {
     }
 }
 
-private struct ForeignHoldPanel: View {
+struct ForeignHoldPanel: View {
     let session: GameSession
     let hold: Hold
     /// Watches a rally called against it gathers before it sets out.
@@ -467,9 +467,47 @@ private struct ForeignHoldPanel: View {
             if stance == .war, session.state.alliance(of: session.player) != nil {
                 rally
             }
+            scouting
         }
         .padding(16)
         .panelBackground()
+    }
+
+    /// The nearest of the keeper's Lanterns within reach of it with moves
+    /// left, which would scout it.
+    static func scout(for hold: Hold, in state: GameState, player: Int) -> Unit? {
+        state.units(of: player)
+            .filter { $0.kind == .lantern && $0.movesLeft > 0 && $0.position.distance(to: hold.position) <= GameState.scoutReach }
+            .min { ($0.position.distance(to: hold.position), $0.id) < ($1.position.distance(to: hold.position), $1.id) }
+    }
+
+    /// Scouting it with Lanterns near it, and what they last saw there.
+    @ViewBuilder
+    private var scouting: some View {
+        let scout = ForeignHoldPanel.scout(for: hold, in: session.state, player: session.player)
+        Rule(opacity: 0.18)
+        HStack(alignment: .firstTextBaseline) {
+            Text(verbatim: scout == nil ? "Lanterns within two tiles of it can scout it." : "Your Lanterns stand near enough to scout it.")
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.55))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            QuietButton(title: "Scout", size: 8.5, enabled: scout != nil, name: "Scout \(hold.name)",
+                        why: scout == nil ? "No Lanterns of yours stand within two tiles of it with moves left." : nil) {
+                if let scout { session.perform(.scout(unit: scout.id, hold: hold.id)) }
+            }
+        }
+        if let seen = session.scoutings[hold.id],
+           let report = session.state.report(of: seen, id: 0, for: session.player) {
+            VStack(alignment: .leading, spacing: 3) {
+                Caps("Scouted at watch \(seen.watch)", size: 8.5, weight: .medium).foregroundStyle(Palette.text(0.6))
+                ForEach(report.lines, id: \.self) { line in
+                    Text(verbatim: line).font(.nm(10.5)).foregroundStyle(Palette.text(0.65))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .accessibilityElement(children: .combine)
+        }
     }
 
     /// A rally against it: the alliance's companies gather at the keeper's
@@ -580,6 +618,12 @@ struct UnitPanel: View {
                         .beckoned(session.beckon == .found)
                         .help(problem.map { String(describing: $0) } ?? "Raise a new hold here")
                     }
+                    if unit.kind == .lantern, let target = UnitPanel.scoutable(by: unit, in: state, player: session.player) {
+                        QuietButton(title: "Scout", prominent: unit.movesLeft > 0, enabled: unit.movesLeft > 0, name: "Scout \(target.name)",
+                                    why: unit.movesLeft > 0 ? nil : "They have no moves left this watch.") {
+                            session.perform(.scout(unit: unit.id, hold: target.id))
+                        }
+                    }
                     QuietButton(title: unit.fortified ? "Fortified" : "Fortify", enabled: !unit.fortified && unit.movesLeft > 0) {
                         session.perform(.fortify(unit: unit.id))
                     }
@@ -598,6 +642,13 @@ struct UnitPanel: View {
         }
         .padding(16)
         .panelBackground()
+    }
+
+    /// The nearest hold of another House within a Lantern's reach, which it
+    /// would scout.
+    static func scoutable(by unit: Unit, in state: GameState, player: Int) -> Hold? {
+        state.holds.filter { $0.owner != player && $0.position.distance(to: unit.position) <= GameState.scoutReach }
+            .min { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
     }
 
     /// The commander at a company's head, as its panel says it.
@@ -650,7 +701,7 @@ struct UnitPanel: View {
         }
         switch unit.kind {
         case .founder: return "Right-click to march. Found a hold on open land three tiles from any other."
-        case .lantern: return "Right-click to march into the dark and reveal it. Lanterns see far."
+        case .lantern: return "Right-click to march into the dark and reveal it. Lanterns see far, and scout another House's hold from two tiles."
         case .bow: return "Right-click to march, to strike an enemy or the wilds up to two tiles away, or to gather at a site."
         default: return "Right-click to march, to strike an enemy or the wilds beside you, or to gather at a site."
         }

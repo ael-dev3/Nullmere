@@ -602,6 +602,66 @@ final class DepthPanelTests: XCTestCase {
                       "Drawn by the hold")
     }
 
+    func testAHoldIsScoutedFromItsPanelAndWhatWasSeenIsKept() throws {
+        var state = world("scouted shown")
+        let me = state.player
+        let foe = (me + 1) % 6
+        let target = try XCTUnwrap(state.holds.first { $0.owner == foe && $0.isSeat })
+        let spot = try XCTUnwrap(target.position.ring(2).first { hex in
+            state.map[hex]?.terrain.isPassable == true && state.unit(at: hex) == nil && state.hold(at: hex) == nil && state.wild(at: hex) == nil
+        })
+        let lantern = Unit(id: state.takeID(), kind: .lantern, owner: me, position: spot)
+        state.units.append(lantern)
+        state.reveal(around: target.position, range: 2, for: me)
+        let (session, link) = session(state)
+        session.selection = .hold(target.id)
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        XCTAssertTrue(PressableButtons.press("Scout"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .scout(unit: lantern.id, hold: target.id))
+
+        // The realm's word: the report filed, kept for the hold, and the Lanterns' light drawn.
+        var world = state
+        let events = try world.perform(.scout(unit: lantern.id, hold: target.id), as: me)
+        guard case .holdScouted(let report)? = events.first else { return XCTFail("A report") }
+        session.showBlows(world.events(events, heardBy: me))
+        XCTAssertEqual(session.reports.first?.outcome, .scouted)
+        XCTAssertEqual(session.reports.first?.title, "Your Lanterns scouted \(target.name), \(state.houses[foe].title)'s seat")
+        XCTAssertEqual(session.scoutings[target.id], report)
+        XCTAssertEqual(session.sightings.map(\.at), [target.position])
+        XCTAssertEqual(ReportList.outcome(.scouted), "Scouted")
+        // The keeper's fogged copy can only guess what Lanterns see, or who
+        // is carried from a battle: those are the realm's to tell.
+        XCTAssertTrue([GameEvent.holdScouted(report), .scoutSeen(hold: target.id, by: me),
+                       .carriedToInfirmary(kind: .spear, owner: me, hold: 1), .woundedLost(hold: 1, house: me, count: 1)]
+            .allSatisfy(GameSession.isRealmsToTell))
+        XCTAssertFalse(GameSession.isRealmsToTell(.healingBegun(hold: 1, house: me, count: 1)), "Its own stores and beds it knows")
+        XCTAssertEqual(GameSession.place(of: .holdScouted(report), in: session.state), target.position)
+        XCTAssertEqual(GameSession.place(of: .scoutSeen(hold: target.id, by: me), in: session.state), target.position)
+        PressableButtons.isListening = true
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        draw(ChroniclePanel(session: session, showingReports: true))
+        let stage = WorldStage(map: session.state.map, relief: session.relief)
+        let staged = session.happenings(poses: [], sights: [], stage: stage, at: Date(), time: 40)
+        XCTAssertEqual(staged.sightings.count, 1, "Its Lanterns' light circles the hold")
+        // With no Lanterns near, the button says why it can't.
+        XCTAssertNil(ForeignHoldPanel.scout(for: target, in: state, player: (me + 2) % 6))
+        // The Lanterns' own panel scouts the nearest hold within reach too,
+        // while they have moves left.
+        XCTAssertEqual(UnitPanel.scoutable(by: lantern, in: state, player: me)?.id, target.id)
+        session.selection = .unit(lantern.id)
+        PressableButtons.isListening = true
+        draw(SelectionPanel(session: session), width: 330, height: 700)
+        XCTAssertFalse(PressableButtons.press("Scout"), "Spent on the scouting already")
+        let (fresh, freshLink) = self.session(state)
+        fresh.selection = .unit(lantern.id)
+        PressableButtons.isListening = true
+        draw(SelectionPanel(session: fresh), width: 330, height: 700)
+        XCTAssertTrue(PressableButtons.press("Scout"), "Among \(shown)")
+        XCTAssertEqual(freshLink.sent.last, .scout(unit: lantern.id, hold: target.id))
+        XCTAssertNil(UnitPanel.scoutable(by: Unit(id: 1, kind: .lantern, owner: me, position: try XCTUnwrap(state.seat(of: me)).position),
+                                         in: state, player: me), "None of another's within reach of its own seat")
+    }
+
     func testACompanySaysWhatItWasSentToDo() throws {
         var state = world("errands")
         let me = state.player

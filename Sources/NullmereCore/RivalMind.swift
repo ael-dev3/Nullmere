@@ -112,6 +112,9 @@ struct RivalMind {
 
     /// How near its holds a holy site lies for a steward to send for it.
     static let holySiteReach = 8
+    /// A steward's Lantern within reach of a foe's hold scouts it one
+    /// watch in this many.
+    static let scoutEvery = 4
 
     /// At peace, a steward sends one company of war it doesn't need to the
     /// nearest holy site near its holds that its side doesn't hold, with
@@ -776,6 +779,13 @@ struct RivalMind {
         guard let unit = state.unit(unitID) else { return [] }
         switch unit.kind {
         case .lantern:
+            // At war, a Lantern within reach of a foe's hold scouts it now
+            // and then, before going on its way.
+            if atWar, (state.watch + unit.id) % RivalMind.scoutEvery == 0, unit.movesLeft > 0,
+               let hold = state.holds.filter({ state.isAtWar(house, $0.owner) && $0.position.distance(to: unit.position) <= GameState.scoutReach })
+                   .min(by: { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }) {
+                return perform(.scout(unit: unit.id, hold: hold.id), in: &state)
+            }
             return explore(with: unit, in: &state)
         case .founder:
             return settle(with: unit, in: &state)

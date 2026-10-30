@@ -11,6 +11,8 @@ public struct BattleReport: Equatable, Sendable, Identifiable {
         case lost
         /// Both stood.
         case held
+        /// Not a battle: the House's Lanterns scouted a hold.
+        case scouted
     }
 
     public let id: Int
@@ -77,5 +79,40 @@ extension GameState {
         let outcome: BattleReport.Outcome = hunt.attackerFell ? .lost : (hunt.wildFell ? .won : .held)
         return BattleReport(id: id, watch: watch, title: "Your \(hunt.attackerKind.title) struck \(hunt.wildKind.title) of level \(BuildingKind.numeral(hunt.level))",
                             place: placeName(of: hunt.at), outcome: outcome, lines: lines)
+    }
+
+    /// A hold the viewer's House scouted, as its report tells it: the
+    /// companies at its gates, its ward, what it raises and musters, what
+    /// its taking would carry off, and who lies in its beds; nil for
+    /// another House's scouting.
+    public func report(of scouting: ScoutReport, id: Int, for viewer: Int) -> BattleReport? {
+        guard scouting.by == viewer else { return nil }
+        let name = hold(scouting.hold)?.name ?? "a hold"
+        let theirs = houses.indices.contains(scouting.owner) ? houses[scouting.owner].title : "a fallen House"
+        let isSeat = hold(scouting.hold).map { $0.isSeat && $0.owner == scouting.owner } ?? false
+        func watches(_ count: Int) -> String { count == 1 ? "1 watch left" : "\(count) watches left" }
+        func company(_ seen: ScoutReport.Company) -> String {
+            var words = seen.kind.title + (seen.kind.hasTiers ? " \(BuildingKind.numeral(seen.tier))" : "")
+            if seen.health < 100 { words += ", \(seen.health) strong" }
+            if seen.rank > 0 { words += ", \(Unit.rankTitles[seen.rank])" }
+            if let commander = seen.commander { words += ", led by \(commander)" }
+            if seen.owner != scouting.owner, houses.indices.contains(seen.owner) { words += " of \(houses[seen.owner].title)" }
+            return words
+        }
+        var lines = [scouting.garrison.isEmpty ? "No company at its gates"
+                     : "At its gates: " + scouting.garrison.map(company).joined(separator: "; ")]
+        lines.append("Its ward \(scouting.ward) of \(scouting.maximumWard)")
+        if let project = scouting.project {
+            lines.append("Raising \(project.kind.title) \(BuildingKind.numeral(project.targetLevel)), \(watches(project.watchesLeft))")
+        }
+        if let training = scouting.training {
+            let tier = training.kind.hasTiers ? " \(BuildingKind.numeral(training.musteredTier))" : ""
+            lines.append("Mustering \(training.kind.title)\(tier), \(watches(training.watchesLeft))")
+        }
+        if !scouting.spoils.isZero { lines.append("Its taking would carry off \(scouting.spoils)") }
+        if scouting.wounded > 0 { lines.append("\(scouting.wounded) \(scouting.wounded == 1 ? "lies" : "lie") in its Infirmary") }
+        let whose = isSeat ? "\(theirs)'s seat" : "a hold of \(theirs)"
+        return BattleReport(id: id, watch: scouting.watch, title: "Your Lanterns scouted \(name), \(whose)",
+                            place: hold(scouting.hold).map { placeName(of: $0.position) } ?? "", outcome: .scouted, lines: lines)
     }
 }

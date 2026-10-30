@@ -144,7 +144,7 @@ enum Narration {
             }
         case .studyBegun, .studyCompleted, .commanderJoined, .commanderAssigned, .commanderReleased, .commanderRose,
              .commanderWounded, .skillFired, .talentLearned, .talentsForgotten, .gearFound, .gearWorn, .gearTakenOff, .gearScrapped, .shrineTaken,
-             .carriedToInfirmary, .healingBegun, .unitHealed, .woundedLost, .hunted, .sentToGather, .gathered, .delivered, .siteWorkedOut,
+             .carriedToInfirmary, .healingBegun, .unitHealed, .woundedLost, .holdScouted, .scoutSeen, .hunted, .sentToGather, .gathered, .delivered, .siteWorkedOut,
              .allianceFounded, .allianceInvited, .allianceAsked, .allianceAnswered, .allianceJoined, .allianceLeft, .allianceLed,
              .allianceDisbanded, .helpGiven, .rallyCalled, .rallyJoined, .rallySetOut, .rallyStruck, .rallyDispersed, .sentToReinforce,
              .happeningBegun, .happeningMark, .happeningEnded, .deedDone, .chargeDone, .said:

@@ -76,6 +76,15 @@ extension GameState {
         case .unitHealed(let unitID, let holdID):
             guard let unit = unit(unitID), unit.owner == viewer, let hold = hold(holdID) else { return nil }
             return Tidings("Your \(unit.kind.title) rise healed at \(hold.name).", .good)
+        case .holdScouted(let report):
+            guard report.by == viewer else { return nil }
+            let name = hold(report.hold)?.name ?? "the hold"
+            let count = report.garrison.count
+            let gates = count == 0 ? "no company" : (count == 1 ? "a company" : "\(count) companies")
+            return Tidings("Your Lanterns scout \(name): \(gates) at its gates, its ward \(report.ward) of \(report.maximumWard).", .neutral)
+        case .scoutSeen(let holdID, let by):
+            guard let hold = hold(holdID), hold.owner == viewer, houses.indices.contains(by) else { return nil }
+            return Tidings("Lanterns of \(houses[by].title) watch \(hold.name).", .bad)
         case .woundedLost(let holdID, let house, let count):
             guard house == viewer, let hold = hold(holdID) else { return nil }
             let companies = count == 1 ? "The company" : "The \(count) companies"

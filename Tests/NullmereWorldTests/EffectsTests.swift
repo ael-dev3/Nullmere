@@ -117,6 +117,25 @@ final class EffectsTests: XCTestCase {
         XCTAssertFalse(fall.effects(at: 10 + Happenings.fallen + 0.1).motes.isEmpty)
     }
 
+    func testAScoutedHoldIsCircledByItsLanternsLight() {
+        var happenings = Happenings()
+        happenings.sightings = [Happenings.Spot(at: Vec3(4, 0.3, -2), start: 10, seed: 21)]
+        XCTAssertTrue(happenings.effects(at: 9.5).motes.isEmpty, "Not before it is scouted")
+        let (motes, lights) = happenings.effects(at: 10.6)
+        XCTAssertGreaterThan(motes.count, 8)
+        for mote in motes {
+            let off = Vec3(mote.place.x - 4, 0, mote.place.z + 2).length
+            XCTAssertTrue((0.3...0.9).contains(off), "Round the hold, not on it: \(off)")
+            XCTAssertGreaterThan(mote.place.y, 0.3 + 0.15, "Over its walls")
+            XCTAssertGreaterThan(mote.colour.z, mote.colour.x, "A cold light")
+            XCTAssertEqual(mote.colour.w, 0)
+        }
+        XCTAssertEqual(lights.count, 1)
+        XCTAssertGreaterThan(lights[0].colour.z, lights[0].colour.x)
+        XCTAssertTrue(happenings.effects(at: 10 + Happenings.sightingGlow + 0.05).lights.isEmpty, "Its glow gone")
+        XCTAssertTrue(happenings.effects(at: 10 + Effect.sighting.lifetime * 1.4).motes.isEmpty, "And its motes")
+    }
+
     func testTheStrongestLightsNearTheEyeAreTheFramesFour() {
         let lights = (0..<9).map { PointLight(at: Vec3(Float($0) * 3, 0, 0), reach: 2, colour: Vec3(1, 0.5, 0.2)) }
         let chosen = PointLight.strongest(lights, near: .zero)

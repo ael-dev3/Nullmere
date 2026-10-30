@@ -15,12 +15,12 @@ struct ChroniclePanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                PanelTitle(title: "Chronicle", subtitle: showingReports ? "Your House's battles, the latest first" : "What the lake remembers")
+                PanelTitle(title: "Chronicle", subtitle: showingReports ? "Your House's battles and scouting, the latest first" : "What the lake remembers")
                 CloseButton(label: "Close the Chronicle") { session.panel = nil }
             }
             Picker("Show", selection: $showingReports) {
                 Text(verbatim: "History").tag(false)
-                Text(verbatim: "Battle reports").tag(true)
+                Text(verbatim: "Reports").tag(true)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -89,8 +89,9 @@ struct ChroniclePanel: View {
     }
 }
 
-/// The House's battle reports, the latest first: how each came out, when
-/// and where, who struck whom, the blows and the fallen.
+/// The House's reports, the latest first: of each battle, how it came out,
+/// when and where, who struck whom, the blows and the fallen; of each hold
+/// its Lanterns scouted, what they saw there.
 struct ReportList: View {
     let session: GameSession
 
@@ -98,7 +99,7 @@ struct ReportList: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
                 if session.reports.isEmpty {
-                    Text(verbatim: "No battle of your House's yet. Each one it fights, and each blow on the wilds, is reported here.")
+                    Text(verbatim: "No report yet. Each battle your House fights, each blow on the wilds and each hold its Lanterns scout is reported here.")
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.text(0.55))
                         .fixedSize(horizontal: false, vertical: true)
@@ -125,7 +126,7 @@ struct ReportList: View {
                 }
             }
             .accessibilityElement(children: .contain)
-            .accessibilityLabel("Battle reports, the latest first")
+            .accessibilityLabel("Reports of battles and scouting, the latest first")
         }
         .scrollEdgeFade()
         .scrollIndicators(.never)
@@ -137,6 +138,7 @@ struct ReportList: View {
         case .won: return "Won"
         case .lost: return "Lost"
         case .held: return "Both stood"
+        case .scouted: return "Scouted"
         }
     }
 }

@@ -34,6 +34,9 @@ public enum Effect: String, CaseIterable, Sendable {
     case fireflies
     /// A commander's skill fired: pale gold rising in a widening ring.
     case fury
+    /// A hold scouted: the Lanterns' cold light circling it slowly, low
+    /// over its walls, then gone.
+    case sighting
 
     /// How long each mote lives, in seconds.
     public var lifetime: Float {
@@ -46,6 +49,7 @@ public enum Effect: String, CaseIterable, Sendable {
         case .splinters: return 0.9
         case .fireflies: return 6
         case .fury: return 1.1
+        case .sighting: return 1.8
         }
     }
 }
@@ -209,6 +213,15 @@ public enum Effects {
             let show = Float(sin(Double(t) * .pi)) * (0.7 + 0.3 * c)
             return Mote(at: origin + around * ring + Vec3(0, rise, 0), size: (0.024 + 0.02 * t) * scale,
                         light: Vec3(2.0, 1.75, 0.95) * show, cover: 0)
+        case .sighting:
+            // Points of cold light going round the hold a third of the way,
+            // low over its walls, waxing and waning as they pass.
+            let turn = Double(angle) + Double(t) * 2.1 * (b > 0.5 ? 1 : -1)
+            let path = Vec3(Float(cos(turn)), 0, Float(sin(turn))) * (0.55 + 0.15 * c) * scale
+            let bob = Float(sin(Double(age) * 5 + Double(a) * 6)) * 0.03 * scale
+            let show = Float(sin(Double(t) * .pi)) * (0.6 + 0.4 * c)
+            return Mote(at: origin + path + Vec3(0, (0.22 + 0.12 * b) * scale + bob, 0), size: 0.02 * scale,
+                        light: Vec3(0.9, 1.25, 1.9) * show, cover: 0)
         }
     }
 
@@ -303,6 +316,8 @@ public struct Happenings: Equatable, Sendable {
     public var fireflies: [Spot] = []
     /// Where commanders' skills fired, and when.
     public var furies: [Spot] = []
+    /// Holds scouted, and when.
+    public var sightings: [Spot] = []
 
     public init() {}
 
@@ -314,6 +329,8 @@ public struct Happenings: Equatable, Sendable {
     public static let fallen: Float = 0.85
     /// How long a commander's fury lights the ground.
     public static let furyGlow: Float = 0.9
+    /// How long a scouted hold is lit by its Lanterns' light.
+    public static let sightingGlow: Float = 1.6
 
     /// The frame's motes and its own lights at `time`.
     public func effects(at time: Float) -> (motes: [Mote], lights: [PointLight]) {
@@ -383,6 +400,15 @@ public struct Happenings: Equatable, Sendable {
             if age >= 0, age < Happenings.furyGlow {
                 let fade = 1 - age / Happenings.furyGlow
                 lights.append(PointLight(at: fury.at + Vec3(0, 0.6, 0), reach: 2.8, colour: Vec3(2.0, 1.8, 1.1) * fade))
+            }
+        }
+        for sighting in sightings {
+            // Lanterns' light circling the hold, and a cold glow over it while they look.
+            bursts.append(Burst(.sighting, at: sighting.at, start: sighting.start, count: 18, seed: sighting.seed, scale: 1))
+            let age = time - sighting.start
+            if age >= 0, age < Happenings.sightingGlow {
+                let swell = Float(sin(Double(age / Happenings.sightingGlow) * .pi))
+                lights.append(PointLight(at: sighting.at + Vec3(0, 0.5, 0), reach: 2.2, colour: Vec3(0.55, 0.8, 1.4) * swell))
             }
         }
         return (Effects.motes(bursts: bursts, emitters: emitters, at: time), lights)

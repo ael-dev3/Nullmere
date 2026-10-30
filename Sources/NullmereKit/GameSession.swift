@@ -236,6 +236,14 @@ public final class GameSession {
         public let start: Date
     }
 
+    /// A hold scouted, by the player's Lanterns or by another's at the
+    /// player's own: their light circling it, briefly.
+    public struct Sighting: Equatable, Identifiable {
+        public let id: Int
+        public let at: Hex
+        public let start: Date
+    }
+
     /// A blow the player saw land: a ring and the damage, briefly, where it fell.
     public struct Blow: Equatable, Identifiable {
         public let id: Int
@@ -331,6 +339,10 @@ public final class GameSession {
     public private(set) var blows: [Blow] = []
     /// Commanders' skills fired in sight, while their gold is drawn.
     public private(set) var furies: [Fury] = []
+    /// Holds scouted in sight, while their Lanterns' light is drawn.
+    public private(set) var sightings: [Sighting] = []
+    /// What the House's Lanterns last saw of each hold they scouted, by hold.
+    public private(set) var scoutings: [Int: ScoutReport] = [:]
     /// The House's battles and hunts as their reports tell them, the latest first.
     public private(set) var reports: [BattleReport] = []
     @ObservationIgnored private var reportCounter = 0
@@ -677,12 +689,14 @@ public final class GameSession {
     /// What came of an order that the keeper's copy can only guess at: what
     /// chance decides (a blow, its losses, a company's rise, a ruin's spoils,
     /// a new hold's name), what follows from it (a hold taken, a House
-    /// fallen, an age won), and an answer. Told when the realm answers.
+    /// fallen, an age won, the fallen carried to an Infirmary or lost with
+    /// it), what turns on what the copy can't see (what Lanterns saw of a
+    /// hold), and an answer. Told when the realm answers.
     static func isRealmsToTell(_ event: GameEvent) -> Bool {
         switch event {
         case .battle, .unitLost, .holdStruck, .holdCaptured, .seatMoved, .promoted, .ruinSearched, .holdFounded,
              .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired, .hunted,
-             .gearFound:
+             .gearFound, .carriedToInfirmary, .woundedLost, .holdScouted, .scoutSeen:
             return true
         default:
             return false
@@ -1166,6 +1180,7 @@ public final class GameSession {
         case .takeOff: return .stand
         case .breakUp: return .coin
         case .heal: return .tend
+        case .scout: return .ride
         default: return .select
         }
     }
@@ -1199,6 +1214,8 @@ public final class GameSession {
         case .healingBegun(_, let house, _) where house == player: return .tend
         case .unitHealed(let unit, _) where ours(unit): return .muster
         case .woundedLost(_, let house, _) where house == player: return .dread
+        case .holdScouted(let report) where report.by == player: return .lore
+        case .scoutSeen(let hold, _) where state?.hold(hold)?.owner == player: return .envoy
         case .hunted(let hunt) where hunt.attackerOwner == player: return hunt.attackerKind == .bow ? .loose : .clash
         case .sentToGather(let unit, _) where ours(unit): return .order
         case .gathered(_, let owner, _) where owner == player: return .dig
@@ -1317,8 +1334,11 @@ public final class GameSession {
         case .moved(_, let path): return path.last
         case .holdStruck(let hold, _), .holdCaptured(let hold, _, _), .buildingCompleted(let hold, _, _), .buildingStarted(let hold, _, _),
              .trainingStarted(let hold, _), .holdFounded(let hold), .unitTrained(_, let hold), .delivered(_, _, let hold, _),
-             .carriedToInfirmary(_, _, let hold), .healingBegun(let hold, _, _), .unitHealed(_, let hold), .woundedLost(let hold, _, _):
+             .carriedToInfirmary(_, _, let hold), .healingBegun(let hold, _, _), .unitHealed(_, let hold), .woundedLost(let hold, _, _),
+             .scoutSeen(let hold, _):
             return state.hold(hold)?.position
+        case .holdScouted(let report):
+            return state.hold(report.hold)?.position
         case .rallyStruck(_, _, let target, _, _), .rallySetOut(_, _, let target, _, _):
             return state.hold(target)?.position
         case .shrineTaken(let shrine, _, _):
@@ -1407,16 +1427,30 @@ public final class GameSession {
             furies.append(Fury(id: blowCounter, at: at, skill: skill, start: now))
             shown = true
         }
+        for event in events {
+            let scouted: Int?
+            switch event {
+            case .holdScouted(let report) where report.by == player: scouted = report.hold
+            case .scoutSeen(let hold, _) where state.hold(hold)?.owner == player: scouted = hold
+            default: scouted = nil
+            }
+            guard let at = scouted.flatMap({ state.hold($0)?.position }) else { continue }
+            blowCounter += 1
+            sightings.append(Sighting(id: blowCounter, at: at, start: now))
+            shown = true
+        }
         guard shown else { return }
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(Blow.lingers + 0.05))
             guard let self else { return }
             self.blows.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
             self.furies.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
+            self.sightings.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
         }
     }
 
-    /// Files a report of each battle and hunt the House had a part in.
+    /// Files a report of each battle and hunt the House had a part in, and
+    /// of each hold its Lanterns scouted.
     func fileReports(_ events: [GameEvent]) {
         var filed: [BattleReport] = []
         for event in events {
@@ -1424,6 +1458,9 @@ public final class GameSession {
             switch event {
             case .battle(let battle): report = state.report(of: battle, id: reportCounter + 1, for: player)
             case .hunted(let hunt): report = state.report(of: hunt, id: reportCounter + 1, for: player)
+            case .holdScouted(let scouting):
+                report = state.report(of: scouting, id: reportCounter + 1, for: player)
+                if scouting.by == player { scoutings[scouting.hold] = scouting }
             default: report = nil
             }
             guard let report else { continue }

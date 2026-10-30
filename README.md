@@ -651,6 +651,18 @@ realm; keepers are told in plain words, never a status code.
   healers' fire and linen drying on a line, a ward of pale stone with a
   round apse and a well, a covered walk with lanterns, and at the fifth a
   bell-cote and a moonsalt lamp. The healers' work has its own sound.
+- **Scouting.** Lanterns standing within two tiles of another House's
+  hold scout it, at peace or at war, for all their moves. Their report
+  goes to their House alone: every company of war at its gates (its own
+  and its allies' keeping them), each with its tier, strength, rank and
+  the commander leading it; its ward; the work it raises and the company
+  it musters, with the watches left; the stores its taking would carry off
+  (half a seat's, a hold's share otherwise); and how many lie in its
+  Infirmary. It is filed among the Chronicle's Reports and shown on the
+  hold's panel, beside a Scout button that sends the nearest Lanterns with
+  moves left. The hold's House hears that it was watched, and both see the
+  Lanterns' cold light circle the hold. At war, a steward's Lanterns
+  within reach of a foe's hold scout it one watch in four.
 - **Paces.** A realm's watch isn't resolved all at once as it turns; it
   passes in twelve paces. At each, every company on the march takes its
   share of the watch's moves, a step at a time, and every host on the

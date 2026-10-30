@@ -78,6 +78,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// Pay for the healing of the companies lying in a hold's Infirmary,
     /// as many as the House's stores cover; they rise as the watch turns.
     case heal(hold: Int)
+    /// Lanterns within two tiles of another House's hold scout it, for all
+    /// their moves, and bring back what they saw.
+    case scout(unit: Int, hold: Int)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -207,6 +210,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case holySite
     /// Healing for a hold with no company in its beds waiting for it.
     case noneWounded
+    /// Scouting by a company that isn't Lanterns.
+    case notAScout
+    /// Scouting a hold of the House's own.
+    case ownHold
     /// Words from a House no keeper holds.
     case notAKeeper
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -301,6 +308,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .notWorn: return "No commander wears it."
         case .holySite: return "No hold is raised on a holy site."
         case .noneWounded: return "No company lies in that hold's Infirmary waiting to be healed."
+        case .notAScout: return "Only Lanterns scout."
+        case .ownHold: return "That hold is your own."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
         case .notAKeeper: return "Only a keeper's words are carried."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -373,6 +382,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case unitHealed(unit: Int, hold: Int)
     /// A hold taken with companies in its beds: they are lost with it.
     case woundedLost(hold: Int, house: Int, count: Int)
+    /// A House's Lanterns scout a hold: what they saw, for that House.
+    case holdScouted(ScoutReport)
+    /// A hold's House sees another's Lanterns watching it.
+    case scoutSeen(hold: Int, by: Int)
     /// A company strikes a company of the wilds.
     case hunted(Hunt)
     /// A company sets out to work a site.
