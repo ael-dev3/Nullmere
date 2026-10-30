@@ -28,6 +28,25 @@ extension GameSession {
 
     /// How fast a company's feet go on the march, strides a second.
     static let marchStrides: Float = 2.2
+    /// How long a company takes to ease from one clip into the next.
+    static let easing = 0.25
+
+    /// A company's clip as last drawn: since when, and the clip it left.
+    struct ClipShown: Equatable {
+        var clip: Clip
+        var time: Float
+        var since: Date
+        var from: Clip?
+        var fromTime: Float
+    }
+
+    /// A work finished: where, and when its last course was set.
+    struct Completion: Equatable {
+        let hold: Int
+        let kind: BuildingKind
+        let level: Int
+        let at: Date
+    }
 
     /// The models a frame draws at `time` on the map's clock.
     func sceneFrame(at time: Double, now: Date = Date()) -> SceneFrame {
@@ -54,8 +73,11 @@ extension GameSession {
         let poses = companyPoses(at: now, animated: full, time: time)
         let companies = stage.companies(poses, houses: houses, into: &frame)
 
-        // The land's furniture, cleared where companies and holds stand.
-        let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex))
+        // The land's sites the keeper knows, and its furniture, cleared
+        // where companies, sites and holds stand.
+        let sites = state.sitesInLand.filter { isExplored($0.position) }
+        let siteBatches = stage.sites(sites.map { ($0.store, $0.position) })
+        let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position))
         let furniture = stage.furnish(occupied: standing, holds: Set(sights.map(\.hold.position)))
 
         // Arrows in flight, birds over the water, smoke from the hearths in sight.
@@ -65,7 +87,10 @@ extension GameSession {
                                          hearths: full ? hearths.filter { isVisible($0.hex) } : [], time: t, into: &frame)
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
-        frame.batches = holds + companies + flights
+        frame.batches = holds + siteBatches + companies + flights
+        if full {
+            (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, stage: stage, at: now, time: time).effects(at: t)
+        }
         return frame
     }
 
@@ -99,10 +124,13 @@ extension GameSession {
             risings[hold.id] = Rising(kind: kept.kind, level: kept.level, from: kept.shown(at: now), to: 1, start: now)
         }
         guard let rising = risings[hold.id], !rising.isDone(at: now) else {
+            if let done = risings[hold.id] {
+                completions.append(Completion(hold: hold.id, kind: done.kind, level: done.level, at: now))
+            }
             risings[hold.id] = nil
             return (nil, nil)
         }
-        return (nil, HoldLayout.Plan.Rising(work: .building(rising.kind), level: rising.level, progress: rising.shown(at: now)))
+        return (nil, HoldLayout.Plan.Rising(work: HoldLayout.Work(rising.kind), level: rising.level, progress: rising.shown(at: now)))
     }
 
     // MARK: Companies
@@ -114,7 +142,7 @@ extension GameSession {
         var poses: [CompanyPose] = []
         let resting = Float(time.truncatingRemainder(dividingBy: Double(Clip.idle.period) * 64))
         for unit in state.units where unit.owner == player || isVisible(unit.position) {
-            let key = ModelKey.figure(unit.kind, tier: min(1 + unit.rank, ModelKey.tiers(of: unit.kind)))
+            let key = ModelKey.figure(unit.kind, tier: unit.tier)
             let centre = Relief.centre(of: unit.position)
             var position = Vec3(centre.x, Float(groundHeight(of: unit.position)), centre.z)
             var heading = headings[unit.id] ?? 0
@@ -127,6 +155,9 @@ extension GameSession {
                 heading = point.heading
                 clip = .march
                 clipTime = Float(now.timeIntervalSince(march.start)) * GameSession.marchStrides
+            } else if case .gather(let site) = unit.errand, state.site(at: unit.position)?.id == site {
+                // Working the site: reaping, felling, cutting, raking.
+                clip = .gather
             } else if holdsByPosition[unit.position] != nil {
                 // Within the walls, between the keep and the gate, facing out.
                 let front = HoldLayout.frontAngle(of: unit.position)
@@ -135,6 +166,16 @@ extension GameSession {
                 spread = 0.3
             }
             if animated {
+                // Struck: jolted back from the blow, and shaken.
+                for blow in blows where blow.defender == unit.id && blow.from != unit.position {
+                    let age = now.timeIntervalSince(blow.start) - Double(Happenings.landing)
+                    guard age > 0, age < 0.4 else { continue }
+                    let from = Relief.centre(of: blow.from)
+                    let away = Vec3(centre.x - from.x, 0, centre.z - from.z).normalized
+                    let jolt = Float(sin(Double.pi * age / 0.4)) * 0.07
+                    let shake = Float(sin(age * 70)) * 0.012 * Float(1 - age / 0.4)
+                    position += away * jolt + Vec3(-away.z, 0, away.x) * shake
+                }
                 for blow in blows where blow.attacker == unit.id {
                     let age = now.timeIntervalSince(blow.start)
                     guard age < GameSession.Blow.duration else { continue }
@@ -154,13 +195,24 @@ extension GameSession {
             poses.append(CompanyPose(unit: unit.id, key: key, sigil: state.houses[unit.owner].sigil, health: unit.health,
                                      hex: unit.position, position: position, heading: heading, clip: clip, clipTime: clipTime,
                                      emphasis: chosen ? 1 : (hovered == unit.position ? 0.5 : 0), isOwn: unit.owner == player,
-                                     spread: spread))
+                                     commander: unit.leader.flatMap(commanderLook), spread: spread,
+                                     blend: animated ? easing(unit.id, into: clip, at: clipTime, now: now) : nil))
+        }
+        // The far country's companies in sight, no House's, watching.
+        for wild in state.wildsStanding where isVisible(wild.position) {
+            let centre = Relief.centre(of: wild.position)
+            poses.append(CompanyPose(unit: GameSession.wildPoseBase - wild.id, key: .wild(tier: GameSession.wildTier(of: wild.level)),
+                                     sigil: 0, health: wild.health, hex: wild.position,
+                                     position: Vec3(centre.x, Float(groundHeight(of: wild.position)), centre.z),
+                                     heading: headings[GameSession.wildPoseBase - wild.id] ?? Float(wild.id % 6) * .pi / 3,
+                                     clipTime: resting, emphasis: hovered == wild.position ? 0.5 : 0, isOwn: false))
         }
         // The fallen lie where they fell, then fade.
         for blow in blows {
             let age = Float(now.timeIntervalSince(blow.start))
             for (index, fell) in blow.fallen.enumerated() {
-                let fade = animated ? max(0, 1 - max(age - Clip.death.period - 0.3, 0) / 0.5) : 1
+                // Lying still a moment, then fading, gone well before the blow is forgotten.
+                let fade = animated ? max(0, 1 - max(age - Clip.death.period - 0.2, 0) / 0.45) : 1
                 guard fade > 0 else { continue }
                 let centre = Relief.centre(of: fell.at)
                 poses.append(CompanyPose(unit: -1 - index - blow.id * 16, key: .figure(fell.kind, tier: 1),
@@ -172,6 +224,83 @@ extension GameSession {
             }
         }
         return poses
+    }
+
+    /// How a company eases out of the clip it was last drawn in, if it
+    /// has lately changed clips; nil once the new one has taken over.
+    func easing(_ id: Int, into clip: Clip, at time: Float, now: Date) -> CompanyPose.Blend? {
+        guard var shown = clipsShown[id] else {
+            clipsShown[id] = ClipShown(clip: clip, time: time, since: .distantPast, from: nil, fromTime: 0)
+            return nil
+        }
+        if shown.clip != clip {
+            shown = ClipShown(clip: clip, time: time, since: now, from: shown.clip, fromTime: shown.time)
+        }
+        shown.time = time
+        clipsShown[id] = shown
+        let left = 1 - now.timeIntervalSince(shown.since) / GameSession.easing
+        guard let from = shown.from, left > 0 else { return nil }
+        return CompanyPose.Blend(clip: from, time: shown.fromTime, weight: Float(left))
+    }
+
+    // MARK: What throws up motes and gives light
+
+    /// What happens in sight at `now`, on the map's clock: blows struck and
+    /// companies falling, marches, works rising and finished, holds burning
+    /// with their wards broken, and fireflies over the reeds near the eye.
+    func happenings(poses: [CompanyPose], sights: [HoldSight], stage: WorldStage, at now: Date, time: Double) -> Happenings {
+        var happenings = Happenings()
+        func clock(_ date: Date) -> Float { Float(time - now.timeIntervalSince(date)) }
+        func ground(_ hex: Hex) -> Vec3 {
+            let centre = Relief.centre(of: hex)
+            return Vec3(centre.x, Float(groundHeight(of: hex)), centre.z)
+        }
+        for blow in blows {
+            let onWard = blow.defender == nil && holdsByPosition[blow.at] != nil
+            happenings.strikes.append(Happenings.Strike(from: ground(blow.from), at: ground(blow.at), start: clock(blow.start),
+                                                        ranged: blow.isRanged, onWard: onWard, seed: UInt32(truncatingIfNeeded: blow.id)))
+            for (index, fell) in blow.fallen.enumerated() {
+                happenings.falls.append(Happenings.Spot(at: ground(fell.at), start: clock(blow.start),
+                                                        seed: UInt32(truncatingIfNeeded: blow.id &* 7 &+ index)))
+            }
+        }
+        for pose in poses where pose.clip == .march {
+            var riders = false
+            if case .figure(.rider, _) = pose.key { riders = true }
+            happenings.marching.append(Happenings.Spot(at: pose.position, strength: riders ? 1.4 : 1, seed: UInt32(truncatingIfNeeded: pose.unit)))
+        }
+        happenings.rising = stage.risingWorks(sights).enumerated().map { Happenings.Spot(at: $1, seed: UInt32($0)) }
+        completions.removeAll { now.timeIntervalSince($0.at) > 3 }
+        for done in completions {
+            guard let hold = state.hold(done.hold) else { continue }
+            let key = HoldLayout.Work(done.kind).key(level: done.level).canonical
+            if let piece = stage.pieces(of: hold, progress: nil).first(where: { $0.key.canonical == key }) {
+                happenings.finished.append(Happenings.Spot(at: piece.position, start: clock(done.at), seed: UInt32(done.hold)))
+            }
+        }
+        for hold in state.holds where isVisible(hold.position) && hold.ward * 2 < hold.maximumWard {
+            let broken = 1 - Float(hold.ward) / Float(max(hold.maximumWard, 1)) * 2
+            happenings.blazes.append(Happenings.Spot(at: ground(hold.position), strength: 0.35 + 0.65 * broken, seed: UInt32(hold.id)))
+        }
+        if camera.scale >= 40 {
+            happenings.fireflies = stage.fireflySpots(near: camera.focus).enumerated().map { Happenings.Spot(at: $1, seed: UInt32($0) &+ 17) }
+        }
+        return happenings
+    }
+
+    /// Where the far country's companies are numbered among the poses:
+    /// below every company's id and every fallen one's.
+    static let wildPoseBase = -1_000_000
+
+    /// A wild's look by its level: the least of them, the worse, the worst.
+    static func wildTier(of level: Int) -> Int {
+        level <= 3 ? 1 : (level <= 7 ? 2 : 3)
+    }
+
+    /// Which of the commanders' looks a commander rides in: one for each archetype.
+    func commanderLook(_ id: Int) -> Int? {
+        guard let commander = state.commander(id) else { return nil }
+        return Archetype.allCases.firstIndex(of: commander.archetype)
     }
 
     // MARK: Arrows

@@ -30,6 +30,11 @@ extension GameState {
                 blocked[index] = true
             }
         }
+        for wild in wildsStanding {
+            if let index = map.index(of: wild.position), index != goal {
+                blocked[index] = true
+            }
+        }
         var best = [Int](repeating: Int.max, count: count)
         var cameFrom = [Int](repeating: -1, count: count)
         let hexes = map.hexes
@@ -82,6 +87,9 @@ extension GameState {
         }
         for hold in holds where hold.owner != unit.owner {
             if let index = map.index(of: hold.position) { blocked[index] = true }
+        }
+        for wild in wildsStanding {
+            if let index = map.index(of: wild.position) { blocked[index] = true }
         }
         let hexes = map.hexes
         var cameFrom = [Int](repeating: -2, count: map.count)
@@ -158,6 +166,9 @@ extension GameState {
         for other in units where other.id != unit.id {
             if let index = map.index(of: other.position) { occupied.insert(index) }
         }
+        for wild in wildsStanding {
+            if let index = map.index(of: wild.position) { occupied.insert(index) }
+        }
         let hexes = map.hexes
         var left = [Int](repeating: -1, count: map.count)
         left[start] = unit.movesLeft
@@ -176,7 +187,7 @@ extension GameState {
                 if let hold = hold(at: hexes[next]), hold.owner != unit.owner { continue }
                 // A step costs its terrain's moves; with all its moves a
                 // company can always take one step.
-                guard remaining >= terrain.moveCost || remaining == unit.kind.movement else { continue }
+                guard remaining >= terrain.moveCost || remaining == movement(of: unit) else { continue }
                 let after = max(0, remaining - terrain.moveCost)
                 if after > left[next] {
                     left[next] = after

@@ -8,7 +8,10 @@
 /// perfectly still mirror: it gives back the stars and the moon as the eye
 /// sees them over it. Models are drawn many at a time, each part moved by
 /// its pose, swaying in the wind, rising as they are built, and hidden
-/// where the keeper knows nothing.
+/// where the keeper knows nothing. Last, the motes the world throws up
+/// (sparks, dust, smoke, embers, the flash of a blow, fireflies) are drawn
+/// as soft discs facing the eye; fires and blows also light the land and
+/// the models round them, as four lights of the world's own.
 ///
 /// The code between the SCENE markers is written in the subset shared by
 /// Metal and GLSL, so Tools/world3d-preview can render it in a browser.
@@ -19,8 +22,11 @@ public enum WorldShaders {
     public static let waterFragment = "nm_water_fragment"
     public static let modelVertex = "nm_model_vertex"
     public static let modelFragment = "nm_model_fragment"
+    public static let moteVertex = "nm_mote_vertex"
+    public static let moteFragment = "nm_mote_fragment"
 
-    public static let functions = [landVertex, landFragment, waterVertex, waterFragment, modelVertex, modelFragment]
+    public static let functions = [landVertex, landFragment, waterVertex, waterFragment, modelVertex, modelFragment,
+                                   moteVertex, moteFragment]
 
     public static let source = #"""
     #include <metal_stdlib>
@@ -199,6 +205,17 @@ public enum WorldShaders {
     }
 
     // Remembered, not watched: as it was last seen, greyed and dim.
+    // One of the world's own lights, a fire or a blow, falling on a point
+    // of colour `albedo` facing `n`: `place` is where it is and how far it
+    // reaches, `colour` its colour times its strength.
+    float3 nm_pointLight(float3 albedo, float3 p, float3 n, float4 place, float4 colour) {
+        float3 toward = place.xyz - p;
+        float d = length(toward);
+        float fall = max(1.0 - d / max(place.w, 0.001), 0.0);
+        float facing = 0.35 + 0.65 * max(dot(n, toward / max(d, 0.0001)), 0.0);
+        return albedo * colour.rgb * fall * fall * facing;
+    }
+
     float3 nm_remembered(float3 c) {
         float grey = dot(c, float3(0.3, 0.5, 0.2));
         return mix(float3(grey), c, 0.35) * 0.42 + kMist * 0.4;
@@ -233,7 +250,7 @@ public enum WorldShaders {
         return colour;
     }
 
-    // The moon in a direction, with its halo.
+    // The moon in a direction: its face, and the bright ring close about it.
     float3 nm_moonlight(float3 d, float3 moon) {
         float facing = dot(d, moon);
         float disc = smoothstep(0.99975, 0.99982, facing);
@@ -244,13 +261,19 @@ public enum WorldShaders {
             float seas = nm_fbm(onFace * 3.0 + 4.0);
             face = kMoonFace * (0.78 + 0.22 * smoothstep(0.35, 0.7, seas));
         }
-        float halo = pow(max(facing, 0.0), 2400.0) * 0.55 + pow(max(facing, 0.0), 160.0) * 0.07 + pow(max(facing, 0.0), 18.0) * 0.012;
+        float halo = pow(max(facing, 0.0), 2400.0) * 0.55;
         return face * disc * 2.6 + kMoonColour * halo;
+    }
+
+    // The moon's broad glow about it in the night's air.
+    float3 nm_moonGlow(float3 d, float3 moon) {
+        float facing = max(dot(d, moon), 0.0);
+        return kMoonColour * (pow(facing, 160.0) * 0.07 + pow(facing, 18.0) * 0.012);
     }
 
     // The whole night sky in a direction.
     float3 nm_sky(float3 d, float3 moon, float time) {
-        return nm_stars(d, time) + nm_moonlight(d, moon);
+        return nm_stars(d, time) + nm_moonGlow(d, moon) + nm_moonlight(d, moon);
     }
 
     // The night's haze between the eye and what it sees far off.
@@ -294,6 +317,7 @@ public enum WorldShaders {
         float4 haze;       // haze start, density, exposure, heights spacing
         float4 heights;    // the heights grid's corner (x, z), columns, rows
         float4 houses[16]; // each House's colour, by sigil plus one
+        float4 lights[8];  // the world's own lights: where and how far, then colour
     };
 
     struct ModelVertex {
@@ -376,6 +400,9 @@ public enum WorldShaders {
             }
         }
         lit += nm_light(albedo, n, frame.moon.xyz, frame.moon.w);
+        for (int i = 0; i < 4; i++) {
+            lit += nm_pointLight(albedo, in.world, n, frame.lights[i], frame.lights[i + 4]);
+        }
 
         // A hold's hearths light the country round it.
         for (int i = 0; i < 7; i++) {
@@ -443,7 +470,7 @@ public enum WorldShaders {
         float3 mirrored = float3(look.x, -look.y, look.z);
         float facing = 1.0 - max(-look.y, 0.0);
         float fresnel = 0.30 + 0.70 * facing * facing * facing * facing * facing;
-        float3 starlit = kDeepWater + nm_stars(mirrored, time) * fresnel;
+        float3 starlit = kDeepWater + (nm_stars(mirrored, time) + nm_moonGlow(mirrored, frame.moon.xyz)) * fresnel;
         float3 moonlit = nm_moonlight(mirrored, frame.moon.xyz) * fresnel;
         // Where it is shallow the shingle shows through, darkened and wet.
         float clear = smoothstep(0.0, 0.14, depth);
@@ -532,6 +559,9 @@ public enum WorldShaders {
             n = -n;
         }
         float3 lit = nm_light(in.colour, n, frame.moon.xyz, frame.moon.w);
+        for (int i = 0; i < 4; i++) {
+            lit += nm_pointLight(in.colour, in.world, n, frame.lights[i], frame.lights[i + 4]);
+        }
         float facing = 1.0 - max(dot(n, toEye), 0.0);
         // The moon behind outlines what stands against it.
         float behind = max(dot(-toEye, frame.moon.xyz), 0.0);
@@ -556,6 +586,54 @@ public enum WorldShaders {
         }
         lit = nm_haze(lit, distance(in.world, frame.eye.xyz), frame.haze.x, frame.haze.y);
         return float4(nm_encode(lit * frame.haze.z), 1.0);
+    }
+
+    // MARK: Motes
+
+    struct Mote {
+        float4 place;   // where, and its radius
+        float4 colour;  // the light it gives, and how much it hides
+    };
+
+    struct MoteOut {
+        float4 position [[position]];
+        float2 corner;
+        float4 colour;
+        float3 world;
+    };
+
+    vertex MoteOut nm_mote_vertex(uint vid [[vertex_id]],
+                                  uint iid [[instance_id]],
+                                  const device Mote *motes [[buffer(1)]],
+                                  constant FrameUniforms &frame [[buffer(3)]],
+                                  texture2d<float, access::read> tiles [[texture(0)]]) {
+        Mote mote = motes[iid];
+        float2 corner = float2((vid == 1u || vid == 4u || vid == 5u) ? 1.0 : -1.0, (vid == 2u || vid == 3u || vid == 5u) ? 1.0 : -1.0);
+        // A disc facing the eye.
+        float3 forward = normalize(mote.place.xyz - frame.eye.xyz);
+        float3 right = normalize(cross(forward, float3(0.0, 1.0, 0.0)));
+        float3 up = cross(right, forward);
+        float3 world = mote.place.xyz + (right * corner.x + up * corner.y) * mote.place.w;
+        int2 h = nm_hexRound(nm_axial(mote.place.xz));
+        float2 knowledge = nm_knowledge(h, frame.world.x, tiles);
+        MoteOut out;
+        // Over what the keeper has never seen, nothing.
+        out.position = knowledge.x > 0.5 ? frame.viewProjection * float4(world, 1.0) : float4(0.0, 0.0, 2.0, 1.0);
+        out.corner = corner;
+        out.colour = mote.colour;
+        out.world = world;
+        return out;
+    }
+
+    fragment float4 nm_mote_fragment(MoteOut in [[stage_in]], constant FrameUniforms &frame [[buffer(0)]]) {
+        float r = length(in.corner);
+        if (r > 1.0) {
+            discard_fragment();
+        }
+        float soft = 1.0 - smoothstep(0.1, 1.0, r);
+        float far = 1.0 - clamp(1.0 - exp(-max(distance(in.world, frame.eye.xyz) - frame.haze.x, 0.0) * frame.haze.y), 0.0, 0.85);
+        float3 light = in.colour.rgb * soft * far * frame.haze.z;
+        return float4(nm_encode(light), in.colour.a * soft);
     }
     """#
 }

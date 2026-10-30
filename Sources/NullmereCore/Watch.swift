@@ -1,14 +1,16 @@
 extension GameState {
     /// Ends the current watch: rival Houses act, then the world turns. Holds
     /// bring in their yield, armies eat, works and training advance, wards
-    /// mend, the wounded heal, marches continue, and the chronicle notes
-    /// whether anyone has won.
+    /// mend, the wounded heal, marches continue, rallies gather, march and
+    /// strike, and the chronicle notes whether anyone has won.
     /// `keptFor` names kept Houses whose keepers are away, which a
     /// caretaker plays in their turn among the stewards.
     @discardableResult
     public mutating func endWatch(keptFor absent: Set<Int> = []) -> [GameEvent] {
         guard outcome == nil else { return [] }
         var events: [GameEvent] = []
+        // A world from before commanders takes them up now.
+        if commanders == nil { raiseFirstCommanders() }
 
         // Rivals act first; whether anyone has won is weighed once the
         // watch has turned (checkForEnd), never partway through. Who goes
@@ -17,16 +19,20 @@ extension GameState {
         for house in stewardOrder(keptFor: absent) {
             events += RivalMind(house: house, caretaking: houses[house].isPlayer).takeTurn(in: &self)
         }
+        // What the stewards did counted as they did it; what the watch
+        // itself brings counts as it turns.
+        let turning = events.count
 
         let owners = territory()
         for house in houses where !house.isEliminated {
             events += harvest(for: house.id, territory: owners)
         }
         events += advanceWorks()
+        events += advanceStudies()
         mendAndHeal(territory: owners)
 
         for index in units.indices {
-            units[index].movesLeft = units[index].kind.movement
+            units[index].movesLeft = movement(of: units[index])
             units[index].acted = false
         }
         watch += 1
@@ -43,7 +49,16 @@ extension GameState {
         for unit in units.sorted(by: { $0.id < $1.id }) where unit.destination != nil {
             events += march(unit.id)
         }
+        events += advanceRallies()
+        events += workTheLand()
+        raiseWilds()
+        raiseSites()
         refreshSight()
+        tally(Array(events[turning...]))
+        events += turnHappenings()
+        noteDeeds(Array(events[turning...]))
+        events += tellDeeds()
+        events += fulfilCharges()
         events += checkForEnd()
         takeSnapshot()
         return events
@@ -80,13 +95,14 @@ extension GameState {
         // Hunger: the grain runs out and the newest companies suffer first.
         houses[house].stock.grain = 0
         var events: [GameEvent] = [.starving(house: house)]
-        let hungry = units(of: house).filter { $0.kind.upkeep > 0 }.sorted { $0.id > $1.id }
+        let hungry = units(of: house).filter { self.upkeep(of: $0) > 0 }.sorted { $0.id > $1.id }
         for unit in hungry.prefix(max(1, hungry.count / 2)) {
             guard let index = unitIndex(unit.id) else { continue }
             units[index].health -= 20
             if units[index].health <= 0 {
                 let lost = units.remove(at: index)
                 events.append(.unitLost(unit: lost.id, kind: lost.kind, owner: lost.owner, at: lost.position))
+                events += woundCommander(of: lost)
             }
         }
         return events
@@ -111,6 +127,10 @@ extension GameState {
                             : "raises the Moonspire at \(holds[index].name) to its \(ordinal(project.targetLevel)) stage."
                         record(.greatWork, [owner], "\(houses[owner].title) \(words)")
                     }
+                    // A seat's third and fifth halls raise a captain from the ranks.
+                    if project.kind == .musterHall, holds[index].isSeat, GameState.captainsAt.contains(project.targetLevel) {
+                        events += commanderJoins(holds[index].owner, why: "rises from the ranks of")
+                    }
                 } else {
                     holds[index].project = project
                 }
@@ -119,7 +139,7 @@ extension GameState {
                 training.watchesLeft -= 1
                 if training.watchesLeft <= 0 {
                     let hold = holds[index]
-                    if let unit = placeUnit(training.kind, for: hold.owner, near: hold.position) {
+                    if let unit = placeUnit(training.kind, tier: training.musteredTier, for: hold.owner, near: hold.position) {
                         holds[index].training = nil
                         events.append(.unitTrained(unit: unit.id, hold: hold.id))
                     } else {
@@ -144,13 +164,13 @@ extension GameState {
                     && unit.position.distance(to: hold.position) == 1
             }
             if !hold.struck && !besieged {
-                holds[index].ward = min(holds[index].maximumWard, holds[index].ward + wardMending)
+                holds[index].ward = min(holds[index].maximumWard, holds[index].ward + wardMending(for: hold.owner))
             }
             holds[index].struck = false
         }
         for index in units.indices where !units[index].acted && units[index].health < 100 {
             let unit = units[index]
-            var amount = 10
+            var amount = 10 + bonus(.healing, for: unit)
             if let tile = map.index(of: unit.position), let holdID = owners[tile], hold(holdID)?.owner == unit.owner {
                 amount += 10
             }
@@ -230,6 +250,11 @@ func ordinal(_ number: Int) -> String {
     case 3: return "third"
     case 4: return "fourth"
     case 5: return "fifth"
+    case 6: return "sixth"
+    case 7: return "seventh"
+    case 8: return "eighth"
+    case 9: return "ninth"
+    case 10: return "tenth"
     default: return "\(number)th"
     }
 }

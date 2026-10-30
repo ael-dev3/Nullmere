@@ -5,7 +5,14 @@ extension GameState {
     public mutating func perform(_ command: Command, as house: Int) throws(RuleError) -> [GameEvent] {
         guard outcome == nil else { throw .gameOver }
         guard let actor = self.house(house), !actor.isEliminated else { throw .unknownHouse }
+        let events = try carryOut(command, as: house)
+        // What it did counts to the happening under way, and may be a deed.
+        tally(events)
+        noteDeeds(events)
+        return events
+    }
 
+    private mutating func carryOut(_ command: Command, as house: Int) throws(RuleError) -> [GameEvent] {
         switch command {
         case let .move(unitID, target):
             return try move(unitID, to: target, as: house)
@@ -15,8 +22,8 @@ extension GameState {
             return try found(with: unitID, as: house)
         case let .build(holdID, kind):
             return try build(kind, in: holdID, as: house)
-        case let .train(holdID, kind):
-            return try train(kind, in: holdID, as: house)
+        case let .train(holdID, kind, tier):
+            return try train(kind, tier: tier ?? 1, in: holdID, as: house)
         case let .barter(give, take, amount):
             return try barter(give: give, take: take, amount: amount, as: house)
         case let .fortify(unitID):
@@ -24,6 +31,8 @@ extension GameState {
             units[index].fortified = true
             units[index].movesLeft = 0
             units[index].destination = nil
+            // Digging in at an ally's gates is keeping them still.
+            if case .reinforce? = units[index].errand {} else { units[index].errand = nil }
             return []
         case let .disband(unitID):
             let index = try ownedUnit(unitID, of: house)
@@ -32,6 +41,7 @@ extension GameState {
         case let .halt(unitID):
             let index = try ownedUnit(unitID, of: house)
             units[index].destination = nil
+            units[index].errand = nil
             return []
         case let .declareWar(target):
             return try declareWar(by: house, on: target)
@@ -45,18 +55,48 @@ extension GameState {
             return try give(resource, amount: amount, from: house, to: target)
         case let .offerTrade(trade, target, words):
             return try offerTrade(trade, from: house, to: target, words: words.flatMap(Envoy.carried))
+        case let .study(study):
+            return try beginStudy(study, as: house)
+        case let .assign(commanderID, unitID):
+            return try assign(commanderID, to: unitID, as: house)
+        case let .unassign(commanderID):
+            return try unassign(commanderID, as: house)
+        case let .gather(unitID, siteID):
+            return try gather(unitID, at: siteID, as: house)
+        case let .foundAlliance(name):
+            return try foundAlliance(named: name, by: house)
+        case let .inviteToAlliance(target):
+            return try invite(target, by: house)
+        case let .askToJoin(allianceID):
+            return try askToJoin(allianceID, by: house)
+        case let .answerInvitation(allianceID, accept):
+            return try answerInvitation(allianceID, accept: accept, as: house)
+        case let .answerRequest(asker, accept):
+            return try answerRequest(of: asker, accept: accept, as: house)
+        case .leaveAlliance:
+            return try leaveAlliance(as: house)
+        case let .expel(target):
+            return try expel(target, by: house)
+        case let .help(ally):
+            return try help(ally, by: house)
+        case let .callRally(holdID, targetID, watches):
+            return try callRally(from: holdID, against: targetID, gathering: watches, by: house)
+        case let .joinRally(rallyID, unitID):
+            return try joinRally(rallyID, with: unitID, as: house)
+        case let .reinforce(unitID, holdID):
+            return try reinforce(holdID, with: unitID, as: house)
         }
     }
 
     // MARK: Units
 
-    private func ownedUnit(_ id: Int, of house: Int) throws(RuleError) -> Int {
+    func ownedUnit(_ id: Int, of house: Int) throws(RuleError) -> Int {
         guard let index = unitIndex(id) else { throw .unknownUnit }
         guard units[index].owner == house else { throw .notYours }
         return index
     }
 
-    private func ownedHold(_ id: Int, of house: Int) throws(RuleError) -> Int {
+    func ownedHold(_ id: Int, of house: Int) throws(RuleError) -> Int {
         guard let index = holdIndex(id) else { throw .unknownHold }
         guard holds[index].owner == house else { throw .notYours }
         return index
@@ -85,14 +125,16 @@ extension GameState {
         let unit = units[index]
         guard unit.position != target else { throw .alreadyThere }
 
-        // Marching onto an enemy within reach is an attack.
-        if let foe = foe(at: target, for: house), isAtWar(house, foe.owner), unit.kind.isMilitary,
-           unit.position.distance(to: target) <= unit.kind.range {
+        // Marching onto an enemy within reach is an attack, and onto the wilds.
+        if unit.kind.isMilitary, unit.position.distance(to: target) <= unit.kind.range,
+           wild(at: target) != nil || foe(at: target, for: house).map({ isAtWar(house, $0.owner) }) == true {
             return try attack(with: unitID, at: target, as: house)
         }
         guard unknown || path(for: unit, to: target) != nil else { throw .noPath }
         units[index].destination = target
         units[index].fortified = false
+        // A new march is a new order: whatever errand it was on is done with.
+        units[index].errand = nil
         return march(unitID)
     }
 
@@ -118,14 +160,14 @@ extension GameState {
                 route = planned
             }
             let next = route[0]
-            // Another company holds the destination: wait beside it.
-            if self.unit(at: next) != nil { break }
+            // Another company holds the destination, or the wilds: wait beside it.
+            if self.unit(at: next) != nil || wild(at: next) != nil { break }
             if let hold = hold(at: next), hold.owner != unit.owner {
                 units[index].destination = nil
                 break
             }
             let cost = map[next]!.terrain.moveCost
-            if unit.movesLeft < cost, unit.movesLeft < unit.kind.movement { break }
+            if unit.movesLeft < cost, unit.movesLeft < movement(of: unit) { break }
             route.removeFirst()
             units[index].movesLeft = max(0, unit.movesLeft - cost)
             units[index].position = next
@@ -184,38 +226,94 @@ extension GameState {
         let attacker = units[index]
         guard attacker.kind.isMilitary else { throw .cannotFight }
         guard attacker.movesLeft > 0 else { throw .noMovesLeft }
+        // The wilds are every House's foe: no war is needed to strike them.
+        if let wild = wild(at: target) {
+            guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
+            units[index].movesLeft = 0
+            units[index].acted = true
+            units[index].fortified = false
+            units[index].destination = nil
+            units[index].errand = nil
+            return strike(wild: wild.id, with: unitID)
+        }
         guard let foe = foe(at: target, for: house) else { throw .nothingToAttack }
         guard isAtWar(house, foe.owner) else { throw .notAtWar(foe.owner) }
         guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
+        return assault(with: unitID, at: target)
+    }
 
+    /// A company strikes the foe at a hex, its moves spent and whatever it
+    /// was about done with: the company standing there, or else the hold's
+    /// ward. Companies keeping the gates of a hold struck strike back.
+    mutating func assault(with unitID: Int, at target: Hex) -> [GameEvent] {
+        guard let index = unitIndex(unitID), let foe = foe(at: target, for: units[index].owner) else { return [] }
         units[index].movesLeft = 0
         units[index].acted = true
         units[index].fortified = false
         units[index].destination = nil
+        units[index].errand = nil
 
+        var events: [GameEvent]
         if let defenderID = foe.unit {
-            return fight(attacker: unitID, defender: defenderID, at: target)
+            events = fight(attacker: unitID, defender: defenderID, at: target)
+        } else {
+            events = strike(hold: foe.hold!, with: unitID)
         }
-        return strike(hold: foe.hold!, with: unitID)
+        if let held = foe.hold {
+            events += sally(against: unitID, striking: held)
+        }
+        return events
     }
 
-    /// Two units exchange blows.
-    private mutating func fight(attacker attackerID: Int, defender defenderID: Int, at hex: Hex) -> [GameEvent] {
+    /// Companies keeping the gates of a hold for an ally strike back, from
+    /// where they stand, at a company of a House at war with their own
+    /// that strikes it, while it still stands and the hold is still their
+    /// ally's.
+    private mutating func sally(against strikerID: Int, striking holdID: Int) -> [GameEvent] {
+        guard let hold = hold(holdID) else { return [] }
+        let keepers = units.filter { $0.errand == .reinforce(hold: holdID) && $0.position.distance(to: hold.position) <= 1 }
+            .map(\.id).sorted()
+        var events: [GameEvent] = []
+        for id in keepers {
+            guard let striker = unit(strikerID), let keeper = unit(id), let held = self.hold(holdID), areAllied(keeper.owner, held.owner),
+                  isAtWar(keeper.owner, striker.owner), keeper.position.distance(to: striker.position) <= keeper.kind.range else { continue }
+            events += fight(attacker: id, defender: strikerID, at: striker.position, holdingGround: true)
+        }
+        return events
+    }
+
+    /// Two units exchange blows. A company holding its ground never steps
+    /// onto the fallen's.
+    private mutating func fight(attacker attackerID: Int, defender defenderID: Int, at hex: Hex, holdingGround: Bool = false) -> [GameEvent] {
         var random = random()
         let attacker = unit(attackerID)!
         let defender = unit(defenderID)!
         let ranged = attacker.position.distance(to: hex) > 1
         let (attack, defense) = strengths(of: attacker, against: defender, at: hex)
+        // A commander whose fury is ready fires its skill in this battle.
+        let attackerFired = furyReady(of: attacker), defenderFired = furyReady(of: defender)
+        let attackerFury = fury(of: attacker), defenderFury = fury(of: defender)
 
-        let dealt = max(5, 70 * attack / (attack + defense) * random.int(in: 80...120) / 100)
-        let taken = ranged ? 0 : 70 * defense / (attack + defense) * random.int(in: 80...120) / 100
+        let dealt = bodily(GameState.furious(max(5, 70 * attack / (attack + defense) * random.int(in: 80...120) / 100),
+                                             dealtBy: attackerFury, takenBy: defenderFury), on: defender)
+        let taken = ranged ? 0 : bodily(GameState.furious(70 * defense / (attack + defense) * random.int(in: 80...120) / 100,
+                                                          dealtBy: defenderFury, takenBy: attackerFury), on: attacker)
 
         var events: [GameEvent] = []
         let defenderFell = applyDamage(dealt, to: defenderID, events: &events)
         let attackerFell = taken > 0 && applyDamage(taken, to: attackerID, events: &events)
+        // A company that falls carrying the land's stores leaves half of
+        // them to its foe, if its foe lives.
+        if defenderFell, !attackerFell, let load = defender.load, !load.isZero {
+            store(load.share(1, of: 2), for: attacker.owner)
+        }
         // Those who live through a battle learn from it.
         events += gainExperience(attackerID)
         events += gainExperience(defenderID)
+        events += stirCommanders([
+            Stir(unit: attacker, fired: attackerFired, fell: attackerFell, experience: GameState.battleExperience(dealt: dealt, felled: defenderFell)),
+            Stir(unit: defender, fired: defenderFired, fell: defenderFell, experience: GameState.battleExperience(dealt: taken, felled: attackerFell)),
+        ], at: hex)
         events.insert(.battle(Battle(
             attacker: attackerID, attackerOwner: attacker.owner, attackerKind: attacker.kind,
             defender: defenderID, defenderOwner: defender.owner, defenderKind: defender.kind,
@@ -225,7 +323,7 @@ extension GameState {
 
         // The victor in close combat takes the field, unless a hold's ward
         // still stands, or it fought from within its own hold.
-        if defenderFell, !attackerFell, !ranged, let index = unitIndex(attackerID) {
+        if defenderFell, !attackerFell, !ranged, !holdingGround, let index = unitIndex(attackerID) {
             if let hold = hold(at: hex) {
                 if hold.ward == 0, attacker.kind.canCapture {
                     events += capture(hold: hold.id, with: attackerID)
@@ -248,21 +346,23 @@ extension GameState {
     /// Attack and defence in a fight between two units, before chance.
     func strengths(of attacker: Unit, against defender: Unit, at hex: Hex) -> (attack: Int, defense: Int) {
         var attack = attacker.kind.attack * (50 + attacker.health / 2) * (100 + Unit.rankBonus * attacker.rank) / 100
+        attack = attack * attackPercent(of: attacker) / 100
         if defender.kind == .rider {
             attack = attack * (100 + attacker.kind.bonusAgainstRiders) / 100
         }
         var defenseBonus = 100 + (map[hex]?.terrain.defenseBonus ?? 0) + (defender.fortified ? 25 : 0)
         if let hold = hold(at: hex), hold.owner == defender.owner {
-            defenseBonus += Hold.garrisonBonus(wallLevel: hold.level(.walls))
+            defenseBonus += Hold.garrisonBonus(wallLevel: hold.level(.walls)) + bonus(.garrison, for: defender)
         }
         if attacker.kind == .rider {
             defenseBonus += defender.kind.bonusAgainstRiders
         }
-        let defense = max(1, defender.kind.defense * (50 + defender.health / 2) * defenseBonus / 100 * (100 + Unit.rankBonus * defender.rank) / 100)
+        let defense = max(1, defender.kind.defense * (50 + defender.health / 2) * defenseBonus / 100 * (100 + Unit.rankBonus * defender.rank) / 100
+            * defensePercent(of: defender) / 100)
         return (attack, defense)
     }
 
-    private mutating func gainExperience(_ unitID: Int) -> [GameEvent] {
+    mutating func gainExperience(_ unitID: Int) -> [GameEvent] {
         guard let index = unitIndex(unitID) else { return [] }
         let rank = units[index].rank
         units[index].experience += 1
@@ -271,12 +371,13 @@ extension GameState {
     }
 
     /// Returns whether the unit fell.
-    private mutating func applyDamage(_ damage: Int, to unitID: Int, events: inout [GameEvent]) -> Bool {
+    mutating func applyDamage(_ damage: Int, to unitID: Int, events: inout [GameEvent]) -> Bool {
         guard let index = unitIndex(unitID) else { return false }
         units[index].health -= damage
         guard units[index].health <= 0 else { return false }
         let unit = units.remove(at: index)
         events.append(.unitLost(unit: unit.id, kind: unit.kind, owner: unit.owner, at: unit.position))
+        events += woundCommander(of: unit)
         return true
     }
 
@@ -288,14 +389,18 @@ extension GameState {
         let holdIndex = holdIndex(holdID)!
         let hold = holds[holdIndex]
         let ranged = attacker.position.distance(to: hold.position) > 1
+        let fired = furyReady(of: attacker)
+        let furyOf = fury(of: attacker)
 
-        let damage = Hold.strikeDamage(attack: attacker.kind.attack, health: attacker.health) * random.int(in: 80...120) / 100
+        let damage = GameState.furious(wardDamage(by: attacker) * random.int(in: 80...120) / 100, dealtBy: furyOf, takenBy: GameState.calm)
         holds[holdIndex].ward = max(0, hold.ward - damage)
         holds[holdIndex].struck = true
         var events: [GameEvent] = [.holdStruck(hold: holdID, ward: holds[holdIndex].ward)]
 
-        let returned = ranged ? 0 : 5 + 4 * hold.level(.walls)
+        let returned = ranged ? 0 : GameState.furious(bodily(5 + 4 * hold.level(.walls), on: attacker), dealtBy: GameState.calm, takenBy: furyOf)
         let attackerFell = returned > 0 && applyDamage(returned, to: unitID, events: &events)
+        events += stirCommanders([Stir(unit: attacker, fired: fired, fell: attackerFell,
+                                       experience: GameState.battleExperience(dealt: damage, felled: holds[holdIndex].ward == 0))], at: hold.position)
         events.insert(.battle(Battle(
             attacker: unitID, attackerOwner: attacker.owner, attackerKind: attacker.kind,
             defender: nil, defenderOwner: hold.owner, defenderKind: nil,
@@ -380,7 +485,13 @@ extension GameState {
         units.removeAll { $0.owner == house }
         envoys.removeAll { $0.from == house || $0.to == house }
         record(.fall, [house, conqueror], "\(houses[house].title) falls to \(houses[conqueror].title). Its name passes into the chronicle.")
-        return [.houseFell(house)]
+        var events: [GameEvent] = [.houseFell(house)]
+        // Its alliance goes on without it, and no alliance waits on it.
+        if let sworn = alliance(of: house) {
+            events += part(house, from: sworn.id)
+        }
+        forgetInvitations(of: house)
+        return events
     }
 
     // MARK: Holds
@@ -405,16 +516,29 @@ extension GameState {
         let hold = Hold(id: takeID(), name: name, owner: house, position: founder.position, isSeat: false, foundedWatch: watch)
         holds.append(hold)
         units.remove(at: index)
+        // A site under a new hold is settled ground now.
+        sites?.removeAll { $0.position == hold.position }
         reveal(around: hold.position, range: sight(of: hold), for: house)
         record(.founding, [house], "\(houses[house].title) founds \(name) on the \(map[hold.position]!.terrain.title.lowercased()).")
         return [.holdFounded(hold: hold.id)]
     }
 
-    /// The cost of raising a building one level in a hold, or nil at its top.
+    /// The cost of raising a building one level in a hold, or nil at its top:
+    /// its price, lessened by its House's studies.
     public func nextLevelCost(of kind: BuildingKind, in hold: Hold) -> Stock? {
         let next = hold.level(kind) + 1
         guard next <= kind.maxLevel else { return nil }
-        return kind.cost(toLevel: next)
+        return buildCost(of: kind, toLevel: next, for: hold.owner)
+    }
+
+    /// What raising a work to a level costs a House.
+    public func buildCost(of kind: BuildingKind, toLevel level: Int, for house: Int) -> Stock {
+        GameState.lessened(kind.cost(toLevel: level), by: bonus(.buildCost, for: house))
+    }
+
+    /// Watches raising a work to a level takes a House.
+    public func buildWatches(of kind: BuildingKind, toLevel level: Int, for house: Int) -> Int {
+        GameState.hastened(kind.buildWatches(toLevel: level), by: bonus(.buildSpeed, for: house))
     }
 
     private mutating func build(_ kind: BuildingKind, in holdID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
@@ -426,36 +550,42 @@ extension GameState {
         if kind == .moonspire, houses[house].liege != nil { throw .notApplicable }
         let level = hold.level(kind) + 1
         guard level <= kind.maxLevel else { throw .maxLevel }
-        let cost = kind.cost(toLevel: level)
+        let cost = buildCost(of: kind, toLevel: level, for: house)
         guard houses[house].stock.covers(cost) else { throw .shortOf(houses[house].stock.shortfall(for: cost)) }
 
         houses[house].stock.debit(cost)
-        holds[index].project = Hold.Project(kind: kind, targetLevel: level, watchesLeft: kind.buildWatches(toLevel: level))
+        holds[index].project = Hold.Project(kind: kind, targetLevel: level, watchesLeft: buildWatches(of: kind, toLevel: level, for: house))
         return [.buildingStarted(hold: holdID, kind: kind, level: level)]
     }
 
-    /// What a company costs this House to muster. Founders cost half as
-    /// much again for every hold the House has beyond its seat, and every
-    /// Founder already on the march or mustering, so each new hold is
+    /// What a company costs this House to muster, at a tier. Founders cost
+    /// half as much again for every hold the House has beyond its seat, and
+    /// every Founder already on the march or mustering, so each new hold is
     /// dearer than the last and a realm can't sprawl for nothing.
-    public func trainingCost(of kind: UnitKind, for house: Int) -> Stock {
-        guard kind == .founder else { return kind.cost }
+    public func trainingCost(of kind: UnitKind, tier: Int = 1, for house: Int) -> Stock {
+        let discount = bonus(.trainingCost, for: house)
+        guard kind == .founder else { return GameState.lessened(kind.cost(tier: tier), by: discount) }
         let mustering = holds.filter { $0.owner == house && $0.training?.kind == .founder }.count
         let marching = units.filter { $0.owner == house && $0.kind == .founder }.count
         let extra = max(0, holds(of: house).count - 1) + mustering + marching
-        return kind.cost.scaled(percent: 100 + 50 * extra)
+        return GameState.lessened(kind.cost.scaled(percent: 100 + 50 * extra), by: discount)
     }
 
-    private mutating func train(_ kind: UnitKind, in holdID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
+    /// Watches a company of a tier takes to muster at a hold.
+    public func trainingWatches(of kind: UnitKind, tier: Int = 1, at hold: Hold) -> Int {
+        GameState.hastened(hold.trainingWatches(for: kind, tier: tier), by: bonus(.trainingSpeed, for: hold.owner))
+    }
+
+    private mutating func train(_ kind: UnitKind, tier: Int, in holdID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
         let index = try ownedHold(holdID, of: house)
         let hold = holds[index]
         guard hold.training == nil else { throw .busy }
-        guard hold.level(.musterHall) >= kind.requiredMuster else { throw .needsMusterHall(kind.requiredMuster) }
-        let cost = trainingCost(of: kind, for: house)
+        if let refusal = tierRefusal(of: kind, tier: tier, at: hold, for: house) { throw refusal }
+        let cost = trainingCost(of: kind, tier: tier, for: house)
         guard houses[house].stock.covers(cost) else { throw .shortOf(houses[house].stock.shortfall(for: cost)) }
 
         houses[house].stock.debit(cost)
-        holds[index].training = Hold.Training(kind: kind, watchesLeft: hold.trainingWatches(for: kind))
+        holds[index].training = Hold.Training(kind: kind, watchesLeft: trainingWatches(of: kind, tier: tier, at: hold), tier: tier)
         return [.trainingStarted(hold: holdID, kind: kind)]
     }
 
@@ -486,6 +616,8 @@ extension GameState {
         try requireRival(target, of: house)
         let previous = stance(house, target)
         guard previous != .war else { throw .alreadyStance(.war) }
+        // No House makes war on one sworn to its own alliance.
+        guard !areAllied(house, target) else { throw .allyInAlliance(target) }
         // A vassal can't turn on its liege; a liege that turns on its
         // vassal frees it.
         guard houses[house].liege != target else { throw .notApplicable }
@@ -529,6 +661,7 @@ extension GameState {
             throw .notApplicable
         case .tribute:
             guard current == .peace else { throw current == .pact ? .alreadyStance(.pact) : .notApplicable }
+            guard !areAllied(house, target) else { throw .allyInAlliance(target) }
             guard mayDemandTribute(by: house, of: target) else { throw .notApplicable }
         }
 
@@ -634,11 +767,11 @@ extension GameState {
     }
 
     /// Whether one House may demand tribute of another now: both standing,
-    /// at peace, neither sworn to the other, and no demand paid or refused
-    /// between them lately.
+    /// at peace, neither sworn to the other nor to the same alliance, and no
+    /// demand paid or refused between them lately.
     public func mayDemandTribute(by demander: Int, of target: Int) -> Bool {
         guard demander != target, let me = house(demander), let other = house(target), !me.isEliminated, !other.isEliminated else { return false }
-        return stance(demander, target) == .peace && me.liege != target && other.liege != demander
+        return stance(demander, target) == .peace && me.liege != target && other.liege != demander && !areAllied(demander, target)
             && !paidTributeLately(demander, target) && !refusedTributeLately(demander, target)
     }
 

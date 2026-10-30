@@ -23,12 +23,19 @@ public struct SceneFrame: Equatable, Sendable {
     /// `fixedVersion` moves.
     public var fixed: [ModelBatch]
     public var fixedVersion: Int
+    /// The motes the world throws up this frame, drawn last.
+    public var motes: [Mote]
+    /// The world's own lights this frame: fires burning, blows landing.
+    public var lights: [PointLight]
 
-    public init(batches: [ModelBatch] = [], palette: [Mat4] = [.identity], fixed: [ModelBatch] = [], fixedVersion: Int = 0) {
+    public init(batches: [ModelBatch] = [], palette: [Mat4] = [.identity], fixed: [ModelBatch] = [], fixedVersion: Int = 0,
+                motes: [Mote] = [], lights: [PointLight] = []) {
         self.batches = batches
         self.palette = palette.isEmpty ? [.identity] : palette
         self.fixed = fixed
         self.fixedVersion = fixedVersion
+        self.motes = motes
+        self.lights = lights
     }
 
     public var instanceCount: Int { (fixed + batches).reduce(0) { $0 + $1.instances.count } }

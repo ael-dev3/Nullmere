@@ -274,9 +274,13 @@ final class SpacetimeIntegrationTests: XCTestCase {
         }
         let gate: Hex = try XCTUnwrap(free.min { $0.distance(to: marcher.position) < $1.distance(to: marcher.position) })
         await MainActor.run { a.send(.move(unit: marcher.id, to: gate)) }
+        // Come to Bel's gate: beside the seat, wherever another company stands.
+        func away() async throws -> Int {
+            try await MainActor.run { try XCTUnwrap(earA.world?.unit(marcher.id), "Ama's company lives").position.distance(to: target) }
+        }
         var watches = 0
-        while try await MainActor.run(body: { try XCTUnwrap(earA.world?.unit(marcher.id), "Ama's company lives").position != gate }) {
-            guard watches < 30 else { return XCTFail("Ama's company never reached Bel's gate") }
+        while try await away() > 1 {
+            guard watches < 90 else { return XCTFail("Ama's company never came to Bel's gate: \(try await away()) away") }
             let now = try await MainActor.run { try XCTUnwrap(earA.world?.watch) }
             await MainActor.run {
                 a.setReady(true)
@@ -284,9 +288,16 @@ final class SpacetimeIntegrationTests: XCTestCase {
             }
             try await until("watch \(now + 1)") { (earA.world?.watch ?? 0) > now && (earB.world?.watch ?? 0) > now }
             watches += 1
-            // Its way blocked a while, it is sent on again.
-            if await MainActor.run(body: { earA.world?.unit(marcher.id)?.destination == nil && earA.world?.unit(marcher.id)?.position != gate }) {
-                await MainActor.run { a.send(.move(unit: marcher.id, to: gate)) }
+            if watches % 10 == 0 { print("REALM-MARCH watch \(watches): \(try await away()) from Bel's seat") }
+            // Its way closed, it is sent on again, to whichever side of the seat is free.
+            let stopped = await MainActor.run { earA.world?.unit(marcher.id)?.destination == nil }
+            let distance = try await away()
+            if stopped && distance > 1 {
+                let world = try await MainActor.run { try XCTUnwrap(earA.world) }
+                let at = try XCTUnwrap(world.unit(marcher.id)).position
+                let sides = target.neighbors.filter { world.map[$0]?.terrain.isPassable == true && world.unit(at: $0) == nil }
+                let side = sides.min { $0.distance(to: at) < $1.distance(to: at) } ?? gate
+                await MainActor.run { a.send(.move(unit: marcher.id, to: side)) }
             }
         }
         await MainActor.run { a.send(.attack(unit: marcher.id, target: belsSeat.position)) }

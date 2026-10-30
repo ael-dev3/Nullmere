@@ -121,6 +121,100 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertTrue(session.sceneFrame(at: 1).batches.contains { $0.key == .scaffold })
     }
 
+    func testCompaniesEaseFromOneClipIntoTheNext() throws {
+        let session = try session()
+        let lantern = try XCTUnwrap(session.state.units(of: session.player).first { $0.kind == .lantern })
+        // Drawn at rest first.
+        let before = Date()
+        XCTAssertNil(session.companyPoses(at: before, animated: true, time: 2).first { $0.unit == lantern.id }?.blend)
+        let target = try XCTUnwrap(lantern.position.spiral(3).first {
+            $0.distance(to: lantern.position) == 2 && session.state.map[$0]?.terrain.isPassable == true
+                && session.state.unit(at: $0) == nil && session.state.path(for: lantern, to: $0) != nil
+        })
+        XCTAssertTrue(session.perform(.move(unit: lantern.id, to: target)))
+        let march = try XCTUnwrap(session.marches[lantern.id])
+        // Setting off, it eases out of rest into the march.
+        let setting = try XCTUnwrap(session.companyPoses(at: march.start.addingTimeInterval(0.05), animated: true, time: 2.05)
+            .first { $0.unit == lantern.id })
+        XCTAssertEqual(setting.clip, .march)
+        let blend = try XCTUnwrap(setting.blend, "easing out of rest")
+        XCTAssertEqual(blend.clip, .idle)
+        XCTAssertGreaterThan(blend.weight, 0.5)
+        // A moment later the march has taken over.
+        let going = try XCTUnwrap(session.companyPoses(at: march.start.addingTimeInterval(0.6), animated: true, time: 2.6)
+            .first { $0.unit == lantern.id })
+        XCTAssertNil(going.blend)
+        // Below full motion nothing eases.
+        XCTAssertNil(session.companyPoses(at: march.start.addingTimeInterval(0.05), animated: false, time: 2).first { $0.unit == lantern.id }?.blend)
+    }
+
+    func testBlowsThrowUpMotesAndLightAndTheStruckReel() throws {
+        let session = try session()
+        let player = session.player
+        let units = session.state.units(of: player)
+        let striker = try XCTUnwrap(units.first { $0.kind.isMilitary })
+        let struck = try XCTUnwrap(units.first { $0.id != striker.id && $0.position != striker.position })
+        let from = try XCTUnwrap(struck.position.neighbors.first { session.state.map[$0] != nil })
+        session.showBlows([.battle(Battle(attacker: striker.id, attackerOwner: player, attackerKind: striker.kind, defender: struck.id,
+                                          defenderOwner: player, defenderKind: struck.kind, hold: nil, at: struck.position,
+                                          damageDealt: 10, damageTaken: 0, attackerFell: false, defenderFell: false))],
+                           from: [striker.id: from])
+        let blow = try XCTUnwrap(session.blows.last)
+        // As it lands: sparks, a flash, and the ground lit round it.
+        let landing = blow.start.addingTimeInterval(Double(Happenings.landing) + 0.05)
+        let frame = session.sceneFrame(at: 50, now: landing)
+        XCTAssertFalse(frame.motes.isEmpty, "sparks and dust")
+        XCTAssertTrue(frame.motes.contains { $0.colour.w == 0 && $0.colour.x > 1 }, "bright sparks")
+        XCTAssertFalse(frame.lights.isEmpty, "the blow lights the ground")
+        // The struck company reels back from the blow, and stands again.
+        let centre = Relief.centre(of: struck.position), away = Relief.centre(of: from)
+        let reeling = try XCTUnwrap(session.companyPoses(at: blow.start.addingTimeInterval(Double(Happenings.landing) + 0.2), animated: true, time: 50)
+            .first { $0.unit == struck.id })
+        let standing = try XCTUnwrap(session.companyPoses(at: blow.start.addingTimeInterval(1.2), animated: true, time: 51)
+            .first { $0.unit == struck.id })
+        let pushed = (reeling.position.x - standing.position.x) * (centre.x - away.x) + (reeling.position.z - standing.position.z) * (centre.z - away.z)
+        XCTAssertGreaterThan(pushed, 0, "back from the striker")
+        let still = try XCTUnwrap(session.companyPoses(at: blow.start.addingTimeInterval(1.2), animated: false, time: 51)
+            .first { $0.unit == struck.id })
+        XCTAssertEqual(standing.position, still.position, "and stands where it stood")
+        // Still, nothing is thrown up.
+        session.motion = .still
+        let quiet = session.sceneFrame(at: 50, now: landing)
+        XCTAssertTrue(quiet.motes.isEmpty)
+        XCTAssertTrue(quiet.lights.isEmpty)
+    }
+
+    func testBurningHoldsSmokeAndGiveFirelightAndFinishedWorksRaiseDust() throws {
+        var seatID = 0
+        let session = try session { state in
+            let index = try XCTUnwrap(state.holds.firstIndex { $0.owner == state.player && $0.isSeat })
+            state.holds[index].ward = 1
+            state.holds[index].levels[.granary] = 1
+            seatID = state.holds[index].id
+        }
+        let seat = try XCTUnwrap(session.state.hold(seatID))
+        let now = Date()
+        let happenings = session.happenings(poses: [], sights: [HoldSight(hold: seat, colour: .zero)],
+                                            stage: WorldStage(map: session.state.map, relief: session.relief), at: now, time: 30)
+        XCTAssertEqual(happenings.blazes.count, 1, "its ward broken, the seat burns")
+        XCTAssertGreaterThan(happenings.blazes[0].strength, 0.9)
+        let frame = session.sceneFrame(at: 30, now: now)
+        XCTAssertTrue(frame.lights.contains { $0.colour.x > $0.colour.z }, "firelight")
+        XCTAssertTrue(frame.motes.contains { $0.colour.w == 0 && $0.colour.x > $0.colour.z }, "embers")
+        // A work finished lately raises the dust of its last course, for a few seconds.
+        session.completions.append(GameSession.Completion(hold: seatID, kind: .granary, level: 1, at: now))
+        let stage = WorldStage(map: session.state.map, relief: session.relief)
+        let finishing = session.happenings(poses: [], sights: [], stage: stage, at: now, time: 30)
+        XCTAssertEqual(finishing.finished.count, 1)
+        XCTAssertTrue(session.happenings(poses: [], sights: [], stage: stage, at: now.addingTimeInterval(4), time: 34).finished.isEmpty)
+        // Close in, fireflies over the reeds and the grass near the eye.
+        session.camera.scale = 60
+        let close = session.happenings(poses: [], sights: [], stage: stage, at: now, time: 30)
+        XCTAssertLessThanOrEqual(close.fireflies.count, 10)
+        session.camera.scale = 20
+        XCTAssertTrue(session.happenings(poses: [], sights: [], stage: stage, at: now, time: 30).fireflies.isEmpty, "afar, none")
+    }
+
     func testCompaniesMarchStrikeAndFall() throws {
         let session = try session()
         let player = session.player

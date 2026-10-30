@@ -112,6 +112,10 @@ public final class GameSession {
     @ObservationIgnored var headings: [Int: Float] = [:]
     /// Each hold's work rising, as last drawn.
     @ObservationIgnored var risings: [Int: Rising] = [:]
+    /// Each company's clip as last drawn, and the one it is easing out of.
+    @ObservationIgnored var clipsShown: [Int: ClipShown] = [:]
+    /// Works finished lately, for the dust of their last course.
+    @ObservationIgnored var completions: [Completion] = []
     /// Holds and units the player can see right now, by map index.
     public private(set) var visible: [Bool] = []
     public private(set) var isEndingWatch = false
@@ -590,8 +594,11 @@ public final class GameSession {
     /// offer of trade.
     static func decidedByRealm(_ command: Command, in state: GameState) -> Bool {
         switch command {
-        case .propose(_, let to), .proposeWithWords(_, let to, _), .offerTrade(_, let to, _):
+        case .propose(_, let to), .proposeWithWords(_, let to, _), .offerTrade(_, let to, _), .inviteToAlliance(let to):
             return state.house(to).map { !$0.isPlayer } ?? false
+        case .askToJoin(let id):
+            // A steward leading the alliance answers at once.
+            return state.alliance(id).map { !state.houses[$0.leader].isPlayer } ?? false
         case .answer(let id, _):
             return state.envoys.first { $0.id == id }?.proposal == .trade
         default:
@@ -606,7 +613,7 @@ public final class GameSession {
     static func isRealmsToTell(_ event: GameEvent) -> Bool {
         switch event {
         case .battle, .unitLost, .holdStruck, .holdCaptured, .seatMoved, .promoted, .ruinSearched, .holdFounded,
-             .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered:
+             .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired, .hunted:
             return true
         default:
             return false
@@ -985,6 +992,8 @@ public final class GameSession {
             stage = nil
             headings = [:]
             risings = [:]
+            clipsShown = [:]
+            completions = []
         }
         tileBytes = TileTexture.bytes(for: state, viewer: player, visible: visible, owners: territory, ground: ground)
         tilesVersion += 1

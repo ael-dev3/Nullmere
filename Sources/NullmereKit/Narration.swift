@@ -142,6 +142,22 @@ enum Narration {
             case .ascendancy: return Line(text: "\(house(outcome.winner)) is ascendant.", tone: .bad)
             case .dominion: return Line(text: "\(house(outcome.winner)) holds dominion over the lake.", tone: .bad)
             }
+        case .studyBegun, .studyCompleted, .commanderJoined, .commanderAssigned, .commanderReleased, .commanderRose,
+             .commanderWounded, .skillFired, .hunted, .sentToGather, .gathered, .delivered, .siteWorkedOut,
+             .allianceFounded, .allianceInvited, .allianceAsked, .allianceAnswered, .allianceJoined, .allianceLeft, .allianceLed,
+             .allianceDisbanded, .helpGiven, .rallyCalled, .rallyJoined, .rallySetOut, .rallyStruck, .rallyDispersed, .sentToReinforce,
+             .happeningBegun, .happeningMark, .happeningEnded, .deedDone, .chargeDone:
+            // The deeper systems' words are the rules' own.
+            return state.tidings(of: event, for: viewer).map { Line(text: $0.text, tone: Narration.tone($0.tone)) }
+        }
+    }
+
+    /// A tidings' tone as a notice's.
+    static func tone(_ tone: Tidings.Tone) -> GameSession.Notice.Tone {
+        switch tone {
+        case .good: return .good
+        case .bad: return .bad
+        case .neutral: return .neutral
         }
     }
 }

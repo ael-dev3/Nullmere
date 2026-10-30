@@ -8,11 +8,27 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
         public var kind: BuildingKind
         public var targetLevel: Int
         public var watchesLeft: Int
+        /// The allied Houses that have helped it, if any.
+        public var helpers: [Int]? = nil
     }
 
     public struct Training: Codable, Equatable, Sendable {
         public var kind: UnitKind
         public var watchesLeft: Int
+        /// The tier it musters at; absent for the first, as in older saves.
+        public var tier: Int?
+        /// The allied Houses that have helped it, if any.
+        public var helpers: [Int]?
+
+        public init(kind: UnitKind, watchesLeft: Int, tier: Int? = nil) {
+            self.kind = kind
+            self.watchesLeft = watchesLeft
+            self.tier = tier.flatMap { $0 > 1 ? $0 : nil }
+            self.helpers = nil
+        }
+
+        /// The tier it musters at.
+        public var musteredTier: Int { tier ?? 1 }
     }
 
     public let id: Int
@@ -91,9 +107,11 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
     /// watch to train takes one fewer.
     public static let fasterTrainingAt = 3
 
-    /// Watches a company takes to train at this hold.
-    public func trainingWatches(for kind: UnitKind) -> Int {
-        kind.trainWatches - (level(.musterHall) >= Hold.fasterTrainingAt && kind.trainWatches > 1 ? 1 : 0)
+    /// Watches a company takes to train at this hold, before its House's
+    /// studies hasten it.
+    public func trainingWatches(for kind: UnitKind, tier: Int = 1) -> Int {
+        let watches = kind.trainWatches(tier: tier)
+        return watches - (level(.musterHall) >= Hold.fasterTrainingAt && watches > 1 ? 1 : 0)
     }
 
     public static func sight(beaconLevel: Int) -> Int {
@@ -149,6 +167,8 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
     public var isEliminated: Bool
     /// The House this one has sworn fealty to, if any.
     public var liege: Int?
+    /// What it has studied, and what it studies now.
+    public var research = Research()
 
     public var title: String { "House \(name)" }
 
@@ -166,7 +186,7 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
     // The explored ground travels as bits, eight tiles to a byte: a keeper's
     // view goes across the network whenever it changes.
     private enum CodingKeys: String, CodingKey {
-        case id, name, sigil, isPlayer, temperament, stock, explored, exploredBits, isEliminated, liege
+        case id, name, sigil, isPlayer, temperament, stock, explored, exploredBits, isEliminated, liege, research
     }
 
     public init(from decoder: any Decoder) throws {
@@ -187,6 +207,8 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
         }
         isEliminated = try container.decode(Bool.self, forKey: .isEliminated)
         liege = try container.decodeIfPresent(Int.self, forKey: .liege)
+        // Saves from before studies know none.
+        research = try container.decodeIfPresent(Research.self, forKey: .research) ?? Research()
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -200,6 +222,7 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
         try container.encode(Bits.encode(explored), forKey: .exploredBits)
         try container.encode(isEliminated, forKey: .isEliminated)
         try container.encodeIfPresent(liege, forKey: .liege)
+        if !research.isEmpty { try container.encode(research, forKey: .research) }
     }
 }
 

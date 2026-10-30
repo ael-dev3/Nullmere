@@ -20,15 +20,24 @@ extension GameState {
         view.units = units.filter { unit in
             unit.owner == house || (map.index(of: unit.position).map { seen[$0] } ?? false)
         }
-        // A company in sight shows where it stands, not where it is bound.
+        // A company in sight shows where it stands, not where it is bound,
+        // nor what it is about or carries.
         for index in view.units.indices where view.units[index].owner != house {
             view.units[index].destination = nil
+            view.units[index].errand = nil
+            view.units[index].load = nil
         }
+        // Allies know what each other has under way, for they help it.
+        let allies = Set(alliance(of: house)?.members ?? [])
         for index in view.houses.indices where view.houses[index].id != house {
             view.houses[index].stock = .zero
             view.houses[index].explored = Array(repeating: false, count: map.count)
+            view.houses[index].research = Research()
+            if allies.contains(view.houses[index].id) {
+                view.houses[index].research.pursuit = houses[index].research.pursuit
+            }
         }
-        for index in view.holds.indices where view.holds[index].owner != house {
+        for index in view.holds.indices where view.holds[index].owner != house && !allies.contains(view.holds[index].owner) {
             view.holds[index].project = nil
             view.holds[index].training = nil
         }
@@ -36,6 +45,32 @@ extension GameState {
         // Gifts too small for the chronicle are known only to the two Houses.
         view.gifts = gifts?.filter { $0.from == house || $0.to == house }
         view.reputed = houses.map { strength(of: $0.id) }
+        view.reputedMight = houses.map { might(of: $0.id) }
+        // Its own commanders, and of others only those at the head of a
+        // company in sight.
+        let leading = Set(view.units.compactMap(\.leader))
+        view.commanders = commanders?.filter { $0.owner == house || leading.contains($0.id) }
+        // The wilds in sight; the sites on ground the House has explored.
+        view.wilds = wilds?.filter { map.index(of: $0.position).map { seen[$0] } ?? false }
+        view.sites = sites?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
+        // Alliances are known to all; who is invited, or asking, only to the
+        // alliance's own Houses and the House concerned.
+        if let alliances {
+            view.alliances = alliances.map { alliance in
+                guard !alliance.members.contains(house) else { return alliance }
+                var known = alliance
+                known.invited = alliance.invited.filter { $0 == house }
+                known.asking = alliance.asking.filter { $0 == house }
+                return known
+            }
+        }
+        // A rally only to its own side; a host on the march, also to the
+        // House whose hold it marches on.
+        view.rallies = rallies?.filter { rally in
+            isOfRally(house, rally) || (rally.marching && hold(rally.target)?.owner == house)
+        }
+        // The marches they may know of, worked out on what they see.
+        view.marches = marches(seenBy: house, in: view)
         return view
     }
 }
@@ -67,7 +102,38 @@ extension GameState {
                 return hold(id)?.owner == house
             case .gifted(let from, let to, _), .tradeAnswered(_, let from, let to, _):
                 return from == house || to == house
-            case .bartered(let owner, _, _), .starving(let owner):
+            case .bartered(let owner, _, _), .starving(let owner), .studyBegun(let owner, _, _), .studyCompleted(let owner, _, _),
+                 .commanderJoined(_, let owner), .commanderRose(_, let owner, _), .commanderWounded(_, let owner):
+                return owner == house
+            case .commanderAssigned(let id, _), .commanderReleased(let id):
+                return commander(id)?.owner == house
+            case .skillFired(_, let owner, _, let at):
+                return owner == house || visible(at)
+            case .hunted(let hunt):
+                return hunt.attackerOwner == house || visible(hunt.at)
+            case .sentToGather(let id, _):
+                return unit(id)?.owner == house
+            case .gathered(_, let owner, _), .delivered(_, let owner, _, _):
+                return owner == house
+            case .siteWorkedOut(_, _, let at):
+                return visible(at)
+            case .allianceFounded, .allianceJoined, .allianceLeft, .allianceLed, .allianceDisbanded:
+                return true
+            case .allianceInvited(let id, let other), .allianceAsked(let id, let other), .allianceAnswered(let id, let other, _):
+                return other == house || alliance(id)?.members.contains(house) == true
+            case .helpGiven(let by, let to, _):
+                return by == house || to == house
+            case .rallyCalled(_, let caller, _), .rallyDispersed(_, let caller):
+                return caller == house || areAllied(caller, house)
+            case .rallyJoined(let id, _, let owner):
+                return owner == house || rally(id).map { isOfRally(house, $0) } == true
+            case .rallySetOut(_, let caller, _, let defender, _), .rallyStruck(_, let caller, _, let defender, _):
+                return caller == house || defender == house || areAllied(caller, house)
+            case .sentToReinforce(_, let owner, let holdID):
+                return owner == house || hold(holdID)?.owner == house
+            case .happeningBegun, .happeningEnded:
+                return true
+            case .happeningMark(let owner, _, _, _), .deedDone(let owner, _), .chargeDone(let owner, _, _):
                 return owner == house
             case .promoted(_, let owner, _):
                 return owner == house

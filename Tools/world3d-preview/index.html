@@ -45,6 +45,7 @@ uniform sampler2D heights;
 uniform mat4 viewProjection;
 uniform vec4 eye, moon, viewport, world, highlight, extent, haze, heightsGrid;
 uniform vec4 houses[16];
+uniform vec4 lights[8];
 ${scene}
 `;
 const landVertex = header + `
@@ -89,6 +90,7 @@ void main() {
     }
   }
   lit += nm_light(albedo, n, moon.xyz, moon.w);
+  for (int i = 0; i < 4; i++) { lit += nm_pointLight(albedo, vWorld, n, lights[i], lights[i + 4]); }
   for (int i = 0; i < 7; i++) {
     ivec2 toward = ivec2(0, 0);
     if (i == 1) { toward = ivec2(1, 0); }
@@ -136,7 +138,7 @@ void main() {
   vec3 mirrored = vec3(look.x, -look.y, look.z);
   float facing = 1.0 - max(-look.y, 0.0);
   float fresnel = 0.30 + 0.70 * facing * facing * facing * facing * facing;
-  vec3 starlit = kDeepWater + nm_stars(mirrored, time) * fresnel;
+  vec3 starlit = kDeepWater + (nm_stars(mirrored, time) + nm_moonGlow(mirrored, moon.xyz)) * fresnel;
   vec3 moonlit = nm_moonlight(mirrored, moon.xyz) * fresnel;
   float clear = smoothstep(0.0, 0.14, depth);
   ivec2 h = nm_hexRound(nm_axial(vWorld.xz));
@@ -198,6 +200,7 @@ void main() {
   vec3 toEye = normalize(eye.xyz - vWorld);
   if (dot(n, toEye) < 0.0) { n = -n; }
   vec3 lit = nm_light(vColour, n, moon.xyz, moon.w);
+  for (int i = 0; i < 4; i++) { lit += nm_pointLight(vColour, vWorld, n, lights[i], lights[i + 4]); }
   float facing = 1.0 - max(dot(n, toEye), 0.0);
   float behind = max(dot(-toEye, moon.xyz), 0.0);
   lit += kMoonColour * facing * facing * facing * (0.04 + 0.22 * behind) * moon.w;
@@ -215,6 +218,34 @@ void main() {
   if (vWatched < 0.75) { lit = nm_remembered(lit); }
   lit = nm_haze(lit, distance(vWorld, eye.xyz), haze.x, haze.y);
   outColour = vec4(nm_encode(lit * haze.z), 1.0);
+}`;
+
+const moteVertex = header + `
+in vec4 place; in vec4 colour;
+out vec2 vCorner; out vec4 vColour; out vec3 vWorld;
+void main() {
+  int v = gl_VertexID;
+  vec2 corner = vec2((v == 1 || v == 4 || v == 5) ? 1.0 : -1.0, (v == 2 || v == 3 || v == 5) ? 1.0 : -1.0);
+  vec3 forward = normalize(place.xyz - eye.xyz);
+  vec3 right = normalize(cross(forward, vec3(0.0, 1.0, 0.0)));
+  vec3 up = cross(right, forward);
+  vec3 p = place.xyz + (right * corner.x + up * corner.y) * place.w;
+  vec2 knowledge = nm_knowledge(nm_hexRound(nm_axial(place.xz)), world.x);
+  gl_Position = knowledge.x > 0.5 ? viewProjection * vec4(p, 1.0) : vec4(0.0, 0.0, 2.0, 1.0);
+  vCorner = corner;
+  vColour = colour;
+  vWorld = p;
+}`;
+const moteFragment = header + `
+in vec2 vCorner; in vec4 vColour; in vec3 vWorld;
+out vec4 outColour;
+void main() {
+  float r = length(vCorner);
+  if (r > 1.0) { discard; }
+  float soft = 1.0 - smoothstep(0.1, 1.0, r);
+  float far = 1.0 - clamp(1.0 - exp(-max(distance(vWorld, eye.xyz) - haze.x, 0.0) * haze.y), 0.0, 0.85);
+  vec3 light = vColour.rgb * soft * far * haze.z;
+  outColour = vec4(nm_encode(light), vColour.a * soft);
 }`;
 
 function compile(type, source) {
@@ -244,6 +275,7 @@ function uniforms(p) {
   for (const name of ['eye', 'moon', 'viewport', 'world', 'highlight', 'extent', 'haze']) set(name, gl.uniform4fv, new Float32Array(frame[name]));
   set('heightsGrid', gl.uniform4fv, new Float32Array(frame.heights));
   set('houses', gl.uniform4fv, new Float32Array(frame.houses));
+  set('lights', gl.uniform4fv, new Float32Array(frame.lights || new Array(32).fill(0)));
   set('tiles', gl.uniform1i, 0);
   set('heights', gl.uniform1i, 1);
 }
@@ -349,5 +381,23 @@ gl.enable(gl.BLEND);
 gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 gl.depthMask(false);
 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+// The motes over all, giving light and hiding by their own measures.
+if (frame.scene && frame.scene.moteCount > 0) {
+  const motes = program(moteVertex, moteFragment);
+  uniforms(motes);
+  gl.bindVertexArray(gl.createVertexArray());
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, decode(frame.scene.motes, Uint8Array), gl.STATIC_DRAW);
+  for (const [name, offset] of [['place', 0], ['colour', 16]]) {
+    const at = gl.getAttribLocation(motes, name);
+    if (at < 0) continue;
+    gl.enableVertexAttribArray(at);
+    gl.vertexAttribPointer(at, 4, gl.FLOAT, false, 32, offset);
+    gl.vertexAttribDivisor(at, 1);
+  }
+  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, frame.scene.moteCount);
+}
 document.title = 'ready';
 </script>

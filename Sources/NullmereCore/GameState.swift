@@ -75,6 +75,32 @@ public struct GameState: Codable, Equatable, Sendable {
     /// is made, so a keeper's view, the unexplored left as land, shows it
     /// in the same place from the first watch. Absent in older saves.
     public internal(set) var moonWater: DeepWater?
+    /// Every commander of the realm, each at its id's place; absent in
+    /// saves from before commanders, which raise them at the next watch.
+    var commanders: [Commander]?
+    /// The wilds of the far country; absent in saves from before them,
+    /// which raise them as the watch turns.
+    var wilds: [Wild]?
+    /// The land's sites, where companies gather; absent in saves from
+    /// before them, which find them as the watch turns.
+    var sites: [Site]?
+    /// The alliances standing; absent in saves from before them.
+    var alliances: [Alliance]?
+    /// The rallies gathering or on the march; absent in saves from before them.
+    var rallies: [Rally]?
+    /// The happening of the realm under way, if any.
+    public internal(set) var happening: Happening?
+    /// The deeds the Houses have done this age; absent before any.
+    public internal(set) var deedsDone: [DeedDone]?
+    /// How many of their charges each House has done, by its id; absent
+    /// in saves from before charges, which set every House its first.
+    public internal(set) var chargesDone: [Int]?
+    /// In a keeper's view, each House's might as the realm reckons it.
+    var reputedMight: [Int]?
+    /// In a keeper's view, the marches they may know of: where their
+    /// companies are bound and when they should be there, and the way
+    /// others in sight are going. Absent in the world itself.
+    public internal(set) var marches: [March]?
 
     public var player: Int { houses.first { $0.isPlayer }?.id ?? 0 }
 
@@ -137,6 +163,7 @@ public struct GameState: Codable, Equatable, Sendable {
                 }
             }
         }
+        raiseFirstCommanders()
         refreshSight()
         takeSnapshot()
     }
@@ -250,19 +277,28 @@ public struct GameState: Codable, Equatable, Sendable {
             guard level > 0 else { continue }
             total[resource] = total[resource] * (100 + BuildingKind.yieldBoostPerLevel * level) / 100
         }
+        // Then what its House's studies add.
+        let studied = yieldBonuses(for: hold.owner)
+        for resource in Resource.allCases where studied[resource] > 0 {
+            total[resource] = total[resource] * (100 + studied[resource]) / 100
+        }
         return underOmen(total)
     }
 
     /// A House's income before upkeep.
     public func income(of house: Int) -> Stock {
-        let owners = territory()
-        return holds(of: house).reduce(Stock.zero) { $0 + income(of: $1, territory: owners) }
+        income(of: house, territory: territory())
     }
 
-    /// How much of each resource a House can keep. Holds add storehouses;
-    /// whatever comes in beyond this is lost.
+    /// A House's income before upkeep, its land's territory already found.
+    public func income(of house: Int, territory owners: [Int?]) -> Stock {
+        holds(of: house).reduce(Stock.zero) { $0 + income(of: $1, territory: owners) }
+    }
+
+    /// How much of each resource a House can keep. Holds add storehouses,
+    /// and its studies deeper cellars; whatever comes in beyond this is lost.
     public func storage(of house: Int) -> Int {
-        GameState.baseStorage + GameState.storagePerHold * holds(of: house).count
+        (GameState.baseStorage + GameState.storagePerHold * holds(of: house).count) * (100 + bonus(.storage, for: house)) / 100
     }
 
     /// How far around its seat each House knows the land when a game begins.
@@ -282,14 +318,14 @@ public struct GameState: Codable, Equatable, Sendable {
 
     /// Grain a House's units eat each watch.
     public func upkeep(of house: Int) -> Int {
-        units(of: house).reduce(0) { $0 + $1.kind.upkeep }
+        units(of: house).reduce(0) { $0 + upkeep(of: $1) }
     }
 
     /// A rough measure of military might, for rivals weighing war.
     public func strength(of house: Int) -> Int {
         if let reputed, reputed.indices.contains(house) { return reputed[house] }
         let army = units(of: house).reduce(0) { total, unit in
-            total + (unit.kind.attack + unit.kind.defense) * unit.health / 10
+            total + strength(of: unit)
         }
         let walls = holds(of: house).reduce(0) { $0 + $1.ward / 2 }
         return army + walls
@@ -306,12 +342,16 @@ public struct GameState: Codable, Equatable, Sendable {
 
     // MARK: Sight
 
-    /// The tiles a House sees right now, with its allies' sight.
+    /// The tiles a House sees right now, with its allies' sight: those in a
+    /// pact with it, and those sworn to its alliance.
     public func visibility(for house: Int) -> [Bool] {
         var visible = [Bool](repeating: false, count: map.count)
         // Allies lend their sight; a fallen House has none to lend or borrow.
         let fallen = houses.indices.contains(house) && houses[house].isEliminated
-        let watchers = houses.filter { $0.id == house || (!fallen && !$0.isEliminated && stance($0.id, house) == .pact) }.map(\.id)
+        let sworn = alliance(of: house)?.members ?? []
+        let watchers = houses.filter { other in
+            other.id == house || (!fallen && !other.isEliminated && (stance(other.id, house) == .pact || sworn.contains(other.id)))
+        }.map(\.id)
         for watcher in watchers {
             for unit in units(of: watcher) {
                 let range = sight(of: unit)
@@ -357,13 +397,13 @@ public struct GameState: Codable, Equatable, Sendable {
     /// Puts a new unit on the hex, or the nearest free passable hex within
     /// three, never in another House's hold.
     @discardableResult
-    mutating func placeUnit(_ kind: UnitKind, for house: Int, near hex: Hex) -> Unit? {
+    mutating func placeUnit(_ kind: UnitKind, tier: Int = 1, for house: Int, near hex: Hex) -> Unit? {
         let spot = hex.spiral(3).first { candidate in
             guard let tile = map[candidate], tile.terrain.isPassable else { return false }
-            return unit(at: candidate) == nil && (hold(at: candidate).map { $0.owner == house } ?? true)
+            return unit(at: candidate) == nil && wild(at: candidate) == nil && (hold(at: candidate).map { $0.owner == house } ?? true)
         }
         guard let spot else { return nil }
-        let placed = Unit(id: takeID(), kind: kind, owner: house, position: spot)
+        let placed = Unit(id: takeID(), kind: kind, owner: house, position: spot, tier: tier)
         units.append(placed)
         return placed
     }

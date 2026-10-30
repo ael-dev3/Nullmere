@@ -245,8 +245,8 @@ struct WorldMarks: View {
                     shot.addLine(to: head)
                     context.stroke(shot, with: .color(Color(red: 1, green: 0.9, blue: 0.7).opacity(0.85)), lineWidth: 1.4)
                 }
-                // The flash where it lands.
-                let flash = reduceMotion ? 0 : GameSession.Blow.flash(at: age)
+                // The flash where it lands; the world's own, where it is drawn.
+                let flash = reduceMotion || modelsDrawn ? 0 : GameSession.Blow.flash(at: age)
                 if flash > 0 {
                     let glow = scale * 0.32 * CGFloat(1.6 - flash * 0.6)
                     let disc = Path(ellipseIn: CGRect(x: point.x - glow, y: point.y - glow, width: glow * 2, height: glow * 2))
@@ -264,9 +264,11 @@ struct WorldMarks: View {
                     context.stroke(glyph(for: fell.kind, at: sunk, radius: r * 0.55), with: .color(colour), lineWidth: 1.1)
                 }
                 let colour = blow.againstPlayer ? Palette.bad : Color(red: 0.95, green: 0.93, blue: 0.86)
-                let radius = scale * (0.35 + 0.55 * age)
-                let ring = Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))
-                context.stroke(ring, with: .color(colour.opacity(0.75 * fade)), lineWidth: 1.6)
+                if !modelsDrawn {
+                    let radius = scale * (0.35 + 0.55 * age)
+                    let ring = Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))
+                    context.stroke(ring, with: .color(colour.opacity(0.75 * fade)), lineWidth: 1.6)
+                }
                 context.draw(
                     Text(verbatim: "−\(blow.damage)")
                         .font(.nm(12, weight: .semibold).monospacedDigit())
@@ -659,6 +661,7 @@ struct ForecastOverlay: View {
         switch forecast.target {
         case .unit(let kind): return kind.title
         case .hold(let id): return session.state.hold(id)?.name ?? "the hold"
+        case .wild(let kind, _): return kind.title
         }
     }
 }

@@ -35,7 +35,7 @@ final class WorldPreviewTests: XCTestCase {
         func v(_ x: Vec4) -> [Float] { [x.x, x.y, x.z, x.w] }
         return ["viewProjection": m(frame.viewProjection), "eye": v(frame.eye), "moon": v(frame.moon), "viewport": v(frame.viewport),
                 "world": v(frame.world), "highlight": v(frame.highlight), "extent": v(frame.extent), "haze": v(frame.haze),
-                "heights": v(frame.heights), "houses": frame.houseColours.flatMap(v)]
+                "heights": v(frame.heights), "houses": frame.houseColours.flatMap(v), "lights": frame.lightValues.flatMap(v)]
     }
 
     /// Every model a world's keeper sees, staged as the app stages them:
@@ -67,6 +67,20 @@ final class WorldPreviewTests: XCTestCase {
         let flights = WorldStage.flights(arrows: [], birdsOver: Vec3(lake.x, 0, lake.z), hearths: hearths, time: 20, into: &frame)
         frame.fixed = stage.furnish(occupied: Set(poses.map(\.hex)), holds: Set(state.holds.map(\.position)))
         frame.batches = holds + companies + flights
+        // A blow landing beside the seat, the seat's hall burning, and
+        // fireflies over the reeds near it.
+        var happenings = Happenings()
+        if let seat = state.seat(of: state.player) {
+            let centre = Relief.centre(of: seat.position)
+            let heart = Vec3(centre.x, max(relief.height(of: seat.position), Relief.waterline), centre.z)
+            happenings.blazes = [Happenings.Spot(at: heart, strength: 0.9, seed: 1)]
+            if let near = poses.first(where: { $0.isOwn && $0.hex != seat.position }) {
+                happenings.strikes = [Happenings.Strike(from: near.position + Vec3(1.2, 0, 0.4), at: near.position, start: 19.8, ranged: false,
+                                                        seed: 3)]
+            }
+            happenings.fireflies = stage.fireflySpots(near: heart, within: 3).map { Happenings.Spot(at: $0, seed: 5) }
+        }
+        (frame.motes, frame.lights) = happenings.effects(at: 20)
         return frame
     }
 
@@ -77,6 +91,7 @@ final class WorldPreviewTests: XCTestCase {
         return [
             "batches": (scene.fixed + scene.batches).map { ["key": $0.key.description, "instances": bytes($0.instances), "count": $0.instances.count] },
             "palette": bytes(scene.palette), "poses": scene.palette.count,
+            "motes": bytes(scene.motes), "moteCount": scene.motes.count,
         ]
     }
 
@@ -125,7 +140,9 @@ final class WorldPreviewTests: XCTestCase {
         ]
         var frames: [[String: Any]] = []
         for (name, camera, tiles, scene) in views {
-            var entry = WorldPreviewTests.uniforms(WorldPreviewTests.frame(camera, terrain: terrain, radius: state.map.radius, time: 20))
+            var uniforms = WorldPreviewTests.frame(camera, terrain: terrain, radius: state.map.radius, time: 20)
+            if let scene { uniforms.light(with: PointLight.strongest(scene.lights, near: camera.focus)) }
+            var entry = WorldPreviewTests.uniforms(uniforms)
             entry["name"] = name
             entry["tiles"] = Data(tiles).base64EncodedString()
             if let scene { entry["scene"] = WorldPreviewTests.export(scene) }

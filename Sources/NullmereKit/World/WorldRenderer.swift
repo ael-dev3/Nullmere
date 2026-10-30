@@ -69,6 +69,7 @@ final class WorldRenderer {
     private let landPipeline: any MTLRenderPipelineState
     private let modelPipeline: any MTLRenderPipelineState
     private let waterPipeline: any MTLRenderPipelineState
+    private let motePipeline: any MTLRenderPipelineState
     private let solid: any MTLDepthStencilState
     private let glassy: any MTLDepthStencilState
     private let pixelFormat: MTLPixelFormat
@@ -85,7 +86,8 @@ final class WorldRenderer {
             guard let found = library.makeFunction(name: name) else { throw Failure.missingFunction(name) }
             return found
         }
-        func pipeline(_ label: String, _ vertex: String, _ fragment: String, blends: Bool) throws -> any MTLRenderPipelineState {
+        func pipeline(_ label: String, _ vertex: String, _ fragment: String, blends: Bool,
+                      premultiplied: Bool = false) throws -> any MTLRenderPipelineState {
             let descriptor = MTLRenderPipelineDescriptor()
             descriptor.label = label
             descriptor.vertexFunction = try function(vertex)
@@ -95,7 +97,9 @@ final class WorldRenderer {
             descriptor.rasterSampleCount = WorldRenderer.sampleCount
             if blends {
                 descriptor.colorAttachments[0].isBlendingEnabled = true
-                descriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+                // Motes give light and hide what lies behind them by
+                // their own measures: their colour comes already scaled.
+                descriptor.colorAttachments[0].sourceRGBBlendFactor = premultiplied ? .one : .sourceAlpha
                 descriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
                 descriptor.colorAttachments[0].sourceAlphaBlendFactor = .one
                 descriptor.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
@@ -105,6 +109,7 @@ final class WorldRenderer {
         landPipeline = try pipeline("Nullmere land", WorldShaders.landVertex, WorldShaders.landFragment, blends: false)
         waterPipeline = try pipeline("Nullmere water", WorldShaders.waterVertex, WorldShaders.waterFragment, blends: true)
         modelPipeline = try pipeline("Nullmere models", WorldShaders.modelVertex, WorldShaders.modelFragment, blends: false)
+        motePipeline = try pipeline("Nullmere motes", WorldShaders.moteVertex, WorldShaders.moteFragment, blends: true, premultiplied: true)
         guard let commandQueue = device.makeCommandQueue() else { throw Failure.noCommandQueue }
         commandQueue.label = "Nullmere world"
         let solidDescriptor = MTLDepthStencilDescriptor()
@@ -248,6 +253,15 @@ final class WorldRenderer {
         encoder.setDepthStencilState(glassy)
         encoder.setFragmentTexture(land.heights, index: 1)
         encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+
+        // The motes over all: sparks, dust, smoke, embers, fireflies.
+        if !scene.motes.isEmpty,
+           let motes = device.makeBuffer(bytes: scene.motes, length: scene.motes.count * MemoryLayout<Mote>.stride,
+                                         options: .storageModeShared) {
+            encoder.setRenderPipelineState(motePipeline)
+            encoder.setVertexBuffer(motes, offset: 0, index: 1)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: scene.motes.count)
+        }
         encoder.endEncoding()
         return commandBuffer
     }

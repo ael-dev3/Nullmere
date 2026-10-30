@@ -6,7 +6,11 @@ import XCTest
 
 final class SceneTests: XCTestCase {
     func testTheGPUReadsTheFrameAndTheModelsAsTheShadersDeclareThem() {
-        XCTAssertEqual(MemoryLayout<FrameUniforms>.stride, 512)
+        XCTAssertEqual(MemoryLayout<FrameUniforms>.stride, 640)
+        XCTAssertEqual(MemoryLayout<FrameUniforms>.offset(of: \FrameUniforms.lights), 512)
+        XCTAssertEqual(MemoryLayout<Mote>.stride, 32)
+        XCTAssertTrue(WorldShaders.source.contains("float4 lights[8];"))
+        XCTAssertTrue(WorldShaders.source.contains("struct Mote"))
         XCTAssertEqual(MemoryLayout<FrameUniforms>.offset(of: \FrameUniforms.eye), 128)
         XCTAssertEqual(MemoryLayout<FrameUniforms>.offset(of: \FrameUniforms.heights), 240)
         XCTAssertEqual(MemoryLayout<FrameUniforms>.offset(of: \FrameUniforms.houses), 256)
@@ -18,7 +22,7 @@ final class SceneTests: XCTestCase {
         XCTAssertEqual(instance.params, Vec4(0.4, 0.5, 2, 1))
         XCTAssertEqual(instance.flags & ModelInstance.alwaysShown, 1)
         XCTAssertTrue(WorldShaders.source.contains("struct ModelInstance"))
-        XCTAssertEqual(Set(WorldShaders.functions).count, 6)
+        XCTAssertEqual(Set(WorldShaders.functions).count, 8)
         for name in WorldShaders.functions {
             XCTAssertTrue(WorldShaders.source.contains(" \(name)("), "\(name) is in the source")
         }

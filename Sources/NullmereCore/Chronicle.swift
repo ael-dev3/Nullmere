@@ -22,6 +22,18 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         case trade
         /// A keeper takes up a House, or a House waits for another keeper.
         case seating
+        /// A House masters a study that changes what it can do.
+        case learning
+        /// A commander comes to a House, or rises to renown.
+        case commander
+        /// A great company of the wilds falls.
+        case hunt
+        /// An alliance is founded, joined, left or led anew, or is no more.
+        case alliance
+        /// A rally's host falls upon a hold.
+        case rally
+        /// A happening of the realm begins, or ends with its foremost honoured.
+        case happening
     }
 
     public let watch: Int

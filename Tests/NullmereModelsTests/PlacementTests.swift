@@ -111,7 +111,7 @@ final class PlacementTests: XCTestCase {
     static func grandPlan(_ hex: Hex, rising: HoldLayout.Plan.Rising? = nil) -> HoldLayout.Plan {
         var levels: [HoldLayout.Work: Int] = [.study: 5]
         for kind in BuildingKind.allCases {
-            levels[.building(kind)] = kind.maxLevel
+            levels[HoldLayout.Work(kind)] = kind.maxLevel
         }
         return HoldLayout.Plan(hex: hex, isSeat: true, levels: levels, rising: rising)
     }

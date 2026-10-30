@@ -154,6 +154,29 @@ final class StageTests: XCTestCase {
         XCTAssertLessThan(spread(try XCTUnwrap(within.first).instances), spread(figures) * 0.31)
     }
 
+    func testSitesFillTheirHexesHearts() {
+        let stage = stage()
+        let hexes = Array(Self.state.map.hexes.filter { Self.state.map[$0]?.terrain.isPassable == true }.prefix(4))
+        let batches = stage.sites(zip(Resource.allCases, hexes).map { ($0, $1) })
+        XCTAssertEqual(Set(batches.map(\.key)), Set(Resource.allCases.map { ModelKey.site($0) }))
+        for (batch, hex) in zip(batches, hexes) {
+            let instance = try! XCTUnwrap(batch.instances.first)
+            let centre = Relief.centre(of: hex)
+            XCTAssertEqual(instance.model.c3.x, centre.x, accuracy: 1e-4)
+            XCTAssertEqual(instance.model.c3.z, centre.z, accuracy: 1e-4)
+            XCTAssertEqual(instance.model.c3.y, stage.ground(atX: centre.x, z: centre.z) - Scatter.sink, accuracy: 1e-4)
+            XCTAssertEqual(instance.hex, SIMD2(Int32(hex.q), Int32(hex.r)), "shown where the keeper knows its hex")
+        }
+        XCTAssertTrue(stage.sites([]).isEmpty)
+    }
+
+    func testTheArchiveStandsAsTheStudy() {
+        XCTAssertEqual(ModelKey.work(.archive, level: 3).canonical, .study(level: 3))
+        XCTAssertEqual(HoldLayout.Work(.archive), .study)
+        XCTAssertEqual(HoldLayout.Work(.granary), .building(.granary))
+        XCTAssertFalse(Library.catalogue.contains(.work(.archive, level: 1)), "its models are the study's")
+    }
+
     func testTheLandUnderFiguresIsWorkedOutOnce() {
         let stage = stage()
         let first = stage.ground(atX: 1.3, z: -2.2)

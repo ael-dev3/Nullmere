@@ -27,9 +27,26 @@ public struct CompanyPose: Equatable, Sendable {
     /// How much of its formation it shows: 1 in the open, less drawn up
     /// small within a hold's walls.
     public var spread: Float
+    /// The clip it is leaving, as it eases into this one, if it is.
+    public var blend: Blend?
+
+    /// A clip being left: where it was, and how much of it still shows.
+    public struct Blend: Equatable, Sendable {
+        public var clip: Clip
+        public var time: Float
+        /// 1 just left, falling to 0 as the new clip takes over.
+        public var weight: Float
+
+        public init(clip: Clip, time: Float, weight: Float) {
+            self.clip = clip
+            self.time = time
+            self.weight = weight
+        }
+    }
 
     public init(unit: Int, key: ModelKey, sigil: Int, health: Int, hex: Hex, position: Vec3, heading: Float, clip: Clip = .idle,
-                clipTime: Float = 0, opacity: Float = 1, emphasis: Float = 0, isOwn: Bool, commander: Int? = nil, spread: Float = 1) {
+                clipTime: Float = 0, opacity: Float = 1, emphasis: Float = 0, isOwn: Bool, commander: Int? = nil, spread: Float = 1,
+                blend: Blend? = nil) {
         self.unit = unit
         self.key = key
         self.sigil = sigil
@@ -44,6 +61,7 @@ public struct CompanyPose: Equatable, Sendable {
         self.isOwn = isOwn
         self.commander = commander
         self.spread = spread
+        self.blend = blend
     }
 
     /// Which way to face to look from one hex toward another.
@@ -197,6 +215,46 @@ public final class WorldStage: @unchecked Sendable {
         return furniture
     }
 
+    // MARK: Sites
+
+    /// The land's sites the keeper knows, each filling its hex's heart: a
+    /// grain field, a timber stand, a stone outcrop, a moonsalt pan.
+    public func sites(_ sites: [(store: Resource, hex: Hex)]) -> [ModelBatch] {
+        WorldStage.batches(sites.map { site in
+            let centre = Relief.centre(of: site.hex)
+            let at = Vec3(centre.x, ground(atX: centre.x, z: centre.z) - Scatter.sink, centre.z)
+            let turn = WorldStage.phase(of: site.hex, salt: 7) * .pi / 10
+            return (.site(site.store), ModelInstance(model: .translation(at) * .rotationY(turn), phase: WorldStage.phase(of: site.hex, salt: 11),
+                                                     hex: SIMD2(Int32(site.hex.q), Int32(site.hex.r))))
+        })
+    }
+
+    // MARK: Where the night's small lights wander
+
+    /// Reed beds and tall grass near a point, the keeper's nearest: where
+    /// fireflies wander at night.
+    public func fireflySpots(near focus: Vec3, within reach: Int = 4, most: Int = 10) -> [Vec3] {
+        let middle = HexLayout(size: 1).hex(atX: Double(focus.x), y: Double(focus.z))
+        var spots: [Vec3] = []
+        for hex in middle.spiral(reach) {
+            for piece in furnitureByHex[hex] ?? [] {
+                guard case .furnishing(let kind) = piece.key, kind == .reeds || kind == .grass else { continue }
+                spots.append(piece.position)
+                break
+            }
+            if spots.count >= most { break }
+        }
+        return spots
+    }
+
+    /// Where each work being raised stands, for the dust of its building.
+    public func risingWorks(_ sights: [HoldSight]) -> [Vec3] {
+        sights.flatMap { sight in
+            pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing)
+                .filter { $0.progress < 1 && $0.key != .scaffold }.map(\.position)
+        }
+    }
+
     // MARK: Holds
 
     /// A hold's pieces, laid out again only when it or its rising changes.
@@ -243,12 +301,14 @@ public final class WorldStage: @unchecked Sendable {
         let key: ModelKey
         let clip: Clip
         let frame: Int
+        var from: Clip?
+        var fromFrame = 0
+        var weight = 0
     }
 
-    /// A model's pose at a moment, added to the frame's palette once for
-    /// every figure that stands so then; returns where it begins. Moments
-    /// are taken to the thirtieth of a second, and round a looping clip.
-    static func pose(_ key: ModelKey, _ clip: Clip, at time: Float, shared: inout [PoseKey: UInt32], into frame: inout SceneFrame) -> UInt32 {
+    /// A moment of a clip in thirtieths of a second, taken round a looping
+    /// clip and held at the ends of the death.
+    static func frame(of clip: Clip, at time: Float) -> Int {
         let rate: Float = 30
         var moment = (time * rate).rounded()
         if clip.loops {
@@ -257,9 +317,47 @@ public final class WorldStage: @unchecked Sendable {
         } else {
             moment = min(max(moment, 0), (clip.period * rate).rounded())
         }
-        let name = PoseKey(key: key.canonical, clip: clip, frame: Int(moment))
+        return Int(moment)
+    }
+
+    /// A model's pose partway from one clip into another: each part's turn,
+    /// shift and size eased between the two, so no limb snaps.
+    public static func blendedPose(_ key: ModelKey, _ clip: Clip, at time: Float, from blend: CompanyPose.Blend) -> [Mat4] {
+        let model = Library.model(key)
+        guard let motion = model.motion else { return model.pose(clip, at: time) }
+        let into = motion(clip, time), out = motion(blend.clip, blend.time)
+        guard into.count == out.count else { return model.pose(clip, at: time) }
+        let w = min(max(blend.weight, 0), 1)
+        let joints = zip(into, out).map { a, b in
+            Joint(rotation: a.rotation + (b.rotation - a.rotation) * w, offset: a.offset + (b.offset - a.offset) * w,
+                  scale: a.scale + (b.scale - a.scale) * w)
+        }
+        return model.rig.pose(joints)
+    }
+
+    /// A model's pose at a moment, added to the frame's palette once for
+    /// every figure that stands so then; returns where it begins. Moments
+    /// are taken to the thirtieth of a second, and round a looping clip.
+    static func pose(_ key: ModelKey, _ clip: Clip, at time: Float, blend: CompanyPose.Blend? = nil, shared: inout [PoseKey: UInt32],
+                     into frame: inout SceneFrame) -> UInt32 {
+        let moment = WorldStage.frame(of: clip, at: time)
+        var name = PoseKey(key: key.canonical, clip: clip, frame: moment)
+        // Easing out of another clip, in tenths.
+        let weight = blend.map { Int((min(max($0.weight, 0), 1) * 10).rounded()) } ?? 0
+        if let blend, weight > 0 {
+            name.from = blend.clip
+            name.fromFrame = WorldStage.frame(of: blend.clip, at: blend.time)
+            name.weight = weight
+        }
         if let kept = shared[name] { return kept }
-        let start = frame.add(pose: Library.model(key).pose(clip, at: moment / rate))
+        let start: UInt32
+        if let from = name.from {
+            start = frame.add(pose: blendedPose(key, clip, at: Float(moment) / 30,
+                                                from: CompanyPose.Blend(clip: from, time: Float(name.fromFrame) / 30,
+                                                                        weight: Float(weight) / 10)))
+        } else {
+            start = frame.add(pose: Library.model(key).pose(clip, at: Float(moment) / 30))
+        }
         shared[name] = start
         return start
     }
@@ -290,7 +388,11 @@ public final class WorldStage: @unchecked Sendable {
                 let at = company.position + turn.transformDirection(place * company.spread)
                 let ground = ground(atX: at.x, z: at.z)
                 let lag = company.clip.loops ? offset + Float(index) * 0.137 * company.clip.period : Float(index) * 0.05
-                let start = WorldStage.pose(key, company.clip, at: company.clipTime + lag, shared: &shared, into: &frame)
+                var blend = company.blend
+                if let leaving = company.blend {
+                    blend?.time += leaving.clip.loops ? offset + Float(index) * 0.137 * leaving.clip.period : Float(index) * 0.05
+                }
+                let start = WorldStage.pose(key, company.clip, at: company.clipTime + lag, blend: blend, shared: &shared, into: &frame)
                 placed.append((key, ModelInstance(model: .translation(Vec3(at.x, ground, at.z)) * turn, colour: colour,
                                                   opacity: company.opacity, phase: Float(company.unit % 17) * 0.31,
                                                   emphasis: company.emphasis, hex: hex, palette: start, flags: flags)))

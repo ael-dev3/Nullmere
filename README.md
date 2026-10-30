@@ -500,8 +500,8 @@ realm; keepers are told in plain words, never a status code.
   grows with each hold. Build Granaries, Sawpits, Quarries and Saltworks to
   boost a store, Walls to thicken the ward, Beacons to see further (at
   level II, a hold's land reaches a tile further too), and a Muster Hall to
-  train stronger companies, and at level III to train all but Lanterns a
-  watch sooner. Barter a surplus
+  train stronger companies, at level III to train all but Lanterns a
+  watch sooner, and to level V for the higher tiers. Barter a surplus
   for what you lack, three to one; moonsalt counts as three of any other
   store, so one costs nine of them, and fetches one. Each new hold costs
   more to found than the last, so a House grows by choice, not by habit. A
@@ -509,13 +509,120 @@ realm; keepers are told in plain words, never a status code.
   trained, and the hold trains no other until it has room to stand.
 - **Companies.** Lanterns scout, Spears hold the line and take holds,
   Bows strike from two tiles, Riders are fast, and Founders found new holds.
-  Every company but Lanterns eats a grain each watch. Companies that
+  Every company but Lanterns eats a grain each watch. Spears, Bows and
+  Riders muster in tiers I to V, each needing a Muster Hall as high as
+  itself and the study that opens it (Drill, Iron Ranks, Grey Companies,
+  Moonsteel): a higher tier strikes harder, stands firmer and takes less of a
+  blow, but costs more (moonsalt from tier III), eats more and takes longer
+  to train. Lanterns and Founders muster in one. Companies that
   live through battles rise in rank (Blooded, Hardened, Sworn), each rank
   adding a tenth to attack and defence; chevrons over a company show it. A
   company that wins a close fight steps onto the fallen's ground, but never
   out of a hold, for a garrison holds its ground, nor into a hold it can't
   take. The odds shown before a strike say when the striker will take the
   ground or the hold, and never promise either to a company that may fall.
+- **Studies.** An Archive opens a House's studies, one at a time: twenty-eight
+  in four branches (Husbandry, Arms, Masonry, Lore), each needing an Archive
+  of its circle, the studies it builds on, and its price. Each grade changes
+  the rule it names: what the land yields, what a House can store, how soon
+  works rise and companies muster and what they cost, attack and defence,
+  wards, moves, sight, healing, commanders, and the tiers of companies of war.
+  A higher Archive makes every study sooner. Stewards study too, each by its
+  temper.
+- **Commanders.** Every House begins with a commander, and gains more as its
+  seat's Muster Hall reaches III and V and from Banner Lore, five at most.
+  Each is of an archetype (warden, vanguard, outrider, gleaner, wallbreaker)
+  and rises from level I to XXX with what its company lives through; its
+  four skills come at levels I, V, X and XX: three always strengthen the
+  company it leads, and one fires in battle once its fury has risen through
+  enough battles. A commander takes up a company of war at or beside one of
+  its House's holds; if the company falls, it is carried home wounded for
+  four watches.
+- **The wilds.** The realm raises hostile companies in the far country, six
+  tiles or more from any hold: Saltwights on the flats, Blackwood Reavers,
+  Barrowkin, Spine Hunters, the Drowned on the strand. They are of levels I
+  to X, stronger the further from the holds and the later in the age, two
+  for each seat at most. They never march and take no hold, and stand in
+  the way. Any House may strike them without a war; they strike back at a
+  company beside them, and mend while left be. What falls with them is
+  stores for the House, and experience for the company's commander, more
+  than any other battle gives. Stewards hunt the wilds near their land when
+  they would strike them down with health to spare.
+- **Gathering.** Sites come up in the land outside the holds, three for each
+  seat: Fallow Fields of grain, Deadfall timber, Scree stone and Salt Pans of
+  moonsalt, each the store of its ground, richer further out, and finite;
+  when one is worked out another comes up elsewhere. Send a company of war
+  to gather and it marches there, gathers each watch at its rate (by kind
+  and tier, its House's studies and its commander), and once it carries all
+  it can, or the site is worked out, brings its load home to the nearest
+  hold. Any other order ends the errand, but a load is kept until the
+  company comes by one of its holds. A gatherer struck down by a House at
+  war with its own leaves half its load to the victor. Stewards at peace
+  send idle companies to sites of the stores they run short of.
+- **Alliances.** Any House not sworn to one may raise a banner, a named
+  alliance it leads. Its leader invites Houses and answers those that ask
+  to join; a House leaves when it will, and the leader may cast one out.
+  An alliance takes a third of the lake's seats at most, and no House at war
+  with one of its own. Allies make no war and no demands on each other,
+  share their sight, and help each other's works, musters and studies:
+  each ally helps each once, and every second help takes a watch off it,
+  never its last. When the leader leaves or falls, the strongest still
+  sworn takes up the banner; an alliance with none left is no more.
+  Stewards raise banners, ask, invite and answer from the fifteenth watch,
+  each by its temper.
+- **Rallies.** A House of an alliance calls a rally at one of its holds with
+  a Muster Hall, against a hold it has found of a House at war with it; it
+  gathers for one to four watches, and the muster takes two companies and
+  two more for each level of its Muster Hall. The caller and its allies at
+  war with the same House send companies of war to it. When the gathering
+  is done, those at the muster set out as one host, march at the pace of the
+  slowest, and once all of it is in reach strike the hold together in the
+  one watch, arrows first, before its ward can mend; a company that breaks
+  the ward takes the hold. Only the rally's side knows of it until it sets
+  out; then the House it marches on knows too. A rally whose cause is gone
+  (peace, its caller out of the alliance, its muster lost), whose muster is
+  empty when it should set out, or whose host can't come to its hold within
+  eight watches comes to nothing.
+- **Keeping an ally's gates.** A company of war sent to an ally's hold
+  stands at its gates; while it stands there, a company of a House at war
+  with its own that strikes the hold is struck back from where it stands.
+  Stewards call rallies by their temper, send companies they can spare to
+  their side's rallies, and keep the gates of an ally's hold while a foe of
+  both is near them.
+- **Marches.** A keeper's view of the world lists the marches they may
+  know of: for each of their companies on the march, the way it will go,
+  where it is bound and the watch it should be there; for a host of their
+  side, or one marching on a hold of theirs, the hold and the watch each
+  company should be in reach of it; and for any other company in their
+  sight on the march, the way it goes as far as they see it, never where
+  it is bound. The ways are worked out on the keeper's own view of the
+  land, so none bends round what they can't see.
+- **Happenings.** From the tenth watch, and every thirty after, the realm
+  holds a happening for ten watches: the Long Hunt (companies of the wilds
+  struck down, the greater the more), the Harvest Fair (stores brought home
+  from the sites), the Raising (works raised, the higher the more), the
+  Great Muster (companies mustered, by tier) or the Learned Season (grades
+  of study learned), in turn from one the realm's seed chooses. Every House
+  earns points by it; passing 10, 25 and 50 points brings stores as the
+  watch turns; when it ends the three foremost are honoured in the chronicle
+  and given stores. Its standings are known to every keeper. In a Long Hunt
+  ambitious and cunning stewards hunt further afield; in a Harvest Fair the
+  steadfast and the wary gather any store they have room for.
+- **Might, deeds and charges.** A House's might sums its companies of war
+  and walls, its works, its learning and its commanders; every keeper sees
+  every House's might, and the Houses ranked by it. Thirteen deeds may be
+  done once an age (Founder, Wildbane, Great Hunter, First Harvest, Scholar,
+  Fifth Tier, Great Walls, Sworn, Host Triumphant, Conqueror, Honoured,
+  Veteran Commander, Spire Begun), told as the watch turns. Every House is
+  set ten charges in turn, first steps from raising a Granary to a Muster
+  Hall III, each bringing stores as the watch turns after it is done; the
+  stewards meet them as they play. The ambitious weigh might, not arms
+  alone, in choosing an alliance or an ally.
+- **Renown.** As an age ends, each keeper who held a House in it is
+  remembered in their own record: five renown for each deed their House
+  did, ten if it stood at the end, fifty and a title for the age's victor,
+  and its deeds join those of their other ages. Nothing else carries into
+  the next age: there every House begins alike.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is

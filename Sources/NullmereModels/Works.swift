@@ -158,6 +158,7 @@ enum Works {
         case .walls: return Holds.walls(level: level, name: name)
         case .beacon: return beacon(level, name)
         case .moonspire: return moonspire(level, name)
+        case .archive: return study(level: level, name: name)
         }
     }
 
@@ -500,6 +501,32 @@ enum Works {
             b.door(Vec3(0.04, 0.08, -0.003), width: 0.07, height: 0.13, facing: 0)
             for x in [Float(-0.06), 0.16] {
                 b.banner(at: Vec3(x, 0, 0.06), height: 0.26, width: 0.07, drop: 0.12, turn: 0)
+            }
+            if level >= 4 {
+                // A second tower at the hall's other end, and a low wall round the yard.
+                b.box(min: Vec3(0.16, -0.04, -0.17), max: Vec3(0.26, 0.36, -0.07), color: Palette.stone)
+                b.merlons(from: Vec3(0.16, 0.36, -0.17), to: Vec3(0.26, 0.36, -0.17), count: 2, size: Vec3(0.03, 0.035, 0.03),
+                          color: Palette.stonePale)
+                b.window(Vec3(0.21, 0.26, -0.07), width: 0.022, height: 0.045, facing: 0)
+                b.box(min: Vec3(-0.18, -0.03, 0.2), max: Vec3(0.14, 0.05, 0.225), color: Palette.stoneDark)
+            }
+            if level >= 5 {
+                // The great tower raised higher, crowned in the House's colour,
+                // with fires burning at its foot.
+                b.box(min: Vec3(-0.21, 0.42, -0.16), max: Vec3(-0.11, 0.52, -0.06), color: Palette.stonePale)
+                b.with(material: .house) {
+                    $0.place(.translation(Vec3(-0.16, 0.52, -0.11))) {
+                        $0.lathe([(0.075, 0), (0.0, 0.12)], sides: 4, color: Palette.house)
+                    }
+                }
+                for x in [Float(-0.2), 0.2] {
+                    b.limb(from: Vec3(x, 0, 0.17), to: Vec3(x, 0.08, 0.17), radius: 0.01, color: Palette.timberDark)
+                    b.with(material: .glow) {
+                        $0.place(.translation(Vec3(x, 0.08, 0.17))) {
+                            $0.lathe([(0.02, 0), (0.03, 0.02), (0.0, 0.05)], sides: 5, color: Palette.fire)
+                        }
+                    }
+                }
             }
         }
         // The yard: a pell to strike at and a rack of spears.

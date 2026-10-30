@@ -69,6 +69,8 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         switch self {
         case .figure(let kind, let tier): return .figure(kind, tier: clamp(tier, ModelKey.tiers(of: kind)))
         case .walls(let level), .work(.walls, let level): return .walls(level: clamp(level, ModelKey.wallLevels))
+        // The Archive is where a House's scholars study: its models are the study's.
+        case .work(.archive, let level): return .study(level: clamp(level, ModelKey.studyLevels))
         case .work(let kind, let level): return .work(kind, level: clamp(level, kind.maxLevel))
         case .wild(let tier): return .wild(tier: clamp(tier, ModelKey.wildTiers))
         case .commander(let variant):
@@ -198,7 +200,7 @@ public enum Library {
         keys += (0..<ModelKey.commanderVariants).map { .commander(variant: $0) }
         keys += [.keep(seat: false), .keep(seat: true)]
         keys += (1...ModelKey.wallLevels).map { .walls(level: $0) }
-        for kind in BuildingKind.allCases where kind != .walls {
+        for kind in BuildingKind.allCases where kind != .walls && kind != .archive {
             keys += (1...kind.maxLevel).map { .work(kind, level: $0) }
         }
         keys += (1...ModelKey.studyLevels).map { .study(level: $0) }

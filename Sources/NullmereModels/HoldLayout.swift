@@ -21,8 +21,13 @@ public enum HoldLayout {
     /// A work a hold can raise beside its keep.
     public enum Work: Hashable, Sendable {
         case building(BuildingKind)
-        /// Where its scholars study.
+        /// Where its scholars study: the Archive.
         case study
+
+        /// The work a kind of building stands as: the Archive as the study.
+        public init(_ kind: BuildingKind) {
+            self = kind == .archive ? .study : .building(kind)
+        }
 
         public func key(level: Int) -> ModelKey {
             switch self {
@@ -74,16 +79,16 @@ public enum HoldLayout {
         public init(hold: Hold, study: Int = 0, progress: Float? = nil) {
             var levels: [Work: Int] = [:]
             for (kind, level) in hold.levels where level > 0 {
-                levels[.building(kind)] = level
+                levels[Work(kind)] = level
             }
             if study > 0 {
-                levels[.study] = study
+                levels[.study] = max(levels[.study] ?? 0, study)
             }
             var rising: Rising?
             if let project = hold.project {
                 let watches = Float(project.kind.buildWatches(toLevel: project.targetLevel))
                 let done = progress ?? (1 - Float(project.watchesLeft) / max(watches, 1))
-                rising = Rising(work: .building(project.kind), level: project.targetLevel, progress: min(max(done, 0), 1))
+                rising = Rising(work: Work(project.kind), level: project.targetLevel, progress: min(max(done, 0), 1))
             }
             self.init(hex: hold.position, isSeat: hold.isSeat, levels: levels, rising: rising)
         }

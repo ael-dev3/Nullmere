@@ -300,10 +300,12 @@ final class WorldMetalView: MTKView {
         else { return }
         let pixelsPerPoint = drawableSize.width / bounds.width
         let time = clock.advance(to: CACurrentMediaTime(), rate: motion.clockRate)
-        let frame = FrameUniforms.make(camera: camera, size: bounds.size, pixelsPerPoint: pixelsPerPoint, time: Float(time),
+        var frame = FrameUniforms.make(camera: camera, size: bounds.size, pixelsPerPoint: pixelsPerPoint, time: Float(time),
                                        motion: Float(motion.clockRate), radius: radius, terrain: land.terrain,
                                        hovered: hovered, selected: selected, houses: houseColours)
-        renderer.draw(frame, scene: scene?(time) ?? SceneFrame(), in: pass, to: drawable)
+        let staged = scene?(time) ?? SceneFrame()
+        frame.light(with: PointLight.strongest(staged.lights, near: camera.focus))
+        renderer.draw(frame, scene: staged, in: pass, to: drawable)
     }
 
     // MARK: Input
