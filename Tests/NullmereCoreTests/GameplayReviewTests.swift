@@ -147,13 +147,15 @@ final class AbsentKeeperTests: XCTestCase {
         realm.world.gifts = [Gift(from: friend, to: ama, worth: 500, watch: realm.world.watch)]
         realm.world.envoys.append(Envoy(id: realm.world.nextID, from: friend, to: ama, proposal: .pact, arrived: realm.world.watch))
         realm.world.nextID += 1
-        XCTAssertNotNil(realm.setReady("id-bel", true, now: 1), "Bel there, and ready: the watch turns at once")
+        // Bel there, and ready: each watch turns once the least a watch
+        // lasts with a keeper away, a third of it, is past.
+        XCTAssertNotNil(realm.setReady("id-bel", true, now: 60), "Bel there, and ready: the watch turns")
         XCTAssertEqual(realm.keeper("id-ama")?.watchesAway, 1)
         XCTAssertNotEqual(realm.world.stance(ama, friend), .pact, "One watch away: not yet kept")
-        XCTAssertNotNil(realm.setReady("id-bel", true, now: 2))
+        XCTAssertNotNil(realm.setReady("id-bel", true, now: 120))
         XCTAssertEqual(realm.keeper("id-ama")?.watchesAway, 2)
-        XCTAssertEqual(realm.world.stance(ama, friend), .pact, "Two watches away, two seconds in all: kept")
-        _ = try realm.arrive("id-ama", name: "Ama", now: 3)
+        XCTAssertEqual(realm.world.stance(ama, friend), .pact, "Two watches away, two minutes in all: kept")
+        _ = try realm.arrive("id-ama", name: "Ama", now: 121)
         XCTAssertNil(realm.keeper("id-ama")?.watchesAway, "Back, and no longer counted away")
     }
 
