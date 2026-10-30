@@ -426,10 +426,11 @@ final class BlowTests: XCTestCase {
 final class GuideTests: XCTestCase {
     func testTheGuideCoversTheGameAndItsKeys() {
         let titles = Guide.sections.map(\.title)
-        XCTAssertEqual(titles, ["The watch", "The land", "Holds", "Companies", "Houses", "Omens", "Winning", "Keys"])
+        XCTAssertEqual(titles, ["The watch", "The land", "Holds", "Companies", "Tiers and studies", "Commanders", "The wilds and the sites",
+                                "Houses", "Alliances and rallies", "Happenings and charges", "Omens", "Winning", "Keys"])
         XCTAssertTrue(Guide.sections.allSatisfy { !$0.lines.isEmpty && $0.lines.allSatisfy { $0.count > 10 } })
         let keys = Guide.sections.last!.lines.joined(separator: " ")
-        for key in ["Tab", "H:", "F:", "B:", "Esc", "1:", "2:", "?:", "⌘↩", "⇧⌘↩", "⇧⌘W", "⇧⌘M", "⇧⌘U", "⇧⌘+",
+        for key in ["Tab", "H:", "F:", "B:", "Esc", "1:", "2:", "3:", "4:", "5:", "6:", "?:", "⌘↩", "⇧⌘↩", "⇧⌘W", "⇧⌘M", "⇧⌘U", "⇧⌘+",
                     "] and [", "Space or Return", "Page Up", "With ⌥"] {
             XCTAssertTrue(keys.contains(key), "The guide names \(key)")
         }
@@ -440,6 +441,15 @@ final class GuideTests: XCTestCase {
         XCTAssertTrue(winning.contains("nor win, nor raise its Moonspire while it serves"), winning)
         // The rules said as they stand.
         let all = Guide.sections.flatMap(\.lines).joined(separator: " ")
+        XCTAssertTrue(all.contains("From the tenth watch, a happening comes round every thirty, for ten watches"), all)
+        XCTAssertEqual([Happening.first, Happening.every, Happening.lasts], [10, 30, 10])
+        XCTAssertEqual(Happening.marks, [10, 25, 50])
+        XCTAssertEqual(GameState.rosterLimit, 5, "up to five commanders")
+        XCTAssertEqual(GameState.captainsAt, [3, 5])
+        XCTAssertEqual(GameState.woundWatches, 4)
+        XCTAssertEqual(Rally.gatherings, 1...4)
+        XCTAssertEqual(Study.opening(tier: 2), .drill)
+        XCTAssertEqual(Study.opening(tier: 5), .moonsteel)
         XCTAssertTrue(all.contains("gifts worth \(GameState.giftsTakenPerWatch) a watch at most"), all)
         XCTAssertTrue(all.contains("swears you no pact"), all)
         // Barter as the rules price it: three to one, but moonsalt costs

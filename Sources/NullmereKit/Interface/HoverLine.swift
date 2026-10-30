@@ -13,6 +13,12 @@ enum HoverInfo {
         if let hold = state.hold(at: hex) {
             parts.append(hold.name)
         }
+        if let wild = state.wild(at: hex) {
+            parts.append(HoverInfo.named(wild) + ", of the wilds")
+        }
+        if let site = state.site(at: hex) {
+            parts.append(HoverInfo.named(site))
+        }
         if tile.terrain.isWater, tile.terrain != .shallows {
             parts.append("yields nothing, impassable")
             return parts.joined(separator: " · ")
@@ -30,6 +36,17 @@ enum HoverInfo {
             parts.append("\(tile.terrain.defenseBonus > 0 ? "+" : "")\(tile.terrain.defenseBonus)% defence")
         }
         return parts.joined(separator: " · ")
+    }
+
+    /// A company of the wilds as the map names it: "Barrowkin, level III".
+    static func named(_ wild: Wild) -> String {
+        let title = wild.kind.title
+        return title.prefix(1).uppercased() + title.dropFirst() + ", level \(Narration.roman(wild.level))"
+    }
+
+    /// A site of the land as the map names it, with what is left in it.
+    static func named(_ site: Site) -> String {
+        "\(site.title) \(Narration.roman(site.level)), \(site.remaining) \(site.store.title.lowercased()) left"
     }
 }
 

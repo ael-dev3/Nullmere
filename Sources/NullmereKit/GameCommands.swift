@@ -9,6 +9,7 @@ enum GameMenu: CaseIterable {
     case leaveWorld
     case ready, stayReady, nextCompany, goToSeat
     case houses, chronicle, guide
+    case archive, commanders, alliance, realm
 
     var title: String {
         switch self {
@@ -20,6 +21,10 @@ enum GameMenu: CaseIterable {
         case .houses: return "Houses"
         case .chronicle: return "Chronicle"
         case .guide: return "Guide"
+        case .archive: return "Archive"
+        case .commanders: return "Commanders"
+        case .alliance: return "Alliance"
+        case .realm: return "The Realm"
         }
     }
 
@@ -29,7 +34,7 @@ enum GameMenu: CaseIterable {
         case .ready: return KeyboardShortcut(.return, modifiers: .command)
         case .stayReady: return KeyboardShortcut(.return, modifiers: [.command, .shift])
         case .guide: return KeyboardShortcut("/", modifiers: [.command, .shift])
-        case .nextCompany, .goToSeat, .houses, .chronicle: return nil
+        case .nextCompany, .goToSeat, .houses, .chronicle, .archive, .commanders, .alliance, .realm: return nil
         }
     }
 
@@ -54,6 +59,10 @@ enum GameMenu: CaseIterable {
         case .houses: toggle(.houses, in: session)
         case .chronicle: toggle(.chronicle, in: session)
         case .guide: toggle(.guide, in: session)
+        case .archive: toggle(.archive, in: session)
+        case .commanders: toggle(.commanders, in: session)
+        case .alliance: toggle(.alliance, in: session)
+        case .realm: toggle(.realm, in: session)
         }
     }
 
@@ -91,6 +100,10 @@ public struct GameCommands: Commands {
                 .keyboardShortcut("+", modifiers: [.command, .shift])
             Divider()
             item(.houses)
+            item(.archive)
+            item(.commanders)
+            item(.alliance)
+            item(.realm)
             item(.chronicle)
             item(.guide)
         }

@@ -41,6 +41,18 @@ enum Guide {
             "A company trained with no free tile within three of its hold waits, trained, and the hold trains no other until it has room to stand.",
             "To take a hold, break its ward, then march Spears or Riders in; one that falls to the walls' blow back takes nothing. You carry off its share of their stores; a seat holds half.",
         ]),
+        Section(title: "Tiers and studies", lines: [
+            "Spears, Bows and Riders muster in five tiers, each stronger and dearer than the last: a tier needs its study (Drill for II, Iron Ranks for III, Grey Companies for IV, Moonsteel for V) and a Muster Hall as high as the tier. Choose the tier as you train.",
+            "Build an Archive to study, one study at a time, in four branches: Husbandry, Arms, Masonry and Lore. A study of the second circle needs an Archive of II, and so on, and the studies it builds on. The Archive (3) shows the whole tree: what each grade does, costs and takes.",
+        ]),
+        Section(title: "Commanders", lines: [
+            "Your House keeps up to five commanders: one at the start, another with each Muster Hall of III and V, and with Banner Lore. Set one at the head of a company of war in Commanders (4); it leads it in every battle.",
+            "A commander learns from every battle and every company of the wilds struck down, and rises in level; at levels V, X and XX its skills come to it. Its second skill fires in battle once its fury has risen. A commander whose company falls is carried home wounded, and mends in four watches.",
+        ]),
+        Section(title: "The wilds and the sites", lines: [
+            "Companies of the wilds rise in the far country: every House's foe. Strike them for their spoils and for your commanders' learning; the higher their level, the richer and the harder.",
+            "Sites of the land (fallow fields, deadfalls, screes and salt pans) hold stores to gather. Choose a company of war and right-click a site: it works it until it carries all it can, then brings the stores home to your nearest hold.",
+        ]),
         Section(title: "Houses", lines: [
             "Other Houses are held by keepers, or by stewards until a keeper claims them. Stewards are ambitious, steadfast, wary or cunning, and remember who wronged them.",
             "Offers to a keeper wait as envoys for their answer, as theirs wait for yours.",
@@ -50,6 +62,14 @@ enum Guide {
             "Offer a trade to any House you aren't at war with: so much of one store for so much of another. Stewards weigh it by barter worth, the cunning asking most; allies and givers of gifts ask less, and a House takes less for what it lacks. A keeper answers by envoy. Stewards trade among themselves, too, before they barter.",
             "From watch twenty, an ambitious or cunning steward a quarter stronger than you may demand tribute, a fifth of your stores: pay, and it keeps the peace for twenty watches, unless your Moonspire rises; refuse, or let its envoy wait out, and it marches. You may demand tribute too: a steward that refuses is at once at war with you, the war of your making; a keeper who refuses you owes you nothing more, and war is yours to choose.",
             "Envoys and the chronicle speak in words written on your Mac by Apple's on-device model. They only speak; the rules decide.",
+        ]),
+        Section(title: "Alliances and rallies", lines: [
+            "Raise a banner in Alliance (5), or ask to join one; its leader invites and admits. An alliance takes a third of the lake's seats at most. Allies share their sight, can't make war on each other, and help each other's works, musters and studies: every second help takes a watch off.",
+            "Call a rally from an enemy hold's panel: your alliance's companies gather at your hold with a Muster Hall for one to four watches, then march together at the slowest's pace and strike together. Send a company to keep an ally's gates, and it strikes back at those who strike them.",
+        ]),
+        Section(title: "Happenings and charges", lines: [
+            "From the tenth watch, a happening comes round every thirty, for ten watches: the Long Hunt, the Harvest Fair, the Raising, the Great Muster and the Learned Season. Points bring stores at 10, 25 and 50, and the three foremost are honoured as it ends. The Realm (6) shows it.",
+            "Charges set your House one thing at a time, each rewarded: the card in the corner says how, and Show me takes you there. Deeds are remembered across ages, and win the keeper renown.",
         ]),
         Section(title: "Omens", lines: [
             "Now and then the lake turns, for every House at once, for three to five watches: Moonsalt Bloom doubles moonsalt, Rising Mist shortens every sight by a tile, a Lean Watch takes a third of the grain, and a Still Night mends wards twice as fast.",
@@ -70,7 +90,7 @@ enum Guide {
             "With Keyboard navigation on in System Settings, Tab, the arrows, Space and Return move through and press the controls as everywhere on the Mac: . and WASD stay the game's, and the arrows pan once the map has the keyboard",
             "Without a pointer: choose a company, pan until where it should go is in the middle of the view, then M to march there; to strike, M shows the odds and M again strikes. VoiceOver says what lies in the middle as you pan, and how far it is from your company",
             "In Settings, Letter keys set to With ⌥ makes every letter, number and mark key need ⌥, so a stray key does nothing",
-            "1: Houses · 2: Chronicle · ? or ⌘?: this Guide · ⇧⌘W: leave the world · ⌘,: Settings",
+            "1: Houses · 2: Chronicle · 3: Archive · 4: Commanders · 5: Alliance · 6: the Realm · ? or ⌘?: this Guide · ⇧⌘W: leave the world · ⌘,: Settings",
             "⌘↩: ready · ⇧⌘↩: stay ready until something needs you, up to ten watches",
             "⇧⌘M: sound on or off · ⇧⌘U: the music · ⇧⌘+: larger text",
         ]),

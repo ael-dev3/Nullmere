@@ -383,6 +383,7 @@ public final class GameApp {
         let age = session?.realmStatus?.age ?? doorAge ?? 1
         let session = GameSession(link: link, house: house, world: world, store: store.forAge(age, of: Self.storeKey(for: address)),
                                   voice: Self.voice(), host: hosted)
+        session.keeper = keeper
         session.onNewAge = { [weak self] keeper, world in self?.arrived(keeper, in: world) }
         session.risenInAge = keeper.reseatedInAge
         #if DEBUG
@@ -500,6 +501,10 @@ public final class GameApp {
         if show.contains("houses") { session?.panel = .houses }
         if show.contains("chronicle") { session?.panel = .chronicle }
         if show.contains("guide") { session?.panel = .guide }
+        if show.contains("archive") { session?.panel = .archive }
+        if show.contains("commanders") { session?.panel = .commanders }
+        if show.contains("alliance") { session?.panel = .alliance }
+        if show.contains("realm") { session?.panel = .realm }
         // "watch" makes the keeper ready a little before CI photographs the
         // screen, so the watch's card is on it.
         if show.contains("watch"), let delay = Double(environment["NULLMERE_WATCH_AFTER"] ?? "12.5") {

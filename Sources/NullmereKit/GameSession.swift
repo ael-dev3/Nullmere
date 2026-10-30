@@ -39,6 +39,12 @@ public final class GameSession {
         case houses
         case chronicle
         case guide
+        /// The House's studies.
+        case archive
+        case commanders
+        case alliance
+        /// The happening, the charges, the deeds and might.
+        case realm
     }
 
     /// A short line of news for the feed under the top bar.
@@ -150,6 +156,10 @@ public final class GameSession {
     private let link: any RealmLink
     /// A realm hosted in this process, kept alive while the session lives.
     private let host: LocalRealm?
+    /// The keeper as the realm last told of them: their renown and titles
+    /// over the ages.
+    public var keeper: Keeper?
+
     /// The House the keeper holds.
     public let player: Int
     /// How the realm stands, as last heard, and when.
@@ -447,6 +457,13 @@ public final class GameSession {
     /// an enemy it can reach.
     public func order(_ hex: Hex) {
         guard let unit = selectedUnit, unit.owner == player else { return }
+        // A company of war sent to a site of the land works it, and brings
+        // what it gathers home.
+        if unit.kind.isMilitary, let site = state.site(at: hex), state.wild(at: hex) == nil,
+           state.gatherRefusal(unit.id, at: site.id, as: player) == nil {
+            perform(.gather(unit: unit.id, site: site.id))
+            return
+        }
         let foe = (state.unit(at: hex).map { $0.owner != player } ?? false)
             || (state.hold(at: hex).map { $0.owner != player } ?? false)
         if foe, unit.kind.isMilitary, unit.position.distance(to: hex) <= unit.kind.range {

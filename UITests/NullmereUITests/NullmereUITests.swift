@@ -147,7 +147,8 @@ final class NullmereUITests: XCTestCase {
         walk(map, in: window)
 
         // Each panel over the map, opened and closed by its key.
-        for (key, panel) in [("1", "Houses"), ("2", "Chronicle"), ("/", "Guide")] {
+        for (key, panel) in [("1", "Houses"), ("2", "Chronicle"), ("3", "Archive"), ("4", "Commanders"), ("5", "Alliance"),
+                             ("6", "The Realm"), ("/", "Guide")] {
             app.typeKey(key, modifierFlags: [])
             if window.staticTexts[panel].waitForExistence(timeout: 10) {
                 audit("the \(panel) panel")

@@ -112,9 +112,17 @@ enum MapAccessibility {
             var offered: [Order] = []
             // Foes it can strike now, with the odds the forecast gives.
             for hex in state.strikeTargets(of: unit).sorted(by: { unit.position.distance(to: $0) < unit.position.distance(to: $1) }) {
-                let what = state.hold(at: hex).map { $0.name } ?? state.unit(at: hex).map { "the \($0.kind.title) of \(state.houses[$0.owner].title)" } ?? "the enemy"
+                let what = state.hold(at: hex).map { $0.name } ?? state.unit(at: hex).map { "the \($0.kind.title) of \(state.houses[$0.owner].title)" }
+                    ?? state.wild(at: hex).map { HoverInfo.named($0) } ?? "the enemy"
                 let odds = state.forecast(unit: unit.id, at: hex).map { ": " + MapAccessibility.odds($0) } ?? ""
                 offered.append(Order(name: "Strike \(what), \(way(from: unit.position, to: hex))\(odds)", hex: hex))
+            }
+            // A company of war: the nearest site of the land it may work.
+            if unit.kind.isMilitary, let site = state.sitesInLand
+                .filter({ state.wild(at: $0.position) == nil && state.gatherRefusal(unit.id, at: $0.id, as: player) == nil })
+                .min(by: { (unit.position.distance(to: $0.position), $0.id) < (unit.position.distance(to: $1.position), $1.id) }) {
+                offered.append(Order(name: "Gather at the \(HoverInfo.named(site)), \(way(from: unit.position, to: site.position))",
+                                     hex: site.position))
             }
             // A founder: found here, or go to the best site it knows of.
             if unit.kind == .founder {
@@ -163,6 +171,7 @@ enum MapAccessibility {
         for unit in state.units where unit.owner == player || session.isVisible(unit.position) {
             let rank = unit.rank > 0 ? "\(Unit.rankTitles[unit.rank]) " : ""
             var parts = ["\(rank)\(unit.kind.title), \(whose(unit.owner)), \(place(unit.position))", "health \(unit.health)"]
+            if unit.kind.hasTiers { parts.append("tier \(unit.tier)") }
             if unit.owner == player {
                 if unit.fortified { parts.append("fortified") }
                 else if unit.destination != nil { parts.append("marching") }
@@ -174,9 +183,20 @@ enum MapAccessibility {
                                   isOwnCompany: unit.owner == player, isFoe: unit.owner != player && state.isAtWar(player, unit.owner)))
         }
 
+        // The wilds in sight, and the sites of the land the House has found.
+        var land: [Item] = []
+        for wild in state.wildsStanding where session.isVisible(wild.position) {
+            land.append(Item(id: "wild-\(wild.id)", label: "\(HoverInfo.named(wild)), of the wilds, \(place(wild.position))",
+                             selection: .tile(wild.position), hex: wild.position, isFoe: true))
+        }
+        for site in state.sitesInLand where session.isExplored(site.position) && state.wild(at: site.position) == nil {
+            land.append(Item(id: "site-\(site.id)", label: "\(HoverInfo.named(site)), \(place(site.position))",
+                             selection: .tile(site.position), hex: site.position))
+        }
+
         func mineFirst(_ items: [Item]) -> [Item] {
             items.filter { $0.label.contains(", yours") } + items.filter { !$0.label.contains(", yours") }
         }
-        return mineFirst(holds) + mineFirst(companies)
+        return mineFirst(holds) + mineFirst(companies) + land
     }
 }

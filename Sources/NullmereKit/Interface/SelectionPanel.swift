@@ -132,10 +132,10 @@ struct OwnHoldDetails: View {
                 // Trained, with no free ground within three tiles to
                 // stand on, it waits there, and the hold trains no more.
                 ProgressLine(
-                    title: training.kind.title,
+                    title: training.kind.hasTiers ? "\(training.kind.title) \(Narration.roman(training.tier ?? 1))" : training.kind.title,
                     detail: training.watchesLeft == 0 ? "Trained; waits for room to stand"
                         : training.watchesLeft == 1 ? "Ready next watch" : "\(training.watchesLeft) watches left",
-                    fraction: 1 - Double(training.watchesLeft) / Double(training.kind.trainWatches)
+                    fraction: 1 - Double(training.watchesLeft) / Double(max(state.trainingWatches(of: training.kind, tier: training.tier ?? 1, at: hold), 1))
                 )
             }
 
@@ -197,7 +197,7 @@ private struct BuildingRow: View {
                 .accessibilityElement(children: .combine)
                 Spacer()
                 if next <= kind.maxLevel {
-                    let cost = kind.cost(toLevel: next)
+                    let cost = session.state.buildCost(of: kind, toLevel: next, for: session.player)
                     QuietButton(title: "Build \(Narration.roman(next))", size: 8.5,
                                 enabled: hold.project == nil && stock.covers(cost),
                                 name: "Build \(kind.title) \(Narration.roman(next))",
@@ -214,8 +214,8 @@ private struct BuildingRow: View {
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.text(0.55))
                     HStack(spacing: 10) {
-                        CostLine(cost: kind.cost(toLevel: next), available: stock)
-                        Text(verbatim: "\(kind.buildWatches(toLevel: next)) watches")
+                        CostLine(cost: session.state.buildCost(of: kind, toLevel: next, for: session.player), available: stock)
+                        Text(verbatim: "\(session.state.buildWatches(of: kind, toLevel: next, for: session.player)) watches")
                             .font(.nm(10))
                             .foregroundStyle(Palette.text(0.45))
                     }
@@ -252,34 +252,49 @@ private struct TrainingRow: View {
     let hold: Hold
     let kind: UnitKind
     let stock: Stock
+    /// The tier asked for, if not the highest the hold can muster.
+    @State private var chosen: Int?
 
     var body: some View {
+        let state = session.state
+        let highest = state.highestTier(of: kind, at: hold, for: session.player)
+        let tier = min(chosen ?? highest, highest)
         let allowed = hold.level(.musterHall) >= kind.requiredMuster
-        let cost = session.state.trainingCost(of: kind, for: session.player)
+        let cost = state.trainingCost(of: kind, tier: tier, for: session.player)
+        let named = kind.hasTiers ? "\(kind.title) \(Narration.roman(tier))" : kind.title
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 // The company and what it is worth, read as one.
                 HStack(alignment: .firstTextBaseline) {
-                    Caps(kind.title, size: 9.5, weight: .medium).foregroundStyle(Palette.text(allowed ? 0.9 : 0.4))
-                    Text(verbatim: kind.isMilitary ? "\(kind.attack) attack · \(kind.defense) defence · \(kind.movement) moves" : "\(kind.movement) moves")
+                    Caps(named, size: 9.5, weight: .medium).foregroundStyle(Palette.text(allowed ? 0.9 : 0.4))
+                    Text(verbatim: kind.isMilitary ? "\(kind.attack(tier: tier)) attack · \(kind.defense(tier: tier)) defence · \(kind.movement) moves"
+                         : "\(kind.movement) moves")
                         .font(.nm(10))
                         .foregroundStyle(Palette.text(0.45))
                 }
                 .accessibilityElement(children: .combine)
                 Spacer()
+                if allowed, highest > 1 {
+                    // The tiers its Muster Hall and studies open, the highest first chosen.
+                    Picker("Tier of \(kind.title)", selection: Binding(get: { tier }, set: { chosen = $0 })) {
+                        ForEach(1...highest, id: \.self) { Text(verbatim: "Tier \(Narration.roman($0))").tag($0) }
+                    }
+                    .labelsHidden()
+                    .frame(width: 84)
+                }
                 QuietButton(title: "Train", size: 8.5, enabled: allowed && hold.training == nil && stock.covers(cost),
-                            name: "Train \(kind.title)",
+                            name: "Train \(named)",
                             why: !allowed ? "Needs a Muster Hall \(Narration.roman(kind.requiredMuster))."
                                 : hold.training != nil ? "A company is already training here."
                                 : CostLine.shortfall(of: cost, from: stock).map { "You are \($0)." }) {
-                    session.perform(.train(hold: hold.id, kind: kind))
+                    session.perform(.train(hold: hold.id, kind: kind, tier: tier > 1 ? tier : nil))
                 }
             }
             if allowed {
                 // What training it costs and takes, read as one.
                 HStack(spacing: 10) {
                     CostLine(cost: cost, available: stock)
-                    let watches = hold.trainingWatches(for: kind)
+                    let watches = state.trainingWatches(of: kind, tier: tier, at: hold)
                     Text(verbatim: "\(watches) watch\(watches == 1 ? "" : "es")")
                         .font(.nm(10))
                         .foregroundStyle(Palette.text(0.45))
@@ -350,6 +365,8 @@ struct BarterRow: View {
 private struct ForeignHoldPanel: View {
     let session: GameSession
     let hold: Hold
+    /// Watches a rally called against it gathers before it sets out.
+    @State private var gathering = 2
 
     var body: some View {
         let owner = session.state.houses[hold.owner]
@@ -376,9 +393,46 @@ private struct ForeignHoldPanel: View {
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.55))
                 .fixedSize(horizontal: false, vertical: true)
+            if stance == .war, session.state.alliance(of: session.player) != nil {
+                rally
+            }
         }
         .padding(16)
         .panelBackground()
+    }
+
+    /// A rally against it: the alliance's companies gather at the keeper's
+    /// hold with a Muster Hall nearest it, and strike it together.
+    @ViewBuilder
+    private var rally: some View {
+        let state = session.state
+        let muster = state.holds(of: session.player).filter { $0.level(.musterHall) >= 1 }
+            .min { ($0.position.distance(to: hold.position), $0.id) < ($1.position.distance(to: hold.position), $1.id) }
+        Rule(opacity: 0.18)
+        if let muster {
+            let command = Command.callRally(from: muster.id, against: hold.id, watches: gathering)
+            let refusal = state.refusal(of: command, as: session.player)
+            Text(verbatim: "Call your alliance to gather at \(muster.name) and strike \(hold.name) together.")
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Picker("Watches to gather", selection: $gathering) {
+                    ForEach(Array(Rally.gatherings), id: \.self) { Text(verbatim: "Gather \($0) watch\($0 == 1 ? "" : "es")").tag($0) }
+                }
+                .labelsHidden()
+                .frame(width: 140)
+                Spacer()
+                QuietButton(title: "Call a rally", size: 8.5, enabled: refusal == nil, name: "Call a rally against \(hold.name)",
+                            why: refusal?.description) {
+                    session.perform(command)
+                }
+            }
+        } else {
+            Text(verbatim: "A rally gathers at a hold of yours with a Muster Hall.")
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.5))
+        }
     }
 }
 
@@ -417,15 +471,30 @@ struct UnitPanel: View {
             HStack(spacing: 14) {
                 Stat(label: "Health", value: "\(unit.health)")
                 if unit.kind.isMilitary {
-                    Stat(label: "Attack", value: "\(unit.kind.attack)")
-                    Stat(label: "Defence", value: "\(unit.kind.defense)")
+                    Stat(label: "Attack", value: "\(unit.kind.attack * state.attackPercent(of: unit) / 100)")
+                    Stat(label: "Defence", value: "\(unit.kind.defense * state.defensePercent(of: unit) / 100)")
+                }
+                if unit.kind.hasTiers {
+                    Stat(label: "Tier", value: Narration.roman(unit.tier))
                 }
                 if mine {
-                    Stat(label: "Moves", value: "\(unit.movesLeft)/\(unit.kind.movement)")
+                    Stat(label: "Moves", value: "\(unit.movesLeft)/\(state.movement(of: unit))")
                 }
             }
             Meter(fraction: Double(unit.health) / 100, colour: unit.health > 50 ? Palette.good : Palette.bad, label: "Health")
 
+            if let words = UnitPanel.leader(of: unit, in: state) {
+                Text(verbatim: words)
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.glowWords)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if mine, let errand = UnitPanel.errand(of: unit, in: state) {
+                Text(verbatim: errand)
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.75))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if mine {
                 Text(verbatim: hint(for: unit))
                     .font(.nm(10.5))
@@ -445,12 +514,46 @@ struct UnitPanel: View {
                     if unit.destination != nil {
                         QuietButton(title: "Halt") { session.perform(.halt(unit: unit.id)) }
                     }
+                    if unit.kind.isMilitary {
+                        QuietButton(title: unit.leader == nil ? "Commander" : "Commanders",
+                                    name: unit.leader == nil ? "Set a commander at their head" : "Open the Commanders") {
+                            session.panel = .commanders
+                        }
+                    }
                     ConfirmButton(title: "Disband", confirm: "Disband them?", size: 10) { session.perform(.disband(unit: unit.id)) }
                 }
             }
         }
         .padding(16)
         .panelBackground()
+    }
+
+    /// The commander at a company's head, as its panel says it.
+    static func leader(of unit: Unit, in state: GameState) -> String? {
+        guard let id = unit.leader, let commander = state.commander(id) else { return nil }
+        return "Led by \(commander.name), \(commander.archetype.named) of level \(commander.level)"
+    }
+
+    /// What a company has been sent to do beyond its march, and what it carries.
+    static func errand(of unit: Unit, in state: GameState) -> String? {
+        let load = unit.load.flatMap { carried -> String? in
+            guard let store = Resource.allCases.first(where: { carried[$0] > 0 }) else { return nil }
+            return "\(carried[store]) \(store.title.lowercased())"
+        }
+        switch unit.errand {
+        case .gather(let siteID)?:
+            let site = state.site(siteID).map { "the \(HoverInfo.named($0))" } ?? "a site of the land"
+            return "Gathering at \(site)" + (load.map { ", carrying \($0)" } ?? "") + "."
+        case .homeward?:
+            return "Bringing \(load ?? "its load") home."
+        case .rally(let id)?:
+            let target = state.rally(id).flatMap { state.hold($0.target) }.map { " against \($0.name)" } ?? ""
+            return "Sent to the rally\(target)."
+        case .reinforce(let holdID)?:
+            return "Keeping the gates of \(state.hold(holdID)?.name ?? "an ally's hold")."
+        case nil:
+            return load.map { "Carrying \($0)." }
+        }
     }
 
     private func veterancy(of unit: Unit) -> String {
@@ -469,8 +572,8 @@ struct UnitPanel: View {
         switch unit.kind {
         case .founder: return "Right-click to march. Found a hold on open land three tiles from any other."
         case .lantern: return "Right-click to march into the dark and reveal it. Lanterns see far."
-        case .bow: return "Right-click to march, or to strike an enemy up to two tiles away."
-        default: return "Right-click to march, or to strike an enemy beside you."
+        case .bow: return "Right-click to march, to strike an enemy or the wilds up to two tiles away, or to gather at a site."
+        default: return "Right-click to march, to strike an enemy or the wilds beside you, or to gather at a site."
         }
     }
 }
@@ -532,6 +635,24 @@ private struct TilePanel: View {
                     Text(verbatim: "Land of \(state.houses[owner].title)")
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.houseWords(state.houses[owner]))
+                }
+                if let wild = state.wild(at: hex) {
+                    Rule(opacity: 0.18)
+                    Caps(HoverInfo.named(wild), size: 9.5, weight: .medium).foregroundStyle(Palette.bad)
+                    Text(verbatim: "A company of the wilds, every House's foe. Strike it with a company of war beside it; "
+                         + "struck down, it gives up \(wild.spoils.description).")
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let site = state.site(at: hex) {
+                    Rule(opacity: 0.18)
+                    Caps(site.title + " " + Narration.roman(site.level), size: 9.5, weight: .medium).foregroundStyle(Palette.glowWords)
+                    Text(verbatim: "\(site.remaining) \(site.store.title.lowercased()) left to gather. "
+                         + "Choose a company of war and right-click here to send it.")
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             } else {
                 PanelTitle(title: "Unknown", subtitle: "Send Lanterns to see what lies here.")

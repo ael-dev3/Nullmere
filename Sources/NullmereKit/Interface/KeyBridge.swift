@@ -32,6 +32,10 @@ enum GameKey: Equatable {
     case houses
     case chronicle
     case guide
+    case archive
+    case commanders
+    case alliance
+    case realm
 }
 
 extension GameSession {
@@ -127,6 +131,14 @@ extension GameSession {
             panel = panel == .chronicle ? nil : .chronicle
         case .guide:
             panel = panel == .guide ? nil : .guide
+        case .archive:
+            panel = panel == .archive ? nil : .archive
+        case .commanders:
+            panel = panel == .commanders ? nil : .commanders
+        case .alliance:
+            panel = panel == .alliance ? nil : .alliance
+        case .realm:
+            panel = panel == .realm ? nil : .realm
         }
         // A question asked by a key lapses at any other key.
         if key != .found { foundingAsked = nil }
@@ -275,6 +287,10 @@ final class KeyBridgeView: NSView {
         case "d": return .pan(dx: -step, dy: 0)
         case "1": return .houses
         case "2": return .chronicle
+        case "3": return .archive
+        case "4": return .commanders
+        case "5": return .alliance
+        case "6": return .realm
         case "?", "/": return .guide
         default: return nil
         }

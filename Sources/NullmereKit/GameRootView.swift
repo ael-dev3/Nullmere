@@ -116,6 +116,8 @@ struct PlayView: View {
                                 FirstStepsCard(steps: steps) { session.dismissFirstSteps() }
                                     .transition(.opacity)
                             } else {
+                                // The first hour's charges, then counsel.
+                                ChargeCard(session: session)
                                 CounselCard(session: session)
                             }
                         }
@@ -131,11 +133,20 @@ struct PlayView: View {
                             opened(ChroniclePanel(session: session), named: "Chronicle")
                         case .guide?:
                             opened(GuidePanel(session: session), named: "Guide")
+                        case .archive?:
+                            opened(ArchivePanel(session: session), named: "Archive")
+                        case .commanders?:
+                            opened(CommandersPanel(session: session), named: "Commanders")
+                        case .alliance?:
+                            opened(AlliancePanel(session: session), named: "Alliance")
+                        case .realm?:
+                            opened(RealmPanel(session: session), named: "The Realm")
                         case nil:
                             EmptyView()
                         }
                         Spacer(minLength: 0)
                         EnvoyCards(session: session)
+                        PanelRail(session: session)
                         KeyHints()
                     }
                 }
@@ -211,7 +222,7 @@ extension PlayView {
 /// The few keys worth knowing, in the corner.
 private struct KeyHints: View {
     var body: some View {
-        Text(verbatim: "? Guide · Tab next company · ⌘↩ ready")
+        Text(verbatim: "? Guide · 1–6 panels · Tab next company · ⌘↩ ready")
             .font(.nm(10))
             .foregroundStyle(Palette.text(0.75))
             .padding(.horizontal, 10)
@@ -219,7 +230,7 @@ private struct KeyHints: View {
             // As dark as a panel, so it reads over the palest ground.
             .background(Palette.panel, in: RoundedRectangle(cornerRadius: 3))
             // Read as VoiceOver says keys, not as marks to spell.
-            .accessibilityLabel("Keys: question mark for the Guide, Tab for the next company, Command-Return when you're ready")
+            .accessibilityLabel("Keys: question mark for the Guide, 1 to 6 for the panels, Tab for the next company, Command-Return when you're ready")
     }
 }
 

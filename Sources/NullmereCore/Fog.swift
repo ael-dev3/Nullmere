@@ -153,7 +153,7 @@ extension GameState {
 extension GameState {
     /// Why a House would be refused an order on this world, if it would. Asked
     /// of a keeper's view, the answer rests only on what their House knows.
-    func refusal(of command: Command, as house: Int) -> RuleError? {
+    public func refusal(of command: Command, as house: Int) -> RuleError? {
         var tried = self
         do {
             try tried.perform(command, as: house)
