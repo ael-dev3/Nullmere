@@ -63,9 +63,10 @@ final class WorldRenderTests: XCTestCase {
         let world = WorldRenderTests.world
         try renderer.updateTiles(tiles, side: TileTexture.side(for: world.state.map))
         let target = try renderer.makeTarget(width: WorldRenderTests.width, height: WorldRenderTests.height)
-        let frame = FrameUniforms.make(camera: camera, size: WorldRenderTests.size, pixelsPerPoint: 1, time: 20, motion: 1,
+        var frame = FrameUniforms.make(camera: camera, size: WorldRenderTests.size, pixelsPerPoint: 1, time: 20, motion: 1,
                                        radius: world.state.map.radius, terrain: world.terrain, hovered: nil, selected: selected,
                                        houses: WorldView.houseColours)
+        frame.light(with: PointLight.strongest(scene.lights, near: camera.focus))
         let pixels = try XCTUnwrap(renderer.pixels(frame, scene: scene, into: target), "\(name) drawn")
         return Drawn(name: name, pixels: pixels, camera: camera)
     }
@@ -104,7 +105,31 @@ final class WorldRenderTests: XCTestCase {
         var near = Camera(scale: 150, tilt: 0.85, heading: 0.5)
         near.focus(on: company.position)
         let figures = try draw(renderer, "company", camera: near, tiles: session.tileBytes, scene: scene)
-        try keep([stood, figures], as: "world-models")
+
+        // The seat burning: its fire lights the keep and the ground, and
+        // embers and smoke rise from it, all drawn by the GPU.
+        let ground = Relief.centre(of: seat.position)
+        let heart = Vec3(ground.x, world.relief.height(of: seat.position), ground.z)
+        var burning = Happenings()
+        burning.blazes = [Happenings.Spot(at: heart, strength: 1, seed: 1)]
+        var fired = scene
+        (fired.motes, fired.lights) = burning.effects(at: 20)
+        XCTAssertFalse(fired.motes.isEmpty)
+        XCTAssertFalse(fired.lights.isEmpty)
+        let ablaze = try draw(renderer, "ablaze", camera: close, tiles: session.tileBytes, scene: fired)
+        var warmer = 0
+        for dy in -110...20 {
+            for dx in -80...80 {
+                let x = Int(centre.x) + dx, y = Int(centre.y) + dy
+                guard x >= 0, y >= 0, x < WorldRenderTests.width, y < WorldRenderTests.height else { continue }
+                let i = (y * WorldRenderTests.width + x) * 4
+                // Redder than it stood: firelight on stone, and embers.
+                if Int(ablaze.pixels[i + 2]) > Int(stood.pixels[i + 2]) + 12 { warmer += 1 }
+            }
+        }
+        print("RENDER fire: \(fired.motes.count) motes, \(warmer) pixels warmed about the keep")
+        XCTAssertGreaterThan(warmer, 400, "the fire lights the keep and its ground")
+        try keep([stood, ablaze, figures], as: "world-models")
     }
 
     /// Where the view's ray through a pixel meets the world, and what is there.
