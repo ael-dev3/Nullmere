@@ -405,7 +405,10 @@ token in `~/.config/nullmere` (readable by you alone), and starts the
 steward: for maincloud, in a container (`Dockerfile.steward`, restarted with
 the machine) when Docker is there; otherwise, and always for a local realm,
 in the background, with its log beside the token. Run it again to update the module; the realm keeps its world. Ask
-for a fresh realm with `SPACETIME_CLEAR=1`.
+for a fresh realm with `SPACETIME_CLEAR=1`: the script stops the realm's
+steward on this machine before it clears the database, since a steward
+left running would publish the realm it held over the fresh one. Stop
+any steward of it you run elsewhere first yourself.
 
 The module can also be published from GitHub: put the token
 `spacetime login show --token` prints in the `SPACETIME_TOKEN` secret, and

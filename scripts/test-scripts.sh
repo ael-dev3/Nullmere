@@ -63,6 +63,39 @@ for issuer in localhost https://auth.spacetimedb.com; do
     esac
 done
 
+# raise-realm.sh, whole, against stand-in tools in a home of its own: a
+# publication that clears the realm stops its steward first, and one that
+# keeps the realm leaves it running.
+mkdir -p "$WORK/home" "$WORK/state"
+cat > "$WORK/bin/spacetime" <<'EOF'
+#!/usr/bin/env bash
+# A stand-in for the SpacetimeDB CLI that notes, as it publishes, whether
+# the realm's steward is still running.
+case "$1" in
+    --version) echo "spacetime (stand-in)" ;;
+    login) echo "Your auth token is stand-in" ;;
+    publish)
+        if ps -eo command | grep -q "[N]ullmereSteward $STUB_ADDRESS\$"; then echo running; else echo stopped; fi > "$STUB_DIR/at-publish" ;;
+esac
+EOF
+for tool in cargo rustup curl; do printf '#!/usr/bin/env bash\nexit 0\n' > "$WORK/bin/$tool"; done
+printf '#!/usr/bin/env bash\nexit 1\n' > "$WORK/bin/docker"
+chmod +x "$WORK"/bin/*
+raise() {
+    local address="http://127.0.0.1:3000/test-clear-$$"
+    ( exec "$WORK/bin/NullmereSteward" "$address" ) >/dev/null 2>&1 &
+    echo $! > "$WORK/state/steward-local-test-clear-$$.pid"
+    sleep 1
+    rm -f "$WORK/at-publish"
+    HOME="$WORK/home" PATH="$WORK/bin:$PATH" STUB_DIR="$WORK" STUB_ADDRESS="$address" REALM_DB="test-clear-$$" STEWARD=none \
+        NULLMERE_STATE_DIR="$WORK/state" SPACETIME_CLEAR="$1" scripts/raise-realm.sh local >"$WORK/raise.log" 2>&1 \
+        || echo "raise-realm.sh failed: $(tail -n 3 "$WORK/raise.log")" >&2
+    cat "$WORK/at-publish" 2>/dev/null || echo "never published"
+    pkill -f "(^|/)NullmereSteward $address\$" 2>/dev/null || true
+}
+check "a publication that clears the realm stops its steward first" "$(raise 1)" "stopped"
+check "one that keeps the realm leaves its steward running" "$(raise "")" "running"
+
 # smoke-realm.sh: a realm and a name set aside, and put back after a crash.
 mkdir -p "$WORK/home/Library/Application Support/Nullmere Online"
 REALM="$WORK/home/Library/Application Support/Nullmere Online/hosted-realm.json"
