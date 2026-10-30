@@ -6,8 +6,9 @@ extension GameState {
         guard outcome == nil else { throw .gameOver }
         guard let actor = self.house(house), !actor.isEliminated else { throw .unknownHouse }
         let events = try carryOut(command, as: house)
-        // What it did counts to the happening under way.
+        // What it did counts to the happening under way, and may be a deed.
         tally(events)
+        noteDeeds(events)
         return events
     }
 

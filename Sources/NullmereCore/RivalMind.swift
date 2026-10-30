@@ -427,7 +427,8 @@ struct RivalMind {
         switch state.houses[house].temperament {
         case .wary, .steadfast: return true
         case .cunning: return theirs * 10 >= mine * 15
-        case .ambitious: return theirs >= mine * 2
+        // The ambitious weigh all a House is, not its arms alone.
+        case .ambitious: return alliance.members.reduce(0) { $0 + state.might(of: $1) } >= max(1, state.might(of: house)) * 2
         }
     }
 
@@ -444,7 +445,7 @@ struct RivalMind {
         guard !wrongdoer else { return false }
         switch state.houses[house].temperament {
         case .wary: return state.stance(house, asker) == .pact
-        case .ambitious: return state.strength(of: asker) <= state.strength(of: house)
+        case .ambitious: return state.might(of: asker) <= state.might(of: house)
         case .steadfast, .cunning: return true
         }
     }

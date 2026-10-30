@@ -45,6 +45,7 @@ extension GameState {
         // Gifts too small for the chronicle are known only to the two Houses.
         view.gifts = gifts?.filter { $0.from == house || $0.to == house }
         view.reputed = houses.map { strength(of: $0.id) }
+        view.reputedMight = houses.map { might(of: $0.id) }
         // Its own commanders, and of others only those at the head of a
         // company in sight.
         let leading = Set(view.units.compactMap(\.leader))
@@ -132,7 +133,7 @@ extension GameState {
                 return owner == house || hold(holdID)?.owner == house
             case .happeningBegun, .happeningEnded:
                 return true
-            case .happeningMark(let owner, _, _, _):
+            case .happeningMark(let owner, _, _, _), .deedDone(let owner, _), .chargeDone(let owner, _, _):
                 return owner == house
             case .promoted(_, let owner, _):
                 return owner == house

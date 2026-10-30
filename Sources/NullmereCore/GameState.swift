@@ -90,6 +90,13 @@ public struct GameState: Codable, Equatable, Sendable {
     var rallies: [Rally]?
     /// The happening of the realm under way, if any.
     public internal(set) var happening: Happening?
+    /// The deeds the Houses have done this age; absent before any.
+    public internal(set) var deedsDone: [DeedDone]?
+    /// How many of their charges each House has done, by its id; absent
+    /// in saves from before charges, which set every House its first.
+    public internal(set) var chargesDone: [Int]?
+    /// In a keeper's view, each House's might as the realm reckons it.
+    var reputedMight: [Int]?
     /// In a keeper's view, the marches they may know of: where their
     /// companies are bound and when they should be there, and the way
     /// others in sight are going. Absent in the world itself.

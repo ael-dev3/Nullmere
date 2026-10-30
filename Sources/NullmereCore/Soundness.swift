@@ -125,6 +125,17 @@ extension GameState {
                 found.append("Rally \(rally.id) counts company \(id), not sent to it")
             }
         }
+        var deeds: Set<String> = []
+        for done in deedsDone ?? [] {
+            if !houseIDs.contains(done.house) { found.append("A deed is of no House (\(done.house))") }
+            if !deeds.insert("\(done.house) \(done.deed.rawValue)").inserted { found.append("House \(done.house) did \(done.deed.title) twice") }
+        }
+        if let chargesDone {
+            if chargesDone.count > houses.count { found.append("Charges are counted for \(chargesDone.count) Houses") }
+            for (house, done) in chargesDone.enumerated() where !(0...Charge.allCases.count).contains(done) {
+                found.append("House \(house) has done \(done) charges")
+            }
+        }
         for unit in units {
             switch unit.errand {
             case .rally(let id)?:

@@ -143,6 +143,13 @@ extension GameState {
             }
             guard let first = leaders.first else { return Tidings("\(kind.title) ends with no House to honour.", .neutral) }
             return Tidings("\(kind.title) ends: \(houses[first].title) takes the honours.", .neutral)
+        case .deedDone(let house, let deed):
+            guard house == viewer else { return nil }
+            return Tidings("A deed of your House, \(deed.title): it has \(deed.deed).", .good)
+        case .chargeDone(let house, let charge, let reward):
+            guard house == viewer else { return nil }
+            let next = self.charge(of: viewer).map { " Next: \($0.title.prefix(1).lowercased() + $0.title.dropFirst())." } ?? ""
+            return Tidings("Charge done: \(charge.title.prefix(1).lowercased() + charge.title.dropFirst()), and \(reward) given.\(next)", .good)
         default:
             return nil
         }

@@ -341,7 +341,7 @@ final class AllianceTests: XCTestCase {
         led.setStance(.pact, between: 1, and: 2, by: 1)
         XCTAssertTrue(RivalMind(house: 1).acceptsMember(2, to: theirs, in: led), "The wary take a sworn friend")
         led.houses[1].temperament = .ambitious
-        XCTAssertEqual(RivalMind(house: 1).acceptsMember(2, to: theirs, in: led), led.strength(of: 2) <= led.strength(of: 1))
+        XCTAssertEqual(RivalMind(house: 1).acceptsMember(2, to: theirs, in: led), led.might(of: 2) <= led.might(of: 1))
 
         // Played out, the stewards raise banners and swear to them, and help
         // their allies.

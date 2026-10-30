@@ -20,6 +20,12 @@ public struct Keeper: Codable, Equatable, Identifiable, Sendable {
     /// The age in which their House fell and they took up an open seat:
     /// once an age.
     public internal(set) var reseatedInAge: Int?
+    /// Renown won over every age they held a House in; absent before any.
+    public internal(set) var renown: Int?
+    /// Titles won as ages ended, each with its age.
+    public internal(set) var titles: [String]?
+    /// Every deed their Houses have done, in any age, once each.
+    public internal(set) var deeds: [Deed]?
 }
 
 /// What anyone may know of the realm before entering it.
@@ -469,6 +475,7 @@ public struct RealmState: Codable, Equatable, Sendable {
     /// order they first came, but for those away longer than a seat is
     /// held: they are seated as they come back, if a seat is free.
     private mutating func beginAge(now: Double) {
+        rememberTheAge()
         age += 1
         world = RealmState.world(seed: seedText, age: age, seats: seats, radius: radius)
         for index in keepers.indices { keepers[index].house = nil }

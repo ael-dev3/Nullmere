@@ -56,6 +56,9 @@ extension GameState {
         refreshSight()
         tally(Array(events[turning...]))
         events += turnHappenings()
+        noteDeeds(Array(events[turning...]))
+        events += tellDeeds()
+        events += fulfilCharges()
         events += checkForEnd()
         takeSnapshot()
         return events

@@ -345,6 +345,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case happeningMark(house: Int, kind: HappeningKind, mark: Int, reward: Stock)
     /// A happening ends; its foremost Houses, first first.
     case happeningEnded(kind: HappeningKind, leaders: [Int])
+    /// A House's deed, told as the watch turns after it was done.
+    case deedDone(house: Int, deed: Deed)
+    /// A House has done its charge, and is given stores.
+    case chargeDone(house: Int, charge: Charge, reward: Stock)
 }
 
 /// One exchange of blows.

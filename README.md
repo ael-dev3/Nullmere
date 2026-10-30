@@ -608,6 +608,21 @@ realm; keepers are told in plain words, never a status code.
   and given stores. Its standings are known to every keeper. In a Long Hunt
   ambitious and cunning stewards hunt further afield; in a Harvest Fair the
   steadfast and the wary gather any store they have room for.
+- **Might, deeds and charges.** A House's might sums its companies of war
+  and walls, its works, its learning and its commanders; every keeper sees
+  every House's might, and the Houses ranked by it. Thirteen deeds may be
+  done once an age (Founder, Wildbane, Great Hunter, First Harvest, Scholar,
+  Fifth Tier, Great Walls, Sworn, Host Triumphant, Conqueror, Honoured,
+  Veteran Commander, Spire Begun), told as the watch turns. Every House is
+  set ten charges in turn, first steps from raising a Granary to a Muster
+  Hall III, each bringing stores as the watch turns after it is done; the
+  stewards meet them as they play. The ambitious weigh might, not arms
+  alone, in choosing an alliance or an ally.
+- **Renown.** As an age ends, each keeper who held a House in it is
+  remembered in their own record: five renown for each deed their House
+  did, ten if it stood at the end, fifty and a title for the age's victor,
+  and its deeds join those of their other ages. Nothing else carries into
+  the next age: there every House begins alike.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is
