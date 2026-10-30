@@ -186,6 +186,8 @@ final class NetworkRealmTests: XCTestCase {
         let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
         await MainActor.run { ama.send(.fortify(unit: spear.id)) }
         try await until("the order") { ear.world?.unit(spear.id)?.fortified == true }
+        let after = await MainActor.run { ama.viewReads }
+        XCTAssertGreaterThan(after, before + quiet, "and the view is read for it")
     }
 
     func testAKeeperHearsWhatAnotherDoesAsItHappens() async throws {
