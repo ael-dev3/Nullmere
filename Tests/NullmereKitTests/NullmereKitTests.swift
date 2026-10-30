@@ -109,6 +109,40 @@ final class GameSessionTests: XCTestCase {
         XCTAssertNotEqual(session.selection, .unit(unit.id))
     }
 
+    func testSoundsAreHeardFromWhereTheyHappen() throws {
+        let (session, directory) = session()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let state = session.state
+        let seat = try XCTUnwrap(state.seat(of: session.player))
+        let unit = try XCTUnwrap(state.units(of: session.player).first)
+        // Each sound placed by the first event that made it; the bell in the middle.
+        let battle = Battle(attacker: unit.id, attackerOwner: 1, attackerKind: .spear, defender: unit.id, defenderOwner: session.player,
+                            defenderKind: unit.kind, hold: nil, at: unit.position, damageDealt: 10, damageTaken: 4,
+                            attackerFell: false, defenderFell: false)
+        let placed = GameSession.placedCues(for: [.battle(battle), .buildingCompleted(hold: seat.id, kind: .granary, level: 1)],
+                                            in: state, player: session.player)
+        XCTAssertEqual(placed.map(\.cue), [.watch, .clash, .complete])
+        XCTAssertEqual(placed.map(\.at), [nil, unit.position, seat.position])
+        XCTAssertNil(GameSession.place(of: .houseFell(2), in: state))
+        XCTAssertEqual(GameSession.place(of: .moved(unit: unit.id, path: [seat.position, unit.position]), in: state), unit.position)
+        XCTAssertEqual(GameSession.target(of: .attack(unit: unit.id, target: seat.position)), seat.position)
+        XCTAssertNil(GameSession.target(of: .fortify(unit: unit.id)))
+
+        // Heard from the view as it stands: the middle of the view in the middle.
+        session.glide(to: seat.position)
+        XCTAssertEqual(session.soundPlace(of: nil), .middle)
+        let here = session.soundPlace(of: session.camera.centreHex)
+        XCTAssertEqual(here.pan, 0, accuracy: 0.2)
+        let far = Hex(session.camera.centreHex.q + 40, session.camera.centreHex.r)
+        XCTAssertLessThan(session.soundPlace(of: far).gain, 1)
+
+        var heard: [(Ambience.Cue, SoundPlace)] = []
+        session.onPlacedCue = { heard.append(($0, $1)) }
+        session.click(unit.position)
+        XCTAssertEqual(heard.first?.0, .select)
+        XCTAssertEqual(heard.first?.1, .middle, "A choice is heard in the middle")
+    }
+
     func testRefusedOrdersBecomeNoticesAndChangeNothing() throws {
         let (session, directory) = session()
         defer { try? FileManager.default.removeItem(at: directory) }

@@ -552,7 +552,7 @@ public final class GameApp {
     }
 
     private func play(_ session: GameSession) {
-        session.onCue = { [weak self] cue in self?.ambience.play(cue) }
+        session.onPlacedCue = { [weak self] cue, place in self?.ambience.play(cue, at: place) }
         ambience.isMusicOn = isMusicOn
         session.onWarChanged = { [weak self] atWar in self?.ambience.isAtWar = atWar }
         ambience.start()

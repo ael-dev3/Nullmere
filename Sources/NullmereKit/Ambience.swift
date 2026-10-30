@@ -5,6 +5,28 @@ import os
 /// The game's sound, all of it made as it plays: a cold drone and the
 /// night wind over the still water, and a few quiet cues. Nothing is
 /// recorded or sampled.
+/// Where a sound is heard from: across the view, -1 its left edge to 1 its
+/// right, and how loud for how far off it lies. Each ear hears it by an
+/// equal-power law, a sound in the middle at its full in both, one at the
+/// edge leaning well into the nearer ear but never gone from the other.
+public struct SoundPlace: Equatable, Sendable {
+    public var pan: Float
+    public var gain: Float
+
+    public init(pan: Float, gain: Float) {
+        self.pan = min(max(pan, -1), 1)
+        self.gain = min(max(gain, 0), 1)
+    }
+
+    /// The middle of the view: orders, the watch's bell, what has no place.
+    public static let middle = SoundPlace(pan: 0, gain: 1)
+
+    private var angle: Float { (0.75 * pan + 1) * .pi / 4 }
+
+    var left: Float { Float(2).squareRoot() * cos(angle) * gain }
+    var right: Float { Float(2).squareRoot() * sin(angle) * gain }
+}
+
 @MainActor
 public final class Ambience {
     public enum Cue: Sendable {
@@ -109,7 +131,7 @@ public final class Ambience {
     /// bell first, not all at once.
     static let batchSpacing: Float = 0.38
 
-    public func play(_ cue: Cue) {
+    public func play(_ cue: Cue, at place: SoundPlace = .middle) {
         guard isEnabled, started, winding == nil else { return }
         let now = ContinuousClock.now
         if let last = lastPlayed[cue], now - last < .milliseconds(100) { return }
@@ -121,7 +143,7 @@ public final class Ambience {
         } else {
             batch = (now, 1)
         }
-        synth.trigger(cue, after: delay)
+        synth.trigger(cue, after: delay, at: place)
     }
 
     /// Fades all of it out quickly, for the app quitting, and says how long
@@ -251,6 +273,9 @@ final class Synth: @unchecked Sendable {
         var partials: [Partial]
         var noise: Float
         var noiseDecay: Float
+        /// How loud in each ear: where in the world it sounds.
+        var left: Float = 1
+        var right: Float = 1
         var age: Float = 0
         /// Seconds after the cue begins that this note sounds.
         var delay: Float = 0
@@ -364,7 +389,7 @@ final class Synth: @unchecked Sendable {
         return notes.count
     }
 
-    func trigger(_ cue: Ambience.Cue, after delay: Float = 0) {
+    func trigger(_ cue: Ambience.Cue, after delay: Float = 0, at place: SoundPlace = .middle) {
         var note: Note
         var more: [Note] = []
         switch cue {
@@ -583,9 +608,11 @@ final class Synth: @unchecked Sendable {
         }
         note.delay += delay
         note.end = note.delay + note.length
+        (note.left, note.right) = (place.left, place.right)
         for index in more.indices {
             more[index].delay += delay
             more[index].end = more[index].delay + more[index].length
+            (more[index].left, more[index].right) = (place.left, place.right)
         }
         lock.lock()
         if pending.count < 12 { pending.append(note); pending.append(contentsOf: more) }
@@ -655,8 +682,10 @@ final class Synth: @unchecked Sendable {
             windRight += (random() * windNoise - windRight) * cutoff
             let wind = 0.55 + 0.45 * gust
 
-            var cue: Float = 0
+            var cueLeft: Float = 0
+            var cueRight: Float = 0
             for n in notes.indices {
+                var cue: Float = 0
                 notes[n].age += dt
                 let age = notes[n].age - notes[n].delay
                 guard age > 0 else { continue }
@@ -672,18 +701,21 @@ final class Synth: @unchecked Sendable {
                 if notes[n].noise > 0 {
                     cue += random() * notes[n].noise * exp(-age * notes[n].noiseDecay)
                 }
+                cueLeft += cue * notes[n].left
+                cueRight += cue * notes[n].right
             }
 
-            cue *= heard.effects
+            cueLeft *= heard.effects
+            cueRight *= heard.effects
             drone *= heard.ambience
             let air = 0.6 * wind * level * heard.ambience
             let music = score.sample(dt: dt) * level * heard.music
             // The cues sound whole while night falls, but go with the rest
             // as the sound fades out, so nothing rings on to be cut off.
             let cueLevel = goal > 0 ? 1 : level
-            let bed = drone * level + 0.5 * cue * cueLevel + music
-            left[frame] = Self.softened(bed + windLeft * air)
-            right[frame] = Self.softened(bed + windRight * air)
+            let bed = drone * level + music
+            left[frame] = Self.softened(bed + 0.5 * cueLeft * cueLevel + windLeft * air)
+            right[frame] = Self.softened(bed + 0.5 * cueRight * cueLevel + windRight * air)
         }
         notes.removeAll { $0.age > $0.end }
     }

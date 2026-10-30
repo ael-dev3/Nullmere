@@ -39,6 +39,25 @@ public struct Camera: Equatable, Sendable {
 
     private static let layout = HexLayout(size: 1)
 
+    // MARK: Hearing
+
+    /// How a sound at a hex is heard from this view: to the right of the
+    /// view's middle or its left, -1 to 1, as the hex lies across the view
+    /// however it is turned; and how loud, 1 within the view's middle and
+    /// falling away to three tenths beyond its edges. `halfWidth` is half
+    /// the view's width in points, as a window of the game is near enough.
+    public func hearing(of hex: Hex, halfWidth: Double = 600) -> (pan: Float, gain: Float) {
+        let point = Camera.layout.center(of: hex)
+        let dx = point.x - centerX, dy = point.y - centerY
+        // The view's right, on the map: east when it looks north.
+        let across = dx * cos(heading) - dy * sin(heading)
+        let span = max(halfWidth / max(scale, 1e-6), 1e-6)
+        let pan = min(max(across / span, -1), 1)
+        let far = (dx * dx + dy * dy).squareRoot() / span
+        let gain = max(0.3, 1 / (1 + 0.8 * max(0, far - 0.6)))
+        return (Float(pan), Float(gain))
+    }
+
     // MARK: The eye
 
     /// Points and directions worked out in double precision: a drag of a

@@ -740,8 +740,12 @@ realm; keepers are told in plain words, never a status code.
   gift received, a peace or a pact sounds accord; and an order that begins
   a war sounds as war, refusing a steward's tribute too. What a watch
   brings sounds one after another after its bell, never all at once, and
-  the low sounds carry overtones a laptop's speakers give. Sound fades out
-  with the picture, and as the app quits, and back in from silence.
+  the low sounds carry overtones a laptop's speakers give. A sound is
+  heard from where it happened: a battle to the left of the view leans
+  into the left ear, one far beyond the view's edges is fainter, and the
+  view turned turns the sound with it; what has no place (an order, the
+  watch's bell, a choice) sounds in the middle. Sound fades out with the
+  picture, and as the app quits, and back in from silence.
 - **Watchmen.** When an enemy's companies gather near one of your holds,
   you're told, and a broken red ring marks the hold on the map.
 - **Holds that grow.** A hold raises a side tower after a few works and a

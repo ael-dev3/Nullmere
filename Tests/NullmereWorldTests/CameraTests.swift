@@ -7,6 +7,33 @@ import XCTest
 final class CameraTests: XCTestCase {
     let size = CGSize(width: 1000, height: 700)
 
+    func testASoundIsHeardWhereItLiesAcrossTheView() {
+        let layout = HexLayout(size: 1)
+        let middle = Hex(4, -2)
+        let centre = layout.center(of: middle)
+        var camera = Camera(centerX: centre.x, centerY: centre.y, scale: 60)
+        let here = camera.hearing(of: middle)
+        XCTAssertEqual(here.pan, 0, accuracy: 1e-5)
+        XCTAssertEqual(here.gain, 1)
+        // East of the middle: to the right, looking north; to the left, looking south.
+        let east = middle + Hex.directions.first { layout.center(of: $0).x > 0.5 && abs(layout.center(of: $0).y) < 0.01 }!
+        XCTAssertGreaterThan(camera.hearing(of: east).pan, 0.05)
+        camera.heading = Double.pi
+        XCTAssertLessThan(camera.hearing(of: east).pan, -0.05)
+        camera.heading = Double.pi / 2
+        XCTAssertEqual(camera.hearing(of: east).pan, 0, accuracy: 1e-5, "Looking west, the east lies behind, not to a side")
+        // Far off: at the edge of hearing, quieter, never silent.
+        camera.heading = 0
+        let far = Hex(middle.q + 60, middle.r)
+        let heard = camera.hearing(of: far)
+        XCTAssertEqual(heard.pan, 1, "As far right as it goes")
+        XCTAssertLessThan(heard.gain, 0.5)
+        XCTAssertGreaterThanOrEqual(heard.gain, 0.3)
+        // Drawn back, the same hex lies nearer the middle of the view.
+        camera.scale = 10
+        XCTAssertLessThan(camera.hearing(of: east).pan, Camera(centerX: centre.x, centerY: centre.y, scale: 60).hearing(of: east).pan)
+    }
+
     func testTheMiddleOfTheViewIsTheFocus() {
         var camera = Camera(centerX: 3, centerY: -4, scale: 30)
         let middle = camera.viewPoint(worldX: 3, worldY: -4, in: size)

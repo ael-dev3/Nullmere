@@ -214,6 +214,8 @@ public final class GameSession {
 
     /// Called with each sound the game makes.
     public var onCue: ((Ambience.Cue) -> Void)?
+    /// Called with each sound the game makes and where it is heard from.
+    public var onPlacedCue: ((Ambience.Cue, SoundPlace) -> Void)?
     /// Called when the player goes to war, or the last of their wars ends.
     public var onWarChanged: ((Bool) -> Void)? {
         didSet { onWarChanged?(isAtWar) }
@@ -478,7 +480,7 @@ public final class GameSession {
             selection = .none
             return
         }
-        defer { if selection != Selection.none { onCue?(.select) } }
+        defer { if selection != Selection.none { emit(.select) } }
         if let unit = state.unit(at: hex), unit.owner == player {
             selection = selection == .unit(unit.id) ? holdOrTile(at: hex) : .unit(unit.id)
         } else if let hold = state.hold(at: hex), isExplored(hex) {
@@ -780,8 +782,8 @@ public final class GameSession {
             showBlows(events, from: beforeAdopted)
             // A step on the march is seen, not sounded: the order sounded once.
             let sounded = events.filter { if case .moved = $0 { return false } else { return true } }
-            for cue in Self.cues(for: sounded, in: state, player: player) where cue != .watch {
-                onCue?(cue)
+            for (cue, at) in Self.placedCues(for: sounded, in: state, player: player) where cue != .watch {
+                emit(cue, at: at)
             }
         case .answered(let events):
             // What came of the keeper's order, as the realm decided it.
@@ -790,14 +792,16 @@ public final class GameSession {
             let told = awaited.decided ? events : events.filter(Self.isRealmsToTell)
             showBlows(told, from: awaited.from)
             report(told)
-            var cues = Self.isStrike(awaited.command) ? Self.cues(for: awaited.command, events: told, in: state, player: player) : []
+            let struck = Self.target(of: awaited.command)
+            var cues = Self.isStrike(awaited.command)
+                ? Self.cues(for: awaited.command, events: told, in: state, player: player).map { (cue: $0, at: struck) } : []
             if awaited.decided {
-                for cue in Self.cues(for: told, player: player) where cue != .watch && !cues.contains(cue) {
-                    cues.append(cue)
+                for (cue, at) in Self.placedCues(for: told, in: state, player: player) where cue != .watch && !cues.contains(where: { $0.cue == cue }) {
+                    cues.append((cue, at))
                 }
             }
-            for cue in cues {
-                onCue?(cue)
+            for (cue, at) in cues {
+                emit(cue, at: at)
             }
         case .orderRefused(let error, let world):
             if !answersAwaited.isEmpty { answersAwaited.removeFirst() }
@@ -855,8 +859,8 @@ public final class GameSession {
         showWatchCard(WatchSummary(before: previous, after: state, events: events, player: player))
         showMarches(events, from: before)
         showBlows(events, from: before)
-        for cue in Self.cues(for: events, in: state, player: player) {
-            onCue?(cue)
+        for (cue, at) in Self.placedCues(for: events, in: state, player: player) {
+            emit(cue, at: at)
         }
         notices.removeAll()
         report(events)
@@ -871,7 +875,7 @@ public final class GameSession {
             post(warning.text, tone: warning.tone)
         }
         if warnings.contains(where: { $0.tone == .bad }), !Self.cues(for: events, in: state, player: player).contains(.dread) {
-            onCue?(.dread)
+            emit(.dread)
         }
         let needed = Self.needsPlayer(after: events, from: previous, to: state, player: player, threatened: threatened)
         if case .unit(let id) = selection, state.unit(id) == nil {
@@ -1074,7 +1078,16 @@ public final class GameSession {
 
     private func sound(for command: Command, events: [GameEvent]) {
         for cue in Self.cues(for: command, events: events, in: state, player: player) {
-            onCue?(cue)
+            emit(cue, at: Self.target(of: command))
+        }
+    }
+
+    /// Where an order sends a company: its march's end, or what it strikes.
+    static func target(of command: Command) -> Hex? {
+        switch command {
+        case .move(_, let to): return to
+        case .attack(_, let target): return target
+        default: return nil
         }
     }
 
@@ -1193,9 +1206,18 @@ public final class GameSession {
     /// first and each other sound once. With the world as it now stands,
     /// the player's works and companies finished sound too.
     static func cues(for events: [GameEvent], in state: GameState? = nil, player: Int) -> [Ambience.Cue] {
-        var cues: [Ambience.Cue] = [.watch]
-        func add(_ cue: Ambience.Cue) { if !cues.contains(cue) { cues.append(cue) } }
+        placedCues(for: events, in: state, player: player).map(\.cue)
+    }
+
+    /// The sounds events make, each where in the world the first event to
+    /// make it happened, if it happened anywhere: the watch's bell first,
+    /// in the middle, and each other sound once.
+    static func placedCues(for events: [GameEvent], in state: GameState? = nil, player: Int) -> [(cue: Ambience.Cue, at: Hex?)] {
+        var cues: [(cue: Ambience.Cue, at: Hex?)] = [(.watch, nil)]
+        var here: Hex?
+        func add(_ cue: Ambience.Cue) { if !cues.contains(where: { $0.cue == cue }) { cues.append((cue, here)) } }
         for event in events {
+            here = state.flatMap { place(of: event, in: $0) }
             switch event {
             case .battle(let battle) where battle.defenderOwner == player:
                 // Struck: steel, or arrows, as the blow came.
@@ -1251,6 +1273,42 @@ public final class GameSession {
             }
         }
         return cues
+    }
+
+    /// Where in the world an event happened, if it happened anywhere one
+    /// place: a battle where it was fought, a work at its hold, a company
+    /// where it fell or ended its march.
+    static func place(of event: GameEvent, in state: GameState) -> Hex? {
+        switch event {
+        case .battle(let battle): return battle.at
+        case .hunted(let hunt): return hunt.at
+        case .unitLost(_, _, _, let at), .ruinSearched(let at, _, _), .skillFired(_, _, _, let at), .siteWorkedOut(_, _, let at):
+            return at
+        case .moved(_, let path): return path.last
+        case .holdStruck(let hold, _), .holdCaptured(let hold, _, _), .buildingCompleted(let hold, _, _), .buildingStarted(let hold, _, _),
+             .trainingStarted(let hold, _), .holdFounded(let hold), .unitTrained(_, let hold), .delivered(_, _, let hold, _):
+            return state.hold(hold)?.position
+        case .rallyStruck(_, _, let target, _, _), .rallySetOut(_, _, let target, _, _):
+            return state.hold(target)?.position
+        case .gathered(let unit, _, _), .sentToGather(let unit, _):
+            return state.unit(unit)?.position
+        default:
+            return nil
+        }
+    }
+
+    /// Where a sound at a hex is heard from, as the view now stands; the
+    /// middle of the view for a sound of no place.
+    func soundPlace(of hex: Hex?) -> SoundPlace {
+        guard let hex else { return .middle }
+        let heard = camera.hearing(of: hex)
+        return SoundPlace(pan: heard.pan, gain: heard.gain)
+    }
+
+    /// Sounds a cue, from where in the world it happened.
+    private func emit(_ cue: Ambience.Cue, at hex: Hex? = nil) {
+        onCue?(cue)
+        onPlacedCue?(cue, soundPlace(of: hex))
     }
 
 

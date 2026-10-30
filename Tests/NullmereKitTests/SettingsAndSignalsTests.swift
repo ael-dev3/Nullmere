@@ -52,6 +52,36 @@ final class VolumeTests: XCTestCase {
         return zip(a, b).map { abs($1 - $0) }.max() ?? 0
     }
 
+    /// Both ears' renders of a cue alone, the night silent.
+    private func ears(_ cue: Ambience.Cue, at place: SoundPlace) -> (left: Float, right: Float) {
+        let synth = synth(ambience: 0)
+        synth.trigger(cue, at: place)
+        let frames = 24_000
+        let list = AudioBufferList.allocate(maximumBuffers: 2)
+        defer { free(list.unsafeMutablePointer) }
+        let left = UnsafeMutablePointer<Float>.allocate(capacity: frames)
+        let right = UnsafeMutablePointer<Float>.allocate(capacity: frames)
+        defer { left.deallocate(); right.deallocate() }
+        list[0] = AudioBuffer(mNumberChannels: 1, mDataByteSize: UInt32(frames * 4), mData: left)
+        list[1] = AudioBuffer(mNumberChannels: 1, mDataByteSize: UInt32(frames * 4), mData: right)
+        synth.render(frames: frames, into: list)
+        return (rms(Array(UnsafeBufferPointer(start: left, count: frames))), rms(Array(UnsafeBufferPointer(start: right, count: frames))))
+    }
+
+    func testACueIsHeardFromWhereItHappened() {
+        let middle = ears(.clash, at: .middle)
+        XCTAssertEqual(middle.left, middle.right, accuracy: middle.left * 0.02, "In the middle, both ears alike")
+        let right = ears(.clash, at: SoundPlace(pan: 1, gain: 1))
+        XCTAssertGreaterThan(right.right, right.left * 3, "At the right edge, the right ear")
+        XCTAssertGreaterThan(right.left, 0, "never gone from the other")
+        let left = ears(.clash, at: SoundPlace(pan: -1, gain: 1))
+        XCTAssertGreaterThan(left.left, left.right * 3)
+        let far = ears(.clash, at: SoundPlace(pan: 0, gain: 0.3))
+        XCTAssertEqual(far.left / middle.left, 0.3, accuracy: 0.03, "Far off, quieter")
+        XCTAssertEqual(SoundPlace(pan: 4, gain: -1), SoundPlace(pan: 1, gain: 0), "Kept within its bounds")
+        XCTAssertEqual(SoundPlace.middle.left, 1, accuracy: 0.001)
+    }
+
     func testEffectsVolumeScalesTheCues() {
         let full = cuePeak(effects: 1)
         let half = cuePeak(effects: 0.5)
