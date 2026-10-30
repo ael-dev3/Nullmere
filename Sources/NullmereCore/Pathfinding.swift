@@ -176,7 +176,7 @@ extension GameState {
                 if let hold = hold(at: hexes[next]), hold.owner != unit.owner { continue }
                 // A step costs its terrain's moves; with all its moves a
                 // company can always take one step.
-                guard remaining >= terrain.moveCost || remaining == unit.kind.movement else { continue }
+                guard remaining >= terrain.moveCost || remaining == movement(of: unit) else { continue }
                 let after = max(0, remaining - terrain.moveCost)
                 if after > left[next] {
                     left[next] = after

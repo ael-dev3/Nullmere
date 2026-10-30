@@ -500,8 +500,8 @@ realm; keepers are told in plain words, never a status code.
   grows with each hold. Build Granaries, Sawpits, Quarries and Saltworks to
   boost a store, Walls to thicken the ward, Beacons to see further (at
   level II, a hold's land reaches a tile further too), and a Muster Hall to
-  train stronger companies, and at level III to train all but Lanterns a
-  watch sooner. Barter a surplus
+  train stronger companies, at level III to train all but Lanterns a
+  watch sooner, and to level V for the higher tiers. Barter a surplus
   for what you lack, three to one; moonsalt counts as three of any other
   store, so one costs nine of them, and fetches one. Each new hold costs
   more to found than the last, so a House grows by choice, not by habit. A
@@ -509,7 +509,11 @@ realm; keepers are told in plain words, never a status code.
   trained, and the hold trains no other until it has room to stand.
 - **Companies.** Lanterns scout, Spears hold the line and take holds,
   Bows strike from two tiles, Riders are fast, and Founders found new holds.
-  Every company but Lanterns eats a grain each watch. Companies that
+  Every company but Lanterns eats a grain each watch. Spears, Bows and
+  Riders muster in tiers I to V, each needing a Muster Hall as high as
+  itself: a higher tier strikes harder, stands firmer and takes less of a
+  blow, but costs more (moonsalt from tier III), eats more and takes longer
+  to train. Lanterns and Founders muster in one. Companies that
   live through battles rise in rank (Blooded, Hardened, Sworn), each rank
   adding a tenth to attack and defence; chevrons under a token show it. A
   company that wins a close fight steps onto the fallen's ground, but never

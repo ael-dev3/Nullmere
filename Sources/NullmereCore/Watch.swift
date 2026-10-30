@@ -26,7 +26,7 @@ extension GameState {
         mendAndHeal(territory: owners)
 
         for index in units.indices {
-            units[index].movesLeft = units[index].kind.movement
+            units[index].movesLeft = movement(of: units[index])
             units[index].acted = false
         }
         watch += 1
@@ -80,7 +80,7 @@ extension GameState {
         // Hunger: the grain runs out and the newest companies suffer first.
         houses[house].stock.grain = 0
         var events: [GameEvent] = [.starving(house: house)]
-        let hungry = units(of: house).filter { $0.kind.upkeep > 0 }.sorted { $0.id > $1.id }
+        let hungry = units(of: house).filter { self.upkeep(of: $0) > 0 }.sorted { $0.id > $1.id }
         for unit in hungry.prefix(max(1, hungry.count / 2)) {
             guard let index = unitIndex(unit.id) else { continue }
             units[index].health -= 20
@@ -119,7 +119,7 @@ extension GameState {
                 training.watchesLeft -= 1
                 if training.watchesLeft <= 0 {
                     let hold = holds[index]
-                    if let unit = placeUnit(training.kind, for: hold.owner, near: hold.position) {
+                    if let unit = placeUnit(training.kind, tier: training.musteredTier, for: hold.owner, near: hold.position) {
                         holds[index].training = nil
                         events.append(.unitTrained(unit: unit.id, hold: hold.id))
                     } else {

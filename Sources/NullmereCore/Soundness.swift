@@ -28,6 +28,7 @@ extension GameState {
             }
             if !tile.terrain.isPassable { found.append("Company \(unit.id) stands on \(tile.terrain.title)") }
             if !(1...100).contains(unit.health) { found.append("Company \(unit.id) has \(unit.health) health") }
+            if !(1...unit.kind.highestTier).contains(unit.tier) { found.append("Company \(unit.id) has tier \(unit.tier)") }
             if unit.movesLeft < 0 { found.append("Company \(unit.id) has \(unit.movesLeft) moves") }
         }
         var holdIDs: Set<Int> = [], places: Set<Hex> = []

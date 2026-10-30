@@ -28,7 +28,6 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
     public var maxLevel: Int {
         switch self {
         case .beacon: return 3
-        case .musterHall: return 3
         default: return 5
         }
     }
@@ -86,6 +85,11 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
             return "+\(BuildingKind.yieldBoostPerLevel * level)% to the \(resource) this hold yields"
         case .musterHall:
             var gains = UnitKind.allCases.filter { $0.requiredMuster == level }.map(\.title)
+            // The first three halls open their tiers with their companies;
+            // the last two, tiers alone.
+            if level > Hold.fasterTrainingAt {
+                gains.append("companies of war of tier \(BuildingKind.numeral(level))")
+            }
             if level == Hold.fasterTrainingAt {
                 gains.append("all but Lanterns a watch sooner")
             }

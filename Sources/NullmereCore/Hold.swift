@@ -13,6 +13,17 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
     public struct Training: Codable, Equatable, Sendable {
         public var kind: UnitKind
         public var watchesLeft: Int
+        /// The tier it musters at; absent for the first, as in older saves.
+        public var tier: Int?
+
+        public init(kind: UnitKind, watchesLeft: Int, tier: Int? = nil) {
+            self.kind = kind
+            self.watchesLeft = watchesLeft
+            self.tier = tier.flatMap { $0 > 1 ? $0 : nil }
+        }
+
+        /// The tier it musters at.
+        public var musteredTier: Int { tier ?? 1 }
     }
 
     public let id: Int
@@ -91,9 +102,11 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
     /// watch to train takes one fewer.
     public static let fasterTrainingAt = 3
 
-    /// Watches a company takes to train at this hold.
-    public func trainingWatches(for kind: UnitKind) -> Int {
-        kind.trainWatches - (level(.musterHall) >= Hold.fasterTrainingAt && kind.trainWatches > 1 ? 1 : 0)
+    /// Watches a company takes to train at this hold, before its House's
+    /// studies hasten it.
+    public func trainingWatches(for kind: UnitKind, tier: Int = 1) -> Int {
+        let watches = kind.trainWatches(tier: tier)
+        return watches - (level(.musterHall) >= Hold.fasterTrainingAt && watches > 1 ? 1 : 0)
     }
 
     public static func sight(beaconLevel: Int) -> Int {

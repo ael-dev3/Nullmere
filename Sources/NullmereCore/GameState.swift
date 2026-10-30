@@ -282,14 +282,14 @@ public struct GameState: Codable, Equatable, Sendable {
 
     /// Grain a House's units eat each watch.
     public func upkeep(of house: Int) -> Int {
-        units(of: house).reduce(0) { $0 + $1.kind.upkeep }
+        units(of: house).reduce(0) { $0 + upkeep(of: $1) }
     }
 
     /// A rough measure of military might, for rivals weighing war.
     public func strength(of house: Int) -> Int {
         if let reputed, reputed.indices.contains(house) { return reputed[house] }
         let army = units(of: house).reduce(0) { total, unit in
-            total + (unit.kind.attack + unit.kind.defense) * unit.health / 10
+            total + strength(of: unit)
         }
         let walls = holds(of: house).reduce(0) { $0 + $1.ward / 2 }
         return army + walls
@@ -357,13 +357,13 @@ public struct GameState: Codable, Equatable, Sendable {
     /// Puts a new unit on the hex, or the nearest free passable hex within
     /// three, never in another House's hold.
     @discardableResult
-    mutating func placeUnit(_ kind: UnitKind, for house: Int, near hex: Hex) -> Unit? {
+    mutating func placeUnit(_ kind: UnitKind, tier: Int = 1, for house: Int, near hex: Hex) -> Unit? {
         let spot = hex.spiral(3).first { candidate in
             guard let tile = map[candidate], tile.terrain.isPassable else { return false }
             return unit(at: candidate) == nil && (hold(at: candidate).map { $0.owner == house } ?? true)
         }
         guard let spot else { return nil }
-        let placed = Unit(id: takeID(), kind: kind, owner: house, position: spot)
+        let placed = Unit(id: takeID(), kind: kind, owner: house, position: spot, tier: tier)
         units.append(placed)
         return placed
     }

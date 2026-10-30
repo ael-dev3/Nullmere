@@ -44,12 +44,13 @@ extension GameState {
             let (attack, defense) = strengths(of: attacker, against: defender, at: target)
             let dealt = 70 * attack / (attack + defense)
             let taken = ranged ? 0 : 70 * defense / (attack + defense)
-            let stands = taken * 120 / 100 < attacker.health
+            let mostTaken = bodily(taken * 120 / 100, on: attacker)
+            let stands = mostTaken < attacker.health
             let wardDown = hold(at: target).map { $0.ward == 0 } ?? false
             return Forecast(
                 target: .unit(defender.kind),
-                dealt: max(5, dealt * 80 / 100)...max(5, dealt * 120 / 100),
-                taken: (taken * 80 / 100)...(taken * 120 / 100),
+                dealt: bodily(max(5, dealt * 80 / 100), on: defender)...bodily(max(5, dealt * 120 / 100), on: defender),
+                taken: bodily(taken * 80 / 100, on: attacker)...mostTaken,
                 defenderHealth: defender.health,
                 attackerHealth: attacker.health,
                 couldCapture: !ranged && attacker.kind.canCapture && wardDown && stands,
@@ -57,8 +58,8 @@ extension GameState {
             )
         }
         guard let holdID = foe.hold, let hold = hold(holdID) else { return nil }
-        let damage = Hold.strikeDamage(attack: attacker.kind.attack, health: attacker.health)
-        let returned = ranged ? 0 : 5 + 4 * hold.level(.walls)
+        let damage = wardDamage(by: attacker)
+        let returned = ranged ? 0 : bodily(5 + 4 * hold.level(.walls), on: attacker)
         return Forecast(
             target: .hold(holdID),
             dealt: (damage * 80 / 100)...(damage * 120 / 100),

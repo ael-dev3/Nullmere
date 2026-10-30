@@ -9,7 +9,9 @@ public enum Command: Codable, Equatable, Sendable {
     case found(unit: Int)
     /// Start raising a building one level.
     case build(hold: Int, kind: BuildingKind)
-    case train(hold: Int, kind: UnitKind)
+    /// Muster a company at a hold, of a tier from I to V; absent, the first
+    /// (an order from before tiers reads so).
+    case train(hold: Int, kind: UnitKind, tier: Int? = nil)
     /// Trade a surplus away for something lacking, at three to one,
     /// moonsalt counted as three of any other store.
     case barter(give: Resource, take: Resource, amount: Int)
@@ -70,6 +72,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case atWarWith(Int)
     /// An offer of trade to a House at war with the trader.
     case noTradeAcrossWar(Int)
+    /// A tier beyond the first, for a kind that musters in one.
+    case oneTierOnly(UnitKind)
+    /// A tier that isn't one of I to V.
+    case noSuchTier
 
     public var description: String {
         switch self {
@@ -110,6 +116,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
             return left == 0 ? "No more gifts can be taken in this watch." : "Gifts worth only \(left) more can be taken in this watch; moonsalt counts four."
         case .atWarWith: return "A gift across a war is no gift."
         case .noTradeAcrossWar: return "No trade crosses a war."
+        case .oneTierOnly(let kind): return "\(kind.title) muster in one tier only."
+        case .noSuchTier: return "Companies muster in tiers I to V."
         }
     }
 }

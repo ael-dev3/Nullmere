@@ -15,8 +15,8 @@ extension GameState {
             return try found(with: unitID, as: house)
         case let .build(holdID, kind):
             return try build(kind, in: holdID, as: house)
-        case let .train(holdID, kind):
-            return try train(kind, in: holdID, as: house)
+        case let .train(holdID, kind, tier):
+            return try train(kind, tier: tier ?? 1, in: holdID, as: house)
         case let .barter(give, take, amount):
             return try barter(give: give, take: take, amount: amount, as: house)
         case let .fortify(unitID):
@@ -125,7 +125,7 @@ extension GameState {
                 break
             }
             let cost = map[next]!.terrain.moveCost
-            if unit.movesLeft < cost, unit.movesLeft < unit.kind.movement { break }
+            if unit.movesLeft < cost, unit.movesLeft < movement(of: unit) { break }
             route.removeFirst()
             units[index].movesLeft = max(0, unit.movesLeft - cost)
             units[index].position = next
@@ -207,8 +207,8 @@ extension GameState {
         let ranged = attacker.position.distance(to: hex) > 1
         let (attack, defense) = strengths(of: attacker, against: defender, at: hex)
 
-        let dealt = max(5, 70 * attack / (attack + defense) * random.int(in: 80...120) / 100)
-        let taken = ranged ? 0 : 70 * defense / (attack + defense) * random.int(in: 80...120) / 100
+        let dealt = bodily(max(5, 70 * attack / (attack + defense) * random.int(in: 80...120) / 100), on: defender)
+        let taken = ranged ? 0 : bodily(70 * defense / (attack + defense) * random.int(in: 80...120) / 100, on: attacker)
 
         var events: [GameEvent] = []
         let defenderFell = applyDamage(dealt, to: defenderID, events: &events)
@@ -248,6 +248,7 @@ extension GameState {
     /// Attack and defence in a fight between two units, before chance.
     func strengths(of attacker: Unit, against defender: Unit, at hex: Hex) -> (attack: Int, defense: Int) {
         var attack = attacker.kind.attack * (50 + attacker.health / 2) * (100 + Unit.rankBonus * attacker.rank) / 100
+        attack = attack * attackPercent(of: attacker) / 100
         if defender.kind == .rider {
             attack = attack * (100 + attacker.kind.bonusAgainstRiders) / 100
         }
@@ -258,7 +259,8 @@ extension GameState {
         if attacker.kind == .rider {
             defenseBonus += defender.kind.bonusAgainstRiders
         }
-        let defense = max(1, defender.kind.defense * (50 + defender.health / 2) * defenseBonus / 100 * (100 + Unit.rankBonus * defender.rank) / 100)
+        let defense = max(1, defender.kind.defense * (50 + defender.health / 2) * defenseBonus / 100 * (100 + Unit.rankBonus * defender.rank) / 100
+            * defensePercent(of: defender) / 100)
         return (attack, defense)
     }
 
@@ -289,12 +291,12 @@ extension GameState {
         let hold = holds[holdIndex]
         let ranged = attacker.position.distance(to: hold.position) > 1
 
-        let damage = Hold.strikeDamage(attack: attacker.kind.attack, health: attacker.health) * random.int(in: 80...120) / 100
+        let damage = wardDamage(by: attacker) * random.int(in: 80...120) / 100
         holds[holdIndex].ward = max(0, hold.ward - damage)
         holds[holdIndex].struck = true
         var events: [GameEvent] = [.holdStruck(hold: holdID, ward: holds[holdIndex].ward)]
 
-        let returned = ranged ? 0 : 5 + 4 * hold.level(.walls)
+        let returned = ranged ? 0 : bodily(5 + 4 * hold.level(.walls), on: attacker)
         let attackerFell = returned > 0 && applyDamage(returned, to: unitID, events: &events)
         events.insert(.battle(Battle(
             attacker: unitID, attackerOwner: attacker.owner, attackerKind: attacker.kind,
@@ -434,28 +436,33 @@ extension GameState {
         return [.buildingStarted(hold: holdID, kind: kind, level: level)]
     }
 
-    /// What a company costs this House to muster. Founders cost half as
-    /// much again for every hold the House has beyond its seat, and every
-    /// Founder already on the march or mustering, so each new hold is
+    /// What a company costs this House to muster, at a tier. Founders cost
+    /// half as much again for every hold the House has beyond its seat, and
+    /// every Founder already on the march or mustering, so each new hold is
     /// dearer than the last and a realm can't sprawl for nothing.
-    public func trainingCost(of kind: UnitKind, for house: Int) -> Stock {
-        guard kind == .founder else { return kind.cost }
+    public func trainingCost(of kind: UnitKind, tier: Int = 1, for house: Int) -> Stock {
+        guard kind == .founder else { return kind.cost(tier: tier) }
         let mustering = holds.filter { $0.owner == house && $0.training?.kind == .founder }.count
         let marching = units.filter { $0.owner == house && $0.kind == .founder }.count
         let extra = max(0, holds(of: house).count - 1) + mustering + marching
         return kind.cost.scaled(percent: 100 + 50 * extra)
     }
 
-    private mutating func train(_ kind: UnitKind, in holdID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
+    /// Watches a company of a tier takes to muster at a hold.
+    public func trainingWatches(of kind: UnitKind, tier: Int = 1, at hold: Hold) -> Int {
+        hold.trainingWatches(for: kind, tier: tier)
+    }
+
+    private mutating func train(_ kind: UnitKind, tier: Int, in holdID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
         let index = try ownedHold(holdID, of: house)
         let hold = holds[index]
         guard hold.training == nil else { throw .busy }
-        guard hold.level(.musterHall) >= kind.requiredMuster else { throw .needsMusterHall(kind.requiredMuster) }
-        let cost = trainingCost(of: kind, for: house)
+        if let refusal = tierRefusal(of: kind, tier: tier, at: hold, for: house) { throw refusal }
+        let cost = trainingCost(of: kind, tier: tier, for: house)
         guard houses[house].stock.covers(cost) else { throw .shortOf(houses[house].stock.shortfall(for: cost)) }
 
         houses[house].stock.debit(cost)
-        holds[index].training = Hold.Training(kind: kind, watchesLeft: hold.trainingWatches(for: kind))
+        holds[index].training = Hold.Training(kind: kind, watchesLeft: trainingWatches(of: kind, tier: tier, at: hold), tier: tier)
         return [.trainingStarted(hold: holdID, kind: kind)]
     }
 
