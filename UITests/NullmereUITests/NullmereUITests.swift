@@ -529,7 +529,7 @@ final class NullmereUITests: XCTestCase {
         // bar, a rule) is drawn, not written, and judged as a graphic, at
         // WCAG's 3:1 for those, not as type.
         var seen = [Bool](repeating: false, count: width * height)
-        var written: [Int] = [], drawn: [Int] = []
+        var written: [Int] = [], bars: [Int] = []
         var weakest = Double.infinity, marks = 0
         for start in 0..<(width * height) where !seen[start] && ratio(lum[start], groundLuminance) > 1.5 {
             var stack = [start], members: [Int] = [], brightest = 0.0
@@ -554,7 +554,7 @@ final class NullmereUITests: XCTestCase {
             }
             let wide = right - left + 1, tall = bottom - top + 1
             if (wide >= 12 && wide >= 3 * tall) || (tall >= 12 && tall >= 3 * wide) {
-                drawn += members
+                bars += members
                 continue
             }
             written += members
@@ -564,7 +564,7 @@ final class NullmereUITests: XCTestCase {
         // The type's colours: its commonest, taken for its body, and its
         // brightest, against the ground.
         var type: [UInt32: Int] = [:]
-        for pixel in written.isEmpty ? drawn : written { type[colour(at: pixel), default: 0] += 1 }
+        for pixel in written.isEmpty ? bars : written { type[colour(at: pixel), default: 0] += 1 }
         guard let mode = type.max(by: { $0.value < $1.value })?.key,
               let peak = type.keys.max(by: { ratio(luminance($0), groundLuminance) < ratio(luminance($1), groundLuminance) }) else {
             return Measure(ground: ground, body: ground, bodyRatio: 1, peak: ground, peakRatio: 1, weakest: 1, marks: 0)
