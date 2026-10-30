@@ -7,11 +7,13 @@ final class TradeTests: XCTestCase {
         GameState(settings: GameSettings(seedText: "trade", houseCount: 5, radius: 20, keepers: 1))
     }
 
-    private func steward(_ state: GameState, _ temperament: Temperament) throws -> Int {
-        guard let house = state.houses.first(where: { !$0.isPlayer && $0.temperament == temperament }) else {
-            throw XCTSkip("No \(temperament) steward in this world")
-        }
-        return house.id
+    /// A steward of this temperament: one this world has, or else the first
+    /// steward made so, so no test waits on the dice to run.
+    private func steward(_ state: inout GameState, _ temperament: Temperament) throws -> Int {
+        if let house = state.houses.first(where: { !$0.isPlayer && $0.temperament == temperament }) { return house.id }
+        let house = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
+        state.houses[house].temperament = temperament
+        return house
     }
 
     func testTheTermsSayWhatTheyAsk() {
@@ -28,7 +30,7 @@ final class TradeTests: XCTestCase {
     func testAStewardTakesFairTermsAndRefusesALopsidedOne() throws {
         var state = world()
         let me = state.player
-        let other = try steward(state, .steadfast)
+        let other = try steward(&state, .steadfast)
         let mine = state.houses[me].stock, theirs = state.houses[other].stock
 
         let fair = Trade(give: .timber, 12, for: .stone, 12)
@@ -50,7 +52,7 @@ final class TradeTests: XCTestCase {
     func testTheShrewdAskMoreAndFriendsLess() throws {
         var state = world()
         let me = state.player
-        let cunning = try steward(state, .cunning)
+        let cunning = try steward(&state, .cunning)
         let even = Trade(give: .timber, 10, for: .stone, 10)
         XCTAssertFalse(RivalMind(house: cunning).acceptsTrade(even, from: me, in: state), "The cunning want more than even")
         XCTAssertTrue(RivalMind(house: cunning).acceptsTrade(Trade(give: .timber, 14, for: .stone, 10), from: me, in: state))
@@ -61,9 +63,9 @@ final class TradeTests: XCTestCase {
     }
 
     func testAStewardNeverTradesAwayTheGrainItsCompaniesNeed() throws {
-        let state = world()
+        var state = world()
         let me = state.player
-        let other = try steward(state, .steadfast)
+        let other = try steward(&state, .steadfast)
         let spare = state.houses[other].stock.grain - state.upkeep(of: other) * 3
         let generous = Trade(give: .moonsalt, 5, for: .grain, spare + 1)
         XCTAssertFalse(RivalMind(house: other).acceptsTrade(generous, from: me, in: state))

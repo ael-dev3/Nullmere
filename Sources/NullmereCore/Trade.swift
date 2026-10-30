@@ -57,6 +57,10 @@ extension GameState {
         if houses[target].isPlayer {
             // One offer of trade at a time waits on a keeper from each House.
             guard !envoys.contains(where: { $0.from == house && $0.to == target && $0.proposal == .trade }) else { throw .envoyWaiting }
+            if let surplus = keeperSurplus(of: trade, from: house, to: target) {
+                let left = GameState.giftsTakenPerWatch - giftsTaken(by: surplus.receiver)
+                guard surplus.worth <= left else { throw .giftsThisWatch(left: max(0, left)) }
+            }
             let envoy = Envoy(id: takeID(), from: house, to: target, proposal: .trade, arrived: watch,
                               words: houses[house].isPlayer ? words : nil, trade: trade)
             envoys.append(envoy)
@@ -68,11 +72,31 @@ extension GameState {
         return [.tradeAnswered(trade: trade, from: house, to: target, accepted: accepted)]
     }
 
+    /// Between two keepers' Houses, what a trade gives one side beyond what
+    /// it gets back, counted as gifts are (moonsalt four): a gift, and held
+    /// to what a House may take in gifts in a watch, so no trade between
+    /// Houses one keeper holds under other names pours more into one than
+    /// gifts could. Nil where a steward answers, who weighs every trade by
+    /// its worth, and where the two sides are even.
+    func keeperSurplus(of trade: Trade, from proposer: Int, to other: Int) -> (giver: Int, receiver: Int, worth: Int)? {
+        guard houses[proposer].isPlayer, houses[other].isPlayer else { return nil }
+        let toOther = GameState.worth(of: trade.give, amount: trade.giveAmount)
+        let toProposer = GameState.worth(of: trade.take, amount: trade.takeAmount)
+        if toOther > toProposer { return (proposer, other, toOther - toProposer) }
+        if toProposer > toOther { return (other, proposer, toProposer - toOther) }
+        return nil
+    }
+
     /// Whether both sides can still keep a trade's terms: each has what it
-    /// gives and room for what it gets.
+    /// gives and room for what it gets, and between keepers, room in this
+    /// watch's gifts for what one gets beyond what it gives.
     func canSettle(_ trade: Trade, from proposer: Int, to other: Int) -> Bool {
         guard trade.isWellFormed, !houses[proposer].isEliminated, !houses[other].isEliminated,
               stance(proposer, other) != .war else { return false }
+        if let surplus = keeperSurplus(of: trade, from: proposer, to: other),
+           surplus.worth > GameState.giftsTakenPerWatch - giftsTaken(by: surplus.receiver) {
+            return false
+        }
         return houses[proposer].stock.covers(trade.given) && houses[other].stock.covers(trade.taken)
             && houses[proposer].stock[trade.take] + trade.takeAmount <= storage(of: proposer)
             && houses[other].stock[trade.give] + trade.giveAmount <= storage(of: other)
@@ -85,6 +109,9 @@ extension GameState {
         houses[other].stock.credit(trade.given)
         houses[other].stock.debit(trade.taken)
         houses[proposer].stock.credit(trade.taken)
+        if let surplus = keeperSurplus(of: trade, from: proposer, to: other) {
+            gifts = (gifts ?? []) + [Gift(from: surplus.giver, to: surplus.receiver, worth: surplus.worth, watch: watch)]
+        }
         let worth = trade.giveAmount * trade.give.worth + trade.takeAmount * trade.take.worth
         if worth >= GameState.notedTrade {
             record(.trade, [proposer, other], "\(houses[proposer].title) trades \(trade.given) to \(houses[other].title) for \(trade.taken).")

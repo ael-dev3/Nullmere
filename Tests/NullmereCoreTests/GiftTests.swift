@@ -78,17 +78,61 @@ final class GiftTests: XCTestCase {
         XCTAssertNoThrow(try state.perform(.gift(to: second, resource: .stone, amount: 10), as: me), "Another House takes its own")
         _ = state.endWatch()
         XCTAssertNoThrow(try state.perform(.gift(to: receiver, resource: .stone, amount: 50), as: me), "A new watch, a new bound")
-        XCTAssertEqual(RuleError.giftsThisWatch(left: 0).description, "They can take no more gifts this watch.")
-        XCTAssertEqual(RuleError.giftsThisWatch(left: 20).description, "They can take gifts worth only 20 more this watch; moonsalt counts four.")
+        XCTAssertEqual(RuleError.giftsThisWatch(left: 0).description, "No more gifts can be taken in this watch.")
+        XCTAssertEqual(RuleError.giftsThisWatch(left: 20).description, "Gifts worth only 20 more can be taken in this watch; moonsalt counts four.")
+    }
+
+    /// Between keepers, what a trade gives one side beyond what it gets back
+    /// is a gift, and bound as one: no lopsided trade pours more into a House
+    /// than gifts could, and what one does pour counts toward the watch's
+    /// bound. With a steward, who weighs every trade, nothing is counted.
+    func testAKeepersLopsidedTradeIsAGiftAndBoundAsOne() throws {
+        var state = world()
+        let me = state.player
+        let others = state.houses.filter { !$0.isPlayer }.map(\.id)
+        let (other, steward) = (others[0], others[1])
+        state.houses[other].isPlayer = true
+        for house in [me, other] { state.houses[house].stock = Stock(grain: 300, timber: 300, stone: 300, moonsalt: 40) }
+
+        // Three hundred timber for one grain: two hundred and ninety-nine poured in.
+        XCTAssertThrowsError(try state.perform(.offerTrade(Trade(give: .timber, 300, for: .grain, 1), to: other, words: nil), as: me)) { error in
+            XCTAssertEqual(error as? RuleError, .giftsThisWatch(left: 100))
+        }
+        // Eighty timber for twenty grain: sixty beyond, a gift taken in.
+        _ = try state.perform(.offerTrade(Trade(give: .timber, 80, for: .grain, 20), to: other, words: nil), as: me)
+        let envoy = try XCTUnwrap(state.envoys.last { $0.proposal == .trade && $0.to == other })
+        _ = try state.perform(.answer(envoy: envoy.id, accept: true), as: other)
+        XCTAssertEqual(state.houses[other].stock.timber, 380, "Kept")
+        XCTAssertEqual(state.giftsTaken(by: other), 60, "Its surplus counted as a gift")
+        XCTAssertThrowsError(try state.perform(.gift(to: other, resource: .stone, amount: 41), as: me)) { error in
+            XCTAssertEqual(error as? RuleError, .giftsThisWatch(left: 40))
+        }
+        // Asking more than is given is a gift to the asker, moonsalt four.
+        _ = try state.perform(.offerTrade(Trade(give: .grain, 10, for: .moonsalt, 20), to: other, words: nil), as: me)
+        let asked = try XCTUnwrap(state.envoys.last { $0.proposal == .trade && $0.to == other })
+        // Meanwhile gifts fill the asker's bound: the trade can no longer be kept.
+        let third = others[2]
+        state.houses[third].isPlayer = true
+        state.houses[third].stock = Stock(grain: 300)
+        _ = try state.perform(.gift(to: me, resource: .grain, amount: 60), as: third)
+        let terms = try XCTUnwrap(asked.trade)
+        let events = try state.perform(.answer(envoy: asked.id, accept: true), as: other)
+        XCTAssertTrue(events.contains(.tradeAnswered(trade: terms, from: me, to: other, accepted: false)), "Seventy beyond, forty left")
+        XCTAssertEqual(state.houses[other].stock.moonsalt, 40, "Nothing moved")
+
+        // Even terms count nothing; nor does a steward's trade, weighed by worth.
+        XCTAssertNil(state.keeperSurplus(of: Trade(give: .stone, 30, for: .grain, 30), from: me, to: other))
+        XCTAssertNil(state.keeperSurplus(of: Trade(give: .stone, 30, for: .grain, 10), from: me, to: steward))
     }
 
     func testGoodwillWinsAPactAStewardWouldRefuse() throws {
         var state = world()
         let me = state.player
-        // A steward that wouldn't take a pact this early in the age.
-        guard let wary = state.houses.first(where: { !$0.isPlayer && ($0.temperament == .wary || $0.temperament == .steadfast) }) else {
-            throw XCTSkip("No wary or steadfast steward in this world")
-        }
+        // A steward that wouldn't take a pact this early in the age: a wary
+        // one, made so where the world has none.
+        let wary = try XCTUnwrap(state.houses.first { !$0.isPlayer && ($0.temperament == .wary || $0.temperament == .steadfast) }
+            ?? state.houses.first { !$0.isPlayer })
+        state.houses[wary.id].temperament = wary.temperament == .steadfast ? .steadfast : .wary
         XCTAssertFalse(RivalMind(house: wary.id).accepts(.pact, from: me, in: state), "Too soon")
         _ = try state.perform(.gift(to: wary.id, resource: .grain, amount: 40), as: me)
         _ = try state.perform(.gift(to: wary.id, resource: .moonsalt, amount: 5), as: me)

@@ -311,8 +311,10 @@ as the realm will, and takes the realm's word as final.
   House takes in gifts worth a hundred a watch at most, from every giver
   together, moonsalt counting four: enough to help an ally, never enough
   for Houses one keeper holds under other names to pour their stores into
-  one. A keeper hears of a gift, a war declared or an
-  envoy sent the moment it happens, not when the watch turns.
+  one. Between keepers, what a trade gives one side beyond what it takes
+  back is a gift, and counts as one. A keeper hears of a gift, a war
+  declared or an envoy sent the moment it happens, not when the watch
+  turns.
 - **Trade.** Offer any House you aren't at war with so much of one store
   for so much of another. Stewards weigh it by barter worth, the cunning
   asking most; allies, givers of gifts and a House short of what you offer

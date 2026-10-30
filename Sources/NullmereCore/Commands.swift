@@ -105,7 +105,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .storageFull: return "There's no room to store that much."
         case .noRoomWithThem: return "They have no room to store that much."
         case .giftsThisWatch(let left):
-            return left == 0 ? "They can take no more gifts this watch." : "They can take gifts worth only \(left) more this watch; moonsalt counts four."
+            // Whoever's bound it is: a trade between keepers may fill the
+            // asker's own.
+            return left == 0 ? "No more gifts can be taken in this watch." : "Gifts worth only \(left) more can be taken in this watch; moonsalt counts four."
         case .atWarWith: return "A gift across a war is no gift."
         case .noTradeAcrossWar: return "No trade crosses a war."
         }
