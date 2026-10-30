@@ -36,7 +36,7 @@ enum Guide {
         Section(title: "Companies", lines: [
             "Lanterns scout. Spears hold the line and take holds. Bows strike from two tiles. Riders are fast. Founders found new holds.",
             "Select a company, then right-click to march, or to strike an enemy within reach. Hovering an enemy shows the battle's odds first.",
-            "A company that wins a close fight steps onto the fallen's ground, unless it fought from within a hold: a garrison holds its ground.",
+            "A company that wins a close fight steps onto the fallen's ground, but never out of a hold, for a garrison holds its ground, nor into a hold it can't take.",
             "Every company but Lanterns eats a grain each watch. Those that live through battles rise in rank.",
             "A company trained with no free tile within three of its hold waits, trained, and the hold trains no other until it has room to stand.",
             "To take a hold, break its ward, then march Spears or Riders in; one that falls to the walls' blow back takes nothing. You carry off its share of their stores; a seat holds half.",
@@ -44,7 +44,7 @@ enum Guide {
         Section(title: "Houses", lines: [
             "Other Houses are held by keepers, or by stewards until a keeper claims them. Stewards are ambitious, steadfast, wary or cunning, and remember who wronged them.",
             "Offers to a keeper wait as envoys for their answer, as theirs wait for yours.",
-            "Declare war, offer peace or a pact, and answer their envoys. A pact shares sight; breaking one is not forgotten. A steward makes no peace before it has had a watch of its own at war, and one far the stronger none until the war has run thirty watches.",
+            "Declare war, offer peace or a pact, and answer their envoys. A pact shares sight; breaking one is not forgotten. A steward makes no peace before it has had a watch of its own at war, and one far the stronger none until the war has run past thirty watches.",
             "Send a gift to a House you aren't at war with. Stewards remember gifts for twenty watches: a war seems older to them, and enough goodwill wins a pact, unless you once made war on them or a pact between you was broken. War on a House throws away the goodwill your gifts bought, and no gift moves a steward that fears your rising Moonspire.",
             "A House takes in gifts worth \(GameState.giftsTakenPerWatch) a watch at most, from every giver together, moonsalt counting four: enough to help an ally, never enough for Houses one keeper holds under other names to pour their stores into one.",
             "Offer a trade to any House you aren't at war with: so much of one store for so much of another. Stewards weigh it by barter worth, the cunning asking most; allies and givers of gifts ask less, and a House takes less for what it lacks. A keeper answers by envoy. Stewards trade among themselves, too, before they barter.",
