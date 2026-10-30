@@ -25,7 +25,7 @@ rm -rf build/ui.xcresult
 set +e
 xcodebuild test -project UITests/NullmereUITests.xcodeproj -scheme NullmereUITests \
     -destination 'platform=macOS,arch=arm64' -resultBundlePath build/ui.xcresult 2>&1 \
-    | tee build/ui-test.log | grep -E "UIAUDIT|UIWALK|UIMAP|UIPROBE|UICONTRAST|UISCREEN|error:|Test Case .* (passed|failed)|\*\* TEST"
+    | tee build/ui-test.log | grep -E "UIAUDIT|UIWALK|UIMAP|UICONTRAST|UISCREEN|error:|Test Case .* (passed|failed)|\*\* TEST"
 set -e
 if ! grep -q "\*\* TEST SUCCEEDED \*\*" build/ui-test.log; then
     echo "error: the UI tests found something, or couldn't run; see build/ui-test.log and build/ui.xcresult" >&2

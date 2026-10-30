@@ -244,35 +244,6 @@ final class NullmereUITests: XCTestCase {
         }
     }
 
-    /// Not a test of the game: the same words set on the lake in each of the
-    /// ways the launcher sets its type (a debug build's probes, shown by
-    /// NULLMERE_AUDIT_PROBE), put to the audit's contrast check alone, with
-    /// the verdict and the screen's own pixels told for each. It says which
-    /// way of setting type the audit can read; it never fails.
-    func testWhatTheAuditAsksOfWordsOnTheLake() throws {
-        app.launchEnvironment["NULLMERE_AUDIT_PROBE"] = "1"
-        let window = try openTheLauncher()
-        Thread.sleep(forTimeInterval: 1.5)
-        var failed = Set<String>()
-        do {
-            try app.performAccessibilityAudit(for: .contrast) { issue in
-                if let label = issue.element?.label, label.hasPrefix("Probe ") { failed.insert(label) }
-                return true
-            }
-        } catch {
-            print("UIPROBE the audit couldn't run: \(error)")
-        }
-        for number in 1...12 {
-            let label = "Probe \(number)"
-            let element = window.staticTexts[label]
-            guard element.exists else {
-                print("UIPROBE \(label) not found")
-                continue
-            }
-            print("UIPROBE \(label) \(failed.contains(label) ? "FAIL" : "pass") \(element.frame.integral) \(Self.measured(element))")
-        }
-    }
-
     // MARK: Helpers
 
     private func openTheLauncher() throws -> XCUIElement {
@@ -310,13 +281,29 @@ final class NullmereUITests: XCTestCase {
     /// finds is kept, so each screen is still audited, and all are told.
     /// Where it finds type too faint, the type is measured again from the
     /// screen's own pixels, so what the audit saw is told beside it.
-    private func audit(_ screen: String, editing: Bool = false, tries: Int = 3) {
-        // What fades in is audited once it has; after a timed-out try, a
-        // longer pause for the Mac to settle.
-        Thread.sleep(forTimeInterval: tries == 3 ? 1.2 : 4)
-        var faint: [XCUIElement] = []
+    private func audit(_ screen: String, editing: Bool = false) {
+        // What fades in, or is fetched as the screen opens (the news, the
+        // realm's state), is audited once it has settled.
+        Thread.sleep(forTimeInterval: 2.5)
+        print("UIAUDIT-SIZE \(screen): \(app.staticTexts.count) texts, \(app.buttons.count) buttons")
+        faint = []
+        // In two parts, each with its own time: the contrast of every text,
+        // worked out from the screen's pixels and so the longest, and the rest.
+        audit(screen, part: "checks", types: XCUIAccessibilityAuditType.all.subtracting(.contrast), editing: editing)
+        audit(screen, part: "contrast", types: .contrast, editing: editing)
+        // Type the audit finds faint, measured from the screen's own pixels,
+        // where it lies in the window to be measured.
+        for text in faint.prefix(12) where text.exists && window.frame.contains(text.frame) && text.frame.width >= 4 && text.frame.height >= 4 {
+            print("UITEXT \(screen) h\(Int(text.frame.height)) \(Self.measured(text)) '\(Self.words(of: text).prefix(28))'")
+        }
+    }
+
+    /// The texts the audit last found faint, to be measured.
+    private var faint: [XCUIElement] = []
+
+    private func audit(_ screen: String, part: String, types: XCUIAccessibilityAuditType, editing: Bool, tries: Int = 3) {
         do {
-            try app.performAccessibilityAudit { issue in
+            try app.performAccessibilityAudit(for: types) { issue in
                 if let element = issue.element, self.isMacChrome(element) { return true }
                 // A text field being written in hands its words to AppKit's
                 // field editor, which names the field its parent though the
@@ -329,23 +316,39 @@ final class NullmereUITests: XCTestCase {
                     "type \(element.elementType.rawValue) '\(Self.words(of: element).prefix(70))' at \(element.frame.integral)"
                 } ?? "the screen (\(issue.detailedDescription.prefix(160)))"
                 self.found("UIAUDIT \(screen): \(issue.compactDescription): \(element)")
-                if issue.auditType == .contrast, let text = issue.element { faint.append(text) }
+                if issue.auditType == .contrast, let text = issue.element {
+                    self.faint.append(text)
+                    // The audit's own account of what it saw.
+                    print("UIAUDIT-WHY \(screen) '\(Self.words(of: text).prefix(30))': \(issue.detailedDescription.prefix(300))")
+                }
                 return true
             }
         } catch let error as NSError where tries > 1 && error.code == -56 {
-            // The audit ran out of time on a crowded screen: again, after a
-            // pause, before it counts against the screen.
-            print("UIAUDIT-NOTE \(screen): the audit ran out of time; again")
-            audit(screen, editing: editing, tries: tries - 1)
-            return
+            // Out of time on a crowded screen: again, after a pause, before it
+            // counts against the screen; and what kept the Mac busy, told.
+            print("UIAUDIT-NOTE \(screen): its \(part) ran out of time; again. Busiest: \(Self.busiest())")
+            Thread.sleep(forTimeInterval: 4)
+            audit(screen, part: part, types: types, editing: editing, tries: tries - 1)
         } catch {
-            found("UIAUDIT \(screen): the audit couldn't run: \(error)")
+            found("UIAUDIT \(screen): its \(part) couldn't run: \(error)")
         }
-        // Type the audit finds faint, measured from the screen's own pixels,
-        // where it lies in the window to be measured.
-        for text in faint.prefix(12) where text.exists && window.frame.contains(text.frame) && text.frame.width >= 4 && text.frame.height >= 4 {
-            print("UITEXT \(screen) h\(Int(text.frame.height)) \(Self.measured(text)) '\(Self.words(of: text).prefix(28))'")
-        }
+    }
+
+    /// The processes using the most of the Mac's time just now.
+    private static func busiest() -> String {
+        let ps = Process()
+        ps.executableURL = URL(fileURLWithPath: "/bin/ps")
+        ps.arguments = ["-Ao", "pcpu=,comm=", "-r"]
+        let pipe = Pipe()
+        ps.standardOutput = pipe
+        guard (try? ps.run()) != nil else { return "unknown" }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        ps.waitUntilExit()
+        return (String(data: data, encoding: .utf8) ?? "").split(separator: "\n").prefix(5).map { line in
+            let parts = line.trimmingCharacters(in: .whitespaces).split(separator: " ", maxSplits: 1)
+            guard parts.count == 2 else { return String(line) }
+            return "\(parts[0])% \(URL(fileURLWithPath: String(parts[1])).lastPathComponent)"
+        }.joined(separator: ", ")
     }
 
     private static func words(of element: XCUIElement) -> String {

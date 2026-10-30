@@ -59,12 +59,6 @@ public struct LauncherRootView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 .animation(.easeInOut(duration: 0.5), value: model.footerHint)
 
-                #if DEBUG
-                if AuditProbes.isShown {
-                    AuditProbes()
-                }
-                #endif
-
                 // Quitting, or crossing into the game, fades everything to black.
                 Color.black
                     .opacity(model.isLeaving ? 1 : 0)
