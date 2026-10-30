@@ -127,6 +127,62 @@ public enum WorldShaders {
         return mix(earth, moss, smoothstep(0.35, 0.65, patches)) * shade;
     }
 
+    // The grain a model's surface is drawn with, on the model's own
+    // coordinates so it keeps to the model: stone laid in courses, each
+    // block its own shade and mortar between; timber in planks, a grain
+    // down each; thatch in fine straws; slates in rows, each lapping the
+    // one below; earth in clods and grit. `p` is the point on the model,
+    // `n` the face's normal there, `footprint` how much of the model one
+    // pixel covers: grain finer than a pixel fades to its mean, so it
+    // never shimmers. The colour's mean is kept, near enough.
+    float3 nm_surface(float3 albedo, float3 p, float3 n, float surface, float footprint) {
+        if (surface < 0.5) {
+            return albedo;
+        }
+        float3 a = abs(n);
+        // Across the face, and up it (or along it, on a face turned up).
+        float2 uv = a.y > max(a.x, a.z) ? float2(p.x, p.z) : (a.x > a.z ? float2(p.z, p.y) : float2(p.x, p.y));
+        float shade = 1.0;
+        float scale = 0.02;
+        if (surface < 1.5) {
+            float2 size = float2(0.04, 0.021);
+            float row = floor(uv.y / size.y);
+            float2 cell = float2(uv.x / size.x + 0.5 * (row - 2.0 * floor(row * 0.5)), uv.y / size.y);
+            float2 f = fract(cell);
+            float edge = min(min(f.x, 1.0 - f.x) * size.x, min(f.y, 1.0 - f.y) * size.y);
+            float mortar = smoothstep(0.0006, 0.002, edge);
+            shade = (0.86 + 0.26 * nm_hash12(floor(cell))) * (0.62 + 0.38 * mortar) * (0.92 + 0.16 * nm_noise(uv * 110.0));
+            scale = size.y;
+        } else if (surface < 2.5) {
+            float width = 0.018;
+            float plank = floor(uv.x / width);
+            float f = fract(uv.x / width);
+            float seam = smoothstep(0.0, 0.1, min(f, 1.0 - f));
+            float grain = nm_noise(float2(uv.x * 300.0, uv.y * 16.0 + plank * 7.3));
+            shade = (0.86 + 0.24 * nm_hash12(float2(plank, 3.0))) * (0.68 + 0.32 * seam) * (0.86 + 0.28 * grain);
+            scale = width;
+        } else if (surface < 3.5) {
+            float straw = nm_noise(float2(uv.x * 480.0, uv.y * 30.0));
+            float tuft = nm_noise(uv * 70.0);
+            shade = 0.8 + 0.28 * straw + 0.12 * tuft;
+            scale = 0.006;
+        } else if (surface < 4.5) {
+            float2 size = float2(0.026, 0.016);
+            float row = floor(uv.y / size.y);
+            float2 cell = float2(uv.x / size.x + 0.5 * (row - 2.0 * floor(row * 0.5)), uv.y / size.y);
+            float2 f = fract(cell);
+            shade = (0.84 + 0.28 * nm_hash12(floor(cell))) * (0.7 + 0.3 * smoothstep(0.0, 0.3, f.y))
+                * (0.8 + 0.2 * smoothstep(0.0, 0.08, min(f.x, 1.0 - f.x)));
+            scale = size.y;
+        } else {
+            shade = 0.78 + 0.3 * nm_fbm(uv * 36.0) + 0.1 * nm_noise(uv * 180.0);
+            scale = 0.01;
+        }
+        // Seen from far, a pixel spans many blocks: their mean, unflickering.
+        float near = 1.0 - smoothstep(scale * 0.35, scale * 1.2, footprint);
+        return albedo * mix(0.95, shade, near);
+    }
+
     float3 nm_encode(float3 c) {
         return pow(clamp(c, float3(0.0), float3(1.0)), float3(1.0 / 2.2));
     }
@@ -338,7 +394,7 @@ public enum WorldShaders {
         packed_char4 normalMaterial;
         packed_uchar4 colorSway;
         ushort part;
-        ushort spare;
+        ushort surface;
     };
 
     struct ModelInstance {
@@ -505,6 +561,10 @@ public enum WorldShaders {
         float3 normal;
         float3 colour;
         float localY;
+        // Where on the model, and which way its face turns there: for its grain.
+        float3 local;
+        float3 localNormal;
+        float surface [[flat]];
         float material [[flat]];
         float4 params [[flat]];
         float watched [[flat]];
@@ -552,6 +612,9 @@ public enum WorldShaders {
         out.normal = normalize(normal);
         out.colour = albedo;
         out.localY = posed.y;
+        out.local = float3(v.position);
+        out.localNormal = float3(packedNormal.xyz) / 127.0;
+        out.surface = float(v.surface);
         out.material = material;
         out.params = instance.params;
         out.watched = watched;
@@ -571,9 +634,10 @@ public enum WorldShaders {
         if (dot(n, toEye) < 0.0) {
             n = -n;
         }
-        float3 lit = nm_light(in.colour, n, frame.moon.xyz, frame.moon.w);
+        float3 albedo = nm_surface(in.colour, in.local, in.localNormal, in.surface, length(fwidth(in.local)));
+        float3 lit = nm_light(albedo, n, frame.moon.xyz, frame.moon.w);
         for (int i = 0; i < 4; i++) {
-            lit += nm_pointLight(in.colour, in.world, n, frame.lights[i], frame.lights[i + 4]);
+            lit += nm_pointLight(albedo, in.world, n, frame.lights[i], frame.lights[i + 4]);
         }
         float facing = 1.0 - max(dot(n, toEye), 0.0);
         // The moon behind outlines what stands against it.

@@ -132,9 +132,10 @@ final class MeshTests: XCTestCase {
         XCTAssertEqual(MemoryLayout<PackedVertex>.offset(of: \.normalMaterial), 12)
         XCTAssertEqual(MemoryLayout<PackedVertex>.offset(of: \.colorSway), 16)
         XCTAssertEqual(MemoryLayout<PackedVertex>.offset(of: \.part), 20)
+        XCTAssertEqual(MemoryLayout<PackedVertex>.offset(of: \.surfaceCode), 22)
         XCTAssertEqual(MemoryLayout<Mat4>.size, 64)
         let vertex = MeshVertex(position: Vec3(1.5, -2, 3), normal: Vec3(0.3, 0.9, -0.2), color: Vec3(0.2, 0.6, 1),
-                                part: 7, material: .metal, sway: 0.4)
+                                part: 7, material: .metal, sway: 0.4, surface: .slate)
         let packed = PackedVertex(vertex)
         XCTAssertEqual(packed.position, vertex.position)
         XCTAssertLessThan((packed.normal - vertex.normal.normalized).length, 0.02)
@@ -142,6 +143,40 @@ final class MeshTests: XCTestCase {
         XCTAssertEqual(packed.material, .metal)
         XCTAssertEqual(packed.sway, 0.4, accuracy: 0.01)
         XCTAssertEqual(packed.part, 7)
+        XCTAssertEqual(packed.surface, .slate)
+    }
+
+    func testSurfacesTakeTheGrainOfWhatTheyAreMadeOf() {
+        XCTAssertEqual(Surface.of(Palette.stone), .stone)
+        XCTAssertEqual(Surface.of(Palette.stonePale.mix(Palette.stone, 0.4)), .stone, "Mixed between two stones, still stone")
+        XCTAssertEqual(Surface.of(Palette.timberGrey), .timber)
+        XCTAssertEqual(Surface.of(Palette.thatch), .thatch)
+        XCTAssertEqual(Surface.of(Palette.slate), .slate)
+        XCTAssertEqual(Surface.of(Palette.yard), .earth)
+        XCTAssertEqual(Surface.of(Palette.iron), .smooth, "Iron, though near dark stone, is smooth")
+        XCTAssertEqual(Surface.of(Palette.house), .smooth)
+        XCTAssertEqual(Surface.of(Vec3(0.9, 0.1, 0.1)), .smooth, "A colour of no grain")
+        XCTAssertEqual(Surface.allCases.map(\.rawValue), [0, 1, 2, 3, 4, 5])
+
+        var builder = MeshBuilder()
+        builder.box(center: .zero, size: Vec3(1, 1, 1), color: Palette.stone)
+        XCTAssertTrue(builder.mesh.vertices.allSatisfy { $0.surface == .stone })
+        builder.material = .glow
+        builder.box(center: .zero, size: Vec3(1, 1, 1), color: Palette.stone)
+        XCTAssertEqual(builder.mesh.vertices.last?.surface, .smooth, "What glows shows its light, not its grain")
+        builder.material = .plain
+        builder.surface = .thatch
+        builder.box(center: .zero, size: Vec3(1, 1, 1), color: Palette.wool)
+        XCTAssertEqual(builder.mesh.vertices.last?.surface, .thatch, "A grain asked for is the grain given")
+
+        // A keep is mostly stone; a company's soldiers mostly smooth.
+        func share(_ surface: Surface, of key: ModelKey) -> Double {
+            let vertices = Library.model(key).mesh.vertices
+            return Double(vertices.filter { $0.surface == surface }.count) / Double(max(vertices.count, 1))
+        }
+        XCTAssertGreaterThan(share(.stone, of: .keep(seat: true)), 0.4)
+        XCTAssertGreaterThan(share(.timber, of: .scaffold), 0.6)
+        XCTAssertGreaterThan(share(.smooth, of: .figure(.spear, tier: 1)), 0.5)
     }
 
     func testAppendingMovesTheOtherMesh() {

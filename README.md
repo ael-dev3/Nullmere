@@ -550,6 +550,19 @@ realm; keepers are told in plain words, never a status code.
   grown one way. A commander's talents are forgotten all at once for 20
   moonsalt, every point given back. Stewards spend their commanders'
   points as they come, along the trees their archetype grows first.
+- **Gear.** A company of the wilds struck down may leave a piece of gear,
+  the more likely the higher its level (a quarter at level I, four in five
+  at X): Saltwights a Salt Glaive, Blackwood Reavers a Reaver's Axe (both
+  weapons), the Barrowkin Barrowplate, the Drowned Drowned Mail (both
+  armour), Spine Hunters a Hunter's Eye (a charm). Levels I to III leave it
+  plain, IV to VI fine, VII to IX masterwork, X fabled, and each step gives
+  its edges again. A commander wears one of each, and the company it leads
+  gains what each gives; taking up a piece puts back what it wore in that
+  slot. A House's armoury keeps twelve pieces, worn or not; a piece found
+  beyond them, or one the keeper breaks up, gives moonsalt, five for each
+  step of its quality. Stewards arm their commanders with the finest they
+  hold. A House knows its own gear, and of others' only what a commander
+  in sight wears.
 - **The wilds.** The realm raises hostile companies in the far country, six
   tiles or more from any hold: Saltwights on the flats, Blackwood Reavers,
   Barrowkin, Spine Hunters, the Drowned on the strand. They are of levels I
@@ -831,6 +844,14 @@ There is no music in the launcher; the game makes its own sound as it plays.
   at every level, the land's firs, crags, reeds, mounds and ruins, and what
   moves through the world. Companies stand in formation, fewer as they are
   worn down; holds lay out their works on the land around the keep.
+- **Every surface has its grain.** Each colour a model is built of is
+  stone, timber, thatch, slate or earth, or smooth, and the shader draws
+  that grain on it in the model's own coordinates, so it keeps to the
+  model as it moves: stone laid in courses, each block its own shade and
+  mortar between; timber in planks with a grain down each; thatch in fine
+  straws; slates in rows; earth in clods. Grain finer than a pixel fades
+  to its mean, so nothing shimmers as the view draws back; the ground has
+  its own grain of earth and moss.
 - **It moves.** Companies breathe at rest, march along their routes with
   their feet going, strike, turn to face their foe and fall; works rise
   under scaffolds as the watches pass; bows loose arrows that arc to their

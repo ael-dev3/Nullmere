@@ -150,10 +150,10 @@ void main() {
 
 const modelVertex = header + `
 uniform sampler2D palette;
-in vec3 position; in vec4 normalMaterial; in vec4 colorSway; in float part;
+in vec3 position; in vec4 normalMaterial; in vec4 colorSway; in float part; in float surface;
 in vec4 m0; in vec4 m1; in vec4 m2; in vec4 m3; in vec4 iColour; in vec4 iParams; in ivec2 iHex; in uint iPalette; in uint iFlags;
-out vec3 vWorld; out vec3 vNormal; out vec3 vColour; out float vLocalY;
-flat out float vMaterial; flat out vec4 vParams; flat out float vWatched;
+out vec3 vWorld; out vec3 vNormal; out vec3 vColour; out float vLocalY; out vec3 vLocal; out vec3 vLocalNormal;
+flat out float vMaterial; flat out vec4 vParams; flat out float vWatched; flat out float vSurface;
 void main() {
   float material = normalMaterial.w;
   float sway = colorSway.w / 255.0;
@@ -184,13 +184,16 @@ void main() {
   vNormal = normalize(normal);
   vColour = albedo;
   vLocalY = posed.y;
+  vLocal = position;
+  vLocalNormal = normalMaterial.xyz / 127.0;
+  vSurface = surface;
   vMaterial = material;
   vParams = iParams;
   vWatched = watched;
 }`;
 const modelFragment = header + `
-in vec3 vWorld; in vec3 vNormal; in vec3 vColour; in float vLocalY;
-flat in float vMaterial; flat in vec4 vParams; flat in float vWatched;
+in vec3 vWorld; in vec3 vNormal; in vec3 vColour; in float vLocalY; in vec3 vLocal; in vec3 vLocalNormal;
+flat in float vMaterial; flat in vec4 vParams; flat in float vWatched; flat in float vSurface;
 out vec4 outColour;
 void main() {
   if (vLocalY > vParams.x) { discard; }
@@ -199,8 +202,9 @@ void main() {
   vec3 n = normalize(vNormal);
   vec3 toEye = normalize(eye.xyz - vWorld);
   if (dot(n, toEye) < 0.0) { n = -n; }
-  vec3 lit = nm_light(vColour, n, moon.xyz, moon.w);
-  for (int i = 0; i < 4; i++) { lit += nm_pointLight(vColour, vWorld, n, lights[i], lights[i + 4]); }
+  vec3 albedo = nm_surface(vColour, vLocal, vLocalNormal, vSurface, length(fwidth(vLocal)));
+  vec3 lit = nm_light(albedo, n, moon.xyz, moon.w);
+  for (int i = 0; i < 4; i++) { lit += nm_pointLight(albedo, vWorld, n, lights[i], lights[i + 4]); }
   float facing = 1.0 - max(dot(n, toEye), 0.0);
   float behind = max(dot(-toEye, moon.xyz), 0.0);
   lit += kMoonColour * facing * facing * facing * (0.04 + 0.22 * behind) * moon.w;
@@ -352,6 +356,7 @@ if (frame.scene) {
     vertex('normalMaterial', 4, gl.BYTE, 12);
     vertex('colorSway', 4, gl.UNSIGNED_BYTE, 16);
     vertex('part', 1, gl.UNSIGNED_SHORT, 20);
+    vertex('surface', 1, gl.UNSIGNED_SHORT, 22);
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
     gl.bufferData(gl.ARRAY_BUFFER, decode(batch.instances, Uint8Array), gl.STATIC_DRAW);
     const instance = (name, size, type, offset, integer) => {

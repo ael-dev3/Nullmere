@@ -15,6 +15,9 @@ public struct MeshBuilder: Sendable {
     public var swayRange: (low: Float, high: Float)?
     /// Where the next solids go.
     public var transform: Mat4 = .identity
+    /// The grain of the next triangles; nil, each takes its colour's, and
+    /// a surface that shines or glows is smooth.
+    public var surface: Surface?
 
     public init() {}
 
@@ -32,9 +35,10 @@ public struct MeshBuilder: Sendable {
         guard n.length > MeshBuilder.degenerateArea else { return }
         let normal = n.normalized
         let base = UInt32(mesh.vertices.count)
+        let grain = surface ?? (material == .plain || material == .foliage ? Surface.of(color) : .smooth)
         for (local, world) in [(a, pa), (b, pb), (c, pc)] {
             mesh.vertices.append(MeshVertex(position: world, normal: normal, color: color, part: part, material: material,
-                                            sway: swayAt(local)))
+                                            sway: swayAt(local), surface: grain))
         }
         mesh.indices.append(contentsOf: [base, base + 1, base + 2])
     }

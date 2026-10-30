@@ -18,6 +18,58 @@ public enum Material: UInt8, CaseIterable, Sendable {
     case metal = 6
 }
 
+/// The grain of a surface, which the world's shaders draw on it: courses
+/// of stone, planks of timber, the straws of a thatch, rows of slates,
+/// trodden earth. Smooth surfaces show their colour alone.
+public enum Surface: UInt8, CaseIterable, Sendable {
+    case smooth = 0
+    case stone = 1
+    case timber = 2
+    case thatch = 3
+    case slate = 4
+    case earth = 5
+
+    /// The grain of the palette's colours: each colour a model is built of
+    /// is stone, timber, thatch, slate or earth, or smooth; a colour mixed
+    /// between two takes the grain of the nearer.
+    private static let grains: [(Vec3, Surface)] = [
+        (Palette.stone, .stone), (Palette.stoneDark, .stone), (Palette.stonePale, .stone), (Palette.stoneWhite, .stone),
+        (Palette.rock, .stone),
+        (Palette.timber, .timber), (Palette.timberDark, .timber), (Palette.timberPale, .timber), (Palette.timberGrey, .timber),
+        (Palette.bark, .timber), (Palette.deadWood, .timber),
+        (Palette.thatch, .thatch), (Palette.straw, .thatch), (Palette.reed, .thatch),
+        (Palette.slate, .slate),
+        (Palette.earth, .earth), (Palette.yard, .earth), (Palette.loam, .earth),
+        // Smooth, though near some of these: metal, cloth, hide, skin.
+        (Palette.iron, .smooth), (Palette.steel, .smooth), (Palette.mail, .smooth), (Palette.bronze, .smooth),
+        (Palette.wool, .smooth), (Palette.woolDark, .smooth), (Palette.linen, .smooth), (Palette.leather, .smooth),
+        (Palette.leatherDark, .smooth), (Palette.padded, .smooth), (Palette.fur, .smooth), (Palette.canvas, .smooth),
+        (Palette.skin, .smooth), (Palette.hair, .smooth), (Palette.ash, .smooth), (Palette.bone, .smooth),
+        (Palette.grain, .smooth), (Palette.grass, .smooth), (Palette.moss, .smooth), (Palette.house, .smooth),
+        (Palette.houseDark, .smooth), (Palette.shroud, .smooth), (Palette.smoke, .smooth), (Palette.saltCrust, .smooth),
+        (Palette.moonsalt, .smooth),
+    ]
+
+    /// The grain of a colour: the nearest of the palette's, if it is near;
+    /// or, mixed between two colours of one grain, that grain.
+    public static func of(_ color: Vec3) -> Surface {
+        var best: (distance: Float, surface: Surface)?
+        for (known, surface) in grains {
+            let distance = (known - color).length
+            if distance < (best?.distance ?? 0.035) { best = (distance, surface) }
+        }
+        if let best { return best.surface }
+        for (index, (a, surface)) in grains.enumerated() where surface != .smooth {
+            for (b, other) in grains[(index + 1)...] where other == surface {
+                let ab = b - a
+                let t = min(max((color - a).dot(ab) / max(ab.dot(ab), 1e-6), 0), 1)
+                if (a + ab * t - color).length < 0.025 { return surface }
+            }
+        }
+        return .smooth
+    }
+}
+
 /// One corner of a triangle as it is built.
 public struct MeshVertex: Equatable, Sendable {
     public var position: Vec3
@@ -29,20 +81,24 @@ public struct MeshVertex: Equatable, Sendable {
     public var material: Material
     /// How much it moves in the wind, 0 to 1: a branch's tip, a banner's end.
     public var sway: Float
+    /// The grain drawn on it.
+    public var surface: Surface
 
-    public init(position: Vec3, normal: Vec3, color: Vec3, part: UInt16 = 0, material: Material = .plain, sway: Float = 0) {
+    public init(position: Vec3, normal: Vec3, color: Vec3, part: UInt16 = 0, material: Material = .plain, sway: Float = 0,
+                surface: Surface = .smooth) {
         self.position = position
         self.normal = normal
         self.color = color
         self.part = part
         self.material = material
         self.sway = sway
+        self.surface = surface
     }
 }
 
 /// A vertex as the GPU reads it: 24 bytes, matching `ModelVertex` in the
 /// world's shaders (`packed_float3 position; char4 normalMaterial;
-/// uchar4 colorSway; ushort part; ushort spare;`).
+/// uchar4 colorSway; ushort part; ushort surface;`).
 public struct PackedVertex: Equatable, Sendable {
     public var x: Float
     public var y: Float
@@ -52,7 +108,8 @@ public struct PackedVertex: Equatable, Sendable {
     /// The colour as three bytes of sRGB, then the sway.
     public var colorSway: UInt32
     public var part: UInt16
-    public var spare: UInt16
+    /// The grain drawn on it, as `Surface`'s raw value.
+    public var surfaceCode: UInt16
 
     public init(_ vertex: MeshVertex) {
         x = vertex.position.x
@@ -68,7 +125,7 @@ public struct PackedVertex: Equatable, Sendable {
         normalMaterial = signedByte(n.x) | signedByte(n.y) << 8 | signedByte(n.z) << 16 | UInt32(vertex.material.rawValue) << 24
         colorSway = byte(vertex.color.x) | byte(vertex.color.y) << 8 | byte(vertex.color.z) << 16 | byte(vertex.sway) << 24
         part = vertex.part
-        spare = 0
+        surfaceCode = UInt16(vertex.surface.rawValue)
     }
 
     public var position: Vec3 { Vec3(x, y, z) }
@@ -86,6 +143,8 @@ public struct PackedVertex: Equatable, Sendable {
     }
 
     public var sway: Float { Float(UInt8(truncatingIfNeeded: colorSway >> 24)) / 255 }
+
+    public var surface: Surface? { Surface(rawValue: UInt8(truncatingIfNeeded: surfaceCode)) }
 }
 
 /// Triangles: three indices into the vertices for each, wound
