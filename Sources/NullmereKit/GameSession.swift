@@ -1022,6 +1022,10 @@ public final class GameSession {
         case .declareWar: return .dread
         case .answer(_, true) where events.contains(where: { if case .proposalAnswered(_, _, _, true) = $0 { return true } else { return false } }):
             return .accord
+        case .fortify: return .dig
+        case .barter, .gift, .offerTrade: return .coin
+        case .propose, .proposeWithWords: return .parley
+        case .halt, .disband: return .stand
         default: return .select
         }
     }

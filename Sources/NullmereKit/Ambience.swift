@@ -33,10 +33,18 @@ public final class Ambience {
         case loose
         /// Riders sent off: hooves on hard ground.
         case ride
+        /// A company digging in: two spades into stony earth.
+        case dig
+        /// Goods and gifts changing hands: a few coins counted out.
+        case coin
+        /// An envoy sent: a soft reed call that rises, asking.
+        case parley
+        /// A company halted or sent home: a drum's two strokes, the second softer.
+        case stand
 
         /// Every cue, for tests and previews.
         public static let all: [Cue] = [.select, .order, .watch, .rise, .dread, .envoy, .triumph, .accord, .toll,
-                                        .clash, .loose, .ride]
+                                        .clash, .loose, .ride, .dig, .coin, .parley, .stand]
     }
 
     private static let logger = Logger(subsystem: "online.nullmere.game", category: "sound")
@@ -424,6 +432,48 @@ final class Synth: @unchecked Sendable {
             }
             note = hoof(0, 1)
             more = [hoof(0.12, 0.8), hoof(0.21, 0.9)]
+        case .dig:
+            // The blade's dull bite, the grit it throws, a ring off a stone.
+            func spade(_ delay: Float, _ strength: Float) -> Note {
+                Note(partials: [
+                    Partial(frequency: 82, amplitude: 0.08 * strength, decay: 22),
+                    Partial(frequency: 164, amplitude: 0.04 * strength, decay: 26),
+                    Partial(frequency: 1530, amplitude: 0.018 * strength, decay: 30),
+                ], noise: 0.07 * strength, noiseDecay: 16, delay: delay)
+            }
+            note = spade(0, 1)
+            more = [spade(0.34, 0.85)]
+        case .coin:
+            // Small bright metal, inharmonic, each coin a little higher.
+            func clink(_ delay: Float, _ pitch: Float, _ strength: Float) -> Note {
+                Note(partials: [
+                    Partial(frequency: 2_350 * pitch, amplitude: 0.06 * strength, decay: 16),
+                    Partial(frequency: 3_890 * pitch, amplitude: 0.04 * strength, decay: 22),
+                    Partial(frequency: 5_630 * pitch, amplitude: 0.022 * strength, decay: 30),
+                ], noise: 0.025 * strength, noiseDecay: 140, delay: delay)
+            }
+            note = clink(0, 1, 1)
+            more = [clink(0.09, 1.07, 0.8), clink(0.17, 0.96, 0.9)]
+        case .parley:
+            // A fourth rising, with a reed's odd overtones: a question carried off.
+            note = Note(partials: [
+                Partial(frequency: 293.7, amplitude: 0.07, decay: 2.4),
+                Partial(frequency: 881.1, amplitude: 0.022, decay: 3.2),
+                Partial(frequency: 1468.5, amplitude: 0.01, decay: 4),
+                Partial(frequency: 392, amplitude: 0.065, decay: 1.8, delay: 0.3),
+                Partial(frequency: 1176, amplitude: 0.02, decay: 2.6, delay: 0.3),
+            ], noise: 0.008, noiseDecay: 9)
+        case .stand:
+            // Two strokes on a skin drum, the second softer: stand down.
+            func stroke(_ delay: Float, _ strength: Float) -> Note {
+                Note(partials: [
+                    Partial(frequency: 130.8, amplitude: 0.09 * strength, decay: 9),
+                    Partial(frequency: 207.7, amplitude: 0.045 * strength, decay: 12),
+                    Partial(frequency: 311, amplitude: 0.02 * strength, decay: 16),
+                ], noise: 0.04 * strength, noiseDecay: 45, delay: delay)
+            }
+            note = stroke(0, 1)
+            more = [stroke(0.26, 0.6)]
         }
         note.delay += delay
         note.end = note.delay + note.length

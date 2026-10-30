@@ -627,6 +627,23 @@ final class CueMappingTests: XCTestCase {
                                        events: [.stanceChanged(first: player, second: 2, stance: .war, by: 2)], in: state, player: player)
         XCTAssertEqual(refusal, [.dread])
         XCTAssertEqual(GameSession.cues(for: .answer(envoy: 1, accept: false), events: [], in: state, player: player), [.select])
+        // Every other order has a sound of its own: earth, coin, a call, a drum.
+        let mine = try XCTUnwrap(state.units(of: player).first).id
+        let heard: [(Command, Ambience.Cue)] = [
+            (.fortify(unit: mine), .dig),
+            (.barter(give: .grain, take: .stone, amount: 10), .coin),
+            (.gift(to: 2, resource: .grain, amount: 10), .coin),
+            (.offerTrade(Trade(give: .grain, 10, for: .stone, 5), to: 2, words: nil), .coin),
+            (.propose(.peace, to: 2), .parley),
+            (.proposeWithWords(.peace, to: 2, words: "Enough."), .parley),
+            (.halt(unit: mine), .stand),
+            (.disband(unit: mine), .stand),
+        ]
+        for (command, cue) in heard {
+            XCTAssertEqual(GameSession.cues(for: command, events: [], in: state, player: player), [cue], "\(command)")
+        }
+        XCTAssertEqual(Set(heard.map(\.1)).count, 4)
+        XCTAssertEqual(Ambience.Cue.all.count, Set(Ambience.Cue.all.map { "\($0)" }).count, "Every cue listed once")
     }
 }
 
