@@ -622,6 +622,19 @@ realm; keepers are told in plain words, never a status code.
   sight on the march, the way it goes as far as they see it, never where
   it is bound. The ways are worked out on the keeper's own view of the
   land, so none bends round what they can't see.
+- **Holy sites.** As the world is made, the lake is given its holy
+  sites, one for every two seats and two at least, on open land at least
+  five tiles from any hold and seven from each other: Moonwells (+8%
+  attack to every company of the side that holds one), Still Stones (+8%
+  defence) and Salt Altars (+15% gathered at the land's sites). A House
+  takes one when a company of war of its stands on it as the watch turns
+  with no foe at war beside it, and holds it until another does; what it
+  gives, it gives the holder and its whole alliance. No hold is raised on
+  one, and neither the wilds nor the land's sites rise there. Everyone
+  hears when one changes hands (the chronicle, the age's story, is spared
+  a line for each); each is drawn in the world as a ring of
+  standing stones about its heart, its pennant in its holder's colour,
+  and listed in the Realm (6).
 - **Paces.** A realm's watch isn't resolved all at once as it turns; it
   passes in twelve paces. At each, every company on the march takes its
   share of the watch's moves, a step at a time, and every host on the
@@ -858,6 +871,13 @@ There is no music in the launcher; the game makes its own sound as it plays.
   at every level, the land's firs, crags, reeds, mounds and ruins, and what
   moves through the world. Companies stand in formation, fewer as they are
   worn down; holds lay out their works on the land around the keep.
+- **Portraits from the world itself.** The panels show each commander,
+  each company to be trained (in the tier chosen) and each work to be
+  built (at the stage it will be), drawn by the world's own renderer on a
+  small stage of open ground under the moon, in the House's colours,
+  framed by the model's size and kept once drawn. The stage's shaders are
+  compiled away from the main thread the first time a portrait is asked
+  for; until then the panels show the frame alone.
 - **Every surface has its grain.** Each colour a model is built of is
   stone, timber, thatch, slate or earth, or smooth, and the shader draws
   that grain on it in the model's own coordinates, so it keeps to the

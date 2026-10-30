@@ -187,6 +187,17 @@ private struct BuildingRow: View {
     var body: some View {
         let level = hold.level(kind)
         let next = level + 1
+        HStack(alignment: .top, spacing: 8) {
+            // The work as it stands, or as its next stage will.
+            Portrait(key: .work(kind, level: min(max(level, next), kind.maxLevel)),
+                     colour: Portrait.colour(of: hold.owner, in: session.state), size: 34)
+            details(level: level, next: next)
+        }
+        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private func details(level: Int, next: Int) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 // The work and how far it stands, read as one.
@@ -226,7 +237,6 @@ private struct BuildingRow: View {
                 Text(verbatim: "Complete").font(.nm(10.5)).foregroundStyle(Palette.text(0.45))
             }
         }
-        .padding(.vertical, 2)
     }
 }
 
@@ -263,6 +273,14 @@ private struct TrainingRow: View {
         let allowed = hold.level(.musterHall) >= kind.requiredMuster
         let cost = state.trainingCost(of: kind, tier: tier, for: session.player)
         let named = kind.hasTiers ? "\(kind.title) \(Narration.roman(tier))" : kind.title
+        HStack(alignment: .top, spacing: 8) {
+            Portrait(key: .figure(kind, tier: tier), colour: Portrait.colour(of: hold.owner, in: state), size: 34)
+            details(state: state, highest: highest, tier: tier, allowed: allowed, cost: cost, named: named)
+        }
+    }
+
+    @ViewBuilder
+    private func details(state: GameState, highest: Int, tier: Int, allowed: Bool, cost: Stock, named: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 // The company and what it is worth, read as one.

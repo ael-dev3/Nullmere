@@ -69,12 +69,16 @@ private struct CommanderRow: View {
     var body: some View {
         let commander = line.commander
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Caps(commander.name, size: 10, weight: .medium).foregroundStyle(Palette.ink)
+            HStack(alignment: .center, spacing: 10) {
+                Portrait(key: .commander(variant: Archetype.allCases.firstIndex(of: commander.archetype) ?? 0),
+                         colour: Portrait.colour(of: commander.owner, in: session.state), size: 44)
+                VStack(alignment: .leading, spacing: 3) {
+                    Caps(commander.name, size: 10, weight: .medium).foregroundStyle(Palette.ink)
+                    Text(verbatim: "\(commander.archetype.title) · level \(line.level)")
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.65))
+                }
                 Spacer()
-                Text(verbatim: "\(commander.archetype.title) · level \(line.level)")
-                    .font(.nm(10.5))
-                    .foregroundStyle(Palette.text(0.65))
             }
             .accessibilityElement(children: .combine)
             if let span = line.span {
