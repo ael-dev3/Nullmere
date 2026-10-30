@@ -280,6 +280,19 @@ public struct RealmState: Codable, Equatable, Sendable {
         keepers[index].isReady = false
     }
 
+    /// Keepers who hold no seat and have been away longer than one would be
+    /// held for them are forgotten, and their names are free again: the
+    /// realm keeps no roll of every passer-by. One who comes back enters
+    /// anew. Returns whether any were.
+    public mutating func forgetTheLongGone(now: Double) -> Bool {
+        let gone = Set(keepers.filter { keeper in
+            keeper.house == nil && !keeper.isOnline && now - (keeper.awaySince ?? now) >= seatHeld(by: keeper)
+        }.map(\.id))
+        guard !gone.isEmpty else { return false }
+        keepers.removeAll { gone.contains($0.id) }
+        return true
+    }
+
     /// The seat of the keeper away longest, if a week or more, goes back to
     /// the stewards for a keeper who is waiting. Its House stands as it was.
     private mutating func releaseSeat(now: Double) -> Bool {

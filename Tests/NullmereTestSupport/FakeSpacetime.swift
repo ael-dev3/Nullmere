@@ -240,6 +240,9 @@ public actor FakeSpacetime: SpacetimeTransport {
         case "SELECT id, keeper, kind, nonce, payload FROM request":
             try owner()
             return requests.map { [.number(Double($0.id)), .string($0.keeper), .string($0.kind), .string($0.nonce), .string($0.payload)] }
+        case "SELECT nonce FROM reply":
+            try owner()
+            return replies.keys.sorted().map { [.string($0)] }
         case "SELECT version FROM status":
             return status.map { [[.number(Double($0.version))]] } ?? []
         case "SELECT version, status FROM status":

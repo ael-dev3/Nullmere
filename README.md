@@ -438,7 +438,14 @@ request sent again, after its answer was lost, is carried out once. The
 steward keeps the world and gives its answers in one transaction, so a
 round it couldn't publish, or a steward stopped mid-round, loses and
 doubles nothing; it says when a round fails, and every ten minutes how
-the realm stands. One steward holds the realm at a time: any other finds it
+the realm stands. It keeps in memory only what it needs of the keepers
+there, and the realm forgets a keeper long gone with no seat (away a week,
+or an hour if they never played), their name free again, so neither
+grows with every identity ever heard from. It works out a keeper's view
+only when something may have changed it, and sends with it what they
+heard in the last two minutes, the latest sixteen publications' worth at
+most. Answers are forgotten ten minutes on, those an earlier steward gave
+too. One steward holds the realm at a time: any other finds it
 held, tries again for two and a half minutes (a steward started again
 waits the minute its old hold takes to lapse), then gives up. A container
 is restarted after it, so stop a second one with `--stop`. The server

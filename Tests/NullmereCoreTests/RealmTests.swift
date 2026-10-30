@@ -101,6 +101,22 @@ final class RealmTests: XCTestCase {
         XCTAssertEqual(realm.keepers.map(\.arrival), [0, 1, 2, 3], "Each in the order they came")
     }
 
+    /// A keeper long gone with no seat is forgotten, their name free again;
+    /// a seat keeps its keeper's place however long they are away.
+    func testAKeeperLongGoneWithNoSeatIsForgotten() throws {
+        var realm = realm(seats: 2)
+        try realm.arrive("a", name: "Ama", now: 0)
+        try realm.arrive("b", name: "Bel", now: 0)
+        XCTAssertNil(try realm.arrive("c", name: "Cor", now: 0).house)
+        realm.depart("a", now: 10)
+        realm.depart("c", now: 10)
+        XCTAssertFalse(realm.forgetTheLongGone(now: 10 + RealmState.unplayedSeatHeldFor - 1))
+        XCTAssertTrue(realm.forgetTheLongGone(now: 10 + RealmState.unplayedSeatHeldFor))
+        XCTAssertEqual(realm.keepers.map(\.name), ["Ama", "Bel"], "Ama's seat keeps her place")
+        XCTAssertEqual(try realm.arrive("d", name: "Cor", now: 20 + RealmState.unplayedSeatHeldFor).name, "Cor", "The name free again")
+        XCTAssertEqual(realm.keeper("d")?.arrival, 2, "and its keeper after those still kept")
+    }
+
     func testAFullRealmSeatsNoMore() throws {
         var realm = realm(seats: 2)
         try realm.arrive("a", name: "Ama", now: 0)

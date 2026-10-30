@@ -7,8 +7,9 @@ import XCTest
 /// The steward fair to keepers whose connection falters: one taken to have
 /// left who is still playing counts again as soon as they are heard, what
 /// a keeper heard is kept with their view until they can have read it, the
-/// keepers away cost nothing to publish, one silent too long is taken to
-/// have left, and a link left with an answer on its way doesn't trip over it.
+/// latest few publications' worth, the keepers away cost nothing to
+/// publish, one silent too long is taken to have left, and a link left with
+/// an answer on its way doesn't trip over it.
 final class StewardFairnessTests: XCTestCase {
     private func stewarded(_ seed: String) async throws
         -> (FakeSpacetime, RealmSteward, SpacetimeCredentials, SpacetimeCredentials, SpacetimeCredentials) {
@@ -141,6 +142,24 @@ final class StewardFairnessTests: XCTestCase {
         XCTAssertEqual(now, first, "Ama's view, unchanged, not sent again")
         let head = try await db.query("SELECT version FROM my_view", token: ama.token)
         XCTAssertEqual(head.first?.first?.number.map { UInt64($0) }, first, "Its version alone says so")
+    }
+
+    /// However busy the realm, what goes with a keeper's view of what they
+    /// heard is the latest few publications' worth, not two minutes' of all.
+    func testWhatAKeeperHeardIsKeptToTheLatestFew() async throws {
+        let (db, steward, ama, bel, _) = try await stewarded("busy")
+        let state = await steward.state
+        let amaHouse = try XCTUnwrap(state.keepers[0].house)
+        let gift = String(decoding: try JSONEncoder().encode(Command.gift(to: amaHouse, resource: .grain, amount: 1)), as: UTF8.self)
+        let many = RealmSteward.heardBatches + 4
+        for round in 0..<many {
+            try await db.call("order", [.string("b-gift-\(round)"), .string(gift)], token: bel.token)
+            try await steward.step(now: 2 + Double(round))
+        }
+        let told = try await heard(db, ama)
+        XCTAssertEqual(told.batches.count, RealmSteward.heardBatches)
+        XCTAssertEqual(told.batches.last?.version, told.version, "The latest kept")
+        XCTAssertEqual(told.batches.map(\.version), told.batches.map(\.version).sorted())
     }
 
     func testAKeeperAwayIsNotShownTheirView() async throws {
