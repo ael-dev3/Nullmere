@@ -88,11 +88,19 @@ public protocol SpacetimeTransport: Sendable {
     func query(_ sql: String, token: String) async throws -> [[JSONValue]]
     /// A query's rows, and the server's clock when it answered, if it said.
     func queryDated(_ sql: String, token: String) async throws -> (rows: [[JSONValue]], date: Date?)
+    /// Tells `changed` each time the rows of any of `queries` change, as the
+    /// server pushes word of it; nil where it can't, and the client reads
+    /// as often as it polls.
+    func watch(_ queries: [String], token: String, changed: @escaping @Sendable () -> Void) async -> (any RealmWatch)?
 }
 
 extension SpacetimeTransport {
     public func queryDated(_ sql: String, token: String) async throws -> (rows: [[JSONValue]], date: Date?) {
         (try await query(sql, token: token), nil)
+    }
+
+    public func watch(_ queries: [String], token: String, changed: @escaping @Sendable () -> Void) async -> (any RealmWatch)? {
+        nil
     }
 }
 
@@ -190,6 +198,21 @@ public struct SpacetimeHTTP: SpacetimeTransport, @unchecked Sendable {
         let (data, date) = try await sendDated(request)
         let statements = try JSONDecoder().decode([Statement].self, from: data)
         return (statements.first?.rows ?? [], date)
+    }
+}
+
+extension SpacetimeHTTP {
+    /// A subscription over SpacetimeDB's WebSocket, kept open and opened
+    /// again when it drops.
+    public func watch(_ queries: [String], token: String, changed: @escaping @Sendable () -> Void) async -> (any RealmWatch)? {
+        guard let address = SpacetimeSubscription.address(server: server, database: database) else { return nil }
+        #if !canImport(Darwin)
+        // Without the system's WebSockets, only a realm reached plainly.
+        guard address.scheme == "ws" else { return nil }
+        #endif
+        let watch = SpacetimeWatch(address: address, token: token, queries: queries, changed: changed)
+        watch.start()
+        return watch
     }
 }
 

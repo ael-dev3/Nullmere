@@ -26,6 +26,27 @@ public actor FakeSpacetime: SpacetimeTransport {
     private let epoch = Date(timeIntervalSince1970: 1_800_000_000)
     private var views: [String: (version: UInt64, view: String, events: String)] = [:] // by keeper
     public private(set) var calls: [String] = []
+    /// Those told when the status changes, as the server pushes it; none
+    /// unless pushing is asked for, as most tests of the link poll.
+    private var watchers: [UUID: @Sendable () -> Void] = [:]
+    private var pushing = false
+
+    /// Pushes word of the status's changes to whoever watches it, as the
+    /// real server does over its WebSocket.
+    public func setPushing(_ pushing: Bool) { self.pushing = pushing }
+
+    public var watching: Int { watchers.count }
+
+    public func watch(_ queries: [String], token: String, changed: @escaping @Sendable () -> Void) async -> (any RealmWatch)? {
+        guard pushing, identities[token] != nil, queries.contains(where: { $0.contains("FROM status") }) else { return nil }
+        let id = UUID()
+        watchers[id] = changed
+        return FakeWatch { [weak self] in
+            Task { await self?.unwatch(id) }
+        }
+    }
+
+    private func unwatch(_ id: UUID) { watchers[id] = nil }
     /// Queries made, by statement and by statement and caller.
     private var queryCounts: [String: Int] = [:]
 
@@ -222,6 +243,7 @@ public actor FakeSpacetime: SpacetimeTransport {
             partsSent += names.count
             status = (version, said)
             stamp = (version, time)
+            for changed in watchers.values { changed() }
             for (index, keeper) in keepers.enumerated() {
                 views[keeper] = (version, shown[index], heard[index])
             }
@@ -304,6 +326,31 @@ public actor FakeSpacetime: SpacetimeTransport {
 }
 
 /// Credentials kept in memory, as the keychain would keep them.
+/// A watch on the fake: alive until stopped.
+final class FakeWatch: RealmWatch, @unchecked Sendable {
+    private let lock = NSLock()
+    private var stopped = false
+    private let onStop: @Sendable () -> Void
+
+    init(onStop: @escaping @Sendable () -> Void) {
+        self.onStop = onStop
+    }
+
+    var isAlive: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return !stopped
+    }
+
+    func stop() {
+        lock.lock()
+        let first = !stopped
+        stopped = true
+        lock.unlock()
+        if first { onStop() }
+    }
+}
+
 public final class MemoryStore: IdentityStore, @unchecked Sendable {
     public var value: String?
     public init(value: String? = nil) { self.value = value }

@@ -6,7 +6,9 @@ import NullmereCore
 
 /// A keeper's line to the realm proper, through SpacetimeDB: requests go
 /// in by reducer; the realm's status, and the keeper's own view of its
-/// world, are read back as often as `pollInterval`, whenever they move on.
+/// world, are read back whenever they move on: at once, as the realm
+/// pushes word that its status changed, and as often as `pollInterval`
+/// besides, or every `watchedPoll` seconds while the word is coming.
 @MainActor
 public final class NetworkRealmLink: RealmLink {
     private let transport: any SpacetimeTransport
@@ -27,6 +29,15 @@ public final class NetworkRealmLink: RealmLink {
     public static let presenceWindow = 300.0
 
     private var polling: Task<Void, Never>?
+    /// The realm's word, pushed as it happens, that its status changed.
+    private var watch: (any RealmWatch)?
+    private var watchAsked = false
+    /// While the realm's word is coming, the link reads on its own only this often.
+    public static let watchedPoll = 5.0
+    private var isPolling = false
+    private var pushedWhilePolling = false
+    /// How many times the realm's pushed word brought a read, for tests.
+    private(set) var pushes = 0
     private var statusVersion: UInt64 = 0
     private var viewVersion: UInt64 = 0
     /// The last publication whose events the keeper has heard.
@@ -140,8 +151,36 @@ public final class NetworkRealmLink: RealmLink {
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.poll()
+                // Word pushed during the read is read now.
+                if self.pushedWhilePolling {
+                    self.pushedWhilePolling = false
+                    continue
+                }
                 try? await Task.sleep(nanoseconds: UInt64(self.nextPoll * 1_000_000_000))
             }
+        }
+    }
+
+    /// The realm said its status changed: it is read now, not at the next poll.
+    func pushed() {
+        guard polling != nil else { return }
+        pushes += 1
+        if isPolling {
+            pushedWhilePolling = true
+            return
+        }
+        polling?.cancel()
+        polling = nil
+        connect()
+    }
+
+    /// Asks the realm to push word of its status, once; the transport keeps
+    /// it open, and opens it again when it drops.
+    private func startWatching(_ credentials: SpacetimeCredentials) async {
+        guard !watchAsked else { return }
+        watchAsked = true
+        watch = await transport.watch(["SELECT * FROM status"], token: credentials.token) { [weak self] in
+            Task { @MainActor [weak self] in self?.pushed() }
         }
     }
 
@@ -149,7 +188,7 @@ public final class NetworkRealmLink: RealmLink {
     /// answers; after failures, doubling to `longestPoll`, a little
     /// earlier or later at random so keepers don't all come back at once.
     var nextPoll: Double {
-        guard failures > 1 else { return pollInterval }
+        guard failures > 1 else { return watch?.isAlive == true ? max(pollInterval, Self.watchedPoll) : pollInterval }
         let backed = min(pollInterval * pow(2, Double(failures - 1)), max(pollInterval, Self.longestPoll))
         return backed * Double.random(in: 0.8...1.2)
     }
@@ -167,8 +206,11 @@ public final class NetworkRealmLink: RealmLink {
     /// Reads the realm's status and the keeper's view if they have moved
     /// on, and tells what changed.
     func poll() async {
+        isPolling = true
+        defer { isPolling = false }
         do {
             let credentials = try await ensureCredentials()
+            await startWatching(credentials)
             let heads = try await transport.query("SELECT version, status FROM status", token: credentials.token)
             guard let head = heads.first, head.count == 2, let number = head[0].number, let text = head[1].string else {
                 onEvent?(.unreachable("The realm isn't open yet."))
@@ -532,6 +574,7 @@ public final class NetworkRealmLink: RealmLink {
         arrived = false
         polling?.cancel()
         polling = nil
+        stopWatching()
         let waiting = sending
         Task { [self] in
             await waiting?.value
@@ -544,9 +587,16 @@ public final class NetworkRealmLink: RealmLink {
         arrived = false
         polling?.cancel()
         polling = nil
+        stopWatching()
         sending?.cancel()
         sending = nil
         outbox.removeAll()
+    }
+
+    private func stopWatching() {
+        watch?.stop()
+        watch = nil
+        watchAsked = false
     }
 
     nonisolated static func nonce() -> String {

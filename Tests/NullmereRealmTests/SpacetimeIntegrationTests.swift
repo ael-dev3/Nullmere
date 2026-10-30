@@ -159,6 +159,15 @@ final class SpacetimeIntegrationTests: XCTestCase {
             b.connect()
             return (a, earA, b, earB)
         }
+        // A third client that, on its own, would read the realm only every
+        // two minutes: it hears what happens at once, by SpacetimeDB's push.
+        let (c, earC) = await MainActor.run { () -> (NetworkRealmLink, Listener) in
+            let c = NetworkRealmLink(transport: transport, credentials: MemoryStore(), pollInterval: 120)
+            let earC = Listener()
+            earC.listen(to: c)
+            c.connect()
+            return (c, earC)
+        }
         try await until("the realm's status") { earA.hasStatus && earB.hasStatus }
         let suffix = String(KeeperIdentity.make().filter(\.isLetter).prefix(6))
         await MainActor.run {
@@ -223,5 +232,12 @@ final class SpacetimeIntegrationTests: XCTestCase {
         }
         try await until("the watch to turn") { (earA.world?.watch ?? 0) > watch && (earB.world?.watch ?? 0) > watch }
         print("REALM two keepers met, gave orders and turned the watch on SpacetimeDB")
+
+        // The client reading only every two minutes heard each change
+        // pushed: its status moved with the realm's, long before it would
+        // have read it.
+        try await until("the pushed word", timeout: 20) { c.pushes > 0 && (earC.lastStatus?.watch ?? 0) > watch }
+        await MainActor.run { c.close() }
+        print("REALM SpacetimeDB pushed the realm's changes to a client over its WebSocket")
     }
 }
