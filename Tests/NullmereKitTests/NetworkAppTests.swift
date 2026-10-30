@@ -46,7 +46,8 @@ final class NetworkAppTests: XCTestCase {
     private func draw(_ view: some View) {
         let renderer = ImageRenderer(content: view.frame(width: 1100, height: 720).background(Color.black))
         renderer.scale = 1
-        XCTAssertNotNil(renderer.cgImage)
+        guard let image = renderer.cgImage else { return XCTFail("Nothing drawn") }
+        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
     }
 
     func testAKeeperEntersPlaysAndIsForgotten() async throws {

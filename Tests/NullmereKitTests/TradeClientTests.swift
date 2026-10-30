@@ -3,6 +3,7 @@ import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
 import NullmereRealm
+import NullmereTestSupport
 
 /// Trade as keepers see it: with a steward, answered by the realm; with
 /// another keeper, by envoy; and the terms shown plainly.
@@ -98,6 +99,7 @@ final class TradeClientTests: XCTestCase {
     private func draw(_ view: some View) throws {
         let renderer = ImageRenderer(content: view.frame(width: 320).background(Color.black))
         renderer.scale = 1
-        XCTAssertNotNil(renderer.cgImage)
+        let image = try XCTUnwrap(renderer.cgImage)
+        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
     }
 }

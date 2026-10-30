@@ -4,6 +4,7 @@ import NullmereRealm
 import SwiftUI
 import XCTest
 @testable import NullmereKit
+import NullmereTestSupport
 
 /// Every panel a keeper sees draws, over a game well under way, at the
 /// sizes a Mac shows it and with larger text: a panel that can't lay out
@@ -33,6 +34,7 @@ final class PanelRenderTests: XCTestCase {
         renderer.scale = 1
         let image = try XCTUnwrap(renderer.cgImage)
         XCTAssertEqual(CGFloat(image.width), width)
+        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
         return image
     }
 

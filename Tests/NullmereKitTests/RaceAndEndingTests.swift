@@ -4,6 +4,7 @@ import XCTest
 import NullmereRealm
 @testable import NullmereCore
 @testable import NullmereKit
+import NullmereTestSupport
 
 @MainActor
 final class RaceTests: XCTestCase {
@@ -79,6 +80,7 @@ final class EndingTests: XCTestCase {
         let renderer = ImageRenderer(content: view.frame(width: size.width, height: size.height).background(Color.black))
         renderer.scale = 2
         let image = try XCTUnwrap(renderer.cgImage)
+        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
         // CI asks for the renders, to print them with its screenshots.
         guard let path = ProcessInfo.processInfo.environment["NULLMERE_KEEP_RENDERS"] else { return }
         let build = URL(fileURLWithPath: path)

@@ -3,6 +3,7 @@ import LauncherCore
 import SwiftUI
 import XCTest
 @testable import LauncherKit
+import NullmereTestSupport
 
 /// Every screen of the launcher, drawn offscreen in each state it can be
 /// in: what it holds is checked through the model, and that each draws at
@@ -42,6 +43,7 @@ final class LauncherViewTests: XCTestCase {
         renderer.scale = 1
         let image = try XCTUnwrap(renderer.cgImage, "drawn")
         XCTAssertEqual(image.width, Int(width))
+        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
         return image
     }
 

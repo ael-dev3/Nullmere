@@ -2,6 +2,7 @@ import SwiftUI
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
+import NullmereTestSupport
 
 /// The marks on the map in the states a war brings: an arrow in flight and
 /// a company falling where it stood, a hold with foes at its gates, a ward
@@ -22,7 +23,8 @@ final class WorldMarksStatesTests: XCTestCase {
     private func draw(_ view: some View, width: CGFloat = 1000, height: CGFloat = 700) throws {
         let renderer = ImageRenderer(content: view.frame(width: width, height: height).background(Color.black))
         renderer.scale = 1
-        XCTAssertNotNil(renderer.cgImage)
+        let image = try XCTUnwrap(renderer.cgImage)
+        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
     }
 
     /// A free, passable hex beside a place: no company, no hold.

@@ -5,6 +5,7 @@ import SwiftUI
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
+import NullmereTestSupport
 
 /// The whole window, as each phase shows it: the model gate for every way
 /// the model can be missing, the front door, and a game at its start and
@@ -28,6 +29,7 @@ final class RootRenderTests: XCTestCase {
         renderer.scale = 1
         let image = try XCTUnwrap(renderer.cgImage)
         XCTAssertEqual(CGFloat(image.width), width)
+        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
         return image
     }
 

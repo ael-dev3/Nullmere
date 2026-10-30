@@ -6,6 +6,7 @@ import SwiftUI
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
+import NullmereTestSupport
 
 /// The world's interface as a fresh review found it wanting, put right: the
 /// away report knows whose House it tells of, the first steps are taken
@@ -29,7 +30,8 @@ final class InterfaceReviewTests: XCTestCase {
     private func draw(_ view: some View, width: CGFloat = 960, height: CGFloat = 600) {
         let renderer = ImageRenderer(content: view.frame(width: width, height: height).background(Color.black))
         renderer.scale = 1
-        XCTAssertNotNil(renderer.cgImage)
+        guard let image = renderer.cgImage else { return XCTFail("Nothing drawn") }
+        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
     }
 
     func testTheAwayReportTellsOnlyOfTheHouseLastSeen() throws {

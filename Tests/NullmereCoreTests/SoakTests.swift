@@ -26,7 +26,12 @@ final class SoakTests: XCTestCase {
             }
             print("PERF soak of \(lake): watch \(world.watch), \(world.livingHouses.count) Houses standing, \(world.holds.count) holds")
         }
-        print("PERF soak of every lake in \(String(format: "%.1f", Date().timeIntervalSince(started))) s")
+        let took = Date().timeIntervalSince(started)
+        print("PERF soak of every lake in \(String(format: "%.1f", took)) s")
+        // A second a watch on each lake is several times what it takes on a
+        // busy runner: a rule that grew slow beyond reason fails here, and
+        // doesn't run out CI's clock instead.
+        XCTAssertLessThan(took, Double(watches * Lake.allCases.count), "The soak ran past its time")
     }
 
     func testAnUnsoundWorldIsCaught() {

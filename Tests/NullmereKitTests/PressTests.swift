@@ -973,19 +973,18 @@ final class PressTests: XCTestCase {
         XCTAssertTrue(PressableButtons.press("Found a hold"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .found(unit: founder))
 
-        // A company on the march may be halted.
-        guard let walker = session.state.units(of: me).first(where: { $0.kind != .founder && $0.movesLeft > 0 }),
-              let far = session.state.map.hexes.first(where: { hex in
-                  hex.distance(to: walker.position) >= 8 && session.state.path(for: walker, to: hex) != nil
-              })
-        else { return }
+        // A company on the march may be halted: always, so the button is
+        // always tried.
+        let walker = try XCTUnwrap(session.state.units(of: me).first { $0.kind != .founder && $0.movesLeft > 0 }, "A company to march")
+        let far = try XCTUnwrap(session.state.map.hexes.first { hex in
+            hex.distance(to: walker.position) >= 8 && session.state.path(for: walker, to: hex) != nil
+        }, "Somewhere a march away")
         XCTAssertTrue(session.perform(.move(unit: walker.id, to: far)))
         session.selection = .unit(walker.id)
         draw(SelectionPanel(session: session), height: 600)
-        if session.state.unit(walker.id)?.destination != nil {
-            XCTAssertTrue(PressableButtons.press("Halt"), "Among \(shown)")
-            XCTAssertEqual(link.sent.last, .halt(unit: walker.id))
-        }
+        XCTAssertNotNil(session.state.unit(walker.id)?.destination, "Still on its way, with further to go")
+        XCTAssertTrue(PressableButtons.press("Halt"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .halt(unit: walker.id))
     }
 
     func testTheTopBarsPanelsAndReady() throws {

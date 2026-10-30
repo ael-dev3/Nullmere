@@ -3,6 +3,7 @@ import AppKit
 import SwiftUI
 import XCTest
 @testable import NullmereKit
+import NullmereTestSupport
 
 @MainActor
 final class AwayReportTests: XCTestCase {
@@ -164,6 +165,7 @@ final class AwayReportTests: XCTestCase {
         let renderer = ImageRenderer(content: view.padding(30).background(Color.black))
         renderer.scale = 2
         let image = try XCTUnwrap(renderer.cgImage)
+        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
         guard let path = ProcessInfo.processInfo.environment["NULLMERE_KEEP_RENDERS"] else { return }
         let build = URL(fileURLWithPath: path)
         try FileManager.default.createDirectory(at: build, withIntermediateDirectories: true)

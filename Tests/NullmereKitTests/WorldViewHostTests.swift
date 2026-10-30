@@ -3,6 +3,7 @@ import SwiftUI
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
+import NullmereTestSupport
 
 /// The map in a real window, as the app shows it: the Metal view made and
 /// fed its tiles, its renderer loaded, and the pointer's hovering, clicks,
@@ -120,7 +121,8 @@ final class WorldOverlayTests: XCTestCase {
         func draw(_ view: some View, width: CGFloat, height: CGFloat) throws {
             let renderer = ImageRenderer(content: view.frame(width: width, height: height).background(Color.black))
             renderer.scale = 1
-            XCTAssertNotNil(renderer.cgImage)
+            let image = try XCTUnwrap(renderer.cgImage)
+            XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
         }
         try draw(ForecastOverlay(session: session), width: 1000, height: 700)
         try draw(ForecastCard(forecast: forecast, targetName: "Spear"), width: 300, height: 200)

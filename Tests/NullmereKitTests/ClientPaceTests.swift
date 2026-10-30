@@ -4,6 +4,7 @@ import NullmereRealm
 import SwiftUI
 import XCTest
 @testable import NullmereKit
+import NullmereTestSupport
 
 /// The client carries out every order on its own copy of the world at once
 /// and redraws it; the realm's answer comes later, across the network. On
@@ -132,6 +133,7 @@ final class IncomeBreakdownTests: XCTestCase {
     static func draw(_ view: some View) throws {
         let renderer = ImageRenderer(content: view.frame(width: 320, height: 300).background(Color.black))
         renderer.scale = 1
-        XCTAssertNotNil(renderer.cgImage)
+        let image = try XCTUnwrap(renderer.cgImage)
+        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
     }
 }

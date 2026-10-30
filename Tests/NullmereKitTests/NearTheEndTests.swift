@@ -5,6 +5,7 @@ import SwiftUI
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
+import NullmereTestSupport
 
 /// The game near its end and at it: counsel when the keeper is close to
 /// winning, a rival's dominion told to a keeper still standing and to one
@@ -26,7 +27,8 @@ final class NearTheEndTests: XCTestCase {
     private func draw(_ view: some View, width: CGFloat = 1100, height: CGFloat = 760) throws {
         let renderer = ImageRenderer(content: view.frame(width: width, height: height).background(Color.black))
         renderer.scale = 1
-        XCTAssertNotNil(renderer.cgImage)
+        let image = try XCTUnwrap(renderer.cgImage)
+        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
     }
 
     /// Counsel warns the keeper of their own near victory, by either road.

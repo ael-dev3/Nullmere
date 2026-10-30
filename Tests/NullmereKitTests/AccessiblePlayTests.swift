@@ -391,8 +391,10 @@ final class QuittingTests: XCTestCase {
         let done = expectation(description: "quit")
         let start = Date()
         app.sendWaiting(within: 3) { done.fulfill() }
-        await fulfillment(of: [done], timeout: 2)
-        XCTAssertLessThan(Date().timeIntervalSince(start), 1, "Nothing to wait for")
+        await fulfillment(of: [done], timeout: 3)
+        // Well within the three seconds it would wait for orders, on however
+        // busy a runner.
+        XCTAssertLessThan(Date().timeIntervalSince(start), 1.5, "Nothing to wait for")
     }
 }
 
