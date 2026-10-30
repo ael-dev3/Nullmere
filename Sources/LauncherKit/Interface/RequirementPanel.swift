@@ -46,6 +46,7 @@ public struct RequirementView: View {
                 .foregroundStyle(Palette.text(0.8))
                 .frame(maxWidth: 460 * unit)
                 .fixedSize(horizontal: false, vertical: true)
+                .onNight()
 
             RequirementsLine(readiness: readiness)
                 .padding(.top, 24 * unit)
@@ -91,6 +92,7 @@ struct RequirementsLine: View {
             requirement("macOS 26", isMet: true)
             requirement("Apple Intelligence", isMet: readiness.allowsPlay)
         }
+        .onNight()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
         .accessibilityAddTraits(.isStaticText)

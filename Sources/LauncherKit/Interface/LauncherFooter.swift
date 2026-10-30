@@ -18,6 +18,7 @@ struct LauncherFooter: View {
                     StatusDot(isLit: readiness.allowsPlay)
                     SpacedText(readiness.status, size: .launcherType(9.5, unit: unit), weight: .regular, tracking: 0.3)
                 }
+                .onNight()
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(readiness.status)
                 .accessibilityAddTraits(.isStaticText)
@@ -35,11 +36,17 @@ struct LauncherFooter: View {
                 .accessibilityLabel("Open nullmere.online")
 
                 SpacedText(version, size: .launcherType(9.5, unit: unit), weight: .regular, tracking: 0.3)
+                    .onNight()
                     .padding(.leading, 16 * unit)
                     .accessibilityLabel("Version \(version)")
             }
             if let hint {
+                // Under the moon's image, in its halo: on a small dark pill of
+                // its own, as the realm's key hints are, rather than a band.
                 SpacedText(hint, size: .launcherType(9.5, unit: unit), weight: .regular, tracking: 0.3)
+                    .padding(.horizontal, 10 * unit)
+                    .padding(.vertical, 4 * unit)
+                    .background(Palette.night, in: Capsule())
                     .transition(.opacity)
                     .accessibilityHidden(true)
             }

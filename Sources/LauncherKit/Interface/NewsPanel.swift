@@ -62,9 +62,11 @@ private struct NewsHeadline: View {
                 VStack(alignment: .leading, spacing: 4 * unit) {
                     SpacedText(item.date.shortText, size: .launcherType(9, unit: unit), weight: .regular, tracking: 0.3, balanced: false)
                         .foregroundStyle(Palette.text(isSelected ? 0.68 : 0.5))
+                    let titleSize = CGFloat.launcherType(11.5, unit: unit)
                     Text(verbatim: item.title.uppercased())
-                        .font(.launcher(.launcherType(11.5, unit: unit), weight: .light))
-                        .tracking(11.5 * unit * 0.2)
+                        .font(.launcher(titleSize, weight: .light))
+                        // Spaced by the size drawn, floor and Larger type and all.
+                        .tracking(titleSize * 0.2)
                         .lineSpacing(2 * unit)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -93,9 +95,10 @@ private struct NewsStory: View {
         ZStack(alignment: .topLeading) {
             if let item {
                 VStack(alignment: .leading, spacing: 0) {
+                    let titleSize = CGFloat.launcherType(18, unit: unit)
                     Text(verbatim: item.title)
-                        .font(.launcher(.launcherType(18, unit: unit), weight: .light))
-                        .tracking(18 * unit * 0.04)
+                        .font(.launcher(titleSize, weight: .light))
+                        .tracking(titleSize * 0.04)
                         .foregroundStyle(Palette.text(0.96))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -107,6 +110,7 @@ private struct NewsStory: View {
                         .foregroundStyle(Palette.text(0.82))
                         .lineLimit(5)
                         .fixedSize(horizontal: false, vertical: true)
+                        .onNight()
                         .padding(.top, 10 * unit)
 
                     if item.link != nil {
@@ -139,6 +143,7 @@ private struct NewsSourceLine: View {
     var body: some View {
         SpacedText(text, size: .launcherType(9, unit: unit), weight: .regular, tracking: 0.28, balanced: false)
             .foregroundStyle(Palette.text(0.8))
+            .onNight()
             .padding(.leading, 13 * unit)
             .animation(.easeInOut(duration: 0.3), value: status)
     }

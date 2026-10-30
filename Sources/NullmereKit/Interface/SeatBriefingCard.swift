@@ -36,8 +36,8 @@ struct SeatBriefingCard: View {
                 ForEach(Array(briefing.steps.enumerated()), id: \.offset) { index, step in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(verbatim: "\(index + 1)")
-                            .font(.nm(11, weight: .medium).monospacedDigit())
-                            .foregroundStyle(Palette.glowWords)
+                            .font(.nm(12, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(Palette.ink)
                         Text(verbatim: step)
                             .font(.nm(12, weight: .light))
                             .foregroundStyle(Palette.text(0.88))

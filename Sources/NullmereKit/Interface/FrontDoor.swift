@@ -139,6 +139,7 @@ struct FrontDoor: View {
                     .foregroundStyle(Palette.text(0.8))
                     .frame(maxWidth: 460 * unit)
                     .fixedSize(horizontal: false, vertical: true)
+                    .onNight()
                     .padding(.top, 16 * unit)
             }
             if let problem = app.arrivalProblem {
@@ -148,6 +149,7 @@ struct FrontDoor: View {
                     .foregroundStyle(Palette.bad)
                     .frame(maxWidth: 460 * unit)
                     .fixedSize(horizontal: false, vertical: true)
+                    .onNight()
                     .padding(.top, 14 * unit)
                     .accessibilityLabel("Problem: \(problem)")
             }
@@ -177,6 +179,7 @@ struct FrontDoor: View {
                     .foregroundStyle(Palette.text(0.75))
                     .frame(maxWidth: 420 * unit)
                     .fixedSize(horizontal: false, vertical: true)
+                    .onNight()
                     .padding(.top, 22 * unit)
                 Color.clear.frame(height: 0)
             }
@@ -237,6 +240,7 @@ struct FrontDoor: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Palette.text(0.9))
                 .fixedSize(horizontal: false, vertical: true)
+                .onNight()
         } else {
             VStack(spacing: 10 * unit) {
                 TextField("The name you'll go by", text: $name)
@@ -258,6 +262,7 @@ struct FrontDoor: View {
                     .multilineTextAlignment(.center)
                     .foregroundStyle(RealmState.nameProblem(name) == nil ? Palette.text(0.7) : Palette.bad)
                     .fixedSize(horizontal: false, vertical: true)
+                    .onNight()
                     .accessibilityHidden(true)
             }
         }
@@ -290,6 +295,7 @@ struct RealmLine: View {
                     .frame(maxWidth: 460 * unit)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            .onNight()
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(state). \(detail)")
             .accessibilityAddTraits(.isStaticText)

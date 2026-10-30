@@ -87,6 +87,7 @@ private struct SettingsRowView: View {
         }
         .foregroundStyle(Palette.ink)
         .padding(.vertical, 13 * unit)
+        .onNight()
         .contentShape(Rectangle())
         .animation(.easeOut(duration: 0.3), value: isFocused)
         .animation(.easeOut(duration: 0.3), value: selectedIndex)

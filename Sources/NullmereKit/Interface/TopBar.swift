@@ -46,9 +46,9 @@ struct TopBar: View {
             .layoutPriority(1)
             .accessibilityElement(children: .combine)
 
-            Spacer(minLength: compact ? 12 : 24)
+            Spacer(minLength: compact ? 12 : 18)
 
-            HStack(spacing: compact ? 14 : 22) {
+            HStack(spacing: compact ? 14 : 18) {
                 ForEach(Resource.allCases, id: \.self) { resource in
                     let net = income[resource] - (resource == .grain ? upkeep : 0)
                     ResourceReadout(resource: resource, amount: house.stock[resource], net: net, room: room, named: !compact,
@@ -58,7 +58,7 @@ struct TopBar: View {
             }
             .fixedSize()
 
-            Spacer(minLength: compact ? 12 : 24)
+            Spacer(minLength: compact ? 12 : 18)
 
             HStack(spacing: compact ? 2 : 6) {
                 QuietButton(title: "Houses", action: { toggle(.houses) })

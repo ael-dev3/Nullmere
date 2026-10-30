@@ -90,7 +90,8 @@ final class NullmereUITests: XCTestCase {
         let window = try openTheLauncher()
         window.buttons["Play"].click()
         XCTAssertTrue(window.buttons["Try again"].waitForExistence(timeout: 60), "Out of reach, the door offers to try again")
-        audit("the door of a realm out of reach")
+        // Its name field is being written in as the door opens.
+        audit("the door of a realm out of reach", editing: true)
         report()
     }
 
@@ -276,10 +277,10 @@ final class NullmereUITests: XCTestCase {
     /// finds is kept, so each screen is still audited, and all are told.
     /// Where it finds type too faint, the type is measured again from the
     /// screen's own pixels, so what the audit saw is told beside it.
-    private func audit(_ screen: String, editing: Bool = false) {
+    private func audit(_ screen: String, editing: Bool = false, again: Bool = true) {
         // What fades in is audited once it has.
         Thread.sleep(forTimeInterval: 1.2)
-        var faint: Set<String> = []
+        var faint: [XCUIElement] = []
         do {
             try app.performAccessibilityAudit { issue in
                 if let element = issue.element, self.isMacChrome(element) { return true }
@@ -294,27 +295,27 @@ final class NullmereUITests: XCTestCase {
                     "type \(element.elementType.rawValue) '\(Self.words(of: element).prefix(70))' at \(element.frame.integral)"
                 } ?? "the screen (\(issue.detailedDescription.prefix(160)))"
                 self.found("UIAUDIT \(screen): \(issue.compactDescription): \(element)")
-                if issue.auditType == .contrast, let text = issue.element { faint.insert(Self.key(of: text)) }
+                if issue.auditType == .contrast, let text = issue.element { faint.append(text) }
                 return true
             }
+        } catch let error as NSError where again && error.code == -56 {
+            // The audit ran out of time on a crowded screen: once more, after
+            // a moment, before it counts against the screen.
+            print("UIAUDIT-NOTE \(screen): the audit ran out of time; once more")
+            audit(screen, editing: editing, again: false)
+            return
         } catch {
             found("UIAUDIT \(screen): the audit couldn't run: \(error)")
         }
-
-        // Every text on screen measured, those the audit passed beside those
-        // it didn't, so the rule it holds them to can be read off.
-        for text in app.staticTexts.allElementsBoundByIndex.prefix(70) where text.exists && !text.frame.isEmpty {
-            let verdict = faint.contains(Self.key(of: text)) ? "FAIL" : "pass"
-            print("UITEXT \(verdict) h\(Int(text.frame.height)) \(Self.measured(text)) '\(Self.words(of: text).prefix(28))'")
+        // Type the audit finds faint, measured from the screen's own pixels,
+        // where it lies in the window to be measured.
+        for text in faint.prefix(12) where text.exists && window.frame.contains(text.frame) && text.frame.width >= 4 && text.frame.height >= 4 {
+            print("UITEXT \(screen) h\(Int(text.frame.height)) \(Self.measured(text)) '\(Self.words(of: text).prefix(28))'")
         }
     }
 
     private static func words(of element: XCUIElement) -> String {
         element.label.isEmpty ? (element.value as? String ?? "") : element.label
-    }
-
-    private static func key(of element: XCUIElement) -> String {
-        "\(words(of: element))|\(element.frame.integral)"
     }
 
     /// An element's pixels as the screen draws them: the commonest colour,

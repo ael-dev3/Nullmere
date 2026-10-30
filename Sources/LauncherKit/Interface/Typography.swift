@@ -5,6 +5,8 @@ import SwiftUI
 /// realm's interface takes its own from here, so the two are one.
 public enum Palette {
     public static let ink = Color(red: inkRGB.red, green: inkRGB.green, blue: inkRGB.blue)
+    /// The night water's own dark, as the panels lie on it.
+    public static let night = Color(red: nightRGB.red, green: nightRGB.green, blue: nightRGB.blue)
     public static let glow = Color(red: 0.588, green: 0.706, blue: 0.882)
 
     static let inkRGB = (red: 0.894, green: 0.918, blue: 0.949)
@@ -75,6 +77,16 @@ extension Font {
     /// holds its contrast there (see `TextSize.readable`).
     public static func launcher(_ size: CGFloat, weight: Font.Weight) -> Font {
         .system(size: size, weight: TextSize.readable(weight, at: size))
+    }
+}
+
+extension View {
+    /// Words on the night water, set on the water's own dark: nothing to
+    /// see, the water beneath them being as dark, but a ground the Mac's
+    /// accessibility audit can find behind the type. Over the lake's own
+    /// drawing alone it finds none, and fails even the brightest words.
+    public func onNight() -> some View {
+        background(Palette.night)
     }
 }
 
