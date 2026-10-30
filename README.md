@@ -290,11 +290,10 @@ as the realm will, and takes the realm's word as final.
   A keeper whose House falls may take up an open seat once an age, and
   otherwise looks on until the next. Meanwhile, after two watches away
   (counted in watches, however quickly they turn), a caretaker keeps the
-  House: it
-  answers envoys, builds and trains, guards the holds, fights on in wars
-  already begun and sues for peace in one going badly, but begins no war,
-  demand or pact and never bends the knee, though it takes a House offering
-  fealty as a vassal. A pact offered it swears as a steward would, but
+  House: it answers envoys, builds and trains, guards the holds, fights on
+  in wars already begun and sues for peace in one going badly, but begins
+  no war, demand or pact and never bends the knee, though it takes a House
+  offering fealty as a vassal. A pact offered it swears as a steward would, but
   never with a House at war with the keeper's allies or one whose Moonspire
   is rising. While any keeper whose House stands is away, a watch lasts
   at least a third of its time, however ready those there are.
@@ -376,10 +375,10 @@ as the realm will, and takes the realm's word as final.
   What chance decides, or what your copy can't see, is told and drawn as
   the realm decided it, when it answers, never as your Mac guessed it: a
   strike's blows and losses, a ruin's spoils, a new hold's name, a
-  steward's answer.
-  Your identity is made once and kept in your keychain, and never erased
-  by the game, even should the realm's server stop taking it. For
-  development a realm can also be hosted in-process (`NULLMERE_REALM=local`).
+  steward's answer. Your identity is made once and kept in your keychain,
+  and never erased by the game, even should the realm's server stop
+  taking it. For development a realm can also be hosted in-process
+  (`NULLMERE_REALM=local`).
 
 ### Raising the realm
 
