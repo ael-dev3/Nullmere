@@ -206,6 +206,7 @@ struct CostLine: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Costs \(cost.description)")
+        .accessibilityAddTraits(.isStaticText)
     }
 }
 

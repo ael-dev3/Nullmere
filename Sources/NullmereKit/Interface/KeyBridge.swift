@@ -182,7 +182,8 @@ final class KeyBridgeView: NSView {
 }
 
 /// Fits the window inside its screen when it first appears, so a display
-/// smaller than the default size never hides the edges of the interface.
+/// smaller than the default size never hides the edges of the interface,
+/// and names its content for VoiceOver as the window is named.
 struct WindowFitter: NSViewRepresentable {
     func makeNSView(context: Context) -> WindowFitterView { WindowFitterView() }
     func updateNSView(_ view: WindowFitterView, context: Context) {}
@@ -195,6 +196,7 @@ final class WindowFitterView: NSView {
         super.viewDidMoveToWindow()
         guard !fitted, let window else { return }
         fitted = true
+        window.contentView?.setAccessibilityLabel(window.title)
         DispatchQueue.main.async {
             guard let screen = window.screen ?? NSScreen.main else { return }
             let visible = screen.visibleFrame

@@ -133,10 +133,10 @@ struct FrontDoor: View {
 
             if let note = seatNote {
                 Text(verbatim: note)
-                    .font(.system(size: .launcherType(11, unit: unit), weight: .light))
+                    .font(.system(size: .launcherType(11, unit: unit), weight: .regular))
                     .lineSpacing(4 * unit)
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(Palette.text(0.72))
+                    .foregroundStyle(Palette.text(0.8))
                     .frame(maxWidth: 460 * unit)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 16 * unit)
@@ -172,9 +172,9 @@ struct FrontDoor: View {
             // The note on identity goes first when room is short.
             ViewThatFits(in: .vertical) {
                 Text(verbatim: "Your identity is a random key kept in this Mac's keychain. The realm knows you by it and by the name you choose; nothing else.")
-                    .font(.system(size: .launcherType(10, unit: unit), weight: .light))
+                    .font(.system(size: .launcherType(10, unit: unit), weight: .regular))
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(Palette.text(0.5))
+                    .foregroundStyle(Palette.text(0.66))
                     .frame(maxWidth: 420 * unit)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 22 * unit)
@@ -233,7 +233,7 @@ struct FrontDoor: View {
     private func keeper(unit: CGFloat) -> some View {
         if let known = app.keeperName {
             Text(verbatim: "You are known here as \(known), of House \(known).")
-                .font(.system(size: .launcherType(14, unit: unit), weight: .light))
+                .font(.system(size: .launcherType(14, unit: unit), weight: .regular))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Palette.text(0.9))
                 .fixedSize(horizontal: false, vertical: true)
@@ -254,9 +254,9 @@ struct FrontDoor: View {
                     // with the field.
                     .accessibilityHint(RealmState.nameProblem(name) ?? Self.nameRule)
                 Text(verbatim: RealmState.nameProblem(name) ?? Self.nameRule)
-                    .font(.system(size: .launcherType(10, unit: unit), weight: .light))
+                    .font(.system(size: .launcherType(10, unit: unit), weight: .regular))
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(RealmState.nameProblem(name) == nil ? Palette.text(0.55) : Palette.bad)
+                    .foregroundStyle(RealmState.nameProblem(name) == nil ? Palette.text(0.7) : Palette.bad)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityHidden(true)
             }
@@ -280,18 +280,19 @@ struct RealmLine: View {
                 HStack(spacing: 8 * unit) {
                     StatusDot(isLit: isOpen)
                     SpacedText(state, size: .launcherType(9, unit: unit), weight: .regular, tracking: 0.3)
-                        .foregroundStyle(Palette.text(isOpen ? 0.72 : 0.55))
+                        .foregroundStyle(Palette.text(isOpen ? 0.82 : 0.66))
                 }
                 Text(verbatim: detail)
-                    .font(.system(size: .launcherType(13, unit: unit), weight: .light))
+                    .font(.system(size: .launcherType(13, unit: unit), weight: .regular))
                     .lineSpacing(6 * unit)
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(Palette.text(0.68))
+                    .foregroundStyle(Palette.text(0.8))
                     .frame(maxWidth: 460 * unit)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(state). \(detail)")
+            .accessibilityAddTraits(.isStaticText)
         }
     }
 

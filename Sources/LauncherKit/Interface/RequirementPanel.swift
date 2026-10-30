@@ -40,10 +40,10 @@ public struct RequirementView: View {
             PanelHeader(title: readiness.headline)
 
             Text(verbatim: readiness.explanation)
-                .font(.system(size: .launcherType(13, unit: unit), weight: .light))
+                .font(.system(size: .launcherType(13, unit: unit), weight: .regular))
                 .lineSpacing(6 * unit)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(Palette.text(0.68))
+                .foregroundStyle(Palette.text(0.8))
                 .frame(maxWidth: 460 * unit)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -93,13 +93,14 @@ struct RequirementsLine: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
+        .accessibilityAddTraits(.isStaticText)
     }
 
     private func requirement(_ title: String, isMet: Bool) -> some View {
         HStack(spacing: 8 * unit) {
             StatusDot(isLit: isMet)
             SpacedText(title, size: .launcherType(9, unit: unit), weight: .regular, tracking: 0.3)
-                .foregroundStyle(Palette.text(isMet ? 0.72 : 0.5))
+                .foregroundStyle(Palette.text(isMet ? 0.82 : 0.62))
         }
     }
 

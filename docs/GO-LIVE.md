@@ -182,7 +182,8 @@ here too). What no machine can judge is how it sounds. On the Mac from step
 
 - [ ] The launcher: the title is read as "Nullmere Online", then Play,
       News, Settings, Repository and Quit, each with its hint.
-- [ ] Settings: each row is read with its value, and VO-↑ and VO-↓ change it.
+- [ ] Settings: each row is read as a menu with its value, and VO-Space
+      opens its choices.
 - [ ] The front door: the realm's state, the name field and its rule, and
       "Enter the world"; a realm out of reach is said aloud.
 - [ ] The world: each watch's turn is said whole; on the map, VO-→ walks

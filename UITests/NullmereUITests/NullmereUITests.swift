@@ -26,6 +26,9 @@ final class NullmereUITests: XCTestCase {
             "NULLMERE_REALM": "local",
             "NULLMERE_REALM_SEED": "walked by VoiceOver",
             "NULLMERE_IDENTITY_FILE": identity.path,
+            // The news this build ships with, not whatever the repository
+            // holds today.
+            "NULLMERE_NEWS_URL": "https://nullmere.invalid/news.json",
             // The map offers its orders as when VoiceOver runs.
             "NULLMERE_VOICEOVER": "1",
         ]
@@ -50,10 +53,10 @@ final class NullmereUITests: XCTestCase {
         window.buttons["Settings"].click()
         XCTAssertTrue(window.buttons["Back"].waitForExistence(timeout: 10), "Settings opens")
         for row in ["Motion", "Resolution", "Frame rate", "Text", "Full screen at launch"] {
-            if !labelled(row, in: window).exists { findings.append("UIWALK Settings has no row \(row)") }
+            if !labelled(row, in: window).exists { found("UIWALK Settings has no row \(row)") }
         }
         for alone in ["Seed", "Difficulty", "Rivals", "Lake size", "House", "Single player"] {
-            if labelled(alone, in: window).exists { findings.append("UIWALK Settings offers \(alone), a game played alone") }
+            if labelled(alone, in: window).exists { found("UIWALK Settings offers \(alone), a game played alone") }
         }
         audit("Settings")
         window.buttons["Back"].click()
@@ -72,13 +75,14 @@ final class NullmereUITests: XCTestCase {
         name.click()
         name.typeText("Ama\r")
 
-        let map = labelled("The world map", in: window)
-        XCTAssertTrue(map.waitForExistence(timeout: 60), "Entering, the world opens")
+        // The card a keeper first meets holds the keys and VoiceOver until
+        // it is put away; the world lies behind it.
         let begin = window.buttons["Begin"]
-        if begin.waitForExistence(timeout: 10) {
-            audit("the seat's briefing")
-            begin.click()
-        }
+        XCTAssertTrue(begin.waitForExistence(timeout: 60), "Entering, the seat's briefing")
+        audit("the seat's briefing")
+        begin.click()
+        let map = labelled("The world map", in: window)
+        XCTAssertTrue(map.waitForExistence(timeout: 30), "Then the world")
         audit("the world")
         walk(map, in: window)
 
@@ -88,7 +92,7 @@ final class NullmereUITests: XCTestCase {
             if window.staticTexts[panel].waitForExistence(timeout: 10) {
                 audit("the \(panel) panel")
             } else {
-                findings.append("UIWALK the \(panel) panel didn't open with \(key)")
+                found("UIWALK the \(panel) panel didn't open with \(key)")
             }
             app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
         }
@@ -107,19 +111,19 @@ final class NullmereUITests: XCTestCase {
         print("UIMAP \(items.count) elements in \(map.frame): "
               + zip(labels, items).map { "\($0) @ \($1.frame)" }.joined(separator: " | "))
         guard items.count >= 2 else {
-            findings.append("UIWALK the map holds \(items.count) elements, not its holds and companies")
+            found("UIWALK the map holds \(items.count) elements, not its holds and companies")
             return
         }
         if labels.first?.contains("seat, yours") != true {
-            findings.append("UIWALK the keeper's seat isn't first: \(labels.first ?? "")")
+            found("UIWALK the keeper's seat isn't first: \(labels.first ?? "")")
         }
         for (label, item) in zip(labels, items) where label.isEmpty || item.frame.isEmpty {
-            findings.append("UIWALK an element without words or a place: '\(label)' \(item.frame)")
+            found("UIWALK an element without words or a place: '\(label)' \(item.frame)")
         }
         let mapFrame = map.frame
         let onMap = items.filter { mapFrame.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }
         guard let company = onMap.first(where: { $0.label.contains(", yours,") && $0.label.contains("health") }) else {
-            findings.append("UIWALK no company of the keeper's lies on the map in view, among: \(labels.joined(separator: " | "))")
+            found("UIWALK no company of the keeper's lies on the map in view, among: \(labels.joined(separator: " | "))")
             return
         }
         // Chosen where it lies, as VoiceOver's click there would choose it.
@@ -128,7 +132,7 @@ final class NullmereUITests: XCTestCase {
         if window.staticTexts[kind].waitForExistence(timeout: 5) {
             audit("a company chosen")
         } else {
-            findings.append("UIWALK choosing '\(company.label)' at \(company.frame) opened no panel for \(kind)")
+            found("UIWALK choosing '\(company.label)' at \(company.frame) opened no panel for \(kind)")
         }
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
     }
@@ -156,19 +160,25 @@ final class NullmereUITests: XCTestCase {
     private func audit(_ screen: String) {
         do {
             try app.performAccessibilityAudit { issue in
-                let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)' \($0.frame)" } ?? "the screen"
-                self.findings.append("UIAUDIT \(screen): \(issue.compactDescription). \(issue.detailedDescription) Element: \(element)")
+                let element = issue.element.map { element in
+                    let described = element.debugDescription.split(separator: "\n").prefix(2).joined(separator: " / ")
+                    return "\(element.elementType.rawValue) '\(element.label)' \(element.frame) [\(described.prefix(300))]"
+                } ?? "the screen"
+                self.found("UIAUDIT \(screen): \(issue.compactDescription). \(issue.detailedDescription) Element: \(element)")
                 return true
             }
         } catch {
-            findings.append("UIAUDIT \(screen): the audit couldn't run: \(error)")
+            found("UIAUDIT \(screen): the audit couldn't run: \(error)")
         }
     }
 
+    /// Kept, and said at once, so a test that stops early still tells it.
+    private func found(_ finding: String) {
+        print(finding)
+        findings.append(finding)
+    }
+
     private func report() {
-        for finding in findings {
-            print(finding)
-        }
         XCTAssertTrue(findings.isEmpty, "\(findings.count) found:\n" + findings.joined(separator: "\n"))
     }
 }

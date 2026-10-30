@@ -206,6 +206,7 @@ struct LevelPips: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Level \(level) of \(maximum)")
+        .accessibilityAddTraits(.isStaticText)
     }
 }
 

@@ -102,9 +102,9 @@ private struct NewsStory: View {
                         .accessibilityAddTraits(.isHeader)
 
                     Text(verbatim: item.body)
-                        .font(.system(size: .launcherType(12.5, unit: unit), weight: .light))
+                        .font(.system(size: .launcherType(12.5, unit: unit), weight: .regular))
                         .lineSpacing(5 * unit)
-                        .foregroundStyle(Palette.text(0.7))
+                        .foregroundStyle(Palette.text(0.82))
                         .lineLimit(5)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 10 * unit)
@@ -137,8 +137,8 @@ private struct NewsSourceLine: View {
     @Environment(\.launcherUnit) private var unit
 
     var body: some View {
-        SpacedText(text, size: .launcherType(8.5, unit: unit), weight: .regular, tracking: 0.28, balanced: false)
-            .foregroundStyle(Palette.text(0.45))
+        SpacedText(text, size: .launcherType(9, unit: unit), weight: .regular, tracking: 0.28, balanced: false)
+            .foregroundStyle(Palette.text(0.7))
             .padding(.leading, 13 * unit)
             .animation(.easeInOut(duration: 0.3), value: status)
     }

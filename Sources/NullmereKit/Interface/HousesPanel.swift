@@ -91,6 +91,7 @@ struct RaceTable: View {
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(RaceTable.spoken(standing, in: state, player: session.player))
+                .accessibilityAddTraits(.isStaticText)
             }
         }
     }

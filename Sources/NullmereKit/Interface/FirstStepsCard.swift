@@ -27,6 +27,7 @@ struct FirstStepsCard: View {
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(step.title), \(done ? "done" : "to do")")
+                .accessibilityAddTraits(.isStaticText)
             }
         }
         .padding(14)

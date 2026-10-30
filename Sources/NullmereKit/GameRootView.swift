@@ -50,7 +50,6 @@ public struct GameRootView: View {
             Contrast.shared.differentiates = differentiate
         }
         .frame(minWidth: 960, minHeight: 600)
-        .background(WindowFitter())
     }
 
     private var phaseKey: Int {

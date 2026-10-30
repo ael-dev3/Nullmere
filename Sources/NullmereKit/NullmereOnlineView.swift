@@ -64,5 +64,6 @@ public struct NullmereOnlineView: View {
             }
         }
         .animation(.easeInOut(duration: 0.8), value: shell.inRealm)
+        .background(WindowFitter())
     }
 }

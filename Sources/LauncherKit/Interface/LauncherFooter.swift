@@ -16,34 +16,35 @@ struct LauncherFooter: View {
             HStack(alignment: .center, spacing: 0) {
                 HStack(spacing: 10 * unit) {
                     StatusDot(isLit: readiness.allowsPlay)
-                    SpacedText(readiness.status, size: .launcherType(9.5, unit: unit), weight: .light, tracking: 0.3)
+                    SpacedText(readiness.status, size: .launcherType(9.5, unit: unit), weight: .regular, tracking: 0.3)
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(readiness.status)
+                .accessibilityAddTraits(.isStaticText)
                 .animation(.easeInOut(duration: 0.4), value: readiness)
 
                 Spacer(minLength: 24 * unit)
 
                 let _ = PressableButtons.note("nullmere.online", enabled: true, openWebsite)
                 Button(action: openWebsite) {
-                    SpacedText("nullmere.online", size: .launcherType(9.5, unit: unit), weight: .light, tracking: 0.3)
+                    SpacedText("nullmere.online", size: .launcherType(9.5, unit: unit), weight: .regular, tracking: 0.3)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .linkPointer()
                 .accessibilityLabel("Open nullmere.online")
 
-                SpacedText(version, size: .launcherType(9.5, unit: unit), weight: .light, tracking: 0.3)
+                SpacedText(version, size: .launcherType(9.5, unit: unit), weight: .regular, tracking: 0.3)
                     .padding(.leading, 16 * unit)
                     .accessibilityLabel("Version \(version)")
             }
             if let hint {
-                SpacedText(hint, size: .launcherType(9.5, unit: unit), weight: .light, tracking: 0.3)
+                SpacedText(hint, size: .launcherType(9.5, unit: unit), weight: .regular, tracking: 0.3)
                     .transition(.opacity)
                     .accessibilityHidden(true)
             }
         }
-        .foregroundStyle(Palette.text(0.5))
+        .foregroundStyle(Palette.text(0.62))
         .padding(.horizontal, 36 * unit)
         .padding(.bottom, 26 * unit)
     }

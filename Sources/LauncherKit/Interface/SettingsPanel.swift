@@ -72,8 +72,8 @@ private struct SettingsRowView: View {
                     .foregroundStyle(Palette.text(isFocused ? 0.95 : 0.55))
                 if let note {
                     Text(verbatim: note)
-                        .font(.system(size: .launcherType(9, unit: unit), weight: .light))
-                        .foregroundStyle(Palette.text(0.5))
+                        .font(.system(size: .launcherType(9, unit: unit), weight: .regular))
+                        .foregroundStyle(Palette.text(0.66))
                 }
             }
             Spacer(minLength: 24 * unit)
@@ -90,18 +90,15 @@ private struct SettingsRowView: View {
         .contentShape(Rectangle())
         .animation(.easeOut(duration: 0.3), value: isFocused)
         .animation(.easeOut(duration: 0.3), value: selectedIndex)
-        // One element to VoiceOver: the setting, its value, and a swipe up or
-        // down to change it, rather than bare options without their row.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(title)
-        .accessibilityValue([options.indices.contains(selectedIndex) ? options[selectedIndex] : "", note ?? ""]
-            .filter { !$0.isEmpty }.joined(separator: ", "))
-        .accessibilityAdjustableAction { direction in
-            switch direction {
-            case .increment: if selectedIndex + 1 < options.count { choose(selectedIndex + 1) }
-            case .decrement: if selectedIndex > 0 { choose(selectedIndex - 1) }
-            @unknown default: break
+        // One control to VoiceOver: the setting as a Mac's own pop-up menu
+        // of its options, its value the one chosen, its note said with it.
+        .accessibilityRepresentation {
+            Picker(title, selection: Binding(get: { selectedIndex }, set: { choose($0) })) {
+                ForEach(options.indices, id: \.self) { index in
+                    Text(verbatim: options[index]).tag(index)
+                }
             }
+            .accessibilityHint(note ?? "")
         }
     }
 

@@ -28,6 +28,7 @@ struct AwayCard: View {
                         }
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel("\(change.resource.title) \(change.delta > 0 ? "up" : "down") \(abs(change.delta))")
+                        .accessibilityAddTraits(.isStaticText)
                     }
                     if let holds = report.holdsLine {
                         Text(verbatim: holds)

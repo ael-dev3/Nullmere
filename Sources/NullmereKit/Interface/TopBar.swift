@@ -324,6 +324,7 @@ struct OmenBand: View {
         .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Palette.glow.opacity(0.25), lineWidth: 1))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Omen: \(omen.kind.title). \(omen.kind.effect) \(OmenBand.lasting(left))")
+        .accessibilityAddTraits(.isStaticText)
     }
 
     static func lasting(_ left: Int) -> String {
