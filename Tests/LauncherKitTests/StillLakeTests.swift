@@ -117,8 +117,9 @@ final class StillLakeTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(bright, 10, "Bright stars stand in the sky")
     }
 
-    /// Under a panel the moon's image sinks into the water: gone from its
-    /// place, while the moon in the sky and the stars on the water stay.
+    /// Under a panel the moon's image dims to a ghost of itself, darkened
+    /// rather than gone, while the moon in the sky and the stars on the
+    /// water stay.
     func testAPanelSinksTheMoonsImageAndLeavesTheStars() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: LakeShader.source, options: nil)
@@ -147,7 +148,8 @@ final class StillLakeTests: XCTestCase {
         // The dithering differs by a step at most.
         XCTAssertEqual(light(sunk, moonX, moonY), light(whole, moonX, moonY), accuracy: 6, "The moon in the sky stays")
         XCTAssertGreaterThan(light(whole, moonX, mirrorY), 330)
-        XCTAssertLessThan(light(sunk, moonX, mirrorY), 30, "Its image is gone")
+        XCTAssertLessThan(light(sunk, moonX, mirrorY), light(whole, moonX, mirrorY) * 3 / 10, "Its image dims")
+        XCTAssertGreaterThan(light(sunk, moonX, mirrorY), light(whole, moonX, mirrorY) / 10, "but is never gone")
 
         // Stars on the open water, away from the moon's image, in both. A
         // star is a point that stands out from the water around it: the

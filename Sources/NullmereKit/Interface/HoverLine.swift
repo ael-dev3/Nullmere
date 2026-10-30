@@ -46,7 +46,8 @@ struct HoverLine: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(Color.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 3))
+                // As dark as a panel, so it reads over the palest ground.
+                .background(Palette.panel, in: RoundedRectangle(cornerRadius: 3))
                 .accessibilityHidden(true)
         }
     }

@@ -5,8 +5,11 @@ import SwiftUI
 /// scene cannot run.
 struct LakeFallbackView: View {
     var horizon: Double
-    /// 1 sinks the moon's image under a panel, as the Metal lake does.
+    /// 1 dims the moon's image under a panel, as the Metal lake does.
     var veil: Double = 0
+    /// How much of the moon's image a panel takes away, as the shader's
+    /// NM_VEIL_DEPTH: never all of it.
+    static let veilDepth = 0.8
 
     private static let stars = StarCatalog.stars(count: 320, seed: 0x4E55_4C4C)
 
@@ -80,7 +83,7 @@ struct LakeFallbackView: View {
             let moonRise = size.height * LakeComposition.moonY - size.height * horizon
             let moon = CGPoint(x: size.width * LakeComposition.moonX, y: waterline - moonRise)
             let reflection = CGPoint(x: moon.x, y: waterline + moonRise)
-            for (center, strength) in [(moon, 1.0), (reflection, 0.85 * (1 - min(max(veil, 0), 1)))] where strength > 0 {
+            for (center, strength) in [(moon, 1.0), (reflection, 0.85 * (1 - LakeFallbackView.veilDepth * min(max(veil, 0), 1)))] where strength > 0 {
                 context.fill(
                     Path(ellipseIn: CGRect(x: center.x - radius * 12, y: center.y - radius * 12, width: radius * 24, height: radius * 24)),
                     with: .radialGradient(

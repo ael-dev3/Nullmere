@@ -28,6 +28,27 @@ enum LakeShader {
     // Seconds between chances of a falling star; SceneClock's period is a
     // whole number of them, and of the moon's nine-second breath.
     #define NM_STAR_PERIOD 47.0
+    // How much of the moon's image a panel on the water takes away: never
+    // all of it.
+    #define NM_VEIL_DEPTH 0.8
+
+    // SceneClock's period, after which the clock starts over: every motion
+    // below comes round a whole number of times in it, so none jumps then.
+    #define NM_CLOCK_PERIOD 10575.0
+
+    // An angle that turns `perSecond` radians a second, near enough, and a
+    // whole number of times in the clock's period.
+    float nm_spin(float time, float perSecond) {
+        float turns = floor(perSecond * NM_CLOCK_PERIOD / NM_TAU + 0.5);
+        return NM_TAU * fract((time / NM_CLOCK_PERIOD) * turns);
+    }
+
+    // A drift of `speed` units a second, round a circle once in the clock's
+    // period: what drifts on it never jumps as the clock starts over.
+    float2 nm_drift(float time, float speed) {
+        float turn = NM_TAU * time / NM_CLOCK_PERIOD;
+        return float2(sin(turn), -cos(turn)) * (speed * NM_CLOCK_PERIOD / NM_TAU);
+    }
 
     // Nullmere's own hash, written for it: a point folded once along each
     // axis, each fold stirred by the square of the other, and the two drawn
@@ -77,8 +98,11 @@ enum LakeShader {
     // Smooth random flicker, roughly -1...1: a slow swell of brightness with a
     // quicker shimmer on top, different for every star.
     float nm_flicker(float time, float ph) {
-        float slow = nm_noise(float2(time * (0.7 + 1.3 * ph), ph * 97.0));
-        float quick = nm_noise(float2(time * (3.0 + 3.5 * ph), ph * 61.0 + 40.0));
+        // Read along a circle the clock goes round once in its period, at
+        // the pace a straight line would be, so it never jumps.
+        float2 along = nm_drift(time, 1.0);
+        float slow = nm_noise(along * (0.7 + 1.3 * ph) + float2(0.0, ph * 97.0));
+        float quick = nm_noise(along * (3.0 + 3.5 * ph) + float2(0.0, ph * 61.0 + 40.0));
         return (slow - 0.5) * 1.6 + (quick - 0.5) * 1.0;
     }
 
@@ -238,7 +262,7 @@ enum LakeShader {
 
         // Thin haze drifting past the moon catches its light.
         if (dm < 0.45 && moonlight > 0.0) {
-            float haze = smoothstep(0.50, 0.82, nm_fbm(float2(p.x * 2.3 - time * 0.012, p.y * 7.5 + 2.0)));
+            float haze = smoothstep(0.50, 0.82, nm_fbm(float2(p.x * 2.3, p.y * 7.5 + 2.0) - nm_drift(time, 0.012)));
             c += float3(0.55, 0.64, 0.80) * 0.11 * haze * exp(-dm * 9.0) * (0.85 + 0.3 * breath) * moonlight;
         }
 
@@ -282,8 +306,9 @@ enum LakeShader {
 
     // The full scene. `uv` is 0...1 with y pointing up, `sizePt` is the view
     // size in points, `px` the fragment position in pixels (for dithering).
-    // `veil` (0...1) sinks the moon's image into the water while a panel lies
-    // over it; the stars on the water stay.
+    // `veil` (0...1) dims the moon's image while a panel lies over it, to a
+    // fifth of itself, a ghost under the panel's words rather than gone;
+    // the stars on the water stay.
     float3 nm_scene(float2 uv, float2 sizePt, float2 px, float time, float activity, float horizon, float veil) {
         float aspect = sizePt.x / sizePt.y;
         float pt = 1.0 / sizePt.y;
@@ -305,7 +330,7 @@ enum LakeShader {
             // A black mirror gives the moon back nearly whole: falling off
             // further toward the near water, its image lay there a grey coin.
             float reflectance = mix(0.94, 0.74, sqrt(depth));
-            float moonlight = 1.0 - veil;
+            float moonlight = 1.0 - NM_VEIL_DEPTH * veil;
             c = nm_sky(r, aspect, pt, horizon, time, activity, moonlight) * reflectance;
             c += float3(0.0015, 0.0022, 0.0035);
         }
@@ -314,7 +339,7 @@ enum LakeShader {
         // Beyond where it adds a step of light, it isn't worked out at all.
         float mistBand = exp(-abs(p.y - horizon) / 0.03);
         if (mistBand > 0.07) {
-            float mistNoise = nm_fbm(float2(p.x * 1.4 - time * 0.004, p.y * 9.0));
+            float mistNoise = nm_fbm(float2(p.x * 1.4, p.y * 9.0) - nm_drift(time, 0.004));
             c += float3(0.55, 0.63, 0.76) * 0.055 * mistBand * (0.30 + 0.70 * mistNoise);
         }
 

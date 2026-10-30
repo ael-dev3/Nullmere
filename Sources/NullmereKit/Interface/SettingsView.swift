@@ -53,7 +53,7 @@ public struct GameSettingsView: View {
     private func part(_ title: String, @ViewBuilder _ content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Caps(title, size: 9, weight: .medium)
-                .foregroundStyle(Palette.glow)
+                .foregroundStyle(Palette.glowWords)
                 .accessibilityAddTraits(.isHeader)
             content()
         }

@@ -133,7 +133,7 @@ struct FrontDoor: View {
 
             if let note = seatNote {
                 Text(verbatim: note)
-                    .font(.system(size: .launcherType(11, unit: unit), weight: .regular))
+                    .font(.launcher(.launcherType(11, unit: unit), weight: .regular))
                     .lineSpacing(4 * unit)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Palette.text(0.8))
@@ -143,7 +143,7 @@ struct FrontDoor: View {
             }
             if let problem = app.arrivalProblem {
                 Text(verbatim: problem)
-                    .font(.system(size: .launcherType(11, unit: unit), weight: .regular))
+                    .font(.launcher(.launcherType(11, unit: unit), weight: .regular))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Palette.bad)
                     .frame(maxWidth: 460 * unit)
@@ -172,7 +172,7 @@ struct FrontDoor: View {
             // The note on identity goes first when room is short.
             ViewThatFits(in: .vertical) {
                 Text(verbatim: "Your identity is a random key kept in this Mac's keychain. The realm knows you by it and by the name you choose; nothing else.")
-                    .font(.system(size: .launcherType(10, unit: unit), weight: .regular))
+                    .font(.launcher(.launcherType(10, unit: unit), weight: .regular))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Palette.text(0.75))
                     .frame(maxWidth: 420 * unit)
@@ -233,7 +233,7 @@ struct FrontDoor: View {
     private func keeper(unit: CGFloat) -> some View {
         if let known = app.keeperName {
             Text(verbatim: "You are known here as \(known), of House \(known).")
-                .font(.system(size: .launcherType(14, unit: unit), weight: .regular))
+                .font(.launcher(.launcherType(14, unit: unit), weight: .regular))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Palette.text(0.9))
                 .fixedSize(horizontal: false, vertical: true)
@@ -241,7 +241,7 @@ struct FrontDoor: View {
             VStack(spacing: 10 * unit) {
                 TextField("The name you'll go by", text: $name)
                     .textFieldStyle(.plain)
-                    .font(.system(size: .launcherType(16, unit: unit), weight: .light))
+                    .font(.launcher(.launcherType(16, unit: unit), weight: .light))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Palette.ink)
                     .focused($nameFocused)
@@ -254,7 +254,7 @@ struct FrontDoor: View {
                     // with the field.
                     .accessibilityHint(RealmState.nameProblem(name) ?? Self.nameRule)
                 Text(verbatim: RealmState.nameProblem(name) ?? Self.nameRule)
-                    .font(.system(size: .launcherType(10, unit: unit), weight: .regular))
+                    .font(.launcher(.launcherType(10, unit: unit), weight: .regular))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(RealmState.nameProblem(name) == nil ? Palette.text(0.7) : Palette.bad)
                     .fixedSize(horizontal: false, vertical: true)
@@ -283,7 +283,7 @@ struct RealmLine: View {
                         .foregroundStyle(Palette.text(isOpen ? 0.82 : 0.66))
                 }
                 Text(verbatim: detail)
-                    .font(.system(size: .launcherType(13, unit: unit), weight: .regular))
+                    .font(.launcher(.launcherType(13, unit: unit), weight: .regular))
                     .lineSpacing(6 * unit)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Palette.text(0.8))

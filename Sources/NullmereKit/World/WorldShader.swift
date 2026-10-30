@@ -36,6 +36,25 @@ enum WorldShader {
     // through NM_TILE and NM_ATAN2, defined per language.
 
     #define NM_ROOT3 1.73205080757
+    #define NM_TAU 6.28318530718
+
+    // SceneClock's period, after which the clock starts over: every motion
+    // below comes round a whole number of times in it, so none jumps then.
+    #define NM_CLOCK_PERIOD 10575.0
+
+    // An angle that turns `perSecond` radians a second, near enough, and a
+    // whole number of times in the clock's period.
+    float nm_spin(float time, float perSecond) {
+        float turns = floor(perSecond * NM_CLOCK_PERIOD / NM_TAU + 0.5);
+        return NM_TAU * fract((time / NM_CLOCK_PERIOD) * turns);
+    }
+
+    // A drift of `speed` units a second, round a circle once in the clock's
+    // period: what drifts on it never jumps as the clock starts over.
+    float2 nm_drift(float time, float speed) {
+        float turn = NM_TAU * time / NM_CLOCK_PERIOD;
+        return float2(sin(turn), -cos(turn)) * (speed * NM_CLOCK_PERIOD / NM_TAU);
+    }
 
     // Nullmere's own hash, as the launcher's lake has it: a point folded
     // once along each axis, each fold stirred by the square of the other,
@@ -177,7 +196,7 @@ enum WorldShader {
     // banks of it, moonlit on their crowns, lie across the dark between
     // deep troughs, so the unknown has a size, not a flat grey.
     float3 nm_mist(float2 w, float time) {
-        float2 drift = float2(time * 0.012, time * 0.004);
+        float2 drift = nm_drift(time, 0.0126);
         float banks = smoothstep(0.40, 0.95, nm_noise(w * 0.09 + drift * 0.3));
         float mist = nm_fbm(w * 0.45 + drift) * 0.65 + nm_fbm(w * 1.4 - drift * 1.7) * 0.35;
         float lit = mist * mist * (0.45 + 1.1 * banks);
@@ -216,15 +235,18 @@ enum WorldShader {
         float r2 = dot(o, o);
         float room = min(min(at.x, 1.0 - at.x), min(at.y, 1.0 - at.y)) * size;
         float halo = 0.12 * exp(-r2 / 7.0) * (1.0 - smoothstep(0.5 * room, room, sqrt(r2)));
-        float twinkle = 0.85 + 0.15 * sin(time * 0.9 + nm_hash(cell + 11.0 + salt) * 30.0);
+        float twinkle = 0.85 + 0.15 * sin(nm_spin(time, 0.9) + nm_hash(cell + 11.0 + salt) * 30.0);
         return b * b * (exp(-r2 / 0.8) + halo) * twinkle;
     }
 
     // Smooth random flicker, roughly -1...1, as the launcher's stars have
     // it: a slow swell with a quicker shimmer on top, its own for each star.
     float nm_flicker(float time, float ph) {
-        float slow = nm_noise(float2(time * (0.7 + 1.3 * ph), ph * 97.0));
-        float quick = nm_noise(float2(time * (3.0 + 3.5 * ph), ph * 61.0 + 40.0));
+        // Read along a circle the clock goes round once in its period, at
+        // the pace a straight line would be, so it never jumps.
+        float2 along = nm_drift(time, 1.0);
+        float slow = nm_noise(along * (0.7 + 1.3 * ph) + float2(0.0, ph * 97.0));
+        float quick = nm_noise(along * (3.0 + 3.5 * ph) + float2(0.0, ph * 61.0 + 40.0));
         return (slow - 0.5) * 1.6 + (quick - 0.5) * 1.0;
     }
 
@@ -254,7 +276,7 @@ enum WorldShader {
         return tint * b * b * (exp(-r2 / 0.8) + halo) * twinkle;
     }
 
-    float3 nm_mirror(float2 w, float2 px, float2 viewport, float ppp, float shallow, float time, float4 moonAt, float moonRadiusPx) {
+    float3 nm_mirror(float2 w, float2 px, float2 anchored, float2 viewport, float ppp, float shallow, float time, float4 moonAt, float moonRadiusPx) {
         // Black glass, dead and still, as the launcher's lake: it gives back
         // the sky and nothing else, a little paler toward the top of the
         // view; the stars where they stand; and the moon whole, with its
@@ -262,10 +284,12 @@ enum WorldShader {
         float2 uv = px / viewport;
         float3 c = float3(0.004, 0.007, 0.016) + float3(0.010, 0.014, 0.026) * (1.0 - uv.y);
         c = mix(c, float3(0.020, 0.027, 0.036), shallow * 0.8);
-        // Reflected stars, fixed to the screen like the sky, sized in points:
-        // many faint, fewer bright, and a rare few brighter still.
-        float3 stars = nm_reflectedStar(px, ppp, 10.0, 0.95, 0.0, time) * 0.45 + nm_reflectedStar(px, ppp, 37.0, 0.72, 17.0, time) * 1.2
-            + nm_reflectedStar(px, ppp, 83.0, 0.74, 29.0, time) * 2.2;
+        // Reflected stars, held by the water as the moon is, so the two move
+        // together as the map is panned; sized in points: many faint, fewer
+        // bright, and a rare few brighter still.
+        float3 stars = nm_reflectedStar(anchored, ppp, 10.0, 0.95, 0.0, time) * 0.45
+            + nm_reflectedStar(anchored, ppp, 37.0, 0.72, 17.0, time) * 1.2
+            + nm_reflectedStar(anchored, ppp, 83.0, 0.74, 29.0, time) * 2.2;
         c += stars * (1.0 - 0.75 * shallow);
         // The moon lies in the water over the lake's deepest heart, crisp
         // because nothing moves: the launcher's moon, its glow and breath
@@ -296,10 +320,15 @@ enum WorldShader {
 
     float3 nm_world(float2 px, float2 viewport, float scale, float time, float2 centre, float radius, float ppp, float4 highlight, float4 moon NM_TEXTURE_ARGUMENT) {
         float2 w = (px - viewport * 0.5) / scale + centre;
+        // Where a point of the world lies, in pixels from the world's own
+        // origin: what is held by the world (the stars in its water, the
+        // moon there, the glints on its salt) moves with it as the map is
+        // panned, yet keeps its size in points at every zoom.
+        float2 anchored = w * scale;
         float2 h = nm_hexAt(w);
         if (nm_hexLength(h) > radius) {
             // Beyond the Spine: the dark, with a few cold stars.
-            return float3(0.003, 0.004, 0.008) + float3(0.5, 0.55, 0.7) * nm_star(px, ppp, 23.0, 0.8, 5.0, time) * 0.5;
+            return float3(0.003, 0.004, 0.008) + float3(0.5, 0.55, 0.7) * nm_star(anchored, ppp, 23.0, 0.8, 5.0, time) * 0.5;
         }
 
         float4 tile = NM_TILE(h + radius);
@@ -388,7 +417,7 @@ enum WorldShader {
         float3 wet = float3(0.0);
         if (shore < 0.999) {
             float shallow = 1.0 - deep / max(total - land, 0.0001);
-            wet = nm_mirror(w, px, viewport, ppp, clamp(shallow, 0.0, 1.0), time, moon, moon.z * scale);
+            wet = nm_mirror(w, px, anchored, viewport, ppp, clamp(shallow, 0.0, 1.0), time, moon, moon.z * scale);
             // A pale line of salt where the dead water meets the land.
             wet += float3(0.32, 0.33, 0.36) * exp(-abs(landness - 0.43) / 0.025) * 0.5;
             wet += float3(0.40, 0.46, 0.60) * exp(-abs(landness - 0.47) / 0.012) * 0.3;
@@ -423,10 +452,12 @@ enum WorldShader {
         }
         c = mix(wet, ground, shore);
 
-        // Warm lantern light round each hold: on the land, and a faint
-        // trembling reflection on the water beside it.
+        // Warm lantern light round each hold: on the land, and its faint
+        // reflection in the still water beside it. The lamp flickers as a
+        // flame does, its phase drifting smoothly across the land so that
+        // no seam shows where one stretch of it meets the next.
         if (lamp > 0.001) {
-            float flicker = 0.92 + 0.08 * sin(time * 2.3 + nm_hash(floor(w)) * 20.0);
+            float flicker = 0.92 + 0.08 * sin(nm_spin(time, 2.3) + nm_noise(w * 0.35) * 12.0);
             float3 lantern = float3(1.0, 0.72, 0.42);
             c += lantern * lamp * flicker * (0.42 * shore + 0.2 * water);
         }
@@ -437,9 +468,9 @@ enum WorldShader {
                 float2 fp = d * 3.2;
                 if (feature < 1.5) {
                     // Moonsalt bed: a glittering crust.
-                    float glint = nm_star(px, ppp, 6.0, 0.82, 31.0, time);
-                    float phase = nm_hash(floor(px / (6.0 * ppp)) + 2.0) * 40.0;
-                    c += float3(0.78, 0.84, 1.0) * glint * 1.4 * (0.4 + 0.6 * sin(time * 1.1 + phase)) * (1.0 - smoothstep(0.55, 0.85, length(d)));
+                    float glint = nm_star(anchored, ppp, 6.0, 0.82, 31.0, time);
+                    float phase = nm_hash(floor(anchored / (6.0 * ppp)) + 2.0) * 40.0;
+                    c += float3(0.78, 0.84, 1.0) * glint * 1.4 * (0.4 + 0.6 * sin(nm_spin(time, 1.1) + phase)) * (1.0 - smoothstep(0.55, 0.85, length(d)));
                 } else if (feature < 2.5) {
                     // Elder grove: a black heart of ancient trees.
                     c *= 0.45 + 0.55 * smoothstep(0.15, 0.8, length(fp) / 2.2);
@@ -483,7 +514,7 @@ enum WorldShader {
             c += float3(0.40, 0.44, 0.52) * (1.0 - smoothstep(0.0, 0.05, edge.x)) * 0.8 + float3(0.03, 0.035, 0.045);
         }
         if (abs(h.x - selected.x) + abs(h.y - selected.y) < 0.5) {
-            float pulse = 0.75 + 0.25 * sin(time * 2.4);
+            float pulse = 0.75 + 0.25 * sin(nm_spin(time, 2.4));
             c += float3(0.75, 0.80, 0.92) * (1.0 - smoothstep(0.0, 0.06, edge.x)) * pulse + float3(0.04, 0.045, 0.06);
         }
 

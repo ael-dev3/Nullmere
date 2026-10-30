@@ -36,7 +36,7 @@ struct ChroniclePanel: View {
                                 if let spoken = session.spoken[.chronicle(item.offset)] {
                                     Text(verbatim: spoken)
                                         .font(.nm(11.5, weight: .light).italic())
-                                        .foregroundStyle(Palette.glow)
+                                        .foregroundStyle(Palette.glowWords)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }

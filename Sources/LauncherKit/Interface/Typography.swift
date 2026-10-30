@@ -12,13 +12,16 @@ public enum Palette {
     static let nightRGB = (red: 0.016, green: 0.020, blue: 0.030)
 
     /// How much of the ink a text shows at the strength the design asks,
-    /// made to read: never under 0.56, which reads at 5.5 to 1 on the dark;
-    /// with Increase Contrast on, most of the way to full, 12 to 1 or more,
-    /// keeping what is fainter than what. Only a choice that can't be made
-    /// yet stays fainter.
+    /// made to read: never under nine tenths, so that even a full stop or a
+    /// middle dot, whose few pixels are never wholly covered at a 1x
+    /// display's size, still stands well clear of the dark; with Increase
+    /// Contrast on, the full ink. What the design asks fainter is fainter
+    /// still, by a little: the type's size and weight carry the rest.
+    public static let textFloor = 0.9
+
     public static func textStrength(_ opacity: Double) -> Double {
-        let readable = Swift.max(opacity, 0.56)
-        return Contrast.shared.isIncreased ? 0.6 + 0.4 * readable : readable
+        if Contrast.shared.isIncreased { return 1 }
+        return textFloor + (1 - textFloor) * Swift.min(Swift.max(opacity, 0), 1)
     }
 
     /// The pale type at that strength, and solid: mixed from the dark to the
@@ -63,7 +66,15 @@ extension CGFloat {
     @MainActor
     public static func launcherType(_ size: CGFloat, unit: CGFloat) -> CGFloat {
         let text = TextSize.shared
-        return Swift.max(size * unit * text.scale, text.isLarger ? TextSize.smallestLarger : 9)
+        return Swift.max(size * unit * text.scale, text.isLarger ? TextSize.smallestLarger : TextSize.smallestLauncher)
+    }
+}
+
+extension Font {
+    /// The launcher's type at a size from `launcherType`, at a weight that
+    /// holds its contrast there (see `TextSize.readable`).
+    public static func launcher(_ size: CGFloat, weight: Font.Weight) -> Font {
+        .system(size: size, weight: TextSize.readable(weight, at: size))
     }
 }
 
@@ -103,7 +114,7 @@ public struct SpacedText: View {
 
     public var body: some View {
         Text(verbatim: text)
-            .font(.system(size: size, weight: weight))
+            .font(.system(size: size, weight: TextSize.readable(weight, at: size)))
             .tracking(size * tracking)
             .padding(.leading, balanced ? size * tracking : 0)
             .fixedSize()

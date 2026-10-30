@@ -1,3 +1,4 @@
+import LauncherCore
 import Metal
 import XCTest
 @testable import NullmereCore
@@ -10,6 +11,18 @@ import XCTest
 final class WorldMetalViewTests: XCTestCase {
     /// A shader library missing the world's vertex or fragment function is
     /// refused by name, so a broken build says what it lacks.
+    /// The map starts over with the scene's clock without a jump: every
+    /// motion in it comes round a whole number of times in the period, and
+    /// the lanterns flicker with no seam across the land.
+    func testTheMapStartsOverWithoutAJump() throws {
+        let source = WorldShader.source
+        XCTAssertTrue(source.contains("#define NM_CLOCK_PERIOD \(String(format: "%.1f", SceneClock.period))"))
+        for straight in ["sin(time *", "time * 0.012", "nm_hash(floor(w))"] {
+            XCTAssertFalse(source.contains(straight), "No \(straight) left to jump or seam")
+        }
+        XCTAssertFalse(source.contains("trembling"), "The water is still")
+    }
+
     func testARendererWithoutItsFunctionsSaysWhichIsMissing() throws {
         guard let device = WorldMetalView.systemDevice else { throw XCTSkip("No Metal device available") }
         func library(_ functions: String) throws -> any MTLLibrary {

@@ -124,7 +124,7 @@ final class EndingTests: XCTestCase {
         XCTAssertTrue(standing.contains("\(session.playerHouse.title) (you)"), standing)
         let chart = StoryChart(state: session.state, player: session.player).makeChartDescriptor()
         XCTAssertEqual(chart.series.count, session.state.houses.count, "A series for every House")
-        XCTAssertEqual(chart.series.first { $0.name.hasPrefix("You") }?.dataPoints.count, mine.count)
+        XCTAssertEqual(chart.series.first { $0.name?.hasPrefix("You") == true }?.dataPoints.count, mine.count)
         XCTAssertEqual(StoryChart.dash(for: session.player, player: session.player, differentiates: true), [], "The keeper's line solid")
         XCTAssertFalse(StoryChart.dash(for: (session.player + 1) % 12, player: session.player, differentiates: true).isEmpty)
         XCTAssertEqual(StoryChart.dash(for: (session.player + 1) % 12, player: session.player, differentiates: false), [])

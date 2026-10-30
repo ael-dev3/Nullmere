@@ -15,7 +15,7 @@ struct GuidePanel: View {
                     ForEach(Guide.sections) { section in
                         VStack(alignment: .leading, spacing: 6) {
                             Caps(section.title, size: 9, weight: .medium)
-                                .foregroundStyle(Palette.glow)
+                                .foregroundStyle(Palette.glowWords)
                                 .accessibilityAddTraits(.isHeader)
                             ForEach(section.lines, id: \.self) { line in
                                 Text(verbatim: line)

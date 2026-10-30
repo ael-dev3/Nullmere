@@ -287,7 +287,7 @@ jobs:
           echo "::group::Summary"
           grep -h "PERF \|SOUND \|LAYOUT \|LAKECLOSE \|MOONPATH \|STARS \|STILL \|MIST \|LAKEAFAR \|PERF-CHECK " build-test.log 2>/dev/null || true
           # Failures first, so warnings never crowd them out; each warning once.
-          grep -hE "error: |failed \(" build.log build-test.log 2>/dev/null | head -40 || true
+          grep -hE "error: |failed \(" build.log build-test.log 2>/dev/null | grep -v "^ *|" | awk '!seen[$0]++' | head -40 || true
           grep -h ": warning:" build.log build-test.log 2>/dev/null | sort -u | head -20 || true
           grep -h "Executed .* tests" build-test.log 2>/dev/null | tail -1 || true
           # Which tests skipped, and why, so a skip can't hide a test.
@@ -344,9 +344,7 @@ jobs:
       # beside it: last, so the end of the log holds it.
       - name: Texts measured
         if: always()
-        run: |
-          grep -hoE "UITEXT.*" build/ui-test.log 2>/dev/null | cut -c1-120 | sort -u | head -n 40 || true
-          grep -hoE "(UIDET|UIWHY).*" build/ui-test.log 2>/dev/null | cut -c1-260 | sort -u | head -n 60 || true
+        run: grep -hoE "UITEXT.*" build/ui-test.log 2>/dev/null | cut -c1-150 | sort -u | head -n 110 || true
 
   # The launcher's screens, printed where the long macOS log can't trim
   # them, for readers without access to the artifacts.

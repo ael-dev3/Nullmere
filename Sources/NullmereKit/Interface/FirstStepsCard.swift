@@ -9,7 +9,7 @@ struct FirstStepsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Caps("First steps", size: 8.5, weight: .medium).foregroundStyle(Palette.glow)
+                Caps("First steps", size: 8.5, weight: .medium).foregroundStyle(Palette.glowWords)
                 Spacer()
                 CloseButton(label: "Hide first steps", action: dismiss)
             }

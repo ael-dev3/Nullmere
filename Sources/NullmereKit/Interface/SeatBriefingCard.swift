@@ -37,7 +37,7 @@ struct SeatBriefingCard: View {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(verbatim: "\(index + 1)")
                             .font(.nm(11, weight: .medium).monospacedDigit())
-                            .foregroundStyle(Palette.glow)
+                            .foregroundStyle(Palette.glowWords)
                         Text(verbatim: step)
                             .font(.nm(12, weight: .light))
                             .foregroundStyle(Palette.text(0.88))

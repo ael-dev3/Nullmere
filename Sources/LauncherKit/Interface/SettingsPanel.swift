@@ -72,7 +72,7 @@ private struct SettingsRowView: View {
                     .foregroundStyle(Palette.text(isFocused ? 1 : 0.8))
                 if let note {
                     Text(verbatim: note)
-                        .font(.system(size: .launcherType(9, unit: unit), weight: .regular))
+                        .font(.launcher(.launcherType(9, unit: unit), weight: .regular))
                         .foregroundStyle(Palette.text(0.75))
                 }
             }

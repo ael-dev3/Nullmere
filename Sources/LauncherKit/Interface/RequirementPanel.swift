@@ -40,7 +40,7 @@ public struct RequirementView: View {
             PanelHeader(title: readiness.headline)
 
             Text(verbatim: readiness.explanation)
-                .font(.system(size: .launcherType(13, unit: unit), weight: .regular))
+                .font(.launcher(.launcherType(13, unit: unit), weight: .regular))
                 .lineSpacing(6 * unit)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Palette.text(0.8))

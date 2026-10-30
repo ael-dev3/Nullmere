@@ -636,7 +636,7 @@ struct ForecastCard: View {
                 Text(verbatim: "Out of their reach").font(.nm(10)).foregroundStyle(Palette.text(0.55))
             }
             if let verdict {
-                Text(verbatim: verdict).font(.nm(10, weight: .medium)).foregroundStyle(Palette.glow)
+                Text(verbatim: verdict).font(.nm(10, weight: .medium)).foregroundStyle(Palette.glowWords)
             }
         }
         .padding(.horizontal, 10)

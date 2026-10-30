@@ -63,7 +63,7 @@ private struct NewsHeadline: View {
                     SpacedText(item.date.shortText, size: .launcherType(9, unit: unit), weight: .regular, tracking: 0.3, balanced: false)
                         .foregroundStyle(Palette.text(isSelected ? 0.68 : 0.5))
                     Text(verbatim: item.title.uppercased())
-                        .font(.system(size: .launcherType(11.5, unit: unit), weight: .light))
+                        .font(.launcher(.launcherType(11.5, unit: unit), weight: .light))
                         .tracking(11.5 * unit * 0.2)
                         .lineSpacing(2 * unit)
                         .lineLimit(2)
@@ -94,7 +94,7 @@ private struct NewsStory: View {
             if let item {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(verbatim: item.title)
-                        .font(.system(size: .launcherType(18, unit: unit), weight: .light))
+                        .font(.launcher(.launcherType(18, unit: unit), weight: .light))
                         .tracking(18 * unit * 0.04)
                         .foregroundStyle(Palette.text(0.96))
                         .lineLimit(2)
@@ -102,7 +102,7 @@ private struct NewsStory: View {
                         .accessibilityAddTraits(.isHeader)
 
                     Text(verbatim: item.body)
-                        .font(.system(size: .launcherType(12.5, unit: unit), weight: .regular))
+                        .font(.launcher(.launcherType(12.5, unit: unit), weight: .regular))
                         .lineSpacing(5 * unit)
                         .foregroundStyle(Palette.text(0.82))
                         .lineLimit(5)

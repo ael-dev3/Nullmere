@@ -42,6 +42,11 @@ final class LakeShaderTests: XCTestCase {
         XCTAssertEqual(SceneClock.period.truncatingRemainder(dividingBy: star), 0)
         XCTAssertEqual(SceneClock.period.truncatingRemainder(dividingBy: 9), 0)
         XCTAssertTrue(LakeShader.source.contains("sin(NM_TAU * fract(time / 9.0))"), "The moon's breath is nine seconds")
+        // Every other motion comes round a whole number of times in it: the
+        // haze and the mist drift round a circle, the stars flicker along one.
+        XCTAssertEqual(try define("NM_CLOCK_PERIOD"), SceneClock.period)
+        XCTAssertFalse(LakeShader.source.contains("time * 0.012"), "No drift in a straight line, which would jump")
+        XCTAssertTrue(LakeShader.source.contains("nm_drift(time, 0.012)"))
     }
 
     private func define(_ name: String) throws -> Double {

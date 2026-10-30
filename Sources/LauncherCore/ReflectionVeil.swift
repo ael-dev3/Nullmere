@@ -1,8 +1,9 @@
-/// How far an open panel has sunk the moon's image into the lake.
+/// How far an open panel has dimmed the moon's image in the lake.
 ///
-/// A panel on the water veils the moon's reflection, so the panel's words
-/// lie on black water and stars rather than on a pale disc; closing the
-/// panel lets the image rise again. The veil moves at an even pace between
+/// A panel on the water veils the moon's reflection, dimming it to a ghost
+/// of itself, so the panel's words lie on dark water and stars rather than
+/// on a pale disc, while the moon is still given back; closing the panel
+/// lets the image brighten again. The veil moves at an even pace between
 /// 0 and 1 over `duration` seconds, and is drawn eased in and out.
 public struct ReflectionVeil: Sendable, Equatable {
     public static let duration = 0.7

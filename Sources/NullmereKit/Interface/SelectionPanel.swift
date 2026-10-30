@@ -151,7 +151,7 @@ private struct ProgressLine: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack {
-                Caps(title, size: 9.5, weight: .medium).foregroundStyle(Palette.glow)
+                Caps(title, size: 9.5, weight: .medium).foregroundStyle(Palette.glowWords)
                 Spacer()
                 Text(verbatim: detail).font(.nm(10.5)).foregroundStyle(Palette.text(0.65))
             }
@@ -336,7 +336,7 @@ private struct ForeignHoldPanel: View {
             if hold.level(.moonspire) > 0 {
                 Text(verbatim: "Its Moonspire rises: stage \(hold.level(.moonspire)) of \(BuildingKind.moonspire.maxLevel).")
                     .font(.nm(11))
-                    .foregroundStyle(Palette.glow)
+                    .foregroundStyle(Palette.glowWords)
             }
             Text(verbatim: stance == .war
                  ? "Break its ward with Spears, Riders or Bows; Spears or Riders take it once the ward falls."

@@ -521,10 +521,17 @@ twice.
 
 Larger text (Text in either Settings, or ⇧⌘+ in the Watch menu) sets all
 the type a fifth larger, the launcher's and the game's, none of it under
-eleven points; the panels grow to hold it. Every text reads by one rule
-of contrast, in the launcher as in the game: solid, never fainter than 5.5
-to 1 on the dark and, with Increase Contrast, 12 to 1 or more, the fainter
-still fainter; type under 14 points is never thinner than regular. VoiceOver reads the map, the panels and every notice.
+twelve and a half points; the panels grow to hold it. Every text reads by
+one rule of contrast, in the launcher as in the game, made so that even a
+full stop or a middle dot, a pixel or two across on a 1x display, stands
+clear of the dark: solid, never fainter than nine tenths of the ink (the
+full ink with Increase Contrast), on panels that are wholly dark, never
+over the map showing through; words never under eleven points and spaced
+capitals never under nine and a half; nothing under fourteen points
+thinner than regular, nor under twelve lighter than medium. A House's
+colour colouring words is lifted toward the ink to read at ten to one.
+Xcode's accessibility audit holds every screen to it (`scripts/ui-test.sh`).
+VoiceOver reads the map, the panels and every notice.
 
 Each age's lake grows from the realm's private words; the realm keeps the
 world, so there is nothing to save.
@@ -575,7 +582,8 @@ There is no music in the launcher; the game makes its own sound as it plays.
   appears. The menu is a single row of
   light, spaced capitals on the water, and the chosen word glows faintly
   over a hairline. Panels darken the water beneath them so their text stays
-  legible over the reflection.
+  legible over the reflection, and the moon's image dims under them to a
+  ghost of itself, never gone, brightening again as they are put away.
 - **Rendering.** One fragment shader draws the whole scene procedurally. It
   is compiled at runtime from
   [`LakeShader.swift`](Sources/LauncherKit/Backdrop/LakeShader.swift), so plain

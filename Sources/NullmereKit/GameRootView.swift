@@ -214,7 +214,7 @@ private struct KeyHints: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             // As dark as a panel, so it reads over the palest ground.
-            .background(Palette.panel.opacity(0.92), in: RoundedRectangle(cornerRadius: 3))
+            .background(Palette.panel, in: RoundedRectangle(cornerRadius: 3))
             .accessibilityHidden(true)
     }
 }
@@ -229,7 +229,7 @@ private struct CounselCard: View {
         if !hidden, let advice = session.counsel {
             HStack(alignment: .top, spacing: 10) {
                 Caps("Counsel", size: 8, weight: .medium)
-                    .foregroundStyle(Palette.glow)
+                    .foregroundStyle(Palette.glowWords)
                     .padding(.top, 2)
                 Text(verbatim: advice)
                     .font(.nm(11.5, weight: .light))

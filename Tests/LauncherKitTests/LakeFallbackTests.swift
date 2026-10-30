@@ -48,7 +48,7 @@ final class LakeFallbackTests: XCTestCase {
         XCTAssertGreaterThan(mirrored, 20, "and lie mirrored in the water")
     }
 
-    func testTheMoonIsWholeAboveAndSinksUnderAPanel() throws {
+    func testTheMoonIsWholeAboveAndDimsUnderAPanel() throws {
         let open = try paint(), veiled = try paint(veil: 1)
         let moonX = Int(LakeComposition.moonX * Double(width))
         let moonY = Int((1 - LakeComposition.moonY) * Double(height))
@@ -56,6 +56,7 @@ final class LakeFallbackTests: XCTestCase {
         XCTAssertGreaterThan(light(open, moonX, moonY), 650, "The moon")
         XCTAssertGreaterThan(light(open, moonX, imageY), 450, "and its image in the water")
         XCTAssertEqual(light(veiled, moonX, moonY), light(open, moonX, moonY), accuracy: 3, "The moon stays under a panel")
-        XCTAssertLessThan(light(veiled, moonX, imageY), 120, "its image sinks")
+        XCTAssertLessThan(light(veiled, moonX, imageY), light(open, moonX, imageY) * 4 / 10, "its image dims")
+        XCTAssertGreaterThan(light(veiled, moonX, imageY), light(open, moonX, imageY) / 12, "but is never gone")
     }
 }

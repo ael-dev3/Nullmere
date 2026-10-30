@@ -705,11 +705,13 @@ final class TextSizeTests: XCTestCase {
     }
 
     /// Thin type only at display sizes: small text is never thinner than
-    /// regular, so its strokes hold their contrast.
+    /// regular, and the smallest never lighter than medium, so its strokes
+    /// hold their contrast.
     func testSmallTypeIsNeverThin() {
-        XCTAssertEqual(Font.readable(.light, at: 11.5), .regular)
-        XCTAssertEqual(Font.readable(.thin, at: 9), .regular)
-        XCTAssertEqual(Font.readable(.medium, at: 9), .medium, "Heavier than regular, as asked")
+        XCTAssertEqual(Font.readable(.light, at: 12.5), .regular)
+        XCTAssertEqual(Font.readable(.thin, at: 9), .medium)
+        XCTAssertEqual(Font.readable(.light, at: 11.5), .medium)
+        XCTAssertEqual(Font.readable(.semibold, at: 9), .semibold, "Heavier than medium, as asked")
         XCTAssertEqual(Font.readable(.thin, at: 26), .thin, "Display sizes keep their thin type")
     }
 

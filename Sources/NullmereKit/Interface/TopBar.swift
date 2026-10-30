@@ -72,9 +72,9 @@ struct TopBar: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 10)
-        .background(
-            LinearGradient(colors: [Color.black.opacity(0.88), Color.black.opacity(0.55)], startPoint: .top, endPoint: .bottom)
-        )
+        // Wholly dark, as the panels are: the map never shows through behind
+        // the bar's type.
+        .background(Palette.panel)
         .overlay(alignment: .bottom) { Rule(opacity: 0.25) }
     }
 
@@ -169,7 +169,7 @@ struct IncomeCard: View {
                     .foregroundStyle(breakdown.net < 0 ? Palette.bad : Palette.ink)
             }
             if let omen = breakdown.omen {
-                Text(verbatim: omen).font(.nm(10)).foregroundStyle(Palette.glow)
+                Text(verbatim: omen).font(.nm(10)).foregroundStyle(Palette.glowWords)
             }
         }
         .padding(14)
@@ -315,7 +315,7 @@ struct OmenBand: View {
         HStack(spacing: 8) {
             Circle().fill(Palette.glow).frame(width: 4, height: 4)
             Caps(omen.kind.title, size: 8.5, weight: .medium, tracking: 0.3)
-                .foregroundStyle(Palette.glow)
+                .foregroundStyle(Palette.glowWords)
             Text(verbatim: "\(omen.kind.effect) \(OmenBand.lasting(left))")
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.75))
@@ -324,7 +324,7 @@ struct OmenBand: View {
         .fixedSize()
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
-        .background(RoundedRectangle(cornerRadius: 3).fill(Palette.panel.opacity(0.92)))
+        .background(RoundedRectangle(cornerRadius: 3).fill(Palette.panel))
         .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Palette.glow.opacity(0.25), lineWidth: 1))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Omen: \(omen.kind.title). \(omen.kind.effect) \(OmenBand.lasting(left))")

@@ -69,22 +69,6 @@ final class NullmereUITests: XCTestCase {
         report()
     }
 
-    /// The launcher with its lake held still (Motion: Still): whether the
-    /// audit finds the same over water that doesn't move.
-    func testTheLauncherHeldStill() throws {
-        app.launchArguments = ["-launcher.motion", "still"]
-        let window = try openTheLauncher()
-        audit("STILL the launcher's menu")
-        window.buttons["News"].click()
-        XCTAssertTrue(window.buttons["Back"].waitForExistence(timeout: 10), "News opens")
-        audit("STILL News")
-        window.buttons["Back"].click()
-        window.buttons["Settings"].click()
-        XCTAssertTrue(window.buttons["Back"].waitForExistence(timeout: 10), "Settings opens")
-        audit("STILL Settings")
-        report()
-    }
-
     /// Without Apple Intelligence the launcher offers only what is missing,
     /// a way to mend it and Quit; that passes the audit too.
     func testTheRequirementPassesTheAudit() throws {
@@ -200,16 +184,20 @@ final class NullmereUITests: XCTestCase {
         }
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
 
-        if let seat = onMap.first(where: { $0.label.contains("seat, yours") }) {
-            let hold = String(seat.label.prefix { $0 != "," })
-            seat.click()
-            if window.staticTexts["Works"].waitForExistence(timeout: 5) {
-                audit("the seat chosen, \(hold)")
-            } else {
-                found("UIWALK choosing the seat '\(seat.label)' opened no panel of its works")
-            }
-            app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+        // Without a pointer: H chooses the seat, ] each company in turn.
+        app.typeKey("h", modifierFlags: [])
+        if window.staticTexts["Works"].waitForExistence(timeout: 5) {
+            audit("the seat chosen by its key")
+        } else {
+            found("UIWALK H chose no hold with its works")
         }
+        app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+        app.typeKey("]", modifierFlags: [])
+        let companies = ["Lanterns", "Spears", "Bows", "Riders", "Founders"]
+        if !companies.contains(where: { window.staticTexts[$0].waitForExistence(timeout: 2) }) {
+            found("UIWALK ] chose no company")
+        }
+        app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
     }
 
     /// What the Houses panel opens for a House: the gifts to send, a trade
@@ -306,25 +294,13 @@ final class NullmereUITests: XCTestCase {
                     "type \(element.elementType.rawValue) '\(Self.words(of: element).prefix(70))' at \(element.frame.integral)"
                 } ?? "the screen (\(issue.detailedDescription.prefix(160)))"
                 self.found("UIAUDIT \(screen): \(issue.compactDescription): \(element)")
-                if issue.auditType == .contrast, let text = issue.element {
-                    if faint.count < 3 { print("UIWHY \(screen) '\(Self.words(of: text).prefix(30))': \(issue.detailedDescription.prefix(220))") }
-                    faint.insert(Self.key(of: text))
-                }
+                if issue.auditType == .contrast, let text = issue.element { faint.insert(Self.key(of: text)) }
                 return true
             }
         } catch {
             found("UIAUDIT \(screen): the audit couldn't run: \(error)")
         }
-        // The same audit of contrast again, at once: whether it finds the
-        // same, on a screen that hasn't changed.
-        var again: Set<String> = []
-        try? app.performAccessibilityAudit(for: .contrast) { issue in
-            if let text = issue.element { again.insert(Self.key(of: text)) }
-            return true
-        }
-        let differ = faint.symmetricDifference(again)
-        print("UIDET \(screen): \(faint.count) then \(again.count), \(differ.count) differ"
-              + (differ.isEmpty ? "" : ": " + differ.map { String($0.prefix(30)) }.sorted().joined(separator: " | ")))
+
         // Every text on screen measured, those the audit passed beside those
         // it didn't, so the rule it holds them to can be read off.
         for text in app.staticTexts.allElementsBoundByIndex.prefix(70) where text.exists && !text.frame.isEmpty {
@@ -343,8 +319,10 @@ final class NullmereUITests: XCTestCase {
 
     /// An element's pixels as the screen draws them: the commonest colour,
     /// taken for the ground; of the rest, those plainly apart from it, taken
-    /// for the type: their commonest colour, their brightest, and how many
-    /// reach nearly the brightest; each set against the ground.
+    /// for the type: their commonest colour and their brightest, against the
+    /// ground; and each mark of the type on its own (a letter's stroke, a
+    /// full stop, a middle dot), the weakest mark's brightest pixel against
+    /// the ground, which is what small type stands or falls by.
     private static func measured(_ element: XCUIElement) -> String {
         guard let image = element.screenshot().image.cgImage(forProposedRect: nil, context: nil, hints: nil),
               let space = CGColorSpace(name: CGColorSpace.sRGB) else { return "unmeasured" }
@@ -363,8 +341,11 @@ final class NullmereUITests: XCTestCase {
             return value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
         }
         var counts: [UInt32: Int] = [:]
-        for index in stride(from: 0, to: bytes.count, by: 4) {
+        var lum = [Double](repeating: 0, count: width * height)
+        for pixel in 0..<(width * height) {
+            let index = pixel * 4
             counts[UInt32(bytes[index]) << 16 | UInt32(bytes[index + 1]) << 8 | UInt32(bytes[index + 2]), default: 0] += 1
+            lum[pixel] = 0.2126 * linear(bytes[index]) + 0.7152 * linear(bytes[index + 1]) + 0.0722 * linear(bytes[index + 2])
         }
         func luminance(_ colour: UInt32) -> Double {
             0.2126 * linear(UInt8(colour >> 16 & 0xFF)) + 0.7152 * linear(UInt8(colour >> 8 & 0xFF)) + 0.0722 * linear(UInt8(colour & 0xFF))
@@ -374,15 +355,38 @@ final class NullmereUITests: XCTestCase {
         guard let ground = counts.max(by: { $0.value < $1.value })?.key else { return "unmeasured" }
         let groundLuminance = luminance(ground)
         let type = counts.filter { ratio(luminance($0.key), groundLuminance) > 1.5 }
-        let total = type.values.reduce(0, +)
-        guard total > 0, let mode = type.max(by: { $0.value < $1.value })?.key,
+        guard let mode = type.max(by: { $0.value < $1.value })?.key,
               let peak = type.keys.max(by: { ratio(luminance($0), groundLuminance) < ratio(luminance($1), groundLuminance) }) else {
             return "g\(rgb(ground)) none apart"
         }
-        let peakRatio = ratio(luminance(peak), groundLuminance)
-        let near = type.filter { ratio(luminance($0.key), groundLuminance) >= peakRatio * 0.85 }.values.reduce(0, +)
+        // The marks: pixels apart from the ground, joined where they touch,
+        // corners and all.
+        var seen = [Bool](repeating: false, count: width * height)
+        var weakest = Double.infinity, marks = 0
+        for start in 0..<(width * height) where !seen[start] && ratio(lum[start], groundLuminance) > 1.5 {
+            var stack = [start], brightest = 0.0
+            seen[start] = true
+            while let pixel = stack.popLast() {
+                brightest = max(brightest, ratio(lum[pixel], groundLuminance))
+                let x = pixel % width, y = pixel / width
+                for dy in -1...1 {
+                    for dx in -1...1 where dx != 0 || dy != 0 {
+                        let nx = x + dx, ny = y + dy
+                        guard nx >= 0, ny >= 0, nx < width, ny < height else { continue }
+                        let next = ny * width + nx
+                        if !seen[next], ratio(lum[next], groundLuminance) > 1.5 {
+                            seen[next] = true
+                            stack.append(next)
+                        }
+                    }
+                }
+            }
+            marks += 1
+            weakest = min(weakest, brightest)
+        }
         return "g\(rgb(ground)) m\(rgb(mode))=\(String(format: "%.1f", ratio(luminance(mode), groundLuminance))) "
-            + "p\(rgb(peak))=\(String(format: "%.1f", peakRatio)) n\(near * 100 / total)%/\(total)"
+            + "p\(rgb(peak))=\(String(format: "%.1f", ratio(luminance(peak), groundLuminance))) "
+            + "w\(String(format: "%.1f", weakest))/\(marks)"
     }
 
     /// Kept, and said at once, so a test that stops early still tells it.

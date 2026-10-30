@@ -10,8 +10,11 @@ import SwiftUI
 enum Palette {
     static let ink = LauncherKit.Palette.ink
     static let glow = LauncherKit.Palette.glow
-    static let good = Color(red: 0.58, green: 0.80, blue: 0.66)
-    static let bad = Color(red: 0.90, green: 0.52, blue: 0.48)
+    static let good = Color(red: 0.62, green: 0.84, blue: 0.70)
+    /// Warning red, pale enough to read as words, a dot or a comma and all.
+    static let bad = Color(red: 0.95, green: 0.64, blue: 0.60)
+    /// The glow, as words: lifted toward the ink so small type in it reads.
+    static let glowWords = Color(red: 0.74, green: 0.82, blue: 0.94)
     static let panel = Color(red: 0.02, green: 0.025, blue: 0.035)
 
     /// One colour for each House that may sit around the lake, in the order
@@ -65,9 +68,9 @@ enum Palette {
     static let panelRGB = RGB(0.02, 0.025, 0.035)
     static let inkRGB = RGB(0.894, 0.918, 0.949)
 
-    /// How plainly a House's colour reads when it colours words: as the
-    /// rest of the type, seven to one on a panel's dark.
-    static let houseWordsContrast = 7.0
+    /// How plainly a House's colour reads when it colours words: ten to one
+    /// on a panel's dark, so its smallest strokes read too.
+    static let houseWordsContrast = 10.0
 
     /// The pale type, by the launcher's one rule: as faint as the design
     /// asks, but never too faint to read, and plainer with Increase Contrast.
@@ -130,7 +133,7 @@ struct Caps: View {
         // Spaced by the size the letters are drawn at, Larger type and all.
         let drawn = TextSize.shared.size(size)
         Text(verbatim: text.uppercased())
-            .font(.nm(size, weight: weight))
+            .font(.nmCaps(size, weight: weight))
             .tracking(drawn * tracking)
             .padding(.leading, centred ? drawn * tracking : 0)
             // Read as words, not as capitals to be spelled.
@@ -139,17 +142,26 @@ struct Caps: View {
 }
 
 extension Font {
-    /// The interface's type at a size, scaled by the reader's choice, and
-    /// never under the least that reads. Thin type is for display sizes:
-    /// below 14 points it is never thinner than regular, whose strokes
-    /// hold their contrast on any display.
+    /// The interface's words at a size, scaled by the reader's choice, and
+    /// never under the least that reads: eleven points, whose full stops
+    /// and dots still cover whole pixels; and at a weight that holds its
+    /// contrast at the size drawn.
     @MainActor
     static func nm(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: TextSize.shared.size(size), weight: Font.readable(weight, at: size))
+        let drawn = TextSize.shared.size(size, words: true)
+        return .system(size: drawn, weight: Font.readable(weight, at: drawn))
+    }
+
+    /// The interface's spaced capitals, whose strokes are all full height:
+    /// never under nine and a half points.
+    @MainActor
+    static func nmCaps(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        let drawn = TextSize.shared.size(size)
+        return .system(size: drawn, weight: Font.readable(weight, at: drawn))
     }
 
     static func readable(_ weight: Font.Weight, at size: CGFloat) -> Font.Weight {
-        size < 14 && [.ultraLight, .thin, .light].contains(weight) ? .regular : weight
+        TextSize.readable(weight, at: size)
     }
 }
 
@@ -171,9 +183,9 @@ struct PanelBackground: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            // Dark enough over the palest ground the map has (the salt flats
-            // by moonlight) that the type on it reads as on the night.
-            .background(Palette.panel.opacity(contrast == .increased ? 0.97 : 0.92))
+            // Wholly dark: what lies beneath, the salt flats by moonlight or
+            // a token, never shows through behind the type.
+            .background(Palette.panel)
             .overlay(
                 RoundedRectangle(cornerRadius: 3)
                     .strokeBorder(Palette.line(0.12), lineWidth: 1)

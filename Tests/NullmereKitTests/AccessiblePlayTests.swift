@@ -180,57 +180,88 @@ final class AccessiblePlayTests: XCTestCase {
         XCTAssertNil(session.awayReport)
     }
 
-    /// One rule for every text, the launcher's and the realm's: as faint as
-    /// the design asks but never fainter than reads, and solid, mixed from
-    /// the dark to the ink rather than laid over what lies beneath; with
-    /// Increase Contrast, all of it plain, the fainter still fainter. Lines
-    /// and meters by a rule of their own, so an empty one is never taken for
-    /// a full one.
+    /// One rule for every text, the launcher's and the realm's: never under
+    /// nine tenths of the ink, so a full stop or a middle dot still stands
+    /// clear of the dark at a 1x display's size; what is asked fainter a
+    /// little fainter still; solid, mixed from the dark to the ink rather
+    /// than laid over what lies beneath; with Increase Contrast, the full
+    /// ink. Lines and meters by a rule of their own, so an empty one is
+    /// never taken for a full one.
     func testOneRuleOfContrastForEveryText() {
         func resolved(_ colour: Color) -> Color.Resolved { colour.resolve(in: EnvironmentValues()) }
         func drawn(_ colour: Color) -> Double { Double(resolved(colour).opacity) }
-        let asked = stride(from: 0.1, through: 1.0, by: 0.05).map { $0 }
+        let asked = stride(from: 0.0, through: 1.0, by: 0.05).map { $0 }
         for opacity in asked {
-            XCTAssertEqual(LauncherKit.Palette.textStrength(opacity), max(opacity, 0.56), accuracy: 0.0001, "At \(opacity)")
+            XCTAssertEqual(LauncherKit.Palette.textStrength(opacity), 0.9 + 0.1 * opacity, accuracy: 0.0001, "At \(opacity)")
             XCTAssertEqual(drawn(NullmereKit.Palette.text(opacity)), 1, accuracy: 0.0001, "Solid at \(opacity)")
             XCTAssertEqual(resolved(NullmereKit.Palette.text(opacity)), resolved(LauncherKit.Palette.text(opacity)),
                            "The launcher's rule and the realm's are one")
         }
         let greens = asked.map { Double(resolved(NullmereKit.Palette.text($0)).green) }
         XCTAssertEqual(greens, greens.sorted(), "What is asked fainter is fainter")
-        XCTAssertEqual(resolved(NullmereKit.Palette.text(0.1)), resolved(NullmereKit.Palette.text(0.56)), "But never under the floor")
+        XCTAssertGreaterThanOrEqual(LauncherKit.Palette.textStrength(-1), 0.9, "But never under the floor")
         let full = resolved(NullmereKit.Palette.text(1)), ink = resolved(NullmereKit.Palette.ink)
         XCTAssertEqual(full.red, ink.red, accuracy: 0.002, "At full strength, the ink")
         XCTAssertEqual(full.blue, ink.blue, accuracy: 0.002)
         XCTAssertEqual(drawn(NullmereKit.Palette.line(0.1)), 0.1, accuracy: 0.001, "A line as faint as it is drawn")
 
         Contrast.shared.isIncreased = true
-        let raised = asked.map { LauncherKit.Palette.textStrength($0) }
-        XCTAssertGreaterThanOrEqual(raised.min() ?? 0, 0.82 - 0.001, "Every text plain")
-        XCTAssertEqual(raised, raised.sorted(), "What is fainter stays fainter")
-        XCTAssertLessThan(LauncherKit.Palette.textStrength(0.6), LauncherKit.Palette.textStrength(0.9))
+        defer { Contrast.shared.isIncreased = false }
+        XCTAssertTrue(asked.allSatisfy { LauncherKit.Palette.textStrength($0) == 1 }, "With Increase Contrast, every text the full ink")
         XCTAssertEqual(drawn(NullmereKit.Palette.line(0.1)), 0.2, accuracy: 0.001, "A track twice as plain")
         XCTAssertEqual(drawn(NullmereKit.Palette.line(0.3)), 0.4, accuracy: 0.001, "But no brighter than 0.4")
         XCTAssertEqual(drawn(NullmereKit.Palette.line(0.7)), 0.7, accuracy: 0.001, "A bright line as it was")
     }
 
+    /// No type too small or too thin to hold its contrast on a 1x display:
+    /// words never under eleven points and capitals never under nine and a
+    /// half, nothing below fourteen points thinner than regular, nothing
+    /// below twelve lighter than medium; Larger type larger still.
+    func testNoTypeIsTooSmallOrTooThin() {
+        TextSize.shared.isLarger = false
+        defer { TextSize.shared.isLarger = false }
+        XCTAssertEqual(TextSize.shared.size(7.5), 9.5, "Capitals")
+        XCTAssertEqual(TextSize.shared.size(9, words: true), 11, "Words")
+        XCTAssertEqual(TextSize.shared.size(13, words: true), 13)
+        XCTAssertEqual(CGFloat.launcherType(9.5, unit: 0.72), 10.5, "The launcher's, in a small window")
+        XCTAssertEqual(TextSize.readable(.regular, at: 11), .medium)
+        XCTAssertEqual(TextSize.readable(.light, at: 12.5), .regular)
+        XCTAssertEqual(TextSize.readable(.semibold, at: 9.5), .semibold, "Heavier, as asked")
+        XCTAssertEqual(TextSize.readable(.thin, at: 26), .thin, "Display sizes keep their thin type")
+        TextSize.shared.isLarger = true
+        XCTAssertEqual(TextSize.shared.size(7.5), 12.5)
+        XCTAssertEqual(TextSize.shared.size(9, words: true), 12.5)
+    }
+
     /// A House's colour, colouring words (a hold's name, the land it holds),
-    /// reads as plainly as the rest of the type, seven to one on a panel's
+    /// reads as plainly as the rest of the type, ten to one on a panel's
     /// dark, keeping its own hue; with Increase Contrast, plainer still.
     func testAHousesColourReadsWhenItColoursWords() {
         typealias Palette = NullmereKit.Palette
-        func strongest(_ colour: Palette.RGB) -> Int {
-            [colour.red, colour.green, colour.blue].firstIndex(of: max(colour.red, colour.green, colour.blue)) ?? 0
+        /// Where a colour lies round the colour wheel, in degrees; a grey has
+        /// no hue to keep.
+        func hue(_ colour: Palette.RGB) -> Double? {
+            let most = max(colour.red, colour.green, colour.blue), least = min(colour.red, colour.green, colour.blue)
+            let spread = most - least
+            guard spread > 0.08 else { return nil }
+            let turn: Double
+            if most == colour.red { turn = (colour.green - colour.blue) / spread }
+            else if most == colour.green { turn = 2 + (colour.blue - colour.red) / spread }
+            else { turn = 4 + (colour.red - colour.green) / spread }
+            return (turn * 60 + 360).truncatingRemainder(dividingBy: 360)
         }
         for index in Palette.houseRGB.indices {
             let words = Palette.houseWordsRGB(index)
-            XCTAssertGreaterThanOrEqual(words.contrast(with: Palette.panelRGB), 7, "House colour \(index)")
-            XCTAssertEqual(strongest(words), strongest(Palette.houseRGB[index]), "Its own hue, lifted: House colour \(index)")
+            XCTAssertGreaterThanOrEqual(words.contrast(with: Palette.panelRGB), 10, "House colour \(index)")
+            if let own = hue(Palette.houseRGB[index]), let lifted = hue(words) {
+                let apart = abs(own - lifted)
+                XCTAssertLessThan(min(apart, 360 - apart), 30, "Its own hue, lifted: House colour \(index)")
+            }
         }
         XCTAssertLessThan(Palette.houseRGB[1].contrast(with: Palette.panelRGB), 4.5, "The darkest House's colour needs the lift")
         Contrast.shared.isIncreased = true
         defer { Contrast.shared.isIncreased = false }
-        XCTAssertGreaterThanOrEqual(Palette.houseWordsRGB(1).contrast(with: Palette.panelRGB), 10)
+        XCTAssertGreaterThanOrEqual(Palette.houseWordsRGB(1).contrast(with: Palette.panelRGB), 13)
     }
 
     /// VoiceOver's cursor rings a hold or a company where it lies, about a
