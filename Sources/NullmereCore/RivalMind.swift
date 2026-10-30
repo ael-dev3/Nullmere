@@ -87,6 +87,7 @@ struct RivalMind {
             events += manage(hold.id, in: &state, random: &random)
         }
         events += pursueStudies(in: &state)
+        events += appointCommanders(in: &state)
         let garrisons = assignGarrisons(in: state)
         let visible = state.visibility(for: house)
         for unit in state.units(of: house).sorted(by: { $0.id < $1.id }) {
@@ -421,6 +422,27 @@ struct RivalMind {
             }
         }
         return []
+    }
+
+    /// Each commander free and whole to the head of a company of war at or
+    /// beside one of its holds: a warden to a garrison, the others to a
+    /// company outside the walls; of those, the strongest.
+    func appointCommanders(in state: inout GameState) -> [GameEvent] {
+        var events: [GameEvent] = []
+        let holds = state.holds(of: house).map(\.position)
+        for commander in state.commanders(of: house) where !commander.isWounded(at: state.watch) && state.company(ledBy: commander.id) == nil {
+            let candidates = state.units(of: house).filter { unit in
+                unit.kind.isMilitary && unit.leader == nil && holds.contains { $0.distance(to: unit.position) <= 1 }
+            }
+            func fits(_ unit: Unit) -> Int {
+                (commander.archetype == .warden) == holds.contains(unit.position) ? 1 : 0
+            }
+            guard let best = candidates.max(by: { a, b in
+                (fits(a), state.strength(of: a), -a.id) < (fits(b), state.strength(of: b), -b.id)
+            }) else { continue }
+            events += perform(.assign(commander: commander.id, unit: best.id), in: &state)
+        }
+        return events
     }
 
     /// Whether another House's hold stands within eight tiles of this one.

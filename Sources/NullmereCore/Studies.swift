@@ -370,6 +370,9 @@ extension GameState {
             houses[house].research.pursuit = nil
             houses[house].research.learn(pursuit.study, grade: pursuit.grade)
             events.append(.studyCompleted(house: house, study: pursuit.study, grade: pursuit.grade))
+            if pursuit.study == .bannerLore {
+                events += commanderJoins(house, why: "answers the banner of")
+            }
             if let tier = (2...Unit.highestTier).first(where: { Study.opening(tier: $0) == pursuit.study }) {
                 record(.learning, [house], "\(houses[house].title) masters \(pursuit.study.title): its companies of war may muster at tier \(BuildingKind.numeral(tier)).")
             } else if pursuit.study.circle >= 4 || pursuit.grade == pursuit.study.grades && pursuit.study.circle >= 3 {

@@ -529,6 +529,15 @@ realm; keepers are told in plain words, never a status code.
   wards, moves, sight, healing, commanders, and the tiers of companies of war.
   A higher Archive makes every study sooner. Stewards study too, each by its
   temper.
+- **Commanders.** Every House begins with a commander, and gains more as its
+  seat's Muster Hall reaches III and V and from Banner Lore, five at most.
+  Each is of an archetype (warden, vanguard, outrider, gleaner, wallbreaker)
+  and rises from level I to XXX with what its company lives through; its
+  four skills come at levels I, V, X and XX: three always strengthen the
+  company it leads, and one fires in battle once its fury has risen through
+  enough battles. A commander takes up a company of war at or beside one of
+  its House's holds; if the company falls, it is carried home wounded for
+  four watches.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is

@@ -87,7 +87,7 @@ extension GameState {
 
     /// How far a company sees, with its House's studies, under the omen there is.
     func sight(of unit: Unit) -> Int {
-        let range = unit.kind.sight + (map[unit.position]?.terrain.visionBonus ?? 0) + bonus(.sight, for: unit.owner)
+        let range = unit.kind.sight + (map[unit.position]?.terrain.visionBonus ?? 0) + bonus(.sight, for: unit)
         return omen?.kind == .risingMist ? max(1, range - 1) : range
     }
 

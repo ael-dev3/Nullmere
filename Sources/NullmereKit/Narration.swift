@@ -142,7 +142,8 @@ enum Narration {
             case .ascendancy: return Line(text: "\(house(outcome.winner)) is ascendant.", tone: .bad)
             case .dominion: return Line(text: "\(house(outcome.winner)) holds dominion over the lake.", tone: .bad)
             }
-        case .studyBegun, .studyCompleted:
+        case .studyBegun, .studyCompleted, .commanderJoined, .commanderAssigned, .commanderReleased, .commanderRose,
+             .commanderWounded, .skillFired:
             // The deeper systems' words are the rules' own.
             return state.tidings(of: event, for: viewer).map { Line(text: $0.text, tone: Narration.tone($0.tone)) }
         }

@@ -31,6 +31,11 @@ public enum Command: Codable, Equatable, Sendable {
     case offerTrade(Trade, to: Int, words: String?)
     /// Begin the next grade of a study at the House's Archive.
     case study(Study)
+    /// A commander takes up a company of war standing at or beside one of
+    /// the House's holds.
+    case assign(commander: Int, unit: Int)
+    /// A commander leaves its company, wherever it is, and rides home.
+    case unassign(commander: Int)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -86,6 +91,20 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case needsArchive(Int)
     /// A study, or a tier, that needs another study first, to this grade.
     case needsStudy(Study, Int)
+    /// No commander of the House's by that id.
+    case unknownCommander
+    /// A commander still mending, for so many watches.
+    case commanderWounded(Int)
+    /// A commander already at the head of a company.
+    case commanderLeads
+    /// A company with a commander already.
+    case alreadyLed
+    /// A kind of company no commander leads.
+    case cannotLead(UnitKind)
+    /// A company too far from its House's holds to take up a commander.
+    case awayFromHolds
+    /// A commander at the head of no company.
+    case notLeading
 
     public var description: String {
         switch self {
@@ -133,6 +152,13 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .needsArchive(let level): return "Needs an Archive \(BuildingKind.numeral(level))."
         case .needsStudy(let study, let grade):
             return "Needs the study of \(study.title)" + (study.grades > 1 ? " \(BuildingKind.numeral(grade))." : ".")
+        case .unknownCommander: return "No such commander serves your House."
+        case .commanderWounded(let watches): return "That commander is wounded; whole again in \(watches) watch\(watches == 1 ? "" : "es")."
+        case .commanderLeads: return "That commander already leads a company."
+        case .alreadyLed: return "That company already has a commander."
+        case .cannotLead(let kind): return "\(kind.title) take no commander."
+        case .awayFromHolds: return "A commander takes up a company at or beside one of your holds."
+        case .notLeading: return "That commander leads no company."
         }
     }
 }
@@ -167,6 +193,18 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case studyBegun(house: Int, study: Study, grade: Int)
     /// A House learns a grade of a study.
     case studyCompleted(house: Int, study: Study, grade: Int)
+    /// A commander comes to a House.
+    case commanderJoined(commander: Int, house: Int)
+    /// A commander takes up a company.
+    case commanderAssigned(commander: Int, unit: Int)
+    /// A commander leaves its company and rides home.
+    case commanderReleased(commander: Int)
+    /// A commander rises to a level.
+    case commanderRose(commander: Int, house: Int, level: Int)
+    /// A commander whose company fell is carried home wounded.
+    case commanderWounded(commander: Int, house: Int)
+    /// A commander's active skill fires in a battle.
+    case skillFired(commander: Int, house: Int, skill: Skill, at: Hex)
 }
 
 /// One exchange of blows.

@@ -75,6 +75,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// is made, so a keeper's view, the unexplored left as land, shows it
     /// in the same place from the first watch. Absent in older saves.
     public internal(set) var moonWater: DeepWater?
+    /// Every commander of the realm, each at its id's place; absent in
+    /// saves from before commanders, which raise them at the next watch.
+    var commanders: [Commander]?
 
     public var player: Int { houses.first { $0.isPlayer }?.id ?? 0 }
 
@@ -137,6 +140,7 @@ public struct GameState: Codable, Equatable, Sendable {
                 }
             }
         }
+        raiseFirstCommanders()
         refreshSight()
         takeSnapshot()
     }

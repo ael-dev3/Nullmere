@@ -1,16 +1,16 @@
 /// A company's figures as the rules reckon them: its kind's, raised by its
-/// tier and its House's studies. Every rule that weighs a company asks
-/// here, so what raises one raises it everywhere: in battle, on the march,
-/// in the forecast, and in its House's strength.
+/// tier, its House's studies and its commander. Every rule that weighs a
+/// company asks here, so what raises one raises it everywhere: in battle,
+/// on the march, in the forecast, and in its House's strength.
 extension GameState {
     /// A company's attack, in percent of its kind's at the first tier.
     public func attackPercent(of unit: Unit) -> Int {
-        Unit.tierMight[Unit.tierIndex(unit.tier, of: unit.kind)] * (100 + bonus(.attack(unit.kind), for: unit.owner)) / 100
+        Unit.tierMight[Unit.tierIndex(unit.tier, of: unit.kind)] * (100 + bonus(.attack(unit.kind), for: unit)) / 100
     }
 
     /// A company's defence, in percent of its kind's at the first tier.
     public func defensePercent(of unit: Unit) -> Int {
-        Unit.tierMight[Unit.tierIndex(unit.tier, of: unit.kind)] * (100 + bonus(.defense(unit.kind), for: unit.owner)) / 100
+        Unit.tierMight[Unit.tierIndex(unit.tier, of: unit.kind)] * (100 + bonus(.defense(unit.kind), for: unit)) / 100
     }
 
     /// A company's body, in percent of the first tier's: a blow takes that
@@ -21,7 +21,7 @@ extension GameState {
 
     /// Moves a company has in a watch.
     public func movement(of unit: Unit) -> Int {
-        unit.kind.movement + bonus(.moves(unit.kind), for: unit.owner)
+        unit.kind.movement + bonus(.moves(unit.kind), for: unit)
     }
 
     /// Grain a company eats each watch.
@@ -44,7 +44,7 @@ extension GameState {
     /// What a company's blow takes from a ward, before chance.
     public func wardDamage(by unit: Unit) -> Int {
         let damage = 12 + unit.kind.attack * 4 * unit.health * attackPercent(of: unit) / 10_000
-        return damage * (100 + bonus(.wardDamage, for: unit.owner)) / 100
+        return damage * (100 + bonus(.wardDamage, for: unit)) / 100
     }
 
     /// The highest tier of a kind a House has studied.

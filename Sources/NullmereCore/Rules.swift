@@ -47,6 +47,10 @@ extension GameState {
             return try offerTrade(trade, from: house, to: target, words: words.flatMap(Envoy.carried))
         case let .study(study):
             return try beginStudy(study, as: house)
+        case let .assign(commanderID, unitID):
+            return try assign(commanderID, to: unitID, as: house)
+        case let .unassign(commanderID):
+            return try unassign(commanderID, as: house)
         }
     }
 
@@ -208,9 +212,14 @@ extension GameState {
         let defender = unit(defenderID)!
         let ranged = attacker.position.distance(to: hex) > 1
         let (attack, defense) = strengths(of: attacker, against: defender, at: hex)
+        // A commander whose fury is ready fires its skill in this battle.
+        let attackerFired = furyReady(of: attacker), defenderFired = furyReady(of: defender)
+        let attackerFury = fury(of: attacker), defenderFury = fury(of: defender)
 
-        let dealt = bodily(max(5, 70 * attack / (attack + defense) * random.int(in: 80...120) / 100), on: defender)
-        let taken = ranged ? 0 : bodily(70 * defense / (attack + defense) * random.int(in: 80...120) / 100, on: attacker)
+        let dealt = bodily(GameState.furious(max(5, 70 * attack / (attack + defense) * random.int(in: 80...120) / 100),
+                                             dealtBy: attackerFury, takenBy: defenderFury), on: defender)
+        let taken = ranged ? 0 : bodily(GameState.furious(70 * defense / (attack + defense) * random.int(in: 80...120) / 100,
+                                                          dealtBy: defenderFury, takenBy: attackerFury), on: attacker)
 
         var events: [GameEvent] = []
         let defenderFell = applyDamage(dealt, to: defenderID, events: &events)
@@ -218,6 +227,10 @@ extension GameState {
         // Those who live through a battle learn from it.
         events += gainExperience(attackerID)
         events += gainExperience(defenderID)
+        events += stirCommanders([
+            Stir(unit: attacker, fired: attackerFired, fell: attackerFell, experience: GameState.battleExperience(dealt: dealt, felled: defenderFell)),
+            Stir(unit: defender, fired: defenderFired, fell: defenderFell, experience: GameState.battleExperience(dealt: taken, felled: attackerFell)),
+        ], at: hex)
         events.insert(.battle(Battle(
             attacker: attackerID, attackerOwner: attacker.owner, attackerKind: attacker.kind,
             defender: defenderID, defenderOwner: defender.owner, defenderKind: defender.kind,
@@ -256,7 +269,7 @@ extension GameState {
         }
         var defenseBonus = 100 + (map[hex]?.terrain.defenseBonus ?? 0) + (defender.fortified ? 25 : 0)
         if let hold = hold(at: hex), hold.owner == defender.owner {
-            defenseBonus += Hold.garrisonBonus(wallLevel: hold.level(.walls)) + bonus(.garrison, for: defender.owner)
+            defenseBonus += Hold.garrisonBonus(wallLevel: hold.level(.walls)) + bonus(.garrison, for: defender)
         }
         if attacker.kind == .rider {
             defenseBonus += defender.kind.bonusAgainstRiders
@@ -281,6 +294,7 @@ extension GameState {
         guard units[index].health <= 0 else { return false }
         let unit = units.remove(at: index)
         events.append(.unitLost(unit: unit.id, kind: unit.kind, owner: unit.owner, at: unit.position))
+        events += woundCommander(of: unit)
         return true
     }
 
@@ -292,14 +306,18 @@ extension GameState {
         let holdIndex = holdIndex(holdID)!
         let hold = holds[holdIndex]
         let ranged = attacker.position.distance(to: hold.position) > 1
+        let fired = furyReady(of: attacker)
+        let furyOf = fury(of: attacker)
 
-        let damage = wardDamage(by: attacker) * random.int(in: 80...120) / 100
+        let damage = GameState.furious(wardDamage(by: attacker) * random.int(in: 80...120) / 100, dealtBy: furyOf, takenBy: GameState.calm)
         holds[holdIndex].ward = max(0, hold.ward - damage)
         holds[holdIndex].struck = true
         var events: [GameEvent] = [.holdStruck(hold: holdID, ward: holds[holdIndex].ward)]
 
-        let returned = ranged ? 0 : bodily(5 + 4 * hold.level(.walls), on: attacker)
+        let returned = ranged ? 0 : GameState.furious(bodily(5 + 4 * hold.level(.walls), on: attacker), dealtBy: GameState.calm, takenBy: furyOf)
         let attackerFell = returned > 0 && applyDamage(returned, to: unitID, events: &events)
+        events += stirCommanders([Stir(unit: attacker, fired: fired, fell: attackerFell,
+                                       experience: GameState.battleExperience(dealt: damage, felled: holds[holdIndex].ward == 0))], at: hold.position)
         events.insert(.battle(Battle(
             attacker: unitID, attackerOwner: attacker.owner, attackerKind: attacker.kind,
             defender: nil, defenderOwner: hold.owner, defenderKind: nil,

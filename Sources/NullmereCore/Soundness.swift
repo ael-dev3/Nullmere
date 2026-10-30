@@ -49,6 +49,20 @@ extension GameState {
         for envoy in envoys where !houseIDs.contains(envoy.from) || !houseIDs.contains(envoy.to) || envoy.from == envoy.to {
             found.append("Envoy \(envoy.id) runs from \(envoy.from) to \(envoy.to)")
         }
+        for (index, commander) in roster.enumerated() {
+            if commander.id != index + 1 { found.append("Commander \(commander.id) stands numbered \(index + 1)") }
+            if !houseIDs.contains(commander.owner) { found.append("Commander \(commander.name) serves no House (\(commander.owner))") }
+        }
+        var led: Set<Int> = []
+        for unit in units {
+            guard let leader = unit.leader else { continue }
+            if !led.insert(leader).inserted { found.append("Commander \(leader) leads two companies") }
+            guard let commander = commander(leader) else {
+                found.append("Company \(unit.id) is led by no commander (\(leader))")
+                continue
+            }
+            if commander.owner != unit.owner { found.append("Company \(unit.id) is led by another House's commander") }
+        }
         let pairs = Set(relations.map { [$0.first, $0.second] })
         if pairs.count != relations.count { found.append("Two Houses have more than one standing") }
         for relation in relations where !houseIDs.contains(relation.first) || !houseIDs.contains(relation.second) || relation.first == relation.second {

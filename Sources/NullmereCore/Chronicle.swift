@@ -24,6 +24,8 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         case seating
         /// A House masters a study that changes what it can do.
         case learning
+        /// A commander comes to a House, or rises to renown.
+        case commander
     }
 
     public let watch: Int

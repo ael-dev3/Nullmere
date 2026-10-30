@@ -38,6 +38,9 @@ extension RealmState {
         head.world.chronicle = []
         try paged("recorded", world.recorded)
         head.world.recorded = world.recorded.map { _ in [] }
+        // Lists a realm from before them doesn't have stay absent from it.
+        try paged("commanders", world.commanders)
+        head.world.commanders = world.commanders.map { _ in [] }
         parts["head"] = try text(head)
         return parts
     }
@@ -63,6 +66,9 @@ extension RealmState {
         realm.world.chronicle = try pages("chronicle", of: ChronicleEntry.self)
         if realm.world.recorded != nil {
             realm.world.recorded = try pages("recorded", of: Snapshot.self)
+        }
+        if realm.world.commanders != nil {
+            realm.world.commanders = try pages("commanders", of: Commander.self)
         }
         self = realm
     }

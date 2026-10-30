@@ -26,6 +26,26 @@ extension GameState {
         case .studyCompleted(let house, let study, let grade):
             guard house == viewer else { return nil }
             return Tidings("Your House masters \(GameState.graded(study, grade)): \(study.effect.prefix(1).lowercased() + study.effect.dropFirst()).", .good)
+        case .commanderJoined(let id, let house):
+            guard house == viewer, let commander = commander(id) else { return nil }
+            return Tidings("\(commander.name), \(commander.archetype.named), joins your House.", .good)
+        case .commanderAssigned(let id, let unitID):
+            guard let commander = commander(id), commander.owner == viewer, let unit = unit(unitID) else { return nil }
+            return Tidings("\(commander.name) takes command of your \(unit.kind.title).", .neutral)
+        case .commanderReleased(let id):
+            guard let commander = commander(id), commander.owner == viewer else { return nil }
+            return Tidings("\(commander.name) rides home to your seat.", .neutral)
+        case .commanderRose(let id, let house, let level):
+            guard house == viewer, let commander = commander(id) else { return nil }
+            let gained = commander.archetype.skills.first { $0.unlock == level }
+            return Tidings("\(commander.name) rises to level \(level)" + (gained.map { ", and with it \($0.title)." } ?? "."), .good)
+        case .commanderWounded(let id, let house):
+            guard house == viewer, let commander = commander(id) else { return nil }
+            return Tidings("\(commander.name) is carried home wounded; whole again in \(GameState.woundWatches) watches.", .bad)
+        case .skillFired(let id, let house, let skill, _):
+            guard let commander = commander(id) else { return nil }
+            if house == viewer { return Tidings("\(commander.name) calls \(skill.title).", .good) }
+            return Tidings("\(commander.name) of \(houses[house].title) calls \(skill.title).", .bad)
         default:
             return nil
         }

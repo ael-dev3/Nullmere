@@ -9,6 +9,8 @@ extension GameState {
     public mutating func endWatch(keptFor absent: Set<Int> = []) -> [GameEvent] {
         guard outcome == nil else { return [] }
         var events: [GameEvent] = []
+        // A world from before commanders takes them up now.
+        if commanders == nil { raiseFirstCommanders() }
 
         // Rivals act first; whether anyone has won is weighed once the
         // watch has turned (checkForEnd), never partway through. Who goes
@@ -88,6 +90,7 @@ extension GameState {
             if units[index].health <= 0 {
                 let lost = units.remove(at: index)
                 events.append(.unitLost(unit: lost.id, kind: lost.kind, owner: lost.owner, at: lost.position))
+                events += woundCommander(of: lost)
             }
         }
         return events
@@ -111,6 +114,10 @@ extension GameState {
                             ? "completes the Moonspire. Its white light falls across the whole of \(settings.lake.title)."
                             : "raises the Moonspire at \(holds[index].name) to its \(ordinal(project.targetLevel)) stage."
                         record(.greatWork, [owner], "\(houses[owner].title) \(words)")
+                    }
+                    // A seat's third and fifth halls raise a captain from the ranks.
+                    if project.kind == .musterHall, holds[index].isSeat, GameState.captainsAt.contains(project.targetLevel) {
+                        events += commanderJoins(holds[index].owner, why: "rises from the ranks of")
                     }
                 } else {
                     holds[index].project = project
@@ -151,7 +158,7 @@ extension GameState {
         }
         for index in units.indices where !units[index].acted && units[index].health < 100 {
             let unit = units[index]
-            var amount = 10 + bonus(.healing, for: unit.owner)
+            var amount = 10 + bonus(.healing, for: unit)
             if let tile = map.index(of: unit.position), let holdID = owners[tile], hold(holdID)?.owner == unit.owner {
                 amount += 10
             }
