@@ -302,7 +302,9 @@ as the realm will, and takes the realm's word as final.
 - **Gifts.** Send stores to any House you aren't at war with. Stewards
   remember gifts for twenty watches: a war seems older to them, and enough
   goodwill wins a pact, unless you once made war on them or a pact between
-  you was broken. A keeper hears of a gift, a war declared or an
+  you was broken. War on a House throws away the goodwill your gifts bought
+  with it, and no gift moves a steward that fears your rising Moonspire. A
+  keeper hears of a gift, a war declared or an
   envoy sent the moment it happens, not when the watch turns.
 - **Trade.** Offer any House you aren't at war with so much of one store
   for so much of another. Stewards weigh it by barter worth, the cunning
@@ -454,7 +456,9 @@ twice.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is
-  remembered.
+  remembered. A steward makes no peace before it has had a watch of its own
+  at war, and one far the stronger none until the war has run thirty
+  watches, whatever you gave it.
 - **Conquest.** Taking a hold carries off its share of the loser's stores;
   a seat holds half of them. A House that loses its seat is shaken: every
   hold it has left loses most of its ward. A House that loses every hold
@@ -470,8 +474,7 @@ twice.
   took it, if that House is sworn to no one; and a beaten House may offer
   fealty rather than fall. A vassal's holds count with its liege's and it
   can never turn on its liege; a liege who turns on a vassal frees it, and
-  a liege's fall frees all its vassals. A far stronger steward will not
-  make peace until the war has run long.
+  a liege's fall frees all its vassals.
 - **How ages end.** In 528 ages played through by stewards alone, the
   Moonspire decided seven in ten and dominion the rest; an age ran 157
   watches at the median, and two in five saw a House fall outright. The

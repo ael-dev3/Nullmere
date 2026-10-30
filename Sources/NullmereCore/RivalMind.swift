@@ -17,21 +17,28 @@ struct RivalMind {
         let mine = max(1, state.strength(of: house))
         let theirs = max(1, state.strength(of: proposer))
         // Gifts lately sent soften a steward: the war seems older, the
-        // giver more worth a pact.
-        let goodwill = state.goodwill(from: proposer, to: house)
-        let lasted = state.watch - relation.since + goodwill / 10
+        // giver more worth a pact. No gift softens it toward a House whose
+        // rising Moonspire it fears.
+        let goodwill = spireThreats(in: state).contains(proposer) ? 0 : state.goodwill(from: proposer, to: house)
+        // Watches the stance has truly stood, and as the gifts make it seem.
+        let stood = state.watch - relation.since
+        let lasted = stood + goodwill / 10
 
         switch proposal {
         case .peace:
-            guard lasted >= 3 else { return false }
+            // Never before it has had a watch of its own at war: a war
+            // begun and ended between two of its watches is one it never
+            // had the chance to fight.
+            guard stood >= 1, lasted >= 3 else { return false }
             // The ambitious and the cunning show no mercy to a House on its
             // last holds when they are clearly the stronger.
             let nearlyFallen = state.holds(of: proposer).count <= 2 && mine * 2 > theirs * 3
             if nearlyFallen, me.temperament == .ambitious || me.temperament == .cunning {
                 return false
             }
-            // A House far the stronger fights on until the war is long.
-            if mine * 2 > theirs * 3, lasted <= 30 { return false }
+            // A House far the stronger fights on until the war is long, and
+            // no gift makes it seem so.
+            if mine * 2 > theirs * 3, stood <= 30 { return false }
             switch me.temperament {
             case .ambitious: return mine * 10 < theirs * 11 || lasted > 16
             case .cunning: return mine < theirs || lasted > 10

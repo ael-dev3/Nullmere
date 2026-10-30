@@ -5,6 +5,9 @@ public struct Gift: Codable, Equatable, Sendable {
     /// Its worth, in stores counted as grain (moonsalt weighs more).
     public let worth: Int
     public let watch: Int
+    /// The giver has since made war on the House it gave to: the gift was
+    /// made, but the goodwill it bought is gone.
+    public var forfeit: Bool? = nil
 }
 
 extension GameState {
@@ -20,9 +23,10 @@ extension GameState {
         resource == .moonsalt ? amount * 4 : amount
     }
 
-    /// The worth of what one House gave another in the last watches.
+    /// The worth of what one House gave another in the last watches, but
+    /// for gifts it has since made war on that House over.
     public func goodwill(from giver: Int, to receiver: Int) -> Int {
-        (gifts ?? []).filter { $0.from == giver && $0.to == receiver && watch - $0.watch < GameState.giftMemory }
+        (gifts ?? []).filter { $0.from == giver && $0.to == receiver && watch - $0.watch < GameState.giftMemory && $0.forfeit != true }
             .reduce(0) { $0 + $1.worth }
     }
 

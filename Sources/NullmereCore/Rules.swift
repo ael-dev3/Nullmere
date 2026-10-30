@@ -483,6 +483,14 @@ extension GameState {
             houses[target].liege = nil
         }
         setStance(.war, between: house, and: target, by: house)
+        // War throws away what gifts bought: the goodwill of every gift the
+        // declarer sent the House it turns on is forfeit.
+        if var sent = gifts {
+            for index in sent.indices where sent[index].from == house && sent[index].to == target {
+                sent[index].forfeit = true
+            }
+            gifts = sent
+        }
         envoys.removeAll { ($0.from == target && $0.to == house) || ($0.from == house && $0.to == target) }
         if fearingSpire {
             record(.war, [house, target], "Fearing the white tower rising at \(seat(of: target)?.name ?? "their seat"), \(houses[house].title) goes to war against \(houses[target].title).")
