@@ -264,6 +264,9 @@ extension GameSession {
                                                         seed: UInt32(truncatingIfNeeded: blow.id &* 7 &+ index)))
             }
         }
+        for fury in furies {
+            happenings.furies.append(Happenings.Spot(at: ground(fury.at), start: clock(fury.start), seed: UInt32(truncatingIfNeeded: fury.id)))
+        }
         for pose in poses where pose.clip == .march {
             var riders = false
             if case .figure(.rider, _) = pose.key { riders = true }

@@ -32,6 +32,8 @@ public enum Effect: String, CaseIterable, Sendable {
     case splinters
     /// The night's small lights over reeds and grass, wandering and blinking.
     case fireflies
+    /// A commander's skill fired: pale gold rising in a widening ring.
+    case fury
 
     /// How long each mote lives, in seconds.
     public var lifetime: Float {
@@ -43,6 +45,7 @@ public enum Effect: String, CaseIterable, Sendable {
         case .flash: return 0.28
         case .splinters: return 0.9
         case .fireflies: return 6
+        case .fury: return 1.1
         }
     }
 }
@@ -199,6 +202,13 @@ public enum Effects {
             let blink = Float(pow(max(0, sin(phase)), 6))
             let show = blink * Float(sin(Double(t) * .pi))
             return Mote(at: origin + wander, size: 0.014, light: Vec3(0.75, 1.3, 0.45) * show, cover: 0)
+        case .fury:
+            // A ring of pale gold round the company, rising and widening as it fades.
+            let ring = (0.25 + 0.55 * t) * scale
+            let rise = (0.08 + 0.9 * t * (0.6 + 0.4 * b)) * scale
+            let show = Float(sin(Double(t) * .pi)) * (0.7 + 0.3 * c)
+            return Mote(at: origin + around * ring + Vec3(0, rise, 0), size: (0.024 + 0.02 * t) * scale,
+                        light: Vec3(2.0, 1.75, 0.95) * show, cover: 0)
         }
     }
 
@@ -291,6 +301,8 @@ public struct Happenings: Equatable, Sendable {
     public var blazes: [Spot] = []
     /// Where the night's fireflies wander.
     public var fireflies: [Spot] = []
+    /// Where commanders' skills fired, and when.
+    public var furies: [Spot] = []
 
     public init() {}
 
@@ -300,6 +312,8 @@ public struct Happenings: Equatable, Sendable {
     public static let arrowFlight: Float = 0.38
     /// When a falling company meets the ground.
     public static let fallen: Float = 0.85
+    /// How long a commander's fury lights the ground.
+    public static let furyGlow: Float = 0.9
 
     /// The frame's motes and its own lights at `time`.
     public func effects(at time: Float) -> (motes: [Mote], lights: [PointLight]) {
@@ -360,6 +374,16 @@ public struct Happenings: Equatable, Sendable {
         }
         for spot in fireflies {
             emitters.append(Emitter(.fireflies, at: spot.at, rate: 0.6, spread: 0.3, seed: spot.seed, strength: 1))
+        }
+        for fury in furies {
+            // A ring of gold round the company, a flash above it, and its light a moment on the ground.
+            bursts.append(Burst(.fury, at: fury.at + Vec3(0, 0.05, 0), start: fury.start, count: 28, seed: fury.seed, scale: 1.2))
+            bursts.append(Burst(.flash, at: fury.at + Vec3(0, 0.45, 0), start: fury.start, count: 1, seed: fury.seed &+ 3, scale: 1.6))
+            let age = time - fury.start
+            if age >= 0, age < Happenings.furyGlow {
+                let fade = 1 - age / Happenings.furyGlow
+                lights.append(PointLight(at: fury.at + Vec3(0, 0.6, 0), reach: 2.8, colour: Vec3(2.0, 1.8, 1.1) * fade))
+            }
         }
         return (Effects.motes(bursts: bursts, emitters: emitters, at: time), lights)
     }

@@ -92,15 +92,20 @@ final class EffectsTests: XCTestCase {
         happenings.finished = [Happenings.Spot(at: Vec3(-7, 0, 0), start: 10, seed: 7)]
         happenings.blazes = [Happenings.Spot(at: Vec3(8, 0.2, 8), strength: 0.8, seed: 8)]
         happenings.fireflies = [Happenings.Spot(at: Vec3(-9, 0.1, -9), seed: 9)]
+        happenings.furies = [Happenings.Spot(at: Vec3(12, 0, 12), start: 10, seed: 10)]
         let landing = 10 + Happenings.landing + 0.05
         let (motes, lights) = happenings.effects(at: landing)
         XCTAssertFalse(motes.isEmpty)
-        // The blows on companies and the ward light the ground, and the fire burns.
-        XCTAssertEqual(lights.count, 3)
+        // The blows on companies and the ward light the ground, a commander's fury too, and the fire burns.
+        XCTAssertEqual(lights.count, 4)
+        // The fury's ring of gold round its company.
+        let ring = motes.filter { Vec3($0.place.x, 0, $0.place.z).length > 15 && $0.colour.w == 0 }
+        XCTAssertGreaterThan(ring.count, 10)
+        XCTAssertTrue(ring.allSatisfy { $0.place.y > -0.01 }, "over the ground")
         XCTAssertTrue(motes.contains { $0.colour.w == 0 && $0.colour.x > 1 }, "sparks")
         // Near the fire: embers above it.
         XCTAssertTrue(motes.contains { $0.place.x > 7.5 && $0.place.y > 0.9 })
-        // A moment later the blows' light is gone; the fire's is not.
+        // A moment later the blows' and the fury's light is gone; the fire's is not.
         XCTAssertEqual(happenings.effects(at: landing + 1).lights.count, 1)
         // The arrows' dust comes down after their flight.
         let flight = Happenings(strikes: [happenings.strikes[1]])

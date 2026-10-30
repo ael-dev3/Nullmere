@@ -196,6 +196,15 @@ public final class GameSession {
     }
     public private(set) var isAtWar = false
 
+    /// A commander's skill the player saw fire: a ring of gold, briefly,
+    /// round the company it fired for.
+    public struct Fury: Equatable, Identifiable {
+        public let id: Int
+        public let at: Hex
+        public let skill: Skill
+        public let start: Date
+    }
+
     /// A blow the player saw land: a ring and the damage, briefly, where it fell.
     public struct Blow: Equatable, Identifiable {
         public let id: Int
@@ -289,6 +298,8 @@ public final class GameSession {
 
     /// Blows still being drawn.
     public private(set) var blows: [Blow] = []
+    /// Commanders' skills fired in sight, while their gold is drawn.
+    public private(set) var furies: [Fury] = []
     /// The player's holds with enemy companies gathering near them.
     public private(set) var threatened: Set<Int> = []
     private var blowCounter = 0
@@ -1250,11 +1261,17 @@ public final class GameSession {
             }
             shown = true
         }
+        for case .skillFired(_, let house, let skill, let at) in events where house == player || isVisible(at) {
+            blowCounter += 1
+            furies.append(Fury(id: blowCounter, at: at, skill: skill, start: now))
+            shown = true
+        }
         guard shown else { return }
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(Blow.lingers + 0.05))
             guard let self else { return }
             self.blows.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
+            self.furies.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
         }
     }
 
