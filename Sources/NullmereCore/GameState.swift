@@ -270,8 +270,12 @@ public struct GameState: Codable, Equatable, Sendable {
 
     /// A House's income before upkeep.
     public func income(of house: Int) -> Stock {
-        let owners = territory()
-        return holds(of: house).reduce(Stock.zero) { $0 + income(of: $1, territory: owners) }
+        income(of: house, territory: territory())
+    }
+
+    /// A House's income before upkeep, its land's territory already found.
+    public func income(of house: Int, territory owners: [Int?]) -> Stock {
+        holds(of: house).reduce(Stock.zero) { $0 + income(of: $1, territory: owners) }
     }
 
     /// How much of each resource a House can keep. Holds add storehouses,

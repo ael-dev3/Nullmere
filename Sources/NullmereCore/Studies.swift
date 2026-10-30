@@ -279,7 +279,7 @@ public struct Research: Codable, Equatable, Sendable {
 
     /// What its studies add to a bonus.
     public func total(_ bonus: Bonus) -> Int {
-        totals[bonus] ?? 0
+        totals.isEmpty ? 0 : totals[bonus] ?? 0
     }
 
     public var isEmpty: Bool { known.isEmpty && pursuit == nil }

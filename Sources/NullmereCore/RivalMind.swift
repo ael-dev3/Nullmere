@@ -83,8 +83,10 @@ struct RivalMind {
 
         events += caretaking ? keepThePeace(in: &state, random: &random) : conductDiplomacy(in: &state, random: &random)
         events += balanceStores(in: &state)
+        // The land's territory, found once: no work or muster begun changes it.
+        let owners = state.territory()
         for hold in state.holds(of: house).sorted(by: { $0.id < $1.id }) {
-            events += manage(hold.id, in: &state, random: &random)
+            events += manage(hold.id, owners: owners, in: &state, random: &random)
         }
         events += pursueStudies(in: &state)
         events += appointCommanders(in: &state)
@@ -107,7 +109,11 @@ struct RivalMind {
 
     private func conductDiplomacy(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
         let me = state.houses[house]
-        let mine = max(1, state.strength(of: house))
+        // Every House's strength, weighed once: nothing said or sworn here
+        // changes it.
+        let strengths = state.houses.map { $0.isEliminated ? 0 : state.strength(of: $0.id) }
+        let mine = max(1, strengths[house])
+        let strongestOther = state.livingHouses.filter { $0.id != house }.map { strengths[$0.id] }.max() ?? 0
         let enemies = state.livingHouses.filter { state.isAtWar(house, $0.id) }.count
         var events: [GameEvent] = []
         var declared = false
@@ -117,7 +123,7 @@ struct RivalMind {
         // stand against.
         if let rising = spireThreats(in: state).first(where: { rising in
             state.stance(house, rising) != .war && !inTruce(with: rising, in: state)
-                && mine * 10 > max(1, state.strength(of: rising)) * 6
+                && mine * 10 > max(1, strengths[rising]) * 6
         }), random.chance(35) {
             if (try? state.declareWar(by: house, on: rising, fearingSpire: true)) != nil {
                 events.append(.stanceChanged(first: house, second: rising, stance: .war, by: house))
@@ -129,7 +135,7 @@ struct RivalMind {
         // first a House sets on is no likelier to be one numbered low.
         for other in state.livingHouses.sorted(by: { tieBreak($0.id, in: state) < tieBreak($1.id, in: state) }) where other.id != house {
             guard let relation = state.relation(house, other.id) else { continue }
-            let theirs = max(1, state.strength(of: other.id))
+            let theirs = max(1, strengths[other.id])
             let lasted = state.watch - relation.since
             let neighbours = knowsHold(of: other.id, within: 14, in: state)
 
@@ -173,8 +179,7 @@ struct RivalMind {
                 }
                 // The leading House, once clearly the strongest, presses its
                 // advantage toward dominion, whatever its temper.
-                let others = state.livingHouses.filter { $0.id != house }.map { state.strength(of: $0.id) }
-                let leading = state.watch >= 50 && mine * 10 > (others.max() ?? 0) * 13
+                let leading = state.watch >= 50 && mine * 10 > strongestOther * 13
                 if !wantsWar, leading, mine * 10 > theirs * 15, random.chance(35) {
                     wantsWar = true
                 }
@@ -297,20 +302,22 @@ struct RivalMind {
 
     // MARK: Holds
 
-    private func manage(_ holdID: Int, in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
+    /// A hold's work and muster chosen and begun. `owners` is the land's
+    /// territory, which nothing done here changes.
+    private func manage(_ holdID: Int, owners: [Int?], in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
         var events: [GameEvent] = []
         guard let hold = state.hold(holdID) else { return events }
-        if hold.project == nil, let kind = chooseBuilding(for: hold, in: state) {
+        if hold.project == nil, let kind = chooseBuilding(for: hold, owners: owners, in: state) {
             events += perform(.build(hold: holdID, kind: kind), in: &state)
         }
-        if let hold = state.hold(holdID), hold.training == nil, let kind = chooseTraining(for: hold, in: state, random: &random) {
-            let tier = chooseTier(of: kind, at: hold, in: state)
+        if let hold = state.hold(holdID), hold.training == nil, let kind = chooseTraining(for: hold, owners: owners, in: state, random: &random) {
+            let tier = chooseTier(of: kind, at: hold, owners: owners, in: state)
             events += perform(.train(hold: holdID, kind: kind, tier: tier > 1 ? tier : nil), in: &state)
         }
         return events
     }
 
-    private func chooseBuilding(for hold: Hold, in state: GameState) -> BuildingKind? {
+    private func chooseBuilding(for hold: Hold, owners: [Int?], in state: GameState) -> BuildingKind? {
         let me = state.houses[house]
         let stock = me.stock
         let atWar = state.livingHouses.contains { state.isAtWar(house, $0.id) }
@@ -325,8 +332,8 @@ struct RivalMind {
         let plenty = stock.grain > room * 3 / 5 && stock.timber > room * 3 / 5
         if !hold.isSeat, hold.level(.musterHall) == 0, state.watch >= 20, atWar || plenty { wishes.append(.musterHall) }
 
-        let income = state.income(of: hold)
-        let net = state.income(of: house).grain - state.upkeep(of: house)
+        let income = state.income(of: hold, territory: owners)
+        let net = state.income(of: house, territory: owners).grain - state.upkeep(of: house)
         if net < 4 { wishes.append(.granary) }
         let economy: [BuildingKind] = [.granary, .sawpit, .quarry, .saltworks]
             .filter { kind in
@@ -452,7 +459,7 @@ struct RivalMind {
         state.holds.contains { $0.owner != house && $0.position.distance(to: hold.position) <= 8 }
     }
 
-    private func chooseTraining(for hold: Hold, in state: GameState, random: inout SeededRandom) -> UnitKind? {
+    private func chooseTraining(for hold: Hold, owners: [Int?], in state: GameState, random: inout SeededRandom) -> UnitKind? {
         let me = state.houses[house]
         let units = state.units(of: house)
         let lanterns = units.filter { $0.kind == .lantern }.count
@@ -460,7 +467,7 @@ struct RivalMind {
         let military = units.filter { $0.kind.isMilitary }.count
         let holds = state.holds(of: house).count
         let atWar = state.livingHouses.contains { state.isAtWar(house, $0.id) }
-        let netGrain = state.income(of: house).grain - state.upkeep(of: house)
+        let netGrain = state.income(of: house, territory: owners).grain - state.upkeep(of: house)
 
         let wantedHolds: Int
         switch me.temperament {
@@ -479,7 +486,7 @@ struct RivalMind {
         if lanterns < (state.watch < 20 ? 2 : 1), hold.isSeat {
             choice = .lantern
         } else if holds + founders < wantedHolds, founders == 0, military >= 2, netGrain > 2,
-                  bestSite(from: hold.position, in: state) != nil {
+                  bestSite(from: hold.position, owners: owners, in: state) != nil {
             choice = .founder
         } else if military < wantedArmy, netGrain > 1 || atWar {
             let muster = hold.level(.musterHall)
@@ -503,11 +510,11 @@ struct RivalMind {
     /// The tier to muster a company at: the highest the hold can, whose
     /// price the House could pay twice over and whose hunger its grain can
     /// bear; else the first.
-    func chooseTier(of kind: UnitKind, at hold: Hold, in state: GameState) -> Int {
+    func chooseTier(of kind: UnitKind, at hold: Hold, owners: [Int?]? = nil, in state: GameState) -> Int {
         let highest = state.highestTier(of: kind, at: hold, for: house)
         guard highest > 1 else { return 1 }
         let stock = state.houses[house].stock
-        let netGrain = state.income(of: house).grain - state.upkeep(of: house)
+        let netGrain = state.income(of: house, territory: owners ?? state.territory()).grain - state.upkeep(of: house)
         for tier in stride(from: highest, to: 1, by: -1) {
             let cost = state.trainingCost(of: kind, tier: tier, for: house)
             if stock.covers(cost * 2), netGrain > kind.upkeep(tier: tier) + 1 { return tier }
@@ -730,30 +737,37 @@ struct RivalMind {
     }
 
     private func explore(with unit: Unit, in state: inout GameState) -> [GameEvent] {
-        guard unit.destination == nil else { return [] }
+        guard unit.destination == nil, let start = state.map.index(of: unit.position) else { return [] }
         let explored = state.houses[house].explored
         let map = state.map
-        let occupied = Set(state.units.map(\.position) + state.wildsStanding.map(\.position))
+        // Tiles by their index, not hexes in sets: a scout searches far.
+        var occupied = [Bool](repeating: false, count: map.count)
+        for other in state.units { if let index = map.index(of: other.position) { occupied[index] = true } }
+        for wild in state.wildsStanding { if let index = map.index(of: wild.position) { occupied[index] = true } }
         // Known ruins first, then the nearest edge of the unknown.
-        var seen: Set<Hex> = [unit.position]
+        var seen = [Bool](repeating: false, count: map.count)
+        seen[start] = true
         var queue = [unit.position]
+        queue.reserveCapacity(2_600)
         var head = 0
         var frontier: Hex?
         while head < queue.count, head < 2_500 {
             let hex = queue[head]
             head += 1
-            if hex != unit.position, !occupied.contains(hex) {
-                if map[hex]?.feature == .drownedRuin {
+            let tile = map.index(of: hex)!
+            if hex != unit.position, !occupied[tile] {
+                if map[tile].feature == .drownedRuin {
                     frontier = hex
                     break
                 }
-                if frontier == nil, map.neighbors(of: hex).contains(where: { !explored[map.index(of: $0)!] }) {
+                if frontier == nil, Hex.directions.contains(where: { step in map.index(of: hex + step).map { !explored[$0] } ?? false }) {
                     frontier = hex
                 }
             }
-            for next in map.neighbors(of: hex) where !seen.contains(next) {
-                guard let tile = map[next], tile.terrain.isPassable else { continue }
-                seen.insert(next)
+            for step in Hex.directions {
+                let next = hex + step
+                guard let index = map.index(of: next), !seen[index], map[index].terrain.isPassable else { continue }
+                seen[index] = true
                 queue.append(next)
             }
             if frontier != nil, head > 400 { break }
@@ -775,19 +789,30 @@ struct RivalMind {
     }
 
     /// The most promising place to found a hold that this House knows of.
-    func bestSite(from origin: Hex, in state: GameState) -> Hex? {
+    func bestSite(from origin: Hex, owners territory: [Int?]? = nil, in state: GameState) -> Hex? {
         let explored = state.houses[house].explored
-        let owners = state.territory()
+        let owners = territory ?? state.territory()
         let anchors = state.holds(of: house).map(\.position)
+        let map = state.map
+        // What rules a tile out, found once by its index: a hold within
+        // three, another House's company on it, or the wilds.
+        var ruledOut = [Bool](repeating: false, count: map.count)
+        for hold in state.holds {
+            for hex in hold.position.spiral(3) { if let index = map.index(of: hex) { ruledOut[index] = true } }
+        }
+        for other in state.units where other.owner != house {
+            if let index = map.index(of: other.position) { ruledOut[index] = true }
+        }
+        for wild in state.wildsStanding {
+            if let index = map.index(of: wild.position) { ruledOut[index] = true }
+        }
+        let holdOwners = Dictionary(state.holds.map { ($0.id, $0.owner) }, uniquingKeysWith: { first, _ in first })
         var best: (score: Int, hex: Hex)?
         for anchor in anchors {
             for hex in anchor.spiral(9) {
-                guard let index = state.map.index(of: hex), explored[index] else { continue }
-                guard let tile = state.map[hex], tile.terrain.isSettleable else { continue }
-                if owners[index].map({ state.hold($0)?.owner != house }) ?? false { continue }
-                if state.holds.contains(where: { $0.position.distance(to: hex) < 4 }) { continue }
-                if let other = state.unit(at: hex), other.owner != house { continue }
-                if state.wild(at: hex) != nil { continue }
+                guard let index = map.index(of: hex), explored[index] else { continue }
+                guard map[index].terrain.isSettleable, !ruledOut[index] else { continue }
+                if owners[index].map({ holdOwners[$0] != house }) ?? false { continue }
                 let score = siteScore(hex, in: state) * 3 - hex.distance(to: origin)
                 if best == nil || (score, hex) > (best!.score, best!.hex) {
                     best = (score, hex)
