@@ -34,6 +34,8 @@ struct CommandersPanel: View {
                     }
                     Rule(opacity: 0.18)
                     ArmouryView(session: session, commanders: board.lines.map(\.commander))
+                    Rule(opacity: 0.18)
+                    ForgeView(session: session)
                 }
             }
             .scrollEdgeFade()
@@ -209,6 +211,106 @@ struct ArmouryView: View {
     }
 
     static let empty = "Gear falls with the wilds struck down: weapons, armour and charms for your commanders, finer from the higher levels."
+}
+
+/// The House's Forge: the makings it keeps, how fine its Forge works, and
+/// each piece of the three sets, what forging it takes and gives, with a
+/// button to forge it.
+struct ForgeView: View {
+    let session: GameSession
+    /// How fine to forge; the finest the Forge makes, until another is chosen.
+    @State private var chosen: GearQuality?
+
+    var body: some View {
+        let state = session.state, house = session.player
+        let level = state.forgeLevel(of: house)
+        let quality = ForgeView.quality(chosen, atLevel: level)
+        VStack(alignment: .leading, spacing: 6) {
+            Caps(level > 0 ? "Forge · level \(Narration.roman(level))" : "Forge", size: 9, weight: .medium)
+                .foregroundStyle(Palette.text(0.7))
+                .accessibilityAddTraits(.isHeader)
+            Text(verbatim: ForgeView.makingsLine(state, house))
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            if level == 0 {
+                Text(verbatim: ForgeView.noForge)
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Picker("How fine", selection: Binding(get: { quality }, set: { chosen = $0 })) {
+                    ForEach(GearQuality.allCases.filter { $0.forgeLevel <= level }, id: \.self) { quality in
+                        Text(verbatim: quality.title).tag(quality)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityLabel("How fine to forge")
+                ForEach(GearSet.allCases, id: \.self) { set in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Caps(set.name, size: 8.5, weight: .medium).foregroundStyle(Palette.glowWords)
+                        Text(verbatim: set.effect.prefix(1).uppercased() + set.effect.dropFirst() + ".")
+                            .font(.nm(10))
+                            .foregroundStyle(Palette.text(0.55))
+                            .fixedSize(horizontal: false, vertical: true)
+                        ForEach(set.pieces, id: \.self) { kind in
+                            ForgeRow(session: session, kind: kind, quality: quality)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// The quality chosen, held to the finest a Forge of a level makes.
+    static func quality(_ chosen: GearQuality?, atLevel level: Int) -> GearQuality {
+        let finest = GearQuality.forged(atLevel: level) ?? .plain
+        return chosen.map { min($0, finest) } ?? finest
+    }
+
+    /// What the House keeps of each making.
+    static func makingsLine(_ state: GameState, _ house: Int) -> String {
+        "Makings: " + Making.allCases.map { "\(state.makings($0, of: house)) \($0.title.lowercased())" }.joined(separator: ", ") + "."
+    }
+
+    /// What forging a piece this fine takes, in words.
+    static func recipeLine(_ kind: GearKind, _ quality: GearQuality, in state: GameState, for house: Int) -> String {
+        let recipe = state.recipe(kind, quality, for: house)
+        let makings = Making.allCases.compactMap { making in recipe[making].map { "\($0) \(making.title.lowercased())" } }
+        return (makings + ["\(GameState.forgingCost(quality).moonsalt) moonsalt"]).joined(separator: ", ")
+    }
+
+    static let noForge = "Raise a Forge at one of your holds to forge gear of three sets from the makings your companies bring in: "
+        + "hide, iron, heartwood and moonglass, from the wilds they strike down and the land's sites they gather at."
+}
+
+/// A piece of a set: what it gives at the quality chosen, what forging it
+/// takes, and the button that forges it.
+private struct ForgeRow: View {
+    let session: GameSession
+    let kind: GearKind
+    let quality: GearQuality
+
+    var body: some View {
+        let state = session.state
+        let piece = Gear(id: 0, kind: kind, quality: quality, owner: session.player)
+        let refusal = state.refusal(of: .forge(kind, quality: quality), as: session.player)
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            VStack(alignment: .leading, spacing: 1) {
+                Caps("\(kind.title) · \(kind.slot.title.lowercased())", size: 8.5, weight: .medium)
+                    .foregroundStyle(Palette.text(0.85))
+                Text(verbatim: "\(piece.effect). Takes \(ForgeView.recipeLine(kind, quality, in: state, for: session.player)).")
+                    .font(.nm(10))
+                    .foregroundStyle(Palette.text(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            Spacer()
+            QuietButton(title: "Forge", size: 8.5, enabled: refusal == nil, name: "Forge a \(piece.title)", why: refusal?.description) {
+                session.perform(.forge(kind, quality: quality))
+            }
+        }
+    }
 }
 
 /// A commander's talents: its three trees, each talent's rank and what a

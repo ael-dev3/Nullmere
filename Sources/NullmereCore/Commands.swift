@@ -98,6 +98,9 @@ public enum Command: Codable, Equatable, Sendable {
     case giveToAlliance(Stock)
     /// An alliance's leader begins its hall on the alliance's own land.
     case raiseAllianceHall(at: Hex)
+    /// A House's smiths forge a piece of gear of the Forge's sets, as fine
+    /// as its Forge allows, for makings and moonsalt.
+    case forge(GearKind, quality: GearQuality)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -269,6 +272,14 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case notAllianceLand
     /// A hold founded on a standard's or a hall's ground.
     case allianceGround
+    /// Gear the Forge doesn't make: what the wilds leave.
+    case notForged
+    /// Gear finer than the House's Forge makes.
+    case needsForge(Int)
+    /// Gear forged into a full armoury.
+    case armouryFull
+    /// Gear forged without the makings it takes.
+    case shortOfMakings(Making, Int)
     /// Words from a House no keeper holds.
     case notAKeeper
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -384,6 +395,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .hallGround: return "A hall stands only on open land, with nothing on it."
         case .notAllianceLand: return "A hall stands on your alliance's own land, within reach of its standards."
         case .allianceGround: return "An alliance's standard or hall stands here: a hold is founded on open land."
+        case .notForged: return "That gear is not forged: only the wilds leave it."
+        case .needsForge(let level): return "Raise a Forge to level \(BuildingKind.numeral(level)) to forge gear so fine."
+        case .armouryFull: return "Your armoury is full: break up a piece to make room."
+        case .shortOfMakings(let making, let count): return "You need \(count) more \(making.title.lowercased())."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
         case .notAKeeper: return "Only a keeper's words are carried."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -490,6 +505,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// An alliance's hall comes down: torn down by a House, or by none,
     /// its alliance no more.
     case hallTorn(hall: Int, alliance: Int, by: Int?, at: Hex)
+    /// A House is given makings for its Forge.
+    case makingsFound(house: Int, making: Making, count: Int)
+    /// A House's smiths forge a piece of gear.
+    case gearForged(house: Int, gear: Gear)
     /// A company strikes a company of the wilds.
     case hunted(Hunt)
     /// A company sets out to work a site.

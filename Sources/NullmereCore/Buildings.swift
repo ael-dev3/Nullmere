@@ -18,6 +18,10 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
     /// The great work: a white tower of moonsalt and stone. A House that
     /// raises it to its fifth level is ascendant over the whole lake.
     case moonspire
+    /// Where a House's smiths work the makings its companies bring in into
+    /// gear of its own sets for its commanders: the higher it stands, the
+    /// finer the gear and the fewer the makings it takes.
+    case forge
 
     public var title: String {
         switch self {
@@ -31,6 +35,7 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
         case .infirmary: return "Infirmary"
         case .archive: return "Archive"
         case .moonspire: return "Moonspire"
+        case .forge: return "Forge"
         }
     }
 
@@ -70,6 +75,7 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
         case .infirmary: return Stock(grain: 30, timber: 30, stone: 20)
         case .archive: return Stock(grain: 20, timber: 40, stone: 30, moonsalt: 3)
         case .moonspire: return Stock(grain: 60, timber: 60, stone: 80, moonsalt: 24)
+        case .forge: return Stock(grain: 20, timber: 35, stone: 35, moonsalt: 2)
         }
     }
 
@@ -117,6 +123,10 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
             return "Studies of the \(ordinal(circle)) circle; every study \(GameState.archivePace * level)% sooner"
         case .moonspire:
             return level == maxLevel ? "Ascendancy over the lake" : "Stage \(level) of \(maxLevel)"
+        case .forge:
+            let finest = GearQuality.forged(atLevel: level)?.title.lowercased() ?? "no"
+            let thrift = GameState.forgeThrift * (level - 1)
+            return "Forges \(finest) gear of the three sets" + (thrift > 0 ? ", for \(thrift)% fewer makings" : "")
         }
     }
 

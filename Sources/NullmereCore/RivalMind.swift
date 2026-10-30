@@ -98,7 +98,10 @@ struct RivalMind {
             events += manage(hold.id, owners: owners, in: &state, random: &random)
         }
         events += pursueStudies(in: &state)
-        if !caretaking { events += useItems(in: &state) }
+        if !caretaking {
+            events += useItems(in: &state)
+            events += forgeGear(in: &state)
+        }
         events += appointCommanders(in: &state)
         events += state.growTalents(for: house)
         events += state.armCommanders(for: house)
@@ -139,6 +142,23 @@ struct RivalMind {
 
     /// The watch from which stewards raise their alliances' halls.
     static let hallsFrom = 40
+    /// The watch from which stewards raise a Forge.
+    static let forgeFrom = 24
+
+    /// A steward with a Forge forges the set that suits its foremost
+    /// commander, a piece at a time: the first it lacks, as fine as its
+    /// Forge, makings and moonsalt allow, and no less fine than what that
+    /// commander wears in its place; a piece it can't yet forge, it waits for.
+    private func forgeGear(in state: inout GameState) -> [GameEvent] {
+        guard state.forgeLevel(of: house) > 0,
+              let lead = state.commanders(of: house).max(by: { ($0.level, -$0.id) < ($1.level, -$1.id) }) else { return [] }
+        let held = Set(state.gear(of: house).map(\.kind))
+        guard let kind = GearSet.suiting(lead.archetype).pieces.first(where: { !held.contains($0) }) else { return [] }
+        let worn = state.worn(by: lead.id).first { $0.slot == kind.slot }?.quality ?? .plain
+        guard let quality = GearQuality.allCases.reversed().first(where: { $0 >= worn && state.forgeRefusal(kind, $0, by: house) == nil })
+        else { return [] }
+        return perform(.forge(kind, quality: quality), in: &state)
+    }
     /// What a steward keeps back beyond a hall's cost before it begins one.
     static let hallReserve = Stock(grain: 100, timber: 100, stone: 100, moonsalt: 10)
 
@@ -541,6 +561,8 @@ struct RivalMind {
         if hold.isSeat, hold.level(.musterHall) > 0, state.watch >= 16, hold.level(.infirmary) < (atWar ? 2 : 1) {
             wishes.append(.infirmary)
         }
+        // A Forge at the seat for its commanders' gear, finer as the age goes on.
+        if hold.isSeat, state.watch >= RivalMind.forgeFrom, hold.level(.forge) < (state.watch >= 70 ? 3 : 1) { wishes.append(.forge) }
         if hold.isSeat {
             // An Archive at the seat, the deeper as the age goes on, for
             // its studies; and a hall as high as the tiers they open.

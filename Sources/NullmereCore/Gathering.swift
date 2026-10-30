@@ -224,6 +224,8 @@ extension GameState {
             units[index].errand = nil
             units[index].destination = nil
         }
+        // What was gathered brings makings for the Forge with it.
         return [.delivered(unit: unit.id, owner: unit.owner, hold: hold.id, load: load)]
+            + give(makings: GameState.makings(in: load), to: unit.owner)
     }
 }

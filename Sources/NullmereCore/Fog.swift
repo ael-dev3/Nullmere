@@ -60,6 +60,7 @@ extension GameState {
         view.armoury = armoury?.filter { $0.owner == house || $0.wornBy.map(leading.contains) == true }
         // What is in a House's satchel is its own to know.
         view.satchel = satchel?.filter { $0.house == house }
+        view.makings = makings?.filter { $0.house == house }
         // The wilds in sight; the sites on ground the House has explored.
         view.wilds = wilds?.filter { map.index(of: $0.position).map { seen[$0] } ?? false }
         view.sites = sites?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
@@ -130,7 +131,7 @@ extension GameState {
                  .talentLearned(_, let owner, _, _), .talentsForgotten(_, let owner),
                  .gearFound(let owner, _, _), .gearWorn(_, let owner, _), .gearTakenOff(_, let owner, _), .gearScrapped(let owner, _, _),
                  .carriedToInfirmary(_, let owner, _), .healingBegun(_, let owner, _), .woundedLost(_, let owner, _),
-                 .itemsGiven(let owner, _, _), .itemUsed(let owner, _, _):
+                 .itemsGiven(let owner, _, _), .itemUsed(let owner, _, _), .makingsFound(let owner, _, _), .gearForged(let owner, _):
                 return owner == house
             case .unitHealed(let id, _):
                 return unit(id)?.owner == house

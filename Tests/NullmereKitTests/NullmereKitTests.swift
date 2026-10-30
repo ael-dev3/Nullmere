@@ -512,6 +512,8 @@ final class GuideTests: XCTestCase {
         XCTAssertTrue(all.contains("it rises over four watches. Whole, the land three tiles about it is the alliance's"), all)
         XCTAssertEqual([AllianceHall.raising, AllianceHall.reach, AllianceHall.rallyCompanies, AllianceHall.standards, AllianceHall.garrison],
                        [4, 3, 2, 2, 25])
+        XCTAssertTrue(all.contains("as fine as your highest Forge allows: plain at level I, fine at II, masterwork at IV, fabled at V"), all)
+        XCTAssertEqual(GearQuality.allCases.map(\.forgeLevel), [1, 2, 4, 5])
         XCTAssertEqual(Heritage.allCases.map(\.name), ["The Saltborn", "The Fenfolk", "The Blackwood Kin", "The Spinewardens", "The Mound Clans", "The Strandfolk"])
         XCTAssertEqual(Rally.gatherings, 1...4)
         XCTAssertEqual(Study.opening(tier: 2), .drill)
@@ -749,6 +751,7 @@ final class CueMappingTests: XCTestCase {
             (.hallStruck(hall: 90, alliance: alliance, ward: 30, by: foe, at: unit.position), .batter),
             (.hallTorn(hall: 91, alliance: 77, by: player, at: unit.position), .triumph),
             (.hallTorn(hall: 90, alliance: alliance, by: foe, at: unit.position), .dread),
+            (.gearForged(house: player, gear: Gear(id: 72, kind: .wardensBlade, quality: .plain, owner: player)), .anvil),
             (.itemUsed(house: player, kind: .hourglass, hold: seat.id), .sift),
             (.itemUsed(house: player, kind: .mendingDraught, hold: nil), .tend),
             (.studyBegun(house: player, study: .furrowLore, grade: 1), .rise),
@@ -848,6 +851,8 @@ final class CueMappingTests: XCTestCase {
             .hallRaised(hall: 92, alliance: 77, house: foe, at: unit.position), .hallRisen(hall: 92, alliance: 77, at: unit.position),
             .hallStruck(hall: 92, alliance: 77, ward: 10, by: others, at: unit.position),
             .hallTorn(hall: 92, alliance: 77, by: others, at: unit.position),
+            .gearForged(house: foe, gear: Gear(id: 73, kind: .raidersHorn, quality: .fine, owner: foe)),
+            .makingsFound(house: player, making: .iron, count: 2), .makingsFound(house: foe, making: .hide, count: 1),
         ]
         XCTAssertEqual(GameSession.cues(for: quiet, in: state, player: player), [.watch])
         // Every new order has its own sound, not the plain click.
@@ -869,7 +874,7 @@ final class CueMappingTests: XCTestCase {
             (.useItem(.moonsaltCache, hold: nil), .coin), (.useItem(.wardStone, hold: seat.id), .complete),
             (.useItem(.mendingDraught, hold: nil), .tend), (.takeHeritage(.strandfolk), .banner),
             (.pursueAllianceStudy(.shieldOath), .lore), (.giveToAlliance(Stock(grain: 50)), .coin),
-            (.raiseAllianceHall(at: unit.position), .rise),
+            (.raiseAllianceHall(at: unit.position), .rise), (.forge(.wardensBlade, quality: .plain), .anvil),
         ]
         for (command, cue) in orders {
             XCTAssertEqual(GameSession.cues(for: command, events: [], in: state, player: player), [cue], "\(command)")

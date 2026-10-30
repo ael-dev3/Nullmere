@@ -1191,6 +1191,7 @@ public final class GameSession {
         case .pursueAllianceStudy: return .lore
         case .giveToAlliance: return .coin
         case .raiseAllianceHall: return .rise
+        case .forge: return .anvil
         default: return .select
         }
     }
@@ -1254,6 +1255,7 @@ public final class GameSession {
         case .hallStruck(_, let id, _, let by, _) where by != player && alliance == id: return .batter
         case .hallTorn(_, _, let by, _) where by == player: return .triumph
         case .hallTorn(_, let id, _, _) where alliance == id: return .dread
+        case .gearForged(let house, _) where house == player: return .anvil
         case .scoutSeen(let hold, _) where state?.hold(hold)?.owner == player: return .envoy
         case .hunted(let hunt) where hunt.attackerOwner == player: return hunt.attackerKind == .bow ? .loose : .clash
         case .sentToGather(let unit, _) where ours(unit): return .order

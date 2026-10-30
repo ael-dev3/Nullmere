@@ -110,6 +110,9 @@ public struct GameState: Codable, Equatable, Sendable {
     var armoury: [Gear]?
     /// What the Houses keep in their satchels; absent before any was given.
     var satchel: [ItemStack]?
+    /// The makings the Houses keep for their Forges; absent before any
+    /// were found.
+    var makings: [MakingStack]?
     /// The happening of the realm under way, if any.
     public internal(set) var happening: Happening?
     /// The deeds the Houses have done this age; absent before any.

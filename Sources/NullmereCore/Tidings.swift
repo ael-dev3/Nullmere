@@ -51,6 +51,12 @@ extension GameState {
         case .gearFound(let house, let piece, let wild):
             guard house == viewer else { return nil }
             return Tidings("Among the fallen \(wild.title.hasPrefix("the ") ? String(wild.title.dropFirst(4)) : wild.title), your company finds a \(piece.title).", .good)
+        case .makingsFound(let house, let making, let count):
+            guard house == viewer else { return nil }
+            return Tidings("\(count) \(making.title.lowercased()) for your Forge.", .neutral)
+        case .gearForged(let house, let piece):
+            guard house == viewer else { return nil }
+            return Tidings("Your smiths forge a \(piece.title), of \(piece.kind.set?.title ?? "no set"): \(piece.effect).", .good)
         case .gearWorn(let id, let house, let gearID):
             guard house == viewer, let commander = commander(id) else { return nil }
             return Tidings("\(commander.name) takes up the \(gear(gearID)?.title ?? "gear").", .neutral)

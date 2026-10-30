@@ -26,8 +26,10 @@ final class GearTests: XCTestCase {
     }
 
     func testEachKindOfTheWildsLeavesItsOwnFinerFromHigherLevels() {
-        XCTAssertEqual(Set(WildKind.allCases.map(GearKind.left(by:))), Set(GearKind.allCases), "Every kind of gear has its wilds")
-        XCTAssertEqual(GearSlot.allCases.map { slot in GearKind.allCases.filter { $0.slot == slot }.count }, [2, 2, 1])
+        XCTAssertEqual(Set(WildKind.allCases.map(GearKind.left(by:))), Set(GearKind.allCases.filter { $0.set == nil }),
+                       "Every kind of gear not forged has its wilds")
+        let left = GearKind.allCases.filter { $0.set == nil }
+        XCTAssertEqual(GearSlot.allCases.map { slot in left.filter { $0.slot == slot }.count }, [2, 2, 1])
         XCTAssertEqual((1...10).map { GearQuality.of(level: $0) },
                        [.plain, .plain, .plain, .fine, .fine, .fine, .masterwork, .masterwork, .masterwork, .fabled])
         XCTAssertTrue(GearQuality.plain < .fabled)
@@ -42,7 +44,7 @@ final class GearTests: XCTestCase {
         XCTAssertEqual(Gear(id: 4, kind: .reaverAxe, quality: .plain, owner: 0).effect, "+2% attack, +5% to blows on a ward")
         XCTAssertEqual(Gear(id: 5, kind: .huntersEye, quality: .fabled, owner: 0).effect, "+16% against the wilds, +16% gathered, +16% carried")
         XCTAssertEqual(glaive.scrap, 10)
-        XCTAssertEqual(GearKind.allCases.map(\.title), ["Salt Glaive", "Reaver's Axe", "Barrowplate", "Drowned Mail", "Hunter's Eye"])
+        XCTAssertEqual(left.map(\.title), ["Salt Glaive", "Reaver's Axe", "Barrowplate", "Drowned Mail", "Hunter's Eye"])
         XCTAssertEqual(GearSlot.allCases.map(\.title), ["Weapon", "Armour", "Charm"])
         XCTAssertEqual(GearQuality.allCases.map(\.title), ["Plain", "Fine", "Masterwork", "Fabled"])
     }

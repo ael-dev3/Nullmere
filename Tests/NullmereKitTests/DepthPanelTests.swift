@@ -817,6 +817,35 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(GameSession.isRealmsToTell(.hallStruck(hall: hall.id, alliance: sworn.id, ward: 10, by: 2, at: spot)))
     }
 
+    func testTheForgeShowsItsMakingsAndForgesAPieceOfASet() throws {
+        var state = world("forge shown")
+        let me = state.player
+        let seat = try XCTUnwrap(state.holds.first { $0.owner == me && $0.isSeat })
+        // No Forge yet: it says how to have one, and offers nothing.
+        let (bare, _) = session(state)
+        PressableButtons.isListening = true
+        draw(CommandersPanel(session: bare), width: 360, height: 2400)
+        XCTAssertFalse(PressableButtons.press("Forge"), "Nothing to forge with")
+        XCTAssertEqual(ForgeView.makingsLine(bare.state, me), "Makings: 0 hide, 0 iron, 0 heartwood, 0 moonglass.")
+        XCTAssertTrue(ForgeView.noForge.hasPrefix("Raise a Forge at one of your holds"))
+        // A Forge of the second level, with makings: the finest it makes is chosen.
+        state.holds[try XCTUnwrap(state.holdIndex(seat.id))].levels[.forge] = 2
+        _ = state.give(makings: [.hide: 40, .iron: 40, .heartwood: 40, .moonglass: 40], to: me)
+        state.houses[me].stock.moonsalt = 60
+        let (session, link) = session(state)
+        XCTAssertEqual(ForgeView.quality(nil, atLevel: 2), .fine)
+        XCTAssertEqual(ForgeView.quality(.fabled, atLevel: 2), .fine, "No finer than the Forge makes")
+        XCTAssertEqual(ForgeView.quality(.plain, atLevel: 2), .plain)
+        XCTAssertEqual(ForgeView.quality(nil, atLevel: 0), .plain)
+        XCTAssertEqual(ForgeView.recipeLine(.wardensBlade, .fine, in: session.state, for: me), "7 iron, 4 heartwood, 8 moonsalt")
+        PressableButtons.isListening = true
+        draw(CommandersPanel(session: session), width: 360, height: 2400)
+        XCTAssertTrue(PressableButtons.press("Forge"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .forge(.pathfindersLodestone, quality: .fine))
+        XCTAssertEqual(session.state.gear(of: me).first?.title, "Fine Pathfinder's Lodestone", "Forged at once on the keeper's copy")
+        XCTAssertEqual(GameSession.cues(for: .forge(.pathfindersLodestone, quality: .fine), events: [], in: session.state, player: me), [.anvil])
+    }
+
     func testTheSatchelIsShownAndItsItemsUsed() throws {
         var state = world("satchel shown")
         let me = state.player

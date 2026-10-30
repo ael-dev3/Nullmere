@@ -239,8 +239,12 @@ extension GameState {
         events.insert(.hunted(Hunt(attacker: unitID, attackerOwner: attacker.owner, attackerKind: attacker.kind, wild: wildID,
                                    wildKind: wild.kind, level: wild.level, at: wild.position, damageDealt: dealt, damageTaken: taken,
                                    attackerFell: attackerFell, wildFell: wildFell, spoils: spoils)), at: 0)
-        // What falls with it may be gear for the House's commanders.
-        if wildFell { events += findGear(on: wild, by: attacker.owner) }
+        // What falls with it may be gear for the House's commanders, and
+        // is makings for its Forge.
+        if wildFell {
+            events += findGear(on: wild, by: attacker.owner)
+            events += give(makings: [Making.left(by: wild.kind): wild.level], to: attacker.owner)
+        }
         return events
     }
 

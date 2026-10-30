@@ -87,11 +87,14 @@ public final class Ambience {
         /// Salt running through an hourglass, then a small glass chime: an
         /// hourglass turned to hasten what is under way.
         case sift
+        /// The smith's hammer on the anvil, three bright blows, the last
+        /// left to ring: gear forged.
+        case anvil
 
         /// Every cue, for tests and previews.
         public static let all: [Cue] = [.select, .order, .watch, .rise, .dread, .envoy, .triumph, .accord, .toll,
                                         .clash, .loose, .ride, .dig, .coin, .parley, .stand, .complete, .muster,
-                                        .refusal, .batter, .lore, .horn, .banner, .herald, .honour, .tend, .sift]
+                                        .refusal, .batter, .lore, .horn, .banner, .herald, .honour, .tend, .sift, .anvil]
     }
 
     private static let logger = Logger(subsystem: "online.nullmere.game", category: "sound")
@@ -630,6 +633,20 @@ final class Synth: @unchecked Sendable {
                         Partial(frequency: 1_568 * 2.76, amplitude: 0.016, decay: 2.6),
                         Partial(frequency: 2_093, amplitude: 0.02, decay: 2, delay: 0.08),
                     ], noise: 0, noiseDecay: 1, delay: 0.36)]
+        case .anvil:
+            // Three blows of the hammer, bright and out of tune with each
+            // other as struck iron is, a dull knock under each; the last
+            // left to ring.
+            func blow(_ delay: Float, _ strength: Float, _ ring: Float) -> Note {
+                Note(partials: [
+                    Partial(frequency: 1_245, amplitude: 0.05 * strength, decay: ring),
+                    Partial(frequency: 1_245 * 2.31, amplitude: 0.028 * strength, decay: ring * 1.4),
+                    Partial(frequency: 1_245 * 3.87, amplitude: 0.014 * strength, decay: ring * 2),
+                    Partial(frequency: 412, amplitude: 0.02 * strength, decay: 16),
+                ], noise: 0.04 * strength, noiseDecay: 70, delay: delay)
+            }
+            note = blow(0, 0.8, 9)
+            more = [blow(0.2, 0.9, 9), blow(0.4, 1, 2.5)]
         case .honour:
             // A quick fanfare up a major arpeggio to the octave.
             note = Note(partials: [

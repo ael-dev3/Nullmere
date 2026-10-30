@@ -187,7 +187,7 @@ final class PlacementTests: XCTestCase {
                 PlacementTests.check(pieces, grand, relief)
                 let slots = HoldLayout.slots(grand, relief: relief).count
                 let works = pieces.filter { if case .work = $0.key { return true } else if case .study = $0.key { return true } else { return false } }
-                XCTAssertEqual(works.count, min(slots, 9), "\(hold.position): every work that has a slot")
+                XCTAssertEqual(works.count, min(slots, HoldLayout.Work.order.count), "\(hold.position): every work that has a slot")
                 XCTAssertEqual(pieces.filter { $0.key == .walls(level: 5) }.count, 1)
                 // A hold as the rules keep it: just founded, its keep alone.
                 let bare = HoldLayout.pieces(hold: hold, relief: relief)
@@ -332,7 +332,7 @@ final class PlacementTests: XCTestCase {
             let relief = Relief(map: state.map)
             for hold in state.holds {
                 let grand = PlacementTests.grandPlan(hold.position)
-                guard HoldLayout.slots(grand, relief: relief).count >= 8 else { continue }
+                guard HoldLayout.slots(grand, relief: relief).count >= HoldLayout.Work.order.count else { continue }
                 let everything = HoldLayout.pieces(grand, relief: relief)
                 for (work, level) in grand.levels where work != .building(.walls) {
                     let alone = HoldLayout.Plan(hex: hold.position, isSeat: true, levels: [work: level])

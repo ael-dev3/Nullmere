@@ -179,6 +179,13 @@ extension GameState {
             if !(1...GameState.itemsKept).contains(stack.count) { found.append("House \(stack.house) keeps \(stack.count) of \(stack.kind.plural)") }
             if !stacks.insert("\(stack.house) \(stack.kind.rawValue)").inserted { found.append("House \(stack.house) keeps \(stack.kind.plural) twice") }
         }
+        var kept: Set<String> = []
+        for stack in makings ?? [] {
+            let what = stack.making.title.lowercased()
+            if !houseIDs.contains(stack.house) { found.append("Makings are of no House (\(stack.house))") }
+            if !(1...GameState.makingsKept).contains(stack.count) { found.append("House \(stack.house) keeps \(stack.count) \(what)") }
+            if !kept.insert("\(stack.house) \(stack.making.rawValue)").inserted { found.append("House \(stack.house) keeps \(what) twice") }
+        }
         for rally in ralliesStanding {
             if !callers.insert(rally.caller).inserted { found.append("House \(rally.caller) has called two rallies") }
             if hold(rally.muster)?.owner != rally.caller { found.append("Rally \(rally.id) gathers at a hold not its caller's") }

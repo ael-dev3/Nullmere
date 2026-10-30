@@ -143,7 +143,8 @@ final class ItemTests: XCTestCase {
 
     func testLairsMarksAndChargesFillTheSatchel() throws {
         // A lair broken: its caller gains an hourglass and a cache of what
-        // the lair gave; every other House of the host, a cache.
+        // the lair gave; every other House of the host, a cache; and each
+        // makings for its Forge.
         var state = Scene.world("satchel filled", houses: 3, radius: 16)
         let me = state.player
         let events = state.rewardLair(LairAssault(rally: 1, caller: me, lair: 2, kind: .reavers, level: 2, at: .origin, strikes: [],
@@ -153,7 +154,8 @@ final class ItemTests: XCTestCase {
         XCTAssertEqual(state.items(.timberCache, of: me), 1, "The Reavers' timber")
         XCTAssertEqual(state.items(.timberCache, of: 1), 1)
         XCTAssertEqual(state.items(.hourglass, of: 1), 0)
-        XCTAssertEqual(events.count, 3)
+        XCTAssertEqual(events.count, 5)
+        XCTAssertTrue(events.contains(.makingsFound(house: 1, making: .heartwood, count: 6)), "\(events)")
         // The first charges bring hourglasses, to learn by.
         XCTAssertEqual(Charge.raiseGranary.items, [.hourglass])
         XCTAssertTrue(Charge.allCases.contains { $0.items.contains(.mendingDraught) })

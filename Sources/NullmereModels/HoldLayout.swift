@@ -39,11 +39,12 @@ public enum HoldLayout {
 
         /// The order slots are given in: the great work first, then the
         /// muster hall by the gate, the beacon on the heights, the study,
-        /// the works that draw on the land, each toward its own ground, and
-        /// the Infirmary, in the quiet away from the gate.
+        /// the works that draw on the land, each toward its own ground, the
+        /// Infirmary, in the quiet away from the gate, and the Forge, near
+        /// the gate for the companies it arms.
         static let order: [Work] = [.building(.moonspire), .building(.musterHall), .building(.beacon), .study,
                                     .building(.granary), .building(.sawpit), .building(.quarry), .building(.saltworks),
-                                    .building(.infirmary)]
+                                    .building(.infirmary), .building(.forge)]
     }
 
     /// What a hold has, for its pieces to be laid out.
@@ -276,6 +277,7 @@ public enum HoldLayout {
         case .building(.beacon): score += 4 * relief.height(atX: slot.position.x, z: slot.position.z) + around * 0.1
         case .study: score += 10 - abs(around - 2.5)
         case .building(.infirmary): score += 10 - abs(around - 2)
+        case .building(.forge): score += 10 - abs(around - 1.2)
         case .building(let kind):
             score += affinity(kind, terrain: relief.terrain(of: hex), feature: relief.map[hex]?.feature) * 10 + around * 0.2
         }

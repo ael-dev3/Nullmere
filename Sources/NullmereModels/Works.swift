@@ -160,6 +160,7 @@ enum Works {
         case .infirmary: return infirmary(level, name)
         case .moonspire: return moonspire(level, name)
         case .archive: return study(level: level, name: name)
+        case .forge: return forge(level, name)
         }
     }
 
@@ -673,6 +674,134 @@ enum Works {
             }
         }
         return model(name, b)
+    }
+
+    // MARK: Forge
+
+    /// How high a Forge's chimney stands at a level.
+    static func forgeChimneyHeight(_ level: Int) -> Float {
+        [0.3, 0.36, 0.42, 0.5, 0.56][min(max(level, 1), 5) - 1]
+    }
+
+    /// Where smoke rises from a Forge's chimney.
+    static func forgeChimney(_ level: Int) -> Vec3 {
+        Vec3(-0.13, forgeChimneyHeight(level), -0.12)
+    }
+
+    /// Where a House's smiths work its makings into gear: an open hearth
+    /// under a lean-to with its anvil and a trip hammer beating on it, the
+    /// hearth's coals glowing; then a timber smithy behind it and a rack of
+    /// blades; from the third, a smithy of pale stone with bellows and a
+    /// quench trough; then a second hearth and a stand of mail; at the
+    /// fifth, a furnace of moonglass burning cold and bright, a grindstone
+    /// turning and the House's banner on the chimney.
+    static func forge(_ level: Int, _ name: String) -> Model {
+        var b = MeshBuilder()
+        var rig = Rig()
+        b.pad(radius: 0.31, color: Palette.stoneDark)
+        let stone = level >= 3
+        if level >= 2 {
+            // The smithy behind the hearth.
+            b.hall(at: Vec3(0.05, 0, -0.17), width: 0.26, depth: 0.12, height: stone ? 0.15 : 0.13,
+                   wall: stone ? Palette.stonePale : Palette.timber, roof: Palette.slate, pitch: 0.6,
+                   footing: Palette.stoneDark)
+            b.door(Vec3(0.1, 0.055, -0.108), width: 0.045, height: 0.09, facing: 0)
+            b.window(Vec3(0.0, 0.09, -0.108), width: 0.026, height: 0.034, facing: 0)
+        }
+        // The lean-to over the hearth: four posts and a roof falling toward the keep.
+        let leanTop: Float = 0.2, leanLow: Float = 0.15
+        for (x, z) in [(Float(-0.24), Float(-0.1)), (-0.02, -0.1), (-0.24, 0.06), (-0.02, 0.06)] {
+            b.limb(from: Vec3(x, -0.02, z), to: Vec3(x, z < 0 ? leanTop : leanLow, z), radius: 0.008, color: Palette.timberDark)
+        }
+        b.quad(Vec3(-0.27, leanLow, 0.09), Vec3(0.01, leanLow, 0.09), Vec3(0.01, leanTop, -0.13), Vec3(-0.27, leanTop, -0.13),
+               color: level == 1 ? Palette.thatch : Palette.slate)
+        b.quad(Vec3(-0.27, leanTop - 0.012, -0.13), Vec3(0.01, leanTop - 0.012, -0.13), Vec3(0.01, leanLow - 0.012, 0.09),
+               Vec3(-0.27, leanLow - 0.012, 0.09), color: Palette.timberDark)
+        // The hearth of stone and its chimney, its coals glowing.
+        b.box(min: Vec3(-0.2, -0.03, -0.1), max: Vec3(-0.06, 0.07, 0.0), color: Palette.stoneDark)
+        let flue = forgeChimney(level)
+        b.box(min: Vec3(flue.x - 0.03, 0.0, flue.z - 0.03), max: Vec3(flue.x + 0.03, flue.y, flue.z + 0.03), color: Palette.stoneDark)
+        let coals = rig.add("coals", pivot: Vec3(-0.13, 0.07, -0.05))
+        b.with(part: coals, material: .glow) {
+            $0.box(center: Vec3(-0.13, 0.08, -0.05), size: Vec3(0.08, 0.02, 0.06), color: Palette.fire)
+        }
+        // The anvil on its stump.
+        let anvil = Vec3(0.07, 0, 0.06)
+        b.place(.translation(anvil)) {
+            $0.lathe([(0.03, -0.02), (0.032, 0.05), (0.028, 0.055)], sides: 7, color: Palette.timberDark)
+        }
+        b.with(material: .metal) {
+            $0.box(center: anvil + Vec3(0, 0.068, 0), size: Vec3(0.07, 0.026, 0.034), color: Palette.iron)
+            $0.place(.translation(anvil + Vec3(-0.035, 0.074, 0)) * .rotationZ(.pi / 2)) {
+                $0.cone(sides: 4, radius: 0.012, to: 0.03, color: Palette.iron)
+            }
+        }
+        // The trip hammer: a beam on a post, its iron head beating on the anvil.
+        let pivot = Vec3(0.22, 0.13, 0.06)
+        b.limb(from: Vec3(0.22, -0.02, 0.06), to: pivot, radius: 0.012, color: Palette.timber)
+        let hammer = rig.add("hammer", pivot: pivot)
+        b.with(part: hammer) {
+            $0.beam(from: pivot, to: Vec3(0.07, 0.125, 0.06), width: 0.016, color: Palette.timber)
+            $0.with(material: .metal) {
+                $0.box(center: Vec3(0.07, 0.11, 0.06), size: Vec3(0.032, 0.03, 0.03), color: Palette.iron)
+            }
+        }
+        let swings = [Machinery.Swing(part: hammer, axis: Vec3(0, 0, -1), angle: 0.32)]
+        var wheels: [Machinery.Wheel] = []
+        // A barrel of water for the quench.
+        b.place(.translation(Vec3(0.16, 0, -0.04))) {
+            $0.lathe([(0.026, -0.02), (0.03, 0.035), (0.026, 0.065)], sides: 7, color: Palette.timber)
+        }
+        if level >= 2 {
+            // A rack of blades by the smithy door.
+            b.beam(from: Vec3(0.19, 0.11, -0.095), to: Vec3(0.27, 0.11, -0.095), width: 0.008, color: Palette.timberDark)
+            b.with(material: .metal) {
+                for index in 0..<3 {
+                    let x = 0.2 + Float(index) * 0.03
+                    $0.box(center: Vec3(x, 0.07, -0.09), size: Vec3(0.006, 0.08, 0.004), color: Palette.steel)
+                }
+            }
+        }
+        if stone {
+            // Bellows beside the hearth, and a quench trough before it.
+            b.place(.translation(Vec3(-0.24, 0.03, -0.05)) * .rotationZ(0.3)) {
+                $0.box(center: .zero, size: Vec3(0.05, 0.03, 0.06), color: Palette.leatherDark)
+            }
+            b.box(min: Vec3(-0.2, -0.02, 0.03), max: Vec3(-0.08, 0.035, 0.08), color: Palette.stone)
+            b.box(min: Vec3(-0.19, 0.02, 0.04), max: Vec3(-0.09, 0.033, 0.07), color: Palette.slate)
+        }
+        if level >= 4 {
+            // A second hearth by the first, and a stand of mail.
+            b.box(min: Vec3(-0.2, -0.03, 0.1), max: Vec3(-0.1, 0.06, 0.17), color: Palette.stoneDark)
+            b.with(part: coals, material: .glow) {
+                $0.box(center: Vec3(-0.15, 0.067, 0.135), size: Vec3(0.06, 0.016, 0.045), color: Palette.fire)
+            }
+            b.limb(from: Vec3(0.25, -0.02, 0.15), to: Vec3(0.25, 0.16, 0.15), radius: 0.006, color: Palette.timberDark)
+            b.with(material: .metal) {
+                $0.box(center: Vec3(0.25, 0.115, 0.15), size: Vec3(0.06, 0.07, 0.03), color: Palette.mail)
+            }
+        }
+        if level >= 5 {
+            // A furnace of moonglass burning cold and bright, a grindstone
+            // turning, and the House's banner from the chimney.
+            b.with(material: .crystal) {
+                $0.place(.translation(Vec3(0.0, 0.0, 0.18))) {
+                    $0.lathe([(0.035, 0.0), (0.04, 0.05), (0.02, 0.1), (0.0, 0.12)], sides: 6, color: Palette.moonsalt)
+                }
+            }
+            let hub = Vec3(0.13, 0.07, 0.19)
+            let grindstone = rig.add("grindstone", pivot: hub)
+            b.with(part: grindstone) {
+                $0.wheel(center: hub, radius: 0.045, width: 0.02, spokes: 2, color: Palette.stone, rim: Palette.stonePale)
+            }
+            for z in [Float(0.17), 0.21] {
+                b.limb(from: Vec3(0.13, -0.02, z), to: Vec3(0.13, 0.07, z), radius: 0.006, color: Palette.timberDark)
+            }
+            wheels.append(.init(part: grindstone, axis: Vec3(1, 0, 0), turns: 2))
+            b.limb(from: flue + Vec3(0.035, -0.08, 0), to: flue + Vec3(0.035, 0.1, 0), radius: 0.005, color: Palette.timberDark)
+            b.flag(at: flue + Vec3(0.035, 0.095, 0), width: 0.1, height: 0.07, tail: true)
+        }
+        return model(name, b, rig: rig, machinery: Machinery(wheels: wheels, swings: swings, flames: [coals], parts: rig.count))
     }
 
     // MARK: Beacon

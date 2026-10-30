@@ -727,6 +727,28 @@ realm; keepers are told in plain words, never a status code.
   it, and burns when struck low. It is named on hover; its ground's panel
   describes it or, to the leader, begins it; the Alliance screen tells how
   it stands; and each of its happenings has its sound and its place.
+- **The Forge.** A work of five levels where a House's smiths work makings
+  into gear of three sets: the Warden's Harness, the Raider's Kit and the
+  Pathfinder's Gear, each a weapon, an armour and a charm. The makings are
+  hide, iron, heartwood and moonglass: a company of the wilds leaves a
+  piece of its kind's for each of its levels as it falls, a lair broken
+  leaves three a level to every House of the host, and a company bringing
+  in what it gathered brings a piece for every forty of grain, timber or
+  stone, or every eight of moonsalt; a House keeps two hundred of each. A
+  piece is forged from Commanders (4) for its makings and moonsalt, as fine
+  as the House's highest Forge allows (plain at level I, fine at II,
+  masterwork at IV, fabled at V, each finer twice the makings), every
+  level above the first taking a tenth fewer makings. Two pieces of a set
+  worn by one commander give its company more besides what each gives,
+  all three more still. Stewards raise a Forge at their seat from the
+  twenty-fourth watch, forge the set that suits their foremost commander a
+  piece at a time, and arm a piece of it before another as fine. Each
+  level of the Forge has its model: an open hearth under a lean-to, its
+  coals glowing, a trip hammer beating on the anvil, growing into a stone
+  smithy with bellows, a quench trough, a second hearth and a stand of
+  mail, and at the fifth a moonglass furnace, a turning grindstone and the
+  House's banner on its chimney; smoke rises from its chimney, and forging
+  rings with three blows of the hammer.
 - **Heritages.** Every House comes of one of the lake's six peoples,
   dealt round the lake as an age begins, from a seat the seed chooses, so
   each has its seats: the Saltborn (half again the moonsalt from their

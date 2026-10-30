@@ -93,6 +93,8 @@ extension GameState {
             return try giveToAlliance(stock, by: house)
         case let .raiseAllianceHall(hex):
             return try raiseHall(at: hex, by: house)
+        case let .forge(kind, quality):
+            return try forge(kind, quality, by: house)
         case let .inviteToAlliance(target):
             return try invite(target, by: house)
         case let .askToJoin(allianceID):

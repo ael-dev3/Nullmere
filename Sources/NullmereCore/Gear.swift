@@ -39,7 +39,8 @@ public enum GearQuality: Int, CaseIterable, Codable, Comparable, Sendable {
     public static func < (a: GearQuality, b: GearQuality) -> Bool { a.rawValue < b.rawValue }
 }
 
-/// A kind of gear: each kind of the wilds leaves its own.
+/// A kind of gear: each kind of the wilds leaves its own, and a House's
+/// Forge makes three sets of its own.
 public enum GearKind: String, CaseIterable, Codable, Sendable {
     /// Left by Saltwights: a blade of salt-hardened bone.
     case saltGlaive
@@ -51,6 +52,12 @@ public enum GearKind: String, CaseIterable, Codable, Sendable {
     case drownedMail
     /// Left by Spine Hunters: a carved eye that finds the way.
     case huntersEye
+    // Forged, in the Warden's Harness.
+    case wardensBlade, wardensMail, wardensSeal
+    // Forged, in the Raider's Kit.
+    case raidersSpear, raidersLeathers, raidersHorn
+    // Forged, in the Pathfinder's Gear.
+    case pathfindersKnife, pathfindersCloak, pathfindersLodestone
 
     public var title: String {
         switch self {
@@ -59,14 +66,49 @@ public enum GearKind: String, CaseIterable, Codable, Sendable {
         case .barrowPlate: return "Barrowplate"
         case .drownedMail: return "Drowned Mail"
         case .huntersEye: return "Hunter's Eye"
+        case .wardensBlade: return "Warden's Blade"
+        case .wardensMail: return "Warden's Mail"
+        case .wardensSeal: return "Warden's Seal"
+        case .raidersSpear: return "Raider's Spear"
+        case .raidersLeathers: return "Raider's Leathers"
+        case .raidersHorn: return "Raider's Horn"
+        case .pathfindersKnife: return "Pathfinder's Knife"
+        case .pathfindersCloak: return "Pathfinder's Cloak"
+        case .pathfindersLodestone: return "Pathfinder's Lodestone"
         }
     }
 
     public var slot: GearSlot {
         switch self {
-        case .saltGlaive, .reaverAxe: return .weapon
-        case .barrowPlate, .drownedMail: return .armour
-        case .huntersEye: return .charm
+        case .saltGlaive, .reaverAxe, .wardensBlade, .raidersSpear, .pathfindersKnife: return .weapon
+        case .barrowPlate, .drownedMail, .wardensMail, .raidersLeathers, .pathfindersCloak: return .armour
+        case .huntersEye, .wardensSeal, .raidersHorn, .pathfindersLodestone: return .charm
+        }
+    }
+
+    /// The set it is forged in; none for what the wilds leave.
+    public var set: GearSet? {
+        switch self {
+        case .saltGlaive, .reaverAxe, .barrowPlate, .drownedMail, .huntersEye: return nil
+        case .wardensBlade, .wardensMail, .wardensSeal: return .warden
+        case .raidersSpear, .raidersLeathers, .raidersHorn: return .raider
+        case .pathfindersKnife, .pathfindersCloak, .pathfindersLodestone: return .pathfinder
+        }
+    }
+
+    /// The makings forging a plain piece takes; none for what the wilds leave.
+    public var recipe: [Making: Int] {
+        switch self {
+        case .saltGlaive, .reaverAxe, .barrowPlate, .drownedMail, .huntersEye: return [:]
+        case .wardensBlade: return [.iron: 4, .heartwood: 2]
+        case .wardensMail: return [.iron: 5, .hide: 2]
+        case .wardensSeal: return [.moonglass: 3, .iron: 2]
+        case .raidersSpear: return [.heartwood: 4, .iron: 2]
+        case .raidersLeathers: return [.hide: 5, .heartwood: 1]
+        case .raidersHorn: return [.hide: 2, .moonglass: 2, .heartwood: 2]
+        case .pathfindersKnife: return [.iron: 3, .hide: 2]
+        case .pathfindersCloak: return [.hide: 4, .heartwood: 2]
+        case .pathfindersLodestone: return [.moonglass: 4, .iron: 1]
         }
     }
 
@@ -79,8 +121,20 @@ public enum GearKind: String, CaseIterable, Codable, Sendable {
         case .barrowPlate: return [.defense: 4, .healing: 1]
         case .drownedMail: return [.defense: 3, .garrison: 5]
         case .huntersEye: return [.hunting: 4, .gathering: 4, .load: 4]
+        case .wardensBlade: return [.attack: 2, .defense: 2]
+        case .wardensMail: return [.defense: 4, .garrison: 3]
+        case .wardensSeal: return [.garrison: 4, .healing: 1]
+        case .raidersSpear: return [.attack: 4]
+        case .raidersLeathers: return [.attack: 2, .defense: 2]
+        case .raidersHorn: return [.wardDamage: 5, .attack: 1]
+        case .pathfindersKnife: return [.hunting: 4, .attack: 1]
+        case .pathfindersCloak: return [.defense: 2, .gathering: 3]
+        case .pathfindersLodestone: return [.gathering: 3, .load: 4]
         }
     }
+
+    /// What can be forged: the pieces of the Forge's sets.
+    public static let forged: [GearKind] = GearSet.allCases.flatMap(\.pieces)
 
     /// The kind each of the wilds leaves.
     public static func left(by wild: WildKind) -> GearKind {
@@ -171,9 +225,11 @@ extension GameState {
         gear.filter { $0.wornBy == commander }
     }
 
-    /// What a commander's skills, talents and gear give the company it leads.
+    /// What a commander's skills, talents and gear give the company it
+    /// leads, the sets among its gear with the rest.
     public func edge(_ edge: Edge, of commander: Commander) -> Int {
-        commander.edge(edge) + worn(by: commander.id).reduce(0) { $0 + ($1.edges[edge] ?? 0) }
+        let pieces = worn(by: commander.id)
+        return commander.edge(edge) + pieces.reduce(0) { $0 + ($1.edges[edge] ?? 0) } + GameState.setBonus(edge, of: pieces)
     }
 
     /// Whether a company of the wilds struck down leaves gear: drawn from
@@ -240,15 +296,18 @@ extension GameState {
     }
 
     /// A steward arms its commanders: in each slot, the finest piece it
-    /// holds that no other commander of its wears.
+    /// holds that no other commander of its wears, a piece of the set that
+    /// suits the commander before another as fine.
     mutating func armCommanders(for house: Int) -> [GameEvent] {
         var events: [GameEvent] = []
         for commander in commanders(of: house) {
+            let suiting = GearSet.suiting(commander.archetype)
+            func rank(_ piece: Gear) -> Int { piece.quality.rawValue * 2 + (piece.kind.set == suiting ? 1 : 0) }
             for slot in GearSlot.allCases {
                 let wearing = worn(by: commander.id).first { $0.slot == slot }
                 let best = gear(of: house).filter { $0.slot == slot && $0.wornBy == nil }
-                    .max { ($0.quality, -$0.id) < ($1.quality, -$1.id) }
-                guard let best, best.quality > (wearing?.quality ?? .plain) || wearing == nil else { continue }
+                    .max { (rank($0), -$0.id) < (rank($1), -$1.id) }
+                guard let best, wearing.map({ rank(best) > rank($0) }) ?? true else { continue }
                 events += (try? wear(best.id, on: commander.id, as: house)) ?? []
             }
         }

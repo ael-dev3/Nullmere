@@ -140,13 +140,15 @@ extension GameState {
 
     /// A lair broken fills its host's satchels: its caller gains an
     /// hourglass for each of its levels, and every House of the host a
-    /// cache of the store its wilds carry most of.
+    /// cache of the store its wilds carry most of, and makings for its
+    /// Forge, three for each of the lair's levels.
     mutating func rewardLair(_ assault: LairAssault) -> [GameEvent] {
         let spoils = assault.kind.spoils
         let cache = ItemKind.cache(of: Resource.allCases.max { spoils[$0] < spoils[$1] }!)
         var events = give(.hourglass, assault.level, to: assault.caller)
         for share in assault.shares {
             events += give(cache, to: share.house)
+            events += give(makings: [Making.left(by: assault.kind): 3 * assault.level], to: share.house)
         }
         return events
     }
