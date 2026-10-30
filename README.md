@@ -452,7 +452,9 @@ twice.
   watch sooner. Barter a surplus
   for what you lack, three to one; moonsalt counts as three of any other
   store, so one costs nine of them, and fetches one. Each new hold costs
-  more to found than the last, so a House grows by choice, not by habit.
+  more to found than the last, so a House grows by choice, not by habit. A
+  company trained with no free tile within three of its hold waits,
+  trained, and the hold trains no other until it has room to stand.
 - **Companies.** Lanterns scout, Spears hold the line and take holds,
   Bows strike from two tiles, Riders are fast, and Founders found new holds.
   Every company but Lanterns eats a grain each watch. Companies that

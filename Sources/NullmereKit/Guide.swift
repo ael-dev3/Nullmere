@@ -38,6 +38,7 @@ enum Guide {
             "Select a company, then right-click to march, or to strike an enemy within reach. Hovering an enemy shows the battle's odds first.",
             "A company that wins a close fight steps onto the fallen's ground, unless it fought from within a hold: a garrison holds its ground.",
             "Every company but Lanterns eats a grain each watch. Those that live through battles rise in rank.",
+            "A company trained with no free tile within three of its hold waits, trained, and the hold trains no other until it has room to stand.",
             "To take a hold, break its ward, then march Spears or Riders in; one that falls to the walls' blow back takes nothing. You carry off its share of their stores; a seat holds half.",
         ]),
         Section(title: "Houses", lines: [

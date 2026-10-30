@@ -102,9 +102,12 @@ private struct OwnHoldPanel: View {
                     )
                 }
                 if let training = hold.training {
+                    // Trained, with no free ground within three tiles to
+                    // stand on, it waits there, and the hold trains no more.
                     ProgressLine(
                         title: training.kind.title,
-                        detail: training.watchesLeft <= 1 ? "Ready next watch" : "\(training.watchesLeft) watches left",
+                        detail: training.watchesLeft == 0 ? "Trained; waits for room to stand"
+                            : training.watchesLeft == 1 ? "Ready next watch" : "\(training.watchesLeft) watches left",
                         fraction: 1 - Double(training.watchesLeft) / Double(training.kind.trainWatches)
                     )
                 }

@@ -141,6 +141,33 @@ final class RareCaseTests: XCTestCase {
         XCTAssertNil(state.holds[seat].training)
     }
 
+    /// A company trained where the only ground free within three tiles is
+    /// another House's hold waits rather than stand in it.
+    func testATrainedCompanyNeverMustersInAnotherHousesHold() throws {
+        var state = GameState(settings: GameSettings(seedText: "no room", houseCount: 3, radius: 16, keepers: 1))
+        let me = state.player, other = 1
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+        let at = state.holds[seat].position
+        let site = try XCTUnwrap(at.ring(3).first { hex in
+            state.map[hex]?.terrain.isSettleable == true && state.unit(at: hex) == nil
+                && state.holds.allSatisfy { $0.position.distance(to: hex) >= 3 }
+        })
+        state.holds.append(Hold(id: state.nextID, name: "Close By", owner: other, position: site, isSeat: false, foundedWatch: 1))
+        state.nextID += 1
+        state.units.removeAll { $0.owner == other }
+        for hex in at.spiral(3) where hex != site && state.map[hex]?.terrain.isPassable == true && state.unit(at: hex) == nil {
+            var lantern = Unit(id: state.nextID, kind: .lantern, owner: me, position: hex)
+            lantern.fortified = true
+            state.units.append(lantern)
+            state.nextID += 1
+        }
+        state.holds[seat].training = Hold.Training(kind: .spear, watchesLeft: 1)
+        _ = state.endWatch()
+        XCTAssertNil(state.unit(at: site), "Not in their hold")
+        XCTAssertEqual(state.holds[seat].training?.watchesLeft, 0, "Trained, it waits for room")
+        XCTAssertEqual(state.problems(), [])
+    }
+
     /// A trade is weighed on its terms alone, never accepted as a proposal.
     func testATradeIsNotAcceptedAsAProposal() {
         let state = GameState(settings: GameSettings(seedText: "terms", houseCount: 3, radius: 16, keepers: 1))
