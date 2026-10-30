@@ -180,12 +180,14 @@ jobs:
       # the debug app asks it for each kind of envoy and chronicle entry,
       # and every line is held to the voices' rules. A runner whose model
       # isn't ready to speak (a virtual Mac is often not eligible) says so
-      # and passes on; a line that breaks the rules fails.
+      # and passes on; a line that breaks the rules fails. Built under the
+      # app's own name, as the release app that found the model ready is:
+      # the runner's own copy, nothing else installed here.
       - name: The voices, from the runner's own model
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         timeout-minutes: 15
         run: |
-          scripts/check-voices.sh || [ $? -eq 2 ]
+          VOICES_BUNDLE_ID=online.nullmere.launcher scripts/check-voices.sh || [ $? -eq 2 ]
 
       # Opens the debug build of the launcher as if the model were ready
       # (only debug builds allow that), to photograph its menu, News and
