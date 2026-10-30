@@ -144,6 +144,27 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertNil(first.session)
     }
 
+    /// A new age begun without a seat for the keeper: back to the front door,
+    /// to wait there for one, not left in an age that is gone.
+    func testANewAgeWithoutASeatGoesBackToTheDoor() async throws {
+        let db = FakeSpacetime()
+        let running = try await steward(db, seats: 4)
+        defer { running.cancel() }
+        let app = app(db, identity: MemoryStore(), realm: "seatless")
+        app.open()
+        try await until("the realm") { if case .open = app.door { return true } else { return false } }
+        app.enterWorld(name: "Ama")
+        try await until("the world") { app.session != nil }
+        let session = try XCTUnwrap(app.session)
+        let seatless = Keeper(id: "seatless", name: "Ama", house: nil, isReady: false, isOnline: true, arrival: 0)
+        session.onNewAge?(seatless, session.state)
+        XCTAssertNil(app.session, "Not left in the age gone")
+        guard case .frontDoor = app.phase else { return XCTFail("At the door") }
+        XCTAssertTrue(app.isWaitingForSeat, "waiting there for a seat")
+        XCTAssertNotNil(app.seatTimer)
+        app.leaveDoor()
+    }
+
     func testTheRealmOutOfReachAtTheDoorAndInTheWorld() async throws {
         let db = FakeSpacetime()
         let running = try await steward(db, seats: 4)

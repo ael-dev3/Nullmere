@@ -366,6 +366,9 @@ public final class GameApp {
         UserDefaults.standard.set(keeper.name, forKey: Self.nameKey(for: address))
         guard let house = keeper.house, let link else {
             startWaiting()
+            // A new age begun with no seat for this keeper: back to the front
+            // door, to wait there for one, not left in an age that is gone.
+            if session != nil { backToTheDoor() }
             return
         }
         stopWaiting()
@@ -424,6 +427,15 @@ public final class GameApp {
         phase = .frontDoor
         openDoor()
         arrivalProblem = "The realm no longer knows you, as when a realm is begun anew. Choose the name you'll go by."
+    }
+
+    /// From the world to the front door without leaving the realm: the
+    /// link, kept, tells the door how the realm stands from now on.
+    private func backToTheDoor() {
+        ambience.isAtWar = false
+        phase = .frontDoor
+        link?.onEvent = { [weak self] event in self?.hear(event) }
+        link?.connect()
     }
 
     /// Leaves the world for the front door; after two watches a caretaker

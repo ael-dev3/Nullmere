@@ -361,7 +361,9 @@ as the realm will, and takes the realm's word as final.
 - **Ages.** When a House wins, the age ends. When the watch next turns, a
   new age begins on a fresh lake, and keepers are seated anew in the order
   they first came, as seats allow, but for any away longer than a seat is
-  kept for them. Each age's lake has a shape of its own, in turn:
+  kept for them. One in the world when it begins, with no seat in it,
+  goes back to the front door to wait there for one, and steps in the
+  moment one falls free. Each age's lake has a shape of its own, in turn:
   the round Nullmere, the Twin Waters with a neck of land between them,
   the Sickle with land pushing in from one shore, and the Drowned Isles.
   The front door names the lake of the age, and the moon lies in the
