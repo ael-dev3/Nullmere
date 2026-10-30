@@ -492,12 +492,12 @@ twice.
   serves: the works on its tower stop when it bends the knee. A liege who
   turns on a vassal frees it, and a liege's fall frees all its vassals.
 - **How ages end.** In 528 ages played through by stewards alone, the
-  Moonspire decided seven in ten and dominion the rest; an age ran 157
-  watches at the median, and two in five saw a House fall outright. The
-  seats won alike, within chance. The tempers win differently: the
-  ambitious (37%) and the cunning (28%), quick to war, take most
-  dominions, while the steadfast (17%) and the wary (19%) win almost only by
-  the Moonspire.
+  Moonspire decided three in four and dominion the rest; an age ran 157
+  watches at the median, and more than a third saw a House fall outright.
+  The seats won alike, within chance. The tempers win differently: the
+  ambitious (39%) and the cunning (28%), quick to war, take most
+  dominions, while the steadfast (18%) and the wary (16%) win mostly by
+  the Moonspire, the wary almost only by it.
 - **Tribute.** From watch twenty, an ambitious or cunning steward a quarter
   stronger than a neighbour may demand a fifth of its stores. Paid, it keeps
   the peace for twenty watches, unless that neighbour's Moonspire rises;
