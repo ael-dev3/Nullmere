@@ -81,6 +81,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// Lanterns within two tiles of another House's hold scout it, for all
     /// their moves, and bring back what they saw.
     case scout(unit: Int, hold: Int)
+    /// A House of an alliance raises a standard on open land near the
+    /// alliance's holds or standards: the land about it is the alliance's.
+    case raiseStandard(at: Hex)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -218,6 +221,14 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case lairNeedsRally
     /// A lair the House hasn't found, or no more.
     case unknownLair
+    /// Ground the House hasn't seen.
+    case unexplored
+    /// A standard raised where something stands already.
+    case standardGround
+    /// A standard raised too far from the alliance's holds and standards.
+    case standardTooFar
+    /// An alliance with as many standards as it may keep.
+    case standardsEnough
     /// Words from a House no keeper holds.
     case notAKeeper
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -316,6 +327,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .ownHold: return "That hold is your own."
         case .lairNeedsRally: return "Only a rally's host can break a lair: call one against it."
         case .unknownLair: return "No such lair is known to your House."
+        case .unexplored: return "Your House hasn't seen that ground."
+        case .standardGround: return "A standard stands only on open land, with nothing on it."
+        case .standardTooFar: return "A standard stands within four tiles of your alliance's holds or standards."
+        case .standardsEnough: return "Your alliance keeps as many standards as it may: one, and one more for each of its Houses."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
         case .notAKeeper: return "Only a keeper's words are carried."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -394,6 +409,13 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case scoutSeen(hold: Int, by: Int)
     /// A rally's host strikes a lair of the wilds.
     case lairAssaulted(LairAssault)
+    /// A House raises a standard of its alliance.
+    case standardRaised(standard: Int, alliance: Int, house: Int, at: Hex)
+    /// A company strikes a standard's ward.
+    case standardStruck(standard: Int, ward: Int, by: Int, at: Hex)
+    /// A standard comes down: torn down by a House, or by none, its House
+    /// gone from its alliance.
+    case standardTorn(standard: Int, alliance: Int, by: Int?, at: Hex)
     /// A company strikes a company of the wilds.
     case hunted(Hunt)
     /// A company sets out to work a site.

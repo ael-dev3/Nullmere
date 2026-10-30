@@ -85,6 +85,27 @@ extension GameState {
         case .scoutSeen(let holdID, let by):
             guard let hold = hold(holdID), hold.owner == viewer, houses.indices.contains(by) else { return nil }
             return Tidings("Lanterns of \(houses[by].title) watch \(hold.name).", .bad)
+        case .standardRaised(_, let id, let house, let at):
+            guard let alliance = alliance(id) else { return nil }
+            let place = placeName(of: at)
+            if house == viewer { return Tidings("You raise a standard of \(alliance.name) \(place); the land about it is your alliance's.", .good) }
+            if alliance.members.contains(viewer) {
+                return Tidings("\(houses[house].title) raises a standard of \(alliance.name) \(place).", .good)
+            }
+            return Tidings("\(houses[house].title) raises a standard of \(alliance.name) \(place).", .neutral)
+        case .standardStruck(let id, let ward, let by, _):
+            guard let standard = standard(id), let alliance = alliance(standard.alliance) else { return nil }
+            if by == viewer { return Tidings("Your company strikes a standard of \(alliance.name): its ward \(ward) of \(Standard.maximumWard).", .neutral) }
+            guard alliance.members.contains(viewer) else { return nil }
+            return Tidings("\(houses[by].title) strikes your alliance's standard \(placeName(of: standard.position)): its ward \(ward) of \(Standard.maximumWard).", .bad)
+        case .standardTorn(_, let id, let by, let at):
+            let name = alliance(id)?.name ?? "a fallen alliance"
+            if let by, by == viewer { return Tidings("Your company tears down a standard of \(name).", .good) }
+            guard alliance(id)?.members.contains(viewer) == true else {
+                return by.map { Tidings("\(houses[$0].title) tears down a standard of \(name) \(placeName(of: at)).", .neutral) }
+            }
+            guard let by else { return Tidings("A standard of \(name) \(placeName(of: at)) comes down, its House gone from the alliance.", .neutral) }
+            return Tidings("\(houses[by].title) tears down your alliance's standard \(placeName(of: at)).", .bad)
         case .lairAssaulted(let assault):
             let lair = "the \(assault.kind.lairTitle) of the \(ordinal(assault.level)) level"
             if assault.houses.contains(viewer) {

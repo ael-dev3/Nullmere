@@ -81,6 +81,8 @@ extension GameState {
         view.lairs = lairs?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
         // The holy sites on ground they have explored, and who holds them.
         view.shrines = shrines?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
+        // The alliances' standards on ground they have explored.
+        view.standards = standards?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
         // The battles going on that they can see a side of.
         view.engagements = engagements?.filter { view.unit($0.attacker) != nil || view.unit($0.defender) != nil }
         // The marches they may know of, worked out on what they see.
@@ -130,6 +132,12 @@ extension GameState {
                 return hold(holdID)?.owner == house
             case .lairAssaulted(let assault):
                 return assault.houses.contains(house) || visible(assault.at)
+            case .standardRaised(_, let id, _, let at):
+                return alliance(id)?.members.contains(house) == true || visible(at)
+            case .standardTorn(_, let id, let by, let at):
+                return by == house || alliance(id)?.members.contains(house) == true || visible(at)
+            case .standardStruck(let id, _, let by, let at):
+                return by == house || standard(id).flatMap { alliance($0.alliance) }?.members.contains(house) == true || visible(at)
             case .commanderAssigned(let id, _), .commanderReleased(let id):
                 return commander(id)?.owner == house
             case .skillFired(_, let owner, _, let at):

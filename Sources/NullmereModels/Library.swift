@@ -35,6 +35,8 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     case shrine(ShrineKind)
     /// A lair of the wilds, one for each kind of them.
     case lair(WildKind)
+    /// An alliance's standard, its banner in the alliance's colour.
+    case standard
 
     public var description: String {
         switch self {
@@ -51,6 +53,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .study(let level): return "study \(level)"
         case .shrine(let kind): return "\(kind.rawValue) shrine"
         case .lair(let kind): return "\(kind.rawValue) lair"
+        case .standard: return "standard"
         }
     }
 
@@ -84,7 +87,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
             let count = ModelKey.commanderVariants
             return .commander(variant: (variant % count + count) % count)
         case .study(let level): return .study(level: clamp(level, ModelKey.studyLevels))
-        case .keep, .scaffold, .furnishing, .prop, .site, .shrine, .lair: return self
+        case .keep, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .standard: return self
         }
     }
 
@@ -100,7 +103,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .figure, .wild, .commander: return 700
         case .furnishing, .prop: return 300
         case .keep: return 4500
-        case .walls, .work, .scaffold, .site, .study, .shrine, .lair: return 3000
+        case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .standard: return 3000
         }
     }
 }
@@ -217,6 +220,7 @@ public enum Library {
         keys += Prop.allCases.map { .prop($0) }
         keys += ShrineKind.allCases.map { .shrine($0) }
         keys += WildKind.allCases.map { .lair($0) }
+        keys.append(.standard)
         return keys
     }()
 
@@ -237,6 +241,7 @@ public enum Library {
         case .prop(let prop): return Props.build(prop, name: key.canonical.description)
         case .shrine(let kind): return Land.shrine(kind, name: key.canonical.description)
         case .lair(let kind): return Lairs.build(kind, name: key.canonical.description)
+        case .standard: return Land.standard(name: key.canonical.description)
         }
         return Model(name: key.canonical.description, mesh: mesh)
     }

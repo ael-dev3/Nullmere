@@ -258,6 +258,18 @@ public final class WorldStage: @unchecked Sendable {
         return (batches, hearths)
     }
 
+    /// The alliances' standards the keeper has found, each in its
+    /// alliance's colour.
+    public func standards(_ standards: [(hex: Hex, colour: Vec4)]) -> [ModelBatch] {
+        WorldStage.batches(standards.map { standard in
+            let centre = Relief.centre(of: standard.hex)
+            let at = Vec3(centre.x, ground(atX: centre.x, z: centre.z) - Scatter.sink, centre.z)
+            return (.standard, ModelInstance(model: .translation(at) * .rotationY(WorldStage.phase(of: standard.hex, salt: 29) * .pi / 3),
+                                             colour: standard.colour, phase: WorldStage.phase(of: standard.hex, salt: 31),
+                                             hex: SIMD2(Int32(standard.hex.q), Int32(standard.hex.r))))
+        })
+    }
+
     // MARK: Where the night's small lights wander
 
     /// Reed beds and tall grass near a point, the keeper's nearest: where

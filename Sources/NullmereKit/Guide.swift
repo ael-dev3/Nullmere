@@ -72,6 +72,7 @@ enum Guide {
         Section(title: "Alliances and rallies", lines: [
             "Raise a banner in Alliance (5), or ask to join one; its leader invites and admits. An alliance takes a third of the lake's seats at most. Allies share their sight, can't make war on each other, and help each other's works, musters and studies: every second help takes a watch off.",
             "Words (7) carry a line to every keeper of the realm, or to your alliance alone: plain words, with no addresses.",
+            "Raise standards of your alliance on open ground near its holds, from that ground's panel, for timber, stone and moonsalt: the land two tiles about each is the alliance's, where its companies stand a tenth firmer, mend sooner and gather a fifth more. An alliance keeps one standard, and one more for each of its Houses. A House at war with the one that raised it can strike a standard down.",
             "Call a rally from an enemy hold's panel: your alliance's companies gather at your hold with a Muster Hall for one to four watches, then march together at the slowest's pace and strike together the moment all are there. Send a company to keep an ally's gates, and it strikes back at those who strike them.",
         ]),
         Section(title: "Happenings and charges", lines: [

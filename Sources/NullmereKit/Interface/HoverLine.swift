@@ -25,6 +25,11 @@ enum HoverInfo {
         if let lair = state.lair(at: hex) {
             parts.append(HoverInfo.named(lair))
         }
+        if let standard = state.standard(at: hex) {
+            parts.append(HoverInfo.named(standard, in: state))
+        } else if let land = state.allianceLand(at: hex).flatMap({ state.alliance($0) }) {
+            parts.append("land of \(land.name)")
+        }
         if tile.terrain.isWater, tile.terrain != .shallows {
             parts.append("yields nothing, impassable")
             return parts.joined(separator: " · ")
@@ -61,6 +66,12 @@ enum HoverInfo {
     static func named(_ lair: Lair) -> String {
         "the \(lair.title), a lair of the wilds of level \(Narration.roman(lair.level)), \(lair.strength) of \(lair.might) standing; "
             + "only a rally's host breaks it"
+    }
+
+    /// An alliance's standard as the map names it, with its ward.
+    static func named(_ standard: Standard, in state: GameState) -> String {
+        let name = state.alliance(standard.alliance)?.name ?? "a fallen alliance"
+        return "a standard of \(name), ward \(standard.ward) of \(Standard.maximumWard): the land about it is the alliance's"
     }
 
     /// A site of the land as the map names it, with what is left in it.

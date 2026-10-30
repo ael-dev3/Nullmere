@@ -724,7 +724,12 @@ final class CueMappingTests: XCTestCase {
             .hunted(Hunt(attacker: unit.id, attackerOwner: owner, attackerKind: kind, wild: 900, wildKind: .saltwights, level: 2,
                          at: unit.position, damageDealt: 12, damageTaken: 3, attackerFell: false, wildFell: false, spoils: Stock()))
         }
+        state.standards = [Standard(id: 82, alliance: alliance, raisedBy: player, position: unit.position, raised: 0)]
         let concerning: [(GameEvent, Ambience.Cue)] = [
+            (.standardRaised(standard: 80, alliance: alliance, house: player, at: unit.position), .banner),
+            (.standardStruck(standard: 82, ward: 30, by: foe, at: unit.position), .batter),
+            (.standardTorn(standard: 80, alliance: 77, by: player, at: unit.position), .triumph),
+            (.standardTorn(standard: 81, alliance: alliance, by: foe, at: unit.position), .dread),
             (.studyBegun(house: player, study: .furrowLore, grade: 1), .rise),
             (.studyCompleted(house: player, study: .furrowLore, grade: 1), .lore),
             (.commanderJoined(commander: commander, house: player), .honour),
@@ -813,6 +818,8 @@ final class CueMappingTests: XCTestCase {
             .scoutSeen(hold: 41, by: others),
             .lairAssaulted(LairAssault(rally: 3, caller: foe, lair: 61, kind: .drowned, level: 1, at: unit.position, strikes: [],
                                        before: 200, strength: 0, might: 200, shares: [.init(house: foe, spoils: .zero)])),
+            .standardRaised(standard: 83, alliance: 77, house: foe, at: unit.position),
+            .standardTorn(standard: 84, alliance: 77, by: others, at: unit.position),
         ]
         XCTAssertEqual(GameSession.cues(for: quiet, in: state, player: player), [.watch])
         // Every new order has its own sound, not the plain click.
@@ -829,7 +836,7 @@ final class CueMappingTests: XCTestCase {
             (.learnTalent(commander: commander, talent: .keenEdge), .lore), (.forgetTalents(commander: commander), .stand),
             (.wear(gear: 70, commander: commander), .order), (.takeOff(gear: 70), .stand), (.breakUp(gear: 70), .coin),
             (.say(words: "Well met", toAlliance: false), .parley), (.heal(hold: seat.id), .tend),
-            (.scout(unit: unit.id, hold: 40), .ride),
+            (.scout(unit: unit.id, hold: 40), .ride), (.raiseStandard(at: unit.position), .banner),
         ]
         for (command, cue) in orders {
             XCTAssertEqual(GameSession.cues(for: command, events: [], in: state, player: player), [cue], "\(command)")

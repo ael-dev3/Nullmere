@@ -784,6 +784,32 @@ struct LairRally: View {
     }
 }
 
+/// Raising a standard of the keeper's alliance on open ground, for its
+/// cost, or why it can't be raised there.
+struct StandardRow: View {
+    let session: GameSession
+    let hex: Hex
+
+    var body: some View {
+        let state = session.state
+        let refusal = state.refusal(of: .raiseStandard(at: hex), as: session.player)
+        VStack(alignment: .leading, spacing: 5) {
+            Text(verbatim: "Raise a standard of your alliance here: the land two tiles about it becomes the alliance's.")
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                CostLine(cost: Standard.cost, available: state.houses[session.player].stock)
+                Spacer()
+                QuietButton(title: "Raise a standard", size: 8.5, enabled: refusal == nil, name: "Raise a standard of your alliance here",
+                            why: refusal?.description) {
+                    session.perform(.raiseStandard(at: hex))
+                }
+            }
+        }
+    }
+}
+
 private struct TilePanel: View {
     let session: GameSession
     let hex: Hex
@@ -839,6 +865,20 @@ private struct TilePanel: View {
                 if let lair = state.lair(at: hex) {
                     Rule(opacity: 0.18)
                     LairRally(session: session, lair: lair)
+                }
+                if let standard = state.standard(at: hex) {
+                    Rule(opacity: 0.18)
+                    Caps("A standard of \(state.alliance(standard.alliance)?.name ?? "a fallen alliance")", size: 9.5, weight: .medium)
+                        .foregroundStyle(Palette.glowWords)
+                    Text(verbatim: "Raised by \(state.houses.indices.contains(standard.raisedBy) ? state.houses[standard.raisedBy].title : "a fallen House"); "
+                         + "its ward \(standard.ward) of \(Standard.maximumWard). The land two tiles about it is the alliance's: its companies "
+                         + "there stand a tenth firmer, mend sooner and gather a fifth more.")
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if state.alliance(of: session.player) != nil {
+                    Rule(opacity: 0.18)
+                    StandardRow(session: session, hex: hex)
                 }
                 if let site = state.site(at: hex) {
                     Rule(opacity: 0.18)

@@ -101,6 +101,8 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The lairs of the wilds standing; absent in saves from before them,
     /// which find them as the watch turns.
     var lairs: [Lair]?
+    /// The alliances' standards; absent before any was raised.
+    var standards: [Standard]?
     /// The gear the Houses hold, worn by their commanders or kept; absent
     /// in saves from before gear.
     var armoury: [Gear]?

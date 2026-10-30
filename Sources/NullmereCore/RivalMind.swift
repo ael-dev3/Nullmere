@@ -84,6 +84,7 @@ struct RivalMind {
         events += caretaking ? keepThePeace(in: &state, random: &random) : conductDiplomacy(in: &state, random: &random)
         events += tendAlliance(in: &state, random: &random)
         if !caretaking {
+            events += raiseStandard(in: &state)
             events += callRally(in: &state, random: &random)
             events += sendToRallies(in: &state)
             events += keepAlliesGates(in: &state)
@@ -112,6 +113,26 @@ struct RivalMind {
 
     /// How near its holds a holy site lies for a steward to send for it.
     static let holySiteReach = 8
+    /// The watch from which stewards raise their alliances' standards.
+    static let standardsFrom = 25
+
+    /// A House of an alliance with stores to spare raises a standard one
+    /// watch in six, where its land would take in the most sites of the
+    /// land, the nearer its holds the better; never where it would take
+    /// in none.
+    private func raiseStandard(in state: inout GameState) -> [GameEvent] {
+        guard state.watch >= RivalMind.standardsFrom, (state.watch + house) % 6 == 0, let sworn = state.alliance(of: house),
+              state.standards(of: sworn.id).count < Standard.allowed(members: sworn.members.count),
+              state.houses[house].stock.covers(Standard.cost * 2) else { return [] }
+        let mine = state.holds(of: house).map(\.position)
+        let sites = state.sitesInLand.map(\.position)
+        let spots = Set(mine.flatMap { $0.spiral(Standard.tether) }).filter { state.standardRefusal(at: $0, by: house) == nil }
+        let best = spots.map { hex in
+            (hex: hex, sites: sites.filter { $0.distance(to: hex) <= Standard.reach }.count, near: mine.map { $0.distance(to: hex) }.min() ?? 99)
+        }.max { a, b in (a.sites, -a.near, b.hex) < (b.sites, -b.near, a.hex) }
+        guard let best, best.sites > 0 else { return [] }
+        return perform(.raiseStandard(at: best.hex), in: &state)
+    }
     /// A steward's Lantern within reach of a foe's hold scouts it one
     /// watch in this many.
     static let scoutEvery = 4
@@ -855,6 +876,12 @@ struct RivalMind {
     private func campaign(with unit: Unit, seeing visible: [Bool], atWar: Bool, in state: inout GameState) -> [GameEvent] {
         if let target = foeInReach(of: unit, in: state) {
             return perform(.attack(unit: unit.id, target: target), in: &state)
+        }
+        // A foe's standard within reach, with no company on it, is torn down.
+        if unit.movesLeft > 0, let flag = unit.position.spiral(unit.kind.range).dropFirst().first(where: { hex in
+            state.unit(at: hex) == nil && state.standard(at: hex).map { state.isAtWar(house, $0.raisedBy) } == true
+        }) {
+            return perform(.attack(unit: unit.id, target: flag), in: &state)
         }
         // On a holy site its side doesn't hold yet, it stands until the
         // watch turns; bound for one, it goes on.

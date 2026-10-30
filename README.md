@@ -651,6 +651,23 @@ realm; keepers are told in plain words, never a status code.
   healers' fire and linen drying on a line, a ward of pale stone with a
   round apse and a well, a covered walk with lanterns, and at the fifth a
   bell-cote and a moonsalt lamp. The healers' work has its own sound.
+- **Alliance land.** A House of an alliance raises a standard on open
+  ground it has explored, within four tiles of the alliance's holds or
+  standards and more than three from any other House's hold, for 60
+  timber, 40 stone and 2 moonsalt: the land two tiles about it is the
+  alliance's. There the alliance's companies stand a tenth firmer, mend
+  five more each watch and gather a fifth more at the land's sites. An
+  alliance keeps one standard, and one more for each of its Houses, eight
+  at most; no two alliances' lands overlap. A standard has a ward of 60
+  that mends ten a watch; a House at war with the one that raised it
+  strikes it and tears it down when it breaks, as the chronicle tells. A
+  House gone from the alliance, or fallen, takes its standards down as the
+  watch turns. Stewards of an alliance with stores to spare raise one now
+  and then where its land takes in the most sites of the land, and tear
+  down a foe's within reach. Each standard is drawn in its alliance
+  leader's colour, a tall swallow-tailed banner over a cairn with braziers
+  burning; its ground, and the land about it, are named on hover; a
+  ground's panel raises one, and the Alliance screen counts them.
 - **Lairs of the wilds.** From the twelfth watch the realm raises lairs
   far out in the country, one every five watches while fewer stand than
   one for every three seats (two at least), on open land at least seven

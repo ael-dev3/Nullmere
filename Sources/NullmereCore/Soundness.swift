@@ -139,6 +139,16 @@ extension GameState {
             }
         }
         var callers: Set<Int> = []
+        var flags: Set<Hex> = []
+        for standard in standardsStanding {
+            if alliance(standard.alliance) == nil { found.append("Standard \(standard.id) stands for no alliance") }
+            if !(0...Standard.maximumWard).contains(standard.ward) { found.append("Standard \(standard.id) has ward \(standard.ward)") }
+            if hold(at: standard.position) != nil || wild(at: standard.position) != nil || lair(at: standard.position) != nil
+                || !flags.insert(standard.position).inserted {
+                found.append("Standard \(standard.id) shares its ground at \(standard.position)")
+            }
+            if map[standard.position]?.terrain.isPassable != true { found.append("Standard \(standard.id) stands where none can") }
+        }
         for rally in ralliesStanding {
             if !callers.insert(rally.caller).inserted { found.append("House \(rally.caller) has called two rallies") }
             if hold(rally.muster)?.owner != rally.caller { found.append("Rally \(rally.id) gathers at a hold not its caller's") }

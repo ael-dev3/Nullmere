@@ -85,7 +85,14 @@ extension GameSession {
             })
         let found = state.lairsStanding.filter { isExplored($0.position) }
         let lairs = stage.lairs(found.map { ($0.kind, $0.position) })
-        let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position) + found.map(\.position))
+        // The alliances' standards, each in its leader's colour.
+        let flags = state.standardsStanding.filter { isExplored($0.position) }
+        let standards = stage.standards(flags.map { standard in
+            let leader = state.alliance(standard.alliance)?.leader ?? standard.raisedBy
+            let colour = state.houses.indices.contains(leader) ? WorldStage.colour(houses, sigil: state.houses[leader].sigil) : Vec4(0.6, 0.6, 0.6, 1)
+            return (standard.position, colour)
+        })
+        let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position) + found.map(\.position) + flags.map(\.position))
         let furniture = stage.furnish(occupied: standing, holds: Set(sights.map(\.hold.position)))
 
         // Arrows in flight, birds over the water, smoke from the hearths in sight.
@@ -95,7 +102,7 @@ extension GameSession {
                                          hearths: full ? (hearths + lairs.hearths).filter { isVisible($0.hex) } : [], time: t, into: &frame)
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
-        frame.batches = holds + siteBatches + lairs.batches + companies + flights
+        frame.batches = holds + siteBatches + lairs.batches + standards + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, stage: stage, at: now, time: time).effects(at: t)
         }

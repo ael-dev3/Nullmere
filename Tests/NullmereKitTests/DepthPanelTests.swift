@@ -713,6 +713,42 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(RealmPanel.standing(struck), "120 of 450 standing")
     }
 
+    func testAStandardIsRaisedFromItsGroundAndItsLandNamed() throws {
+        var state = world("standard shown")
+        let me = state.player
+        _ = try state.perform(.foundAlliance(name: "The Tall Pole"), as: me)
+        let seat = try XCTUnwrap(state.holds.first { $0.owner == me && $0.isSeat })
+        state.reveal(around: seat.position, range: 5, for: me)
+        state.houses[me].stock = Stock(grain: 300, timber: 300, stone: 300, moonsalt: 30)
+        let spot = try XCTUnwrap(seat.position.ring(2).first { hex in
+            state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && !state.isOccupied(hex)
+                && state.site(at: hex) == nil && state.shrine(at: hex) == nil
+        })
+        let (session, link) = session(state)
+        session.selection = .tile(spot)
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        XCTAssertTrue(PressableButtons.press("Raise a standard"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .raiseStandard(at: spot))
+        let standard = try XCTUnwrap(session.state.standard(at: spot), "Raised at once on the keeper's copy")
+        // Named on hover, its land too, and shown in its tile's panel.
+        let named = try XCTUnwrap(HoverInfo.line(for: spot, in: session.state, explored: true, territory: session.state.territory()))
+        XCTAssertTrue(named.contains("a standard of The Tall Pole, ward 60 of 60"), named)
+        let about = try XCTUnwrap(spot.ring(1).first { session.state.standard(at: $0) == nil && session.state.hold(at: $0) == nil })
+        let land = try XCTUnwrap(HoverInfo.line(for: about, in: session.state, explored: true, territory: session.state.territory()))
+        XCTAssertTrue(land.contains("land of The Tall Pole"), land)
+        PressableButtons.isListening = true
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        XCTAssertFalse(PressableButtons.press("Raise a standard"), "Not on a standard")
+        // Drawn in the world, counted on the Alliance screen, placed for its sound.
+        XCTAssertTrue(session.sceneFrame(at: 1).batches.contains { $0.key == .standard })
+        let alliance = try XCTUnwrap(session.state.alliance(of: me))
+        XCTAssertTrue(AlliancePanel.standardsLine(alliance, in: session.state).hasPrefix("Standards: 1 of 2."))
+        draw(AlliancePanel(session: session))
+        XCTAssertEqual(GameSession.place(of: .standardRaised(standard: standard.id, alliance: alliance.id, house: me, at: spot),
+                                         in: session.state), spot)
+        XCTAssertTrue(GameSession.isRealmsToTell(.standardTorn(standard: standard.id, alliance: alliance.id, by: 2, at: spot)))
+    }
+
     func testACompanySaysWhatItWasSentToDo() throws {
         var state = world("errands")
         let me = state.player

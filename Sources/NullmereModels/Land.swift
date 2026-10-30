@@ -278,6 +278,38 @@ enum Land {
         return Model(name: name, mesh: b.mesh)
     }
 
+    /// An alliance's standard: a tall pole on a cairn, a crossbar and a long
+    /// swallow-tailed banner in the alliance's colour, braziers at its foot.
+    static func standard(name: String) -> Model {
+        var b = MeshBuilder()
+        // The cairn, stones heaped about the pole's foot.
+        b.lathe([(0.2, -0.08), (0.2, 0.0), (0.16, 0.06), (0.08, 0.11), (0.0, 0.12)], sides: 7, color: Palette.stoneDark)
+        for index in 0..<6 {
+            let angle = Float(index) / 6 * 2 * .pi + 0.3
+            b.rock(center: MeshBuilder.ring(0.17, 0.03, angle), size: Vec3(0.05, 0.04, 0.045), rings: 2, sides: 4, jitter: 0.25,
+                   seed: UInt32(index + 120), color: index % 2 == 0 ? Palette.stone : Palette.stonePale)
+        }
+        // The pole and its crossbar, a finial of iron at its head.
+        b.limb(from: Vec3(0, 0.05, 0), to: Vec3(0, 1.0, 0), radius: 0.016, topRadius: 0.011, color: Palette.timberDark)
+        b.beam(from: Vec3(-0.02, 0.92, 0), to: Vec3(0.32, 0.92, 0), width: 0.014, color: Palette.timber)
+        b.with(material: .metal) {
+            $0.place(.translation(Vec3(0, 1.0, 0))) { $0.cone(sides: 4, radius: 0.02, to: 0.07, color: Palette.iron) }
+        }
+        // The banner, hanging from the crossbar, in the alliance's colour.
+        b.flag(at: Vec3(0.01, 0.91, 0), width: 0.3, height: 0.42, tail: true)
+        // Braziers at its foot, burning.
+        for x in [Float(-0.14), 0.14] {
+            b.limb(from: Vec3(x, 0.0, 0.16), to: Vec3(x, 0.12, 0.16), radius: 0.008, color: Palette.iron)
+            b.lathe([(0.0, 0.11), (0.035, 0.12), (0.04, 0.15)], sides: 6, color: Palette.iron)
+            b.with(material: .glow) {
+                $0.place(.translation(Vec3(x, 0.14, 0.16))) {
+                    $0.lathe([(0.03, 0), (0.035, 0.025), (0.0, 0.07)], sides: 5, color: Palette.fire)
+                }
+            }
+        }
+        return Model(name: name, mesh: b.mesh)
+    }
+
     static func site(_ resource: Resource, name: String) -> Model {
         var b = MeshBuilder()
         switch resource {

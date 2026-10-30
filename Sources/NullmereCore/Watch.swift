@@ -66,6 +66,7 @@ extension GameState {
         events += workTheLand()
         raiseShrines()
         events += holdShrines()
+        events += keepStandards()
         raiseWilds()
         raiseLairs()
         raiseSites()
@@ -188,6 +189,9 @@ extension GameState {
             }
             if hold(at: unit.position)?.owner == unit.owner {
                 amount += 10
+            }
+            if isOnOwnLand(unit) {
+                amount += Standard.mendingOnLand
             }
             units[index].health = min(100, unit.health + amount)
         }

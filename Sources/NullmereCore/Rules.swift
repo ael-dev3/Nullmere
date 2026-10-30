@@ -81,6 +81,8 @@ extension GameState {
             return try heal(at: holdID, as: house)
         case let .scout(unitID, holdID):
             return try scout(holdID, with: unitID, as: house)
+        case let .raiseStandard(hex):
+            return try raiseStandard(at: hex, by: house)
         case let .inviteToAlliance(target):
             return try invite(target, by: house)
         case let .askToJoin(allianceID):
@@ -143,7 +145,8 @@ extension GameState {
 
         // Marching onto an enemy within reach is an attack, and onto the wilds.
         if unit.kind.isMilitary, unit.position.distance(to: target) <= unit.kind.range,
-           wild(at: target) != nil || lair(at: target) != nil || foe(at: target, for: house).map({ isAtWar(house, $0.owner) }) == true {
+           wild(at: target) != nil || lair(at: target) != nil || foe(at: target, for: house).map({ isAtWar(house, $0.owner) }) == true
+            || (self.unit(at: target) == nil && standard(at: target).map { isAtWar(house, $0.raisedBy) } == true) {
             return try attack(with: unitID, at: target, as: house)
         }
         guard unknown || path(for: unit, to: target) != nil else { throw .noPath }
@@ -247,6 +250,12 @@ extension GameState {
         guard attacker.movesLeft > 0 else { throw .noMovesLeft }
         // A lair stands against any company alone.
         if lair(at: target) != nil { throw .lairNeedsRally }
+        // A standard of a House at war, with no company standing on it.
+        if unit(at: target) == nil, let standard = standard(at: target), standard.raisedBy != house {
+            guard isAtWar(house, standard.raisedBy) else { throw .notAtWar(standard.raisedBy) }
+            guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
+            return strike(standard: standard.id, with: unitID)
+        }
         // The wilds are every House's foe: no war is needed to strike them.
         if let wild = wild(at: target) {
             guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
@@ -379,6 +388,7 @@ extension GameState {
             attack = attack * (100 + attacker.kind.bonusAgainstRiders) / 100
         }
         var defenseBonus = 100 + (map[hex]?.terrain.defenseBonus ?? 0) + (defender.fortified ? 25 : 0)
+            + (isOnOwnLand(defender) ? Standard.defence : 0)
         if let hold = hold(at: hex), hold.owner == defender.owner {
             defenseBonus += Hold.garrisonBonus(wallLevel: hold.level(.walls)) + bonus(.garrison, for: defender)
         }

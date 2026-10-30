@@ -106,7 +106,8 @@ extension GameState {
     // MARK: A company's work
 
     /// What a company gathers each watch at a site of a store, with its
-    /// tier, its House's studies and its commander.
+    /// tier, its House's studies and its commander, and a fifth more on its
+    /// alliance's land.
     public func gatheringRate(of unit: Unit, for store: Resource) -> Int {
         let base: Int
         switch unit.kind {
@@ -115,7 +116,8 @@ extension GameState {
         case .rider: base = 40
         case .lantern, .founder: base = 0
         }
-        let rate = base * (100 + 15 * (unit.tier - 1)) / 100 * (100 + bonus(.gathering, for: unit)) / 100
+        let land = isOnOwnLand(unit) ? Standard.gathering : 0
+        let rate = base * (100 + 15 * (unit.tier - 1)) / 100 * (100 + bonus(.gathering, for: unit) + land) / 100
         return store == .moonsalt ? rate / 4 : rate
     }
 

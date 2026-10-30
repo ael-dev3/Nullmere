@@ -41,10 +41,24 @@ struct AlliancePanel: View {
         session.state.houses.indices.contains(house) ? session.state.houses[house].title : "a fallen House"
     }
 
+    /// The alliance's standards, as many as it may keep, and how to raise one.
+    static func standardsLine(_ alliance: Alliance, in state: GameState) -> String {
+        let raised = state.standards(of: alliance.id).count
+        let allowed = Standard.allowed(members: alliance.members.count)
+        return "Standards: \(raised) of \(allowed). Raise one on open ground near your alliance's holds from that ground's panel; "
+            + "the land about it is the alliance's."
+    }
+
     // MARK: Sworn
 
     @ViewBuilder
     private func sworn(_ board: AllianceBoard, chosen: Unit?) -> some View {
+        if let alliance = board.alliance {
+            Text(verbatim: AlliancePanel.standardsLine(alliance, in: session.state))
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+        }
         Caps("Its Houses", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
         ForEach(board.members) { member in
             VStack(alignment: .leading, spacing: 4) {

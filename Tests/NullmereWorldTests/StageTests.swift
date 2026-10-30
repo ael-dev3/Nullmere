@@ -212,6 +212,23 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(stage.lairs([]).batches.isEmpty)
     }
 
+    func testStandardsStandInTheirHexesInTheirAlliancesColours() throws {
+        let stage = stage()
+        let hexes = Array(Self.state.map.hexes.filter { Self.state.map[$0]?.terrain.isPassable == true }.prefix(2))
+        let blue = Vec4(0.1, 0.2, 0.9, 1), gold = Vec4(0.8, 0.7, 0.2, 1)
+        let batches = stage.standards([(hexes[0], blue), (hexes[1], gold)])
+        XCTAssertEqual(batches.map(\.key), [.standard])
+        let instances = try XCTUnwrap(batches.first).instances
+        XCTAssertEqual(instances.map(\.colour), [blue, gold])
+        for (instance, hex) in zip(instances, hexes) {
+            let centre = Relief.centre(of: hex)
+            XCTAssertEqual(instance.model.c3.x, centre.x, accuracy: 1e-4)
+            XCTAssertEqual(instance.model.c3.z, centre.z, accuracy: 1e-4)
+            XCTAssertEqual(instance.hex, SIMD2(Int32(hex.q), Int32(hex.r)))
+        }
+        XCTAssertTrue(stage.standards([]).isEmpty)
+    }
+
     func testFirefliesWanderOverTheReedsAndGrassNearest() {
         let stage = stage()
         _ = stage.furnish(occupied: [], holds: [])

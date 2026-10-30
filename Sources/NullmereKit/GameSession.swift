@@ -696,7 +696,7 @@ public final class GameSession {
         switch event {
         case .battle, .unitLost, .holdStruck, .holdCaptured, .seatMoved, .promoted, .ruinSearched, .holdFounded,
              .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired, .hunted,
-             .gearFound, .carriedToInfirmary, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted:
+             .gearFound, .carriedToInfirmary, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted, .standardStruck, .standardTorn:
             return true
         default:
             return false
@@ -1181,6 +1181,7 @@ public final class GameSession {
         case .breakUp: return .coin
         case .heal: return .tend
         case .scout: return .ride
+        case .raiseStandard: return .banner
         default: return .select
         }
     }
@@ -1216,6 +1217,11 @@ public final class GameSession {
         case .woundedLost(_, let house, _) where house == player: return .dread
         case .holdScouted(let report) where report.by == player: return .lore
         case .lairAssaulted(let assault) where assault.houses.contains(player): return assault.broken ? .triumph : .batter
+        case .standardRaised(_, let alliance, _, _) where state?.alliance(of: player)?.id == alliance: return .banner
+        case .standardStruck(let standard, _, let by, _) where by != player
+            && state?.standard(standard).map({ $0.alliance == state?.alliance(of: player)?.id }) == true: return .batter
+        case .standardTorn(_, _, let by, _) where by == player: return .triumph
+        case .standardTorn(_, let alliance, _, _) where state?.alliance(of: player)?.id == alliance: return .dread
         case .scoutSeen(let hold, _) where state?.hold(hold)?.owner == player: return .envoy
         case .hunted(let hunt) where hunt.attackerOwner == player: return hunt.attackerKind == .bow ? .loose : .clash
         case .sentToGather(let unit, _) where ours(unit): return .order
@@ -1342,6 +1348,8 @@ public final class GameSession {
             return state.hold(report.hold)?.position
         case .lairAssaulted(let assault):
             return assault.at
+        case .standardRaised(_, _, _, let at), .standardStruck(_, _, _, let at), .standardTorn(_, _, _, let at):
+            return at
         case .rallyStruck(_, _, let target, _, _), .rallySetOut(_, _, let target, _, _):
             return state.hold(target)?.position ?? state.lair(target)?.position
         case .shrineTaken(let shrine, _, _):
