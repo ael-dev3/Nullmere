@@ -4,20 +4,32 @@ import NullmereCore
 /// What a model shows.
 public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// One of a company: a soldier, a scout, a settler. A company is drawn
-    /// as several, fewer as it is worn down.
+    /// as several, fewer as it is worn down (see `Formation`).
     case figure(UnitKind, tier: Int)
     /// A hold's keep; a seat's stands taller and flies the House's banner.
     case keep(seat: Bool)
     /// A hold's walls at their level.
     case walls(level: Int)
-    /// A work at its level.
+    /// A work at its level. A hold's walls are `walls(level:)`.
     case work(BuildingKind, level: Int)
-    /// The scaffolding round a work while it rises.
+    /// The scaffolding round a work while it rises: a frame one unit wide,
+    /// deep and high, stretched to the work it stands round.
     case scaffold
     /// The land's own furniture.
     case furnishing(Furnishing)
     /// What moves through the world: arrows, birds, banners, carts.
     case prop(Prop)
+    /// Where a company gathers a resource: a grain field, a timber stand, a
+    /// stone outcrop, a moonsalt pan. It fills a hex's heart.
+    case site(Resource)
+    /// A hostile company of the far country, from the least, 1, to the
+    /// worst, 3. They answer to no House.
+    case wild(tier: Int)
+    /// One of six heroes, 0 to 5, who ride at a company's head.
+    case commander(variant: Int)
+    /// Where a House's scholars study the lake's lore, levels 1 to 5: a
+    /// scriptorium that grows into an observatory.
+    case study(level: Int)
 
     public var description: String {
         switch self {
@@ -28,6 +40,53 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .scaffold: return "scaffold"
         case .furnishing(let furnishing): return furnishing.rawValue
         case .prop(let prop): return prop.rawValue
+        case .site(let resource): return "\(resource.rawValue) site"
+        case .wild(let tier): return "wild \(tier)"
+        case .commander(let variant): return "commander \(variant)"
+        case .study(let level): return "study \(level)"
+        }
+    }
+
+    /// The tiers a kind of company is drawn in: Spears, Bows and Riders
+    /// from 1 to 5; Lanterns and Founders have one look.
+    public static func tiers(of kind: UnitKind) -> Int {
+        switch kind {
+        case .spear, .bow, .rider: return 5
+        case .lantern, .founder: return 1
+        }
+    }
+
+    public static let wildTiers = 3
+    public static let commanderVariants = 6
+    public static let wallLevels = 5
+    public static let studyLevels = 5
+
+    /// The key whose model is drawn: tiers and levels held to those there
+    /// are, a commander's variant taken round the six, a work's walls as
+    /// the walls.
+    public var canonical: ModelKey {
+        func clamp(_ value: Int, _ top: Int) -> Int { min(max(value, 1), top) }
+        switch self {
+        case .figure(let kind, let tier): return .figure(kind, tier: clamp(tier, ModelKey.tiers(of: kind)))
+        case .walls(let level), .work(.walls, let level): return .walls(level: clamp(level, ModelKey.wallLevels))
+        case .work(let kind, let level): return .work(kind, level: clamp(level, kind.maxLevel))
+        case .wild(let tier): return .wild(tier: clamp(tier, ModelKey.wildTiers))
+        case .commander(let variant):
+            let count = ModelKey.commanderVariants
+            return .commander(variant: (variant % count + count) % count)
+        case .study(let level): return .study(level: clamp(level, ModelKey.studyLevels))
+        case .keep, .scaffold, .furnishing, .prop, .site: return self
+        }
+    }
+
+    /// The most triangles its model may have: figures are drawn many
+    /// times, keeps once a hold.
+    public var budget: Int {
+        switch self {
+        case .figure, .wild, .commander: return 700
+        case .furnishing, .prop: return 300
+        case .keep: return 4500
+        case .walls, .work, .scaffold, .site, .study: return 3000
         }
     }
 }
@@ -63,27 +122,109 @@ public enum Furnishing: String, CaseIterable, Sendable {
 
 /// What moves through the world, apart from companies.
 public enum Prop: String, CaseIterable, Sendable {
+    /// An arrow in flight, pointing along +z.
     case arrow
+    /// A House's banner on its pole; it stirs at idle.
     case banner
-    /// A night bird circling.
+    /// A night bird circling; its wings beat at idle.
     case bird
+    /// A carter's two-wheeled cart; its wheels turn on the march.
     case cart
     case brazier
-    /// A puff of chimney smoke or dust, drawn many times.
+    /// A puff of chimney smoke or dust, drawn many times; at idle it rises
+    /// and spreads once a period, for the renderer to fade.
     case puff
 }
 
 /// One model placed in the world.
 public struct Piece: Equatable, Sendable {
     public var key: ModelKey
+    /// From the model's frame to the world's. A scaffold's stretches it to
+    /// its work, wider than it is high or higher than it is wide.
     public var transform: Mat4
     /// The hex it stands in, for what the keeper knows of it.
     public var hex: Hex
+    /// How much of a work stands, 0 to 1: a work being raised is drawn up
+    /// to this fraction of its height (from its lowest point to its
+    /// highest, in its own frame), the rest not yet built. 1 when whole.
+    public var progress: Float
 
-    public init(key: ModelKey, transform: Mat4, hex: Hex) {
+    public init(key: ModelKey, transform: Mat4, hex: Hex, progress: Float = 1) {
         self.key = key
         self.transform = transform
         self.hex = hex
+        self.progress = progress
+    }
+
+    /// Where it stands in the world.
+    public var position: Vec3 { Vec3(transform.c3.x, transform.c3.y, transform.c3.z) }
+}
+
+/// Every model, built from solids the first time it is asked for and kept.
+public enum Library {
+    /// The model for a key, as its canonical key builds it. Safe to ask
+    /// from any thread; each is built once.
+    public static func model(_ key: ModelKey) -> Model {
+        store.model(for: key.canonical)
+    }
+
+    /// Every key with a model of its own, each once: figures, wilds and
+    /// commanders, keeps, walls and works, the scaffold, the land's
+    /// furnishings, the gathering sites and the props.
+    public static let catalogue: [ModelKey] = {
+        var keys: [ModelKey] = []
+        for kind in UnitKind.allCases {
+            keys += (1...ModelKey.tiers(of: kind)).map { .figure(kind, tier: $0) }
+        }
+        keys += (1...ModelKey.wildTiers).map { .wild(tier: $0) }
+        keys += (0..<ModelKey.commanderVariants).map { .commander(variant: $0) }
+        keys += [.keep(seat: false), .keep(seat: true)]
+        keys += (1...ModelKey.wallLevels).map { .walls(level: $0) }
+        for kind in BuildingKind.allCases where kind != .walls {
+            keys += (1...kind.maxLevel).map { .work(kind, level: $0) }
+        }
+        keys += (1...ModelKey.studyLevels).map { .study(level: $0) }
+        keys.append(.scaffold)
+        keys += Furnishing.allCases.map { .furnishing($0) }
+        keys += Resource.allCases.map { .site($0) }
+        keys += Prop.allCases.map { .prop($0) }
+        return keys
+    }()
+
+    /// Builds a model afresh, without keeping it.
+    static func build(_ key: ModelKey) -> Model {
+        let mesh: Mesh
+        switch key.canonical {
+        case .figure(let kind, let tier): return Figures.build(kind, tier: tier, name: key.canonical.description)
+        case .wild(let tier): return Figures.wild(tier: tier, name: key.canonical.description)
+        case .commander(let variant): return Figures.commander(variant, name: key.canonical.description)
+        case .keep(let seat): return Holds.keep(seat: seat, name: key.canonical.description)
+        case .walls(let level): return Holds.walls(level: level, name: key.canonical.description)
+        case .work(let kind, let level): return Works.build(kind, level: level, name: key.canonical.description)
+        case .study(let level): return Works.study(level: level, name: key.canonical.description)
+        case .scaffold: mesh = Holds.scaffold()
+        case .furnishing(let furnishing): mesh = Land.furnishing(furnishing)
+        case .site(let resource): return Land.site(resource, name: key.canonical.description)
+        case .prop(let prop): return Props.build(prop, name: key.canonical.description)
+        }
+        return Model(name: key.canonical.description, mesh: mesh)
+    }
+
+    private static let store = ModelStore()
+}
+
+/// The models built so far, behind a lock.
+private final class ModelStore: @unchecked Sendable {
+    private let lock = NSRecursiveLock()
+    private var models: [ModelKey: Model] = [:]
+
+    func model(for key: ModelKey) -> Model {
+        lock.lock()
+        defer { lock.unlock() }
+        if let model = models[key] { return model }
+        let model = Library.build(key)
+        models[key] = model
+        return model
     }
 }
 
@@ -91,8 +232,13 @@ public struct Piece: Equatable, Sendable {
 /// (Tools/model-preview).
 public enum PreviewExport {
     public static func json(_ models: [(name: String, model: Model)], clip: Clip = .idle, time: Float = 0) throws -> Data {
+        try json(models.map { (name: $0.name, model: $0.model, clip: clip, time: time) })
+    }
+
+    /// Each model posed at its own moment of its own clip.
+    public static func json(_ models: [(name: String, model: Model, clip: Clip, time: Float)]) throws -> Data {
         func round(_ value: Float) -> Float { (value * 10_000).rounded() / 10_000 }
-        let entries: [[String: Any]] = models.map { name, model in
+        let entries: [[String: Any]] = models.map { name, model, clip, time in
             let mesh = model.mesh
             let bounds = mesh.bounds
             return [
