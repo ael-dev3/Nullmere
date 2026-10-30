@@ -22,6 +22,11 @@ var targets: [Target] = [
     // The steward's command-line entry point.
     .executableTarget(name: "NullmereSteward", dependencies: ["NullmereRealm", "NullmereCore"]),
     .testTarget(name: "NullmereCoreTests", dependencies: ["NullmereCore"]),
+    // The world's shapes: the land's relief and mesh, and every model in
+    // it, built from solids in code, with the rigs that move them. Pure
+    // Swift, so every shape is built and tested on Linux too.
+    .target(name: "NullmereModels", dependencies: ["NullmereCore"]),
+    .testTarget(name: "NullmereModelsTests", dependencies: ["NullmereModels", "NullmereCore"]),
     // SpacetimeDB in memory, and credentials kept in memory, for tests of
     // the realm across the network: the realm's and the app's.
     .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm"], path: "Tests/NullmereTestSupport"),
@@ -39,11 +44,11 @@ targets += [
     // The SwiftUI/AppKit/Metal launcher interface.
     .target(name: "LauncherKit", dependencies: ["LauncherCore"]),
     // The world's interface: the front door, the Metal world, the panels.
-    .target(name: "NullmereKit", dependencies: ["NullmereCore", "NullmereRealm", "LauncherCore", "LauncherKit"]),
+    .target(name: "NullmereKit", dependencies: ["NullmereCore", "NullmereModels", "NullmereRealm", "LauncherCore", "LauncherKit"]),
     // The "Nullmere Online" app: the launcher, and through Play, the realm.
     .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherKit", "NullmereKit"]),
     .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore", "NullmereTestSupport"]),
-    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereRealm", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
+    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereModels", "NullmereRealm", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
 ]
 #endif
 
