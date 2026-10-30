@@ -61,6 +61,15 @@ final class LauncherViewTests: XCTestCase {
         try draw(LauncherRootView(model: model), width: 1920, height: 1200)
     }
 
+    #if DEBUG
+    /// The audit's probes, which only the UI tests show: they draw, and say
+    /// they are shown only when asked.
+    func testTheAuditsProbesDraw() throws {
+        XCTAssertFalse(AuditProbes.isShown, "Not without NULLMERE_AUDIT_PROBE")
+        try draw(AuditProbes().environment(\.launcherUnit, 1))
+    }
+    #endif
+
     func testEveryRequirementStateDraws() throws {
         for readiness in [ModelReadiness.checking, .deviceNotEligible, .appleIntelligenceNotEnabled, .modelNotReady, .unavailable] {
             let model = model(readiness)
