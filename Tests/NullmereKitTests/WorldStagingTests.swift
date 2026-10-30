@@ -54,6 +54,31 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertFalse(still.batches.contains { $0.key == .prop(.bird) || $0.key == .prop(.puff) })
     }
 
+    /// Staging a frame of a full realm, every hold known, takes a small
+    /// share of a frame on the main thread once the land is laid out.
+    func testStagingAFrameKeepsWithinItsShare() throws {
+        var state = GameState(settings: GameSettings(seedText: "a full realm staged", houseCount: 12, radius: 24, keepers: 1))
+        state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        let started = ThreadClock.milliseconds()
+        let first = session.sceneFrame(at: 0)
+        let laying = ThreadClock.milliseconds() - started
+        var times: [Double] = []
+        for index in 1...60 {
+            let start = ThreadClock.milliseconds()
+            let frame = session.sceneFrame(at: Double(index) / 60)
+            times.append(ThreadClock.milliseconds() - start)
+            XCTAssertEqual(frame.fixedVersion, first.fixedVersion, "the land laid out once")
+        }
+        times.sort()
+        let p50 = times[times.count / 2], p95 = times[Int(Double(times.count) * 0.95)]
+        print("PERF staging a frame of \(first.instanceCount) models, \(first.palette.count) poses: the land laid out in "
+              + "\(String(format: "%.1f", laying)) ms, then p50 \(String(format: "%.2f", p50)) ms, p95 \(String(format: "%.2f", p95)) ms")
+        print("PERFMETRIC stage.cpu.p50 \(String(format: "%.3f", p50))")
+        print("PERFMETRIC stage.cpu.p95 \(String(format: "%.3f", p95))")
+        XCTAssertLessThan(p50, 16.7, "well inside a frame")
+    }
+
     func testAWorkRisesAsTheWatchesPassAndFinishesItsLastStretch() throws {
         var seatID = 0
         let session = try session { state in
