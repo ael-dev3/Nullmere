@@ -132,6 +132,17 @@ extension GameState {
             guard let hold = hold(holdID), let unit = unit(unitID) else { return nil }
             if owner == viewer { return Tidings("Your \(unit.kind.title) march to keep the gates of \(hold.name).", .neutral) }
             return Tidings("\(houses[owner].title)'s \(unit.kind.title) come to keep the gates of \(hold.name).", .good)
+        case .happeningBegun(let kind, let ends):
+            return Tidings("\(kind.title) begins: \(kind.goal), until the \(ordinal(ends)) watch.", .neutral)
+        case .happeningMark(let house, let kind, let mark, let reward):
+            guard house == viewer else { return nil }
+            return Tidings("Your House passes the \(ordinal(mark)) mark of \(kind.title): \(reward).", .good)
+        case .happeningEnded(let kind, let leaders):
+            if let place = leaders.firstIndex(of: viewer) {
+                return Tidings("\(kind.title) ends: your House stands \(ordinal(place + 1)), and is honoured.", .good)
+            }
+            guard let first = leaders.first else { return Tidings("\(kind.title) ends with no House to honour.", .neutral) }
+            return Tidings("\(kind.title) ends: \(houses[first].title) takes the honours.", .neutral)
         default:
             return nil
         }

@@ -130,6 +130,10 @@ extension GameState {
                 return caller == house || defender == house || areAllied(caller, house)
             case .sentToReinforce(_, let owner, let holdID):
                 return owner == house || hold(holdID)?.owner == house
+            case .happeningBegun, .happeningEnded:
+                return true
+            case .happeningMark(let owner, _, _, _):
+                return owner == house
             case .promoted(_, let owner, _):
                 return owner == house
             case .ruinSearched(let at, let by, _):

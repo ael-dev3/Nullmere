@@ -339,6 +339,12 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case rallyDispersed(rally: Int, caller: Int)
     /// A company is sent to keep the gates of an ally's hold.
     case sentToReinforce(unit: Int, owner: Int, hold: Int)
+    /// A happening of the realm begins, to end as the watch named begins.
+    case happeningBegun(kind: HappeningKind, ends: Int)
+    /// A House passes a mark of a happening's points, and is given stores.
+    case happeningMark(house: Int, kind: HappeningKind, mark: Int, reward: Stock)
+    /// A happening ends; its foremost Houses, first first.
+    case happeningEnded(kind: HappeningKind, leaders: [Int])
 }
 
 /// One exchange of blows.

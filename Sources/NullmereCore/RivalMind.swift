@@ -838,7 +838,11 @@ struct RivalMind {
         guard unit.load?.isZero ?? true, !state.sitesInLand.isEmpty else { return nil }
         let stock = state.houses[house].stock
         let room = state.storage(of: house)
-        let short = Resource.allCases.filter { stock[$0] < room / 2 }
+        // In a Harvest Fair the steadfast and the wary gather any store
+        // they have room for.
+        let temper = state.houses[house].temperament
+        let fair = state.happening?.kind == .harvestFair && (temper == .steadfast || temper == .wary)
+        let short = Resource.allCases.filter { stock[$0] < (fair ? room * 9 / 10 : room / 2) }
         guard !short.isEmpty else { return nil }
         let holds = state.holds(of: house).map(\.position)
         let explored = state.houses[house].explored
@@ -861,7 +865,11 @@ struct RivalMind {
     func prey(for unit: Unit, in state: GameState) -> Hex? {
         guard unit.health >= 60, !state.wildsStanding.isEmpty else { return nil }
         let temper = state.houses[house].temperament
-        let ground = RivalMind.huntingGround + (temper == .ambitious || temper == .cunning ? 3 : 0)
+        // The ambitious and the cunning go further afield, and further
+        // still in a Long Hunt.
+        let eager = temper == .ambitious || temper == .cunning
+        let hunt = state.happening?.kind == .longHunt
+        let ground = RivalMind.huntingGround + (eager ? 3 : 0) + (eager && hunt ? 3 : 0)
         let holds = state.holds(of: house).map(\.position)
         let near = state.wildsStanding.filter { wild in
             wild.position.distance(to: unit.position) <= ground && holds.contains { $0.distance(to: wild.position) <= ground }

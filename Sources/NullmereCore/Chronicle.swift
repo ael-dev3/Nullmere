@@ -32,6 +32,8 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         case alliance
         /// A rally's host falls upon a hold.
         case rally
+        /// A happening of the realm begins, or ends with its foremost honoured.
+        case happening
     }
 
     public let watch: Int

@@ -19,6 +19,9 @@ extension GameState {
         for house in stewardOrder(keptFor: absent) {
             events += RivalMind(house: house, caretaking: houses[house].isPlayer).takeTurn(in: &self)
         }
+        // What the stewards did counted as they did it; what the watch
+        // itself brings counts as it turns.
+        let turning = events.count
 
         let owners = territory()
         for house in houses where !house.isEliminated {
@@ -51,6 +54,8 @@ extension GameState {
         raiseWilds()
         raiseSites()
         refreshSight()
+        tally(Array(events[turning...]))
+        events += turnHappenings()
         events += checkForEnd()
         takeSnapshot()
         return events

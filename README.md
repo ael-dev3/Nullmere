@@ -597,6 +597,17 @@ realm; keepers are told in plain words, never a status code.
   sight on the march, the way it goes as far as they see it, never where
   it is bound. The ways are worked out on the keeper's own view of the
   land, so none bends round what they can't see.
+- **Happenings.** From the tenth watch, and every thirty after, the realm
+  holds a happening for ten watches: the Long Hunt (companies of the wilds
+  struck down, the greater the more), the Harvest Fair (stores brought home
+  from the sites), the Raising (works raised, the higher the more), the
+  Great Muster (companies mustered, by tier) or the Learned Season (grades
+  of study learned), in turn from one the realm's seed chooses. Every House
+  earns points by it; passing 10, 25 and 50 points brings stores as the
+  watch turns; when it ends the three foremost are honoured in the chronicle
+  and given stores. Its standings are known to every keeper. In a Long Hunt
+  ambitious and cunning stewards hunt further afield; in a Harvest Fair the
+  steadfast and the wary gather any store they have room for.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is
