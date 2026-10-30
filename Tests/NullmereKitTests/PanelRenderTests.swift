@@ -28,14 +28,34 @@ final class PanelRenderTests: XCTestCase {
         return session
     }
 
+    /// `lit`: whether something must show (true), nothing may (false), or
+    /// either (nil), for what ImageRenderer can't draw: a scroll view's
+    /// contents, which are drawn on their own instead.
     @discardableResult
-    private func draw(_ view: some View, width: CGFloat, height: CGFloat? = nil) throws -> CGImage {
+    private func draw(_ view: some View, width: CGFloat, height: CGFloat? = nil, lit: Bool? = true) throws -> CGImage {
         let renderer = ImageRenderer(content: view.frame(width: width, height: height).background(Color.black))
         renderer.scale = 1
         let image = try XCTUnwrap(renderer.cgImage)
         XCTAssertEqual(CGFloat(image.width), width)
-        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
+        switch lit {
+        case true?: XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
+        case false?: XCTAssertLessThan(litPixels(image), 20, "Nothing to draw")
+        case nil: break
+        }
         return image
+    }
+
+    /// The selection panel for what is chosen: nothing chosen draws nothing;
+    /// the keeper's own hold scrolls, so its details are drawn on their own.
+    private func drawSelection(_ session: GameSession, width: CGFloat, height: CGFloat) throws {
+        if case .none = session.selection {
+            try draw(SelectionPanel(session: session), width: width, height: height, lit: false)
+        } else if let hold = session.selectedHold, hold.owner == session.player {
+            try draw(SelectionPanel(session: session), width: width, height: height, lit: nil)
+            try draw(OwnHoldDetails(session: session, hold: hold), width: width, height: 1000)
+        } else {
+            try draw(SelectionPanel(session: session), width: width, height: height)
+        }
     }
 
     func testThePanelsDrawAGameUnderWay() throws {
@@ -81,7 +101,7 @@ final class PanelRenderTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(choices.count, 4, "A game under way has companies and holds of its own and others'")
         for choice in choices {
             session.selection = choice
-            try draw(SelectionPanel(session: session), width: 320, height: 600)
+            try drawSelection(session, width: 320, height: 600)
         }
     }
 
@@ -205,12 +225,12 @@ final class PanelRenderTests: XCTestCase {
         state.houses[me].explored[state.map.index(of: state.holds[theirs].position)!] = true
         let session = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("edges")))
         session.selection = .hold(session.state.holds[mine].id)
-        try draw(SelectionPanel(session: session), width: 340, height: 900)
+        try drawSelection(session, width: 340, height: 900)
         session.selection = .hold(session.state.holds[theirs].id)
-        try draw(SelectionPanel(session: session), width: 340, height: 500)
+        try drawSelection(session, width: 340, height: 500)
         let unseen = try XCTUnwrap(session.state.map.hexes.first { !session.isExplored($0) })
         session.selection = .tile(unseen)
-        try draw(SelectionPanel(session: session), width: 340, height: 300)
+        try drawSelection(session, width: 340, height: 300)
     }
 
     func testTheTopBarInEveryStateOfTheRealm() throws {

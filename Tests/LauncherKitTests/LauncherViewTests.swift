@@ -37,13 +37,18 @@ final class LauncherViewTests: XCTestCase {
         return model
     }
 
+    /// `lit`: whether something must show, or, false, nothing may yet.
     @discardableResult
-    private func draw(_ view: some View, width: CGFloat = 1280, height: CGFloat = 800) throws -> CGImage {
+    private func draw(_ view: some View, width: CGFloat = 1280, height: CGFloat = 800, lit: Bool = true) throws -> CGImage {
         let renderer = ImageRenderer(content: view.frame(width: width, height: height).background(Color.black))
         renderer.scale = 1
         let image = try XCTUnwrap(renderer.cgImage, "drawn")
         XCTAssertEqual(image.width, Int(width))
-        XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
+        if lit {
+            XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
+        } else {
+            XCTAssertLessThan(litPixels(image), 20, "Not yet shown")
+        }
         return image
     }
 
@@ -60,15 +65,6 @@ final class LauncherViewTests: XCTestCase {
         try draw(LauncherRootView(model: model), width: 960, height: 600)
         try draw(LauncherRootView(model: model), width: 1920, height: 1200)
     }
-
-    #if DEBUG
-    /// The audit's probes, which only the UI tests show: they draw, and say
-    /// they are shown only when asked.
-    func testTheAuditsProbesDraw() throws {
-        XCTAssertFalse(AuditProbes.isShown, "Not without NULLMERE_AUDIT_PROBE")
-        try draw(AuditProbes().environment(\.launcherUnit, 1))
-    }
-    #endif
 
     func testEveryRequirementStateDraws() throws {
         for readiness in [ModelReadiness.checking, .deviceNotEligible, .appleIntelligenceNotEnabled, .modelNotReady, .unavailable] {
@@ -146,8 +142,9 @@ final class LauncherViewTests: XCTestCase {
     }
 
     func testTheTitleAndItsPartsDraw() throws {
+        // Before its reveal the title isn't shown; then it is.
         for revealed in [false, true] {
-            try draw(TitleBlock(isRevealed: revealed, settlesLetters: true), width: 1200, height: 200)
+            try draw(TitleBlock(isRevealed: revealed, settlesLetters: true), width: 1200, height: 200, lit: revealed)
         }
         try draw(LakeFallbackView(horizon: 0.55))
         try draw(LakeFallbackView(horizon: 0.55, veil: 1))

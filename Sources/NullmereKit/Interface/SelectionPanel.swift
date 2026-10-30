@@ -75,74 +75,86 @@ private struct OwnHoldPanel: View {
     let hold: Hold
 
     var body: some View {
-        let state = session.state
-        let stock = session.playerHouse.stock
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                PanelTitle(
-                    title: hold.name,
-                    subtitle: hold.isSeat ? "Seat of \(session.playerHouse.title)" : "A hold of \(session.playerHouse.title)",
-                    accent: Palette.houseWords(session.playerHouse)
-                )
-
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack {
-                        Caps("Ward", size: 8.5).foregroundStyle(Palette.text(0.5))
-                        Spacer()
-                        Text(verbatim: "\(hold.ward) / \(hold.maximumWard)")
-                            .font(.nm(10.5).monospacedDigit())
-                            .foregroundStyle(Palette.text(0.75))
-                    }
-                    Meter(fraction: Double(hold.ward) / Double(max(hold.maximumWard, 1)), label: "Ward")
-                    HStack {
-                        Caps("Yield each watch", size: 8.5).foregroundStyle(Palette.text(0.5))
-                        Spacer()
-                        CostLine(cost: state.income(of: hold), available: Stock(grain: .max, timber: .max, stone: .max, moonsalt: .max))
-                    }
-                }
-
-                if let project = hold.project {
-                    ProgressLine(
-                        title: "\(project.kind.title) \(Narration.roman(project.targetLevel))",
-                        detail: project.watchesLeft == 1 ? "Done next watch" : "\(project.watchesLeft) watches left",
-                        fraction: 1 - Double(project.watchesLeft) / Double(project.kind.buildWatches(toLevel: project.targetLevel))
-                    )
-                }
-                if let training = hold.training {
-                    // Trained, with no free ground within three tiles to
-                    // stand on, it waits there, and the hold trains no more.
-                    ProgressLine(
-                        title: training.kind.title,
-                        detail: training.watchesLeft == 0 ? "Trained; waits for room to stand"
-                            : training.watchesLeft == 1 ? "Ready next watch" : "\(training.watchesLeft) watches left",
-                        fraction: 1 - Double(training.watchesLeft) / Double(training.kind.trainWatches)
-                    )
-                }
-
-                Rule()
-                Caps("Works", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7))
-                ForEach(BuildingKind.allCases, id: \.self) { kind in
-                    if !kind.requiresSeat || hold.isSeat {
-                        BuildingRow(session: session, hold: hold, kind: kind, stock: stock)
-                    }
-                }
-
-                Rule()
-                Caps("Companies", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7))
-                ForEach(UnitKind.allCases, id: \.self) { kind in
-                    TrainingRow(session: session, hold: hold, kind: kind, stock: stock)
-                }
-
-                Rule()
-                BarterRow(session: session)
-            }
-            .padding(16)
+            OwnHoldDetails(session: session, hold: hold)
         }
         .scrollEdgeFade()
         .scrollIndicators(.never)
         .pagedByKeys(session, as: .selection)
         .frame(maxHeight: 640)
         .panelBackground()
+    }
+}
+
+/// What the keeper's own hold panel scrolls through: its ward and yield, its
+/// works and musters, and barter. Apart from its scroll view, so it can be
+/// drawn on its own.
+struct OwnHoldDetails: View {
+    let session: GameSession
+    let hold: Hold
+
+    var body: some View {
+        let state = session.state
+        let stock = session.playerHouse.stock
+        VStack(alignment: .leading, spacing: 14) {
+            PanelTitle(
+                title: hold.name,
+                subtitle: hold.isSeat ? "Seat of \(session.playerHouse.title)" : "A hold of \(session.playerHouse.title)",
+                accent: Palette.houseWords(session.playerHouse)
+            )
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack {
+                    Caps("Ward", size: 8.5).foregroundStyle(Palette.text(0.5))
+                    Spacer()
+                    Text(verbatim: "\(hold.ward) / \(hold.maximumWard)")
+                        .font(.nm(10.5).monospacedDigit())
+                        .foregroundStyle(Palette.text(0.75))
+                }
+                Meter(fraction: Double(hold.ward) / Double(max(hold.maximumWard, 1)), label: "Ward")
+                HStack {
+                    Caps("Yield each watch", size: 8.5).foregroundStyle(Palette.text(0.5))
+                    Spacer()
+                    CostLine(cost: state.income(of: hold), available: Stock(grain: .max, timber: .max, stone: .max, moonsalt: .max))
+                }
+            }
+
+            if let project = hold.project {
+                ProgressLine(
+                    title: "\(project.kind.title) \(Narration.roman(project.targetLevel))",
+                    detail: project.watchesLeft == 1 ? "Done next watch" : "\(project.watchesLeft) watches left",
+                    fraction: 1 - Double(project.watchesLeft) / Double(project.kind.buildWatches(toLevel: project.targetLevel))
+                )
+            }
+            if let training = hold.training {
+                // Trained, with no free ground within three tiles to
+                // stand on, it waits there, and the hold trains no more.
+                ProgressLine(
+                    title: training.kind.title,
+                    detail: training.watchesLeft == 0 ? "Trained; waits for room to stand"
+                        : training.watchesLeft == 1 ? "Ready next watch" : "\(training.watchesLeft) watches left",
+                    fraction: 1 - Double(training.watchesLeft) / Double(training.kind.trainWatches)
+                )
+            }
+
+            Rule()
+            Caps("Works", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7))
+            ForEach(BuildingKind.allCases, id: \.self) { kind in
+                if !kind.requiresSeat || hold.isSeat {
+                    BuildingRow(session: session, hold: hold, kind: kind, stock: stock)
+                }
+            }
+
+            Rule()
+            Caps("Companies", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7))
+            ForEach(UnitKind.allCases, id: \.self) { kind in
+                TrainingRow(session: session, hold: hold, kind: kind, stock: stock)
+            }
+
+            Rule()
+            BarterRow(session: session)
+        }
+        .padding(16)
     }
 }
 

@@ -28,8 +28,10 @@ final class WorldMetalViewTests: XCTestCase {
     func testAHousesColourIsOneColourEverywhere() throws {
         let source = WorldShader.source
         let start = try XCTUnwrap(source.range(of: "float3 nm_houseColour(float index) {"))
-        // The body up to the closing line, each colour a float3( r, g, b ).
-        let body = source[start.upperBound...].components(separatedBy: "\n    }\n").first ?? ""
+        // The body up to its closing brace, a line of its own, each colour a
+        // float3( r, g, b ); however the shader's source is indented.
+        let lines = source[start.upperBound...].split(separator: "\n", omittingEmptySubsequences: false)
+        let body = lines.prefix { $0.trimmingCharacters(in: .whitespaces) != "}" }.joined(separator: "\n")
         let found = body.components(separatedBy: "float3(").dropFirst().map { piece in
             let parts = (piece.components(separatedBy: ")").first ?? "").split(separator: ",").compactMap {
                 Double($0.trimmingCharacters(in: .whitespaces))

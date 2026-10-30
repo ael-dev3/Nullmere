@@ -958,6 +958,8 @@ final class PressTests: XCTestCase {
         state.units[lantern].kind = .founder
         let site = try XCTUnwrap(state.map.hexes.first { hex in state.unit(at: hex) == nil && state.canFound(at: hex, for: me) == nil })
         state.units[lantern].position = site
+        // A rider, to be sent on its way once the spear is disbanded.
+        let rider = try XCTUnwrap(state.placeUnit(.rider, for: me, near: try XCTUnwrap(state.seat(of: me)).position))
         let (session, link) = session(state)
         let spear = try XCTUnwrap(session.state.units(of: me).first { $0.kind == .spear })
         session.selection = .unit(spear.id)
@@ -975,7 +977,7 @@ final class PressTests: XCTestCase {
 
         // A company on the march may be halted: always, so the button is
         // always tried.
-        let walker = try XCTUnwrap(session.state.units(of: me).first { $0.kind != .founder && $0.movesLeft > 0 }, "A company to march")
+        let walker = try XCTUnwrap(session.state.unit(rider.id), "A company to march")
         let far = try XCTUnwrap(session.state.map.hexes.first { hex in
             hex.distance(to: walker.position) >= 8 && session.state.path(for: walker, to: hex) != nil
         }, "Somewhere a march away")

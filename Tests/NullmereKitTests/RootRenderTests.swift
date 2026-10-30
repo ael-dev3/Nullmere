@@ -79,7 +79,24 @@ final class RootRenderTests: XCTestCase {
         if let card = session.watchCard {
             try draw(WatchCard(summary: card.summary), width: 700, height: 300)
         }
-        try draw(MapVignette(), width: 400, height: 300)
+        // The map's vignette only darkens: over white, in a window of a
+        // laptop's size, its corners darker than its middle, which it leaves
+        // as it was.
+        let renderer = ImageRenderer(content: MapVignette().frame(width: 1600, height: 1000).background(Color.white))
+        renderer.scale = 1
+        let vignette = try XCTUnwrap(renderer.cgImage)
+        XCTAssertGreaterThan(brightness(vignette, x: 800, y: 500), 740, "Its middle untouched")
+        XCTAssertLessThan(brightness(vignette, x: 2, y: 2), brightness(vignette, x: 800, y: 500) - 60, "Its corners darkened")
+    }
+
+    /// The red, green and blue of a pixel, summed.
+    private func brightness(_ image: CGImage, x: Int, y: Int) -> Int {
+        var pixel = [UInt8](repeating: 0, count: 4)
+        guard let context = CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return 0 }
+        context.draw(image, in: CGRect(x: -x, y: y - image.height + 1, width: image.width, height: image.height))
+        return Int(pixel[0]) + Int(pixel[1]) + Int(pixel[2])
     }
 
     /// The world under an omen, the steward's counsel at the map's foot,
@@ -133,6 +150,9 @@ final class RootRenderTests: XCTestCase {
         )
         let launcher = LauncherModel(defaults: defaults, environment: environment)
         let shell = OnlineShell(launcher: launcher, app: app({ .ready }, seed: "one window"))
+        // Past its opening, which rises from black.
+        launcher.refreshReadiness()
+        launcher.completeIntro()
         try draw(NullmereOnlineView(shell: shell))
         shell.showSettings()
         shell.enterRealm()

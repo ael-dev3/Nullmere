@@ -20,7 +20,9 @@ final class WorldPerformanceTests: XCTestCase {
             _ = state.endWatch()
         }
         try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
-        let seat = try XCTUnwrap(state.seat(of: state.player)).position
+        // The keeper's seat, or, should their House have fallen in sixty
+        // watches of stewards, the first seat still standing.
+        let seat = try XCTUnwrap(state.seat(of: state.player) ?? state.livingHouses.lazy.compactMap { state.seat(of: $0.id) }.first).position
         let centre = HexLayout(size: 1).center(of: seat)
 
         var results: [String] = []
