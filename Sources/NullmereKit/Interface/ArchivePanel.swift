@@ -109,6 +109,7 @@ private struct StudyRow: View {
                                     name: "Study \(study.title) \(Narration.roman(next))", why: ArchivePanel.why(line.standing)) {
                             session.perform(.study(study))
                         }
+                        .beckoned(session.beckon == .study && line.standing == .open)
                     }
                 }
             }

@@ -205,6 +205,7 @@ private struct BuildingRow: View {
                                     : CostLine.shortfall(of: cost, from: stock).map { "You are \($0)." }) {
                         session.perform(.build(hold: hold.id, kind: kind))
                     }
+                    .beckoned(session.beckon == .work(kind))
                 }
             }
             if next <= kind.maxLevel {
@@ -289,6 +290,7 @@ private struct TrainingRow: View {
                                 : CostLine.shortfall(of: cost, from: stock).map { "You are \($0)." }) {
                     session.perform(.train(hold: hold.id, kind: kind, tier: tier > 1 ? tier : nil))
                 }
+                .beckoned(session.beckon == .train(kind) || (session.beckon == .train(nil) && kind.isMilitary))
             }
             if allowed {
                 // What training it costs and takes, read as one.
@@ -506,6 +508,7 @@ struct UnitPanel: View {
                         QuietButton(title: "Found a hold", prominent: problem == nil, enabled: problem == nil) {
                             session.perform(.found(unit: unit.id))
                         }
+                        .beckoned(session.beckon == .found)
                         .help(problem.map { String(describing: $0) } ?? "Raise a new hold here")
                     }
                     QuietButton(title: unit.fortified ? "Fortified" : "Fortify", enabled: !unit.fortified && unit.movesLeft > 0) {

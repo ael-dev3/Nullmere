@@ -102,6 +102,7 @@ private struct CommanderRow: View {
                                 why: refusal?.description) {
                         session.perform(.assign(commander: commander.id, unit: unit.id))
                     }
+                    .beckoned(session.beckon == .lead && refusal == nil)
                 }
             }
             if line.furyReady {

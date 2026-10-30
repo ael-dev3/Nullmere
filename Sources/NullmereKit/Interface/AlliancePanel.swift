@@ -170,6 +170,7 @@ struct AlliancePanel: View {
                 .accessibilityLabel("The alliance's name")
             QuietButton(title: "Raise", size: 8.5, enabled: Alliance.isValidName(banner), name: "Raise the banner",
                         why: "Two to twenty-four letters, spaces, hyphens or apostrophes.", action: raise)
+                .beckoned(session.beckon == .banner)
         }
 
         if !board.others.isEmpty {

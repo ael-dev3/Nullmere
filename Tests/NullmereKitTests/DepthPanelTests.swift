@@ -189,6 +189,22 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(session.panel, .archive)
         ChargeGuide.show(.raiseMusterHall, in: session)
         XCTAssertNil(session.panel, "The seat's works, with nothing over them")
+        XCTAssertEqual(session.beckon, .work(.musterHall), "its Build button ringed")
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        // Each charge rings what keeps it, where a control does.
+        let player = session.player
+        XCTAssertEqual(ChargeGuide.beckon(for: .raiseGranary, in: session.state, player: player), .work(.granary))
+        XCTAssertEqual(ChargeGuide.beckon(for: .musterCompany, in: session.state, player: player), .train(nil))
+        XCTAssertEqual(ChargeGuide.beckon(for: .learnStudy, in: session.state, player: player), .study)
+        XCTAssertEqual(ChargeGuide.beckon(for: .leadCompany, in: session.state, player: player), .lead)
+        XCTAssertEqual(ChargeGuide.beckon(for: .swearBanner, in: session.state, player: player), .banner)
+        XCTAssertNil(ChargeGuide.beckon(for: .huntWild, in: session.state, player: player), "the map shows the way")
+        let founders = session.state.units(of: player).contains { $0.kind == .founder }
+        XCTAssertEqual(ChargeGuide.beckon(for: .foundHold, in: session.state, player: player), founders ? .found : .train(.founder))
+        // An order given, the ring is put away.
+        let company = try XCTUnwrap(session.state.units(of: player).first { $0.kind.isMilitary })
+        XCTAssertTrue(session.perform(.fortify(unit: company.id)))
+        XCTAssertNil(session.beckon)
     }
 
     func testTheRailOpensAndClosesEachPanel() throws {

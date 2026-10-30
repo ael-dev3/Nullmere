@@ -162,6 +162,25 @@ public final class GameSession {
     /// over the ages.
     public var keeper: Keeper?
 
+    /// What a charge's Show me points at: the control that keeps it, ringed
+    /// until the keeper next gives an order.
+    public enum Beckon: Equatable {
+        /// A work's Build button at the seat.
+        case work(BuildingKind)
+        /// The Train buttons: of the companies of war, or of a kind.
+        case train(UnitKind?)
+        /// The studies that may be begun.
+        case study
+        /// A commander's Lead them.
+        case lead
+        /// Founders' Found a hold.
+        case found
+        /// Raising a banner.
+        case banner
+    }
+
+    public var beckon: Beckon?
+
     /// The House the keeper holds.
     public let player: Int
     /// How the realm stands, as last heard, and when.
@@ -498,6 +517,8 @@ public final class GameSession {
             let events = try state.perform(command, as: player)
             answersAwaited.append(Awaited(command: command, from: before, decided: decided))
             link.send(command)
+            // An order given: what Show me pointed at has done its work.
+            beckon = nil
             if var steps = firstSteps, steps.note(command) { advance(steps) }
             showMarches(events, from: before)
             // What chance decides, or what turns on what this copy can't

@@ -41,6 +41,7 @@ enum ChargeGuide {
         let state = session.state
         let player = session.player
         let war = state.units(of: player).filter(\.kind.isMilitary).sorted { $0.id < $1.id }
+        session.beckon = beckon(for: charge, in: state, player: player)
         switch charge {
         case .raiseGranary, .musterCompany, .raiseArchive, .raiseMusterHall:
             session.panel = nil
@@ -49,9 +50,11 @@ enum ChargeGuide {
             session.panel = .archive
         case .foundHold:
             if let founder = state.units(of: player).first(where: { $0.kind == .founder }) {
+                session.panel = nil
                 session.selection = .unit(founder.id)
                 session.glide(to: founder.position)
             } else {
+                session.panel = nil
                 session.focusOnSeat()
             }
         case .leadCompany:
@@ -66,6 +69,24 @@ enum ChargeGuide {
             choose(war.first, toward: state.wildsStanding.map(\.position), in: session)
         case .swearBanner:
             session.panel = .alliance
+        }
+        // Said, for those who can't see where the ring went.
+        AccessibilityNotification.Announcement(how(charge)).post()
+    }
+
+    /// The control Show me rings for a charge, if one keeps it.
+    static func beckon(for charge: Charge, in state: GameState, player: Int) -> GameSession.Beckon? {
+        switch charge {
+        case .raiseGranary: return .work(.granary)
+        case .musterCompany: return .train(nil)
+        case .raiseArchive: return .work(.archive)
+        case .learnStudy: return .study
+        case .foundHold:
+            return state.units(of: player).contains { $0.kind == .founder } ? .found : .train(.founder)
+        case .leadCompany: return .lead
+        case .gatherSite, .huntWild: return nil
+        case .swearBanner: return .banner
+        case .raiseMusterHall: return .work(.musterHall)
         }
     }
 
@@ -127,6 +148,35 @@ struct ChargeCard: View {
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Charge \(board.chargesKept + 1) of \(Charge.allCases.count)")
         }
+    }
+}
+
+/// The ring Show me puts round what keeps a charge: pulsing gently, or
+/// still where motion is reduced. Only a mark, never a control.
+struct BeckonRing: View {
+    @Environment(\.worldMotion) private var motion
+    @State private var lit = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 3)
+            .strokeBorder(Palette.glow.opacity(lit ? 0.95 : 0.45), lineWidth: 1.5)
+            .padding(-3)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+            .onAppear {
+                guard motion == .full else {
+                    lit = true
+                    return
+                }
+                withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { lit = true }
+            }
+    }
+}
+
+extension View {
+    /// Rings the view while Show me points at it.
+    func beckoned(_ shown: Bool) -> some View {
+        overlay { if shown { BeckonRing() } }
     }
 }
 
