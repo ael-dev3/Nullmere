@@ -91,6 +91,8 @@ public struct ModelInstance: Equatable, Sendable {
     public var hex: SIMD2<Int32>
     /// Where its parts' transforms begin in the frame's palette.
     public var palette: UInt32
+    /// The first bit: `alwaysShown`. The second byte: one more than the
+    /// people whose way a hold's work is built in (`WorldStage.peopleFlags`).
     public var flags: UInt32
 
     /// Shown whatever the keeper knows of its hex: the keeper's own.

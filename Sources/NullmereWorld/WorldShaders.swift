@@ -555,6 +555,19 @@ public enum WorldShaders {
 
     // MARK: Models
 
+    // Each people's slates and walls, linear, in the order of their
+    // heritages: the Saltborn's white, the Fenfolk's reed, the Blackwood
+    // Kin's black, the Spinewardens' slate, the Mound Clans' turf, the
+    // Strandfolk's sea-grey; then their walls.
+    constant float3 kPeopleRoof[6] = {
+        float3(0.68, 0.68, 0.646), float3(0.19, 0.173, 0.087), float3(0.0078, 0.0063, 0.0063),
+        float3(0.0394, 0.0434, 0.0606), float3(0.0324, 0.0516, 0.0358), float3(0.0516, 0.0761, 0.1119)
+    };
+    constant float3 kPeopleWall[6] = {
+        float3(0.612, 0.664, 0.718), float3(0.148, 0.126, 0.099), float3(0.026, 0.0133, 0.0078),
+        float3(0.133, 0.133, 0.148), float3(0.428, 0.414, 0.375), float3(0.456, 0.414, 0.325)
+    };
+
     struct ModelOut {
         float4 position [[position]];
         float3 world;
@@ -603,6 +616,17 @@ public enum WorldShaders {
             if (instance.colour.a > 0.5) {
                 float shade = dot(albedo, float3(0.30, 0.55, 0.15));
                 albedo = instance.colour.rgb * shade * 2.0;
+            }
+        }
+        // A hold's works as its House's people build them (the flags'
+        // second byte, one more than the people): their slates take the
+        // people's roofs, their stone and timber lean to its walls.
+        uint people = (instance.flags >> 8) & 0xFFu;
+        if (people > 0u && people <= 6u && material < 0.5) {
+            if (v.surface == 4) {
+                albedo = mix(albedo, kPeopleRoof[people - 1u], 0.8);
+            } else if (v.surface == 1 || v.surface == 2) {
+                albedo = mix(albedo, kPeopleWall[people - 1u], v.surface == 1 ? 0.4 : 0.3);
             }
         }
         ModelOut out;

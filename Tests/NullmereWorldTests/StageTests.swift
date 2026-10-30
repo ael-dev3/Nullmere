@@ -120,6 +120,35 @@ final class StageTests: XCTestCase {
         XCTAssertFalse(raised.contains(.keep(seat: true)))
         XCTAssertEqual(built.hearths.count, hearths.count, "its hall smokes as the common keep's does")
         XCTAssertEqual(stage.pieces(of: hold, progress: nil, heritage: .moundClans).first?.key, .keepOf(.moundClans, seat: true))
+
+        // Its works and walls are built in its people's way; its keep is
+        // theirs already. A House whose people are unknown builds the
+        // common way.
+        let clans = WorldStage.peopleFlags(.moundClans)
+        for batch in built.batches {
+            for instance in batch.instances {
+                switch batch.key {
+                case .work, .walls: XCTAssertEqual(instance.flags, clans, "\(batch.key) is built the Mound Clans' way")
+                default: XCTAssertEqual(instance.flags, 0, "\(batch.key) is as it is")
+                }
+            }
+        }
+        XCTAssertTrue(whole.flatMap(\.instances).allSatisfy { $0.flags == 0 })
+    }
+
+    func testEachPeopleIsMarkedForTheShaderInTheSecondByte() {
+        XCTAssertEqual(WorldStage.peopleFlags(nil), 0)
+        let marks = Heritage.allCases.map(WorldStage.peopleFlags)
+        XCTAssertEqual(marks.map { $0 >> 8 }, Array(1...UInt32(Heritage.allCases.count)), "one more than each people's place")
+        XCTAssertTrue(marks.allSatisfy { $0 & 0xFF == 0 && $0 & ModelInstance.alwaysShown == 0 }, "the first byte is left alone")
+        // The shader knows each people's roofs and walls, and no more.
+        let count = Heritage.allCases.count
+        XCTAssertTrue(WorldShaders.source.contains("constant float3 kPeopleRoof[\(count)]"))
+        XCTAssertTrue(WorldShaders.source.contains("constant float3 kPeopleWall[\(count)]"))
+        XCTAssertTrue(WorldShaders.source.contains("people <= \(count)u"))
+        XCTAssertTrue(WorldStage.isPeoples(.study(level: 1)))
+        XCTAssertFalse(WorldStage.isPeoples(.scaffold))
+        XCTAssertFalse(WorldStage.isPeoples(.keepOf(.saltborn, seat: false)))
     }
 
     func testCompaniesStandInFormationOnTheLandUnderEachFigure() throws {

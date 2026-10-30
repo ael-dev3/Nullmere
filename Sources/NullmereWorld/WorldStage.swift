@@ -360,21 +360,41 @@ public final class WorldStage: @unchecked Sendable {
         return made
     }
 
+    /// The flags that mark a hold's works as its House's people build them:
+    /// in the second byte, one more than the people's place among them; the
+    /// shader gives their slates, stone and timber that people's colours.
+    public static func peopleFlags(_ heritage: Heritage?) -> UInt32 {
+        guard let heritage, let index = Heritage.allCases.firstIndex(of: heritage) else { return 0 }
+        return UInt32(index + 1) << 8
+    }
+
+    /// Whether a piece of a hold is built the way its House's people build:
+    /// its works and walls; the keep is its people's already, and a
+    /// scaffold is a scaffold anywhere.
+    static func isPeoples(_ key: ModelKey) -> Bool {
+        switch key {
+        case .work, .study, .walls: return true
+        default: return false
+        }
+    }
+
     /// The holds in sight, their keeps, walls and works each in its House's
-    /// colour, a work rising under its scaffold; and where their hearths smoke.
+    /// colour and its people's way, a work rising under its scaffold; and
+    /// where their hearths smoke.
     public func holds(_ sights: [HoldSight], time: Float, into frame: inout SceneFrame) -> (batches: [ModelBatch], hearths: [Hearth]) {
         var placed: [(ModelKey, ModelInstance)] = []
         var hearths: [Hearth] = []
         var poses: [PoseKey: UInt32] = [:]
         for sight in sights {
             let phase = WorldStage.phase(of: sight.hold.position, salt: sight.hold.id)
+            let people = WorldStage.peopleFlags(sight.heritage)
             for piece in pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage) {
                 let model = Library.model(piece.key)
                 let palette = model.rig.count > 1
                     ? WorldStage.pose(piece.key, .idle, at: time + phase, shared: &poses, into: &frame) : 0
                 placed.append((piece.key, ModelInstance(model: piece.transform, colour: sight.colour, rise: piece.risen ?? WorldStage.whole,
                                                         phase: phase, hex: SIMD2(Int32(piece.hex.q), Int32(piece.hex.r)),
-                                                        palette: palette)))
+                                                        palette: palette, flags: WorldStage.isPeoples(piece.key) ? people : 0)))
                 if piece.progress >= 1 {
                     hearths += piece.smoke.map { Hearth(point: $0, hex: piece.hex) }
                 }
