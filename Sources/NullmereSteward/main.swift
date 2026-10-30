@@ -35,6 +35,15 @@ if let value = environment["NULLMERE_STEWARD_TOKEN"], !value.isEmpty {
 } else {
     fail("Set NULLMERE_STEWARD_TOKEN or NULLMERE_STEWARD_TOKEN_FILE to the token of the identity that published the module.")
 }
+// A realm of a size no lake can seat is refused here, aloud, never made
+// another size without a word.
+let seats: Int = {
+    guard let text = environment["NULLMERE_REALM_SEATS"], !text.isEmpty else { return RealmState.defaultSeats }
+    guard let asked = Int(text), RealmState.seatRange.contains(asked) else {
+        fail("NULLMERE_REALM_SEATS is \(text), but a realm has \(RealmState.seatRange.lowerBound) to \(RealmState.seatRange.upperBound) seats.")
+    }
+    return asked
+}()
 
 // A steward restarted while its last self still holds the realm waits for
 // that hold to lapse (a minute at most); another steward running elsewhere
@@ -49,7 +58,7 @@ func takeUp() async -> RealmSteward {
                 token: token,
                 name: environment["NULLMERE_REALM_NAME"] ?? "The Nullmere",
                 seed: environment["NULLMERE_REALM_SEED"] ?? "the still water",
-                seats: environment["NULLMERE_REALM_SEATS"].flatMap(Int.init) ?? RealmState.defaultSeats,
+                seats: seats,
                 watchLength: environment["NULLMERE_WATCH_SECONDS"].flatMap(Double.init) ?? RealmState.defaultWatchLength,
                 now: Date().timeIntervalSince1970
             )

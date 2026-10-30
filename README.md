@@ -405,7 +405,9 @@ If the name `nullmere` is taken on maincloud, choose another with
 `REALM_ADDRESS=https://maincloud.spacetimedb.com/<name> scripts/build-app.sh`;
 the address is kept in the app's Info.plist. `NULLMERE_REALM_NAME`,
 `NULLMERE_REALM_SEED`, `NULLMERE_REALM_SEATS` and `NULLMERE_WATCH_SECONDS`
-shape a new realm; `STEWARD=foreground` keeps the steward in the terminal.
+shape a new realm; a realm has two to twelve seats, and the steward
+refuses to start, saying why, when asked for any other number.
+`STEWARD=foreground` keeps the steward in the terminal.
 
 `scripts/raise-realm.sh local` raises the same realm on your own machine
 (starting SpacetimeDB if it isn't running); open a debug build with

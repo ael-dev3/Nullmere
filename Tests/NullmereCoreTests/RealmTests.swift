@@ -92,6 +92,18 @@ final class RealmTests: XCTestCase {
         XCTAssertThrowsError(try realm.perform(.fortify(unit: 1), by: "c")) { XCTAssertEqual($0 as? RealmError, .noSeat) }
     }
 
+    /// A realm has two to twelve seats, as many as one lake can seat; the
+    /// steward refuses aloud to begin one of any other size, never making
+    /// it another without a word.
+    func testARealmHasTwoToTwelveSeats() {
+        XCTAssertEqual(RealmState.seatRange, 2...12)
+        XCTAssertEqual(RealmState.defaultSeats, RealmState.seatRange.upperBound, "The realm proper seats as many as it can")
+        for seats in [2, 7, 12] {
+            XCTAssertEqual(realm(seats: seats).seats, seats)
+            XCTAssertEqual(realm(seats: seats).world.houses.count, seats)
+        }
+    }
+
     func testASeatLongLeftGoesToAKeeperWhoIsWaiting() throws {
         var realm = realm(seats: 2)
         let ama = try realm.arrive("a", name: "Ama", now: 0)
