@@ -74,6 +74,9 @@ public struct SpacetimeError: Error, Equatable, CustomStringConvertible, Sendabl
 
     public static let unauthorized = SpacetimeError("The realm doesn't accept this Mac's key just now. The key is kept, and offered again in a while.",
                                                     isUnauthorized: true, status: 401)
+    /// The realm's module has no such request: it and this version of the
+    /// game don't match.
+    public static let unknownRequest = "The realm doesn't know what this version of Nullmere Online asks of it: one of the two is newer than the other."
 }
 
 /// What the realm needs of SpacetimeDB: an identity, reducer calls, and
@@ -128,6 +131,11 @@ public struct SpacetimeHTTP: SpacetimeTransport, @unchecked Sendable {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw SpacetimeError("No answer from the realm.") }
         if http.statusCode == 404 {
+            // A database not there, or a request its module doesn't have.
+            let said = String(decoding: data, as: UTF8.self).lowercased()
+            if said.contains("procedure") || said.contains("reducer") {
+                throw SpacetimeError(SpacetimeError.unknownRequest, status: 404)
+            }
             throw SpacetimeError("The realm isn't open yet.", status: 404)
         }
         if http.statusCode == 401 {

@@ -93,6 +93,12 @@ final class SpacetimeHTTPTests: XCTestCase {
         }
         let missing = await refusal(StubHTTP.Answer(status: 404))
         XCTAssertEqual(missing?.description, "The realm isn't open yet.")
+        let gone = await refusal(StubHTTP.Answer(status: 404, text: "`nullmere` not found"))
+        XCTAssertEqual(gone?.description, "The realm isn't open yet.")
+        // A request the realm's module doesn't have is no realm unopened.
+        let unknown = await refusal(StubHTTP.Answer(status: 404, text: "No such procedure"))
+        XCTAssertEqual(unknown?.description, SpacetimeError.unknownRequest)
+        XCTAssertEqual(unknown.map { RealmTrouble.words(for: $0) }, SpacetimeError.unknownRequest)
         let forgotten = await refusal(StubHTTP.Answer(status: 401))
         XCTAssertEqual(forgotten, .unauthorized)
         XCTAssertTrue(forgotten?.isUnauthorized == true)
