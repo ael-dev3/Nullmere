@@ -45,6 +45,8 @@ extension RealmState {
         head.world.wilds = world.wilds.map { _ in [] }
         try paged("sites", world.sites)
         head.world.sites = world.sites.map { _ in [] }
+        try paged("armoury", world.armoury)
+        head.world.armoury = world.armoury.map { _ in [] }
         parts["head"] = try text(head)
         return parts
     }
@@ -79,6 +81,9 @@ extension RealmState {
         }
         if realm.world.sites != nil {
             realm.world.sites = try pages("sites", of: Site.self)
+        }
+        if realm.world.armoury != nil {
+            realm.world.armoury = try pages("armoury", of: Gear.self)
         }
         self = realm
     }

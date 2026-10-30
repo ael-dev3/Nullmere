@@ -48,6 +48,18 @@ extension GameState {
         case .talentsForgotten(let id, let house):
             guard house == viewer, let commander = commander(id) else { return nil }
             return Tidings("\(commander.name) forgets their talents, to learn them anew.", .neutral)
+        case .gearFound(let house, let piece, let wild):
+            guard house == viewer else { return nil }
+            return Tidings("Among the fallen \(wild.title.hasPrefix("the ") ? String(wild.title.dropFirst(4)) : wild.title), your company finds a \(piece.title).", .good)
+        case .gearWorn(let id, let house, let gearID):
+            guard house == viewer, let commander = commander(id) else { return nil }
+            return Tidings("\(commander.name) takes up the \(gear(gearID)?.title ?? "gear").", .neutral)
+        case .gearTakenOff(let id, let house, let gearID):
+            guard house == viewer, let commander = commander(id) else { return nil }
+            return Tidings("\(commander.name) lays down the \(gear(gearID)?.title ?? "gear").", .neutral)
+        case .gearScrapped(let house, _, let moonsalt):
+            guard house == viewer else { return nil }
+            return Tidings("A piece of gear is broken up for \(moonsalt) moonsalt.", .neutral)
         case .skillFired(let id, let house, let skill, _):
             guard let commander = commander(id) else { return nil }
             if house == viewer { return Tidings("\(commander.name) calls \(skill.title).", .good) }

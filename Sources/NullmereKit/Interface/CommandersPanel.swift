@@ -32,6 +32,8 @@ struct CommandersPanel: View {
                         Rule(opacity: 0.18)
                         CommanderRow(session: session, line: line, chosen: chosen)
                     }
+                    Rule(opacity: 0.18)
+                    ArmouryView(session: session, commanders: board.lines.map(\.commander))
                 }
             }
             .scrollEdgeFade()
@@ -123,9 +125,86 @@ private struct CommanderRow: View {
                     .accessibilityElement(children: .combine)
                 }
             }
+            ForEach(session.state.worn(by: commander.id).sorted { $0.slot.rawValue < $1.slot.rawValue }) { piece in
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Caps("\(piece.slot.title): \(piece.title)", size: 8.5, weight: .medium)
+                            .foregroundStyle(Palette.text(0.85))
+                        Text(verbatim: piece.effect)
+                            .font(.nm(10))
+                            .foregroundStyle(Palette.text(0.55))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    Spacer()
+                    QuietButton(title: "Take off", size: 8.5, name: "Take the \(piece.title) off \(commander.name)") {
+                        session.perform(.takeOff(gear: piece.id))
+                    }
+                }
+            }
             TalentsView(session: session, commander: commander)
         }
     }
+}
+
+/// The House's armoury: the gear its commanders don't wear, each piece
+/// with what it gives, a button to arm the commander chosen with it, and
+/// one to break it up for moonsalt.
+struct ArmouryView: View {
+    let session: GameSession
+    let commanders: [Commander]
+    /// The commander the next piece goes to; the first, until one is chosen.
+    @State private var chosen: Int?
+
+    var body: some View {
+        let held = session.state.gear(of: session.player)
+        let kept = held.filter { $0.wornBy == nil }
+        let wearer = commanders.first { $0.id == chosen } ?? commanders.first
+        VStack(alignment: .leading, spacing: 6) {
+            Caps("Armoury · \(held.count) of \(GameState.armouryLimit)", size: 9, weight: .medium)
+                .foregroundStyle(Palette.text(0.7))
+                .accessibilityAddTraits(.isHeader)
+            if kept.isEmpty {
+                Text(verbatim: ArmouryView.empty)
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if commanders.count > 1 {
+                Picker("Arm", selection: Binding(get: { wearer?.id ?? 0 }, set: { chosen = $0 })) {
+                    ForEach(commanders) { commander in
+                        Text(verbatim: commander.name).tag(commander.id)
+                    }
+                }
+                .pickerStyle(.menu)
+                .font(.nm(10.5))
+                .accessibilityLabel("The commander to arm")
+            }
+            ForEach(kept) { piece in
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Caps("\(piece.title) · \(piece.slot.title.lowercased())", size: 8.5, weight: .medium)
+                            .foregroundStyle(Palette.text(0.85))
+                        Text(verbatim: piece.effect)
+                            .font(.nm(10))
+                            .foregroundStyle(Palette.text(0.55))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    Spacer()
+                    QuietButton(title: "Arm", size: 8.5, enabled: wearer != nil,
+                                name: "Arm \(wearer?.name ?? "a commander") with the \(piece.title)",
+                                why: "No commander serves your House.") {
+                        if let wearer { session.perform(.wear(gear: piece.id, commander: wearer.id)) }
+                    }
+                    ConfirmButton(title: "Break up", confirm: "For \(piece.scrap) moonsalt?") {
+                        session.perform(.breakUp(gear: piece.id))
+                    }
+                }
+            }
+        }
+    }
+
+    static let empty = "Gear falls with the wilds struck down: weapons, armour and charms for your commanders, finer from the higher levels."
 }
 
 /// A commander's talents: its three trees, each talent's rank and what a

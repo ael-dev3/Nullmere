@@ -50,6 +50,8 @@ extension GameState {
         // company in sight.
         let leading = Set(view.units.compactMap(\.leader))
         view.commanders = commanders?.filter { $0.owner == house || leading.contains($0.id) }
+        // Its own gear; of others, what those commanders wear.
+        view.armoury = armoury?.filter { $0.owner == house || $0.wornBy.map(leading.contains) == true }
         // The wilds in sight; the sites on ground the House has explored.
         view.wilds = wilds?.filter { map.index(of: $0.position).map { seen[$0] } ?? false }
         view.sites = sites?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
@@ -106,7 +108,8 @@ extension GameState {
                 return from == house || to == house
             case .bartered(let owner, _, _), .starving(let owner), .studyBegun(let owner, _, _), .studyCompleted(let owner, _, _),
                  .commanderJoined(_, let owner), .commanderRose(_, let owner, _), .commanderWounded(_, let owner),
-                 .talentLearned(_, let owner, _, _), .talentsForgotten(_, let owner):
+                 .talentLearned(_, let owner, _, _), .talentsForgotten(_, let owner),
+                 .gearFound(let owner, _, _), .gearWorn(_, let owner, _), .gearTakenOff(_, let owner, _), .gearScrapped(let owner, _, _):
                 return owner == house
             case .commanderAssigned(let id, _), .commanderReleased(let id):
                 return commander(id)?.owner == house

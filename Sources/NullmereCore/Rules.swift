@@ -71,6 +71,12 @@ extension GameState {
             return try learn(talent, by: commanderID, as: house)
         case let .forgetTalents(commanderID):
             return try forgetTalents(of: commanderID, as: house)
+        case let .wear(gearID, commanderID):
+            return try wear(gearID, on: commanderID, as: house)
+        case let .takeOff(gearID):
+            return try takeOff(gearID, as: house)
+        case let .breakUp(gearID):
+            return try breakUp(gearID, as: house)
         case let .inviteToAlliance(target):
             return try invite(target, by: house)
         case let .askToJoin(allianceID):

@@ -96,6 +96,13 @@ extension GameState {
             }
             if commander.owner != unit.owner { found.append("Company \(unit.id) is led by another House's commander") }
         }
+        var slots: Set<String> = []
+        for piece in gear {
+            if !houseIDs.contains(piece.owner) { found.append("\(piece.title) \(piece.id) is held by no House (\(piece.owner))") }
+            guard let wearer = piece.wornBy else { continue }
+            if commander(wearer)?.owner != piece.owner { found.append("\(piece.title) \(piece.id) is worn by a commander not of its House") }
+            if !slots.insert("\(wearer) \(piece.slot)").inserted { found.append("Commander \(wearer) wears two in its \(piece.slot.title.lowercased()) slot") }
+        }
         var sworn: Set<Int> = []
         for alliance in alliancesStanding {
             if alliance.members.isEmpty { found.append("\(alliance.name) has no House") }

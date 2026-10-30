@@ -674,7 +674,8 @@ public final class GameSession {
     static func isRealmsToTell(_ event: GameEvent) -> Bool {
         switch event {
         case .battle, .unitLost, .holdStruck, .holdCaptured, .seatMoved, .promoted, .ruinSearched, .holdFounded,
-             .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired, .hunted:
+             .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired, .hunted,
+             .gearFound:
             return true
         default:
             return false
@@ -1125,6 +1126,9 @@ public final class GameSession {
         case .say: return .parley
         case .learnTalent: return .lore
         case .forgetTalents: return .stand
+        case .wear: return .order
+        case .takeOff: return .stand
+        case .breakUp: return .coin
         default: return .select
         }
     }
@@ -1148,6 +1152,10 @@ public final class GameSession {
         case .skillFired(_, let house, _, _) where house == player: return .horn
         case .talentLearned(_, let house, _, _) where house == player: return .lore
         case .talentsForgotten(_, let house) where house == player: return .stand
+        case .gearFound(let house, _, _) where house == player: return .honour
+        case .gearWorn(_, let house, _) where house == player: return .order
+        case .gearTakenOff(_, let house, _) where house == player: return .stand
+        case .gearScrapped(let house, _, _) where house == player: return .coin
         case .hunted(let hunt) where hunt.attackerOwner == player: return hunt.attackerKind == .bow ? .loose : .clash
         case .sentToGather(let unit, _) where ours(unit): return .order
         case .gathered(_, let owner, _) where owner == player: return .dig

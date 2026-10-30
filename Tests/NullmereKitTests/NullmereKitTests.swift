@@ -678,6 +678,10 @@ final class CueMappingTests: XCTestCase {
             (.skillFired(commander: commander, house: player, skill: .shieldwall, at: unit.position), .horn),
             (.talentLearned(commander: commander, house: player, talent: .keenEdge, rank: 1), .lore),
             (.talentsForgotten(commander: commander, house: player), .stand),
+            (.gearFound(house: player, gear: Gear(id: 70, kind: .saltGlaive, quality: .fine, owner: player), from: .saltwights), .honour),
+            (.gearWorn(commander: commander, house: player, gear: 70), .order),
+            (.gearTakenOff(commander: commander, house: player, gear: 70), .stand),
+            (.gearScrapped(house: player, gear: 70, moonsalt: 10), .coin),
             (hunt(by: player, .spear), .clash),
             (hunt(by: player, .bow), .loose),
             (.sentToGather(unit: unit.id, site: 1), .order),
@@ -728,6 +732,8 @@ final class CueMappingTests: XCTestCase {
             .chargeDone(house: foe, charge: .raiseGranary, reward: Stock(grain: 5)),
             .said(Word(id: 6, from: player, watch: 1, text: "My own words", alliance: nil)),
             .talentLearned(commander: 99, house: foe, talent: .keenEdge, rank: 1), .talentsForgotten(commander: 99, house: foe),
+            .gearFound(house: foe, gear: Gear(id: 71, kind: .reaverAxe, quality: .plain, owner: foe), from: .reavers),
+            .gearWorn(commander: 99, house: foe, gear: 71), .gearScrapped(house: foe, gear: 71, moonsalt: 5),
         ]
         XCTAssertEqual(GameSession.cues(for: quiet, in: state, player: player), [.watch])
         // Every new order has its own sound, not the plain click.
@@ -742,6 +748,7 @@ final class CueMappingTests: XCTestCase {
             (.answerRequest(house: foe, accept: false), .refusal), (.expel(house: foe), .refusal),
             (.callRally(from: seat.id, against: 40, watches: 2), .horn),
             (.learnTalent(commander: commander, talent: .keenEdge), .lore), (.forgetTalents(commander: commander), .stand),
+            (.wear(gear: 70, commander: commander), .order), (.takeOff(gear: 70), .stand), (.breakUp(gear: 70), .coin),
             (.say(words: "Well met", toAlliance: false), .parley),
         ]
         for (command, cue) in orders {

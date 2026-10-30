@@ -145,6 +145,43 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(PressableButtons.press("Talents"), "Every point spent: hidden of itself")
     }
 
+    func testACommanderIsArmedFromTheArmouryAndItsGearTakenOffAndBrokenUp() throws {
+        var state = world("pressed gear")
+        let me = state.player
+        let commander = try XCTUnwrap(state.commanders(of: me).first).id
+        state.armoury = [Gear(id: state.takeID(), kind: .saltGlaive, quality: .fine, owner: me),
+                         Gear(id: state.takeID(), kind: .huntersEye, quality: .plain, owner: me)]
+        let (session, link) = session(state)
+        draw(CommandersPanel(session: session))
+        XCTAssertNil(PressableButtons.actions["Take off"], "Nothing worn yet")
+        XCTAssertTrue(PressableButtons.press("Arm"), "Among \(shown)")
+        guard case .wear(let piece, commander)? = link.sent.last else { return XCTFail("Armed: \(String(describing: link.sent.last))") }
+        XCTAssertEqual(session.state.gear(piece)?.wornBy, commander)
+
+        draw(CommandersPanel(session: session))
+        XCTAssertTrue(PressableButtons.press("Take off"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .takeOff(gear: piece))
+        XCTAssertNil(session.state.gear(piece)?.wornBy)
+
+        draw(CommandersPanel(session: session))
+        let moonsalt = session.state.houses[me].stock.moonsalt
+        XCTAssertTrue(PressableButtons.press("Break up"), "Among \(shown)")
+        guard case .breakUp(let broken)? = link.sent.last else { return XCTFail("Broken up: \(String(describing: link.sent.last))") }
+        XCTAssertNil(session.state.gear(broken))
+        XCTAssertGreaterThan(session.state.houses[me].stock.moonsalt, moonsalt)
+
+        // With more commanders, the one to arm is chosen; with none, none is armed.
+        let other = Commander(id: 99, name: "Ysra Stillwater", archetype: .warden, owner: me)
+        draw(ArmouryView(session: session, commanders: session.state.commanders(of: me) + [other]))
+        XCTAssertNotNil(PressableButtons.actions["Arm"])
+        draw(ArmouryView(session: session, commanders: []))
+        XCTAssertNil(PressableButtons.actions["Arm"], "No commander to arm")
+        let (bare, _) = self.session(world("bare armoury"))
+        draw(ArmouryView(session: bare, commanders: bare.state.commanders(of: bare.player)))
+        XCTAssertNil(PressableButtons.actions["Break up"], "An empty armoury says where gear comes from")
+        XCTAssertTrue(ArmouryView.empty.hasPrefix("Gear falls with the wilds struck down"))
+    }
+
     // MARK: Alliances
 
     func testAnInvitationIsTakenAndAnotherAllianceAsked() throws {

@@ -277,20 +277,20 @@ extension GameState {
 
     /// A company's figure for something its House's studies and its
     /// commander change: what `bonus(_:for:)` gives its House, and what its
-    /// commander's skills give it.
+    /// commander's skills, talents and gear give it.
     public func bonus(_ bonus: Bonus, for unit: Unit) -> Int {
         let house = self.bonus(bonus, for: unit.owner)
         guard let id = unit.leader, let commander = commander(id) else { return house }
         switch bonus {
-        case .attack(let kind) where kind == unit.kind: return house + commander.edge(.attack)
-        case .defense(let kind) where kind == unit.kind: return house + commander.edge(.defense)
-        case .moves(let kind) where kind == unit.kind: return house + commander.edge(.moves)
-        case .sight: return house + commander.edge(.sight)
-        case .healing: return house + commander.edge(.healing)
-        case .garrison: return house + commander.edge(.garrison)
-        case .wardDamage: return house + commander.edge(.wardDamage)
-        case .gathering: return house + commander.edge(.gathering)
-        case .load: return house + commander.edge(.load)
+        case .attack(let kind) where kind == unit.kind: return house + edge(.attack, of: commander)
+        case .defense(let kind) where kind == unit.kind: return house + edge(.defense, of: commander)
+        case .moves(let kind) where kind == unit.kind: return house + edge(.moves, of: commander)
+        case .sight: return house + edge(.sight, of: commander)
+        case .healing: return house + edge(.healing, of: commander)
+        case .garrison: return house + edge(.garrison, of: commander)
+        case .wardDamage: return house + edge(.wardDamage, of: commander)
+        case .gathering: return house + edge(.gathering, of: commander)
+        case .load: return house + edge(.load, of: commander)
         default: return house
         }
     }

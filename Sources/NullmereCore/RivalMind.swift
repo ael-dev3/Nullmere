@@ -97,6 +97,7 @@ struct RivalMind {
         events += pursueStudies(in: &state)
         events += appointCommanders(in: &state)
         events += state.growTalents(for: house)
+        events += state.armCommanders(for: house)
         let garrisons = assignGarrisons(in: state)
         let visible = state.visibility(for: house)
         // Its companies' orders don't change whom it is at war with.

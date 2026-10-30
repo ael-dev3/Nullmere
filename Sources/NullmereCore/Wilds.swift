@@ -185,7 +185,7 @@ extension GameState {
 
     /// What a company's commander adds to its blows on the wilds.
     func huntingEdge(of unit: Unit) -> Int {
-        unit.leader.flatMap(commander).map { $0.edge(.hunting) } ?? 0
+        unit.leader.flatMap(commander).map { edge(.hunting, of: $0) } ?? 0
     }
 
     /// A company of the wilds' blow back, before chance: its own attack
@@ -238,6 +238,8 @@ extension GameState {
         events.insert(.hunted(Hunt(attacker: unitID, attackerOwner: attacker.owner, attackerKind: attacker.kind, wild: wildID,
                                    wildKind: wild.kind, level: wild.level, at: wild.position, damageDealt: dealt, damageTaken: taken,
                                    attackerFell: attackerFell, wildFell: wildFell, spoils: spoils)), at: 0)
+        // What falls with it may be gear for the House's commanders.
+        if wildFell { events += findGear(on: wild, by: attacker.owner) }
         return events
     }
 

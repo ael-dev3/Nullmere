@@ -69,6 +69,12 @@ public enum Command: Codable, Equatable, Sendable {
     /// A commander forgets every talent it has learned, its points given
     /// back to learn anew, for moonsalt.
     case forgetTalents(commander: Int)
+    /// A commander takes up a piece of the House's gear, in its slot.
+    case wear(gear: Int, commander: Int)
+    /// A piece of gear taken off, back to the armoury.
+    case takeOff(gear: Int)
+    /// A piece of gear broken up for its moonsalt.
+    case breakUp(gear: Int)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -188,6 +194,12 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case needsTalent(Talent)
     /// Talents forgotten by a commander that has learned none.
     case nothingToForget
+    /// Gear the House doesn't hold.
+    case unknownGear
+    /// Gear the commander wears already.
+    case alreadyWorn
+    /// Gear no commander wears.
+    case notWorn
     /// Words from a House no keeper holds.
     case notAKeeper
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -277,6 +289,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .talentMastered: return "That talent is learned to its last rank."
         case .needsTalent(let talent): return "Needs \(talent.title) first."
         case .nothingToForget: return "That commander has learned no talents."
+        case .unknownGear: return "Your House holds no such gear."
+        case .alreadyWorn: return "That commander wears it already."
+        case .notWorn: return "No commander wears it."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
         case .notAKeeper: return "Only a keeper's words are carried."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -331,6 +346,14 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case talentLearned(commander: Int, house: Int, talent: Talent, rank: Int)
     /// A commander forgets its talents, to learn anew.
     case talentsForgotten(commander: Int, house: Int)
+    /// A House finds a piece of gear on the wilds it struck down.
+    case gearFound(house: Int, gear: Gear, from: WildKind)
+    /// A commander takes up a piece of gear.
+    case gearWorn(commander: Int, house: Int, gear: Int)
+    /// A piece of gear taken off, back to the armoury.
+    case gearTakenOff(commander: Int, house: Int, gear: Int)
+    /// A piece of gear broken up for moonsalt.
+    case gearScrapped(house: Int, gear: Int, moonsalt: Int)
     /// A company strikes a company of the wilds.
     case hunted(Hunt)
     /// A company sets out to work a site.
