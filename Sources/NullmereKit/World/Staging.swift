@@ -82,6 +82,10 @@ extension GameSession {
                                     heritage: state.heritage(of: hold.owner)))
         }
         let (holds, hearths) = stage.holds(sights, time: t, into: &frame)
+        // Their townsfolk about their works, in sight and in full motion,
+        // and carts on the ways between them.
+        let townsfolk = full ? stage.townsfolk(sights.filter { isVisible($0.hold.position) }, time: t, into: &frame)
+            + stage.traffic(ways, time: t, into: &frame) : []
         // The alliances' halls the keeper knows of, each in its leader's
         // colour, one rising easing up a watch's height as the watch turns.
         let hallSights = state.hallsStanding.filter { isExplored($0.position) }.map { hall in
@@ -134,7 +138,7 @@ extension GameSession {
                                          into: &frame)
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
-        frame.batches = holds + halls + storehouses + siteBatches + yards.batches + lairs.batches + standards + companies + flights
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairs.batches + standards + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
                                                      time: time)

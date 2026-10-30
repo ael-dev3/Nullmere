@@ -18,6 +18,14 @@ public enum HoldLayout {
     /// How far from its heart a hold's pieces can reach.
     public static let reach: Float = outerRing + workRadius
 
+    /// Where a hold's walls open, on the ground plane: the middle of the
+    /// gate in the flat of the ring that faces its front.
+    public static func gate(of hex: Hex) -> Vec3 {
+        let centre = Relief.centre(of: hex), front = frontAngle(of: hex)
+        let apothem = Holds.wallRadius * Float(cos(Double.pi / 6))
+        return Vec3(centre.x, 0, centre.z) + Vec3(Float(cos(Double(front))), 0, Float(sin(Double(front)))) * apothem
+    }
+
     /// A work a hold can raise beside its keep.
     public enum Work: Hashable, Sendable {
         case building(BuildingKind)

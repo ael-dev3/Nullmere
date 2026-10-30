@@ -36,7 +36,7 @@ final class PreviewTests: XCTestCase {
         func family(_ test: (ModelKey) -> Bool) -> [ModelKey] { keys.filter(test) }
         let figures = family {
             switch $0 {
-            case .figure, .signature, .wild, .commander: return true
+            case .figure, .signature, .wild, .commander, .folk: return true
             default: return false
             }
         }
@@ -77,7 +77,8 @@ final class PreviewTests: XCTestCase {
 
         let actors: [ModelKey] = [.figure(.spear, tier: 1), .figure(.spear, tier: 5), .figure(.bow, tier: 3), .figure(.rider, tier: 3),
                                   .figure(.lantern, tier: 1), .figure(.founder, tier: 1), .wild(tier: 1), .wild(tier: 3),
-                                  .commander(variant: 1), .prop(.bird), .prop(.cart), .work(.sawpit, level: 3)]
+                                  .commander(variant: 1), .prop(.bird), .prop(.cart), .work(.sawpit, level: 3), .folk(variant: Folk.stoneCarter),
+                                  .folk(variant: Folk.salter)]
         for clip in Clip.allCases {
             let moments: [Float] = (0..<4).map { clip.period * Float($0) / (clip.loops ? 4 : 3) }
             var entries: [(name: String, model: Model, clip: Clip, time: Float)] = []

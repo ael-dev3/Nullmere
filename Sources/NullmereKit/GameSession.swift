@@ -1749,6 +1749,31 @@ extension GameSession {
         keptForThisWorld("holds") { Dictionary(state.holds.map { ($0.position, $0) }, uniquingKeysWith: { first, _ in first }) }
     }
 
+    /// The ways between each House's holds the keeper knows, as their
+    /// carts go: each hold to the nearest other of its House within
+    /// `wayReach` hexes, where unbroken land runs between; each way once.
+    var ways: [WorldStage.Way] {
+        keptForThisWorld("ways") {
+            let houses = WorldView.houseColours
+            let known = state.holds.filter { isExplored($0.position) }
+            var ways: [WorldStage.Way] = []
+            var joined: Set<[Int]> = []
+            for hold in known {
+                let others = known.filter { $0.owner == hold.owner && $0.id != hold.id && $0.position.distance(to: hold.position) <= GameSession.wayReach }
+                guard let other = others.min(by: { ($0.position.distance(to: hold.position), $0.id) < ($1.position.distance(to: hold.position), $1.id) }),
+                      joined.insert([min(hold.id, other.id), max(hold.id, other.id)]).inserted else { continue }
+                let line = hold.position.line(to: other.position)
+                guard line.allSatisfy({ state.map[$0].map { $0.terrain.isPassable && !$0.terrain.isWater } ?? false }) else { continue }
+                ways.append(WorldStage.Way(hexes: line, colour: WorldStage.colour(houses, sigil: state.houses[hold.owner].sigil),
+                                           salt: hold.id &* 7 &+ other.id))
+            }
+            return ways
+        }
+    }
+
+    /// The farthest apart two holds a way runs between.
+    static let wayReach = 7
+
     /// The map as VoiceOver reads it.
     var mapItems: [MapAccessibility.Item] {
         let withOrders = voiceOverRunning()

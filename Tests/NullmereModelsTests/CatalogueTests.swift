@@ -224,7 +224,7 @@ final class CatalogueTests: XCTestCase {
         for key in CatalogueTests.keys {
             let materials = Set(Library.model(key).mesh.vertices.map(\.material))
             switch key {
-            case .figure, .signature, .commander, .keep, .keepOf:
+            case .figure, .signature, .commander, .keep, .keepOf, .folk:
                 XCTAssertTrue(materials.contains(.house), "\(key) wears its House's colour")
             case .wild:
                 XCTAssertTrue(materials.isDisjoint(with: CatalogueTests.housely), "\(key) answers to no House")
@@ -314,7 +314,7 @@ final class CatalogueTests: XCTestCase {
         for key in CatalogueTests.keys {
             let model = Library.model(key)
             switch key {
-            case .figure, .signature, .wild, .commander:
+            case .figure, .signature, .wild, .commander, .folk:
                 XCTAssertNotNil(model.motion, "\(key)")
                 XCTAssertGreaterThanOrEqual(model.rig.count, 17, "\(key) has a body's parts")
             case .furnishing, .scaffold, .site, .keep, .keepOf, .walls, .prop(.arrow), .shrine, .lair, .standard, .allianceHall, .yard(.grain):

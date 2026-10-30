@@ -51,6 +51,7 @@ final class WorldPreviewTests: XCTestCase {
         var frame = SceneFrame()
         let sights = state.holds.map { HoldSight(hold: $0, colour: WorldStage.colour(houses, sigil: state.houses[$0.owner].sigil)) }
         let (holds, hearths) = stage.holds(sights, time: 20, into: &frame)
+        let townsfolk = stage.townsfolk(sights, time: 20, into: &frame)
         let visible = state.visibility(for: state.player)
         let poses = state.units.filter { $0.owner == state.player || (state.map.index(of: $0.position).map { visible[$0] } ?? false) }
             .enumerated().map { index, unit -> CompanyPose in
@@ -66,7 +67,7 @@ final class WorldPreviewTests: XCTestCase {
         let lake = Relief.centre(of: Hex(0, 0))
         let flights = WorldStage.flights(arrows: [], birdsOver: Vec3(lake.x, 0, lake.z), hearths: hearths, time: 20, into: &frame)
         frame.fixed = stage.furnish(occupied: Set(poses.map(\.hex)), holds: Set(state.holds.map(\.position)))
-        frame.batches = holds + companies + flights
+        frame.batches = holds + townsfolk + companies + flights
         // A blow landing beside the seat, the seat's hall burning, and
         // fireflies over the reeds near it.
         var happenings = Happenings()
@@ -114,6 +115,10 @@ final class WorldPreviewTests: XCTestCase {
         let whole = TileTexture.bytes(for: state, viewer: state.player)
         let terrain = TerrainMesh(relief: Relief(map: state.map), spacing: 0.3)
         let seat = try XCTUnwrap(state.seat(of: state.player)).position
+        // The seat walled, with works for its townsfolk to go about.
+        let seatIndex = try XCTUnwrap(state.holds.firstIndex { $0.position == seat })
+        state.holds[seatIndex].levels = [.walls: 2, .granary: 2, .sawpit: 1, .quarry: 1, .saltworks: 1, .beacon: 1]
+        state.holds[seatIndex].ward = state.holds[seatIndex].maximumWard
         let lake = try XCTUnwrap(state.moonWater).hex
 
         var near = Camera(scale: 34)
@@ -133,10 +138,14 @@ final class WorldPreviewTests: XCTestCase {
         let company = try XCTUnwrap(state.units(of: state.player).first { $0.kind.isMilitary })
         var companyView = Camera(scale: 150, tilt: 0.85, heading: 0.5)
         companyView.focus(on: company.position)
+        // And among the seat's townsfolk, going about its works.
+        var folkView = Camera(scale: 190, tilt: 0.8, heading: 0.3)
+        folkView.focus(on: seat)
         let scene = WorldPreviewTests.stage(state)
         let views: [(String, Camera, [UInt8], SceneFrame?)] = [
             ("seat", near, opening, nil), ("lake", lakeView, whole, nil), ("whole", far, whole, nil), ("turned", turned, whole, nil),
             ("moon", moonView, whole, nil), ("close", close, whole, scene), ("company", companyView, whole, scene),
+            ("folk", folkView, whole, scene),
         ]
         var frames: [[String: Any]] = []
         for (name, camera, tiles, scene) in views {
@@ -161,7 +170,7 @@ final class WorldPreviewTests: XCTestCase {
         ]
         let data = try JSONSerialization.data(withJSONObject: json)
         XCTAssertGreaterThan(data.count, 100_000)
-        XCTAssertEqual(frames.count, 7)
+        XCTAssertEqual(frames.count, 8)
         if let folder = ProcessInfo.processInfo.environment["NULLMERE_WORLD_PREVIEW"] {
             let url = URL(fileURLWithPath: folder, isDirectory: true)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

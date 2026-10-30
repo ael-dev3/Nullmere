@@ -164,7 +164,10 @@ final class ClipTests: XCTestCase {
     /// The renderer moves a marching figure at its pace so its feet hold the ground.
     func testMarchingPacesAreGiven() {
         for key in Library.catalogue {
-            if CatalogueTests.isCompany(key) || key == .prop(.cart) {
+            if case .folk = key {
+                XCTAssertGreaterThan(key.marchSpeed ?? 0, 0.1, "\(key) walks")
+                XCTAssertLessThan(key.marchSpeed ?? 1, ModelKey.figure(.spear, tier: 1).marchSpeed ?? 0, "\(key) walks, unhurried")
+            } else if CatalogueTests.isCompany(key) || key == .prop(.cart) {
                 XCTAssertGreaterThan(key.marchSpeed ?? 0, 0.1, "\(key) marches")
             } else {
                 XCTAssertNil(key.marchSpeed, "\(key) does not march")

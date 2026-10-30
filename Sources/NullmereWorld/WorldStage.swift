@@ -444,6 +444,182 @@ public final class WorldStage: @unchecked Sendable {
         return (WorldStage.batches(placed), hearths)
     }
 
+    // MARK: Townsfolk
+
+    /// A townsfolk's errand in a hold: who goes, the way from the keep's
+    /// door to before the work (through the gate, where the hold is
+    /// walled), and a salt to set them out of step with the rest.
+    public struct Errand: Equatable, Sendable {
+        public var key: ModelKey
+        public var path: [Vec3]
+        public var salt: Int
+
+        /// The way's length, on the ground plane.
+        public var length: Float {
+            zip(path, path.dropFirst()).reduce(0) { total, leg in
+                let dx = leg.1.x - leg.0.x, dz = leg.1.z - leg.0.z
+                return total + (dx * dx + dz * dz).squareRoot()
+            }
+        }
+    }
+
+    /// The most townsfolk about one hold's works.
+    public static let townsfolkMost = 6
+    /// How long one stands at the keep's door, or at its work, before walking on.
+    public static let townsfolkPause: Float = 2.4
+
+    /// Where a hold's townsfolk go: one for each work standing whole, up to
+    /// `townsfolkMost`, each between the keep's door and the front of its
+    /// work, the folk of that work's kind; out through the gate where the
+    /// hold is walled.
+    public func errands(of sight: HoldSight) -> [Errand] {
+        let pieces = pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage)
+        guard let keep = pieces.first(where: { piece in
+            switch piece.key {
+            case .keep, .keepOf: return true
+            default: return false
+            }
+        }) else { return [] }
+        let heart = Vec3(keep.position.x, 0, keep.position.z)
+        func toward(_ point: Vec3, from origin: Vec3) -> Vec3 {
+            let dx = point.x - origin.x, dz = point.z - origin.z
+            let length = max((dx * dx + dz * dz).squareRoot(), 1e-4)
+            return Vec3(dx / length, 0, dz / length)
+        }
+        let walled = pieces.contains { if case .walls = $0.key { return true } else { return false } }
+        let gate = HoldLayout.gate(of: sight.hold.position)
+        let out = toward(gate, from: heart)
+        var errands: [Errand] = []
+        for (index, piece) in pieces.enumerated() where piece.progress >= 1 && errands.count < WorldStage.townsfolkMost {
+            let key: ModelKey
+            switch piece.key {
+            case .work(let kind, _): key = .folk(of: kind)
+            case .study: key = .folk(of: .archive)
+            default: continue
+            }
+            let at = Vec3(piece.position.x, 0, piece.position.z)
+            let stop = at - toward(at, from: walled ? gate : heart) * (HoldLayout.workRadius + 0.05)
+            let path = walled
+                ? [heart + out * 0.42, gate - out * 0.12, gate + out * 0.12, stop]
+                : [heart + toward(at, from: heart) * 0.42, stop]
+            errands.append(Errand(key: key, path: path, salt: sight.hold.id &* 31 &+ index))
+        }
+        return errands
+    }
+
+    /// Where a townsfolk is on its errand, `time` seconds in, and what it
+    /// does: walking out from the door, standing at its work, walking back,
+    /// standing at the door, round and round at its own pace.
+    public static func walk(_ errand: Errand, at time: Float) -> (position: Vec3, heading: Float, clip: Clip) {
+        let length = errand.length
+        guard let first = errand.path.first, let last = errand.path.last, length > 1e-3 else {
+            return (errand.path.first ?? .zero, 0, .idle)
+        }
+        let walking = length / (errand.key.marchSpeed ?? 0.15), pause = WorldStage.townsfolkPause
+        let round = 2 * walking + 2 * pause
+        var t = (time + Noise.unit(Int32(truncatingIfNeeded: errand.salt), 7, 11) * round).truncatingRemainder(dividingBy: round)
+        if t < 0 { t += round }
+        /// The point so far along the way, and which way that leg runs.
+        func along(_ distance: Float) -> (Vec3, Float) {
+            var left = distance
+            for (a, b) in zip(errand.path, errand.path.dropFirst()) {
+                let dx = b.x - a.x, dz = b.z - a.z
+                let leg = (dx * dx + dz * dz).squareRoot()
+                let heading = Float(atan2(Double(dx), Double(dz)))
+                if left <= leg || b == last { return (a + (b - a) * min(left / max(leg, 1e-4), 1), heading) }
+                left -= leg
+            }
+            return (last, 0)
+        }
+        let outward = along(0).1, arrived = along(length).1
+        if t < walking {
+            let (at, heading) = along(length * t / walking)
+            return (at, heading, .march)
+        }
+        if t < walking + pause { return (last, arrived, .idle) }
+        if t < 2 * walking + pause {
+            let (at, heading) = along(length * (1 - (t - walking - pause) / walking))
+            return (at, heading + .pi, .march)
+        }
+        return (first, outward, .idle)
+    }
+
+    /// The townsfolk who keep the holds' works, as a frame at `time` sees
+    /// them, each on the land under it, posed as it walks or stands. None
+    /// about a hold whose ward is broken below half: they keep within.
+    public func townsfolk(_ sights: [HoldSight], time: Float, into frame: inout SceneFrame) -> [ModelBatch] {
+        var placed: [(ModelKey, ModelInstance)] = []
+        var shared: [PoseKey: UInt32] = [:]
+        for sight in sights where sight.hold.ward * 2 >= sight.hold.maximumWard {
+            let hex = SIMD2(Int32(sight.hold.position.q), Int32(sight.hold.position.r))
+            for errand in errands(of: sight) {
+                let (at, heading, clip) = WorldStage.walk(errand, at: time)
+                let start = WorldStage.pose(errand.key, clip, at: time + Float(errand.salt % 13) * 0.29, shared: &shared, into: &frame)
+                placed.append((errand.key, ModelInstance(model: .translation(Vec3(at.x, ground(atX: at.x, z: at.z), at.z)) * .rotationY(heading),
+                                                         colour: sight.colour, phase: Float(errand.salt % 17) * 0.31, hex: hex,
+                                                         palette: start)))
+            }
+        }
+        return WorldStage.batches(placed)
+    }
+
+    // MARK: Traffic
+
+    /// A way between two of a House's holds, as its carts go: the hexes it
+    /// runs through, end to end, and the House's colour.
+    public struct Way: Equatable, Sendable {
+        public var hexes: [Hex]
+        public var colour: Vec4
+        public var salt: Int
+
+        public init(hexes: [Hex], colour: Vec4, salt: Int) {
+            self.hexes = hexes
+            self.colour = colour
+            self.salt = salt
+        }
+    }
+
+    /// How far from a hold's heart its carts set out and come in: beyond its walls.
+    public static let wayFromHold: Float = 1.05
+
+    /// The errand of a way's cart: a carter of timber or of stone by turns,
+    /// from beyond one hold's walls to beyond the other's, through the
+    /// heart of every hex between. None for holds side by side.
+    public static func errand(along way: Way) -> Errand? {
+        guard way.hexes.count >= 3 else { return nil }
+        var path = way.hexes.map { hex -> Vec3 in
+            let centre = Relief.centre(of: hex)
+            return Vec3(centre.x, 0, centre.z)
+        }
+        func off(_ from: Vec3, toward to: Vec3) -> Vec3 {
+            let dx = to.x - from.x, dz = to.z - from.z
+            let length = max((dx * dx + dz * dz).squareRoot(), 1e-4)
+            return from + Vec3(dx, 0, dz) * (wayFromHold / length)
+        }
+        path[0] = off(path[0], toward: path[1])
+        path[path.count - 1] = off(path[path.count - 1], toward: path[path.count - 2])
+        return Errand(key: way.salt % 2 == 0 ? .folk(of: .sawpit) : .folk(of: .quarry), path: path, salt: way.salt)
+    }
+
+    /// The carts on the ways between holds, as a frame at `time` sees them:
+    /// one to a way, going from one hold to the other, a while at each, and
+    /// back; each in the hex it is in, for what the keeper sees of it.
+    public func traffic(_ ways: [Way], time: Float, into frame: inout SceneFrame) -> [ModelBatch] {
+        var placed: [(ModelKey, ModelInstance)] = []
+        var shared: [PoseKey: UInt32] = [:]
+        let layout = HexLayout(size: 1)
+        for way in ways {
+            guard let errand = WorldStage.errand(along: way) else { continue }
+            let (at, heading, clip) = WorldStage.walk(errand, at: time)
+            let hex = layout.hex(atX: Double(at.x), y: Double(at.z))
+            let start = WorldStage.pose(errand.key, clip, at: time, shared: &shared, into: &frame)
+            placed.append((errand.key, ModelInstance(model: .translation(Vec3(at.x, ground(atX: at.x, z: at.z), at.z)) * .rotationY(heading),
+                                                     colour: way.colour, phase: Float(errand.salt % 17) * 0.31,
+                                                     hex: SIMD2(Int32(hex.q), Int32(hex.r)), palette: start)))
+        }
+        return WorldStage.batches(placed)
+    }
+
     // MARK: Companies
 
     /// What a pose is shared by: figures of one kind at one moment of a clip.

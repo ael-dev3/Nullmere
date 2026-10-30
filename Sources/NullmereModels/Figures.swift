@@ -295,6 +295,7 @@ enum Figures {
         case .figure, .prop(.cart): return Gait(hands: .spear).marchSpeed
         case .wild(let tier): return wildGait(tier).marchSpeed
         case .commander(let variant): return commanderRide(variant).marchSpeed
+        case .folk(let variant): return Folk.gait(variant).marchSpeed
         default: return nil
         }
     }

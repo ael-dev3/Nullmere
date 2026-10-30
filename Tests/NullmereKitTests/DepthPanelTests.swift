@@ -552,6 +552,36 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(GameSession.isRealmsToTell(joined) && GameSession.isRealmsToTell(.fieldEnded(over)))
     }
 
+    // MARK: City life
+
+    func testTownsfolkGoAboutTheHoldsWorksInFullMotion() throws {
+        var state = world("townsfolk shown")
+        let me = state.player
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+        state.holds[seat].levels = [.walls: 1, .granary: 1, .sawpit: 1]
+        // A second hold a few hexes off, unbroken land between: a way for carts.
+        let home = state.holds[seat].position
+        let other = try XCTUnwrap(home.spiral(5).first { hex in
+            (3...5).contains(hex.distance(to: home)) && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+                && home.line(to: hex).allSatisfy { state.map[$0].map { $0.terrain.isPassable && !$0.terrain.isWater } ?? false }
+                && home.line(to: hex).dropFirst().allSatisfy { state.hold(at: $0) == nil }
+        })
+        state.holds.append(Hold(id: state.takeID(), name: "Farstead", owner: me, position: other, isSeat: false, foundedWatch: 0))
+        state.reveal(around: other, range: 2, for: me)
+        let (session, _) = session(state)
+        XCTAssertEqual(session.ways.map { [$0.hexes.first!, $0.hexes.last!] }.filter { Set($0) == [home, other] }.count, 1, "One way, once")
+        func folk(_ frame: SceneFrame) -> Int {
+            frame.batches.reduce(0) { total, batch in
+                if case .folk = batch.key { return total + batch.instances.count }
+                return total
+            }
+        }
+        session.motion = .full
+        XCTAssertGreaterThanOrEqual(folk(session.sceneFrame(at: 4)), 3, "A farmhand and a carter about the seat, and a cart on the way")
+        session.motion = .still
+        XCTAssertEqual(folk(session.sceneFrame(at: 4)), 0, "Still, the holds are quiet")
+    }
+
     // MARK: The small map
 
     func testTheSmallMapShowsTheLakeAndCarriesTheViewThere() throws {

@@ -1155,7 +1155,18 @@ There is no music in the launcher; the game makes its own sound as it plays.
   their feet going, strike, turn to face their foe and fall; works rise
   under scaffolds as the watches pass; bows loose arrows that arc to their
   mark; banners and trees stir in the wind, torches flicker, hearths smoke
-  and birds wheel over the water.
+  and birds wheel over the water. Every hold in sight has its townsfolk,
+  one for each work standing whole, up to six, in linen and wool with a
+  band of their House's colour: a farmhand with a pitchfork goes out to the
+  granary, carters haul logs from the sawpit and stone from the quarry, a
+  salter carries a basket from the saltworks and porters go about the
+  rest, out from the keep's door (through the gate, where the hold is
+  walled), a while at their work and back, at a walk their feet hold the
+  ground at. They keep within a hold whose ward is broken, and stay in
+  where motion is reduced. A cart goes on the way between each hold and
+  the nearest other of its House within seven hexes, where unbroken land
+  runs between, from beyond one's walls to beyond the other's and back,
+  logs one way and stone the next.
 - **The camera** pans, zooms, turns and leans, looking down on the whole
   lake from afar and leaning toward the horizon close in among the models.
   The map's marks (names, bars, ranks, the damage dealt) stand over the
