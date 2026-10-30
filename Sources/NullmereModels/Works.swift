@@ -42,7 +42,7 @@ struct Machinery: Sendable {
 
 extension MeshBuilder {
     /// Packed ground a work stands on, sunk deep enough to sit on a slope.
-    mutating func pad(radius: Float, color: Vec3 = Palette.earth, sides: Int = 8) {
+    mutating func pad(radius: Float, color: Vec3 = Palette.yard, sides: Int = 8) {
         lathe([(radius, -0.14), (radius, 0.0), (radius * 0.95, 0.012)], sides: sides, color: color, twist: .pi / Float(sides))
     }
 
@@ -246,7 +246,7 @@ enum Works {
 
     static func sawpit(_ level: Int, _ name: String) -> Model {
         var b = MeshBuilder()
-        b.pad(radius: 0.31, color: Palette.earth)
+        b.pad(radius: 0.31)
         // The saw pit itself, and a trestle with a log on it.
         func trestle(_ b: inout MeshBuilder, at: Vec3) {
             b.box(min: at + Vec3(-0.12, -0.03, -0.035), max: at + Vec3(0.12, 0.004, 0.035), color: Palette.loam)
@@ -421,9 +421,8 @@ enum Works {
                 $0.box(center: Vec3(0.04, 0.035, -0.073), size: Vec3(0.045, 0.045, 0.006), color: Palette.fire)
             }
             machinery = Machinery(flames: [fire], parts: rig.count)
-            let chimney = Vec3(-width / 2 + 0.035, 0, -0.16)
-            b.box(min: chimney + Vec3(-0.025, 0, -0.025), max: chimney + Vec3(0.025, 0.3 + 0.03 * Float(level), 0.025),
-                  color: Palette.stoneDark)
+            let flue = saltChimney(level)
+            b.box(min: Vec3(flue.x - 0.025, 0, flue.z - 0.025), max: Vec3(flue.x + 0.025, flue.y, flue.z + 0.025), color: Palette.stoneDark)
             b.saltHeap(at: Vec3(0.0, 0, 0.04), radius: 0.06, height: 0.07)
             if level >= 3 {
                 b.saltHeap(at: Vec3(0.12, 0, -0.03), radius: 0.05, height: 0.06)
@@ -454,6 +453,12 @@ enum Works {
             }
         }
         return model(name, b, rig: rig, machinery: machinery)
+    }
+
+    /// The top of a saltworks' furnace chimney, from its second level.
+    static func saltChimney(_ level: Int) -> Vec3 {
+        let width: Float = level >= 4 ? 0.26 : 0.18 + 0.04 * Float(level - 2)
+        return Vec3(-width / 2 + 0.035, 0.3 + 0.03 * Float(level), -0.16)
     }
 
     // MARK: Muster hall
@@ -547,7 +552,7 @@ enum Works {
             }
             b.banner(at: Vec3(0.09, top + 0.05, -0.05), height: 0.24, width: 0.11, drop: 0.07, tail: true)
         default:
-            // A tall tower with a lantern of moonsalt panes round a great fire.
+            // A tall tower with a lantern of moonsalt pillars round a great fire.
             top = 0.9
             b.lathe([(0.15, -0.08), (0.12, 0.12), (0.1, top), (0.135, top + 0.03)], sides: 8, color: Palette.stone)
             for index in 0..<4 {
@@ -559,16 +564,18 @@ enum Works {
             b.door(Vec3(0, 0.08, 0.135), width: 0.055, height: 0.11, facing: 0)
             b.window(Vec3(0, 0.5, 0.106), width: 0.025, height: 0.05, facing: 0)
             b.with(material: .crystal) {
-                $0.place(.translation(Vec3(0, top + 0.03, 0))) {
-                    $0.tube([(0.1, 0), (0.1, 0.14)], sides: 6, color: Palette.moonsalt)
+                for index in 0..<6 {
+                    let at = MeshBuilder.ring(0.105, top + 0.03, Float(index) * .pi / 3)
+                    $0.place(.translation(at)) {
+                        $0.prism(sides: 4, radius: 0.022, from: 0, to: 0.15, color: Palette.moonsalt, twist: Float(index))
+                    }
+                }
+                $0.place(.translation(Vec3(0, top + 0.17, 0))) {
+                    $0.lathe([(0.13, 0), (0.13, 0.025)], sides: 6, color: Palette.moonsalt)
                 }
             }
-            for index in 0..<6 {
-                let at = MeshBuilder.ring(0.1, top + 0.03, Float(index) * .pi / 3)
-                b.limb(from: at, to: at + Vec3(0, 0.15, 0), radius: 0.01, sides: 3, color: Palette.iron)
-            }
-            b.cone(sides: 6, radius: 0.13, from: top + 0.17, to: top + 0.3, color: Palette.slate)
-            b.banner(at: Vec3(0, top + 0.29, 0), height: 0.2, width: 0.16, drop: 0.1)
+            b.cone(sides: 6, radius: 0.13, from: top + 0.195, to: top + 0.32, color: Palette.slate)
+            b.banner(at: Vec3(0, top + 0.31, 0), height: 0.2, width: 0.16, drop: 0.1)
         }
         // The fire, leaping.
         let flameFoot = Vec3(0, top + (level == 1 ? 0.03 : level == 2 ? 0.1 : 0.04), 0)

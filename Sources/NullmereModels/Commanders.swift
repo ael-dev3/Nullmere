@@ -18,6 +18,21 @@ extension Figures {
         }
     }
 
+    /// Each commander's horse and how its rider fights.
+    static func commanderRide(_ variant: Int) -> Ride {
+        switch variant {
+        case 0: return Ride(arms: .chop, shield: true,
+                            mount: Mount(size: 1.12, coat: Palette.horseBlack, mane: Palette.horseBlack, cloth: 3, barding: 2))
+        case 1: return Ride(arms: .raise,
+                            mount: Mount(size: 1.08, coat: Palette.horsePale, mane: Palette.horseGrey, socks: Palette.horseGrey, cloth: 3))
+        case 2: return Ride(arms: .lance, mount: Mount(size: 1.1, coat: Palette.horsePale, mane: Palette.moonsalt, cloth: 3, barding: 1))
+        case 3: return Ride(arms: .chop, shield: true, mount: Mount(size: 1.14, coat: Palette.horseBay, mane: Palette.horseBlack, cloth: 2))
+        case 4: return Ride(arms: .wave, mount: Mount(size: 1.1, coat: Palette.horseGrey, mane: Palette.woolDark, cloth: 3, barding: 2))
+        default: return Ride(arms: .lance,
+                             mount: Mount(size: 1.1, coat: Palette.horseBlack, mane: Palette.horsePale, socks: Palette.horsePale, cloth: 2))
+        }
+    }
+
     static func plate(_ o: inout Outfit) {
         o.tunic = Palette.steel
         o.tunicMaterial = .metal
@@ -31,13 +46,13 @@ extension Figures {
     }
 
     static func warden(name: String) -> Model {
-        let m = Mount(size: 1.12, coat: Palette.horseBlack, mane: Palette.horseBlack, cloth: 3, barding: 2)
+        let ride = commanderRide(0)
         var o = Outfit()
         plate(&o)
         o.tabard = true
         o.head = .crested
         o.cloak = 0.34
-        return Riders.model(name, m, Ride(arms: .chop, shield: true, mount: m)) { b, f in
+        return Riders.model(name, ride.mount, ride) { b, f in
             Person.body(&b, f, o)
             // A taller plume than any knight's.
             b.with(part: Limb.head, material: .house, sway: 0.5) {
@@ -62,7 +77,7 @@ extension Figures {
     }
 
     static func lamplighter(name: String) -> Model {
-        let m = Mount(size: 1.08, coat: Palette.horsePale, mane: Palette.horseGrey, socks: Palette.horseGrey, cloth: 3)
+        let ride = commanderRide(1)
         var o = Outfit()
         o.tunic = Palette.woolDark
         o.sleeves = Palette.woolDark
@@ -74,7 +89,7 @@ extension Figures {
         var f = Frame()
         f.seated = true
         let top = Vec3(f.shoulderX, f.grip + 1.25, 0.03)
-        return Riders.model(name, m, Ride(arms: .raise, mount: m), swing: (Steed.heldL, top)) { b, f in
+        return Riders.model(name, ride.mount, ride, swing: (Steed.heldL, top)) { b, f in
             Person.body(&b, f, o)
             let hand = f.handL
             b.with(part: Limb.heldL) {
@@ -97,30 +112,31 @@ extension Figures {
     }
 
     static func saltCrown(name: String) -> Model {
-        let m = Mount(size: 1.1, coat: Palette.horsePale, mane: Palette.moonsalt, cloth: 3, barding: 1)
+        let ride = commanderRide(2)
         var o = Outfit()
         plate(&o)
         o.tunic = Palette.stoneWhite
         o.pauldrons = (Palette.moonsalt, .crystal)
         o.cloak = 0.3
         o.hair = Palette.stonePale
-        return Riders.model(name, m, Ride(arms: .lance, mount: m)) { b, f in
+        return Riders.model(name, ride.mount, ride) { b, f in
             Person.body(&b, f, o)
-            // A crown of moonsalt spikes.
+            // A crown of moonsalt spikes, tall at the brow.
             b.with(part: Limb.head, material: .crystal) {
                 for index in 0..<7 {
-                    let angle = 2 * Float.pi * Float(index) / 7
+                    let angle = 2 * Float.pi * Float(index) / 7 - .pi / 2
                     let at = MeshBuilder.ring(f.headRadius * 0.95, f.head + 0.04, angle)
+                    let tall: Float = index == 0 ? 0.22 : index % 2 == 0 ? 0.17 : 0.11
                     $0.place(.translation(at) * Mat4.aligningUp(to: Vec3(at.x, 0.12, at.z))) {
-                        $0.cone(sides: 3, radius: 0.02, to: index % 2 == 0 ? 0.11 : 0.07, color: Palette.moonsalt)
+                        $0.cone(sides: 3, radius: 0.028, to: tall, color: Palette.moonsalt)
                     }
                 }
             }
             Riders.lance(&b, f, tier: 3)
             b.with(part: Limb.heldR, material: .crystal) {
                 $0.place(.translation(Vec3(f.handR.x, f.grip + 1.5, 0))) {
-                    $0.prism(sides: 4, radius: 0.04, from: 0, to: 0.08, color: Palette.moonsalt)
-                    $0.cone(sides: 4, radius: 0.04, from: 0.08, to: 0.26, color: Palette.moonsalt)
+                    $0.prism(sides: 4, radius: 0.055, from: 0, to: 0.1, color: Palette.moonsalt)
+                    $0.cone(sides: 4, radius: 0.055, from: 0.1, to: 0.36, color: Palette.moonsalt)
                 }
             }
             Person.mattock(&b, f)
@@ -128,7 +144,7 @@ extension Figures {
     }
 
     static func hornedAxe(name: String) -> Model {
-        let m = Mount(size: 1.14, coat: Palette.horseBay, mane: Palette.horseBlack, cloth: 2)
+        let ride = commanderRide(3)
         var o = Outfit()
         o.tunic = Palette.leatherDark
         o.sleeves = Palette.mail
@@ -137,7 +153,7 @@ extension Figures {
         o.skirt = (Palette.mail, .metal, 0.44)
         o.mantle = (Palette.fur, .plain)
         o.head = .nasal
-        return Riders.model(name, m, Ride(arms: .chop, shield: true, mount: m)) { b, f in
+        return Riders.model(name, ride.mount, ride) { b, f in
             var big = f
             big.girth = 1.12
             Person.body(&b, big, o)
@@ -168,12 +184,12 @@ extension Figures {
     }
 
     static func standard(name: String) -> Model {
-        let m = Mount(size: 1.1, coat: Palette.horseGrey, mane: Palette.woolDark, cloth: 3, barding: 2)
+        let ride = commanderRide(4)
         var o = Outfit()
         plate(&o)
         o.tabard = true
         o.head = .greatHelm
-        return Riders.model(name, m, Ride(arms: .wave, mount: m)) { b, f in
+        return Riders.model(name, ride.mount, ride) { b, f in
             Person.body(&b, f, o)
             let x = f.handR.x, top = f.grip + 2.1
             b.with(part: Limb.heldR) {
@@ -191,7 +207,7 @@ extension Figures {
     }
 
     static func tideHeir(name: String) -> Model {
-        let m = Mount(size: 1.1, coat: Palette.horseBlack, mane: Palette.horsePale, socks: Palette.horsePale, cloth: 2)
+        let ride = commanderRide(5)
         let scale = Vec3(0.30, 0.40, 0.42)
         var o = Outfit()
         plate(&o)
@@ -201,14 +217,13 @@ extension Figures {
         o.pauldrons = (Palette.steel, .metal)
         o.head = .greatHelm
         o.cloak = 0.3
-        return Riders.model(name, m, Ride(arms: .lance, mount: m)) { b, f in
+        return Riders.model(name, ride.mount, ride) { b, f in
             Person.body(&b, f, o)
             // A crest like a breaking wave.
             b.with(part: Limb.head, material: .metal) {
-                $0.face([Vec3(0, f.head + 0.08, 0.08), Vec3(0, f.head + 0.25, -0.02), Vec3(0, f.head + 0.2, -0.12),
-                         Vec3(0, f.head + 0.08, -0.08)], outward: Vec3(1, 0, 0), color: Palette.steel)
-                $0.face([Vec3(0, f.head + 0.08, 0.08), Vec3(0, f.head + 0.25, -0.02), Vec3(0, f.head + 0.2, -0.12),
-                         Vec3(0, f.head + 0.08, -0.08)], outward: Vec3(-1, 0, 0), color: Palette.steel)
+                $0.sheet([Vec3(0, f.head + 0.07, 0.1), Vec3(0, f.head + 0.34, 0.02), Vec3(0, f.head + 0.3, -0.1),
+                          Vec3(0, f.head + 0.2, -0.2), Vec3(0, f.head + 0.07, -0.12)], normal: Vec3(1, 0, 0), thickness: 0.014,
+                         color: Palette.steel)
             }
             // A trident.
             let x = f.handR.x, top = f.grip + 1.45

@@ -49,6 +49,9 @@ enum Holds {
                 $0.gableRoof(width: hallFront - half + 0.06, depth: 0.4, base: 0.25, height: 0.13, color: Palette.house, overhang: 0.025)
             }
         }
+        let flue = chimney(seat: seat)
+        b.box(min: Vec3(flue.x - 0.026, 0.22, flue.z - 0.026), max: Vec3(flue.x + 0.026, flue.y - 0.01, flue.z + 0.026),
+              color: Palette.stoneDark)
         b.door(Vec3(0, 0.1, hallFront), width: 0.07, height: 0.13, facing: 0)
         for x in [Float(-0.12), 0.12] {
             b.window(Vec3(x, 0.15, hallFront), width: 0.03, height: 0.05, facing: 0)
@@ -74,6 +77,12 @@ enum Holds {
             b.box(min: Vec3(-0.26, 0.03, -0.17), max: Vec3(0.26, 0.4, -0.08), color: Palette.stoneDark)
         }
         return Model(name: name, mesh: b.mesh)
+    }
+
+    /// The top of the keep's hall chimney.
+    static func chimney(seat: Bool) -> Vec3 {
+        let half: Float = seat ? 0.17 : 0.155, front: Float = seat ? 0.34 : 0.3
+        return Vec3(0.13, 0.43, (half - 0.06 + front) / 2)
     }
 
     // MARK: The walls

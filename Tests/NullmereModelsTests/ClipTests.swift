@@ -163,6 +163,16 @@ final class ClipTests: XCTestCase {
 
     /// The renderer moves a marching figure at its pace so its feet hold the ground.
     func testMarchingPacesAreGiven() {
+        for key in Library.catalogue {
+            if CatalogueTests.isCompany(key) || key == .prop(.cart) {
+                XCTAssertGreaterThan(key.marchSpeed ?? 0, 0.1, "\(key) marches")
+            } else {
+                XCTAssertNil(key.marchSpeed, "\(key) does not march")
+            }
+        }
+        XCTAssertGreaterThan(ModelKey.figure(.rider, tier: 1).marchSpeed ?? 0, ModelKey.figure(.spear, tier: 1).marchSpeed ?? 0)
+        XCTAssertEqual(ModelKey.prop(.cart).marchSpeed, ModelKey.figure(.bow, tier: 2).marchSpeed, "a cart keeps pace with those on foot")
+        XCTAssertGreaterThan(ModelKey.wild(tier: 3).marchSpeed ?? 0, 0)
         let foot = Gait(hands: .spear).marchSpeed, horse = Ride(arms: .lance).marchSpeed
         XCTAssertGreaterThan(foot, 0.1)
         XCTAssertLessThan(foot, 0.5)

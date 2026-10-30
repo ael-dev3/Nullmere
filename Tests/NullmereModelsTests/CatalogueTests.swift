@@ -272,6 +272,22 @@ final class CatalogueTests: XCTestCase {
         XCTAssertEqual(rider.bones[Int(Steed.seat)].parent, Int(Steed.body))
     }
 
+    func testSmokeRisesFromChimneys() {
+        for key in CatalogueTests.keys {
+            let mesh = Library.model(key).mesh
+            for point in Library.smoke(of: key) {
+                XCTAssertTrue(mesh.vertices.contains { ($0.position - point).length < 0.05 && $0.position.y <= point.y + 1e-3 },
+                              "\(key)'s smoke rises from the top of a chimney")
+            }
+        }
+        XCTAssertEqual(Library.smoke(of: .keep(seat: true)).count, 1)
+        XCTAssertEqual(Library.smoke(of: .work(.saltworks, level: 3)).count, 1)
+        XCTAssertEqual(Library.smoke(of: .work(.saltworks, level: 1)), [], "no furnace yet")
+        XCTAssertEqual(Library.smoke(of: .figure(.spear, tier: 1)), [])
+        let piece = Piece(key: .keep(seat: false), transform: .translation(Vec3(2, 1, 0)), hex: .origin)
+        XCTAssertEqual(piece.smoke, [Holds.chimney(seat: false) + Vec3(2, 1, 0)])
+    }
+
     func testPiecesSayWhereTheyStand() {
         let piece = Piece(key: .scaffold, transform: .translation(Vec3(1, 2, 3)), hex: Hex(4, 5))
         XCTAssertEqual(piece.position, Vec3(1, 2, 3))

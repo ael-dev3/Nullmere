@@ -58,6 +58,11 @@ final class PreviewTests: XCTestCase {
             default: return false
             }
         }
+        let counts = keys.map { key -> String in
+            let model = Library.model(key)
+            return "\(key)\t\(model.mesh.triangleCount)\t\(model.rig.count)\t\(key.budget)"
+        }
+        try write(Data((["model\ttriangles\tparts\tbudget"] + counts).joined(separator: "\n").utf8), as: "counts.tsv")
         try write(try PreviewExport.json(PreviewTests.entries(figures)), as: "figures.json")
         // The figures side by side at their true sizes, at idle.
         var lineup = Mesh()
@@ -87,11 +92,44 @@ final class PreviewTests: XCTestCase {
         let state = GameState(settings: GameSettings(seedText: "preview", houseCount: 6, radius: 14))
         let terrain = TerrainMesh(relief: Relief(map: state.map), spacing: 0.35)
         try write(try PreviewExport.json([("terrain", Model(name: "terrain", mesh: terrain.mesh))]), as: "terrain.json")
+        try write(try PreviewExport.json([("companies", Model(name: "companies", mesh: PreviewTests.companies()))]), as: "companies.json")
         for (index, seat) in state.holds.prefix(2).enumerated() {
             try write(try PreviewExport.json([("scene", Model(name: "scene", mesh: PreviewTests.scene(state, around: seat.position,
                                                                                                         grand: index == 0)))]),
                       as: "scene\(index).json")
         }
+    }
+
+    /// Every company whole in its own hex, in formation, and some led by
+    /// each commander or worn down: how they read from above.
+    static func companies() -> Mesh {
+        let keys = Library.catalogue.filter {
+            switch $0 {
+            case .figure, .wild: return true
+            default: return false
+            }
+        }
+        var entries: [(key: ModelKey, health: Int, led: Int?)] = keys.map { ($0, 100, nil) }
+        entries += [(.figure(.spear, tier: 3), 100, 0), (.figure(.bow, tier: 4), 70, 1), (.figure(.rider, tier: 5), 100, 2),
+                    (.figure(.lantern, tier: 1), 100, 3), (.figure(.founder, tier: 1), 100, 4), (.figure(.spear, tier: 5), 40, 5)]
+        var mesh = Mesh()
+        for (index, entry) in entries.enumerated() {
+            let row = index / 6, column = index % 6
+            let hex = Hex(column - row / 2, row)
+            let centre = Relief.centre(of: hex)
+            var tile = MeshBuilder()
+            tile.polygon((0..<6).map { MeshBuilder.ring(0.97, 0, Float($0) * .pi / 3 + .pi / 6) },
+                         color: TerrainMesh.colour(row % 2 == 0 ? .greyfield : .strand))
+            mesh.append(tile.mesh, transform: .translation(Vec3(centre.x, 0, centre.z)))
+            var figures = Formation.offsets(entry.key, health: entry.health, led: entry.led != nil).map { (entry.key, $0) }
+            if let variant = entry.led {
+                figures.append((.commander(variant: variant), Formation.commander(entry.key, health: entry.health)))
+            }
+            for (key, offset) in figures {
+                mesh.append(posed(Library.model(key), .idle, 0.6), transform: .translation(Vec3(centre.x, 0, centre.z) + offset))
+            }
+        }
+        return mesh
     }
 
     /// The land round a seat with its hold laid out, the land's furniture

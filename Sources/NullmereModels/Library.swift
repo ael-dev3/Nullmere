@@ -79,6 +79,11 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         }
     }
 
+    /// How fast its model goes on the march, in units a second, for its
+    /// feet or hooves to hold the ground as the renderer moves it; nil for
+    /// what does not march.
+    public var marchSpeed: Float? { Figures.marchSpeed(self) }
+
     /// The most triangles its model may have: figures are drawn many
     /// times, keeps once a hold.
     public var budget: Int {
@@ -161,6 +166,16 @@ public struct Piece: Equatable, Sendable {
 }
 
 /// Every model, built from solids the first time it is asked for and kept.
+///
+/// To draw one: each vertex moves with its part's matrix from
+/// `Model.pose(clip, at:)` (one per part of its rig, at most 24; parts a
+/// clip puts away, such as a gathering tool at other times, are shrunk to
+/// nearly nothing), then with its piece's transform. Clips loop with
+/// `Clip.period`, so figures are phased by adding a fraction of it to the
+/// time; the death plays once. A piece's `progress` below 1 is a work
+/// rising: draw it up to that fraction of its height. House-coloured
+/// banners, cloaks and plumes are `Material.house` and move in the wind
+/// by their vertices' `sway`, as foliage does.
 public enum Library {
     /// The model for a key, as its canonical key builds it. Safe to ask
     /// from any thread; each is built once.
@@ -210,7 +225,25 @@ public enum Library {
         return Model(name: key.canonical.description, mesh: mesh)
     }
 
+    /// Where smoke rises from a model's chimneys, in its own frame: a keep's
+    /// hall, a saltworks' furnace. The renderer sends puffs (`Prop.puff`)
+    /// up from them.
+    public static func smoke(of key: ModelKey) -> [Vec3] {
+        switch key.canonical {
+        case .keep(let seat): return [Holds.chimney(seat: seat)]
+        case .work(.saltworks, let level) where level >= 2: return [Works.saltChimney(level)]
+        default: return []
+        }
+    }
+
     private static let store = ModelStore()
+}
+
+public extension Piece {
+    /// Where smoke rises from it, in the world.
+    var smoke: [Vec3] {
+        Library.smoke(of: key).map(transform.transformPoint)
+    }
 }
 
 /// The models built so far, behind a lock.

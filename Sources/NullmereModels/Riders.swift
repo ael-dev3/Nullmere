@@ -72,8 +72,6 @@ struct Mount {
 /// Riders, from a padded rider on a dun pony to a crested knight on a
 /// barded warhorse, and the six commanders who ride at a company's head.
 enum Riders {
-    static let horseHeight: Float = 0.3
-
     // MARK: The horse
 
     static func horse(_ b: inout MeshBuilder, _ m: Mount) {
@@ -102,19 +100,24 @@ enum Riders {
                     }
                 }
                 if m.barding >= 1 {
-                    // A steel plate across the chest.
+                    // A steel collar round the breast, under the caparison.
                     $0.with(material: .metal) {
-                        $0.box(min: Vec3(-0.05, 0.13, 0.113), max: Vec3(0.05, 0.195, 0.13), color: Palette.steel)
+                        $0.place(.translation(Vec3(0, 0.165, 0)) * .rotationX(.pi / 2) * .scale(Vec3(0.9, 1, 1.18))) {
+                            $0.tube([(0.058, 0.035), (0.05, 0.1)], sides: 6, color: Palette.steel)
+                        }
                     }
                 }
             }
             $0.with(part: Steed.neck) {
                 $0.limb(from: Vec3(0, 0.18, 0.075), to: Vec3(0, 0.282, 0.152), radius: 0.034, topRadius: 0.023, color: m.coat)
-                $0.limb(from: Vec3(0, 0.215, 0.062), to: Vec3(0, 0.302, 0.14), radius: 0.013, sides: 3, color: m.mane)
                 if m.barding >= 2 {
+                    // Plates along the crest of the neck where the mane would be.
                     $0.with(material: .metal) {
-                        $0.beam(from: Vec3(0, 0.206, 0.07), to: Vec3(0, 0.286, 0.146), width: 0.05, depth: 0.03, color: Palette.steel)
+                        $0.limb(from: Vec3(0, 0.212, 0.062), to: Vec3(0, 0.298, 0.138), radius: 0.02, topRadius: 0.015, sides: 3,
+                                color: Palette.steel)
                     }
+                } else {
+                    $0.limb(from: Vec3(0, 0.215, 0.062), to: Vec3(0, 0.302, 0.14), radius: 0.013, sides: 3, color: m.mane)
                 }
             }
             $0.with(part: Steed.head) {
@@ -127,8 +130,11 @@ enum Riders {
                     }
                 }
                 if m.barding >= 1 {
+                    // A chanfron down the face.
+                    let up = Vec3(0, 0.81, 0.59) * 0.016
                     $0.with(material: .metal) {
-                        $0.beam(from: Vec3(0, 0.298, 0.157), to: Vec3(0, 0.246, 0.226), width: 0.032, depth: 0.03, color: Palette.steel)
+                        $0.beam(from: Vec3(0, 0.29, 0.147) + up, to: Vec3(0, 0.239, 0.217) + up * 0.6, width: 0.03, depth: 0.012,
+                                color: Palette.steel)
                     }
                 }
             }

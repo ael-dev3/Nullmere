@@ -20,6 +20,8 @@ enum Palette {
     static let slate = Vec3(0.23, 0.24, 0.28)
     static let thatch = Vec3(0.47, 0.41, 0.29)
     static let earth = Vec3(0.24, 0.21, 0.18)
+    /// Ground trodden hard round a work.
+    static let yard = Vec3(0.31, 0.29, 0.25)
     static let loam = Vec3(0.15, 0.13, 0.11)
     static let moonsalt = Vec3(0.88, 0.91, 0.95)
     static let saltCrust = Vec3(0.80, 0.83, 0.86)

@@ -57,7 +57,7 @@ enum Figures {
             o.skirt = (Palette.mail, .metal, 0.34)
             o.shins = Palette.steel
             o.shinsMaterial = .metal
-            o.pauldrons = (Palette.steel, .metal)
+            o.pauldrons = (tier >= 5 ? Palette.gold : Palette.steel, .metal)
             o.tabard = true
             o.head = tier >= 5 ? .crested : .greatHelm
             o.cloak = tier >= 5 ? 0.2 : nil
@@ -111,7 +111,7 @@ enum Figures {
             o.sleeves = Palette.mail
             o.sleevesMaterial = .metal
             o.skirt = (Palette.mail, .metal, 0.34)
-            o.pauldrons = (Palette.steel, .metal)
+            o.pauldrons = (tier >= 5 ? Palette.gold : Palette.steel, .metal)
             o.tabard = true
             o.head = tier >= 5 ? .crested : .kettle
             o.cloak = 0.24
@@ -174,6 +174,32 @@ enum Figures {
         }
     }
 
+    /// A settler's walk, leaning into the shafts.
+    static let founderGait = Gait(hands: .cart, stride: 0.4, parts: Limb.count + 2)
+
+    /// How the far country's things move: a slow stooped glide, a long
+    /// prowl, a heavy tread.
+    static func wildGait(_ tier: Int) -> Gait {
+        switch tier {
+        case 1: return Gait(hands: .wild, size: 0.34, stoop: 0.12, stride: 0.38)
+        case 2: return Gait(hands: .wild, size: 0.37, stoop: 0.3, stride: 0.5)
+        default: return Gait(hands: .club, size: 0.56, stoop: 0.22, stride: 0.32)
+        }
+    }
+
+    /// How fast a model goes on the march, its feet or hooves holding the
+    /// ground; nil for what does not march.
+    static func marchSpeed(_ key: ModelKey) -> Float? {
+        switch key.canonical {
+        case .figure(.rider, let tier): return Ride(arms: .lance, mount: Riders.mount(tier: tier)).marchSpeed
+        case .figure(.founder, _): return founderGait.marchSpeed
+        case .figure, .prop(.cart): return Gait(hands: .spear).marchSpeed
+        case .wild(let tier): return wildGait(tier).marchSpeed
+        case .commander(let variant): return commanderRide(variant).marchSpeed
+        default: return nil
+        }
+    }
+
     /// The handcart's wheels' radius, in the body's units: one turn of
     /// them is one period's march.
     static func cartWheel(_ gait: Gait) -> Float {
@@ -185,8 +211,7 @@ enum Figures {
     static func founder(name: String) -> Model {
         var f = Frame()
         f.extraParent = Limb.root
-        var gait = Gait(hands: .cart, size: f.size, parts: Limb.count + 2)
-        gait.stride = 0.4
+        let gait = founderGait
         let wheel = cartWheel(gait)
         let axle = Vec3(0, wheel, -0.62)
         f.extraPivot = axle
@@ -280,7 +305,7 @@ enum Figures {
         o.belt = nil
         o.head = .hood(Palette.woolDark, .cloth)
         o.mantle = (Palette.woolDark, .cloth)
-        let gait = Gait(hands: .wild, size: f.size, stoop: 0.12, stride: 0.38)
+        let gait = wildGait(1)
         return model(name, f, gait) { b in
             Person.body(&b, f, o)
             // A blank pale mask in the dark of the hood.
@@ -328,7 +353,7 @@ enum Figures {
         o.belt = nil
         o.hair = Palette.barkBlack
         o.mantle = (Palette.moss, .cloth)
-        let gait = Gait(hands: .wild, size: f.size, stoop: 0.3, stride: 0.5)
+        let gait = wildGait(2)
         return model(name, f, gait) { b in
             Person.body(&b, f, o)
             eyes(&b, f, spread: 0.03, forward: 0.072)
@@ -376,7 +401,7 @@ enum Figures {
         o.boots = Palette.rock
         o.belt = nil
         o.hair = Palette.stonePale
-        let gait = Gait(hands: .club, size: f.size, stoop: 0.22, stride: 0.32)
+        let gait = wildGait(3)
         return model(name, f, gait) { b in
             Person.body(&b, f, o)
             // Moonsalt grown through the stone: on the shoulders, the back and the brow.
