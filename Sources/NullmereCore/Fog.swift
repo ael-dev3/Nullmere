@@ -104,7 +104,7 @@ extension GameState {
                 return known
             }
         // The battles going on that they can see a side of.
-        view.engagements = engagements?.filter { view.unit($0.attacker) != nil || view.unit($0.defender) != nil }
+        view.fields = fields?.filter { field in field.side(of: house) != nil || (map.index(of: field.at).map { seen[$0] } ?? false) }
         // The marches they may know of, worked out on what they see.
         view.marches = marches(seenBy: house, in: view)
         return view
@@ -205,6 +205,10 @@ extension GameState {
                 return owner == house || hold(holdID)?.owner == house
             case .happeningBegun, .happeningEnded, .heritageTaken, .sunderingBegun, .sunderingEnded:
                 return true
+            case .fieldJoined(_, let at, let first, let second):
+                return first == house || second == house || visible(at)
+            case .fieldEnded(let field):
+                return field.side(of: house) != nil || visible(field.at)
             case .allianceStudyChosen(let id, _), .allianceGift(_, let id, _, _, _), .allianceStudied(let id, _, _):
                 return alliance(id)?.members.contains(house) == true
             case .happeningMark(let owner, _, _, _), .deedDone(let owner, _), .chargeDone(let owner, _, _):

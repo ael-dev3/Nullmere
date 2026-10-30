@@ -118,6 +118,18 @@ struct ReportList: View {
                             .font(.nm(11.5, weight: .medium))
                             .foregroundStyle(Palette.text(0.9))
                             .fixedSize(horizontal: false, vertical: true)
+                        // A field's two sides: each one's troops as they came, the bar what stands of them.
+                        ForEach(report.sides.indices, id: \.self) { index in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(verbatim: ReportList.side(report.sides[index]))
+                                    .font(.nm(10.5))
+                                    .foregroundStyle(Palette.text(0.75))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Meter(fraction: Double(report.sides[index].standing) / Double(max(report.sides[index].troops, 1)),
+                                      colour: index == 0 ? Palette.good : Palette.bad)
+                            }
+                            .padding(.vertical, 1)
+                        }
                         ForEach(report.lines, id: \.self) { line in
                             Text(verbatim: line).font(.nm(10.5)).foregroundStyle(Palette.text(0.65))
                         }
@@ -131,6 +143,16 @@ struct ReportList: View {
         .scrollEdgeFade()
         .scrollIndicators(.never)
         .pagedByKeys(session, as: .panel(.chronicle))
+    }
+
+    /// A side of a field of battle in a line: its companies and Houses, its
+    /// troops as they came, those lost, and its companies fallen.
+    static func side(_ side: BattleReport.Side) -> String {
+        let companies = side.companies == 1 ? "1 company" : "\(side.companies) companies"
+        let houses = side.houses > 1 ? " of \(side.houses) Houses" : ""
+        let fallen = side.fallen == 0 ? "" : side.fallen == 1 ? ", 1 company fallen" : ", \(side.fallen) companies fallen"
+        return "\(side.title): \(companies)\(houses), \(GameState.counted(side.troops)) troops; "
+            + "\(GameState.counted(side.lost)) lost\(fallen)"
     }
 
     static func outcome(_ outcome: BattleReport.Outcome) -> String {

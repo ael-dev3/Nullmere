@@ -332,8 +332,8 @@ extension GameSession {
 
     /// What happens in sight at `now`, on the map's clock: blows struck and
     /// companies falling, commanders' furies, holds scouted, marches, works
-    /// rising and finished, holds burning with their wards broken, and
-    /// fireflies over the reeds near the eye.
+    /// rising and finished, battles going on, holds burning with their
+    /// wards broken, and fireflies over the reeds near the eye.
     func happenings(poses: [CompanyPose], sights: [HoldSight], halls: [HallSight] = [], stage: WorldStage, at now: Date,
                     time: Double) -> Happenings {
         var happenings = Happenings()
@@ -368,6 +368,12 @@ extension GameSession {
             happenings.marching.append(Happenings.Spot(at: pose.position, strength: riders ? 1.4 : 1, seed: UInt32(truncatingIfNeeded: pose.unit)))
         }
         happenings.rising = (stage.risingWorks(sights) + stage.risingHalls(halls)).enumerated().map { Happenings.Spot(at: $1, seed: UInt32($0)) }
+        // The dust over every field of battle in sight, the thicker the more companies stand in it.
+        for field in state.fieldsOfBattle where isVisible(field.at) {
+            let standing = field.fighters.filter(\.standing).count
+            happenings.battles.append(Happenings.Spot(at: ground(field.at), strength: Float(min(standing, 12)),
+                                                      seed: UInt32(truncatingIfNeeded: field.id)))
+        }
         completions.removeAll { now.timeIntervalSince($0.at) > 3 }
         for done in completions {
             guard let hold = state.hold(done.hold) else { continue }

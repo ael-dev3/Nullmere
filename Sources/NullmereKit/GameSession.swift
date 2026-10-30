@@ -699,7 +699,7 @@ public final class GameSession {
         case .battle, .unitLost, .holdStruck, .holdCaptured, .seatMoved, .promoted, .ruinSearched, .holdFounded,
              .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired, .hunted,
              .gearFound, .carriedToInfirmary, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted, .standardStruck, .standardTorn,
-             .hallStruck, .hallTorn, .storehouseStruck, .storehouseTorn:
+             .hallStruck, .hallTorn, .storehouseStruck, .storehouseTorn, .fieldJoined, .fieldEnded:
             return true
         default:
             return false
@@ -1298,6 +1298,10 @@ public final class GameSession {
         case .deedDone(let house, _) where house == player: return .honour
         case .chargeDone(let house, _, _) where house == player: return .honour
         case .said(let word) where word.from != player: return .parley
+        case .fieldJoined(_, _, let first, let second) where first == player || second == player: return .horn
+        case .fieldEnded(let field):
+            guard let side = field.side(of: player) else { return nil }
+            return field.held == side ? .triumph : field.held == nil ? .stand : .dread
         default: return nil
         }
     }
@@ -1409,6 +1413,10 @@ public final class GameSession {
             return state.holySites.first { $0.id == shrine }?.position
         case .gathered(let unit, _, _), .sentToGather(let unit, _):
             return state.unit(unit)?.position
+        case .fieldJoined(_, let at, _, _):
+            return at
+        case .fieldEnded(let field):
+            return field.at
         default:
             return nil
         }
@@ -1524,14 +1532,16 @@ public final class GameSession {
         }
     }
 
-    /// Files a report of each battle and hunt the House had a part in, and
-    /// of each hold its Lanterns scouted.
+    /// Files a report of each battle and hunt the House had a part in, each
+    /// field of battle as it ends, and of each hold its Lanterns scouted.
     func fileReports(_ events: [GameEvent]) {
         var filed: [BattleReport] = []
         for event in events {
             let report: BattleReport?
             switch event {
-            case .battle(let battle): report = state.report(of: battle, id: reportCounter + 1, for: player)
+            // A blow in a field of battle is told in the field's report, as it ends.
+            case .battle(let battle) where battle.field == nil: report = state.report(of: battle, id: reportCounter + 1, for: player)
+            case .fieldEnded(let field): report = state.report(of: field, id: reportCounter + 1, for: player)
             case .hunted(let hunt): report = state.report(of: hunt, id: reportCounter + 1, for: player)
             case .holdScouted(let scouting):
                 report = state.report(of: scouting, id: reportCounter + 1, for: player)

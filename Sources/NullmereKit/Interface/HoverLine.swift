@@ -25,6 +25,9 @@ enum HoverInfo {
         if let lair = state.lair(at: hex) {
             parts.append(HoverInfo.named(lair))
         }
+        if let field = state.fieldsOfBattle.first(where: { $0.at == hex }) {
+            parts.append(HoverInfo.named(field, in: state))
+        }
         if let hall = state.hall(at: hex) {
             parts.append(HoverInfo.named(hall, in: state))
         } else if let storehouse = state.storehouse(at: hex) {
@@ -51,6 +54,14 @@ enum HoverInfo {
             parts.append("\(tile.terrain.defenseBonus > 0 ? "+" : "")\(tile.terrain.defenseBonus)% defence")
         }
         return parts.joined(separator: " · ")
+    }
+
+    /// A field of battle as the map names it: each side by the House that
+    /// leads it, and the troops it has standing there.
+    static func named(_ field: Field, in state: GameState) -> String {
+        let leaders = field.sides.map { state.houses.indices.contains($0[0]) ? state.houses[$0[0]].title : "a fallen House" }
+        return "a battle, \(leaders[0])'s side \(GameState.counted(field.inField(0).troops)) troops against "
+            + "\(leaders[1])'s \(GameState.counted(field.inField(1).troops))"
     }
 
     /// A company of the wilds as the map names it: "Barrowkin, level III".

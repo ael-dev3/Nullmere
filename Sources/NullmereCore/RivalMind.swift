@@ -1103,6 +1103,13 @@ struct RivalMind {
         if let skirmish {
             return perform(.move(unit: unit.id, to: skirmish.position), in: &state)
         }
+        // With no siege to press, to a battle its House fights near, to
+        // stand with its side.
+        if siege == nil, state.field(of: unit.id) == nil, let field = state.fieldsOfBattle
+            .filter({ $0.side(of: house) != nil && (2...RivalMind.battleCall).contains($0.at.distance(to: unit.position)) })
+            .min(by: { ($0.at.distance(to: unit.position), $0.id) < ($1.at.distance(to: unit.position), $1.id) }) {
+            return perform(.move(unit: unit.id, to: field.at), in: &state)
+        }
         if let siege {
             let near = unit.position.distance(to: siege.target) <= RivalMind.siegeReach
             if siege.ready || (near && unit.position.distance(to: siege.target) <= unit.kind.range + 1) {
@@ -1135,6 +1142,8 @@ struct RivalMind {
 
     /// How close to a besieged hold the army gathers before it goes in.
     static let siegeReach = 4
+    /// How far a steward's company goes to a battle its House fights.
+    static let battleCall = 6
     /// How far from its own holds a steward's company goes hunting, or
     /// gathering.
     static let huntingGround = 9

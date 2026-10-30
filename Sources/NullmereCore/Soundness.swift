@@ -208,6 +208,26 @@ extension GameState {
             if sundering.points.contains(where: { $0 < 0 }) { found.append("The Sundering has points below none") }
             if sundering.ends != sundering.begins + Sundering.lasts { found.append("The Sundering lasts \(sundering.ends - sundering.begins) watches") }
         }
+        var fighting: Set<Int> = []
+        for field in fieldsOfBattle {
+            let name = "Field \(field.id)"
+            if field.id >= nextID { found.append("\(name) was given out before the next id \(nextID)") }
+            if map[field.at] == nil { found.append("\(name) lies off the map") }
+            if !(0...Field.longest).contains(field.paces) { found.append("\(name) has gone on \(field.paces) paces") }
+            guard field.sides.count == 2, !field.sides.contains(where: \.isEmpty) else {
+                found.append("\(name) has sides \(field.sides)")
+                continue
+            }
+            if !Set(field.sides[0]).isDisjoint(with: field.sides[1]) { found.append("A House fights on both sides of \(name)") }
+            for fighter in field.fighters {
+                if !field.sides.indices.contains(fighter.side) || !field.sides[fighter.side].contains(fighter.owner) {
+                    found.append("A company of House \(fighter.owner) fights in \(name) on a side its House is not on")
+                }
+                if fighter.slain < 0 || fighter.lost < 0 || fighter.lost > fighter.troops { found.append("\(name) counts \(fighter)") }
+                if fighter.standing, !fighting.insert(fighter.unit).inserted { found.append("Company \(fighter.unit) stands in two fields") }
+                if fighter.standing && fighter.fell { found.append("Company \(fighter.unit) stands in \(name) though it fell") }
+            }
+        }
         var yarded: Set<String> = []
         for yard in sitesInLand {
             guard let owner = yard.alliance else { continue }

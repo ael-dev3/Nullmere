@@ -31,7 +31,8 @@ enum Narration {
         case .moved, .trainingStarted:
             return nil
         case .battle(let battle):
-            guard battle.attackerOwner == viewer || battle.defenderOwner == viewer else { return nil }
+            // A blow in a field of battle is told as the field is joined and as it ends.
+            guard battle.field == nil, battle.attackerOwner == viewer || battle.defenderOwner == viewer else { return nil }
             let target = battle.defenderKind.map { "\(house(battle.defenderOwner))'s \($0.title)" }
                 ?? (battle.hold.map(holdName) ?? "the hold")
             // The troops slain, where the realm counted them.
@@ -156,7 +157,8 @@ enum Narration {
              .hunted, .sentToGather, .gathered, .delivered, .siteWorkedOut,
              .allianceFounded, .allianceInvited, .allianceAsked, .allianceAnswered, .allianceJoined, .allianceLeft, .allianceLed,
              .allianceDisbanded, .helpGiven, .rallyCalled, .rallyJoined, .rallySetOut, .rallyStruck, .rallyDispersed, .sentToReinforce,
-             .happeningBegun, .happeningMark, .happeningEnded, .sunderingBegun, .sunderingEnded, .deedDone, .chargeDone, .said:
+             .happeningBegun, .happeningMark, .happeningEnded, .sunderingBegun, .sunderingEnded, .fieldJoined, .fieldEnded,
+             .deedDone, .chargeDone, .said:
             // The deeper systems' words are the rules' own.
             return state.tidings(of: event, for: viewer).map { Line(text: $0.text, tone: Narration.tone($0.tone)) }
         }

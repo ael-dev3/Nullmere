@@ -331,9 +331,8 @@ extension GameState {
 
         var events: [GameEvent]
         if let defenderID = foe.unit {
-            events = fight(attacker: unitID, defender: defenderID, at: target)
-            // In a realm, the battle goes on through the watch while both stand.
-            if let attacker = unit(unitID), let defender = unit(defenderID) { join(attacker, against: defender) }
+            // In a realm, it falls in a field of battle, which goes on through the watch.
+            events = fieldBlow(fight(attacker: unitID, defender: defenderID, at: target), sent: true)
         } else {
             events = strike(hold: foe.hold!, with: unitID)
         }
@@ -355,19 +354,14 @@ extension GameState {
         for id in keepers {
             guard let striker = unit(strikerID), let keeper = unit(id), let held = self.hold(holdID), areAllied(keeper.owner, held.owner),
                   isAtWar(keeper.owner, striker.owner), keeper.position.distance(to: striker.position) <= keeper.kind.range else { continue }
-            events += fight(attacker: id, defender: strikerID, at: striker.position, holdingGround: true)
+            events += fieldBlow(fight(attacker: id, defender: strikerID, at: striker.position, holdingGround: true), sent: false)
         }
         return events
     }
 
-    /// Another exchange of blows in a battle going on.
-    mutating func exchange(attacker attackerID: Int, defender defenderID: Int, at hex: Hex) -> [GameEvent] {
-        fight(attacker: attackerID, defender: defenderID, at: hex)
-    }
-
     /// Two units exchange blows. A company holding its ground never steps
     /// onto the fallen's.
-    private mutating func fight(attacker attackerID: Int, defender defenderID: Int, at hex: Hex, holdingGround: Bool = false) -> [GameEvent] {
+    mutating func fight(attacker attackerID: Int, defender defenderID: Int, at hex: Hex, holdingGround: Bool = false) -> [GameEvent] {
         var random = random()
         let attacker = unit(attackerID)!
         let defender = unit(defenderID)!

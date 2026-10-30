@@ -557,6 +557,12 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// A Sundering ends: the kingdom that prevailed, if one did, each
     /// kingdom's points, and the House hailed its sword.
     case sunderingEnded(winner: Shore?, eastern: Int, western: Int, hailed: Int?)
+    /// Battle is joined where a company of one House strikes another's: a
+    /// field of battle, which goes on through the watch.
+    case fieldJoined(field: Int, at: Hex, first: Int, second: Int)
+    /// A field of battle is over: every company that fought in it, what it
+    /// slew and lost, and which side holds the field.
+    case fieldEnded(Field)
     /// A House is given makings for its Forge.
     case makingsFound(house: Int, making: Making, count: Int)
     /// A House's smiths forge a piece of gear.
@@ -634,6 +640,8 @@ public struct Battle: Codable, Equatable, Sendable {
     public let slain: Int?
     /// The attacker's troops lost to the blow struck back.
     public let lost: Int?
+    /// The field of battle it fell in, in a realm's watch.
+    public internal(set) var field: Int?
 
     public init(
         attacker: Int, attackerOwner: Int, attackerKind: UnitKind,

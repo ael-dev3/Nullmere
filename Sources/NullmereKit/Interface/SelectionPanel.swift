@@ -669,12 +669,16 @@ struct UnitPanel: View {
 
     /// What a company has been sent to do beyond its march, and what it carries.
     static func errand(of unit: Unit, in state: GameState) -> String? {
-        // Locked in battle: it fights on through the watch where it stands.
-        if let battle = state.battlesJoined.first(where: { $0.attacker == unit.id || $0.defender == unit.id }) {
-            let foe = state.unit(battle.attacker == unit.id ? battle.defender : battle.attacker)
+        // In a field of battle: it fights on at every pace where it stands.
+        if let field = state.field(of: unit.id), let fighter = field.fighter(unit.id) {
+            let foe = fighter.foe.flatMap { state.unit($0) }
             let whose = foe.map { state.houses.indices.contains($0.owner) ? "\(state.houses[$0.owner].title)'s \($0.kind.title)" : $0.kind.title }
-            let blows = battle.rounds == 1 ? "one more exchange" : "\(battle.rounds) more exchanges"
-            return "Locked in battle with \(whose ?? "the foe"): \(blows) of blows this watch, unless one side draws off."
+            func side(_ side: Int) -> String {
+                let (companies, troops) = field.inField(side)
+                return "\(companies == 1 ? "1 company" : "\(companies) companies"), \(GameState.counted(troops)) troops"
+            }
+            return "In battle \(state.placeName(of: field.at)) against \(whose ?? "the foe"): its side \(side(fighter.side)), "
+                + "the other \(side(1 - fighter.side)). It fights on at every pace until it draws off."
         }
         let load = unit.load.flatMap { carried -> String? in
             guard let store = Resource.allCases.first(where: { carried[$0] > 0 }) else { return nil }

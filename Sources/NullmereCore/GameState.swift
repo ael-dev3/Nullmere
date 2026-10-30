@@ -93,8 +93,8 @@ public struct GameState: Codable, Equatable, Sendable {
     /// How far the watch has been walked, in a realm, whose watch passes
     /// pace by pace; absent in a world whose marches go as each watch turns.
     public internal(set) var pacing: Pacing?
-    /// The battles going on in a realm's watch; absent when none is.
-    var engagements: [Engagement]?
+    /// The fields of battle going on in a realm's watch; absent when none is.
+    var fields: [Field]?
     /// The realm's holy sites; absent in saves from before them, which find
     /// them as the watch turns.
     var shrines: [Shrine]?

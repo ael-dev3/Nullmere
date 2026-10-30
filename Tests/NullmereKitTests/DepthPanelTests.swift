@@ -483,6 +483,75 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(session.reports.count, GameSession.reportsKept, "the latest kept")
     }
 
+    // MARK: Fields of battle
+
+    func testAFieldOfBattleIsShownToldAndReported() throws {
+        var state = world("field shown")
+        let me = state.player
+        let foe = (me + 1) % state.houses.count
+        let company = try XCTUnwrap(state.units(of: me).first { $0.kind.isMilitary })
+        let theirs = try XCTUnwrap(state.units.first { $0.owner == foe && $0.kind.isMilitary })
+        var field = Field(id: 950, at: company.position, joined: state.watch, first: me, second: foe)
+        field.fighters = [Fighter(unit: company.id, owner: me, side: 0, kind: company.kind, tier: company.tier, leader: nil, troops: 1_200),
+                          Fighter(unit: theirs.id, owner: foe, side: 1, kind: theirs.kind, tier: theirs.tier, leader: nil, troops: 1_000)]
+        field.fighters[0].slain = 700
+        field.fighters[0].lost = 200
+        field.fighters[0].foe = theirs.id
+        field.fighters[1].slain = 200
+        field.fighters[1].lost = 700
+        state.fields = [field]
+        let (session, _) = session(state)
+        let titles = (state.houses[me].title, state.houses[foe].title)
+
+        // On the map: its blades and each side's troops, the troops of each
+        // company in it; on hover, and to VoiceOver.
+        draw(WorldMarks(session: session), width: 900, height: 700)
+        draw(WorldMarks(session: session, modelsDrawn: true), width: 900, height: 700)
+        let hover = try XCTUnwrap(HoverInfo.line(for: company.position, in: session.state, explored: true, territory: session.state.territory()))
+        XCTAssertTrue(hover.contains("a battle, \(titles.0)'s side 1,000 troops against \(titles.1)'s 300"), hover)
+        // In the world, its dust, as thick as the companies standing in it.
+        let stage = WorldStage(map: session.state.map, relief: Relief(map: session.state.map))
+        let dust = session.happenings(poses: [], sights: [], stage: stage, at: Date(), time: 1).battles
+        XCTAssertEqual(dust.map(\.strength), [2])
+        XCTAssertEqual(dust.first.map { abs($0.at.x - Relief.centre(of: company.position).x) < 1e-3 }, true)
+        let items = MapAccessibility.items(for: session)
+        XCTAssertTrue(items.contains { $0.id == "field-950" && $0.label.hasPrefix("a battle, \(titles.0)'s side") })
+        XCTAssertTrue(try XCTUnwrap(items.first { $0.selection == .unit(company.id) }).label.contains("in battle"))
+
+        // A blow in it is neither reported alone nor told; its joining is told, and its end is both.
+        var blow = Battle(attacker: company.id, attackerOwner: me, attackerKind: company.kind, defender: theirs.id, defenderOwner: foe,
+                          defenderKind: theirs.kind, hold: nil, at: theirs.position, damageDealt: 20, damageTaken: 6,
+                          attackerFell: false, defenderFell: false, slain: 240, lost: 60)
+        blow.field = 950
+        let joined = GameEvent.fieldJoined(field: 950, at: company.position, first: me, second: foe)
+        session.showBlows([joined, .battle(blow)])
+        XCTAssertTrue(session.reports.isEmpty, "Told in the field's report, as it ends")
+        XCTAssertNil(Narration.line(for: .battle(blow), in: session.state, viewer: me))
+        XCTAssertEqual(Narration.line(for: joined, in: session.state, viewer: me)?.text,
+                       "Battle is joined \(session.state.placeName(of: company.position)): your companies fall upon \(titles.1)'s.")
+        var over = field
+        over.held = 0
+        over.fighters[1].standing = false
+        over.fighters[1].fell = true
+        session.showBlows([.fieldEnded(over)])
+        let report = try XCTUnwrap(session.reports.first)
+        XCTAssertEqual(report.outcome, .won)
+        XCTAssertEqual(report.sides.map(\.companies), [1, 1])
+        XCTAssertEqual(ReportList.side(report.sides[0]), "Your side: 1 company, 1,200 troops; 200 lost")
+        XCTAssertEqual(ReportList.side(report.sides[1]), "The foe: 1 company, 1,000 troops; 700 lost, 1 company fallen")
+        XCTAssertEqual(ReportList.side(BattleReport.Side(title: "The foe", houses: 2, companies: 3, troops: 3_000, lost: 900, fallen: 2)),
+                       "The foe: 3 companies of 2 Houses, 3,000 troops; 900 lost, 2 companies fallen")
+        XCTAssertEqual(Narration.line(for: .fieldEnded(over), in: session.state, viewer: me)?.tone, .good)
+        draw(ChroniclePanel(session: session, showingReports: true), width: 400)
+
+        // Counted once in the watch's summary, and heard where it was fought.
+        let summary = WatchSummary(before: state, after: state, events: [joined, .battle(blow), .battle(blow)], player: me)
+        XCTAssertEqual(summary.events.first, "A battle")
+        XCTAssertEqual(GameSession.place(of: joined, in: state), company.position)
+        XCTAssertEqual(GameSession.place(of: .fieldEnded(over), in: state), company.position)
+        XCTAssertTrue(GameSession.isRealmsToTell(joined) && GameSession.isRealmsToTell(.fieldEnded(over)))
+    }
+
     // MARK: The small map
 
     func testTheSmallMapShowsTheLakeAndCarriesTheViewThere() throws {
@@ -1161,18 +1230,24 @@ final class DepthPanelTests: XCTestCase {
         state.units[index].errand = nil
         XCTAssertNil(UnitPanel.errand(of: state.units[index], in: state))
         XCTAssertNil(UnitPanel.leader(of: state.units[index], in: state))
-        // Locked in battle, in a realm's watch.
+        // In a field of battle, in a realm's watch.
         let foe = state.units.first { $0.owner != me && $0.kind.isMilitary }!
-        state.engagements = [Engagement(attacker: state.units[index].id, defender: foe.id, attackerAt: state.units[index].position,
-                                        defenderAt: foe.position, rounds: 2)]
+        let mine = state.units[index]
+        var field = Field(id: 900, at: foe.position, joined: state.watch, first: me, second: foe.owner)
+        field.fighters = [Fighter(unit: mine.id, owner: me, side: 0, kind: mine.kind, tier: mine.tier, leader: nil, troops: 1_200),
+                          Fighter(unit: foe.id, owner: foe.owner, side: 1, kind: foe.kind, tier: foe.tier, leader: nil, troops: 1_000)]
+        field.fighters[0].foe = foe.id
+        field.fighters[0].lost = 300
+        field.fighters[1].lost = 400
+        state.fields = [field]
         XCTAssertEqual(UnitPanel.errand(of: state.units[index], in: state),
-                       "Locked in battle with \(state.houses[foe.owner].title)'s \(foe.kind.title): 2 more exchanges of blows this watch, unless one side draws off.")
-        state.engagements = [Engagement(attacker: foe.id, defender: state.units[index].id, attackerAt: foe.position,
-                                        defenderAt: state.units[index].position, rounds: 1)]
-        XCTAssertTrue(UnitPanel.errand(of: state.units[index], in: state)?.contains(": one more exchange of blows") == true)
-        state.engagements = [Engagement(attacker: 9_999, defender: state.units[index].id, attackerAt: .origin, defenderAt: .origin, rounds: 1)]
-        XCTAssertTrue(UnitPanel.errand(of: state.units[index], in: state)?.hasPrefix("Locked in battle with the foe") == true)
-        state.engagements = nil
+                       "In battle \(state.placeName(of: foe.position)) against \(state.houses[foe.owner].title)'s \(foe.kind.title): "
+                       + "its side 1 company, 900 troops, the other 1 company, 600 troops. It fights on at every pace until it draws off.")
+        state.fields![0].fighters[0].foe = 9_999
+        XCTAssertTrue(UnitPanel.errand(of: state.units[index], in: state)?.hasPrefix("In battle \(state.placeName(of: foe.position)) against the foe") == true)
+        state.fields![0].fighters[0].standing = false
+        XCTAssertNil(UnitPanel.errand(of: state.units[index], in: state), "Drawn off, in none")
+        state.fields = nil
         let (session, _) = session(state)
         session.selection = .unit(state.units[index].id)
         draw(SelectionPanel(session: session), width: 330, height: 600)

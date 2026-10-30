@@ -747,7 +747,17 @@ final class CueMappingTests: XCTestCase {
                          at: unit.position, damageDealt: 12, damageTaken: 3, attackerFell: false, wildFell: false, spoils: Stock()))
         }
         state.standards = [Standard(id: 82, alliance: alliance, raisedBy: player, position: unit.position, raised: 0)]
+        func field(held: Int?, _ first: Int, _ second: Int) -> Field {
+            var field = Field(id: 98, at: unit.position, joined: 1, first: first, second: second)
+            field.held = held
+            return field
+        }
         let concerning: [(GameEvent, Ambience.Cue)] = [
+            (.fieldJoined(field: 98, at: unit.position, first: player, second: foe), .horn),
+            (.fieldJoined(field: 98, at: unit.position, first: foe, second: player), .horn),
+            (.fieldEnded(field(held: 0, player, foe)), .triumph),
+            (.fieldEnded(field(held: 1, player, foe)), .dread),
+            (.fieldEnded(field(held: nil, player, foe)), .stand),
             (.standardRaised(standard: 80, alliance: alliance, house: player, at: unit.position), .banner),
             (.standardStruck(standard: 82, ward: 30, by: foe, at: unit.position), .batter),
             (.standardTorn(standard: 80, alliance: 77, by: player, at: unit.position), .triumph),
@@ -880,6 +890,7 @@ final class CueMappingTests: XCTestCase {
             .laidUp(house: foe, stock: Stock(grain: 5)), .tookBack(house: foe, stock: Stock(grain: 5)),
             .yardRaised(site: 97, alliance: 77, house: foe, store: .stone, at: unit.position),
             .favourRose(house: foe, level: 2),
+            .fieldJoined(field: 99, at: unit.position, first: foe, second: others), .fieldEnded(field(held: 0, foe, others)),
             .gearForged(house: foe, gear: Gear(id: 73, kind: .raidersHorn, quality: .fine, owner: foe)),
             .makingsFound(house: player, making: .iron, count: 2), .makingsFound(house: foe, making: .hide, count: 1),
         ]

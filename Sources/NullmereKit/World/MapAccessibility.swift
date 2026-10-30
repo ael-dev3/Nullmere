@@ -172,6 +172,7 @@ enum MapAccessibility {
             let rank = unit.rank > 0 ? "\(Unit.rankTitles[unit.rank]) " : ""
             var parts = ["\(rank)\(unit.kind.title), \(whose(unit.owner)), \(place(unit.position))", "health \(unit.health)"]
             if unit.kind.hasTiers { parts.append("tier \(unit.tier)") }
+            if state.field(of: unit.id) != nil { parts.append("in battle") }
             if unit.owner == player {
                 if unit.fortified { parts.append("fortified") }
                 else if unit.destination != nil { parts.append("marching") }
@@ -192,6 +193,11 @@ enum MapAccessibility {
         for site in state.sitesInLand where session.isExplored(site.position) && state.wild(at: site.position) == nil {
             land.append(Item(id: "site-\(site.id)", label: "\(HoverInfo.named(site, in: state)), \(place(site.position))",
                              selection: .tile(site.position), hex: site.position))
+        }
+        // The fields of battle in sight, or that the House fights in.
+        for field in state.fieldsOfBattle {
+            land.append(Item(id: "field-\(field.id)", label: "\(HoverInfo.named(field, in: state)), \(place(field.at))",
+                             selection: .tile(field.at), hex: field.at))
         }
         // The alliances' storehouses on ground it has explored.
         for storehouse in state.storehousesStanding where session.isExplored(storehouse.position) {

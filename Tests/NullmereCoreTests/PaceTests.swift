@@ -171,32 +171,49 @@ final class PaceTests: XCTestCase {
     func testInARealmABattleGoesOnPaceByPace() throws {
         var (state, mine, theirs, there) = try lockedInBattle("lasting battle", paced: true)
         let me = state.player
-        XCTAssertEqual(battles(try state.perform(.attack(unit: mine, target: there), as: me)), 1)
-        XCTAssertEqual(state.battlesJoined.map(\.rounds), [GameState.engagementRounds], "Joined, with more blows to come")
-        XCTAssertEqual(state.view(for: me).battlesJoined.count, 1, "Seen by those who see a side of it")
-        var later = 0
-        for pace in 1...4 {
-            later += battles(state.walk(to: pace))
+        let struck = try state.perform(.attack(unit: mine, target: there), as: me)
+        XCTAssertEqual(battles(struck), 1)
+        let field = try XCTUnwrap(state.fieldsOfBattle.first, "Battle is joined: a field of battle")
+        XCTAssertEqual(struck.first, .fieldJoined(field: field.id, at: there, first: me, second: 1), "Told before its first blow")
+        XCTAssertEqual(field.sides, [[me], [1]])
+        XCTAssertEqual(field.fighters.map(\.unit), [mine, theirs])
+        XCTAssertEqual(state.view(for: me).fieldsOfBattle.count, 1, "Seen by those who fight in it")
+        var later: [GameEvent] = []
+        for pace in 1...(GameState.pacesPerWatch - 1) where !state.fieldsOfBattle.isEmpty {
+            later += state.walk(to: pace)
         }
-        XCTAssertTrue((1...GameState.engagementRounds).contains(later), "Blows again at the paces after: \(later)")
-        XCTAssertEqual(state.battlesJoined, [], "Over: its rounds run, or a side fallen")
-        XCTAssertTrue(state.unit(mine) == nil || state.unit(theirs) == nil || later == GameState.engagementRounds)
+        XCTAssertGreaterThanOrEqual(battles(later), 2, "Blows again at the paces after, and the struck strikes back")
+        XCTAssertTrue(later.allSatisfy { event in
+            if case .battle(let battle) = event { return battle.field == field.id }
+            return true
+        }, "Every blow the field's")
+        XCTAssertEqual(state.fieldsOfBattle, [], "Over: a side fallen")
+        XCTAssertTrue(state.unit(mine) == nil || state.unit(theirs) == nil)
         XCTAssertEqual(state.problems(), [])
 
         // Outside a realm, a strike is one exchange.
         var (turned, mine3, _, there3) = try lockedInBattle("one exchange", paced: false)
-        try turned.perform(.attack(unit: mine3, target: there3), as: turned.player)
-        XCTAssertEqual(turned.battlesJoined, [])
+        let once = try turned.perform(.attack(unit: mine3, target: there3), as: turned.player)
+        XCTAssertEqual(turned.fieldsOfBattle, [])
+        XCTAssertFalse(once.contains { if case .fieldJoined = $0 { return true } else { return false } })
 
-        // One that draws off ends it.
+        // One that draws off ends it, with no blow.
         var (drawn, mine2, theirs2, there2) = try lockedInBattle("drawn off", paced: true)
         try drawn.perform(.attack(unit: mine2, target: there2), as: drawn.player)
         XCTAssertNotNil(drawn.unit(mine2))
         XCTAssertNotNil(drawn.unit(theirs2), "Whole companies both stand the first exchange")
-        let away = try XCTUnwrap(drawn.freeHex(near: there2, within: 3...4))
+        let away = try XCTUnwrap(drawn.freeHex(near: there2, within: 4...5))
         drawn.units[try XCTUnwrap(drawn.unitIndex(theirs2))].position = away
-        XCTAssertEqual(battles(drawn.walk(to: 1)), 0)
-        XCTAssertEqual(drawn.battlesJoined, [])
+        let ended = drawn.walk(to: 1)
+        XCTAssertEqual(battles(ended), 0)
+        XCTAssertEqual(drawn.fieldsOfBattle, [])
+        let over = try XCTUnwrap(ended.compactMap { event -> Field? in
+            if case .fieldEnded(let field) = event { return field }
+            return nil
+        }.first)
+        XCTAssertEqual(over.held, 0, "The side still there holds the field")
+        XCTAssertEqual(over.fighter(theirs2)?.standing, false)
+        XCTAssertEqual(over.fighter(theirs2)?.fell, false, "Drawn off, not fallen")
     }
 
     func testARealmsWatchIsWalkedOnItsClock() throws {

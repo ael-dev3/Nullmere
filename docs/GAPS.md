@@ -13,7 +13,7 @@ planned, and what CI has shown of it.
 
 | | Requirement | Score now | What is there | What Rise of Kingdoms has that this lacks |
 |---|---|---|---|---|
-| 1 | Live realm, real multiplayer | 5 | A SpacetimeDB module and a steward that runs the rules; keepers' Macs hear the realm's changes pushed over SpacetimeDB's WebSocket subscription, the reads kept as a fallback. CI raises a real SpacetimeDB server where two keepers' clients meet, give orders and turn the watch, trade through an envoy, ally, speak to the realm and to their alliance, go to war, and march one on the other's seat over thirty watches and strike it, both seeing every step. A realm's watch passes in twelve paces: marches step through it, hosts strike the moment they arrive, and stewards give their orders at paces spread through it, nothing saved for a burst at the turn; a battle goes on, blow after blow, through the paces | A realm that is up for everyone (it waits on the maintainer's maincloud sign-in); battles of whole armies, troops by the thousand; kingdoms of thousands |
+| 1 | Live realm, real multiplayer | 5 | A SpacetimeDB module and a steward that runs the rules; keepers' Macs hear the realm's changes pushed over SpacetimeDB's WebSocket subscription, the reads kept as a fallback. CI raises a real SpacetimeDB server where two keepers' clients meet, give orders and turn the watch, trade through an envoy, ally, speak to the realm and to their alliance, go to war, and march one on the other's seat over thirty watches and strike it, both seeing every step. A realm's watch passes in twelve paces: marches step through it, hosts strike the moment they arrive, and stewards give their orders at paces spread through it, nothing saved for a burst at the turn; battles are fought as fields of whole armies, every company near striking and struck pace by pace, told as one battle | A realm that is up for everyone (it waits on the maintainer's maincloud sign-in); troops by the hundred thousand; kingdoms of thousands |
 | 2 | 3D world in Metal | 5 | Terrain as a 3D mesh with relief and its own grain of earth and moss; stone, timber, thatch, slate and earth drawn with their grain on every model; each omen's weather, rain or mist, over the world; the still lake mirroring the stars and the moon; a camera that pans, zooms, tilts and turns; picking and VoiceOver through it; original models built from code for every company in five tiers, every hold, work and wall at every level, the wilds, the sites of the land and the commanders; four lights of the world's own with the moon's; rendered on the GPU in CI | Hand-modelled detail at RoK's density; a city view inside the world |
 | 3 | Animation | 6 | Companies idle, march, strike, gather and fall, easing from one clip to the next; works rise from scaffolds and finish in dust; blows land with sparks, a flash and light on the ground, the struck reel, arrows arc and kick up dust, wards splinter, the fallen raise dust; a commander's skill fires in a ring of gold; broken holds burn and smoke; fireflies, birds, banners and hearth smoke | Spell-like effects at RoK's scale; crowds and city life |
 | 4 | Sound and music | 6 | A synthesised night, a score written as it plays that turns to war, and twenty-seven cues made as they play, a sound for every order and every event that concerns the keeper, each held by tests above the night and all at once under clipping; every sound heard from where it happened, left or right of the view and fainter far off | Recorded orchestral music and foley |
@@ -33,9 +33,10 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 - [x] Words between keepers: a realm channel and an alliance channel
 - [x] One workflow that publishes the realm to maincloud once the maintainer adds the token (the sign-in, and the machine the steward runs on, are the maintainer's)
 - [x] Marches and battles that play out across the watch, not resolved at its turn: twelve paces a watch, a host striking as it arrives, stewards acting through it
-- [x] Battles that last: in the realm, two companies locked in battle exchange blows again at the paces after the first, until one falls or draws off
+- [x] Battles that last: in the realm, companies in battle exchange blows again at the paces after the first, until one side falls or draws off
 - [x] Armies counted in troops: every company so many at full muster by kind and tier (Spears 1,200 to 2,400), as many standing as its health allows; battles told in the troops each side slew and lost; a House's army totalled
-- [ ] Battles of whole armies at RoK's scale: many companies in one battle, troops by the hundred thousand
+- [x] Battles of whole armies: fields of battle in which every company near strikes and is struck pace by pace, whole armies drawn in, allies fighting on the side they strike for, each side's companies and troops reported as one battle, shown on the map with each side's troops standing
+- [ ] Troops by the hundred thousand: a realm's greatest battles come to some ten thousand troops (eleven companies in a ninety-watch age of eight stewards); RoK's reach hundreds of thousands
 - [ ] The realm up for everyone on maincloud
 
 ### 2. 3D world in Metal
@@ -105,7 +106,7 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 4. The live connection and the multiplayer test.
 5. Sound for every action, and music by the state of the realm.
 6. The onboarding over all of it.
-7. Next: battles of whole armies, many companies in one; realms meeting across their borders.
+7. Next: armies by the hundred thousand; realms meeting across their borders.
 
 What only a person can do stays as it was: raising the realm on maincloud
 with the maintainer's account, signing and notarizing the release, and

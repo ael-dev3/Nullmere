@@ -879,10 +879,33 @@ realm; keepers are told in plain words, never a status code.
   the steps as they are taken. As the watch turns, whatever the paces left
   (the watch turning early, a way shut for a while) is walked first, so a
   march goes as far in a watch as ever; the last pace is the turn's own.
-  A battle between two companies goes on through the watch: after the
-  first exchange, blows fall again at each of the next two paces, unless
-  one side falls, draws off (moves) or makes peace first; a company's
-  panel says it is locked in battle and how many exchanges are left.
+  A battle goes on through the watch, as a field of battle (below).
+- **Fields of battle.** In a realm, a strike on another House's company
+  joins battle there, a field of battle that goes on pace by pace and takes
+  in whole armies. Every company that strikes or is struck within three
+  tiles of where it was joined fights in it on its House's side; a House
+  new to it takes the side none of whose Houses it is at war with, so an
+  ally striking in fights beside its ally, and a House at war with both
+  sides joins battle anew. At every pace each company standing in it
+  strikes a foe of the other side within its reach, arrows first: the one
+  it fights while it can, else the nearest, the weakest first; so a company
+  struck strikes back if it can reach its striker, and holds its ground
+  doing it, while one sent against its foe takes the fallen's ground as
+  ever. Its Houses' companies of war standing near it with no march or
+  errand, and a foe of it in their reach, come into it. A company that
+  marches off or leaves its span draws off. It is over when a pace passes
+  without a blow, when one side has none left standing in it, or after two
+  watches; the side still in it holds the field. Its blows are seen and
+  heard as they fall, but told as one: battle joined, and its end, with
+  each side's companies and troops, the troops slain and lost and the
+  companies fallen in a report for every House that fought in it, its own
+  companies one by one. A battle of six companies or more is the
+  chronicle's. On the map, crossed blades stand over each field with the
+  troops each side has standing there, and every company in it shows its
+  troops; hovering it names the sides, VoiceOver lists it, and a company's
+  panel says the battle it is in and how its sides stand. In an age of
+  eight stewards, a hundred and seventy fields are fought in ninety
+  watches, the greatest of eleven companies.
 - **Happenings.** From the tenth watch, and every thirty after, the realm
   holds a happening for ten watches: the Long Hunt (companies of the wilds
   struck down, the greater the more), the Harvest Fair (stores brought home

@@ -362,6 +362,24 @@ extension GameState {
             }
             let sword = hailed == viewer ? " Your House is hailed its sword." : ""
             return Tidings("The Sundering ends: your kingdom, \(winner.title), prevails, \(score); its Houses share its spoils.\(sword)", .good)
+        case .fieldJoined(_, let at, let first, let second):
+            let place = placeName(of: at)
+            if first == viewer { return Tidings("Battle is joined \(place): your companies fall upon \(houses[second].title)'s.", .neutral) }
+            if second == viewer { return Tidings("Battle is joined \(place): \(houses[first].title) falls upon your companies.", .bad) }
+            return Tidings("Battle is joined \(place) between \(houses[first].title) and \(houses[second].title).", .neutral)
+        case .fieldEnded(let field):
+            let place = placeName(of: field.at)
+            guard let side = field.side(of: viewer) else {
+                let held = field.held.map { "\(houses[field.sides[$0][0]].title)'s side holds the field" } ?? "neither side gives way"
+                return Tidings("The battle \(place) is over: \(held).", .neutral)
+            }
+            let foe = 1 - side
+            let tally = "slaying \(GameState.counted(field.lost(by: foe))) and losing \(GameState.counted(field.lost(by: side)))"
+            switch field.held {
+            case side?: return Tidings("The battle \(place) is over: your side holds the field, \(tally).", .good)
+            case foe?: return Tidings("The battle \(place) is over: your side is driven from the field, \(tally).", .bad)
+            default: return Tidings("The battle \(place) is over: neither side gives way, your side \(tally).", .neutral)
+            }
         case .deedDone(let house, let deed):
             guard house == viewer else { return nil }
             return Tidings("A deed of your House, \(deed.title): it has \(deed.deed).", .good)

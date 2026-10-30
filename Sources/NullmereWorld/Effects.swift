@@ -318,6 +318,8 @@ public struct Happenings: Equatable, Sendable {
     public var furies: [Spot] = []
     /// Holds scouted, and when.
     public var sightings: [Spot] = []
+    /// Fields of battle going on, as strongly as companies stand in them.
+    public var battles: [Spot] = []
 
     public init() {}
 
@@ -376,6 +378,11 @@ public struct Happenings: Equatable, Sendable {
         }
         for work in rising {
             emitters.append(Emitter(.dust, at: work.at, rate: 2, spread: 0.16, seed: work.seed, strength: 0.55))
+        }
+        for battle in battles {
+            // The dust a battle throws up over its whole field, the thicker
+            // the more companies stand in it.
+            emitters.append(Emitter(.dust, at: battle.at, rate: 4 + 2 * battle.strength, spread: 0.8, seed: battle.seed, strength: 0.65))
         }
         for work in finished {
             bursts.append(Burst(.dust, at: work.at, start: work.start, count: 20, seed: work.seed, scale: 1.25))

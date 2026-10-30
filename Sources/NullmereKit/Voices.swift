@@ -158,7 +158,7 @@ enum VoiceFacts {
     /// The entries worth the chronicler's own words.
     static func isVoiced(_ kind: ChronicleEntry.Kind) -> Bool {
         switch kind {
-        case .war, .peace, .pact, .betrayal, .capture, .fall, .greatWork, .ending, .tribute: return true
+        case .war, .peace, .pact, .betrayal, .capture, .fall, .greatWork, .ending, .tribute, .battle: return true
         case .beginning, .founding, .discovery, .omen, .gift, .trade, .seating, .learning, .commander, .hunt, .alliance, .rally, .happening: return false
         }
     }

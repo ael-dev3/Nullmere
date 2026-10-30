@@ -117,6 +117,17 @@ final class EffectsTests: XCTestCase {
         XCTAssertFalse(fall.effects(at: 10 + Happenings.fallen + 0.1).motes.isEmpty)
     }
 
+    func testABattleGoingOnRaisesItsDustOverItsField() {
+        let heart = Vec3(2, 0.1, -3)
+        let thick = Happenings(battles: [Happenings.Spot(at: heart, strength: 8, seed: 31)]).effects(at: 20).motes
+        XCTAssertGreaterThan(thick.count, 10)
+        XCTAssertTrue(thick.allSatisfy { Vec3($0.place.x - heart.x, 0, $0.place.z - heart.z).length < 2 }, "Over its field")
+        XCTAssertTrue(thick.allSatisfy { $0.place.y >= heart.y - 0.01 }, "Raised from the ground")
+        let thin = Happenings(battles: [Happenings.Spot(at: heart, strength: 1, seed: 31)]).effects(at: 20).motes
+        XCTAssertLessThan(thin.count, thick.count, "The thicker the more companies stand in it")
+        XCTAssertTrue(Happenings(battles: [Happenings.Spot(at: heart, strength: 8, seed: 31)]).effects(at: 20).lights.isEmpty)
+    }
+
     func testAScoutedHoldIsCircledByItsLanternsLight() {
         var happenings = Happenings()
         happenings.sightings = [Happenings.Spot(at: Vec3(4, 0.3, -2), start: 10, seed: 21)]
@@ -178,10 +189,11 @@ final class EffectsTests: XCTestCase {
 }
 
 extension Happenings {
-    init(strikes: [Strike] = [], falls: [Spot] = []) {
+    init(strikes: [Strike] = [], falls: [Spot] = [], battles: [Spot] = []) {
         self.init()
         self.strikes = strikes
         self.falls = falls
+        self.battles = battles
     }
 }
 

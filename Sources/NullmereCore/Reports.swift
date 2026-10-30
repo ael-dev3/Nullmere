@@ -23,6 +23,27 @@ public struct BattleReport: Equatable, Sendable, Identifiable {
     public let outcome: Outcome
     /// What each side dealt and took, and who fell, a line each.
     public let lines: [String]
+    /// Of a field of battle, each side as it came and as it left: the
+    /// keeper's own first.
+    public var sides: [Side] = []
+
+    /// A side of a field of battle, as a report counts it.
+    public struct Side: Equatable, Sendable {
+        public let title: String
+        public let houses: Int
+        public let companies: Int
+        /// Its troops as they came, and those of them lost.
+        public let troops: Int
+        public let lost: Int
+        /// Its companies fallen.
+        public let fallen: Int
+
+        /// Its troops still standing.
+        public var standing: Int { max(troops - lost, 0) }
+    }
+
+    /// The keeper's own companies told one by one in a field's report.
+    public static let companiesTold = 6
 }
 
 extension GameState {
@@ -39,6 +60,49 @@ extension GameState {
     private func whose(_ house: Int, for viewer: Int) -> String {
         guard house != viewer else { return "Your" }
         return houses.indices.contains(house) ? "\(houses[house].title)'s" : "A fallen House's"
+    }
+
+    /// A field of battle the viewer's House fought in, as its report tells
+    /// it: which side held the field, each side's companies and troops, the
+    /// slain and the fallen, and the House's own companies one by one; nil
+    /// if it had no part in it.
+    public func report(of field: Field, id: Int, for viewer: Int) -> BattleReport? {
+        guard let side = field.side(of: viewer) else { return nil }
+        let foe = 1 - side
+        let outcome: BattleReport.Outcome = field.held == side ? .won : field.held == foe ? .lost : .held
+        let mine = field.fighters(of: side).count, theirs = field.fighters(of: foe).count
+        let against = "\(mine == 1 ? "1 company" : "\(mine) companies") against \(theirs)"
+        let title: String
+        switch outcome {
+        case .won: title = "Your side held the field, \(against)"
+        case .lost: title = "Your side was driven from the field, \(against)"
+        default: title = "Neither side gave way, \(against)"
+        }
+        var lines: [String] = []
+        let own = field.fighters.filter { $0.owner == viewer }
+        for fighter in own.prefix(BattleReport.companiesTold) {
+            let named = "Your \(fighter.kind.title)" + (fighter.kind.hasTiers ? " \(BuildingKind.numeral(fighter.tier))" : "")
+            let led = fighter.leader.map { ", led by \($0)," } ?? ""
+            let fate = fighter.fell ? "fell" : fighter.standing ? "held" : "drew off"
+            lines.append("\(named)\(led) slew \(GameState.counted(fighter.slain)), lost \(GameState.counted(fighter.lost)), and \(fate)")
+        }
+        if own.count > BattleReport.companiesTold {
+            let more = own.count - BattleReport.companiesTold
+            lines.append("And \(more == 1 ? "1 more company" : "\(more) more companies") of your House")
+        }
+        let allies = field.fighters(of: side).filter { $0.owner != viewer }
+        if !allies.isEmpty {
+            let companies = allies.count == 1 ? "1 company" : "\(allies.count) companies"
+            lines.append("Your allies' \(companies) slew \(GameState.counted(allies.reduce(0) { $0 + $1.slain })), "
+                         + "lost \(GameState.counted(allies.reduce(0) { $0 + $1.lost }))")
+        }
+        func told(_ side: Int, _ title: String) -> BattleReport.Side {
+            BattleReport.Side(title: title, houses: field.sides[side].count, companies: field.fighters(of: side).count,
+                              troops: field.troops(of: side), lost: field.lost(by: side), fallen: field.fallen(of: side))
+        }
+        var report = BattleReport(id: id, watch: watch, title: title, place: placeName(of: field.at), outcome: outcome, lines: lines)
+        report.sides = [told(side, "Your side"), told(foe, "The foe")]
+        return report
     }
 
     /// A battle the viewer's House fought, as its report tells it; nil if

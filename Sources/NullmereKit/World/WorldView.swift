@@ -116,6 +116,8 @@ struct WorldMarks: View {
     /// How far above its heart a company's marks stand when its figures are
     /// drawn, in world units: over their heads.
     static let companyLift = 0.62
+    /// And a field of battle's, over the heads of those fighting in it.
+    static let fieldLift = 1.25
     /// And a hold's, over its keep and the seat's banner.
     static func holdLift(seat: Bool) -> Double { seat ? 1.62 : 1.12 }
 
@@ -343,6 +345,7 @@ struct WorldMarks: View {
             }
 
             // Companies the player can see.
+            let fighting = Set(state.fieldsOfBattle.flatMap { $0.fighters.filter(\.standing).map(\.unit) })
             for unit in state.units where unit.owner == player || session.isVisible(unit.position) {
                 var point = position(of: unit, at: date, camera: camera, size: size)
                 guard point.x > -40, point.y > -40, point.x < size.width + 40, point.y < size.height + 40 else { continue }
@@ -388,6 +391,39 @@ struct WorldMarks: View {
                     context.fill(Path(bar), with: .color(Color.black.opacity(0.7)))
                     context.fill(Path(CGRect(x: bar.minX, y: bar.minY, width: bar.width * fraction, height: 2)),
                                  with: .color(fraction > 0.5 ? Palette.good : Palette.bad))
+                }
+                // In a field of battle, its troops beneath it.
+                if fighting.contains(unit.id) {
+                    let troops = Text(verbatim: GameState.counted(state.troops(of: unit))).font(.nm(8.5, weight: .medium))
+                    let at = CGPoint(x: point.x, y: point.y + r + 11)
+                    context.draw(troops.foregroundStyle(Color.black.opacity(0.85)), at: CGPoint(x: at.x + 0.7, y: at.y + 0.7))
+                    context.draw(troops.foregroundStyle(Palette.text(0.9)), at: at)
+                }
+            }
+
+            // Fields of battle: crossed blades over each one's heart, and
+            // either side of them the troops each side has standing there,
+            // in the colours of the House that leads it.
+            for field in state.fieldsOfBattle {
+                let point = session.viewPoint(of: field.at, in: size, lift: modelsDrawn ? WorldMarks.fieldLift : 0)
+                guard point.x > -80, point.y > -80, point.x < size.width + 80, point.y < size.height + 80 else { continue }
+                let y = point.y - (modelsDrawn ? 0 : min(max(scale * 0.34, 7), 16) * 2.4)
+                let blade = min(max(scale * 0.2, 5), 9)
+                var blades = Path()
+                blades.move(to: CGPoint(x: point.x - blade, y: y - blade))
+                blades.addLine(to: CGPoint(x: point.x + blade, y: y + blade))
+                blades.move(to: CGPoint(x: point.x + blade, y: y - blade))
+                blades.addLine(to: CGPoint(x: point.x - blade, y: y + blade))
+                context.stroke(blades, with: .color(Color.black.opacity(0.6)), lineWidth: 3.4)
+                context.stroke(blades, with: .color(Color(red: 1, green: 0.9, blue: 0.7)), lineWidth: 1.6)
+                for side in field.sides.indices {
+                    let leader = field.sides[side][0]
+                    let colour = state.houses.indices.contains(leader) ? Palette.house(state.houses[leader]) : Palette.text(0.8)
+                    let troops = Text(verbatim: GameState.counted(field.inField(side).troops)).font(.nm(10.5, weight: .medium))
+                    let at = CGPoint(x: point.x + (side == 0 ? -1 : 1) * (blade + 5), y: y)
+                    let anchor: UnitPoint = side == 0 ? .trailing : .leading
+                    context.draw(troops.foregroundStyle(Color.black.opacity(0.85)), at: CGPoint(x: at.x + 0.8, y: at.y + 0.8), anchor: anchor)
+                    context.draw(troops.foregroundStyle(colour), at: at, anchor: anchor)
                 }
             }
         }

@@ -186,7 +186,8 @@ extension GameState {
             }
             holds[index].struck = false
         }
-        for index in units.indices where !units[index].acted && units[index].health < 100 {
+        // A company that fought this watch, or stands in a battle, doesn't heal.
+        for index in units.indices where !units[index].acted && units[index].health < 100 && field(of: units[index].id) == nil {
             let unit = units[index]
             var amount = 10 + bonus(.healing, for: unit)
             if let tile = map.index(of: unit.position), let holdID = owners[tile], hold(holdID)?.owner == unit.owner {

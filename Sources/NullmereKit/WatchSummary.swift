@@ -35,7 +35,10 @@ struct WatchSummary: Equatable {
         var notes: [String] = []
         for event in events {
             switch event {
-            case .battle(let battle) where battle.attackerOwner == player || battle.defenderOwner == player:
+            // A field of battle counts once, as it is joined; its blows don't.
+            case .battle(let battle) where battle.field == nil && (battle.attackerOwner == player || battle.defenderOwner == player):
+                battles += 1
+            case .fieldJoined(_, _, let first, let second) where first == player || second == player:
                 battles += 1
             case .holdCaptured(let hold, let from, let by) where from == player || by == player:
                 let name = after.hold(hold)?.name ?? "a hold"
