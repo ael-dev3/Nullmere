@@ -254,10 +254,10 @@ struct RivalMind {
     }
 
     /// Every other House whose Moonspire has reached its third stage, the
-    /// highest first.
+    /// highest first: never a vassal's, which can't rise while it serves.
     func spireThreats(in state: GameState) -> [Int] {
         state.holds
-            .filter { $0.owner != house && $0.isSeat && $0.level(.moonspire) >= 3 }
+            .filter { $0.owner != house && $0.isSeat && $0.level(.moonspire) >= 3 && state.houses[$0.owner].liege == nil }
             .sorted { ($0.level(.moonspire), tieBreak($0.owner, in: state)) > ($1.level(.moonspire), tieBreak($1.owner, in: state)) }
             .map(\.owner)
     }
@@ -340,7 +340,8 @@ struct RivalMind {
 
         if hold.isSeat {
             // Only a House that can see it through: one of holds enough to
-            // store its last stage, or the most renowned on the lake.
+            // store its last stage, or the most renowned on the lake, and
+            // never a vassal, which raises none while it serves.
             // The builders begin early, the wary soon after, behind walls;
             // the warlike first take the land.
             let spireFrom: Int
@@ -352,7 +353,7 @@ struct RivalMind {
             let renown = state.renown(of: house)
             let foremost = state.livingHouses.allSatisfy { $0.id == house || state.renown(of: $0.id) <= renown }
             let able = state.holds(of: house).count >= 4 || foremost
-            if state.watch >= spireFrom, !threatened, able || hold.level(.moonspire) > 0 { wishes.append(.moonspire) }
+            if state.watch >= spireFrom, !threatened, me.liege == nil, able || hold.level(.moonspire) > 0 { wishes.append(.moonspire) }
             if me.temperament == .ambitious, hold.level(.musterHall) < 3 { wishes.append(.musterHall) }
             if hold.level(.musterHall) < 2, state.watch >= 14 { wishes.append(.musterHall) }
             // Riders, for a House at war or with stores to spare.

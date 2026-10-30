@@ -479,6 +479,7 @@ final class GuideTests: XCTestCase {
         XCTAssertEqual(Guide.holdsForTheLastSpire, 4)
         let winning = Guide.sections.first { $0.title == "Winning" }?.lines.joined(separator: " ") ?? ""
         XCTAssertTrue(winning.contains("960 stone, more than a House of fewer than 4 holds can keep"), winning)
+        XCTAssertTrue(winning.contains("nor win, nor raise its Moonspire while it serves"), winning)
     }
 
     @MainActor

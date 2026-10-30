@@ -100,3 +100,61 @@ final class WarInAWatchTests: XCTestCase {
     }
 }
 
+/// A vassal can't win while it serves: its finished Moonspire wins
+/// nothing, it raises no stage of one while sworn, the works on one stop
+/// when it bends the knee, and no one fears a tower that can't rise.
+final class VassalSpireTests: XCTestCase {
+    private func world() -> GameState {
+        GameState(settings: GameSettings(seedText: "a vassal's tower", keepers: 1))
+    }
+
+    func testAVassalsFinishedMoonspireWinsNothingWhileItServes() throws {
+        var state = world()
+        let vassal = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
+        state.houses[vassal].liege = state.player
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == vassal && $0.isSeat })
+        state.holds[seat].levels[.moonspire] = BuildingKind.moonspire.maxLevel
+        _ = state.endWatch()
+        XCTAssertNil(state.outcome, "Sworn to another, it can't be ascendant")
+        XCTAssertNil(state.standing(of: vassal).threat, "and the race warns of nothing")
+    }
+
+    func testAVassalRaisesNoStageOfTheMoonspire() throws {
+        var state = world()
+        let vassal = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
+        state.houses[vassal].temperament = .steadfast
+        state.watch = 40
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == vassal && $0.isSeat })
+        // Everything else built, stores to spare and the most renowned on
+        // the lake: free, it would begin.
+        for kind in BuildingKind.allCases where kind != .moonspire { state.holds[seat].levels[kind] = kind.maxLevel }
+        state.houses[vassal].stock = Stock(grain: 300, timber: 300, stone: 300, moonsalt: 100)
+        var free = state
+        _ = free.stewardTurn(for: vassal)
+        XCTAssertEqual(free.holds[seat].project?.kind, .moonspire, "Free, it begins")
+        state.houses[vassal].liege = state.player
+        XCTAssertThrowsError(try state.perform(.build(hold: state.holds[seat].id, kind: .moonspire), as: vassal)) { error in
+            XCTAssertEqual(error as? RuleError, .notApplicable, "The rules refuse it")
+        }
+        _ = state.stewardTurn(for: vassal)
+        XCTAssertNotEqual(state.holds[seat].project?.kind, .moonspire, "Sworn, it doesn't")
+    }
+
+    func testBendingTheKneeStopsTheWorksOnAMoonspire() throws {
+        var state = world()
+        let stewards = state.houses.filter { !$0.isPlayer }.map(\.id)
+        let (vassal, liege) = (stewards[0], stewards[1])
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == vassal && $0.isSeat })
+        state.holds[seat].levels[.moonspire] = 4
+        state.holds[seat].project = Hold.Project(kind: .moonspire, targetLevel: 5, watchesLeft: 1)
+        XCTAssertEqual(RivalMind(house: liege).spireThreats(in: state), [vassal])
+        _ = try state.propose(.fealty, from: vassal, to: liege)
+        XCTAssertEqual(state.houses[vassal].liege, liege)
+        XCTAssertNil(state.holds[seat].project, "Its tower's works stop")
+        XCTAssertEqual(state.holds[seat].level(.moonspire), 4, "What stands, stands")
+        XCTAssertEqual(RivalMind(house: liege).spireThreats(in: state), [], "A tower that can't rise is feared by no one")
+        _ = state.endWatch()
+        XCTAssertNil(state.outcome)
+    }
+}
+

@@ -472,9 +472,10 @@ twice.
 - **Fealty.** A steward's House that loses its seat with four holds or
   fewer left, and no vassals of its own, bends the knee to the House that
   took it, if that House is sworn to no one; and a beaten House may offer
-  fealty rather than fall. A vassal's holds count with its liege's and it
-  can never turn on its liege; a liege who turns on a vassal frees it, and
-  a liege's fall frees all its vassals.
+  fealty rather than fall. A vassal's holds count with its liege's, and it
+  can never turn on its liege, nor win, nor raise its Moonspire while it
+  serves: the works on its tower stop when it bends the knee. A liege who
+  turns on a vassal frees it, and a liege's fall frees all its vassals.
 - **How ages end.** In 528 ages played through by stewards alone, the
   Moonspire decided seven in ten and dominion the rest; an age ran 157
   watches at the median, and two in five saw a House fall outright. The

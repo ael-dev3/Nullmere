@@ -182,8 +182,10 @@ extension GameState {
         guard outcome == nil else { return [] }
         let living = livingHouses
         // Two Moonspires finished in one watch: as with dominion, the
-        // greater realm, then the greater renown, not the earlier seat.
+        // greater realm, then the greater renown, not the earlier seat. A
+        // vassal can't win while it serves.
         let builders = Set(holds.filter { $0.level(.moonspire) >= BuildingKind.moonspire.maxLevel }.map(\.owner))
+            .filter { houses[$0].liege == nil }
         if let builder = builders.max(by: { a, b in (realm(of: a), renown(of: a), -a) < (realm(of: b), renown(of: b), -b) }) {
             let result = Outcome(winner: builder, kind: .ascendancy, watch: watch)
             outcome = result

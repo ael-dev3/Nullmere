@@ -414,6 +414,8 @@ extension GameState {
         let hold = holds[index]
         guard hold.project == nil else { throw .busy }
         if kind.requiresSeat, !hold.isSeat { throw .seatOnly }
+        // A vassal raises no Moonspire while it serves.
+        if kind == .moonspire, houses[house].liege != nil { throw .notApplicable }
         let level = hold.level(kind) + 1
         guard level <= kind.maxLevel else { throw .maxLevel }
         let cost = kind.cost(toLevel: level)
@@ -586,6 +588,10 @@ extension GameState {
         case .fealty:
             setStance(.pact, between: proposer, and: other, by: actor)
             houses[proposer].liege = other
+            // A vassal raises no Moonspire: the works on its tower stop.
+            for index in holds.indices where holds[index].owner == proposer && holds[index].project?.kind == .moonspire {
+                holds[index].project = nil
+            }
             record(.pact, [proposer, other], "\(houses[proposer].title) bends the knee and swears fealty to \(houses[other].title).")
         case .tribute:
             let paid = tribute(from: other)
