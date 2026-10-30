@@ -20,7 +20,8 @@ public struct Camera: Equatable, Sendable {
     public var heading: Double
 
     public static let minimumScale = 9.0
-    public static let maximumScale = 96.0
+    /// Close enough to see a company's every figure.
+    public static let maximumScale = 180.0
     public static let minimumTilt = 0.25
     public static let maximumTilt = 1.0
     public static let defaultTilt = 0.72
@@ -188,15 +189,30 @@ public struct Camera: Equatable, Sendable {
         pan(dx: dx, dy: dy, in: Camera.usualView)
     }
 
+    /// How far the view leans at a scale, left to itself: down on the
+    /// whole map from afar, toward the horizon close in among the models.
+    public static func leaning(at scale: Double) -> Double {
+        let t = min(max(log(scale / minimumScale) / log(maximumScale / minimumScale), 0), 1)
+        return 0.55 + 0.42 * t
+    }
+
+    /// Takes the scale to `scale * factor`, the view leaning as the scale
+    /// does and keeping whatever lean the keeper gave it.
+    private mutating func rescale(by factor: Double) {
+        let lean = tilt - Camera.leaning(at: scale)
+        scale = min(max(scale * factor, Camera.minimumScale), Camera.maximumScale)
+        tilt = min(max(Camera.leaning(at: scale) + lean, Camera.minimumTilt), Camera.maximumTilt)
+    }
+
     /// Zooms by `factor` about the middle of the view: the keys' zoom.
     public mutating func zoom(by factor: Double) {
-        scale = min(max(scale * factor, Camera.minimumScale), Camera.maximumScale)
+        rescale(by: factor)
     }
 
     /// Zooms by `factor`, keeping the map point under `anchor` in place.
     public mutating func zoom(by factor: Double, around anchor: CGPoint, in size: CGSize) {
         let before = world(at: anchor, in: size)
-        scale = min(max(scale * factor, Camera.minimumScale), Camera.maximumScale)
+        rescale(by: factor)
         let after = world(at: anchor, in: size)
         centerX += before.x - after.x
         centerY += before.y - after.y

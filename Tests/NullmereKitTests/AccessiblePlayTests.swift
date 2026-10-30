@@ -270,7 +270,7 @@ final class AccessiblePlayTests: XCTestCase {
     func testVoiceOversCursorRingsAHex() {
         XCTAssertEqual(MapAccessibility.ring(at: 30), 48, accuracy: 0.001)
         XCTAssertEqual(MapAccessibility.ring(at: Camera.minimumScale), 24, "Never smaller than a click's target")
-        XCTAssertEqual(MapAccessibility.ring(at: Camera.maximumScale), 153.6, accuracy: 0.001)
+        XCTAssertEqual(MapAccessibility.ring(at: Camera.maximumScale), Camera.maximumScale * 1.6, accuracy: 0.001, "A hex across")
     }
 
     func testWhatColourSaysIsSaidInShape() throws {

@@ -87,6 +87,22 @@ final class CameraTests: XCTestCase {
         XCTAssertEqual(camera.scale, Camera.minimumScale)
     }
 
+    func testZoomingInLeansTowardTheHorizonAndKeepsTheKeepersLean() {
+        XCTAssertEqual(Camera.leaning(at: 30), Camera.defaultTilt, accuracy: 0.01, "the usual view leans as it always has")
+        XCTAssertLessThan(Camera.leaning(at: Camera.minimumScale), Camera.leaning(at: Camera.maximumScale))
+        var camera = Camera(scale: 30, tilt: Camera.leaning(at: 30))
+        camera.zoom(by: 4)
+        XCTAssertEqual(camera.tilt, Camera.leaning(at: 120), accuracy: 1e-9, "close in, toward the horizon")
+        camera.zoom(by: 0.1)
+        XCTAssertEqual(camera.tilt, Camera.leaning(at: 12), accuracy: 1e-9, "afar, down on the map")
+        camera.lean(by: 0.1)
+        camera.zoom(by: 2.5)
+        XCTAssertEqual(camera.tilt, Camera.leaning(at: 30) + 0.1, accuracy: 1e-9, "the keeper's lean kept")
+        camera.lean(by: 10)
+        camera.zoom(by: 1.5)
+        XCTAssertEqual(camera.tilt, Camera.maximumTilt, "never past the most it leans")
+    }
+
     func testTurningAndLeaning() {
         var camera = Camera()
         camera.turn(by: .pi / 2)
