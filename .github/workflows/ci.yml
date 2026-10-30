@@ -95,6 +95,20 @@ jobs:
           mkdir -p build
           python3 scripts/perf-check.py build-test.log perf/baseline.json --json build/perf.json | tee build/perf-check.log
 
+      # The release app finds Apple's on-device model ready on this runner
+      # (the launch below asks the framework itself, as a keeper's Mac
+      # would): so the voices are heard here too, each kind of envoy and
+      # chronicle entry spoken by the model, every line held to the voices'
+      # rules and printed to be read. Watched before it is held to.
+      - name: The voices, from the runner's own model
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          mkdir -p build
+          NULLMERE_LIVE_VOICES=1 swift test --skip-build --enable-code-coverage --filter VoicesLiveTests 2>&1 | tee build/voices-test.log \
+            | grep -vE "^Test (Suite|Case)|^\s*Executed" | tail -n 60
+
       # Xcode 26 and later ship the Metal compiler separately. Fetch it only
       # when no installed Xcode has one; check-shader.sh also tries them all.
       # A slow or failed download only skips the offline compile (with a
@@ -168,8 +182,8 @@ jobs:
         run: scripts/rehearse-release.sh 2>&1 | tee build/rehearsal.log
 
       # Opens the real app on the runner: it must keep running and render its
-      # lake with Metal. The runner can't use Apple Intelligence, so the
-      # launcher opens on its requirement screen. The screenshot (Dock
+      # lake with Metal, and hear from Apple's Foundation Models whether the
+      # on-device model is ready, then show the matching screen. The screenshot (Dock
       # included) is kept as an artifact, and a small copy is printed in the
       # log for readers without artifact access.
       - name: Launch the app
@@ -294,6 +308,7 @@ jobs:
           grep -h "Test skipped" build-test.log 2>/dev/null | sed 's|^.*/Tests/||' | sort -u | head -20 || true
           cat build/coverage.log 2>/dev/null || true
           cat build/perf-check.log 2>/dev/null || true
+          cat build/voices-report.txt 2>/dev/null || true
           grep -h "REHEARSAL\|error:" build/rehearsal.log 2>/dev/null || true
           grep -hE "error|warning" build/smoke-*.log 2>/dev/null | head -20 || true
           tail -n 15 build/game-stdout.log 2>/dev/null || true
