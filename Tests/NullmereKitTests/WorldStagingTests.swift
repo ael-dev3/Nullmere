@@ -35,12 +35,19 @@ final class WorldStagingTests: XCTestCase {
         let keys = Set((frame.fixed + frame.batches).map(\.key))
         XCTAssertTrue(frame.fixed.allSatisfy { if case .furnishing = $0.key { return true } else { return false } },
                       "only the land's furniture stands still")
-        XCTAssertTrue(keys.contains(.keep(seat: true)), "the keeper's seat")
+        // The keeper's seat, a keep as its House's people build one.
+        XCTAssertTrue(keys.contains(.keepOf(session.state.heritage(of: session.player), seat: true)), "the keeper's seat")
         XCTAssertTrue(keys.contains { if case .furnishing = $0 { return true } else { return false } }, "the land's furniture")
         XCTAssertTrue(keys.contains { if case .figure = $0 { return true } else { return false } }, "the keeper's companies")
         XCTAssertTrue(keys.contains(.prop(.bird)), "birds over the water")
         let known = session.state.holds.filter { session.isExplored($0.position) }.count
-        XCTAssertEqual(frame.batches.filter { if case .keep = $0.key { return true } else { return false } }.flatMap(\.instances).count, known,
+        func isKeep(_ key: ModelKey) -> Bool {
+            switch key {
+            case .keep, .keepOf: return true
+            default: return false
+            }
+        }
+        XCTAssertEqual(frame.batches.filter { isKeep($0.key) }.flatMap(\.instances).count, known,
                        "a keep for each hold the keeper knows, and none for the rest")
         XCTAssertLessThan(known, session.state.holds.count)
         XCTAssertGreaterThan(frame.palette.count, 1, "the figures posed")

@@ -99,11 +99,15 @@ extension GameState {
                 return Tidings("\(houses[house].title) raises a standard of \(alliance.name) \(place).", .good)
             }
             return Tidings("\(houses[house].title) raises a standard of \(alliance.name) \(place).", .neutral)
-        case .standardStruck(let id, let ward, let by, _):
-            guard let standard = standard(id), let alliance = alliance(standard.alliance) else { return nil }
-            if by == viewer { return Tidings("Your company strikes a standard of \(alliance.name): its ward \(ward) of \(Standard.maximumWard).", .neutral) }
-            guard alliance.members.contains(viewer) else { return nil }
-            return Tidings("\(houses[by].title) strikes your alliance's standard \(placeName(of: standard.position)): its ward \(ward) of \(Standard.maximumWard).", .bad)
+        case .standardStruck(let id, let ward, let by, let at):
+            // Its striker is told even of a standard since torn down.
+            let sworn = standard(id).flatMap { alliance($0.alliance) }
+            if by == viewer {
+                return Tidings("Your company strikes a standard\(sworn.map { " of \($0.name)" } ?? ""): its ward \(ward) of \(Standard.maximumWard).",
+                               .neutral)
+            }
+            guard let sworn, sworn.members.contains(viewer), houses.indices.contains(by) else { return nil }
+            return Tidings("\(houses[by].title) strikes your alliance's standard \(placeName(of: at)): its ward \(ward) of \(Standard.maximumWard).", .bad)
         case .standardTorn(_, let id, let by, let at):
             let name = alliance(id)?.name ?? "a fallen alliance"
             if let by, by == viewer { return Tidings("Your company tears down a standard of \(name).", .good) }

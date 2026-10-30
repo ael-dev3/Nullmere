@@ -177,6 +177,8 @@ final class StandardTests: XCTestCase {
         XCTAssertEqual(stage.state.tidings(of: struck, for: stage.ally)?.tone, .bad)
         XCTAssertNil(stage.state.tidings(of: struck, for: outsider))
         XCTAssertNil(stage.state.tidings(of: .standardStruck(standard: 9_999, ward: 0, by: foe, at: spot), for: stage.me))
+        XCTAssertEqual(stage.state.tidings(of: .standardStruck(standard: 9_999, ward: 0, by: foe, at: spot), for: foe)?.text,
+                       "Your company strikes a standard: its ward 0 of 60.", "Its striker is told even of a standard since torn down")
         let torn = GameEvent.standardTorn(standard: standard.id, alliance: alliance.id, by: foe, at: spot)
         XCTAssertEqual(stage.state.tidings(of: torn, for: outsider)?.text,
                        "\(stage.state.houses[foe].title) tears down a standard of \(alliance.name) \(stage.state.placeName(of: spot)).")
