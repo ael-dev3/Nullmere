@@ -170,6 +170,58 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(stage.sites([]).isEmpty)
     }
 
+    func testHolySitesStandInTheirHexesHeartsInTheirHoldersColours() throws {
+        let stage = stage()
+        let hexes = Array(Self.state.map.hexes.filter { Self.state.map[$0]?.terrain.isPassable == true }.prefix(3))
+        let red = Vec4(0.8, 0.1, 0.1, 1)
+        let batches = stage.shrines([(.moonwell, hexes[0], red), (.stillStone, hexes[1], nil), (.moonwell, hexes[2], nil)])
+        XCTAssertEqual(batches.map(\.key), [.shrine(.moonwell), .shrine(.stillStone)], "One batch a kind, in the order first met")
+        let moonwells = try XCTUnwrap(batches.first).instances
+        XCTAssertEqual(moonwells.count, 2)
+        XCTAssertEqual(moonwells[0].colour, red, "Its holder's colour")
+        XCTAssertEqual(moonwells[1].colour, .zero, "Grey while none holds it")
+        for (instance, hex) in zip(moonwells, [hexes[0], hexes[2]]) {
+            let centre = Relief.centre(of: hex)
+            XCTAssertEqual(instance.model.c3.x, centre.x, accuracy: 1e-4)
+            XCTAssertEqual(instance.model.c3.z, centre.z, accuracy: 1e-4)
+            XCTAssertEqual(instance.model.c3.y, stage.ground(atX: centre.x, z: centre.z) - Scatter.sink, accuracy: 1e-4)
+            XCTAssertEqual(instance.hex, SIMD2(Int32(hex.q), Int32(hex.r)))
+        }
+        XCTAssertTrue(stage.shrines([]).isEmpty)
+    }
+
+    func testFirefliesWanderOverTheReedsAndGrassNearest() {
+        let stage = stage()
+        _ = stage.furnish(occupied: [], holds: [])
+        let focus = Vec3(0, 0, 0)
+        let spots = stage.fireflySpots(near: focus, within: 6, most: 4)
+        XCTAssertLessThanOrEqual(spots.count, 4)
+        XCTAssertFalse(spots.isEmpty, "Reeds or grass somewhere near the lake's heart")
+        let layout = HexLayout(size: 1)
+        for spot in spots {
+            let hex = layout.hex(atX: Double(spot.x), y: Double(spot.z))
+            XCTAssertLessThanOrEqual(hex.distance(to: .origin), 6, "Within reach")
+        }
+        XCTAssertLessThanOrEqual(stage.fireflySpots(near: focus, within: 6, most: 1).count, 1)
+    }
+
+    func testACompanyEasesOutOfItsLastClipFigureByFigure() throws {
+        let unit = try XCTUnwrap(Self.state.units.first { $0.kind == .spear })
+        let centre = Relief.centre(of: unit.position)
+        let at = Vec3(centre.x, Self.relief.height(of: unit.position), centre.z)
+        func company(_ blend: CompanyPose.Blend?) -> CompanyPose {
+            CompanyPose(unit: unit.id, key: .figure(.spear, tier: 1), sigil: 0, health: 100, hex: unit.position, position: at,
+                        heading: 0, clip: .march, clipTime: 0.4, isOwn: true, blend: blend)
+        }
+        var plain = SceneFrame(), eased = SceneFrame()
+        _ = stage().companies([company(nil)], houses: [], into: &plain)
+        _ = stage().companies([company(CompanyPose.Blend(clip: .idle, time: 0.2, weight: 0.6))], houses: [], into: &eased)
+        XCTAssertNotEqual(plain.palette, eased.palette, "Still part in the clip it leaves")
+        var leavingOnce = SceneFrame()
+        _ = stage().companies([company(CompanyPose.Blend(clip: .attack, time: 0.1, weight: 0.5))], houses: [], into: &leavingOnce)
+        XCTAssertNotEqual(leavingOnce.palette, eased.palette, "Out of a strike, not out of standing")
+    }
+
     func testTheArchiveStandsAsTheStudy() {
         XCTAssertEqual(ModelKey.work(.archive, level: 3).canonical, .study(level: 3))
         XCTAssertEqual(HoldLayout.Work(.archive), .study)
