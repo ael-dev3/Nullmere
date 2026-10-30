@@ -65,6 +65,7 @@ enum Guide {
         ]),
         Section(title: "Alliances and rallies", lines: [
             "Raise a banner in Alliance (5), or ask to join one; its leader invites and admits. An alliance takes a third of the lake's seats at most. Allies share their sight, can't make war on each other, and help each other's works, musters and studies: every second help takes a watch off.",
+            "Words (7) carry a line to every keeper of the realm, or to your alliance alone: plain words, with no addresses.",
             "Call a rally from an enemy hold's panel: your alliance's companies gather at your hold with a Muster Hall for one to four watches, then march together at the slowest's pace and strike together. Send a company to keep an ally's gates, and it strikes back at those who strike them.",
         ]),
         Section(title: "Happenings and charges", lines: [
@@ -90,7 +91,7 @@ enum Guide {
             "With Keyboard navigation on in System Settings, Tab, the arrows, Space and Return move through and press the controls as everywhere on the Mac: . and WASD stay the game's, and the arrows pan once the map has the keyboard",
             "Without a pointer: choose a company, pan until where it should go is in the middle of the view, then M to march there; to strike, M shows the odds and M again strikes. VoiceOver says what lies in the middle as you pan, and how far it is from your company",
             "In Settings, Letter keys set to With ⌥ makes every letter, number and mark key need ⌥, so a stray key does nothing",
-            "1: Houses · 2: Chronicle · 3: Archive · 4: Commanders · 5: Alliance · 6: the Realm · ? or ⌘?: this Guide · ⇧⌘W: leave the world · ⌘,: Settings",
+            "1: Houses · 2: Chronicle · 3: Archive · 4: Commanders · 5: Alliance · 6: the Realm · 7: Words · ? or ⌘?: this Guide · ⇧⌘W: leave the world · ⌘,: Settings",
             "⌘↩: ready · ⇧⌘↩: stay ready until something needs you, up to ten watches",
             "⇧⌘M: sound on or off · ⇧⌘U: the music · ⇧⌘+: larger text",
         ]),

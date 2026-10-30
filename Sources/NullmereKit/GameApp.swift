@@ -505,6 +505,7 @@ public final class GameApp {
         if show.contains("commanders") { session?.panel = .commanders }
         if show.contains("alliance") { session?.panel = .alliance }
         if show.contains("realm") { session?.panel = .realm }
+        if show.contains("words") { session?.panel = .words }
         // "watch" makes the keeper ready a little before CI photographs the
         // screen, so the watch's card is on it.
         if show.contains("watch"), let delay = Double(environment["NULLMERE_WATCH_AFTER"] ?? "12.5") {

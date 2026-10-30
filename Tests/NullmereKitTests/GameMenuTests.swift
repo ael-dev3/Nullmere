@@ -44,7 +44,7 @@ final class GameMenuTests: XCTestCase {
         XCTAssertTrue(GameMenu.allCases.allSatisfy { $0.isEnabled(in: app) })
 
         for (item, panel) in [(GameMenu.houses, GameSession.Panel.houses), (.chronicle, .chronicle), (.guide, .guide),
-                              (.archive, .archive), (.commanders, .commanders), (.alliance, .alliance), (.realm, .realm)] {
+                              (.archive, .archive), (.commanders, .commanders), (.alliance, .alliance), (.realm, .realm), (.words, .words)] {
             item.perform(in: app)
             XCTAssertEqual(session.panel, panel, item.title)
             item.perform(in: app)

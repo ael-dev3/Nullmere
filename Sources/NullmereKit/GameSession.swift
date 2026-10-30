@@ -45,6 +45,8 @@ public final class GameSession {
         case alliance
         /// The happening, the charges, the deeds and might.
         case realm
+        /// The keepers' words, to the realm and to the alliance.
+        case words
     }
 
     /// A short line of news for the feed under the top bar.
@@ -1072,6 +1074,7 @@ public final class GameSession {
         case .answerInvitation(_, let accept), .answerRequest(_, let accept): return accept ? .banner : .refusal
         case .expel: return .refusal
         case .callRally: return .horn
+        case .say: return .parley
         default: return .select
         }
     }
@@ -1121,6 +1124,7 @@ public final class GameSession {
         case .happeningEnded(_, let leaders): return leaders.contains(player) ? .triumph : .herald
         case .deedDone(let house, _) where house == player: return .honour
         case .chargeDone(let house, _, _) where house == player: return .honour
+        case .said(let word) where word.from != player: return .parley
         default: return nil
         }
     }

@@ -146,6 +146,10 @@ extension GameState {
         case .deedDone(let house, let deed):
             guard house == viewer else { return nil }
             return Tidings("A deed of your House, \(deed.title): it has \(deed.deed).", .good)
+        case .said(let word):
+            guard word.from != viewer, houses.indices.contains(word.from) else { return nil }
+            let channel = word.alliance == nil ? "" : " to your alliance"
+            return Tidings("\(houses[word.from].title)\(channel): “\(word.text)”", .neutral)
         case .chargeDone(let house, let charge, let reward):
             guard house == viewer else { return nil }
             let next = self.charge(of: viewer).map { " Next: \($0.title.prefix(1).lowercased() + $0.title.dropFirst())." } ?? ""

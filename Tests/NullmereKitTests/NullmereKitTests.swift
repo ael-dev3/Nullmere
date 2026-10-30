@@ -430,7 +430,7 @@ final class GuideTests: XCTestCase {
                                 "Houses", "Alliances and rallies", "Happenings and charges", "Omens", "Winning", "Keys"])
         XCTAssertTrue(Guide.sections.allSatisfy { !$0.lines.isEmpty && $0.lines.allSatisfy { $0.count > 10 } })
         let keys = Guide.sections.last!.lines.joined(separator: " ")
-        for key in ["Tab", "H:", "F:", "B:", "Esc", "1:", "2:", "3:", "4:", "5:", "6:", "?:", "⌘↩", "⇧⌘↩", "⇧⌘W", "⇧⌘M", "⇧⌘U", "⇧⌘+",
+        for key in ["Tab", "H:", "F:", "B:", "Esc", "1:", "2:", "3:", "4:", "5:", "6:", "7:", "?:", "⌘↩", "⇧⌘↩", "⇧⌘W", "⇧⌘M", "⇧⌘U", "⇧⌘+",
                     "] and [", "Space or Return", "Page Up", "With ⌥"] {
             XCTAssertTrue(keys.contains(key), "The guide names \(key)")
         }
@@ -709,6 +709,7 @@ final class CueMappingTests: XCTestCase {
             (.happeningEnded(kind: .longHunt, leaders: [foe]), .herald),
             (.deedDone(house: player, deed: .founder), .honour),
             (.chargeDone(house: player, charge: .raiseGranary, reward: Stock(grain: 50)), .honour),
+            (.said(Word(id: 5, from: foe, watch: 1, text: "Well met", alliance: nil)), .parley),
         ]
         for (event, cue) in concerning {
             XCTAssertEqual(GameSession.cues(for: [event], in: state, player: player), [.watch, cue], "\(event)")
@@ -723,6 +724,7 @@ final class CueMappingTests: XCTestCase {
             .rallyCalled(rally: 3, caller: foe, target: 41), .rallyStruck(rally: 3, caller: foe, target: 41, defender: others, taken: true),
             .happeningMark(house: foe, kind: .longHunt, mark: 1, reward: Stock(grain: 5)), .deedDone(house: foe, deed: .founder),
             .chargeDone(house: foe, charge: .raiseGranary, reward: Stock(grain: 5)),
+            .said(Word(id: 6, from: player, watch: 1, text: "My own words", alliance: nil)),
         ]
         XCTAssertEqual(GameSession.cues(for: quiet, in: state, player: player), [.watch])
         // Every new order has its own sound, not the plain click.
@@ -736,6 +738,7 @@ final class CueMappingTests: XCTestCase {
             (.answerInvitation(alliance: 77, accept: false), .refusal), (.answerRequest(house: foe, accept: true), .banner),
             (.answerRequest(house: foe, accept: false), .refusal), (.expel(house: foe), .refusal),
             (.callRally(from: seat.id, against: 40, watches: 2), .horn),
+            (.say(words: "Well met", toAlliance: false), .parley),
         ]
         for (command, cue) in orders {
             XCTAssertEqual(GameSession.cues(for: command, events: [], in: state, player: player), [cue], "\(command)")

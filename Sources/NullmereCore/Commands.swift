@@ -62,6 +62,8 @@ public enum Command: Codable, Equatable, Sendable {
     case joinRally(rally: Int, unit: Int)
     /// Send a company of war to keep the gates of an ally's hold.
     case reinforce(unit: Int, hold: Int)
+    /// A keeper's words, to the whole realm or to their alliance alone.
+    case say(words: String, toAlliance: Bool)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -173,6 +175,12 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case alreadyRallying
     /// A hold not of an ally's to keep.
     case notAnAllysHold
+    /// Words from a House no keeper holds.
+    case notAKeeper
+    /// Words that say nothing an envoy, or the realm, would carry.
+    case nothingToSay
+    /// As many words as a watch allows, said.
+    case saidEnough
 
     public var description: String {
         switch self {
@@ -253,6 +261,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .rallyFull: return "That rally's muster can take no more companies."
         case .alreadyRallying: return "That company is already sent to that rally."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
+        case .notAKeeper: return "Only a keeper's words are carried."
+        case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
+        case .saidEnough: return "You have said all a watch allows; say more as the watch turns."
         }
     }
 }
@@ -349,6 +360,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case deedDone(house: Int, deed: Deed)
     /// A House has done its charge, and is given stores.
     case chargeDone(house: Int, charge: Charge, reward: Stock)
+    /// A keeper's words, said to the realm or to their alliance.
+    case said(Word)
 }
 
 /// One exchange of blows.

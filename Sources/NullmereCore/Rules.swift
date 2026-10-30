@@ -65,6 +65,8 @@ extension GameState {
             return try gather(unitID, at: siteID, as: house)
         case let .foundAlliance(name):
             return try foundAlliance(named: name, by: house)
+        case let .say(words, toAlliance):
+            return try say(words, toAlliance: toAlliance, as: house)
         case let .inviteToAlliance(target):
             return try invite(target, by: house)
         case let .askToJoin(allianceID):

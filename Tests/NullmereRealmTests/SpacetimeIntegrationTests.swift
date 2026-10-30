@@ -255,6 +255,36 @@ final class SpacetimeIntegrationTests: XCTestCase {
         try await until("the trade kept, as Bel's stores show it") { (earB.world?.houses[houseB].stock.grain ?? 0) >= grain + 10 }
         print("REALM one keeper's envoy carried a trade to another, who took it, and the stores changed hands")
 
+        // Ama raises a banner and invites Bel, who joins it: one alliance of
+        // two, as both keepers see it. Bel leaves it again, as war between
+        // them would need.
+        let banner = "The Grey Hand " + suffix
+        await MainActor.run { a.send(.foundAlliance(name: banner)) }
+        try await until("Ama's banner raised") { earA.world?.alliance(of: houseA)?.name == banner }
+        await MainActor.run { a.send(.inviteToAlliance(house: houseB)) }
+        try await until("the invitation at Bel's gate") {
+            earB.world?.alliancesStanding.contains { $0.name == banner && $0.invited.contains(houseB) } == true
+        }
+        let allianceID = try await MainActor.run { try XCTUnwrap(earB.world?.alliancesStanding.first { $0.name == banner }?.id) }
+        await MainActor.run { b.send(.answerInvitation(alliance: allianceID, accept: true)) }
+        try await until("one alliance of two, as both keepers see it") {
+            earA.world?.areAllied(houseA, houseB) == true && earB.world?.areAllied(houseA, houseB) == true
+        }
+        print("REALM one keeper raised a banner and invited another, who joined it, and both saw the alliance")
+
+        // Words between them: to the whole realm, and to their alliance alone.
+        await MainActor.run { a.send(.say(words: "Well met, neighbour", toAlliance: false)) }
+        await MainActor.run { b.send(.say(words: "Our banner holds", toAlliance: true)) }
+        try await until("each keeper's words heard by the other") {
+            earB.world?.words(heardBy: houseB).contains { $0.from == houseA && $0.text == "Well met, neighbour" && $0.alliance == nil } == true
+                && earA.world?.words(heardBy: houseA).contains { $0.from == houseB && $0.text == "Our banner holds" && $0.alliance == allianceID } == true
+        }
+        print("REALM two keepers spoke across the realm and within their alliance, and each heard the other")
+        await MainActor.run { b.send(.leaveAlliance) }
+        try await until("Bel gone from the alliance, as both see it") {
+            earA.world?.areAllied(houseA, houseB) == false && earB.world?.alliance(of: houseB) == nil
+        }
+
         // Then war between them, as both see it.
         await MainActor.run { a.send(.declareWar(on: houseB)) }
         try await until("war, as both keepers see it") {

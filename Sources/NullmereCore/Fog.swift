@@ -64,6 +64,8 @@ extension GameState {
                 return known
             }
         }
+        // Words to the realm to all; an alliance's to its own Houses.
+        view.words = words.map { _ in words(heardBy: house) }
         // A rally only to its own side; a host on the march, also to the
         // House whose hold it marches on.
         view.rallies = rallies?.filter { rally in
@@ -135,6 +137,8 @@ extension GameState {
                 return true
             case .happeningMark(let owner, _, _, _), .deedDone(let owner, _), .chargeDone(let owner, _, _):
                 return owner == house
+            case .said(let word):
+                return word.alliance == nil || word.alliance == alliance(of: house)?.id
             case .promoted(_, let owner, _):
                 return owner == house
             case .ruinSearched(let at, let by, _):

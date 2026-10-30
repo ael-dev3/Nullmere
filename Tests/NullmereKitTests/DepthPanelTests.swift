@@ -202,6 +202,30 @@ final class DepthPanelTests: XCTestCase {
         }
     }
 
+    // MARK: Words
+
+    func testWordsAreHeardSaidAndShown() throws {
+        var state = world("pressed words")
+        let me = state.player
+        let other = (me + 1) % 6
+        state.houses[other].isPlayer = true
+        _ = try state.perform(.say(words: "Well met", toAlliance: false), as: other)
+        let (session, link) = session(state)
+        XCTAssertEqual(session.state.words(heardBy: me).map(\.text), ["Well met"])
+        draw(WordsPanel(session: session))
+        XCTAssertFalse(PressableButtons.press("Say"), "Nothing written, nothing to say")
+        XCTAssertTrue(session.perform(.say(words: "And you", toAlliance: false)))
+        XCTAssertEqual(link.sent.last, .say(words: "And you", toAlliance: false))
+        let said = session.state.wordsSaid
+        XCTAssertEqual(said.map(\.text), ["Well met", "And you"])
+        XCTAssertEqual(WordLine.speaker(try XCTUnwrap(said.last), in: session.state, player: me), "You")
+        XCTAssertEqual(WordLine.speaker(try XCTUnwrap(said.first), in: session.state, player: me), session.state.houses[other].title)
+        XCTAssertFalse(session.perform(.say(words: "   ", toAlliance: false)), "Nothing to say is refused")
+        XCTAssertFalse(session.perform(.say(words: "Hail", toAlliance: true)), "Sworn to none, no alliance to say it to")
+        draw(WordsPanel(session: session))
+        XCTAssertEqual(GameSession.cues(for: .say(words: "Hail", toAlliance: false), events: [], in: session.state, player: me), [.parley])
+    }
+
     // MARK: The map
 
     func testASiteRightClickedIsGatheredAndTheLandIsReadAloud() throws {

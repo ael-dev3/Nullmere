@@ -86,6 +86,8 @@ public struct GameState: Codable, Equatable, Sendable {
     var sites: [Site]?
     /// The alliances standing; absent in saves from before them.
     var alliances: [Alliance]?
+    /// The keepers' words, the latest last; absent before any were said.
+    var words: [Word]?
     /// The rallies gathering or on the march; absent in saves from before them.
     var rallies: [Rally]?
     /// The happening of the realm under way, if any.

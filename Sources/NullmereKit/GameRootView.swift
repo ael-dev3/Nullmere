@@ -141,6 +141,8 @@ struct PlayView: View {
                             opened(AlliancePanel(session: session), named: "Alliance")
                         case .realm?:
                             opened(RealmPanel(session: session), named: "The Realm")
+                        case .words?:
+                            opened(WordsPanel(session: session), named: "Words")
                         case nil:
                             EmptyView()
                         }
@@ -222,7 +224,7 @@ extension PlayView {
 /// The few keys worth knowing, in the corner.
 private struct KeyHints: View {
     var body: some View {
-        Text(verbatim: "? Guide · 1–6 panels · Tab next company · ⌘↩ ready")
+        Text(verbatim: "? Guide · 1–7 panels · Tab next company · ⌘↩ ready")
             .font(.nm(10))
             .foregroundStyle(Palette.text(0.75))
             .padding(.horizontal, 10)
@@ -230,7 +232,7 @@ private struct KeyHints: View {
             // As dark as a panel, so it reads over the palest ground.
             .background(Palette.panel, in: RoundedRectangle(cornerRadius: 3))
             // Read as VoiceOver says keys, not as marks to spell.
-            .accessibilityLabel("Keys: question mark for the Guide, 1 to 6 for the panels, Tab for the next company, Command-Return when you're ready")
+            .accessibilityLabel("Keys: question mark for the Guide, 1 to 7 for the panels, Tab for the next company, Command-Return when you're ready")
     }
 }
 

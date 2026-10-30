@@ -131,12 +131,13 @@ struct ChargeCard: View {
 }
 
 /// The realm's deeper panels, at hand by the corner: each opens and closes
-/// as its key (3 to 6) does.
+/// as its key (3 to 7) does.
 struct PanelRail: View {
     let session: GameSession
 
     static let panels: [(title: String, panel: GameSession.Panel, key: String)] = [
         ("Archive", .archive, "3"), ("Commanders", .commanders, "4"), ("Alliance", .alliance, "5"), ("Realm", .realm, "6"),
+        ("Words", .words, "7"),
     ]
 
     var body: some View {

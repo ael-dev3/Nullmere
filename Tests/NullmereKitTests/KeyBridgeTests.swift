@@ -27,7 +27,7 @@ final class KeyBridgeTests: XCTestCase {
             ("]", .anyUnit(forward: true)), ("[", .anyUnit(forward: false)), (" ", .chooseAtCentre),
             ("w", .pan(dx: 0, dy: 90)), ("s", .pan(dx: 0, dy: -90)), ("a", .pan(dx: 90, dy: 0)), ("d", .pan(dx: -90, dy: 0)),
             ("1", .houses), ("2", .chronicle), ("?", .guide), ("/", .guide),
-            ("3", .archive), ("4", .commanders), ("5", .alliance), ("6", .realm),
+            ("3", .archive), ("4", .commanders), ("5", .alliance), ("6", .realm), ("7", .words),
             ("q", .turn(-.pi / 6)), ("e", .turn(.pi / 6)), ("r", .lean(-0.12)), ("t", .lean(0.12)),
         ]
         for (characters, meaning) in letters {
@@ -249,7 +249,7 @@ final class GameKeyTests: XCTestCase {
 
         // The panels open and close by their keys.
         for (key, panel) in [(GameKey.houses, GameSession.Panel.houses), (.chronicle, .chronicle), (.guide, .guide),
-                             (.archive, .archive), (.commanders, .commanders), (.alliance, .alliance), (.realm, .realm)] {
+                             (.archive, .archive), (.commanders, .commanders), (.alliance, .alliance), (.realm, .realm), (.words, .words)] {
             XCTAssertTrue(session.handle(key))
             XCTAssertEqual(session.panel, panel)
             XCTAssertTrue(session.handle(key))
