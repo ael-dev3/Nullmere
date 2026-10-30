@@ -48,16 +48,23 @@ struct PanelTitle: View {
 struct Meter: View {
     let fraction: Double
     var colour: Color = Palette.glow
+    /// What it measures, where it stands alone: to VoiceOver it is then a
+    /// level of that name, as full as it is drawn. Within a line that says
+    /// it in words already, it has none, and is nothing to VoiceOver.
+    var label: String?
 
     var body: some View {
-        // What it measures is said beside it in words: to VoiceOver it is
-        // nothing.
-        Rectangle().fill(Palette.line(0.1))
+        let full = min(max(fraction, 0), 1)
+        let bar = Rectangle().fill(Palette.line(0.1))
             .overlay(alignment: .leading) {
-                Rectangle().fill(colour).scaleEffect(x: min(max(fraction, 0), 1), y: 1, anchor: .leading)
+                Rectangle().fill(colour).scaleEffect(x: full, y: 1, anchor: .leading)
             }
             .frame(height: 3)
-            .accessibilityHidden(true)
+        if let label {
+            bar.accessibilityRepresentation { ProgressView(label, value: full) }
+        } else {
+            bar.accessibilityHidden(true)
+        }
     }
 }
 
@@ -86,7 +93,7 @@ private struct OwnHoldPanel: View {
                             .font(.nm(10.5).monospacedDigit())
                             .foregroundStyle(Palette.text(0.75))
                     }
-                    Meter(fraction: Double(hold.ward) / Double(max(hold.maximumWard, 1)))
+                    Meter(fraction: Double(hold.ward) / Double(max(hold.maximumWard, 1)), label: "Ward")
                     HStack {
                         Caps("Yield each watch", size: 8.5).foregroundStyle(Palette.text(0.5))
                         Spacer()
@@ -380,7 +387,7 @@ struct UnitPanel: View {
                     Stat(label: "Moves", value: "\(unit.movesLeft)/\(unit.kind.movement)")
                 }
             }
-            Meter(fraction: Double(unit.health) / 100, colour: unit.health > 50 ? Palette.good : Palette.bad)
+            Meter(fraction: Double(unit.health) / 100, colour: unit.health > 50 ? Palette.good : Palette.bad, label: "Health")
 
             if mine {
                 Text(verbatim: hint(for: unit))

@@ -7,14 +7,17 @@
 #   scripts/ui-test.sh
 #
 # Builds the debug app (only a debug build opens as if the on-device model
-# were ready, with a realm of its own), registers it with Launch Services,
-# and runs UITests/NullmereUITests.xcodeproj. The first run on a Mac asks
-# to let Xcode's UI testing control it. Needs Xcode 26 and macOS 26.
+# were ready, with a realm of its own) under a bundle identifier of its own,
+# so an installed Nullmere Online is never the one opened and its settings
+# are never touched; registers it with Launch Services, and runs
+# UITests/NullmereUITests.xcodeproj, whose tests keep what the app keeps in
+# a folder of their own. The first run on a Mac asks to let Xcode's UI
+# testing control it. Needs Xcode 26 and macOS 26.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p build
 
-CONFIGURATION=debug OUTPUT_DIR=build/ui scripts/build-app.sh
+BUNDLE_ID=online.nullmere.launcher.uitest CONFIGURATION=debug OUTPUT_DIR=build/ui scripts/build-app.sh
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
     -f "build/ui/Nullmere Online.app"
 
@@ -22,7 +25,7 @@ rm -rf build/ui.xcresult
 set +e
 xcodebuild test -project UITests/NullmereUITests.xcodeproj -scheme NullmereUITests \
     -destination 'platform=macOS,arch=arm64' -resultBundlePath build/ui.xcresult 2>&1 \
-    | tee build/ui-test.log | grep -E "UIAUDIT|UIWALK|UIMAP|error:|Test Case .* (passed|failed)|\*\* TEST"
+    | tee build/ui-test.log | grep -E "UIAUDIT|UIWALK|UIMAP|UICONTRAST|UISCREEN|error:|Test Case .* (passed|failed)|\*\* TEST"
 set -e
 if ! grep -q "\*\* TEST SUCCEEDED \*\*" build/ui-test.log; then
     echo "error: the UI tests found something, or couldn't run; see build/ui-test.log and build/ui.xcresult" >&2

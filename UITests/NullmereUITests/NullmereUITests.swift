@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 /// Nullmere Online as VoiceOver and Accessibility Inspector meet it, through
@@ -5,12 +6,14 @@ import XCTest
 /// screen put to Xcode's accessibility audit, and the lake's map walked
 /// through the elements VoiceOver reads.
 ///
-/// It opens the debug build CI makes (`CONFIGURATION=debug
-/// scripts/build-app.sh`) and registers with Launch Services: only a debug
-/// build reads the variables that open it as a Mac whose on-device model is
-/// ready would, with a realm of its own.
+/// It opens the debug build scripts/ui-test.sh makes and registers with
+/// Launch Services: only a debug build reads the variables that open it as
+/// a Mac whose on-device model is ready would, with a realm of its own. That
+/// build goes by a name of its own, so Launch Services can't open an
+/// installed copy in its place and its settings never mix with a keeper's;
+/// what it keeps, it keeps in a folder of the test's.
 final class NullmereUITests: XCTestCase {
-    private static let bundleIdentifier = "online.nullmere.launcher"
+    private static let bundleIdentifier = "online.nullmere.launcher.uitest"
 
     private var app: XCUIApplication!
     private var window: XCUIElement!
@@ -21,12 +24,14 @@ final class NullmereUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication(bundleIdentifier: Self.bundleIdentifier)
-        let identity = FileManager.default.temporaryDirectory.appendingPathComponent("nullmere-ui-\(UUID().uuidString)")
+        let kept = FileManager.default.temporaryDirectory.appendingPathComponent("nullmere-ui-\(UUID().uuidString)", isDirectory: true)
         app.launchEnvironment = [
             "NULLMERE_MODEL_STATE": "ready",
             "NULLMERE_REALM": "local",
             "NULLMERE_REALM_SEED": "walked by VoiceOver",
-            "NULLMERE_IDENTITY_FILE": identity.path,
+            "NULLMERE_IDENTITY_FILE": kept.appendingPathComponent("identity").path,
+            // The hosted realm and the voices, kept apart from any on this Mac.
+            "NULLMERE_STORE": kept.path,
             // The news this build ships with, not whatever the repository
             // holds today.
             "NULLMERE_NEWS_URL": "https://nullmere.invalid/news.json",
@@ -64,15 +69,47 @@ final class NullmereUITests: XCTestCase {
         report()
     }
 
+    /// Without Apple Intelligence the launcher offers only what is missing,
+    /// a way to mend it and Quit; that passes the audit too.
+    func testTheRequirementPassesTheAudit() throws {
+        app.launchEnvironment["NULLMERE_MODEL_STATE"] = "notEnabled"
+        app.launch()
+        window = app.windows["Nullmere Online"]
+        XCTAssertTrue(window.waitForExistence(timeout: 30), "One window, named Nullmere Online")
+        window.click()
+        XCTAssertTrue(window.buttons["Open System Settings"].waitForExistence(timeout: 20), "What is missing, and its mending")
+        XCTAssertFalse(window.buttons["Play"].exists, "No way in without the model")
+        audit("the requirement")
+        report()
+    }
+
+    /// A realm that doesn't answer: its door says so, offers to try again,
+    /// and passes the audit.
+    func testAnUnansweringRealmsDoorPassesTheAudit() throws {
+        app.launchEnvironment["NULLMERE_REALM"] = "http://127.0.0.1:9/nullmere"
+        let window = try openTheLauncher()
+        window.buttons["Play"].click()
+        XCTAssertTrue(window.buttons["Try again"].waitForExistence(timeout: 60), "Out of reach, the door offers to try again")
+        audit("the door of a realm out of reach")
+        report()
+    }
+
     /// The realm's front door, entered by name, and the world beyond it:
-    /// each passes the audit, and the map is walked as VoiceOver walks it.
+    /// each passes the audit, the map is walked as VoiceOver walks it, and
+    /// what a keeper opens over the map passes too.
     func testTheDoorAndTheWorldPassTheAuditAndTheMapIsWalked() throws {
         let window = try openTheLauncher()
         window.buttons["Play"].click()
         let name = window.textFields["Your name on the lake"]
         XCTAssertTrue(name.waitForExistence(timeout: 30), "Play crosses to the realm's door, which asks for a name")
         XCTAssertTrue(window.buttons["Enter the world"].waitForExistence(timeout: 30), "The way in")
+        let parentage = findings.count
         audit("the realm's front door")
+        if findings[parentage...].contains(where: { $0.contains("Parent/Child") }) {
+            // Whose it is: the name field's, being written in, or the door's.
+            app.typeKey(XCUIKeyboardKey.tab.rawValue, modifierFlags: [])
+            audit("the realm's front door, the name field left")
+        }
         name.click()
         name.typeText("Ama\r")
 
@@ -92,10 +129,21 @@ final class NullmereUITests: XCTestCase {
             app.typeKey(key, modifierFlags: [])
             if window.staticTexts[panel].waitForExistence(timeout: 10) {
                 audit("the \(panel) panel")
+                if panel == "Houses" { houses(in: window) }
             } else {
                 found("UIWALK the \(panel) panel didn't open with \(key)")
             }
             app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+        }
+
+        // The realm's Settings, over the world.
+        app.typeKey(",", modifierFlags: .command)
+        let done = app.buttons["Done"]
+        if done.waitForExistence(timeout: 10) {
+            audit("the realm's Settings")
+            done.click()
+        } else {
+            found("UIWALK the realm's Settings didn't open with ⌘,")
         }
         report()
     }
@@ -105,7 +153,8 @@ final class NullmereUITests: XCTestCase {
     /// The map as VoiceOver walks it: an element for each hold and company
     /// the keeper knows of, the keeper's own first, each saying what it is,
     /// whose and how it stands, and lying where it is drawn, so that
-    /// choosing one there selects it.
+    /// choosing one there selects it: a company opens its orders, the seat
+    /// its works and musters.
     private func walk(_ map: XCUIElement, in window: XCUIElement) {
         let items = map.buttons.allElementsBoundByIndex
         let labels = items.map(\.label)
@@ -136,6 +185,56 @@ final class NullmereUITests: XCTestCase {
             found("UIWALK choosing '\(company.label)' at \(company.frame) opened no panel for \(kind)")
         }
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+
+        if let seat = onMap.first(where: { $0.label.contains("seat, yours") }) {
+            let hold = String(seat.label.prefix { $0 != "," })
+            seat.click()
+            if window.staticTexts["Works"].waitForExistence(timeout: 5) {
+                audit("the seat chosen, \(hold)")
+            } else {
+                found("UIWALK choosing the seat '\(seat.label)' opened no panel of its works")
+            }
+            app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+        }
+    }
+
+    /// What the Houses panel opens for a House: the gifts to send, a trade
+    /// to write, and war asked twice, never declared.
+    private func houses(in window: XCUIElement) {
+        let gift = window.buttons["Send a gift"].firstMatch
+        if gift.waitForExistence(timeout: 5) {
+            gift.click()
+            if app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Send '")).element(boundBy: 1).waitForExistence(timeout: 5) {
+                audit("the gifts to send")
+            } else {
+                found("UIWALK Send a gift opened no gifts")
+            }
+            app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+        } else {
+            found("UIWALK the Houses panel offers no gift")
+        }
+        let trade = window.buttons["Offer a trade"].firstMatch
+        if trade.waitForExistence(timeout: 5) {
+            trade.click()
+            if app.buttons["Offer"].waitForExistence(timeout: 5) {
+                audit("a trade written")
+            } else {
+                found("UIWALK Offer a trade opened nothing to write it in")
+            }
+            app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+        }
+        let war = window.buttons["Declare war"].firstMatch
+        if war.waitForExistence(timeout: 5) {
+            war.click()
+            let asked = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'War on '")).firstMatch
+            if asked.waitForExistence(timeout: 3) {
+                audit("war asked twice")
+                // Left to lapse: no war is declared.
+                _ = window.buttons["Declare war"].firstMatch.waitForExistence(timeout: 15)
+            } else {
+                found("UIWALK Declare war asked nothing a second time")
+            }
+        }
     }
 
     // MARK: Helpers
@@ -148,6 +247,9 @@ final class NullmereUITests: XCTestCase {
         window.click()
         XCTAssertTrue(window.buttons["Play"].waitForExistence(timeout: 20), "The menu, Play first")
         XCTAssertTrue(labelled("Nullmere Online", in: window).exists, "The title reads Nullmere Online")
+        if let screen = NSScreen.main {
+            print("UISCREEN \(screen.frame.size) at \(screen.backingScaleFactor)x; the window \(window.frame)")
+        }
         return window
     }
 
@@ -170,22 +272,71 @@ final class NullmereUITests: XCTestCase {
 
     /// Xcode's accessibility audit of what is on screen: every issue it
     /// finds is kept, so each screen is still audited, and all are told.
+    /// Where it finds type too faint, the type is measured again from the
+    /// screen's own pixels, so what the audit saw is told beside it.
     private func audit(_ screen: String) {
         // What fades in is audited once it has.
         Thread.sleep(forTimeInterval: 1.2)
+        var faint: [(String, XCUIElement)] = []
         do {
             try app.performAccessibilityAudit { issue in
                 if let element = issue.element, self.isMacChrome(element) { return true }
                 let element = issue.element.map { element in
                     let words = element.label.isEmpty ? (element.value as? String ?? "") : element.label
                     return "type \(element.elementType.rawValue) '\(words.prefix(70))' at \(element.frame.integral)"
-                } ?? "the screen"
+                } ?? "the screen (\(issue.detailedDescription.prefix(160)))"
                 self.found("UIAUDIT \(screen): \(issue.compactDescription): \(element)")
+                if issue.auditType == .contrast, let text = issue.element, faint.count < 8 {
+                    faint.append((String(text.label.prefix(40)), text))
+                }
                 return true
             }
         } catch {
             found("UIAUDIT \(screen): the audit couldn't run: \(error)")
         }
+        for (words, element) in faint {
+            print("UICONTRAST \(screen): '\(words)' \(Self.measured(element))")
+        }
+    }
+
+    /// An element's pixels as the screen draws them: the median's colour,
+    /// taken for the ground; the brightest pixel and the one at the 98th
+    /// part in a hundred, taken for the type; their contrast with the
+    /// ground; and how many pixels the element's every point is drawn with.
+    private static func measured(_ element: XCUIElement) -> String {
+        guard element.exists, let image = element.screenshot().image.cgImage(forProposedRect: nil, context: nil, hints: nil),
+              let space = CGColorSpace(name: CGColorSpace.sRGB) else { return "unmeasured" }
+        let width = image.width, height = image.height
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = bytes.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                                          bytesPerRow: width * 4, space: space,
+                                          bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drawn, width * height > 0 else { return "unmeasured" }
+        func linear(_ byte: UInt8) -> Double {
+            let value = Double(byte) / 255
+            return value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
+        }
+        var pixels: [(luminance: Double, index: Int)] = []
+        pixels.reserveCapacity(width * height)
+        for index in stride(from: 0, to: bytes.count, by: 4) {
+            let luminance = 0.2126 * linear(bytes[index]) + 0.7152 * linear(bytes[index + 1]) + 0.0722 * linear(bytes[index + 2])
+            pixels.append((luminance, index))
+        }
+        pixels.sort { $0.luminance < $1.luminance }
+        func colour(_ pixel: (luminance: Double, index: Int)) -> String {
+            "rgb(\(bytes[pixel.index]),\(bytes[pixel.index + 1]),\(bytes[pixel.index + 2]))"
+        }
+        let ground = pixels[pixels.count / 2], peak = pixels[pixels.count - 1], high = pixels[pixels.count * 98 / 100]
+        func ratio(_ pixel: (luminance: Double, index: Int)) -> String {
+            String(format: "%.1f", (max(pixel.luminance, ground.luminance) + 0.05) / (min(pixel.luminance, ground.luminance) + 0.05))
+        }
+        let scale = Double(width) / max(element.frame.width, 1)
+        return "ground \(colour(ground)); peak \(colour(peak)) \(ratio(peak)):1; 98th \(colour(high)) \(ratio(high)):1; "
+            + String(format: "%.1fx", scale)
     }
 
     /// Kept, and said at once, so a test that stops early still tells it.

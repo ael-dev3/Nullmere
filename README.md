@@ -175,6 +175,7 @@ builds also take:
 | `NULLMERE_REALM` | `local`: host a realm on this Mac (kept in Application Support); or the `http(s)://server/database` address of another realm, such as `http://127.0.0.1:3000/nullmere` |
 | `NULLMERE_REALM_SEED` | The words a newly hosted realm's world grows from |
 | `NULLMERE_IDENTITY_FILE` | Keep the keeper's identity in this file instead of the keychain |
+| `NULLMERE_STORE` | Keep what the app keeps (a hosted realm, the voices' words) in this folder instead of Application Support |
 | `NULLMERE_KEEPER` | Enter the world at once under this name |
 | `NULLMERE_TEXT` | `larger`: show the larger type without remembering it |
 | `NULLMERE_SHOW` | With `NULLMERE_KEEPER`: `seat`, `unit`, `houses`, `chronicle`, `guide`: select the seat or a company, open a panel; `briefing`: keep the card a keeper first meets; `watch`: be ready after `NULLMERE_WATCH_AFTER` seconds (12.5) |

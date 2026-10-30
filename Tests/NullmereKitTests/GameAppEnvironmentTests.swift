@@ -14,7 +14,7 @@ import XCTest
 final class GameAppEnvironmentTests: XCTestCase {
     private var dir: URL!
     private let names = ["NULLMERE_REALM", "NULLMERE_REALM_SEED", "NULLMERE_IDENTITY_FILE", "NULLMERE_KEEPER",
-                         "NULLMERE_AUTOPLAY", "NULLMERE_SHOW", "NULLMERE_WATCH_AFTER"]
+                         "NULLMERE_AUTOPLAY", "NULLMERE_SHOW", "NULLMERE_WATCH_AFTER", "NULLMERE_STORE"]
     private var saved: [String: String] = [:]
 
     override func setUp() async throws {
@@ -74,6 +74,11 @@ final class GameAppEnvironmentTests: XCTestCase {
         XCTAssertTrue(GameApp.defaultIdentityStore(for: .network(GameApp.maincloudURL)) is KeychainIdentityStore)
         setenv("NULLMERE_IDENTITY_FILE", dir.appendingPathComponent("key").path, 1)
         XCTAssertTrue(GameApp.defaultIdentityStore(for: .network(GameApp.maincloudURL)) is FileIdentityStore)
+
+        XCTAssertEqual(LocalStore().directory.lastPathComponent, "Nullmere Online", "In Application Support, by default")
+        setenv("NULLMERE_STORE", dir.path, 1)
+        XCTAssertEqual(LocalStore().directory.standardizedFileURL, dir.standardizedFileURL, "Or in the UI tests' own folder")
+        XCTAssertEqual(LocalStore().hostedRealmURL.deletingLastPathComponent().standardizedFileURL, dir.standardizedFileURL)
     }
 
     func testATestBuildStepsInAndSetsTheScene() async throws {

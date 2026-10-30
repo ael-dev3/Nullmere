@@ -23,6 +23,9 @@ OUTPUT_DIR="${OUTPUT_DIR:-build}"
 CODESIGN_IDENTITY="${CODESIGN_IDENTITY:--}"
 # The realm the app enters: as scripts/raise-realm.sh printed it.
 REALM_ADDRESS="${REALM_ADDRESS:-https://maincloud.spacetimedb.com/nullmere}"
+# Another bundle identifier, for a build that must never pass for the
+# app itself (scripts/ui-test.sh); empty keeps online.nullmere.launcher.
+BUNDLE_ID="${BUNDLE_ID:-}"
 case "$REALM_ADDRESS" in
     http://*|https://*) ;;
     *) echo "REALM_ADDRESS must be an http(s) address, such as https://maincloud.spacetimedb.com/nullmere" >&2; exit 1 ;;
@@ -93,6 +96,11 @@ bundle() {
     # The address is set by plutil, which escapes it: an & or a | in it
     # can't break the plist the way it would break a sed replacement.
     plutil -replace NullmereRealm -string "$REALM_ADDRESS" "$app/Contents/Info.plist"
+    # A build under a name of its own, such as the UI tests' (BUNDLE_ID),
+    # which Launch Services can't confuse with an installed copy.
+    if [ -n "$BUNDLE_ID" ]; then
+        plutil -replace CFBundleIdentifier -string "$BUNDLE_ID" "$app/Contents/Info.plist"
+    fi
     plutil -lint -s "$app/Contents/Info.plist"
     cp "$ICNS" "$app/Contents/Resources/AppIcon.icns"
     if [ -n "$CATALOG" ]; then

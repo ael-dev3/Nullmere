@@ -15,12 +15,25 @@ public struct LocalStore: Sendable {
     public init(directory: URL? = nil) {
         if let directory {
             self.directory = directory
+        } else if let kept = Self.keptElsewhere {
+            self.directory = kept
         } else {
             let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
                 ?? URL(fileURLWithPath: NSTemporaryDirectory())
             self.directory = base.appendingPathComponent("Nullmere Online", isDirectory: true)
         }
         root = self.directory
+    }
+
+    /// Debug builds may keep all of it in another folder: NULLMERE_STORE,
+    /// for the UI tests, which mustn't touch what this Mac keeps.
+    static var keptElsewhere: URL? {
+        #if DEBUG
+        if let path = ProcessInfo.processInfo.environment["NULLMERE_STORE"], !path.isEmpty {
+            return URL(fileURLWithPath: path, isDirectory: true)
+        }
+        #endif
+        return nil
     }
 
     private init(directory: URL, root: URL) {
