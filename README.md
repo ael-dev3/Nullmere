@@ -304,7 +304,10 @@ as the realm will, and takes the realm's word as final.
   goodwill wins a pact, unless you once made war on them or a pact between
   you was broken. War on a House throws away the goodwill your gifts bought
   with it, and no gift moves a steward that fears your rising Moonspire. A
-  keeper hears of a gift, a war declared or an
+  House takes in gifts worth a hundred a watch at most, from every giver
+  together, moonsalt counting four: enough to help an ally, never enough
+  for Houses one keeper holds under other names to pour their stores into
+  one. A keeper hears of a gift, a war declared or an
   envoy sent the moment it happens, not when the watch turns.
 - **Trade.** Offer any House you aren't at war with so much of one store
   for so much of another. Stewards weigh it by barter worth, the cunning

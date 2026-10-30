@@ -17,6 +17,11 @@ extension GameState {
     static let pactGoodwill = 60
     /// A gift worth this much goes into the chronicle.
     static let notedGift = 40
+    /// The most a House takes in gifts in one watch, from every giver
+    /// together, counted as goodwill counts it: enough to feed an ally or
+    /// win a steward's goodwill, never enough for Houses one keeper holds
+    /// under other names to pour their stores into one.
+    public static let giftsTakenPerWatch = 100
 
     /// How a resource weighs in goodwill.
     static func worth(of resource: Resource, amount: Int) -> Int {
@@ -30,6 +35,12 @@ extension GameState {
             .reduce(0) { $0 + $1.worth }
     }
 
+    /// The worth of the gifts a House has taken in this watch, from every
+    /// giver together.
+    func giftsTaken(by receiver: Int) -> Int {
+        (gifts ?? []).filter { $0.to == receiver && $0.watch == watch }.reduce(0) { $0 + $1.worth }
+    }
+
     mutating func give(_ resource: Resource, amount: Int, from house: Int, to target: Int) throws(RuleError) -> [GameEvent] {
         guard target != house, let receiver = self.house(target), !receiver.isEliminated else { throw .unknownHouse }
         guard stance(house, target) != .war else { throw .atWarWith(target) }
@@ -38,9 +49,11 @@ extension GameState {
         gift[resource] = amount
         guard houses[house].stock.covers(gift) else { throw .shortOf(houses[house].stock.shortfall(for: gift)) }
         guard houses[target].stock[resource] + amount <= storage(of: target) else { throw .noRoomWithThem }
+        let worth = GameState.worth(of: resource, amount: amount)
+        let left = GameState.giftsTakenPerWatch - giftsTaken(by: target)
+        guard worth <= left else { throw .giftsThisWatch(left: max(0, left)) }
         houses[house].stock.debit(gift)
         houses[target].stock.credit(gift)
-        let worth = GameState.worth(of: resource, amount: amount)
         // One gift between two Houses a watch goes into the chronicle, so
         // gifts sent back and forth can't fill it.
         let notedAlready = (gifts ?? []).contains { gift in

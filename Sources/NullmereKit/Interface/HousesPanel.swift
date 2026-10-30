@@ -572,7 +572,7 @@ struct HouseRow: View {
                     }
                     .padding(8)
                 }
-                .help("Stores sent now buy goodwill: a steward sees a war as older, and takes a pact from a House that has given enough, unless that House once made war on it or a pact between them was broken. Making war on it throws the goodwill away.")
+                .help("Stores sent now buy goodwill: a steward sees a war as older, and takes a pact from a House that has given enough, unless that House once made war on it or a pact between them was broken. Making war on it throws the goodwill away. A House takes in gifts worth \(GameState.giftsTakenPerWatch) a watch at most, moonsalt counting four.")
         }
     }
 

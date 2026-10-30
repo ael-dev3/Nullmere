@@ -480,6 +480,9 @@ final class GuideTests: XCTestCase {
         let winning = Guide.sections.first { $0.title == "Winning" }?.lines.joined(separator: " ") ?? ""
         XCTAssertTrue(winning.contains("960 stone, more than a House of fewer than 4 holds can keep"), winning)
         XCTAssertTrue(winning.contains("nor win, nor raise its Moonspire while it serves"), winning)
+        // The rules said as they stand.
+        let all = Guide.sections.flatMap(\.lines).joined(separator: " ")
+        XCTAssertTrue(all.contains("gifts worth \(GameState.giftsTakenPerWatch) a watch at most"), all)
     }
 
     @MainActor

@@ -48,7 +48,8 @@ final class RulesReviewTests: XCTestCase {
         let me = state.player
         let other = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
         let lines = state.chronicle.count
-        for _ in 0..<4 {
+        // As many as each may take in a watch.
+        for _ in 0..<(GameState.giftsTakenPerWatch / GameState.notedGift) {
             _ = try state.perform(.gift(to: other, resource: .grain, amount: GameState.notedGift), as: me)
             _ = try state.perform(.gift(to: me, resource: .grain, amount: GameState.notedGift), as: other)
         }
