@@ -16,7 +16,7 @@ on:
       - realm-server/**
       - Dockerfile.steward
       - news/**
-      - Tools/world-preview/**
+      - Tools/**
       - UITests/**
       - Makefile
       - .github/workflows/ci.yml
@@ -32,7 +32,7 @@ on:
       - realm-server/**
       - Dockerfile.steward
       - news/**
-      - Tools/world-preview/**
+      - Tools/**
       - UITests/**
       - Makefile
       - .github/workflows/ci.yml
@@ -418,9 +418,6 @@ jobs:
 
       # The map's preview data, from the rules and the map's own packing
       # code: kept building, so the map can always be tuned in a browser.
-      - name: Write the map preview's tiles
-        run: scripts/world-preview-data.sh
-
       # A long age on every shape of lake, its world checked throughout.
       - name: Test the rules and the realm
         env:

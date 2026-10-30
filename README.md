@@ -681,19 +681,21 @@ Query parameters: `horizon`, `activity` (1 for full motion, 0.4 reduced,
 0 still) and `time`, which freezes a moment. Try `?time=7.2` to catch the
 first falling star.
 
-The world map's shader is written the same way. Its preview reads the tile
-texture the game would, written for a keeper at an age's opening and for
-the whole world known:
+The world's shaders are written the same way: the section between their
+SCENE markers is shared by Metal and GLSL, so a browser draws the land,
+the mist and the still water from the same code, over a world the
+NullmereWorld tests write out (Playwright's Chromium draws it headless):
 
 ```sh
-scripts/world-preview-data.sh
-python3 -m http.server
-# open http://localhost:8000/Tools/world-preview/?data=../../build/world-preview/opening.json
+NULLMERE_WORLD_PREVIEW=build/world3d swift test --filter WorldPreviewTests
+node Tools/world3d-preview/shoot.js build/world3d/world.json world.png seat   # or lake, whole, turned
 ```
 
-Query parameters: `scale` (points per world unit, 28 as an age opens),
-`x` and `y` (the view's centre; the seat by default, `x=moon` for the
-moon's reflection) and `time`.
+The models are previewed the same way: `NULLMERE_MODEL_PREVIEW=build/models
+swift test --filter PreviewTests`, then `node Tools/model-preview/shoot.js
+build/models/samples.json models.png "light=night"`. Away from a Mac,
+`Tools/msl-check/check.sh <shader.metal>` parses Metal source with clang
+for its syntax, names and types.
 
 ## Layout
 
@@ -704,10 +706,12 @@ Sources/
   LauncherKit/        SwiftUI interface, Metal backdrop, services (on-device model, news)
   NullmereLauncher/   The Nullmere Online app's entry point
   NullmereCore/       The rules and the realm's authority: world generation, economy, war, diplomacy, stewards, keepers, watches, ages. Pure, deterministic Swift
+  NullmereModels/     The world's shapes: the land's relief and mesh, and every model in it built from solids in code, with the rigs that move them. Pure Swift
+  NullmereWorld/      The world as the GPU draws it, apart from the GPU: the camera, the shaders' source, the frame's data. Pure Swift
   NullmereRealm/      The client's line to the realm over SpacetimeDB or in-process, the steward, keeper identity. Foundation only
   NullmereKit/        The world's interface: front door, Metal world, panels, sound
   NullmereSteward/    The steward's command-line entry point
-Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereRealmTests, NullmereKitTests, and NullmereTestSupport (a SpacetimeDB in memory)
+Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereModelsTests, NullmereWorldTests, NullmereRealmTests, NullmereKitTests, and NullmereTestSupport (a SpacetimeDB in memory)
 realm-server/         The SpacetimeDB module (Rust): keepers, requests, answers, the world
 Dockerfile.steward    The steward in a container, as raise-realm.sh runs it
 news/                 news.json, the launcher's news feed
@@ -716,7 +720,9 @@ Packaging/            The Info.plist template, the Liquid Glass icon (AppIcon.ic
 scripts/              Building, packing and checking a release; smoke tests; raising the realm; going live
 Tools/icon/           Draws the icon, its Liquid Glass layers and the classic one (make-icon.py)
 Tools/scene-preview/  Browser preview of the lake shader
-Tools/world-preview/  Browser preview of the world map's tiles
+Tools/world3d-preview/ Browser preview of the world's land, mist and water, from the shaders' shared section
+Tools/model-preview/  Browser preview of the models, on a sheet
+Tools/msl-check/      Checks Metal source with clang away from a Mac
 docs/                 Going live; the consistency audit of October 2026 (docs/audit/); the plan made before the build for what carries over from Warpkeep
 ```
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Compiles the game's two shaders, the launcher's lake and the world map,
-# with Apple's offline Metal compiler, so shader errors surface without a
+# Compiles the game's shaders, the launcher's lake and the world's (land,
+# water and models), with Apple's offline Metal compiler, so shader errors surface without a
 # GPU (for example on virtualised CI runners).
 #
 # Xcode 26 ships the Metal toolchain as a separate download, so this tries
@@ -14,7 +14,7 @@ cd "$(dirname "$0")/.."
 
 SOURCES=(
     "Sources/LauncherKit/Backdrop/LakeShader.swift"
-    "Sources/NullmereKit/World/WorldShader.swift"
+    "Sources/NullmereWorld/WorldShaders.swift"
 )
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
