@@ -55,8 +55,11 @@ final class WorldPreviewTests: XCTestCase {
         let far = Camera(scale: 9, tilt: 0.6)
         var turned = Camera(scale: 24, heading: 0.9)
         turned.focus(on: seat)
+        // Opposite the moon and as high, looking down on its image in the water.
+        var moonView = Camera(scale: 16, tilt: acos(Double(Sky.moon.y)), heading: atan2(-Double(Sky.moon.x), -Double(Sky.moon.z)))
+        moonView.focus(on: lake)
         let views: [(String, Camera, [UInt8])] = [("seat", near, opening), ("lake", lakeView, whole), ("whole", far, whole),
-                                                 ("turned", turned, whole)]
+                                                 ("turned", turned, whole), ("moon", moonView, whole)]
         var frames: [[String: Any]] = []
         for (name, camera, tiles) in views {
             var entry = WorldPreviewTests.uniforms(WorldPreviewTests.frame(camera, terrain: terrain, radius: state.map.radius, time: 20))
@@ -76,7 +79,7 @@ final class WorldPreviewTests: XCTestCase {
         ]
         let data = try JSONSerialization.data(withJSONObject: json)
         XCTAssertGreaterThan(data.count, 100_000)
-        XCTAssertEqual(frames.count, 4)
+        XCTAssertEqual(frames.count, 5)
         if let folder = ProcessInfo.processInfo.environment["NULLMERE_WORLD_PREVIEW"] {
             let url = URL(fileURLWithPath: folder, isDirectory: true)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

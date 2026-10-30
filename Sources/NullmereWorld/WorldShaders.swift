@@ -211,9 +211,9 @@ public enum WorldShaders {
         return kMist * (0.7 + 0.9 * drift) + float3(0.004, 0.0048, 0.0068) * smoothstep(0.55, 0.85, wisp);
     }
 
-    // The night sky in a direction: the dark, the stars, warm and cold,
-    // and the moon with its halo.
-    float3 nm_sky(float3 d, float3 moon, float time) {
+    // The night sky in a direction, but for the moon: the dark, and the
+    // stars, warm and cold.
+    float3 nm_stars(float3 d, float time) {
         float up = max(d.y, 0.0);
         float3 colour = mix(float3(0.0030, 0.0042, 0.0085), float3(0.0010, 0.0014, 0.0034), sqrt(up));
         float3 grid = d * 150.0;
@@ -230,6 +230,11 @@ public enum WorldShaders {
             float3 tint = mix(float3(0.70, 0.80, 1.0), float3(1.0, 0.86, 0.66), warm * warm);
             colour += tint * (1.0 - smoothstep(0.0, 0.2, far)) * (0.35 + 2.2 * bright * bright) * twinkle;
         }
+        return colour;
+    }
+
+    // The moon in a direction, with its halo.
+    float3 nm_moonlight(float3 d, float3 moon) {
         float facing = dot(d, moon);
         float disc = smoothstep(0.99975, 0.99982, facing);
         float3 face = kMoonFace;
@@ -240,7 +245,12 @@ public enum WorldShaders {
             face = kMoonFace * (0.78 + 0.22 * smoothstep(0.35, 0.7, seas));
         }
         float halo = pow(max(facing, 0.0), 2400.0) * 0.55 + pow(max(facing, 0.0), 160.0) * 0.07 + pow(max(facing, 0.0), 18.0) * 0.012;
-        return colour + face * disc * 2.6 + kMoonColour * halo;
+        return face * disc * 2.6 + kMoonColour * halo;
+    }
+
+    // The whole night sky in a direction.
+    float3 nm_sky(float3 d, float3 moon, float time) {
+        return nm_stars(d, time) + nm_moonlight(d, moon);
     }
 
     // The night's haze between the eye and what it sees far off.
@@ -433,13 +443,16 @@ public enum WorldShaders {
         float3 mirrored = float3(look.x, -look.y, look.z);
         float facing = 1.0 - max(-look.y, 0.0);
         float fresnel = 0.30 + 0.70 * facing * facing * facing * facing * facing;
-        float3 colour = kDeepWater + nm_sky(mirrored, frame.moon.xyz, time) * fresnel;
+        float3 starlit = kDeepWater + nm_stars(mirrored, time) * fresnel;
+        float3 moonlit = nm_moonlight(mirrored, frame.moon.xyz) * fresnel;
         // Where it is shallow the shingle shows through, darkened and wet.
         float clear = smoothstep(0.0, 0.14, depth);
 
         int2 h = nm_hexRound(nm_axial(in.world.xz));
         float2 knowledge = nm_knowledge(h, frame.world.x, tiles);
-        colour = mix(nm_remembered(colour), colour, knowledge.y);
+        // The moon's image is no memory: it lies whole in all the water the
+        // keeper knows, out of sight or not.
+        float3 colour = mix(nm_remembered(starlit + moonlit * (1.0 - knowledge.x)), starlit, knowledge.y) + moonlit * knowledge.x;
         colour = nm_haze(colour, distance(in.world, frame.eye.xyz), frame.haze.x, frame.haze.y);
         return float4(nm_encode(colour * frame.haze.z), clear);
     }

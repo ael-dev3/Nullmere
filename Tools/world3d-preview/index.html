@@ -136,11 +136,12 @@ void main() {
   vec3 mirrored = vec3(look.x, -look.y, look.z);
   float facing = 1.0 - max(-look.y, 0.0);
   float fresnel = 0.30 + 0.70 * facing * facing * facing * facing * facing;
-  vec3 colour = kDeepWater + nm_sky(mirrored, moon.xyz, time) * fresnel;
+  vec3 starlit = kDeepWater + nm_stars(mirrored, time) * fresnel;
+  vec3 moonlit = nm_moonlight(mirrored, moon.xyz) * fresnel;
   float clear = smoothstep(0.0, 0.14, depth);
   ivec2 h = nm_hexRound(nm_axial(vWorld.xz));
   vec2 knowledge = nm_knowledge(h, world.x);
-  colour = mix(nm_remembered(colour), colour, knowledge.y);
+  vec3 colour = mix(nm_remembered(starlit + moonlit * (1.0 - knowledge.x)), starlit, knowledge.y) + moonlit * knowledge.x;
   colour = nm_haze(colour, distance(vWorld, eye.xyz), haze.x, haze.y);
   outColour = vec4(nm_encode(colour * haze.z), clear);
 }`;
