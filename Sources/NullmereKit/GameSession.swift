@@ -1047,7 +1047,64 @@ public final class GameSession {
         case .barter, .gift, .offerTrade: return .coin
         case .propose, .proposeWithWords: return .parley
         case .halt, .disband: return .stand
+        case .study, .help: return .rise
+        case .assign, .gather, .joinRally, .reinforce: return .order
+        case .unassign, .leaveAlliance: return .stand
+        case .foundAlliance: return .banner
+        case .inviteToAlliance, .askToJoin: return .envoy
+        case .answerInvitation(_, let accept), .answerRequest(_, let accept): return accept ? .banner : .refusal
+        case .expel: return .refusal
+        case .callRally: return .horn
         default: return .select
+        }
+    }
+
+    /// The sound of what the realm's depth brings the keeper: studies,
+    /// commanders, the wilds, gathering, alliances, rallies, happenings,
+    /// deeds and charges; nil for what doesn't concern them. An alliance
+    /// ends only as its last House leaves it, and that leaving is heard.
+    static func cue(forDepth event: GameEvent, in state: GameState?, player: Int) -> Ambience.Cue? {
+        let alliance = state?.alliance(of: player)?.id
+        func ours(_ unit: Int) -> Bool { state?.unit(unit)?.owner == player }
+        func allied(_ house: Int) -> Bool { house == player || state?.areAllied(player, house) == true }
+        switch event {
+        case .studyBegun(let house, _, _) where house == player: return .rise
+        case .studyCompleted(let house, _, _) where house == player: return .lore
+        case .commanderJoined(_, let house) where house == player: return .honour
+        case .commanderRose(_, let house, _) where house == player: return .honour
+        case .commanderWounded(_, let house) where house == player: return .dread
+        case .commanderAssigned(_, let unit) where ours(unit): return .order
+        case .commanderReleased(let commander) where state?.commander(commander)?.owner == player: return .stand
+        case .skillFired(_, let house, _, _) where house == player: return .horn
+        case .hunted(let hunt) where hunt.attackerOwner == player: return hunt.attackerKind == .bow ? .loose : .clash
+        case .sentToGather(let unit, _) where ours(unit): return .order
+        case .gathered(_, let owner, _) where owner == player: return .dig
+        case .delivered(_, let owner, _, _) where owner == player: return .coin
+        case .siteWorkedOut(_, _, let at) where state?.unit(at: at)?.owner == player: return .stand
+        case .allianceFounded(_, let house) where house == player: return .banner
+        case .allianceInvited(_, let house) where house == player: return .envoy
+        case .allianceAsked(let asked, _) where asked == alliance && state?.alliance(asked)?.leader == player: return .envoy
+        case .allianceAnswered(let answered, let house, let accepted) where house == player || answered == alliance:
+            return accepted ? .banner : .refusal
+        case .allianceJoined(let joined, let house) where house == player || joined == alliance: return .banner
+        case .allianceLeft(_, let house, let expelled) where house == player: return expelled ? .dread : .stand
+        case .allianceLed(_, let house) where house == player: return .banner
+        case .helpGiven(_, let to, _) where to == player: return .accord
+        case .helpGiven(let by, _, _) where by == player: return .rise
+        case .rallyCalled(_, let caller, _) where allied(caller): return .horn
+        case .rallyJoined(_, _, let house) where house == player: return .order
+        case .rallySetOut(_, let caller, _, let defender, _) where allied(caller) || defender == player:
+            return defender == player ? .dread : .horn
+        case .rallyStruck(_, _, _, let defender, let taken) where defender == player: return taken ? .dread : .batter
+        case .rallyStruck(_, let caller, _, _, let taken) where allied(caller): return taken ? .triumph : .clash
+        case .rallyDispersed(_, let caller) where caller == player: return .stand
+        case .sentToReinforce(_, let owner, _) where owner == player: return .order
+        case .happeningBegun: return .herald
+        case .happeningMark(let house, _, _, _) where house == player: return .honour
+        case .happeningEnded(_, let leaders): return leaders.contains(player) ? .triumph : .herald
+        case .deedDone(let house, _) where house == player: return .honour
+        case .chargeDone(let house, _, _) where house == player: return .honour
+        default: return nil
         }
     }
 
@@ -1109,7 +1166,7 @@ public final class GameSession {
             case .seatMoved(let house, _) where house == player:
                 add(.dread)
             default:
-                break
+                if let cue = Self.cue(forDepth: event, in: state, player: player) { add(cue) }
             }
         }
         return cues

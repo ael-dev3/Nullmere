@@ -49,11 +49,21 @@ public final class Ambience {
         case refusal
         /// A hold's walls battered: a heavy blow on timber and stone.
         case batter
+        /// A study finished: glass bells rising, one after another.
+        case lore
+        /// A war horn: a rally called or setting out, a commander's skill.
+        case horn
+        /// Two stately chords: an alliance founded, joined or led.
+        case banner
+        /// The realm's crier: drums, then a bell, as a happening begins or ends.
+        case herald
+        /// A bright fanfare: a deed done, a charge kept, a commander risen.
+        case honour
 
         /// Every cue, for tests and previews.
         public static let all: [Cue] = [.select, .order, .watch, .rise, .dread, .envoy, .triumph, .accord, .toll,
                                         .clash, .loose, .ride, .dig, .coin, .parley, .stand, .complete, .muster,
-                                        .refusal, .batter]
+                                        .refusal, .batter, .lore, .horn, .banner, .herald, .honour]
     }
 
     private static let logger = Logger(subsystem: "online.nullmere.game", category: "sound")
@@ -524,6 +534,52 @@ final class Synth: @unchecked Sendable {
                 Partial(frequency: 1_130, amplitude: 0.025, decay: 34),
             ], noise: 0.09, noiseDecay: 22)
             more = [Note(partials: [], noise: 0.025, noiseDecay: 4, delay: 0.06)]
+        case .lore:
+            // Three glass bells, each a fifth or so above the last, ringing on.
+            func bell(_ f: Float, _ delay: Float) -> [Partial] {
+                [Partial(frequency: f, amplitude: 0.05, decay: 1.4, delay: delay),
+                 Partial(frequency: f * 2.76, amplitude: 0.02, decay: 2.4, delay: delay),
+                 Partial(frequency: f * 5.4, amplitude: 0.008, decay: 3.4, delay: delay)]
+            }
+            note = Note(partials: bell(659.3, 0) + bell(987.8, 0.13) + bell(1318.5, 0.26), noise: 0, noiseDecay: 1)
+        case .horn:
+            // A war horn's two notes, the second a fourth above, rich and rough.
+            func blast(_ f: Float, _ delay: Float, _ length: Float) -> [Partial] {
+                (1...6).map { (h: Int) in
+                    let n = Float(h)
+                    return Partial(frequency: f * n * (1 + 0.003 * n), amplitude: 0.075 / (n * 0.9 + 0.3),
+                                   decay: (1.6 + 0.5 * n) / length, delay: delay)
+                }
+            }
+            note = Note(partials: blast(110, 0, 1.3) + blast(146.8, 0.42, 1.1), noise: 0.012, noiseDecay: 5)
+        case .banner:
+            // Two chords, the second the first's fourth: a banner raised.
+            func chord(_ root: Float, _ delay: Float) -> [Partial] {
+                [Partial(frequency: root, amplitude: 0.05, decay: 1.5, delay: delay),
+                 Partial(frequency: root * 1.26, amplitude: 0.04, decay: 1.7, delay: delay),
+                 Partial(frequency: root * 1.5, amplitude: 0.04, decay: 1.9, delay: delay)]
+            }
+            note = Note(partials: chord(293.7, 0) + chord(392, 0.36), noise: 0, noiseDecay: 1)
+        case .herald:
+            // Three drum strokes, then a bell over the realm.
+            func drum(_ delay: Float) -> Note {
+                Note(partials: [Partial(frequency: 98, amplitude: 0.09, decay: 12), Partial(frequency: 156, amplitude: 0.04, decay: 15)],
+                     noise: 0.05, noiseDecay: 40, delay: delay)
+            }
+            note = drum(0)
+            more = [drum(0.14), drum(0.28), Note(partials: [
+                Partial(frequency: 784, amplitude: 0.05, decay: 1.2),
+                Partial(frequency: 784 * 2.76, amplitude: 0.018, decay: 2),
+            ], noise: 0, noiseDecay: 1, delay: 0.46)]
+        case .honour:
+            // A quick fanfare up a major arpeggio to the octave.
+            note = Note(partials: [
+                Partial(frequency: 523.3, amplitude: 0.055, decay: 2.2),
+                Partial(frequency: 659.3, amplitude: 0.05, decay: 2.2, delay: 0.09),
+                Partial(frequency: 784, amplitude: 0.05, decay: 2.2, delay: 0.18),
+                Partial(frequency: 1046.5, amplitude: 0.045, decay: 1.8, delay: 0.27),
+                Partial(frequency: 2093, amplitude: 0.01, decay: 2.6, delay: 0.27),
+            ], noise: 0, noiseDecay: 1)
         }
         note.delay += delay
         note.end = note.delay + note.length

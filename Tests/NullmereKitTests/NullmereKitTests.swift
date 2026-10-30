@@ -640,6 +640,98 @@ final class CueMappingTests: XCTestCase {
                                         in: state, player: player), [.watch])
     }
 
+    /// The realm's depth is heard as its plainer doings are: studies,
+    /// commanders, the wilds, gathering, alliances, rallies, happenings,
+    /// deeds and charges, each as it concerns the keeper; and every new
+    /// order has its sound.
+    func testTheRealmsDepthIsHeard() throws {
+        var state = GameState(settings: GameSettings(seedText: "depth heard", houseCount: 12, radius: 36, keepers: 1))
+        let player = state.player
+        _ = try state.perform(.foundAlliance(name: "The Grey Hand"), as: player)
+        let alliance = try XCTUnwrap(state.alliance(of: player)).id
+        let seat = try XCTUnwrap(state.seat(of: player))
+        let unit = try XCTUnwrap(state.units(of: player).first)
+        let commander = try XCTUnwrap(state.commanders(of: player).first).id
+        let foe = (player + 1) % state.houses.count
+        func hunt(by owner: Int, _ kind: UnitKind) -> GameEvent {
+            .hunted(Hunt(attacker: unit.id, attackerOwner: owner, attackerKind: kind, wild: 900, wildKind: .saltwights, level: 2,
+                         at: unit.position, damageDealt: 12, damageTaken: 3, attackerFell: false, wildFell: false, spoils: Stock()))
+        }
+        let concerning: [(GameEvent, Ambience.Cue)] = [
+            (.studyBegun(house: player, study: .furrowLore, grade: 1), .rise),
+            (.studyCompleted(house: player, study: .furrowLore, grade: 1), .lore),
+            (.commanderJoined(commander: commander, house: player), .honour),
+            (.commanderAssigned(commander: commander, unit: unit.id), .order),
+            (.commanderReleased(commander: commander), .stand),
+            (.commanderRose(commander: commander, house: player, level: 2), .honour),
+            (.commanderWounded(commander: commander, house: player), .dread),
+            (.skillFired(commander: commander, house: player, skill: .shieldwall, at: unit.position), .horn),
+            (hunt(by: player, .spear), .clash),
+            (hunt(by: player, .bow), .loose),
+            (.sentToGather(unit: unit.id, site: 1), .order),
+            (.gathered(unit: unit.id, owner: player, load: Stock(grain: 20)), .dig),
+            (.delivered(unit: unit.id, owner: player, hold: seat.id, load: Stock(grain: 20)), .coin),
+            (.siteWorkedOut(site: 1, store: .grain, at: unit.position), .stand),
+            (.allianceFounded(alliance: alliance, house: player), .banner),
+            (.allianceInvited(alliance: 77, house: player), .envoy),
+            (.allianceAsked(alliance: alliance, house: foe), .envoy),
+            (.allianceAnswered(alliance: alliance, house: foe, accepted: true), .banner),
+            (.allianceAnswered(alliance: 77, house: player, accepted: false), .refusal),
+            (.allianceJoined(alliance: alliance, house: foe), .banner),
+            (.allianceLeft(alliance: alliance, house: player, expelled: false), .stand),
+            (.allianceLeft(alliance: alliance, house: player, expelled: true), .dread),
+            (.allianceLed(alliance: alliance, house: player), .banner),
+            (.helpGiven(by: foe, to: player, count: 2), .accord),
+            (.helpGiven(by: player, to: foe, count: 1), .rise),
+            (.rallyCalled(rally: 1, caller: player, target: 40), .horn),
+            (.rallyJoined(rally: 1, unit: unit.id, house: player), .order),
+            (.rallySetOut(rally: 1, caller: player, target: 40, defender: foe, companies: 3), .horn),
+            (.rallySetOut(rally: 2, caller: foe, target: seat.id, defender: player, companies: 3), .dread),
+            (.rallyStruck(rally: 1, caller: player, target: 40, defender: foe, taken: true), .triumph),
+            (.rallyStruck(rally: 1, caller: player, target: 40, defender: foe, taken: false), .clash),
+            (.rallyStruck(rally: 2, caller: foe, target: seat.id, defender: player, taken: true), .dread),
+            (.rallyStruck(rally: 2, caller: foe, target: seat.id, defender: player, taken: false), .batter),
+            (.rallyDispersed(rally: 1, caller: player), .stand),
+            (.sentToReinforce(unit: unit.id, owner: player, hold: 40), .order),
+            (.happeningBegun(kind: .longHunt, ends: 30), .herald),
+            (.happeningMark(house: player, kind: .longHunt, mark: 1, reward: Stock(grain: 50)), .honour),
+            (.happeningEnded(kind: .longHunt, leaders: [player]), .triumph),
+            (.happeningEnded(kind: .longHunt, leaders: [foe]), .herald),
+            (.deedDone(house: player, deed: .founder), .honour),
+            (.chargeDone(house: player, charge: .raiseGranary, reward: Stock(grain: 50)), .honour),
+        ]
+        for (event, cue) in concerning {
+            XCTAssertEqual(GameSession.cues(for: [event], in: state, player: player), [.watch, cue], "\(event)")
+        }
+        // Others' doings among themselves pass quietly.
+        let others = (foe + 1) % state.houses.count
+        let quiet: [GameEvent] = [
+            .studyCompleted(house: foe, study: .furrowLore, grade: 1), .commanderJoined(commander: 99, house: foe),
+            hunt(by: foe, .spear), .gathered(unit: 500, owner: foe, load: Stock(grain: 5)),
+            .allianceFounded(alliance: 77, house: foe), .allianceJoined(alliance: 77, house: others),
+            .allianceDisbanded(alliance: 77, name: "The Salt Oath"), .helpGiven(by: foe, to: others, count: 1),
+            .rallyCalled(rally: 3, caller: foe, target: 41), .rallyStruck(rally: 3, caller: foe, target: 41, defender: others, taken: true),
+            .happeningMark(house: foe, kind: .longHunt, mark: 1, reward: Stock(grain: 5)), .deedDone(house: foe, deed: .founder),
+            .chargeDone(house: foe, charge: .raiseGranary, reward: Stock(grain: 5)),
+        ]
+        XCTAssertEqual(GameSession.cues(for: quiet, in: state, player: player), [.watch])
+        // Every new order has its own sound, not the plain click.
+        let orders: [(Command, Ambience.Cue)] = [
+            (.study(.furrowLore), .rise), (.help(house: foe), .rise),
+            (.assign(commander: commander, unit: unit.id), .order), (.gather(unit: unit.id, site: 1), .order),
+            (.joinRally(rally: 1, unit: unit.id), .order), (.reinforce(unit: unit.id, hold: 40), .order),
+            (.unassign(commander: commander), .stand), (.leaveAlliance, .stand),
+            (.foundAlliance(name: "The Grey Hand"), .banner), (.inviteToAlliance(house: foe), .envoy),
+            (.askToJoin(alliance: 77), .envoy), (.answerInvitation(alliance: 77, accept: true), .banner),
+            (.answerInvitation(alliance: 77, accept: false), .refusal), (.answerRequest(house: foe, accept: true), .banner),
+            (.answerRequest(house: foe, accept: false), .refusal), (.expel(house: foe), .refusal),
+            (.callRally(from: seat.id, against: 40, watches: 2), .horn),
+        ]
+        for (command, cue) in orders {
+            XCTAssertEqual(GameSession.cues(for: command, events: [], in: state, player: player), [cue], "\(command)")
+        }
+    }
+
     /// Blows taken are heard as blows dealt are, losses and hunger as
     /// dread, and works and companies finished as they were begun.
     func testWhatBefallsTheKeepersHouseIsHeard() throws {
