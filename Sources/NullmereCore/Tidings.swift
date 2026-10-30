@@ -68,6 +68,42 @@ extension GameState {
             return Tidings("\(load.description.prefix(1).uppercased() + load.description.dropFirst()) brought home to \(hold(holdID)?.name ?? "your hold").", .good)
         case .siteWorkedOut(_, let store, _):
             return Tidings("The \(Site.title(of: store).lowercased()) is worked out.", .neutral)
+        case .allianceFounded(let id, let house):
+            let name = alliance(id)?.name ?? "a new alliance"
+            return house == viewer ? Tidings("You raise a banner: \(name).", .good) : Tidings("\(houses[house].title) raises a banner: \(name).", .neutral)
+        case .allianceInvited(let id, let house):
+            guard let alliance = alliance(id) else { return nil }
+            if house == viewer { return Tidings("\(houses[alliance.leader].title) invites you into \(alliance.name).", .neutral) }
+            return Tidings("\(houses[house].title) is invited into \(alliance.name).", .neutral)
+        case .allianceAsked(let id, let house):
+            guard let alliance = alliance(id) else { return nil }
+            if house == viewer { return Tidings("You ask to join \(alliance.name).", .neutral) }
+            return Tidings("\(houses[house].title) asks to join \(alliance.name).", .neutral)
+        case .allianceAnswered(let id, let house, let accepted):
+            // A House taken in is told by its joining.
+            guard !accepted, let alliance = alliance(id) else { return nil }
+            if house == viewer { return Tidings("There is no place for you in \(alliance.name) now.", .bad) }
+            return Tidings("\(houses[house].title) stays outside \(alliance.name).", .neutral)
+        case .allianceJoined(let id, let house):
+            let name = alliance(id)?.name ?? "the alliance"
+            if house == viewer { return Tidings("You are sworn to \(name).", .good) }
+            let ours = alliance(id)?.members.contains(viewer) == true
+            return Tidings("\(houses[house].title) joins \(name).", ours ? .good : .neutral)
+        case .allianceLeft(let id, let house, let expelled):
+            let name = alliance(id)?.name ?? "its alliance"
+            if house == viewer { return expelled ? Tidings("You are cast out of \(name).", .bad) : Tidings("You leave \(name).", .neutral) }
+            return Tidings("\(houses[house].title) \(expelled ? "is cast out of" : "leaves") \(name).", .neutral)
+        case .allianceLed(let id, let house):
+            let name = alliance(id)?.name ?? "the alliance"
+            return house == viewer ? Tidings("The banner of \(name) passes to you.", .good)
+                : Tidings("\(houses[house].title) takes up the banner of \(name).", .neutral)
+        case .allianceDisbanded(_, let name):
+            return Tidings("\(name) is no more.", .neutral)
+        case .helpGiven(let by, let to, let count):
+            let works = count == 1 ? "work" : "works"
+            if to == viewer { return Tidings("\(houses[by].title) helps \(count) of your \(works).", .good) }
+            if by == viewer { return Tidings("You help \(count) of \(houses[to].title)'s \(works).", .neutral) }
+            return nil
         default:
             return nil
         }

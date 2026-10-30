@@ -55,6 +55,22 @@ extension GameState {
             return try unassign(commanderID, as: house)
         case let .gather(unitID, siteID):
             return try gather(unitID, at: siteID, as: house)
+        case let .foundAlliance(name):
+            return try foundAlliance(named: name, by: house)
+        case let .inviteToAlliance(target):
+            return try invite(target, by: house)
+        case let .askToJoin(allianceID):
+            return try askToJoin(allianceID, by: house)
+        case let .answerInvitation(allianceID, accept):
+            return try answerInvitation(allianceID, accept: accept, as: house)
+        case let .answerRequest(asker, accept):
+            return try answerRequest(of: asker, accept: accept, as: house)
+        case .leaveAlliance:
+            return try leaveAlliance(as: house)
+        case let .expel(target):
+            return try expel(target, by: house)
+        case let .help(ally):
+            return try help(ally, by: house)
         }
     }
 
@@ -424,7 +440,13 @@ extension GameState {
         units.removeAll { $0.owner == house }
         envoys.removeAll { $0.from == house || $0.to == house }
         record(.fall, [house, conqueror], "\(houses[house].title) falls to \(houses[conqueror].title). Its name passes into the chronicle.")
-        return [.houseFell(house)]
+        var events: [GameEvent] = [.houseFell(house)]
+        // Its alliance goes on without it, and no alliance waits on it.
+        if let sworn = alliance(of: house) {
+            events += part(house, from: sworn.id)
+        }
+        forgetInvitations(of: house)
+        return events
     }
 
     // MARK: Holds
@@ -549,6 +571,8 @@ extension GameState {
         try requireRival(target, of: house)
         let previous = stance(house, target)
         guard previous != .war else { throw .alreadyStance(.war) }
+        // No House makes war on one sworn to its own alliance.
+        guard !areAllied(house, target) else { throw .allyInAlliance(target) }
         // A vassal can't turn on its liege; a liege that turns on its
         // vassal frees it.
         guard houses[house].liege != target else { throw .notApplicable }
@@ -592,6 +616,7 @@ extension GameState {
             throw .notApplicable
         case .tribute:
             guard current == .peace else { throw current == .pact ? .alreadyStance(.pact) : .notApplicable }
+            guard !areAllied(house, target) else { throw .allyInAlliance(target) }
             guard mayDemandTribute(by: house, of: target) else { throw .notApplicable }
         }
 
@@ -697,11 +722,11 @@ extension GameState {
     }
 
     /// Whether one House may demand tribute of another now: both standing,
-    /// at peace, neither sworn to the other, and no demand paid or refused
-    /// between them lately.
+    /// at peace, neither sworn to the other nor to the same alliance, and no
+    /// demand paid or refused between them lately.
     public func mayDemandTribute(by demander: Int, of target: Int) -> Bool {
         guard demander != target, let me = house(demander), let other = house(target), !me.isEliminated, !other.isEliminated else { return false }
-        return stance(demander, target) == .peace && me.liege != target && other.liege != demander
+        return stance(demander, target) == .peace && me.liege != target && other.liege != demander && !areAllied(demander, target)
             && !paidTributeLately(demander, target) && !refusedTributeLately(demander, target)
     }
 

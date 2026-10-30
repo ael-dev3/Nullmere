@@ -572,8 +572,11 @@ public final class GameSession {
     /// offer of trade.
     static func decidedByRealm(_ command: Command, in state: GameState) -> Bool {
         switch command {
-        case .propose(_, let to), .proposeWithWords(_, let to, _), .offerTrade(_, let to, _):
+        case .propose(_, let to), .proposeWithWords(_, let to, _), .offerTrade(_, let to, _), .inviteToAlliance(let to):
             return state.house(to).map { !$0.isPlayer } ?? false
+        case .askToJoin(let id):
+            // A steward leading the alliance answers at once.
+            return state.alliance(id).map { !state.houses[$0.leader].isPlayer } ?? false
         case .answer(let id, _):
             return state.envoys.first { $0.id == id }?.proposal == .trade
         default:

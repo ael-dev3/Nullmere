@@ -82,6 +82,7 @@ struct RivalMind {
         var random = state.random()
 
         events += caretaking ? keepThePeace(in: &state, random: &random) : conductDiplomacy(in: &state, random: &random)
+        events += tendAlliance(in: &state, random: &random)
         events += balanceStores(in: &state)
         // The land's territory, found once: no work or muster begun changes it.
         let owners = state.territory()
@@ -134,7 +135,8 @@ struct RivalMind {
         // Each other House weighed in an order of no one's seat number: the
         // first a House sets on is no likelier to be one numbered low.
         for other in state.livingHouses.sorted(by: { tieBreak($0.id, in: state) < tieBreak($1.id, in: state) }) where other.id != house {
-            guard let relation = state.relation(house, other.id) else { continue }
+            // Its own alliance's Houses are no one to war on or make demands of.
+            guard let relation = state.relation(house, other.id), !state.areAllied(house, other.id) else { continue }
             let theirs = max(1, strengths[other.id])
             let lasted = state.watch - relation.since
             let neighbours = knowsHold(of: other.id, within: 14, in: state)
@@ -394,6 +396,99 @@ struct RivalMind {
             if kind == .moonspire { return nil }
         }
         return nil
+    }
+
+    // MARK: Alliances
+
+    /// The watch from which stewards found and seek alliances.
+    static let alliancesFrom = 15
+
+    /// Whether a steward takes an invitation into an alliance: none with a
+    /// House whose rising Moonspire it fears, or that has wronged it; the
+    /// wary and the steadfast gladly, the cunning into a strong one, the
+    /// ambitious only into one far stronger than itself. A caretaker swears
+    /// its keeper to none.
+    func acceptsInvitation(to alliance: Alliance, in state: GameState) -> Bool {
+        guard !caretaking, state.joinRefusal(of: house, to: alliance) == nil else { return false }
+        let feared = spireThreats(in: state)
+        guard !alliance.members.contains(where: feared.contains) else { return false }
+        let wronged = alliance.members.contains { member in
+            guard let relation = state.relation(house, member) else { return false }
+            return relation.aggressor == member || relation.betrayals > 0
+        }
+        guard !wronged else { return false }
+        let mine = max(1, state.strength(of: house))
+        let theirs = alliance.members.reduce(0) { $0 + state.strength(of: $1) }
+        switch state.houses[house].temperament {
+        case .wary, .steadfast: return true
+        case .cunning: return theirs * 10 >= mine * 15
+        case .ambitious: return theirs >= mine * 2
+        }
+    }
+
+    /// Whether a steward leading an alliance takes a House asking to join:
+    /// none it fears, nor one that has wronged any of its Houses; the wary
+    /// only a House it is in a pact with, the ambitious only one no
+    /// stronger than itself.
+    func acceptsMember(_ asker: Int, to alliance: Alliance, in state: GameState) -> Bool {
+        guard state.joinRefusal(of: asker, to: alliance) == nil, !spireThreats(in: state).contains(asker) else { return false }
+        let wrongdoer = alliance.members.contains { member in
+            guard let relation = state.relation(asker, member) else { return false }
+            return relation.aggressor == asker || relation.betrayals > 0
+        }
+        guard !wrongdoer else { return false }
+        switch state.houses[house].temperament {
+        case .wary: return state.stance(house, asker) == .pact
+        case .ambitious: return state.strength(of: asker) <= state.strength(of: house)
+        case .steadfast, .cunning: return true
+        }
+    }
+
+    /// A steward's alliance, tended each watch: its allies' works helped;
+    /// as leader, Houses asking answered and now and then a House it would
+    /// stand beside invited; free, an alliance it would take asked, or now
+    /// and then a banner raised. A caretaker only helps.
+    func tendAlliance(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
+        var events: [GameEvent] = []
+        if let sworn = state.alliance(of: house) {
+            for ally in sworn.members where ally != house && state.helpable(by: house, for: ally) > 0 {
+                events += perform(.help(house: ally), in: &state)
+            }
+        }
+        guard !caretaking else { return events }
+        // A banner taken up from a keeper may find Houses asking: answered.
+        if let sworn = state.alliance(of: house), sworn.leader == house {
+            for asker in sworn.asking {
+                let accept = state.alliance(of: house).map { acceptsMember(asker, to: $0, in: state) } ?? false
+                events += perform(.answerRequest(house: asker, accept: accept), in: &state)
+            }
+        }
+        guard state.watch >= RivalMind.alliancesFrom else { return events }
+        let feared = spireThreats(in: state)
+        if let sworn = state.alliance(of: house) {
+            guard sworn.leader == house, sworn.members.count < state.allianceLimit, random.chance(15) else { return events }
+            let candidates = state.livingHouses.filter { other in
+                other.id != house && !sworn.invited.contains(other.id) && !feared.contains(other.id)
+                    && state.stance(house, other.id) != .war && state.joinRefusal(of: other.id, to: sworn) == nil
+            }
+            let pick = candidates.min { a, b in
+                (state.stance(house, a.id) == .pact ? 0 : 1, tieBreak(a.id, in: state)) < (state.stance(house, b.id) == .pact ? 0 : 1, tieBreak(b.id, in: state))
+            }
+            if let pick { events += perform(.inviteToAlliance(house: pick.id), in: &state) }
+            return events
+        }
+        for alliance in state.alliancesStanding.sorted(by: { tieBreak($0.id, in: state) < tieBreak($1.id, in: state) })
+            where !alliance.asking.contains(house) && acceptsInvitation(to: alliance, in: state) {
+            guard random.chance(20) else { continue }
+            events += perform(.askToJoin(alliance: alliance.id), in: &state)
+            if state.alliance(of: house) != nil { return events }
+        }
+        let temper = state.houses[house].temperament
+        if random.chance(temper == .wary || temper == .steadfast ? 6 : 3),
+           let name = Alliance.stewardNames.first(where: { name in !state.alliancesStanding.contains { $0.name.lowercased() == name.lowercased() } }) {
+            events += perform(.foundAlliance(name: name), in: &state)
+        }
+        return events
     }
 
     /// The Archive a steward wants at its seat as the age goes on.

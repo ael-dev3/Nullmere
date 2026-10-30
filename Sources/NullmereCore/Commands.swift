@@ -39,6 +39,21 @@ public enum Command: Codable, Equatable, Sendable {
     /// A company of war marches to a site of the land and works it until
     /// it carries all it can, then brings it home to the nearest hold.
     case gather(unit: Int, site: Int)
+    /// Raise a banner: found an alliance of this name, and lead it.
+    case foundAlliance(name: String)
+    /// Its leader invites a House into the alliance.
+    case inviteToAlliance(house: Int)
+    /// Ask to join an alliance; its leader answers.
+    case askToJoin(alliance: Int)
+    /// An invited House answers its invitation.
+    case answerInvitation(alliance: Int, accept: Bool)
+    /// An alliance's leader answers a House asking to join.
+    case answerRequest(house: Int, accept: Bool)
+    case leaveAlliance
+    /// Its leader casts a House out of the alliance.
+    case expel(house: Int)
+    /// Help every work, muster and study of an ally's not helped yet.
+    case help(house: Int)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -114,6 +129,28 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case cannotGather(UnitKind)
     /// A company carrying all it can, or another store than the site's.
     case loadFull
+    /// A House sworn to an alliance already.
+    case inAnAlliance
+    /// A House sworn to no alliance.
+    case notInAlliance
+    /// What only an alliance's leader may do.
+    case notAllianceLeader
+    case allianceNameInvalid
+    case allianceNameTaken
+    case unknownAlliance
+    /// A House at war with one of the alliance's: no alliance takes in a war.
+    case atWarWithAMember(Int)
+    case allianceFull
+    case alreadyInvited
+    case alreadyAsked
+    case noInvitation
+    case noRequest
+    case notAMember
+    /// Help for a House not of one's alliance.
+    case notAnAlly
+    case nothingToHelp
+    /// War, or a demand, on a House of one's own alliance.
+    case allyInAlliance(Int)
 
     public var description: String {
         switch self {
@@ -171,6 +208,22 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .unknownSite: return "Your House knows of no such site."
         case .cannotGather(let kind): return "\(kind.title) gather nothing."
         case .loadFull: return "It carries all it can; bring it home first."
+        case .inAnAlliance: return "That House is sworn to an alliance already."
+        case .notInAlliance: return "Your House is sworn to no alliance."
+        case .notAllianceLeader: return "Only the alliance's leader can do that."
+        case .allianceNameInvalid: return "An alliance's name is two to twenty-four letters, spaces, hyphens or apostrophes."
+        case .allianceNameTaken: return "An alliance already goes by that name."
+        case .unknownAlliance: return "No such alliance stands."
+        case .atWarWithAMember: return "No alliance takes in a House at war with one of its own."
+        case .allianceFull: return "The alliance is full."
+        case .alreadyInvited: return "That House is already invited."
+        case .alreadyAsked: return "Your House has already asked."
+        case .noInvitation: return "No such invitation waits for you."
+        case .noRequest: return "That House hasn't asked to join."
+        case .notAMember: return "That House isn't of your alliance."
+        case .notAnAlly: return "Only an ally can be helped."
+        case .nothingToHelp: return "Your ally has nothing under way you haven't helped."
+        case .allyInAlliance: return "Your House is sworn to the same alliance as theirs."
         }
     }
 }
@@ -228,6 +281,23 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case delivered(unit: Int, owner: Int, hold: Int, load: Stock)
     /// A site is worked out and gone.
     case siteWorkedOut(site: Int, store: Resource, at: Hex)
+    /// A House raises a banner.
+    case allianceFounded(alliance: Int, house: Int)
+    /// An alliance's leader invites a House.
+    case allianceInvited(alliance: Int, house: Int)
+    /// A House asks to join an alliance.
+    case allianceAsked(alliance: Int, house: Int)
+    /// An invitation, or a request to join, answered.
+    case allianceAnswered(alliance: Int, house: Int, accepted: Bool)
+    case allianceJoined(alliance: Int, house: Int)
+    /// A House leaves an alliance, or is cast out of it.
+    case allianceLeft(alliance: Int, house: Int, expelled: Bool)
+    /// A House takes up an alliance's banner as its leader.
+    case allianceLed(alliance: Int, house: Int)
+    /// An alliance left with no House is no more.
+    case allianceDisbanded(alliance: Int, name: String)
+    /// A House helps an ally's works, musters and study.
+    case helpGiven(by: Int, to: Int, count: Int)
 }
 
 /// One exchange of blows.

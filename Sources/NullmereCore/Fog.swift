@@ -47,6 +47,17 @@ extension GameState {
         // The wilds in sight; the sites on ground the House has explored.
         view.wilds = wilds?.filter { map.index(of: $0.position).map { seen[$0] } ?? false }
         view.sites = sites?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
+        // Alliances are known to all; who is invited, or asking, only to the
+        // alliance's own Houses and the House concerned.
+        if let alliances {
+            view.alliances = alliances.map { alliance in
+                guard !alliance.members.contains(house) else { return alliance }
+                var known = alliance
+                known.invited = alliance.invited.filter { $0 == house }
+                known.asking = alliance.asking.filter { $0 == house }
+                return known
+            }
+        }
         return view
     }
 }
@@ -93,6 +104,12 @@ extension GameState {
                 return owner == house
             case .siteWorkedOut(_, _, let at):
                 return visible(at)
+            case .allianceFounded, .allianceJoined, .allianceLeft, .allianceLed, .allianceDisbanded:
+                return true
+            case .allianceInvited(let id, let other), .allianceAsked(let id, let other), .allianceAnswered(let id, let other, _):
+                return other == house || alliance(id)?.members.contains(house) == true
+            case .helpGiven(let by, let to, _):
+                return by == house || to == house
             case .promoted(_, let owner, _):
                 return owner == house
             case .ruinSearched(let at, let by, _):

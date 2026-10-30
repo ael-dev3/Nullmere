@@ -8,6 +8,8 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
         public var kind: BuildingKind
         public var targetLevel: Int
         public var watchesLeft: Int
+        /// The allied Houses that have helped it, if any.
+        public var helpers: [Int]? = nil
     }
 
     public struct Training: Codable, Equatable, Sendable {
@@ -15,11 +17,14 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
         public var watchesLeft: Int
         /// The tier it musters at; absent for the first, as in older saves.
         public var tier: Int?
+        /// The allied Houses that have helped it, if any.
+        public var helpers: [Int]?
 
         public init(kind: UnitKind, watchesLeft: Int, tier: Int? = nil) {
             self.kind = kind
             self.watchesLeft = watchesLeft
             self.tier = tier.flatMap { $0 > 1 ? $0 : nil }
+            self.helpers = nil
         }
 
         /// The tier it musters at.

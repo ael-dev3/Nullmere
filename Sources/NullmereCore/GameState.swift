@@ -84,6 +84,8 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The land's sites, where companies gather; absent in saves from
     /// before them, which find them as the watch turns.
     var sites: [Site]?
+    /// The alliances standing; absent in saves from before them.
+    var alliances: [Alliance]?
 
     public var player: Int { houses.first { $0.isPlayer }?.id ?? 0 }
 
@@ -325,12 +327,16 @@ public struct GameState: Codable, Equatable, Sendable {
 
     // MARK: Sight
 
-    /// The tiles a House sees right now, with its allies' sight.
+    /// The tiles a House sees right now, with its allies' sight: those in a
+    /// pact with it, and those sworn to its alliance.
     public func visibility(for house: Int) -> [Bool] {
         var visible = [Bool](repeating: false, count: map.count)
         // Allies lend their sight; a fallen House has none to lend or borrow.
         let fallen = houses.indices.contains(house) && houses[house].isEliminated
-        let watchers = houses.filter { $0.id == house || (!fallen && !$0.isEliminated && stance($0.id, house) == .pact) }.map(\.id)
+        let sworn = alliance(of: house)?.members ?? []
+        let watchers = houses.filter { other in
+            other.id == house || (!fallen && !other.isEliminated && (stance(other.id, house) == .pact || sworn.contains(other.id)))
+        }.map(\.id)
         for watcher in watchers {
             for unit in units(of: watcher) {
                 let range = sight(of: unit)

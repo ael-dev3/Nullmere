@@ -559,6 +559,17 @@ realm; keepers are told in plain words, never a status code.
   company comes by one of its holds. A gatherer struck down by a House at
   war with its own leaves half its load to the victor. Stewards at peace
   send idle companies to sites of the stores they run short of.
+- **Alliances.** Any House not sworn to one may raise a banner, a named
+  alliance it leads. Its leader invites Houses and answers those that ask
+  to join; a House leaves when it will, and the leader may cast one out.
+  An alliance takes a third of the lake's seats at most, and no House at war
+  with one of its own. Allies make no war and no demands on each other,
+  share their sight, and help each other's works, musters and studies:
+  each ally helps each once, and every second help takes a watch off it,
+  never its last. When the leader leaves or falls, the strongest still
+  sworn takes up the banner; an alliance with none left is no more.
+  Stewards raise banners, ask, invite and answer from the fifteenth watch,
+  each by its temper.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is

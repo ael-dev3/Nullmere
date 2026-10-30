@@ -237,6 +237,8 @@ public struct Pursuit: Codable, Equatable, Sendable {
     /// The grade it will reach.
     public let grade: Int
     public var watchesLeft: Int
+    /// The allied Houses that have helped it, if any.
+    public var helpers: [Int]? = nil
 }
 
 /// A House's studies: what it knows, and what it is studying.

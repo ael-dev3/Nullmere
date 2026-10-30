@@ -159,7 +159,7 @@ enum VoiceFacts {
     static func isVoiced(_ kind: ChronicleEntry.Kind) -> Bool {
         switch kind {
         case .war, .peace, .pact, .betrayal, .capture, .fall, .greatWork, .ending, .tribute: return true
-        case .beginning, .founding, .discovery, .omen, .gift, .trade, .seating, .learning, .commander, .hunt: return false
+        case .beginning, .founding, .discovery, .omen, .gift, .trade, .seating, .learning, .commander, .hunt, .alliance: return false
         }
     }
 }

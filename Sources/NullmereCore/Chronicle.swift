@@ -28,6 +28,8 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         case commander
         /// A great company of the wilds falls.
         case hunt
+        /// An alliance is founded, joined, left or led anew, or is no more.
+        case alliance
     }
 
     public let watch: Int

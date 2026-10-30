@@ -96,6 +96,24 @@ extension GameState {
             }
             if commander.owner != unit.owner { found.append("Company \(unit.id) is led by another House's commander") }
         }
+        var sworn: Set<Int> = []
+        for alliance in alliancesStanding {
+            if alliance.members.isEmpty { found.append("\(alliance.name) has no House") }
+            if !alliance.members.contains(alliance.leader) { found.append("\(alliance.name) is led by a House not of it") }
+            if alliance.members.count > allianceLimit { found.append("\(alliance.name) has \(alliance.members.count) Houses") }
+            for member in alliance.members {
+                if !sworn.insert(member).inserted { found.append("House \(member) is sworn to two alliances") }
+                if !houseIDs.contains(member) || houses[member].isEliminated { found.append("\(alliance.name) counts a House that isn't standing (\(member))") }
+            }
+            for (index, first) in alliance.members.enumerated() {
+                for second in alliance.members[(index + 1)...] where isAtWar(first, second) {
+                    found.append("\(alliance.name) has Houses \(first) and \(second) at war")
+                }
+            }
+            for waiting in alliance.invited + alliance.asking where !houseIDs.contains(waiting) || alliance.members.contains(waiting) {
+                found.append("\(alliance.name) waits on House \(waiting)")
+            }
+        }
         let pairs = Set(relations.map { [$0.first, $0.second] })
         if pairs.count != relations.count { found.append("Two Houses have more than one standing") }
         for relation in relations where !houseIDs.contains(relation.first) || !houseIDs.contains(relation.second) || relation.first == relation.second {
