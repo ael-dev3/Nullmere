@@ -24,10 +24,11 @@ Website: [nullmere.online](https://nullmere.online)
 
 **Going live** takes five steps that need an account, a Mac or people only
 the realm's maintainer has: raising the realm on maincloud, signing and
-notarizing the release, hearing the voices on a Mac with Apple Intelligence,
-measuring on real Apple silicon (those two are one command together), and
-its first keepers. Each is rehearsed in CI where it can be: see
-[docs/GO-LIVE.md](docs/GO-LIVE.md).
+notarizing the release, hearing the voices and measuring on a Mac with
+Apple Intelligence (one command, `scripts/check-on-mac.sh`), listening to
+it with VoiceOver, and its first keepers. Each is rehearsed in CI where it
+can be, and [docs/GO-LIVE.md](docs/GO-LIVE.md) is a checklist of commands
+to paste, each with what it prints when it worked.
 `scripts/go-live-status.sh` says where each step stands.
 
 ## Requirements

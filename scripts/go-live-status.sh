@@ -90,12 +90,14 @@ else
     also "scripts/set-release-secrets.sh DeveloperID.p12 AuthKey_XXXXXXXXXX.p8 <issuer id>, then tag a version"
 fi
 
-# 3. The voices, heard on a Mac with Apple Intelligence.
+# 3. On a real Mac: the voices heard with Apple Intelligence, and the
+# figures measured on Apple silicon, both on record (scripts/check-on-mac.sh).
+on_mac=0
 report="$(ls perf/mac/*-voices.txt 2>/dev/null | head -n 1 || true)"
 [ -n "$report" ] || report=build/voices-report.txt
 if [ -s "$report" ] && grep -q "Every line within the rules." "$report"; then
     line "3. The voices" "HEARD, within their rules ($report)"
-    done_steps=$((done_steps + 1))
+    on_mac=$((on_mac + 1))
 elif [ -s "$report" ]; then
     line "3. The voices" "OUT OF BOUNDS: see $report"
     also "scripts/check-voices.sh"
@@ -103,27 +105,29 @@ else
     line "3. The voices" "NOT YET HEARD"
     also "scripts/check-on-mac.sh  (on a Mac with Apple Intelligence)"
 fi
-
-# 4. Real Apple silicon, measured and on record.
 measured="$(ls perf/mac/*.json 2>/dev/null | tr '\n' ' ' || true)"
 if [ -n "$measured" ]; then
-    line "4. Apple silicon" "MEASURED: $measured"
-    done_steps=$((done_steps + 1))
+    line "3. The figures" "MEASURED: $measured"
+    on_mac=$((on_mac + 1))
 else
-    line "4. Apple silicon" "NOT YET MEASURED"
+    line "3. The figures" "NOT YET MEASURED"
     also "scripts/check-on-mac.sh  (on a Mac with Apple silicon)"
 fi
+[ "$on_mac" = 2 ] && done_steps=$((done_steps + 1))
 
-# 5. The first players.
+# 4. VoiceOver, listened to: no machine can tell how it sounds.
+line "4. VoiceOver" "BY EAR: docs/GO-LIVE.md, step 4 (CI audits every screen and walks the map: scripts/ui-test.sh)"
+
+# 5. The first keepers.
 if [ -n "$keepers" ] && [ "$keepers" -gt 0 ]; then
-    line "5. Players" "$keepers keeper$([ "$keepers" = 1 ] || echo s) known to the realm"
+    line "5. Keepers" "$keepers keeper$([ "$keepers" = 1 ] || echo s) known to the realm"
     done_steps=$((done_steps + 1))
 else
-    line "5. Players" "NONE YET: they come once the realm is up and a release is out"
+    line "5. Keepers" "NONE YET: they come once the realm is up and a release is out"
 fi
 
 echo
-echo "$done_steps of 5 done."
+echo "$done_steps of the 4 steps a machine can check are done; step 4 is by ear."
 if [ "$EXPECT_REALM" = 1 ] && [ -z "$realm" ]; then
     echo "error: the realm at $ADDRESS doesn't answer" >&2
     exit 1

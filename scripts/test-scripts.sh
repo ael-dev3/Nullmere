@@ -3,7 +3,9 @@
 # steward it started (by its pid, or by name for one started before pids
 # were kept) and tells a local server's sign-in from maincloud's; the smoke
 # tests' helper puts this Mac's hosted realm and keeper's name back however
-# a test ends. Each runs against stand-ins, touching nothing real.
+# a test ends; check-on-mac.sh runs both its halves whatever either does,
+# says which passed, and refuses a Mac that can't run them. Each runs
+# against stand-ins, touching nothing real.
 #
 #   scripts/test-scripts.sh      (run by scripts/check-scripts.sh)
 set -euo pipefail
@@ -93,6 +95,43 @@ check "the smoke test ended as it crashed" "$crashed" "7"
 check "this Mac's realm is put back" "$(cat "$REALM")" '{"the":"keeper'"'"'s realm"}'
 check "the keeper's name is put back" "$(PATH="$WORK/bin:$PATH" defaults read NullmereLauncher keeper.name.hosted)" "Ama"
 check "no backup is left behind" "$([ -e "$REALM.smoke-backup" ] && echo left || echo none)" "none"
+
+# check-on-mac.sh: in a stand-in repository, with stand-in halves and a
+# stand-in Mac.
+MAC="$WORK/mac"
+mkdir -p "$MAC/scripts" "$WORK/macbin"
+cp scripts/check-on-mac.sh "$MAC/scripts/"
+for half in check-voices measure-mac; do
+    printf '#!/usr/bin/env bash\necho ran >> "%s/%s.ran"\nexit "${%s_STATUS:-0}"\n' "$WORK" "$half" "$(echo "$half" | tr a-z- A-Z_)" \
+        > "$MAC/scripts/$half.sh"
+done
+printf '#!/usr/bin/env bash\necho "status"\n' > "$MAC/scripts/go-live-status.sh"
+printf '#!/usr/bin/env bash\ncase "$1" in -s) echo Darwin ;; -m) echo "${MAC_ARCH:-arm64}" ;; *) echo Darwin ;; esac\n' > "$WORK/macbin/uname"
+printf '#!/usr/bin/env bash\necho 26.0\n' > "$WORK/macbin/sw_vers"
+printf '#!/usr/bin/env bash\nprintf "Xcode 26.0\\nBuild version 17A1\\n"\n' > "$WORK/macbin/xcodebuild"
+printf '#!/usr/bin/env bash\ncase "$2" in hw.model) echo Mac16,1 ;; *) echo "Apple M4" ;; esac\n' > "$WORK/macbin/sysctl"
+chmod +x "$MAC"/scripts/*.sh "$WORK"/macbin/*
+mac_run() {
+    rm -f "$WORK"/*.ran
+    set +e
+    PATH="$WORK/macbin:$PATH" "$@" > "$WORK/mac.out" 2>&1
+    echo $? > "$WORK/mac.status"
+    set -e
+}
+halves_ran() {
+    echo "$([ -f "$WORK/check-voices.ran" ] && echo voices) $([ -f "$WORK/measure-mac.ran" ] && echo figures)"
+}
+mac_run env CHECK_VOICES_STATUS=1 "$MAC/scripts/check-on-mac.sh" --no-commit
+check "check-on-mac.sh fails when the voices do" "$(cat "$WORK/mac.status")" "1"
+check "and measures all the same" "$(halves_ran)" "voices figures"
+check "and says which passed" "$(grep -cE '^  The (voices .*failed|figures .*passed)$' "$WORK/mac.out")" "2"
+check "and commits nothing" "$(grep -c "nothing was committed" "$WORK/mac.out")" "1"
+mac_run "$MAC/scripts/check-on-mac.sh" --no-commit
+check "check-on-mac.sh passes when both halves do" "$(cat "$WORK/mac.status")" "0"
+check "having heard and measured" "$(halves_ran)" "voices figures"
+mac_run env MAC_ARCH=x86_64 "$MAC/scripts/check-on-mac.sh" --no-commit
+check "check-on-mac.sh refuses a Mac without Apple silicon" "$(cat "$WORK/mac.status")" "1"
+check "before hearing or measuring" "$(halves_ran)" " "
 
 [ "$failures" = 0 ] && echo "The scripts do what they say."
 exit "$failures"
