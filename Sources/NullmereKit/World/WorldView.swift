@@ -583,13 +583,13 @@ struct WorldFallback: View {
     static func colour(for terrain: Terrain) -> Color {
         switch terrain {
         case .still: return water
-        case .shallows: return Color(red: 0.02, green: 0.03, blue: 0.04)
-        case .strand: return Color(red: 0.34, green: 0.34, blue: 0.33)
-        case .saltFlat: return Color(red: 0.7, green: 0.73, blue: 0.78)
-        case .greyfield: return Color(red: 0.2, green: 0.22, blue: 0.2)
-        case .blackwood: return Color(red: 0.04, green: 0.06, blue: 0.06)
+        case .shallows: return Color(red: 0.022, green: 0.029, blue: 0.037)
+        case .strand: return Color(red: 0.36, green: 0.355, blue: 0.34)
+        case .saltFlat: return Color(red: 0.71, green: 0.745, blue: 0.80)
+        case .greyfield: return Color(red: 0.21, green: 0.23, blue: 0.21)
+        case .blackwood: return Color(red: 0.058, green: 0.076, blue: 0.07)
         case .barrow: return Color(red: 0.22, green: 0.2, blue: 0.18)
-        case .spine: return Color(red: 0.1, green: 0.1, blue: 0.12)
+        case .spine: return Color(red: 0.14, green: 0.14, blue: 0.16)
         }
     }
 }

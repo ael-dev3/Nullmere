@@ -4,7 +4,7 @@
     python3 Tools/icon/make-icon.py
 
 Writes the layers of the Liquid Glass icon (Packaging/AppIcon.icon: the
-night, the moon's image in the water, and the glass moon) and the classic
+night, and the moon and its image in the water, both in glass) and the classic
 icon built from them (Packaging/AppIcon.png), with a preview beside this
 script. The scene is the launcher's own, framed square around the moon:
 its sky and water, its far shore of flat-topped mesas worked out as the

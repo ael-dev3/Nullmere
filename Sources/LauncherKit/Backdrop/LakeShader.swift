@@ -44,10 +44,11 @@ enum LakeShader {
     }
 
     // A drift of `speed` units a second, round a circle once in the clock's
-    // period: what drifts on it never jumps as the clock starts over.
+    // period from where it began: what drifts on it never jumps as the
+    // clock starts over.
     float2 nm_drift(float time, float speed) {
         float turn = NM_TAU * time / NM_CLOCK_PERIOD;
-        return float2(sin(turn), -cos(turn)) * (speed * NM_CLOCK_PERIOD / NM_TAU);
+        return float2(sin(turn), 1.0 - cos(turn)) * (speed * NM_CLOCK_PERIOD / NM_TAU);
     }
 
     // Nullmere's own hash, written for it: a point folded once along each
@@ -251,7 +252,8 @@ enum LakeShader {
         }
 
         // Stars low in the sky flicker more, as through a deeper air.
-        float twinkle = 0.72 * activity * (1.4 - 0.6 * altitude);
+        // A still night's twinkle: never blinking a star out.
+        float twinkle = 0.45 * activity * (1.4 - 0.6 * altitude);
         float3 s = nm_starLayer(p, 74.0, 0.46 + 0.40 * band, 0.03, 0.30, 0.42, pt, time, twinkle * 0.7, 3.0);
         s += nm_starLayer(p, 31.0, 0.44, 0.14, 0.90, 0.52, pt, time, twinkle, 17.0);
         s += nm_starLayer(p, 11.0, 0.40, 0.70, 2.40, 0.68, pt, time, twinkle, 31.0);
@@ -263,7 +265,7 @@ enum LakeShader {
         // Thin haze drifting past the moon catches its light.
         if (dm < 0.45 && moonlight > 0.0) {
             float haze = smoothstep(0.50, 0.82, nm_fbm(float2(p.x * 2.3, p.y * 7.5 + 2.0) - nm_drift(time, 0.012)));
-            c += float3(0.55, 0.64, 0.80) * 0.11 * haze * exp(-dm * 9.0) * (0.85 + 0.3 * breath) * moonlight;
+            c += float3(0.55, 0.64, 0.80) * 0.11 * haze * exp(-dm * 9.0) * (0.92 + 0.16 * breath) * moonlight;
         }
 
         // Moon: a cold full disc with soft limb darkening, maria and a wide
@@ -272,7 +274,7 @@ enum LakeShader {
         if (moonlight > 0.0) {
             float3 glowTint = float3(0.58, 0.68, 0.86);
             float glow = 0.050 * exp(-rim * 2.2) + 0.080 * exp(-rim * 7.5) + 0.15 * exp(-rim * 24.0) + 0.26 * exp(-rim * 90.0);
-            c += glowTint * glow * (0.86 + 0.28 * breath) * moonlight;
+            c += glowTint * glow * (0.93 + 0.14 * breath) * moonlight;
         }
         float disc = (1.0 - smoothstep(NM_MOON_R - pt, NM_MOON_R + pt, dm)) * moonlight;
         if (disc > 0.0) {
@@ -284,7 +286,7 @@ enum LakeShader {
             float crater = exp(-dot(tq, tq) * 160.0);
             float3 moon = float3(0.93, 0.95, 0.98) * (0.80 + 0.20 * limb) * (1.0 - 0.15 * maria) * (0.93 + 0.12 * grain);
             moon += float3(0.06) * crater;
-            moon *= 0.97 + 0.04 * breath;
+            moon *= 0.985 + 0.02 * breath;
             c = mix(c, moon, disc);
         }
 

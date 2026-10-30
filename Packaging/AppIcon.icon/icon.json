@@ -24,7 +24,7 @@
     {
       "layers" : [
         {
-          "glass" : false,
+          "glass" : true,
           "image-name" : "reflection.png",
           "name" : "reflection"
         }

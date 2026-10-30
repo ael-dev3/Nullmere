@@ -50,10 +50,11 @@ enum WorldShader {
     }
 
     // A drift of `speed` units a second, round a circle once in the clock's
-    // period: what drifts on it never jumps as the clock starts over.
+    // period from where it began: what drifts on it never jumps as the
+    // clock starts over.
     float2 nm_drift(float time, float speed) {
         float turn = NM_TAU * time / NM_CLOCK_PERIOD;
-        return float2(sin(turn), -cos(turn)) * (speed * NM_CLOCK_PERIOD / NM_TAU);
+        return float2(sin(turn), 1.0 - cos(turn)) * (speed * NM_CLOCK_PERIOD / NM_TAU);
     }
 
     // Nullmere's own hash, as the launcher's lake has it: a point folded
@@ -212,6 +213,20 @@ enum WorldShader {
         return 0.07 * nm_fbm3(w * 2.0);
     }
 
+    // The moon's face as the launcher's lake draws it: the same noise, turn
+    // for turn, so the moon over the launcher and the moon in the map's
+    // water are one moon, its seas where they are there.
+    float nm_moonFbm(float2 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 4; i++) {
+            v += a * nm_noise(p);
+            p = p * 2.03 + float2(17.1, 9.3);
+            a *= 0.5;
+        }
+        return v;
+    }
+
     // The still water: black glass holding the stars and the moon.
     float nm_star(float2 px, float ppp, float size, float threshold, float salt, float time) {
         // A grid of its own angle for each salt, every row slid along by
@@ -305,14 +320,17 @@ enum WorldShader {
         // radii so it keeps its shape at every zoom.
         float rim = max(length(mq) - 1.0, 0.0);
         float halo = 0.050 * exp(-rim * 0.123) + 0.080 * exp(-rim * 0.42) + 0.15 * exp(-rim * 1.34) + 0.26 * exp(-rim * 5.04);
-        float3 glow = float3(0.58, 0.68, 0.86) * halo * 0.82 * (0.86 + 0.28 * breath) * moonAt.w;
+        float3 glow = float3(0.58, 0.68, 0.86) * halo * 0.82 * (0.93 + 0.14 * breath) * moonAt.w;
         c += glow * (1.0 - shallow * 0.6);
         if (disc > 0.0) {
-            float maria = smoothstep(0.40, 0.70, nm_fbm(mq * 1.6 + float2(5.2, 1.3)));
-            float grain = nm_fbm(mq * 6.0 + float2(1.7, 8.1));
+            float maria = smoothstep(0.40, 0.70, nm_moonFbm(mq * 1.6 + float2(5.2, 1.3)));
+            float grain = nm_moonFbm(mq * 6.0 + float2(1.7, 8.1));
             float limb = sqrt(clamp(1.0 - dot(mq, mq), 0.0, 1.0));
-            float3 face = float3(0.93, 0.95, 0.98) * 0.82 * (0.80 + 0.20 * limb) * (1.0 - 0.15 * maria) * (0.93 + 0.12 * grain)
-                * (0.97 + 0.04 * breath);
+            // Its one bright crater, where the launcher's moon has it.
+            float2 tq = mq - float2(-0.18, -0.62);
+            float crater = exp(-dot(tq, tq) * 160.0);
+            float3 face = (float3(0.93, 0.95, 0.98) * (0.80 + 0.20 * limb) * (1.0 - 0.15 * maria) * (0.93 + 0.12 * grain)
+                + float3(0.06) * crater) * 0.82 * (0.985 + 0.02 * breath);
             c = mix(c, face, disc);
         }
         return c;
@@ -463,35 +481,39 @@ enum WorldShader {
         }
 
         if (shore > 0.5) {
-            // Features, on the true tile.
+            // Features, on the true tile: each fading out before the tile's
+            // edge and toward the shore, so none ends in a seam against the
+            // ground beside it.
             if (feature > 0.5) {
                 float2 fp = d * 3.2;
+                float within = (1.0 - smoothstep(0.6, 0.9, length(d))) * smoothstep(0.5, 0.85, shore);
                 if (feature < 1.5) {
                     // Moonsalt bed: a glittering crust.
                     float glint = nm_star(anchored, ppp, 6.0, 0.82, 31.0, time);
                     float phase = nm_hash(floor(anchored / (6.0 * ppp)) + 2.0) * 40.0;
-                    c += float3(0.78, 0.84, 1.0) * glint * 1.4 * (0.4 + 0.6 * sin(nm_spin(time, 1.1) + phase)) * (1.0 - smoothstep(0.55, 0.85, length(d)));
+                    c += float3(0.78, 0.84, 1.0) * glint * 1.4 * (0.4 + 0.6 * sin(nm_spin(time, 1.1) + phase)) * within;
                 } else if (feature < 2.5) {
                     // Elder grove: a black heart of ancient trees.
-                    c *= 0.45 + 0.55 * smoothstep(0.15, 0.8, length(fp) / 2.2);
+                    c *= mix(1.0, 0.45 + 0.55 * smoothstep(0.15, 0.8, length(fp) / 2.2), within);
                 } else if (feature < 3.5) {
                     // Stone seam: pale outcrops.
                     float rock = smoothstep(0.62, 0.72, nm_fbm(w * 5.0 + float2(2.0, 6.0)));
-                    c += float3(0.16, 0.155, 0.15) * rock * (1.0 - smoothstep(0.5, 0.8, length(d)));
+                    c += float3(0.16, 0.155, 0.15) * rock * within;
                 } else if (feature < 4.5) {
                     // Dark loam: furrows of black earth.
-                    c *= 0.78 + 0.1 * sin((d.x + d.y * 0.4) * 30.0);
+                    c *= mix(1.0, 0.78 + 0.1 * sin((d.x + d.y * 0.4) * 30.0), within);
                 } else {
                     // Drowned ruin: a broken ring of old stone.
                     float ring = abs(length(d) - 0.42);
                     float broken = step(0.35, nm_noise(float2(NM_ATAN2(d.y, d.x) * 2.5, 1.0)));
-                    c += float3(0.32, 0.31, 0.28) * (1.0 - smoothstep(0.02, 0.06, ring)) * broken;
+                    c += float3(0.32, 0.31, 0.28) * (1.0 - smoothstep(0.02, 0.06, ring)) * broken * smoothstep(0.5, 0.85, shore);
                 }
             }
         }
 
-        // The moon's light pools around the lake.
-        c *= 0.8 + 0.35 * exp(-length(w - float2(0.0, -2.2)) / 18.0);
+        // The moon's light pools around its image in the lake, wherever the
+        // lake's shape lays it.
+        c *= 0.8 + 0.35 * exp(-length(w - moon.xy) / 18.0);
 
         // Territory: a tint and a line on the inside of the border.
         if (owner > 0.5 && visibility > 0.5) {

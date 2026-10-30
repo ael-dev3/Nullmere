@@ -148,7 +148,7 @@ final class StillLakeTests: XCTestCase {
         // The dithering differs by a step at most.
         XCTAssertEqual(light(sunk, moonX, moonY), light(whole, moonX, moonY), accuracy: 6, "The moon in the sky stays")
         XCTAssertGreaterThan(light(whole, moonX, mirrorY), 330)
-        XCTAssertLessThan(light(sunk, moonX, mirrorY), light(whole, moonX, mirrorY) * 3 / 10, "Its image dims")
+        XCTAssertLessThan(light(sunk, moonX, mirrorY), light(whole, moonX, mirrorY) / 3, "Its image dims to a third or less")
         XCTAssertGreaterThan(light(sunk, moonX, mirrorY), light(whole, moonX, mirrorY) / 10, "but is never gone")
 
         // Stars on the open water, away from the moon's image, in both. A

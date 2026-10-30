@@ -1,4 +1,5 @@
 import LauncherCore
+@testable import LauncherKit
 import Metal
 import XCTest
 @testable import NullmereCore
@@ -9,8 +10,6 @@ import XCTest
 /// of the wrong size left aside, and the drawing scale following the zoom.
 @MainActor
 final class WorldMetalViewTests: XCTestCase {
-    /// A shader library missing the world's vertex or fragment function is
-    /// refused by name, so a broken build says what it lacks.
     /// The map starts over with the scene's clock without a jump: every
     /// motion in it comes round a whole number of times in the period, and
     /// the lanterns flicker with no seam across the land.
@@ -21,8 +20,38 @@ final class WorldMetalViewTests: XCTestCase {
             XCTAssertFalse(source.contains(straight), "No \(straight) left to jump or seam")
         }
         XCTAssertFalse(source.contains("trembling"), "The water is still")
+        XCTAssertFalse(source.contains("float2(0.0, -2.2)"), "The moonlight pools round the moon's image, not a fixed point")
     }
 
+    /// Each House's colour is one colour, on the map and in the panels: the
+    /// shader's table and the interface's are the same, entry for entry.
+    func testAHousesColourIsOneColourEverywhere() throws {
+        let source = WorldShader.source
+        let start = try XCTUnwrap(source.range(of: "float3 nm_houseColour(float index) {"))
+        // The body up to the closing line, each colour a float3( r, g, b ).
+        let body = source[start.upperBound...].components(separatedBy: "\n    }\n").first ?? ""
+        let found = body.components(separatedBy: "float3(").dropFirst().map { piece in
+            let parts = (piece.components(separatedBy: ")").first ?? "").split(separator: ",").compactMap {
+                Double($0.trimmingCharacters(in: .whitespaces))
+            }
+            return NullmereKit.Palette.RGB(parts[0], parts[1], parts[2])
+        }
+        XCTAssertEqual(found, NullmereKit.Palette.houseRGB, "The shader's House colours are the interface's")
+    }
+
+    /// The moon in the map's water wears the launcher's moon's face: the same
+    /// seas, drawn from the same noise turn for turn.
+    func testTheMapsMoonIsTheLaunchersMoon() {
+        let turn = "p = p * 2.03 + float2(17.1, 9.3);"
+        XCTAssertTrue(LakeShader.source.contains(turn), "The launcher's moon's noise")
+        XCTAssertTrue(WorldShader.source.contains(turn), "and the map's moon's")
+        for face in ["(mq * 1.6 + float2(5.2, 1.3))", "(mq * 6.0 + float2(1.7, 8.1))"] {
+            XCTAssertTrue(WorldShader.source.contains("nm_moonFbm\(face)"), face)
+        }
+    }
+
+    /// A shader library missing the world's vertex or fragment function is
+    /// refused by name, so a broken build says what it lacks.
     func testARendererWithoutItsFunctionsSaysWhichIsMissing() throws {
         guard let device = WorldMetalView.systemDevice else { throw XCTSkip("No Metal device available") }
         func library(_ functions: String) throws -> any MTLLibrary {
