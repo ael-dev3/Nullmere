@@ -236,6 +236,32 @@ final class AllianceTests: XCTestCase {
         XCTAssertEqual(state.helpable(by: 5, for: me), 0)
     }
 
+    /// Allies know what each other has under way, so a keeper's own copy
+    /// of the world can help it; no one else does.
+    func testAlliesSeeWhatEachOtherHasUnderWay() throws {
+        var state = lake("under way")
+        let me = state.player
+        state.houses[1].temperament = .steadfast
+        _ = try state.perform(.foundAlliance(name: "Openhand"), as: me)
+        _ = try state.perform(.inviteToAlliance(house: 1), as: me)
+        let theirs = try XCTUnwrap(state.holds.firstIndex { $0.owner == 1 && $0.isSeat })
+        let others = try XCTUnwrap(state.holds.firstIndex { $0.owner == 2 && $0.isSeat })
+        for index in [theirs, others] {
+            state.holds[index].project = Hold.Project(kind: .walls, targetLevel: 1, watchesLeft: 4)
+            state.holds[index].training = Hold.Training(kind: .spear, watchesLeft: 2)
+        }
+        state.houses[1].research.pursuit = Pursuit(study: .drill, grade: 1, watchesLeft: 3)
+        state.houses[1].research.known = [Learned(study: .furrowLore, grade: 1)]
+        var view = state.view(for: me)
+        XCTAssertEqual(view.holds[theirs].project, state.holds[theirs].project)
+        XCTAssertEqual(view.holds[theirs].training, state.holds[theirs].training)
+        XCTAssertEqual(view.houses[1].research.pursuit, state.houses[1].research.pursuit)
+        XCTAssertEqual(view.houses[1].research.known, [], "What it knows is its own")
+        XCTAssertNil(view.holds[others].project)
+        XCTAssertNil(state.view(for: 2).holds[theirs].project)
+        XCTAssertEqual(try view.perform(.help(house: 1), as: me), [.helpGiven(by: me, to: 1, count: 3)])
+    }
+
     /// Alliances are known to all; who is invited or asking, only to the
     /// alliance's Houses and the House concerned; and what passes between
     /// allies is heard by those it concerns.

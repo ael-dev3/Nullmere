@@ -83,6 +83,11 @@ struct RivalMind {
 
         events += caretaking ? keepThePeace(in: &state, random: &random) : conductDiplomacy(in: &state, random: &random)
         events += tendAlliance(in: &state, random: &random)
+        if !caretaking {
+            events += callRally(in: &state, random: &random)
+            events += sendToRallies(in: &state)
+            events += keepAlliesGates(in: &state)
+        }
         events += balanceStores(in: &state)
         // The land's territory, found once: no work or muster begun changes it.
         let owners = state.territory()
@@ -491,6 +496,93 @@ struct RivalMind {
         return events
     }
 
+    // MARK: Rallies
+
+    /// How far from a hold of its own with a Muster Hall a steward calls a
+    /// rally, and from how far it sends companies to one.
+    static let rallyReach = 12
+
+    /// A steward at war beside an ally of its alliance at war with the same
+    /// House calls a rally against the hold its siege would take, from its
+    /// own hold with a Muster Hall nearest it: the ambitious most often,
+    /// the wary least.
+    func callRally(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
+        guard state.watch >= RivalMind.alliancesFrom, let sworn = state.alliance(of: house),
+              !state.ralliesStanding.contains(where: { $0.caller == house }),
+              let plan = siegePlan(in: state), let target = state.hold(at: plan.target),
+              sworn.members.contains(where: { $0 != house && state.isAtWar($0, target.owner) }) else { return [] }
+        let musters = state.holds(of: house).filter { $0.level(.musterHall) >= 1 && $0.position.distance(to: target.position) <= RivalMind.rallyReach }
+        guard let muster = musters.min(by: { a, b in
+            (a.position.distance(to: target.position), a.id) < (b.position.distance(to: target.position), b.id)
+        }) else { return [] }
+        let chance: Int
+        switch state.houses[house].temperament {
+        case .ambitious: chance = 40
+        case .cunning: chance = 30
+        case .steadfast: chance = 20
+        case .wary: chance = 10
+        }
+        guard random.chance(chance) else { return [] }
+        return perform(.callRally(from: muster.id, against: target.id, watches: 2), in: &state)
+    }
+
+    /// Companies it can spare sent to the rallies of its side whose war it
+    /// shares: none standing in a hold or away on an errand, none from far
+    /// off, and never so many that a hold of its own would go without a
+    /// garrison. To an ally's rally, as many as its temper gives.
+    func sendToRallies(in state: inout GameState) -> [GameEvent] {
+        var events: [GameEvent] = []
+        for rally in state.ralliesStanding.sorted(by: { $0.id < $1.id }) where !rally.marching && state.isOfRally(house, rally) {
+            guard let target = state.hold(rally.target), state.isAtWar(house, target.owner), let muster = state.hold(rally.muster) else { continue }
+            let free = state.units(of: house).filter { $0.kind.isMilitary && $0.errand == nil }
+            let spare = free.count - state.holds(of: house).count
+            let given: Int
+            switch state.houses[house].temperament {
+            case .ambitious, .steadfast: given = 3
+            case .cunning: given = 2
+            case .wary: given = 1
+            }
+            var left = rally.caller == house ? spare : min(spare, given)
+            let near = free.filter { state.hold(at: $0.position) == nil && $0.position.distance(to: muster.position) <= RivalMind.rallyReach }
+                .sorted { ($0.position.distance(to: muster.position), $0.id) < ($1.position.distance(to: muster.position), $1.id) }
+            for unit in near where left > 0 {
+                let sent = perform(.joinRally(rally: rally.id, unit: unit.id), in: &state)
+                if !sent.isEmpty { left -= 1 }
+                events += sent
+            }
+        }
+        return events
+    }
+
+    /// An ally's hold with companies of a House at war with them both near
+    /// its gates gets a company of its own to keep them, one it can spare
+    /// from near enough; gates no longer threatened are left.
+    func keepAlliesGates(in state: inout GameState) -> [GameEvent] {
+        var events: [GameEvent] = []
+        func threatened(_ hold: Hold) -> Bool {
+            state.units.contains { foe in
+                foe.kind.isMilitary && foe.position.distance(to: hold.position) <= 3
+                    && state.isAtWar(house, foe.owner) && state.isAtWar(hold.owner, foe.owner)
+            }
+        }
+        for unit in state.units(of: house) {
+            guard case .reinforce(let holdID)? = unit.errand, let hold = state.hold(holdID), !threatened(hold) else { continue }
+            events += perform(.halt(unit: unit.id), in: &state)
+        }
+        guard let sworn = state.alliance(of: house) else { return events }
+        for hold in state.holds.filter({ $0.owner != house && sworn.members.contains($0.owner) }).sorted(by: { $0.id < $1.id }) {
+            guard threatened(hold), !state.units.contains(where: { $0.owner == house && $0.errand == .reinforce(hold: hold.id) }) else { continue }
+            let free = state.units(of: house).filter { $0.kind.isMilitary && $0.errand == nil }
+            guard free.count > state.holds(of: house).count else { break }
+            let near = free.filter { state.hold(at: $0.position) == nil && $0.position.distance(to: hold.position) <= 8 }
+            guard let pick = near.min(by: { a, b in
+                (a.position.distance(to: hold.position), a.id) < (b.position.distance(to: hold.position), b.id)
+            }) else { continue }
+            events += perform(.reinforce(unit: pick.id, hold: hold.id), in: &state)
+        }
+        return events
+    }
+
     /// The Archive a steward wants at its seat as the age goes on.
     static func archiveWanted(at watch: Int) -> Int {
         switch watch {
@@ -647,6 +739,12 @@ struct RivalMind {
         case .founder:
             return settle(with: unit, in: &state)
         case .spear, .bow, .rider:
+            // A company sent to a rally, or keeping an ally's gates, is the
+            // rally's or the gates' until it is done.
+            switch unit.errand {
+            case .rally?, .reinforce?: return []
+            default: break
+            }
             if let post {
                 if unit.position == post {
                     // A garrison strikes only companies of war in its reach:

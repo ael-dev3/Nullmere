@@ -570,6 +570,25 @@ realm; keepers are told in plain words, never a status code.
   sworn takes up the banner; an alliance with none left is no more.
   Stewards raise banners, ask, invite and answer from the fifteenth watch,
   each by its temper.
+- **Rallies.** A House of an alliance calls a rally at one of its holds with
+  a Muster Hall, against a hold it has found of a House at war with it; it
+  gathers for one to four watches, and the muster takes two companies and
+  two more for each level of its Muster Hall. The caller and its allies at
+  war with the same House send companies of war to it. When the gathering
+  is done, those at the muster set out as one host, march at the pace of the
+  slowest, and once all of it is in reach strike the hold together in the
+  one watch, arrows first, before its ward can mend; a company that breaks
+  the ward takes the hold. Only the rally's side knows of it until it sets
+  out; then the House it marches on knows too. A rally whose cause is gone
+  (peace, its caller out of the alliance, its muster lost), whose muster is
+  empty when it should set out, or whose host can't come to its hold within
+  eight watches comes to nothing.
+- **Keeping an ally's gates.** A company of war sent to an ally's hold
+  stands at its gates; while it stands there, a company of a House at war
+  with its own that strikes the hold is struck back from where it stands.
+  Stewards call rallies by their temper, send companies they can spare to
+  their side's rallies, and keep the gates of an ally's hold while a foe of
+  both is near them.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is

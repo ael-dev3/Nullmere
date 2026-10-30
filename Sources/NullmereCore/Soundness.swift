@@ -114,6 +114,27 @@ extension GameState {
                 found.append("\(alliance.name) waits on House \(waiting)")
             }
         }
+        var callers: Set<Int> = []
+        for rally in ralliesStanding {
+            if !callers.insert(rally.caller).inserted { found.append("House \(rally.caller) has called two rallies") }
+            if hold(rally.muster)?.owner != rally.caller { found.append("Rally \(rally.id) gathers at a hold not its caller's") }
+            if hold(rally.target) == nil { found.append("Rally \(rally.id) marches on no hold") }
+            if rally.companies.count > capacity(of: rally) { found.append("Rally \(rally.id) has \(rally.companies.count) companies") }
+            // A company fallen since the rally last turned is let be.
+            for id in rally.companies where unit(id).map({ $0.errand != .rally(rally.id) }) ?? false {
+                found.append("Rally \(rally.id) counts company \(id), not sent to it")
+            }
+        }
+        for unit in units {
+            switch unit.errand {
+            case .rally(let id)?:
+                if rally(id)?.companies.contains(unit.id) != true { found.append("Company \(unit.id) is sent to no rally") }
+            case .reinforce(let holdID)?:
+                if hold(holdID) == nil { found.append("Company \(unit.id) keeps the gates of no hold") }
+            default:
+                break
+            }
+        }
         let pairs = Set(relations.map { [$0.first, $0.second] })
         if pairs.count != relations.count { found.append("Two Houses have more than one standing") }
         for relation in relations where !houseIDs.contains(relation.first) || !houseIDs.contains(relation.second) || relation.first == relation.second {

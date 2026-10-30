@@ -24,7 +24,8 @@ extension GameState {
             units[index].fortified = true
             units[index].movesLeft = 0
             units[index].destination = nil
-            units[index].errand = nil
+            // Digging in at an ally's gates is keeping them still.
+            if case .reinforce? = units[index].errand {} else { units[index].errand = nil }
             return []
         case let .disband(unitID):
             let index = try ownedUnit(unitID, of: house)
@@ -71,18 +72,24 @@ extension GameState {
             return try expel(target, by: house)
         case let .help(ally):
             return try help(ally, by: house)
+        case let .callRally(holdID, targetID, watches):
+            return try callRally(from: holdID, against: targetID, gathering: watches, by: house)
+        case let .joinRally(rallyID, unitID):
+            return try joinRally(rallyID, with: unitID, as: house)
+        case let .reinforce(unitID, holdID):
+            return try reinforce(holdID, with: unitID, as: house)
         }
     }
 
     // MARK: Units
 
-    private func ownedUnit(_ id: Int, of house: Int) throws(RuleError) -> Int {
+    func ownedUnit(_ id: Int, of house: Int) throws(RuleError) -> Int {
         guard let index = unitIndex(id) else { throw .unknownUnit }
         guard units[index].owner == house else { throw .notYours }
         return index
     }
 
-    private func ownedHold(_ id: Int, of house: Int) throws(RuleError) -> Int {
+    func ownedHold(_ id: Int, of house: Int) throws(RuleError) -> Int {
         guard let index = holdIndex(id) else { throw .unknownHold }
         guard holds[index].owner == house else { throw .notYours }
         return index
@@ -225,21 +232,52 @@ extension GameState {
         guard let foe = foe(at: target, for: house) else { throw .nothingToAttack }
         guard isAtWar(house, foe.owner) else { throw .notAtWar(foe.owner) }
         guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
+        return assault(with: unitID, at: target)
+    }
 
+    /// A company strikes the foe at a hex, its moves spent and whatever it
+    /// was about done with: the company standing there, or else the hold's
+    /// ward. Companies keeping the gates of a hold struck strike back.
+    mutating func assault(with unitID: Int, at target: Hex) -> [GameEvent] {
+        guard let index = unitIndex(unitID), let foe = foe(at: target, for: units[index].owner) else { return [] }
         units[index].movesLeft = 0
         units[index].acted = true
         units[index].fortified = false
         units[index].destination = nil
         units[index].errand = nil
 
+        var events: [GameEvent]
         if let defenderID = foe.unit {
-            return fight(attacker: unitID, defender: defenderID, at: target)
+            events = fight(attacker: unitID, defender: defenderID, at: target)
+        } else {
+            events = strike(hold: foe.hold!, with: unitID)
         }
-        return strike(hold: foe.hold!, with: unitID)
+        if let held = foe.hold {
+            events += sally(against: unitID, striking: held)
+        }
+        return events
     }
 
-    /// Two units exchange blows.
-    private mutating func fight(attacker attackerID: Int, defender defenderID: Int, at hex: Hex) -> [GameEvent] {
+    /// Companies keeping the gates of a hold for an ally strike back, from
+    /// where they stand, at a company of a House at war with their own
+    /// that strikes it, while it still stands and the hold is still their
+    /// ally's.
+    private mutating func sally(against strikerID: Int, striking holdID: Int) -> [GameEvent] {
+        guard let hold = hold(holdID) else { return [] }
+        let keepers = units.filter { $0.errand == .reinforce(hold: holdID) && $0.position.distance(to: hold.position) <= 1 }
+            .map(\.id).sorted()
+        var events: [GameEvent] = []
+        for id in keepers {
+            guard let striker = unit(strikerID), let keeper = unit(id), let held = self.hold(holdID), areAllied(keeper.owner, held.owner),
+                  isAtWar(keeper.owner, striker.owner), keeper.position.distance(to: striker.position) <= keeper.kind.range else { continue }
+            events += fight(attacker: id, defender: strikerID, at: striker.position, holdingGround: true)
+        }
+        return events
+    }
+
+    /// Two units exchange blows. A company holding its ground never steps
+    /// onto the fallen's.
+    private mutating func fight(attacker attackerID: Int, defender defenderID: Int, at hex: Hex, holdingGround: Bool = false) -> [GameEvent] {
         var random = random()
         let attacker = unit(attackerID)!
         let defender = unit(defenderID)!
@@ -278,7 +316,7 @@ extension GameState {
 
         // The victor in close combat takes the field, unless a hold's ward
         // still stands, or it fought from within its own hold.
-        if defenderFell, !attackerFell, !ranged, let index = unitIndex(attackerID) {
+        if defenderFell, !attackerFell, !ranged, !holdingGround, let index = unitIndex(attackerID) {
             if let hold = hold(at: hex) {
                 if hold.ward == 0, attacker.kind.canCapture {
                     events += capture(hold: hold.id, with: attackerID)

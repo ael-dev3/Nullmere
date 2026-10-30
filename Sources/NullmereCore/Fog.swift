@@ -27,12 +27,17 @@ extension GameState {
             view.units[index].errand = nil
             view.units[index].load = nil
         }
+        // Allies know what each other has under way, for they help it.
+        let allies = Set(alliance(of: house)?.members ?? [])
         for index in view.houses.indices where view.houses[index].id != house {
             view.houses[index].stock = .zero
             view.houses[index].explored = Array(repeating: false, count: map.count)
             view.houses[index].research = Research()
+            if allies.contains(view.houses[index].id) {
+                view.houses[index].research.pursuit = houses[index].research.pursuit
+            }
         }
-        for index in view.holds.indices where view.holds[index].owner != house {
+        for index in view.holds.indices where view.holds[index].owner != house && !allies.contains(view.holds[index].owner) {
             view.holds[index].project = nil
             view.holds[index].training = nil
         }
@@ -57,6 +62,11 @@ extension GameState {
                 known.asking = alliance.asking.filter { $0 == house }
                 return known
             }
+        }
+        // A rally only to its own side; a host on the march, also to the
+        // House whose hold it marches on.
+        view.rallies = rallies?.filter { rally in
+            isOfRally(house, rally) || (rally.marching && hold(rally.target)?.owner == house)
         }
         return view
     }
@@ -110,6 +120,14 @@ extension GameState {
                 return other == house || alliance(id)?.members.contains(house) == true
             case .helpGiven(let by, let to, _):
                 return by == house || to == house
+            case .rallyCalled(_, let caller, _), .rallyDispersed(_, let caller):
+                return caller == house || areAllied(caller, house)
+            case .rallyJoined(let id, _, let owner):
+                return owner == house || rally(id).map { isOfRally(house, $0) } == true
+            case .rallySetOut(_, let caller, _, let defender, _), .rallyStruck(_, let caller, _, let defender, _):
+                return caller == house || defender == house || areAllied(caller, house)
+            case .sentToReinforce(_, let owner, let holdID):
+                return owner == house || hold(holdID)?.owner == house
             case .promoted(_, let owner, _):
                 return owner == house
             case .ruinSearched(let at, let by, _):

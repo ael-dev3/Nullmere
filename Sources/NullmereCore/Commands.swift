@@ -54,6 +54,14 @@ public enum Command: Codable, Equatable, Sendable {
     case expel(house: Int)
     /// Help every work, muster and study of an ally's not helped yet.
     case help(house: Int)
+    /// Call a rally at one of the House's holds against a hold of a House
+    /// at war with it: its alliance's companies gather there for one to
+    /// four watches, then march on the hold together and strike it together.
+    case callRally(from: Int, against: Int, watches: Int)
+    /// Send a company of war to a rally of the House's alliance.
+    case joinRally(rally: Int, unit: Int)
+    /// Send a company of war to keep the gates of an ally's hold.
+    case reinforce(unit: Int, hold: Int)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -151,6 +159,20 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case nothingToHelp
     /// War, or a demand, on a House of one's own alliance.
     case allyInAlliance(Int)
+    /// A rally no longer gathering, or not of the House's alliance.
+    case unknownRally
+    /// A House that has called a rally already, still gathering or marching.
+    case rallyCalled
+    /// A gathering of other than one to four watches.
+    case rallyWatches
+    /// A host already on the march.
+    case rallySetOut
+    /// A rally with all the companies its muster can take.
+    case rallyFull
+    /// A company already sent to that rally.
+    case alreadyRallying
+    /// A hold not of an ally's to keep.
+    case notAnAllysHold
 
     public var description: String {
         switch self {
@@ -224,6 +246,13 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .notAnAlly: return "Only an ally can be helped."
         case .nothingToHelp: return "Your ally has nothing under way you haven't helped."
         case .allyInAlliance: return "Your House is sworn to the same alliance as theirs."
+        case .unknownRally: return "No such rally gathers for your alliance."
+        case .rallyCalled: return "Your House has called a rally already; one at a time."
+        case .rallyWatches: return "A rally gathers for one to four watches."
+        case .rallySetOut: return "That host has already set out."
+        case .rallyFull: return "That rally's muster can take no more companies."
+        case .alreadyRallying: return "That company is already sent to that rally."
+        case .notAnAllysHold: return "Only an ally's hold can be kept."
         }
     }
 }
@@ -298,6 +327,18 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case allianceDisbanded(alliance: Int, name: String)
     /// A House helps an ally's works, musters and study.
     case helpGiven(by: Int, to: Int, count: Int)
+    /// A House calls a rally at one of its holds against a hold.
+    case rallyCalled(rally: Int, caller: Int, target: Int)
+    /// A company is sent to a rally.
+    case rallyJoined(rally: Int, unit: Int, house: Int)
+    /// A rally's host sets out from its muster against a House's hold.
+    case rallySetOut(rally: Int, caller: Int, target: Int, defender: Int, companies: Int)
+    /// A host strikes its hold together; whether it took it.
+    case rallyStruck(rally: Int, caller: Int, target: Int, defender: Int, taken: Bool)
+    /// A rally comes to nothing.
+    case rallyDispersed(rally: Int, caller: Int)
+    /// A company is sent to keep the gates of an ally's hold.
+    case sentToReinforce(unit: Int, owner: Int, hold: Int)
 }
 
 /// One exchange of blows.

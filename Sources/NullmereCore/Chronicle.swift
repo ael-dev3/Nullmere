@@ -30,6 +30,8 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         case hunt
         /// An alliance is founded, joined, left or led anew, or is no more.
         case alliance
+        /// A rally's host falls upon a hold.
+        case rally
     }
 
     public let watch: Int

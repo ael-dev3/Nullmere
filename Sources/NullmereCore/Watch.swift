@@ -1,8 +1,8 @@
 extension GameState {
     /// Ends the current watch: rival Houses act, then the world turns. Holds
     /// bring in their yield, armies eat, works and training advance, wards
-    /// mend, the wounded heal, marches continue, and the chronicle notes
-    /// whether anyone has won.
+    /// mend, the wounded heal, marches continue, rallies gather, march and
+    /// strike, and the chronicle notes whether anyone has won.
     /// `keptFor` names kept Houses whose keepers are away, which a
     /// caretaker plays in their turn among the stewards.
     @discardableResult
@@ -46,6 +46,7 @@ extension GameState {
         for unit in units.sorted(by: { $0.id < $1.id }) where unit.destination != nil {
             events += march(unit.id)
         }
+        events += advanceRallies()
         events += workTheLand()
         raiseWilds()
         raiseSites()

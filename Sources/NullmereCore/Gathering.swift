@@ -59,6 +59,10 @@ public enum Errand: Codable, Equatable, Sendable {
     case gather(site: Int)
     /// Bring what it carries to the nearest of its House's holds.
     case homeward
+    /// Gather at a rally's muster, and march and strike with its host.
+    case rally(Int)
+    /// Keep the gates of an ally's hold, striking back at those who strike it.
+    case reinforce(hold: Int)
 }
 
 extension GameState {

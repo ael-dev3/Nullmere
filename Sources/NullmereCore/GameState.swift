@@ -86,6 +86,8 @@ public struct GameState: Codable, Equatable, Sendable {
     var sites: [Site]?
     /// The alliances standing; absent in saves from before them.
     var alliances: [Alliance]?
+    /// The rallies gathering or on the march; absent in saves from before them.
+    var rallies: [Rally]?
 
     public var player: Int { houses.first { $0.isPlayer }?.id ?? 0 }
 
