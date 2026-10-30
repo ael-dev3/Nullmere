@@ -511,7 +511,7 @@ realm; keepers are told in plain words, never a status code.
   Bows strike from two tiles, Riders are fast, and Founders found new holds.
   Every company but Lanterns eats a grain each watch. Companies that
   live through battles rise in rank (Blooded, Hardened, Sworn), each rank
-  adding a tenth to attack and defence; chevrons under a token show it. A
+  adding a tenth to attack and defence; chevrons over a company show it. A
   company that wins a close fight steps onto the fallen's ground, but never
   out of a hold, for a garrison holds its ground, nor into a hold it can't
   take. The odds shown before a strike say when the striker will take the
@@ -666,6 +666,31 @@ There is no music in the launcher; the game makes its own sound as it plays.
 - **Accessibility.** The launcher honours Reduce Motion and Increase
   Contrast, reads its type at the game's Larger Text, has VoiceOver labels
   and selection traits, and works fully from the keyboard.
+
+### The world in three dimensions
+
+- **The land** is a mesh with relief, drawn by Metal from
+  [`WorldShaders.swift`](Sources/NullmereWorld/WorldShaders.swift): the Spine's
+  ridges, the barrows' mounds, the strand and the flats, and the still
+  lake laid over it as a mirror of the stars and the moon. What the keeper
+  has never seen lies under mist; what they saw once and see no longer,
+  greyed as memory.
+- **Every model is original and built from code**
+  ([`Sources/NullmereModels`](Sources/NullmereModels)): each kind of company in
+  its five tiers, the wilds and six commanders, keeps, walls and every work
+  at every level, the land's firs, crags, reeds, mounds and ruins, and what
+  moves through the world. Companies stand in formation, fewer as they are
+  worn down; holds lay out their works on the land around the keep.
+- **It moves.** Companies breathe at rest, march along their routes with
+  their feet going, strike, turn to face their foe and fall; works rise
+  under scaffolds as the watches pass; bows loose arrows that arc to their
+  mark; banners and trees stir in the wind, torches flicker, hearths smoke
+  and birds wheel over the water.
+- **The camera** pans, zooms, turns and leans, looking down on the whole
+  lake from afar and leaning toward the horizon close in among the models.
+  The map's marks (names, bars, ranks, the damage dealt) stand over the
+  models; a Mac that cannot draw the world gets a still painting of it with
+  flat marks instead.
 
 ### Tuning the scene in a browser
 
