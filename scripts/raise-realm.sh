@@ -166,7 +166,12 @@ if [ "$ACTION" = --dry-run ]; then
     [ "$MODE" = none ] || plan "start the steward ($MODE) as that identity, and wait for it to take up the realm"
     [ "$MODE" = none ] || plan "read the realm's status back as a keeper would"
     echo
-    echo "Everything builds. Run it again without --dry-run to raise the realm."
+    if [ "$TARGET" = maincloud ] && ! signed_in_for_maincloud; then
+        # Not ready: the last line says so, not that all is well.
+        echo "Everything builds, but you aren't signed in: run \`spacetime login\`, then this again."
+    else
+        echo "Everything builds. Run it again without --dry-run to raise the realm."
+    fi
     exit 0
 fi
 

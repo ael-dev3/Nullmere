@@ -15,9 +15,15 @@ mkdir -p "$OUT"
 libm=""
 [ "$(uname)" = Linux ] && libm="-lm"
 # One module: the files' own "import NullmereCore" is then ignored, with a warning.
-swiftc -O -module-name NullmereCore -suppress-warnings $libm \
+# Built afresh each time, and judged by the compiler's own word: a generator
+# left from before can't stand in for one that no longer builds.
+rm -f "$OUT/generate"
+if ! swiftc -O -module-name NullmereCore -suppress-warnings $libm \
     Sources/NullmereCore/*.swift Sources/NullmereKit/World/TileTexture.swift Sources/NullmereKit/World/MoonMirror.swift \
-    Tools/world-preview/main.swift -o "$OUT/generate" 2>&1 | grep -v "^$" || true
-[ -x "$OUT/generate" ] || { echo "error: the generator didn't build" >&2; exit 1; }
+    Tools/world-preview/main.swift -o "$OUT/generate" > "$OUT/build.log" 2>&1; then
+    cat "$OUT/build.log" >&2
+    echo "error: the generator didn't build" >&2
+    exit 1
+fi
 "$OUT/generate" "$SEED" 12 36 opening "$OUT/opening.json"
 "$OUT/generate" "$SEED" 12 36 whole "$OUT/whole.json"

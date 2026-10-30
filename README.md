@@ -114,9 +114,12 @@ image and attaches it to a GitHub release.
 CI rehearses that path on every run (`scripts/rehearse-release.sh`): a
 throwaway self-signed identity takes the Developer ID's place through the
 same steps, the app is signed with the hardened runtime and a secure
-timestamp, the disk image is signed, and the notarizing and stapling are
-printed rather than sent. Adding the secrets is all that's left, in one
-command that checks each file first (docs/GO-LIVE.md, step 2):
+timestamp, the disk image is signed and checked, and the notarizing and
+stapling, which no throwaway identity can have done, are printed rather
+than sent; the first tagged release does those for real. The release
+workflow ships nothing CI hasn't passed whole on the tagged commit. Adding
+the secrets is all that's left, in one command that checks each file
+first (docs/GO-LIVE.md, step 2):
 
 ```sh
 scripts/set-release-secrets.sh DeveloperID.p12 AuthKey_XXXXXXXXXX.p8 <issuer id>
@@ -672,5 +675,5 @@ licensing, and says where the build went another way.
 - Code is licensed under the [Apache License 2.0](LICENSE).
 - Original art and documentation, including the app icon, are dedicated to
   the public domain under [CC0 1.0](LICENSE-CC0-1.0).
-- The Nullmere name and nullmere.online identify the official project. Neither
-  licence grants rights to them.
+- The names Nullmere Online and Nullmere, and nullmere.online, identify the
+  official project. Neither licence grants rights to them.

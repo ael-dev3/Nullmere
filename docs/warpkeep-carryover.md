@@ -1,4 +1,4 @@
-# What Nullmere carries over from Warpkeep
+# What Nullmere Online carries over from Warpkeep
 
 > **A plan, written on 24 October 2026, before Nullmere was built.** It is
 > kept as written. Where the build went another way:

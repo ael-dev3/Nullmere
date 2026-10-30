@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Checks a packed release as a player would receive it, before it goes out:
 # the disk image whole, the app inside it whole and signed, named Nullmere
-# Online, at the version being released, with a link to Applications; signed
+# Online, a release build at the version being released, with a link to
+# Applications; signed
 # by the expected identity with the hardened runtime and a secure timestamp
 # when one is named; notarized and stapled when that is claimed. Writes the
 # image's SHA-256 beside it, for the release page.
@@ -50,7 +51,14 @@ read_key() {
 [ "$(read_key CFBundleName)" = "Nullmere Online" ] || fail "the app is named \"$(read_key CFBundleName)\", not Nullmere Online"
 [ "$(read_key CFBundleDisplayName)" = "Nullmere Online" ] || fail "the app shows as \"$(read_key CFBundleDisplayName)\", not Nullmere Online"
 [ "$(read_key CFBundleShortVersionString)" = "$version" ] || fail "the app is version $(read_key CFBundleShortVersionString), not $version"
-[ "$(lipo -archs "$app/Contents/MacOS/$(read_key CFBundleExecutable)")" = arm64 ] || fail "the app isn't for Apple silicon alone"
+[ "$(read_key CFBundleIdentifier)" = online.nullmere.launcher ] || fail "the app goes by \"$(read_key CFBundleIdentifier)\", not online.nullmere.launcher"
+executable="$app/Contents/MacOS/$(read_key CFBundleExecutable)"
+[ "$(lipo -archs "$executable")" = arm64 ] || fail "the app isn't for Apple silicon alone"
+# A debug build reads what its surroundings say, Apple Intelligence's state
+# among it; only a debug build holds the name it reads that by.
+if grep -qa NULLMERE_MODEL_STATE "$executable"; then
+    fail "the app is a debug build; release builds are made by scripts/release.sh"
+fi
 
 codesign --verify --deep --strict "$app" || fail "the app's signature doesn't hold"
 if [ -n "$authority" ]; then

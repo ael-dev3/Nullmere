@@ -7,8 +7,14 @@ name: Release
 # GitHub release. Without those secrets it releases an ad-hoc signed image,
 # marked as such.
 #
-# CI rehearses this whole path on every push with a throwaway identity
-# (scripts/rehearse-release.sh), so adding the secrets is all that's left.
+# Nothing ships that CI hasn't passed whole on the tagged commit: every
+# job, the accessibility audit and the realm's play-through among them.
+#
+# CI rehearses this path on every push with a throwaway identity
+# (scripts/rehearse-release.sh): signing, the hardened runtime, the secure
+# timestamp, the image and its checks, all for real; only Apple's
+# notarizing and stapling are printed rather than sent, as no throwaway
+# identity can be notarized. The first tagged release does those for real.
 #
 # Secrets, once, set by scripts/set-release-secrets.sh from the files Apple
 # gives (or by hand: Settings > Secrets and variables > Actions):
@@ -24,6 +30,8 @@ on:
 
 permissions:
   contents: write
+  # To read whether CI passed on the tagged commit.
+  actions: read
 
 # One release at a time, and never one cut short.
 concurrency:
@@ -58,6 +66,24 @@ jobs:
             version="0.0.0"
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      # CI, the whole of it, passed on this very commit: a tag on a commit CI
+      # never finished, or failed, releases nothing. (CI can be run on any
+      # commit by hand: gh workflow run ci.yml --ref <branch>.)
+      - name: CI passed on this commit
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Any run of it that passed: a cancelled or re-run duplicate
+          # doesn't hide one that did.
+          passed="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --status success \
+            --json databaseId --jq 'length')"
+          if [ "${passed:-0}" -eq 0 ]; then
+            echo "::error::CI hasn't passed on $GITHUB_SHA: nothing is released"
+            exit 1
+          fi
+          echo "CI passed on $GITHUB_SHA."
 
       # Whatever commit the tag names, nothing ships that fails its tests:
       # the run's own exit status decides, so a run that crashes, and never

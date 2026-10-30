@@ -139,7 +139,7 @@ extension NewsFeed {
         NewsItem(
             id: "full-moon",
             date: NewsDate(year: 2026, month: 10, day: 24)!,
-            title: "A full moon over Nullmere",
+            title: "A full moon over the Nullmere",
             body: "The launcher now opens on the lake under a full moon. The water moves, the stars flicker, and now and then one falls. Play, News, Settings and Repository live here while the first realm is shaped.",
             link: URL(string: "https://github.com/ael-dev3/Nullmere")
         ),
@@ -154,7 +154,7 @@ extension NewsFeed {
             id: "out-of-warpkeep",
             date: NewsDate(year: 2026, month: 10, day: 24)!,
             title: "Out of Warpkeep",
-            body: "Nullmere keeps Warpkeep's universe and principles, and leaves its Farcaster identity behind. The notes on what carries over are in the repository.",
+            body: "Nullmere Online keeps Warpkeep's universe and principles, and leaves its Farcaster identity behind. The notes on what carries over are in the repository.",
             link: URL(string: "https://github.com/ael-dev3/Nullmere/blob/main/docs/warpkeep-carryover.md")
         ),
     ])

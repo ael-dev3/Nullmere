@@ -17,9 +17,11 @@ name="$(echo "$model" | tr -c 'A-Za-z0-9,.-' '-' | sed 's/-*$//')"
 mkdir -p build perf/mac
 
 echo "== Measuring on $chip, $model, $memory, $system"
-swift build --build-tests >/dev/null
+# Built as CI builds the figures it holds, with coverage on, so the two
+# stand side by side on equal terms.
+swift build --build-tests --enable-code-coverage >/dev/null
 set +e
-swift test --skip-build --filter 'WorldPerformanceTests|FrameHarnessTests|OverlayPerformanceTests|ClientPaceTests|LakePerformanceTests|CalibrationTests|RealmTests/testTheRealmProperSeatsTwelveFairly' \
+swift test --skip-build --enable-code-coverage --filter 'WorldPerformanceTests|FrameHarnessTests|OverlayPerformanceTests|ClientPaceTests|LakePerformanceTests|CalibrationTests|RealmTests/testTheRealmProperSeatsTwelveFairly' \
     2>&1 | tee build/mac-perf.log | grep -E "^PERF |error:"
 status=${PIPESTATUS[0]}
 set -e

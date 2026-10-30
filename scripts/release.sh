@@ -27,7 +27,10 @@ if [ -n "${NOTARY_PROFILE:-}" ] && [ "$IDENTITY" = "-" ]; then
     exit 1
 fi
 
-VERSION="$VERSION" OUTPUT_DIR="$OUTPUT_DIR" CODESIGN_IDENTITY="$IDENTITY" scripts/build-app.sh
+# Always the release build, under the app's own name, whatever the shell
+# holds: a debug build reads what its surroundings say, Apple Intelligence
+# included, and ships nothing.
+CONFIGURATION=release BUNDLE_ID= VERSION="$VERSION" OUTPUT_DIR="$OUTPUT_DIR" CODESIGN_IDENTITY="$IDENTITY" scripts/build-app.sh
 
 echo "Packing ${DMG}…"
 STAGING="$(mktemp -d)"

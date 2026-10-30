@@ -21,5 +21,5 @@ Nullmere Online ${version}
 NOTES
 if [ -z "$signed" ]; then
     echo
-    echo "**Ad-hoc signed and not notarized.** The first time, right-click Nullmere Online in Applications and choose Open."
+    echo "**Ad-hoc signed and not notarized.** The first time, open Nullmere Online and macOS will refuse it; then, in System Settings > Privacy & Security, choose Open Anyway beside Nullmere Online and confirm. (macOS 15 and later no longer open it from a right-click.)"
 fi
