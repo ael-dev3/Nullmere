@@ -18,7 +18,7 @@ struct OutcomeOverlay: View {
                 Color.black.opacity(0.6).ignoresSafeArea()
                 VStack(spacing: 16) {
                     Caps(won ? "The lake is yours" : "The lake is lost", size: 26, weight: .thin, tracking: 0.4, centred: true)
-                        .foregroundStyle(won ? Palette.ink : Palette.bad.opacity(0.9))
+                        .foregroundStyle(won ? Palette.ink : Palette.bad)
                         .accessibilityAddTraits(.isHeader)
                     Rule(opacity: 0.4).frame(width: 280)
                     Text(verbatim: description(winner: winner, won: won))
@@ -101,7 +101,7 @@ struct FallenOverlay: View {
                 Color.black.opacity(0.6).ignoresSafeArea()
                 VStack(spacing: 16) {
                     Caps("Your House has fallen", size: 26, weight: .thin, tracking: 0.4, centred: true)
-                        .foregroundStyle(Palette.bad.opacity(0.9))
+                        .foregroundStyle(Palette.bad)
                         .accessibilityAddTraits(.isHeader)
                     Rule(opacity: 0.4).frame(width: 280)
                     Text(verbatim: FallenOverlay.words(for: session.playerHouse, watch: session.state.watch,

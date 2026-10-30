@@ -50,14 +50,14 @@ struct Meter: View {
     var colour: Color = Palette.glow
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Rectangle().fill(Palette.line(0.1))
-                Rectangle().fill(colour).frame(width: proxy.size.width * min(max(fraction, 0), 1))
+        // What it measures is said beside it in words: to VoiceOver it is
+        // nothing.
+        Rectangle().fill(Palette.line(0.1))
+            .overlay(alignment: .leading) {
+                Rectangle().fill(colour).scaleEffect(x: min(max(fraction, 0), 1), y: 1, anchor: .leading)
             }
-        }
-        .frame(height: 3)
-        .accessibilityHidden(true)
+            .frame(height: 3)
+            .accessibilityHidden(true)
     }
 }
 

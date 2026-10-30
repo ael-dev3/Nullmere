@@ -191,24 +191,34 @@ final class AccessiblePlayTests: XCTestCase {
     }
 
     /// One rule for every text, the launcher's and the realm's: as faint as
-    /// the design asks but never fainter than reads; with Increase Contrast,
-    /// all of it plain, the fainter still fainter. Lines and meters by a
-    /// rule of their own, so an empty one is never taken for a full one.
+    /// the design asks but never fainter than reads, and solid, mixed from
+    /// the dark to the ink rather than laid over what lies beneath; with
+    /// Increase Contrast, all of it plain, the fainter still fainter. Lines
+    /// and meters by a rule of their own, so an empty one is never taken for
+    /// a full one.
     func testOneRuleOfContrastForEveryText() {
-        func drawn(_ colour: Color) -> Double { Double(colour.resolve(in: EnvironmentValues()).opacity) }
+        func resolved(_ colour: Color) -> Color.Resolved { colour.resolve(in: EnvironmentValues()) }
+        func drawn(_ colour: Color) -> Double { Double(resolved(colour).opacity) }
         let asked = stride(from: 0.1, through: 1.0, by: 0.05).map { $0 }
         for opacity in asked {
-            XCTAssertEqual(drawn(NullmereKit.Palette.text(opacity)), max(opacity, 0.5), accuracy: 0.001, "At \(opacity)")
-            XCTAssertEqual(drawn(LauncherKit.Palette.text(opacity)), drawn(NullmereKit.Palette.text(opacity)), accuracy: 0.0001,
+            XCTAssertEqual(LauncherKit.Palette.textStrength(opacity), max(opacity, 0.56), accuracy: 0.0001, "At \(opacity)")
+            XCTAssertEqual(drawn(NullmereKit.Palette.text(opacity)), 1, accuracy: 0.0001, "Solid at \(opacity)")
+            XCTAssertEqual(resolved(NullmereKit.Palette.text(opacity)), resolved(LauncherKit.Palette.text(opacity)),
                            "The launcher's rule and the realm's are one")
         }
+        let greens = asked.map { Double(resolved(NullmereKit.Palette.text($0)).green) }
+        XCTAssertEqual(greens, greens.sorted(), "What is asked fainter is fainter")
+        XCTAssertEqual(resolved(NullmereKit.Palette.text(0.1)), resolved(NullmereKit.Palette.text(0.56)), "But never under the floor")
+        let full = resolved(NullmereKit.Palette.text(1)), ink = resolved(NullmereKit.Palette.ink)
+        XCTAssertEqual(full.red, ink.red, accuracy: 0.002, "At full strength, the ink")
+        XCTAssertEqual(full.blue, ink.blue, accuracy: 0.002)
         XCTAssertEqual(drawn(NullmereKit.Palette.line(0.1)), 0.1, accuracy: 0.001, "A line as faint as it is drawn")
 
         Contrast.shared.isIncreased = true
-        let raised = asked.map { drawn(NullmereKit.Palette.text($0)) }
-        XCTAssertGreaterThanOrEqual(raised.min() ?? 0, 0.8 - 0.001, "Every text plain")
+        let raised = asked.map { LauncherKit.Palette.textStrength($0) }
+        XCTAssertGreaterThanOrEqual(raised.min() ?? 0, 0.82 - 0.001, "Every text plain")
         XCTAssertEqual(raised, raised.sorted(), "What is fainter stays fainter")
-        XCTAssertLessThan(drawn(NullmereKit.Palette.text(0.55)), drawn(NullmereKit.Palette.text(0.9)))
+        XCTAssertLessThan(LauncherKit.Palette.textStrength(0.6), LauncherKit.Palette.textStrength(0.9))
         XCTAssertEqual(drawn(NullmereKit.Palette.line(0.1)), 0.2, accuracy: 0.001, "A track twice as plain")
         XCTAssertEqual(drawn(NullmereKit.Palette.line(0.3)), 0.4, accuracy: 0.001, "But no brighter than 0.4")
         XCTAssertEqual(drawn(NullmereKit.Palette.line(0.7)), 0.7, accuracy: 0.001, "A bright line as it was")

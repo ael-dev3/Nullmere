@@ -4,18 +4,32 @@ import SwiftUI
 /// The launcher's few colours: pale, slightly cold type and its glow. The
 /// realm's interface takes its own from here, so the two are one.
 public enum Palette {
-    public static let ink = Color(red: 0.894, green: 0.918, blue: 0.949)
+    public static let ink = Color(red: inkRGB.red, green: inkRGB.green, blue: inkRGB.blue)
     public static let glow = Color(red: 0.588, green: 0.706, blue: 0.882)
 
-    /// The pale type at the opacity the design asks, made to read: never
-    /// fainter than half, which reads at 4.5 to 1 over the dark; with
-    /// Increase Contrast on, lifted most of the way to full, 10 to 1 or
-    /// more, keeping what is fainter than what. The launcher's type and the
-    /// realm's follow this one rule; only a choice that can't be made yet
-    /// stays fainter.
+    static let inkRGB = (red: 0.894, green: 0.918, blue: 0.949)
+    /// The dark the interface lies on: the night water, and the panels over it.
+    static let nightRGB = (red: 0.016, green: 0.020, blue: 0.030)
+
+    /// How much of the ink a text shows at the strength the design asks,
+    /// made to read: never under 0.56, which reads at 5.5 to 1 on the dark;
+    /// with Increase Contrast on, most of the way to full, 12 to 1 or more,
+    /// keeping what is fainter than what. Only a choice that can't be made
+    /// yet stays fainter.
+    public static func textStrength(_ opacity: Double) -> Double {
+        let readable = Swift.max(opacity, 0.56)
+        return Contrast.shared.isIncreased ? 0.6 + 0.4 * readable : readable
+    }
+
+    /// The pale type at that strength, and solid: mixed from the dark to the
+    /// ink rather than laid over what lies beneath, so it reads the same
+    /// over the water, the map or a panel, and measures as it looks. The
+    /// launcher's type and the realm's follow this one rule.
     public static func text(_ opacity: Double) -> Color {
-        let readable = Swift.max(opacity, 0.5)
-        return ink.opacity(Contrast.shared.isIncreased ? 0.6 + 0.4 * readable : readable)
+        let strength = textStrength(opacity)
+        func mixed(_ dark: Double, _ light: Double) -> Double { dark + (light - dark) * strength }
+        return Color(red: mixed(nightRGB.red, inkRGB.red), green: mixed(nightRGB.green, inkRGB.green),
+                     blue: mixed(nightRGB.blue, inkRGB.blue))
     }
 
     /// A line, a track or a mark that isn't type, at the opacity the design

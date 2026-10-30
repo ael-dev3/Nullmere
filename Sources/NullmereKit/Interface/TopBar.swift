@@ -103,7 +103,6 @@ private struct ResourceReadout: View {
             .buttonStyle(.plain)
             .popover(isPresented: $showing, arrowEdge: .bottom) { IncomeCard(breakdown: breakdown()) }
             .help(summary)
-            .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(resource.title) \(amount), \(net >= 0 ? "gaining" : "losing") \(abs(net)) each watch, storage \(room)")
             .accessibilityHint("Shows where it comes from.")
     }
@@ -118,7 +117,7 @@ private struct ResourceReadout: View {
                         .foregroundStyle(amount >= room ? Palette.glow : Palette.ink)
                     Text(verbatim: net >= 0 ? "+\(net)" : "−\(-net)")
                         .font(.nm(10, weight: .regular).monospacedDigit())
-                        .foregroundStyle(net < 0 ? Palette.bad : Palette.good.opacity(0.85))
+                        .foregroundStyle(net < 0 ? Palette.bad : Palette.good)
                 }
                 if named {
                     Caps(amount >= room ? "\(resource.title) · full" : resource.title, size: 7.5, tracking: 0.26)
@@ -158,7 +157,7 @@ struct IncomeCard: View {
                     Spacer(minLength: 16)
                     Text(verbatim: line.amount >= 0 ? "+\(line.amount)" : "\(line.amount)")
                         .font(.nm(11).monospacedDigit())
-                        .foregroundStyle(line.amount < 0 ? Palette.bad : Palette.good.opacity(0.85))
+                        .foregroundStyle(line.amount < 0 ? Palette.bad : Palette.good)
                 }
             }
             Rule(opacity: 0.25)
@@ -252,10 +251,12 @@ struct WatchClock: View {
                     Text(verbatim: "  ·  Out of reach, trying again…")
                         .font(.nm(9))
                         .foregroundStyle(Palette.bad)
+                        .accessibilityLabel("Out of reach, trying again")
                 } else if let line = EndWatchButton.realmLine(status: session.realmStatus, secondsLeft: session.secondsLeft(at: context.date)) {
                     Text(verbatim: "  ·  " + line)
                         .font(.nm(9).monospacedDigit())
                         .foregroundStyle(Palette.text(0.55))
+                        .accessibilityLabel(line.replacingOccurrences(of: " · ", with: ", "))
                 }
             }
             .lineLimit(1)

@@ -504,9 +504,9 @@ twice.
 Larger text (Text in either Settings, or ⇧⌘+ in the Watch menu) sets all
 the type a fifth larger, the launcher's and the game's, none of it under
 eleven points; the panels grow to hold it. Every text reads by one rule
-of contrast, in the launcher as in the game: never fainter than 4.5 to 1
-over the dark and, with Increase Contrast, 10 to 1 or more, the fainter
-still fainter. VoiceOver reads the map, the panels and every notice.
+of contrast, in the launcher as in the game: solid, never fainter than 5.5
+to 1 on the dark and, with Increase Contrast, 12 to 1 or more, the fainter
+still fainter; type under 14 points is never thinner than regular. VoiceOver reads the map, the panels and every notice.
 
 Each age's lake grows from the realm's private words; the realm keeps the
 world, so there is nothing to save.

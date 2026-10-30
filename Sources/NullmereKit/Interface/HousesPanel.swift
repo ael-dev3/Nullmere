@@ -461,6 +461,8 @@ struct HouseRow: View {
     let session: GameSession
     let house: House
     let draft: OfferDraft
+    /// The gifts on offer, shown.
+    @State private var choosingGift = false
 
     init(session: GameSession, house: House, draft: OfferDraft) {
         self.session = session
@@ -556,21 +558,21 @@ struct HouseRow: View {
             let _ = choices.forEach { choice in
                 PressableButtons.note("Send \(choice.amount) \(choice.resource.title.lowercased())", enabled: true) { send(choice) }
             }
-            Menu {
-                ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
-                    Button("\(choice.amount) \(choice.resource.title.lowercased())") { send(choice) }
+            // A button as those beside it, its gifts in a popover: each a
+            // button, plain to the pointer, the keys and VoiceOver.
+            QuietButton(title: "Send a gift", size: 8.5) { choosingGift.toggle() }
+                .popover(isPresented: $choosingGift, arrowEdge: .bottom) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
+                            QuietButton(title: "Send \(choice.amount) \(choice.resource.title.lowercased())", size: 9, pressable: false) {
+                                choosingGift = false
+                                send(choice)
+                            }
+                        }
+                    }
+                    .padding(8)
                 }
-            } label: {
-                // Set as the buttons beside it are.
-                Caps("Send a gift", size: 8.5)
-                    .foregroundStyle(Palette.text(0.72))
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .help("Stores sent now buy goodwill: a steward sees a war as older, and takes a pact from a House that has given enough, unless that House once made war on it or a pact between them was broken.")
+                .help("Stores sent now buy goodwill: a steward sees a war as older, and takes a pact from a House that has given enough, unless that House once made war on it or a pact between them was broken.")
         }
     }
 

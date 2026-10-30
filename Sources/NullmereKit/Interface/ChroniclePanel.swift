@@ -36,15 +36,18 @@ struct ChroniclePanel: View {
                                 if let spoken = session.spoken[.chronicle(item.offset)] {
                                     Text(verbatim: spoken)
                                         .font(.nm(11.5, weight: .light).italic())
-                                        .foregroundStyle(Palette.glow.opacity(0.9))
+                                        .foregroundStyle(Palette.glow)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
                         }
                         .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Watch \(entry.watch). \(entry.text) \(session.spoken[.chronicle(item.offset)] ?? "")")
+                        .accessibilityLabel(["Watch \(entry.watch).", entry.text, session.spoken[.chronicle(item.offset)]]
+                            .compactMap { $0 }.joined(separator: " "))
                     }
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Entries, newest first")
             }
             .scrollEdgeFade()
             .scrollIndicators(.never)

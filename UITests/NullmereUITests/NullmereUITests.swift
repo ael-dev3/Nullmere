@@ -158,13 +158,14 @@ final class NullmereUITests: XCTestCase {
             .matching(NSPredicate(format: "label == %@ OR title == %@ OR value == %@", label, label, label)).firstMatch
     }
 
-    /// The Mac's own window furniture, which the app neither draws nor
-    /// names: the Touch Bar macOS keeps for every window, and the buttons
-    /// in the title bar's corner.
+    /// The Mac's own furniture, which the app neither draws nor names: the
+    /// Touch Bar macOS keeps for every window and what it shows (such as
+    /// the emoji button beside a text field), above the window's top edge;
+    /// and the buttons in the title bar's corner.
     private func isMacChrome(_ element: XCUIElement) -> Bool {
-        if element.elementType == .touchBar { return true }
-        let titleBar = CGRect(x: window.frame.minX, y: window.frame.minY, width: 100, height: 32)
-        return element.elementType == .group && element.label.isEmpty && titleBar.contains(element.frame)
+        if element.elementType == .touchBar || element.frame.minY < window.frame.minY { return true }
+        let corner = CGRect(x: window.frame.minX, y: window.frame.minY, width: 100, height: 32)
+        return element.elementType == .group && element.label.isEmpty && corner.contains(element.frame)
     }
 
     /// Xcode's accessibility audit of what is on screen: every issue it

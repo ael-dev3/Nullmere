@@ -113,7 +113,7 @@ private struct NewsStory: View {
                         let _ = PressableButtons.note("Read more", enabled: true, openLink)
                         Button(action: openLink) {
                             SpacedText("Read more", size: .launcherType(9.5, unit: unit), weight: .regular, tracking: 0.36, balanced: false)
-                                .foregroundStyle(Palette.glow.opacity(0.9))
+                                .foregroundStyle(Palette.glow)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
