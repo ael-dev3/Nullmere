@@ -48,13 +48,95 @@ final class SpacetimeIntegrationTests: XCTestCase {
         let waiting = try await transport.query("SELECT id FROM request WHERE nonce = \(sqlString(nonce))", token: token)
         let answered = try await transport.query("SELECT nonce FROM reply WHERE nonce = \(sqlString(nonce))", token: token)
         XCTAssertEqual(waiting.count + answered.count, 1, "The same request, once")
-        print("REALM a request sent twice was taken once")
+        // The keeper asks after it by its nonce alone, as the link does.
+        let mine = try await transport.query("SELECT nonce FROM my_requests WHERE nonce = \(sqlString(nonce))", token: keeper.token)
+        let theirs = try await transport.query("SELECT * FROM my_replies WHERE nonce = \(sqlString(nonce))", token: keeper.token)
+        XCTAssertEqual(mine.count + theirs.count, 1, "and finds it, by its nonce")
+        print("REALM a request sent twice was taken once, and found by its nonce")
+    }
+
+    /// The module's own bounds, as the fake keeps them: a nonce of one to
+    /// sixty-four bytes, a payload of four kilobytes at most.
+    func testTheModuleKeepsARequestWithinItsBounds() async throws {
+        let (transport, _) = try server()
+        let keeper = try await transport.createIdentity()
+        func refusal(_ reducer: String, _ arguments: [ReducerArgument]) async -> String? {
+            do {
+                try await transport.call(reducer, arguments, token: keeper.token)
+                return nil
+            } catch {
+                return "\(error)"
+            }
+        }
+        let tag = String(KeeperIdentity.make().prefix(8))
+        let nonce = "A request needs a nonce of 1 to 64 characters."
+        let none = await refusal("here", [.string("")])
+        XCTAssertEqual(none, nonce)
+        let wide = await refusal("here", [.string(String(repeating: "é", count: 33))])
+        XCTAssertEqual(wide, nonce, "Counted in bytes")
+        let most = await refusal("here", [.string(tag + String(repeating: "n", count: FakeSpacetime.maxNonce - tag.count))])
+        XCTAssertNil(most)
+        let heavy = await refusal("order", [.string(tag + "-heavy"), .string(String(repeating: "x", count: FakeSpacetime.maxPayload + 1))])
+        XCTAssertEqual(heavy, "The request is too long.")
+        let full = await refusal("order", [.string(tag + "-full"), .string(String(repeating: "x", count: FakeSpacetime.maxPayload))])
+        XCTAssertNil(full)
+        print("REALM the module keeps a request within its bounds")
+    }
+
+    /// A key the server never issued is refused as such, never as anything
+    /// a keeper's client would take for a realm that has forgotten them.
+    func testAKeyTheServerDoesntKnowIsRefusedAsSuch() async throws {
+        let (transport, _) = try server()
+        do {
+            _ = try await transport.query("SELECT version FROM status", token: "not.a.key")
+            XCTFail("A key never issued was taken")
+        } catch {
+            XCTAssertEqual(error as? SpacetimeError, .unauthorized, "\(error)")
+        }
+    }
+
+    /// A publication refused, here for a version already passed, takes no
+    /// hold on the realm, as the fake keeps it: the reducer's failure undoes
+    /// the hold it took with the rest. A minute and more, waiting for holds
+    /// to lapse.
+    func testAPublicationRefusedTakesNoHold() async throws {
+        let (transport, token) = try server()
+        let first = try await takeUp(transport, token)
+        let version = await first.version
+        try await Task.sleep(nanoseconds: UInt64((FakeSpacetime.leaseSeconds + 2) * 1_000_000_000))
+        do {
+            try await transport.call("publish", [.integer(version), .strings([]), .strings([]), .strings([]), .string("{}"), .strings([]),
+                                                 .strings([]), .strings([]), .integers([]), .strings([]), .string("a stranger's hold")],
+                                     token: token)
+            XCTFail("A publication for a version passed was kept")
+        } catch {
+            XCTAssertTrue("\(error)".contains("is not after"), "\(error)")
+        }
+        do {
+            _ = try await RealmSteward(transport: transport, token: token, name: "x", seed: "x", now: Date().timeIntervalSince1970)
+        } catch {
+            XCTFail("The refused publication held the realm: \(error)")
+        }
+        print("REALM a publication refused took no hold on the realm")
+    }
+
+    /// A steward that takes up the realm (or begins it, so shaped), once the
+    /// hold of any that came before, in an earlier test, has lapsed.
+    private func takeUp(_ transport: SpacetimeHTTP, _ token: String, seats: Int = 4, watchLength: Double = 600) async throws -> RealmSteward {
+        let deadline = Date().addingTimeInterval(100)
+        while true {
+            do {
+                return try await RealmSteward(transport: transport, token: token, name: "The Nullmere", seed: "integration",
+                                              seats: seats, watchLength: watchLength, now: Date().timeIntervalSince1970)
+            } catch where RealmSteward.isHeldByAnother(error) && Date() < deadline {
+                try await Task.sleep(nanoseconds: 5_000_000_000)
+            }
+        }
     }
 
     func testKeepersPlayThroughSpacetime() async throws {
         let (transport, token) = try server()
-        let steward = try await RealmSteward(transport: transport, token: token, name: "The Nullmere", seed: "integration",
-                                             seats: 4, watchLength: 600, now: Date().timeIntervalSince1970)
+        let steward = try await takeUp(transport, token, seats: 4, watchLength: 600)
         let running = Task { await steward.run() }
         defer { running.cancel() }
 
@@ -99,6 +181,20 @@ final class SpacetimeIntegrationTests: XCTestCase {
             let rows = (try? await transport.query("SELECT * FROM \(table)", token: stranger.token)) ?? []
             XCTAssertTrue(rows.isEmpty, "A keeper read the private \(table) table")
         }
+
+        // A stranger's "here" is answered, that the realm doesn't know them:
+        // the answer a client reads, by its nonce alone, to find a realm
+        // begun anew.
+        let here = "here-" + KeeperIdentity.make().prefix(12)
+        try await transport.call("here", [.string(here)], token: stranger.token)
+        var answer: RealmReply?
+        for _ in 0..<200 where answer == nil {
+            let rows = try await transport.query("SELECT * FROM my_replies WHERE nonce = \(sqlString(here))", token: stranger.token)
+            if let text = rows.first?[2].string { answer = try JSONDecoder().decode(RealmReply.self, from: Data(text.utf8)) }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        XCTAssertEqual(answer?.unknownKeeper, true)
+        print("REALM a stranger's here was answered: the realm doesn't know them")
 
         // The server stamps each publication by its own clock, and says
         // its clock with each answer, so a countdown can be made true.

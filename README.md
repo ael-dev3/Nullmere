@@ -431,7 +431,8 @@ enters the world across the network (`scripts/smoke-test-network.sh`).
 The steward takes up the realm where it stands after a restart. The
 realm's tables are private: keepers write requests through reducers and
 read only their own view and replies, through SpacetimeDB views
-(`my_view`, `my_replies`), and the realm's public status. A keeper may
+(`my_view`, `my_replies`), and the realm's public status. A request
+carries a nonce of 1 to 64 bytes and at most 4 KB besides; a keeper may
 have 32 requests waiting at most, and the steward carries out a few of
 each keeper's every round, so no one keeper can crowd out the rest. A
 request sent again, after its answer was lost, is carried out once. The
