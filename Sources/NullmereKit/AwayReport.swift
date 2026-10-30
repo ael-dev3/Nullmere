@@ -16,10 +16,14 @@ struct AwayReport: Equatable {
     let watches: Int
     let changes: [WatchSummary.Change]
     let holdsChange: Int
-    /// At most `lines` entries of the chronicle, oldest first.
+    /// At most `lines` entries of the chronicle, oldest first: what touched
+    /// the keeper's House before what the whole lake heard (a fall, the end
+    /// of an age), and of the omens, only the latest.
     let news: [String]
+    /// How many more of those the Chronicle holds than are told here.
+    let more: Int
 
-    static let lines = 5
+    static let lines = 8
 
     /// Nil when nothing passed worth telling.
     init?(since seen: LastSeen, now world: GameState, player: Int) {
@@ -31,10 +35,26 @@ struct AwayReport: Equatable {
             return delta == 0 ? nil : WatchSummary.Change(resource: resource, delta: delta)
         }
         holdsChange = world.holds(of: player).count - seen.holds
-        let touching = world.chronicle.filter { entry in
-            entry.watch > seen.watch && (entry.houses.contains(player) || [.fall, .ending, .omen].contains(entry.kind))
+        let chronicle = world.chronicle
+        let since = chronicle.indices.filter { chronicle[$0].watch > seen.watch }
+        let theirs = since.filter { chronicle[$0].houses.contains(player) }
+        let lakes = since.filter { !chronicle[$0].houses.contains(player) && [.fall, .ending].contains(chronicle[$0].kind) }
+        let omen = since.last { !chronicle[$0].houses.contains(player) && chronicle[$0].kind == .omen }
+        var told = Array(theirs.suffix(AwayReport.lines))
+        for index in (lakes + [omen].compactMap { $0 }).sorted().reversed() where told.count < AwayReport.lines {
+            told.append(index)
         }
-        news = touching.suffix(AwayReport.lines).map(\.text)
+        news = told.sorted().map { chronicle[$0].text }
+        more = theirs.count + lakes.count + (omen == nil ? 0 : 1) - told.count
+    }
+
+    /// The Chronicle's share of the rest, when there is more than is told.
+    var moreLine: String? {
+        switch more {
+        case ..<1: return nil
+        case 1: return "And one more in the Chronicle."
+        default: return "And \(more) more in the Chronicle."
+        }
     }
 
     var title: String {

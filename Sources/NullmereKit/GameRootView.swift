@@ -36,11 +36,14 @@ public struct GameRootView: View {
                 GameSettingsView(app: app)
                 HStack {
                     Spacer()
-                    Button("Done") { app.showsSettings = false }
+                    QuietButton(title: "Done", size: 10, prominent: true) { app.showsSettings = false }
                         .keyboardShortcut(.defaultAction)
                 }
-                .padding([.horizontal, .bottom], 20)
+                .padding([.horizontal, .bottom], 22)
             }
+            // On the realm's own dark, as its panels are.
+            .background(Palette.panel)
+            .preferredColorScheme(.dark)
         }
         .preferredColorScheme(.dark)
         .onChange(of: contrast, initial: true) { _, contrast in
@@ -66,6 +69,9 @@ struct PlayView: View {
     let app: GameApp
     let session: GameSession
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// VoiceOver's cursor, carried into a panel as it opens, by its key or
+    /// a button alike.
+    @AccessibilityFocusState private var panelFocused: Bool
 
     /// The display settings' Motion, the launcher's, with the system's
     /// Reduce Motion where it says to follow it.
@@ -117,11 +123,11 @@ struct PlayView: View {
                     VStack(alignment: .trailing, spacing: 12) {
                         switch session.panel {
                         case .houses?:
-                            HousesPanel(session: session).transition(panelTransition)
+                            opened(HousesPanel(session: session), named: "Houses")
                         case .chronicle?:
-                            ChroniclePanel(session: session).transition(panelTransition)
+                            opened(ChroniclePanel(session: session), named: "Chronicle")
                         case .guide?:
-                            GuidePanel(session: session).transition(panelTransition)
+                            opened(GuidePanel(session: session), named: "Guide")
                         case nil:
                             EmptyView()
                         }
@@ -177,10 +183,25 @@ struct PlayView: View {
         .environment(\.worldFrameRate, app.displaySettings.frameRate)
         .environment(\.worldQuality, app.displaySettings.quality)
         .onChange(of: motion, initial: true) { _, motion in session.motion = motion }
+        .onChange(of: session.panel) { _, panel in
+            if panel != nil { panelFocused = true }
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             session.keeperReturned()
         }
         .onDisappear { session.keeperReturned() }
+    }
+}
+
+extension PlayView {
+    /// A panel over the map, as it slides or fades in: a group of its name
+    /// to VoiceOver, which its cursor enters as it opens.
+    private func opened(_ panel: some View, named name: String) -> some View {
+        panel
+            .transition(panelTransition)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(name)
+            .accessibilityFocused($panelFocused)
     }
 }
 
@@ -192,7 +213,8 @@ private struct KeyHints: View {
             .foregroundStyle(Palette.text(0.75))
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(Color.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 3))
+            // As dark as a panel, so it reads over the palest ground.
+            .background(Palette.panel.opacity(0.92), in: RoundedRectangle(cornerRadius: 3))
             .accessibilityHidden(true)
     }
 }

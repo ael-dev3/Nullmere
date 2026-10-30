@@ -82,7 +82,7 @@ private struct OwnHoldPanel: View {
                 PanelTitle(
                     title: hold.name,
                     subtitle: hold.isSeat ? "Seat of \(session.playerHouse.title)" : "A hold of \(session.playerHouse.title)",
-                    accent: Palette.house(session.playerHouse)
+                    accent: Palette.houseWords(session.playerHouse)
                 )
 
                 VStack(alignment: .leading, spacing: 5) {
@@ -137,6 +137,7 @@ private struct OwnHoldPanel: View {
         }
         .scrollEdgeFade()
         .scrollIndicators(.never)
+        .pagedByKeys(session, as: .selection)
         .frame(maxHeight: 640)
         .panelBackground()
     }
@@ -175,8 +176,12 @@ private struct BuildingRow: View {
                 LevelPips(level: level, maximum: kind.maxLevel)
                 Spacer()
                 if next <= kind.maxLevel {
+                    let cost = kind.cost(toLevel: next)
                     QuietButton(title: "Build \(Narration.roman(next))", size: 8.5,
-                                enabled: hold.project == nil && stock.covers(kind.cost(toLevel: next))) {
+                                enabled: hold.project == nil && stock.covers(cost),
+                                name: "Build \(kind.title) \(Narration.roman(next))",
+                                why: hold.project != nil ? "A work is already rising here."
+                                    : CostLine.shortfall(of: cost, from: stock).map { "You are \($0)." }) {
                         session.perform(.build(hold: hold.id, kind: kind))
                     }
                 }
@@ -233,7 +238,11 @@ private struct TrainingRow: View {
                     .font(.nm(10))
                     .foregroundStyle(Palette.text(0.45))
                 Spacer()
-                QuietButton(title: "Train", size: 8.5, enabled: allowed && hold.training == nil && stock.covers(cost)) {
+                QuietButton(title: "Train", size: 8.5, enabled: allowed && hold.training == nil && stock.covers(cost),
+                            name: "Train \(kind.title)",
+                            why: !allowed ? "Needs a Muster Hall \(Narration.roman(kind.requiredMuster))."
+                                : hold.training != nil ? "A company is already training here."
+                                : CostLine.shortfall(of: cost, from: stock).map { "You are \($0)." }) {
                     session.perform(.train(hold: hold.id, kind: kind))
                 }
             }
@@ -284,11 +293,7 @@ struct BarterRow: View {
                 }
                 .labelsHidden()
                 .frame(width: 96)
-                Stepper(value: $amount, in: 10...500, step: 10) {
-                    Text(verbatim: "\(amount)").font(.nm(11).monospacedDigit())
-                }
-                .accessibilityLabel("Amount to take")
-                .accessibilityValue("\(amount)")
+                AmountField(name: "Amount to take", amount: $amount, most: Stock.cap, step: 10)
                 Text(verbatim: "for").font(.nm(10.5)).foregroundStyle(Palette.text(0.5))
                 Picker("Give", selection: $give) {
                     ForEach(Resource.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -318,7 +323,7 @@ private struct ForeignHoldPanel: View {
         let owner = session.state.houses[hold.owner]
         let stance = session.state.stance(session.player, owner.id)
         VStack(alignment: .leading, spacing: 10) {
-            PanelTitle(title: hold.name, subtitle: (hold.isSeat ? "Seat of " : "A hold of ") + owner.title, accent: Palette.house(owner))
+            PanelTitle(title: hold.name, subtitle: (hold.isSeat ? "Seat of " : "A hold of ") + owner.title, accent: Palette.houseWords(owner))
             HStack {
                 Caps(stance.title, size: 9, weight: .medium).foregroundStyle(stance == .war ? Palette.bad : Palette.text(0.7))
                 Spacer()
@@ -375,7 +380,7 @@ struct UnitPanel: View {
             PanelTitle(
                 title: unit.rank > 0 ? "\(Unit.rankTitles[unit.rank]) \(unit.kind.title)" : unit.kind.title,
                 subtitle: mine ? (unit.kind.isMilitary ? veterancy(of: unit) : nil) : owner.title,
-                accent: Palette.house(owner)
+                accent: Palette.houseWords(owner)
             )
             HStack(spacing: 14) {
                 Stat(label: "Health", value: "\(unit.health)")
@@ -494,7 +499,7 @@ private struct TilePanel: View {
                 if let owner = state.territoryOwner(of: hex) {
                     Text(verbatim: "Land of \(state.houses[owner].title)")
                         .font(.nm(10.5))
-                        .foregroundStyle(Palette.house(state.houses[owner]))
+                        .foregroundStyle(Palette.houseWords(state.houses[owner]))
                 }
             } else {
                 PanelTitle(title: "Unknown", subtitle: "Send Lanterns to see what lies here.")

@@ -71,6 +71,77 @@ final class SoundTests: XCTestCase {
         print("SOUND cues over the bed: " + report.joined(separator: ", "))
     }
 
+    /// The night's slow swells read a clock that keeps moving however long
+    /// the keeper stays: a single-precision clock stood still after eight
+    /// and a half minutes, and the drone and the wind with it.
+    func testTheNightKeepsMovingLongAfterEightMinutes() {
+        let synth = settled()
+        synth.advanceClock(by: 3_600)
+        _ = render(synth, seconds: 1)
+        XCTAssertEqual(synth.clock, 3_601, accuracy: 0.001, "An hour in, a second of sound is a second on its clock")
+    }
+
+    /// The wind sounds the same at any sample rate the Mac runs at: its
+    /// filter's corner is set in hertz, and its noise scaled to the rate.
+    func testTheBedSoundsTheSameAtAnySampleRate() {
+        func bed(at rate: Float) -> Float {
+            let synth = Synth()
+            synth.prepare(sampleRate: rate)
+            synth.settle()
+            let frames = Int(6 * rate), chunk = 512
+            let list = AudioBufferList.allocate(maximumBuffers: 2)
+            defer { free(list.unsafeMutablePointer) }
+            let left = UnsafeMutablePointer<Float>.allocate(capacity: chunk)
+            let right = UnsafeMutablePointer<Float>.allocate(capacity: chunk)
+            defer { left.deallocate(); right.deallocate() }
+            list[0] = AudioBuffer(mNumberChannels: 1, mDataByteSize: UInt32(chunk * 4), mData: left)
+            list[1] = AudioBuffer(mNumberChannels: 1, mDataByteSize: UInt32(chunk * 4), mData: right)
+            var sum: Float = 0
+            var done = 0
+            while done < frames {
+                let n = min(chunk, frames - done)
+                synth.render(frames: n, into: list)
+                for i in 0..<n { sum += left[i] * left[i] }
+                done += n
+            }
+            return (sum / Float(frames)).squareRoot()
+        }
+        let usual = bed(at: 48_000), finer = bed(at: 96_000), coarser = bed(at: 44_100)
+        XCTAssertEqual(20 * log10(finer / usual), 0, accuracy: 1.5, "At 96 kHz as at 48")
+        XCTAssertEqual(20 * log10(coarser / usual), 0, accuracy: 1.5, "and at 44.1")
+    }
+
+    /// A cue asked to wait waits: a watch's sounds follow its bell one by
+    /// one. And a long toll rings out whole, well past eight seconds.
+    func testACueWaitsItsTurnAndATollRingsOut() {
+        let plain = settled(), cued = settled()
+        cued.trigger(.select, after: 0.5)
+        let before = zip(render(plain, seconds: 0.45), render(cued, seconds: 0.45)).map { abs($1 - $0) }.max() ?? 0
+        let after = zip(render(plain, seconds: 0.3), render(cued, seconds: 0.3)).map { abs($1 - $0) }.max() ?? 0
+        XCTAssertLessThan(before, 0.0001, "Silent until its turn")
+        XCTAssertGreaterThan(after, 0.01, "then heard")
+
+        let tolled = settled()
+        tolled.trigger(.toll)
+        _ = render(tolled, seconds: 9)
+        XCTAssertEqual(tolled.sounding, 1, "Nine seconds on, the toll still rings")
+        _ = render(tolled, seconds: 32)
+        XCTAssertEqual(tolled.sounding, 0, "and is let go once it has died away")
+    }
+
+    /// The sum is kept under full scale without a hard edge: untouched
+    /// while quiet, rounded off above three quarters, the same either way.
+    func testTheSumIsSoftenedNotClipped() {
+        XCTAssertEqual(Synth.softened(0.5), 0.5)
+        XCTAssertEqual(Synth.softened(-0.7), -0.7)
+        XCTAssertLessThan(Synth.softened(1.5), 1)
+        XCTAssertLessThan(Synth.softened(3), 1)
+        XCTAssertGreaterThan(Synth.softened(3), Synth.softened(1.5), "Louder still sounds louder")
+        XCTAssertEqual(Synth.softened(-1.2), -Synth.softened(1.2))
+        XCTAssertEqual(Synth.softened(0.75), 0.75, accuracy: 0.0001, "No step at the knee")
+        XCTAssertEqual(Synth.softened(0.7501), 0.7501, accuracy: 0.0002)
+    }
+
     func testNothingClipsEvenWithEveryCueAtOnce() {
         let synth = settled()
         // The war's score playing beneath, the loudest the sound gets.

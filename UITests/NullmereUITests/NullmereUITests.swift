@@ -240,11 +240,11 @@ final class NullmereUITests: XCTestCase {
         let war = window.buttons["Declare war"].firstMatch
         if war.waitForExistence(timeout: 5) {
             war.click()
-            let asked = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'War on '")).firstMatch
+            // Armed, it keeps its name and asks in its value; never pressed
+            // again, no war is declared, and closing the panel lets it go.
+            let asked = window.buttons.matching(NSPredicate(format: "label == 'Declare war' AND value BEGINSWITH 'War on '")).firstMatch
             if asked.waitForExistence(timeout: 3) {
                 audit("war asked twice")
-                // Left to lapse: no war is declared.
-                _ = window.buttons["Declare war"].firstMatch.waitForExistence(timeout: 15)
             } else {
                 found("UIWALK Declare war asked nothing a second time")
             }

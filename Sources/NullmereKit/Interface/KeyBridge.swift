@@ -4,16 +4,26 @@ import SwiftUI
 /// The game's keys, read from the window's key events while no text field
 /// is being typed in.
 enum GameKey: Equatable {
+    /// The next company awaiting orders.
     case nextUnit
+    /// Each of the keeper's companies in turn, whatever it is doing:
+    /// marching, fortified or spent as well as awaiting orders.
+    case anyUnit(forward: Bool)
     case fortify
     case found
-    case home
+    /// The keeper's holds in turn, the seat first.
+    case nextHold
+    /// Whatever lies where the view is centred, chosen as a click there
+    /// would choose it: the keyboard's click.
+    case chooseAtCentre
     case escape
     case pan(dx: Double, dy: Double)
     /// The selected company marches, or strikes, where the view is centred:
     /// the keyboard's right-click.
     case orderAtCentre
     case zoom(Double)
+    /// The open panel, or the chosen hold's, a page up (-1) or down (1).
+    case page(Int)
     case houses
     case chronicle
     case guide
@@ -35,14 +45,31 @@ extension GameSession {
         switch key {
         case .nextUnit:
             selectNextReadyUnit()
+            sayChosen()
+        case .anyUnit(let forward):
+            selectNextUnit(forward: forward)
         case .fortify:
             guard let unit = selectedUnit, unit.owner == player else { return false }
-            perform(.fortify(unit: unit.id))
+            if perform(.fortify(unit: unit.id)) { sayDone("\(unit.kind.title) fortified") }
         case .found:
             guard let unit = selectedUnit, unit.owner == player, unit.kind == .founder else { return false }
+            if let problem = state.canFound(at: unit.position, for: player) {
+                post(String(describing: problem), tone: .bad)
+                return true
+            }
+            // What can't be taken back asks twice: B, then B again.
+            guard foundingAsked == unit.id else {
+                foundingAsked = unit.id
+                post("Found a hold here? Press B again to found it.", tone: .neutral)
+                return true
+            }
+            foundingAsked = nil
             perform(.found(unit: unit.id))
-        case .home:
-            focusOnSeat()
+        case .nextHold:
+            selectNextHold()
+        case .chooseAtCentre:
+            click(camera.centreHex)
+            sayChosen()
         case .escape:
             if panel != nil {
                 panel = nil
@@ -62,9 +89,29 @@ extension GameSession {
             if NSWorkspace.shared.isVoiceOverEnabled, let words = centreWords { sayNow(words) }
         case .orderAtCentre:
             guard let unit = selectedUnit, unit.owner == player else { return false }
-            order(camera.centreHex)
+            let target = camera.centreHex
+            let striking = strikeTargets.contains(target)
+            // A strike asks twice, as Declare war does: M shows the odds,
+            // M again strikes.
+            if striking, strikeAsked != target {
+                strikeAsked = target
+                hover(target)
+                let odds = state.forecast(unit: unit.id, at: target).map { MapAccessibility.odds($0) } ?? "a strike"
+                post("Strike? \(odds.prefix(1).uppercased() + odds.dropFirst()). Press M again to strike.", tone: .neutral)
+                return true
+            }
+            strikeAsked = nil
+            order(target)
+            // A march is said once under way, as a strike says itself.
+            if !striking, let after = state.unit(unit.id), after.destination != nil || after.position != unit.position {
+                let distance = unit.position.distance(to: target)
+                sayDone("\(unit.kind.title) march \(distance) tile\(distance == 1 ? "" : "s") \(MapAccessibility.direction(from: unit.position, to: target))")
+            }
         case .zoom(let factor):
             camera.zoom(by: factor, around: .zero, in: .zero)
+        case .page(let direction):
+            guard panel != nil || selectedHold != nil else { return false }
+            pageRequest = PageRequest(serial: pageRequest.serial + 1, direction: direction, target: panel.map(PageTarget.panel) ?? .selection)
         case .houses:
             panel = panel == .houses ? nil : .houses
         case .chronicle:
@@ -72,19 +119,43 @@ extension GameSession {
         case .guide:
             panel = panel == .guide ? nil : .guide
         }
+        // A question asked by a key lapses at any other key.
+        if key != .found { foundingAsked = nil }
+        if key != .orderAtCentre { strikeAsked = nil }
         return true
     }
 }
 
 extension GameSession {
-    /// What lies where the view is centred, in words.
+    /// What lies where the view is centred, in words: who stands there,
+    /// the ground, and how far it lies from the company chosen.
     var centreWords: String? {
         let hex = camera.centreHex
         if let forecast = hoverForecast, hovered == hex {
             return "Strike: " + MapAccessibility.odds(forecast)
         }
-        return HoverInfo.line(for: hex, in: state, explored: isExplored(hex), territory: territory)?
-            .replacingOccurrences(of: " · ", with: ", ")
+        var parts: [String] = []
+        if let unit = state.unit(at: hex), unit.owner == player || isVisible(hex) {
+            parts.append(unit.owner == player ? "Your \(unit.kind.title)" : "The \(unit.kind.title) of \(state.houses[unit.owner].title)")
+        }
+        if let ground = HoverInfo.line(for: hex, in: state, explored: isExplored(hex), territory: territory) {
+            parts.append(ground.replacingOccurrences(of: " · ", with: ", "))
+        }
+        if let unit = selectedUnit, unit.owner == player, unit.position != hex {
+            let distance = unit.position.distance(to: hex)
+            parts.append("\(distance) tile\(distance == 1 ? "" : "s") \(MapAccessibility.direction(from: unit.position, to: hex)) of your \(unit.kind.title)")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: "; ")
+    }
+}
+
+/// Whether the game's letter keys act alone, or only with ⌥ held: one of
+/// the realm's Settings, for those who'd rather a stray key did nothing.
+enum LetterKeys {
+    static let defaultsKey = "keys.lettersAlone"
+
+    static var actAlone: Bool {
+        UserDefaults.standard.object(forKey: defaultsKey) as? Bool ?? true
     }
 }
 
@@ -128,12 +199,16 @@ final class KeyBridgeView: NSView {
         super.removeFromSuperview()
     }
 
-    func handle(_ event: NSEvent, keyboardNavigation: Bool = NSApp.isFullKeyboardAccessEnabled) -> Bool {
+    func handle(_ event: NSEvent, keyboardNavigation: Bool = NSApp.isFullKeyboardAccessEnabled,
+                lettersAlone: Bool = LetterKeys.actAlone) -> Bool {
         guard let window, event.window === window else { return false }
-        // Leave typing, and anything with ⌘, ⌃ or ⌥, to the controls and menus.
+        // Leave typing, and anything with ⌘ or ⌃, to the controls and menus.
         if window.firstResponder is NSText { return false }
         let modifiers = event.modifierFlags.intersection([.command, .control, .option])
-        guard modifiers.isEmpty, let key = Self.key(for: event) else { return false }
+        // The letters, numbers and marks act alone; or, for those who'd
+        // rather a stray key did nothing, only with ⌥ held.
+        let needed: NSEvent.ModifierFlags = !lettersAlone && Self.isCharacterKey(event) ? [.option] : []
+        guard modifiers == needed, let key = Self.key(for: event) else { return false }
         // With keyboard navigation on, Tab and the arrows move focus through
         // the interface, as everywhere on the Mac, unless the map itself
         // has the keyboard. The game keeps "." for the next company and
@@ -142,11 +217,17 @@ final class KeyBridgeView: NSView {
         return onKey?(key) ?? false
     }
 
-    /// Tab and the arrows: the keys keyboard navigation moves focus with.
+    /// A letter, a number or a mark: the keys a stray press can send.
+    static func isCharacterKey(_ event: NSEvent) -> Bool {
+        event.specialKey == nil && event.keyCode != 53 && event.charactersIgnoringModifiers != " "
+    }
+
+    /// Tab, the arrows, Space and Return: the keys keyboard navigation
+    /// moves focus with, and presses the focused control with.
     static func isNavigationKey(_ event: NSEvent) -> Bool {
         switch event.specialKey {
-        case .tab?, .upArrow?, .downArrow?, .leftArrow?, .rightArrow?: return true
-        default: return false
+        case .tab?, .upArrow?, .downArrow?, .leftArrow?, .rightArrow?, .carriageReturn?, .enter?: return true
+        default: return event.charactersIgnoringModifiers == " "
         }
     }
 
@@ -158,15 +239,21 @@ final class KeyBridgeView: NSView {
         case .downArrow?: return .pan(dx: 0, dy: -step)
         case .leftArrow?: return .pan(dx: step, dy: 0)
         case .rightArrow?: return .pan(dx: -step, dy: 0)
+        case .carriageReturn?, .enter?: return .chooseAtCentre
+        case .pageUp?: return .page(-1)
+        case .pageDown?: return .page(1)
         default: break
         }
         if event.keyCode == 53 { return .escape }
         switch event.charactersIgnoringModifiers?.lowercased() {
+        case " ": return .chooseAtCentre
         case ".": return .nextUnit
+        case "]": return .anyUnit(forward: true)
+        case "[": return .anyUnit(forward: false)
         case "f": return .fortify
         case "m": return .orderAtCentre
         case "b": return .found
-        case "h": return .home
+        case "h": return .nextHold
         case "=", "+": return .zoom(1.25)
         case "-", "_": return .zoom(0.8)
         case "w": return .pan(dx: 0, dy: step)

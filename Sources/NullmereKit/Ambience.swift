@@ -75,13 +75,40 @@ public final class Ambience {
         isEnabled = enabled
     }
 
+    /// The cues asked for together, as a watch's turning asks for its bell
+    /// and what the watch brought: when they began, and how many so far.
+    private var batch: (start: ContinuousClock.Instant, count: Int)?
+    /// How far apart cues asked for together sound: one after another, the
+    /// bell first, not all at once.
+    static let batchSpacing: Float = 0.38
+
     public func play(_ cue: Cue) {
         guard isEnabled, started, winding == nil else { return }
         let now = ContinuousClock.now
         if let last = lastPlayed[cue], now - last < .milliseconds(100) { return }
         lastPlayed[cue] = now
-        synth.trigger(cue)
+        var delay: Float = 0
+        if let current = batch, now - current.start < .milliseconds(30) {
+            delay = Float(current.count) * Self.batchSpacing
+            batch = (current.start, current.count + 1)
+        } else {
+            batch = (now, 1)
+        }
+        synth.trigger(cue, after: delay)
     }
+
+    /// Fades all of it out quickly, for the app quitting, and says how long
+    /// to wait for it: a hard stop clicks. Nothing to wait for while silent
+    /// or already fading.
+    @discardableResult
+    public func fadeForQuitting() -> Double {
+        guard started, winding == nil else { return 0 }
+        synth.fadeOut(rate: 12)
+        return Self.quitFadeSeconds
+    }
+
+    /// Long enough at that pace for the sound to fall some thirty decibels.
+    public static let quitFadeSeconds = 0.35
 
     /// The score: on or off, and at peace or at war.
     public var isMusicOn = true {
@@ -200,6 +227,18 @@ final class Synth: @unchecked Sendable {
         var age: Float = 0
         /// Seconds after the cue begins that this note sounds.
         var delay: Float = 0
+        /// Its age when it has died below hearing, worked out as it is
+        /// asked for (see `length`), not on the audio thread.
+        var end: Float = 40
+
+        /// How long after it begins the note has died below hearing: each
+        /// partial rings until its decay brings it under a ten-thousandth,
+        /// so a long toll rings out whole rather than being cut.
+        var length: Float {
+            let rings = partials.map { $0.delay + log(max($0.amplitude, 1e-4) / 1e-4) / max($0.decay, 0.01) }
+            let hiss = noise > 0 ? log(max(noise, 1e-4) / 1e-4) / max(noiseDecay, 0.01) : 0
+            return min(max(rings.max() ?? 0, hiss), 40)
+        }
     }
 
     private let lock = NSLock()
@@ -207,7 +246,9 @@ final class Synth: @unchecked Sendable {
     private var notes: [Note] = []
 
     private var sampleRate: Float = 48_000
-    private var time: Float = 0
+    /// Seconds since sound began, in double precision: a Float's would stop
+    /// moving after eight and a half minutes, and the night with it.
+    private var time: Double = 0
     private var level: Float = 0
     private var target: Float = 0
     /// How fast the level follows its target, per second: slowly in, as
@@ -221,7 +262,19 @@ final class Synth: @unchecked Sendable {
     private var score = Score()
     private var pendingMusic: (on: Bool, mood: Score.Mood)?
     private var volumes: (effects: Float, ambience: Float, music: Float) = (1, 1, 1)
+    /// The volumes as they sound: easing toward `volumes` over a few
+    /// hundredths of a second, so a slider dragged doesn't step.
+    private var heard: (effects: Float, ambience: Float, music: Float) = (1, 1, 1)
     private var pendingVolumes: (effects: Float, ambience: Float, music: Float)?
+
+    /// The drone's partials.
+    private static let droneFrequencies: [Float] = [55, 82.41, 110, 164.81]
+
+    init() {
+        // Room enough up front that the audio thread never has to find more.
+        notes.reserveCapacity(64)
+        pending.reserveCapacity(24)
+    }
 
     func setVolumes(effects: Float, ambience: Float, music: Float) {
         let clamp = { (value: Float) in min(max(value, 0), 1) }
@@ -246,8 +299,8 @@ final class Synth: @unchecked Sendable {
         lock.lock(); target = 1; fadeRate = 0.25; lock.unlock()
     }
 
-    func fadeOut() {
-        lock.lock(); target = 0; fadeRate = 5; lock.unlock()
+    func fadeOut(rate: Float = 5) {
+        lock.lock(); target = 0; fadeRate = rate; lock.unlock()
     }
 
     /// Silent, with nothing left sounding: called with the engine stopped.
@@ -265,8 +318,25 @@ final class Synth: @unchecked Sendable {
         lock.lock(); target = 1; level = 1; lock.unlock()
     }
 
-    func trigger(_ cue: Ambience.Cue) {
-        let note: Note
+    /// Seconds since sound began, as the drone's and the wind's slow swells
+    /// read them: for tests, which may also move it on.
+    var clock: Double {
+        lock.lock(); defer { lock.unlock() }
+        return time
+    }
+
+    func advanceClock(by seconds: Double) {
+        lock.lock(); time += seconds; lock.unlock()
+    }
+
+    /// How many notes are sounding, for tests.
+    var sounding: Int {
+        lock.lock(); defer { lock.unlock() }
+        return notes.count
+    }
+
+    func trigger(_ cue: Ambience.Cue, after delay: Float = 0) {
+        var note: Note
         var more: [Note] = []
         switch cue {
         case .select:
@@ -285,7 +355,16 @@ final class Synth: @unchecked Sendable {
         case .rise:
             note = Note(partials: [Partial(frequency: 392, amplitude: 0.09, decay: 2.2), Partial(frequency: 587.3, amplitude: 0.066, decay: 2.6), Partial(frequency: 784, amplitude: 0.036, decay: 3)], noise: 0, noiseDecay: 1)
         case .dread:
-            note = Note(partials: [Partial(frequency: 46.25, amplitude: 0.14, decay: 0.7), Partial(frequency: 69.3, amplitude: 0.065, decay: 0.9), Partial(frequency: 97.99, amplitude: 0.04, decay: 1.2)], noise: 0.026, noiseDecay: 3)
+            // Low, and with overtones a laptop's small speakers can give, so
+            // it is heard there too, its depth implied.
+            note = Note(partials: [
+                Partial(frequency: 46.25, amplitude: 0.14, decay: 0.7),
+                Partial(frequency: 69.3, amplitude: 0.065, decay: 0.9),
+                Partial(frequency: 97.99, amplitude: 0.04, decay: 1.2),
+                Partial(frequency: 185, amplitude: 0.05, decay: 1.1),
+                Partial(frequency: 277.2, amplitude: 0.032, decay: 1.4),
+                Partial(frequency: 370, amplitude: 0.014, decay: 1.8),
+            ], noise: 0.026, noiseDecay: 3)
         case .envoy:
             // A fifth, the lower note first: a horn across the water.
             note = Note(partials: [
@@ -337,10 +416,18 @@ final class Synth: @unchecked Sendable {
                 Note(partials: [
                     Partial(frequency: 110, amplitude: 0.09 * strength, decay: 25),
                     Partial(frequency: 70, amplitude: 0.06 * strength, decay: 20),
+                    // The knock of it, which small speakers give.
+                    Partial(frequency: 240, amplitude: 0.04 * strength, decay: 32),
                 ], noise: 0.06 * strength, noiseDecay: 50, delay: delay)
             }
             note = hoof(0, 1)
             more = [hoof(0.12, 0.8), hoof(0.21, 0.9)]
+        }
+        note.delay += delay
+        note.end = note.delay + note.length
+        for index in more.indices {
+            more[index].delay += delay
+            more[index].end = more[index].delay + more[index].length
         }
         lock.lock()
         if pending.count < 12 { pending.append(note); pending.append(contentsOf: more) }
@@ -377,25 +464,33 @@ final class Synth: @unchecked Sendable {
 
         let dt = 1 / sampleRate
         let tau: Float = 2 * .pi
-        let droneFrequencies: [Float] = [55, 82.41, 110, 164.81]
+        // The wind's noise, as loud at any sample rate: the filter below
+        // passes the same band, so its noise is scaled to the rate.
+        let windNoise = (sampleRate / 48_000).squareRoot()
         for frame in 0..<frames {
-            time += dt
+            time += Double(dt)
             level += (goal - level) * dt * rate
+            heard.effects += (volume.effects - heard.effects) * min(dt * 30, 1)
+            heard.ambience += (volume.ambience - heard.ambience) * min(dt * 30, 1)
+            heard.music += (volume.music - heard.music) * min(dt * 30, 1)
 
             // The drone: a few cold partials, each swelling at its own pace.
             var drone: Float = 0
             for i in 0..<4 {
-                dronePhases[i] += tau * droneFrequencies[i] * dt
+                dronePhases[i] += tau * Self.droneFrequencies[i] * dt
                 if dronePhases[i] > tau { dronePhases[i] -= tau }
-                let swell = 0.5 + 0.5 * sin(time * (0.031 + Float(i) * 0.017) + Float(i) * 1.7)
+                let swell = 0.5 + 0.5 * Float(sin(time * (0.031 + Double(i) * 0.017) + Double(i) * 1.7))
                 drone += sin(dronePhases[i]) * swell * (i == 0 ? 0.016 : 0.009)
             }
 
-            // The wind: soft noise, gusting slowly, a little different in each ear.
-            gust += (0.5 + 0.5 * sin(time * 0.07) * sin(time * 0.023 + 1) - gust) * dt * 0.5
-            let cutoff = 0.004 + 0.012 * gust
-            windLeft += (random() - windLeft) * cutoff
-            windRight += (random() - windRight) * cutoff
+            // The wind: soft noise, gusting slowly, a little different in each
+            // ear, through a filter whose corner is set in hertz (30 to 120,
+            // as the gust rises), so it sounds the same at any sample rate.
+            gust += (0.5 + 0.5 * Float(sin(time * 0.07) * sin(time * 0.023 + 1)) - gust) * dt * 0.5
+            let corner = 30.6 + 91.7 * gust
+            let cutoff = 1 - exp(-tau * corner * dt)
+            windLeft += (random() * windNoise - windLeft) * cutoff
+            windRight += (random() * windNoise - windRight) * cutoff
             let wind = 0.55 + 0.45 * gust
 
             var cue: Float = 0
@@ -417,15 +512,28 @@ final class Synth: @unchecked Sendable {
                 }
             }
 
-            cue *= volume.effects
-            drone *= volume.ambience
-            let air = 0.6 * wind * level * volume.ambience
-            let music = score.sample(dt: dt) * level * volume.music
-            let bed = (drone + 0.5 * cue) * level + music
-            left[frame] = bed + windLeft * air + 0.5 * cue * (1 - level)
-            right[frame] = bed + windRight * air + 0.5 * cue * (1 - level)
+            cue *= heard.effects
+            drone *= heard.ambience
+            let air = 0.6 * wind * level * heard.ambience
+            let music = score.sample(dt: dt) * level * heard.music
+            // The cues sound whole while night falls, but go with the rest
+            // as the sound fades out, so nothing rings on to be cut off.
+            let cueLevel = goal > 0 ? 1 : level
+            let bed = drone * level + 0.5 * cue * cueLevel + music
+            left[frame] = Self.softened(bed + windLeft * air)
+            right[frame] = Self.softened(bed + windRight * air)
         }
-        notes.removeAll { $0.age - $0.delay > 8 }
-        if time > 10_000 { time -= 10_000 }
+        notes.removeAll { $0.age > $0.end }
+    }
+
+    /// The sum kept under full scale: untouched while quiet, rounded off
+    /// gently above three quarters, never clipped hard however many cues
+    /// sound at once.
+    static func softened(_ sample: Float) -> Float {
+        let knee: Float = 0.75
+        let size = abs(sample)
+        guard size > knee else { return sample }
+        let over = (size - knee) / (1 - knee)
+        return (knee + (1 - knee) * tanh(over)) * (sample < 0 ? -1 : 1)
     }
 }

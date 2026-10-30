@@ -13,6 +13,16 @@ enum Narration {
         BuildingKind.numeral(number)
     }
 
+    /// Where something happened, as a keeper would say it: at a hold, or
+    /// on its ground by the nearest hold within a few tiles.
+    static func place(of hex: Hex, in state: GameState) -> String {
+        if let hold = state.hold(at: hex) { return "at \(hold.name)" }
+        let ground = state.map[hex].map { "on the \($0.terrain.title.lowercased())" } ?? "in the field"
+        let near = state.holds.filter { $0.position.distance(to: hex) <= 4 }
+            .min { ($0.position.distance(to: hex), $0.id) < ($1.position.distance(to: hex), $1.id) }
+        return near.map { "\(ground) by \($0.name)" } ?? ground
+    }
+
     static func line(for event: GameEvent, in state: GameState, viewer: Int) -> Line? {
         func house(_ id: Int) -> String { state.houses[id].title }
         func holdName(_ id: Int) -> String { state.hold(id)?.name ?? "a hold" }
@@ -30,9 +40,9 @@ enum Narration {
             }
             let what = battle.defenderKind.map { "your \($0.title)" } ?? (battle.hold.map(holdName) ?? "your hold")
             return Line(text: "\(house(battle.attackerOwner))'s \(battle.attackerKind.title) strike \(what) for \(battle.damageDealt).", tone: .bad)
-        case .unitLost(_, let kind, let owner, _):
+        case .unitLost(_, let kind, let owner, let at):
             guard owner == viewer else { return nil }
-            return Line(text: "Your \(kind.title) are lost.", tone: .bad)
+            return Line(text: "Your \(kind.title) are lost \(place(of: at, in: state)).", tone: .bad)
         case .holdStruck:
             return nil
         case .holdCaptured(let hold, let from, let by):

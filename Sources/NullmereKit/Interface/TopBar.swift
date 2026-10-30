@@ -269,14 +269,16 @@ struct WatchClock: View {
 struct NoticeFeed: View {
     let session: GameSession
 
+    @Environment(\.worldMotion) private var motion
+
     var body: some View {
         // As many of the latest as the column has room for, after the
-        // panels below have theirs.
+        // panels below have theirs; the newest always, a hold's panel
+        // giving way for it.
         ViewThatFits(in: .vertical) {
             feed(session.notices)
             feed(Array(session.notices.suffix(3)))
             feed(Array(session.notices.suffix(1)))
-            Color.clear.frame(height: 0)
         }
         .animation(.easeOut(duration: 0.25), value: session.notices)
         .frame(maxWidth: 420, alignment: .leading)
@@ -296,7 +298,8 @@ struct NoticeFeed: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .panelBackground()
-                .transition(.opacity.combined(with: .move(edge: .leading)))
+                // Below full motion they fade in where they rest.
+                .transition(motion == .full ? .opacity.combined(with: .move(edge: .leading)) : .opacity)
             }
         }
     }
@@ -321,7 +324,7 @@ struct OmenBand: View {
         .fixedSize()
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
-        .background(RoundedRectangle(cornerRadius: 3).fill(Palette.panel.opacity(0.82)))
+        .background(RoundedRectangle(cornerRadius: 3).fill(Palette.panel.opacity(0.92)))
         .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Palette.glow.opacity(0.25), lineWidth: 1))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Omen: \(omen.kind.title). \(omen.kind.effect) \(OmenBand.lasting(left))")

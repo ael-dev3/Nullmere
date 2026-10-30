@@ -29,6 +29,7 @@ struct GuidePanel: View {
             }
             .scrollEdgeFade()
             .scrollIndicators(.never)
+            .pagedByKeys(session, as: .panel(.guide))
         }
         .padding(16)
         .frame(width: 380)

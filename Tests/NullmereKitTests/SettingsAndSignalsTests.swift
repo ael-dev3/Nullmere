@@ -117,6 +117,9 @@ final class SignalsTests: XCTestCase {
         let to = rider.position
         XCTAssertEqual(GameSession.cues(for: .move(unit: rider.id, to: to), events: [], in: state, player: state.player), [.ride])
         XCTAssertEqual(GameSession.cues(for: .move(unit: spear.id, to: to), events: [], in: state, player: state.player), [.order])
+        let ruin = GameEvent.ruinSearched(at: to, by: state.player, reward: Stock(stone: 20))
+        XCTAssertEqual(GameSession.cues(for: .move(unit: spear.id, to: to), events: [ruin], in: state, player: state.player), [.order, .rise],
+                       "A drowned ruin searched on the way rises after the march")
         func battle(_ kind: UnitKind) -> GameEvent {
             .battle(Battle(attacker: 1, attackerOwner: state.player, attackerKind: kind, defender: 2, defenderOwner: 1,
                            defenderKind: .spear, hold: nil, at: to, damageDealt: 10, damageTaken: 0,

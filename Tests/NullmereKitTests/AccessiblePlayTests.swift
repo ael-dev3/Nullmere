@@ -180,16 +180,6 @@ final class AccessiblePlayTests: XCTestCase {
         XCTAssertNil(session.awayReport)
     }
 
-    func testAConfirmationWaitsLongerForVoiceOver() {
-        let start = Date()
-        var spoken = Confirmation(span: Confirmation.spokenWindow)
-        XCTAssertFalse(spoken.press(at: start))
-        XCTAssertTrue(spoken.press(at: start.addingTimeInterval(Confirmation.window + 4)), "Long after three seconds, still armed")
-        var quick = Confirmation()
-        XCTAssertFalse(quick.press(at: start))
-        XCTAssertFalse(quick.press(at: start.addingTimeInterval(Confirmation.window + 4)))
-    }
-
     /// One rule for every text, the launcher's and the realm's: as faint as
     /// the design asks but never fainter than reads, and solid, mixed from
     /// the dark to the ink rather than laid over what lies beneath; with
@@ -222,6 +212,25 @@ final class AccessiblePlayTests: XCTestCase {
         XCTAssertEqual(drawn(NullmereKit.Palette.line(0.1)), 0.2, accuracy: 0.001, "A track twice as plain")
         XCTAssertEqual(drawn(NullmereKit.Palette.line(0.3)), 0.4, accuracy: 0.001, "But no brighter than 0.4")
         XCTAssertEqual(drawn(NullmereKit.Palette.line(0.7)), 0.7, accuracy: 0.001, "A bright line as it was")
+    }
+
+    /// A House's colour, colouring words (a hold's name, the land it holds),
+    /// reads as plainly as the rest of the type, seven to one on a panel's
+    /// dark, keeping its own hue; with Increase Contrast, plainer still.
+    func testAHousesColourReadsWhenItColoursWords() {
+        typealias Palette = NullmereKit.Palette
+        func strongest(_ colour: Palette.RGB) -> Int {
+            [colour.red, colour.green, colour.blue].firstIndex(of: max(colour.red, colour.green, colour.blue)) ?? 0
+        }
+        for index in Palette.houseRGB.indices {
+            let words = Palette.houseWordsRGB(index)
+            XCTAssertGreaterThanOrEqual(words.contrast(with: Palette.panelRGB), 7, "House colour \(index)")
+            XCTAssertEqual(strongest(words), strongest(Palette.houseRGB[index]), "Its own hue, lifted: House colour \(index)")
+        }
+        XCTAssertLessThan(Palette.houseRGB[1].contrast(with: Palette.panelRGB), 4.5, "The darkest House's colour needs the lift")
+        Contrast.shared.isIncreased = true
+        defer { Contrast.shared.isIncreased = false }
+        XCTAssertGreaterThanOrEqual(Palette.houseWordsRGB(1).contrast(with: Palette.panelRGB), 10)
     }
 
     /// VoiceOver's cursor rings a hold or a company where it lies, about a
@@ -289,6 +298,28 @@ final class AccessiblePlayTests: XCTestCase {
         XCTAssertTrue(strike.hasPrefix("Strike: they take"), strike)
         session.sayNow(strike)
         XCTAssertEqual(session.lastSaid, strike)
+        // Who stands there, and how far it lies from the company chosen.
+        session.hover(nil)
+        session.camera.focus(on: seat.position)
+        let there = try XCTUnwrap(session.centreWords)
+        XCTAssertTrue(there.contains("of your Spears"), there)
+    }
+
+    /// A strike by the keyboard asks first, as Declare war does: M shows the
+    /// odds, M again strikes; a march by M is said once it is under way.
+    func testAStrikeByKeyAsksFirst() throws {
+        let (state, spear, foe) = try atWar("asked first")
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        session.dismissSeatBriefing()
+        session.voiceOverRunning = { true }
+        session.selection = .unit(spear)
+        session.camera.focus(on: foe)
+        let before = session.state.unit(at: foe)
+        XCTAssertTrue(session.handle(.orderAtCentre))
+        XCTAssertEqual(session.state.unit(at: foe), before, "The first M only shows the odds")
+        XCTAssertTrue(session.notices.last?.text.hasPrefix("Strike? ") ?? false, session.notices.last?.text ?? "")
+        XCTAssertTrue(session.handle(.orderAtCentre))
+        XCTAssertNotEqual(session.state.unit(at: foe), before, "M again strikes")
     }
 
     func testAStrikeOnAHoldIsSaidAsItsWard() {

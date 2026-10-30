@@ -51,6 +51,7 @@ struct ChroniclePanel: View {
             }
             .scrollEdgeFade()
             .scrollIndicators(.never)
+            .pagedByKeys(session, as: .panel(.chronicle))
         }
         .padding(16)
         .frame(width: 380)

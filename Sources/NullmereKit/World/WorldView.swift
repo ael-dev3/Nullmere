@@ -42,7 +42,7 @@ struct WorldView: View {
             GeometryReader { proxy in
                 let ring = MapAccessibility.ring(at: session.camera.scale)
                 ForEach(session.mapItems) { item in
-                    Button(item.label) { session.selection = item.selection }
+                    Button(item.label) { session.choose(item) }
                         .accessibilityActions {
                             ForEach(item.orders, id: \.self) { order in
                                 Button(order.name) { MapAccessibility.carryOut(order, for: item, in: session) }
@@ -291,6 +291,14 @@ struct WorldMarks: View {
                     let banner = TokenArt.banner(at: point, radius: r)
                     context.stroke(banner.pole, with: .color(colour), lineWidth: 1.1)
                     context.fill(banner.pennant, with: .color(colour))
+                }
+                // With "Differentiate without colour" on, whose it is is
+                // said in shape too, as over a company: a bar over the
+                // keeper's own, a cross by a foe's.
+                if differentiate {
+                    context.stroke(WorldMarks.ownership(hold.owner == player ? .own : state.isAtWar(player, hold.owner) ? .foe : .other,
+                                                        at: point, radius: r * 1.6),
+                                   with: .color(Palette.ink), lineWidth: 1.4)
                 }
                 if hold.level(.moonspire) > 0 {
                     let spire = CGFloat(hold.level(.moonspire))

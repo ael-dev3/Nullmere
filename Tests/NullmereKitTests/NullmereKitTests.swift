@@ -267,6 +267,15 @@ final class NarrationTests: XCTestCase {
         let allied = try XCTUnwrap(Narration.line(for: .proposalAnswered(proposal: .pact, from: other, to: me, accepted: true), in: state, viewer: me))
         XCTAssertEqual(allied.text, "You and \(them) swear a pact.")
 
+        // A company lost is told with where it fell: at a hold, or on its
+        // ground by the nearest hold.
+        let seat = try XCTUnwrap(state.seat(of: me))
+        XCTAssertEqual(try said(.unitLost(unit: 9, kind: .spear, owner: me, at: seat.position)).text, "Your Spears are lost at \(seat.name).")
+        let beside = try XCTUnwrap(state.map.neighbors(of: seat.position).first { state.hold(at: $0) == nil })
+        let ground = try XCTUnwrap(state.map[beside]).terrain.title.lowercased()
+        XCTAssertEqual(try said(.unitLost(unit: 9, kind: .spear, owner: me, at: beside)).text, "Your Spears are lost on the \(ground) by \(seat.name).")
+        XCTAssertNil(Narration.line(for: .unitLost(unit: 9, kind: .spear, owner: other, at: beside), in: state, viewer: me))
+
         XCTAssertEqual(try said(.gameEnded(Outcome(winner: other, kind: .ascendancy, watch: 9))).text, "\(them) is ascendant.")
         XCTAssertEqual(try said(.gameEnded(Outcome(winner: other, kind: .dominion, watch: 9))).text, "\(them) holds dominion over the lake.")
         XCTAssertEqual(try said(.gameEnded(Outcome(winner: me, kind: .dominion, watch: 9))).text, "The Nullmere is yours.")
@@ -472,7 +481,8 @@ final class GuideTests: XCTestCase {
         XCTAssertEqual(titles, ["The watch", "The land", "Holds", "Companies", "Houses", "Omens", "Winning", "Keys"])
         XCTAssertTrue(Guide.sections.allSatisfy { !$0.lines.isEmpty && $0.lines.allSatisfy { $0.count > 10 } })
         let keys = Guide.sections.last!.lines.joined(separator: " ")
-        for key in ["Tab", "H:", "F:", "B:", "Esc", "1:", "2:", "?:", "⌘↩", "⇧⌘↩", "⇧⌘W", "⇧⌘M", "⇧⌘U", "⇧⌘+"] {
+        for key in ["Tab", "H:", "F:", "B:", "Esc", "1:", "2:", "?:", "⌘↩", "⇧⌘↩", "⇧⌘W", "⇧⌘M", "⇧⌘U", "⇧⌘+",
+                    "] and [", "Space or Return", "Page Up", "With ⌥"] {
             XCTAssertTrue(keys.contains(key), "The guide names \(key)")
         }
         // The Moonspire's last stage, and the holds it takes to store for it.
@@ -638,6 +648,13 @@ final class CueMappingTests: XCTestCase {
         XCTAssertEqual(GameSession.cues(for: [struck(by: .bow)], player: player), [.watch, .loose])
         XCTAssertEqual(GameSession.cues(for: [.unitLost(unit: 91, kind: .spear, owner: player, at: Hex(0, 0))], player: player), [.watch, .dread])
         XCTAssertEqual(GameSession.cues(for: [.starving(house: player)], player: player), [.watch, .dread])
+        // A gift received, a company risen in rank, a seat lost: each heard.
+        XCTAssertEqual(GameSession.cues(for: [.gifted(from: 2, to: player, gift: Stock(grain: 10))], player: player), [.watch, .accord])
+        XCTAssertEqual(GameSession.cues(for: [.gifted(from: player, to: 2, gift: Stock(grain: 10))], player: player), [.watch],
+                       "A gift sent sounds as the order sending it")
+        XCTAssertEqual(GameSession.cues(for: [.promoted(unit: 91, owner: player, rank: 1)], player: player), [.watch, .rise])
+        XCTAssertEqual(GameSession.cues(for: [.seatMoved(house: player, to: 3)], player: player), [.watch, .dread])
+        XCTAssertEqual(GameSession.cues(for: [.seatMoved(house: 2, to: 3)], player: player), [.watch])
         XCTAssertEqual(GameSession.cues(for: [.unitLost(unit: 92, kind: .spear, owner: 2, at: Hex(0, 0)), .starving(house: 2)], player: player), [.watch],
                        "Others' losses are silent")
         let seat = try XCTUnwrap(state.seat(of: player))

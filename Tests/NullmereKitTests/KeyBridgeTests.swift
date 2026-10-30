@@ -22,7 +22,8 @@ final class KeyBridgeTests: XCTestCase {
 
     func testEveryKeyHasItsMeaning() {
         let letters: [(String, GameKey)] = [
-            ("f", .fortify), ("B", .found), ("h", .home), ("=", .zoom(1.25)), ("+", .zoom(1.25)), ("-", .zoom(0.8)), ("_", .zoom(0.8)),
+            ("f", .fortify), ("B", .found), ("h", .nextHold), ("=", .zoom(1.25)), ("+", .zoom(1.25)), ("-", .zoom(0.8)), ("_", .zoom(0.8)),
+            ("]", .anyUnit(forward: true)), ("[", .anyUnit(forward: false)), (" ", .chooseAtCentre),
             ("w", .pan(dx: 0, dy: 90)), ("s", .pan(dx: 0, dy: -90)), ("a", .pan(dx: 90, dy: 0)), ("d", .pan(dx: -90, dy: 0)),
             ("1", .houses), ("2", .chronicle), ("?", .guide), ("/", .guide),
         ]
@@ -36,6 +37,31 @@ final class KeyBridgeTests: XCTestCase {
         XCTAssertEqual(KeyBridgeView.key(for: special(.downArrow, code: 125)), .pan(dx: 0, dy: -90))
         XCTAssertEqual(KeyBridgeView.key(for: special(.leftArrow, code: 123)), .pan(dx: 90, dy: 0))
         XCTAssertEqual(KeyBridgeView.key(for: special(.rightArrow, code: 124, modifiers: .shift)), .pan(dx: -240, dy: 0), "Shift pans further")
+        XCTAssertEqual(KeyBridgeView.key(for: special(.carriageReturn, code: 36)), .chooseAtCentre)
+        XCTAssertEqual(KeyBridgeView.key(for: special(.pageUp, code: 116)), .page(-1))
+        XCTAssertEqual(KeyBridgeView.key(for: special(.pageDown, code: 121)), .page(1))
+    }
+
+    /// With Letter keys set to need ⌥, a stray letter does nothing and the
+    /// same letter with ⌥ acts; Space, Return, Tab, the arrows and Esc act
+    /// alone as ever. With letters alone, ⌥ and a letter is not the game's.
+    func testLetterKeysMayNeedOption() throws {
+        var heard: [GameKey] = []
+        let bridge = KeyBridgeView()
+        bridge.onKey = { heard.append($0); return true }
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 500, height: 300), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSView(frame: NSRect(x: 0, y: 0, width: 500, height: 300))
+        window.contentView?.addSubview(bridge)
+        window.orderFrontRegardless()
+        defer { window.close() }
+
+        XCTAssertFalse(bridge.handle(key("f", in: window), keyboardNavigation: false, lettersAlone: false), "A stray F does nothing")
+        XCTAssertTrue(bridge.handle(key("f", in: window, modifiers: .option), keyboardNavigation: false, lettersAlone: false), "⌥F fortifies")
+        XCTAssertFalse(bridge.handle(key("f", in: window, modifiers: .option), keyboardNavigation: false, lettersAlone: true))
+        XCTAssertTrue(bridge.handle(key(" ", in: window), keyboardNavigation: false, lettersAlone: false), "Space acts alone")
+        XCTAssertTrue(bridge.handle(key("\u{1b}", code: 53, in: window), keyboardNavigation: false, lettersAlone: false), "and Esc")
+        XCTAssertEqual(heard, [.fortify, .chooseAtCentre, .escape])
     }
 
     /// The realm's gate and door step along their choices as the launcher
@@ -258,7 +284,87 @@ final class GameKeyTests: XCTestCase {
         let panned = session.camera
         XCTAssertTrue(session.handle(.zoom(1.25)))
         XCTAssertNotEqual(session.camera.scale, panned.scale)
-        XCTAssertTrue(session.handle(.home))
+        XCTAssertTrue(session.handle(.nextHold))
+        XCTAssertEqual(session.selectedHold?.isSeat, true, "H goes to the seat first")
+    }
+
+    /// Without a pointer, nothing is out of reach: ] and [ go round every
+    /// company, whatever it is doing; H round the holds, the seat first;
+    /// Space chooses what lies in the middle of the view; and VoiceOver
+    /// hears what each key chose.
+    func testEveryCompanyAndHoldIsWithinTheKeysReach() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var state = GameState(settings: GameSettings(seedText: "every one in reach", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me))
+        // One fortified, out of Tab's turn: never out of reach.
+        let first = try XCTUnwrap(state.units.firstIndex { $0.owner == me })
+        state.units[first].fortified = true
+        let site = try XCTUnwrap(state.bestFoundingSite(for: me, from: seat.position))
+        state.units.append(NullmereCore.Unit(id: state.nextID, kind: .founder, owner: me, position: site))
+        state.nextID += 1
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        session.dismissSeatBriefing()
+        session.voiceOverRunning = { true }
+
+        let mine = session.state.units(of: me).map(\.id).sorted()
+        var seen: [Int] = []
+        for _ in mine {
+            XCTAssertTrue(session.handle(.anyUnit(forward: true)))
+            seen.append(try XCTUnwrap(session.selectedUnit).id)
+        }
+        XCTAssertEqual(seen, mine, "] goes round every company in turn")
+        XCTAssertTrue(session.lastSaid?.hasPrefix("Chosen: ") ?? false, "and VoiceOver hears which")
+        XCTAssertTrue(session.handle(.anyUnit(forward: false)))
+        XCTAssertEqual(session.selectedUnit?.id, mine[mine.count - 2], "[ goes back")
+
+        XCTAssertTrue(session.handle(.nextHold))
+        XCTAssertEqual(session.selectedHold?.id, seat.id, "H: the seat first")
+        XCTAssertTrue(session.lastSaid?.contains(seat.name) ?? false)
+
+        // Space: whatever lies in the middle of the view, as a click there.
+        session.selection = .none
+        session.camera.focus(on: site)
+        XCTAssertTrue(session.handle(.chooseAtCentre))
+        XCTAssertEqual(session.selectedUnit?.kind, .founder)
+
+        // B asks, B again founds; any other key between lets the question go.
+        XCTAssertTrue(session.handle(.found))
+        XCTAssertNil(session.state.hold(at: site), "The first B only asks")
+        XCTAssertTrue(session.notices.last?.text.hasPrefix("Found a hold here?") ?? false)
+        XCTAssertTrue(session.handle(.zoom(1.25)))
+        XCTAssertTrue(session.handle(.found))
+        XCTAssertNil(session.state.hold(at: site), "Asked afresh after another key")
+        XCTAssertTrue(session.handle(.found))
+        XCTAssertNotNil(session.state.hold(at: site), "B again founds")
+    }
+
+    /// Page Up and Page Down are for the panel open over the map, or else
+    /// the chosen hold's; with neither, they are left to the window.
+    func testThePageKeysPageTheOpenPanel() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let session = GameSession(state: GameState(settings: GameSettings(seedText: "pages", houseCount: 3, radius: 16, keepers: 1)),
+                                  store: LocalStore(directory: dir))
+        session.dismissSeatBriefing()
+        session.selection = .none
+        XCTAssertFalse(session.handle(.page(1)), "Nothing to page")
+        session.panel = .guide
+        XCTAssertTrue(session.handle(.page(1)))
+        XCTAssertEqual(session.pageRequest.target, .panel(.guide))
+        XCTAssertEqual(session.pageRequest.direction, 1)
+        let serial = session.pageRequest.serial
+        session.panel = nil
+        session.focusOnSeat()
+        XCTAssertTrue(session.handle(.page(-1)))
+        XCTAssertEqual(session.pageRequest, GameSession.PageRequest(serial: serial + 1, direction: -1, target: .selection))
+
+        let extent = PagedByKeys.Extent(offset: 100, visible: 200, content: 1000)
+        XCTAssertEqual(PagedByKeys.landing(after: extent, direction: 1), 270, accuracy: 0.001, "Most of a height on")
+        XCTAssertEqual(PagedByKeys.landing(after: extent, direction: -1), 0, "Never past the top")
+        XCTAssertEqual(PagedByKeys.landing(after: PagedByKeys.Extent(offset: 750, visible: 200, content: 1000), direction: 1), 800,
+                       "Never past the end")
     }
 }
 

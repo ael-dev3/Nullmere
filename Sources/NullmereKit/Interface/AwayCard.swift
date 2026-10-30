@@ -52,6 +52,11 @@ struct AwayCard: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
+                    if let more = report.moreLine {
+                        Text(verbatim: more)
+                            .font(.nm(11))
+                            .foregroundStyle(Palette.text(0.7))
+                    }
                 }
             }
             HStack {

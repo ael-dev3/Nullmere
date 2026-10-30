@@ -37,12 +37,19 @@ final class AwayReportTests: XCTestCase {
         XCTAssertEqual(report.watches, 24)
         XCTAssertEqual(report.title, "While you were away, 24 watches passed")
         XCTAssertLessThanOrEqual(report.news.count, AwayReport.lines)
-        // What touched the keeper's House, and what everyone heard: a fall,
-        // the end of an age, an omen.
-        let told = world.chronicle.filter { entry in
-            entry.watch > 1 && (entry.houses.contains(state.player) || [.fall, .ending, .omen].contains(entry.kind))
+        // What touched the keeper's House first; then what everyone heard (a
+        // fall, the end of an age) and the latest omen, while there's room.
+        let since = world.chronicle.filter { $0.watch > 1 }
+        let theirs = since.filter { $0.houses.contains(state.player) }
+        let lakes = since.filter { !$0.houses.contains(state.player) && [.fall, .ending].contains($0.kind) }
+        let omens = since.filter { !$0.houses.contains(state.player) && $0.kind == .omen }
+        for entry in theirs.suffix(AwayReport.lines) {
+            XCTAssertTrue(report.news.contains(entry.text), "What touched the House is told before the lake's news: \(entry.text)")
         }
-        XCTAssertEqual(report.news, Array(told.suffix(AwayReport.lines).map(\.text)))
+        XCTAssertLessThanOrEqual(report.news.filter { line in omens.contains { $0.text == line } }.count, 1, "One omen at most")
+        let worthTelling = theirs.count + lakes.count + min(omens.count, 1)
+        XCTAssertEqual(report.news.count + report.more, worthTelling, "Each told, or counted among the more")
+        XCTAssertEqual(report.moreLine == nil, report.more == 0)
         XCTAssertEqual(report.holdsChange, world.holds(of: state.player).count - state.holds(of: state.player).count)
         for change in report.changes {
             XCTAssertEqual(change.delta, world.houses[state.player].stock[change.resource] - state.houses[state.player].stock[change.resource])

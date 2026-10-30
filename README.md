@@ -326,7 +326,10 @@ as the realm will, and takes the realm's word as final.
   that touched your House.
 - **What can't be undone asks twice.** Declaring war, breaking a pact,
   disbanding a company and refusing a steward's demand for tribute each want
-  a second press within three seconds (ten while VoiceOver runs).
+  a second press, with no clock to beat: the button keeps its name for
+  VoiceOver and Voice Control, says what it asks, and lets go when another
+  is pressed or it leaves the view. By the keys, B asks before founding a
+  hold and M before a strike; the same key again carries it out.
 - **Elsewhere.** While you are in another app, the Dock counts the
   watches that turned, and bounces once when something needs you.
 - **The watch.** Each turn is a watch. Your orders take effect as you give
@@ -504,9 +507,13 @@ twice.
   music alone, and Settings (⌘,) sets each part's volume. Each kind of
   company sounds its own: Riders' hooves, a loosed bowstring, the clash
   of a blow struck in close, heard as well when the blow falls on yours.
-  A company lost or hungry sounds dread, a work or company finished rises,
-  and an order that begins a war sounds as war, refusing a steward's
-  tribute too. Sound fades out with the picture and back in from silence.
+  A company lost or hungry, or a seat lost, sounds dread; a work or company
+  finished, a company risen in rank or a drowned ruin searched rises; a
+  gift received, a peace or a pact sounds accord; and an order that begins
+  a war sounds as war, refusing a steward's tribute too. What a watch
+  brings sounds one after another after its bell, never all at once, and
+  the low sounds carry overtones a laptop's speakers give. Sound fades out
+  with the picture, and as the app quits, and back in from silence.
 - **Watchmen.** When an enemy's companies gather near one of your holds,
   you're told, and a broken red ring marks the hold on the map.
 - **Holds that grow.** A hold raises a side tower after a few works and a
@@ -528,15 +535,18 @@ world, so there is nothing to save.
 | Right-click | March the selected company there, or strike the enemy there. Hovering an enemy in reach shows the battle's odds first |
 | Drag, two-finger scroll | Pan; pinch, ⌘-scroll or a mouse wheel zooms |
 | Tab or . | Next company waiting for orders |
-| F / B | Fortify / found a hold with the selected Founders |
-| M | March the selected company to the middle of the view, or strike there: play without a pointer |
-| H | Go to your seat |
+| ] / [ | Every company in turn, forward or back, marching, fortified or spent too |
+| H | Your holds in turn, the seat first |
+| Space or Return | Choose whatever lies in the middle of the view, as a click there would |
+| F / B | Fortify / found a hold with the selected Founders (B asks, B again founds) |
+| M | March the selected company to the middle of the view; to strike there, M shows the odds and M again strikes: play without a pointer |
 | Arrows or WASD, + − | Pan, zoom |
+| Page Up / Page Down | Scroll the open panel, or the chosen hold's |
 | 1 / 2 / ? or ⌘? | Houses / Chronicle / Guide |
 | Esc | Close a panel, then clear the selection |
 | ⌘↩ | Ready: done with this watch's orders (click Waiting to take it back) |
 | ⇧⌘↩ | Stay ready until something needs you, up to ten watches |
-| ⌘, | Settings: display and text (the launcher's), sound and volumes, counsel |
+| ⌘, | Settings: display and text (the launcher's), sound and volumes, letter keys alone or with ⌥, counsel |
 | ⇧⌘M / ⇧⌘U / ⇧⌘+ | Sound on or off / the music / larger text |
 | ⇧⌘W | Leave the world for the front door |
 

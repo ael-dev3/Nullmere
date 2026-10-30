@@ -264,4 +264,14 @@ final class InterfaceReviewTests: XCTestCase {
         readiness = .ready
         XCTAssertFalse(ModelReadiness.modelNotReady.explanation.contains("launcher"), "Said as true in the game as in the launcher")
     }
+
+    /// An amount typed into a trade or a barter is kept within its bounds:
+    /// never under one, never over what the stores allow.
+    func testAnAmountTypedIsKeptWithinItsBounds() {
+        XCTAssertEqual(AmountField.kept(0, most: 40), 1)
+        XCTAssertEqual(AmountField.kept(-5, most: 40), 1)
+        XCTAssertEqual(AmountField.kept(25, most: 40), 25)
+        XCTAssertEqual(AmountField.kept(4_000, most: 40), 40)
+        XCTAssertEqual(AmountField.kept(7, most: 0), 1, "Nothing to give still offers one, which the offer then refuses")
+    }
 }

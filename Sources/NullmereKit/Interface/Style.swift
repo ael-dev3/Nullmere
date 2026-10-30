@@ -16,20 +16,58 @@ enum Palette {
 
     /// One colour for each House that may sit around the lake, in the order
     /// of their names; WorldShader's nm_houseColour holds the same.
-    static let houses: [Color] = [
-        Color(red: 0.86, green: 0.74, blue: 0.47),
-        Color(red: 0.70, green: 0.27, blue: 0.25),
-        Color(red: 0.30, green: 0.60, blue: 0.60),
-        Color(red: 0.58, green: 0.44, blue: 0.74),
-        Color(red: 0.78, green: 0.80, blue: 0.84),
-        Color(red: 0.86, green: 0.50, blue: 0.26),
-        Color(red: 0.46, green: 0.68, blue: 0.38),
-        Color(red: 0.80, green: 0.56, blue: 0.68),
-        Color(red: 0.36, green: 0.48, blue: 0.84),
-        Color(red: 0.55, green: 0.52, blue: 0.22),
-        Color(red: 0.40, green: 0.78, blue: 0.86),
-        Color(red: 0.88, green: 0.36, blue: 0.50),
+    static let houseRGB: [RGB] = [
+        RGB(0.86, 0.74, 0.47),
+        RGB(0.70, 0.27, 0.25),
+        RGB(0.30, 0.60, 0.60),
+        RGB(0.58, 0.44, 0.74),
+        RGB(0.78, 0.80, 0.84),
+        RGB(0.86, 0.50, 0.26),
+        RGB(0.46, 0.68, 0.38),
+        RGB(0.80, 0.56, 0.68),
+        RGB(0.36, 0.48, 0.84),
+        RGB(0.55, 0.52, 0.22),
+        RGB(0.40, 0.78, 0.86),
+        RGB(0.88, 0.36, 0.50),
     ]
+    static let houses: [Color] = houseRGB.map(\.colour)
+
+    /// A colour as its three parts, for working out how it reads.
+    struct RGB: Equatable {
+        let red, green, blue: Double
+
+        init(_ red: Double, _ green: Double, _ blue: Double) {
+            self.red = red
+            self.green = green
+            self.blue = blue
+        }
+
+        var colour: Color { Color(red: red, green: green, blue: blue) }
+
+        /// How bright it is to the eye, by the measure contrast is reckoned in.
+        var luminance: Double {
+            func linear(_ value: Double) -> Double { value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4) }
+            return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+        }
+
+        func contrast(with other: RGB) -> Double {
+            let (light, dark) = (max(luminance, other.luminance), min(luminance, other.luminance))
+            return (light + 0.05) / (dark + 0.05)
+        }
+
+        /// Part of the way to another colour.
+        func toward(_ other: RGB, by amount: Double) -> RGB {
+            RGB(red + (other.red - red) * amount, green + (other.green - green) * amount, blue + (other.blue - blue) * amount)
+        }
+    }
+
+    /// The panels' own dark, and the pale type's ink, as parts.
+    static let panelRGB = RGB(0.02, 0.025, 0.035)
+    static let inkRGB = RGB(0.894, 0.918, 0.949)
+
+    /// How plainly a House's colour reads when it colours words: as the
+    /// rest of the type, seven to one on a panel's dark.
+    static let houseWordsContrast = 7.0
 
     /// The pale type, by the launcher's one rule: as faint as the design
     /// asks, but never too faint to read, and plainer with Increase Contrast.
@@ -44,6 +82,21 @@ enum Palette {
 
     static func house(_ house: House) -> Color {
         houses[house.sigil % houses.count]
+    }
+
+    /// A House's colour for its words (a name, the land it holds): its own
+    /// hue, lifted toward the ink until it reads as plainly as the rest of
+    /// the type, never left to read as a mark does.
+    static func houseWords(_ house: House) -> Color {
+        houseWordsRGB(house.sigil % houseRGB.count).colour
+    }
+
+    static func houseWordsRGB(_ index: Int) -> RGB {
+        let own = houseRGB[index]
+        let wanted = houseWordsContrast + (Contrast.shared.isIncreased ? 3 : 0)
+        var amount = 0.0
+        while own.toward(inkRGB, by: amount).contrast(with: panelRGB) < wanted, amount < 1 { amount += 0.05 }
+        return own.toward(inkRGB, by: min(amount, 1))
     }
 
     static func tone(_ tone: GameSession.Notice.Tone) -> Color {
@@ -118,7 +171,9 @@ struct PanelBackground: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(Palette.panel.opacity(contrast == .increased ? 0.95 : 0.82))
+            // Dark enough over the palest ground the map has (the salt flats
+            // by moonlight) that the type on it reads as on the night.
+            .background(Palette.panel.opacity(contrast == .increased ? 0.97 : 0.92))
             .overlay(
                 RoundedRectangle(cornerRadius: 3)
                     .strokeBorder(Palette.line(0.12), lineWidth: 1)
@@ -144,7 +199,16 @@ struct QuietButton: View {
     /// Whether a listening test may press it; a button that asks twice is
     /// pressed by its own action instead.
     var pressable = true
+    /// What VoiceOver and Voice Control call it, where the words shown lean
+    /// on what stands beside them: "Build II" in the row of the Walls is
+    /// "Build Walls II".
+    var name: String?
+    /// Why it can't be pressed now, said with it while it can't.
+    var why: String?
     let action: () -> Void
+
+    /// The least a button is, either way, so it is easy to hit.
+    static let least: CGFloat = 24
 
     @State private var hovering = false
     @FocusState private var focused: Bool
@@ -158,6 +222,7 @@ struct QuietButton: View {
                 .foregroundStyle(enabled ? (tint ?? Palette.text(hovering || prominent ? 1 : 0.72)) : (tint ?? Palette.ink).opacity(0.3))
                 .padding(.horizontal, prominent ? 16 : 8)
                 .padding(.vertical, prominent ? 9 : 5)
+                .frame(minWidth: Self.least, minHeight: Self.least)
                 .background(
                     RoundedRectangle(cornerRadius: 2)
                         .fill(Palette.glow.opacity(prominent ? (hovering ? 0.22 : 0.14) : (hovering && enabled ? 0.08 : 0)))
@@ -173,7 +238,8 @@ struct QuietButton: View {
         .focused($focused)
         .disabled(!enabled)
         .onPointer { hovering = $0 }
-        .accessibilityLabel(title)
+        .accessibilityLabel(name ?? title)
+        .accessibilityHint(enabled ? "" : why ?? "")
     }
 }
 
@@ -192,27 +258,72 @@ struct FocusRing: View {
     }
 }
 
-/// A resource amount, with what is missing shown in the warning colour.
+/// A resource amount, with what is missing shown in the warning colour,
+/// and, with "Differentiate without colour" on, marked "short"; said in
+/// words, with what is short.
 struct CostLine: View {
     let cost: Stock
     let available: Stock
+
+    /// What the stores lack to pay it: "short of 20 timber", or nil.
+    static func shortfall(of cost: Stock, from available: Stock) -> String? {
+        let short = Resource.allCases.filter { available[$0] < cost[$0] }
+            .map { "\(cost[$0] - available[$0]) \($0.title.lowercased())" }
+        return short.isEmpty ? nil : "short of " + short.joined(separator: " and ")
+    }
 
     var body: some View {
         HStack(spacing: 10) {
             ForEach(Resource.allCases, id: \.self) { resource in
                 if cost[resource] > 0 {
+                    let short = available[resource] < cost[resource]
                     HStack(spacing: 3) {
                         ResourceGlyph(resource: resource)
                         Text(verbatim: "\(cost[resource])")
                             .font(.nm(11, weight: .regular).monospacedDigit())
+                        if short, Contrast.shared.differentiates {
+                            Text(verbatim: "short").font(.nm(9, weight: .medium))
+                        }
                     }
-                    .foregroundStyle(available[resource] >= cost[resource] ? Palette.text(0.75) : Palette.bad)
+                    .foregroundStyle(short ? Palette.bad : Palette.text(0.75))
                 }
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Costs \(cost.description)")
+        .accessibilityLabel("Costs \(cost.description)" + (Self.shortfall(of: cost, from: available).map { "; \($0)" } ?? ""))
         .accessibilityAddTraits(.isStaticText)
+    }
+}
+
+/// An amount, typed or stepped: a field for the number with the stepper's
+/// arrows beside it, never under one nor over `most`; to VoiceOver, its
+/// name and its value.
+struct AmountField: View {
+    let name: String
+    @Binding var amount: Int
+    let most: Int
+    var step = 1
+
+    /// What a typed or stepped amount comes to: within one and `most`.
+    static func kept(_ amount: Int, most: Int) -> Int {
+        min(max(amount, 1), max(1, most))
+    }
+
+    var body: some View {
+        let kept = Binding(get: { amount }, set: { amount = Self.kept($0, most: most) })
+        HStack(spacing: 4) {
+            TextField(name, value: kept, format: .number.grouping(.never))
+                .textFieldStyle(.plain)
+                .font(.nm(11).monospacedDigit())
+                .foregroundStyle(Palette.ink)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 52)
+                .accessibilityLabel(name)
+            Stepper(name, value: kept, in: 1...max(1, most), step: step)
+                .labelsHidden()
+                .accessibilityLabel(name)
+                .accessibilityValue("\(amount)")
+        }
     }
 }
 
@@ -239,38 +350,31 @@ struct ResourceGlyph: View {
     }
 }
 
-/// A first press that arms, a second within a few seconds that acts: for
-/// what can't be taken back, such as war.
-struct Confirmation: Equatable {
-    static let window = 3.0
-    /// Longer with VoiceOver, which takes time to say what was armed.
-    static let spokenWindow = 10.0
-    /// How long an armed press waits for the second.
-    var span = Confirmation.window
-    private(set) var armedAt: Date?
+/// Which button, across the realm's panels, has been pressed once and waits
+/// for its second, for what can't be taken back, such as war. There is no
+/// clock to beat, however long reading or scanning to it takes; arming
+/// another, or the button leaving the view, lets it go, so no forgotten
+/// one waits armed.
+@MainActor
+@Observable
+final class ArmedPress {
+    static let shared = ArmedPress()
+    private(set) var armed: UUID?
 
-    init(span: Double = Confirmation.window) {
-        self.span = span
-    }
-
-    /// Returns whether this press acts.
-    mutating func press(at now: Date = Date()) -> Bool {
-        if isArmed(at: now) {
-            armedAt = nil
+    /// A press of the button `id`: whether it acts, as its second press.
+    func press(_ id: UUID) -> Bool {
+        if armed == id {
+            armed = nil
             return true
         }
-        armedAt = now
+        armed = id
         return false
     }
 
-    /// Forgets a press whose time has passed.
-    mutating func lapse(at now: Date = Date()) {
-        if !isArmed(at: now) { armedAt = nil }
-    }
+    func isArmed(_ id: UUID) -> Bool { armed == id }
 
-    func isArmed(at now: Date = Date()) -> Bool {
-        guard let armedAt else { return false }
-        return now.timeIntervalSince(armedAt) <= span
+    func letGo(_ id: UUID) {
+        if armed == id { armed = nil }
     }
 }
 
@@ -299,7 +403,9 @@ struct ChoiceArrows: ViewModifier {
     }
 }
 
-/// A quiet button that asks again before doing what can't be undone.
+/// A quiet button that asks again before doing what can't be undone. Its
+/// name stays what it does, for VoiceOver and Voice Control alike; the
+/// question it asks, armed, is said and shown, and is its value.
 struct ConfirmButton: View {
     let title: String
     /// What it says once armed, such as "War on House Venn?".
@@ -307,28 +413,23 @@ struct ConfirmButton: View {
     var size: CGFloat = 8.5
     let action: () -> Void
 
-    @State private var confirmation = Confirmation()
+    @State private var id = UUID()
 
     var body: some View {
-        let armed = confirmation.isArmed()
+        let armed = ArmedPress.shared.isArmed(id)
         let _ = PressableButtons.note(title, enabled: true, action)
-        QuietButton(title: armed ? confirm : title, size: size, tint: armed ? Palette.bad : nil, pressable: false) {
-            confirmation.span = NSWorkspace.shared.isVoiceOverEnabled ? Confirmation.spokenWindow : Confirmation.window
-            if confirmation.press() {
+        QuietButton(title: armed ? confirm : title, size: size, tint: armed ? Palette.bad : nil, pressable: false, name: title) {
+            if ArmedPress.shared.press(id) {
                 action()
             } else {
                 // Armed: said, for those who can't see the words change.
                 AccessibilityNotification.Announcement("\(confirm) Press again to confirm.").post()
-                // Disarms on its own, unpressed.
-                let span = confirmation.span
-                Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(span + 0.1))
-                    confirmation.lapse()
-                }
             }
         }
         .help(armed ? "Press again to confirm." : "Asks again before acting.")
+        .accessibilityValue(armed ? confirm : "")
         .accessibilityHint("Press twice to confirm.")
+        .onDisappear { ArmedPress.shared.letGo(id) }
     }
 }
 
@@ -385,7 +486,50 @@ struct FlowLayout: Layout {
     }
 }
 
+/// A panel's scrolling, paged by the keyboard: Page Up and Page Down, as
+/// the session hears them, move it most of its height, when the page is
+/// meant for it.
+struct PagedByKeys: ViewModifier {
+    let request: GameSession.PageRequest
+    let target: GameSession.PageTarget
+
+    @State private var position = ScrollPosition(edge: .top)
+    @State private var geometry = Extent()
+
+    struct Extent: Equatable {
+        var offset: CGFloat = 0
+        var visible: CGFloat = 0
+        var content: CGFloat = 0
+    }
+
+    /// Where a page in `direction` lands: most of a height on, never past
+    /// either end.
+    static func landing(after extent: Extent, direction: Int) -> CGFloat {
+        let step = extent.visible * 0.85 * CGFloat(direction)
+        return min(max(extent.offset + step, 0), max(extent.content - extent.visible, 0))
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .scrollPosition($position)
+            .onScrollGeometryChange(for: Extent.self) { scroll in
+                Extent(offset: scroll.contentOffset.y, visible: scroll.containerSize.height, content: scroll.contentSize.height)
+            } action: { _, extent in
+                geometry = extent
+            }
+            .onChange(of: request) { _, request in
+                guard request.target == target else { return }
+                position.scrollTo(y: Self.landing(after: geometry, direction: request.direction))
+            }
+    }
+}
+
 extension View {
+    /// Pages this scrolling panel by Page Up and Page Down.
+    func pagedByKeys(_ session: GameSession, as target: GameSession.PageTarget) -> some View {
+        modifier(PagedByKeys(request: session.pageRequest, target: target))
+    }
+
     /// Fades the last few points of a scrolling panel, so a row cut by its
     /// edge reads as more below rather than as clipped, and leaves as much
     /// room after the last row, so it clears the fade when scrolled to.

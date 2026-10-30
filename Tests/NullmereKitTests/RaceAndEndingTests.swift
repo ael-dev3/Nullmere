@@ -116,6 +116,18 @@ final class EndingTests: XCTestCase {
             XCTAssertEqual(mine.last?.holds, 0, "A fallen House's line ends where it fell")
         }
         XCTAssertTrue(StoryChart.summary(of: session.state, player: session.player).hasPrefix("Over \(session.state.watch) watches"))
+        // How it left every House, in words that need no colour, the
+        // keeper's own among them; and VoiceOver's audio graph of them all.
+        let standing = StoryChart.standing(of: session.state, player: session.player)
+        let foremost = session.state.houses.max { (session.state.holds(of: $0.id).count, $1.id) < (session.state.holds(of: $1.id).count, $0.id) }
+        XCTAssertTrue(standing.hasPrefix("At the last: \(foremost?.title ?? "")"), "Most holds first: \(standing)")
+        XCTAssertTrue(standing.contains("\(session.playerHouse.title) (you)"), standing)
+        let chart = StoryChart(state: session.state, player: session.player).makeChartDescriptor()
+        XCTAssertEqual(chart.series.count, session.state.houses.count, "A series for every House")
+        XCTAssertEqual(chart.series.first { $0.name.hasPrefix("You") }?.dataPoints.count, mine.count)
+        XCTAssertEqual(StoryChart.dash(for: session.player, player: session.player, differentiates: true), [], "The keeper's line solid")
+        XCTAssertFalse(StoryChart.dash(for: (session.player + 1) % 12, player: session.player, differentiates: true).isEmpty)
+        XCTAssertEqual(StoryChart.dash(for: (session.player + 1) % 12, player: session.player, differentiates: false), [])
 
         let app = GameApp(store: store, readiness: { .ready }, sound: false, address: .hosted(seed: "ending"),
                           identity: FileIdentityStore(url: dir.appendingPathComponent("identity")))

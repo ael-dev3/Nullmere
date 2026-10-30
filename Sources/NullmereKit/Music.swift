@@ -70,7 +70,12 @@ struct Score {
 
     init(seed: UInt32 = 0x0D15_EA5E) {
         self.seed = seed
-        current = Score.chords[0].map { Voice(frequency: Score.frequency($0)) }
+        // Room enough up front that the audio thread never has to find more.
+        current.reserveCapacity(4)
+        previous.reserveCapacity(4)
+        bells.reserveCapacity(16)
+        playedNotes.reserveCapacity(4096)
+        for note in Score.chords[0] { current.append(Voice(frequency: Score.frequency(note))) }
     }
 
     private mutating func random() -> Float {
@@ -81,8 +86,12 @@ struct Score {
     private mutating func nextChord() {
         let pool = mood == .war ? Score.warChords : Score.chords
         let chord = pool[Int(random() * Float(pool.count)) % pool.count]
-        previous = current
-        current = chord.map { Voice(frequency: Score.frequency($0)) }
+        // The chord sounding becomes the one fading, as it was, phases and
+        // all; the new one is written into the room the old fading one
+        // leaves, so nothing is allocated on the audio thread.
+        swap(&previous, &current)
+        current.removeAll(keepingCapacity: true)
+        for note in chord { current.append(Voice(frequency: Score.frequency(note))) }
         crossfade = 0
         chordLength = (mood == .war ? 7 : 9) + random() * 6
         chordChanges += 1
@@ -114,20 +123,23 @@ struct Score {
         }
         crossfade = min(1, crossfade + dt / 4)
 
-        // The pads: two soft partials a voice, gently detuned.
+        // The pads: two soft partials a voice, gently detuned. The chord
+        // fading out sounds just as it did while it was the chord, so the
+        // change is a crossfade and never a step.
+        func voice(_ voice: inout Voice) -> Float {
+            voice.phase += tau * voice.frequency * dt
+            voice.detunePhase += tau * voice.frequency * 1.003 * dt
+            if voice.phase > tau { voice.phase -= tau }
+            if voice.detunePhase > tau { voice.detunePhase -= tau }
+            return sin(voice.phase) + sin(voice.detunePhase) * 0.6 + sin(voice.phase * 2) * 0.15
+        }
         var pad: Float = 0
         for i in current.indices {
-            current[i].phase += tau * current[i].frequency * dt
-            current[i].detunePhase += tau * current[i].frequency * 1.003 * dt
-            if current[i].phase > tau { current[i].phase -= tau }
-            if current[i].detunePhase > tau { current[i].detunePhase -= tau }
-            pad += (sin(current[i].phase) + sin(current[i].detunePhase) * 0.6 + sin(current[i].phase * 2) * 0.15) * crossfade
+            pad += voice(&current[i]) * crossfade
         }
         if crossfade < 1 {
             for i in previous.indices {
-                previous[i].phase += tau * previous[i].frequency * dt
-                if previous[i].phase > tau { previous[i].phase -= tau }
-                pad += (sin(previous[i].phase) * 1.6) * (1 - crossfade)
+                pad += voice(&previous[i]) * (1 - crossfade)
             }
         }
         let breath = 0.75 + 0.25 * sin(chordClock / chordLength * .pi)

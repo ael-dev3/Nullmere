@@ -20,6 +20,19 @@ public final class GameSession {
         case tile(Hex)
     }
 
+    /// What a page key is for: the panel open over the map, or else the
+    /// panel of the hold chosen.
+    enum PageTarget: Equatable {
+        case panel(Panel)
+        case selection
+    }
+
+    struct PageRequest: Equatable {
+        var serial = 0
+        var direction = 0
+        var target = PageTarget.selection
+    }
+
     public enum Panel: Equatable {
         case houses
         case chronicle
@@ -56,6 +69,13 @@ public final class GameSession {
         }
     }
     public var panel: Panel?
+    /// Page Up and Page Down, as heard: each panel that scrolls pages
+    /// itself when one is meant for it.
+    var pageRequest = PageRequest()
+    /// A founding asked by B, which B again carries out.
+    @ObservationIgnored var foundingAsked: Int?
+    /// A strike asked by M, which M again carries out.
+    @ObservationIgnored var strikeAsked: Hex?
     public private(set) var notices: [Notice] = []
     public private(set) var pathPreview: [Hex] = []
     /// Where the selected company could march this watch, and what it could strike.
@@ -214,11 +234,13 @@ public final class GameSession {
     /// Whether the keeper is looking, and how the Dock is told; tests
     /// supply their own.
     var isLooking: () -> Bool = { NSApplication.shared.isActive }
-    /// Whether VoiceOver is running. Only then are each company's orders
-    /// worked out (the way to the unknown, the odds of each strike): some
-    /// milliseconds at every change of the world, for no one without it.
-    /// Tests say yes.
-    @ObservationIgnored var voiceOverRunning: () -> Bool = { NSWorkspace.shared.isVoiceOverEnabled }
+    /// Whether VoiceOver, or Switch Control, is running. Only then are each
+    /// company's orders worked out as actions on the map (the way to the
+    /// unknown, the odds of each strike): some milliseconds at every change
+    /// of the world, for no one without them. Tests say yes.
+    @ObservationIgnored var voiceOverRunning: () -> Bool = {
+        NSWorkspace.shared.isVoiceOverEnabled || NSWorkspace.shared.isSwitchControlEnabled
+    }
     var signal: (Attention.Signal) -> Void = { Attention.show($0) }
     private var watchCardCounter = 0
     /// Keeps the watch's card on screen, for photographs.
@@ -480,8 +502,29 @@ public final class GameSession {
         if !Race.warnings(before: before, after: after, player: player).isEmpty { return true }
         let threats = Sentinel.threats(in: after, player: player, visible: after.visibility(for: player))
         if threats.contains(where: { !threatened.contains($0.hold) }) { return true }
-        if after.units(of: player).contains(where: { $0.movesLeft > 0 && $0.destination == nil && !$0.fortified }) { return true }
-        return after.holds(of: player).contains { $0.project == nil }
+        // What is newly waiting, not what the keeper left waiting when they
+        // chose to stay ready: a company come to the end of its march or
+        // newly mustered; a hold whose work is done, or which can now pay
+        // for one it couldn't. A hold saving up is no call.
+        func awaits(_ unit: NullmereCore.Unit) -> Bool { unit.movesLeft > 0 && unit.destination == nil && !unit.fortified }
+        let waitingBefore = Set(before.units(of: player).filter(awaits).map(\.id))
+        if after.units(of: player).contains(where: { awaits($0) && !waitingBefore.contains($0.id) }) { return true }
+        let holdsBefore = Dictionary(before.holds(of: player).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return after.holds(of: player).contains { hold in
+            guard hold.project == nil, couldBuild(hold, in: after) else { return false }
+            guard let was = holdsBefore[hold.id], was.project == nil else { return true }
+            return !couldBuild(was, in: before)
+        }
+    }
+
+    /// Whether a hold could begin some work with its House's stores.
+    static func couldBuild(_ hold: Hold, in state: GameState) -> Bool {
+        guard state.houses.indices.contains(hold.owner) else { return false }
+        let stock = state.houses[hold.owner].stock
+        return BuildingKind.allCases.contains { kind in
+            let next = hold.level(kind) + 1
+            return next <= kind.maxLevel && (!kind.requiresSeat || hold.isSeat) && stock.covers(kind.cost(toLevel: next))
+        }
     }
 
     // MARK: While away
@@ -756,6 +799,67 @@ public final class GameSession {
         glide(to: seat.position)
     }
 
+    /// Chooses the keeper's next company, or the one before, whatever it is
+    /// doing: marching, fortified or spent, as well as awaiting orders, so
+    /// none is ever out of the keyboard's reach.
+    public func selectNextUnit(forward: Bool = true) {
+        let mine = state.units(of: player).sorted { $0.id < $1.id }
+        guard let first = mine.first, let last = mine.last else {
+            post("You have no companies.", tone: .neutral)
+            return
+        }
+        let next: NullmereCore.Unit
+        if let current = selectedUnit, current.owner == player {
+            next = forward ? (mine.first { $0.id > current.id } ?? first) : (mine.last { $0.id < current.id } ?? last)
+        } else {
+            next = forward ? first : last
+        }
+        selection = .unit(next.id)
+        glide(to: next.position)
+        sayChosen()
+    }
+
+    /// Chooses the keeper's holds in turn, the seat first: pressed again
+    /// and again, it goes round them all.
+    public func selectNextHold() {
+        let holds = state.holds(of: player).sorted { ($0.isSeat ? 0 : 1, $0.id) < ($1.isSeat ? 0 : 1, $1.id) }
+        guard let first = holds.first else { return }
+        let next = holds.firstIndex { selection == .hold($0.id) }.map { holds[($0 + 1) % holds.count] } ?? first
+        selection = .hold(next.id)
+        glide(to: next.position)
+        sayChosen()
+    }
+
+    /// Chooses what VoiceOver chose on the map, and brings the view to it,
+    /// so the keys that act where the view is centred start from there.
+    func choose(_ item: MapAccessibility.Item) {
+        selection = item.selection
+        glide(to: item.hex)
+    }
+
+    /// What is chosen, said to VoiceOver as the map reads it, for the keys
+    /// that choose where VoiceOver's cursor isn't.
+    func sayChosen() {
+        guard voiceOverRunning() else { return }
+        switch selection {
+        case .none:
+            return
+        case .tile(let hex):
+            if let ground = HoverInfo.line(for: hex, in: state, explored: isExplored(hex), territory: territory) {
+                sayNow("Chosen: \(ground.replacingOccurrences(of: " · ", with: ", ")).")
+            }
+        case .unit, .hold:
+            if let item = mapItems.first(where: { $0.selection == selection }) { sayNow("Chosen: \(item.label).") }
+        }
+    }
+
+    /// An order given by a key, said to VoiceOver once it is carried out,
+    /// as an order from VoiceOver's own actions is.
+    func sayDone(_ what: String) {
+        guard voiceOverRunning() else { return }
+        sayNow("Done: \(what).")
+    }
+
     /// Carries the camera to a hex over a moment, eased in and out; at once
     /// below full motion. The camera reaches the map as a plain value, so
     /// it is moved step by step here rather than by SwiftUI. A pan or a
@@ -848,7 +952,9 @@ public final class GameSession {
             }
             return cues
         case .move(let unit, _):
-            return [state.unit(unit)?.kind == .rider ? .ride : .order]
+            // A drowned ruin searched on the way rises, after the march.
+            let ruin = events.contains { if case .ruinSearched(_, let by, _) = $0 { return by == player } else { return false } }
+            return [state.unit(unit)?.kind == .rider ? .ride : .order] + (ruin ? [.rise] : [])
         default:
             return [plainCue(for: command, events: events, player: player)]
         }
@@ -902,6 +1008,12 @@ public final class GameSession {
                 add(.accord)
             case .envoyArrived:
                 add(.envoy)
+            case .gifted(_, let to, _) where to == player:
+                add(.accord)
+            case .promoted(_, let owner, _) where owner == player:
+                add(.rise)
+            case .seatMoved(let house, _) where house == player:
+                add(.dread)
             default:
                 break
             }

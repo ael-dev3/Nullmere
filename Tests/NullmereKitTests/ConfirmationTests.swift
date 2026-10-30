@@ -1,18 +1,26 @@
 import XCTest
 @testable import NullmereKit
 
+@MainActor
 final class ConfirmationTests: XCTestCase {
-    func testWarTakesTwoPressesCloseTogether() {
-        var confirmation = Confirmation()
-        let start = Date()
-        XCTAssertFalse(confirmation.press(at: start), "The first press only asks")
-        XCTAssertTrue(confirmation.isArmed(at: start.addingTimeInterval(1)))
-        XCTAssertTrue(confirmation.press(at: start.addingTimeInterval(2)), "The second, soon after, acts")
-        XCTAssertFalse(confirmation.isArmed(at: start.addingTimeInterval(2)), "and the button is quiet again")
+    /// War takes two presses, with no clock to beat between them, however
+    /// long reading or scanning to the button takes; asking another lets
+    /// the first go, and so does a button leaving the view.
+    func testWarTakesTwoPressesWithNoClockToBeat() {
+        let presses = ArmedPress()
+        let war = UUID(), disband = UUID()
+        XCTAssertFalse(presses.press(war), "The first press only asks")
+        XCTAssertTrue(presses.isArmed(war))
+        XCTAssertTrue(presses.press(war), "The second acts, however long after")
+        XCTAssertFalse(presses.isArmed(war), "and the button is quiet again")
 
-        XCTAssertFalse(confirmation.press(at: start.addingTimeInterval(10)))
-        XCTAssertFalse(confirmation.press(at: start.addingTimeInterval(10 + Confirmation.window + 1)), "Too late: it only asks again")
-        confirmation.lapse(at: start.addingTimeInterval(100))
-        XCTAssertNil(confirmation.armedAt)
+        XCTAssertFalse(presses.press(war))
+        XCTAssertFalse(presses.press(disband), "Asking another")
+        XCTAssertFalse(presses.isArmed(war), "lets the first go")
+        XCTAssertFalse(presses.press(war), "which asks again rather than acts")
+        presses.letGo(disband)
+        XCTAssertTrue(presses.isArmed(war), "Letting go of one leaves the armed one be")
+        presses.letGo(war)
+        XCTAssertNil(presses.armed, "A button leaving the view lets go")
     }
 }

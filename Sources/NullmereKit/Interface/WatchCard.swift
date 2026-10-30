@@ -6,8 +6,12 @@ import SwiftUI
 struct WatchCard: View {
     let summary: WatchSummary
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The game's own Motion, which follows the system's Reduce Motion
+    /// where it says to: below full, the card fades in where it rests.
+    @Environment(\.worldMotion) private var motion
     @State private var risen = false
+
+    private var reduceMotion: Bool { motion != .full }
 
     var body: some View {
         VStack(spacing: 10) {

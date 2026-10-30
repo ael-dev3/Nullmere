@@ -31,6 +31,7 @@ struct HousesPanel: View {
             }
             .scrollEdgeFade()
             .scrollIndicators(.never)
+            .pagedByKeys(session, as: .panel(.houses))
         }
         .padding(16)
         .frame(width: 360)
@@ -47,21 +48,22 @@ struct RaceTable: View {
     /// shape too.
     private var differentiate: Bool { Contrast.shared.differentiates }
 
+    /// The columns' widths, which grow with Larger type as their words do.
+    static var holdsColumn: CGFloat { 96 * TextSize.shared.scale }
+    static var spireColumn: CGFloat { 84 * TextSize.shared.scale }
+
     var body: some View {
         let state = session.state
         VStack(alignment: .leading, spacing: 8) {
+            // Its name on a line of its own, and its columns' words at the
+            // size of the rest: nothing shrunk below what reads.
+            Caps("The race for the lake", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7))
             HStack {
-                Caps("The race for the lake", size: 8.5, weight: .medium).foregroundStyle(Palette.text(0.7))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .layoutPriority(1)
                 Spacer(minLength: 4)
-                Caps("Holds of \(state.dominionNeed)", size: 7.5).foregroundStyle(Palette.text(0.45))
-                    .frame(width: 92, alignment: .leading)
-                Caps("Moonspire", size: 7.5).foregroundStyle(Palette.text(0.45))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .frame(width: 58, alignment: .leading)
+                Caps("Holds of \(state.dominionNeed)", size: 9).foregroundStyle(Palette.text(0.6))
+                    .frame(width: Self.holdsColumn, alignment: .leading)
+                Caps("Moonspire", size: 9).foregroundStyle(Palette.text(0.6))
+                    .frame(width: Self.spireColumn, alignment: .leading)
             }
             ForEach(session.standings, id: \.house) { standing in
                 let house = state.houses[standing.house]
@@ -72,11 +74,11 @@ struct RaceTable: View {
                         .foregroundStyle(standing.threat == nil ? Palette.text(0.8) : (standing.house == session.player ? Palette.good : Palette.bad))
                         .lineLimit(1)
                     if standing.isVassal {
-                        Caps("Vassal", size: 7).foregroundStyle(Palette.text(0.4))
+                        Caps("Vassal", size: 9).foregroundStyle(Palette.text(0.6))
                     }
                     if standing.threat != nil, differentiate {
                         // Near the end of a road, said in words, not colour alone.
-                        Caps("Near", size: 7).foregroundStyle(Palette.text(0.7))
+                        Caps("Near", size: 9).foregroundStyle(Palette.text(0.75))
                     }
                     Spacer(minLength: 4)
                     HStack(spacing: 5) {
@@ -85,9 +87,9 @@ struct RaceTable: View {
                             .frame(width: 60)
                         Text(verbatim: "\(standing.realm)").font(.nm(10).monospacedDigit()).foregroundStyle(Palette.text(0.7))
                     }
-                    .frame(width: 92, alignment: .leading)
+                    .frame(width: Self.holdsColumn, alignment: .leading)
                     LevelPips(level: standing.spire, maximum: BuildingKind.moonspire.maxLevel)
-                        .frame(width: 58, alignment: .leading)
+                        .frame(width: Self.spireColumn, alignment: .leading)
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(RaceTable.spoken(standing, in: state, player: session.player))
@@ -508,8 +510,9 @@ struct HouseRow: View {
                     Figure(label: "Strength", value: state.strength(of: house.id))
                     Figure(label: "Renown", value: state.renown(of: house.id))
                 }
-                // In a row when they fit, wrapping onto the next when not.
-                FlowLayout { actions(stance: stance) }
+                // In a row when they fit, wrapping onto the next when not,
+                // far enough apart that one is never pressed for another.
+                FlowLayout(spacing: 8, lineSpacing: 6) { actions(stance: stance) }
             }
         }
         .accessibilityElement(children: .contain)
@@ -657,8 +660,8 @@ struct CloseButton: View {
         Button(action: action) {
             Image(systemName: "xmark")
                 .font(.nm(9, weight: .light))
-                .foregroundStyle(Palette.text(hovering || focused ? 0.95 : 0.5))
-                .frame(width: 22, height: 22)
+                .foregroundStyle(Palette.text(hovering || focused ? 0.95 : 0.7))
+                .frame(width: QuietButton.least, height: QuietButton.least)
                 .contentShape(Rectangle())
                 .overlay(FocusRing(isFocused: focused))
         }
@@ -672,6 +675,8 @@ struct CloseButton: View {
 /// Envoys waiting on the player's answer, one card each.
 struct EnvoyCards: View {
     let session: GameSession
+
+    @Environment(\.worldMotion) private var motion
 
     var body: some View {
         let state = session.state
@@ -729,7 +734,8 @@ struct EnvoyCards: View {
                 .padding(14)
                 .frame(width: 320)
                 .panelBackground()
-                .transition(.move(edge: .trailing).combined(with: .opacity))
+                // Below full motion it fades in where it rests.
+                .transition(motion == .full ? .move(edge: .trailing).combined(with: .opacity) : .opacity)
                 .accessibilityElement(children: .contain)
             }
         }
@@ -818,10 +824,7 @@ struct TradeComposer: View {
             }
             .labelsHidden()
             .frame(width: 104)
-            Stepper(value: amount, in: 1...max(1, most), step: resource.wrappedValue == .moonsalt ? 1 : 5) {
-                Text(verbatim: "\(amount.wrappedValue)").font(.nm(11).monospacedDigit()).foregroundStyle(Palette.ink)
-            }
-            .accessibilityLabel("\(label) amount")
+            AmountField(name: "\(label) amount", amount: amount, most: most, step: resource.wrappedValue == .moonsalt ? 1 : 5)
         }
     }
 
