@@ -121,7 +121,7 @@ enum MapAccessibility {
             if unit.kind.isMilitary, let site = state.sitesInLand
                 .filter({ state.wild(at: $0.position) == nil && state.gatherRefusal(unit.id, at: $0.id, as: player) == nil })
                 .min(by: { (unit.position.distance(to: $0.position), $0.id) < (unit.position.distance(to: $1.position), $1.id) }) {
-                offered.append(Order(name: "Gather at the \(HoverInfo.named(site)), \(way(from: unit.position, to: site.position))",
+                offered.append(Order(name: "Gather at the \(HoverInfo.named(site, in: state)), \(way(from: unit.position, to: site.position))",
                                      hex: site.position))
             }
             // A founder: found here, or go to the best site it knows of.
@@ -190,8 +190,13 @@ enum MapAccessibility {
                              selection: .tile(wild.position), hex: wild.position, isFoe: true))
         }
         for site in state.sitesInLand where session.isExplored(site.position) && state.wild(at: site.position) == nil {
-            land.append(Item(id: "site-\(site.id)", label: "\(HoverInfo.named(site)), \(place(site.position))",
+            land.append(Item(id: "site-\(site.id)", label: "\(HoverInfo.named(site, in: state)), \(place(site.position))",
                              selection: .tile(site.position), hex: site.position))
+        }
+        // The alliances' storehouses on ground it has explored.
+        for storehouse in state.storehousesStanding where session.isExplored(storehouse.position) {
+            land.append(Item(id: "storehouse-\(storehouse.id)", label: "\(HoverInfo.named(storehouse, in: state)), \(place(storehouse.position))",
+                             selection: .tile(storehouse.position), hex: storehouse.position))
         }
 
         func mineFirst(_ items: [Item]) -> [Item] {

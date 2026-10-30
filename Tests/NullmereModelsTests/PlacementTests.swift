@@ -257,6 +257,43 @@ final class PlacementTests: XCTestCase {
         XCTAssertTrue(HoldLayout.pieces(study, relief: relief).contains { $0.key == .study(level: 1) && $0.progress == 0.6 })
     }
 
+    /// An alliance's storehouse and its yards fill their hex's heart, every
+    /// part within the hex however they are turned; a storehouse rises in
+    /// a scaffold over its footing, laid from the first.
+    func testAnAlliancesStorehouseAndYardsStandWithinTheirHexes() throws {
+        let layout = HexLayout(size: 1)
+        for key in [ModelKey.storehouse] + Resource.allCases.map(ModelKey.yard) {
+            let mesh = Library.model(key).mesh
+            for front in 0..<6 {
+                let turn = Mat4.rotationY(Float.pi / 2 - Float(front) * .pi / 3)
+                for vertex in mesh.vertices {
+                    let p = turn.transformPoint(vertex.position)
+                    XCTAssertEqual(layout.hex(atX: Double(p.x), y: Double(p.z)), .origin, "\(key) within its hex")
+                }
+            }
+        }
+        XCTAssertEqual(Library.smoke(of: .yard(.moonsalt)).count, 1, "The salt works' boiling house smokes")
+        XCTAssertEqual(Library.smoke(of: .storehouse), [])
+        let state = PlacementTests.worlds[0]
+        let relief = Relief(map: state.map)
+        let hex = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && hex.distance(to: .origin) > 3
+        })
+        let whole = HoldLayout.storehouse(at: hex, progress: 1, relief: relief)
+        XCTAssertEqual(whole.map(\.key), [.storehouse])
+        XCTAssertNil(whole[0].risen, "Whole, it is drawn whole")
+        let centre = Relief.centre(of: hex)
+        XCTAssertEqual(whole[0].position.x, centre.x, accuracy: 1e-4)
+        XCTAssertEqual(whole[0].position.z, centre.z, accuracy: 1e-4)
+        XCTAssertLessThanOrEqual(whole[0].position.y, relief.height(atX: centre.x, z: centre.z) + 1e-4, "On the lowest of its ground")
+        let begun = HoldLayout.storehouse(at: hex, progress: 0, relief: relief)
+        XCTAssertEqual(begun.map(\.key), [.storehouse, .scaffold])
+        XCTAssertEqual(try XCTUnwrap(begun[0].risen), Stores.footing, accuracy: 1e-4, "Drawn up to its footing")
+        let half = HoldLayout.storehouse(at: hex, progress: 0.5, relief: relief)
+        XCTAssertGreaterThan(try XCTUnwrap(half[0].risen), Stores.footing)
+        XCTAssertGreaterThan(half[1].transform.c1.y, begun[1].transform.c1.y, "The scaffold climbs with it")
+    }
+
     /// An alliance's hall fills its hex's heart, every stone within the hex
     /// however it is turned; it stands on the lowest of its ground, its
     /// platform from the first, the hall rising above it in a scaffold.

@@ -508,6 +508,8 @@ final class GuideTests: XCTestCase {
         XCTAssertTrue(all.contains("a twentieth stronger and firmer than others of its kind. Take up another in the Realm (6): the first time freely, then for 30 moonsalt."), all)
         XCTAssertEqual(Heritage.signatureEdge, 5)
         XCTAssertTrue(all.contains("every 300 given, in barter worth, brings the giver a Salt Hourglass"), all)
+        XCTAssertTrue(all.contains("Its companies alone work them, a quarter faster than anywhere else"), all)
+        XCTAssertEqual(Yard.gathering, 25)
         XCTAssertEqual(AllianceStudy.grades, 3)
         XCTAssertTrue(all.contains("it rises over four watches. Whole, the land three tiles about it is the alliance's"), all)
         XCTAssertEqual([AllianceHall.raising, AllianceHall.reach, AllianceHall.rallyCompanies, AllianceHall.standards, AllianceHall.garrison],
@@ -751,6 +753,14 @@ final class CueMappingTests: XCTestCase {
             (.hallStruck(hall: 90, alliance: alliance, ward: 30, by: foe, at: unit.position), .batter),
             (.hallTorn(hall: 91, alliance: 77, by: player, at: unit.position), .triumph),
             (.hallTorn(hall: 90, alliance: alliance, by: foe, at: unit.position), .dread),
+            (.storehouseRaised(storehouse: 93, alliance: alliance, house: foe, at: unit.position), .rise),
+            (.storehouseRisen(storehouse: 93, alliance: alliance, at: unit.position), .complete),
+            (.storehouseStruck(storehouse: 93, alliance: alliance, ward: 30, by: foe, at: unit.position), .batter),
+            (.storehouseTorn(storehouse: 94, alliance: 77, by: player, at: unit.position, carried: Stock(grain: 40)), .triumph),
+            (.storehouseTorn(storehouse: 93, alliance: alliance, by: foe, at: unit.position, carried: .zero), .dread),
+            (.laidUp(house: player, stock: Stock(grain: 100)), .coin),
+            (.tookBack(house: player, stock: Stock(grain: 100)), .coin),
+            (.yardRaised(site: 95, alliance: alliance, house: foe, store: .timber, at: unit.position), .rise),
             (.gearForged(house: player, gear: Gear(id: 72, kind: .wardensBlade, quality: .plain, owner: player)), .anvil),
             (.itemUsed(house: player, kind: .hourglass, hold: seat.id), .sift),
             (.itemUsed(house: player, kind: .mendingDraught, hold: nil), .tend),
@@ -851,6 +861,12 @@ final class CueMappingTests: XCTestCase {
             .hallRaised(hall: 92, alliance: 77, house: foe, at: unit.position), .hallRisen(hall: 92, alliance: 77, at: unit.position),
             .hallStruck(hall: 92, alliance: 77, ward: 10, by: others, at: unit.position),
             .hallTorn(hall: 92, alliance: 77, by: others, at: unit.position),
+            .storehouseRaised(storehouse: 96, alliance: 77, house: foe, at: unit.position),
+            .storehouseRisen(storehouse: 96, alliance: 77, at: unit.position),
+            .storehouseStruck(storehouse: 96, alliance: 77, ward: 10, by: others, at: unit.position),
+            .storehouseTorn(storehouse: 96, alliance: 77, by: others, at: unit.position, carried: .zero),
+            .laidUp(house: foe, stock: Stock(grain: 5)), .tookBack(house: foe, stock: Stock(grain: 5)),
+            .yardRaised(site: 97, alliance: 77, house: foe, store: .stone, at: unit.position),
             .gearForged(house: foe, gear: Gear(id: 73, kind: .raidersHorn, quality: .fine, owner: foe)),
             .makingsFound(house: player, making: .iron, count: 2), .makingsFound(house: foe, making: .hide, count: 1),
         ]
@@ -875,6 +891,8 @@ final class CueMappingTests: XCTestCase {
             (.useItem(.mendingDraught, hold: nil), .tend), (.takeHeritage(.strandfolk), .banner),
             (.pursueAllianceStudy(.shieldOath), .lore), (.giveToAlliance(Stock(grain: 50)), .coin),
             (.raiseAllianceHall(at: unit.position), .rise), (.forge(.wardensBlade, quality: .plain), .anvil),
+            (.raiseStorehouse(at: unit.position), .rise), (.layUp(Stock(grain: 100)), .coin), (.takeBack(Stock(grain: 100)), .coin),
+            (.raiseYard(.timber, at: unit.position), .rise),
         ]
         for (command, cue) in orders {
             XCTAssertEqual(GameSession.cues(for: command, events: [], in: state, player: player), [cue], "\(command)")

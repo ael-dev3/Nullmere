@@ -42,7 +42,7 @@ final class PreviewTests: XCTestCase {
         }
         let holds = family {
             switch $0 {
-            case .keep, .keepOf, .walls, .scaffold, .allianceHall: return true
+            case .keep, .keepOf, .walls, .scaffold, .allianceHall, .storehouse: return true
             default: return false
             }
         }
@@ -54,7 +54,7 @@ final class PreviewTests: XCTestCase {
         }
         let land = family {
             switch $0 {
-            case .furnishing, .site, .prop, .shrine, .lair, .standard: return true
+            case .furnishing, .site, .prop, .shrine, .lair, .standard, .yard: return true
             default: return false
             }
         }

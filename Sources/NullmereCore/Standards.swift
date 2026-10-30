@@ -107,15 +107,17 @@ extension GameState {
             return .foreignTerritory
         }
         guard standards(of: sworn.id).count < standardsAllowed(for: sworn) else { return .standardsEnough }
-        guard houses[house].stock.covers(Standard.cost) else { return .shortOf(houses[house].stock.shortfall(for: Standard.cost)) }
+        let purse = purse(of: house)
+        guard purse.covers(Standard.cost) else { return .shortOf(purse.shortfall(for: Standard.cost)) }
         return nil
     }
 
-    /// A House of an alliance raises a standard at a hex, for its stores.
+    /// A House of an alliance raises a standard at a hex, for its
+    /// alliance's coffers and its stores.
     mutating func raiseStandard(at hex: Hex, by house: Int) throws(RuleError) -> [GameEvent] {
         if let refusal = standardRefusal(at: hex, by: house) { throw refusal }
         let sworn = alliance(of: house)!
-        houses[house].stock.debit(Standard.cost)
+        spend(Standard.cost, by: house)
         let standard = Standard(id: takeID(), alliance: sworn.id, raisedBy: house, position: hex, raised: watch)
         standards = standardsStanding + [standard]
         return [.standardRaised(standard: standard.id, alliance: sworn.id, house: house, at: hex)]

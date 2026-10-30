@@ -103,8 +103,18 @@ final class AllianceHallTests: XCTestCase {
                        "Your alliance's hall stands whole \(place): its land reaches 3 tiles about it, your rallies take 2 more companies, "
                        + "and the alliance may keep 2 more standards.")
         XCTAssertEqual(stage.state.tidings(of: risen[0], for: 2)?.text, "The hall of The Stone Accord stands whole \(place).")
-        XCTAssertNil(stage.state.tidings(of: .hallRisen(hall: hall.id, alliance: 9_999, at: at), for: me))
-        XCTAssertNil(stage.state.tidings(of: .hallRaised(hall: hall.id, alliance: 9_999, house: me, at: at), for: me))
+        // Told still, once its alliance is gone, to those it concerns.
+        XCTAssertEqual(stage.state.tidings(of: .hallRisen(hall: hall.id, alliance: 9_999, at: at), for: me)?.text,
+                       "The hall of a fallen alliance stands whole \(place).")
+        XCTAssertEqual(stage.state.tidings(of: .hallRaised(hall: hall.id, alliance: 9_999, house: me, at: at), for: me)?.text,
+                       "You begin the hall of a fallen alliance \(place): it rises over 4 watches.")
+        XCTAssertEqual(stage.state.tidings(of: .hallRaised(hall: hall.id, alliance: 9_999, house: me, at: at), for: 2)?.text,
+                       "\(title) begins a hall of a fallen alliance \(place).")
+        XCTAssertNil(stage.state.tidings(of: .hallRaised(hall: hall.id, alliance: 9_999, house: 99, at: at), for: me))
+        XCTAssertEqual(stage.state.tidings(of: .hallStruck(hall: hall.id, alliance: 9_999, ward: 5, by: 2, at: at), for: 2)?.text,
+                       "Your company strikes the hall of a fallen alliance: its ward 5 of 240.")
+        XCTAssertNil(stage.state.tidings(of: .hallStruck(hall: hall.id, alliance: 9_999, ward: 5, by: 2, at: at), for: me))
+        XCTAssertNil(stage.state.tidings(of: .hallStruck(hall: hall.id, alliance: 9_999, ward: 5, by: 99, at: at), for: me))
         XCTAssertEqual(stage.state.problems(), [])
     }
 
@@ -142,7 +152,7 @@ final class AllianceHallTests: XCTestCase {
         XCTAssertEqual(refused(another), .hallStanding, "One to an alliance")
         XCTAssertEqual(RuleError.hallStanding.description, "Your alliance has its hall already: it raises one, and another only once that one falls.")
         XCTAssertEqual(RuleError.hallGround.description, "A hall stands only on open land, with nothing on it.")
-        XCTAssertEqual(RuleError.notAllianceLand.description, "A hall stands on your alliance's own land, within reach of its standards.")
+        XCTAssertEqual(RuleError.notAllianceLand.description, "It stands on your alliance's own land, within reach of its standards.")
         // A standard is raised near the hall, not near another's.
         XCTAssertEqual(stage.state.refusal(of: .raiseStandard(at: stage.spot), as: me), .standardGround)
         var foreign = stage.state
@@ -271,7 +281,7 @@ final class AllianceHallTests: XCTestCase {
         founding.standards = nil
         founding.halls = [AllianceHall(id: founding.takeID(), alliance: 1, raisedBy: stage.me, position: open, begun: 0)]
         XCTAssertEqual(founding.canFound(at: open, for: stage.me), .allianceGround)
-        XCTAssertEqual(RuleError.allianceGround.description, "An alliance's standard or hall stands here: a hold is founded on open land.")
+        XCTAssertEqual(RuleError.allianceGround.description, "An alliance's work stands here: a hold is founded on open land.")
     }
 
     func testHallsAreSeenOnGroundExploredAndKeptInSaves() throws {

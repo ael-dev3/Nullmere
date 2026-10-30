@@ -727,6 +727,39 @@ realm; keepers are told in plain words, never a status code.
   it, and burns when struck low. It is named on hover; its ground's panel
   describes it or, to the leader, begins it; the Alliance screen tells how
   it stands; and each of its happenings has its sound and its place.
+- **Alliance coffers, storehouse and yards.** An alliance keeps coffers of
+  its own, up to 2000 of each common store and 100 moonsalt: each of its
+  standards yields them 5 grain, 5 timber and 5 stone a watch, its hall
+  standing whole 15 of each and a moonsalt, and its yards a tithe. Whatever
+  its Houses raise for it, standards, hall, storehouse and yards, the
+  coffers pay for first and the House raising it the rest; what they hold
+  is its own Houses' to know. Its leader raises a storehouse on its land
+  (100 grain, 250 timber, 250 stone, 5 moonsalt), rising over two watches;
+  whole, each of its Houses may lay up to 600 of each common store and 50
+  moonsalt there from the Alliance screen, beyond its own storage and out
+  of any taker's reach (a hold taken gives up only what its House keeps at
+  hand), and take it back when it will; a House that leaves the alliance
+  takes back all it laid up. Only the alliance's companies enter it; a
+  House at war with one of its Houses strikes it when none keeps it, and
+  tearing it down carries off what was laid up in it, as much as it can
+  keep. Its leader also raises yards on its land, one of each store, for
+  80 grain, 150 timber and 150 stone: a Tilled Acre, a Timber Yard, a
+  Quarry and Salt Works, richer than the land's own sites (1500 of a
+  common store, 300 moonsalt), that the alliance's companies alone work, a
+  quarter faster than anywhere, the coffers taking a tenth more besides;
+  an alliance gone, its yards go with it. Stewards raise yards from the
+  thirtieth watch and a storehouse from the forty-fourth, lay up what they
+  hold beyond seven tenths of their room and take it back when a store
+  runs under four tenths, and work their own alliance's yards and no
+  other's. Each is modelled in the alliance's colour: a long timbered barn
+  with great strapped doors, a lean-to, sacks, barrels, planks and dressed
+  stone before it and a hoist whose pulley turns and sack swings; a fenced
+  acre with its granary on staddle stones and a scarecrow; log stacks, a
+  sawpit and sheerlegs swinging a log; a quarry face cut in benches under
+  a slewing derrick; salt pans, a well whose windlass turns and a boiling
+  house whose fire leaps and chimney smokes. They are named on hover and
+  to VoiceOver, raised from their ground's panel, told on the Alliance
+  screen, and heard as they happen.
 - **The Forge.** A work of five levels where a House's smiths work makings
   into gear of three sets: the Warden's Harness, the Raider's Kit and the
   Pathfinder's Gear, each a weapon, an armour and a charm. The makings are

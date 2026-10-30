@@ -173,6 +173,41 @@ extension GameState {
             }
             if map[hall.position]?.terrain.isPassable != true { found.append("Hall \(hall.id) stands where none can") }
         }
+        var storehoused: Set<Int> = []
+        for storehouse in storehousesStanding {
+            let name = "Storehouse \(storehouse.id)"
+            guard let sworn = alliance(storehouse.alliance) else {
+                found.append("\(name) stands for no alliance")
+                continue
+            }
+            if !storehoused.insert(storehouse.alliance).inserted { found.append("Alliance \(storehouse.alliance) has two storehouses") }
+            if !(0...Storehouse.raising).contains(storehouse.built) { found.append("\(name) is built \(storehouse.built) of \(Storehouse.raising)") }
+            if !(0...Storehouse.maximumWard).contains(storehouse.ward) { found.append("\(name) has ward \(storehouse.ward)") }
+            if hold(at: storehouse.position) != nil || wild(at: storehouse.position) != nil || lair(at: storehouse.position) != nil
+                || site(at: storehouse.position) != nil || !flags.insert(storehouse.position).inserted {
+                found.append("\(name) shares its ground at \(storehouse.position)")
+            }
+            if map[storehouse.position]?.terrain.isPassable != true { found.append("\(name) stands where none can") }
+            var layers: Set<Int> = []
+            for laid in storehouse.laidUp {
+                if !sworn.members.contains(laid.house) { found.append("\(name) keeps stores of House \(laid.house), not of its alliance") }
+                if !layers.insert(laid.house).inserted { found.append("\(name) keeps House \(laid.house)'s stores twice") }
+                if laid.stock.isZero || !laid.stock.fits(in: Storehouse.room) || !laid.stock.covers(.zero) {
+                    found.append("\(name) keeps \(laid.stock) of House \(laid.house)")
+                }
+            }
+        }
+        for sworn in alliances ?? [] {
+            if let coffers = sworn.coffers, !coffers.covers(.zero) || !coffers.fits(in: Alliance.coffersKept) {
+                found.append("The coffers of \(sworn.name) hold \(coffers)")
+            }
+        }
+        var yarded: Set<String> = []
+        for yard in sitesInLand {
+            guard let owner = yard.alliance else { continue }
+            if alliance(owner) == nil { found.append("Yard \(yard.id) is of no alliance") }
+            if !yarded.insert("\(owner) \(yard.store.rawValue)").inserted { found.append("Alliance \(owner) has two yards of \(yard.store.title.lowercased())") }
+        }
         var stacks: Set<String> = []
         for stack in satchel ?? [] {
             if !houseIDs.contains(stack.house) { found.append("A satchel is of no House (\(stack.house))") }

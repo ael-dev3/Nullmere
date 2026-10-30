@@ -117,15 +117,17 @@ extension GameState {
               hallsStanding.allSatisfy({ $0.position.distance(to: hex) > 2 * AllianceHall.reach }) else {
             return .foreignTerritory
         }
-        guard houses[house].stock.covers(AllianceHall.cost) else { return .shortOf(houses[house].stock.shortfall(for: AllianceHall.cost)) }
+        let purse = purse(of: house)
+        guard purse.covers(AllianceHall.cost) else { return .shortOf(purse.shortfall(for: AllianceHall.cost)) }
         return nil
     }
 
-    /// An alliance's leader begins its hall at a hex, for its stores.
+    /// An alliance's leader begins its hall at a hex, for the alliance's
+    /// coffers and its stores.
     mutating func raiseHall(at hex: Hex, by house: Int) throws(RuleError) -> [GameEvent] {
         if let refusal = hallRefusal(at: hex, by: house) { throw refusal }
         let sworn = alliance(of: house)!
-        houses[house].stock.debit(AllianceHall.cost)
+        spend(AllianceHall.cost, by: house)
         let hall = AllianceHall(id: takeID(), alliance: sworn.id, raisedBy: house, position: hex, begun: watch)
         halls = hallsStanding + [hall]
         record(.alliance, sworn.members, "\(houses[house].title) begins the hall of \(sworn.name) \(placeName(of: hex)).")

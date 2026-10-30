@@ -105,6 +105,9 @@ public struct GameState: Codable, Equatable, Sendable {
     var standards: [Standard]?
     /// The alliances' halls, standing or rising; absent before any was begun.
     var halls: [AllianceHall]?
+    /// The alliances' storehouses, standing or rising; absent before any
+    /// was begun.
+    var storehouses: [Storehouse]?
     /// The gear the Houses hold, worn by their commanders or kept; absent
     /// in saves from before gear.
     var armoury: [Gear]?

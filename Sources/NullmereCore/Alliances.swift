@@ -17,6 +17,9 @@ public struct Alliance: Codable, Equatable, Identifiable, Sendable {
     /// What it has learned together, and what its Houses have given toward
     /// what it pursues; absent before its leader chose a study.
     public internal(set) var lore: AllianceLore?
+    /// What it keeps of its own, filled by its land and its yards and spent
+    /// first on what its Houses raise for it; absent before it had any.
+    public internal(set) var coffers: Stock?
 
     public init(id: Int, name: String, leader: Int, founded: Int) {
         self.id = id
@@ -199,6 +202,8 @@ extension GameState {
         guard let index = allianceIndex(allianceID) else { return [] }
         // Its rallies lose the room their alliance's hall gave them.
         defer { fitRallies() }
+        // What it laid up in the alliance's storehouse goes with it.
+        returnLaidUp(of: house, from: allianceID)
         alliances![index].members.removeAll { $0 == house }
         let alliance = alliances![index]
         guard !alliance.members.isEmpty else {

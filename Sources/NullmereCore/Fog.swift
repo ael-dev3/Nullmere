@@ -74,6 +74,8 @@ extension GameState {
                 known.asking = alliance.asking.filter { $0 == house }
                 // What it studies together is its own Houses' to know.
                 known.lore = nil
+                // And what its coffers hold.
+                known.coffers = nil
                 return known
             }
         }
@@ -91,6 +93,16 @@ extension GameState {
         // The alliances' standards and halls on ground they have explored.
         view.standards = standards?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
         view.halls = halls?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
+        // Their storehouses too, and its own alliance's wherever it stands;
+        // what is laid up in one is each House's own to know.
+        view.storehouses = storehouses?.filter { storehouse in
+            isOf(storehouse.alliance, house) || map.index(of: storehouse.position).map { explored.indices.contains($0) && explored[$0] } ?? false
+        }
+            .map { storehouse in
+                var known = storehouse
+                known.laidUp = storehouse.laidUp.filter { $0.house == house }
+                return known
+            }
         // The battles going on that they can see a side of.
         view.engagements = engagements?.filter { view.unit($0.attacker) != nil || view.unit($0.defender) != nil }
         // The marches they may know of, worked out on what they see.
@@ -108,6 +120,11 @@ extension GameState {
         func visible(_ hex: Hex) -> Bool { map.index(of: hex).map { seen[$0] } ?? false }
         // Another House's march is heard only where it is seen.
         let cut = events.compactMap { event -> GameEvent? in
+            // What a storehouse torn down gave up is told to its taker and its alliance alone.
+            if case .storehouseTorn(let id, let alliance, let by, let at, let carried) = event, !carried.isZero, by != house,
+               self.alliance(alliance)?.members.contains(house) != true {
+                return .storehouseTorn(storehouse: id, alliance: alliance, by: by, at: at, carried: .zero)
+            }
             guard case .moved(let id, let path) = event, unit(id)?.owner != house else { return event }
             let shown = path.filter(visible)
             return shown.isEmpty ? nil : .moved(unit: id, path: shown)
@@ -131,7 +148,8 @@ extension GameState {
                  .talentLearned(_, let owner, _, _), .talentsForgotten(_, let owner),
                  .gearFound(let owner, _, _), .gearWorn(_, let owner, _), .gearTakenOff(_, let owner, _), .gearScrapped(let owner, _, _),
                  .carriedToInfirmary(_, let owner, _), .healingBegun(_, let owner, _), .woundedLost(_, let owner, _),
-                 .itemsGiven(let owner, _, _), .itemUsed(let owner, _, _), .makingsFound(let owner, _, _), .gearForged(let owner, _):
+                 .itemsGiven(let owner, _, _), .itemUsed(let owner, _, _), .makingsFound(let owner, _, _), .gearForged(let owner, _),
+                 .laidUp(let owner, _), .tookBack(let owner, _):
                 return owner == house
             case .unitHealed(let id, _):
                 return unit(id)?.owner == house
@@ -153,6 +171,12 @@ extension GameState {
                 return by == house || alliance(id)?.members.contains(house) == true || visible(at)
             case .hallTorn(_, let id, let by, let at):
                 return by == house || alliance(id)?.members.contains(house) == true || visible(at)
+            case .storehouseRaised(_, let id, _, let at), .storehouseRisen(_, let id, let at), .yardRaised(_, let id, _, _, let at):
+                return alliance(id)?.members.contains(house) == true || visible(at)
+            case .storehouseStruck(_, let id, _, let by, let at), .storehouseTorn(_, let id, let by?, let at, _):
+                return by == house || alliance(id)?.members.contains(house) == true || visible(at)
+            case .storehouseTorn(_, let id, nil, let at, _):
+                return alliance(id)?.members.contains(house) == true || visible(at)
             case .commanderAssigned(let id, _), .commanderReleased(let id):
                 return commander(id)?.owner == house
             case .skillFired(_, let owner, _, let at):

@@ -87,6 +87,8 @@ struct RivalMind {
             events += studyTogether(in: &state)
             events += raiseStandard(in: &state)
             events += raiseHall(in: &state)
+            events += raiseStorehouse(in: &state)
+            events += raiseYard(in: &state)
             events += callRally(in: &state, random: &random)
             events += sendToRallies(in: &state)
             events += keepAlliesGates(in: &state)
@@ -101,6 +103,7 @@ struct RivalMind {
         if !caretaking {
             events += useItems(in: &state)
             events += forgeGear(in: &state)
+            events += keepStorehouse(in: &state)
         }
         events += appointCommanders(in: &state)
         events += state.growTalents(for: house)
@@ -129,7 +132,7 @@ struct RivalMind {
     private func raiseStandard(in state: inout GameState) -> [GameEvent] {
         guard state.watch >= RivalMind.standardsFrom, (state.watch + house) % 6 == 0, let sworn = state.alliance(of: house),
               state.standards(of: sworn.id).count < state.standardsAllowed(for: sworn),
-              state.houses[house].stock.covers(Standard.cost * 2) else { return [] }
+              state.purse(of: house).covers(Standard.cost * 2) else { return [] }
         let mine = state.holds(of: house).map(\.position)
         let sites = state.sitesInLand.map(\.position)
         let spots = Set(mine.flatMap { $0.spiral(Standard.tether) }).filter { state.standardRefusal(at: $0, by: house) == nil }
@@ -167,7 +170,7 @@ struct RivalMind {
     private func raiseHall(in state: inout GameState) -> [GameEvent] {
         guard state.watch >= RivalMind.hallsFrom, (state.watch + house) % 4 == 0, let sworn = state.alliance(of: house),
               sworn.leader == house, state.hall(of: sworn.id) == nil,
-              state.houses[house].stock.covers(AllianceHall.cost + RivalMind.hallReserve) else { return [] }
+              state.purse(of: house).covers(AllianceHall.cost + RivalMind.hallReserve) else { return [] }
         let mine = state.holds(of: house).map(\.position)
         let spots = Set(state.standards(of: sworn.id).flatMap { $0.position.spiral(Standard.reach) })
             .filter { state.hallRefusal(at: $0, by: house) == nil }
@@ -175,6 +178,74 @@ struct RivalMind {
             .min { a, b in (a.near, a.hex) < (b.near, b.hex) }
         guard let best else { return [] }
         return perform(.raiseAllianceHall(at: best.hex), in: &state)
+    }
+
+    /// The watch from which stewards raise their alliances' storehouses.
+    static let storehousesFrom = 44
+    /// The watch from which stewards raise their alliances' yards.
+    static let yardsFrom = 30
+    /// What a steward keeps back beyond a storehouse's or a yard's cost.
+    static let worksReserve = Stock(grain: 80, timber: 80, stone: 80, moonsalt: 5)
+
+    /// An alliance's leader with stores to spare begins its storehouse one
+    /// watch in four, on the alliance's land nearest its own holds.
+    private func raiseStorehouse(in state: inout GameState) -> [GameEvent] {
+        guard state.watch >= RivalMind.storehousesFrom, (state.watch + house) % 4 == 1, let sworn = state.alliance(of: house),
+              sworn.leader == house, state.storehouse(of: sworn.id) == nil,
+              state.purse(of: house).covers(Storehouse.cost + RivalMind.worksReserve),
+              let spot = allianceSpot(in: state, where: { state.storehouseRefusal(at: $0, by: house) == nil }) else { return [] }
+        return perform(.raiseStorehouse(at: spot), in: &state)
+    }
+
+    /// An alliance's leader with stores to spare raises a yard one watch in
+    /// five: of the first store its alliance has none of, on ground that
+    /// would yield that store if there is any, nearest its own holds.
+    private func raiseYard(in state: inout GameState) -> [GameEvent] {
+        guard state.watch >= RivalMind.yardsFrom, (state.watch + house) % 5 == 2, let sworn = state.alliance(of: house),
+              sworn.leader == house, state.purse(of: house).covers(Yard.cost + RivalMind.worksReserve) else { return [] }
+        let raised = Set(state.yards(of: sworn.id).map(\.store))
+        guard let store = Resource.allCases.first(where: { !raised.contains($0) }),
+              let spot = allianceSpot(in: state, preferring: { state.map[$0].flatMap { Site.store(of: $0.terrain) } == store },
+                                      where: { state.yardRefusal(store, at: $0, by: house) == nil }) else { return [] }
+        return perform(.raiseYard(store, at: spot), in: &state)
+    }
+
+    /// The ground of a steward's alliance's land, nearest its own holds,
+    /// where something of the alliance's may stand: the ground it prefers,
+    /// if any will do.
+    private func allianceSpot(in state: GameState, preferring liked: (Hex) -> Bool = { _ in false }, where allowed: (Hex) -> Bool) -> Hex? {
+        guard let sworn = state.alliance(of: house) else { return nil }
+        let mine = state.holds(of: house).map(\.position)
+        var land = Set(state.standards(of: sworn.id).flatMap { $0.position.spiral(Standard.reach) })
+        if let hall = state.hall(of: sworn.id), hall.isWhole { land.formUnion(hall.position.spiral(AllianceHall.reach)) }
+        return land.filter(allowed)
+            .map { hex in (hex: hex, liked: liked(hex) ? 0 : 1, near: mine.map { $0.distance(to: hex) }.min() ?? 99) }
+            .min { a, b in (a.liked, a.near, a.hex) < (b.liked, b.near, b.hex) }?.hex
+    }
+
+    /// A steward lays up in its alliance's storehouse what it holds beyond
+    /// seven tenths of its room, out of a taker's reach and past its cap,
+    /// and takes back what it laid up when a store falls under four tenths.
+    private func keepStorehouse(in state: inout GameState) -> [GameEvent] {
+        guard let storehouse = state.wholeStorehouse(for: house) else { return [] }
+        let room = state.storage(of: house)
+        let stock = state.houses[house].stock
+        let laid = storehouse.laidUp(by: house)
+        var up = Stock.zero
+        var back = Stock.zero
+        for resource in Resource.allCases {
+            let high = room * 7 / 10
+            let low = room * 4 / 10
+            if stock[resource] > high {
+                up[resource] = max(0, min(stock[resource] - high, Storehouse.room[resource] - laid[resource]))
+            } else if stock[resource] < low {
+                back[resource] = min(low - stock[resource], laid[resource])
+            }
+        }
+        var events: [GameEvent] = []
+        if !up.isZero { events += perform(.layUp(up), in: &state) }
+        if !back.isZero { events += perform(.takeBack(back), in: &state) }
+        return events
     }
 
     /// What a steward holds of each store before it gives to its alliance's
@@ -1087,8 +1158,10 @@ struct RivalMind {
             if case .gather(let site)? = other.errand { return site }
             return nil
         })
+        let sworn = state.alliance(of: house)?.id
         return state.sitesInLand.filter { site in
             short.contains(site.store) && !bound.contains(site.id) && state.unit(at: site.position) == nil
+                && (site.alliance == nil || site.alliance == sworn)
                 && (state.map.index(of: site.position).map { explored[$0] } ?? false)
                 && site.position.distance(to: unit.position) <= RivalMind.huntingGround
                 && holds.contains { $0.distance(to: site.position) <= RivalMind.huntingGround }

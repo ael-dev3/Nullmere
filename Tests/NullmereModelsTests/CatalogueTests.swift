@@ -317,17 +317,17 @@ final class CatalogueTests: XCTestCase {
             case .figure, .signature, .wild, .commander:
                 XCTAssertNotNil(model.motion, "\(key)")
                 XCTAssertGreaterThanOrEqual(model.rig.count, 17, "\(key) has a body's parts")
-            case .furnishing, .scaffold, .site, .keep, .keepOf, .walls, .prop(.arrow), .shrine, .lair, .standard, .allianceHall:
+            case .furnishing, .scaffold, .site, .keep, .keepOf, .walls, .prop(.arrow), .shrine, .lair, .standard, .allianceHall, .yard(.grain):
                 XCTAssertNil(model.motion, "\(key) stands still")
             case .prop:
                 XCTAssertNotNil(model.motion, "\(key)")
-            case .work, .study:
+            case .work, .study, .storehouse, .yard:
                 break
             }
         }
         for key: ModelKey in [.work(.sawpit, level: 3), .work(.quarry, level: 3), .work(.beacon, level: 1), .work(.saltworks, level: 2),
                               .work(.moonspire, level: 5), .study(level: 3), .study(level: 5), .work(.forge, level: 1),
-                              .work(.forge, level: 5)] {
+                              .work(.forge, level: 5), .storehouse, .yard(.timber), .yard(.stone), .yard(.moonsalt)] {
             XCTAssertNotNil(Library.model(key).motion, "\(key) has an idle motion")
         }
         // A rider is one model: horse and rider, the rider's parts on the horse's back.

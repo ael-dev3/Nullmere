@@ -101,6 +101,14 @@ public enum Command: Codable, Equatable, Sendable {
     /// A House's smiths forge a piece of gear of the Forge's sets, as fine
     /// as its Forge allows, for makings and moonsalt.
     case forge(GearKind, quality: GearQuality)
+    /// An alliance's leader begins its storehouse on the alliance's own land.
+    case raiseStorehouse(at: Hex)
+    /// A House lays up stores in its alliance's storehouse.
+    case layUp(Stock)
+    /// A House takes back stores it laid up in its alliance's storehouse.
+    case takeBack(Stock)
+    /// An alliance's leader raises a yard of a store on the alliance's own land.
+    case raiseYard(Resource, at: Hex)
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -280,6 +288,21 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case armouryFull
     /// Gear forged without the makings it takes.
     case shortOfMakings(Making, Int)
+    /// A storehouse begun by an alliance that has one standing or rising.
+    case storehouseStanding
+    /// Stores laid up or taken back where the alliance has no storehouse
+    /// standing whole.
+    case noStorehouse
+    /// Stores laid up beyond a House's room in the storehouse.
+    case storehouseFull
+    /// Stores taken back that were never laid up.
+    case notLaidUp
+    /// A yard raised by an alliance that has one of that store.
+    case yardStanding(Resource)
+    /// A yard worked by a company of another alliance, or of none.
+    case foreignYard
+    /// An alliance's work raised where something stands already.
+    case openGroundOnly
     /// Words from a House no keeper holds.
     case notAKeeper
     /// Words that say nothing an envoy, or the realm, would carry.
@@ -393,12 +416,19 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .nothingGiven: return "Give some of your stores, and none of them less than nothing."
         case .hallStanding: return "Your alliance has its hall already: it raises one, and another only once that one falls."
         case .hallGround: return "A hall stands only on open land, with nothing on it."
-        case .notAllianceLand: return "A hall stands on your alliance's own land, within reach of its standards."
-        case .allianceGround: return "An alliance's standard or hall stands here: a hold is founded on open land."
+        case .notAllianceLand: return "It stands on your alliance's own land, within reach of its standards."
+        case .allianceGround: return "An alliance's work stands here: a hold is founded on open land."
         case .notForged: return "That gear is not forged: only the wilds leave it."
         case .needsForge(let level): return "Raise a Forge to level \(BuildingKind.numeral(level)) to forge gear so fine."
         case .armouryFull: return "Your armoury is full: break up a piece to make room."
         case .shortOfMakings(let making, let count): return "You need \(count) more \(making.title.lowercased())."
+        case .storehouseStanding: return "Your alliance has its storehouse already: it raises one, and another only once that one falls."
+        case .noStorehouse: return "Your alliance has no storehouse standing whole: its leader raises one on its land."
+        case .storehouseFull: return "Your room in the storehouse holds no more: \(Storehouse.room) at most."
+        case .notLaidUp: return "You haven't laid up so much in the storehouse."
+        case .yardStanding(let store): return "Your alliance has its \(Yard.title(of: store).lowercased()) already."
+        case .foreignYard: return "Only the companies of the alliance that raised a yard work it."
+        case .openGroundOnly: return "It stands only on open land, with nothing on it."
         case .notAnAllysHold: return "Only an ally's hold can be kept."
         case .notAKeeper: return "Only a keeper's words are carried."
         case .nothingToSay: return "Those words say nothing the realm can carry: plain words, with no addresses."
@@ -505,6 +535,21 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// An alliance's hall comes down: torn down by a House, or by none,
     /// its alliance no more.
     case hallTorn(hall: Int, alliance: Int, by: Int?, at: Hex)
+    /// An alliance's leader begins its storehouse.
+    case storehouseRaised(storehouse: Int, alliance: Int, house: Int, at: Hex)
+    /// An alliance's storehouse has risen whole.
+    case storehouseRisen(storehouse: Int, alliance: Int, at: Hex)
+    /// A company strikes an alliance's storehouse.
+    case storehouseStruck(storehouse: Int, alliance: Int, ward: Int, by: Int, at: Hex)
+    /// An alliance's storehouse comes down: torn down by a House, which
+    /// carries off what was laid up in it, or by none, its alliance no more.
+    case storehouseTorn(storehouse: Int, alliance: Int, by: Int?, at: Hex, carried: Stock)
+    /// A House lays up stores in its alliance's storehouse.
+    case laidUp(house: Int, stock: Stock)
+    /// A House takes back stores it laid up.
+    case tookBack(house: Int, stock: Stock)
+    /// An alliance's leader raises a yard on its land.
+    case yardRaised(site: Int, alliance: Int, house: Int, store: Resource, at: Hex)
     /// A House is given makings for its Forge.
     case makingsFound(house: Int, making: Making, count: Int)
     /// A House's smiths forge a piece of gear.

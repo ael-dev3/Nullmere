@@ -40,9 +40,14 @@ extension GameState {
                 blocked[index] = true
             }
         }
-        // Only its alliance's companies pass through a hall.
+        // Only its alliance's companies pass through a hall, or a storehouse.
         for hall in hallsStanding where !isOfHall(unit.owner, hall) {
             if let index = map.index(of: hall.position), index != goal {
+                blocked[index] = true
+            }
+        }
+        for storehouse in storehousesStanding where !isOf(storehouse.alliance, unit.owner) {
+            if let index = map.index(of: storehouse.position), index != goal {
                 blocked[index] = true
             }
         }
@@ -174,11 +179,11 @@ extension GameState {
     /// Every hex the unit could march to and stop on this watch, with the
     /// moves it would have left there: by the same steps a march takes, so
     /// through no other unit and into no foreign hold or other alliance's
-    /// hall.
+    /// hall or storehouse.
     public func reach(of unit: Unit) -> [Hex: Int] {
         guard unit.movesLeft > 0, let start = map.index(of: unit.position) else { return [:] }
         // What stands in the way: other companies, the wilds and their
-        // lairs, others' holds and other alliances' halls.
+        // lairs, others' holds and other alliances' halls and storehouses.
         var occupied = Set<Int>()
         for other in units where other.id != unit.id {
             if let index = map.index(of: other.position) { occupied.insert(index) }
@@ -194,6 +199,9 @@ extension GameState {
         }
         for hall in hallsStanding where !isOfHall(unit.owner, hall) {
             if let index = map.index(of: hall.position) { occupied.insert(index) }
+        }
+        for storehouse in storehousesStanding where !isOf(storehouse.alliance, unit.owner) {
+            if let index = map.index(of: storehouse.position) { occupied.insert(index) }
         }
         let full = movement(of: unit)
         let hexes = map.hexes

@@ -699,7 +699,7 @@ public final class GameSession {
         case .battle, .unitLost, .holdStruck, .holdCaptured, .seatMoved, .promoted, .ruinSearched, .holdFounded,
              .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired, .hunted,
              .gearFound, .carriedToInfirmary, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted, .standardStruck, .standardTorn,
-             .hallStruck, .hallTorn:
+             .hallStruck, .hallTorn, .storehouseStruck, .storehouseTorn:
             return true
         default:
             return false
@@ -1190,8 +1190,9 @@ public final class GameSession {
         case .takeHeritage: return .banner
         case .pursueAllianceStudy: return .lore
         case .giveToAlliance: return .coin
-        case .raiseAllianceHall: return .rise
+        case .raiseAllianceHall, .raiseStorehouse, .raiseYard: return .rise
         case .forge: return .anvil
+        case .layUp, .takeBack: return .coin
         default: return .select
         }
     }
@@ -1255,6 +1256,14 @@ public final class GameSession {
         case .hallStruck(_, let id, _, let by, _) where by != player && alliance == id: return .batter
         case .hallTorn(_, _, let by, _) where by == player: return .triumph
         case .hallTorn(_, let id, _, _) where alliance == id: return .dread
+        case .storehouseRaised(_, let id, _, _) where alliance == id: return .rise
+        case .storehouseRisen(_, let id, _) where alliance == id: return .complete
+        case .storehouseStruck(_, let id, _, let by, _) where by != player && alliance == id: return .batter
+        case .storehouseTorn(_, _, let by, _, _) where by == player: return .triumph
+        case .storehouseTorn(_, let id, _, _, _) where alliance == id: return .dread
+        case .laidUp(let house, _) where house == player: return .coin
+        case .tookBack(let house, _) where house == player: return .coin
+        case .yardRaised(_, let id, _, _, _) where alliance == id: return .rise
         case .gearForged(let house, _) where house == player: return .anvil
         case .scoutSeen(let hold, _) where state?.hold(hold)?.owner == player: return .envoy
         case .hunted(let hunt) where hunt.attackerOwner == player: return hunt.attackerKind == .bow ? .loose : .clash
@@ -1385,6 +1394,9 @@ public final class GameSession {
         case .standardRaised(_, _, _, let at), .standardStruck(_, _, _, let at), .standardTorn(_, _, _, let at):
             return at
         case .hallRaised(_, _, _, let at), .hallRisen(_, _, let at), .hallStruck(_, _, _, _, let at), .hallTorn(_, _, _, let at):
+            return at
+        case .storehouseRaised(_, _, _, let at), .storehouseRisen(_, _, let at), .storehouseStruck(_, _, _, _, let at),
+             .storehouseTorn(_, _, _, let at, _), .yardRaised(_, _, _, _, let at):
             return at
         case .itemUsed(_, _, let hold):
             return hold.flatMap { state.hold($0)?.position }

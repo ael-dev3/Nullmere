@@ -64,6 +64,50 @@ struct AlliancePanel: View {
             + "your rallies take \(AllianceHall.rallyCompanies) more companies, and the alliance may keep \(AllianceHall.standards) more standards."
     }
 
+    /// The alliance's coffers: what they hold, what its land yields them
+    /// each watch, and what they pay for.
+    static func coffersLine(_ alliance: Alliance, in state: GameState) -> String {
+        let yield = state.coffersYield(of: alliance.id)
+        return "Coffers: \(alliance.stores.isZero ? "nothing yet" : alliance.stores.description). Its land yields them "
+            + "\(yield.isZero ? "nothing yet" : yield.description) a watch, and its yards a tithe; they pay first for its standards, "
+            + "hall, storehouse and yards, its Houses the rest."
+    }
+
+    /// The alliance's storehouse: none yet and how one is raised, rising,
+    /// or standing with its ward.
+    static func storehouseLine(_ alliance: Alliance, in state: GameState) -> String {
+        guard let storehouse = state.storehouse(of: alliance.id) else {
+            return "Storehouse: none yet. Its leader raises it on the alliance's land, from that ground's panel, for \(Storehouse.cost); "
+                + "it rises over \(Storehouse.raising) watches."
+        }
+        let place = state.placeName(of: storehouse.position)
+        guard storehouse.isWhole else {
+            return "Storehouse: rising \(place), \(storehouse.built) of \(Storehouse.raising) watches done; "
+                + "its ward \(storehouse.ward) of \(Storehouse.maximumWard)."
+        }
+        return "Storehouse: standing \(place), its ward \(storehouse.ward) of \(Storehouse.maximumWard). What you lay up there is beyond "
+            + "your own storage and out of any taker's reach, unless a foe tears it down."
+    }
+
+    /// The alliance's yards, with what is left in each, or how one is raised.
+    static func yardsLine(_ alliance: Alliance, in state: GameState) -> String {
+        let yards = state.yards(of: alliance.id)
+        guard !yards.isEmpty else {
+            return "Yards: none yet. Its leader raises one of each store on the alliance's land, from that ground's panel, for "
+                + "\(Yard.cost); its companies alone work them, \(Yard.gathering)% faster."
+        }
+        return "Yards: " + yards.map { "the \($0.title), \($0.remaining) \($0.store.title.lowercased()) left" }.joined(separator: "; ") + "."
+    }
+
+    /// What a House has laid up in its alliance's storehouse, and its room.
+    static func laidUpLine(_ laid: Stock) -> String {
+        let room = "as much as \(Storehouse.room)"
+        return laid.isZero ? "You have laid up nothing yet: \(room), out of any taker's reach." : "You have laid up \(laid), of \(room)."
+    }
+
+    /// What a House lays up or takes back at a time.
+    static let measures = [Stock(grain: 100), Stock(timber: 100), Stock(stone: 100), Stock(moonsalt: 10)]
+
     // MARK: Sworn
 
     @ViewBuilder
@@ -77,6 +121,7 @@ struct AlliancePanel: View {
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)
+            AllianceStores(session: session, alliance: alliance)
             StudiesTogether(session: session, alliance: alliance, isLeader: board.isLeader)
             Rule(opacity: 0.18)
         }
@@ -275,6 +320,59 @@ private struct RallyRow: View {
             }
         }
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// What the alliance keeps of its own: its coffers, its storehouse with
+/// what the House has laid up there and the stores to lay up or take back,
+/// and its yards.
+private struct AllianceStores: View {
+    let session: GameSession
+    let alliance: Alliance
+
+    var body: some View {
+        let state = session.state
+        Caps("Its stores", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7)).accessibilityAddTraits(.isHeader)
+        ForEach([AlliancePanel.coffersLine(alliance, in: state), AlliancePanel.storehouseLine(alliance, in: state),
+                 AlliancePanel.yardsLine(alliance, in: state)], id: \.self) { line in
+            Text(verbatim: line)
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if state.wholeStorehouse(for: session.player) != nil {
+            let laid = state.laidUp(by: session.player)
+            Text(verbatim: AlliancePanel.laidUpLine(laid))
+                .font(.nm(10.5, weight: .medium))
+                .foregroundStyle(Palette.text(0.8))
+                .fixedSize(horizontal: false, vertical: true)
+            FlowLayout(spacing: 4) {
+                ForEach(AlliancePanel.measures, id: \.self) { measure in
+                    let refusal = state.refusal(of: .layUp(measure), as: session.player)
+                    QuietButton(title: "Lay up \(measure)", size: 8.5, enabled: refusal == nil, name: "Lay up \(measure) in the storehouse",
+                                why: refusal?.description) {
+                        session.perform(.layUp(measure))
+                    }
+                }
+            }
+            FlowLayout(spacing: 4) {
+                ForEach(AlliancePanel.measures, id: \.self) { measure in
+                    let refusal = state.refusal(of: .takeBack(measure), as: session.player)
+                    QuietButton(title: "Take back \(measure)", size: 8.5, enabled: refusal == nil,
+                                name: "Take back \(measure) from the storehouse", why: refusal?.description) {
+                        session.perform(.takeBack(measure))
+                    }
+                }
+                if !laid.isZero {
+                    let refusal = state.refusal(of: .takeBack(laid), as: session.player)
+                    QuietButton(title: "Take back all", size: 8.5, enabled: refusal == nil, name: "Take back all you laid up",
+                                why: refusal?.description) {
+                        session.perform(.takeBack(laid))
+                    }
+                }
+            }
+        }
+        Rule(opacity: 0.18)
     }
 }
 

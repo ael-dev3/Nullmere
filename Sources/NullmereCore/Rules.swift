@@ -95,6 +95,14 @@ extension GameState {
             return try raiseHall(at: hex, by: house)
         case let .forge(kind, quality):
             return try forge(kind, quality, by: house)
+        case let .raiseStorehouse(hex):
+            return try raiseStorehouse(at: hex, by: house)
+        case let .layUp(stock):
+            return try layUp(stock, by: house)
+        case let .takeBack(stock):
+            return try takeBack(stock, by: house)
+        case let .raiseYard(store, hex):
+            return try raiseYard(store, at: hex, by: house)
         case let .inviteToAlliance(target):
             return try invite(target, by: house)
         case let .askToJoin(allianceID):
@@ -159,7 +167,8 @@ extension GameState {
         if unit.kind.isMilitary, unit.position.distance(to: target) <= unit.kind.range,
            wild(at: target) != nil || lair(at: target) != nil || foe(at: target, for: house).map({ isAtWar(house, $0.owner) }) == true
             || (self.unit(at: target) == nil && standard(at: target).map { isAtWar(house, $0.raisedBy) } == true)
-            || (self.unit(at: target) == nil && hall(at: target).map { isFoe(house, of: $0) } == true) {
+            || (self.unit(at: target) == nil && hall(at: target).map { isFoe(house, of: $0) } == true)
+            || (self.unit(at: target) == nil && storehouse(at: target).map { isFoe(house, ofAlliance: $0.alliance) } == true) {
             return try attack(with: unitID, at: target, as: house)
         }
         guard unknown || path(for: unit, to: target) != nil else { throw .noPath }
@@ -201,8 +210,12 @@ extension GameState {
                 units[index].destination = nil
                 break
             }
-            // Only its alliance's companies enter a hall.
+            // Only its alliance's companies enter a hall, or a storehouse.
             if let hall = hall(at: next), !isOfHall(unit.owner, hall) {
+                units[index].destination = nil
+                break
+            }
+            if let storehouse = storehouse(at: next), !isOf(storehouse.alliance, unit.owner) {
                 units[index].destination = nil
                 break
             }
@@ -279,6 +292,14 @@ extension GameState {
             guard isFoe(house, of: hall) else { throw .notAtWar(alliance(hall.alliance)?.leader ?? hall.raisedBy) }
             guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
             return strike(hall: hall.id, with: unitID)
+        }
+        // An alliance's storehouse with no company keeping it.
+        if unit(at: target) == nil, let storehouse = storehouse(at: target), !isOf(storehouse.alliance, house) {
+            guard isFoe(house, ofAlliance: storehouse.alliance) else {
+                throw .notAtWar(alliance(storehouse.alliance)?.leader ?? storehouse.raisedBy)
+            }
+            guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
+            return strike(storehouse: storehouse.id, with: unitID)
         }
         // The wilds are every House's foe: no war is needed to strike them.
         if let wild = wild(at: target) {
@@ -403,6 +424,7 @@ extension GameState {
     func takesTheField(_ attacker: Unit, at hex: Hex) -> Bool {
         attacker.position.distance(to: hex) == 1 && hold(at: attacker.position) == nil && hold(at: hex) == nil
             && hall(at: hex).map { isOfHall(attacker.owner, $0) } != false
+            && storehouse(at: hex).map { isOf($0.alliance, attacker.owner) } != false
     }
 
     /// Attack and defence in a fight between two units, before chance.
@@ -571,7 +593,9 @@ extension GameState {
         if holds.contains(where: { $0.position.distance(to: hex) < 3 }) { return .tooCloseToHold }
         if let owner = territoryOwner(of: hex), owner != house { return .foreignTerritory }
         if shrine(at: hex) != nil { return .holySite }
-        if standard(at: hex) != nil || hall(at: hex) != nil { return .allianceGround }
+        if standard(at: hex) != nil || hall(at: hex) != nil || storehouse(at: hex) != nil || site(at: hex)?.isYard == true {
+            return .allianceGround
+        }
         return nil
     }
 

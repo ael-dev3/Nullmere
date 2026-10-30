@@ -817,6 +817,112 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(GameSession.isRealmsToTell(.hallStruck(hall: hall.id, alliance: sworn.id, ward: 10, by: 2, at: spot)))
     }
 
+    func testTheAlliancesStorehouseAndYardsAreRaisedShownAndDrawn() throws {
+        var state = world("stores shown")
+        let me = state.player
+        _ = try state.perform(.foundAlliance(name: "The Deep Barn"), as: me)
+        let seat = try XCTUnwrap(state.holds.first { $0.owner == me && $0.isSeat })
+        state.reveal(around: seat.position, range: 6, for: me)
+        state.houses[me].stock = Stock(grain: 900, timber: 900, stone: 900, moonsalt: 90)
+        let flag = try XCTUnwrap(seat.position.spiral(3).first { hex in
+            (2...3).contains(hex.distance(to: seat.position)) && state.refusal(of: .raiseStandard(at: hex), as: me) == nil
+        })
+        _ = try state.perform(.raiseStandard(at: flag), as: me)
+        let spot = try XCTUnwrap(flag.spiral(Standard.reach).first { state.refusal(of: .raiseStorehouse(at: $0), as: me) == nil })
+        let (session, link) = session(state)
+        let sworn = try XCTUnwrap(session.state.alliance(of: me))
+        XCTAssertTrue(StorehouseRow.offered(at: spot, to: me, of: sworn, in: session.state))
+        XCTAssertFalse(StorehouseRow.offered(at: spot, to: (me + 1) % 6, of: sworn, in: session.state), "To its leader alone")
+        XCTAssertEqual(YardRow.stores(at: spot, for: me, of: sworn, in: session.state), Resource.allCases)
+        XCTAssertEqual(YardRow.stores(at: spot, for: (me + 1) % 6, of: sworn, in: session.state), [])
+        XCTAssertTrue(AlliancePanel.coffersLine(sworn, in: session.state)
+            .hasPrefix("Coffers: nothing yet. Its land yields them 5 grain, 5 timber, 5 stone a watch"))
+        XCTAssertTrue(AlliancePanel.storehouseLine(sworn, in: session.state).hasPrefix("Storehouse: none yet. Its leader raises it"))
+        XCTAssertTrue(AlliancePanel.yardsLine(sworn, in: session.state).hasPrefix("Yards: none yet. Its leader raises one of each store"))
+        session.selection = .tile(spot)
+        PressableButtons.isListening = true
+        draw(SelectionPanel(session: session), width: 330, height: 1400)
+        XCTAssertTrue(PressableButtons.press("Raise the storehouse"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .raiseStorehouse(at: spot))
+        let storehouse = try XCTUnwrap(session.state.storehouse(at: spot), "Begun at once on the keeper's copy")
+        // Named on hover and in its tile's panel, told on the Alliance screen.
+        let named = try XCTUnwrap(HoverInfo.line(for: spot, in: session.state, explored: true, territory: session.state.territory()))
+        XCTAssertTrue(named.contains("the storehouse of The Deep Barn, rising, 0 of 2 watches done, ward 120 of 120"), named)
+        XCTAssertTrue(HoverInfo.described(storehouse, in: session.state).hasPrefix("Begun by "))
+        PressableButtons.isListening = true
+        draw(SelectionPanel(session: session), width: 330, height: 1400)
+        XCTAssertFalse(PressableButtons.press("Raise the storehouse"), "Not where it stands")
+        XCTAssertTrue(AlliancePanel.storehouseLine(try XCTUnwrap(session.state.alliance(of: me)), in: session.state).hasPrefix("Storehouse: rising "))
+        let frame = session.sceneFrame(at: 1)
+        XCTAssertTrue(frame.batches.contains { $0.key == .storehouse }, "Drawn rising")
+        XCTAssertTrue(frame.batches.contains { $0.key == .scaffold })
+        XCTAssertEqual(GameSession.cues(for: .raiseStorehouse(at: spot), events: [], in: session.state, player: me), [.rise])
+
+        // A yard of timber, raised from another ground's panel.
+        let ground = try XCTUnwrap(flag.spiral(Standard.reach).first { session.state.refusal(of: .raiseYard(.timber, at: $0), as: me) == nil })
+        session.selection = .tile(ground)
+        PressableButtons.isListening = true
+        draw(SelectionPanel(session: session), width: 330, height: 1400)
+        XCTAssertTrue(PressableButtons.press("A timber yard"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .raiseYard(.timber, at: ground))
+        let yard = try XCTUnwrap(session.state.site(at: ground))
+        XCTAssertTrue(yard.isYard)
+        XCTAssertEqual(SelectionPanel.siteTitle(yard, in: session.state), "Timber Yard of The Deep Barn")
+        XCTAssertTrue(SelectionPanel.siteLine(yard, in: session.state).hasPrefix("1500 timber left to gather. Only its alliance's companies work it"))
+        let land = try XCTUnwrap(session.state.sitesInLand.first { !$0.isYard })
+        XCTAssertEqual(SelectionPanel.siteTitle(land, in: session.state), land.title + " " + Narration.roman(land.level))
+        XCTAssertTrue(SelectionPanel.siteLine(land, in: session.state).hasSuffix("Choose a company of war and right-click here to send it."))
+        XCTAssertEqual(HoverInfo.named(yard, in: session.state), "Timber Yard of The Deep Barn, 1500 timber left")
+        XCTAssertEqual(HoverInfo.named(yard), "Timber Yard of an alliance, 1500 timber left")
+        PressableButtons.isListening = true
+        draw(SelectionPanel(session: session), width: 330, height: 1400)
+        XCTAssertFalse(PressableButtons.press("A timber yard"), "One of each store")
+        XCTAssertTrue(AlliancePanel.yardsLine(try XCTUnwrap(session.state.alliance(of: me)), in: session.state)
+            .hasPrefix("Yards: the Timber Yard, 1500 timber left"))
+        XCTAssertTrue(session.sceneFrame(at: 1).batches.contains { $0.key == .yard(.timber) }, "Drawn in its alliance's colour")
+        XCTAssertEqual(GameSession.place(of: .yardRaised(site: yard.id, alliance: sworn.id, house: me, store: .timber, at: ground),
+                                         in: session.state), ground)
+
+        // Whole, the keeper lays up stores there from the Alliance screen, and takes them back.
+        var kept = state
+        _ = try kept.perform(.raiseStorehouse(at: spot), as: me)
+        kept.storehouses![0].built = Storehouse.raising
+        kept.houses[me].stock = Stock(grain: 300, timber: 300, stone: 300, moonsalt: 30)
+        let (keeper, keeperLink) = self.session(kept)
+        XCTAssertTrue(AlliancePanel.storehouseLine(try XCTUnwrap(keeper.state.alliance(of: me)), in: keeper.state).hasPrefix("Storehouse: standing "))
+        XCTAssertEqual(AlliancePanel.laidUpLine(.zero),
+                       "You have laid up nothing yet: as much as 600 grain, 600 timber, 600 stone, 50 moonsalt, out of any taker's reach.")
+        XCTAssertEqual(AlliancePanel.laidUpLine(Stock(grain: 100)), "You have laid up 100 grain, of as much as 600 grain, 600 timber, 600 stone, 50 moonsalt.")
+        PressableButtons.isListening = true
+        draw(AlliancePanel(session: keeper), width: 360, height: 2400)
+        XCTAssertFalse(PressableButtons.press("Take back 100 grain"), "Nothing laid up yet")
+        XCTAssertTrue(PressableButtons.press("Lay up 100 grain"), "Among \(shown)")
+        XCTAssertEqual(keeperLink.sent.last, .layUp(Stock(grain: 100)))
+        XCTAssertEqual(keeper.state.laidUp(by: me), Stock(grain: 100), "Laid up at once on the keeper's copy")
+        PressableButtons.isListening = true
+        draw(AlliancePanel(session: keeper), width: 360, height: 2400)
+        XCTAssertTrue(PressableButtons.press("Take back all"), "Among \(shown)")
+        XCTAssertEqual(keeperLink.sent.last, .takeBack(Stock(grain: 100)))
+        XCTAssertEqual(keeper.state.laidUp(by: me), .zero)
+        XCTAssertEqual(GameSession.cues(for: .layUp(Stock(grain: 100)), events: [], in: keeper.state, player: me), [.coin])
+        XCTAssertEqual(AlliancePanel.measures.count, 4)
+
+        // Struck low, it burns; the realm's to tell when struck, heard where it stands.
+        var struck = kept
+        struck.storehouses![0].ward = 20
+        let keeperID = struck.takeID()
+        struck.units.append(NullmereCore.Unit(id: keeperID, kind: .spear, owner: me, position: spot, tier: 1))
+        let (burning, _) = self.session(struck)
+        let stage = WorldStage(map: burning.state.map, relief: Relief(map: burning.state.map))
+        let blazes = burning.happenings(poses: [], sights: [], stage: stage, at: Date(), time: 1).blazes
+        XCTAssertTrue(blazes.contains { abs($0.at.x - Relief.centre(of: spot).x) < 1e-3 }, "\(blazes)")
+        let hit = GameEvent.storehouseStruck(storehouse: storehouse.id, alliance: sworn.id, ward: 10, by: 2, at: spot)
+        XCTAssertTrue(GameSession.isRealmsToTell(hit))
+        XCTAssertEqual(GameSession.place(of: hit, in: burning.state), spot)
+        XCTAssertTrue(burning.state.storehousesStanding.allSatisfy { HoverInfo.named($0, in: burning.state).contains("ward 20 of 120") })
+        XCTAssertTrue(HoverInfo.described(try XCTUnwrap(burning.state.storehouse(at: spot)), in: burning.state).hasPrefix("Raised by "))
+    }
+
     func testTheForgeShowsItsMakingsAndForgesAPieceOfASet() throws {
         var state = world("forge shown")
         let me = state.player

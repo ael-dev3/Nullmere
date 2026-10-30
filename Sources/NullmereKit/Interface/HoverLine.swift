@@ -17,7 +17,7 @@ enum HoverInfo {
             parts.append(HoverInfo.named(wild) + ", of the wilds")
         }
         if let site = state.site(at: hex) {
-            parts.append(HoverInfo.named(site))
+            parts.append(HoverInfo.named(site, in: state))
         }
         if let shrine = state.shrine(at: hex) {
             parts.append(HoverInfo.named(shrine, in: state))
@@ -27,6 +27,8 @@ enum HoverInfo {
         }
         if let hall = state.hall(at: hex) {
             parts.append(HoverInfo.named(hall, in: state))
+        } else if let storehouse = state.storehouse(at: hex) {
+            parts.append(HoverInfo.named(storehouse, in: state))
         } else if let standard = state.standard(at: hex) {
             parts.append(HoverInfo.named(standard, in: state))
         } else if let land = state.allianceLand(at: hex).flatMap({ state.alliance($0) }) {
@@ -101,9 +103,40 @@ enum HoverInfo {
             + gives.prefix(1).uppercased() + gives.dropFirst()
     }
 
-    /// A site of the land as the map names it, with what is left in it.
-    static func named(_ site: Site) -> String {
-        "\(site.title) \(Narration.roman(site.level)), \(site.remaining) \(site.store.title.lowercased()) left"
+    /// A site of the land as the map names it, with what is left in it;
+    /// an alliance's yard, with whose it is.
+    static func named(_ site: Site, in state: GameState? = nil) -> String {
+        guard let yard = site.alliance else {
+            return "\(site.title) \(Narration.roman(site.level)), \(site.remaining) \(site.store.title.lowercased()) left"
+        }
+        let name = state?.alliance(yard)?.name ?? "an alliance"
+        return "\(site.title) of \(name), \(site.remaining) \(site.store.title.lowercased()) left"
+    }
+
+    /// An alliance's storehouse as the map names it: rising, how far, or
+    /// whole, with its ward.
+    static func named(_ storehouse: Storehouse, in state: GameState) -> String {
+        let name = state.alliance(storehouse.alliance)?.name ?? "a fallen alliance"
+        guard storehouse.isWhole else {
+            return "the storehouse of \(name), rising, \(storehouse.built) of \(Storehouse.raising) watches done, "
+                + "ward \(storehouse.ward) of \(Storehouse.maximumWard)"
+        }
+        return "the storehouse of \(name), ward \(storehouse.ward) of \(Storehouse.maximumWard): its Houses lay up their stores there"
+    }
+
+    /// An alliance's storehouse in words: who raised it, how far it has
+    /// risen, its ward, and what it keeps for its Houses.
+    static func described(_ storehouse: Storehouse, in state: GameState) -> String {
+        let raiser = state.houses.indices.contains(storehouse.raisedBy) ? state.houses[storehouse.raisedBy].title : "a fallen House"
+        let keeps = "each of its Houses may lay up to \(Storehouse.room) there, beyond its own storage and out of any taker's reach. "
+            + "Only its companies enter it; a House at war with one of its Houses may strike it when none keeps it, and carry off "
+            + "what was laid up in it."
+        guard storehouse.isWhole else {
+            return "Begun by \(raiser); rising, \(storehouse.built) of \(Storehouse.raising) watches done, its ward \(storehouse.ward) of "
+                + "\(Storehouse.maximumWard). Whole, " + keeps
+        }
+        return "Raised by \(raiser); its ward \(storehouse.ward) of \(Storehouse.maximumWard), mending \(Storehouse.mending) a watch. "
+            + keeps.prefix(1).uppercased() + keeps.dropFirst()
     }
 }
 

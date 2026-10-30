@@ -285,6 +285,48 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(stage.halls([]).batches.isEmpty)
     }
 
+    func testStorehousesAndYardsStandInTheirAlliancesColours() throws {
+        let stage = stage()
+        let hexes = Array(Self.state.map.hexes.filter { hex in
+            Self.state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true
+        }.prefix(4))
+        let blue = Vec4(0.1, 0.2, 0.9, 1), gold = Vec4(0.8, 0.7, 0.2, 1)
+        var frame = SceneFrame()
+        let batches = stage.storehouses([HallSight(hex: hexes[0], colour: blue), HallSight(hex: hexes[1], colour: gold, progress: 0.5)],
+                                        time: 2, into: &frame)
+        XCTAssertEqual(Set(batches.map(\.key)), [.storehouse, .scaffold])
+        let storehouses = try XCTUnwrap(batches.first { $0.key == .storehouse }).instances
+        XCTAssertEqual(storehouses.map(\.colour), [blue, gold])
+        XCTAssertEqual(storehouses[0].params.x, WorldStage.whole, "Whole, drawn whole")
+        XCTAssertLessThan(storehouses[1].params.x, WorldStage.whole, "Rising, drawn so far")
+        XCTAssertEqual(try XCTUnwrap(batches.first { $0.key == .scaffold }).instances.count, 1, "A scaffold about the one rising")
+        XCTAssertGreaterThan(storehouses[0].palette, 0, "Whole, its hoist works")
+        XCTAssertGreaterThan(storehouses[1].palette, 0, "Rising, its hoist rests, posed all the same")
+        var later = SceneFrame()
+        let rising = stage.storehouses([HallSight(hex: hexes[1], colour: gold, progress: 0.5)], time: 7, into: &later)
+        let start = Int(try XCTUnwrap(rising.first { $0.key == .storehouse }?.instances.first?.palette))
+        let rig = Library.model(.storehouse).rig.count
+        XCTAssertEqual(Array(later.palette[start..<start + rig]), Array(frame.palette[Int(storehouses[1].palette)..<Int(storehouses[1].palette) + rig]),
+                       "Still while it rises")
+        XCTAssertTrue(stage.storehouses([], time: 2, into: &frame).isEmpty)
+        // Yards, each its store's, smoking where salt is boiled, their machinery working.
+        let (yards, hearths) = stage.yards([(.grain, hexes[2], blue), (.moonsalt, hexes[3], gold)], time: 2, into: &frame)
+        XCTAssertEqual(Set(yards.map(\.key)), [.yard(.grain), .yard(.moonsalt)])
+        for batch in yards {
+            for instance in batch.instances {
+                let hex = batch.key == .yard(.grain) ? hexes[2] : hexes[3]
+                let centre = Relief.centre(of: hex)
+                XCTAssertEqual(instance.model.c3.x, centre.x, accuracy: 1e-4)
+                XCTAssertEqual(instance.model.c3.z, centre.z, accuracy: 1e-4)
+                XCTAssertEqual(instance.colour, batch.key == .yard(.grain) ? blue : gold)
+            }
+        }
+        XCTAssertEqual(hearths.map(\.hex), [hexes[3]], "The salt works' boiling house smokes")
+        XCTAssertEqual(yards.first { $0.key == .yard(.grain) }?.instances.first?.palette, 0, "A tilled acre stands still")
+        XCTAssertGreaterThan(yards.first { $0.key == .yard(.moonsalt) }?.instances.first?.palette ?? 0, 0, "The salt works' windlass turns")
+        XCTAssertTrue(stage.yards([], time: 2, into: &frame).batches.isEmpty)
+    }
+
     func testFirefliesWanderOverTheReedsAndGrassNearest() {
         let stage = stage()
         _ = stage.furnish(occupied: [], holds: [])

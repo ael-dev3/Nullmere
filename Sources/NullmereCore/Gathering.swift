@@ -12,14 +12,18 @@ public struct Site: Codable, Equatable, Identifiable, Sendable {
     public internal(set) var remaining: Int
     /// The watch it was found.
     public let found: Int
+    /// The alliance whose yard it is, raised on its land for its companies
+    /// alone; absent for the land's own.
+    public let alliance: Int?
 
-    public init(id: Int, store: Resource, level: Int, position: Hex, found: Int) {
+    public init(id: Int, store: Resource, level: Int, position: Hex, found: Int, alliance: Int? = nil) {
         self.id = id
         self.store = store
         self.level = min(max(level, 1), Site.highestLevel)
         self.position = position
-        self.remaining = Site.richness(of: store, level: self.level)
+        self.remaining = alliance == nil ? Site.richness(of: store, level: self.level) : Yard.richness(of: store)
         self.found = found
+        self.alliance = alliance
     }
 
     public static let highestLevel = 5
@@ -30,7 +34,10 @@ public struct Site: Codable, Equatable, Identifiable, Sendable {
     }
 
     /// Its name on the map.
-    public var title: String { Site.title(of: store) }
+    public var title: String { alliance == nil ? Site.title(of: store) : Yard.title(of: store) }
+
+    /// Whether it is an alliance's yard.
+    public var isYard: Bool { alliance != nil }
 
     public static func title(of store: Resource) -> String {
         switch store {
@@ -88,10 +95,12 @@ extension GameState {
     /// every hold.
     mutating func raiseSites() {
         if sites == nil { sites = [] }
-        guard sites!.count < sitesWanted else { return }
+        // An alliance's yards are its own, not the land's.
+        var count = sites!.count { $0.alliance == nil }
+        guard count < sitesWanted else { return }
         var random = random()
         var raised = 0
-        for _ in 0..<12 where raised < 3 && sites!.count < sitesWanted {
+        for _ in 0..<12 where raised < 3 && count < sitesWanted {
             let hex = map.hex(at: random.int(below: map.count))
             guard let tile = map[hex], tile.terrain.isPassable, tile.feature == nil, let store = Site.store(of: tile.terrain),
                   !isOccupied(hex), site(at: hex) == nil, shrine(at: hex) == nil else { continue }
@@ -100,6 +109,7 @@ extension GameState {
             let level = 1 + (min(far, 30) - GameState.sitesFromHolds) / 3 + random.int(below: 2)
             sites!.append(Site(id: takeID(), store: store, level: level, position: hex, found: watch))
             raised += 1
+            count += 1
         }
     }
 
@@ -119,6 +129,12 @@ extension GameState {
         let land = isOnOwnLand(unit) ? Standard.gathering : 0
         let rate = base * (100 + 15 * (unit.tier - 1)) / 100 * (100 + bonus(.gathering, for: unit) + land) / 100
         return store == .moonsalt ? rate / 4 : rate
+    }
+
+    /// What a company gathers each watch at a site: at an alliance's yard,
+    /// a quarter more.
+    public func gatheringRate(of unit: Unit, at site: Site) -> Int {
+        gatheringRate(of: unit, for: site.store) * (100 + (site.isYard ? Yard.gathering : 0)) / 100
     }
 
     /// The most of a store a company carries, with its tier, its House's
@@ -141,6 +157,7 @@ extension GameState {
         guard unit.owner == house else { return .notYours }
         guard unit.kind.isMilitary else { return .cannotGather(unit.kind) }
         guard let site = site(siteID), isExplored(site.position, by: house) else { return .unknownSite }
+        if let yard = site.alliance, alliance(of: house)?.id != yard { return .foreignYard }
         if let load = unit.load, !load.isZero {
             let carried = Resource.allCases.first { load[$0] > 0 } ?? site.store
             if carried != site.store || load[carried] >= capacity(of: unit, for: carried) { return .loadFull }
@@ -173,15 +190,26 @@ extension GameState {
                 continue
             }
             let site = sites![siteIndex]
+            // A yard of an alliance its House has left is no more its to work.
+            if let yard = site.alliance, alliance(of: unit.owner)?.id != yard {
+                events += turnHome(index)
+                continue
+            }
             guard units[index].position == site.position else { continue }
             let carried = units[index].load?[site.store] ?? 0
             let room = capacity(of: units[index], for: site.store) - carried
-            let amount = min(gatheringRate(of: units[index], for: site.store), site.remaining, max(room, 0))
+            let amount = min(gatheringRate(of: units[index], at: site), site.remaining, max(room, 0))
             if amount > 0 {
                 var load = units[index].load ?? .zero
                 load[site.store] += amount
                 units[index].load = load
                 sites![siteIndex].remaining -= amount
+                // A yard's alliance takes its tithe besides.
+                if let yard = site.alliance {
+                    var tithe = Stock.zero
+                    tithe[site.store] = (amount * Yard.tithe + 99) / 100
+                    fill(coffersOf: yard, with: tithe)
+                }
             }
             if sites![siteIndex].remaining <= 0 {
                 sites!.remove(at: siteIndex)

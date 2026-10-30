@@ -307,6 +307,47 @@ public final class WorldStage: @unchecked Sendable {
         return (WorldStage.batches(placed), hearths)
     }
 
+    /// The alliances' storehouses the keeper knows of, each in its
+    /// alliance's colour, one rising drawn up as far as it has come within
+    /// its scaffold. Their sights are a hall's: where, whose, how far risen.
+    public func storehouses(_ storehouses: [HallSight], time: Float, into frame: inout SceneFrame) -> [ModelBatch] {
+        var placed: [(ModelKey, ModelInstance)] = []
+        var poses: [PoseKey: UInt32] = [:]
+        for sight in storehouses {
+            let phase = WorldStage.phase(of: sight.hex, salt: 41)
+            for piece in HoldLayout.storehouse(at: sight.hex, progress: sight.progress, relief: relief) {
+                // Its hoist works while it stands whole, and rests while it rises.
+                let palette = Library.model(piece.key).rig.count > 1
+                    ? WorldStage.pose(piece.key, .idle, at: sight.progress >= 1 ? time + phase : 0, shared: &poses, into: &frame) : 0
+                placed.append((piece.key, ModelInstance(model: piece.transform, colour: sight.colour, rise: piece.risen ?? WorldStage.whole,
+                                                        phase: phase, hex: SIMD2(Int32(piece.hex.q), Int32(piece.hex.r)), palette: palette)))
+            }
+        }
+        return WorldStage.batches(placed)
+    }
+
+    /// The alliances' yards the keeper knows, each filling its hex's heart
+    /// in its alliance's colour, and where the salt works' fires smoke.
+    public func yards(_ yards: [(store: Resource, hex: Hex, colour: Vec4)], time: Float,
+                      into frame: inout SceneFrame) -> (batches: [ModelBatch], hearths: [Hearth]) {
+        var hearths: [Hearth] = []
+        var placed: [(ModelKey, ModelInstance)] = []
+        var poses: [PoseKey: UInt32] = [:]
+        for yard in yards {
+            let centre = Relief.centre(of: yard.hex)
+            let at = Vec3(centre.x, ground(atX: centre.x, z: centre.z) - Scatter.sink, centre.z)
+            let transform = Mat4.translation(at) * .rotationY(Float.pi / 2 - HoldLayout.frontAngle(of: yard.hex))
+            let key = ModelKey.yard(yard.store)
+            let phase = WorldStage.phase(of: yard.hex, salt: 43)
+            hearths += Library.smoke(of: key).map { Hearth(point: transform.transformPoint($0), hex: yard.hex) }
+            // Its machinery works: a derrick slewing, a windlass turning, a fire leaping.
+            let palette = Library.model(key).rig.count > 1 ? WorldStage.pose(key, .idle, at: time + phase, shared: &poses, into: &frame) : 0
+            placed.append((key, ModelInstance(model: transform, colour: yard.colour, phase: phase,
+                                              hex: SIMD2(Int32(yard.hex.q), Int32(yard.hex.r)), palette: palette)))
+        }
+        return (WorldStage.batches(placed), hearths)
+    }
+
     /// Where each hall being raised stands, for the dust of its building.
     public func risingHalls(_ halls: [HallSight]) -> [Vec3] {
         halls.filter { $0.progress < 1 }.map { sight in

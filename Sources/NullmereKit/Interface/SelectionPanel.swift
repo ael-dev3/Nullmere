@@ -674,7 +674,7 @@ struct UnitPanel: View {
         }
         switch unit.errand {
         case .gather(let siteID)?:
-            let site = state.site(siteID).map { "the \(HoverInfo.named($0))" } ?? "a site of the land"
+            let site = state.site(siteID).map { "the \(HoverInfo.named($0, in: state))" } ?? "a site of the land"
             return "Gathering at \(site)" + (load.map { ", carrying \($0)" } ?? "") + "."
         case .homeward?:
             return "Bringing \(load ?? "its load") home."
@@ -837,7 +837,7 @@ struct StandardRow: View {
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
-                CostLine(cost: Standard.cost, available: state.houses[session.player].stock)
+                CostLine(cost: Standard.cost, available: state.purse(of: session.player))
                 Spacer()
                 QuietButton(title: "Raise a standard", size: 8.5, enabled: refusal == nil, name: "Raise a standard of your alliance here",
                             why: refusal?.description) {
@@ -872,11 +872,84 @@ struct HallRow: View {
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
-                CostLine(cost: AllianceHall.cost, available: state.houses[session.player].stock)
+                CostLine(cost: AllianceHall.cost, available: state.purse(of: session.player))
                 Spacer()
                 QuietButton(title: "Begin the hall", size: 8.5, enabled: refusal == nil, name: "Begin your alliance's hall here",
                             why: refusal?.description) {
                     session.perform(.raiseAllianceHall(at: hex))
+                }
+            }
+        }
+    }
+}
+
+/// Raising the keeper's alliance's storehouse on its land, for its cost,
+/// or why it can't be raised there: offered to the alliance's leader on
+/// the alliance's land while it has none.
+struct StorehouseRow: View {
+    let session: GameSession
+    let hex: Hex
+
+    /// Whether the row is offered on a hex: to the leader, on the
+    /// alliance's land, while the alliance has no storehouse.
+    static func offered(at hex: Hex, to house: Int, of alliance: Alliance, in state: GameState) -> Bool {
+        alliance.leader == house && state.storehouse(of: alliance.id) == nil && state.allianceLand(at: hex) == alliance.id
+    }
+
+    var body: some View {
+        let state = session.state
+        let refusal = state.refusal(of: .raiseStorehouse(at: hex), as: session.player)
+        VStack(alignment: .leading, spacing: 5) {
+            Text(verbatim: "Raise your alliance's storehouse here. It rises over \(Storehouse.raising) watches; whole, each of its Houses "
+                 + "may lay up to \(Storehouse.room) there, beyond its own storage and out of any taker's reach.")
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                CostLine(cost: Storehouse.cost, available: state.purse(of: session.player))
+                Spacer()
+                QuietButton(title: "Raise the storehouse", size: 8.5, enabled: refusal == nil, name: "Raise your alliance's storehouse here",
+                            why: refusal?.description) {
+                    session.perform(.raiseStorehouse(at: hex))
+                }
+            }
+        }
+    }
+}
+
+/// Raising a yard of the keeper's alliance on its land, of a store it has
+/// none of yet, for its cost, or why it can't be raised there: offered to
+/// the alliance's leader on the alliance's land.
+struct YardRow: View {
+    let session: GameSession
+    let hex: Hex
+    /// The stores the alliance has no yard of.
+    let stores: [Resource]
+
+    /// The stores a yard may be raised of on a hex: to the leader, on the
+    /// alliance's land, those it has none of.
+    static func stores(at hex: Hex, for house: Int, of alliance: Alliance, in state: GameState) -> [Resource] {
+        guard alliance.leader == house, state.allianceLand(at: hex) == alliance.id else { return [] }
+        let raised = Set(state.yards(of: alliance.id).map(\.store))
+        return Resource.allCases.filter { !raised.contains($0) }
+    }
+
+    var body: some View {
+        let state = session.state
+        VStack(alignment: .leading, spacing: 5) {
+            Text(verbatim: "Raise a yard here: your alliance's companies alone work it, \(Yard.gathering)% faster, and its coffers take a "
+                 + "tithe of what they gather.")
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            CostLine(cost: Yard.cost, available: state.purse(of: session.player))
+            FlowLayout(spacing: 4) {
+                ForEach(stores, id: \.self) { store in
+                    let refusal = state.refusal(of: .raiseYard(store, at: hex), as: session.player)
+                    let yard = Yard.title(of: store).lowercased()
+                    QuietButton(title: "A \(yard)", size: 8.5, enabled: refusal == nil, name: "Raise a \(yard) here", why: refusal?.description) {
+                        session.perform(.raiseYard(store, at: hex))
+                    }
                 }
             }
         }
@@ -947,6 +1020,14 @@ private struct TilePanel: View {
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.text(0.6))
                         .fixedSize(horizontal: false, vertical: true)
+                } else if let storehouse = state.storehouse(at: hex) {
+                    Rule(opacity: 0.18)
+                    Caps("The storehouse of \(state.alliance(storehouse.alliance)?.name ?? "a fallen alliance")", size: 9.5, weight: .medium)
+                        .foregroundStyle(Palette.glowWords)
+                    Text(verbatim: HoverInfo.described(storehouse, in: state))
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
                 } else if let standard = state.standard(at: hex) {
                     Rule(opacity: 0.18)
                     Caps("A standard of \(state.alliance(standard.alliance)?.name ?? "a fallen alliance")", size: 9.5, weight: .medium)
@@ -963,12 +1044,18 @@ private struct TilePanel: View {
                     if HallRow.offered(at: hex, to: session.player, of: sworn, in: state) {
                         HallRow(session: session, hex: hex)
                     }
+                    if StorehouseRow.offered(at: hex, to: session.player, of: sworn, in: state) {
+                        StorehouseRow(session: session, hex: hex)
+                    }
+                    let stores = YardRow.stores(at: hex, for: session.player, of: sworn, in: state)
+                    if !stores.isEmpty, state.site(at: hex) == nil {
+                        YardRow(session: session, hex: hex, stores: stores)
+                    }
                 }
                 if let site = state.site(at: hex) {
                     Rule(opacity: 0.18)
-                    Caps(site.title + " " + Narration.roman(site.level), size: 9.5, weight: .medium).foregroundStyle(Palette.glowWords)
-                    Text(verbatim: "\(site.remaining) \(site.store.title.lowercased()) left to gather. "
-                         + "Choose a company of war and right-click here to send it.")
+                    Caps(SelectionPanel.siteTitle(site, in: state), size: 9.5, weight: .medium).foregroundStyle(Palette.glowWords)
+                    Text(verbatim: SelectionPanel.siteLine(site, in: state))
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.text(0.6))
                         .fixedSize(horizontal: false, vertical: true)
@@ -979,5 +1066,22 @@ private struct TilePanel: View {
         }
         .padding(16)
         .panelBackground()
+    }
+}
+
+extension SelectionPanel {
+    /// A site's name in its panel: the land's, with its level; an
+    /// alliance's yard, with whose it is.
+    static func siteTitle(_ site: Site, in state: GameState) -> String {
+        guard let yard = site.alliance else { return site.title + " " + Narration.roman(site.level) }
+        return "\(site.title) of \(state.alliance(yard)?.name ?? "an alliance")"
+    }
+
+    /// What is left in a site, and who may work it.
+    static func siteLine(_ site: Site, in state: GameState) -> String {
+        let left = "\(site.remaining) \(site.store.title.lowercased()) left to gather."
+        guard site.isYard else { return left + " Choose a company of war and right-click here to send it." }
+        return left + " Only its alliance's companies work it, \(Yard.gathering)% faster than anywhere else, and its coffers take a "
+            + "tithe besides. Choose a company of war of the alliance and right-click here to send it."
     }
 }

@@ -116,27 +116,32 @@ extension GameState {
             }
             guard let by else { return Tidings("A standard of \(name) \(placeName(of: at)) comes down, its House gone from the alliance.", .neutral) }
             return Tidings("\(houses[by].title) tears down your alliance's standard \(placeName(of: at)).", .bad)
+        // An alliance's works are told by its name while it stands, and
+        // still to those they concern once it is gone.
         case .hallRaised(_, let id, let house, let at):
-            guard let alliance = alliance(id), houses.indices.contains(house) else { return nil }
-            let place = placeName(of: at)
+            guard houses.indices.contains(house) else { return nil }
+            let name = alliance(id)?.name ?? "a fallen alliance", place = placeName(of: at)
             if house == viewer {
-                return Tidings("You begin the hall of \(alliance.name) \(place): it rises over \(AllianceHall.raising) watches.", .good)
+                return Tidings("You begin the hall of \(name) \(place): it rises over \(AllianceHall.raising) watches.", .good)
             }
-            if alliance.members.contains(viewer) {
+            if alliance(id)?.members.contains(viewer) == true {
                 return Tidings("\(houses[house].title) begins your alliance's hall \(place): it rises over \(AllianceHall.raising) watches.", .good)
             }
-            return Tidings("\(houses[house].title) begins a hall of \(alliance.name) \(place).", .neutral)
+            return Tidings("\(houses[house].title) begins a hall of \(name) \(place).", .neutral)
         case .hallRisen(_, let id, let at):
-            guard let alliance = alliance(id) else { return nil }
-            guard alliance.members.contains(viewer) else { return Tidings("The hall of \(alliance.name) stands whole \(placeName(of: at)).", .neutral) }
+            guard alliance(id)?.members.contains(viewer) == true else {
+                return Tidings("The hall of \(alliance(id)?.name ?? "a fallen alliance") stands whole \(placeName(of: at)).", .neutral)
+            }
             return Tidings("Your alliance's hall stands whole \(placeName(of: at)): its land reaches \(AllianceHall.reach) tiles about it, "
                            + "your rallies take \(AllianceHall.rallyCompanies) more companies, and the alliance may keep "
                            + "\(AllianceHall.standards) more standards.", .good)
         case .hallStruck(_, let id, let ward, let by, let at):
-            guard let alliance = alliance(id), houses.indices.contains(by) else { return nil }
+            guard houses.indices.contains(by) else { return nil }
             let whole = hall(at: at)?.wardLimit ?? AllianceHall.maximumWard
-            if by == viewer { return Tidings("Your company strikes the hall of \(alliance.name): its ward \(ward) of \(whole).", .neutral) }
-            guard alliance.members.contains(viewer) else { return nil }
+            if by == viewer {
+                return Tidings("Your company strikes the hall of \(alliance(id)?.name ?? "a fallen alliance"): its ward \(ward) of \(whole).", .neutral)
+            }
+            guard alliance(id)?.members.contains(viewer) == true else { return nil }
             return Tidings("\(houses[by].title) strikes your alliance's hall \(placeName(of: at)): its ward \(ward) of \(whole).", .bad)
         case .hallTorn(_, let id, let by, let at):
             let name = alliance(id)?.name ?? "a fallen alliance"
@@ -147,6 +152,57 @@ extension GameState {
             }
             guard let by else { return nil }
             return Tidings("\(houses[by].title) tears down your alliance's hall \(placeName(of: at)).", .bad)
+        case .storehouseRaised(_, let id, let house, let at):
+            guard houses.indices.contains(house) else { return nil }
+            let name = alliance(id)?.name ?? "a fallen alliance", place = placeName(of: at)
+            if house == viewer {
+                return Tidings("You begin the storehouse of \(name) \(place): it rises over \(Storehouse.raising) watches.", .good)
+            }
+            if alliance(id)?.members.contains(viewer) == true {
+                return Tidings("\(houses[house].title) begins your alliance's storehouse \(place): it rises over \(Storehouse.raising) watches.", .good)
+            }
+            return Tidings("\(houses[house].title) begins a storehouse of \(name) \(place).", .neutral)
+        case .storehouseRisen(_, let id, let at):
+            guard alliance(id)?.members.contains(viewer) == true else {
+                return Tidings("The storehouse of \(alliance(id)?.name ?? "a fallen alliance") stands whole \(placeName(of: at)).", .neutral)
+            }
+            return Tidings("Your alliance's storehouse stands whole \(placeName(of: at)): lay up your stores there, out of any taker's reach.", .good)
+        case .storehouseStruck(_, let id, let ward, let by, let at):
+            guard houses.indices.contains(by) else { return nil }
+            if by == viewer {
+                return Tidings("Your company strikes the storehouse of \(alliance(id)?.name ?? "a fallen alliance"): its ward \(ward) of "
+                               + "\(Storehouse.maximumWard).", .neutral)
+            }
+            guard alliance(id)?.members.contains(viewer) == true else { return nil }
+            return Tidings("\(houses[by].title) strikes your alliance's storehouse \(placeName(of: at)): its ward \(ward) of \(Storehouse.maximumWard).", .bad)
+        case .storehouseTorn(_, let id, let by, let at, let carried):
+            let name = alliance(id)?.name ?? "a fallen alliance"
+            if let by, by == viewer {
+                let spoils = carried.isZero ? "" : ", and carries off \(carried)"
+                return Tidings("Your company tears down the storehouse of \(name)\(spoils).", .good)
+            }
+            guard alliance(id)?.members.contains(viewer) == true else {
+                guard let by else { return Tidings("A storehouse \(placeName(of: at)) falls into ruin, its alliance no more.", .neutral) }
+                return Tidings("\(houses[by].title) tears down the storehouse of \(name) \(placeName(of: at)).", .neutral)
+            }
+            guard let by else { return nil }
+            return Tidings("\(houses[by].title) tears down your alliance's storehouse \(placeName(of: at)), and carries off what was laid up in it.", .bad)
+        case .laidUp(let house, let stock):
+            guard house == viewer else { return nil }
+            return Tidings("You lay up \(stock) in your alliance's storehouse.", .neutral)
+        case .tookBack(let house, let stock):
+            guard house == viewer else { return nil }
+            return Tidings("You take back \(stock) from your alliance's storehouse.", .neutral)
+        case .yardRaised(_, let id, let house, let store, let at):
+            guard houses.indices.contains(house) else { return nil }
+            let name = alliance(id)?.name ?? "a fallen alliance", yard = Yard.title(of: store).lowercased()
+            if house == viewer {
+                return Tidings("You raise a \(yard) for \(name) \(placeName(of: at)): your alliance's companies work it "
+                               + "\(Yard.gathering)% faster, and its coffers take a tithe.", .good)
+            }
+            guard alliance(id)?.members.contains(viewer) == true else { return Tidings("\(houses[house].title) raises a \(yard) for \(name).", .neutral) }
+            return Tidings("\(houses[house].title) raises a \(yard) for your alliance \(placeName(of: at)): its companies alone work it, "
+                           + "\(Yard.gathering)% faster.", .good)
         case .allianceStudyChosen(let id, let study):
             guard let alliance = alliance(id), alliance.members.contains(viewer) else { return nil }
             let grade = min((alliance.lore?.grade(of: study) ?? 0) + 1, AllianceStudy.grades)
