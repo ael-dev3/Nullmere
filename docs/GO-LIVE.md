@@ -177,11 +177,12 @@ repository.
 
 Needs a Mac with Apple silicon, macOS 26, Xcode 26, and Apple Intelligence
 turned on (System Settings > Apple Intelligence & Siri) and its model
-downloaded. CI's runners are virtual Macs: they ask their own model for the
-voices through the app too (the voices step of CI's build job), and hold
-every line to the rules when it speaks, but a virtual Mac's model is often
-not eligible to, and their figures are a virtual Mac's, not Apple
-silicon's own. A keeper's Mac is the one that counts.
+downloaded. CI's runners are virtual Macs. CI asks their model for the
+voices through the debug app too (the voices step of its build job), but
+so far they have told it they aren't eligible, though the release app's
+own check finds the model ready; the release build carries no hooks to
+ask it with. And their figures are a virtual Mac's, not Apple silicon's
+own. A keeper's Mac is the one that counts.
 
 - [ ] One command: Apple's on-device model speaks for every kind of envoy and
   chronicle entry, each line held to the voices' rules (spoken at all,

@@ -9,9 +9,6 @@
 #   scripts/check-voices.sh               # builds the debug app, then asks it
 #   scripts/check-voices.sh --app <path>  # asks a debug app already built
 #
-# The debug app is built under a name of its own, so an installed Nullmere
-# Online's settings are never touched; VOICES_BUNDLE_ID names another.
-#
 # Exits 0 when every line keeps the rules, 1 when one doesn't, and 2 when
 # this Mac's model isn't ready to speak at all (CI's virtual runners often
 # aren't eligible), saying why.
@@ -37,7 +34,7 @@ esac
 mkdir -p build
 if [ -z "$app" ]; then
     echo "== Building the debug app"
-    BUNDLE_ID="${VOICES_BUNDLE_ID:-online.nullmere.launcher.voices}" CONFIGURATION=debug OUTPUT_DIR=build/voices scripts/build-app.sh >/dev/null
+    BUNDLE_ID=online.nullmere.launcher.voices CONFIGURATION=debug OUTPUT_DIR=build/voices scripts/build-app.sh >/dev/null
     app="build/voices/Nullmere Online.app"
 fi
 [ -d "$app" ] || { echo "error: no app at $app" >&2; exit 1; }
