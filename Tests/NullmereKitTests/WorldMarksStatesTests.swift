@@ -76,6 +76,8 @@ final class WorldMarksStatesTests: XCTestCase {
         XCTAssertTrue(session.threatened.contains(mine.id), "Foes at the gates")
         XCTAssertEqual(session.state.unit(veteran)?.rank, 3, "A sworn veteran")
         try draw(WorldMarks(session: session))
+        // Over the world's models only what is read of them: bars, ranks, names.
+        try draw(WorldMarks(session: session, modelsDrawn: true))
         try draw(WorldFallback(session: session))
 
         // A strike against the foe's seat, its ward broken down.
@@ -115,6 +117,7 @@ final class WorldMarksStatesTests: XCTestCase {
         XCTAssertEqual(GameSession.Blow.flash(at: 0.5), 0)
         for share in [0.05, 0.1, 0.5] {
             try draw(WorldMarks(session: session, moment: blow.start.addingTimeInterval(share * duration)))
+            try draw(WorldMarks(session: session, moment: blow.start.addingTimeInterval(share * duration), modelsDrawn: true))
         }
         try draw(WorldMarks(session: session))
     }

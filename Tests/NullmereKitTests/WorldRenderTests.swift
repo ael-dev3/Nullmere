@@ -58,15 +58,53 @@ final class WorldRenderTests: XCTestCase {
         return renderer
     }
 
-    func draw(_ renderer: WorldRenderer, _ name: String, camera: Camera, tiles: [UInt8], selected: Hex? = nil) throws -> Drawn {
+    func draw(_ renderer: WorldRenderer, _ name: String, camera: Camera, tiles: [UInt8], selected: Hex? = nil,
+              scene: SceneFrame = SceneFrame()) throws -> Drawn {
         let world = WorldRenderTests.world
         try renderer.updateTiles(tiles, side: TileTexture.side(for: world.state.map))
         let target = try renderer.makeTarget(width: WorldRenderTests.width, height: WorldRenderTests.height)
         let frame = FrameUniforms.make(camera: camera, size: WorldRenderTests.size, pixelsPerPoint: 1, time: 20, motion: 1,
                                        radius: world.state.map.radius, terrain: world.terrain, hovered: nil, selected: selected,
                                        houses: WorldView.houseColours)
-        let pixels = try XCTUnwrap(renderer.pixels(frame, into: target), "\(name) drawn")
+        let pixels = try XCTUnwrap(renderer.pixels(frame, scene: scene, into: target), "\(name) drawn")
         return Drawn(name: name, pixels: pixels, camera: camera)
+    }
+
+    /// The keeper's seat and a company close in, with every model the
+    /// session stages: the keep and its walls and works, the figures in
+    /// formation, the land's furniture.
+    @MainActor
+    func testTheWorldsModelsStandOnTheLand() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        let world = WorldRenderTests.world
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let session = GameSession(state: world.state, store: LocalStore(directory: directory))
+        let scene = session.sceneFrame(at: 20)
+        print("RENDER models: \(scene.instanceCount) instances in \(scene.batches.count) kinds, \(scene.palette.count) poses")
+        XCTAssertGreaterThan(scene.instanceCount, 500)
+        let seat = try XCTUnwrap(world.state.seat(of: world.state.player))
+        var close = Camera(scale: 70, tilt: 0.95)
+        close.focus(on: seat.position)
+        let bare = try draw(renderer, "bare", camera: close, tiles: session.tileBytes)
+        let stood = try draw(renderer, "seat", camera: close, tiles: session.tileBytes, scene: scene)
+        // Where the seat stands, its keep and walls change the picture.
+        let centre = close.viewPoint(of: seat.position, height: Double(world.relief.height(of: seat.position)), in: WorldRenderTests.size)
+        var changed = 0
+        for dy in -90...30 {
+            for dx in -90...90 {
+                let x = Int(centre.x) + dx, y = Int(centre.y) + dy
+                guard x >= 0, y >= 0, x < WorldRenderTests.width, y < WorldRenderTests.height else { continue }
+                if abs(stood.luminance(x, y) - bare.luminance(x, y)) > 10 { changed += 1 }
+            }
+        }
+        XCTAssertGreaterThan(changed, 1500, "the seat's keep and walls stand on the land")
+        let company = try XCTUnwrap(world.state.units(of: world.state.player).first { $0.kind.isMilitary })
+        var near = Camera(scale: 150, tilt: 0.85, heading: 0.5)
+        near.focus(on: company.position)
+        let figures = try draw(renderer, "company", camera: near, tiles: session.tileBytes, scene: scene)
+        try keep([stood, figures], as: "world-models")
     }
 
     /// Where the view's ray through a pixel meets the world, and what is there.

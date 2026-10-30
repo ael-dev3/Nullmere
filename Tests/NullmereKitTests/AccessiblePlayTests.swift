@@ -282,6 +282,7 @@ final class AccessiblePlayTests: XCTestCase {
         session.camera.focus(on: try XCTUnwrap(session.state.unit(spear)).position)
         Contrast.shared.differentiates = true
         try draw(WorldMarks(session: session))
+        try draw(WorldMarks(session: session, modelsDrawn: true))
         for tone in [GameSession.Notice.Tone.good, .bad, .neutral] {
             try draw(ToneMark(tone: tone), width: 20, height: 20)
         }

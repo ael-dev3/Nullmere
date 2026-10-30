@@ -416,7 +416,7 @@ final class BlowTests: XCTestCase {
         session.showBlows([.battle(near), .battle(unseen)])
         XCTAssertEqual(session.blows.map(\.damage), [23], "Only blows the player could see")
         XCTAssertFalse(session.blows[0].againstPlayer)
-        try await Task.sleep(for: .seconds(GameSession.Blow.duration + 0.3))
+        try await Task.sleep(for: .seconds(GameSession.Blow.lingers + 0.3))
         XCTAssertTrue(session.blows.isEmpty)
     }
 }

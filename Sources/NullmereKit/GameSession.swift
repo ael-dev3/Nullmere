@@ -106,6 +106,12 @@ public final class GameSession {
     }
     /// The height of each hex's heart, by map index, worked out when first asked.
     @ObservationIgnored var heartHeights: [Double] = []
+    /// The world's models, laid out for the map in play when first drawn.
+    @ObservationIgnored var stage: WorldStage?
+    /// Which way each company faces: toward where it last marched or struck.
+    @ObservationIgnored var headings: [Int: Float] = [:]
+    /// Each hold's work rising, as last drawn.
+    @ObservationIgnored var risings: [Int: Rising] = [:]
     /// Holds and units the player can see right now, by map index.
     public private(set) var visible: [Bool] = []
     public private(set) var isEndingWatch = false
@@ -161,7 +167,7 @@ public final class GameSession {
         public let path: [Hex]
         public let start: Date
 
-        public static let secondsPerStep = 0.16
+        public static let secondsPerStep = 0.4
 
         public var duration: Double { Double(max(path.count - 1, 1)) * March.secondsPerStep }
     }
@@ -196,6 +202,8 @@ public final class GameSession {
         }
 
         public static let duration = 1.4
+        /// How long it is kept, for the fallen to fall and fade.
+        public static let lingers = 2.4
 
         /// A blow from beyond the next tile is a bow's.
         public var isRanged: Bool { from.distance(to: at) > 1 }
@@ -974,6 +982,9 @@ public final class GameSession {
             ground = TileTexture.Ground(map: state.map)
             moon = MoonMirror.place(for: state)
             relief = Relief(map: state.map)
+            stage = nil
+            headings = [:]
+            risings = [:]
         }
         tileBytes = TileTexture.bytes(for: state, viewer: player, visible: visible, owners: territory, ground: ground)
         tilesVersion += 1
@@ -1124,13 +1135,18 @@ public final class GameSession {
             blows.append(Blow(id: blowCounter, at: battle.at, damage: battle.damageDealt,
                               againstPlayer: battle.defenderOwner == player, start: now,
                               from: from, attacker: battle.attacker, defender: battle.defender, fallen: fallen))
+            // Each turns to face the other.
+            if from != battle.at {
+                headings[battle.attacker] = CompanyPose.heading(from: from, to: battle.at)
+                if let defender = battle.defender { headings[defender] = CompanyPose.heading(from: battle.at, to: from) }
+            }
             shown = true
         }
         guard shown else { return }
         Task { [weak self] in
-            try? await Task.sleep(for: .seconds(Blow.duration + 0.05))
+            try? await Task.sleep(for: .seconds(Blow.lingers + 0.05))
             guard let self else { return }
-            self.blows.removeAll { Date().timeIntervalSince($0.start) >= Blow.duration }
+            self.blows.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
         }
     }
 
@@ -1150,6 +1166,9 @@ public final class GameSession {
             else { continue }
             let march = March(path: [origin] + steps, start: now)
             marches[id] = march
+            if let last = march.path.last, march.path.count > 1 {
+                headings[id] = CompanyPose.heading(from: march.path[march.path.count - 2], to: last)
+            }
             longest = max(longest, march.duration)
         }
         guard longest > 0 else { return }

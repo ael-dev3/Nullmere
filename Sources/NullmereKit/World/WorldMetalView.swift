@@ -289,8 +289,8 @@ final class WorldMetalView: MTKView {
 
     // MARK: Drawing
 
-    /// Where models' meshes come from: none until the library is wired in.
-    static var meshSource: (ModelKey) -> NullmereModels.Mesh? = { _ in nil }
+    /// Where models' meshes come from: the library, each built once.
+    static var meshSource: (ModelKey) -> NullmereModels.Mesh? = { Library.model($0).mesh }
 
     override func draw(_ dirtyRect: NSRect) {
         guard let renderer, renderer.hasTiles, let land = renderer.land,
