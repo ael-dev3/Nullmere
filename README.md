@@ -397,8 +397,11 @@ scripts/raise-realm.sh maincloud               # publishes the module, starts th
 
 When the steward is up, the script reads the realm's status back as any
 keeper would, and fails if the realm doesn't answer. CI runs the dry run
-for maincloud, and raises a whole realm standing alone on its own
-SpacetimeDB the same way (`scripts/raise-realm.sh local`, then `--stop`).
+for maincloud, building the steward's image from `Dockerfile.steward` as
+the realm proper's is built and starting it once, so the image can't fall
+out of step with the code; and it raises a whole realm standing alone on
+its own SpacetimeDB the same way (`scripts/raise-realm.sh local`, then
+`--stop`).
 
 The script checks its tools, publishes the module, keeps the steward's
 token in `~/.config/nullmere` (readable by you alone), and starts the

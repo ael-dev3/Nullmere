@@ -376,7 +376,7 @@ jobs:
     name: Realm on SpacetimeDB
     runs-on: ubuntu-24.04
     container: swift:6.2-noble
-    timeout-minutes: 45
+    timeout-minutes: 60
     # "bash" runs with -o pipefail: a test that fails fails the step, though
     # its output goes through tee.
     defaults:
@@ -412,11 +412,26 @@ jobs:
           curl -sSf https://install.spacetimedb.com | sh -s -- --yes
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      # The Docker client, for the runner's own Docker, whose socket every
+      # job container is given: the steward's image is built as the realm
+      # proper's is, so its Dockerfile can't fall out of step with the code.
+      - name: Install the Docker client
+        run: |
+          curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.5.1.tgz \
+            | tar -xz -C /usr/local/bin --strip-components=1 docker/docker
+          docker version
+
       # The one command that raises the realm proper, rehearsed: it checks
-      # its tools, builds the module and the steward, and says what it
-      # would do, publishing nothing. With ael's sign-in it does it.
+      # its tools, builds the module and the steward's image from
+      # Dockerfile.steward, and says what it would do, publishing nothing.
+      # With ael's sign-in it does it. The steward in its image then starts,
+      # and asks which realm to steward.
       - name: Rehearse raising the realm proper
-        run: CONFIGURATION=debug STEWARD=background NULLMERE_STATE_DIR="$PWD/realm-state" scripts/raise-realm.sh maincloud --dry-run
+        run: |
+          STEWARD=docker NULLMERE_STATE_DIR="$PWD/realm-state" scripts/raise-realm.sh maincloud --dry-run
+          docker run --rm nullmere-steward > realm-steward-image.log 2>&1 || true
+          cat realm-steward-image.log
+          grep -q "usage: NullmereSteward" realm-steward-image.log
 
       # The same one command that raises the realm proper, without the
       # steward: the integration tests run their own.
