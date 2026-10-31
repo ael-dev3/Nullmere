@@ -253,7 +253,12 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
 
 /// Booleans as "count:base64", eight to a byte.
 enum Bits {
+    /// Bits none of which is set, as they travel: their count alone, as a
+    /// keeper's view carries every other House's explored ground.
+    static let noneSet = "-"
+
     static func encode(_ values: [Bool]) -> String {
+        guard values.contains(true) else { return "\(values.count):\(noneSet)" }
         var bytes = [UInt8](repeating: 0, count: (values.count + 7) / 8)
         for (index, value) in values.enumerated() where value {
             bytes[index / 8] |= 1 << UInt8(index % 8)
@@ -263,8 +268,9 @@ enum Bits {
 
     static func decode(_ text: String) -> [Bool]? {
         let parts = text.split(separator: ":", maxSplits: 1)
-        guard parts.count == 2, let count = Int(parts[0]), count >= 0,
-              let data = Data(base64Encoded: String(parts[1])), data.count == (count + 7) / 8 else { return nil }
+        guard parts.count == 2, let count = Int(parts[0]), count >= 0 else { return nil }
+        if parts[1] == noneSet { return Array(repeating: false, count: count) }
+        guard let data = Data(base64Encoded: String(parts[1])), data.count == (count + 7) / 8 else { return nil }
         let bytes = [UInt8](data)
         return (0..<count).map { bytes[$0 / 8] & (1 << UInt8($0 % 8)) != 0 }
     }

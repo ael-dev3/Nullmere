@@ -37,6 +37,24 @@ final class CompactWorldTests: XCTestCase {
         XCTAssertLessThan(later, 192 * 1024)
     }
 
+    /// A keeper's view of a realm of forty-eight seats: the other Houses'
+    /// ground, unexplored as a view tells it, travels as its count alone,
+    /// not as the map's length in zeros, and comes back as long.
+    func testAWideRealmsViewCarriesNoGroundOfOthers() throws {
+        var wide = RealmState(name: "The Wide Nullmere", seed: "small views", seats: 48, now: 0)
+        try wide.arrive("a", name: "Ama", now: 0)
+        let view = try XCTUnwrap(wide.view(for: "a"))
+        let data = try JSONEncoder().encode(view)
+        print("PERF a keeper's view of a realm of 48 seats: \(data.count / 1024) KB at the first watch")
+        XCTAssertLessThan(data.count, 192 * 1024)
+        let unexplored = "\"\(wide.world.map.count):\(Bits.noneSet)\""
+        XCTAssertEqual(String(decoding: data, as: UTF8.self).components(separatedBy: unexplored).count - 1, 47)
+        let decoded = try JSONDecoder().decode(RealmView.self, from: data)
+        XCTAssertEqual(decoded.world.houses.filter { $0.id != view.world.player }.map(\.explored),
+                       Array(repeating: Array(repeating: false, count: wide.world.map.count), count: 47))
+        XCTAssertEqual(decoded, view)
+    }
+
     func testAMarchTravelsAsItsWay() throws {
         let route = [Hex(3, -2), Hex(4, -2), Hex(4, -1), Hex(3, 0), Hex(3, -1)]
         let march = March(unit: 7, owner: 1, route: route, destination: Hex(9, 9), arrives: 12)
@@ -94,6 +112,13 @@ final class CompactWorldTests: XCTestCase {
         XCTAssertEqual(Feature.allCases.map(\.rawValue), ["moonsaltBed", "elderGrove", "stoneSeam", "darkLoam", "drownedRuin"])
         XCTAssertEqual(Bits.decode(Bits.encode([true, false, true, true, false, false, false, false, true])), [true, false, true, true, false, false, false, false, true])
         XCTAssertNil(Bits.decode("9:AAA"), "Too few bytes for the count")
+        // None set travels as its count alone, and comes back as many; the
+        // full form of none set still reads.
+        XCTAssertEqual(Bits.encode([false, false, false]), "3:-")
+        XCTAssertEqual(Bits.decode("3:-"), [false, false, false])
+        XCTAssertEqual(Bits.decode("0:-"), [])
+        XCTAssertEqual(Bits.decode("3:AA=="), [false, false, false])
+        XCTAssertNil(Bits.decode("-1:-"))
         XCTAssertNil(WorldMap.tiles(fromCells: Data([200, 0, 0]).base64EncodedString()), "No such terrain")
     }
 }

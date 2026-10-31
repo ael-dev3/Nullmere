@@ -33,9 +33,11 @@ extension GameState {
         }
         // Allies know what each other has under way, for they help it.
         let allies = Set(alliance(of: house)?.members ?? [])
+        // Ground no other House is known to have explored: one, shared.
+        let unknown = Array(repeating: false, count: map.count)
         for index in view.houses.indices where view.houses[index].id != house {
             view.houses[index].stock = .zero
-            view.houses[index].explored = Array(repeating: false, count: map.count)
+            view.houses[index].explored = unknown
             view.houses[index].research = Research()
             if allies.contains(view.houses[index].id) {
                 view.houses[index].research.pursuit = houses[index].research.pursuit
