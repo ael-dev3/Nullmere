@@ -7,7 +7,8 @@ import NullmereWorld
 
 /// Portraits of the world's own models for the interface: a commander, a
 /// company, a work, each drawn by the world's renderer on a small stage of
-/// open ground under the moon, framed by its size, and kept once drawn.
+/// open ground under the moon, framed by its size, painted, and kept once
+/// drawn.
 /// Nil where Metal can't draw, and the interface does without.
 @MainActor
 @Observable
@@ -111,7 +112,8 @@ final class Portraits {
             * Mat4.lookAt(eye: eye, target: look)
         frame.eye = Vec4(eye.x, eye.y, eye.z, 2)
         frame.haze.y = 0
-        guard let bytes = renderer.pixels(frame, scene: scene, into: target) else { return nil }
+        guard var bytes = renderer.pixels(frame, scene: scene, into: target) else { return nil }
+        Painting.paint(bgra: &bytes, width: Portraits.vistaWidth, height: Portraits.vistaHeight)
         return Portraits.image(bgra: bytes, width: Portraits.vistaWidth, height: Portraits.vistaHeight)
     }
 
@@ -198,7 +200,8 @@ final class Portraits {
         frame.haze.y = 0
         let instance = ModelInstance(model: .translation(Vec3(0, height, 0)), colour: colour ?? .zero, flags: 1)
         let scene = SceneFrame(batches: [ModelBatch(key: key, instances: [instance])])
-        guard let bytes = renderer.pixels(frame, scene: scene, into: target) else { return nil }
+        guard var bytes = renderer.pixels(frame, scene: scene, into: target) else { return nil }
+        Painting.paint(bgra: &bytes, width: Portraits.side, height: Portraits.side)
         return Portraits.image(bgra: bytes, side: Portraits.side)
     }
 

@@ -1227,7 +1227,12 @@ There is no music in the launcher; the game makes its own sound as it plays.
   holds has its vista at the head of its panel: the whole hold drawn by
   the same renderer from before its gate, its keep in its people's way,
   its walls and works as they stand, in its House's colour, drawn again
-  as it grows.
+  as it grows. Every portrait and vista is painted as it is drawn
+  ([`Painting`](Sources/NullmereWorld/Painting.swift)): its colours laid
+  on in strokes that keep to the forms, each spot taking the calmest of
+  the four patches about it (a pixel's reach for a portrait, two for a
+  vista, so windows and carts still show), dark ink along its edges, and
+  the weave of a canvas under it, its corners in shadow.
 - **Every surface has its grain.** Each colour a model is built of is
   stone, timber, thatch, slate or earth, or smooth, and the shader draws
   that grain on it in the model's own coordinates, so it keeps to the
