@@ -271,7 +271,8 @@ final class LauncherModelTests: XCTestCase {
         model.show(.settings)
 
         model.handle(.right) // Motion: System → Full
-        model.handle(.down)
+        model.handle(.down) // Quality
+        model.handle(.down) // Detail
         model.handle(.down)
         model.handle(.left) // Frame rate: 60 → 30
         model.choose(1, for: .startsInFullScreen)

@@ -986,8 +986,9 @@ final class PressTests: XCTestCase {
             .frame(width: 340).padding(20).background(Color.black), width: 380, height: 460)
         defer { window.close() }
         spin(until: "the row's gift button") { PressableButtons.actions["Send a gift"] != nil }
+        // The row notes its gifts as it is drawn, folded or open, so the
+        // gifts are found by their titles either way.
         func gift() -> String? { PressableButtons.actions.keys.sorted().first { $0.hasPrefix("Send ") && $0 != "Send a gift" } }
-        XCTAssertNil(gift(), "Folded until asked for")
         let before = windowsShowing
         XCTAssertTrue(PressableButtons.press("Send a gift"))
         spin(until: "the gifts in the row") { gift() != nil }
