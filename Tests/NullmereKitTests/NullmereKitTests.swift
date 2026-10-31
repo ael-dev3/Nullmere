@@ -23,12 +23,15 @@ final class WorldShaderTests: XCTestCase {
             XCTAssertEqual(Double(shader.y), pow(interface.green, 2.2), accuracy: 1e-5)
             XCTAssertEqual(Double(shader.z), pow(interface.blue, 2.2), accuracy: 1e-5)
         }
-        // Each a colour of its own.
+        // Each a colour of its own: the elder Houses' plainly apart, and
+        // every younger House's still apart from any beside it.
         let components = Palette.houses.compactMap { NSColor($0).usingColorSpace(.sRGB) }
+        XCTAssertEqual(components.count, Names.houses.count)
         for (index, a) in components.enumerated() {
-            for b in components[(index + 1)...] {
+            for (other, b) in components.enumerated() where other > index {
                 let distance = abs(a.redComponent - b.redComponent) + abs(a.greenComponent - b.greenComponent) + abs(a.blueComponent - b.blueComponent)
-                XCTAssertGreaterThan(distance, 0.3, "Two Houses too alike in colour")
+                let elder = other < Names.elder.count
+                XCTAssertGreaterThan(distance, elder ? 0.3 : 0.18, "Houses \(index) and \(other) too alike in colour")
             }
         }
     }

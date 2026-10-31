@@ -212,20 +212,22 @@ public enum WorldShaders {
         return (abs(h.x) + abs(h.y) + abs(h.x + h.y)) / 2;
     }
 
-    // The tile texture's four bytes for a hex: terrain, feature, relief,
-    // and what the keeper knows of it with whose land it is; beyond the map,
-    // the Spine, always known and never watched.
+    // The tile texture's four bytes for a hex: terrain; feature, with what
+    // the keeper knows of it (sixteen a step) and a hold's flag; relief; and
+    // whose land it is. Beyond the map, the Spine, always known and never
+    // watched.
     float4 nm_tileAt(int2 h, float radius NM_TEXTURE_ARGUMENT) {
         int r = int(radius);
         if (nm_hexDistance(h) > r) {
-            return float4(7.0, 0.0, 0.0, 16.0);
+            return float4(7.0, 16.0, 0.0, 0.0);
         }
         return floor(NM_TILE(h + int2(r, r)) * 255.0 + 0.5);
     }
 
     // Whether the keeper knows a hex at all, and whether they watch it now.
     float2 nm_knowledge(int2 h, float radius NM_TEXTURE_ARGUMENT) {
-        float seen = floor(nm_tileAt(h, radius NM_TEXTURE_PASS).w / 16.0);
+        float feature = nm_tileAt(h, radius NM_TEXTURE_PASS).y;
+        float seen = floor((feature - 128.0 * floor(feature / 128.0)) / 16.0);
         return float2(seen > 0.5 ? 1.0 : 0.0, seen > 1.5 ? 1.0 : 0.0);
     }
 
@@ -385,7 +387,7 @@ public enum WorldShaders {
         float4 extent;     // the land's corner and far corner (x, z)
         float4 haze;       // haze start, density, exposure, heights spacing
         float4 heights;    // the heights grid's corner (x, z), columns, rows
-        float4 houses[16]; // each House's colour, by sigil plus one
+        float4 houses[128]; // each House's colour, by sigil plus one
         float4 lights[8];  // the world's own lights: where and how far, then colour
     };
 
@@ -449,7 +451,7 @@ public enum WorldShaders {
         float2 p = in.world.xz;
         int2 h = nm_hexRound(nm_axial(p));
         float4 tile = nm_tileAt(h, radius, tiles);
-        float owner = tile.w - 16.0 * floor(tile.w / 16.0);
+        float owner = tile.w;
         float3 albedo = nm_grain(p, in.colour);
         float3 edge = nm_hexEdge(p, h);
         float pixel = max(fwidth(p.x), fwidth(p.y));
@@ -458,11 +460,11 @@ public enum WorldShaders {
         // it meets another's.
         float3 lit = float3(0.0);
         if (owner > 0.5 && in.known > 0.5) {
-            float3 house = frame.houses[int(owner)].rgb;
+            float3 house = frame.houses[min(int(owner), 127)].rgb;
             albedo = mix(albedo, house * 0.5, 0.14);
             int2 across = h + int2(int(edge.y), int(edge.z));
             float4 other = nm_tileAt(across, radius, tiles);
-            float otherOwner = other.w - 16.0 * floor(other.w / 16.0);
+            float otherOwner = other.w;
             if (abs(otherOwner - owner) > 0.5) {
                 float line = 1.0 - smoothstep(pixel * 0.6, pixel * 2.2, edge.x);
                 lit += house * line * 0.35;

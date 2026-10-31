@@ -2,12 +2,22 @@ import NullmereCore
 
 /// Packs what the world shader needs to know about each tile into four
 /// bytes, laid out as a square texture indexed by axial coordinates:
-/// terrain, feature, relief, and what the viewer knows of it (whether the
-/// tile is unknown, remembered or watched) with the colour of the House
-/// whose territory it is.
+/// terrain; feature, with what the viewer knows of the tile (whether it
+/// is unknown, remembered or watched) and whether a hold stands there;
+/// relief; and the colour of the House whose territory it is, its sigil
+/// plus one, so that every House a lake seats has its own.
 public enum TileTexture {
     /// Set in the feature byte where a hold stands.
     public static let holdFlag: UInt8 = 0x80
+    /// In the feature byte, what the viewer knows of a tile, sixteen for
+    /// each step: none, remembered, watched.
+    public static let seenStep: UInt8 = 16
+
+    /// What the viewer knows of a tile from its feature byte: 0 nothing,
+    /// 1 remembered, 2 watched.
+    public static func seen(_ feature: UInt8) -> Int {
+        Int((feature & ~holdFlag) / seenStep)
+    }
 
     public static func side(for map: WorldMap) -> Int {
         2 * map.radius + 1
@@ -67,7 +77,8 @@ public enum TileTexture {
             if holdTiles.contains(index) {
                 bytes[offset + 1] |= TileTexture.holdFlag
             }
-            bytes[offset + 3] = UInt8(seen * 16 + owner)
+            bytes[offset + 1] |= UInt8(seen) * TileTexture.seenStep
+            bytes[offset + 3] = UInt8(clamping: owner)
         }
         return bytes
     }

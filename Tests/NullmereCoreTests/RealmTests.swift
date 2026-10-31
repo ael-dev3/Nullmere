@@ -134,16 +134,58 @@ final class RealmTests: XCTestCase {
         XCTAssertThrowsError(try realm.perform(.fortify(unit: 1), by: "c")) { XCTAssertEqual($0 as? RealmError, .noSeat) }
     }
 
-    /// A realm has two to twelve seats, as many as one lake can seat; the
-    /// steward refuses aloud to begin one of any other size, never making
-    /// it another without a word.
-    func testARealmHasTwoToTwelveSeats() {
-        XCTAssertEqual(RealmState.seatRange, 2...12)
-        XCTAssertEqual(RealmState.defaultSeats, RealmState.seatRange.upperBound, "The realm proper seats as many as it can")
+    /// A realm has two to ninety-six seats, as many as one lake can seat;
+    /// the steward refuses aloud to begin one of any other size, never
+    /// making it another without a word. The realm proper seats twelve; a
+    /// realm of more lies on a lake as much wider as keeps each seat as
+    /// much country.
+    func testARealmHasTwoToNinetySixSeats() {
+        XCTAssertEqual(RealmState.seatRange, 2...96)
+        XCTAssertEqual(RealmState.seatRange.upperBound, Names.houses.count, "A name for every House a lake seats")
+        XCTAssertEqual(RealmState.defaultSeats, 12)
         for seats in [2, 7, 12] {
             XCTAssertEqual(realm(seats: seats).seats, seats)
             XCTAssertEqual(realm(seats: seats).world.houses.count, seats)
+            XCTAssertEqual(RealmState.radius(forSeats: seats), RealmState.defaultRadius)
+            XCTAssertTrue(realm(seats: seats).world.houses.allSatisfy { Names.elder.contains($0.name) }, "Only elder Houses at a lake of twelve or fewer")
         }
+        XCTAssertEqual(RealmState.radius(forSeats: 13), 37)
+        XCTAssertEqual(RealmState.radius(forSeats: 48), 72)
+        XCTAssertEqual(RealmState.radius(forSeats: 96), 102)
+        XCTAssertEqual(realm(seats: 2).radius, 18, "A lake as wide as asked, when asked")
+    }
+
+    /// A realm of forty-eight seats: the twelve elder Houses and thirty-six
+    /// younger ones, each with its own name and colour, room between their
+    /// seats on a lake twice as wide, and a keeper's watches passing there.
+    func testARealmOfFortyEightSeatsSeatsEveryHouse() throws {
+        let started = Date()
+        var realm = RealmState(name: "The Wide Nullmere", seed: "forty-eight", seats: 48, now: 0)
+        XCTAssertEqual(realm.radius, 72)
+        XCTAssertEqual(realm.world.map.radius, 72)
+        let names = realm.world.houses.map(\.name)
+        XCTAssertEqual(Set(names).count, 48, "Every House its own name")
+        XCTAssertTrue(Set(Names.elder).isSubset(of: Set(names)), "Every elder House seated")
+        XCTAssertEqual(Set(realm.world.houses.map(\.sigil)).count, 48, "and its own colours")
+        XCTAssertTrue(realm.world.houses.allSatisfy { Names.houses.firstIndex(of: $0.name) == $0.sigil }, "Each colour its name's")
+        let seats = realm.world.houses.compactMap { realm.world.seat(of: $0.id)?.position }
+        XCTAssertEqual(seats.count, 48)
+        var nearest = Int.max
+        for (index, seat) in seats.enumerated() {
+            for other in seats[(index + 1)...] { nearest = min(nearest, seat.distance(to: other)) }
+        }
+        XCTAssertGreaterThanOrEqual(nearest, 6, "Room between the seats")
+        XCTAssertEqual(realm.world.relations.count, 48 * 47 / 2)
+        let keeper = try realm.arrive("wide", name: "Ama", now: 0)
+        let house = try XCTUnwrap(keeper.house)
+        XCTAssertEqual(realm.world.houses[house].name, "Ama")
+        for _ in 0..<3 {
+            realm.arriveIfNeeded()
+            _ = realm.tick(now: 1e12)
+        }
+        XCTAssertEqual(realm.world.watch, 4)
+        XCTAssertEqual(realm.world.livingHouses.count, 48)
+        print("PERF realm of 48: made and 3 watches in \(String(format: "%.2f", Date().timeIntervalSince(started))) s")
     }
 
     func testASeatLongLeftGoesToAKeeperWhoIsWaiting() throws {

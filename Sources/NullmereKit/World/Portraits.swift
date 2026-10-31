@@ -158,7 +158,7 @@ final class Portraits {
             try renderer.setLand(TerrainMesh(relief: Relief(map: map)), for: map)
             let ground = TileTexture.Ground(map: map)
             var bytes = ground.bytes
-            for offset in ground.offsets { bytes[offset + 3] = 32 }
+            for offset in ground.offsets { bytes[offset + 1] |= 2 * TileTexture.seenStep }
             try renderer.updateTiles(bytes, side: TileTexture.side(for: map))
             stage = (renderer, try renderer.makeTarget(width: Portraits.side, height: Portraits.side))
             isReady = true

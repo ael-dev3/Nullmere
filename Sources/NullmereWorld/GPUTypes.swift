@@ -23,12 +23,13 @@ public struct FrameUniforms: Equatable, Sendable {
     public var haze: Vec4
     /// The heights grid's corner (x, z) and its columns and rows.
     public var heights: Vec4
-    /// Each House's colour, by its sigil plus one, linear.
-    public var houses: (Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4)
+    /// Each House's colour, by its sigil plus one, linear: slot zero is no
+    /// House's, and every House a lake can seat has a slot after it.
+    public var houses: InlineArray<128, Vec4>
     /// The world's own lights: four places and reaches, then their four colours.
     public var lights: (Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4)
 
-    public static let houseSlots = 16
+    public static let houseSlots = 128
     public static let lightSlots = 4
 
     public init(viewProjection: Mat4 = .identity, eye: Vec4 = .zero, moon: Vec4 = .zero, viewport: Vec4 = .zero,
@@ -44,10 +45,9 @@ public struct FrameUniforms: Equatable, Sendable {
         self.extent = extent
         self.haze = haze
         self.heights = heights
-        var slots = [Vec4](repeating: Vec4(0.6, 0.6, 0.6, 1), count: FrameUniforms.houseSlots)
+        var slots = InlineArray<128, Vec4>(repeating: Vec4(0.6, 0.6, 0.6, 1))
         for (index, colour) in houses.prefix(FrameUniforms.houseSlots).enumerated() { slots[index] = colour }
-        self.houses = (slots[0], slots[1], slots[2], slots[3], slots[4], slots[5], slots[6], slots[7],
-                       slots[8], slots[9], slots[10], slots[11], slots[12], slots[13], slots[14], slots[15])
+        self.houses = slots
         self.lights = (.zero, .zero, .zero, .zero, .zero, .zero, .zero, .zero)
     }
 
@@ -73,7 +73,7 @@ public struct FrameUniforms: Equatable, Sendable {
     }
 
     public var houseColours: [Vec4] {
-        withUnsafeBytes(of: houses) { Array($0.bindMemory(to: Vec4.self)) }
+        houses.indices.map { houses[$0] }
     }
 }
 

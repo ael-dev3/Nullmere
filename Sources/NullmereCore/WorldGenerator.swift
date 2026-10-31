@@ -42,12 +42,12 @@ public struct WorldGenerator: Sendable {
     public let houseCount: Int
     public let lake: Lake
 
-    /// The most Houses a lake seats.
-    public static let mostHouses = 12
+    /// The most Houses a lake seats: one for every House with a name.
+    public static let mostHouses = 96
 
     public init(seed: UInt64, radius: Int = 24, houseCount: Int = 5, lake: Lake = .round) {
         precondition(radius >= 12, "the world needs room for a lake and its shores")
-        precondition((2...WorldGenerator.mostHouses).contains(houseCount), "between two and twelve Houses")
+        precondition((2...WorldGenerator.mostHouses).contains(houseCount), "between two and ninety-six Houses")
         self.seed = seed
         self.radius = radius
         self.houseCount = houseCount
@@ -188,11 +188,14 @@ public struct WorldGenerator: Sendable {
             map[index].relief = Int((reliefNoise.fractal(p.x * 6, p.y * 6) * 100).rounded())
         }
 
-        // 7. Seats, as far apart as possible, a short walk from the shore.
+        // 7. Seats, as far apart as possible, a short walk from the shore:
+        // a walk as much longer as a wider lake is wider than the realm
+        // proper's, so that its many seats have room.
+        let walk = max(5, 5 * radius / 36)
         let candidates = hexes.filter { hex in
             guard let index = map.index(of: hex), map[index].terrain.isSettleable else { return false }
             let shore = fromWater[index]
-            return (2...5).contains(shore) && position(hex).d < 0.8
+            return (2...walk).contains(shore) && position(hex).d < 0.8
                 && !map.neighbors(of: hex).contains { map[$0]?.terrain == .spine }
         }
         var seats: [Hex] = []

@@ -5,7 +5,8 @@
 <h1 align="center">Nullmere Online</h1>
 
 Nullmere Online is a persistent multiplayer 4X for the Mac, for a small
-community: one realm, twelve seats round its lake, open to anyone with the
+community: one realm, twelve seats round its lake (a realm may be raised
+with as many as ninety-six round a wider one), open to anyone with the
 app. Every keeper shares one world, a great dead lake, held by a realm
 server. Keepers explore, expand, build up their stores, make pacts and wage
 war, and the alliances, politics and
@@ -284,15 +285,23 @@ as the realm will, and takes the realm's word as final.
   Moonspire risen. A name and an identity are had for the asking, so the
   realm takes in keepers new to it a few at a time, three in any watch's
   length; one who comes just after is asked to try again in a few minutes.
-- **Seats.** The lake has twelve seats. Seats no keeper holds are played by
-  stewards, the same minds that once played rivals, until a keeper claims
-  them. When every seat is held, a newcomer waits at the front door and
-  steps in the moment one falls free. A seat whose keeper has been away a
-  week goes back to the stewards for whoever is waiting (an hour, for a
-  seat taken and never played); its House stands as it was, and the
-  keeper, returning, waits in turn. You are there while your Mac is in
-  use: the game tells the realm so, and stops when no one has used the Mac
-  for five minutes, so a game left open with no one at it counts as gone.
+- **Seats.** The lake has twelve seats, held by the twelve elder Houses. A
+  realm raised with more, up to ninety-six, lies on a lake as much wider
+  as keeps each seat as much country (a radius of 72 hexes for forty-eight
+  seats and 102 for ninety-six, against the realm proper's 36), its seats
+  a longer walk from the shore so that they keep their room (on each
+  lake's shape, forty-eight seats lay eight hexes or more apart and
+  ninety-six seven or more), and the seats past twelve go to younger
+  Houses, each with a name and a colour of its own, on the map and in its
+  words. Seats no keeper holds are played by stewards, the same minds that
+  once played rivals, until a keeper claims them. When every seat is
+  held, a newcomer waits at the front door and steps in the moment one
+  falls free. A seat whose keeper has been away a week goes back to the
+  stewards for whoever is waiting (an hour, for a seat taken and never
+  played); its House stands as it was, and the keeper, returning, waits
+  in turn. You are there while your Mac is in use: the game tells the
+  realm so, and stops when no one has used the Mac for five minutes, so a
+  game left open with no one at it counts as gone.
   A keeper whose House falls may take up an open seat once an age, and
   otherwise looks on until the next. Meanwhile, after two watches away
   (counted in watches, however quickly they turn), a caretaker keeps the
@@ -440,7 +449,7 @@ If the name `nullmere` is taken on maincloud, choose another with
 `REALM_ADDRESS=https://maincloud.spacetimedb.com/<name> scripts/build-app.sh`;
 the address is kept in the app's Info.plist. `NULLMERE_REALM_NAME`,
 `NULLMERE_REALM_SEED`, `NULLMERE_REALM_SEATS` and `NULLMERE_WATCH_SECONDS`
-shape a new realm; a realm has two to twelve seats, and the steward
+shape a new realm; a realm has two to ninety-six seats, and the steward
 refuses to start, saying why, when asked for any other number.
 `STEWARD=foreground` keeps the steward in the terminal. The Frontier is
 raised the same way into a database of its own with `NULLMERE_FRONTIER=1`

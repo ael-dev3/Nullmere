@@ -155,18 +155,28 @@ public struct RealmState: Codable, Equatable, Sendable {
     /// The seats a realm may have: as many Houses as one lake can seat.
     public static let seatRange = 2...min(Names.houses.count, WorldGenerator.mostHouses)
 
-    public init(name: String, seed: String, seats: Int = RealmState.defaultSeats, radius: Int = RealmState.defaultRadius, watchLength: Double = RealmState.defaultWatchLength,
+    /// How wide a realm's lake is for its seats: the realm proper's for
+    /// twelve or fewer, and wider for more, so that each seat keeps as
+    /// much country as one of the twelve.
+    public static func radius(forSeats seats: Int) -> Int {
+        guard seats > defaultSeats else { return defaultRadius }
+        return Int((Double(defaultRadius) * (Double(seats) / Double(defaultSeats)).squareRoot()).rounded())
+    }
+
+    /// A new realm; its lake as wide as its seats ask unless `radius` says.
+    public init(name: String, seed: String, seats: Int = RealmState.defaultSeats, radius: Int? = nil, watchLength: Double = RealmState.defaultWatchLength,
                 now: Double) {
         // A realm of a size no lake can seat is refused aloud, never quietly
         // made another size.
-        precondition(RealmState.seatRange.contains(seats), "A realm has two to twelve seats, not \(seats).")
+        precondition(RealmState.seatRange.contains(seats),
+                     "A realm has \(RealmState.seatRange.lowerBound) to \(RealmState.seatRange.upperBound) seats, not \(seats).")
         self.name = name
         self.seedText = seed
         self.seats = seats
-        self.radius = radius
+        self.radius = radius ?? RealmState.radius(forSeats: seats)
         self.watchLength = watchLength
         age = 1
-        world = RealmState.world(seed: seed, age: 1, seats: self.seats, radius: radius)
+        world = RealmState.world(seed: seed, age: 1, seats: self.seats, radius: self.radius)
         keepers = []
         watchBegan = now
     }
@@ -430,7 +440,7 @@ public struct RealmState: Codable, Equatable, Sendable {
 
     private func unusedHouseName() -> String {
         let used = Set(world.houses.map { $0.name.lowercased() } + keepers.map { $0.name.lowercased() })
-        let spare = (Names.houses + RealmState.reserveNames).first { !used.contains($0.lowercased()) }
+        let spare = (Names.elder + RealmState.reserveNames + Names.younger).first { !used.contains($0.lowercased()) }
         return spare ?? "Nameless \(world.houses.count)"
     }
 

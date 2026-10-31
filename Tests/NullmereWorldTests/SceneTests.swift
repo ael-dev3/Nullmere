@@ -6,8 +6,10 @@ import XCTest
 
 final class SceneTests: XCTestCase {
     func testTheGPUReadsTheFrameAndTheModelsAsTheShadersDeclareThem() {
-        XCTAssertEqual(MemoryLayout<FrameUniforms>.stride, 640)
-        XCTAssertEqual(MemoryLayout<FrameUniforms>.offset(of: \FrameUniforms.lights), 512)
+        XCTAssertEqual(MemoryLayout<FrameUniforms>.stride, 2432)
+        XCTAssertEqual(MemoryLayout<FrameUniforms>.offset(of: \FrameUniforms.lights), 2304)
+        XCTAssertTrue(WorldShaders.source.contains("float4 houses[128];"))
+        XCTAssertLessThan(MemoryLayout<FrameUniforms>.stride, 4096, "Small enough to be sent with each frame")
         XCTAssertEqual(MemoryLayout<Mote>.stride, 32)
         XCTAssertTrue(WorldShaders.source.contains("float4 lights[8];"))
         XCTAssertTrue(WorldShaders.source.contains("struct Mote"))
@@ -59,7 +61,8 @@ final class SceneTests: XCTestCase {
         XCTAssertEqual(frame.eye.w, 12)
         XCTAssertEqual(frame.houseColours[1], Vec4(1, 0, 0, 1), "a House's colour a slot past its sigil")
         XCTAssertEqual(frame.houseColours[0], Vec4(0.6, 0.6, 0.6, 1))
-        XCTAssertEqual(frame.houseColours.count, 16)
+        XCTAssertEqual(frame.houseColours.count, FrameUniforms.houseSlots)
+        XCTAssertEqual(frame.houseColours[3], Vec4(0.6, 0.6, 0.6, 1), "Slots no House has, grey")
         XCTAssertEqual(frame.extent.x, terrain.mesh.bounds.min.x)
         XCTAssertEqual(frame.heights, Vec4(terrain.originX, terrain.originZ, Float(terrain.columns), Float(terrain.rows)))
         XCTAssertGreaterThan(frame.haze.x, 0)

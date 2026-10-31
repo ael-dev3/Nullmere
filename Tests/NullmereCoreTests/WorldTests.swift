@@ -80,6 +80,23 @@ final class LakeShapeTests: XCTestCase {
         return seen
     }
 
+    /// The widest lakes seat their Houses as fairly as the realm proper's:
+    /// forty-eight round a lake of radius 72, each shape, every seat with
+    /// room and reachable on foot.
+    func testEveryLakeSeatsFortyEightFairly() {
+        for lake in Lake.allCases {
+            let world = WorldGenerator(seed: Seed.from("wide shape"), radius: 72, houseCount: 48, lake: lake).generate()
+            XCTAssertEqual(Set(world.seats).count, 48, "\(lake)")
+            var nearest = Int.max
+            for (index, seat) in world.seats.enumerated() {
+                for other in world.seats[(index + 1)...] { nearest = min(nearest, seat.distance(to: other)) }
+            }
+            XCTAssertGreaterThanOrEqual(nearest, 6, "Room between the seats on \(lake)")
+            let walk = reachable(from: world.seats[0], in: world.map)
+            XCTAssertTrue(world.seats.allSatisfy(walk.contains), "Every seat reachable on foot on \(lake)")
+        }
+    }
+
     func testEveryLakeSeatsTwelveFairly() {
         var masks: [Lake: [Bool]] = [:]
         for lake in Lake.allCases {

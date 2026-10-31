@@ -167,8 +167,19 @@ public struct GameState: Codable, Equatable, Sendable {
         draws = 0
         recorded = []
 
-        var names = settings.keepers > 0 ? Names.houses.filter { $0 != settings.playerHouse } : Names.houses
+        // The elder Houses take the seats in a shuffled order; a lake that
+        // seats more than they fill gives the rest to the younger Houses,
+        // shuffled after them.
+        let open = { (names: [String]) in settings.keepers > 0 ? names.filter { $0 != settings.playerHouse } : names }
+        var names = open(Names.elder)
         random.shuffle(&names)
+        // A kept first seat takes its keeper's name, not one of these.
+        let named = settings.keepers > 0 ? world.seats.count - 1 : world.seats.count
+        if named > names.count {
+            var younger = open(Names.younger)
+            random.shuffle(&younger)
+            names += younger
+        }
         // Tempers dealt evenly and at random: no seat number always the
         // same kind of neighbour.
         var temperaments = world.seats.indices.map { Temperament.allCases[$0 % Temperament.allCases.count] }
