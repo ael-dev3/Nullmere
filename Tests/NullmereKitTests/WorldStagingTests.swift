@@ -198,13 +198,14 @@ final class WorldStagingTests: XCTestCase {
         let still = try XCTUnwrap(session.companyPoses(at: blow.start.addingTimeInterval(1.2), animated: false, time: 51)
             .first { $0.unit == struck.id })
         XCTAssertEqual(standing.position, still.position, "and stands where it stood")
-        // A commander's skill firing at the striker's head: a ring of gold, and its light.
+        // A commander's skill firing at the striker's head, in its archetype's
+        // look: a vanguard's fire thrown out, and its light, warm.
         session.showBlows([.skillFired(commander: 1, house: player, skill: .fellCharge, at: striker.position)])
         let fury = try XCTUnwrap(session.furies.last)
         XCTAssertEqual(fury.at, striker.position)
         XCTAssertEqual(fury.skill, .fellCharge)
         let fired = session.sceneFrame(at: 60, now: fury.start.addingTimeInterval(0.3))
-        XCTAssertTrue(fired.lights.contains { $0.colour.y > 1 }, "the fury's light")
+        XCTAssertTrue(fired.lights.contains { $0.colour.x > 1 && $0.colour.x > 2 * $0.colour.z }, "the fury's light, warm as its fire")
         let foes = (player + 1) % session.state.houses.count
         let hidden = try XCTUnwrap(session.state.map.hexes.first { !session.isVisible($0) })
         session.showBlows([.skillFired(commander: 2, house: foes, skill: .harry, at: hidden)])

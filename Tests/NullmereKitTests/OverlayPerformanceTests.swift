@@ -4,8 +4,10 @@ import XCTest
 @testable import NullmereKit
 import NullmereWorld
 
-/// The marks drawn over the map (holds, companies, names, routes, reach)
-/// must leave the GPU its frame: measured offscreen over a busy late game.
+/// The marks drawn over the world (names, bars, ranks, routes, reach)
+/// must leave the GPU its frame: measured offscreen over a busy late game,
+/// as the game draws them over the world's models, and as a Mac that
+/// cannot draw the world draws them flat, tokens and all.
 @MainActor
 final class OverlayPerformanceTests: XCTestCase {
     func testTheMarksDrawWellWithinAFrame() throws {
@@ -20,8 +22,8 @@ final class OverlayPerformanceTests: XCTestCase {
 
         let size = CGSize(width: 1512, height: 982)
         // A fresh renderer each time: one renderer keeps its image.
-        func renderOnce() -> Double {
-            let renderer = ImageRenderer(content: WorldMarks(session: session).frame(width: size.width, height: size.height))
+        func renderOnce(modelsDrawn: Bool) -> Double {
+            let renderer = ImageRenderer(content: WorldMarks(session: session, modelsDrawn: modelsDrawn).frame(width: size.width, height: size.height))
             renderer.scale = 2
             let start = ThreadClock.milliseconds()
             let image = renderer.cgImage
@@ -29,17 +31,19 @@ final class OverlayPerformanceTests: XCTestCase {
             XCTAssertNotNil(image)
             return elapsed
         }
-        _ = renderOnce()
-        var times: [Double] = []
-        for _ in 0..<12 {
-            times.append(renderOnce())
-        }
-        times.sort()
-        let median = times[times.count / 2]
-        print("PERFMETRIC marks.cpu.p50 \(String(format: "%.3f", median))")
         let holds = session.state.holds.filter { session.isExplored($0.position) }.count
-        print("PERF marks \(Int(size.width))x\(Int(size.height))@2x, \(holds) holds and \(session.state.units.count) companies, "
-              + "\(session.blows.count) blows, \(session.reach.count) tiles of reach: median \(String(format: "%.2f", median)) ms")
-        XCTAssertLessThan(median, 5, "The marks must leave the frame to the world")
+        for (name, modelsDrawn) in [("marks", true), ("marks.flat", false)] {
+            _ = renderOnce(modelsDrawn: modelsDrawn)
+            var times: [Double] = []
+            for _ in 0..<12 {
+                times.append(renderOnce(modelsDrawn: modelsDrawn))
+            }
+            times.sort()
+            let median = times[times.count / 2]
+            print("PERFMETRIC \(name).cpu.p50 \(String(format: "%.3f", median))")
+            print("PERF \(name) \(Int(size.width))x\(Int(size.height))@2x, \(holds) holds and \(session.state.units.count) companies, "
+                  + "\(session.blows.count) blows, \(session.reach.count) tiles of reach: median \(String(format: "%.2f", median)) ms")
+            XCTAssertLessThan(median, 5, "The marks must leave the frame to the world (\(name))")
+        }
     }
 }

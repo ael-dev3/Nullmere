@@ -81,10 +81,16 @@
       "note": "the worst frames: half again the baseline, and never over a 60 Hz frame"
     },
     "marks.cpu.p50": {
-      "baseline": 1.1,
+      "baseline": null,
       "gpu": true,
       "cpu": true,
-      "note": "about a millisecond: the file's slack of a millisecond carries the noise"
+      "note": "the marks as drawn over the world's models: recorded until CI's runner has measured it, then held"
+    },
+    "marks.flat.cpu.p50": {
+      "baseline": null,
+      "gpu": true,
+      "cpu": true,
+      "note": "the flat marks of a Mac that cannot draw the world, tokens and all: recorded until CI's runner has measured it, then held"
     },
     "order.cpu.p50": {
       "baseline": 3.9,
