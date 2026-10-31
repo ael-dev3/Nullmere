@@ -1,4 +1,5 @@
 import AppKit
+import LauncherCore
 import LauncherKit
 import NullmereKit
 import SwiftUI
@@ -50,10 +51,23 @@ final class OnlineAppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+        // The run is marked, and its faults watched, so the next launch can
+        // tell of one that stops on a fault. What the last run left was
+        // read as the ledger was made, before this.
+        _ = RunLedger.shared.atLaunch
+        RunLedger.shared.begin(version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")
+        NSSetUncaughtExceptionHandler { exception in
+            FaultWatch.record(exception: "\(exception.name.rawValue): \(exception.reason ?? "no reason given")")
+        }
         // `swift run` starts a bare executable rather than an app bundle;
         // make sure it still behaves like a regular, frontmost Mac app.
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
+    }
+
+    /// The run ends as it should: nothing is left for the next launch to tell.
+    func applicationWillTerminate(_ notification: Notification) {
+        RunLedger.shared.end()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

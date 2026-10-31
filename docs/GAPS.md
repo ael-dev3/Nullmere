@@ -155,7 +155,7 @@ To build, reimagined:
 - [ ] Title and menu music in the launcher, a theme for each lake
 - [ ] A work that hastens marches and one that hastens building (Warpkeep's Barracks and Cathedral)
 - [ ] Works placed by the keeper within a hold (Warpkeep's free placement), on the town's grid
-- [ ] A crash met by a page that says what happened and opens the world again
+- [x] A crash met by a page that says what happened and opens the world again: a fault caught as it strikes, and the next launch opening on where the keeper was, when, and what stopped it, with Open the world again, Report it (a new issue, written out) and Back
 
 Left out by design, with what stands in their place:
 - Play in a browser, on phones and tablets, and as a Farcaster Mini App: Nullmere Online is a native Mac game on Apple silicon (the on-device model is part of it); Sign In With Farcaster becomes the keychain identity and its recovery phrase

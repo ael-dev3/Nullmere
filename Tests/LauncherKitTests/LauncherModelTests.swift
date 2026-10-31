@@ -362,4 +362,41 @@ final class LauncherModelTests: XCTestCase {
         XCTAssertFalse(model.settings.largerText, "Set elsewhere, the row follows")
         XCTAssertEqual(model.settings.selectedIndex(for: .text), 0)
     }
+
+    /// After a run that stopped on a fault, the launcher opens on its page:
+    /// the arrows choose, Report it writes the report as a new issue for
+    /// the keeper to read before sending, Back or Esc goes to the menu, and
+    /// Open the world again crosses into the realm; going on or back puts
+    /// the page away.
+    func testARunThatStoppedOpensOnItsPage() async throws {
+        let model = makeModel(realm: true)
+        let mishap = Mishap(mark: RunMark(version: "1.2.0", began: 0, place: .world, since: 0, realm: "The Nullmere", watch: 23),
+                            cause: "SIGSEGV")
+        model.open(on: nil)
+        XCTAssertEqual(model.screen, .title, "Nothing to tell")
+        model.open(on: mishap)
+        model.completeIntro()
+        XCTAssertEqual(model.screen, .mishap)
+        XCTAssertEqual(model.mishap, mishap)
+        XCTAssertEqual(model.footerHint, "← → choose  ·  Esc back")
+        model.handle(.right)
+        XCTAssertEqual(model.mishapSelection, 1)
+        model.handle(.confirm)
+        XCTAssertEqual(opened.count, 1)
+        XCTAssertTrue(opened.first?.absoluteString.hasPrefix("https://github.com/ael-dev3/Nullmere/issues/new?") == true)
+        XCTAssertEqual(model.screen, .mishap, "Still on the page, to go on from")
+        model.handle(.right)
+        model.handle(.right)
+        XCTAssertEqual(model.mishapSelection, 2, "Never past the end")
+        model.handle(.back)
+        XCTAssertEqual(model.screen, .title)
+        XCTAssertNil(model.mishap, "Put away")
+
+        // Again, and into the world.
+        model.open(on: mishap)
+        XCTAssertEqual(model.mishapSelection, 0, "Open the world again lit first")
+        model.handle(.confirm)
+        XCTAssertNil(model.mishap)
+        try await waitUntil(self.crossings == 1)
+    }
 }

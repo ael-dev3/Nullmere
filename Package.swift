@@ -51,7 +51,7 @@ targets += [
     // The world's interface: the front door, the Metal world, the panels.
     .target(name: "NullmereKit", dependencies: ["NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "LauncherCore", "LauncherKit"]),
     // The "Nullmere Online" app: the launcher, and through Play, the realm.
-    .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherKit", "NullmereKit"]),
+    .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherCore", "LauncherKit", "NullmereKit"]),
     .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore", "NullmereTestSupport"]),
     .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
 ]

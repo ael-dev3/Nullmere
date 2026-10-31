@@ -466,6 +466,9 @@ public final class GameApp {
         let age = session?.realmStatus?.age ?? doorAge ?? 1
         let session = GameSession(link: link, house: house, world: world, store: store.forAge(age, of: Self.storeKey(for: address)),
                                   voice: Self.voice(), host: hosted)
+        // Where the keeper is, should the run stop here.
+        let realm: String? = { if case .open(let status) = self.door { return status.name } else { return nil } }()
+        RunLedger.shared.note(.world, realm: realm, watch: world.watch)
         session.keeper = keeper
         session.onNewAge = { [weak self] keeper, world in self?.arrived(keeper, in: world) }
         session.risenInAge = keeper.reseatedInAge
@@ -530,6 +533,7 @@ public final class GameApp {
     private func backToTheDoor() {
         ambience.isAtWar = false
         phase = .frontDoor
+        RunLedger.shared.note(.door)
         link?.onEvent = { [weak self] event in self?.hear(event) }
         link?.connect()
     }

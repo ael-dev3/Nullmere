@@ -219,6 +219,19 @@ Settings, Tab moves focus between controls and Space presses the focused one.
   scroll by hand. Esc or Return goes back.
 - **Quit** fades to black and quits.
 
+Should Nullmere Online stop on a fault (a trap in its own code, a bad
+reach for memory, an abort, or an error it couldn't recover from), the
+next launch opens on a page that says so: where the keeper was (the
+launcher, the realm's front door, or the world, with its realm and
+watch), when, and what stopped it, in plain words, and that nothing in
+the realm was lost. Open the world again crosses to the realm as Play
+does; Report it opens a new issue in this repository with the account
+written out, to read before sending; Back goes to the menu. The app
+keeps a mark of the run under way in its Application Support folder and
+lets it go as it quits; a fault writes its name beside the mark as it
+strikes. A run quit by force, or a Mac that stopped, leaves no fault and
+makes no page.
+
 ### News
 
 The news lives in this repository, in [`news/news.json`](news/news.json):

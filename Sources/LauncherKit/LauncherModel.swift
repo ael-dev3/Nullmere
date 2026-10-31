@@ -13,6 +13,9 @@ public final class LauncherModel {
         case news
         case settings
         case credits
+        /// The page the launcher opens on after a run that stopped on a
+        /// fault.
+        case mishap
     }
 
     /// Where the news on show came from.
@@ -118,6 +121,7 @@ public final class LauncherModel {
         case .news: return selectedNews?.link == nil ? "↑ ↓ choose  ·  Esc back" : "↑ ↓ choose  ·  Return open  ·  Esc back"
         case .settings: return "← → change  ·  Esc back"
         case .credits: return "Esc back"
+        case .mishap: return "← → choose  ·  Esc back"
         }
     }
 
@@ -307,6 +311,55 @@ public final class LauncherModel {
         case .news: handleInNews(key)
         case .settings: handleInSettings(key)
         case .credits: if key == .back || key == .confirm { returnToTitle() }
+        case .mishap: handleOnMishap(key)
+        }
+    }
+
+    // MARK: A run that stopped
+
+    /// The last run, when it stopped on a fault: told on the page the
+    /// launcher opens on, until the keeper chooses a way on.
+    public private(set) var mishap: Mishap?
+    /// The lit choice on its page.
+    var mishapSelection = 0
+
+    /// The ways on from the page, in the order it shows them.
+    static let mishapChoices = ["Open the world again", "Report it", "Back"]
+
+    /// The launcher opens on the page of the last run, if it stopped on a
+    /// fault (shown once the requirement is met, if it isn't yet).
+    public func open(on mishap: Mishap?) {
+        guard let mishap else { return }
+        self.mishap = mishap
+        mishapSelection = 0
+        screen = .mishap
+    }
+
+    /// The page's choice at `index`: into the realm again, the report
+    /// written as a new issue for the keeper to read before sending, or
+    /// back to the menu. Going on or back puts the page away.
+    func chooseOnMishap(_ index: Int) {
+        mishapSelection = index
+        switch index {
+        case 0:
+            mishap = nil
+            play()
+        case 1:
+            if let address = mishap?.reportAddress() { _ = environment.open(address) }
+        default:
+            mishap = nil
+            returnToTitle()
+        }
+    }
+
+    private func handleOnMishap(_ key: KeyCommand) {
+        switch key {
+        case .left, .up, .right, .down:
+            mishapSelection = ChoiceRow.step(mishapSelection, by: key, among: Self.mishapChoices.count)
+        case .confirm:
+            chooseOnMishap(mishapSelection)
+        case .back:
+            chooseOnMishap(Self.mishapChoices.count - 1)
         }
     }
 

@@ -1,3 +1,4 @@
+import LauncherCore
 import LauncherKit
 import Observation
 import SwiftUI
@@ -13,6 +14,9 @@ public final class OnlineShell {
 
     public convenience init() {
         self.init(launcher: LauncherModel(), app: GameApp(opensAtOnce: false))
+        // The last run, if it stopped on a fault: the launcher opens on its
+        // page.
+        launcher.open(on: RunLedger.shared.atLaunch)
     }
 
     public init(launcher: LauncherModel, app: GameApp) {
@@ -25,11 +29,13 @@ public final class OnlineShell {
 
     func enterRealm() {
         inRealm = true
+        RunLedger.shared.note(.door)
         app.open()
     }
 
     func leaveRealm() {
         inRealm = false
+        RunLedger.shared.note(.launcher)
         launcher.returnFromRealm()
     }
 

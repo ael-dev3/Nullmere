@@ -86,6 +86,26 @@ final class LauncherViewTests: XCTestCase {
         XCTAssertEqual(model.screen, .title)
     }
 
+    /// After a run that stopped on a fault, the launcher opens on its page,
+    /// drawn whole: what happened, that nothing was lost, the ways on; and
+    /// whole within the root, as the launcher shows it.
+    func testTheMishapsPageDraws() throws {
+        let model = model()
+        model.open(on: Mishap(mark: RunMark(version: "1.2.0", began: 1_793_472_120, place: .world, since: 1_793_472_210,
+                                            realm: "The Nullmere", watch: 23), cause: "SIGSEGV"))
+        model.completeIntro()
+        XCTAssertEqual(model.screen, .mishap)
+        PressableButtons.isListening = true
+        defer { PressableButtons.isListening = false }
+        try draw(MishapPanel(model: model), width: 1000, height: 500)
+        try draw(LauncherRootView(model: model))
+        XCTAssertEqual(MishapPanel.hints.count, LauncherModel.mishapChoices.count, "A hint for each way on")
+        // Each way on is a button the keeper presses.
+        XCTAssertTrue(PressableButtons.press("Back"))
+        XCTAssertEqual(model.screen, .title)
+        XCTAssertNil(model.mishap)
+    }
+
     func testEveryRequirementStateDraws() throws {
         for readiness in [ModelReadiness.checking, .deviceNotEligible, .appleIntelligenceNotEnabled, .modelNotReady, .unavailable] {
             let model = model(readiness)
