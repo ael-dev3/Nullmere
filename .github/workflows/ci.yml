@@ -329,8 +329,9 @@ jobs:
           grep -h "Executed .* tests" build-test.log 2>/dev/null | tail -1 || true
           # Failures last, at the log's very foot, where its tail finds them.
           grep -hE "error: |failed \(" build.log build-test.log 2>/dev/null | grep -v "^ *|" | awk '!seen[$0]++' | head -40 || true
-          # A figure over its allowance among them, with the runner's pace it was allowed.
-          grep -hE "CPU figures allowed|REGRESSED|MISSING|TOO FAST|PERF-CHECK failed" build/perf-check.log 2>/dev/null || true
+          # A figure over its allowance among them, with the runner's pace it
+          # was allowed, and those recorded without a baseline yet.
+          grep -hE "CPU figures allowed|REGRESSED|MISSING|TOO FAST|RECORDED|PERF-CHECK failed" build/perf-check.log 2>/dev/null || true
           echo "::endgroup::"
 
   # The app as VoiceOver and Accessibility Inspector meet it, through the
