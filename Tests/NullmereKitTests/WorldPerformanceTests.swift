@@ -66,12 +66,34 @@ final class WorldPerformanceTests: XCTestCase {
     /// furniture four times the realm proper's, every hex known: near, the
     /// frame draws only the regions in view, and takes no longer than the
     /// whole land drawn, as it was before, which is measured beside it.
+    /// One of ninety-six seats, its lake wider again and its land twice
+    /// that, draws its frame near in about the time the forty-eight's does:
+    /// what a frame costs is what is in view, not how wide the realm is.
     func testAWideRealmDrawsOnlyWhatItSees() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
         let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
         let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
         renderer.meshSource = { Library.model($0).mesh }
-        var state = GameState(settings: GameSettings(seedText: "a wide realm drawn", houseCount: 48, radius: 72, keepers: 1))
+        let wide = try measureNear(seats: 48, seed: "a wide realm drawn", wholeToo: true, renderer: renderer)
+        let culledMedian = wide.culled, wholeMedian = try XCTUnwrap(wide.whole)
+        print("PERFMETRIC wide.gpu.scale28.p50 \(String(format: "%.3f", culledMedian))")
+        print("PERFMETRIC wide.gpu.scale28.whole.p50 \(String(format: "%.3f", wholeMedian))")
+        print("PERF a realm of 48 seats near on \(device.name): \(String(format: "%.2f", culledMedian)) ms drawing what is in view, "
+              + "\(String(format: "%.2f", wholeMedian)) ms drawing the whole land")
+        XCTAssertLessThanOrEqual(culledMedian, wholeMedian * 1.1 + 0.5, "Drawing what is in view costs no more than drawing it all")
+
+        let wider = try measureNear(seats: 96, seed: "a wider realm drawn", wholeToo: false, renderer: renderer)
+        print("PERFMETRIC wider.gpu.scale28.p50 \(String(format: "%.3f", wider.culled))")
+        print("PERF a realm of 96 seats near on \(device.name): \(String(format: "%.2f", wider.culled)) ms drawing what is in view")
+        XCTAssertLessThanOrEqual(wider.culled, culledMedian * 1.25 + 1, "A realm twice as wide costs a frame near what the narrower does")
+        XCTAssertLessThan(wider.culled, 16.7, "and well inside one")
+    }
+
+    /// The GPU's median time for a frame near a realm's seat, every hex
+    /// known, drawing only the regions in view; and, `wholeToo`, drawing
+    /// the whole land, as was done before.
+    private func measureNear(seats: Int, seed: String, wholeToo: Bool, renderer: WorldRenderer) throws -> (culled: Double, whole: Double?) {
+        var state = GameState(settings: GameSettings(seedText: seed, houseCount: seats, radius: RealmState.radius(forSeats: seats), keepers: 1))
         state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
         try renderer.setLand(TerrainMesh.shared(for: state.map), for: state.map)
         try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
@@ -93,7 +115,8 @@ final class WorldPerformanceTests: XCTestCase {
         camera.focus(on: seat)
         let size = CGSize(width: Double(Self.width) / 2, height: Double(Self.height) / 2)
         var medians: [String: Double] = [:]
-        for (name, scene) in [("culled", culled), ("whole", whole)] {
+        let scenes: [(String, SceneFrame)] = wholeToo ? [("culled", culled), ("whole", whole)] : [("culled", culled)]
+        for (name, scene) in scenes {
             var times: [Double] = []
             for frame in 0..<85 {
                 let uniforms = FrameUniforms.make(camera: camera, size: size, pixelsPerPoint: 2 * fraction, time: Float(3 + Double(frame) / 60),
@@ -104,11 +127,6 @@ final class WorldPerformanceTests: XCTestCase {
             let settled = Array(times.dropFirst(5)).sorted()
             medians[name] = settled[settled.count / 2]
         }
-        let culledMedian = try XCTUnwrap(medians["culled"]), wholeMedian = try XCTUnwrap(medians["whole"])
-        print("PERFMETRIC wide.gpu.scale28.p50 \(String(format: "%.3f", culledMedian))")
-        print("PERFMETRIC wide.gpu.scale28.whole.p50 \(String(format: "%.3f", wholeMedian))")
-        print("PERF a realm of 48 seats near on \(device.name): \(String(format: "%.2f", culledMedian)) ms drawing what is in view, "
-              + "\(String(format: "%.2f", wholeMedian)) ms drawing the whole land")
-        XCTAssertLessThanOrEqual(culledMedian, wholeMedian * 1.1 + 0.5, "Drawing what is in view costs no more than drawing it all")
+        return (try XCTUnwrap(medians["culled"]), medians["whole"])
     }
 }

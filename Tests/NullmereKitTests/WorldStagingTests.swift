@@ -103,9 +103,24 @@ final class WorldStagingTests: XCTestCase {
     /// A realm of forty-eight seats, every hold known: a frame staged for
     /// the view stages only the holds, towns and companies it can show, the
     /// land's furniture laid out once whatever the view, and in a small
-    /// share of a frame.
+    /// share of a frame. One of ninety-six seats stages its frame in about
+    /// the time the forty-eight's does: what is in view, not how wide.
     func testAWideRealmStagesOnlyWhatTheViewTakesIn() throws {
-        var state = GameState(settings: GameSettings(seedText: "a wide realm staged", houseCount: 48, radius: 72, keepers: 1))
+        let wide = try stageNear(seats: 48, seed: "a wide realm staged")
+        print("PERF staging a wide realm's frame near: \(wide.viewed) of \(wide.whole) models, p50 \(String(format: "%.2f", wide.p50)) ms")
+        print("PERFMETRIC stage.wide.cpu.p50 \(String(format: "%.3f", wide.p50))")
+        XCTAssertLessThan(wide.p50, 16.7, "well inside a frame")
+        let wider = try stageNear(seats: 96, seed: "a wider realm staged")
+        print("PERF staging a wider realm's frame near: \(wider.viewed) of \(wider.whole) models, p50 \(String(format: "%.2f", wider.p50)) ms")
+        print("PERFMETRIC stage.wider.cpu.p50 \(String(format: "%.3f", wider.p50))")
+        XCTAssertLessThanOrEqual(wider.p50, wide.p50 * 1.5 + 1, "A realm twice as wide stages a frame near in what the narrower does")
+    }
+
+    /// A frame near a realm's seat staged for the view, every hold known:
+    /// the models it stages and those of the whole realm, and the median of
+    /// thirty frames' thread time.
+    private func stageNear(seats: Int, seed: String) throws -> (viewed: Int, whole: Int, p50: Double) {
+        var state = GameState(settings: GameSettings(seedText: seed, houseCount: seats, radius: RealmState.radius(forSeats: seats), keepers: 1))
         state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
         let session = GameSession(state: state, store: LocalStore(directory: dir))
         session.dismissSeatBriefing()
@@ -127,10 +142,7 @@ final class WorldStagingTests: XCTestCase {
             times.append(ThreadClock.milliseconds() - start)
         }
         times.sort()
-        let p50 = times[times.count / 2]
-        print("PERF staging a wide realm's frame near: \(count(viewed)) of \(count(whole)) models, p50 \(String(format: "%.2f", p50)) ms")
-        print("PERFMETRIC stage.wide.cpu.p50 \(String(format: "%.3f", p50))")
-        XCTAssertLessThan(p50, 16.7, "well inside a frame")
+        return (count(viewed), count(whole), times[times.count / 2])
     }
 
     func testAWorkRisesAsTheWatchesPassAndFinishesItsLastStretch() throws {
