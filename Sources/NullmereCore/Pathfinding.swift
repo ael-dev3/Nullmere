@@ -1,3 +1,5 @@
+import Foundation
+
 extension GameState {
     /// The cheapest route for a unit from its position to `target`, as the
     /// hexes to step through, not including the start. Hexes holding other
@@ -7,44 +9,90 @@ extension GameState {
         guard unit.position != target,
               let start = map.index(of: unit.position),
               let goal = map.index(of: target),
-              map[goal].terrain.isPassable
+              map.steps[goal] != 0
         else { return nil }
 
-        let count = map.count
-        var blocked = [Bool](repeating: false, count: count)
-        for other in units where other.id != unit.id {
-            if let index = map.index(of: other.position), index != goal {
-                blocked[index] = true
-            }
+        var room = SearchRoom.take(count: map.count)
+        func block(_ hex: Hex) {
+            if let index = map.index(of: hex), index != goal { room.block(index) }
         }
-        for hold in holds where hold.owner != unit.owner {
-            if let index = map.index(of: hold.position), index != goal {
-                blocked[index] = true
-            }
+        for index in units.indices where units[index].id != unit.id {
+            block(units[index].position)
+        }
+        for index in holds.indices where holds[index].owner != unit.owner {
+            block(holds[index].position)
         }
         for wild in wildsStanding {
-            if let index = map.index(of: wild.position), index != goal {
-                blocked[index] = true
-            }
+            block(wild.position)
         }
         for lair in lairsStanding {
-            if let index = map.index(of: lair.position), index != goal {
-                blocked[index] = true
-            }
+            block(lair.position)
         }
         // Only its alliance's companies pass through a hall, or a storehouse.
         for hall in hallsStanding where !isOfHall(unit.owner, hall) {
-            if let index = map.index(of: hall.position), index != goal {
-                blocked[index] = true
-            }
+            block(hall.position)
         }
         for storehouse in storehousesStanding where !isOf(storehouse.alliance, unit.owner) {
-            if let index = map.index(of: storehouse.position), index != goal {
-                blocked[index] = true
-            }
+            block(storehouse.position)
         }
-        var search = WaySearch(count: count)
-        return search.way(on: map, from: start, to: goal, around: blocked)
+        let way = room.search.way(on: map, from: start, to: goal, around: room.blocked)
+        SearchRoom.give(back: &room)
+        return way
+    }
+}
+
+/// Room for a search for a way, kept from one search to the next, as the
+/// tens of thousands of tiles of a wide lake are too many to lay out anew
+/// for every march: the search's own, and what stands in its way, every
+/// tile clear again once the room is given back.
+struct SearchRoom {
+    var search: WaySearch
+    private(set) var blocked: [Bool]
+    private var marked: [Int] = []
+
+    init(count: Int) {
+        search = WaySearch(count: count)
+        blocked = [Bool](repeating: false, count: count)
+    }
+
+    mutating func block(_ index: Int) {
+        guard !blocked[index] else { return }
+        blocked[index] = true
+        marked.append(index)
+    }
+
+    private static let shelf = Shelf()
+
+    /// A room for a map of so many tiles, every tile clear.
+    static func take(count: Int) -> SearchRoom {
+        shelf.take(count: count)
+    }
+
+    /// A room done with, cleared and put back for the next search.
+    static func give(back room: inout SearchRoom) {
+        for index in room.marked { room.blocked[index] = false }
+        room.marked.removeAll(keepingCapacity: true)
+        shelf.put(room)
+    }
+
+    /// The rooms not in use, for any search on any thread to take.
+    private final class Shelf: @unchecked Sendable {
+        private let lock = NSLock()
+        private var rooms: [SearchRoom] = []
+
+        func take(count: Int) -> SearchRoom {
+            lock.lock()
+            defer { lock.unlock() }
+            guard let index = rooms.lastIndex(where: { $0.blocked.count == count }) else { return SearchRoom(count: count) }
+            rooms.swapAt(index, rooms.count - 1)
+            return rooms.removeLast()
+        }
+
+        func put(_ room: SearchRoom) {
+            lock.lock()
+            defer { lock.unlock() }
+            if rooms.count < 8 { rooms.append(room) }
+        }
     }
 }
 
@@ -55,11 +103,11 @@ extension GameState {
     public func approach(for unit: Unit, toward target: Hex) -> [Hex]? {
         guard let start = map.index(of: unit.position) else { return nil }
         var blocked = [Bool](repeating: false, count: map.count)
-        for other in units where other.id != unit.id {
-            if let index = map.index(of: other.position) { blocked[index] = true }
+        for index in units.indices where units[index].id != unit.id {
+            if let tile = map.index(of: units[index].position) { blocked[tile] = true }
         }
-        for hold in holds where hold.owner != unit.owner {
-            if let index = map.index(of: hold.position) { blocked[index] = true }
+        for index in holds.indices where holds[index].owner != unit.owner {
+            if let tile = map.index(of: holds[index].position) { blocked[tile] = true }
         }
         for wild in wildsStanding {
             if let index = map.index(of: wild.position) { blocked[index] = true }
@@ -67,7 +115,7 @@ extension GameState {
         for lair in lairsStanding {
             if let index = map.index(of: lair.position) { blocked[index] = true }
         }
-        let hexes = map.hexes
+        let hexes = map.hexes, neighbours = map.neighbours, steps = map.steps
         var cameFrom = [Int](repeating: -2, count: map.count)
         cameFrom[start] = -1
         var queue = [start]
@@ -80,9 +128,9 @@ extension GameState {
             let tile = queue[head]
             head += 1
             if nearer(tile, than: best) { best = tile }
-            for direction in Hex.directions {
-                guard let next = map.index(of: hexes[tile] + direction), cameFrom[next] == -2, !blocked[next],
-                      map[next].terrain.isPassable else { continue }
+            for side in 0..<6 {
+                let next = Int(neighbours[tile * 6 + side])
+                guard next >= 0, cameFrom[next] == -2, !blocked[next], steps[next] != 0 else { continue }
                 cameFrom[next] = tile
                 queue.append(next)
             }
@@ -123,8 +171,8 @@ struct Routes {
         func mark(_ hex: Hex) {
             if let index = map.index(of: hex) { blocked[index] = true }
         }
-        for unit in state.units { mark(unit.position) }
-        for hold in state.holds where hold.owner != owner { mark(hold.position) }
+        for index in state.units.indices { mark(state.units[index].position) }
+        for index in state.holds.indices where state.holds[index].owner != owner { mark(state.holds[index].position) }
         for wild in state.wildsStanding { mark(wild.position) }
         for lair in state.lairsStanding { mark(lair.position) }
         for hall in state.hallsStanding where !state.isOfHall(owner, hall) { mark(hall.position) }
@@ -139,7 +187,7 @@ struct Routes {
         guard unit.position != target,
               let start = map.index(of: unit.position),
               let goal = map.index(of: target),
-              map[goal].terrain.isPassable
+              map.steps[goal] != 0
         else { return nil }
         return search.way(on: map, from: start, to: goal, around: blocked(for: unit.owner))
     }
@@ -169,7 +217,7 @@ struct WaySearch {
     /// but the goal; nil when there is none, or none found within 6,000
     /// tiles searched.
     mutating func way(on map: WorldMap, from start: Int, to goal: Int, around blocked: [Bool]) -> [Hex]? {
-        let hexes = map.hexes, neighbours = map.neighbours
+        let hexes = map.hexes, neighbours = map.neighbours, steps = map.steps
         // A goal every way into which is shut, or a start every way out of
         // which is, has no way to it: known at once, not after searching
         // all the land that can be reached, as a goal ringed by companies
@@ -177,7 +225,7 @@ struct WaySearch {
         func shut(_ tile: Int, but other: Int) -> Bool {
             for side in 0..<6 {
                 let next = Int(neighbours[tile * 6 + side])
-                if next >= 0, next == other || (!blocked[next] && map[next].terrain.isPassable) { return false }
+                if next >= 0, next == other || (!blocked[next] && steps[next] != 0) { return false }
             }
             return true
         }
@@ -210,9 +258,9 @@ struct WaySearch {
             for side in 0..<6 {
                 let next = Int(neighbours[tile * 6 + side])
                 guard next >= 0, next == goal || !blocked[next] else { continue }
-                let terrain = map[next].terrain
-                guard terrain.isPassable else { continue }
-                let total = cost + terrain.moveCost
+                let step = Int(steps[next])
+                guard step != 0 else { continue }
+                let total = cost + step
                 let known = Int(best[next])
                 if known == 0 || total + 1 < known {
                     if known == 0 { touched.append(Int32(next)) }

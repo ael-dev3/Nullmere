@@ -44,6 +44,9 @@ public struct WorldMap: Codable, Equatable, Sendable {
     /// `Hex.directions`, -1 past the world's edge: laid out once, for the
     /// search for ways.
     let neighbours: [Int32]
+    /// What stepping onto each tile costs a company, 0 where none may: kept
+    /// as the tiles change, for the search for ways.
+    private(set) var steps: [UInt8]
 
     private enum CodingKeys: String, CodingKey {
         case radius
@@ -56,6 +59,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
         precondition(radius >= 1, "radius must be positive")
         self.radius = radius
         self.tiles = Array(repeating: fill, count: WorldMap.count(radius: radius))
+        steps = Array(repeating: WorldMap.step(onto: fill.terrain), count: WorldMap.count(radius: radius))
         self.rowStarts = WorldMap.rowStarts(radius: radius)
         hexList = WorldMap.hexes(radius: radius)
         neighbours = WorldMap.neighbours(radius: radius, of: hexList)
@@ -78,6 +82,12 @@ public struct WorldMap: Codable, Equatable, Sendable {
         rowStarts = WorldMap.rowStarts(radius: radius)
         hexList = WorldMap.hexes(radius: radius)
         neighbours = WorldMap.neighbours(radius: radius, of: hexList)
+        steps = tiles.map { WorldMap.step(onto: $0.terrain) }
+    }
+
+    /// What stepping onto ground costs, 0 where it can't be entered.
+    static func step(onto terrain: Terrain) -> UInt8 {
+        terrain.isPassable ? UInt8(terrain.moveCost) : 0
     }
 
     // The rest of a map is laid out from its radius.
@@ -208,16 +218,17 @@ public struct WorldMap: Codable, Equatable, Sendable {
 
     public subscript(index: Int) -> Tile {
         get { tiles[index] }
-        set { tiles[index] = newValue }
+        set { set(index: index, newValue) }
     }
 
     mutating func set(index: Int, _ tile: Tile) {
         tiles[index] = tile
+        steps[index] = WorldMap.step(onto: tile.terrain)
     }
 
     public mutating func set(_ hex: Hex, _ tile: Tile) {
         guard let index = index(of: hex) else { return }
-        tiles[index] = tile
+        set(index: index, tile)
     }
 
     public func neighbors(of hex: Hex) -> [Hex] {
