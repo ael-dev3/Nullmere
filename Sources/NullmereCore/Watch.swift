@@ -291,6 +291,18 @@ func ordinal(_ number: Int) -> String {
     case 8: return "eighth"
     case 9: return "ninth"
     case 10: return "tenth"
-    default: return "\(number)th"
+    default: return "\(number)" + ordinalEnding(number)
+    }
+}
+
+/// How a number's ordinal ends in figures: the 21st, the 52nd, the 153rd,
+/// but the 11th, 12th and 13th.
+public func ordinalEnding(_ number: Int) -> String {
+    if (11...13).contains(abs(number) % 100) { return "th" }
+    switch abs(number) % 10 {
+    case 1: return "st"
+    case 2: return "nd"
+    case 3: return "rd"
+    default: return "th"
     }
 }

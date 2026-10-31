@@ -138,9 +138,9 @@ Already in Nullmere, in its own way:
 
 To build, reimagined:
 - [ ] Credits, rolled in the launcher, still under reduced motion
-- [ ] The founding watch on a hold's record
+- [x] The founding watch on a hold's record ("raised in the 23rd watch", under its name)
 - [x] Bring it home: a gatherer recalled with what it carries, and every gatherer at once (Bring home and All home on its record)
-- [ ] The watches left of a gathering and of the way home on a gatherer's record; a list of the House's gatherers
+- [x] The watches left of a gathering and of the way home on a gatherer's record; a list of the House's gatherers (folded under a gatherer's record)
 - [ ] A gathering's length chosen as it is sent (a watch, three, until full)
 - [ ] The camera's buttons on screen, and Reset View to the whole House
 - [ ] Sounds for the interface (a panel opening and closing, going back, an order refused), and the trackpad's taps where the Mac has them

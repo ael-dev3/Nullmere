@@ -102,6 +102,11 @@ struct OwnHoldDetails: View {
     let session: GameSession
     let hold: Hold
 
+    /// When a hold was raised: with the age, or in which watch since.
+    static func raised(_ hold: Hold) -> String {
+        hold.foundedWatch <= 1 ? "raised as the age opened" : "raised in the \(SeatBriefing.ordinal(hold.foundedWatch)) watch"
+    }
+
     var body: some View {
         let state = session.state
         let stock = session.playerHouse.stock
@@ -109,7 +114,8 @@ struct OwnHoldDetails: View {
             Portrait.Vista(hold: hold, state: state)
             PanelTitle(
                 title: hold.name,
-                subtitle: hold.isSeat ? "Seat of \(session.playerHouse.title)" : "A hold of \(session.playerHouse.title)",
+                subtitle: (hold.isSeat ? "Seat of \(session.playerHouse.title)" : "A hold of \(session.playerHouse.title)")
+                    + ", " + OwnHoldDetails.raised(hold),
                 accent: Palette.houseWords(session.playerHouse)
             )
 
@@ -458,7 +464,8 @@ struct ForeignHoldPanel: View {
         let owner = session.state.houses[hold.owner]
         let stance = session.state.stance(session.player, owner.id)
         VStack(alignment: .leading, spacing: 10) {
-            PanelTitle(title: hold.name, subtitle: (hold.isSeat ? "Seat of " : "A hold of ") + owner.title, accent: Palette.houseWords(owner))
+            PanelTitle(title: hold.name, subtitle: (hold.isSeat ? "Seat of " : "A hold of ") + owner.title + ", " + OwnHoldDetails.raised(hold),
+                       accent: Palette.houseWords(owner))
             HStack {
                 Caps(stance.title, size: 9, weight: .medium).foregroundStyle(stance == .war ? Palette.bad : Palette.text(0.7))
                 Spacer()
@@ -567,19 +574,30 @@ struct UnitPanel: View {
     let unit: Unit
 
     /// Where a company marches, as a keeper would say it: to a hold by its
-    /// name, into ground not yet seen, or simply on, and how far.
+    /// name, into ground not yet seen, or simply on, and how far; and when
+    /// it should be there, when the realm has worked it out.
     static func march(of unit: Unit, in state: GameState, viewer: Int) -> String? {
         guard let destination = unit.destination else { return nil }
         let distance = unit.position.distance(to: destination)
         let away = "\(distance) tile\(distance == 1 ? "" : "s")"
+        let there = arrival(of: unit, in: state).map { ", there \($0)" } ?? ""
         if let hold = state.hold(at: destination) {
-            return "Marching to \(hold.name), \(away) away."
+            return "Marching to \(hold.name), \(away) away\(there)."
         }
         let explored = state.houses.indices.contains(viewer) ? state.houses[viewer].explored : []
         if let index = state.map.index(of: destination), explored.indices.contains(index), !explored[index] {
-            return "Marching into the dark, \(away) away."
+            return "Marching into the dark, \(away) away\(there)."
         }
-        return "Marching, \(away) to go."
+        return "Marching, \(away) to go\(there)."
+    }
+
+    /// When a company on the march should be where it is bound, as the
+    /// realm worked it out for the keeper: "as the watch turns", or "in 3
+    /// watches"; nil when it isn't known.
+    static func arrival(of unit: Unit, in state: GameState) -> String? {
+        guard unit.destination != nil, let arrives = state.marches?.first(where: { $0.unit == unit.id })?.arrives else { return nil }
+        let watches = arrives - state.watch
+        return watches <= 1 ? "as the watch turns" : "in \(watches) watches"
     }
 
     var body: some View {
@@ -681,6 +699,10 @@ struct UnitPanel: View {
                     }
                     ConfirmButton(title: "Disband", confirm: "Disband them?", size: 10) { session.perform(.disband(unit: unit.id)) }
                 }
+                // The House's other gatherers, folded until asked for.
+                if state.isOutGathering(unit) {
+                    GathererList(session: session)
+                }
             }
         }
         .padding(16)
@@ -740,7 +762,12 @@ struct UnitPanel: View {
         switch unit.errand {
         case .gather(let siteID)?:
             let site = state.site(siteID).map { "the \(HoverInfo.named($0, in: state))" } ?? "a site of the land"
-            return "Gathering at \(site)" + (load.map { ", carrying \($0)" } ?? "") + "."
+            let carrying = load.map { ", carrying \($0)" } ?? ""
+            // At its site, when it will be full; on its way, bound there.
+            if let left = state.watchesToFill(unit) {
+                return "Gathering at \(site)\(carrying): full " + (left <= 1 ? "as the watch turns." : "in \(left) watches.")
+            }
+            return (unit.destination == nil ? "Gathering at " : "Bound to gather at ") + site + carrying + "."
         case .homeward?:
             return "Bringing \(load ?? "its load") home."
         case .rally(let id)?:

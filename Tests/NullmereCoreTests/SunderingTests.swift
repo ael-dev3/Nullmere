@@ -33,6 +33,9 @@ final class SunderingTests: XCTestCase {
         XCTAssertEqual(Sundering.next(from: 55), 55)
         XCTAssertEqual(Sundering.next(from: 56), 145)
         XCTAssertEqual(Sundering.next(from: 145), 145)
+        // Its watches told in plain English.
+        XCTAssertEqual([1, 10, 11, 12, 13, 21, 22, 23, 52, 101, 111, 112, 113, 153].map(ordinal),
+                       ["first", "tenth", "11th", "12th", "13th", "21st", "22nd", "23rd", "52nd", "101st", "111th", "112th", "113th", "153rd"])
     }
 
     func testItBeginsWithEveryHouseToTheShoreItsSeatStandsOn() throws {
@@ -52,7 +55,7 @@ final class SunderingTests: XCTestCase {
         XCTAssertTrue(state.chronicle.contains { $0.text.hasPrefix("The Sundering begins: the Eastern and the Western Shore war as kingdoms") })
         let (east, _) = try across(state)
         XCTAssertEqual(state.tidings(of: events[0], for: east)?.text,
-                       "The Sundering begins: the Eastern and the Western Shore war as kingdoms until the \(ordinal(67)) watch. "
+                       "The Sundering begins: the Eastern and the Western Shore war as kingdoms until the 67th watch. "
                        + "You stand with the Eastern Shore: troops of the Western Shore slain, its holds taken and its alliances' works "
                        + "torn down count for your kingdom, and you are at war with every House of it you were at peace with, but your "
                        + "alliance's and your liege's, until it ends.")

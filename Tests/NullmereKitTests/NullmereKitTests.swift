@@ -1131,6 +1131,21 @@ final class TextSizeTests: XCTestCase {
         let distance = state.units[index].position.distance(to: seat.position)
         XCTAssertEqual(UnitPanel.march(of: state.units[index], in: state, viewer: me),
                        "Marching to \(seat.name), \(distance) tile\(distance == 1 ? "" : "s") away.")
+        // When the realm has worked out when it should be there, that too.
+        let id = state.units[index].id
+        state.marches = [March(unit: id, owner: me, route: [seat.position], destination: seat.position, arrives: state.watch + 3)]
+        XCTAssertEqual(UnitPanel.march(of: state.units[index], in: state, viewer: me),
+                       "Marching to \(seat.name), \(distance) tile\(distance == 1 ? "" : "s") away, there in 3 watches.")
+        state.marches = [March(unit: id, owner: me, route: [seat.position], destination: seat.position, arrives: state.watch + 1)]
+        XCTAssertEqual(UnitPanel.arrival(of: state.units[index], in: state), "as the watch turns")
+        state.units[index].errand = .homeward
+        state.units[index].load = Stock(grain: 40)
+        let homeward = GathererList.line(for: state.units[index], in: state)
+        XCTAssertTrue(homeward.hasPrefix(state.title(of: state.units[index])) && homeward.hasSuffix(" home with 40 grain, there as the watch turns"),
+                      homeward)
+        state.units[index].errand = nil
+        state.units[index].load = nil
+        state.marches = nil
         let dark = try XCTUnwrap(state.map.hexes.first { hex in
             state.map.index(of: hex).map { !state.houses[me].explored[$0] } ?? false
         })

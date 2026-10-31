@@ -223,6 +223,17 @@ extension GameState {
         return events
     }
 
+    /// The watches a gatherer at its site still takes to fill its load, or
+    /// to work the site out if that comes first; nil for a company not at
+    /// work on its site.
+    public func watchesToFill(_ unit: Unit) -> Int? {
+        guard case .gather(let siteID)? = unit.errand, let site = site(siteID), unit.position == site.position else { return nil }
+        let room = max(capacity(of: unit, for: site.store) - (unit.load?[site.store] ?? 0), 0)
+        let rate = gatheringRate(of: unit, at: site)
+        guard rate > 0 else { return nil }
+        return max((min(room, site.remaining) + rate - 1) / rate, 1)
+    }
+
     /// Whether a company is out at the land's work: gathering at a site, or
     /// on its way home with a load.
     public func isOutGathering(_ unit: Unit) -> Bool {

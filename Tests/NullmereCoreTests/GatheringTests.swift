@@ -253,6 +253,24 @@ final class GatheringTests: XCTestCase {
         XCTAssertEqual(RuleError.notGathering.description, "It isn't gathering, and carries nothing home.")
     }
 
+    /// How long a gatherer at its site still takes: to fill its load, or to
+    /// work the site out if that comes first.
+    func testAGathererKnowsWhenItWillBeFull() throws {
+        var (state, me, spear, site, _) = try field("full when")
+        XCTAssertNil(state.watchesToFill(try XCTUnwrap(state.unit(spear))), "Not sent")
+        _ = try state.perform(.gather(unit: spear, site: site), as: me)
+        XCTAssertEqual(state.watchesToFill(try XCTUnwrap(state.unit(spear))), 5, "150 to carry at 30 a watch")
+        _ = state.endWatch()
+        XCTAssertEqual(state.watchesToFill(try XCTUnwrap(state.unit(spear))), 4)
+        let index = try XCTUnwrap(state.sites?.firstIndex { $0.id == site })
+        state.sites![index].remaining = 31
+        XCTAssertEqual(state.watchesToFill(try XCTUnwrap(state.unit(spear))), 2, "The site worked out first")
+        state.units[try XCTUnwrap(state.unitIndex(spear))].load = Stock(grain: 150)
+        XCTAssertEqual(state.watchesToFill(try XCTUnwrap(state.unit(spear))), 1, "Full: home as the watch turns")
+        state.units[try XCTUnwrap(state.unitIndex(spear))].position = try XCTUnwrap(state.openGround())
+        XCTAssertNil(state.watchesToFill(try XCTUnwrap(state.unit(spear))), "Away from its site")
+    }
+
     /// Every gatherer of a House called home at once, the first mustered
     /// first: one beside its hold gives up its load there and then, one
     /// carrying a load it was left with turns for home, and a company at

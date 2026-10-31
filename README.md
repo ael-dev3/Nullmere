@@ -617,9 +617,12 @@ realm; keepers are told in plain words, never a status code.
   company comes by one of its holds. Bring home calls a gatherer back at
   once with what it carries (given up on the spot beside one of its
   holds), and All home calls every one of the House's gatherers so. A
-  gatherer struck down by a House at
-  war with its own leaves half its load to the victor. Stewards at peace
-  send idle companies to sites of the stores they run short of.
+  gatherer's record says when it will be full, a company's on the march
+  when it should be where it is bound, and under it, folded until asked
+  for, the House's gatherers each in a line that goes to it. A gatherer
+  struck down by a House at war with its own leaves half its load to the
+  victor. Stewards at peace send idle companies to sites of the stores
+  they run short of.
 - **Alliances.** Any House not sworn to one may raise a banner, a named
   alliance it leads. Its leader invites Houses and answers those that ask
   to join; a House leaves when it will, and the leader may cast one out.

@@ -90,6 +90,7 @@ final class AwayReportTests: XCTestCase {
 
         XCTAssertEqual(SeatBriefing.list(["A", "B", "C"]), "A, B and C")
         XCTAssertEqual(SeatBriefing.ordinal(12), "twelfth")
+        XCTAssertEqual([13, 21, 52, 111, 153].map(SeatBriefing.ordinal), ["13th", "21st", "52nd", "111th", "153rd"])
     }
 
     func testAnOmenIsShownWhileItLasts() throws {

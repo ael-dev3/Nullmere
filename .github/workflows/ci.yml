@@ -257,9 +257,11 @@ jobs:
           fi
           # The game's screens, small, each printed last in a log of its own
           # by the job after this one, so the tail of that log holds it whole.
+          # Small enough, its colour profile dropped, that the tail of that
+          # log holds the whole of it.
           for shot in build/game-plain.png build/game-world.png build/game-later.png build/game-network.png; do
             if [ -s "$shot" ]; then
-              sips -s format jpeg -s formatOptions 30 -Z 640 "$shot" --out "${shot%.png}-review.jpg" >/dev/null
+              sips -s format jpeg -s formatOptions 28 -Z 400 --deleteColorManagementProperties "$shot" --out "${shot%.png}-review.jpg" >/dev/null
             fi
           done
           for shot in build/game-world.png build/game-plain.png build/game-network.png build/game-away.png build/game-briefing.png build/game-lakes.png build/game-omen.png build/game-first-steps.png build/game-later.png build/game-race.png build/game-ending.png; do

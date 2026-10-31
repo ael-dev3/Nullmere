@@ -1125,6 +1125,20 @@ final class PressTests: XCTestCase {
         }
         let (session, link) = session(state)
         session.selection = .unit(porters[0].id)
+        UserDefaults.standard.removeObject(forKey: "gatherers.open")
+        defer { UserDefaults.standard.removeObject(forKey: "gatherers.open") }
+        // The House's gatherers, folded until asked for; each a line that
+        // goes to it.
+        draw(SelectionPanel(session: session), height: 700)
+        XCTAssertTrue(PressableButtons.press("Gatherers (2)"), "Among \(shown)")
+        draw(SelectionPanel(session: session), height: 700)
+        let second = GathererList.line(for: try XCTUnwrap(session.state.unit(porters[1].id)), in: session.state)
+        XCTAssertEqual(second, "Bows I carrying 10 grain")
+        XCTAssertTrue(PressableButtons.press(second), "Among \(shown)")
+        XCTAssertEqual(session.selection, .unit(porters[1].id))
+        XCTAssertTrue(PressableButtons.press("Gatherers"), "Folded away again")
+
+        session.selection = .unit(porters[0].id)
         draw(SelectionPanel(session: session), height: 600)
         XCTAssertTrue(PressableButtons.press("Bring home"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .recall(unit: porters[0].id))

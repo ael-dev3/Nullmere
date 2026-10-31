@@ -318,6 +318,13 @@ final class DepthPanelTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: MiniMap.shownKey)
     }
 
+    func testAHoldsRecordSaysWhenItWasRaised() {
+        let seat = Hold(id: 1, name: "Ilsen", owner: 0, position: .origin, isSeat: true, foundedWatch: 1)
+        let later = Hold(id: 2, name: "Vael", owner: 0, position: Hex(3, 0), isSeat: false, foundedWatch: 23)
+        XCTAssertEqual(OwnHoldDetails.raised(seat), "raised as the age opened")
+        XCTAssertEqual(OwnHoldDetails.raised(later), "raised in the 23rd watch")
+    }
+
     func testTheMoonBandSpeaksOnlyAboutTheFull() throws {
         let first = Sundering.first
         XCTAssertNil(MoonBand.line(watch: first - 10, open: false), "Nothing while the moon is far from full")
@@ -754,7 +761,10 @@ final class DepthPanelTests: XCTestCase {
         session.order(spot)
         XCTAssertEqual(link.sent.last, .gather(unit: company.id, site: site.id))
         let sent = try XCTUnwrap(session.state.unit(company.id))
-        XCTAssertEqual(UnitPanel.errand(of: sent, in: session.state), "Gathering at the Deadfall II, 600 timber left.")
+        XCTAssertEqual(sent.position, spot, "There at once")
+        let left = try XCTUnwrap(session.state.watchesToFill(sent))
+        XCTAssertEqual(UnitPanel.errand(of: sent, in: session.state),
+                       "Gathering at the Deadfall II, 600 timber left: full " + (left <= 1 ? "as the watch turns." : "in \(left) watches."))
         session.selection = .tile(spot)
         draw(SelectionPanel(session: session), width: 330, height: 600)
         session.selection = .tile(lair)
@@ -1411,6 +1421,9 @@ final class DepthPanelTests: XCTestCase {
         state.units[index].load = nil
         state.units[index].errand = .gather(site: 99)
         XCTAssertEqual(UnitPanel.errand(of: state.units[index], in: state), "Gathering at a site of the land.")
+        state.units[index].destination = seat.position
+        XCTAssertEqual(UnitPanel.errand(of: state.units[index], in: state), "Bound to gather at a site of the land.")
+        state.units[index].destination = nil
         state.units[index].errand = nil
         XCTAssertNil(UnitPanel.errand(of: state.units[index], in: state))
         XCTAssertNil(UnitPanel.leader(of: state.units[index], in: state))

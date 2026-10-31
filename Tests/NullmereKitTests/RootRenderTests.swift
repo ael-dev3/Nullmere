@@ -111,9 +111,29 @@ final class RootRenderTests: XCTestCase {
         XCTAssertNotNil(omened.state.currentOmen)
         XCTAssertNotNil(Counsel.advice(for: omened.state, player: omened.player), "Counsel at the opening")
         try draw(PlayView(app: app, session: omened))
-        // The first steps put away: the steward's counsel takes their place.
+        // The first steps put away: the House's charges take their place,
+        // and with the charges put away too, the steward's counsel; the
+        // map shown above the rail.
         omened.dismissFirstSteps()
         try draw(PlayView(app: app, session: omened))
+        UserDefaults.standard.set(true, forKey: "charges.hidden")
+        UserDefaults.standard.set(true, forKey: MiniMap.shownKey)
+        defer {
+            UserDefaults.standard.removeObject(forKey: "charges.hidden")
+            UserDefaults.standard.removeObject(forKey: MiniMap.shownKey)
+        }
+        XCTAssertNotNil(omened.counsel, "Counsel to give")
+        try draw(PlayView(app: app, session: omened))
+
+        // The Moonford open across the lake: its band under the bar.
+        var full = GameState(settings: GameSettings(seedText: "a full moon", houseCount: 4, radius: 18, keepers: 1))
+        full.watch = Sundering.first
+        _ = full.turnTide()
+        XCTAssertNotNil(full.ford)
+        let moonlit = GameSession(state: full, store: LocalStore(directory: dir.appendingPathComponent("full")))
+        moonlit.dismissSeatBriefing()
+        XCTAssertNotNil(MoonBand.line(watch: moonlit.state.watch, open: moonlit.state.ford != nil))
+        try draw(PlayView(app: app, session: moonlit))
 
         state.omen = nil
         state.outcome = Outcome(winner: (state.player + 1) % state.houses.count, kind: .ascendancy, watch: state.watch)

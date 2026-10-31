@@ -64,7 +64,7 @@ struct SeatBriefing: Equatable {
 
     static func ordinal(_ n: Int) -> String {
         let words = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth"]
-        return n >= 1 && n <= words.count ? words[n - 1] : "\(n)th"
+        return n >= 1 && n <= words.count ? words[n - 1] : "\(n)" + ordinalEnding(n)
     }
 
     static func list(_ names: [String]) -> String {
