@@ -177,23 +177,26 @@ extension GameState {
             || (self.unit(at: target) == nil && storehouse(at: target).map { isFoe(house, ofAlliance: $0.alliance) } == true) {
             return try attack(with: unitID, at: target, as: house)
         }
-        guard unknown || path(for: unit, to: target) != nil else { throw .noPath }
+        // The way found to know there is one is the way it sets out on.
+        let way = unknown ? nil : path(for: unit, to: target)
+        guard unknown || way != nil else { throw .noPath }
         units[index].destination = target
         units[index].fortified = false
         // A new march is a new order: whatever errand it was on is done with.
         units[index].errand = nil
-        return march(unitID)
+        return march(unitID, planned: way)
     }
 
     /// Moves a unit along its route as far as its moves allow this watch,
     /// or, at a pace, keeping back so many of them for the paces to come.
     /// The route is planned once: it steers round every other company, so
     /// only its end, the destination itself, can be held by another.
-    mutating func march(_ unitID: Int, keeping reserve: Int? = nil) -> [GameEvent] {
+    /// `planned`, its way to its destination as just found, if it was.
+    mutating func march(_ unitID: Int, keeping reserve: Int? = nil, planned: [Hex]? = nil) -> [GameEvent] {
         guard var index = unitIndex(unitID) else { return [] }
         var steps: [Hex] = []
         var events: [GameEvent] = []
-        var route: [Hex] = []
+        var route: [Hex] = planned ?? []
         while let destination = units[index].destination, units[index].movesLeft > max(reserve ?? 0, 0) {
             let unit = units[index]
             if route.isEmpty {

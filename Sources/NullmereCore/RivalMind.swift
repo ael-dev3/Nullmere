@@ -1109,11 +1109,22 @@ struct RivalMind {
 
     private func foeInReach(of unit: Unit, companiesOfWarOnly: Bool = false, in state: GameState) -> Hex? {
         guard unit.movesLeft > 0 else { return nil }
-        return unit.position.spiral(unit.kind.range).dropFirst().first { hex in
-            if let other = state.unit(at: hex), other.owner != house, state.isAtWar(house, other.owner) {
+        let range = unit.kind.range
+        // What stands within its reach, found in one pass over the companies
+        // and one over the holds, not one for every hex: the first on a hex,
+        // as `unit(at:)` and `hold(at:)` find it.
+        var standing: [Hex: Unit] = [:], holding: [Hex: Hold] = [:]
+        for other in state.units where standing[other.position] == nil && other.position.distance(to: unit.position) <= range {
+            standing[other.position] = other
+        }
+        for hold in state.holds where holding[hold.position] == nil && hold.position.distance(to: unit.position) <= range {
+            holding[hold.position] = hold
+        }
+        return unit.position.spiral(range).dropFirst().first { hex in
+            if let other = standing[hex], other.owner != house, state.isAtWar(house, other.owner) {
                 return other.kind.isMilitary || !companiesOfWarOnly
             }
-            if let hold = state.hold(at: hex), hold.owner != house, state.isAtWar(house, hold.owner) { return !companiesOfWarOnly }
+            if let hold = holding[hex], hold.owner != house, state.isAtWar(house, hold.owner) { return !companiesOfWarOnly }
             return false
         }
     }
@@ -1124,8 +1135,9 @@ struct RivalMind {
         }
         // A foe's standard or hall within reach, with no company on it, is torn down.
         if unit.movesLeft > 0, let flag = unit.position.spiral(unit.kind.range).dropFirst().first(where: { hex in
-            state.unit(at: hex) == nil && (state.standard(at: hex).map { state.isAtWar(house, $0.raisedBy) } == true
-                || state.hall(at: hex).map { state.isFoe(house, of: $0) } == true)
+            // The standards and halls, few, before the companies, many.
+            (state.standard(at: hex).map { state.isAtWar(house, $0.raisedBy) } == true
+                || state.hall(at: hex).map { state.isFoe(house, of: $0) } == true) && state.unit(at: hex) == nil
         }) {
             return perform(.attack(unit: unit.id, target: flag), in: &state)
         }
@@ -1216,13 +1228,16 @@ struct RivalMind {
         guard !short.isEmpty else { return nil }
         let holds = state.holds(of: house).map(\.position)
         let explored = state.houses[house].explored
-        let bound = Set(state.units.compactMap { other -> Int? in
-            if case .gather(let site)? = other.errand { return site }
-            return nil
-        })
+        // The sites a company works or is bound for, and the hexes companies
+        // stand on, found in one pass, not one for every site.
+        var bound: Set<Int> = [], occupied: Set<Hex> = []
+        for other in state.units {
+            occupied.insert(other.position)
+            if case .gather(let site)? = other.errand { bound.insert(site) }
+        }
         let sworn = state.alliance(of: house)?.id
         return state.sitesInLand.filter { site in
-            short.contains(site.store) && !bound.contains(site.id) && state.unit(at: site.position) == nil
+            short.contains(site.store) && !bound.contains(site.id) && !occupied.contains(site.position)
                 && (site.alliance == nil || site.alliance == sworn)
                 && (state.map.index(of: site.position).map { explored[$0] } ?? false)
                 && site.position.distance(to: unit.position) <= RivalMind.huntingGround
@@ -1283,9 +1298,17 @@ struct RivalMind {
             // its nearest hold; and once far the stronger, for its seat,
             // whose fall shakes all the rest.
             let mine = state.strength(of: house)
+            // Each House's holds counted, and its strength weighed, once for
+            // the plan, not at every comparison of its holds.
+            var held: [Int: Int] = [:], strong: [Int: Int] = [:]
+            for hold in state.holds { held[hold.owner, default: 0] += 1 }
             func cost(_ hold: Hold) -> Int {
-                var cost = hold.position.distance(to: seat.position) + 4 * state.holds(of: hold.owner).count
-                if hold.isSeat, mine * 10 > state.strength(of: hold.owner) * 18 { cost -= 8 }
+                var cost = hold.position.distance(to: seat.position) + 4 * (held[hold.owner] ?? 0)
+                if hold.isSeat {
+                    let theirs = strong[hold.owner] ?? state.strength(of: hold.owner)
+                    strong[hold.owner] = theirs
+                    if mine * 10 > theirs * 18 { cost -= 8 }
+                }
                 return cost
             }
             target = enemyHolds.min { (cost($0), tieBreak($0.id, in: state)) < (cost($1), tieBreak($1.id, in: state)) }
