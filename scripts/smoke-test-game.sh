@@ -3,8 +3,10 @@
 # realm hosted on this Mac as a keeper, past the on-device model check. It
 # must still be running after a while, and its world must be rendering
 # with Metal. Saves screenshots of the keeper's first watch with a company
-# selected and the Houses panel open, and of the same realm forty watches
-# on, a steward having played the keeper's House, with the larger type.
+# selected and the Houses panel open; of the same realm eight watches on
+# as a keeper sees it most of the time, nothing chosen and no panel open;
+# and forty watches on, a steward having played the keeper's House, with
+# the larger type.
 #
 #   swift build && scripts/smoke-test-game.sh
 #
@@ -66,6 +68,11 @@ $(grep -h "renders with Metal" build/game-stdout.log 2>/dev/null || true)"
 set_aside_realm "$EXECUTABLE" "$IDENTITY"
 run build/game-world.png 0 unit,houses
 WORLD_LOG="$LOG"
+# The same realm as a keeper sees it most of the time: nothing chosen, no
+# panel open, how much of the world the interface leaves in view.
+run build/game-plain.png 8 ""
+WORLD_LOG="$WORLD_LOG
+$LOG"
 # The same realm later on, the keeper returning by identity alone, with the
 # larger type a reader can choose.
 NULLMERE_TEXT=larger NULLMERE_WATCH_AFTER=3 WAIT=30 run build/game-later.png 40 seat,watch

@@ -255,7 +255,14 @@ jobs:
           if [ -s build/launcher-play.png ]; then
             sips -s format jpeg -s formatOptions 30 -Z 480 build/launcher-play.png --out build/door-small.jpg >/dev/null
           fi
-          for shot in build/game-world.png build/game-network.png build/game-away.png build/game-briefing.png build/game-lakes.png build/game-omen.png build/game-first-steps.png build/game-later.png build/game-race.png build/game-ending.png; do
+          # The game's screens, small, each printed last in a log of its own
+          # by the job after this one, so the tail of that log holds it whole.
+          for shot in build/game-plain.png build/game-world.png build/game-later.png build/game-network.png; do
+            if [ -s "$shot" ]; then
+              sips -s format jpeg -s formatOptions 30 -Z 640 "$shot" --out "${shot%.png}-review.jpg" >/dev/null
+            fi
+          done
+          for shot in build/game-world.png build/game-plain.png build/game-network.png build/game-away.png build/game-briefing.png build/game-lakes.png build/game-omen.png build/game-first-steps.png build/game-later.png build/game-race.png build/game-ending.png; do
             if [ -s "$shot" ]; then
               small="${shot%.png}-small.jpg"
               sips -s format jpeg -s formatOptions 45 -Z 560 "$shot" --out "$small" >/dev/null
@@ -296,6 +303,14 @@ jobs:
           path: |
             build/*-print.jpg
             build/door-small.jpg
+          if-no-files-found: warn
+
+      - name: Keep the game's screens for printing
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: game-screens
+          path: build/*-review.jpg
           if-no-files-found: warn
 
       # The world's frames, small: a line each, before the summary so the
@@ -411,6 +426,36 @@ jobs:
             echo "::group::Screenshot build/launcher-play.png, small, base64 JPEG"
             base64 -w 120 screens/door-small.jpg
             echo "::endgroup::"
+          fi
+
+  # The game's screens, one to a log and last in it, small enough that the
+  # log's tail holds the whole of it: for judging how much of the world the
+  # interface leaves in view, by readers without access to the artifacts.
+  game-screens:
+    name: Game screen ${{ matrix.screen }}
+    needs: macos
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        screen: [game-plain, game-world, game-later, game-network]
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: game-screens
+          path: screens
+        continue-on-error: true
+      - name: Print the screen
+        run: |
+          shot="screens/${{ matrix.screen }}-review.jpg"
+          if [ -s "$shot" ]; then
+            echo "::group::Screenshot build/${{ matrix.screen }}.png, small, base64 JPEG"
+            base64 -w 120 "$shot"
+            echo "::endgroup::"
+          else
+            echo "No ${{ matrix.screen }} screen this run."
           fi
 
   # The rules and the realm on Linux, where the steward runs; then the realm
