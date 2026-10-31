@@ -432,7 +432,9 @@ struct RivalMind {
 
         // Each other House weighed in an order of no one's seat number: the
         // first a House sets on is no likelier to be one numbered low.
-        for other in state.livingHouses.sorted(by: { tieBreak($0.id, in: state) < tieBreak($1.id, in: state) }) where other.id != house {
+        // Each House's place in the order found once, not at every comparison.
+        let order = state.livingHouses.map { (key: tieBreak($0.id, in: state), house: $0) }.sorted { $0.key < $1.key }.map(\.house)
+        for other in order where other.id != house {
             // Its own alliance's Houses are no one to war on or make demands of.
             guard let relation = state.relation(house, other.id), !state.areAllied(house, other.id) else { continue }
             let theirs = max(1, strengths[other.id])

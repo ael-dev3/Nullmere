@@ -447,17 +447,17 @@ public struct GameState: Codable, Equatable, Sendable {
     /// Each tile a House sees right now, by its index, with its allies'
     /// sight; a tile seen from two places is told twice.
     func see(for house: Int, _ seen: (Int) -> Void) {
-        for watcher in watchers(for: house) {
-            for unit in units(of: watcher) {
-                let range = sight(of: unit)
-                for hex in unit.position.spiral(range) {
-                    if let index = map.index(of: hex) { seen(index) }
-                }
+        // Its watchers' companies and holds found in one pass over each,
+        // not a pass for every ally.
+        let watchers = Set(watchers(for: house))
+        for unit in units where watchers.contains(unit.owner) {
+            for hex in unit.position.spiral(sight(of: unit)) {
+                if let index = map.index(of: hex) { seen(index) }
             }
-            for hold in holds(of: watcher) {
-                for hex in hold.position.spiral(sight(of: hold)) {
-                    if let index = map.index(of: hex) { seen(index) }
-                }
+        }
+        for hold in holds where watchers.contains(hold.owner) {
+            for hex in hold.position.spiral(sight(of: hold)) {
+                if let index = map.index(of: hex) { seen(index) }
             }
         }
     }
