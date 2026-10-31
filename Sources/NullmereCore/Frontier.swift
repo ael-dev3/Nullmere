@@ -16,10 +16,14 @@
 public struct Levy: Codable, Equatable, Sendable {
     public let kind: UnitKind
     public let tier: Int
+    /// The troops drilled into it beyond its first muster, if any: they
+    /// cross with it.
+    public let drilled: Int?
 
-    public init(kind: UnitKind, tier: Int) {
+    public init(kind: UnitKind, tier: Int, drilled: Int? = nil) {
         self.kind = kind
         self.tier = tier
+        self.drilled = drilled.flatMap { $0 > 0 ? $0 : nil }
     }
 }
 
@@ -200,12 +204,13 @@ extension RealmState {
     // MARK: The Frontier, as a home realm
 
     /// The companies of war a House sends with its keeper: its strongest,
-    /// by tier and then by how whole they stand, up to `levyMost`.
+    /// by tier and then by the troops they stand with, up to `levyMost`;
+    /// the troops drilled into them cross with them.
     public func levy(of house: Int) -> [Levy] {
         world.units.filter { $0.owner == house && $0.kind.isMilitary }
-            .sorted { ($0.tier, $0.health, -$0.id) > ($1.tier, $1.health, -$1.id) }
+            .sorted { ($0.tier, world.troops(of: $0), -$0.id) > ($1.tier, world.troops(of: $1), -$1.id) }
             .prefix(FrontierState.levyMost)
-            .map { Levy(kind: $0.kind, tier: $0.tier) }
+            .map { Levy(kind: $0.kind, tier: $0.tier, drilled: $0.drilled) }
     }
 
     /// The keepers crossing to the Frontier for the season open there, as
@@ -325,7 +330,9 @@ extension RealmState {
         }
         var raised = 0
         if let seat = world.seat(of: house) {
-            for levy in crossing.levy.prefix(FrontierState.levyMost) where world.placeUnit(levy.kind, tier: levy.tier, for: house, near: seat.position) != nil {
+            for levy in crossing.levy.prefix(FrontierState.levyMost) {
+                guard let unit = world.placeUnit(levy.kind, tier: levy.tier, for: house, near: seat.position) else { continue }
+                if let index = world.unitIndex(unit.id) { world.units[index].drilled = levy.drilled }
                 raised += 1
             }
         }

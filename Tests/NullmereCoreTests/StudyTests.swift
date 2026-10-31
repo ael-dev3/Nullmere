@@ -227,21 +227,21 @@ final class StudyTests: XCTestCase {
         while state.houses[me].research.pursuit != nil { _ = state.endWatch() }
         let entry = try XCTUnwrap(state.chronicle.last { $0.kind == .learning })
         XCTAssertEqual(entry.houses, [me])
-        XCTAssertTrue(entry.text.contains("masters Drill"), entry.text)
+        XCTAssertTrue(entry.text.contains("masters Close Order"), entry.text)
         XCTAssertTrue(entry.text.contains("tier II"), entry.text)
     }
 
     func testStudiesAreToldInTheGamesWords() throws {
         let (state, me, _) = try world()
-        XCTAssertEqual(RuleError.studyUnderWay(.drill).description, "Your House already studies Drill; one study at a time.")
+        XCTAssertEqual(RuleError.studyUnderWay(.drill).description, "Your House already studies Close Order; one study at a time.")
         XCTAssertEqual(RuleError.studiedFully.description, "That study is known to its last grade.")
         XCTAssertEqual(RuleError.needsArchive(3).description, "Needs an Archive III.")
-        XCTAssertEqual(RuleError.needsStudy(.drill, 1).description, "Needs the study of Drill.")
+        XCTAssertEqual(RuleError.needsStudy(.drill, 1).description, "Needs the study of Close Order.")
         XCTAssertEqual(RuleError.needsStudy(.gleaning, 2).description, "Needs the study of Gleaning II.")
         XCTAssertEqual(state.tidings(of: .studyBegun(house: me, study: .furrowLore, grade: 2), for: me),
                        Tidings("Your Archive takes up Furrow Lore II.", .neutral))
         XCTAssertEqual(state.tidings(of: .studyCompleted(house: me, study: .drill, grade: 1), for: me),
-                       Tidings("Your House masters Drill: companies of war of tier II.", .good))
+                       Tidings("Your House masters Close Order: companies of war of tier II.", .good))
         XCTAssertNil(state.tidings(of: .studyCompleted(house: 1, study: .drill, grade: 1), for: me), "Another House's studies are its own")
         XCTAssertNil(state.tidings(of: .starving(house: me), for: me), "Told elsewhere")
     }

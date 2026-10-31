@@ -108,15 +108,25 @@ final class ProgressTests: XCTestCase {
         XCTAssertEqual(state.items(.grainCache, of: me), 1)
         XCTAssertEqual(state.charge(of: me), .foundHold)
 
-        // All done: none left to set.
-        state.chargesDone![me] = Charge.allCases.count - 1
+        // The last two: a Muster Hall to III, and a company drilled there.
+        state.chargesDone![me] = Charge.allCases.count - 2
         state.holds[seat].levels[.musterHall] = 3
         XCTAssertEqual(state.fulfilCharges(), [.chargeDone(house: me, charge: .raiseMusterHall, reward: Charge.raiseMusterHall.reward),
                                                .itemsGiven(house: me, kind: .hourglass, count: 2), .itemsGiven(house: me, kind: .moonsaltCache, count: 1)])
+        XCTAssertEqual(state.charge(of: me), .drillCompany)
+        XCTAssertEqual(state.tidings(of: .chargeDone(house: me, charge: .raiseMusterHall, reward: Charge.raiseMusterHall.reward), for: me)?.text,
+                       "Charge done: raise a Muster Hall to III, and \(Charge.raiseMusterHall.reward) given. Next: drill a company to twice its first muster.")
+        let company = try XCTUnwrap(state.units.firstIndex { $0.owner == me && $0.kind.hasTiers })
+        state.units[company].drilled = state.firstMuster(of: state.units[company]) - 1
+        XCTAssertEqual(state.fulfilCharges(), [], "Not quite twice")
+        state.units[company].drilled = state.firstMuster(of: state.units[company])
+        XCTAssertEqual(state.fulfilCharges(), [.chargeDone(house: me, charge: .drillCompany, reward: Charge.drillCompany.reward),
+                                               .itemsGiven(house: me, kind: .mendingDraught, count: 1)])
+        // All done: none left to set.
         XCTAssertNil(state.charge(of: me))
         XCTAssertEqual(state.fulfilCharges(), [])
-        XCTAssertEqual(state.tidings(of: .chargeDone(house: me, charge: .raiseMusterHall, reward: Charge.raiseMusterHall.reward), for: me)?.text,
-                       "Charge done: raise a Muster Hall to III, and \(Charge.raiseMusterHall.reward) given.")
+        XCTAssertEqual(state.tidings(of: .chargeDone(house: me, charge: .drillCompany, reward: Charge.drillCompany.reward), for: me)?.text,
+                       "Charge done: drill a company to twice its first muster, and \(Charge.drillCompany.reward) given.")
         XCTAssertEqual(Set(Charge.allCases.map(\.title)).count, Charge.allCases.count)
 
         // Each charge as its House does it.
@@ -141,6 +151,7 @@ final class ProgressTests: XCTestCase {
         _ = try fresh.perform(.foundAlliance(name: "First Oath"), as: me)
         XCTAssertTrue(met(.swearBanner))
         XCTAssertFalse(met(.raiseMusterHall))
+        XCTAssertFalse(met(.drillCompany))
 
         // A fallen House is set none.
         fresh.houses[1].isEliminated = true

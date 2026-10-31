@@ -155,10 +155,10 @@ final class StageTests: XCTestCase {
         let unit = try XCTUnwrap(Self.state.units.first { $0.kind == .spear })
         let centre = Relief.centre(of: unit.position)
         let at = Vec3(centre.x, Self.relief.height(of: unit.position), centre.z)
-        func company(health: Int, heading: Float = 0, clip: Clip = .idle, time: Float = 0, commander: Int? = nil, spread: Float = 1)
-            -> CompanyPose {
+        func company(health: Int, heading: Float = 0, clip: Clip = .idle, time: Float = 0, commander: Int? = nil, spread: Float = 1,
+                     muster: Int = 100) -> CompanyPose {
             CompanyPose(unit: unit.id, key: .figure(.spear, tier: 2), sigil: 1, health: health, hex: unit.position, position: at,
-                        heading: heading, clip: clip, clipTime: time, isOwn: true, commander: commander, spread: spread)
+                        heading: heading, clip: clip, clipTime: time, isOwn: true, commander: commander, spread: spread, muster: muster)
         }
         let houses = [Vec4(1, 0, 0, 1), Vec4(0, 0, 1, 1)]
         var frame = SceneFrame()
@@ -173,9 +173,14 @@ final class StageTests: XCTestCase {
             XCTAssertEqual(figure.flags, ModelInstance.alwaysShown)
             XCTAssertGreaterThan(figure.palette, 0, "posed")
         }
-        // Worn down, it shows fewer; led, its commander rides at its head.
+        // Worn down, it shows fewer; drilled, more; led, its commander rides at its head.
         var worn = SceneFrame()
         XCTAssertLessThan(count(stage().companies([company(health: 30)], houses: houses, into: &worn)), figures.count)
+        var drilled = SceneFrame()
+        let host = stage().companies([company(health: 100, commander: 2, muster: 900)], houses: houses, into: &drilled)
+        XCTAssertEqual(host.first { $0.key == .figure(.spear, tier: 2) }?.instances.count, Formation.strength(.figure(.spear, tier: 2), muster: 900))
+        XCTAssertGreaterThan(Formation.strength(.figure(.spear, tier: 2), muster: 900), figures.count)
+        XCTAssertEqual(host.first { $0.key == .commander(variant: 2) }?.instances.count, 1)
         var led = SceneFrame()
         let withLeader = stage().companies([company(health: 100, commander: 3)], houses: houses, into: &led)
         XCTAssertEqual(withLeader.first { $0.key == .commander(variant: 3) }?.instances.count, 1)

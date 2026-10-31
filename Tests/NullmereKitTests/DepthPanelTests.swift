@@ -1075,6 +1075,42 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(HoverInfo.described(try XCTUnwrap(burning.state.storehouse(at: spot)), in: burning.state).hasPrefix("Raised by "))
     }
 
+    func testACompanyDrillsAtItsHallFromItsPanel() throws {
+        var state = world("drilled from the panel")
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let hall = try XCTUnwrap(state.holds.firstIndex { $0.id == seat.id })
+        state.holds[hall].levels[.musterHall] = 2
+        state.houses[me].stock = Stock(grain: 500, timber: 500, stone: 500, moonsalt: 100)
+        state.units.removeAll { $0.position == seat.position }
+        let id = state.takeID()
+        state.units.append(NullmereCore.Unit(id: id, kind: .spear, owner: me, position: seat.position, tier: 1))
+        let (session, link) = session(state)
+        let unit = try XCTUnwrap(session.state.unit(id))
+        XCTAssertEqual(UnitPanel.drillLine(unit, in: session.state), "It may lead 10,800, drilled at or beside one of your holds with a Muster Hall.")
+        session.selection = .unit(id)
+        draw(SelectionPanel(session: session), width: 330, height: 700)
+        XCTAssertTrue(PressableButtons.press("Drill"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .drill(unit: id))
+        let drilling = try XCTUnwrap(session.state.unit(id))
+        XCTAssertTrue(session.state.isDrilling(drilling))
+        XCTAssertEqual(UnitPanel.drillLine(drilling, in: session.state), "Drilling: 1,200 more as the watch turns, for 12 grain; it may lead 10,800.")
+        draw(SelectionPanel(session: session), width: 330, height: 700)
+        XCTAssertFalse(PressableButtons.press("Drilling"), "Drilling already")
+        XCTAssertNil(PressableButtons.actions["Drill"])
+        // Drilled whole, it says so.
+        var whole = drilling
+        whole.drilled = 9_600
+        XCTAssertTrue(UnitPanel.drillLine(whole, in: session.state)?.hasPrefix("It musters as many as it may lead, 10,800") == true)
+        XCTAssertEqual(UnitPanel.troopsLine(whole, in: session.state), "10,800 of 10,800 troops standing")
+        XCTAssertNil(UnitPanel.drillLine(NullmereCore.Unit(id: 0, kind: .lantern, owner: me, position: seat.position), in: session.state))
+        // Told once drilled whole; its panel shows it growing till then.
+        let told = Narration.line(for: .drilled(unit: id, owner: me, troops: 1_200, whole: true), in: session.state, viewer: me)
+        XCTAssertEqual(told?.text, "Your Spears at \(seat.name) are drilled whole: \(GameState.counted(session.state.fullMuster(of: drilling))) troops.")
+        XCTAssertNil(Narration.line(for: .drilled(unit: id, owner: me, troops: 1_200, whole: false), in: session.state, viewer: me))
+        XCTAssertNil(Narration.line(for: .drilled(unit: id, owner: me, troops: 1_200, whole: true), in: session.state, viewer: (me + 1) % 6))
+    }
+
     func testCompaniesAndArmiesAreCountedInTroops() throws {
         var state = world("troops shown")
         let me = state.player

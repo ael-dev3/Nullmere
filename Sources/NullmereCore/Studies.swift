@@ -125,7 +125,7 @@ public enum Study: String, CaseIterable, Codable, Sendable {
         case .deepCellars: return make("Deep Cellars", .husbandry, circle: 2, grades: 3, needs: [(.woodcraft, 1)], [.storage: 10])
         case .gleaning: return make("Gleaning", .husbandry, circle: 2, grades: 3, needs: [(.furrowLore, 1)], [.gathering: 10])
         case .ladenCarts: return make("Laden Carts", .husbandry, circle: 3, grades: 2, needs: [(.gleaning, 2)], [.load: 15])
-        case .drill: return make("Drill", .arms, circle: 1, grades: 1, [.tier: 1])
+        case .drill: return make("Close Order", .arms, circle: 1, grades: 1, [.tier: 1])
         case .spearwork: return make("Spearwork", .arms, circle: 1, grades: 3, [.attack(.spear): 5, .defense(.spear): 5])
         case .fletching: return make("Fletching", .arms, circle: 2, grades: 3, needs: [(.drill, 1)], [.attack(.bow): 6])
         case .horsemanship: return make("Horsemanship", .arms, circle: 2, grades: 3, needs: [(.drill, 1)],

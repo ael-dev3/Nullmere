@@ -79,6 +79,7 @@ public enum Charge: Int, Codable, CaseIterable, Sendable {
     case huntWild
     case swearBanner
     case raiseMusterHall
+    case drillCompany
 
     public var title: String {
         switch self {
@@ -92,6 +93,7 @@ public enum Charge: Int, Codable, CaseIterable, Sendable {
         case .huntWild: return "Strike down a company of the wilds"
         case .swearBanner: return "Swear to an alliance, or raise a banner"
         case .raiseMusterHall: return "Raise a Muster Hall to III"
+        case .drillCompany: return "Drill a company to twice its first muster"
         }
     }
 
@@ -107,6 +109,7 @@ public enum Charge: Int, Codable, CaseIterable, Sendable {
         case .huntWild: return Stock(grain: 60, moonsalt: 3)
         case .swearBanner: return Stock(grain: 50, timber: 50, stone: 50)
         case .raiseMusterHall: return Stock(grain: 60, timber: 60, stone: 60, moonsalt: 5)
+        case .drillCompany: return Stock(grain: 90, timber: 40)
         }
     }
 
@@ -118,7 +121,7 @@ public enum Charge: Int, Codable, CaseIterable, Sendable {
         case .raiseArchive: return [.hourglass, .hourglass]
         case .learnStudy: return [.grainCache]
         case .foundHold: return [.hourglass, .timberCache]
-        case .leadCompany, .huntWild: return [.mendingDraught]
+        case .leadCompany, .huntWild, .drillCompany: return [.mendingDraught]
         case .gatherSite: return [.stoneCache]
         case .swearBanner: return [.wardStone]
         case .raiseMusterHall: return [.hourglass, .hourglass, .moonsaltCache]
@@ -138,6 +141,7 @@ public enum Charge: Int, Codable, CaseIterable, Sendable {
         case .huntWild: return state.hasDone(.wildbane, house)
         case .swearBanner: return state.alliance(of: house) != nil || state.hasDone(.sworn, house)
         case .raiseMusterHall: return state.holds(of: house).contains { $0.level(.musterHall) >= 3 }
+        case .drillCompany: return state.units(of: house).contains { $0.kind.hasTiers && state.musterPercent(of: $0) >= 200 }
         }
     }
 }

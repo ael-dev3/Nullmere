@@ -609,6 +609,12 @@ struct UnitPanel: View {
             Text(verbatim: UnitPanel.troopsLine(unit, in: state))
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
+            if mine, let drill = UnitPanel.drillLine(unit, in: state) {
+                Text(verbatim: drill)
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             if let words = UnitPanel.leader(of: unit, in: state) {
                 Text(verbatim: words)
@@ -645,6 +651,15 @@ struct UnitPanel: View {
                     QuietButton(title: unit.fortified ? "Fortified" : "Fortify", enabled: !unit.fortified && unit.movesLeft > 0) {
                         session.perform(.fortify(unit: unit.id))
                     }
+                    if unit.kind.hasTiers {
+                        let drilling = state.isDrilling(unit), refusal = state.drillRefusal(of: unit)
+                        QuietButton(title: drilling ? "Drilling" : "Drill", enabled: !drilling && refusal == nil,
+                                    name: drilling ? "Drilling at the Muster Hall" : "Drill at the Muster Hall",
+                                    why: drilling ? nil : refusal.map { String(describing: $0) }) {
+                            session.perform(.drill(unit: unit.id))
+                        }
+                        .beckoned(session.beckon == .drill && refusal == nil && !drilling)
+                    }
                     if unit.destination != nil {
                         QuietButton(title: "Halt") { session.perform(.halt(unit: unit.id)) }
                     }
@@ -669,12 +684,27 @@ struct UnitPanel: View {
             .min { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
     }
 
-    /// The commander at a company's head, as its panel says it.
     /// Its troops: how many stand of its whole muster.
     static func troopsLine(_ unit: Unit, in state: GameState) -> String {
-        "\(GameState.counted(state.troops(of: unit))) of \(GameState.counted(unit.kind.troops(tier: unit.tier))) troops standing"
+        "\(GameState.counted(state.troops(of: unit))) of \(GameState.counted(state.fullMuster(of: unit))) troops standing"
     }
 
+    /// How its drill stands: what the hall drills into it as each watch
+    /// turns, and for what, or how many it may lead.
+    static func drillLine(_ unit: Unit, in state: GameState) -> String? {
+        guard unit.kind.hasTiers else { return nil }
+        let capacity = GameState.counted(state.drillCapacity(of: unit))
+        if state.isDrilling(unit), let hold = state.drillHold(for: unit) {
+            let troops = min(state.drillCapacity(of: unit) - state.fullMuster(of: unit), state.drillRate(of: unit, hall: hold.level(.musterHall)))
+            return "Drilling: \(GameState.counted(troops)) more as the watch turns, for \(state.drillCost(of: unit, troops: troops)); it may lead \(capacity)."
+        }
+        if state.fullMuster(of: unit) >= state.drillCapacity(of: unit) {
+            return "It musters as many as it may lead, \(capacity); a higher Muster Hall or a commander would lead more."
+        }
+        return "It may lead \(capacity), drilled at or beside one of your holds with a Muster Hall."
+    }
+
+    /// The commander at a company's head, as its panel says it.
     static func leader(of unit: Unit, in state: GameState) -> String? {
         guard let id = unit.leader, let commander = state.commander(id) else { return nil }
         return "Led by \(commander.name), \(commander.archetype.named) of level \(commander.level)"

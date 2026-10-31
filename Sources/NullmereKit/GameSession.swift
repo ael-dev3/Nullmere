@@ -186,6 +186,8 @@ public final class GameSession {
         case found
         /// Raising a banner.
         case banner
+        /// A company's Drill.
+        case drill
     }
 
     public var beckon: Beckon?
@@ -1204,7 +1206,7 @@ public final class GameSession {
         case .answer(_, true) where events.contains(where: { if case .proposalAnswered(_, _, _, true) = $0 { return true } else { return false } }):
             return .accord
         case .answer(_, false): return .refusal
-        case .fortify: return .dig
+        case .fortify, .drill: return .dig
         case .barter, .gift, .offerTrade: return .coin
         case .propose, .proposeWithWords: return .parley
         case .halt, .disband: return .stand

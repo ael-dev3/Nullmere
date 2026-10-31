@@ -41,6 +41,7 @@ extension GameState {
         events += raiseTheHealed()
         events += advanceStudies()
         mendAndHeal(territory: owners)
+        events += drillCompanies(territory: owners)
 
         for index in units.indices {
             units[index].movesLeft = movement(of: units[index])

@@ -165,6 +165,11 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
     public var errand: Errand?
     /// What it carries home from the land's sites, if anything.
     public var load: Stock?
+    /// Troops drilled into it at a Muster Hall beyond its first muster.
+    public var drilled: Int?
+    /// Where it drills, for as long as it stands there: one of its House's
+    /// holds with a Muster Hall.
+    public var drillAt: Hex?
 
     /// Veterancy: none, then Blooded, Hardened and Sworn as battles are
     /// survived. Each rank adds a tenth to attack and defence.
@@ -215,10 +220,12 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
         self.leader = nil
         self.errand = nil
         self.load = nil
+        self.drilled = nil
+        self.drillAt = nil
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, kind, owner, position, health, movesLeft, destination, fortified, acted, experience, tier, leader, errand, load
+        case id, kind, owner, position, health, movesLeft, destination, fortified, acted, experience, tier, leader, errand, load, drilled, drillAt
     }
 
     /// Games saved before veterancy have no experience recorded; it starts at
@@ -239,5 +246,7 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
         leader = try container.decodeIfPresent(Int.self, forKey: .leader)
         errand = try container.decodeIfPresent(Errand.self, forKey: .errand)
         load = try container.decodeIfPresent(Stock.self, forKey: .load)
+        drilled = try container.decodeIfPresent(Int.self, forKey: .drilled)
+        drillAt = try container.decodeIfPresent(Hex.self, forKey: .drillAt)
     }
 }

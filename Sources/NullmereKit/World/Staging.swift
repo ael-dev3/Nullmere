@@ -287,7 +287,7 @@ extension GameSession {
             poses.append(CompanyPose(unit: unit.id, key: key, sigil: state.houses[unit.owner].sigil, health: unit.health,
                                      hex: unit.position, position: position, heading: heading, clip: clip, clipTime: clipTime,
                                      emphasis: chosen ? 1 : (hovered == unit.position ? 0.5 : 0), isOwn: unit.owner == player,
-                                     commander: unit.leader.flatMap(commanderLook), spread: spread,
+                                     commander: unit.leader.flatMap(commanderLook), spread: spread, muster: state.musterPercent(of: unit),
                                      blend: animated ? easing(unit.id, into: clip, at: clipTime, now: now) : nil))
         }
         // The far country's companies in sight, no House's, watching.

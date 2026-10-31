@@ -79,6 +79,11 @@ extension GameState {
             guard house == viewer, let hold = hold(holdID) else { return nil }
             let companies = count == 1 ? "a company" : "\(count) companies"
             return Tidings("The healers at \(hold.name) tend \(companies); they rise as the watch turns.", .neutral)
+        case .drilled(let id, let owner, _, let whole):
+            // Told once a company is drilled whole; its panel shows it growing till then.
+            guard whole, owner == viewer, let company = unit(id) else { return nil }
+            let place = drillHold(for: company)?.name ?? hold(at: company.position)?.name ?? "their hold"
+            return Tidings("Your \(company.kind.title) at \(place) are drilled whole: \(GameState.counted(fullMuster(of: company))) troops.", .good)
         case .unitHealed(let unitID, let holdID):
             guard let unit = unit(unitID), unit.owner == viewer, let hold = hold(holdID) else { return nil }
             return Tidings("Your \(unit.kind.title) rise healed at \(hold.name).", .good)
@@ -410,7 +415,7 @@ extension GameState {
         }
     }
 
-    /// A study and its grade as the game writes it: "Furrow Lore II", "Drill".
+    /// A study and its grade as the game writes it: "Furrow Lore II", "Close Order".
     public static func graded(_ study: Study, _ grade: Int) -> String {
         study.grades > 1 ? "\(study.title) \(BuildingKind.numeral(grade))" : study.title
     }

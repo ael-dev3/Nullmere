@@ -2,7 +2,7 @@ import Foundation
 import NullmereCore
 
 /// How a company is drawn in its hex: how many figures it shows by its
-/// health, and where each stands. Offsets are from the hex's heart in the
+/// health and its muster, and where each stands. Offsets are from the hex's heart in the
 /// company's own frame, facing +z, front rank first; the renderer turns
 /// them to the company's heading. Every figure stands within the hex
 /// whichever way it is turned, and the company, with its commander when it
@@ -50,28 +50,67 @@ public enum Formation {
         }
     }
 
+    /// The most figures a company drilled beyond its first muster shows,
+    /// in ranks of how many: as many more as still stand within the hex,
+    /// with its commander at its head. Lanterns and Founders drill none.
+    static func drilled(_ kind: UnitKind) -> (most: Int, file: Int)? {
+        switch kind {
+        case .spear: return (16, 4)
+        case .bow: return (16, 6)
+        case .rider: return (4, 4)
+        case .lantern, .founder: return nil
+        }
+    }
+
+    /// How much of the more a drilled company shows, by its muster in
+    /// percent of its first: none undrilled, half at twice its first muster,
+    /// all of it at four times.
+    public static func drilledShare(muster: Int) -> Float {
+        muster <= 100 ? 0 : min(1, log2(Float(muster) / 100) / 2)
+    }
+
+    /// Its ranks as drilled: the more figures, in wider ranks once there
+    /// are more than at first. Only a House's companies drill; the wilds
+    /// stand as they are.
+    static func ranks(_ key: ModelKey, muster: Int) -> Ranks? {
+        guard var ranks = ranks(key) else { return nil }
+        let kind: UnitKind
+        switch key.canonical {
+        case .figure(let figure, _): kind = figure
+        case .signature(let heritage): kind = heritage.signature
+        default: return ranks
+        }
+        guard let drilled = drilled(kind) else { return ranks }
+        let more = Int((Float(drilled.most - ranks.strength) * drilledShare(muster: muster)).rounded())
+        guard more > 0 else { return ranks }
+        ranks.strength += more
+        ranks.file = drilled.file
+        return ranks
+    }
+
     /// The most figures a company of this kind shows, whole: a figure's
     /// key for a House's company, a wild one's for the far country; one
-    /// for anything else.
-    public static func strength(_ key: ModelKey) -> Int {
-        ranks(key)?.strength ?? 1
+    /// for anything else. More for a company drilled beyond its first
+    /// muster, its muster in percent of its first.
+    public static func strength(_ key: ModelKey, muster: Int = 100) -> Int {
+        ranks(key, muster: muster)?.strength ?? 1
     }
 
     /// How many figures a company shows at a health from 0 to 100: none
     /// once it is gone, at least one while it stands, all of them whole,
     /// and fewer as it is worn down.
-    public static func count(_ key: ModelKey, health: Int) -> Int {
+    public static func count(_ key: ModelKey, health: Int, muster: Int = 100) -> Int {
         guard health > 0 else { return 0 }
-        let full = strength(key)
+        let full = strength(key, muster: muster)
         return min(full, max(1, Int((Float(full) * Float(min(health, 100)) / 100).rounded(.up))))
     }
 
     /// Where each figure the company shows stands. A company led by a
     /// commander falls back to leave the front to its leader.
-    public static func offsets(_ key: ModelKey, health: Int, led: Bool = false) -> [Vec3] {
-        let shown = count(key, health: health)
+    public static func offsets(_ key: ModelKey, health: Int, led: Bool = false, muster: Int = 100) -> [Vec3] {
+        let shown = count(key, health: health, muster: muster)
         guard shown > 0 else { return [] }
-        guard let ranks = ranks(key) else { return [.zero] }
+        guard let ranks = ranks(key, muster: muster) else { return [.zero] }
         var offsets: [Vec3] = []
         var rank = 0
         while offsets.count < shown {
@@ -88,9 +127,9 @@ public enum Formation {
     }
 
     /// Where a commander rides, at the head of the company it leads.
-    public static func commander(_ key: ModelKey, health: Int = 100) -> Vec3 {
-        guard let ranks = ranks(key) else { return .zero }
-        let rankCount = (max(count(key, health: health), 1) + ranks.file - 1) / ranks.file
+    public static func commander(_ key: ModelKey, health: Int = 100, muster: Int = 100) -> Vec3 {
+        guard let ranks = ranks(key, muster: muster) else { return .zero }
+        let rankCount = (max(count(key, health: health, muster: muster), 1) + ranks.file - 1) / ranks.file
         return Vec3(0, 0, ranks.lead - middle(ranks, rankCount: rankCount, led: true))
     }
 

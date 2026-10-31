@@ -64,6 +64,22 @@ final class PlacementTests: XCTestCase {
             XCTAssertLessThan(Formation.count(key, health: 50), Formation.strength(key), "\(key) shows its wounds")
         }
         XCTAssertGreaterThan(Formation.strength(.figure(.spear, tier: 1)), Formation.strength(.figure(.rider, tier: 1)), "a block of spears")
+        // Drilled beyond its first muster, a company shows more.
+        let spears = ModelKey.figure(.spear, tier: 1)
+        XCTAssertEqual(Formation.drilledShare(muster: 100), 0)
+        XCTAssertEqual(Formation.drilledShare(muster: 50), 0)
+        XCTAssertEqual(Formation.drilledShare(muster: 200), 0.5, accuracy: 1e-5, "Half the more at twice its first muster")
+        XCTAssertEqual(Formation.drilledShare(muster: 5_000), 1, "All of it at four times and beyond")
+        XCTAssertEqual(Formation.strength(spears, muster: 110), 9, "Barely drilled, as it was")
+        XCTAssertEqual(Formation.strength(spears, muster: 200), 13)
+        XCTAssertEqual(Formation.strength(spears, muster: 900), 16)
+        XCTAssertEqual(Formation.strength(.figure(.rider, tier: 3), muster: 900), 4, "Riders four abreast")
+        XCTAssertEqual(Formation.strength(.figure(.lantern, tier: 1), muster: 900), Formation.strength(.figure(.lantern, tier: 1)))
+        XCTAssertEqual(Formation.strength(.wild(tier: 1), muster: 900), Formation.strength(.wild(tier: 1)), "The wilds drill nothing")
+        for muster in stride(from: 100, through: 3_000, by: 100) {
+            XCTAssertGreaterThanOrEqual(Formation.strength(spears, muster: muster), Formation.strength(spears, muster: max(muster - 100, 100)))
+            XCTAssertEqual(Formation.offsets(spears, health: 100, muster: muster).count, Formation.strength(spears, muster: muster))
+        }
         XCTAssertEqual(Formation.strength(.keep(seat: false)), 1)
         XCTAssertEqual(Formation.offsets(.prop(.cart), health: 50), [.zero])
         XCTAssertEqual(Formation.offsets(.prop(.cart), health: 0), [])
@@ -75,12 +91,12 @@ final class PlacementTests: XCTestCase {
         for key in PlacementTests.companies {
             let reach = PlacementTests.reach(key), box = PlacementTests.extent(key)
             for health in [100, 80, 55, 30, 1] {
-                for led in [false, true] {
-                    let offsets = Formation.offsets(key, health: health, led: led)
+                for (led, muster) in [false, true].flatMap({ led in [100, 250, 900, 2_700].map { (led, $0) } }) {
+                    let offsets = Formation.offsets(key, health: health, led: led, muster: muster)
                     for offset in offsets {
                         XCTAssertEqual(offset.y, 0)
                         XCTAssertLessThanOrEqual(SIMD2(offset.x, offset.z).length + reach, Formation.hexInner,
-                                                 "\(key) at \(health) stands within its hex, turned any way")
+                                                 "\(key) at \(health), mustering \(muster), stands within its hex, turned any way")
                     }
                     // No two figures stand in each other.
                     for i in offsets.indices {
@@ -92,7 +108,7 @@ final class PlacementTests: XCTestCase {
                         }
                     }
                     guard led else { continue }
-                    let commander = Formation.commander(key, health: health)
+                    let commander = Formation.commander(key, health: health, muster: muster)
                     XCTAssertLessThanOrEqual(SIMD2(commander.x, commander.z).length + leader, Formation.hexInner,
                                              "\(key)'s commander rides within the hex")
                     let front = offsets.map(\.z).max() ?? 0

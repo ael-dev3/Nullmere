@@ -35,6 +35,8 @@ extension GameState {
             // Digging in at an ally's gates is keeping them still.
             if case .reinforce? = units[index].errand {} else { units[index].errand = nil }
             return []
+        case let .drill(unitID):
+            return try drill(unitID, as: house)
         case let .disband(unitID):
             let index = try ownedUnit(unitID, of: house)
             let unit = units.remove(at: index)
@@ -433,6 +435,8 @@ extension GameState {
     func strengths(of attacker: Unit, against defender: Unit, at hex: Hex) -> (attack: Int, defense: Int) {
         var attack = attacker.kind.attack * (50 + attacker.health / 2) * (100 + Unit.rankBonus * attacker.rank) / 100
         attack = attack * attackPercent(of: attacker) / 100
+        // The harder for its troops.
+        attack = attack * musterMight(of: attacker) / 100
         if defender.kind == .rider {
             attack = attack * (100 + attacker.kind.bonusAgainstRiders) / 100
         }
@@ -448,7 +452,7 @@ extension GameState {
             defenseBonus += defender.kind.bonusAgainstRiders
         }
         let defense = max(1, defender.kind.defense * (50 + defender.health / 2) * defenseBonus / 100 * (100 + Unit.rankBonus * defender.rank) / 100
-            * defensePercent(of: defender) / 100)
+            * defensePercent(of: defender) / 100 * musterMight(of: defender) / 100)
         return (attack, defense)
     }
 

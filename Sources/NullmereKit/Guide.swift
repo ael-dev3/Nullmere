@@ -35,7 +35,8 @@ enum Guide {
         ]),
         Section(title: "Companies", lines: [
             "Lanterns scout. Spears hold the line and take holds. Bows strike from two tiles. Riders are fast. Founders found new holds.",
-            "A company is so many troops at full muster, by its kind and tier: Spears 1,200 at I to 2,400 at V, Bows 1,000 to 2,000, Riders 800 to 1,600. As many stand as its health is a share of, and every battle is told in the troops each side slew and lost. Your army, all your companies of war, is counted in the Realm (6).",
+            "A company is so many troops at its first muster, by its kind and tier: Spears 1,200 at I to 2,400 at V, Bows 1,000 to 2,000, Riders 800 to 1,600. As many stand as its health is a share of, and every battle is told in the troops each side slew and lost. Your army, all your companies of war, is counted in the Realm (6).",
+            "Drill a company of war at or beside one of your holds with a Muster Hall and it takes on troops as each watch turns while it stays there, half its first muster for each of the hall's levels, for grain: up to as many as it may lead, once its first muster, four times more for each level of your best Muster Hall, and once more for every three levels of its commander. No hall drills troops your grain can't feed. Every troop counts, each the less the more there are: a company drilled to nine times its first muster fights others three times as hard and eats three times as much; walls, wards and the wilds are struck as before.",
             "Lanterns within two tiles of another House's hold can scout it from its panel, for all their moves: their report, in the Chronicle's Reports and on the hold's panel, tells the companies at its gates and who leads them, its ward, what it raises and musters, the stores its taking would carry off, and how many lie in its Infirmary. Its House sees them watching.",
             "Select a company, then right-click to march, or to strike an enemy within reach. Hovering an enemy shows the battle's odds first.",
             "A company that wins a close fight steps onto the fallen's ground, but never out of a hold, for a garrison holds its ground, nor into a hold it can't take.",
@@ -46,7 +47,7 @@ enum Guide {
             "Raise an Infirmary, and your companies of war that fall are carried to the nearest hold with a bed free, two beds at I and one more at each level, rather than lost. Heal them from the hold's panel for half what mustering them anew costs: they rise whole, their rank kept, as the watch turns. A hold taken loses those in its beds.",
         ]),
         Section(title: "Tiers and studies", lines: [
-            "Spears, Bows and Riders muster in five tiers, each stronger and dearer than the last: a tier needs its study (Drill for II, Iron Ranks for III, Grey Companies for IV, Moonsteel for V) and a Muster Hall as high as the tier. Choose the tier as you train.",
+            "Spears, Bows and Riders muster in five tiers, each stronger and dearer than the last: a tier needs its study (Close Order for II, Iron Ranks for III, Grey Companies for IV, Moonsteel for V) and a Muster Hall as high as the tier. Choose the tier as you train.",
             "Build an Archive to study, one study at a time, in four branches: Husbandry, Arms, Masonry and Lore. A study of the second circle needs an Archive of II, and so on, and the studies it builds on. The Archive (3) shows the whole tree: what each grade does, costs and takes.",
         ]),
         Section(title: "Commanders", lines: [

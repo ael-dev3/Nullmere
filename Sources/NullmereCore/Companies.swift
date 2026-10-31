@@ -24,16 +24,18 @@ extension GameState {
         unit.kind.movement + bonus(.moves(unit.kind), for: unit)
     }
 
-    /// Grain a company eats each watch.
+    /// Grain a company eats each watch: its tier's, and a quarter as much
+    /// again for each first muster's worth of troops drilled into it.
     public func upkeep(of unit: Unit) -> Int {
-        unit.kind.upkeep(tier: unit.tier)
+        let first = max(firstMuster(of: unit), 1)
+        return unit.kind.upkeep(tier: unit.tier) * (4 * first + max(unit.drilled ?? 0, 0)) / (4 * first)
     }
 
     /// A company's weight in its House's strength: its attack and defence,
-    /// its body, and how whole it is.
+    /// its body, how whole it is, and its troops.
     public func strength(of unit: Unit) -> Int {
         let might = unit.kind.attack * attackPercent(of: unit) + unit.kind.defense * defensePercent(of: unit)
-        return might * bodyPercent(of: unit) / 100 * unit.health / 1000
+        return might * bodyPercent(of: unit) / 100 * unit.health / 1000 * musterMight(of: unit) / 100
     }
 
     /// A blow's damage as the company struck takes it: lessened by its body.

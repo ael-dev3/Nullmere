@@ -519,20 +519,21 @@ realm; keepers are told in plain words, never a status code.
   more to found than the last, so a House grows by choice, not by habit. A
   company trained with no free tile within three of its hold waits,
   trained, and the hold trains no other until it has room to stand.
-- **Companies.** Lanterns scout, Spears hold the line and take holds,
-  Bows strike from two tiles, Riders are fast, and Founders found new holds.
+- **Companies.** Lanterns scout, Spears hold the line and take holds, Bows
+  strike from two tiles, Riders are fast, and Founders found new holds.
   Every company but Lanterns eats a grain each watch. Spears, Bows and
   Riders muster in tiers I to V, each needing a Muster Hall as high as
-  itself and the study that opens it (Drill, Iron Ranks, Grey Companies,
-  Moonsteel): a higher tier strikes harder, stands firmer and takes less of a
-  blow, but costs more (moonsalt from tier III), eats more and takes longer
-  to train. Lanterns and Founders muster in one. Companies that
-  live through battles rise in rank (Blooded, Hardened, Sworn), each rank
-  adding a tenth to attack and defence; chevrons over a company show it. A
-  company that wins a close fight steps onto the fallen's ground, but never
-  out of a hold, for a garrison holds its ground, nor into a hold it can't
-  take. The odds shown before a strike say when the striker will take the
-  ground or the hold, and never promise either to a company that may fall.
+  itself and the study that opens it (Close Order, Iron Ranks, Grey
+  Companies, Moonsteel): a higher tier strikes harder, stands firmer and
+  takes less of a blow, but costs more (moonsalt from tier III), eats more
+  and takes longer to train. Lanterns and Founders muster in one.
+  Companies that live through battles rise in rank (Blooded, Hardened,
+  Sworn), each rank adding a tenth to attack and defence; chevrons over a
+  company show it. A company that wins a close fight steps onto the
+  fallen's ground, but never out of a hold, for a garrison holds its
+  ground, nor into a hold it can't take. The odds shown before a strike
+  say when the striker will take the ground or the hold, and never promise
+  either to a company that may fall.
 - **Studies.** An Archive opens a House's studies, one at a time: twenty-eight
   in four branches (Husbandry, Arms, Masonry, Lore), each needing an Archive
   of its circle, the studies it builds on, and its price. Each grade changes
@@ -852,13 +853,41 @@ realm; keepers are told in plain words, never a status code.
   seconds; a realm lists its crossings there, and the Frontier its season
   and its last result. Return Home brings the keeper back; when the season
   ends they are taken home.
-- **Troops.** A company is so many troops at full muster, by its kind and
-  tier: Spears 1,200 at the first tier to 2,400 at the fifth, Bows 1,000
-  to 2,000, Riders 800 to 1,600, Lanterns 60 and Founders 250, as many
-  standing as its health is a share of. Every battle counts the troops
-  each side slew and lost, and its report, its tidings and its notice
-  tell them; a company's panel shows its troops standing, and the Realm
-  screen the House's army, all its companies of war together.
+- **Troops.** A company is so many troops at its first muster, by its
+  kind and tier: Spears 1,200 at the first tier to 2,400 at the fifth,
+  Bows 1,000 to 2,000, Riders 800 to 1,600, Lanterns 60 and Founders 250,
+  and those drilled into it since, as many standing as its health is a
+  share of. Every battle counts the troops each side slew and lost, and
+  its report, its tidings and its notice tell them; a company's panel
+  shows its troops standing, and the Realm screen the House's army, all
+  its companies of war together.
+- **Drill.** A company of war standing at or beside one of its House's
+  holds with a Muster Hall drills there when ordered (Drill, on its
+  panel), taking on troops as each watch turns while it stays: half its
+  first muster for each of the hall's levels, for twelve grain a first
+  muster's worth at the first tier, dearer by tier as mustering is. It may
+  lead its first muster once, four times more for each level of its
+  House's best Muster Hall, and once more for every three levels of the
+  commander at its head: Spears of the fifth tier, with a Muster Hall V
+  and a commander of the thirtieth level, lead 74,400. No hall drills
+  troops its House's grain can't feed: none while its grain income would
+  not cover what its companies eat, each a quarter as much again for every
+  first muster drilled into it. Every troop counts, each the less the more
+  there are: a company fights others the harder as the square root of its
+  muster over its first (nine times its first muster, three times as
+  hard), and weighs as much more in its House's strength; walls, wards and
+  the wilds are struck as before. Drilled, a company stands in more
+  figures on the map, Spears and Bows up to sixteen, Riders four abreast;
+  its panel says how it drills and how many it may lead, and it crosses to
+  the Frontier with its troops. The stewards drill those who wait beside
+  their halls, but a steadfast or wary House raising its Moonspire keeps
+  its grain for the tower while it is at peace. In 32 ages of eight
+  stewards, a realm's armies came to 770,000 troops at the median as the
+  age ended, against 209,000 on the same lakes before drill, and its
+  greatest battles to 26,000 troops at the median and 55,000 at the most,
+  against 10,000 and 18,000. The ages ran longer, 136 watches at the
+  median against 107; the Moonspire decided 14 of them, against 10 before,
+  and one of the 32 had no end by the 240th watch.
 - **Heritages.** Every House comes of one of the lake's six peoples,
   dealt round the lake as an age begins, from a seat the seed chooses, so
   each has its seats: the Saltborn (half again the moonsalt from their
@@ -965,8 +994,9 @@ realm; keepers are told in plain words, never a status code.
   done once an age (Founder, Wildbane, Great Hunter, First Harvest, Scholar,
   Fifth Tier, Great Walls, Sworn, Host Triumphant, Conqueror, Honoured,
   Veteran Commander, Spire Begun), told as the watch turns. Every House is
-  set ten charges in turn, first steps from raising a Granary to a Muster
-  Hall III, each bringing stores as the watch turns after it is done; the
+  set eleven charges in turn, first steps from raising a Granary to a
+  Muster Hall III and a company drilled there to twice its first muster,
+  each bringing stores as the watch turns after it is done; the
   stewards meet them as they play. The ambitious weigh might, not arms
   alone, in choosing an alliance or an ally.
 - **Renown.** As an age ends, each keeper who held a House in it is
@@ -1177,15 +1207,16 @@ There is no music in the launcher; the game makes its own sound as it plays.
   in its five tiers, the wilds and six commanders, keeps, walls and every
   work at every level, the land's firs, birches, heather, ferns, crags,
   reeds, pebbles, mounds and ruins, and what moves through the world.
-  Companies stand in formation, fewer as they are worn down; holds lay out
-  their works on the land around the keep. Near, the models show fine work
-  that is left off from afar, where it is too small to see: a keep's quoins,
-  framed windows with shutters in its House's colour, roof ribs, a
-  half-timbered hall with a capped chimney, a log pile and a handcart (a
-  seat's keep is 2,728 triangles, where it was 778); the walls' arrow loops,
-  string courses, wall-walks, tower slits and finials, and iron bands on the
-  gate; and on every hall and round house of the works, courses across the
-  roofs, boards and vents in the gables, hoops and finials.
+  Companies stand in formation, fewer as they are worn down and more as they
+  are drilled; holds lay out their works on the land around the keep. Near,
+  the models show fine work that is left off from afar, where it is too
+  small to see: a keep's quoins, framed windows with shutters in its House's
+  colour, roof ribs, a half-timbered hall with a capped chimney, a log pile
+  and a handcart (a seat's keep is 2,728 triangles, where it was 778); the
+  walls' arrow loops, string courses, wall-walks, tower slits and finials,
+  and iron bands on the gate; and on every hall and round house of the
+  works, courses across the roofs, boards and vents in the gables, hoops and
+  finials.
 - **Portraits from the world itself.** The panels show each commander,
   each company to be trained (in the tier chosen) and each work to be
   built (at the stage it will be), drawn by the world's own renderer on a

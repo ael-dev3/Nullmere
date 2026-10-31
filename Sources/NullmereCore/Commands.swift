@@ -17,6 +17,10 @@ public enum Command: Codable, Equatable, Sendable {
     case barter(give: Resource, take: Resource, amount: Int)
     /// Dig in: +25% defence until the unit moves.
     case fortify(unit: Int)
+    /// Drill at the Muster Hall of a hold the company stands at or beside:
+    /// troops taken on as each watch turns while it stays there, up to as
+    /// many as it can lead.
+    case drill(unit: Int)
     case disband(unit: Int)
     /// Forget a march in progress.
     case halt(unit: Int)
@@ -266,6 +270,11 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case wardWhole
     /// A mending draught used when no company of the House is hurt.
     case noneHurt
+    /// A company drilled anywhere but at or beside one of its House's holds
+    /// with a Muster Hall, or one that isn't a company of war.
+    case drillsAtMusterHall
+    /// A company that musters as many as it can lead.
+    case drilledWhole
     /// A heritage taken up by a House already of it.
     case alreadyOfHeritage
     /// An alliance study learned to its last grade.
@@ -413,6 +422,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .nothingToHasten: return "Nothing under way there has a watch to spare: what has one left is done as the watch turns."
         case .wardWhole: return "That hold's ward is whole."
         case .noneHurt: return "None of your companies is hurt."
+        case .drillsAtMusterHall: return "A company of war drills at or beside one of your holds with a Muster Hall."
+        case .drilledWhole: return "That company musters as many as it can lead: raise your Muster Hall, or give it a commander, to drill it further."
         case .alreadyOfHeritage: return "Your House is of that heritage already."
         case .allianceStudyMastered: return "Your alliance has learned that study to its last grade."
         case .alreadyPursued: return "Your alliance pursues that study already."
@@ -458,6 +469,9 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// An offer of trade taken or refused, and so carried out or not.
     case tradeAnswered(trade: Trade, from: Int, to: Int, accepted: Bool)
     case unitTrained(unit: Int, hold: Int)
+    /// So many troops drilled into a company as the watch turned; whole
+    /// when it musters as many as it can lead.
+    case drilled(unit: Int, owner: Int, troops: Int, whole: Bool)
     /// A company rose in rank after a battle.
     case promoted(unit: Int, owner: Int, rank: Int)
     case ruinSearched(at: Hex, by: Int, reward: Stock)

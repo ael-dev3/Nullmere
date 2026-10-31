@@ -42,6 +42,14 @@ final class FrontierTests: XCTestCase {
         XCTAssertLessThanOrEqual(levy.count, FrontierState.levyMost)
         XCTAssertTrue(levy.allSatisfy(\.kind.isMilitary))
         XCTAssertEqual(levy.map(\.tier), levy.map(\.tier).sorted(by: >), "Strongest first")
+        // A company drilled beyond its first muster goes before one as high that isn't, its troops with it.
+        let companies = home.world.units.filter { $0.owner == house && $0.kind.isMilitary }
+        let lowest = try XCTUnwrap(companies.min { ($0.tier, -$0.id) < ($1.tier, -$1.id) })
+        home.world.units[try XCTUnwrap(home.world.unitIndex(lowest.id))].drilled = 2_400
+        let drilledLevy = home.levy(of: house)
+        XCTAssertTrue(drilledLevy.contains(Levy(kind: lowest.kind, tier: lowest.tier, drilled: 2_400)) || drilledLevy.count == FrontierState.levyMost)
+        XCTAssertEqual(drilledLevy.first { $0.tier == lowest.tier }?.drilled, 2_400, "First of its tier")
+        home.world.units[try XCTUnwrap(home.world.unitIndex(lowest.id))].drilled = nil
 
         // As the keeper's client sends it: an order.
         let events = try home.perform(.crossToFrontier, by: "id-ilsen")
@@ -75,7 +83,7 @@ final class FrontierTests: XCTestCase {
             guard case .refused = error as? RealmError else { return XCTFail("\(error)") }
         }
         let west = Crossing(keeper: "id-ilsen", name: "Ilsen", realm: "The Nullmere", season: 1, heritage: .moundClans,
-                            levy: [Levy(kind: .spear, tier: 3), Levy(kind: .bow, tier: 2)])
+                            levy: [Levy(kind: .spear, tier: 3, drilled: 3_600), Levy(kind: .bow, tier: 2)])
         let east = Crossing(keeper: "id-orla", name: "Ilsen", realm: "The Farmere", season: 1, heritage: nil, levy: [Levy(kind: .rider, tier: 2)])
         let impostor = Crossing(keeper: "id-mallow", name: "Mallow", realm: "The Nullmere", season: 1, heritage: nil, levy: [])
         let stale = Crossing(keeper: "id-old", name: "Old", realm: "The Farmere", season: 0, heritage: nil, levy: [])
@@ -98,8 +106,10 @@ final class FrontierTests: XCTestCase {
         XCTAssertNil(frontier.frontier?.kingdom(of: (0..<4).first { $0 != mine && $0 != theirs }!), "The Lost Shore's own Houses stand for none")
         XCTAssertTrue(frontier.world.isAtWar(mine, theirs), "Kingdoms meet at war")
         XCTAssertEqual(frontier.world.heritage(of: mine), .moundClans, "In their people's way")
-        let levied = frontier.world.units.filter { $0.owner == mine }.map { Levy(kind: $0.kind, tier: $0.tier) }
-        XCTAssertTrue(levied.contains(Levy(kind: .spear, tier: 3)) && levied.contains(Levy(kind: .bow, tier: 2)), "Their levy raised")
+        let levied = frontier.world.units.filter { $0.owner == mine }.map { Levy(kind: $0.kind, tier: $0.tier, drilled: $0.drilled) }
+        XCTAssertTrue(levied.contains(Levy(kind: .spear, tier: 3, drilled: 3_600)) && levied.contains(Levy(kind: .bow, tier: 2)),
+                      "Their levy raised, its drilled troops with it")
+        XCTAssertEqual(Levy(kind: .bow, tier: 1, drilled: 0).drilled, nil, "None drilled, none kept")
         XCTAssertTrue(frontier.world.units.contains { $0.owner == theirs && $0.kind == .rider && $0.tier == 2 })
         // A returning keeper is not raised twice.
         frontier.depart("id-ilsen", now: 4)

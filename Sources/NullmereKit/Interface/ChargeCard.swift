@@ -5,8 +5,8 @@ import SwiftUI
 /// another, each with how to keep it, a way to be shown, and its reward.
 /// Raise a Granary, muster, raise an Archive and study, found a hold, set
 /// a commander at a company's head, gather, hunt the wilds, swear to an
-/// alliance, and raise a Muster Hall: every system, in the order a keeper
-/// meets it.
+/// alliance, raise a Muster Hall, and drill a company there: every system,
+/// in the order a keeper meets it.
 enum ChargeGuide {
     /// How to keep a charge, in a line.
     static func how(_ charge: Charge) -> String {
@@ -18,7 +18,7 @@ enum ChargeGuide {
         case .raiseArchive:
             return "Build an Archive at your seat. Studies are learned there, one at a time."
         case .learnStudy:
-            return "Open the Archive (3) and begin a study. Drill opens companies of the second tier."
+            return "Open the Archive (3) and begin a study. Close Order opens companies of the second tier."
         case .foundHold:
             return "Train Founders, march them three tiles from any hold, and found a hold there (B)."
         case .leadCompany:
@@ -31,6 +31,8 @@ enum ChargeGuide {
             return "Open Alliance (5): raise a banner of your own, or ask to join one that stands."
         case .raiseMusterHall:
             return "Build your seat's Muster Hall to III: higher tiers muster there, and a captain comes to lead them."
+        case .drillCompany:
+            return "Choose a company of war beside your seat and Drill it: the Muster Hall drills troops into it as each watch turns while it stays."
         }
     }
 
@@ -74,6 +76,17 @@ enum ChargeGuide {
             choose(war.first, toward: state.wildsStanding.map(\.position), in: session)
         case .swearBanner:
             session.panel = .alliance
+        case .drillCompany:
+            // The company of war nearest the seat, chosen where it stands.
+            let seat = state.seat(of: player)?.position
+            let company = seat.flatMap { home in war.min { ($0.position.distance(to: home), $0.id) < ($1.position.distance(to: home), $1.id) } }
+            session.panel = nil
+            if let company {
+                session.selection = .unit(company.id)
+                session.glide(to: company.position)
+            } else {
+                session.focusOnSeat()
+            }
         }
         // Said, for those who can't see where the ring went.
         AccessibilityNotification.Announcement(how(charge)).post()
@@ -92,6 +105,7 @@ enum ChargeGuide {
         case .gatherSite, .huntWild: return nil
         case .swearBanner: return .banner
         case .raiseMusterHall: return .work(.musterHall)
+        case .drillCompany: return .drill
         }
     }
 

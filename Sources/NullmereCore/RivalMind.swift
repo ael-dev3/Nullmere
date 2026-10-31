@@ -117,6 +117,29 @@ struct RivalMind {
             guard state.unit(unit.id) != nil else { continue }
             events += command(unit.id, garrisonFor: garrisons[unit.id], seeing: visible, atWar: atWar, in: &state)
         }
+        events += drill(owners: owners, in: &state)
+        return events
+    }
+
+    /// Grain a steward keeps in store before it drills.
+    static let drillReserve = 120
+
+    /// Its companies of war waiting beside its holds with a Muster Hall
+    /// drill there, while its grain grows faster than its companies eat and
+    /// it has grain in store: the hall drills no more than the House can
+    /// feed. A caretaker spends no keeper's grain on it, and a builder
+    /// raising its Moonspire none of the tower's, but at war.
+    private func drill(owners: [Int?], in state: inout GameState) -> [GameEvent] {
+        guard !caretaking, state.houses[house].stock.grain >= RivalMind.drillReserve,
+              state.income(of: house, territory: owners).grain - state.upkeep(of: house) > 2 else { return [] }
+        let builder = state.houses[house].temperament == .steadfast || state.houses[house].temperament == .wary
+        let atWar = state.livingHouses.contains { state.isAtWar(house, $0.id) }
+        if builder, !atWar, (state.seat(of: house)?.level(.moonspire) ?? 0) > 0 { return [] }
+        var events: [GameEvent] = []
+        for unit in state.units(of: house).sorted(by: { $0.id < $1.id })
+            where unit.destination == nil && unit.errand == nil && unit.drillAt == nil && state.drillRefusal(of: unit) == nil {
+            events += perform(.drill(unit: unit.id), in: &state)
+        }
         return events
     }
 
@@ -1133,9 +1156,11 @@ struct RivalMind {
         if !atWar, let site = site(for: unit, in: state) {
             return perform(.gather(unit: unit.id, site: site), in: &state)
         }
-        // Or wait near the nearest hold.
-        if let home, home.position.distance(to: unit.position) > 2 {
-            return perform(.move(unit: unit.id, to: home.position), in: &state)
+        // Or wait near the nearest hold: beside it, where its Muster Hall
+        // drills those who wait; with no room beside it, near it.
+        if let home, home.position.distance(to: unit.position) > (home.level(.musterHall) > 0 ? 1 : 2) {
+            let moved = perform(.move(unit: unit.id, to: home.position), in: &state)
+            if !moved.isEmpty || home.position.distance(to: unit.position) > 2 { return moved }
         }
         return unit.fortified ? [] : perform(.fortify(unit: unit.id), in: &state)
     }

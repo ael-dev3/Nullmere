@@ -1,9 +1,10 @@
-/// A company's troops: so many soldiers, riders or scouts at full muster,
-/// by its kind and tier, as many of them standing as its health is a share
-/// of; a House's army is all its companies of war's troops together. A
-/// battle is told in the troops each side slew and lost.
+/// A company's troops: so many soldiers, riders or scouts at its first
+/// muster, by its kind and tier, and those drilled into it since (see
+/// `Drill`), as many of them standing as its health is a share of; a
+/// House's army is all its companies of war's troops together. A battle is
+/// told in the troops each side slew and lost.
 extension UnitKind {
-    /// How many a company of this kind musters whole, at a tier.
+    /// How many a company of this kind musters at first, at a tier.
     public func troops(tier: Int) -> Int {
         let above = min(max(tier, 1), 5) - 1
         switch self {
@@ -19,7 +20,7 @@ extension UnitKind {
 extension GameState {
     /// The troops a company stands with.
     public func troops(of unit: Unit) -> Int {
-        unit.kind.troops(tier: unit.tier) * min(max(unit.health, 0), 100) / 100
+        fullMuster(of: unit) * min(max(unit.health, 0), 100) / 100
     }
 
     /// A House's army: the troops of all its companies of war.

@@ -27,6 +27,9 @@ public struct CompanyPose: Equatable, Sendable {
     /// How much of its formation it shows: 1 in the open, less drawn up
     /// small within a hold's walls.
     public var spread: Float
+    /// Its muster in percent of its first: a company drilled beyond it
+    /// shows more figures.
+    public var muster: Int
     /// The clip it is leaving, as it eases into this one, if it is.
     public var blend: Blend?
 
@@ -46,7 +49,7 @@ public struct CompanyPose: Equatable, Sendable {
 
     public init(unit: Int, key: ModelKey, sigil: Int, health: Int, hex: Hex, position: Vec3, heading: Float, clip: Clip = .idle,
                 clipTime: Float = 0, opacity: Float = 1, emphasis: Float = 0, isOwn: Bool, commander: Int? = nil, spread: Float = 1,
-                blend: Blend? = nil) {
+                muster: Int = 100, blend: Blend? = nil) {
         self.unit = unit
         self.key = key
         self.sigil = sigil
@@ -61,6 +64,7 @@ public struct CompanyPose: Equatable, Sendable {
         self.isOwn = isOwn
         self.commander = commander
         self.spread = spread
+        self.muster = muster
         self.blend = blend
     }
 
@@ -739,12 +743,12 @@ public final class WorldStage: @unchecked Sendable {
                                                   emphasis: company.emphasis, hex: hex, palette: start, flags: flags)))
             }
             let led = company.commander != nil
-            let places = Formation.offsets(company.key, health: company.health, led: led)
+            let places = Formation.offsets(company.key, health: company.health, led: led, muster: company.muster)
             for (index, place) in places.enumerated() {
                 stand(company.key, place, index)
             }
             if let commander = company.commander, !places.isEmpty {
-                stand(.commander(variant: commander), Formation.commander(company.key, health: company.health), places.count)
+                stand(.commander(variant: commander), Formation.commander(company.key, health: company.health, muster: company.muster), places.count)
             }
         }
         return WorldStage.batches(placed)
