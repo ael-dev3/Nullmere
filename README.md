@@ -441,13 +441,21 @@ the address is kept in the app's Info.plist. `NULLMERE_REALM_NAME`,
 `NULLMERE_REALM_SEED`, `NULLMERE_REALM_SEATS` and `NULLMERE_WATCH_SECONDS`
 shape a new realm; a realm has two to twelve seats, and the steward
 refuses to start, saying why, when asked for any other number.
-`STEWARD=foreground` keeps the steward in the terminal.
+`STEWARD=foreground` keeps the steward in the terminal. The Frontier is
+raised the same way into a database of its own with `NULLMERE_FRONTIER=1`
+and `NULLMERE_BORDERS` naming the realms it borders by address, between
+commas; each of those realms' stewards is given the Frontier's address in
+its own `NULLMERE_BORDERS`.
 
 `scripts/raise-realm.sh local` raises the same realm on your own machine
 (starting SpacetimeDB if it isn't running); open a debug build with
 `NULLMERE_REALM=http://127.0.0.1:3000/nullmere`. CI runs this very script:
-on Linux, two keepers play through the server; on macOS, the app itself
-enters the world across the network (`scripts/smoke-test-network.sh`).
+on Linux, two keepers play through the server, and two realms and the
+Frontier are published as three databases whose stewards read each
+other, keepers of each realm crossing to the Frontier, seated there for
+their kingdoms at war, keeping its season to its end and told home of it
+once; on macOS, the app itself enters the world across the network
+(`scripts/smoke-test-network.sh`).
 
 The steward takes up the realm where it stands after a restart. The
 realm's tables are private: keepers write requests through reducers and
@@ -814,6 +822,32 @@ realm; keepers are told in plain words, never a status code.
   heard as it begins and ends, kept on the Realm screen (your shore, your
   points, how the shores stand, or how the last ended), and its tally is
   known to all.
+- **The Frontier.** Kingdom against kingdom across realms: the Frontier is
+  a realm of its own, a database of its own with its own steward, where
+  the kingdoms of the realms that border it meet, a season of twenty-four
+  watches at a time. While a season is open there, a keeper presses Cross
+  to the Frontier on the Realm screen: their realm takes the order, lists
+  them as crossing with a levy of their House's strongest companies of
+  war, up to six, and the app takes them across to the Frontier's database
+  by the same identity (only ever on the same server), where a caretaker
+  keeps their House at home. The Frontier seats no one its bordering realms
+  don't list: each keeper's House stands there for their realm's kingdom,
+  in their people's way, with their levy raised about its seat and at war
+  with every other realm's House from the first; the Lost Shore's own
+  Houses stand for none. A point for every hundred troops of another
+  realm's kingdom slain, five for a company felled and twenty-five for a
+  hold taken count for the striker's kingdom and House. As the season
+  ends its result is kept in the Frontier's status, a new season begins
+  with no one seated, and each realm's steward reads it and tells it home
+  once: every keeper who crossed is home again, and the Houses of the
+  kingdom that prevailed are given 300 grain, timber and stone, 20
+  moonsalt, two Salt Hourglasses, a Ward Stone and a Mending Draught, and
+  a title, Of the Frontier; a keeper who struck for a kingdom that didn't
+  prevail brings home a hundred of each. The stewards never share a world:
+  each reads the others' public status, as any keeper may, every five
+  seconds; a realm lists its crossings there, and the Frontier its season
+  and its last result. Return Home brings the keeper back; when the season
+  ends they are taken home.
 - **Troops.** A company is so many troops at full muster, by its kind and
   tier: Spears 1,200 at the first tier to 2,400 at the fifth, Bows 1,000
   to 2,000, Riders 800 to 1,600, Lanterns 60 and Founders 250, as many

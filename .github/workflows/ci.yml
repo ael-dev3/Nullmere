@@ -481,12 +481,17 @@ jobs:
           token="$(cat realm-state/steward-token-local)"
           echo "::add-mask::$token"
           echo "NULLMERE_STDB_TOKEN=$token" >> "$GITHUB_ENV"
+          # Two realms and the Frontier between them, each a database of its own.
+          for db in frontier-west frontier-east frontier; do
+            REALM_DB="$db" STEWARD=none NULLMERE_STATE_DIR="$PWD/realm-state" scripts/raise-realm.sh local
+          done
 
       # The macOS job skips these, with no server to play through; here they
       # must run, every one: a skip would pass for a play-through.
       - name: Play through SpacetimeDB
         env:
           NULLMERE_STDB: http://127.0.0.1:3000/nullmere
+          NULLMERE_STDB_FRONTIER: http://127.0.0.1:3000/frontier-west,http://127.0.0.1:3000/frontier-east,http://127.0.0.1:3000/frontier
         run: |
           swift test --skip-build --filter SpacetimeIntegrationTests 2>&1 | tee realm-integration.log
           total="$(grep "Executed .* tests" realm-integration.log | tail -n 1)"

@@ -109,6 +109,10 @@ public enum Command: Codable, Equatable, Sendable {
     case takeBack(Stock)
     /// An alliance's leader raises a yard of a store on the alliance's own land.
     case raiseYard(Resource, at: Hex)
+    /// A keeper crosses to the Frontier for the season open there, with a
+    /// levy of their House's companies of war: a realm's order, not the
+    /// lake's (see `RealmState.cross`).
+    case crossToFrontier
 }
 
 /// Why a command was refused, in words the interface can show as they are.
@@ -563,6 +567,9 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// A field of battle is over: every company that fought in it, what it
     /// slew and lost, and which side holds the field.
     case fieldEnded(Field)
+    /// What happens to a keeper's House about the Frontier: crossing to it,
+    /// raised there, a season's end told home.
+    case frontier(FrontierTiding)
     /// A House is given makings for its Forge.
     case makingsFound(house: Int, making: Making, count: Int)
     /// A House's smiths forge a piece of gear.

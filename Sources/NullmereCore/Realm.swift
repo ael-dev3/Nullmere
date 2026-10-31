@@ -32,6 +32,8 @@ public struct Keeper: Codable, Equatable, Identifiable, Sendable {
     /// The watches they have kept unbroken, to the last; absent when they
     /// were away as the last watch turned.
     public internal(set) var streak: Int?
+    /// The Frontier's season they have crossed for, until it is told home.
+    public internal(set) var crossing: Int?
 }
 
 /// What anyone may know of the realm before entering it.
@@ -52,11 +54,17 @@ public struct RealmStatus: Codable, Equatable, Sendable {
     public let present: [String]?
     /// The lake of this age, by name.
     public let lake: String?
+    /// The Frontier: as a realm bordering one hears of it, or as the
+    /// Frontier tells of itself.
+    public let frontier: FrontierNews?
+    /// The keepers crossing from this realm to the Frontier, for its steward to read.
+    public let crossings: [Crossing]?
 
     public static let presentShown = 24
 
     public init(name: String, age: Int, watch: Int, seats: Int, freeSeats: Int, keepers: Int, online: Int, ready: Int,
-                secondsLeft: Int, isEnding: Bool, present: [String]? = nil, lake: String? = nil) {
+                secondsLeft: Int, isEnding: Bool, present: [String]? = nil, lake: String? = nil, frontier: FrontierNews? = nil,
+                crossings: [Crossing]? = nil) {
         self.name = name
         self.age = age
         self.watch = watch
@@ -69,6 +77,8 @@ public struct RealmStatus: Codable, Equatable, Sendable {
         self.isEnding = isEnding
         self.present = present
         self.lake = lake
+        self.frontier = frontier
+        self.crossings = crossings
     }
 }
 
@@ -77,7 +87,8 @@ extension RealmStatus {
     /// time that much shorter.
     public func aged(by seconds: Int) -> RealmStatus {
         RealmStatus(name: name, age: age, watch: watch, seats: seats, freeSeats: freeSeats, keepers: keepers, online: online,
-                    ready: ready, secondsLeft: max(0, secondsLeft - max(0, seconds)), isEnding: isEnding, present: present, lake: lake)
+                    ready: ready, secondsLeft: max(0, secondsLeft - max(0, seconds)), isEnding: isEnding, present: present, lake: lake,
+                    frontier: frontier, crossings: crossings)
     }
 }
 
@@ -127,6 +138,14 @@ public struct RealmState: Codable, Equatable, Sendable {
     public internal(set) var watchBegan: Double
     /// When keepers new to the realm came in, within the last watch's length.
     var newcomers: [Double]?
+    /// The Frontier's own reckoning, when this realm is the Frontier.
+    public internal(set) var frontier: FrontierState?
+    /// What this realm has heard of the Frontier it borders.
+    public internal(set) var frontierNews: FrontierNews?
+    /// The last of the Frontier's seasons told home here.
+    var frontierTold: Int?
+    /// What came of arrivals not yet told.
+    var pendingArrivals: [GameEvent]?
 
     public static let defaultWatchLength = 180.0
 
@@ -196,7 +215,8 @@ public struct RealmState: Codable, Equatable, Sendable {
                            secondsLeft: max(0, Int((watchLength - (now - watchBegan)).rounded(.up))),
                            isEnding: world.outcome != nil,
                            present: Array(online.sorted { $0.arrival < $1.arrival }.map(\.name).prefix(RealmStatus.presentShown)),
-                           lake: world.settings.lake.title)
+                           lake: world.settings.lake.title, frontier: frontierReport ?? frontierNews,
+                           crossings: frontier == nil && frontierNews != nil ? crossings : nil)
     }
 
     // MARK: Keepers
@@ -254,6 +274,16 @@ public struct RealmState: Codable, Equatable, Sendable {
         let index: Int
         if let known = keepers.firstIndex(where: { $0.id == id }) {
             index = known
+        } else if let frontier {
+            // At the Frontier, only those crossing from the realms it
+            // borders, by the names they go by at home.
+            guard let crossing = frontier.admitted[id], crossing.season == frontier.season else {
+                throw .refused("Only keepers crossing from the realms that border the Frontier take its seats; cross from your own.")
+            }
+            guard let chosen = frontierName(for: crossing) else { throw .nameTaken }
+            keepers.append(Keeper(id: id, name: chosen, house: nil, isReady: false, isOnline: true,
+                                  arrival: (keepers.map(\.arrival).max() ?? -1) + 1))
+            index = keepers.count - 1
         } else {
             guard let name, RealmState.isValidName(name) else { throw .nameInvalid }
             let chosen = RealmState.trim(name)
@@ -288,7 +318,23 @@ public struct RealmState: Codable, Equatable, Sendable {
         if keepers[index].house == nil, releaseSeat(now: now) {
             claimSeat(for: index)
         }
+        if frontier != nil {
+            arrivals += raiseAtFrontier(index)
+        }
         return keepers[index]
+    }
+
+    /// What came of arrivals since the steward last asked: a keeper's House
+    /// raised at the Frontier, for them and the realm to hear.
+    var arrivals: [GameEvent] {
+        get { pendingArrivals ?? [] }
+        set { pendingArrivals = newValue.isEmpty ? nil : newValue }
+    }
+
+    /// What came of arrivals, taken by the one who tells them.
+    public mutating func takeArrivals() -> [GameEvent] {
+        defer { arrivals = [] }
+        return arrivals
     }
 
     /// A keeper leaves; after two watches a caretaker keeps their House.
@@ -402,9 +448,13 @@ public struct RealmState: Codable, Equatable, Sendable {
         if case .attack = command, let refusal = world.view(for: house).refusal(of: command, as: house) {
             throw .rule(refusal)
         }
+        if case .crossToFrontier = command {
+            return try cross(id)
+        }
         do {
             let events = try world.perform(command, as: house)
             if let index = keepers.firstIndex(where: { $0.id == id }) { keepers[index].hasPlayed = true }
+            tallyFrontier(events)
             return events
         } catch {
             throw .rule(world.view(for: house).refusal(of: command, as: house) ?? error)
@@ -460,7 +510,9 @@ public struct RealmState: Codable, Equatable, Sendable {
     public mutating func pace(now: Double) -> [GameEvent] {
         guard keepers.contains(where: \.isOnline), world.outcome == nil, watchLength > 0 else { return [] }
         let due = Int(((now - watchBegan) / watchLength * Double(GameState.pacesPerWatch)).rounded(.down))
-        return world.walk(to: due, keptFor: caretaken)
+        let events = world.walk(to: due, keptFor: caretaken)
+        tallyFrontier(events)
+        return events
     }
 
     /// Turns the watch once its time is up, if anyone is there to see it.
@@ -475,7 +527,7 @@ public struct RealmState: Codable, Equatable, Sendable {
     private mutating func turn(now: Double) -> [GameEvent] {
         watchBegan = now
         for index in keepers.indices { keepers[index].isReady = false }
-        if world.outcome != nil {
+        if world.outcome != nil || isSeasonOver {
             beginAge(now: now)
             return []
         }
@@ -488,7 +540,9 @@ public struct RealmState: Codable, Equatable, Sendable {
             keepers[index].watchesAway = (keepers[index].watchesAway ?? 0) + 1
         }
         // Those there as it turns keep the watch, and stand the higher in favour.
-        return world.endWatch(keptFor: caretaken) + keepFavour()
+        let events = world.endWatch(keptFor: caretaken) + keepFavour()
+        tallyFrontier(events)
+        return events
     }
 
     /// The Houses kept for keepers away two watches or more.
@@ -505,6 +559,15 @@ public struct RealmState: Codable, Equatable, Sendable {
         rememberTheAge()
         age += 1
         world = RealmState.world(seed: seedText, age: age, seats: seats, radius: radius)
+        // The Frontier's season over, told; the next begins with no one
+        // seated until they cross again.
+        if frontier != nil {
+            endSeason()
+            frontier?.kingdoms = Array(repeating: nil, count: world.houses.count)
+            frontier?.points = Array(repeating: 0, count: world.houses.count)
+            keepers = []
+            return
+        }
         for index in keepers.indices { keepers[index].house = nil }
         let staying = keepers.indices.filter { index in
             keepers[index].isOnline || now - (keepers[index].awaySince ?? now) < seatHeld(by: keepers[index])

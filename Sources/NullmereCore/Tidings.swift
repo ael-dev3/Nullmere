@@ -190,6 +190,20 @@ extension GameState {
         case .favourRose(let house, let level):
             guard house == viewer else { return nil }
             return Tidings("Your favour with the lake rises to \(BuildingKind.numeral(level)): \(Favour.effect(level: level)).", .good)
+        case .frontier(.crossed(let house, let season, let levy)):
+            guard house == viewer else { return nil }
+            return Tidings("You cross to the Frontier for its \(ordinal(season)) season, with \(levy) \(levy == 1 ? "company" : "companies") "
+                           + "of your House's; it is kept for you while you are away.", .neutral)
+        case .frontier(.raised(let house, let realm, let levy)):
+            guard house == viewer else { return nil }
+            return Tidings("Your House stands for \(realm) at the Frontier, with \(levy) \(levy == 1 ? "company" : "companies") sent from home: "
+                           + "troops of other realms' kingdoms slain and their holds taken count for yours.", .neutral)
+        case .frontier(.toldHome(let house, let season, let prevailed, let points, let won)):
+            guard house == viewer else { return nil }
+            let part = points > 0 ? " You struck for it, \(points) points." : ""
+            if won { return Tidings("The Frontier's \(ordinal(season)) season ends: your realm's kingdom prevails, and your House shares its spoils.\(part)", .good) }
+            let how = prevailed.map { "\($0) prevails" } ?? "no kingdom prevails"
+            return Tidings("The Frontier's \(ordinal(season)) season ends: \(how).\(part)", points > 0 ? .neutral : .bad)
         case .laidUp(let house, let stock):
             guard house == viewer else { return nil }
             return Tidings("You lay up \(stock) in your alliance's storehouse.", .neutral)

@@ -104,6 +104,9 @@ extension GameState {
             return try takeBack(stock, by: house)
         case let .raiseYard(store, hex):
             return try raiseYard(store, at: hex, by: house)
+        case .crossToFrontier:
+            // The realm sends its keepers to the Frontier; the lake alone can't.
+            throw .notApplicable
         case let .inviteToAlliance(target):
             return try invite(target, by: house)
         case let .askToJoin(allianceID):

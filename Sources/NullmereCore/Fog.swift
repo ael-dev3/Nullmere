@@ -149,7 +149,8 @@ extension GameState {
                  .gearFound(let owner, _, _), .gearWorn(_, let owner, _), .gearTakenOff(_, let owner, _), .gearScrapped(let owner, _, _),
                  .carriedToInfirmary(_, let owner, _), .healingBegun(_, let owner, _), .woundedLost(_, let owner, _),
                  .itemsGiven(let owner, _, _), .itemUsed(let owner, _, _), .makingsFound(let owner, _, _), .gearForged(let owner, _),
-                 .laidUp(let owner, _), .tookBack(let owner, _), .favourRose(let owner, _):
+                 .laidUp(let owner, _), .tookBack(let owner, _), .favourRose(let owner, _),
+                 .frontier(.crossed(let owner, _, _)), .frontier(.raised(let owner, _, _)), .frontier(.toldHome(let owner, _, _, _, _)):
                 return owner == house
             case .unitHealed(let id, _):
                 return unit(id)?.owner == house

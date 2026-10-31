@@ -304,6 +304,11 @@ public final class GameSession {
     private(set) var awayReport: AwayReport?
     /// The realm forgot this keeper's key; the app takes them to its door.
     var onForgotten: (() -> Void)?
+    /// The app's way across to the Frontier, once the keeper's realm has
+    /// their crossing.
+    public var onCrossed: ((URL) -> Void)?
+    /// And home again from the Frontier: set while the keeper is there.
+    public var onReturnHome: (() -> Void)?
     /// The first time in an age: the House the keeper takes up.
     private(set) var seatBriefing: SeatBriefing?
     /// A new keeper's first steps, until all are done.
@@ -571,6 +576,24 @@ public final class GameSession {
             post(String(describing: error), tone: .bad)
             return false
         }
+    }
+
+    /// Crosses to the Frontier for the season open there, with the House's
+    /// levy: the order goes to the keeper's realm alone, since the lake
+    /// can't decide it, and once the realm has it the app goes across.
+    public func crossToFrontier() {
+        guard canCross else { return }
+        answersAwaited.append(Awaited(command: .crossToFrontier, from: positions(), decided: true))
+        link.send(.crossToFrontier)
+        emit(.horn)
+    }
+
+    /// Whether the keeper may cross now: a season open at the Frontier their
+    /// realm borders, and they at home with a House standing.
+    public var canCross: Bool {
+        guard onReturnHome == nil, let news = realmStatus?.frontier, news.open, !news.address.isEmpty,
+              URL(string: news.address) != nil else { return false }
+        return !playerHouse.isEliminated && state.outcome == nil
     }
 
     private func holdFounded(_ event: GameEvent) -> Int? {
@@ -843,6 +866,12 @@ public final class GameSession {
             }
             for (cue, at) in cues {
                 emit(cue, at: at)
+            }
+            // Crossed: across to the Frontier.
+            if case .crossToFrontier = awaited.command,
+               told.contains(where: { if case .frontier(.crossed) = $0 { return true } else { return false } }),
+               let address = realmStatus?.frontier?.address, let url = URL(string: address) {
+                onCrossed?(url)
             }
         case .orderRefused(let error, let world):
             if !answersAwaited.isEmpty { answersAwaited.removeFirst() }
@@ -1271,6 +1300,9 @@ public final class GameSession {
         case .tookBack(let house, _) where house == player: return .coin
         case .yardRaised(_, let id, _, _, _) where alliance == id: return .rise
         case .favourRose(let house, _) where house == player: return .honour
+        case .frontier(.crossed(let house, _, _)) where house == player: return .horn
+        case .frontier(.raised(let house, _, _)) where house == player: return .banner
+        case .frontier(.toldHome(let house, _, _, _, let won)) where house == player: return won ? .triumph : .herald
         case .gearForged(let house, _) where house == player: return .anvil
         case .scoutSeen(let hold, _) where state?.hold(hold)?.owner == player: return .envoy
         case .hunted(let hunt) where hunt.attackerOwner == player: return hunt.attackerKind == .bow ? .loose : .clash

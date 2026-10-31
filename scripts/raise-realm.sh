@@ -22,6 +22,10 @@
 #                            maincloud when Docker is there, else background)
 #   NULLMERE_REALM_NAME, NULLMERE_REALM_SEED, NULLMERE_REALM_SEATS,
 #   NULLMERE_WATCH_SECONDS   shape a new realm (an existing one is kept)
+#   NULLMERE_FRONTIER=1      a new realm is the Frontier, where realms meet
+#   NULLMERE_BORDERS=...     the realms it borders, by address, between commas:
+#                            the Frontier, for a home realm; the home realms,
+#                            for the Frontier
 #   SPACETIME_CLEAR=1        publish with --delete-data: a fresh realm,
 #                            its steward here stopped first
 #   CONFIGURATION=release    how the steward is built when run by Swift
@@ -236,6 +240,8 @@ steward_env() {
         ${NULLMERE_REALM_SEED:+NULLMERE_REALM_SEED="$NULLMERE_REALM_SEED"} \
         ${NULLMERE_REALM_SEATS:+NULLMERE_REALM_SEATS="$NULLMERE_REALM_SEATS"} \
         ${NULLMERE_WATCH_SECONDS:+NULLMERE_WATCH_SECONDS="$NULLMERE_WATCH_SECONDS"} \
+        ${NULLMERE_FRONTIER:+NULLMERE_FRONTIER="$NULLMERE_FRONTIER"} \
+        ${NULLMERE_BORDERS:+NULLMERE_BORDERS="$NULLMERE_BORDERS"} \
         "$@"
 }
 
@@ -257,6 +263,8 @@ case "$MODE" in
             ${NULLMERE_REALM_SEED:+-e NULLMERE_REALM_SEED="$NULLMERE_REALM_SEED"} \
             ${NULLMERE_REALM_SEATS:+-e NULLMERE_REALM_SEATS="$NULLMERE_REALM_SEATS"} \
             ${NULLMERE_WATCH_SECONDS:+-e NULLMERE_WATCH_SECONDS="$NULLMERE_WATCH_SECONDS"} \
+            ${NULLMERE_FRONTIER:+-e NULLMERE_FRONTIER="$NULLMERE_FRONTIER"} \
+            ${NULLMERE_BORDERS:+-e NULLMERE_BORDERS="$NULLMERE_BORDERS"} \
             nullmere-steward "$ADDRESS" >/dev/null
         # A steward started again waits up to a minute for its old hold.
         for _ in $(seq 1 90); do

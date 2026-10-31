@@ -23,6 +23,7 @@ struct RealmPanel: View {
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)
+            frontier()
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     happening(board)
@@ -240,6 +241,60 @@ struct RealmPanel: View {
 
     /// The Sundering: under way, how the shores stand and where the House
     /// stands; settled, how the last ended; or when the next comes.
+    /// The Frontier, where the realms meet: the season there and how its
+    /// kingdoms stand, the way across with the House's levy, and home again.
+    @ViewBuilder
+    private func frontier() -> some View {
+        if let news = session.realmStatus?.frontier {
+            let atFrontier = session.onReturnHome != nil
+            VStack(alignment: .leading, spacing: 4) {
+                Text(verbatim: RealmPanel.frontierLine(news, atFrontier: atFrontier, levy: session.state.units(of: session.player)
+                    .filter(\.kind.isMilitary).count))
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+                if !news.standings.isEmpty {
+                    Text(verbatim: RealmPanel.kingdomsLine(news.standings))
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.75))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if atFrontier {
+                    QuietButton(title: "Return Home", size: 9.5, name: "Return home from the Frontier") { session.onReturnHome?() }
+                } else if session.canCross {
+                    QuietButton(title: "Cross to the Frontier", size: 9.5, name: "Cross to the Frontier with your House's levy") {
+                        session.crossToFrontier()
+                    }
+                }
+            }
+        }
+    }
+
+    /// The Frontier's season as a keeper reads it: at home, the season open
+    /// there and what crossing means; there, what they stand for; and how
+    /// the last season ended.
+    static func frontierLine(_ news: FrontierNews, atFrontier: Bool, levy: Int) -> String {
+        let season = "The Frontier's \(SeatBriefing.ordinal(news.season)) season"
+        let last = news.last.map { result in
+            " Its last: " + (result.prevailed.map { "\($0) prevailed." } ?? "no kingdom prevailed.")
+        } ?? ""
+        if atFrontier {
+            return "\(season), until the \(SeatBriefing.ordinal(news.lasts)) watch: you stand here for your realm's kingdom. "
+                + "Troops of the other realms' kingdoms slain, their companies felled and their holds taken count for yours." + last
+        }
+        guard news.open else { return "\(season) is ending; the next opens as it does." + last }
+        let sent = min(levy, FrontierState.levyMost)
+        return "\(season) is open, until the \(SeatBriefing.ordinal(news.lasts)) watch: cross there to stand for your realm's kingdom "
+            + "against the others', with \(sent == 0 ? "no company" : sent == 1 ? "one company" : "your \(sent) strongest companies") of war "
+            + "from home, which a caretaker keeps while you are away. The kingdom that prevails shares its spoils at home." + last
+    }
+
+    /// How the kingdoms stand at the Frontier, best first.
+    static func kingdomsLine(_ standings: [KingdomStanding]) -> String {
+        standings.prefix(4).map { "\($0.realm) \($0.points) (\($0.keepers) \($0.keepers == 1 ? "keeper" : "keepers"))" }
+            .joined(separator: " · ")
+    }
+
     static func sunderingLine(_ state: GameState, player: Int) -> String {
         guard let sundering = state.sundering else {
             return "The Sundering comes at the \(SeatBriefing.ordinal(Sundering.next(from: state.watch))) watch: the shores war as kingdoms."

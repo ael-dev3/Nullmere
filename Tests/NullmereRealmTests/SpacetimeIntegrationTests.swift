@@ -347,4 +347,93 @@ final class SpacetimeIntegrationTests: XCTestCase {
         }
         print("REALM one keeper marched on another's seat over \(watches) watches and struck it, and both saw the blow")
     }
+
+    /// Two realms and the Frontier between them, each its own database on
+    /// one server with its own steward, the stewards reading each other's
+    /// status as any keeper may: keepers cross from home by an order, are
+    /// seated at the Frontier for their realms' kingdoms and at war, keep
+    /// its season to its end, and are told home of it, once. CI sets
+    /// NULLMERE_STDB_FRONTIER to the two realms' and the Frontier's
+    /// addresses, between commas, each with the module published.
+    func testKeepersOfTwoRealmsMeetAtTheFrontier() async throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let set = environment["NULLMERE_STDB_FRONTIER"], let token = environment["NULLMERE_STDB_TOKEN"], !token.isEmpty else {
+            throw XCTSkip("Set NULLMERE_STDB_FRONTIER and NULLMERE_STDB_TOKEN to test the Frontier against a SpacetimeDB server")
+        }
+        let addresses = set.split(separator: ",").map(String.init)
+        let transports = addresses.compactMap { URL(string: $0).flatMap { SpacetimeHTTP(address: $0) } }
+        guard transports.count == 3 else { return XCTFail("Three addresses: two realms, then the Frontier") }
+        let (west, east, lost) = (transports[0], transports[1], transports[2])
+        // A clock of the test's own, so a season of watches passes in moments.
+        var now = Date().timeIntervalSince1970
+        let suffix = String(KeeperIdentity.make().filter(\.isLetter).prefix(5)).lowercased()
+        let home = try await RealmSteward(transport: west, token: token, name: "The Nullmere", seed: "west " + suffix, seats: 4,
+                                          watchLength: 600, now: now)
+        let away = try await RealmSteward(transport: east, token: token, name: "The Farmere", seed: "east " + suffix, seats: 4,
+                                          watchLength: 600, now: now)
+        let frontier = try await RealmSteward(transport: lost, token: token, name: "The Lost Shore", seed: "lost " + suffix, seats: 4,
+                                              watchLength: 600, frontier: true, now: now)
+        await home.border(lost, at: addresses[2])
+        await away.border(lost, at: addresses[2])
+        await frontier.border(west, at: addresses[0])
+        await frontier.border(east, at: addresses[1])
+        func round(_ seconds: Double = 1) async throws {
+            now += seconds
+            try await frontier.step(now: now)
+            try await home.step(now: now)
+            try await away.step(now: now)
+        }
+        let ilsen = try await west.createIdentity(), orla = try await east.createIdentity()
+        try await west.call("arrive", [.string("i1-" + suffix), .string("Ilsen" + suffix)], token: ilsen.token)
+        try await east.call("arrive", [.string("o1-" + suffix), .string("Orla" + suffix)], token: orla.token)
+        try await round()
+        let heard = await home.state.frontierNews
+        XCTAssertEqual(heard?.address, addresses[2], "Where to cross to, read from the Frontier's own status")
+
+        let cross = String(decoding: try JSONEncoder().encode(Command.crossToFrontier), as: UTF8.self)
+        try await west.call("order", [.string("i2-" + suffix), .string(cross)], token: ilsen.token)
+        try await east.call("order", [.string("o2-" + suffix), .string(cross)], token: orla.token)
+        try await round(RealmSteward.bordersEvery)
+        try await round(RealmSteward.bordersEvery)
+        let admitted = await frontier.state.frontier?.admitted.keys.sorted()
+        XCTAssertEqual(admitted, [ilsen.identity, orla.identity].sorted(), "Each realm's crossing, read from its status")
+
+        // The same identities, at the Frontier's own database.
+        try await lost.call("arrive", [.string("i3-" + suffix), .string("Ilsen" + suffix)], token: ilsen.token)
+        try await lost.call("arrive", [.string("o3-" + suffix), .string("Orla" + suffix)], token: orla.token)
+        try await round()
+        let seated = await (frontier.state.keeper(ilsen.identity)?.house, frontier.state.keeper(orla.identity)?.house)
+        let mine = try XCTUnwrap(seated.0), theirs = try XCTUnwrap(seated.1)
+        let kingdoms = await (frontier.state.frontier?.kingdom(of: mine), frontier.state.frontier?.kingdom(of: theirs))
+        XCTAssertEqual(kingdoms.0, "The Nullmere")
+        XCTAssertEqual(kingdoms.1, "The Farmere")
+        let atWar = await frontier.state.world.isAtWar(mine, theirs)
+        XCTAssertTrue(atWar, "Kingdoms meet at war")
+        let shown = try await lost.query("SELECT version, status FROM status", token: ilsen.token)
+        let status = try JSONDecoder().decode(RealmStatus.self, from: Data(try XCTUnwrap(shown.first?[1].string).utf8))
+        XCTAssertEqual(Set(status.frontier?.standings.map(\.realm) ?? []), ["The Nullmere", "The Farmere"], "Told to any who read it")
+        print("REALM keepers of two realms crossed to the Frontier and were seated there for their kingdoms, at war")
+
+        // They keep its season to its end.
+        var watches = 0
+        while await frontier.state.frontier?.season == 1, watches < FrontierState.lasts + 4 {
+            watches += 1
+            try await lost.call("here", [.string("ih\(watches)-" + suffix)], token: ilsen.token)
+            try await lost.call("here", [.string("oh\(watches)-" + suffix)], token: orla.token)
+            try await round(601)
+        }
+        let season = await frontier.state.frontier?.season
+        XCTAssertEqual(season, 2, "The season ran its watches")
+        try await round(RealmSteward.bordersEvery)
+        let told = await home.state.frontierNews?.last?.season
+        XCTAssertEqual(told, 1)
+        let crossing = await home.state.keeper(ilsen.identity)?.crossing
+        XCTAssertNil(crossing, "Home again")
+        let lines = await home.state.world.chronicle.filter { $0.text.contains("comes home from the Frontier's first season") }.count
+        XCTAssertEqual(lines, 1)
+        try await round(RealmSteward.bordersEvery)
+        let again = await home.state.world.chronicle.filter { $0.text.contains("comes home from the Frontier's first season") }.count
+        XCTAssertEqual(again, 1, "Told once")
+        print("REALM the Frontier's season ran \(watches) watches and was told home, once")
+    }
 }

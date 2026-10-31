@@ -10,7 +10,10 @@ import NullmereRealm
 // The token comes from NULLMERE_STEWARD_TOKEN, or from the file named by
 // NULLMERE_STEWARD_TOKEN_FILE. NULLMERE_REALM_NAME, NULLMERE_REALM_SEED,
 // NULLMERE_REALM_SEATS and NULLMERE_WATCH_SECONDS shape a new realm; an
-// existing one is taken up as it stands.
+// existing one is taken up as it stands. NULLMERE_FRONTIER=1 makes a new
+// realm the Frontier, where the realms meet; NULLMERE_BORDERS names, by
+// their addresses and between commas, the realms it borders: the
+// Frontier, for a home realm; the home realms, for the Frontier.
 
 // Each line as it's written, even into a log file.
 setvbuf(stdout, nil, _IOLBF, 0)
@@ -60,6 +63,7 @@ func takeUp() async -> RealmSteward {
                 seed: environment["NULLMERE_REALM_SEED"] ?? "the still water",
                 seats: seats,
                 watchLength: environment["NULLMERE_WATCH_SECONDS"].flatMap(Double.init) ?? RealmState.defaultWatchLength,
+                frontier: environment["NULLMERE_FRONTIER"] == "1",
                 now: Date().timeIntervalSince1970
             )
         } catch where RealmSteward.isHeldByAnother(error) && Date() < waitUntil {
@@ -75,6 +79,11 @@ func takeUp() async -> RealmSteward {
 }
 
 let steward = await takeUp()
+for border in (environment["NULLMERE_BORDERS"] ?? "").split(separator: ",").map({ $0.trimmingCharacters(in: .whitespaces) })
+    where !border.isEmpty {
+    guard let url = URL(string: border), let bordering = SpacetimeHTTP(address: url) else { fail("NULLMERE_BORDERS: \(border) is no realm's address.") }
+    await steward.border(bordering, at: border)
+}
 let realm = await steward.state
 print("Stewarding \(realm.name), age \(realm.age), watch \(realm.world.watch), at \(text).")
 await steward.setReporter { line in

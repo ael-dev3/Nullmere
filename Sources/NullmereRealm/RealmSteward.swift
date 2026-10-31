@@ -130,6 +130,14 @@ public actor RealmSteward {
     /// Keepers the steward keeps anything of, for tests: those there alone.
     var keepersRemembered: Int { Set(heard.keys).union(left.keys).union(published.keys).union(recentlyHeard.keys).count }
 
+    /// The realms this one borders, by their addresses: the Frontier, for a
+    /// home realm; the home realms, for the Frontier. Their status is read
+    /// as any keeper may read it.
+    private var borders: [(address: String, transport: any SpacetimeTransport)] = []
+    private var lastBorders = -Double.infinity
+    /// How often the realms it borders are read.
+    public static let bordersEvery = 5.0
+
     /// Seconds of silence after which a keeper is taken to have left.
     public static let silence = 90.0
     /// Most requests of one keeper carried out in a round.
@@ -140,9 +148,10 @@ public actor RealmSteward {
     /// Most answers forgotten in one call.
     public static let forgottenAtOnce = 512
 
-    /// Takes up the realm where SpacetimeDB holds it, or begins a new one.
+    /// Takes up the realm where SpacetimeDB holds it, or begins a new one:
+    /// the Frontier where the realms meet, when `frontier`.
     public init(transport: any SpacetimeTransport, token: String, name: String, seed: String, seats: Int = RealmState.defaultSeats,
-                watchLength: Double = RealmState.defaultWatchLength, now: Double) async throws {
+                watchLength: Double = RealmState.defaultWatchLength, frontier: Bool = false, now: Double) async throws {
         self.transport = transport
         self.token = token
         let parts = try await RealmSteward.keptParts(transport, token: token)
@@ -170,6 +179,8 @@ public actor RealmSteward {
             }
             self.state = state
             self.state.fillIn()
+        } else if frontier {
+            self.state = RealmState(frontier: name, seed: seed, seats: seats, watchLength: watchLength, now: now)
         } else {
             self.state = RealmState(name: name, seed: seed, seats: seats, watchLength: watchLength, now: now)
         }
@@ -183,6 +194,39 @@ public actor RealmSteward {
         answered = kept.compactMap { $0.first?.string }.map { ($0, now) }
         worldChanged = true
         try await publish(now: now)
+    }
+
+    /// A realm this one borders, at its address.
+    public func border(_ transport: any SpacetimeTransport, at address: String) {
+        borders.append((address, transport))
+    }
+
+    /// Reads the realms it borders, every `bordersEvery` seconds: a home
+    /// realm hears how the Frontier stands, and is told once of each season
+    /// ended there; the Frontier hears who each realm lists as crossing.
+    /// One that can't be read now is read next time. Returns whether the
+    /// realm changed.
+    func hearBorders(now: Double) async -> Bool {
+        guard !borders.isEmpty, now - lastBorders >= RealmSteward.bordersEvery else { return false }
+        lastBorders = now
+        var changed = false
+        for border in borders {
+            guard let row = try? await border.transport.query("SELECT version, status FROM status", token: token).first,
+                  row.count == 2, let text = row[1].string,
+                  let status = try? JSONDecoder().decode(RealmStatus.self, from: Data(text.utf8)) else { continue }
+            if state.frontier != nil {
+                let before = state.frontier?.admitted
+                state.admit(status.crossings ?? [], from: status.name)
+                changed = changed || state.frontier?.admitted != before
+            } else if var news = status.frontier, news.address.isEmpty {
+                news.address = border.address
+                let before = state.frontierNews
+                let told = state.hearFrontier(news)
+                if !told.isEmpty { pendingActs.append(("", told)) }
+                changed = changed || state.frontierNews != before || !told.isEmpty
+            }
+        }
+        return changed
     }
 
     /// One round: every waiting request, then the clock. Returns whether
@@ -214,6 +258,8 @@ public actor RealmSteward {
             if request.kind != "arrive", request.kind != "leave", !(request.kind == "here" && justLeft),
                state.keeper(request.keeper)?.isOnline == false {
                 _ = try? state.arrive(request.keeper, name: nil, now: now, reseatsTheFallen: false)
+                let raised = state.takeArrivals()
+                if !raised.isEmpty { pendingActs.append((request.keeper, raised)) }
                 changed = true
             }
             let (reply, didChange, turned) = handle(kind: request.kind, keeper: request.keeper, payload: request.payload, now: now)
@@ -231,6 +277,7 @@ public actor RealmSteward {
         // steward keeps only what it needs of those there, so neither the
         // realm nor the steward grows with every identity ever heard from.
         if state.forgetTheLongGone(now: now) { changed = true }
+        if await hearBorders(now: now) { changed = true }
         let there = Set(state.keepers.lazy.filter(\.isOnline).map(\.id))
         heard = heard.filter { there.contains($0.key) }
         left = left.filter { now - $0.value < RealmSteward.leavingGrace }
@@ -274,7 +321,12 @@ public actor RealmSteward {
         case "arrive":
             do {
                 let arrived = try state.arrive(keeper, name: payload.isEmpty ? nil : payload, now: now)
-                return (RealmReply(ok: true, keeper: arrived, refusal: nil), true, [])
+                // A House raised at the Frontier: its keeper hears it with
+                // the answer, the others with the next publication.
+                let raised = state.takeArrivals()
+                if !raised.isEmpty { pendingActs.append((keeper, raised)) }
+                let heard = arrived.house.map { state.world.events(raised, heardBy: $0) } ?? []
+                return (RealmReply(ok: true, keeper: arrived, refusal: nil, events: heard.isEmpty ? nil : heard), true, [])
             } catch {
                 return (.refused(error), false, [])
             }

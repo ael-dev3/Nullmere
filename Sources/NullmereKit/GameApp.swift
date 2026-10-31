@@ -64,7 +64,18 @@ public final class GameApp {
     }
 
     let store: LocalStore
-    let address: RealmAddress
+    public private(set) var address: RealmAddress
+    /// The realm the keeper came from while they are at the Frontier:
+    /// where Return Home takes them.
+    public private(set) var home: RealmAddress?
+    /// On the way to another realm on the same server: entering it by the
+    /// keeper's identity as its door opens, and again a few times while the
+    /// Frontier hasn't yet read their crossing from home.
+    private(set) var journeyTries: Int?
+    static let journeyMostTries = 12
+    @ObservationIgnored var journeyWait: Double = 3
+    /// Lines to other realms on the same server, by address, for tests.
+    @ObservationIgnored var transports: [URL: any SpacetimeTransport] = [:]
     private let identityStore: any IdentityStore
     private let readModel: () -> ModelReadiness
     public let ambience: Ambience
@@ -287,7 +298,7 @@ public final class GameApp {
             link = realm.link(identity: identityStore.identity())
             startTicking(realm)
         case .network(let url):
-            guard let transport = self.transport ?? SpacetimeHTTP(address: url) else {
+            guard let transport = transports[url] ?? self.transport ?? SpacetimeHTTP(address: url) else {
                 door = .unreachable("The realm's address can't be read.")
                 return
             }
@@ -333,7 +344,10 @@ public final class GameApp {
         switch event {
         case .status(let status):
             door = .open(status)
-            if isWaitingForSeat {
+            if journeyTries != nil, !isEntering, case .frontDoor = phase {
+                // Across from another realm: in by the keeper's identity.
+                if keeperName != nil { enterWorld(name: "") }
+            } else if isWaitingForSeat {
                 // Only when a seat stands free: asking changes the status.
                 if status.freeSeats > 0, !status.isEnding { askForSeat() }
             } else if !autoEntered {
@@ -345,6 +359,19 @@ public final class GameApp {
         case .refused(let error):
             Self.logger.notice("The realm refused the keeper: \(error.description, privacy: .public)")
             isEntering = false
+            // The Frontier reads a realm's crossings every few seconds: asked
+            // again a little later, until it has.
+            if let tries = journeyTries, tries < Self.journeyMostTries, error != .unknownKeeper {
+                journeyTries = tries + 1
+                arrivalProblem = "Crossing to the Frontier…"
+                Task { [weak self] in
+                    try? await Task.sleep(for: .seconds(self?.journeyWait ?? 3))
+                    guard let self, self.journeyTries != nil, case .frontDoor = self.phase, !self.isEntering else { return }
+                    self.enterWorld(name: "")
+                }
+                return
+            }
+            journeyTries = nil
             if error == .unknownKeeper || (enteredByIdentity && error == .nameInvalid) {
                 // The realm has forgotten this keeper: they choose a name anew.
                 keeperName = nil
@@ -369,6 +396,7 @@ public final class GameApp {
     private func arrived(_ keeper: Keeper, in world: GameState) {
         Self.logger.notice("Entered the realm as \(keeper.name, privacy: .public), watch \(world.watch).")
         isEntering = false
+        journeyTries = nil
         keeperName = keeper.name
         UserDefaults.standard.set(keeper.name, forKey: Self.nameKey(for: address))
         guard let house = keeper.house, let link else {
@@ -391,6 +419,8 @@ public final class GameApp {
         if ProcessInfo.processInfo.environment["NULLMERE_VOICEOVER"] == "1" { session.voiceOverRunning = { true } }
         #endif
         session.onForgotten = { [weak self] in self?.forgotten() }
+        session.onCrossed = { [weak self] url in self?.travel(to: url) }
+        session.onReturnHome = home == nil ? nil : { [weak self] in self?.returnHome() }
         play(session)
         showFromEnvironment()
     }
@@ -428,6 +458,9 @@ public final class GameApp {
     /// The realm no longer knows this keeper (it was begun anew): back to the
     /// front door, to enter under a name again. The key is the same.
     private func forgotten() {
+        // The Frontier's season over, it seats no one until they cross
+        // again: its keepers go home.
+        if home != nil { return returnHome() }
         keeperName = nil
         UserDefaults.standard.removeObject(forKey: Self.nameKey(for: address))
         releaseLink(leaving: false)
@@ -446,9 +479,49 @@ public final class GameApp {
         link?.connect()
     }
 
+    /// Whether an address is on this realm's server: only there is the
+    /// keeper the same keeper, by the same identity, and only there does
+    /// the app take them.
+    func isSameServer(_ url: URL) -> Bool {
+        guard case .network(let here) = address else { return false }
+        return url.scheme == here.scheme && url.host() == here.host() && url.port == here.port && url.path().count > 1
+    }
+
+    /// Across to the Frontier, once the keeper has crossed at home: they
+    /// leave their realm (its caretaker keeps their House while they are
+    /// away) and step into the Frontier's as its door opens.
+    public func travel(to url: URL) {
+        guard isSameServer(url), case .network(let here) = address, url != here else { return }
+        home = address
+        journey(to: .network(url))
+    }
+
+    /// Home again from the Frontier.
+    public func returnHome() {
+        guard let home else { return }
+        self.home = nil
+        journey(to: home)
+    }
+
+    private func journey(to destination: RealmAddress) {
+        Self.logger.notice("Travelling to another realm on the server.")
+        releaseLink()
+        ambience.isAtWar = false
+        address = destination
+        autoEntered = true
+        journeyTries = 0
+        phase = .frontDoor
+        openDoor()
+    }
+
     /// Leaves the world for the front door; after two watches a caretaker
     /// keeps the keeper's House.
     public func leaveWorld() {
+        // From the Frontier, to the door of the keeper's own realm.
+        if let home {
+            self.home = nil
+            address = home
+        }
         releaseLink()
         ambience.isAtWar = false
         phase = .frontDoor
