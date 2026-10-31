@@ -117,6 +117,10 @@ public enum Command: Codable, Equatable, Sendable {
     case takeHeritage(Heritage)
     /// A House takes its crest, once an age.
     case takeCrest(Crest)
+    /// A keeper sets a work of one of its holds in a place of its own round
+    /// the keep, one of `Hold.placeCount`; a work set there before takes
+    /// the moved work's place.
+    case placeWork(hold: Int, kind: BuildingKind, place: Int)
     /// An alliance's leader sets it to pursue a study together.
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
@@ -616,6 +620,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case heritageTaken(house: Int, heritage: Heritage)
     /// A House takes its crest.
     case crestTaken(house: Int, crest: Crest)
+    /// A keeper sets a work of a hold in a place of its own.
+    case workPlaced(hold: Int, kind: BuildingKind, place: Int)
     /// An alliance's leader sets it to pursue a study.
     case allianceStudyChosen(alliance: Int, study: AllianceStudy)
     /// A House gives stores toward a grade of its alliance's study.

@@ -153,7 +153,7 @@ enum Narration {
         case .studyBegun, .studyCompleted, .commanderJoined, .commanderAssigned, .commanderReleased, .commanderRose,
              .commanderWounded, .skillFired, .talentLearned, .talentsForgotten, .gearFound, .gearWorn, .gearTakenOff, .gearScrapped, .shrineTaken,
              .carriedToInfirmary, .healingBegun, .unitHealed, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted,
-             .standardRaised, .standardStruck, .standardTorn, .itemsGiven, .itemUsed, .heritageTaken, .crestTaken,
+             .standardRaised, .standardStruck, .standardTorn, .itemsGiven, .itemUsed, .heritageTaken, .crestTaken, .workPlaced,
              .allianceStudyChosen, .allianceGift, .allianceStudied, .hallRaised, .hallRisen, .hallStruck, .hallTorn,
              .storehouseRaised, .storehouseRisen, .storehouseStruck, .storehouseTorn, .laidUp, .tookBack, .yardRaised, .favourRose, .frontier,
              .makingsFound, .gearForged, .drilled,

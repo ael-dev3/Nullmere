@@ -154,7 +154,7 @@ To build, reimagined:
 - [x] Graphics chosen for the Mac: Detail (Auto, High, Medium, Low), Auto reading the memory the Mac's graphics may work in; Reset to the defaults in both Settings; when the GPU fails three frames, a step down, told, before the painting
 - [x] Title and menu music in the launcher, a theme for each lake: the night beneath a title theme for the lake the keeper's realm last lay on, each lake in a mode of its own (the Twin Waters answering each note a fifth above), and Music among the launcher's settings, one choice with the realm's
 - [x] A work that hastens marches and one that hastens building (Warpkeep's Barracks and Cathedral): the Wayhouse, each level sending one more kind of the House's companies a step further every watch, and the Masons' Lodge, each level raising every work 6% sooner; each modelled in five levels, given its own place in a hold, raised by keepers alone so the stewards' worlds stay exactly as they were
-- [ ] Works placed by the keeper within a hold (Warpkeep's free placement), on the town's grid
+- [x] Works placed by the keeper within a hold (Warpkeep's free placement): in the city view a work chosen may be set in any of the eighteen places round the keep whose ground is the hold's, trading places with a work that stands there; kept with the hold, honoured by the hold's layout and its town, every other work standing where its ground suits it
 - [x] A crash met by a page that says what happened and opens the world again: a fault caught as it strikes, and the next launch opening on where the keeper was, when, and what stopped it, with Open the world again, Report it (a new issue, written out) and Back
 
 Left out by design, with what stands in their place:

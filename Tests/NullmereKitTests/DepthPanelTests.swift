@@ -988,7 +988,7 @@ final class DepthPanelTests: XCTestCase {
         state.holds[seat].levels = [.walls: 2, .granary: 2, .sawpit: 1]
         state.holds[seat].project = Hold.Project(kind: .quarry, targetLevel: 1, watchesLeft: 2)
         let hold = state.holds[seat]
-        let (session, _) = session(state)
+        let (session, link) = session(state)
         session.motion = .still
         XCTAssertNil(session.cityInView, "Over the lake")
         XCTAssertFalse(session.sceneFrame(at: 1).fine, "From the lake's view, the models' fine work is too small to draw")
@@ -1010,6 +1010,24 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(session.workInFocus, .granary)
         draw(CityLabels(session: session), width: size.width, height: size.height)
         draw(SelectionPanel(session: session), width: 330, height: 700)
+        // Chosen, it may be set in any other place round the keep, trading
+        // with a work that stands there.
+        let places = session.cityPlaces(in: size)
+        XCTAssertFalse(places.isEmpty)
+        XCTAssertFalse(places.contains { $0.work == .granary }, "Every place but its own")
+        let taken = try XCTUnwrap(places.first { $0.work == .sawpit }, "\(places)")
+        XCTAssertEqual(taken.label(setting: .granary),
+                       "Set the Granary here, where the \(BuildingKind.sawpit.title) stands; the \(BuildingKind.sawpit.title) takes its place")
+        XCTAssertEqual(CityPlace(place: 1, work: nil, at: .zero).label(setting: .granary), "Set the Granary here")
+        session.set(.granary, at: taken.place)
+        XCTAssertEqual(link.sent.last, .placeWork(hold: hold.id, kind: .granary, place: taken.place))
+        XCTAssertEqual(session.state.holds[seat].place(of: .granary), taken.place)
+        XCTAssertEqual(session.cityPlaces(in: size).first { $0.place == taken.place }?.work, nil, "Its own now, so not shown")
+        draw(CityLabels(session: session), width: size.width, height: size.height)
+        session.focus(work: .walls, at: hold)
+        XCTAssertEqual(session.cityPlaces(in: size), [], "The walls ring the keep")
+        XCTAssertEqual(GameSession.kind(of: .study), .archive)
+        session.focus(work: .granary, at: hold)
         // C again: back out over the lake.
         XCTAssertTrue(session.handle(.city))
         XCTAssertEqual(session.camera.scale, GameSession.lakeScale, accuracy: 1e-9)

@@ -84,13 +84,17 @@ public enum HoldLayout {
         /// The people its House comes of, who build its keep their way; none
         /// for the common keep.
         public var heritage: Heritage?
+        /// The places its keeper has set works in, each by its place.
+        public var places: [Work: Int]
 
-        public init(hex: Hex, isSeat: Bool, levels: [Work: Int] = [:], rising: Rising? = nil, heritage: Heritage? = nil) {
+        public init(hex: Hex, isSeat: Bool, levels: [Work: Int] = [:], rising: Rising? = nil, heritage: Heritage? = nil,
+                    places: [Work: Int] = [:]) {
             self.hex = hex
             self.isSeat = isSeat
             self.levels = levels
             self.rising = rising
             self.heritage = heritage
+            self.places = places
         }
 
         /// A hold as the rules keep it: its works, its project with how far
@@ -110,7 +114,9 @@ public enum HoldLayout {
                 let done = progress ?? (1 - Float(project.watchesLeft) / max(watches, 1))
                 rising = Rising(work: Work(project.kind), level: project.targetLevel, progress: min(max(done, 0), 1))
             }
-            self.init(hex: hold.position, isSeat: hold.isSeat, levels: levels, rising: rising, heritage: heritage)
+            var places: [Work: Int] = [:]
+            for (kind, place) in hold.places ?? [:] { places[Work(kind)] = place }
+            self.init(hex: hold.position, isSeat: hold.isSeat, levels: levels, rising: rising, heritage: heritage, places: places)
         }
     }
 
@@ -229,6 +235,20 @@ public enum HoldLayout {
         var angle: Float
         var position: Vec3
         var inner: Bool
+        /// Its place round the keep, whether its ground is the hold's or
+        /// not: the inner ring's twelve from the gate round, then the outer
+        /// ring's six.
+        var place: Int
+    }
+
+    /// Each place round a hold whose ground is the hold's: where it lies on
+    /// the land, and the work standing there, if one does.
+    public static func places(_ plan: Plan, relief: Relief) -> [(place: Int, position: Vec3, work: Work?)] {
+        let standing = Dictionary(assign(plan, relief: relief).map { ($0.1.place, $0.0) }, uniquingKeysWith: { first, _ in first })
+        return slots(plan, relief: relief).map { slot in
+            let at = Vec3(slot.position.x, relief.height(atX: slot.position.x, z: slot.position.z), slot.position.z)
+            return (slot.place, at, standing[slot.place])
+        }
     }
 
     /// Every slot round a hold whose ground is all the hold's land.
@@ -240,13 +260,14 @@ public enum HoldLayout {
         let layout = HexLayout(size: 1)
         var slots: [Slot] = []
         let rings: [(radius: Float, count: Int, inner: Bool)] = [(innerRing, 12, true), (outerRing, 6, false)]
-        for ring in rings {
+        for (number, ring) in rings.enumerated() {
             for step in 0..<ring.count {
                 let angle = front + Float(step) * 2 * .pi / Float(ring.count)
                 let position = heart + Vec3(Float(cos(Double(angle))), 0, Float(sin(Double(angle)))) * ring.radius
                 let ground = points(around: position, radius: workRadius).map { layout.hex(atX: Double($0.x), y: Double($0.z)) }
                 if ground.allSatisfy(land.contains) {
-                    slots.append(Slot(index: slots.count, angle: angle, position: position, inner: ring.inner))
+                    slots.append(Slot(index: slots.count, angle: angle, position: position, inner: ring.inner,
+                                      place: (number == 0 ? 0 : rings[0].count) + step))
                 }
             }
         }
@@ -269,7 +290,15 @@ public enum HoldLayout {
         let front = frontAngle(of: plan.hex)
         var free = slots
         var assigned: [(Work, Slot)] = []
-        for work in wanted {
+        // First the works the keeper has set, each in its place where the
+        // hold's ground has it; then the rest where their ground suits them.
+        for work in wanted where present.contains(work) {
+            guard let place = plan.places[work], let slot = free.first(where: { $0.place == place }) else { continue }
+            free.removeAll { $0.index == slot.index }
+            assigned.append((work, slot))
+        }
+        let set = Set(assigned.map(\.0))
+        for work in wanted where !set.contains(work) {
             guard let best = free.max(by: { score(work, $0, front, relief) < score(work, $1, front, relief) }) else { break }
             free.removeAll { $0.index == best.index }
             if present.contains(work) {

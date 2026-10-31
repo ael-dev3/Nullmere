@@ -238,6 +238,8 @@ extension GameState {
                 return owner == house || hold(holdID)?.owner == house
             case .happeningBegun, .happeningEnded, .heritageTaken, .crestTaken, .sunderingBegun, .sunderingEnded, .fordOpened, .fordClosed:
                 return true
+            case .workPlaced(let holdID, _, _):
+                return hold(holdID)?.owner == house
             case .carriedAshore(_, let owner, _, let to):
                 return owner == house || visible(to)
             case .recalled(_, let owner):

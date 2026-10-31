@@ -1529,6 +1529,12 @@ There is no music in the launcher; the game makes its own sound as it plays.
   and a click on its name opens the hold's panel on its row, to raise it
   further. Back to the lake, or C again, returns the view to where it
   stood over the lake. It is never over another House's hold.
+  A work chosen there may be set in a place of the keeper's own: each of
+  the eighteen places round the keep whose ground is the hold's shows as a
+  ring, filled where another work stands, and a click sets the work there,
+  the other taking its old place. The rest stand where their ground suits
+  them, as every work of a steward's hold always does; a place is kept
+  with the hold, and the walls ring the keep where they always have.
 
 ### Tuning the scene in a browser
 

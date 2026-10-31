@@ -19,6 +19,22 @@ struct CityWork: Identifiable, Equatable {
     }
 }
 
+/// A place round the hold in view that the work in focus may be set in:
+/// where it lies in the view, and the work standing there now, if one does.
+struct CityPlace: Identifiable, Equatable {
+    let place: Int
+    let work: BuildingKind?
+    let at: CGPoint
+
+    var id: Int { place }
+
+    /// What the place's button says to VoiceOver and under the pointer.
+    func label(setting kind: BuildingKind) -> String {
+        guard let work else { return "Set the \(kind.title) here" }
+        return "Set the \(kind.title) here, where the \(work.title) stands; the \(work.title) takes its place"
+    }
+}
+
 extension GameSession {
     /// How close the city view comes over a hold, and how far it leans in.
     static let cityScale = 165.0
@@ -111,6 +127,35 @@ extension GameSession {
         return works
     }
 
+    /// The places round the hold in view the work in focus may be set in,
+    /// every one but its own, each where it lies in a view of `size`.
+    func cityPlaces(in size: CGSize) -> [CityPlace] {
+        guard let hold = cityInView, let focus = workInFocus,
+              state.placeRefusal(focus, of: hold.id, at: 0, as: player) == nil else { return [] }
+        let plan = HoldLayout.Plan(hold: hold, heritage: state.heritage(of: hold.owner))
+        return HoldLayout.places(plan, relief: relief).compactMap { place in
+            let work = place.work.map(GameSession.kind(of:))
+            guard work != focus else { return nil }
+            let at = camera.viewPoint(worldX: Double(place.position.x), worldY: Double(place.position.z), height: Double(place.position.y) + 0.06,
+                                      in: size)
+            return CityPlace(place: place.place, work: work, at: at)
+        }
+    }
+
+    /// The kind of work a work of a hold's layout is.
+    static func kind(of work: HoldLayout.Work) -> BuildingKind {
+        switch work {
+        case .building(let kind): return kind
+        case .study: return .archive
+        }
+    }
+
+    /// The work in focus set in a place round the hold in view.
+    func set(_ kind: BuildingKind, at place: Int) {
+        guard let hold = cityInView else { return }
+        perform(.placeWork(hold: hold.id, kind: kind, place: place))
+    }
+
     /// A work of the hold in view, chosen from its name over it: the hold's
     /// panel opens on its row.
     func focus(work kind: BuildingKind, at hold: Hold) {
@@ -144,6 +189,27 @@ struct CityLabels: View {
                         .buttonStyle(.plain)
                         .accessibilityLabel("\(work.title) at \(hold.name)")
                         .position(work.at)
+                    }
+                    // Chosen, a work may be set in another place: each shown
+                    // where it lies, a ring for one free, a ring round a
+                    // dot where another work stands, to trade with it.
+                    if let focus = session.workInFocus {
+                        ForEach(session.cityPlaces(in: proxy.size)) { place in
+                            Button {
+                                session.set(focus, at: place.place)
+                            } label: {
+                                Circle()
+                                    .strokeBorder(Palette.glow.opacity(0.85), lineWidth: 1.4)
+                                    .background(Circle().fill(Color.black.opacity(0.45)))
+                                    .overlay(Circle().fill(Palette.glow.opacity(place.work == nil ? 0 : 0.8)).padding(6))
+                                    .frame(width: 18, height: 18)
+                                    .contentShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .help(place.label(setting: focus))
+                            .accessibilityLabel(place.label(setting: focus))
+                            .position(place.at)
+                        }
                     }
                     QuietButton(title: "Back to the lake", size: 9.5, name: "Back to the lake from \(hold.name)") {
                         session.leaveCity()

@@ -402,6 +402,40 @@ final class PlacementTests: XCTestCase {
         XCTAssertEqual(HoldLayout.affinity(.beacon, terrain: .barrow, feature: nil), 0)
     }
 
+    /// A work its keeper has set stands in its place; one that stood there
+    /// moves to where its ground suits it, every piece still clear of the
+    /// rest; a hold with none set stands as it always did.
+    func testAKeeperSetsWorksInTheirPlaces() throws {
+        let state = PlacementTests.worlds[0]
+        let relief = Relief(map: state.map)
+        let hold = try XCTUnwrap(state.holds.first { HoldLayout.slots(PlacementTests.grandPlan($0.position), relief: relief).count >= 12 })
+        var plan = PlacementTests.grandPlan(hold.position)
+        let places = HoldLayout.places(plan, relief: relief)
+        XCTAssertEqual(places.count, HoldLayout.slots(plan, relief: relief).count)
+        XCTAssertTrue(places.allSatisfy { (0..<Hold.placeCount).contains($0.place) })
+        XCTAssertEqual(Set(places.map(\.place)).count, places.count, "Each its own place")
+        XCTAssertEqual(12 + 6, Hold.placeCount, "The two rings' places")
+        let before = HoldLayout.pieces(plan, relief: relief)
+        let granary = HoldLayout.Work.building(.granary)
+        let granaryAt = try XCTUnwrap(places.first { $0.work == granary })
+        let target = try XCTUnwrap(places.first { $0.work != nil && $0.work != granary })
+        plan.places = [granary: target.place]
+        let after = HoldLayout.pieces(plan, relief: relief)
+        PlacementTests.check(after, plan, relief)
+        let moved = try XCTUnwrap(after.first { $0.key == granary.key(level: BuildingKind.granary.maxLevel) })
+        XCTAssertEqual(moved.position.x, target.position.x, accuracy: 1e-4, "Set in its place")
+        XCTAssertEqual(moved.position.z, target.position.z, accuracy: 1e-4)
+        XCTAssertNotEqual(before.first { $0.key == granary.key(level: BuildingKind.granary.maxLevel) }?.position.x, moved.position.x)
+        XCTAssertEqual(HoldLayout.places(plan, relief: relief).first { $0.place == target.place }?.work, granary)
+        XCTAssertNotEqual(HoldLayout.places(plan, relief: relief).first { $0.place == granaryAt.place }?.work, granary)
+        // A place the hold's ground hasn't is let be.
+        plan.places = [granary: 99]
+        XCTAssertEqual(HoldLayout.pieces(plan, relief: relief), before)
+        var keptHold = hold
+        keptHold.places = [.granary: target.place]
+        XCTAssertEqual(HoldLayout.Plan(hold: keptHold).places, [granary: target.place])
+    }
+
     /// A hold on a spit of land between waters has fewer slots: the works it
     /// has share them, the rest unshown.
     func testACrampedHoldPlacesWhatFits() {
