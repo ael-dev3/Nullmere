@@ -386,11 +386,36 @@ public struct GameState: Codable, Equatable, Sendable {
         units(of: house).reduce(0) { $0 + upkeep(of: $1) }
     }
 
+    /// Every House's strength, by its id, as `strength(of:)` weighs each,
+    /// from one pass over the companies and the holds.
+    public func strengths() -> [Int] {
+        var weighed = [[UnitKind: (attack: Int, defense: Int)]](repeating: [:], count: houses.count)
+        var army = [Int](repeating: 0, count: houses.count)
+        for unit in units where army.indices.contains(unit.owner) {
+            let bonuses = weighed[unit.owner][unit.kind]
+                ?? (bonus(.attack(unit.kind), for: unit.owner), bonus(.defense(unit.kind), for: unit.owner))
+            weighed[unit.owner][unit.kind] = bonuses
+            army[unit.owner] += strength(of: unit, house: bonuses)
+        }
+        for hold in holds where army.indices.contains(hold.owner) {
+            army[hold.owner] += hold.ward / 2
+        }
+        return houses.indices.map { house in
+            if let reputed, reputed.indices.contains(house) { return reputed[house] }
+            return army[house]
+        }
+    }
+
     /// A rough measure of military might, for rivals weighing war.
     public func strength(of house: Int) -> Int {
         if let reputed, reputed.indices.contains(house) { return reputed[house] }
+        // The House's own attack and defence for each kind, weighed once
+        // for all its companies of that kind.
+        var weighed: [UnitKind: (attack: Int, defense: Int)] = [:]
         let army = units(of: house).reduce(0) { total, unit in
-            total + strength(of: unit)
+            let bonuses = weighed[unit.kind] ?? (bonus(.attack(unit.kind), for: house), bonus(.defense(unit.kind), for: house))
+            weighed[unit.kind] = bonuses
+            return total + strength(of: unit, house: bonuses)
         }
         let walls = holds(of: house).reduce(0) { $0 + $1.ward / 2 }
         return army + walls
@@ -411,35 +436,60 @@ public struct GameState: Codable, Equatable, Sendable {
     /// pact with it, and those sworn to its alliance.
     public func visibility(for house: Int) -> [Bool] {
         var visible = [Bool](repeating: false, count: map.count)
-        // Allies lend their sight; a fallen House has none to lend or borrow.
-        let fallen = houses.indices.contains(house) && houses[house].isEliminated
-        let sworn = alliance(of: house)?.members ?? []
-        let watchers = houses.filter { other in
-            other.id == house || (!fallen && !other.isEliminated && (stance(other.id, house) == .pact || sworn.contains(other.id)))
-        }.map(\.id)
-        for watcher in watchers {
+        see(for: house) { visible[$0] = true }
+        return visible
+    }
+
+    /// Each tile a House sees right now, by its index, with its allies'
+    /// sight; a tile seen from two places is told twice.
+    func see(for house: Int, _ seen: (Int) -> Void) {
+        for watcher in watchers(for: house) {
             for unit in units(of: watcher) {
                 let range = sight(of: unit)
                 for hex in unit.position.spiral(range) {
-                    if let index = map.index(of: hex) { visible[index] = true }
+                    if let index = map.index(of: hex) { seen(index) }
                 }
             }
             for hold in holds(of: watcher) {
                 for hex in hold.position.spiral(sight(of: hold)) {
-                    if let index = map.index(of: hex) { visible[index] = true }
+                    if let index = map.index(of: hex) { seen(index) }
                 }
             }
         }
-        return visible
     }
 
-    /// Adds what every House sees now to what it has explored.
+    /// The Houses whose sight a House sees with: its own, and its allies',
+    /// those in a pact with it and those sworn to its alliance. A fallen
+    /// House has none to lend or borrow.
+    func watchers(for house: Int) -> [Int] {
+        let fallen = houses.indices.contains(house) && houses[house].isEliminated
+        let sworn = alliance(of: house)?.members ?? []
+        return houses.filter { other in
+            other.id == house || (!fallen && !other.isEliminated && (stance(other.id, house) == .pact || sworn.contains(other.id)))
+        }.map(\.id)
+    }
+
+    /// Adds what every House sees now to what it has explored: each
+    /// House's own sight found once, and lent to its allies from there,
+    /// only the tiles in sight touched.
     mutating func refreshSight() {
-        for index in houses.indices where !houses[index].isEliminated {
-            let visible = visibility(for: houses[index].id)
-            for tile in visible.indices where visible[tile] {
-                houses[index].explored[tile] = true
+        var own = [[Int]](repeating: [], count: houses.count)
+        for unit in units where own.indices.contains(unit.owner) {
+            for hex in unit.position.spiral(sight(of: unit)) {
+                if let index = map.index(of: hex) { own[unit.owner].append(index) }
             }
+        }
+        for hold in holds where own.indices.contains(hold.owner) {
+            for hex in hold.position.spiral(sight(of: hold)) {
+                if let index = map.index(of: hex) { own[hold.owner].append(index) }
+            }
+        }
+        for index in houses.indices where !houses[index].isEliminated {
+            var explored = houses[index].explored
+            for watcher in watchers(for: houses[index].id) {
+                for tile in own[watcher] { explored[tile] = true }
+            }
+            houses[index].explored = explored
         }
     }
 

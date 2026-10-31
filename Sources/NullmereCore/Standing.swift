@@ -64,7 +64,7 @@ extension GameState {
 
     mutating func takeSnapshot() {
         let snapshot = Snapshot(watch: watch, holds: houses.map { holds(of: $0.id).count },
-                                strength: houses.map { $0.isEliminated ? 0 : strength(of: $0.id) })
+                                strength: zip(houses, strengths()).map { $0.isEliminated ? 0 : $1 })
         if recorded == nil { recorded = [] }
         recorded?.removeAll { $0.watch == watch }
         recorded?.append(snapshot)

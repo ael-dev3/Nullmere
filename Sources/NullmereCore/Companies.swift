@@ -34,7 +34,17 @@ extension GameState {
     /// A company's weight in its House's strength: its attack and defence,
     /// its body, how whole it is, and its troops.
     public func strength(of unit: Unit) -> Int {
-        let might = unit.kind.attack * attackPercent(of: unit) + unit.kind.defense * defensePercent(of: unit)
+        strength(of: unit, house: (bonus(.attack(unit.kind), for: unit.owner), bonus(.defense(unit.kind), for: unit.owner)))
+    }
+
+    /// A company's strength with its House's own attack and defence for its
+    /// kind already weighed, as a House's strength weighs them once for all
+    /// its companies of a kind: the company's signature and commander added.
+    func strength(of unit: Unit, house bonuses: (attack: Int, defense: Int)) -> Int {
+        let tier = Unit.tierMight[Unit.tierIndex(unit.tier, of: unit.kind)]
+        let attack = tier * (100 + bonus(.attack(unit.kind), for: unit, house: bonuses.attack)) / 100
+        let defense = tier * (100 + bonus(.defense(unit.kind), for: unit, house: bonuses.defense)) / 100
+        let might = unit.kind.attack * attack + unit.kind.defense * defense
         return might * bodyPercent(of: unit) / 100 * unit.health / 1000 * musterMight(of: unit) / 100
     }
 

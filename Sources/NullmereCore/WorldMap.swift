@@ -38,6 +38,8 @@ public struct WorldMap: Codable, Equatable, Sendable {
     public private(set) var tiles: [Tile]
     /// Index of the first hex in each row, from `-radius` to `radius`.
     private let rowStarts: [Int]
+    /// Every hex in index order, laid out once.
+    private let hexList: [Hex]
 
     private enum CodingKeys: String, CodingKey {
         case radius
@@ -51,6 +53,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
         self.radius = radius
         self.tiles = Array(repeating: fill, count: WorldMap.count(radius: radius))
         self.rowStarts = WorldMap.rowStarts(radius: radius)
+        hexList = WorldMap.hexes(radius: radius)
     }
 
     public init(from decoder: any Decoder) throws {
@@ -68,6 +71,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
             throw DecodingError.dataCorruptedError(forKey: .tiles, in: container, debugDescription: "Tile count doesn't match the radius")
         }
         rowStarts = WorldMap.rowStarts(radius: radius)
+        hexList = WorldMap.hexes(radius: radius)
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -125,7 +129,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
         // anything past that by comparison alone, before `length`: a hex
         // from a keeper's order carries client-chosen coordinates, and ones
         // near the limits of Int would overflow the sum in `Hex.distance`.
-        guard (-radius...radius).contains(hex.q), (-radius...radius).contains(hex.r) else { return false }
+        guard hex.q >= -radius, hex.q <= radius, hex.r >= -radius, hex.r <= radius else { return false }
         return hex.length <= radius
     }
 
@@ -154,9 +158,11 @@ public struct WorldMap: Codable, Equatable, Sendable {
     }
 
     /// Every hex in index order.
-    public var hexes: [Hex] {
+    public var hexes: [Hex] { hexList }
+
+    private static func hexes(radius: Int) -> [Hex] {
         var result: [Hex] = []
-        result.reserveCapacity(count)
+        result.reserveCapacity(count(radius: radius))
         for r in -radius...radius {
             let qMin = max(-radius, -r - radius)
             let qMax = min(radius, -r + radius)

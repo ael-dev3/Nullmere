@@ -28,7 +28,8 @@ public struct Hex: Hashable, Codable, Sendable, Comparable, CustomStringConverti
     public func distance(to other: Hex) -> Int {
         let dq = q - other.q
         let dr = r - other.r
-        return (abs(dq) + abs(dr) + abs(dq + dr)) / 2
+        let ds = dq + dr
+        return ((dq < 0 ? -dq : dq) + (dr < 0 ? -dr : dr) + (ds < 0 ? -ds : ds)) / 2
     }
 
     /// Distance from the origin.
@@ -53,8 +54,17 @@ public struct Hex: Hashable, Codable, Sendable, Comparable, CustomStringConverti
     public func spiral(_ radius: Int) -> [Hex] {
         var result = [self]
         guard radius > 0 else { return result }
+        result.reserveCapacity(1 + 3 * radius * (radius + 1))
+        // Ring by ring, as `ring` walks each, laid into the one array.
         for step in 1...radius {
-            result += ring(step)
+            var cell = self + Hex.directions[4] * step
+            for side in 0..<6 {
+                let direction = Hex.directions[side]
+                for _ in 0..<step {
+                    result.append(cell)
+                    cell = cell + direction
+                }
+            }
         }
         return result
     }

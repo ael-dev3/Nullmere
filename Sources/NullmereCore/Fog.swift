@@ -52,7 +52,7 @@ extension GameState {
         view.envoys = envoys.filter { $0.from == house || $0.to == house }
         // Gifts too small for the chronicle are known only to the two Houses.
         view.gifts = gifts?.filter { $0.from == house || $0.to == house }
-        view.reputed = houses.map { strength(of: $0.id) }
+        view.reputed = strengths()
         view.reputedMight = houses.map { might(of: $0.id) }
         // Its own commanders, and of others only those at the head of a
         // company in sight.

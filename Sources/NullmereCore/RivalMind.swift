@@ -380,7 +380,8 @@ struct RivalMind {
         let me = state.houses[house]
         // Every House's strength, weighed once: nothing said or sworn here
         // changes it.
-        let strengths = state.houses.map { $0.isEliminated ? 0 : state.strength(of: $0.id) }
+        let all = state.strengths()
+        let strengths = state.houses.map { $0.isEliminated ? 0 : all[$0.id] }
         let mine = max(1, strengths[house])
         let strongestOther = state.livingHouses.filter { $0.id != house }.map { strengths[$0.id] }.max() ?? 0
         let enemies = state.livingHouses.filter { state.isAtWar(house, $0.id) }.count
@@ -864,10 +865,12 @@ struct RivalMind {
     /// from near enough; gates no longer threatened are left.
     func keepAlliesGates(in state: inout GameState) -> [GameEvent] {
         var events: [GameEvent] = []
+        // The companies of war of the Houses this one is at war with, found
+        // once: nothing here moves a company or makes or ends a war.
+        let foes = state.units.filter { $0.kind.isMilitary && state.isAtWar(house, $0.owner) }
         func threatened(_ hold: Hold) -> Bool {
-            state.units.contains { foe in
-                foe.kind.isMilitary && foe.position.distance(to: hold.position) <= 3
-                    && state.isAtWar(house, foe.owner) && state.isAtWar(hold.owner, foe.owner)
+            foes.contains { foe in
+                foe.position.distance(to: hold.position) <= 3 && state.isAtWar(hold.owner, foe.owner)
             }
         }
         for unit in state.units(of: house) {
@@ -1341,21 +1344,27 @@ struct RivalMind {
         let anchors = state.holds(of: house).map(\.position)
         let map = state.map
         // What rules a tile out, found once by its index: a hold within
-        // three, another House's company on it, or the wilds.
+        // three, another House's company on it, or the wilds. Only what
+        // lies near enough to a hold of the House's own to rule out a tile
+        // it would weigh.
+        let reach = 9
+        func near(_ hex: Hex, within beyond: Int) -> Bool {
+            anchors.contains { $0.distance(to: hex) <= reach + beyond }
+        }
         var ruledOut = [Bool](repeating: false, count: map.count)
-        for hold in state.holds {
+        for hold in state.holds where near(hold.position, within: 3) {
             for hex in hold.position.spiral(3) { if let index = map.index(of: hex) { ruledOut[index] = true } }
         }
-        for other in state.units where other.owner != house {
+        for other in state.units where other.owner != house && near(other.position, within: 0) {
             if let index = map.index(of: other.position) { ruledOut[index] = true }
         }
-        for wild in state.wildsStanding {
+        for wild in state.wildsStanding where near(wild.position, within: 0) {
             if let index = map.index(of: wild.position) { ruledOut[index] = true }
         }
         let holdOwners = Dictionary(state.holds.map { ($0.id, $0.owner) }, uniquingKeysWith: { first, _ in first })
         var best: (score: Int, hex: Hex)?
         for anchor in anchors {
-            for hex in anchor.spiral(9) {
+            for hex in anchor.spiral(reach) {
                 guard let index = map.index(of: hex), explored[index] else { continue }
                 guard map[index].terrain.isSettleable, !ruledOut[index] else { continue }
                 if owners[index].map({ holdOwners[$0] != house }) ?? false { continue }

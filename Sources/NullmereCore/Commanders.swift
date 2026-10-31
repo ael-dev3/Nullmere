@@ -216,7 +216,11 @@ public struct Commander: Codable, Equatable, Identifiable, Sendable {
     }
 
     public static func level(forExperience experience: Int) -> Int {
-        (1...highestLevel).last { Commander.experience(forLevel: $0) <= experience } ?? 1
+        // The highest level its experience reaches, counted up: each level
+        // asks more than the one before.
+        var level = 1
+        while level < highestLevel, Commander.experience(forLevel: level + 1) <= experience { level += 1 }
+        return level
     }
 
     public var level: Int { Commander.level(forExperience: experience) }
@@ -280,7 +284,13 @@ extension GameState {
     /// heritage gives its own company, and what its commander's skills,
     /// talents and gear give it.
     public func bonus(_ bonus: Bonus, for unit: Unit) -> Int {
-        var house = self.bonus(bonus, for: unit.owner)
+        self.bonus(bonus, for: unit, house: self.bonus(bonus, for: unit.owner))
+    }
+
+    /// A company's bonus with its House's own already weighed: its
+    /// signature's edge and its commander's added.
+    func bonus(_ bonus: Bonus, for unit: Unit, house: Int) -> Int {
+        var house = house
         switch bonus {
         case .attack(unit.kind), .defense(unit.kind):
             if isSignature(unit) { house += Heritage.signatureEdge }
