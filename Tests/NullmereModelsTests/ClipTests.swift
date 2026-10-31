@@ -101,8 +101,11 @@ final class ClipTests: XCTestCase {
             XCTAssertEqual(model.pose(.death, at: end), model.pose(.death, at: end + 5), "\(key) lies still")
             XCTAssertLessThan(ClipTests.difference(model.pose(.death, at: end - 0.2), model.pose(.death, at: end)), 0.01,
                               "\(key) has come to rest before the end")
-            // A founder's cart stands where it was let go.
-            let cart: Set<UInt16> = key == .figure(.founder, tier: 1) ? [Cart.body, Cart.wheelL, Cart.wheelR] : []
+            // A founder's cart stands where it was let go, and a Mangonel's engine where it was struck.
+            let engine: Bool
+            if case .figure(.mangonel, _) = key { engine = true } else { engine = false }
+            let cart: Set<UInt16> = key == .figure(.founder, tier: 1) ? [Cart.body, Cart.wheelL, Cart.wheelR]
+                : engine ? [Engine.body, Engine.wheelL, Engine.wheelR, Engine.arm, Engine.stone] : []
             let standing = ClipTests.top(model, .idle, 0, leaving: cart)
             let lying = ClipTests.top(model, .death, end, leaving: cart)
             XCTAssertLessThan(lying, standing * 0.45, "\(key) ends lying low")
@@ -144,6 +147,15 @@ final class ClipTests: XCTestCase {
         XCTAssertGreaterThan(moved(.figure(.spear, tier: 1), .march, Limb.thighL), 0.05)
         XCTAssertGreaterThan(moved(.figure(.rider, tier: 2), .march, Steed.foreL), 0.05)
         XCTAssertGreaterThan(moved(.figure(.founder, tier: 1), .march, Cart.wheelL), 0.5)
+        // A Mangonel's arm flies up to its stop bar and its stone is gone; its wheels roll.
+        XCTAssertGreaterThan(moved(.figure(.mangonel, tier: 3), .attack, Engine.arm), 1)
+        XCTAssertGreaterThan(moved(.figure(.mangonel, tier: 1), .march, Engine.wheelR), 0.5)
+        XCTAssertLessThan(moved(.figure(.mangonel, tier: 2), .idle, Engine.arm), 0.1, "the arm at rest only creaks")
+        let engine = Library.model(.figure(.mangonel, tier: 5))
+        XCTAssertGreaterThan(size(engine.pose(.attack, at: 0)[Int(Engine.stone)]), 0.9, "a stone in the cup, cocked")
+        XCTAssertLessThan(size(engine.pose(.attack, at: Clip.attack.period * 0.5)[Int(Engine.stone)]), 0.01, "and thrown")
+        let flung = engine.pose(.attack, at: Clip.attack.period * 0.35)[Int(Engine.arm)].transformDirection(Vec3(0, 0, -1))
+        XCTAssertGreaterThan(flung.y, 0.5, "the arm thrown up from where it lay back")
         XCTAssertGreaterThan(moved(.prop(.cart), .march, 1), 0.5)
         XCTAssertEqual(moved(.prop(.cart), .idle, 1), 0, "a cart at rest is still")
         // A tool comes out to gather, and is put away otherwise.

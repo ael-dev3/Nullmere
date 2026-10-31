@@ -36,6 +36,7 @@ public enum Formation {
             case .spear: return Ranks(strength: 9, file: 3, spacing: 0.2, depth: 0.2)
             case .bow: return Ranks(strength: 8, file: 4, spacing: 0.18, depth: 0.22, staggered: true)
             case .rider: return Ranks(strength: 3, file: 3, spacing: 0.27, depth: 0.6, lead: 0.58)
+            case .mangonel: return Ranks(strength: 2, file: 2, spacing: 0.32, depth: 0.5, lead: 0.62)
             case .lantern: return Ranks(strength: 3, file: 2, spacing: 0.28, depth: 0.26, staggered: true)
             case .founder: return Ranks(strength: 3, file: 3, spacing: 0.27, depth: 0.42, lead: 0.36)
             }
@@ -58,6 +59,7 @@ public enum Formation {
         case .spear: return (16, 4)
         case .bow: return (16, 6)
         case .rider: return (4, 4)
+        case .mangonel: return (2, 2)
         case .lantern, .founder: return nil
         }
     }

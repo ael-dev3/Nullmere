@@ -124,6 +124,7 @@ extension GameState {
         case .spear: base = 30
         case .bow: base = 25
         case .rider: base = 40
+        case .mangonel: base = 15
         case .lantern, .founder: base = 0
         }
         let land = isOnOwnLand(unit) ? Standard.gathering : 0
@@ -145,6 +146,7 @@ extension GameState {
         case .spear: base = 150
         case .bow: base = 120
         case .rider: base = 200
+        case .mangonel: base = 250
         case .lantern, .founder: base = 0
         }
         let load = base * (100 + 25 * (unit.tier - 1)) / 100 * (100 + bonus(.load, for: unit)) / 100

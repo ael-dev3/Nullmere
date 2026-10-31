@@ -16,15 +16,16 @@ final class HasteningWorksTests: XCTestCase {
     }
 
     /// Each level of the Wayhouse sends one more kind a step further: the
-    /// Lanterns, then the Founders, the Spears, the Bows and the Riders;
-    /// the highest Wayhouse among a House's holds counts.
+    /// Lanterns, then the Founders, the Spears, the Bows with the
+    /// Mangonels, and the Riders; the highest Wayhouse among a House's
+    /// holds counts.
     func testAWayhouseSendsTheHousesCompaniesAStepFurther() throws {
         var (state, me, seat) = try staged("the wayhouse")
         let order = UnitKind.allCases.sorted { BuildingKind.roadLevel(for: $0) < BuildingKind.roadLevel(for: $1) }
-        XCTAssertEqual(order, [.lantern, .founder, .spear, .bow, .rider])
-        XCTAssertEqual(UnitKind.allCases.map(BuildingKind.roadLevel(for:)).sorted(), [1, 2, 3, 4, 5], "One kind a level")
+        XCTAssertEqual(order, [.lantern, .founder, .spear, .bow, .mangonel, .rider])
+        XCTAssertEqual(UnitKind.allCases.map(BuildingKind.roadLevel(for:)).sorted(), [1, 2, 3, 4, 4, 5], "One kind a level, the engines with the bows")
         let before = UnitKind.allCases.map { state.bonus(.moves($0), for: me) }
-        XCTAssertEqual(before, [0, 0, 0, 0, 0])
+        XCTAssertEqual(before, [0, 0, 0, 0, 0, 0])
 
         let events = try state.perform(.build(hold: state.holds[seat].id, kind: .wayhouse), as: me)
         XCTAssertEqual(events, [.buildingStarted(hold: state.holds[seat].id, kind: .wayhouse, level: 1)])
@@ -38,7 +39,7 @@ final class HasteningWorksTests: XCTestCase {
         for level in 2...5 {
             state.holds[seat].levels[.wayhouse] = level
             let hastened = UnitKind.allCases.filter { state.bonus(.moves($0), for: me) == 1 }
-            XCTAssertEqual(hastened.count, level, "\(level) kinds at level \(level)")
+            XCTAssertEqual(hastened.count, level + (level >= 4 ? 1 : 0), "\(level) kinds at level \(level), the Mangonels with the Bows")
         }
         // The highest among the House's holds, none of another House's.
         state.holds[seat].levels[.wayhouse] = nil

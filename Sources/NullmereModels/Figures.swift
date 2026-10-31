@@ -9,6 +9,7 @@ enum Figures {
         case .spear: return spearman(tier: tier, name: name)
         case .bow: return archer(tier: tier, name: name)
         case .rider: return Riders.rider(tier: tier, name: name)
+        case .mangonel: return Engine.mangonel(tier: tier, name: name)
         case .lantern: return lanternBearer(name: name)
         case .founder: return founder(name: name)
         }
@@ -292,6 +293,7 @@ enum Figures {
         case .signature(let heritage): return marchSpeed(.figure(heritage.signature, tier: ModelKey.tiers(of: heritage.signature)))
         case .figure(.rider, let tier): return Ride(arms: .lance, mount: Riders.mount(tier: tier)).marchSpeed
         case .figure(.founder, _): return founderGait.marchSpeed
+        case .figure(.mangonel, _): return Engine.gait.marchSpeed
         case .figure, .prop(.cart): return Gait(hands: .spear).marchSpeed
         case .wild(let tier): return wildGait(tier).marchSpeed
         case .commander(let variant): return commanderRide(variant).marchSpeed

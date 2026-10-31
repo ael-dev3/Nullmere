@@ -395,5 +395,19 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertTrue(session.arrows(at: shot.start.addingTimeInterval(1)).isEmpty, "landed")
         let frame = session.sceneFrame(at: 2, now: shot.start.addingTimeInterval(0.12))
         XCTAssertTrue(frame.batches.contains { $0.key == .prop(.arrow) })
+
+        // A Mangonel's: one stone, loosed as its arm reaches the stop bar.
+        session.showBlows([.battle(Battle(attacker: striker.id, attackerOwner: player, attackerKind: .mangonel, defender: nil,
+                                          defenderOwner: (player + 1) % 3, defenderKind: nil, hold: nil, at: far, damageDealt: 30,
+                                          damageTaken: 0, attackerFell: false, defenderFell: false))])
+        let hurled = try XCTUnwrap(session.blows.last)
+        XCTAssertTrue(hurled.hurled)
+        XCTAssertFalse(shot.hurled)
+        XCTAssertTrue(session.arrows(at: hurled.start.addingTimeInterval(0.05)).filter(\.stone).isEmpty, "not yet loosed")
+        let stones = session.arrows(at: hurled.start.addingTimeInterval(0.4)).filter(\.stone)
+        XCTAssertEqual(stones.count, 1)
+        XCTAssertTrue(session.arrows(at: hurled.start.addingTimeInterval(1)).filter(\.stone).isEmpty, "landed")
+        let thrown = session.sceneFrame(at: 2, now: hurled.start.addingTimeInterval(0.4))
+        XCTAssertTrue(thrown.batches.contains { $0.key == .prop(.stone) })
     }
 }

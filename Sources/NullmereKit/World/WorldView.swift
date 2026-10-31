@@ -602,6 +602,14 @@ struct WorldMarks: View {
             p.move(to: CGPoint(x: c.x - r, y: c.y + r * 0.8))
             p.addLine(to: CGPoint(x: c.x, y: c.y))
             p.addLine(to: CGPoint(x: c.x + r, y: c.y + r * 0.8))
+        case .mangonel:
+            // A frame on its wheel, and its arm raised to throw.
+            p.move(to: CGPoint(x: c.x - r, y: c.y + r * 0.5))
+            p.addLine(to: CGPoint(x: c.x + r, y: c.y + r * 0.5))
+            p.addEllipse(in: CGRect(x: c.x - r * 0.25, y: c.y + r * 0.5, width: r * 0.5, height: r * 0.5))
+            p.move(to: CGPoint(x: c.x - r * 0.3, y: c.y + r * 0.5))
+            p.addLine(to: CGPoint(x: c.x + r * 0.55, y: c.y - r * 0.9))
+            p.addEllipse(in: CGRect(x: c.x + r * 0.45, y: c.y - r, width: r * 0.3, height: r * 0.3))
         case .founder:
             p.move(to: CGPoint(x: c.x - r * 0.75, y: c.y + r * 0.7))
             p.addLine(to: CGPoint(x: c.x - r * 0.75, y: c.y - r * 0.1))

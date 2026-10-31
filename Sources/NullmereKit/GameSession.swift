@@ -306,6 +306,8 @@ public final class GameSession {
         public let defender: Int?
         /// Companies that fell in it, drawn fading where they stood.
         public let fallen: [Fallen]
+        /// Whether a Mangonel struck it, hurling a stone rather than loosing arrows.
+        public var hurled = false
 
         public struct Fallen: Equatable {
             public let kind: UnitKind
@@ -317,7 +319,7 @@ public final class GameSession {
         /// How long it is kept, for the fallen to fall and fade.
         public static let lingers = 2.4
 
-        /// A blow from beyond the next tile is a bow's.
+        /// A blow from beyond the next tile is a bow's or a Mangonel's.
         public var isRanged: Bool { from.distance(to: at) > 1 }
 
         /// How far toward its foe an attacker leans, as a share of the way,
@@ -1295,12 +1297,24 @@ public final class GameSession {
         }
     }
 
+    /// The sound of a kind of company's blow: a bowstring loosed, a
+    /// Mangonel's stone landing like a ram's blow, or steel meeting steel.
+    static func strikeCue(_ kind: UnitKind) -> Ambience.Cue {
+        switch kind {
+        case .bow: return .loose
+        case .mangonel: return .batter
+        default: return .clash
+        }
+    }
+
     /// The sounds an order makes: each kind of company its own.
     static func cues(for command: Command, events: [GameEvent], in state: GameState, player: Int) -> [Ambience.Cue] {
         switch command {
         case .attack:
-            let ranged = events.contains { if case .battle(let battle) = $0 { return battle.attackerKind == .bow } else { return false } }
-            var cues: [Ambience.Cue] = [ranged ? .loose : .clash]
+            let kind = events.lazy.compactMap { event -> UnitKind? in
+                if case .battle(let battle) = event { return battle.attackerKind } else { return nil }
+            }.first
+            var cues: [Ambience.Cue] = [strikeCue(kind ?? .spear)]
             if events.contains(where: { if case .holdCaptured(_, _, let by) = $0 { return by == player } else { return false } }) {
                 cues.append(.triumph)
             }
@@ -1443,7 +1457,7 @@ public final class GameSession {
         case .frontier(.toldHome(let house, _, _, _, let won)) where house == player: return won ? .triumph : .herald
         case .gearForged(let house, _) where house == player: return .anvil
         case .scoutSeen(let hold, _) where state?.hold(hold)?.owner == player: return .envoy
-        case .hunted(let hunt) where hunt.attackerOwner == player: return hunt.attackerKind == .bow ? .loose : .clash
+        case .hunted(let hunt) where hunt.attackerOwner == player: return strikeCue(hunt.attackerKind)
         case .sentToGather(let unit, _) where ours(unit): return .order
         case .gathered(_, let owner, _) where owner == player: return .dig
         case .delivered(_, let owner, _, _) where owner == player: return .coin
@@ -1510,8 +1524,8 @@ public final class GameSession {
             here = state.flatMap { place(of: event, in: $0) }
             switch event {
             case .battle(let battle) where battle.defenderOwner == player:
-                // Struck: steel, or arrows, as the blow came.
-                add(battle.attackerKind == .bow ? .loose : .clash)
+                // Struck: steel, arrows or stones, as the blow came.
+                add(strikeCue(battle.attackerKind))
             case .holdStruck(let hold, _) where state?.hold(hold)?.owner == player:
                 add(.batter)
             case .unitLost(_, _, let owner, _) where owner == player:
@@ -1703,7 +1717,8 @@ public final class GameSession {
             }
             blows.append(Blow(id: blowCounter, at: battle.at, damage: battle.damageDealt,
                               againstPlayer: battle.defenderOwner == player, start: now,
-                              from: from, attacker: battle.attacker, defender: battle.defender, fallen: fallen))
+                              from: from, attacker: battle.attacker, defender: battle.defender, fallen: fallen,
+                              hurled: battle.attackerKind == .mangonel))
             // Each turns to face the other.
             if from != battle.at {
                 headings[battle.attacker] = CompanyPose.heading(from: from, to: battle.at)
@@ -1717,7 +1732,7 @@ public final class GameSession {
                 blowCounter += 1
                 let fallen = strike.fell ? [Blow.Fallen(kind: strike.kind, owner: strike.owner, at: strike.from)] : []
                 blows.append(Blow(id: blowCounter, at: assault.at, damage: strike.dealt, againstPlayer: false, start: now,
-                                  from: strike.from, attacker: strike.unit, defender: nil, fallen: fallen))
+                                  from: strike.from, attacker: strike.unit, defender: nil, fallen: fallen, hurled: strike.kind == .mangonel))
                 if strike.from != assault.at { headings[strike.unit] = CompanyPose.heading(from: strike.from, to: assault.at) }
             }
             shown = true

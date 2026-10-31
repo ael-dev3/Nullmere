@@ -53,10 +53,11 @@ extension GameState {
         damage * 100 / max(bodyPercent(of: unit), 1)
     }
 
-    /// What a company's blow takes from a ward, before chance.
+    /// What a company's blow takes from a ward, before chance: a
+    /// Mangonel's three times another's.
     public func wardDamage(by unit: Unit) -> Int {
         let damage = 12 + unit.kind.attack * 4 * unit.health * attackPercent(of: unit) / 10_000
-        return damage * (100 + bonus(.wardDamage, for: unit)) / 100
+        return damage * (100 + bonus(.wardDamage, for: unit)) / 100 * unit.kind.wardPercent / 100
     }
 
     /// The highest tier of a kind a House has studied.

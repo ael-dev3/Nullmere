@@ -100,25 +100,30 @@ public struct MarchPath: Equatable, Sendable {
     }
 }
 
-/// An arrow loosed: from where, to where, and how far along its flight.
+/// An arrow loosed, or a Mangonel's stone hurled: from where, to where,
+/// and how far along its flight.
 public struct ArrowFlight: Equatable, Sendable {
     public var from: Vec3
     public var to: Vec3
     public var progress: Float
+    /// A stone, flying higher than an arrow.
+    public var stone: Bool
 
-    public init(from: Vec3, to: Vec3, progress: Float) {
+    public init(from: Vec3, to: Vec3, progress: Float, stone: Bool = false) {
         self.from = from
         self.to = to
         self.progress = progress
+        self.stone = stone
     }
 
     /// Where it is and how it lies: rising from the bow in an arc, nose
-    /// along its flight, and coming down on the mark.
+    /// along its flight, and coming down on the mark; a stone's arc the
+    /// higher.
     public var transform: Mat4 {
         let t = min(max(progress, 0), 1)
         let span = to - from
         let across = (span.x * span.x + span.z * span.z).squareRoot()
-        let height = max(0.35, across * 0.22)
+        let height = max(0.35, across * 0.22) * (stone ? 1.8 : 1)
         let flat = from.mix(to, t)
         let at = Vec3(flat.x, flat.y + 4 * t * (1 - t) * height, flat.z)
         let climb = (span.y + 4 * (1 - 2 * t) * height) / max(across, 0.01)
@@ -785,7 +790,7 @@ public final class WorldStage: @unchecked Sendable {
                                into frame: inout SceneFrame) -> [ModelBatch] {
         var placed: [(ModelKey, ModelInstance)] = []
         for arrow in arrows where (0...1).contains(arrow.progress) {
-            placed.append((.prop(.arrow), ModelInstance(model: arrow.transform, flags: ModelInstance.alwaysShown)))
+            placed.append((.prop(arrow.stone ? .stone : .arrow), ModelInstance(model: arrow.transform, flags: ModelInstance.alwaysShown)))
         }
         var shared: [PoseKey: UInt32] = [:]
         if let lake {

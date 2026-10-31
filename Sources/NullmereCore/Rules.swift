@@ -499,6 +499,9 @@ extension GameState {
         if defender.kind == .rider {
             attack = attack * (100 + attacker.kind.bonusAgainstRiders) / 100
         }
+        if defender.kind == .mangonel {
+            attack = attack * (100 + attacker.kind.bonusAgainstMangonels) / 100
+        }
         var defenseBonus = 100 + (map[hex]?.terrain.defenseBonus ?? 0) + (defender.fortified ? 25 : 0)
             + (isOnOwnLand(defender) ? Standard.defence : 0)
         if let hold = hold(at: hex), hold.owner == defender.owner {

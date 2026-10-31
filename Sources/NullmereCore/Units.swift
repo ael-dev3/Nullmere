@@ -5,6 +5,10 @@ public enum UnitKind: String, CaseIterable, Codable, Sendable {
     case spear
     case bow
     case rider
+    /// Engines of timber and rope that hurl stones from two tiles away:
+    /// three times as hard as any other company on walls and wards, slow
+    /// to learn and soft in the field, and no riders' match.
+    case mangonel
     /// Settlers who found a new hold where they stand.
     case founder
 
@@ -14,6 +18,7 @@ public enum UnitKind: String, CaseIterable, Codable, Sendable {
         case .spear: return "Spears"
         case .bow: return "Bows"
         case .rider: return "Riders"
+        case .mangonel: return "Mangonels"
         case .founder: return "Founders"
         }
     }
@@ -24,6 +29,7 @@ public enum UnitKind: String, CaseIterable, Codable, Sendable {
         case .spear: return 6
         case .bow: return 5
         case .rider: return 8
+        case .mangonel: return 4
         case .founder: return 0
         }
     }
@@ -34,6 +40,7 @@ public enum UnitKind: String, CaseIterable, Codable, Sendable {
         case .spear: return 7
         case .bow: return 4
         case .rider: return 5
+        case .mangonel: return 3
         case .founder: return 1
         }
     }
@@ -41,7 +48,7 @@ public enum UnitKind: String, CaseIterable, Codable, Sendable {
     public var movement: Int {
         switch self {
         case .lantern, .rider: return 4
-        case .spear, .bow, .founder: return 2
+        case .spear, .bow, .mangonel, .founder: return 2
         }
     }
 
@@ -52,8 +59,8 @@ public enum UnitKind: String, CaseIterable, Codable, Sendable {
         }
     }
 
-    /// Bows strike from two tiles away and take no blow in return.
-    public var range: Int { self == .bow ? 2 : 1 }
+    /// Bows and Mangonels strike from two tiles away and take no blow in return.
+    public var range: Int { self == .bow || self == .mangonel ? 2 : 1 }
 
     public var isMilitary: Bool { attack > 1 }
 
@@ -67,6 +74,7 @@ public enum UnitKind: String, CaseIterable, Codable, Sendable {
         case .spear: return 1
         case .bow: return 2
         case .rider: return 3
+        case .mangonel: return 4
         }
     }
 
@@ -76,6 +84,7 @@ public enum UnitKind: String, CaseIterable, Codable, Sendable {
         case .spear: return Stock(grain: 25, timber: 15, stone: 10)
         case .bow: return Stock(grain: 25, timber: 30)
         case .rider: return Stock(grain: 40, timber: 15, stone: 10, moonsalt: 8)
+        case .mangonel: return Stock(grain: 20, timber: 50, stone: 30, moonsalt: 6)
         case .founder: return Stock(grain: 60, timber: 40, stone: 30)
         }
     }
@@ -84,7 +93,7 @@ public enum UnitKind: String, CaseIterable, Codable, Sendable {
         switch self {
         case .lantern: return 1
         case .spear, .bow: return 2
-        case .rider, .founder: return 3
+        case .rider, .mangonel, .founder: return 3
         }
     }
 
@@ -94,11 +103,18 @@ public enum UnitKind: String, CaseIterable, Codable, Sendable {
     /// Percent bonus when fighting riders.
     public var bonusAgainstRiders: Int { self == .spear ? 50 : 0 }
 
+    /// Percent bonus when fighting Mangonels: riders fall on them.
+    public var bonusAgainstMangonels: Int { self == .rider ? 50 : 0 }
+
+    /// What its blows take from walls and wards, in percent of what
+    /// another company's of its strength would.
+    public var wardPercent: Int { self == .mangonel ? 300 : 100 }
+
     // MARK: Tiers
 
     /// Whether it musters in tiers, I to V: the companies of war do;
     /// Lanterns and Founders muster in one.
-    public var hasTiers: Bool { self == .spear || self == .bow || self == .rider }
+    public var hasTiers: Bool { self == .spear || self == .bow || self == .rider || self == .mangonel }
 
     /// Its highest tier: V for a company of war, I for the rest.
     public var highestTier: Int { hasTiers ? Unit.highestTier : 1 }

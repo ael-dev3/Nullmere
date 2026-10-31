@@ -111,7 +111,7 @@ final class TierTests: XCTestCase {
             unit.health = 73
             XCTAssertEqual(state.strength(of: unit), (kind.attack + kind.defense) * 73 / 10)
             XCTAssertEqual(state.upkeep(of: unit), kind.upkeep)
-            XCTAssertEqual(state.wardDamage(by: unit), Hold.strikeDamage(attack: kind.attack, health: 73))
+            XCTAssertEqual(state.wardDamage(by: unit), Hold.strikeDamage(attack: kind.attack, health: 73) * kind.wardPercent / 100)
             XCTAssertEqual(state.movement(of: unit), kind.movement)
         }
     }
@@ -209,10 +209,11 @@ final class TierTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(state)), state, "And comes back whole")
     }
 
-    /// The Muster Hall's line names the tiers only its last two levels add;
-    /// the first three open theirs with their own companies.
+    /// The Muster Hall's line names the tiers its last two levels add, the
+    /// fourth with the Mangonels; the first three open theirs with their own
+    /// companies.
     func testTheMusterHallSaysTheTiersItOpens() {
-        XCTAssertEqual(BuildingKind.musterHall.effect(atLevel: 4), "Trains companies of war of tier IV, once studied")
+        XCTAssertEqual(BuildingKind.musterHall.effect(atLevel: 4), "Trains Mangonels; companies of war of tier IV, once studied")
         XCTAssertEqual(BuildingKind.musterHall.effect(atLevel: 5), "Trains companies of war of tier V, once studied")
     }
 

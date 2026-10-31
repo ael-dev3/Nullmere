@@ -11,6 +11,7 @@ extension UnitKind {
         case .spear: return 1_200 + 300 * above
         case .bow: return 1_000 + 250 * above
         case .rider: return 800 + 200 * above
+        case .mangonel: return 300 + 75 * above
         case .lantern: return 60
         case .founder: return 250
         }

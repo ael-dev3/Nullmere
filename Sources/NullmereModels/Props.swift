@@ -10,7 +10,15 @@ enum Props {
         case .cart: return cart(name: name)
         case .brazier: return brazier(name: name)
         case .puff: return puff(name: name)
+        case .stone: return Model(name: name, mesh: stone())
         }
+    }
+
+    /// A Mangonel's stone in flight, rough-hewn, its middle at the origin.
+    static func stone() -> Mesh {
+        var b = MeshBuilder()
+        b.rock(center: .zero, size: Vec3(0.03, 0.027, 0.03), rings: 3, sides: 6, jitter: 0.15, seed: 11, color: Palette.stone)
+        return b.mesh
     }
 
     /// An arrow in flight, its middle at the origin, pointing along +z.

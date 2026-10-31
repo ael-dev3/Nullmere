@@ -835,6 +835,7 @@ struct UnitPanel: View {
         case .founder: return "Right-click to march. Found a hold on open land three tiles from any other."
         case .lantern: return "Right-click to march into the dark and reveal it. Lanterns see far, and scout another House's hold from two tiles."
         case .bow: return "Right-click to march, to strike an enemy or the wilds up to two tiles away, or to gather at a site."
+        case .mangonel: return "Right-click to march, or to hurl stones at an enemy hold, standard or hall up to two tiles away: thrice as hard on walls and wards as any other company."
         default: return "Right-click to march, to strike an enemy or the wilds beside you, or to gather at a site."
         }
     }

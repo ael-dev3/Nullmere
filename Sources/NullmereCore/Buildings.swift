@@ -114,8 +114,8 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
             return "+\(BuildingKind.yieldBoostPerLevel * level)% to the \(resource) this hold yields"
         case .musterHall:
             var gains = UnitKind.allCases.filter { $0.requiredMuster == level }.map(\.title)
-            // The first three halls open their tiers with their companies;
-            // the last two, tiers alone.
+            // The first three halls open their tiers with their companies,
+            // the fourth its tier with the Mangonels, the fifth its tier alone.
             if level > Hold.fasterTrainingAt {
                 gains.append("companies of war of tier \(BuildingKind.numeral(level)), once studied")
             }
@@ -148,14 +148,14 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
     }
 
     /// The Wayhouse whose level sends a kind of company a step further
-    /// every watch: Lanterns first, then Founders, Spears, Bows, and last
-    /// the Riders.
+    /// every watch: Lanterns first, then Founders, Spears, Bows and
+    /// Mangonels, and last the Riders.
     public static func roadLevel(for kind: UnitKind) -> Int {
         switch kind {
         case .lantern: return 1
         case .founder: return 2
         case .spear: return 3
-        case .bow: return 4
+        case .bow, .mangonel: return 4
         case .rider: return 5
         }
     }

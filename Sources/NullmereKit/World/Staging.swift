@@ -443,7 +443,8 @@ extension GameSession {
     // MARK: Arrows
 
     /// The arrows of the bows' blows, a few to each, loosed one after
-    /// another and coming down about the mark.
+    /// another and coming down about the mark; a Mangonel's, one stone,
+    /// slower and higher.
     func arrows(at now: Date) -> [ArrowFlight] {
         var flights: [ArrowFlight] = []
         for blow in blows where blow.isRanged {
@@ -451,6 +452,14 @@ extension GameSession {
             let from = Relief.centre(of: blow.from), to = Relief.centre(of: blow.at)
             let rise = Float(groundHeight(of: blow.from)) + 0.28
             let fall = Float(groundHeight(of: blow.at)) + 0.05
+            if blow.hurled {
+                // Loosed as the arm reaches its stop bar.
+                let progress = (age - 0.12) / 0.6
+                if progress >= 0, progress <= 1 {
+                    flights.append(ArrowFlight(from: Vec3(from.x, rise, from.z), to: Vec3(to.x, fall, to.z), progress: progress, stone: true))
+                }
+                continue
+            }
             for shaft in 0..<4 {
                 let s = Float(shaft)
                 let progress = (age - s * 0.05) / 0.38

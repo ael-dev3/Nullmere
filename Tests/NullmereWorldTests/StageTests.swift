@@ -457,6 +457,13 @@ final class StageTests: XCTestCase {
         let hearths = [Hearth(point: Vec3(1, 1, 1), hex: Hex(2, -1)), Hearth(point: Vec3(5, 1, 1), hex: Hex(4, -1))]
         let flown = WorldStage.flights(arrows: arrows, birdsOver: Vec3(0, 0, 0), hearths: hearths, time: 1.3, into: &frame)
         XCTAssertEqual(flown.first { $0.key == .prop(.arrow) }?.instances.count, 1, "only arrows in flight")
+        // A Mangonel's stone flies as a stone, higher than an arrow over the same ground.
+        var stones = SceneFrame()
+        let stone = ArrowFlight(from: .zero, to: Vec3(3, 0, 0), progress: 0.5, stone: true)
+        let hurled = WorldStage.flights(arrows: [stone], birdsOver: nil, hearths: [], time: 0, into: &stones)
+        XCTAssertEqual(hurled.map(\.key), [.prop(.stone)])
+        XCTAssertGreaterThan(stone.transform.c3.y, arrows[0].transform.c3.y * 1.5)
+        XCTAssertFalse(arrows[0].stone)
         let birds = flown.first { $0.key == .prop(.bird) }?.instances ?? []
         XCTAssertEqual(birds.count, 5)
         XCTAssertTrue(birds.allSatisfy { $0.flags == ModelInstance.alwaysShown && $0.model.c3.y > 1 })

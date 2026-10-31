@@ -85,11 +85,11 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         }
     }
 
-    /// The tiers a kind of company is drawn in: Spears, Bows and Riders
-    /// from 1 to 5; Lanterns and Founders have one look.
+    /// The tiers a kind of company is drawn in: Spears, Bows, Riders and
+    /// Mangonels from 1 to 5; Lanterns and Founders have one look.
     public static func tiers(of kind: UnitKind) -> Int {
         switch kind {
-        case .spear, .bow, .rider: return 5
+        case .spear, .bow, .rider, .mangonel: return 5
         case .lantern, .founder: return 1
         }
     }
@@ -211,6 +211,8 @@ public enum Prop: String, CaseIterable, Sendable {
     /// A puff of chimney smoke or dust, drawn many times; at idle it rises
     /// and spreads once a period, for the renderer to fade.
     case puff
+    /// A Mangonel's stone in flight.
+    case stone
 }
 
 /// One model placed in the world.

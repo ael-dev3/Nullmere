@@ -157,6 +157,9 @@ final class SignalsTests: XCTestCase {
         }
         XCTAssertEqual(GameSession.cues(for: .attack(unit: 1, target: to), events: [battle(.bow)], in: state, player: state.player), [.loose])
         XCTAssertEqual(GameSession.cues(for: .attack(unit: 1, target: to), events: [battle(.spear)], in: state, player: state.player), [.clash])
+        XCTAssertEqual(GameSession.cues(for: .attack(unit: 1, target: to), events: [battle(.mangonel)], in: state, player: state.player), [.batter],
+                       "a Mangonel's stone lands as a ram's blow")
+        XCTAssertEqual(GameSession.cues(for: .attack(unit: 1, target: to), events: [], in: state, player: state.player), [.clash])
         XCTAssertEqual(GameSession.cues(for: .build(hold: seat.id, kind: .granary), events: [], in: state, player: state.player), [.rise])
     }
 

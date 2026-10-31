@@ -1087,7 +1087,7 @@ struct RivalMind {
             return explore(with: unit, in: &state)
         case .founder:
             return settle(with: unit, in: &state)
-        case .spear, .bow, .rider:
+        case .spear, .bow, .rider, .mangonel:
             // A company sent to a rally, or keeping an ally's gates, is the
             // rally's or the gates' until it is done.
             switch unit.errand {

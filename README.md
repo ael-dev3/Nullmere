@@ -480,6 +480,19 @@ as the realm will, and takes the realm's word as final.
   its ward is short of whole or a foe at war stands within three tiles of
   it; the ground must be open, three tiles from every other hold and clear
   of holy sites and alliance ground. Stewards move no seat.
+- **Mangonels.** Rise of Kingdoms' siege engines: a crewman behind a
+  two-wheeled engine of timber and twisted rope, mustered from a Muster
+  Hall of IV (its tier V from a hall of V) for timber and stone above all.
+  It hurls stones from two tiles away, as a bow looses, and nothing comes
+  back at it; on a hold's ward, a standard's, a hall's or a storehouse's,
+  a stone takes three times what another company's blow of its strength
+  would, but it takes no hold itself, and in the field it is soft: 4 to
+  strike and 3 to stand, 300 troops at its first muster to 600 at V, and
+  Riders fall on it half again as hard as on anything else. Drawn in five
+  tiers, from a rough frame to a great gilt engine behind a mantlet in the
+  House's colours, its arm flying up to the stop bar as it strikes, the
+  stone arcing high to the mark and landing as a ram's blow. Stewards
+  muster none.
 - **The Ring.** Rise of Kingdoms' arena of commanders: at the foot of the
   Commanders screen a keeper stands a line of up to three of their
   commanders, each weighing 40, ten for each of its levels, four for each
@@ -676,9 +689,10 @@ realm; keepers are told in plain words, never a status code.
   company trained with no free tile within three of its hold waits,
   trained, and the hold trains no other until it has room to stand.
 - **Companies.** Lanterns scout, Spears hold the line and take holds, Bows
-  strike from two tiles, Riders are fast, and Founders found new holds.
-  Every company but Lanterns eats a grain each watch. Spears, Bows and
-  Riders muster in tiers I to V, each needing a Muster Hall as high as
+  strike from two tiles, Riders are fast, Mangonels break walls, and
+  Founders found new holds. Every company but Lanterns eats a grain each
+  watch. Spears, Bows, Riders and Mangonels muster in tiers I to V, each
+  needing a Muster Hall as high as
   itself and the study that opens it (Close Order, Iron Ranks, Grey
   Companies, Moonsteel): a higher tier strikes harder, stands firmer and
   takes less of a blow, but costs more (moonsalt from tier III), eats more
@@ -946,7 +960,8 @@ realm; keepers are told in plain words, never a status code.
   hasten a House, raised by its keeper alone (the stewards raise neither,
   so a world of stewards goes as it always did). Each level of a Wayhouse
   sends one more kind of the House's companies a step further every watch:
-  Lanterns at I, Founders at II, Spears at III, Bows at IV and Riders at V.
+  Lanterns at I, Founders at II, Spears at III, Bows and Mangonels at IV
+  and Riders at V.
   Each level of a Masons' Lodge raises every work of the House 6% sooner.
   The House's highest of each, in any of its holds, counts. A Wayhouse is
   modelled as a post-house on the road out of the hold: a hall with its

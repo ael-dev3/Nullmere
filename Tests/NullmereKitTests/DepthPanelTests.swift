@@ -906,6 +906,30 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertNil(Narration.line(for: .ringLineStood(house: other, line: [theirs.id]), in: session.state, viewer: me))
     }
 
+    /// A Mangonel of the keeper's: its panel teaches how it strikes while
+    /// the first steps are taught, the map without Metal draws it in a
+    /// glyph of its own, and its blows sound as a ram's.
+    func testAMangonelIsTaughtDrawnAndHeard() throws {
+        var state = world("a mangonel")
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let hex = try free(near: seat.position, in: state)
+        let engine = Unit(id: state.takeID(), kind: .mangonel, owner: me, position: hex, tier: 3)
+        state.units.append(engine)
+        let (session, _) = session(state)
+        XCTAssertNotNil(session.firstSteps, "taught in the first steps")
+        session.selection = .unit(engine.id)
+        draw(UnitPanel(session: session, unit: engine), width: 330, height: 700)
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        draw(WorldFallback(session: session), width: 900, height: 700)
+        XCTAssertEqual(GameSession.strikeCue(.mangonel), .batter)
+        XCTAssertEqual(GameSession.strikeCue(.bow), .loose)
+        XCTAssertEqual(GameSession.strikeCue(.rider), .clash)
+        let hunt = GameEvent.hunted(Hunt(attacker: engine.id, attackerOwner: me, attackerKind: .mangonel, wild: 1, wildKind: .saltwights, level: 1,
+                                         at: hex, damageDealt: 10, damageTaken: 0, attackerFell: false, wildFell: false, spoils: Stock()))
+        XCTAssertEqual(GameSession.cue(forDepth: hunt, in: session.state, player: me), .batter)
+    }
+
     /// The Frontier on the Realm screen: how its kingdoms stand, the way
     /// across with the House's levy, and, there, the way home.
     func testTheFrontierIsCrossedAndLeftFromTheRealm() throws {
