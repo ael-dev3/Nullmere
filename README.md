@@ -1218,9 +1218,11 @@ There is no music in the launcher; the game makes its own sound as it plays.
   colour, roof ribs, a half-timbered hall with a capped chimney, a log pile
   and a handcart (a seat's keep is 2,728 triangles, where it was 778); the
   walls' arrow loops, string courses, wall-walks, tower slits and finials,
-  and iron bands on the gate; and on every hall and round house of the
-  works, courses across the roofs, boards and vents in the gables, hoops and
-  finials.
+  and iron bands on the gate; on every hall and round house of the works,
+  courses across the roofs, boards and vents in the gables, hoops and
+  finials; and in every work's yard but the Moonspire's, its odds and ends,
+  barrels, crates, sacks, a bucket, a bench and stacks of logs, set down
+  where nothing of the work stands and clear of the way to its door.
 - **Portraits from the world itself.** The panels show each commander,
   each company to be trained (in the tier chosen) and each work to be
   built (at the stage it will be), drawn by the world's own renderer on a

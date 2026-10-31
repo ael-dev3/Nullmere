@@ -215,8 +215,111 @@ enum Works {
     }
 
     static func model(_ name: String, _ b: MeshBuilder, rig: Rig = Rig(), machinery: Machinery? = nil) -> Model {
+        var b = b
+        b.fine { yard(&$0, seed: seed(of: name), count: 4) }
         guard let machinery else { return Model(name: name, mesh: b.mesh) }
         return Model(name: name, mesh: b.mesh, rig: rig) { clip, time in machinery.joints(clip, time) }
+    }
+
+    /// A seed from a work's name, the same in every run.
+    static func seed(of name: String) -> UInt32 {
+        name.utf8.reduce(2_166_136_261) { ($0 ^ UInt32($1)) &* 16_777_619 }
+    }
+
+    // MARK: The yard
+
+    /// Where a work's pieces stand on its pad, seen from above: a grid of
+    /// cells a hundredth across, each taken where anything rises from the
+    /// pad over it.
+    struct Footprint {
+        static let cell: Float = 0.01, reach: Float = 0.34
+        static let cells = Int(2 * reach / cell)
+        var taken = [Bool](repeating: false, count: cells * cells)
+
+        init(_ mesh: Mesh) {
+            for (a, b, c) in mesh.triangles where max(a.position.y, b.position.y, c.position.y) > 0.015 {
+                let low = pointwiseMin(pointwiseMin(a.position, b.position), c.position)
+                let high = pointwiseMax(pointwiseMax(a.position, b.position), c.position)
+                for row in Footprint.index(low.z)...Footprint.index(high.z) {
+                    for column in Footprint.index(low.x)...Footprint.index(high.x) {
+                        taken[row * Footprint.cells + column] = true
+                    }
+                }
+            }
+        }
+
+        static func index(_ value: Float) -> Int {
+            min(max(Int(((value + reach) / cell).rounded(.down)), 0), cells - 1)
+        }
+
+        /// Whether nothing stands within `radius` of a spot on the pad.
+        func isFree(_ at: Vec3, radius: Float) -> Bool {
+            for row in Footprint.index(at.z - radius)...Footprint.index(at.z + radius) {
+                for column in Footprint.index(at.x - radius)...Footprint.index(at.x + radius) where taken[row * Footprint.cells + column] {
+                    return false
+                }
+            }
+            return true
+        }
+    }
+
+    /// The odds and ends of a working yard: barrels, crates, sacks, a
+    /// bucket, a bench and a stack of logs, set down on the pad where
+    /// nothing of the work stands, apart from each other and clear of the
+    /// way to its door, the same for the same work each time. The spots
+    /// they were set on.
+    @discardableResult
+    static func yard(_ b: inout MeshBuilder, seed: UInt32, count: Int) -> [Vec3] {
+        let footprint = Footprint(b.mesh)
+        var spots: [Vec3] = []
+        for step in 0..<64 where spots.count < count {
+            let angle = Float(step) * 2.39996 + Noise.unit(Int32(step), 31, seed) * 0.5
+            let radius = 0.17 + 0.1 * Noise.unit(Int32(step), 32, seed)
+            let at = Vec3(radius * cos(angle), 0.012, radius * sin(angle))
+            guard !(abs(at.x) < 0.08 && at.z > 0), footprint.isFree(at, radius: 0.035),
+                  spots.allSatisfy({ ($0 - at).length > 0.075 }) else { continue }
+            spots.append(at)
+            let turn = Noise.unit(Int32(step), 33, seed) * 2 * .pi
+            switch Int(Noise.unit(Int32(step), 34, seed) * 6) {
+            case 0:
+                // A barrel, hooped.
+                b.place(.translation(at)) {
+                    $0.lathe([(0.021, 0), (0.025, 0.026), (0.021, 0.052)], sides: 7, color: Palette.timber)
+                    $0.lathe([(0.0235, 0.012), (0.0255, 0.015), (0.0235, 0.018)], sides: 7, color: Palette.iron)
+                }
+            case 1:
+                // Two crates, one on the other.
+                b.box(center: at + Vec3(0, 0.02, 0), size: Vec3(0.04, 0.04, 0.04), turn: turn, color: Palette.timberPale)
+                b.box(center: at + Vec3(0, 0.054, 0), size: Vec3(0.03, 0.028, 0.03), turn: turn + 0.4, color: Palette.timberGrey)
+            case 2:
+                // Sacks, leaning together.
+                b.sack(at: at + Vec3(-0.012, 0, 0), size: 0.022, seed: seed &+ UInt32(step))
+                b.sack(at: at + Vec3(0.014, 0, 0.006), size: 0.019, seed: seed &+ UInt32(step) &+ 1)
+            case 3:
+                // A bucket with its handle.
+                b.place(.translation(at)) {
+                    $0.lathe([(0.013, 0), (0.016, 0.026)], sides: 6, color: Palette.timberDark)
+                    $0.limb(from: Vec3(-0.015, 0.026, 0), to: Vec3(0, 0.04, 0), radius: 0.002, sides: 3, color: Palette.iron)
+                    $0.limb(from: Vec3(0, 0.04, 0), to: Vec3(0.015, 0.026, 0), radius: 0.002, sides: 3, color: Palette.iron)
+                }
+            case 4:
+                // A bench of one plank on two trestles.
+                b.place(.translation(at) * .rotationY(turn)) {
+                    $0.box(center: Vec3(0, 0.026, 0), size: Vec3(0.06, 0.006, 0.016), color: Palette.timberPale)
+                    for x in [Float(-0.022), 0.022] {
+                        $0.box(center: Vec3(x, 0.012, 0), size: Vec3(0.006, 0.024, 0.014), color: Palette.timber)
+                    }
+                }
+            default:
+                // A stack of logs.
+                b.place(.translation(at) * .rotationY(turn)) {
+                    for (x, y) in [(Float(-0.01), Float(0.009)), (0.01, 0.009), (0, 0.025)] {
+                        $0.log(from: Vec3(x, y, -0.026), to: Vec3(x, y, 0.026), radius: 0.009)
+                    }
+                }
+            }
+        }
+        return spots
     }
 
     // MARK: Granary

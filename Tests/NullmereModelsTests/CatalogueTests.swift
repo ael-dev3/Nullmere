@@ -273,6 +273,42 @@ final class CatalogueTests: XCTestCase {
         XCTAssertTrue(palisade.indices[(palisade.fineFrom ?? 0)...].contains { palisade.vertices[Int($0)].color == Palette.leatherDark })
     }
 
+    /// Every work at every level has the odds and ends of its yard, set
+    /// down where nothing of it stands, apart and clear of the way to its
+    /// door, the same each time; but the Moonspire, whose tower fills its
+    /// ground.
+    func testEveryWorksYardHasItsOddsAndEnds() throws {
+        for kind in BuildingKind.allCases where kind != .walls && kind != .moonspire {
+            for level in 1...kind.maxLevel {
+                XCTAssertNotNil(Library.model(.work(kind, level: level)).mesh.fineFrom, "\(kind) \(level)'s yard")
+            }
+        }
+        // A pad whose back half is taken: its things in the front, apart, off the way.
+        var b = MeshBuilder()
+        b.pad(radius: 0.31)
+        b.box(min: Vec3(-0.3, 0, -0.3), max: Vec3(0.3, 0.2, 0), color: Palette.stone)
+        let coarse = b.mesh.indices.count
+        let spots = Works.yard(&b, seed: 7, count: 4)
+        XCTAssertEqual(spots.count, 4)
+        for (index, spot) in spots.enumerated() {
+            XCTAssertGreaterThan(spot.z, 0.03, "Where nothing stands")
+            XCTAssertFalse(abs(spot.x) < 0.08 && spot.z > 0, "Off the way to the door")
+            XCTAssertLessThanOrEqual(Vec3(spot.x, 0, spot.z).length, 0.27)
+            for other in spots[(index + 1)...] { XCTAssertGreaterThan((other - spot).length, 0.075, "Apart") }
+        }
+        XCTAssertGreaterThan(b.mesh.indices.count, coarse)
+        var again = MeshBuilder()
+        again.pad(radius: 0.31)
+        again.box(min: Vec3(-0.3, 0, -0.3), max: Vec3(0.3, 0.2, 0), color: Palette.stone)
+        XCTAssertEqual(Works.yard(&again, seed: 7, count: 4), spots, "The same each time")
+        XCTAssertEqual(Works.seed(of: "granary 3"), Works.seed(of: "granary 3"))
+        XCTAssertNotEqual(Works.seed(of: "granary 3"), Works.seed(of: "granary 4"))
+        // Nowhere free: nothing set down.
+        var full = MeshBuilder()
+        full.box(min: Vec3(-0.34, 0, -0.34), max: Vec3(0.34, 0.2, 0.34), color: Palette.stone)
+        XCTAssertEqual(Works.yard(&full, seed: 7, count: 4), [])
+    }
+
     func testFiguresAndKeepsWearTheirHouse() {
         for key in CatalogueTests.keys {
             let materials = Set(Library.model(key).mesh.vertices.map(\.material))
