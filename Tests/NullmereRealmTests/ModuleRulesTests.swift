@@ -47,7 +47,8 @@ final class ModuleRulesTests: XCTestCase {
         let version = await first.version
         await db.advance(FakeSpacetime.leaseSeconds + 1)
         let stale = await refusal(db, "publish", [.integer(version), .strings([]), .strings([]), .strings([]), .string("{}"), .strings([]),
-                                                  .strings([]), .strings([]), .integers([]), .strings([]), .string("a stranger's hold")],
+                                                  .strings([]), .strings([]), .integers([]), .strings([]), .string("a stranger's hold"),
+                                                  .strings([]), .strings([]), .strings([])],
                                   token: key.token)
         XCTAssertEqual(stale, "Version \(version) is not after \(version).")
         let second = try await RealmSteward(transport: db, token: key.token, name: "N", seed: "no hold", seats: 4, watchLength: 600, now: 1)

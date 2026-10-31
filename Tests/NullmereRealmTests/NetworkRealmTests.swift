@@ -132,7 +132,7 @@ final class NetworkRealmTests: XCTestCase {
 
         // Nor can a keeper read the world, or anyone's requests, directly.
         let stranger = try await db.createIdentity()
-        for table in ["world", "world_part", "request", "keeper_view", "reply"] {
+        for table in ["world", "world_part", "request", "keeper_view", "view_part", "reply"] {
             do {
                 _ = try await db.query("SELECT * FROM \(table)", token: stranger.token)
                 XCTFail("A keeper read the private \(table) table")

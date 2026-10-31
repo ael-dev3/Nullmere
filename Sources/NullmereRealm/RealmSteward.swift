@@ -110,8 +110,10 @@ public actor RealmSteward {
     /// Answers given, and when, until they are forgotten.
     private var answered: [(nonce: String, at: Double)] = []
     private var lastForgotten = 0.0
-    /// Each keeper's view as last published, to send only what changed.
-    private var published: [String: String] = [:]
+    /// Each keeper's view as last published, in its parts, to send only
+    /// the parts that changed; and the version each part was written at.
+    private var published: [String: [String: String]] = [:]
+    private var publishedAt: [String: [String: UInt64]] = [:]
     /// The world's parts as SpacetimeDB keeps them, to send only those
     /// that changed.
     private var keptParts: [String: String] = [:]
@@ -367,6 +369,12 @@ public actor RealmSteward {
         }
     }
 
+    /// The parts of a keeper's view and the version each was written at,
+    /// as their row of `keeper_view` carries them: "head:12,map:3,units.0:12".
+    static func manifest(_ versions: [String: UInt64]) -> String {
+        versions.sorted { $0.key < $1.key }.map { "\($0.key):\($0.value)" }.joined(separator: ",")
+    }
+
     /// The world's parts as SpacetimeDB keeps them, by name.
     private static func keptParts(_ transport: any SpacetimeTransport, token: String) async throws -> [String: String] {
         let rows = try await transport.query("SELECT name, text FROM world_part", token: token)
@@ -432,7 +440,8 @@ public actor RealmSteward {
         encoder.outputFormatting = .sortedKeys
         let status = state.status(now: now)
         var keepers: [String] = [], views: [String] = [], heard: [String] = []
-        var shown: [String: String] = [:]
+        var partKeepers: [String] = [], partNames: [String] = [], partTexts: [String] = []
+        var shown: [String: [String: String]] = [:], shownAt: [String: [String: UInt64]] = [:]
         var lately: [String: [(at: Double, batch: HeardBatch)]] = [:]
         // Nothing changed since the last publication kept (a heartbeat, a
         // "here" answered): every view as published stands, and none is
@@ -445,16 +454,29 @@ public actor RealmSteward {
             if unchanged, published[keeper.id] != nil { continue }
             guard let view = state.view(for: keeper.id) else { continue }
             viewsWorkedOut += 1
-            let text = String(decoding: try encoder.encode(view), as: UTF8.self)
+            // Their view in parts: only those that changed are sent, with
+            // the names of all it has now and the version each was written
+            // at, so their Mac takes up the new and lets the gone go.
+            let parts = try view.parts(using: encoder)
+            let was = published[keeper.id] ?? [:]
+            let changed = parts.filter { was[$0.key] != $0.value }.sorted { $0.key < $1.key }
             let others = pendingActs.filter { $0.by != keeper.id }.flatMap(\.events)
             let events = keeper.house.map { state.world.events(others + pendingEvents, heardBy: $0) } ?? []
-            guard text != published[keeper.id] || !events.isEmpty else { continue }
+            guard !changed.isEmpty || Set(was.keys) != Set(parts.keys) || !events.isEmpty else { continue }
             if !events.isEmpty { batches.append((now, HeardBatch(version: version + 1, events: events))) }
             batches = Array(batches.suffix(RealmSteward.heardBatches))
             lately[keeper.id] = batches
-            shown[keeper.id] = text
+            var at = (publishedAt[keeper.id] ?? [:]).filter { parts[$0.key] != nil }
+            for (name, text) in changed {
+                at[name] = version + 1
+                partKeepers.append(keeper.id)
+                partNames.append(name)
+                partTexts.append(text)
+            }
+            shown[keeper.id] = parts
+            shownAt[keeper.id] = at
             keepers.append(keeper.id)
-            views.append(text)
+            views.append(RealmSteward.manifest(at))
             heard.append(String(decoding: try encoder.encode(batches.map(\.batch)), as: UTF8.self))
         }
         let answers = unanswered
@@ -462,7 +484,7 @@ public actor RealmSteward {
         let parts = worldChanged ? try state.parts(using: encoder) : keptParts
         let changed = parts.filter { keptParts[$0.key] != $0.value }.sorted { $0.key < $1.key }
         let gone = keptParts.keys.filter { parts[$0] == nil }.sorted()
-        let attempt = Attempt(version: version + 1, at: now, status: status, shown: shown, parts: parts, heard: lately,
+        let attempt = Attempt(version: version + 1, at: now, status: status, shown: shown, shownAt: shownAt, parts: parts, heard: lately,
                               events: pendingEvents.count, acts: pendingActs.count, answers: answers.map(\.nonce))
         do {
             try await transport.call("publish", [
@@ -477,6 +499,9 @@ public actor RealmSteward {
                 .integers(answers.map(\.id)),
                 .strings(answers.map(\.reply)),
                 .string(holder),
+                .strings(partKeepers),
+                .strings(partNames),
+                .strings(partTexts),
             ], token: token)
         } catch {
             if RealmSteward.isHeldByAnother(error) { isDisplaced = true }
@@ -493,7 +518,8 @@ public actor RealmSteward {
         let version: UInt64
         let at: Double
         let status: RealmStatus
-        let shown: [String: String]
+        let shown: [String: [String: String]]
+        let shownAt: [String: [String: UInt64]]
         let parts: [String: String]
         let heard: [String: [(at: Double, batch: HeardBatch)]]
         /// How many of the pending events, acts and answers it carried.
@@ -515,6 +541,7 @@ public actor RealmSteward {
         // as they arrive.
         let there = Set(state.keepers.lazy.filter(\.isOnline).map(\.id))
         published = published.merging(attempt.shown) { $1 }.filter { there.contains($0.key) }
+        publishedAt = publishedAt.merging(attempt.shownAt) { $1 }.filter { there.contains($0.key) }
         keptParts = attempt.parts
         recentlyHeard = attempt.heard
         pendingEvents.removeFirst(min(attempt.events, pendingEvents.count))

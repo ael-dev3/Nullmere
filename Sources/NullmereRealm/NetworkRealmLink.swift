@@ -40,6 +40,11 @@ public final class NetworkRealmLink: RealmLink {
     private(set) var pushes = 0
     private var statusVersion: UInt64 = 0
     private var viewVersion: UInt64 = 0
+    /// The parts of the keeper's view as last read, by name, each with the
+    /// version it was written at, and the publication they were read
+    /// through: a view read again takes only the parts written since.
+    private var viewParts: [String: (version: UInt64, text: String)] = [:]
+    private var partsThrough: UInt64 = 0
     /// The last publication whose events the keeper has heard.
     private var heardThrough: UInt64 = 0
     /// The realm's publication the keeper's view was last read against:
@@ -286,22 +291,60 @@ public final class NetworkRealmLink: RealmLink {
         return Int((date.timeIntervalSince1970 - micros / 1_000_000).rounded(.down))
     }
 
-    /// The keeper's own view: `my_view` holds one row, theirs.
+    /// The keeper's own view: `my_view` holds one row, theirs, naming the
+    /// parts of their view and the version each was written at; the parts
+    /// written since those last read come from `my_view_parts`, so a pace
+    /// that moved a few companies brings a page of them, not the whole
+    /// world again. A view whose parts don't all match its row, published
+    /// again between the two reads, is read again.
     private func fetchView(_ credentials: SpacetimeCredentials) async throws -> (UInt64, RealmView, [HeardBatch])? {
-        let rows = try await transport.query("SELECT * FROM my_view", token: credentials.token)
-        guard let row = rows.first, row.count == 4, let number = row[1].number, let text = row[2].string, let heard = row[3].string else {
-            return nil
+        for _ in 0..<3 {
+            let rows = try await transport.query("SELECT * FROM my_view", token: credentials.token)
+            guard let row = rows.first, row.count == 4, let number = row[1].number, let names = row[2].string, let heard = row[3].string,
+                  let named = Self.parts(named: names) else {
+                return nil
+            }
+            // A realm kept anew counts its publications from the start: its
+            // parts are all read again.
+            if UInt64(number) < partsThrough {
+                viewParts = [:]
+                partsThrough = 0
+            }
+            let written = try await transport.query("SELECT name, version, text FROM my_view_parts WHERE version > \(partsThrough)",
+                                                    token: credentials.token)
+            for part in written {
+                guard part.count == 3, let name = part[0].string, let at = part[1].number, let text = part[2].string else { continue }
+                viewParts[name] = (UInt64(at), text)
+            }
+            guard named.allSatisfy({ viewParts[$0.key]?.version == $0.value }) else { continue }
+            viewParts = viewParts.filter { named[$0.key] != nil }
+            partsThrough = max(partsThrough, UInt64(number))
+            let texts = viewParts.mapValues(\.text)
+            // Tens of kilobytes of world, read away from the main thread, so
+            // the map doesn't falter while it is.
+            let (view, batches) = try await Task.detached(priority: .userInitiated) { try Self.decode(parts: texts, heard: heard) }.value
+            return (UInt64(number), view, batches)
         }
-        // Tens of kilobytes of world, read away from the main thread, so
-        // the map doesn't falter while it is.
-        let (view, batches) = try await Task.detached(priority: .userInitiated) { try Self.decode(view: text, heard: heard) }.value
-        return (UInt64(number), view, batches)
+        // Never once whole: the next read takes every part afresh.
+        viewParts = [:]
+        partsThrough = 0
+        return nil
     }
 
-    nonisolated static func decode(view text: String, heard: String) throws -> (RealmView, [HeardBatch]) {
-        let decoder = JSONDecoder()
-        let view = try decoder.decode(RealmView.self, from: Data(text.utf8))
-        return (view, (try? decoder.decode([HeardBatch].self, from: Data(heard.utf8))) ?? [])
+    /// The parts a view's row names, each with the version it was written
+    /// at: "head:12,map:3,units.0:12". Nothing if the row says otherwise.
+    nonisolated static func parts(named text: String) -> [String: UInt64]? {
+        var parts: [String: UInt64] = [:]
+        for entry in text.split(separator: ",") {
+            guard let colon = entry.lastIndex(of: ":"), let version = UInt64(entry[entry.index(after: colon)...]) else { return nil }
+            parts[String(entry[..<colon])] = version
+        }
+        return parts.isEmpty ? nil : parts
+    }
+
+    nonisolated static func decode(parts: [String: String], heard: String) throws -> (RealmView, [HeardBatch]) {
+        let view = try RealmView(parts: parts)
+        return (view, (try? JSONDecoder().decode([HeardBatch].self, from: Data(heard.utf8))) ?? [])
     }
 
     /// The version of the keeper's own view, if the realm shows them one.
@@ -437,6 +480,8 @@ public final class NetworkRealmLink: RealmLink {
         hereAwaited = nil
         view = nil
         viewVersion = 0
+        viewParts = [:]
+        partsThrough = 0
         viewReadAt = nil
         heardThrough = 0
         askedReady = nil

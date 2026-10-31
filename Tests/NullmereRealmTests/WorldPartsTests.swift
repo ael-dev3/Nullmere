@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+@testable import NullmereCore
 import NullmereTestSupport
 import XCTest
 @testable import NullmereRealm
@@ -36,6 +36,91 @@ final class WorldPartsTests: XCTestCase {
         let again = try await RealmSteward(transport: db, token: key.token, name: "N", seed: "parts sent", seats: 12, watchLength: 600, now: 3)
         let unit = await again.state.world.unit(spear.id)
         XCTAssertEqual(unit?.fortified, true)
+    }
+
+    /// A keeper's view goes in parts too: an order sends the few parts of
+    /// their view it changed, not their whole view again; what the server
+    /// keeps of it joins into their view exactly; and a part their view no
+    /// longer has is let go.
+    func testAnOrderSendsOnlyThePartsOfAViewItChanged() async throws {
+        let db = FakeSpacetime()
+        let key = try await db.createIdentity()
+        let steward = try await RealmSteward(transport: db, token: key.token, name: "N", seed: "view parts sent", seats: 12, watchLength: 600, now: 0)
+        let ama = try await db.createIdentity()
+        try await db.call("arrive", [.string("a1"), .string("Ama")], token: ama.token)
+        try await steward.step(now: 1)
+        let first = await db.viewPartsSent, firstBytes = await db.viewBytesSent
+        let state = await steward.state
+        let keeper = state.keepers[0]
+        let whole = try XCTUnwrap(state.view(for: keeper.id)).parts(using: JSONEncoder()).count
+        XCTAssertEqual(first, whole, "Their whole view the first time: \(whole) parts")
+        let shown = try await db.keptView(of: ama.identity)
+        XCTAssertEqual(shown, state.view(for: keeper.id))
+
+        let spear = try XCTUnwrap(state.world.units(of: try XCTUnwrap(keeper.house)).first { $0.kind == .spear })
+        let order = String(decoding: try JSONEncoder().encode(Command.fortify(unit: spear.id)), as: UTF8.self)
+        try await db.call("order", [.string("a2"), .string(order)], token: ama.token)
+        try await steward.step(now: 2)
+        let fortified = await db.viewPartsSent - first
+        let bytes = await db.viewBytesSent - firstBytes
+        print("PERF an order sent \(fortified) parts, \(bytes / 1024) KB, of a keeper's view of \(whole) parts, \(firstBytes / 1024) KB")
+        XCTAssertLessThan(bytes * 4, firstBytes, "A small share of the view's bytes")
+        XCTAssertGreaterThan(fortified, 0)
+        XCTAssertLessThanOrEqual(fortified, 2, "A page of companies and the head, not the \(whole) parts of the view")
+        let now = await steward.state
+        let kept = try await db.keptView(of: ama.identity)
+        XCTAssertEqual(kept, now.view(for: keeper.id))
+        XCTAssertEqual(kept?.world.unit(spear.id)?.fortified, true)
+
+        // The row names every part and the version it was written at.
+        let rows = try await db.query("SELECT * FROM my_view", token: ama.token)
+        let named = try XCTUnwrap(NetworkRealmLink.parts(named: try XCTUnwrap(rows.first?[2].string)))
+        XCTAssertEqual(named.count, whole)
+        XCTAssertEqual(named["map"], 2, "The map written as they arrived, and not since")
+        XCTAssertEqual(named.values.max(), 3, "The parts the order changed written at the latest")
+        XCTAssertNil(NetworkRealmLink.parts(named: "map:x"))
+        XCTAssertNil(NetworkRealmLink.parts(named: ""))
+    }
+
+    /// A part a keeper's view no longer has is let go: kept once with a
+    /// page of companies too many, and then, taken up again by a steward
+    /// with fewer, the page goes from what the server keeps of their view.
+    func testAPartAViewNoLongerHasIsLetGo() async throws {
+        let db = FakeSpacetime()
+        let key = try await db.createIdentity()
+        let ama = try await db.createIdentity()
+        var realm = RealmState(name: "N", seed: "view parts gone", seats: 4, watchLength: 600, now: 0)
+        let house = try XCTUnwrap(try realm.arrive(ama.identity, name: "Ama", now: 0).house)
+        let seat = try XCTUnwrap(realm.world.seat(of: house)).position
+        let ground = seat.spiral(6).filter { hex in
+            realm.world.map[hex]?.terrain.isPassable == true && realm.world.unit(at: hex) == nil && realm.world.hold(at: hex) == nil
+        }
+        for hex in ground.prefix(RealmState.partPage + 4) {
+            realm.world.units.append(Unit(id: realm.world.takeID(), kind: .spear, owner: house, position: hex))
+        }
+        await db.seed(world: try realm.parts(using: JSONEncoder()), version: 1)
+        let first = try await RealmSteward(transport: db, token: key.token, name: "N", seed: "view parts gone", seats: 4, watchLength: 600, now: 0)
+        try await db.call("here", [.string("h1")], token: ama.token)
+        try await first.step(now: 1)
+        func names() async throws -> [String] {
+            try await db.query("SELECT name, version, text FROM my_view_parts WHERE version > 0", token: ama.token).compactMap { $0.first?.string }
+        }
+        let paged = try await names()
+        XCTAssertTrue(paged.contains("units.1"), "A second page of their companies")
+
+        // Taken up again with the companies past the first page gone.
+        var fewer = await first.state
+        fewer.world.units.removeAll { $0.owner == house && $0.position != seat && ground.prefix(RealmState.partPage + 4).contains($0.position) }
+        await db.seed(world: try fewer.parts(using: JSONEncoder()), version: await first.version)
+        await db.advance(61)
+        let second = try await RealmSteward(transport: db, token: key.token, name: "N", seed: "view parts gone", seats: 4, watchLength: 600, now: 100)
+        try await db.call("here", [.string("h2")], token: ama.token)
+        try await second.step(now: 101)
+        let left = try await names()
+        XCTAssertFalse(left.contains("units.1"), "The page their view no longer has is let go")
+        let state = await second.state
+        let kept = try await db.keptView(of: ama.identity)
+        XCTAssertEqual(kept, state.view(for: ama.identity))
     }
 
     func testWhatIsntTheWorldsIsClearedAway() async throws {

@@ -37,10 +37,20 @@ actor ViewTamper {
     func bend(_ rows: [[JSONValue]]) throws -> [[JSONValue]] {
         if let stale { return stale }
         if malformed { return [[.string("keeper"), .string("not a version")]] }
-        guard newAge, let row = rows.first, row.count == 4, let number = row[1].number, let text = row[2].string else { return rows }
-        let view = try JSONDecoder().decode(RealmView.self, from: Data(text.utf8))
-        let aged = RealmView(keeper: view.keeper, age: view.age + 1, world: view.world)
-        return [[row[0], .number(number + 1_000), .string(String(decoding: try JSONEncoder().encode(aged), as: UTF8.self)), row[3]]]
+        guard newAge, let row = rows.first, row.count == 4, let number = row[1].number else { return rows }
+        return [[row[0], .number(number + 1_000), row[2], row[3]]]
+    }
+
+    /// The parts of the view, its head a new age's, all of them sent as if
+    /// written since.
+    func bend(parts rows: [[JSONValue]]) throws -> [[JSONValue]] {
+        guard newAge else { return rows }
+        return try rows.map { row in
+            guard row.count == 3, row[0].string == "head", let text = row[2].string else { return row }
+            let view = try JSONDecoder().decode(RealmView.self, from: Data(text.utf8))
+            let aged = RealmView(keeper: view.keeper, age: view.age + 1, world: view.world)
+            return [row[0], row[1], .string(String(decoding: try JSONEncoder().encode(aged), as: UTF8.self))]
+        }
     }
 }
 
@@ -58,6 +68,10 @@ struct TamperedSpacetime: SpacetimeTransport {
     }
 
     func query(_ sql: String, token: String) async throws -> [[JSONValue]] {
+        if sql.hasPrefix(String(FakeSpacetime.viewPartsAsked.dropLast())) {
+            let every = await tamper.newAge ? FakeSpacetime.viewPartsAsked.replacingOccurrences(of: "?", with: "0") : sql
+            return try await tamper.bend(parts: inner.query(every, token: token))
+        }
         let rows = try await inner.query(sql, token: token)
         switch sql {
         case "SELECT * FROM my_view": return try await tamper.bend(rows)
@@ -252,6 +266,26 @@ final class LinkViewTests: XCTestCase {
         try await until("the view read again") { link.viewReads > reads }
         try await db.waitFor(3, more: FakeSpacetime.statusPoll, by: token)
         XCTAssertEqual(ear.world?.unit(spear.id)?.fortified, true, "The newer view stands")
+    }
+
+    /// The keeper's Mac reads their whole view once, and after that only
+    /// the parts a publication changed: an order fortifying one company
+    /// brings a page of companies and the head, not the world again.
+    func testAViewIsReadAgainOnlyInThePartsThatChanged() async throws {
+        let (db, _, link, ear, running) = try await realm("parts read")
+        defer { running.cancel(); link.leave() }
+        link.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        let world = try XCTUnwrap(ear.world)
+        let house = try XCTUnwrap(world.houses.first { $0.title == "House Ama" }?.id)
+        let spear = try XCTUnwrap(world.units(of: house).first { $0.kind == .spear })
+        let first = await db.viewPartsRead
+        XCTAssertGreaterThan(first, 8, "Their whole view, once")
+        link.send(.fortify(unit: spear.id))
+        try await until("the order carried out") { ear.world?.unit(spear.id)?.fortified == true }
+        let again = await db.viewPartsRead - first
+        XCTAssertGreaterThan(again, 0)
+        XCTAssertLessThan(again, first / 2, "The parts the order changed, not the \(first) of the whole view")
     }
 
     /// The link's first poll and the keeper's arrival ask for its

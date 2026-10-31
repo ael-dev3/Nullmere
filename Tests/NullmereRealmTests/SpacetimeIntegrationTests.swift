@@ -30,7 +30,8 @@ final class SpacetimeIntegrationTests: XCTestCase {
         let stranger = try await transport.createIdentity()
         do {
             try await transport.call("publish", [.integer(999_999), .strings(["head"]), .strings(["{}"]), .strings([]), .string("{}"),
-                                                 .strings([]), .strings([]), .strings([]), .integers([]), .strings([]), .string("stranger")],
+                                                 .strings([]), .strings([]), .strings([]), .integers([]), .strings([]), .string("stranger"),
+                                                 .strings([]), .strings([]), .strings([])],
                                      token: stranger.token)
             XCTFail("A stranger wrote the world")
         } catch {
@@ -106,7 +107,8 @@ final class SpacetimeIntegrationTests: XCTestCase {
         try await Task.sleep(nanoseconds: UInt64((FakeSpacetime.leaseSeconds + 2) * 1_000_000_000))
         do {
             try await transport.call("publish", [.integer(version), .strings([]), .strings([]), .strings([]), .string("{}"), .strings([]),
-                                                 .strings([]), .strings([]), .integers([]), .strings([]), .string("a stranger's hold")],
+                                                 .strings([]), .strings([]), .integers([]), .strings([]), .string("a stranger's hold"),
+                                                 .strings([]), .strings([]), .strings([])],
                                      token: token)
             XCTFail("A publication for a version passed was kept")
         } catch {
@@ -186,7 +188,7 @@ final class SpacetimeIntegrationTests: XCTestCase {
 
         // Private tables stay private to a keeper.
         let stranger = try await transport.createIdentity()
-        for table in ["world", "world_part", "request", "keeper_view", "reply"] {
+        for table in ["world", "world_part", "request", "keeper_view", "view_part", "reply"] {
             let rows = (try? await transport.query("SELECT * FROM \(table)", token: stranger.token)) ?? []
             XCTAssertTrue(rows.isEmpty, "A keeper read the private \(table) table")
         }

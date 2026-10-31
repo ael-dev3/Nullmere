@@ -4,7 +4,9 @@ import Foundation
 /// page of `RealmState.partPage` at a time, and the rest. The steward
 /// writes only the parts that changed, so an order moving one company
 /// sends a page of companies, not the whole world, and the chronicle and
-/// the history, which only grow, send their last page alone.
+/// the history, which only grow, send their last page alone. A keeper's
+/// view goes in parts the same way, so what a pace changes in it is all
+/// that is sent of it.
 extension RealmState {
     public static let partPage = 32
 
@@ -12,6 +14,48 @@ extension RealmState {
     /// back this realm exactly.
     public func parts(using encoder: JSONEncoder) throws -> [String: String] {
         var parts: [String: String] = [:]
+        var head = self
+        head.world = try world.split(into: &parts, using: encoder)
+        parts["head"] = String(decoding: try encoder.encode(head), as: UTF8.self)
+        return parts
+    }
+
+    /// The realm from its parts. A page missing, or a part that isn't
+    /// what its name says, is an error: a realm half read is no realm.
+    public init(parts: [String: String]) throws {
+        let decoder = JSONDecoder()
+        var realm: RealmState = try GameState.part("head", of: parts, using: decoder)
+        try realm.world.join(parts, using: decoder)
+        self = realm
+    }
+}
+
+extension RealmView {
+    /// A keeper's view in parts, as the realm's world goes: its map, a
+    /// page of each long list, and the rest. Joined by `init(parts:)`, they
+    /// give back this view exactly.
+    public func parts(using encoder: JSONEncoder) throws -> [String: String] {
+        var parts: [String: String] = [:]
+        let head = RealmView(keeper: keeper, age: age, world: try world.split(into: &parts, using: encoder))
+        parts["head"] = String(decoding: try encoder.encode(head), as: UTF8.self)
+        return parts
+    }
+
+    /// A keeper's view from its parts; one missing, or not what its name
+    /// says, is an error.
+    public init(parts: [String: String]) throws {
+        let decoder = JSONDecoder()
+        let head: RealmView = try GameState.part("head", of: parts, using: decoder)
+        var world = head.world
+        try world.join(parts, using: decoder)
+        self.init(keeper: head.keeper, age: head.age, world: world)
+    }
+}
+
+extension GameState {
+    /// A world's map and each long list, a page at a time, into `parts`;
+    /// what is left of it, the head, returned.
+    func split(into parts: inout [String: String], using encoder: JSONEncoder) throws -> GameState {
         func text<T: Encodable>(_ value: T) throws -> String {
             String(decoding: try encoder.encode(value), as: UTF8.self)
         }
@@ -24,72 +68,69 @@ extension RealmState {
             }
         }
         var head = self
-        parts["map"] = try text(world.map)
-        head.world.map = RealmState.noMap
-        try paged("units", world.units)
-        head.world.units = []
-        try paged("houses", world.houses)
-        head.world.houses = []
-        try paged("holds", world.holds)
-        head.world.holds = []
-        try paged("relations", world.relations)
-        head.world.relations = []
-        try paged("chronicle", world.chronicle)
-        head.world.chronicle = []
-        try paged("recorded", world.recorded)
-        head.world.recorded = world.recorded.map { _ in [] }
+        parts["map"] = try text(map)
+        head.map = GameState.noMap
+        try paged("units", units)
+        head.units = []
+        try paged("houses", houses)
+        head.houses = []
+        try paged("holds", holds)
+        head.holds = []
+        try paged("relations", relations)
+        head.relations = []
+        try paged("chronicle", chronicle)
+        head.chronicle = []
+        try paged("recorded", recorded)
+        head.recorded = recorded.map { _ in [] }
         // Lists a realm from before them doesn't have stay absent from it.
-        try paged("commanders", world.commanders)
-        head.world.commanders = world.commanders.map { _ in [] }
-        try paged("wilds", world.wilds)
-        head.world.wilds = world.wilds.map { _ in [] }
-        try paged("sites", world.sites)
-        head.world.sites = world.sites.map { _ in [] }
-        try paged("armoury", world.armoury)
-        head.world.armoury = world.armoury.map { _ in [] }
-        parts["head"] = try text(head)
-        return parts
+        try paged("commanders", commanders)
+        head.commanders = commanders.map { _ in [] }
+        try paged("wilds", wilds)
+        head.wilds = wilds.map { _ in [] }
+        try paged("sites", sites)
+        head.sites = sites.map { _ in [] }
+        try paged("armoury", armoury)
+        head.armoury = armoury.map { _ in [] }
+        return head
     }
 
-    /// The realm from its parts. A page missing, or a part that isn't
-    /// what its name says, is an error: a realm half read is no realm.
-    public init(parts: [String: String]) throws {
-        let decoder = JSONDecoder()
-        func value<T: Decodable>(_ name: String, as type: T.Type = T.self) throws -> T {
-            guard let text = parts[name] else { throw RealmPartsError.missing(name) }
-            return try decoder.decode(T.self, from: Data(text.utf8))
-        }
+    /// A world's head given back its map and its long lists from `parts`.
+    mutating func join(_ parts: [String: String], using decoder: JSONDecoder) throws {
         func pages<T: Decodable>(_ name: String, of type: T.Type) throws -> [T] {
             let count = max(parts.keys.filter { $0.hasPrefix(name + ".") }.count, 1)
-            return try (0..<count).flatMap { try value("\(name).\($0)", as: [T].self) }
+            return try (0..<count).flatMap { try GameState.part("\(name).\($0)", of: parts, using: decoder, as: [T].self) }
         }
-        var realm: RealmState = try value("head")
-        realm.world.map = try value("map")
-        realm.world.units = try pages("units", of: Unit.self)
-        realm.world.houses = try pages("houses", of: House.self)
-        realm.world.holds = try pages("holds", of: Hold.self)
-        realm.world.relations = try pages("relations", of: Relation.self)
-        realm.world.chronicle = try pages("chronicle", of: ChronicleEntry.self)
-        if realm.world.recorded != nil {
-            realm.world.recorded = try pages("recorded", of: Snapshot.self)
+        map = try GameState.part("map", of: parts, using: decoder)
+        units = try pages("units", of: Unit.self)
+        houses = try pages("houses", of: House.self)
+        holds = try pages("holds", of: Hold.self)
+        relations = try pages("relations", of: Relation.self)
+        chronicle = try pages("chronicle", of: ChronicleEntry.self)
+        if recorded != nil {
+            recorded = try pages("recorded", of: Snapshot.self)
         }
-        if realm.world.commanders != nil {
-            realm.world.commanders = try pages("commanders", of: Commander.self)
+        if commanders != nil {
+            commanders = try pages("commanders", of: Commander.self)
         }
-        if realm.world.wilds != nil {
-            realm.world.wilds = try pages("wilds", of: Wild.self)
+        if wilds != nil {
+            wilds = try pages("wilds", of: Wild.self)
         }
-        if realm.world.sites != nil {
-            realm.world.sites = try pages("sites", of: Site.self)
+        if sites != nil {
+            sites = try pages("sites", of: Site.self)
         }
-        if realm.world.armoury != nil {
-            realm.world.armoury = try pages("armoury", of: Gear.self)
+        if armoury != nil {
+            armoury = try pages("armoury", of: Gear.self)
         }
-        self = realm
+    }
+
+    /// One part, read as what its name says it is.
+    static func part<T: Decodable>(_ name: String, of parts: [String: String], using decoder: JSONDecoder, as type: T.Type = T.self) throws -> T {
+        guard let text = parts[name] else { throw RealmPartsError.missing(name) }
+        return try decoder.decode(T.self, from: Data(text.utf8))
     }
 
     /// The head's stand-in for the map, which is kept apart.
-    private static let noMap = WorldMap(radius: 1, fill: Tile(terrain: .still))
+    static let noMap = WorldMap(radius: 1, fill: Tile(terrain: .still))
 }
 
 public enum RealmPartsError: Error, Equatable {

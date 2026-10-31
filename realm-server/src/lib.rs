@@ -15,8 +15,9 @@
 //! The world, the requests, the answers and the keepers' views are private
 //! tables. Everyone may read the realm's status; a keeper reads their own
 //! view, their own answers and their own requests still waiting through the
-//! `my_view`, `my_replies` and `my_requests` views, which show each caller
-//! their rows alone.
+//! `my_view`, `my_view_parts`, `my_replies` and `my_requests` views, which
+//! show each caller their rows alone. A keeper's view is kept in parts, as
+//! the world is, so a publication rewrites only the parts that changed.
 
 use spacetimedb::{reducer, table, view, ReducerContext, Table, ViewContext};
 
@@ -130,10 +131,34 @@ pub struct KeeperView {
     pub events: String,
 }
 
+/// One part of a keeper's view of the realm, as the world's parts go: its
+/// map, a page of one of its long lists, or the rest. The steward rewrites
+/// only the parts of a view that changed; the keeper's row of
+/// `keeper_view` names every part the view has, each with the version it
+/// was written at, and those it no longer names are let go.
+#[table(accessor = view_part)]
+pub struct ViewPart {
+    /// The keeper's identity and the part's name: "keeper/name".
+    #[primary_key]
+    pub key: String,
+    #[index(btree)]
+    pub keeper: String,
+    pub name: String,
+    pub version: u64,
+    pub text: String,
+}
+
 /// The caller's own view of the realm.
 #[view(accessor = my_view, public)]
 fn my_view(ctx: &ViewContext) -> Option<KeeperView> {
     ctx.db.keeper_view().keeper().find(ctx.sender().to_hex().to_string())
+}
+
+/// The parts of the caller's own view of the realm.
+#[view(accessor = my_view_parts, public)]
+fn my_view_parts(ctx: &ViewContext) -> Vec<ViewPart> {
+    let me = ctx.sender().to_hex().to_string();
+    ctx.db.view_part().keeper().filter(&me).collect()
 }
 
 /// The caller's own requests still waiting for the steward: a client asks
@@ -241,8 +266,9 @@ pub fn forget(ctx: &ReducerContext, nonces: Vec<String>) -> Result<(), String> {
 /// requests it carried out, in one transaction: the world is never kept
 /// without its answers, nor an answer given for a world not kept. It sends
 /// the world's parts that changed and the names of those now gone, the
-/// status, the views of the keepers whose views changed, each with the
-/// events they heard, and its answers.
+/// status, for each keeper whose view changed the names of its parts with
+/// the events they heard, and its answers; then the parts of those views
+/// that changed, each with its keeper and its name.
 #[reducer]
 #[allow(clippy::too_many_arguments)]
 pub fn publish(
@@ -258,6 +284,9 @@ pub fn publish(
     requests: Vec<u64>,
     replies: Vec<String>,
     holder: String,
+    part_keepers: Vec<String>,
+    part_names: Vec<String>,
+    part_texts: Vec<String>,
 ) -> Result<(), String> {
     if !is_steward(ctx) {
         return Err("Only the steward writes the world.".into());
@@ -280,6 +309,12 @@ pub fn publish(
     if parts.len() != texts.len() {
         return Err("Every part of the world needs its name.".into());
     }
+    if part_keepers.len() != part_names.len() || part_keepers.len() != part_texts.len() {
+        return Err("Every part of a view needs its keeper and its name.".into());
+    }
+    if part_keepers.iter().any(|keeper| !keepers.contains(keeper)) {
+        return Err("Every part of a view goes with its keeper's view.".into());
+    }
     let last = ctx.db.status().id().find(0).map(|s| s.version).unwrap_or(0);
     if version <= last {
         return Err(format!("Version {version} is not after {last}."));
@@ -300,8 +335,31 @@ pub fn publish(
     ctx.db.stamp().id().delete(0);
     ctx.db.stamp().insert(Stamp { id: 0, version, at_micros: now });
     for ((keeper, view), events) in keepers.into_iter().zip(views).zip(events) {
+        // The parts the view no longer names are let go: "name:version",
+        // comma by comma.
+        let named: Vec<&str> = view
+            .split(',')
+            .filter(|entry| !entry.is_empty())
+            .map(|entry| entry.rsplit_once(':').map_or(entry, |(name, _)| name))
+            .collect();
+        let gone: Vec<String> = ctx
+            .db
+            .view_part()
+            .keeper()
+            .filter(&keeper)
+            .filter(|part| !named.contains(&part.name.as_str()))
+            .map(|part| part.key)
+            .collect();
+        for key in gone {
+            ctx.db.view_part().key().delete(key);
+        }
         ctx.db.keeper_view().keeper().delete(keeper.clone());
         ctx.db.keeper_view().insert(KeeperView { keeper, version, view, events });
+    }
+    for ((keeper, name), text) in part_keepers.into_iter().zip(part_names).zip(part_texts) {
+        let key = format!("{keeper}/{name}");
+        ctx.db.view_part().key().delete(key.clone());
+        ctx.db.view_part().insert(ViewPart { key, keeper, name, version, text });
     }
     for (request, reply) in requests.into_iter().zip(replies) {
         let Some(asked) = ctx.db.request().id().find(request) else { continue };

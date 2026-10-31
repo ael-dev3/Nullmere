@@ -2,6 +2,7 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+import NullmereCore
 import NullmereRealm
 
 /// SpacetimeDB in memory, keeping the realm module's tables and following
@@ -25,6 +26,7 @@ public actor FakeSpacetime: SpacetimeTransport {
     /// The server's clock at the epoch's start, for its `Date` answers.
     private let epoch = Date(timeIntervalSince1970: 1_800_000_000)
     private var views: [String: (version: UInt64, view: String, events: String)] = [:] // by keeper
+    private var viewParts: [String: [String: (version: UInt64, text: String)]] = [:] // by keeper, then name
     public private(set) var calls: [String] = []
     /// Those told when the status changes, as the server pushes it; none
     /// unless pushing is asked for, as most tests of the link poll.
@@ -56,6 +58,7 @@ public actor FakeSpacetime: SpacetimeTransport {
     public static let stewardRound = "SELECT id, keeper, kind, nonce, payload FROM request"
     /// A keeper asks after one answer, or one request still waiting, by its
     /// nonce; counted as one statement, whatever the nonce.
+    public static let viewPartsAsked = "SELECT name, version, text FROM my_view_parts WHERE version > ?"
     public static let answerAsked = "SELECT * FROM my_replies WHERE nonce = ?"
     public static let requestAsked = "SELECT nonce FROM my_requests WHERE nonce = ?"
 
@@ -97,6 +100,17 @@ public actor FakeSpacetime: SpacetimeTransport {
 
     /// How many of the world's parts publications have sent, all told.
     public private(set) var partsSent = 0
+    /// How many parts of keepers' views publications have sent, and
+    /// keepers have read, all told.
+    public private(set) var viewPartsSent = 0
+    public private(set) var viewPartsRead = 0
+    public private(set) var viewBytesSent = 0
+
+    /// A keeper's view as the server keeps it, its parts joined.
+    public func keptView(of keeper: String) throws -> RealmView? {
+        guard let parts = viewParts[keeper] else { return nil }
+        return try RealmView(parts: parts.mapValues(\.text))
+    }
     /// The server's clock, in seconds, moved on by tests.
     private var time = 0.0
     private var lease: (holder: String, until: Double)?
@@ -227,11 +241,13 @@ public actor FakeSpacetime: SpacetimeTransport {
             // with the rest: every check before anything is kept, in the
             // module's own order.
             guard me == steward else { throw SpacetimeError("Only the steward writes the world.", status: 530) }
-            guard case .integer(let version)? = arguments.first, arguments.count == 11, case .string(let holder) = arguments[10],
+            guard case .integer(let version)? = arguments.first, arguments.count == 14, case .string(let holder) = arguments[10],
                   case .strings(let names) = arguments[1], case .strings(let texts) = arguments[2], case .strings(let gone) = arguments[3],
                   case .string(let said) = arguments[4],
                   case .strings(let keepers) = arguments[5], case .strings(let shown) = arguments[6], case .strings(let heard) = arguments[7],
-                  case .integers(let ids) = arguments[8], case .strings(let answers) = arguments[9]
+                  case .integers(let ids) = arguments[8], case .strings(let answers) = arguments[9],
+                  case .strings(let partKeepers) = arguments[11], case .strings(let partNames) = arguments[12],
+                  case .strings(let partTexts) = arguments[13]
             else { throw SpacetimeError("bad arguments", status: 400) }
             if let lease, lease.holder != holder, lease.until > time {
                 throw SpacetimeError("Another steward holds the realm for \(Int(lease.until - time) + 1) s more.", status: 530)
@@ -241,6 +257,12 @@ public actor FakeSpacetime: SpacetimeTransport {
             }
             guard ids.count == answers.count else { throw SpacetimeError("Every answer needs its request.", status: 530) }
             guard names.count == texts.count else { throw SpacetimeError("Every part of the world needs its name.", status: 530) }
+            guard partKeepers.count == partNames.count, partKeepers.count == partTexts.count else {
+                throw SpacetimeError("Every part of a view needs its keeper and its name.", status: 530)
+            }
+            guard partKeepers.allSatisfy(keepers.contains) else {
+                throw SpacetimeError("Every part of a view goes with its keeper's view.", status: 530)
+            }
             let last = status?.version ?? 0
             guard version > last else { throw SpacetimeError("Version \(version) is not after \(last).", status: 530) }
             var kept = parts
@@ -255,7 +277,17 @@ public actor FakeSpacetime: SpacetimeTransport {
             for changed in watchers.values { changed() }
             for (index, keeper) in keepers.enumerated() {
                 views[keeper] = (version, shown[index], heard[index])
+                // The parts its row no longer names are let go.
+                let named = Set(shown[index].split(separator: ",").map { entry in
+                    entry.lastIndex(of: ":").map { String(entry[..<$0]) } ?? String(entry)
+                })
+                viewParts[keeper] = viewParts[keeper]?.filter { named.contains($0.key) }
             }
+            for (index, keeper) in partKeepers.enumerated() {
+                viewParts[keeper, default: [:]][partNames[index]] = (version, partTexts[index])
+            }
+            viewPartsSent += partNames.count
+            viewBytesSent += partTexts.reduce(0) { $0 + $1.utf8.count }
             for (id, answer) in zip(ids, answers) {
                 if let index = requests.firstIndex(where: { $0.id == id }) {
                     replies[requests[index].nonce] = (requests[index].keeper, answer)
@@ -274,6 +306,17 @@ public actor FakeSpacetime: SpacetimeTransport {
         try answering()
         let me = try sender(token)
         // A row asked for by its nonce: the statement with the nonce taken out.
+        // The parts of a view written since a version: the statement with
+        // the number taken out.
+        let partsPrefix = String(Self.viewPartsAsked.dropLast())
+        if sql.hasPrefix(partsPrefix), let since = UInt64(sql.dropFirst(partsPrefix.count)) {
+            queryCounts[Self.viewPartsAsked, default: 0] += 1
+            queryCounts[Self.viewPartsAsked + "\u{0}" + me, default: 0] += 1
+            let rows: [[JSONValue]] = (viewParts[me] ?? [:]).filter { $0.value.version > since }.sorted { $0.key < $1.key }
+                .map { [.string($0.key), .number(Double($0.value.version)), .string($0.value.text)] }
+            viewPartsRead += rows.count
+            return rows
+        }
         let byNonce = [Self.answerAsked, Self.requestAsked].lazy.compactMap { pattern -> (String, String)? in
             let prefix = String(pattern.dropLast())
             guard sql.hasPrefix(prefix) else { return nil }
@@ -320,7 +363,8 @@ public actor FakeSpacetime: SpacetimeTransport {
             return requests.filter { $0.keeper == me }.map { [.string($0.nonce)] }
         case "SELECT * FROM my_replies":
             return replies.filter { $0.value.keeper == me }.map { [.string($0.key), .string($0.value.keeper), .string($0.value.payload)] }
-        case "SELECT * FROM world", "SELECT * FROM world_part", "SELECT * FROM keeper_view", "SELECT * FROM reply", "SELECT * FROM request":
+        case "SELECT * FROM world", "SELECT * FROM world_part", "SELECT * FROM keeper_view", "SELECT * FROM view_part", "SELECT * FROM reply",
+             "SELECT * FROM request":
             try ownerOnly()
             return []
         default:

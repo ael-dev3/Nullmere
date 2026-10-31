@@ -473,7 +473,13 @@ enters the world across the network (`scripts/smoke-test-network.sh`).
 The steward takes up the realm where it stands after a restart. The
 realm's tables are private: keepers write requests through reducers and
 read only their own view and replies, through SpacetimeDB views
-(`my_view`, `my_replies`), and the realm's public status. A request
+(`my_view`, `my_view_parts`, `my_replies`), and the realm's public status.
+A keeper's view is kept in parts as the world is (its map, a page of each
+long list, the rest), and its row names every part with the version it
+was written at: a publication writes only the parts of each view that
+changed and lets go of those a view no longer has, and a keeper's Mac
+reads only the parts written since it last read, so a pace that moves a
+few companies sends a page of them, not the whole world again. A request
 carries a nonce of 1 to 64 bytes and at most 4 KB besides; a keeper may
 have 32 requests waiting at most, and the steward carries out a few of
 each keeper's every round, so no one keeper can crowd out the rest. A
@@ -500,8 +506,9 @@ waits there for its answer, however long; one that can't reach it within
 five minutes is let go, and its keeper told. Past those five minutes an
 order is never sent again, only asked after, so none is carried out
 twice. A client asks after each answer by its nonce alone, waits for what
-came of an order by its view's version, fetching the whole view only once
-that has moved on, and never takes a view older than the one it has. The
+came of an order by its view's version, fetching the parts of its view
+only once that has moved on, and never takes a view older than the one it
+has, nor one whose parts don't all match its row. The
 realm answers each "here" too: a keeper it no longer knows, as after it is
 begun anew, goes back to the front door within half a minute, though they
 give no order. A key the server won't take is kept, never erased or made

@@ -5,6 +5,35 @@ import XCTest
 /// The realm kept in parts comes back exactly as it was, however long it
 /// has run, and a realm half kept is refused, not taken up half.
 final class RealmPartsTests: XCTestCase {
+
+    /// A keeper's view goes in parts as the world does, and comes back
+    /// exactly: a fresh one, and one of a realm played on, its lists long
+    /// enough to need pages.
+    func testAViewInPartsComesBackExactly() throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        var realm = RealmState(name: "N", seed: "view in parts", seats: 6, now: 0)
+        try realm.arrive("a", name: "Ama", now: 0)
+        for watch in 1...12 {
+            for pace in 1..<GameState.pacesPerWatch { _ = realm.world.walk(to: pace) }
+            _ = realm.world.endWatch()
+            if watch == 1 || watch == 12 {
+                let view = try XCTUnwrap(realm.view(for: "a"))
+                let parts = try view.parts(using: encoder)
+                XCTAssertNotNil(parts["head"])
+                XCTAssertNotNil(parts["map"])
+                XCTAssertEqual(try RealmView(parts: parts), view)
+                var missing = parts
+                missing["map"] = nil
+                XCTAssertThrowsError(try RealmView(parts: missing)) { error in
+                    XCTAssertEqual(error as? RealmPartsError, .missing("map"))
+                }
+            }
+        }
+        let paged = try XCTUnwrap(realm.view(for: "a")).parts(using: encoder)
+        XCTAssertNotNil(paged["relations.0"])
+        XCTAssertEqual(paged.keys.filter { $0.hasPrefix("relations.") }.count, 1, "Fifteen relations to a page of 32")
+    }
     private let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
