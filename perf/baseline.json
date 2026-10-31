@@ -128,6 +128,18 @@
       "ratio": 1.5,
       "limit": 16.7,
       "note": "the world's models staged for a frame on the main thread: CI's first figure, 2.50 (cb5988b), at the calibration's pace there, x1.44"
+    },
+    "wide.gpu.scale28.p50": {
+      "baseline": 12.44,
+      "gpu": true,
+      "limit": 16.7,
+      "note": "a realm of forty-eight seats near, only the regions in view drawn: CI's first figure (55a08ad), against 23.12 drawing the whole land"
+    },
+    "stage.wide.cpu.p50": {
+      "baseline": 1.95,
+      "cpu": true,
+      "limit": 8.3,
+      "note": "a frame of a realm of forty-eight seats near staged on the main thread, only what is in view: CI's first figure, 2.34 (55a08ad), at the calibration's pace there, x1.20"
     }
   }
 }
