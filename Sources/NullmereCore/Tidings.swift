@@ -281,6 +281,20 @@ extension GameState {
             let name = hold(holdID)?.name ?? "its seat"
             if house == viewer { return Tidings("Your seat, \(name), is raised anew \(placeName(of: to)), its works, walls and ward as they stood.", .good) }
             return Tidings("\(houses[house].title) raises its seat, \(name), anew \(placeName(of: to)).", .neutral)
+        case .whispered(_, let claim):
+            if claim.house == viewer { return Tidings("A whisper on the water says \(told(claim)): of your own House, unsigned.", .bad) }
+            return Tidings("A whisper on the water, unsigned: \(told(claim)).", .neutral)
+        case .whisperLet(let id, let teller):
+            guard teller == viewer, let whisper = whispersHeard.first(where: { $0.id == id }) else { return nil }
+            return Tidings("You let a whisper loose, unsigned: \(told(whisper.claim)). Found false, it would name you.", .neutral)
+        case .whisperTried(let id, let house, let truth):
+            guard house == viewer, let whisper = whispersHeard.first(where: { $0.id == id }) else { return nil }
+            return Tidings("Your Lanterns find the whisper that \(told(whisper.claim)) \(truth ? "true" : "false").", truth ? .neutral : .good)
+        case .whisperUnmasked(let id, let teller, let belied, let paid):
+            let claim = whispersHeard.first { $0.id == id }.map { " that \(told($0.claim))" } ?? ""
+            if teller == viewer { return Tidings("Your whisper\(claim) is found false: you are named, and pay \(paid) moonsalt to \(houses[belied].title).", .bad) }
+            if belied == viewer { return Tidings("The whisper\(claim) is found false: it was \(houses[teller].title)'s, who pays you \(paid) moonsalt.", .good) }
+            return Tidings("The whisper\(claim) is found false: it was \(houses[teller].title)'s.", .neutral)
         case .ringLineStood(let house, let line):
             guard house == viewer else { return nil }
             let names = line.compactMap { commander($0)?.name }

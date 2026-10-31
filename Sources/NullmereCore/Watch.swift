@@ -94,6 +94,7 @@ extension GameState {
         events += fulfilCharges()
         events += judgeProphecies()
         events += turnTheRing()
+        keepWhispers()
         events += checkForEnd()
         takeSnapshot()
         return events

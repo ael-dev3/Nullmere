@@ -67,6 +67,17 @@ extension GameState {
         view.gifts = gifts?.filter { $0.from == house || $0.to == house }
         view.reputed = strengths()
         view.reputedMight = houses.map { might(of: $0.id) }
+        // Whose a whisper is, and whether it is true, a keeper knows only of
+        // its own, of those its Lanterns have tried, and of those found false.
+        view.whispers = whispers?.map { whisper in
+            var seen = whisper
+            seen.triedBy = whisper.triedBy.filter { $0 == house }
+            if !whisper.unmasked {
+                if whisper.by != house { seen.by = nil }
+                if seen.triedBy.isEmpty { seen.truth = nil }
+            }
+            return seen
+        }
         // Its own commanders, and of others only those at the head of a
         // company in sight, or standing in the Ring, where every line is seen.
         let leading = Set(view.units.compactMap(\.leader)).union(ring?.entries.flatMap(\.line) ?? [])
@@ -251,6 +262,12 @@ extension GameState {
                 return bout.challenger == house || bout.defender == house
             case .ringHonoured:
                 return true
+            case .whispered, .whisperUnmasked:
+                return true
+            case .whisperLet(_, let teller):
+                return teller == house
+            case .whisperTried(_, let trier, _):
+                return trier == house
             case .dreamt(let dream):
                 return dream.house == house
             case .carriedAshore(_, let owner, _, let to):

@@ -777,6 +777,76 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertNil(GameSession.cue(forDepth: paid, in: session.state, player: other))
     }
 
+    /// Whispers on the Realm screen: another keeper's about the keeper's
+    /// House shown unsigned; one of the keeper's own chosen, its kind, then
+    /// its House, and let loose; and each as it stands once tried or found
+    /// false.
+    func testAWhisperIsLetLooseFromTheRealm() throws {
+        var state = world("whispers on the water")
+        let me = state.player
+        let other = try XCTUnwrap(state.livingHouses.map(\.id).first { $0 != me })
+        state.houses[other].isPlayer = true
+        state.houses[me].stock.moonsalt = 60
+        state.houses[other].stock.moonsalt = 60
+        let theirs = try XCTUnwrap(state.seat(of: other))
+        state.reveal(around: theirs.position, range: 1, for: me)
+        _ = try state.perform(.whisper(.granariesLow(house: me)), as: other)
+        let (session, link) = session(state)
+        let heard = try XCTUnwrap(session.state.whispersHeard.first)
+        XCTAssertNil(heard.by, "Unsigned")
+        XCTAssertEqual(WhispersSection.standing(heard, in: session.state, player: me), "Unproven.", "Of the keeper's own House")
+        draw(RealmPanel(session: session), width: 360, height: 3000)
+        XCTAssertFalse(shown.contains("Walls broken"), "Folded until asked for")
+        XCTAssertTrue(PressableButtons.press("Whisper…"), "Among \(shown)")
+
+        // The keeper's own: its kind, its House, and let loose.
+        draw(WhispersSection(session: session, composing: true), width: 360, height: 500)
+        XCTAssertTrue(PressableButtons.press("Walls broken"), "Among \(shown)")
+        draw(WhispersSection(session: session, composing: true, kind: .walls), width: 360, height: 500)
+        XCTAssertTrue(PressableButtons.press("Of \(session.state.houses[other].title)"), "Among \(shown)")
+        draw(WhispersSection(session: session, composing: true, kind: .walls, house: other), width: 360, height: 600)
+        let claim = Whisper.Claim.seatBreached(house: other)
+        XCTAssertTrue(PressableButtons.press("Whisper that \(session.state.told(claim))"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .whisper(claim))
+        let mine = try XCTUnwrap(session.state.whispersHeard.last)
+        XCTAssertEqual(mine.by, me)
+        XCTAssertTrue(WhispersSection.standing(mine, in: session.state, player: me).hasPrefix("Yours. Unproven: your Lanterns may try it"))
+        draw(WhispersSection(session: session, composing: true, kind: .host, house: other), width: 360, height: 600)
+        draw(WhispersSection(session: session, composing: true, kind: .granaries, house: other), width: 360, height: 600)
+        XCTAssertEqual(WhispersSection.claim(.host, house: other, hold: theirs.id), .hostGathered(house: other, hold: theirs.id))
+        XCTAssertNil(WhispersSection.claim(.host, house: other))
+        XCTAssertNil(WhispersSection.claim(.granaries, house: nil))
+        XCTAssertEqual(WhispersSection.claim(.granaries, house: other), .granariesLow(house: other))
+        XCTAssertEqual(WhispersSection.Kind.allCases.map(\.title), ["A host gathered", "Granaries low", "Walls broken"])
+
+        // As each stands: tried, found false, or out of the Lanterns' reach.
+        var judged = session.state
+        judged.whispers![1].truth = true
+        XCTAssertEqual(WhispersSection.standing(judged.whispersHeard[1], in: judged, player: me), "Yours. True, as your Lanterns found.")
+        judged.whispers![1].truth = false
+        XCTAssertEqual(WhispersSection.standing(judged.whispersHeard[1], in: judged, player: me), "Yours. False, as your Lanterns found.")
+        judged.whispers![1].unmasked = true
+        XCTAssertEqual(WhispersSection.standing(judged.whispersHeard[1], in: judged, player: me), "Found false: it was yours.")
+        judged.whispers![0].unmasked = true
+        judged.whispers![0].by = other
+        XCTAssertEqual(WhispersSection.standing(judged.whispersHeard[0], in: judged, player: me),
+                       "Found false: it was \(judged.houses[other].title)'s.")
+        var late = session.state
+        late.watch += GameState.whisperReach + 1
+        XCTAssertEqual(WhispersSection.standing(late.whispersHeard[1], in: late, player: me), "Yours. Unproven.")
+        link.onEvent?(.changed(judged))
+        draw(WhispersSection(session: session), width: 360, height: 500)
+        let (quiet, _) = self.session(world("no whispers abroad"))
+        draw(WhispersSection(session: quiet), width: 360, height: 300)
+
+        // Heard: the whisper's reed call, a teller named in dread, the belied paid.
+        XCTAssertEqual(GameSession.cues(for: .whisper(claim), events: [], in: session.state, player: me), [.parley])
+        XCTAssertEqual(GameSession.cue(forDepth: .whisperUnmasked(id: 2, teller: me, belied: other, paid: 30), in: session.state, player: me), .dread)
+        XCTAssertEqual(GameSession.cue(forDepth: .whisperUnmasked(id: 1, teller: other, belied: me, paid: 30), in: session.state, player: me), .coin)
+        XCTAssertNil(GameSession.cue(forDepth: .whispered(id: 2, claim: claim), in: session.state, player: me))
+        XCTAssertNotNil(Narration.line(for: .whispered(id: 2, claim: claim), in: session.state, viewer: me))
+    }
+
     /// The veil of the Still from the seat's record: drawn for moonsalt,
     /// shown while it lies on the keeper's holds and on another's, named
     /// under the pointer, and resting once lifted.

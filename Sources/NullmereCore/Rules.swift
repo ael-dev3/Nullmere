@@ -98,7 +98,7 @@ extension GameState {
             return try heal(at: holdID, as: house)
         case let .scout(unitID, holdID):
             // A House that scouts another's hold lifts its own veil.
-            return try scout(holdID, with: unitID, as: house) + liftVeil(of: house)
+            return try scout(holdID, with: unitID, as: house) + liftVeil(of: house) + tryWhispers(scouting: holdID, as: house)
         case let .raiseStandard(hex):
             return try raiseStandard(at: hex, by: house)
         case let .useItem(kind, holdID):
@@ -123,6 +123,8 @@ extension GameState {
             return try standInTheRing(line, as: house)
         case let .challenge(other):
             return try challenge(other, as: house)
+        case let .whisper(claim):
+            return try whisper(claim, as: house)
         case let .pursueAllianceStudy(study):
             return try pursue(study, by: house)
         case let .giveToAlliance(stock):

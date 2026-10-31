@@ -253,6 +253,20 @@ designed, ticked when it is real, tested and shown in CI.
   Chronicle, played from the Realm screen, folded until asked for.
   Stewards foretell and stake nothing, so a world of stewards goes as it
   always did.
+- [x] **Whispers on the water.** Rumour as a weapon, with the realm as its
+  only witness: a keeper lets a whisper loose about another House for 10
+  moonsalt, unsigned (its host gathered at one of its holds, its
+  granaries low, or the walls of its seat broken), and every keeper hears
+  it but not whose it is, nor whether it is true; the realm alone knows
+  that, from the moment it is let loose. A keeper whose Lanterns scout a
+  hold of that House within ten watches learns its truth, and each
+  keeper's view keeps only what that keeper has learned. A whisper found
+  false names its teller to the whole realm, in the Chronicle, and its
+  teller pays the House it belied up to 30 moonsalt; a true one is never
+  traced. Deception, verification and reputation played between keepers
+  on a persistent server, with no game master. Played from the Realm
+  screen, folded until asked for; stewards whisper nothing, so a world
+  of stewards goes as it always did.
 
 ## The order of the work
 

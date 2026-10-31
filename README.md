@@ -519,6 +519,19 @@ as the realm will, and takes the realm's word as final.
   every stake laid, each by its own, and if none did, the lake keeps them.
   The realm keeps its last twelve judged, and stewards foretell and stake
   nothing.
+- **Whispers on the water.** From the Realm screen a keeper lets a whisper
+  loose about another House for 10 moonsalt, unsigned: its host gathered
+  at one of its holds (2,000 troops of its companies of war within two
+  tiles), its granaries low (under three watches of its companies'
+  grain), or the walls of its seat broken (its ward under half). Every
+  keeper hears it, but not whose it is, nor whether it is true; the realm
+  alone knows that, from the moment it is let loose, and each keeper's
+  view keeps only what that keeper has learned. A keeper whose Lanterns
+  scout a hold of that House within ten watches learns its truth; one
+  found false names its teller to the whole realm, in the Chronicle, and
+  its teller pays the House it belied up to 30 moonsalt. A true whisper is
+  never traced. A House may whisper once in five watches, and the realm
+  forgets a whisper after twenty-four. Stewards whisper nothing.
 - **The server.** SpacetimeDB is the realm's authority of record: it knows
   each keeper by their identity, keeps the world, and lets no one but the
   steward write it. The steward runs the same Swift rules core the clients

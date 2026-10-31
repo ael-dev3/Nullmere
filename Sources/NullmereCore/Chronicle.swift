@@ -44,6 +44,8 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         /// A keeper foretells a turn of the realm's course, or the realm
         /// judges a prophecy.
         case augury
+        /// A whisper on the water is found false, and its teller named.
+        case whisper
     }
 
     public let watch: Int

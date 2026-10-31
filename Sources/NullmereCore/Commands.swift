@@ -137,6 +137,8 @@ public enum Command: Codable, Equatable, Sendable {
     case standInTheRing([Int])
     /// A keeper's line in the Ring challenges another House's.
     case challenge(house: Int)
+    /// A keeper lets a whisper loose about another House, unsigned.
+    case whisper(Whisper.Claim)
     /// An alliance's leader sets it to pursue a study together.
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
@@ -381,6 +383,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case noLineStanding
     /// A challenge in the Ring past a House's three of the watch.
     case challengesSpent
+    /// A whisper let loose before the House's last has rested.
+    case whisperedLately(until: Int)
     /// An alliance study learned to its last grade.
     case allianceStudyMastered
     /// The study the alliance pursues already.
@@ -566,6 +570,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .seatBeset: return "Your seat is beset: not while its ward is short of whole, or a foe at war stands within three tiles of it."
         case .noLineStanding: return "Your House stands no line in the Ring: choose up to three of your commanders for it first."
         case .challengesSpent: return "Your House has made its three challenges in the Ring this watch; it may challenge again next watch."
+        case .whisperedLately(let until): return "Your House let a whisper loose lately; it may whisper again at watch \(until)."
         case .allianceStudyMastered: return "Your alliance has learned that study to its last grade."
         case .alreadyPursued: return "Your alliance pursues that study already."
         case .noAllianceStudy: return "Your alliance pursues no study: its leader chooses one in the Alliance screen."
@@ -709,6 +714,15 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// At the moon's turn the Ring honours the three standing highest,
     /// the highest first.
     case ringHonoured(houses: [Int])
+    /// A whisper is let loose, unsigned: told to the realm.
+    case whispered(id: Int, claim: Whisper.Claim)
+    /// The House that let a whisper loose: told to it alone.
+    case whisperLet(id: Int, by: Int)
+    /// A keeper's Lanterns try a whisper, and learn its truth.
+    case whisperTried(id: Int, house: Int, truth: Bool)
+    /// A whisper is found false: its teller named, and what it paid the
+    /// House it belied.
+    case whisperUnmasked(id: Int, teller: Int, belied: Int, paid: Int)
     /// An alliance's leader sets it to pursue a study.
     case allianceStudyChosen(alliance: Int, study: AllianceStudy)
     /// A House gives stores toward a grade of its alliance's study.
