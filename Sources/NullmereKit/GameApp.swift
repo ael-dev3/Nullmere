@@ -127,9 +127,10 @@ public final class GameApp {
         self.pollInterval = pollInterval
         self.store = store
         self.readModel = readiness
-        self.address = address ?? GameApp.defaultAddress
-        self.identityStore = identity ?? GameApp.defaultIdentityStore(for: address ?? GameApp.defaultAddress)
-        keeperName = UserDefaults.standard.string(forKey: GameApp.nameKey(for: self.address))
+        let address = address ?? GameApp.defaultAddress
+        self.address = address
+        self.identityStore = identity ?? GameApp.defaultIdentityStore(for: address)
+        keeperName = UserDefaults.standard.string(forKey: GameApp.nameKey(for: address))
         let soundOn = sound ?? (UserDefaults.standard.object(forKey: "sound.enabled") as? Bool ?? true)
         self.isSoundOn = soundOn
         self.ambience = Ambience(enabled: soundOn)
