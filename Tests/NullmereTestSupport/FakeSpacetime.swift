@@ -125,6 +125,15 @@ public actor FakeSpacetime: SpacetimeTransport {
     /// The server takes a key again.
     public func remember(_ credentials: SpacetimeCredentials) { identities[credentials.token] = credentials.identity }
 
+    /// The database published by an identity made elsewhere on the server,
+    /// as one publisher publishes every realm on it: theirs, and its realm
+    /// theirs to steward.
+    public func publish(by credentials: SpacetimeCredentials) {
+        remember(credentials)
+        owner = credentials.identity
+        steward = credentials.identity
+    }
+
     /// The database made anew, as a publication with `--delete-data` makes
     /// it: every table emptied, the publisher its steward again, and the
     /// identities the server knows kept.

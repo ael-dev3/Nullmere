@@ -436,4 +436,22 @@ final class SpacetimeIntegrationTests: XCTestCase {
         XCTAssertEqual(again, 1, "Told once")
         print("REALM the Frontier's season ran \(watches) watches and was told home, once")
     }
+
+    /// The Frontier as keepers play it, through their own clients, the
+    /// three stewards on their own clocks: as `FrontierPlayThroughTests`
+    /// plays it over databases held in memory. Three databases of its own,
+    /// fresh, since a steward takes up the world a database keeps.
+    @MainActor
+    func testKeepersCrossToTheFrontierThroughTheirClients() async throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let set = environment["NULLMERE_STDB_FRONTIER_PLAY"], let token = environment["NULLMERE_STDB_TOKEN"], !token.isEmpty else {
+            throw XCTSkip("Set NULLMERE_STDB_FRONTIER_PLAY and NULLMERE_STDB_TOKEN to play the Frontier through keepers' clients")
+        }
+        let addresses = set.split(separator: ",").map(String.init)
+        let transports = addresses.compactMap { URL(string: $0).flatMap { SpacetimeHTTP(address: $0) } }
+        guard transports.count == 3 else { return XCTFail("Three addresses: two realms, then the Frontier") }
+        let databases = FrontierPlayThrough.Databases(west: transports[0], east: transports[1], lost: transports[2], lostAddress: addresses[2],
+                                                      westAddress: addresses[0], eastAddress: addresses[1])
+        try await FrontierPlayThrough.play(databases, token: token)
+    }
 }

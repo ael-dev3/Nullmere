@@ -455,8 +455,11 @@ on Linux, two keepers play through the server, and two realms and the
 Frontier are published as three databases whose stewards read each
 other, keepers of each realm crossing to the Frontier, seated there for
 their kingdoms at war, keeping its season to its end and told home of it
-once; on macOS, the app itself enters the world across the network
-(`scripts/smoke-test-network.sh`).
+once; then three databases more, fresh, where the stewards run on their
+own clocks and two keepers' own clients, the shipped link each, cross by
+an order at home, go across to the Frontier by the same key, keep a
+season of watches there and are told home; on macOS, the app itself
+enters the world across the network (`scripts/smoke-test-network.sh`).
 
 The steward takes up the realm where it stands after a restart. The
 realm's tables are private: keepers write requests through reducers and
