@@ -19,7 +19,7 @@ public enum Compact {
 
     public static let articles: [Article] = [
         Article(heading: "Who you are here",
-                text: "The realm knows you by a random key your Mac makes and keeps in its keychain, and by the name you choose. It asks for no address, no account and no password, and learns nothing of your Mac or where you are."),
+                text: "The realm knows you by a random key your Mac makes and keeps in its keychain, and by the name you choose. It asks for no address, no account and no password, and learns nothing of your Mac or where you are. Should you make words to carry yourself to another Mac, it keeps only a digest of a digest of them."),
         Article(heading: "What the realm keeps",
                 text: "Your name; your House's orders and what came of them, which the realm's other keepers see as the rules let them; when you are there and when you are away; and the renown, favour, titles and deeds you win, from age to age. The Words you write, the ballads you sing, the bottles you cast and the edicts you put are kept for the realm's keepers to read, the oldest let go as new ones come."),
         Article(heading: "What stays on your Mac",

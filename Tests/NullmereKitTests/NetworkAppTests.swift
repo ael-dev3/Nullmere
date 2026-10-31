@@ -89,6 +89,71 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertTrue(app.wantsNewerBuild, "A compact newer than this build can show")
     }
 
+    /// A keeper carries their House to another Mac: the first makes the
+    /// words and shows them once, to write down; the second, never having
+    /// accepted the compact, reads it, then takes the House up by them. A
+    /// Mac may leave its identity for a new one.
+    func testAKeeperIsCarriedToAnotherMacByTheirWords() async throws {
+        let db = FakeSpacetime()
+        let running = try await steward(db, seats: 4)
+        defer { running.cancel() }
+        PressableButtons.isListening = true
+        defer { PressableButtons.isListening = false }
+
+        let first = app(db, identity: MemoryStore(), realm: "carried-first")
+        first.open()
+        try await until("the first Mac's door") { if case .open = first.door { return true } else { return false } }
+        XCTAssertFalse(first.canMakeWords, "No keeper yet, no words")
+        first.enterWorld(name: "Ama")
+        try await until("Ama in the world") { first.session != nil }
+        let house = try XCTUnwrap(first.session?.player)
+        first.makeWords()
+        XCTAssertTrue(first.isSealing)
+        XCTAssertFalse(first.canMakeWords, "One making at a time")
+        try await until("the words kept by the realm") { first.carriedWords != nil }
+        let words = try XCTUnwrap(first.carriedWords)
+        XCTAssertEqual(words.count, KeeperWords.count)
+        XCTAssertNil(first.carryProblem)
+        draw(FrontDoor(app: first))
+        XCTAssertTrue(PressableButtons.press("Written down"))
+        XCTAssertNil(first.carriedWords, "Shown only then")
+
+        let identity = MemoryStore()
+        let second = app(db, identity: identity, realm: "carried-second")
+        defer { UserDefaults.standard.removeObject(forKey: GameApp.compactKey) }
+        second.open()
+        try await until("the second Mac's door") { if case .open = second.door { return true } else { return false } }
+        draw(FrontDoor(app: second))
+        second.beginBringingWords()
+        XCTAssertTrue(second.isBringingWords)
+        draw(FrontDoor(app: second))
+        second.bringWords("acorn alder")
+        XCTAssertFalse(second.readsCompact, "Two words take up no one")
+        second.bringWords(words.joined(separator: " "))
+        XCTAssertTrue(second.readsCompact, "The compact first, on a Mac that never accepted it")
+        draw(FrontDoor(app: second))
+        XCTAssertTrue(PressableButtons.press("Accept and enter"))
+        try await until("Ama on the second Mac") { second.session != nil }
+        XCTAssertEqual(second.keeperName, "Ama")
+        XCTAssertEqual(second.session?.player, house, "Her House with her")
+        XCTAssertFalse(second.isBringingWords)
+
+        // Words made again let the first ones go.
+        second.makeWords()
+        try await until("new words kept") { second.carriedWords != nil }
+        XCTAssertNotEqual(second.carriedWords, words)
+        second.putWordsAway()
+
+        // The second Mac leaves its identity for a new one.
+        let kept = identity.value
+        second.leaveIdentity()
+        XCTAssertNil(second.keeperName)
+        guard case .frontDoor = second.phase else { return XCTFail("Out of the world, at the door") }
+        try await until("a new identity made") { identity.value.map { !$0.isEmpty && $0 != kept } ?? false }
+        second.stopBringingWords()
+        XCTAssertFalse(second.isBringingWords)
+    }
+
     func testAKeeperEntersPlaysAndKeepsTheirKey() async throws {
         let db = FakeSpacetime()
         let running = try await steward(db, seats: 4)

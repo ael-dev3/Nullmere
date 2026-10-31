@@ -358,17 +358,122 @@ public final class GameApp {
     }
 
     /// The keeper accepts the compact as it stands, and enters under `name`.
+    /// Whether accepting the compact goes on in: by the words brought, or
+    /// by the name written.
+    public func canAccept(enteringAs name: String) -> Bool {
+        broughtProof != nil ? canBringWords : canEnter(with: name)
+    }
+
     public func acceptCompact(enteringAs name: String) {
-        guard canEnter(with: name) else { return }
+        guard canAccept(enteringAs: name) else { return }
         compactAccepted = Compact.edition
         UserDefaults.standard.set(Compact.edition, forKey: Self.compactKey)
         readsCompact = false
-        enterWorld(name: name)
+        if broughtProof != nil {
+            reclaimBrought()
+        } else {
+            enterWorld(name: name)
+        }
     }
 
     /// Back from the compact to the door, nothing accepted.
     public func closeCompact() {
         readsCompact = false
+        broughtProof = nil
+    }
+
+    // MARK: Carrying the keeper to another Mac
+
+    /// The words just made to carry the keeper to another Mac, shown until
+    /// put away and never kept; why the realm wouldn't keep them, if it
+    /// wouldn't; and whether it is being asked.
+    public private(set) var carriedWords: [String]?
+    public private(set) var carryProblem: String?
+    public private(set) var isSealing = false
+
+    /// Whether the keeper can make words: known to the realm, with a line
+    /// to it, and none being made.
+    public var canMakeWords: Bool {
+        keeperName != nil && link != nil && !isSealing
+    }
+
+    /// Makes sixteen words and seals the keeper with them at the realm;
+    /// words made before are let go.
+    public func makeWords() {
+        guard canMakeWords, let link else { return }
+        let words = KeeperWords.make()
+        isSealing = true
+        carryProblem = nil
+        carriedWords = nil
+        link.seal(proof: KeeperWords.proof(of: words)) { [weak self] problem in
+            guard let self else { return }
+            self.isSealing = false
+            self.carryProblem = problem
+            self.carriedWords = problem == nil ? words : nil
+        }
+    }
+
+    /// The words put away, written down or not.
+    public func putWordsAway() {
+        carriedWords = nil
+        carryProblem = nil
+    }
+
+    /// At the door, words being brought from another Mac.
+    public private(set) var isBringingWords = false
+    /// The proof of words brought, waiting on the compact.
+    private var broughtProof: String?
+
+    public func beginBringingWords() {
+        isBringingWords = true
+        arrivalProblem = nil
+    }
+
+    public func stopBringingWords() {
+        isBringingWords = false
+        broughtProof = nil
+    }
+
+    /// Whether words can be brought now: the realm open to this build, and
+    /// no one entering.
+    var canBringWords: Bool {
+        guard case .open(let status) = door, !status.wantsNewerBuild else { return false }
+        return !isEntering && !isWaitingForSeat
+    }
+
+    /// Takes up the keeper the words written seal, by the realm's compact
+    /// first if it must be read.
+    public func bringWords(_ written: String) {
+        guard canBringWords, let words = KeeperWords.read(written) else { return }
+        broughtProof = KeeperWords.proof(of: words)
+        if mustReadCompact {
+            readsCompact = true
+        } else {
+            reclaimBrought()
+        }
+    }
+
+    private func reclaimBrought() {
+        guard let proof = broughtProof, let link else { return }
+        broughtProof = nil
+        isEntering = true
+        arrivalProblem = nil
+        enteredByIdentity = false
+        link.reclaim(proof: proof)
+    }
+
+    /// Leaves the identity this Mac keeps, for a new one: the House it
+    /// keeps is reached again only by its words.
+    public func leaveIdentity() {
+        try? identityStore.save("")
+        keeperName = nil
+        UserDefaults.standard.removeObject(forKey: Self.nameKey(for: address))
+        // Out of the world first, should the keeper be in it.
+        if session != nil {
+            leaveWorld()
+        } else {
+            openDoor()
+        }
     }
 
     /// The realm has moved on past this build: it can't be entered from it.
@@ -452,6 +557,7 @@ public final class GameApp {
     private func arrived(_ keeper: Keeper, in world: GameState) {
         Self.logger.notice("Entered the realm as \(keeper.name, privacy: .public), watch \(world.watch).")
         isEntering = false
+        isBringingWords = false
         journeyTries = nil
         keeperName = keeper.name
         UserDefaults.standard.set(keeper.name, forKey: Self.nameKey(for: address))
@@ -592,6 +698,7 @@ public final class GameApp {
     public func leaveDoor() {
         stopWaiting()
         readsCompact = false
+        stopBringingWords()
         // Back in the launcher, the model is the launcher's to watch for,
         // and a realm hosted here rests until the door is opened again.
         recheckTask?.cancel()

@@ -147,7 +147,7 @@ To build, reimagined:
 - [x] A keeper's House hidden everywhere (its Words, its notices, its ballads, its envoys' words), not only an envoy's; an unread count on the rail's Words
 - [x] Words made safe at the realm: a line reported, kept with what was said round it for the realm's steward; the realm able to remove a line and bar a keeper (the realm's whole record paged back is still the latest eighty lines)
 - [x] The realm's compact: terms and privacy in plain words, read and accepted at the front door before first entry, asked again when they change; a keeper forgotten by the realm's steward when they ask
-- [ ] A keeper's identity carried to another Mac: a recovery phrase written down, and taken up on the other; leaving an identity, and taking up another
+- [x] A keeper's identity carried to another Mac: sixteen words written down (the realm keeps a digest of their digest), and taken up on the other; leaving an identity, and taking up another
 - [x] A newer build known: the launcher tells its build in its footer and the realm the tongue it speaks and the oldest it hears; a Mac too old for its realm is told so at the door, which won't open, and where to get the new one (and in the world, once, should the realm move on)
 - [ ] A House's crest (Warpkeep's profile and portrait): a shield, its tinctures and a charge chosen once, shown on the House's records, banners and the front door
 - [ ] Rivers: streams from the Spine to the lake, crossed at fords, named and followed; the shores' regions named, with a legend

@@ -308,7 +308,15 @@ as the realm will, and takes the realm's word as final.
   tongue it speaks and the oldest it still hears; a Mac too old for it
   is told so at the door, which won't open, and Get the new build opens
   the page of the newest release (a keeper in the world when the realm
-  moves on is told once). The front door, set on the water as the launcher's panels
+  moves on is told once). Beneath the door's choices, a keeper the realm
+  knows may carry their identity to another Mac: the door shows sixteen
+  words, once, made from a list of 256 of the lake's plain things, to
+  write down, and the realm keeps only a digest of a digest of them
+  (made again, the old ones no longer serve). On the other Mac, Words
+  from another Mac? Bring them takes the words, reads the compact if that
+  Mac never has, and takes the House up there; the Mac left no longer
+  speaks for it. A Mac that already keeps a House as itself may leave its
+  identity for a new one, asked twice. The front door, set on the water as the launcher's panels
   are, shows the realm's state: its age and watch, how many keepers are
   there, and how many seats are open. Its choices are the launcher's: one
   lit at a time, the one Return takes, the arrows moving along them and

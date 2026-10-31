@@ -10,6 +10,10 @@ struct FrontDoor: View {
     let app: GameApp
 
     @State private var name: String
+    /// Words being brought from another Mac.
+    @State private var words = ""
+    /// Leave this identity, pressed once: pressed again, it is left.
+    @State private var leaving = false
     @State private var appeared = false
     /// The lit choice, the one Return performs.
     @State private var selection = 0
@@ -36,11 +40,38 @@ struct FrontDoor: View {
     private var choices: [Choice] {
         if isReadingCompact {
             return [
-                Choice(title: "Accept and enter", enabled: app.canEnter(with: name), hint: "Accepts the realm's compact and enters the world") {
+                Choice(title: "Accept and enter", enabled: app.canAccept(enteringAs: name), hint: "Accepts the realm's compact and enters the world") {
                     app.acceptCompact(enteringAs: name)
                 },
                 Choice(title: "Back", hint: "Returns to the door, nothing accepted") { app.closeCompact() },
             ]
+        }
+        if app.carriedWords != nil {
+            return [Choice(title: "Written down", hint: "Puts the words away: they are shown only now") { app.putWordsAway() }]
+        }
+        if app.isBringingWords {
+            var choices = [Choice(title: app.isEntering ? "Taking it up…" : "Take it up",
+                                  enabled: app.canBringWords && KeeperWords.read(words) != nil,
+                                  hint: "Takes up the keeper these words seal, and enters as them") {
+                app.bringWords(words)
+            }]
+            if app.keeperName != nil {
+                choices.append(Choice(title: leaving ? "Leave it for good" : "Leave this identity",
+                                      hint: leaving ? "Leaves this Mac's identity: its House is reached again only by its words"
+                                          : "Asks once more before leaving this Mac's identity") {
+                    if leaving {
+                        leaving = false
+                        app.leaveIdentity()
+                    } else {
+                        leaving = true
+                    }
+                })
+            }
+            choices.append(Choice(title: "Back", hint: "Returns to the door") {
+                leaving = false
+                app.stopBringingWords()
+            })
+            return choices
         }
         var choices = [Choice(title: enterTitle, enabled: app.canEnter(with: name), hint: enterHint) {
             app.enterOrReadCompact(name: name)
@@ -103,7 +134,18 @@ struct FrontDoor: View {
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
-            Button("") { isReadingCompact ? app.closeCompact() : app.leaveDoor() }
+            Button("") {
+                if isReadingCompact {
+                    app.closeCompact()
+                } else if app.carriedWords != nil {
+                    app.putWordsAway()
+                } else if app.isBringingWords {
+                    leaving = false
+                    app.stopBringingWords()
+                } else {
+                    app.leaveDoor()
+                }
+            }
                 .keyboardShortcut(.cancelAction)
                 .opacity(0)
                 .allowsHitTesting(false)
@@ -121,6 +163,15 @@ struct FrontDoor: View {
         // reach, Try again is lit, the one way forward; Enter again once
         // the realm answers.
         .onChange(of: name) { _, _ in selection = 0 }
+        .onChange(of: words) { _, _ in
+            selection = 0
+            leaving = false
+        }
+        .onChange(of: app.isBringingWords) { _, _ in selection = 0 }
+        .onChange(of: app.carriedWords) { _, words in
+            selection = 0
+            if words != nil { AccessibilityNotification.Announcement("Your sixteen words are shown, to write down.").post() }
+        }
         // Out of reach, or moved on past this build, the second choice is
         // the way forward; the compact opened or closed, the first.
         .onChange(of: isOutOfReach || app.wantsNewerBuild, initial: true) { _, blocked in selection = blocked ? 1 : 0 }
@@ -152,8 +203,28 @@ struct FrontDoor: View {
         VStack(spacing: 0) {
             RealmLine(door: app.door)
 
-            keeper(unit: unit)
-                .padding(.top, 26 * unit)
+            Group {
+                if let words = app.carriedWords {
+                    carrying(words, unit: unit)
+                } else if app.isBringingWords {
+                    bringing(unit: unit)
+                } else {
+                    keeper(unit: unit)
+                }
+            }
+            .padding(.top, 26 * unit)
+
+            if let problem = app.carryProblem {
+                Text(verbatim: problem)
+                    .font(.launcher(.launcherType(11, unit: unit), weight: .regular))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Palette.bad)
+                    .frame(maxWidth: 460 * unit)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .onNight()
+                    .padding(.top, 14 * unit)
+                    .accessibilityLabel("Problem: \(problem)")
+            }
 
             if let note = seatNote {
                 Text(verbatim: note)
@@ -194,14 +265,31 @@ struct FrontDoor: View {
 
             // The note on identity goes first when room is short.
             ViewThatFits(in: .vertical) {
-                Text(verbatim: "Your identity is a random key kept in this Mac's keychain. The realm knows you by it and by the name you choose; nothing else.")
-                    .font(.launcher(.launcherType(10, unit: unit), weight: .regular))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(Palette.text(0.75))
-                    .frame(maxWidth: 420 * unit)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .onNight()
-                    .padding(.top, 22 * unit)
+                VStack(spacing: 10 * unit) {
+                    Text(verbatim: "Your identity is a random key kept in this Mac's keychain. The realm knows you by it and by the name you choose; nothing else.")
+                        .font(.launcher(.launcherType(10, unit: unit), weight: .regular))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(Palette.text(0.75))
+                        .frame(maxWidth: 420 * unit)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .onNight()
+                    if !app.isBringingWords, app.carriedWords == nil {
+                        HStack(spacing: 22 * unit) {
+                            if app.keeperName != nil {
+                                aside(app.isSealing ? "Making your words…" : "Carry this identity to another Mac", unit: unit,
+                                      hint: "Makes sixteen words to write down: brought to another Mac, they take up your House there") {
+                                    app.makeWords()
+                                }
+                                .disabled(!app.canMakeWords)
+                            }
+                            aside("Words from another Mac? Bring them", unit: unit,
+                                  hint: "Takes up your identity from another Mac by the sixteen words you wrote down there") {
+                                app.beginBringingWords()
+                            }
+                        }
+                    }
+                }
+                .padding(.top, 22 * unit)
                 Color.clear.frame(height: 0)
             }
         }
@@ -360,6 +448,85 @@ struct FrontDoor: View {
     }
 
     private static let nameRule = "Two to twenty letters. It names you and the House you'll hold."
+
+    /// The words brought from another Mac, written in, and what is wrong
+    /// with them as they are written; should this Mac already keep a House
+    /// as itself, that it must leave its identity first.
+    private func bringing(unit: CGFloat) -> some View {
+        VStack(spacing: 10 * unit) {
+            Text(verbatim: "The sixteen words you wrote down on your other Mac, in their order.")
+                .font(.launcher(.launcherType(12, unit: unit), weight: .regular))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Palette.text(0.85))
+                .fixedSize(horizontal: false, vertical: true)
+                .onNight()
+            TextField("Your sixteen words", text: $words, axis: .vertical)
+                .textFieldStyle(.plain)
+                .lineLimit(2...4)
+                .font(.launcher(.launcherType(14, unit: unit), weight: .light))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Palette.ink)
+                .padding(.vertical, 6 * unit)
+                .frame(width: 420 * unit)
+                .overlay(alignment: .bottom) { Underline(opacity: 0.6) }
+                .accessibilityLabel("Your sixteen words")
+                .accessibilityHint(KeeperWords.problem(words) ?? Self.wordsRule)
+            Text(verbatim: KeeperWords.problem(words) ?? (app.keeperName.map { "This Mac keeps House \($0) as itself: leave its identity first, and that House is reached again only by its own words." } ?? Self.wordsRule))
+                .font(.launcher(.launcherType(10, unit: unit), weight: .regular))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(KeeperWords.problem(words) == nil ? Palette.text(0.7) : Palette.bad)
+                .frame(maxWidth: 420 * unit)
+                .fixedSize(horizontal: false, vertical: true)
+                .onNight()
+                .accessibilityHidden(true)
+        }
+    }
+
+    private static let wordsRule = "Sixteen words from the list the game makes them of, with spaces, commas or lines between."
+
+    /// The words just made, to write down: numbered, four to a line, and
+    /// what they are for.
+    private func carrying(_ words: [String], unit: CGFloat) -> some View {
+        VStack(spacing: 14 * unit) {
+            Text(verbatim: "Write these down, in their order. On another Mac, bring them at the realm's door to take up your House there. Whoever has them can, so keep them as you keep a key: they are shown only now, and words made before no longer serve.")
+                .font(.launcher(.launcherType(11, unit: unit), weight: .regular))
+                .lineSpacing(4 * unit)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Palette.text(0.85))
+                .frame(maxWidth: 460 * unit)
+                .fixedSize(horizontal: false, vertical: true)
+                .onNight()
+            Grid(horizontalSpacing: 26 * unit, verticalSpacing: 8 * unit) {
+                ForEach(0..<(words.count + 3) / 4, id: \.self) { row in
+                    GridRow {
+                        ForEach(row * 4..<min(row * 4 + 4, words.count), id: \.self) { index in
+                            Text(verbatim: "\(index + 1). \(words[index])")
+                                .font(.launcher(.launcherType(14, unit: unit), weight: .light))
+                                .foregroundStyle(Palette.ink)
+                                .gridColumnAlignment(.leading)
+                        }
+                    }
+                }
+            }
+            .onNight()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Your sixteen words: " + words.enumerated().map { "\($0.offset + 1), \($0.element)" }.joined(separator: "; "))
+            .accessibilityAddTraits(.isStaticText)
+        }
+    }
+
+    /// A quiet way aside from the door, underlined beneath its choices.
+    private func aside(_ title: String, unit: CGFloat, hint: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(verbatim: title)
+                .font(.launcher(.launcherType(10, unit: unit), weight: .regular))
+                .underline()
+                .foregroundStyle(Palette.text(0.8))
+                .onNight()
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(hint)
+    }
 }
 
 /// The realm's name as the launcher heads a panel, and how it stands beneath:
