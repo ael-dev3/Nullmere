@@ -821,6 +821,9 @@ final class DepthPanelTests: XCTestCase {
 
         // As each stands: tried, found false, or out of the Lanterns' reach.
         var judged = session.state
+        XCTAssertEqual(WhispersSection.standing(judged.whispersHeard[1], in: judged, player: me).prefix(16), "Yours. Unproven:",
+                       "This copy's guess of its truth is not told as found")
+        judged.whispers![1].triedBy = [me]
         judged.whispers![1].truth = true
         XCTAssertEqual(WhispersSection.standing(judged.whispersHeard[1], in: judged, player: me), "Yours. True, as your Lanterns found.")
         judged.whispers![1].truth = false

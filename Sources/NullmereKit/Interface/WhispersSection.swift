@@ -55,7 +55,9 @@ struct WhispersSection: View {
             return "Found false: it was \(teller == player ? "yours" : state.houses[teller].title + "'s")."
         }
         let yours = whisper.by == player ? "Yours. " : ""
-        switch whisper.truth {
+        // Its truth as the keeper's Lanterns found it, the realm's word; not
+        // what this copy guessed of it as the whisper was let loose.
+        switch whisper.triedBy.contains(player) ? whisper.truth : nil {
         case true?: return yours + "True, as your Lanterns found."
         case false?: return yours + "False, as your Lanterns found."
         case nil:
