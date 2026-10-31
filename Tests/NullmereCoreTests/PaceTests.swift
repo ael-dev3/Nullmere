@@ -202,7 +202,7 @@ final class PaceTests: XCTestCase {
         try drawn.perform(.attack(unit: mine2, target: there2), as: drawn.player)
         XCTAssertNotNil(drawn.unit(mine2))
         XCTAssertNotNil(drawn.unit(theirs2), "Whole companies both stand the first exchange")
-        let away = try XCTUnwrap(drawn.freeHex(near: there2, within: 4...5))
+        let away = try XCTUnwrap(drawn.freeHex(near: there2, within: (Field.span + 1)...(Field.span + 2)))
         drawn.units[try XCTUnwrap(drawn.unitIndex(theirs2))].position = away
         let ended = drawn.walk(to: 1)
         XCTAssertEqual(battles(ended), 0)

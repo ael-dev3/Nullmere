@@ -974,7 +974,7 @@ realm; keepers are told in plain words, never a status code.
   A battle goes on through the watch, as a field of battle (below).
 - **Fields of battle.** In a realm, a strike on another House's company
   joins battle there, a field of battle that goes on pace by pace and takes
-  in whole armies. Every company that strikes or is struck within three
+  in whole armies. Every company that strikes or is struck within five
   tiles of where it was joined fights in it on its House's side; a House
   new to it takes the side none of whose Houses it is at war with, so an
   ally striking in fights beside its ally, and a House at war with both
@@ -1075,15 +1075,17 @@ realm; keepers are told in plain words, never a status code.
 - **How ages end.** In 48 ages of a realm as it stands by default, twelve
   seats on a lake of radius 36, played through by stewards alone, pace by
   pace, under the rules as they now stand, the shores at war in every
-  Sundering, the Moonspire decided 43 and dominion 5; an age ran 147
-  watches at the median, and a third saw a House fall outright. The seats
-  won alike, within chance (χ² 10.0 on 11 degrees of freedom), and so did
-  the tempers (χ² 1.7 on 3), the ambitious 23%, the cunning 27%, the wary
-  19% and the steadfast 31%, but each its own way: every dominion went to
-  the ambitious and the cunning, and the wary won by the Moonspire alone.
-  A realm's armies came to 1,170,000 troops at the median as its age
-  ended, and its greatest battles to 36,500 troops at the median and
-  69,000 at the most.
+  Sundering and a field of battle five tiles about its heart, the
+  Moonspire decided 42 and dominion 6; an age ran 155 watches at the
+  median and 354 at the longest, and more than a quarter saw a House fall
+  outright. The seats won alike, within chance (χ² 8.5 on 11 degrees of
+  freedom), and so did the tempers (χ² 5.2 on 3), the ambitious 27%, the
+  cunning 17%, the wary 19% and the steadfast 38%, the Moonspire most of
+  all for each: the six dominions went two to the ambitious, two to the
+  cunning, and one each to the wary and the steadfast. A realm's armies
+  came to 1,230,000 troops at the median as its age ended, and its
+  greatest battles to 50,500 troops at the median and 124,000 at the
+  most.
 - **Tribute.** From watch twenty, an ambitious or cunning steward a quarter
   stronger than a neighbour may demand a fifth of its stores. Paid, it keeps
   the peace for twenty watches, unless that neighbour's Moonspire rises;

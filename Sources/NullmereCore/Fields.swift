@@ -39,8 +39,10 @@ public struct Field: Codable, Equatable, Identifiable, Sendable {
         self.held = nil
     }
 
-    /// How far from its heart a company fights in it.
-    public static let span = 3
+    /// How far from its heart a company fights in it: far enough that two
+    /// armies met along a front fight one battle, not one for every few
+    /// companies.
+    public static let span = 5
     /// The longest it goes on: two watches of paces.
     public static let longest = 2 * GameState.pacesPerWatch
     /// The fewest companies that make it a battle the chronicle tells.
