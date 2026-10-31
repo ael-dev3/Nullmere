@@ -114,14 +114,16 @@ final class NullmereUITests: XCTestCase {
         report()
     }
 
-    /// The realm's front door, entered by name, and the world beyond it:
-    /// each passes the audit, the map is walked as VoiceOver walks it, and
-    /// what a keeper opens over the map passes too.
+    /// The realm's front door, entered by name by way of the realm's
+    /// compact, and the world beyond it: each passes the audit, the map is
+    /// walked as VoiceOver walks it, and what a keeper opens over the map
+    /// passes too.
     func testTheDoorAndTheWorldPassTheAuditAndTheMapIsWalked() throws {
         // The world held still (Motion: Still, as a keeper may set it), so
         // each audit reads a screen that has settled, not one redrawn under
         // it every frame.
-        app.launchArguments += ["-launcher.motion", "still"]
+        // And a keeper who has never accepted the realm's compact.
+        app.launchArguments += ["-launcher.motion", "still", "-compact.accepted", "0"]
         let window = try openTheLauncher()
         window.buttons["Play"].click()
         let name = window.textFields["Your name on the lake"]
@@ -134,6 +136,12 @@ final class NullmereUITests: XCTestCase {
         audit("the realm's front door, the name field left")
         name.click()
         name.typeText("Ama\r")
+
+        // The realm's compact, read and accepted before the first entry.
+        let accept = window.buttons["Accept and enter"]
+        XCTAssertTrue(accept.waitForExistence(timeout: 30), "The compact before the first entry")
+        audit("the realm's compact")
+        accept.click()
 
         // The card a keeper first meets holds the keys and VoiceOver until
         // it is put away; the world lies behind it.

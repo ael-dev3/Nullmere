@@ -908,7 +908,7 @@ public final class GameSession {
 
     // MARK: The realm's word
 
-    private func hear(_ event: RealmEvent) {
+    func hear(_ event: RealmEvent) {
         if case .unreachable(let reason) = event {
             // Said once, however often the link tries again.
             if !isOutOfReach {
@@ -924,6 +924,11 @@ public final class GameSession {
         }
         switch event {
         case .status(let status):
+            // The realm moved on past this build while the keeper played:
+            // told once, as the door would tell it.
+            if status.wantsNewerBuild, realmStatus?.wantsNewerBuild != true {
+                post(RealmStatus.newerBuildNote, tone: .bad)
+            }
             realmStatus = status
             statusHeard = Date()
         case .settled(let world, _), .changed(let world):

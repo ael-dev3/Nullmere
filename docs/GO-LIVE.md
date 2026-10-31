@@ -87,9 +87,21 @@ nothing in the app changes.
 Keeping the Words safe: each line a keeper reports shows in that log as
 `REPORT by …`, with the lines said round it. Started with
 `NULLMERE_STEWARD_ORDERS` naming a file, the steward reads orders added
-to it, a line each: `remove 123` takes line 123 out of the Words, and
-`bar 4 20` bars House 4 from them for twenty watches. The log answers
-each `ORDER` with what was done.
+to it, a line each: `remove 123` takes line 123 out of the Words,
+`bar 4 20` bars House 4 from them for twenty watches, and `forget Ama`
+forgets the keeper who goes by Ama, as the realm's compact promises
+whoever asks (their name and identity leave the roll; a steward keeps
+their House under another name). The log answers each `ORDER` with what
+was done.
+
+The realm's compact and its tongue: the compact keepers accept at the
+front door is `Compact` in `Sources/NullmereCore/Compact.swift`. Raise its
+`edition` (and say what changed in `changes`) whenever its words change in
+substance, and every keeper is asked to accept it again. A realm tells
+the tongue it speaks (`Speech.current`) and the oldest it still hears
+(`Speech.oldestHeard`): raise `oldestHeard` only when a Mac with an
+earlier build can no longer play, and its keeper is told at the door to
+get the new build from the repository's releases.
 
 ## 2. Sign and notarize the release
 

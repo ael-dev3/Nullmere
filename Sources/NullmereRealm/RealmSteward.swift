@@ -337,8 +337,15 @@ public actor RealmSteward {
             pendingActs.append(("", done))
             worldChanged = true
             return "Barred \(state.world.houses[numbers[0]].title) from the Words until watch \(until)."
+        case ("forget", _) where words.count > 1:
+            // A keeper who asked to be forgotten, by the name they go by.
+            let name = words.dropFirst().joined(separator: " ")
+            guard let gone = state.forget(keeperNamed: name) else { return "No keeper goes by \(name)." }
+            worldChanged = true
+            let house = gone.house.map { " \(state.world.houses[$0].title) is the stewards' to keep." } ?? ""
+            return "Forgot \(gone.name) and their identity.\(house)"
         default:
-            return "Not an order the steward knows: \(order). Orders: remove <line>, bar <House> <watches>."
+            return "Not an order the steward knows: \(order). Orders: remove <line>, bar <House> <watches>, forget <keeper>."
         }
     }
 

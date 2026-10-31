@@ -119,6 +119,22 @@ final class RealmClientTests: XCTestCase {
         XCTAssertEqual(ama.state.stance(ama.player, bel.player), .pact)
     }
 
+    /// A realm that moves on past this build while its keeper plays: they
+    /// are told once, as the door would tell them.
+    func testAKeeperInTheWorldIsToldOnceWhenTheRealmMovesOn() throws {
+        let realm = realm()
+        let ama = try enter(realm, as: "a", name: "Ama")
+        let status = try XCTUnwrap(ama.realmStatus)
+        XCTAssertFalse(status.wantsNewerBuild)
+        let movedOn = RealmStatus(name: status.name, age: status.age, watch: status.watch, seats: status.seats, freeSeats: status.freeSeats,
+                                  keepers: status.keepers, online: status.online, ready: status.ready, secondsLeft: status.secondsLeft,
+                                  isEnding: false, speech: Speech.current + 1, oldestSpeech: Speech.current + 1, compact: Compact.edition)
+        ama.hear(.status(movedOn))
+        ama.hear(.status(movedOn))
+        XCTAssertEqual(ama.notices.filter { $0.text == RealmStatus.newerBuildNote }.count, 1, "Told once")
+        XCTAssertEqual(ama.notices.last?.tone, .bad)
+    }
+
     func testTheRealmLineShowsOnlyWhatMatters() {
         let alone = RealmStatus(name: "R", age: 1, watch: 3, seats: 4, freeSeats: 3, keepers: 1, online: 1, ready: 0,
                                 secondsLeft: 999_999_999, isEnding: false)

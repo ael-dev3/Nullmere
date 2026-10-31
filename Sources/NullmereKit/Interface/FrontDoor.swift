@@ -34,9 +34,20 @@ struct FrontDoor: View {
     }
 
     private var choices: [Choice] {
+        if isReadingCompact {
+            return [
+                Choice(title: "Accept and enter", enabled: app.canEnter(with: name), hint: "Accepts the realm's compact and enters the world") {
+                    app.acceptCompact(enteringAs: name)
+                },
+                Choice(title: "Back", hint: "Returns to the door, nothing accepted") { app.closeCompact() },
+            ]
+        }
         var choices = [Choice(title: enterTitle, enabled: app.canEnter(with: name), hint: enterHint) {
-            app.enterWorld(name: name)
+            app.enterOrReadCompact(name: name)
         }]
+        if app.wantsNewerBuild {
+            choices.append(Choice(title: "Get the new build", hint: "Opens the page of Nullmere Online's newest build") { app.getNewerBuild() })
+        }
         if isOutOfReach {
             choices.append(Choice(title: "Try again", hint: "Reaches for the realm again") { app.openDoor() })
         }
@@ -66,7 +77,11 @@ struct FrontDoor: View {
                     // than its choices run off the window.
                     Spacer(minLength: 0)
                         .frame(minHeight: 24, maxHeight: waterline + 34 * unit)
-                    door(choices, unit: unit)
+                    if isReadingCompact {
+                        compact(choices, unit: unit, height: proxy.size.height)
+                    } else {
+                        door(choices, unit: unit)
+                    }
                     Spacer(minLength: 16)
                 }
                 .frame(width: proxy.size.width)
@@ -88,7 +103,7 @@ struct FrontDoor: View {
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
-            Button("") { app.leaveDoor() }
+            Button("") { isReadingCompact ? app.closeCompact() : app.leaveDoor() }
                 .keyboardShortcut(.cancelAction)
                 .opacity(0)
                 .allowsHitTesting(false)
@@ -106,7 +121,16 @@ struct FrontDoor: View {
         // reach, Try again is lit, the one way forward; Enter again once
         // the realm answers.
         .onChange(of: name) { _, _ in selection = 0 }
-        .onChange(of: isOutOfReach, initial: true) { _, out in selection = out ? 1 : 0 }
+        // Out of reach, or moved on past this build, the second choice is
+        // the way forward; the compact opened or closed, the first.
+        .onChange(of: isOutOfReach || app.wantsNewerBuild, initial: true) { _, blocked in selection = blocked ? 1 : 0 }
+        .onChange(of: isReadingCompact) { _, reading in
+            selection = 0
+            if reading { AccessibilityNotification.Announcement("The realm's compact. \(Compact.preface(accepted: app.compactAccepted))").post() }
+        }
+        .onChange(of: app.wantsNewerBuild) { _, wants in
+            if wants { AccessibilityNotification.Announcement(RealmStatus.newerBuildNote).post() }
+        }
         .onChange(of: focusedChoice) { _, choice in if let choice { selection = choice } }
         .onChange(of: selection) { _, choice in if focusedChoice != nil { focusedChoice = choice } }
         // What the door has to tell, said as it changes: a problem at the
@@ -142,6 +166,17 @@ struct FrontDoor: View {
                     .onNight()
                     .padding(.top, 16 * unit)
             }
+            if app.wantsNewerBuild {
+                Text(verbatim: RealmStatus.newerBuildNote)
+                    .font(.launcher(.launcherType(11, unit: unit), weight: .regular))
+                    .lineSpacing(4 * unit)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Palette.bad)
+                    .frame(maxWidth: 460 * unit)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .onNight()
+                    .padding(.top, 16 * unit)
+            }
             if let problem = app.arrivalProblem {
                 Text(verbatim: problem)
                     .font(.launcher(.launcherType(11, unit: unit), weight: .regular))
@@ -154,22 +189,8 @@ struct FrontDoor: View {
                     .accessibilityLabel("Problem: \(problem)")
             }
 
-            // One choice is lit at a time, and it is the one Return performs:
-            // the pointer chooses by resting on a word, the arrows by moving.
-            HStack(spacing: 48 * unit) {
-                ForEach(choices.indices, id: \.self) { index in
-                    MenuButton(title: choices[index].title, isSelected: index == min(selection, choices.count - 1),
-                               enabled: choices[index].enabled) {
-                        perform(index, of: choices)
-                    }
-                    .focused($focusedChoice, equals: index)
-                    .onPointer { inside in
-                        if inside { selection = index }
-                    }
-                    .accessibilityHint(choices[index].hint)
-                }
-            }
-            .padding(.top, 24 * unit)
+            row(of: choices, unit: unit)
+                .padding(.top, 24 * unit)
 
             // The note on identity goes first when room is short.
             ViewThatFits(in: .vertical) {
@@ -183,6 +204,75 @@ struct FrontDoor: View {
                     .padding(.top, 22 * unit)
                 Color.clear.frame(height: 0)
             }
+        }
+        .padding(.horizontal, 24)
+    }
+
+    /// One choice is lit at a time, and it is the one Return performs: the
+    /// pointer chooses by resting on a word, the arrows by moving.
+    private func row(of choices: [Choice], unit: CGFloat) -> some View {
+        HStack(spacing: 48 * unit) {
+            ForEach(choices.indices, id: \.self) { index in
+                MenuButton(title: choices[index].title, isSelected: index == min(selection, choices.count - 1),
+                           enabled: choices[index].enabled) {
+                    perform(index, of: choices)
+                }
+                .focused($focusedChoice, equals: index)
+                .onPointer { inside in
+                    if inside { selection = index }
+                }
+                .accessibilityHint(choices[index].hint)
+            }
+        }
+    }
+
+    /// The compact lies open: the keeper asked to enter, and must accept it
+    /// first. Not while the realm has moved on past this build.
+    private var isReadingCompact: Bool {
+        app.readsCompact && !app.wantsNewerBuild
+    }
+
+    /// The realm's compact on the water, as the launcher's panels lie: why
+    /// it is read now, each part under its heading, scrolled through within
+    /// the window, and the way on.
+    private func compact(_ choices: [Choice], unit: CGFloat, height: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            PanelHeader(title: "The realm's compact")
+            Text(verbatim: Compact.preface(accepted: app.compactAccepted))
+                .font(.launcher(.launcherType(11, unit: unit), weight: .regular))
+                .lineSpacing(4 * unit)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Palette.text(0.8))
+                .frame(maxWidth: 460 * unit)
+                .fixedSize(horizontal: false, vertical: true)
+                .onNight()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16 * unit) {
+                    ForEach(Compact.articles, id: \.heading) { article in
+                        VStack(alignment: .leading, spacing: 6 * unit) {
+                            SpacedText(article.heading, size: .launcherType(9, unit: unit), weight: .regular, tracking: 0.3)
+                                .foregroundStyle(Palette.text(0.82))
+                            Text(verbatim: article.text)
+                                .font(.launcher(.launcherType(11.5, unit: unit), weight: .regular))
+                                .lineSpacing(4 * unit)
+                                .foregroundStyle(Palette.text(0.88))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(article.heading). \(article.text)")
+                        .accessibilityAddTraits(.isStaticText)
+                    }
+                }
+                .padding(.vertical, 8 * unit)
+                .padding(.horizontal, 4 * unit)
+                .onNight()
+            }
+            .frame(maxWidth: 500 * unit, maxHeight: max(140, height * 0.38))
+            .padding(.top, 16 * unit)
+            .accessibilityLabel("The realm's compact")
+            row(of: choices, unit: unit)
+                .padding(.top, 22 * unit)
         }
         .padding(.horizontal, 24)
     }
@@ -211,6 +301,7 @@ struct FrontDoor: View {
     }
 
     private var enterHint: String {
+        if app.mustReadCompact { return "Opens the realm's compact, to read and accept before you enter" }
         if app.keeperName != nil { return "Takes up your seat in the realm" }
         return "Takes a seat in the realm under the name you wrote"
     }
@@ -252,7 +343,7 @@ struct FrontDoor: View {
                     .padding(.vertical, 6 * unit)
                     .frame(width: 320 * unit)
                     .overlay(alignment: .bottom) { Underline(opacity: nameFocused ? 0.75 : 0.4) }
-                    .onSubmit { app.enterWorld(name: name) }
+                    .onSubmit { app.enterOrReadCompact(name: name) }
                     .accessibilityLabel("Your name on the lake")
                     // What's wrong with the name, or what it must be, read
                     // with the field.

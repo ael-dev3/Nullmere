@@ -40,6 +40,8 @@ final class NetworkAppTests: XCTestCase {
         dirs.append(dir)
         let address = GameApp.RealmAddress.network(URL(string: "https://realm.test/\(realm)")!)
         UserDefaults.standard.removeObject(forKey: GameApp.nameKey(for: address))
+        // A Mac whose keeper has never accepted the realm's compact.
+        UserDefaults.standard.removeObject(forKey: GameApp.compactKey)
         return GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: address, identity: identity,
                        opensAtOnce: false, transport: db, pollInterval: 0.05)
     }
@@ -49,6 +51,42 @@ final class NetworkAppTests: XCTestCase {
         renderer.scale = 1
         guard let image = renderer.cgImage else { return XCTFail("Nothing drawn") }
         XCTAssertGreaterThanOrEqual(litPixels(image), 20, "Drawn, not blank")
+    }
+
+    /// A realm moved on past this build: its door says so and won't open,
+    /// nor the compact, and offers the page of the newest build.
+    func testARealmMovedOnPastThisBuildIsToldAtItsDoor() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        dirs.append(dir)
+        UserDefaults.standard.removeObject(forKey: GameApp.compactKey)
+        let app = GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false,
+                          address: .network(URL(string: "https://realm.test/moved-on")!), identity: MemoryStore(), opensAtOnce: false)
+        var opened: [URL] = []
+        app.openURL = { opened.append($0) }
+        func status(speech: Int, compact: Int) -> RealmStatus {
+            RealmStatus(name: "The Nullmere", age: 1, watch: 3, seats: 4, freeSeats: 2, keepers: 2, online: 1, ready: 0, secondsLeft: 60,
+                        isEnding: false, speech: speech, oldestSpeech: speech, compact: compact)
+        }
+        app.hear(.status(status(speech: Speech.current, compact: Compact.edition)))
+        XCTAssertFalse(app.wantsNewerBuild, "A realm of this build")
+        XCTAssertTrue(app.canEnter(with: "Ama"))
+
+        app.hear(.status(status(speech: Speech.current + 1, compact: Compact.edition)))
+        XCTAssertTrue(app.wantsNewerBuild, "The realm no longer hears this Mac")
+        XCTAssertFalse(app.canEnter(with: "Ama"), "No way in from this build")
+        PressableButtons.isListening = true
+        defer { PressableButtons.isListening = false }
+        draw(FrontDoor(app: app, name: "Ama"))
+        XCTAssertFalse(PressableButtons.press("Enter the world"))
+        XCTAssertTrue(PressableButtons.press("Get the new build"))
+        XCTAssertEqual(opened, [URL(string: Speech.newestBuild)!])
+        app.enterOrReadCompact(name: "Ama")
+        XCTAssertFalse(app.readsCompact, "Nor the compact")
+        app.acceptCompact(enteringAs: "Ama")
+        XCTAssertNil(app.compactAccepted, "Nothing accepted for a realm that can't be entered")
+
+        app.hear(.status(status(speech: Speech.current, compact: Compact.edition + 1)))
+        XCTAssertTrue(app.wantsNewerBuild, "A compact newer than this build can show")
     }
 
     func testAKeeperEntersPlaysAndKeepsTheirKey() async throws {
@@ -76,7 +114,23 @@ final class NetworkAppTests: XCTestCase {
         draw(FrontDoor(app: app, name: "A"))
         XCTAssertFalse(PressableButtons.press("Enter the world"), "Not with a name of one letter")
         draw(FrontDoor(app: app, name: "Ama"))
+        // Never accepted on this Mac: the realm's compact first, and Back
+        // goes back to the door with nothing accepted.
+        XCTAssertTrue(app.mustReadCompact)
         XCTAssertTrue(PressableButtons.press("Enter the world"))
+        XCTAssertTrue(app.readsCompact, "The compact, to read and accept")
+        XCTAssertFalse(app.isEntering, "Not before it is accepted")
+        draw(FrontDoor(app: app, name: "Ama"))
+        XCTAssertTrue(PressableButtons.press("Back"))
+        XCTAssertFalse(app.readsCompact)
+        XCTAssertNil(app.compactAccepted, "Nothing accepted")
+        app.enterOrReadCompact(name: "Ama")
+        draw(FrontDoor(app: app, name: "Ama"))
+        XCTAssertTrue(PressableButtons.press("Accept and enter"))
+        defer { UserDefaults.standard.removeObject(forKey: GameApp.compactKey) }
+        XCTAssertEqual(app.compactAccepted, Compact.edition)
+        XCTAssertEqual(UserDefaults.standard.object(forKey: GameApp.compactKey) as? Int, Compact.edition, "Kept on this Mac")
+        XCTAssertFalse(app.mustReadCompact, "Not asked again until its words change")
         XCTAssertTrue(app.isEntering)
         draw(FrontDoor(app: app))
         try await until("the world") { app.session != nil }

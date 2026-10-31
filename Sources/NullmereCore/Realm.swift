@@ -59,12 +59,18 @@ public struct RealmStatus: Codable, Equatable, Sendable {
     public let frontier: FrontierNews?
     /// The keepers crossing from this realm to the Frontier, for its steward to read.
     public let crossings: [Crossing]?
+    /// The tongue the realm speaks (see `Speech`), and the oldest it still
+    /// hears from a keeper's Mac; absent from a realm older than either.
+    public let speech: Int?
+    public let oldestSpeech: Int?
+    /// The edition of the compact the realm holds its keepers to.
+    public let compact: Int?
 
     public static let presentShown = 24
 
     public init(name: String, age: Int, watch: Int, seats: Int, freeSeats: Int, keepers: Int, online: Int, ready: Int,
                 secondsLeft: Int, isEnding: Bool, present: [String]? = nil, lake: String? = nil, frontier: FrontierNews? = nil,
-                crossings: [Crossing]? = nil) {
+                crossings: [Crossing]? = nil, speech: Int? = nil, oldestSpeech: Int? = nil, compact: Int? = nil) {
         self.name = name
         self.age = age
         self.watch = watch
@@ -79,6 +85,9 @@ public struct RealmStatus: Codable, Equatable, Sendable {
         self.lake = lake
         self.frontier = frontier
         self.crossings = crossings
+        self.speech = speech
+        self.oldestSpeech = oldestSpeech
+        self.compact = compact
     }
 }
 
@@ -88,7 +97,7 @@ extension RealmStatus {
     public func aged(by seconds: Int) -> RealmStatus {
         RealmStatus(name: name, age: age, watch: watch, seats: seats, freeSeats: freeSeats, keepers: keepers, online: online,
                     ready: ready, secondsLeft: max(0, secondsLeft - max(0, seconds)), isEnding: isEnding, present: present, lake: lake,
-                    frontier: frontier, crossings: crossings)
+                    frontier: frontier, crossings: crossings, speech: speech, oldestSpeech: oldestSpeech, compact: compact)
     }
 }
 
@@ -226,7 +235,8 @@ public struct RealmState: Codable, Equatable, Sendable {
                            isEnding: world.outcome != nil,
                            present: Array(online.sorted { $0.arrival < $1.arrival }.map(\.name).prefix(RealmStatus.presentShown)),
                            lake: world.settings.lake.title, frontier: frontierReport ?? frontierNews,
-                           crossings: frontier == nil && frontierNews != nil ? crossings : nil)
+                           crossings: frontier == nil && frontierNews != nil ? crossings : nil,
+                           speech: Speech.current, oldestSpeech: Speech.oldestHeard, compact: Compact.edition)
     }
 
     // MARK: Keepers
@@ -350,6 +360,23 @@ public struct RealmState: Codable, Equatable, Sendable {
     /// Whoever runs the realm bars a House from the Words for so many watches.
     public mutating func bar(_ house: Int, fromWordsFor watches: Int) -> [GameEvent] {
         world.bar(house, watches: watches)
+    }
+
+    /// Whoever runs the realm forgets a keeper who asked to be forgotten,
+    /// as the compact promises: their name and identity leave the roll,
+    /// and a steward keeps the House they held as it stands, under another
+    /// name, theirs free again. The keeper forgotten, or nil when no keeper
+    /// goes by `name`.
+    public mutating func forget(keeperNamed name: String) -> Keeper? {
+        let lowered = RealmState.trim(name).lowercased()
+        guard !lowered.isEmpty, let index = keepers.firstIndex(where: { $0.name.lowercased() == lowered }) else { return nil }
+        let keeper = keepers.remove(at: index)
+        if let house = keeper.house, world.houses.indices.contains(house) {
+            world.houses[house].isPlayer = false
+            world.houses[house].name = unusedHouseName()
+            world.record(.seating, [house], "\(world.houses[house].title) passes to the stewards, its keeper gone from the realm for good.")
+        }
+        return keeper
     }
 
     /// What came of arrivals, taken by the one who tells them.

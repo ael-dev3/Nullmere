@@ -278,7 +278,16 @@ as the realm will, and takes the realm's word as final.
 - **The front door.** Choose the name you'll go by: two to twenty letters.
   It names you and the House you'll hold, and nothing else is asked. The
   realm knows you by an identity your Mac keeps in its keychain, and by
-  your name. The front door, set on the water as the launcher's panels
+  your name. Before you first enter, the door lays the realm's compact
+  on the water: what you agree to and what the realm keeps of you, in six
+  plain parts (who you are here, what the realm keeps, what stays on your
+  Mac, keeping the realm's peace, how it may change, and leaving, with
+  the steward's promise to forget whoever asks). Accept and enter, or go
+  back; it is asked again only when its words change. A realm tells the
+  tongue it speaks and the oldest it still hears; a Mac too old for it
+  is told so at the door, which won't open, and Get the new build opens
+  the page of the newest release (a keeper in the world when the realm
+  moves on is told once). The front door, set on the water as the launcher's panels
   are, shows the realm's state: its age and watch, how many keepers are
   there, and how many seats are open. Its choices are the launcher's: one
   lit at a time, the one Return takes, the arrows moving along them and
@@ -1123,7 +1132,8 @@ realm; keepers are told in plain words, never a status code.
   away (it stands where it was, as taken away) or bar a House from the
   Words for so many watches (its keeper is told until when, and nothing
   they write is said) by writing "remove <line>" or "bar <House>
-  <watches>" into the file named by `NULLMERE_STEWARD_ORDERS`.
+  <watches>" into the file named by `NULLMERE_STEWARD_ORDERS`, where
+  "forget <keeper>" forgets a keeper who asks it.
 - **The world first.** The map is the screen; the interface keeps to
   its edges and comes when it is wanted. The top bar is three small
   islands, the House and the watch, the stores, and Ready, with the

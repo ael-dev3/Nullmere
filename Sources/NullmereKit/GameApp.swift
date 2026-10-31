@@ -285,6 +285,7 @@ public final class GameApp {
         door = .connecting
         arrivalProblem = nil
         isEntering = false
+        readsCompact = false
         stopWaiting()
         // A link replaced (Try Again) is let go first: nothing it still has
         // on its way can be taken for the new one's. It doesn't leave the
@@ -324,12 +325,65 @@ public final class GameApp {
         }
     }
 
-    /// Whether the keeper can step in: the realm is open, and they're known
-    /// to it or have a name ready.
+    /// Whether the keeper can step in: the realm is open and hasn't moved
+    /// on past this build, and they're known to it or have a name ready.
     public func canEnter(with name: String) -> Bool {
-        guard case .open = door, !isEntering, !isWaitingForSeat else { return false }
+        guard case .open(let status) = door, !status.wantsNewerBuild, !isEntering, !isWaitingForSeat else { return false }
         return keeperName != nil || RealmState.isValidName(name)
     }
+
+    // MARK: The compact and the build
+
+    /// The edition of the realm's compact this Mac's keeper accepted, if any.
+    public private(set) var compactAccepted: Int? = UserDefaults.standard.object(forKey: GameApp.compactKey) as? Int
+    static let compactKey = "compact.accepted"
+    /// The compact lies open at the front door, to read and accept.
+    public private(set) var readsCompact = false
+
+    /// The keeper reads and accepts the realm's compact before entering:
+    /// on this Mac they never have, or its words have changed since.
+    public var mustReadCompact: Bool {
+        Compact.mustRead(accepted: compactAccepted)
+    }
+
+    /// The door's way in: the world, or the compact first when it must be
+    /// read.
+    public func enterOrReadCompact(name: String) {
+        guard canEnter(with: name) else { return }
+        if mustReadCompact {
+            readsCompact = true
+        } else {
+            enterWorld(name: name)
+        }
+    }
+
+    /// The keeper accepts the compact as it stands, and enters under `name`.
+    public func acceptCompact(enteringAs name: String) {
+        guard canEnter(with: name) else { return }
+        compactAccepted = Compact.edition
+        UserDefaults.standard.set(Compact.edition, forKey: Self.compactKey)
+        readsCompact = false
+        enterWorld(name: name)
+    }
+
+    /// Back from the compact to the door, nothing accepted.
+    public func closeCompact() {
+        readsCompact = false
+    }
+
+    /// The realm has moved on past this build: it can't be entered from it.
+    public var wantsNewerBuild: Bool {
+        if case .open(let status) = door { return status.wantsNewerBuild }
+        return false
+    }
+
+    /// Opens the page where the newest build is to be had.
+    public func getNewerBuild() {
+        if let url = URL(string: Speech.newestBuild) { openURL(url) }
+    }
+
+    /// How a page is opened; tests keep their own.
+    @ObservationIgnored var openURL: (URL) -> Void = { NSWorkspace.shared.open($0) }
 
     /// Steps into the world: a returning keeper by their identity, a new one
     /// with the name they chose.
@@ -532,6 +586,7 @@ public final class GameApp {
     /// Leaves the front door for the launcher.
     public func leaveDoor() {
         stopWaiting()
+        readsCompact = false
         // Back in the launcher, the model is the launcher's to watch for,
         // and a realm hosted here rests until the door is opened again.
         recheckTask?.cancel()
