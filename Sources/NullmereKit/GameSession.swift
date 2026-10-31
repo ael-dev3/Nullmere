@@ -220,6 +220,10 @@ public final class GameSession {
     public var onCue: ((Ambience.Cue) -> Void)?
     /// Called with each sound the game makes and where it is heard from.
     public var onPlacedCue: ((Ambience.Cue, SoundPlace) -> Void)?
+    /// The din of the fields of battle in sight, told to the sound as it
+    /// changes: how loud, and where across the view.
+    public var onDin: ((Float, Float) -> Void)?
+    @ObservationIgnored var dinTold: (level: Float, pan: Float) = (0, 0)
     /// Called with the advisor's counsel as each new charge comes.
     public var onCounsel: ((String) -> Void)?
     /// The charge last counselled: the one the keeper had as the session
@@ -1466,6 +1470,37 @@ public final class GameSession {
         guard let hex else { return .middle }
         let heard = camera.hearing(of: hex)
         return SoundPlace(pan: heard.pan, gain: heard.gain)
+    }
+
+    /// The din of the fields of battle the keeper can see: as loud as the
+    /// troops fighting there (a great battle of twelve thousand or more is
+    /// as loud as it gets) and as near as the view stands to it, and where
+    /// across the view; nil when none is in sight.
+    func battleDin() -> (level: Float, pan: Float)? {
+        var total: Float = 0, panned: Float = 0
+        for field in state.fieldsOfBattle {
+            let seen = field.fighters.contains { fighter in
+                fighter.standing && state.unit(fighter.unit).map { isVisible($0.position) } == true
+            }
+            guard seen else { continue }
+            let troops = field.sides.indices.reduce(0) { $0 + field.inField($1).troops }
+            let heard = camera.hearing(of: field.at)
+            let loud = min(Float(troops) / 12_000, 1) * heard.gain
+            total += loud
+            panned += loud * heard.pan
+        }
+        guard total > 0.001 else { return nil }
+        return (min(total, 1), min(max(panned / total, -1), 1))
+    }
+
+    /// Tells the sound the din, when it has changed enough to hear; still,
+    /// as the rest of the world is, under Reduce Motion's stillest.
+    func hearBattles() {
+        let din = motion == .still ? nil : battleDin()
+        let level = din?.level ?? 0, pan = din?.pan ?? 0
+        guard abs(level - dinTold.level) > 0.02 || abs(pan - dinTold.pan) > 0.05 || (level == 0 && dinTold.level != 0) else { return }
+        dinTold = (level, pan)
+        onDin?(level, pan)
     }
 
     /// Sounds a cue, from where in the world it happened.

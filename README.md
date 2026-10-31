@@ -1058,8 +1058,14 @@ realm; keepers are told in plain words, never a status code.
   heard from where it happened: a battle to the left of the view leans
   into the left ear, one far beyond the view's edges is fainter, and the
   view turned turns the sound with it; what has no place (an order, the
-  watch's bell, a choice) sounds in the middle. Sound fades out with the
-  picture, and as the app quits, and back in from silence.
+  watch's bell, a choice) sounds in the middle. While a field of battle
+  is in sight its din rises under the night: a clamour of voices, the
+  tramp of feet and steel ringing on steel, as loud as the troops fighting
+  there (twelve thousand or more as loud as it gets) and as near as the
+  view stands, heard from where the field is across the view, easing in
+  and out as battles are joined and end; it plays at the ambience's
+  volume, and is still under the stillest motion. Sound fades out with
+  the picture, and as the app quits, and back in from silence.
 - **The advisor.** The House's steward reads each new charge aloud as it
   comes, what it is and how to keep it, in the Mac's own voice, a little
   low and unhurried; the first as the keeper enters the world. It is

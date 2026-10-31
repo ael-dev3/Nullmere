@@ -168,6 +168,13 @@ public final class Ambience {
     /// Long enough at that pace for the sound to fall some thirty decibels.
     public static let quitFadeSeconds = 0.35
 
+    /// The din of the fields of battle in sight: how loud, from nothing (0)
+    /// to a great battle close by (1), and where across the view, from the
+    /// left (-1) to the right (1).
+    public func setDin(level: Float, pan: Float) {
+        synth.setDin(level: level, pan: pan)
+    }
+
     /// The score: on or off, and at peace or at war.
     public var isMusicOn = true {
         didSet { applyMusic() }
@@ -329,6 +336,17 @@ final class Synth: @unchecked Sendable {
     private var heard: (effects: Float, ambience: Float, music: Float) = (1, 1, 1)
     private var heardBegun = false
     private var pendingVolumes: (effects: Float, ambience: Float, music: Float)?
+    /// The din of battle as heard, easing toward what it was last told, and
+    /// what makes it: a clamour of voices, the tramp of feet, and steel
+    /// ringing on steel, each clash a voice of its own until it rings out.
+    private var din: (level: Float, pan: Float) = (0, 0)
+    private var dinTarget: (level: Float, pan: Float) = (0, 0)
+    private var pendingDin: (level: Float, pan: Float)?
+    private var clamourLow: Float = 0
+    private var clamourHigh: Float = 0
+    private var tramp: Float = 0
+    private var clashes: [(phase: Float, frequency: Float, amplitude: Float, age: Float)] = Array(repeating: (0, 0, 0, 1), count: 4)
+    private var nextClash: Float = 0
 
     /// The drone's partials.
     private static let droneFrequencies: [Float] = [55, 82.41, 110, 164.81]
@@ -352,6 +370,16 @@ final class Synth: @unchecked Sendable {
 
     func setMusic(on: Bool, mood: Score.Mood) {
         lock.lock(); pendingMusic = (on, mood); lock.unlock()
+    }
+
+    func setDin(level: Float, pan: Float) {
+        lock.lock(); pendingDin = (min(max(level, 0), 1), min(max(pan, -1), 1)); lock.unlock()
+    }
+
+    /// The din as it is heard, for tests.
+    var dinHeard: (level: Float, pan: Float) {
+        lock.lock(); defer { lock.unlock() }
+        return din
     }
 
     func prepare(sampleRate: Float) {
@@ -690,6 +718,10 @@ final class Synth: @unchecked Sendable {
             volumes = next
             pendingVolumes = nil
         }
+        if let next = pendingDin {
+            dinTarget = next
+            pendingDin = nil
+        }
         let volume = volumes
         lock.unlock()
         if !heardBegun {
@@ -707,6 +739,9 @@ final class Synth: @unchecked Sendable {
         // The wind's noise, as loud at any sample rate: the filter below
         // passes the same band, so its noise is scaled to the rate.
         let windNoise = (sampleRate / 48_000).squareRoot()
+        // The din's filters, their corners set in hertz: the clamour's band
+        // of voices, and the low tramp of feet.
+        let voicesLow = 1 - exp(-tau * 320 * dt), voicesHigh = 1 - exp(-tau * 1_600 * dt), feet = 1 - exp(-tau * 90 * dt)
         for frame in 0..<frames {
             time += Double(dt)
             level += (goal - level) * dt * rate
@@ -756,6 +791,37 @@ final class Synth: @unchecked Sendable {
                 cueRight += cue * notes[n].right
             }
 
+            // The din of battle: as loud as the fighting, from where it is.
+            din.level += (dinTarget.level - din.level) * min(dt * 2, 1)
+            din.pan += (dinTarget.pan - din.pan) * min(dt * 2, 1)
+            var battle: Float = 0
+            if din.level > 0.0005 {
+                let noise = random()
+                clamourLow += (noise - clamourLow) * voicesLow
+                clamourHigh += (noise - clamourHigh) * voicesHigh
+                let clamour = (clamourHigh - clamourLow) * (0.7 + 0.3 * Float(sin(time * 1.3)))
+                tramp += (random() * windNoise - tramp) * feet
+                let step = max(0, Float(sin(time * 2 * .pi * 2.1)))
+                nextClash -= dt
+                if nextClash <= 0 {
+                    let slot = clashes.indices.max { clashes[$0].age < clashes[$1].age } ?? 0
+                    clashes[slot] = (0, 1_800 + 1_400 * abs(random()), 0.5 + 0.5 * abs(random()), 0)
+                    nextClash = (0.05 + 0.25 * abs(random())) / max(din.level, 0.2)
+                }
+                var ring: Float = 0
+                for c in clashes.indices where clashes[c].age < 0.4 {
+                    clashes[c].age += dt
+                    clashes[c].phase += tau * clashes[c].frequency * dt
+                    if clashes[c].phase > tau { clashes[c].phase -= tau }
+                    let phase = clashes[c].phase
+                    ring += (sin(phase) + 0.6 * sin(phase * 2.76)) * clashes[c].amplitude * exp(-clashes[c].age * 28)
+                }
+                battle = (clamour * 0.9 + tramp * step * 6 + ring * 0.05) * 0.2 * din.level
+            }
+            let dinAngle = (din.pan + 1) * .pi / 4
+            let dinLeft = battle * cos(dinAngle) * 1.414 * heard.ambience * level
+            let dinRight = battle * sin(dinAngle) * 1.414 * heard.ambience * level
+
             cueLeft *= heard.effects
             cueRight *= heard.effects
             drone *= heard.ambience
@@ -765,8 +831,8 @@ final class Synth: @unchecked Sendable {
             // as the sound fades out, so nothing rings on to be cut off.
             let cueLevel = goal > 0 ? 1 : level
             let bed = drone * level + music
-            left[frame] = Self.softened(bed + 0.5 * cueLeft * cueLevel + windLeft * air)
-            right[frame] = Self.softened(bed + 0.5 * cueRight * cueLevel + windRight * air)
+            left[frame] = Self.softened(bed + 0.5 * cueLeft * cueLevel + windLeft * air + dinLeft)
+            right[frame] = Self.softened(bed + 0.5 * cueRight * cueLevel + windRight * air + dinRight)
         }
         notes.removeAll { $0.age > $0.end }
     }
