@@ -33,10 +33,13 @@ extension RealmState {
 extension RealmView {
     /// A keeper's view in parts, as the realm's world goes: its map, a
     /// page of each long list, and the rest. Joined by `init(parts:)`, they
-    /// give back this view exactly.
-    public func parts(using encoder: JSONEncoder) throws -> [String: String] {
+    /// give back this view exactly. `sharing`, the world the view is of and
+    /// its parts as written with the same encoder: the lists the view keeps
+    /// as the world has them, its chronicle, relations and history, are
+    /// taken from those parts, not written again for every keeper.
+    public func parts(using encoder: JSONEncoder, sharing whole: (world: GameState, parts: [String: String])? = nil) throws -> [String: String] {
         var parts: [String: String] = [:]
-        let head = RealmView(keeper: keeper, age: age, world: try world.split(into: &parts, using: encoder))
+        let head = RealmView(keeper: keeper, age: age, world: try world.split(into: &parts, using: encoder, sharing: whole))
         parts["head"] = String(decoding: try encoder.encode(head), as: UTF8.self)
         return parts
     }
@@ -55,12 +58,25 @@ extension RealmView {
 extension GameState {
     /// A world's map and each long list, a page at a time, into `parts`;
     /// what is left of it, the head, returned.
-    func split(into parts: inout [String: String], using encoder: JSONEncoder) throws -> GameState {
+    func split(into parts: inout [String: String], using encoder: JSONEncoder,
+               sharing whole: (world: GameState, parts: [String: String])? = nil) throws -> GameState {
         func text<T: Encodable>(_ value: T) throws -> String {
             String(decoding: try encoder.encode(value), as: UTF8.self)
         }
         func paged<T: Encodable>(_ name: String, _ items: [T]?) throws {
             guard let items else { return }
+            try page(name, items)
+        }
+        /// A list the world has just the same, its pages taken as written.
+        func shared<T: Encodable & Equatable>(_ name: String, _ items: [T]?, as theirs: (GameState) -> [T]?) throws {
+            guard let items else { return }
+            if let whole, theirs(whole.world) == items, whole.parts["\(name).0"] != nil {
+                for (key, value) in whole.parts where key.hasPrefix(name + ".") { parts[key] = value }
+                return
+            }
+            try page(name, items)
+        }
+        func page<T: Encodable>(_ name: String, _ items: [T]) throws {
             // An empty list keeps its first page, so a page lost is told
             // from a list with nothing in it.
             for start in stride(from: 0, to: max(items.count, 1), by: RealmState.partPage) {
@@ -76,11 +92,11 @@ extension GameState {
         head.houses = []
         try paged("holds", holds)
         head.holds = []
-        try paged("relations", relations)
+        try shared("relations", relations) { $0.relations }
         head.relations = []
-        try paged("chronicle", chronicle)
+        try shared("chronicle", chronicle) { $0.chronicle }
         head.chronicle = []
-        try paged("recorded", recorded)
+        try shared("recorded", recorded) { $0.recorded }
         head.recorded = recorded.map { _ in [] }
         // Lists a realm from before them doesn't have stay absent from it.
         try paged("commanders", commanders)

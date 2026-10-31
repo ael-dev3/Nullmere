@@ -30,9 +30,20 @@ final class RealmPartsTests: XCTestCase {
                 }
             }
         }
-        let paged = try XCTUnwrap(realm.view(for: "a")).parts(using: encoder)
+        let view = try XCTUnwrap(realm.view(for: "a"))
+        let paged = try view.parts(using: encoder)
         XCTAssertNotNil(paged["relations.0"])
         XCTAssertEqual(paged.keys.filter { $0.hasPrefix("relations.") }.count, 1, "Fifteen relations to a page of 32")
+
+        // The lists a view keeps as the world has them are taken from the
+        // world's parts, and come to the same parts as written for it.
+        let world = try realm.parts(using: encoder)
+        XCTAssertEqual(try view.parts(using: encoder, sharing: (realm.world, world)), paged)
+        // A list the view has otherwise is written for it, not taken.
+        var other = realm.world
+        other.chronicle.removeLast()
+        let unlike = try view.parts(using: encoder, sharing: (other, world))
+        XCTAssertEqual(unlike, paged)
     }
     private let encoder: JSONEncoder = {
         let encoder = JSONEncoder()

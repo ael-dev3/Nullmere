@@ -450,6 +450,8 @@ public actor RealmSteward {
         // The way each company on the march goes, found once for every
         // keeper who sees a stretch of it.
         var ways: [Int: [Hex]]?
+        // The world's parts, which the views take their shared lists from.
+        let parts = worldChanged ? try state.parts(using: encoder) : keptParts
         for keeper in state.keepers where keeper.isOnline {
             var batches = Array((recentlyHeard[keeper.id] ?? []).filter { now - $0.at <= RealmSteward.heardKept }
                 .suffix(RealmSteward.heardBatches))
@@ -461,23 +463,23 @@ public actor RealmSteward {
             // Their view in parts: only those that changed are sent, with
             // the names of all it has now and the version each was written
             // at, so their Mac takes up the new and lets the gone go.
-            let parts = try view.parts(using: encoder)
+            let viewParts = try view.parts(using: encoder, sharing: (state.world, parts))
             let was = published[keeper.id] ?? [:]
-            let changed = parts.filter { was[$0.key] != $0.value }.sorted { $0.key < $1.key }
+            let changed = viewParts.filter { was[$0.key] != $0.value }.sorted { $0.key < $1.key }
             let others = pendingActs.filter { $0.by != keeper.id }.flatMap(\.events)
             let events = keeper.house.map { state.world.events(others + pendingEvents, heardBy: $0) } ?? []
-            guard !changed.isEmpty || Set(was.keys) != Set(parts.keys) || !events.isEmpty else { continue }
+            guard !changed.isEmpty || Set(was.keys) != Set(viewParts.keys) || !events.isEmpty else { continue }
             if !events.isEmpty { batches.append((now, HeardBatch(version: version + 1, events: events))) }
             batches = Array(batches.suffix(RealmSteward.heardBatches))
             lately[keeper.id] = batches
-            var at = (publishedAt[keeper.id] ?? [:]).filter { parts[$0.key] != nil }
+            var at = (publishedAt[keeper.id] ?? [:]).filter { viewParts[$0.key] != nil }
             for (name, text) in changed {
                 at[name] = version + 1
                 partKeepers.append(keeper.id)
                 partNames.append(name)
                 partTexts.append(text)
             }
-            shown[keeper.id] = parts
+            shown[keeper.id] = viewParts
             shownAt[keeper.id] = at
             keepers.append(keeper.id)
             views.append(RealmSteward.manifest(at))
@@ -485,7 +487,6 @@ public actor RealmSteward {
         }
         let answers = unanswered
         // The world's parts that changed, and those no longer there.
-        let parts = worldChanged ? try state.parts(using: encoder) : keptParts
         let changed = parts.filter { keptParts[$0.key] != $0.value }.sorted { $0.key < $1.key }
         let gone = keptParts.keys.filter { parts[$0] == nil }.sorted()
         let attempt = Attempt(version: version + 1, at: now, status: status, shown: shown, shownAt: shownAt, parts: parts, heard: lately,
