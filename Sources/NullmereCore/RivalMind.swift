@@ -9,6 +9,10 @@ struct RivalMind {
     /// no war, no demand, no pact, no bending the knee; nor does it swear
     /// a pact offered, which would lend the keeper's sight to another.
     var caretaking = false
+    /// Every House's strength as the pace began, as it is known round the
+    /// lake: weighed once for all the stewards of a pace. Without it, a
+    /// steward weighs every House as it stands.
+    var known: [Int]?
 
     // MARK: Answering offers
 
@@ -381,10 +385,11 @@ struct RivalMind {
 
     private func conductDiplomacy(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
         let me = state.houses[house]
-        // Every House's strength, weighed once: nothing said or sworn here
-        // changes it.
-        let all = state.strengths()
-        let strengths = state.houses.map { $0.isEliminated ? 0 : all[$0.id] }
+        // Every other House's strength as it is known, its own as it
+        // stands: nothing said or sworn here changes either.
+        let all = known.flatMap { $0.count == state.houses.count ? $0 : nil } ?? state.strengths()
+        var strengths = state.houses.map { $0.isEliminated ? 0 : all[$0.id] }
+        if known != nil { strengths[house] = state.strength(of: house) }
         let mine = max(1, strengths[house])
         let strongestOther = state.livingHouses.filter { $0.id != house }.map { strengths[$0.id] }.max() ?? 0
         let enemies = state.livingHouses.filter { state.isAtWar(house, $0.id) }.count

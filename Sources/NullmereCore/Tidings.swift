@@ -372,7 +372,8 @@ extension GameState {
             let begun = "The Sundering begins: the Eastern and the Western Shore war as kingdoms until the \(ordinal(ends)) watch."
             guard let shore = sundering?.shore(of: viewer) else { return Tidings(begun, .neutral) }
             return Tidings(begun + " You stand with \(shore.title): troops of \(shore.other.title) slain, its holds taken and its "
-                           + "alliances' works torn down count for your kingdom.", .neutral)
+                           + "alliances' works torn down count for your kingdom, and you are at war with every House of it you were at "
+                           + "peace with, but your alliance's and your liege's, until it ends.", .neutral)
         case .sunderingEnded(let winner, let eastern, let western, let hailed):
             guard let winner else { return Tidings("The Sundering ends with neither shore ahead, \(eastern) to \(western).", .neutral) }
             let score = "\(max(eastern, western)) to \(min(eastern, western))"

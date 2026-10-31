@@ -569,6 +569,7 @@ public struct RealmState: Codable, Equatable, Sendable {
         rememberTheAge()
         age += 1
         world = RealmState.world(seed: seedText, age: age, seats: seats, radius: radius)
+        if frontier != nil { world.unsundered = true }
         // The Frontier's season over, told; the next begins with no one
         // seated until they cross again.
         if frontier != nil {

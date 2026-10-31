@@ -825,7 +825,11 @@ realm; keepers are told in plain words, never a status code.
   and every ninety after, the lake's Houses stand for twelve watches as two
   kingdoms, the Eastern and the Western Shore, each by where its seat
   stands as it begins (a House fallen before it stands with neither).
-  Deeds across the shores score for the striker's kingdom and House: a
+  The shores take up arms: every House at peace with one across the
+  water, but one sworn to its alliance or its liege or vassal, is at war
+  with it until the Sundering ends, a war neither declared, laid down as
+  it ends if still fought. Deeds across the shores score for the
+  striker's kingdom and House: a
   point for every hundred troops of the other shore slain and five for a
   company felled, twenty-five for a hold taken, and five, thirty and
   twenty for a standard, a hall and a storehouse of the other shore's
@@ -835,7 +839,8 @@ realm; keepers are told in plain words, never a status code.
   with a hundred more of each; a draw gives no spoils. It is told and
   heard as it begins and ends, kept on the Realm screen (your shore, your
   points, how the shores stand, or how the last ended), and its tally is
-  known to all.
+  known to all. The Frontier's shores never sunder: its kingdoms are the
+  realms its keepers come from.
 - **The Frontier.** Kingdom against kingdom across realms: the Frontier is
   a realm of its own, a database of its own with its own steward, where
   the kingdoms of the realms that border it meet, a season of twenty-four

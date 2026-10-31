@@ -54,7 +54,8 @@ final class SunderingTests: XCTestCase {
         XCTAssertEqual(state.tidings(of: events[0], for: east)?.text,
                        "The Sundering begins: the Eastern and the Western Shore war as kingdoms until the \(ordinal(67)) watch. "
                        + "You stand with the Eastern Shore: troops of the Western Shore slain, its holds taken and its alliances' works "
-                       + "torn down count for your kingdom.")
+                       + "torn down count for your kingdom, and you are at war with every House of it you were at peace with, but your "
+                       + "alliance's and your liege's, until it ends.")
         XCTAssertEqual(state.events(events, heardBy: east), events, "Heard by all")
         XCTAssertEqual(state.view(for: east).sundering, state.sundering, "Its tally is known to all")
         XCTAssertEqual(state.problems(), [])
@@ -66,6 +67,57 @@ final class SunderingTests: XCTestCase {
         XCTAssertNil(fallen.sundering?.shore(of: 1))
         XCTAssertEqual(fallen.tidings(of: .sunderingBegun(ends: 67), for: 1)?.text,
                        "The Sundering begins: the Eastern and the Western Shore war as kingdoms until the \(ordinal(67)) watch.")
+    }
+
+    /// The shores take up arms as the Sundering begins: every House at
+    /// peace with one across the water is at war with it, but one sworn to
+    /// its alliance or in a pact with it, a war neither declared; and as it
+    /// ends, the wars it began and still fought are laid down, and a war a
+    /// House fought before it fought on.
+    func testTheShoresTakeUpArmsAndLayThemDown() throws {
+        var state = world()
+        let shores = state.houses.map { state.seat(of: $0.id).map { Shore.of($0.position) } }
+        let east = shores.indices.filter { shores[$0] == .eastern }, west = shores.indices.filter { shores[$0] == .western }
+        XCTAssertGreaterThanOrEqual(min(east.count, west.count), 2, "Two Houses on each shore")
+        state.setStance(.pact, between: east[1], and: west[1], by: east[1])
+        state.setStance(.war, between: east[0], and: west[1], by: east[0])
+        var sworn = Alliance(id: state.takeID(), name: "The Grey Hand", leader: east[1], founded: state.watch)
+        sworn.members = [east[1], west[0]]
+        state.alliances = [sworn]
+        state.watch = Sundering.first
+        _ = state.turnSundering()
+        let sundering = try XCTUnwrap(state.sundering)
+        let wars = try XCTUnwrap(sundering.wars)
+        for a in east {
+            for b in west {
+                let pair = [min(a, b), max(a, b)]
+                switch (a, b) {
+                case (east[1], west[1]): XCTAssertEqual(state.stance(a, b), .pact, "A pact holds")
+                case (east[1], west[0]): XCTAssertEqual(state.stance(a, b), .peace, "One alliance's Houses keep the peace")
+                case (east[0], west[1]): XCTAssertFalse(wars.contains(pair), "A war already fought is its own")
+                default:
+                    XCTAssertEqual(state.stance(a, b), .war, "Across the water, at war")
+                    XCTAssertTrue(wars.contains(pair))
+                    XCTAssertNil(state.relation(a, b)?.aggressor, "Neither declared it")
+                }
+            }
+        }
+        XCTAssertEqual(state.stance(east[0], east[1]), .peace, "A shore's own Houses at peace")
+        XCTAssertEqual(state.problems(), [])
+        // Not theirs to end: peace is refused until it ends, but their own war's.
+        XCTAssertTrue(state.isSunderingWar(east[0], west[0]))
+        XCTAssertFalse(state.isSunderingWar(east[0], west[1]), "Its own war")
+        XCTAssertThrowsError(try state.propose(.peace, from: east[0], to: west[0])) { XCTAssertEqual($0 as? RuleError, .sunderingWar) }
+        var asked = state
+        XCTAssertNoThrow(try asked.propose(.peace, from: east[0], to: west[1]), "Peace in a House's own war may be asked")
+        XCTAssertEqual(RuleError.sunderingWar.description, "This war is the Sundering's: it is laid down as the Sundering ends, not before.")
+        // As it ends: laid down, all but the war fought before it.
+        state.watch = sundering.ends
+        _ = state.turnSundering()
+        XCTAssertEqual(state.stance(east[0], west[0]), .peace)
+        XCTAssertEqual(state.relation(east[0], west[0])?.since, sundering.ends)
+        XCTAssertEqual(state.stance(east[0], west[1]), .war, "Its own war fought on")
+        XCTAssertFalse(state.isSunderingWar(east[0], west[0]))
     }
 
     func testDeedsAcrossTheShoresScoreForTheStrikersKingdom() throws {
@@ -113,7 +165,7 @@ final class SunderingTests: XCTestCase {
         let at = try XCTUnwrap(fought.freeHex(near: seat.position, within: 2...3))
         let spear = fought.put(.spear, tier: 5, of: east, at: at)
         let foe = fought.put(.bow, tier: 1, of: west, at: try XCTUnwrap(fought.freeHex(near: at, within: 1...1)))
-        _ = try fought.declareWar(by: east, on: west)
+        XCTAssertTrue(fought.isAtWar(east, west), "The shores at war, no House declaring it")
         let struck = try fought.perform(.attack(unit: spear, target: try XCTUnwrap(fought.unit(foe)).position), as: east)
         let slain = try XCTUnwrap(struck.compactMap { event -> Int? in
             if case .battle(let battle) = event { return battle.slain }

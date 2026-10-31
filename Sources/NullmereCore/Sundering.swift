@@ -36,6 +36,10 @@ public struct Sundering: Codable, Equatable, Sendable {
     /// Whether it has ended and its spoils were given; it is kept, settled,
     /// until the next begins.
     public internal(set) var settled: Bool
+    /// The Houses its war set at war, each pair the lower id first: those
+    /// at peace with one across the water as it began. Laid down as it
+    /// ends, those still fought.
+    public internal(set) var wars: [[Int]]?
 
     public init(begins: Int, shores: [Shore?]) {
         self.begins = begins
@@ -114,6 +118,15 @@ public struct Sundering: Codable, Equatable, Sendable {
 }
 
 extension GameState {
+    /// Whether two Houses' war is the Sundering's and still under way: one
+    /// it began and they have fought since, which neither may end before
+    /// the Sundering does.
+    public func isSunderingWar(_ a: Int, _ b: Int) -> Bool {
+        guard let sundering, !sundering.settled, watch < sundering.ends, let wars = sundering.wars,
+              let relation = relation(a, b), relation.stance == .war, relation.since == sundering.begins else { return false }
+        return wars.contains([min(a, b), max(a, b)])
+    }
+
     /// Points to the Sundering under way for what was done across the shores.
     mutating func tallySundering(_ events: [GameEvent]) {
         guard var sundering, !sundering.settled, watch < sundering.ends else { return }
@@ -131,6 +144,7 @@ extension GameState {
     /// prevailed given its spoils and its foremost hailed; one due begun,
     /// every standing House to the shore its seat stands on.
     mutating func turnSundering() -> [GameEvent] {
+        guard unsundered != true else { return [] }
         var events: [GameEvent] = []
         if var sundering, !sundering.settled, watch >= sundering.ends {
             let east = sundering.score(of: .eastern), west = sundering.score(of: .western)
@@ -152,6 +166,13 @@ extension GameState {
             }
             events.append(.sunderingEnded(winner: winner, eastern: east, western: west, hailed: hailed))
             events += given
+            // The wars it began, still fought, laid down.
+            for pair in sundering.wars ?? [] where pair.count == 2 {
+                guard let index = relationIndex(pair[0], pair[1]), relations[index].stance == .war,
+                      relations[index].since == sundering.begins else { continue }
+                relations[index].stance = .peace
+                relations[index].since = watch
+            }
             sundering.settled = true
             self.sundering = sundering
         }
@@ -160,7 +181,22 @@ extension GameState {
                 guard !house.isEliminated, let seat = seat(of: house.id) else { return nil }
                 return Shore.of(seat.position)
             }
-            let begun = Sundering(begins: watch, shores: shores)
+            var begun = Sundering(begins: watch, shores: shores)
+            // The shores take up arms: every House at peace with one across
+            // the water, neither sworn to one alliance with it nor its liege
+            // or vassal, is at war with it until the Sundering ends. Neither
+            // declared it: it is the kingdoms' war, no House's grudge.
+            var wars: [[Int]] = []
+            for first in houses.indices where shores[first] != nil {
+                for second in houses.indices where second > first && shores[second] != nil && shores[second] != shores[first] {
+                    guard let index = relationIndex(first, second), relations[index].stance == .peace, !areAllied(first, second),
+                          houses[first].liege != second, houses[second].liege != first else { continue }
+                    relations[index].stance = .war
+                    relations[index].since = watch
+                    wars.append([first, second])
+                }
+            }
+            begun.wars = wars
             sundering = begun
             record(.happening, [], "The Sundering begins: the Eastern and the Western Shore war as kingdoms until the "
                    + "\(ordinal(begun.ends)) watch.")

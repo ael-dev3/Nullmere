@@ -120,6 +120,10 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var happening: Happening?
     /// The Sundering under way, or the last, settled, until the next.
     public internal(set) var sundering: Sundering?
+    /// A world whose shores never sunder: the Frontier's, whose kingdoms
+    /// are the realms its keepers come from, not its shores. Absent
+    /// elsewhere.
+    var unsundered: Bool?
     /// The deeds the Houses have done this age; absent before any.
     public internal(set) var deedsDone: [DeedDone]?
     /// How many of their charges each House has done, by its id; absent

@@ -285,6 +285,9 @@ extension RealmState {
                 watchLength: Double = RealmState.defaultWatchLength, now: Double) {
         self.init(name: name, seed: seed, seats: seats, radius: radius, watchLength: watchLength, now: now)
         frontier = FrontierState(season: 1, houses: world.houses.count)
+        // Its kingdoms are the realms its keepers come from: its shores
+        // never sunder.
+        world.unsundered = true
     }
 
     /// The Frontier as it tells the realms it borders.

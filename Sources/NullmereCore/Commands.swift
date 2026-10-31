@@ -132,6 +132,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case impassable(Terrain)
     case noPath
     case notAtWar(Int)
+    /// The war is the Sundering's, laid down as it ends, not before.
+    case sunderingWar
     case nothingToAttack
     case outOfReach
     case cannotFight
@@ -336,6 +338,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .impassable(let terrain): return "\(terrain.title) can't be crossed."
         case .noPath: return "There's no way there."
         case .notAtWar: return "You're not at war with them."
+        case .sunderingWar: return "This war is the Sundering's: it is laid down as the Sundering ends, not before."
         case .nothingToAttack: return "There's nothing there to strike."
         case .outOfReach: return "That's out of reach."
         case .cannotFight: return "These aren't fighters."

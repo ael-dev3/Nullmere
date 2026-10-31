@@ -49,11 +49,17 @@ extension GameState {
         while let walked = pacing?.walked, walked < min(pace, GameState.pacesPerWatch - 1) {
             let now = walked + 1
             pacing?.walked = now
+            // Every House's strength as the pace begins, as the stewards of
+            // the pace know it: weighed once for all of them.
+            var known: [Int]?
             for (index, house) in order.enumerated() where GameState.stewardPace(index, of: order.count) == now {
                 guard pacing?.stewarded.contains(house) == false, !houses[house].isEliminated else { continue }
                 pacing?.stewarded.append(house)
+                if known == nil { known = strengths() }
                 // What a steward does counts as it does it, as a keeper's orders do.
-                events += RivalMind(house: house, caretaking: houses[house].isPlayer).takeTurn(in: &self)
+                var mind = RivalMind(house: house, caretaking: houses[house].isPlayer)
+                mind.known = known
+                events += mind.takeTurn(in: &self)
             }
             var stepped = fightFields()
             for unit in units.sorted(by: { $0.id < $1.id }) where unit.destination != nil {

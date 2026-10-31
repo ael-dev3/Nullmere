@@ -752,6 +752,7 @@ extension GameState {
         switch proposal {
         case .peace:
             guard current == .war else { throw current == .pact ? .alreadyStance(.pact) : .alreadyStance(.peace) }
+            guard !isSunderingWar(house, target) else { throw .sunderingWar }
         case .pact:
             guard current == .peace else { throw current == .pact ? .alreadyStance(.pact) : .notApplicable }
         case .fealty:
@@ -797,7 +798,7 @@ extension GameState {
         let stillValid: Bool
         switch envoy.proposal {
         case .trade: stillValid = false
-        case .peace: stillValid = stance(house, envoy.from) == .war
+        case .peace: stillValid = stance(house, envoy.from) == .war && !isSunderingWar(house, envoy.from)
         case .pact: stillValid = stance(house, envoy.from) == .peace
         // A House a keeper has since taken up never bends the knee for them.
         case .fealty: stillValid = houses[envoy.from].liege == nil && houses[house].liege == nil && !houses[envoy.from].isPlayer

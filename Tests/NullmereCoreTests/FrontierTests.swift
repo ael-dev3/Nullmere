@@ -75,6 +75,19 @@ final class FrontierTests: XCTestCase {
         XCTAssertEqual(lost.crossings, [])
     }
 
+    /// The Frontier's kingdoms are the realms its keepers come from, not
+    /// its shores: its world never sunders, so no Sundering sets two of a
+    /// kingdom's Houses on each other across its water.
+    func testTheFrontiersShoresNeverSunder() throws {
+        var frontier = frontier()
+        frontier.world.watch = Sundering.first
+        XCTAssertEqual(frontier.world.turnSundering(), [])
+        XCTAssertNil(frontier.world.sundering)
+        var home = home()
+        home.world.watch = Sundering.first
+        XCTAssertFalse(home.world.turnSundering().isEmpty, "A realm's own shores sunder")
+    }
+
     func testOnlyThoseCrossingTakeItsSeatsEachForTheirKingdomAtWarWithTheOthers() throws {
         var frontier = frontier()
         XCTAssertEqual(frontier.frontierReport?.season, 1)
