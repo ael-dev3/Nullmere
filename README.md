@@ -404,7 +404,11 @@ as the realm will, and takes the realm's word as final.
   and its age. The first company to reach one searches it and finds a
   ruin's spoils and what its works held besides, more for its Moonspire;
   searched, its ground still says what stood there. The Chronicle opens
-  with them.
+  with them. The Moonspire the age before raised highest stands broken in
+  the new one, where it stood or on the nearest land within three tiles
+  clear of the new seats: a holy site of its own, the Broken Spire, held
+  as the others are by a company standing on it, and its holders' side
+  takes its stones, every work raised for 15% less and 15% sooner.
 - **The server.** SpacetimeDB is the realm's authority of record: it knows
   each keeper by their identity, keeps the world, and lets no one but the
   steward write it. The steward runs the same Swift rules core the clients

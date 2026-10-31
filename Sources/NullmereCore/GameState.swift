@@ -94,6 +94,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The holds of the age before, drowned where they stood in this one;
     /// absent in a realm's first age, and in worlds made apart from a realm.
     var drowned: [DrownedHold]?
+    /// The last age's Moonspire, broken in this one; absent in a first age,
+    /// and in an age after one that raised none.
+    var brokenSpire: BrokenSpire?
     /// Bottles on the lake: afloat, washed up, or found and kept; absent
     /// before the first is set on the water.
     var bottles: [Bottle]?

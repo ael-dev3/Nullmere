@@ -297,6 +297,9 @@ extension GameState {
             if let closed = edict.closed, closed < edict.proposed { found.append("Edict \(edict.id) closed before it was put") }
         }
         if edictsOfTheRealm.filter({ $0.closed == nil }).count > 1 { found.append("More than one edict is before the realm") }
+        if let spire = brokenSpire, map[spire.position] == nil {
+            found.append("The broken Spire lies outside the world at \(spire.position)")
+        }
         for hold in drownedHolds where map[hold.position] == nil {
             found.append("The drowned hold of \(hold.name) lies outside the world at \(hold.position)")
         }

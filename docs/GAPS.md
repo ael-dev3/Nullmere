@@ -218,8 +218,11 @@ designed, ticked when it is real, tested and shown in CI.
   the first company there finds what their works held, the more for a
   Moonspire, and searched, their ground still says what stood there. The
   realm's history is its map.
-- [ ] **The broken Spire.** The Moonspire an age raised stands broken
-  where it was in the next, a site of the land.
+- [x] **The broken Spire.** The Moonspire an age raised highest stands
+  broken where it was in the next: a holy site of its own, held by
+  standing on it, whose holders' side takes its stones, every work raised
+  for less and sooner. A landmark of the realm's history worth fighting
+  over.
 
 ## The order of the work
 

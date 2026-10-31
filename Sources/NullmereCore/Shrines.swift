@@ -6,12 +6,20 @@ public enum ShrineKind: String, CaseIterable, Codable, Sendable {
     case stillStone
     /// An altar of moonsalt: its holders gather more from the land's sites.
     case saltAltar
+    /// The Moonspire the age before raised, standing broken where it stood:
+    /// its stones raise its holders' works for less, and sooner.
+    case brokenSpire
+
+    /// The kinds the lake raises as an age opens, in turn; the Broken
+    /// Spire is only ever the last age's.
+    public static let raised: [ShrineKind] = [.moonwell, .stillStone, .saltAltar]
 
     public var title: String {
         switch self {
         case .moonwell: return "Moonwell"
         case .stillStone: return "Still Stone"
         case .saltAltar: return "Salt Altar"
+        case .brokenSpire: return "Broken Spire"
         }
     }
 
@@ -21,6 +29,7 @@ public enum ShrineKind: String, CaseIterable, Codable, Sendable {
         case .moonwell: return "+8% attack to every company of its holders' side"
         case .stillStone: return "+8% defence to every company of its holders' side"
         case .saltAltar: return "+15% gathered at the land's sites by its holders' side"
+        case .brokenSpire: return "its stones raise every work of its holders' side for 15% less, and 15% sooner"
         }
     }
 
@@ -30,6 +39,7 @@ public enum ShrineKind: String, CaseIterable, Codable, Sendable {
         case (.moonwell, .attack): return 8
         case (.stillStone, .defense): return 8
         case (.saltAltar, .gathering): return 15
+        case (.brokenSpire, .buildCost), (.brokenSpire, .buildSpeed): return 15
         default: return 0
         }
     }
@@ -89,7 +99,11 @@ extension GameState {
         var raised: [Shrine] = []
         for hex in open where raised.count < wanted {
             guard raised.allSatisfy({ $0.position.distance(to: hex) >= GameState.shrinesApart }) else { continue }
-            raised.append(Shrine(id: raised.count + 1, kind: ShrineKind.allCases[raised.count % ShrineKind.allCases.count], position: hex))
+            raised.append(Shrine(id: raised.count + 1, kind: ShrineKind.raised[raised.count % ShrineKind.raised.count], position: hex))
+        }
+        // The last age's Moonspire, broken where it stood, among them.
+        if let spire = brokenSpire, !raised.contains(where: { $0.position == spire.position }) {
+            raised.append(Shrine(id: raised.count + 1, kind: .brokenSpire, position: spire.position))
         }
         shrines = raised
     }

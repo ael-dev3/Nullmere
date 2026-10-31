@@ -341,6 +341,24 @@ enum Land {
                 b.place(.translation(Vec3(x, 0, z))) { $0.cone(sides: 5, radius: 0.025, from: 0.1, to: 0.1 + h, color: Palette.moonsalt) }
             }
             b.material = .plain
+        case .brokenSpire:
+            // The last age's Moonspire: a tall tapering shaft of pale stone,
+            // snapped and leaning, its fallen courses about its foot and
+            // moonsalt still glinting where it was set.
+            b.place(.rotationZ(0.12) * .rotationX(-0.06)) {
+                $0.lathe([(0.12, 0.0), (0.11, 0.18), (0.095, 0.42), (0.08, 0.62), (0.07, 0.7), (0.0, 0.72)], sides: 7,
+                         color: Palette.stonePale, twist: 0.15)
+            }
+            for (x, z, turn) in [(Float(0.2), Float(0.08), Float(0.5)), (-0.17, 0.15, 1.2), (0.06, -0.21, 2.1)] {
+                b.place(.translation(Vec3(x, 0.035, z)) * .rotationY(turn)) {
+                    $0.box(center: Vec3(0, 0, 0), size: Vec3(0.12, 0.07, 0.08), color: Palette.stone)
+                }
+            }
+            b.material = .crystal
+            for (x, z, h) in [(Float(0.1), Float(-0.06), Float(0.06)), (-0.08, -0.1, 0.05)] {
+                b.place(.translation(Vec3(x, 0, z))) { $0.cone(sides: 5, radius: 0.02, from: 0.0, to: h, color: Palette.moonsalt) }
+            }
+            b.material = .plain
         }
         // The pole, and its pennant in the holder's colour.
         b.box(center: Vec3(0.2, 0.22, -0.2), size: Vec3(0.012, 0.44, 0.012), color: Palette.timberDark)

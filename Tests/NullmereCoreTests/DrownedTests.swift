@@ -98,6 +98,60 @@ final class DrownedTests: XCTestCase {
         XCTAssertEqual(unsound.problems().filter { $0.hasPrefix("The drowned hold of Nowhere") }.count, 1)
     }
 
+    /// The Moonspire the last age raised stands broken in the next, a holy
+    /// site from its first watch whose holders' works cost less and rise
+    /// sooner.
+    func testTheLastAgesMoonspireStandsBroken() throws {
+        var (before, after) = ages()
+        let raiser = before.holds[before.holds.indices.first!]
+        after.drown(before, age: 2)
+        let spire = try XCTUnwrap(after.brokenSpire)
+        XCTAssertLessThanOrEqual(spire.position.distance(to: raiser.position), 3)
+        XCTAssertEqual(spire.stages, 2)
+        XCTAssertEqual(spire.age, 1)
+        XCTAssertEqual(spire.house, before.houses[raiser.owner].title)
+        XCTAssertEqual(after.map[spire.position]?.terrain.isWater, false)
+        XCTAssertTrue(after.holds.allSatisfy { $0.position.distance(to: spire.position) >= GameState.drownedFromSeats })
+        XCTAssertTrue(after.chronicle.contains { $0.text == "The Moonspire \(spire.house) raised in the first age stands broken by the new water, "
+            + "2 stages high: whoever holds it takes its stones." })
+
+        // A holy site, among those the lake raises.
+        let shrine = try XCTUnwrap(after.holySites.first { $0.kind == .brokenSpire })
+        XCTAssertEqual(shrine.position, spire.position)
+        XCTAssertEqual(Set(after.holySites.map(\.id)).count, after.holySites.count)
+        let raised = after.holySites.filter { $0.kind != .brokenSpire }
+        XCTAssertEqual(raised.map(\.kind), raised.indices.map { ShrineKind.raised[$0 % ShrineKind.raised.count] }, "The lake's own, as ever")
+        XCTAssertEqual(after.problems(), [])
+        // Raised with the lake's own, where they are raised later.
+        var later = after
+        later.shrines = nil
+        later.raiseShrines()
+        XCTAssertEqual(later.holySites.last?.kind, .brokenSpire)
+        XCTAssertEqual(later.holySites.last?.position, spire.position)
+
+        // Held, its stones raise its holders' works for less, and sooner.
+        let house = after.player
+        let cost = after.buildCost(of: .walls, toLevel: 2, for: house)
+        let index = try XCTUnwrap(after.shrines?.firstIndex { $0.kind == .brokenSpire })
+        after.shrines![index].holder = house
+        XCTAssertEqual(after.shrineBonus(.buildCost, for: house), 15)
+        XCTAssertEqual(after.shrineBonus(.buildSpeed, for: house), 15)
+        XCTAssertLessThan(after.buildCost(of: .walls, toLevel: 2, for: house).stone, cost.stone)
+        XCTAssertEqual(ShrineKind.brokenSpire.title, "Broken Spire")
+        let data = try JSONEncoder().encode(after)
+        XCTAssertEqual(try JSONDecoder().decode(GameState.self, from: data), after)
+
+        // An age that raised no Moonspire leaves none.
+        var plain = Scene.world("an age to come", houses: 6, radius: 18)
+        var unraised = before
+        for index in unraised.holds.indices { unraised.holds[index].levels[.moonspire] = nil }
+        plain.drown(unraised, age: 2)
+        XCTAssertNil(plain.brokenSpire)
+        var unsound = after
+        unsound.brokenSpire = BrokenSpire(position: Hex(500, 500), house: "House Aurel", age: 1, stages: 1)
+        XCTAssertEqual(unsound.problems().filter { $0.hasPrefix("The broken Spire") }.count, 1)
+    }
+
     /// A realm's new age opens on the last one's holds.
     func testARealmsNextAgeIsBuiltOnTheLast() throws {
         var realm = RealmState(name: "R", seed: "ages drowned", seats: 4, radius: 16, watchLength: 60, now: 0)

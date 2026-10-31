@@ -11,7 +11,7 @@ final class ShrineTests: XCTestCase {
         let state = GameState(settings: GameSettings(seedText: "holy sites", houseCount: 12, radius: 36, keepers: 0))
         XCTAssertEqual(state.holySites.count, 6, "One for every two seats")
         XCTAssertEqual(state.holySites.map(\.id), Array(1...6))
-        XCTAssertEqual(Set(state.holySites.map(\.kind)), Set(ShrineKind.allCases))
+        XCTAssertEqual(Set(state.holySites.map(\.kind)), Set(ShrineKind.raised), "The lake's own; the Broken Spire is an age's before")
         for shrine in state.holySites {
             XCTAssertTrue(state.holds.allSatisfy { $0.position.distance(to: shrine.position) >= GameState.shrinesFromHolds })
             XCTAssertTrue(state.holySites.allSatisfy { $0.id == shrine.id || $0.position.distance(to: shrine.position) >= GameState.shrinesApart })
@@ -21,7 +21,7 @@ final class ShrineTests: XCTestCase {
         XCTAssertEqual(state, GameState(settings: state.settings), "The same words, the same holy sites")
         XCTAssertEqual(GameState(settings: GameSettings(seedText: "a small lake", houseCount: 3, radius: 16, keepers: 1)).holySites.count, 2,
                        "Two at least")
-        XCTAssertEqual(ShrineKind.allCases.map(\.title), ["Moonwell", "Still Stone", "Salt Altar"])
+        XCTAssertEqual(ShrineKind.allCases.map(\.title), ["Moonwell", "Still Stone", "Salt Altar", "Broken Spire"])
     }
 
     func testAShrineIsTakenByStandingOnItAndGivesItsHoldersSide() throws {
