@@ -14,6 +14,11 @@ import NullmereRealm
 // realm the Frontier, where the realms meet; NULLMERE_BORDERS names, by
 // their addresses and between commas, the realms it borders: the
 // Frontier, for a home realm; the home realms, for the Frontier.
+//
+// NULLMERE_STEWARD_ORDERS names a file whoever runs the realm writes orders
+// into, a line each, read as they are added: "remove 123" takes line 123
+// out of the Words, "bar 4 20" bars House 4 from them for twenty watches.
+// What keepers report is written to the log, each with what was said round it.
 
 // Each line as it's written, even into a log file.
 setvbuf(stdout, nil, _IOLBF, 0)
@@ -88,6 +93,28 @@ let realm = await steward.state
 print("Stewarding \(realm.name), age \(realm.age), watch \(realm.world.watch), at \(text).")
 await steward.setReporter { line in
     print("\(Date().formatted(.iso8601)) \(line)")
+}
+// The orders of whoever runs the realm, as they are added to their file:
+// those already there when the steward began were for an earlier one.
+if let path = environment["NULLMERE_STEWARD_ORDERS"], !path.isEmpty {
+    func lines() -> [String] {
+        ((try? String(contentsOfFile: path, encoding: .utf8)) ?? "").split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+    }
+    let begun = lines().count
+    print("Taking orders from \(path) as they are added.")
+    Task {
+        var read = begun
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            let all = lines()
+            guard all.count > read else { continue }
+            for order in all[read...] where !order.isEmpty {
+                print("\(Date().formatted(.iso8601)) ORDER \(order): \(await steward.obey(order))")
+            }
+            read = all.count
+        }
+    }
 }
 await steward.run()
 if await steward.isDisplaced {

@@ -72,6 +72,11 @@ final class PressTests: XCTestCase {
         let title = session.state.houses[other.id].title
         XCTAssertFalse(shown.contains("Offer peace"), "Folded: \(shown)")
         XCTAssertTrue(shown.contains(title), "Among \(shown)")
+        // The gifts open beneath the row's actions, no window of their own.
+        let calm = try XCTUnwrap(session.state.houses.first { $0.id != session.player && $0.id != other.id && !$0.isEliminated })
+        XCTAssertEqual(session.state.stance(session.player, calm.id), .peace)
+        draw(HouseRow(session: session, house: calm, draft: OfferDraft(for: calm), choosingGift: true))
+        XCTAssertTrue(shown.contains { $0.hasPrefix("Send ") && $0 != "Send a gift" }, "Among \(shown)")
         var opened = false
         draw(HouseRow(session: session, house: session.state.houses[other.id], draft: draft, expanded: false) { opened = true })
         XCTAssertFalse(shown.contains("Offer peace"))

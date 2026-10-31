@@ -28,7 +28,10 @@ struct WordsPanel: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     ForEach(words) { word in
-                        WordLine(state: state, word: word, player: session.player)
+                        // Another's line may be reported to the realm's steward.
+                        let reportable = state.reportRefusal(word.id, as: session.player) == nil
+                        WordLine(state: state, word: word, player: session.player,
+                                 report: reportable ? { session.perform(.reportWord(word: word.id)) } : nil)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -85,13 +88,24 @@ struct WordsPanel: View {
     }
 }
 
-/// One line said: who said it, when, to whom, and the words.
+/// One line said: who said it, when, to whom, and the words; a line taken
+/// away by the realm's steward, as taken away; and, for another's line,
+/// reporting it to the realm's steward from its menu.
 struct WordLine: View {
     let state: GameState
     let word: Word
     let player: Int
+    /// Reports it to the realm's steward; nil where it can't be reported.
+    var report: (() -> Void)?
+
+    /// The words shown: the line's, or that it was taken away.
+    static func shown(_ word: Word) -> String {
+        word.removed == true ? GameState.removedWords : word.text
+    }
 
     var body: some View {
+        let reported = state.wordReports.contains { $0.word == word.id && $0.by == player }
+        let _ = report.map { PressableButtons.note("Report line \(word.id)", enabled: true, $0) }
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
                 Caps(WordLine.speaker(word, in: state, player: player), size: 8.5, weight: .medium)
@@ -100,15 +114,29 @@ struct WordLine: View {
                     Caps("Alliance", size: 8).foregroundStyle(Palette.good)
                 }
                 Spacer()
+                if reported {
+                    Caps("Reported", size: 8).foregroundStyle(Palette.text(0.5))
+                }
                 Text(verbatim: "Watch \(word.watch)").font(.nm(9.5).monospacedDigit()).foregroundStyle(Palette.text(0.45))
             }
-            Text(verbatim: word.text)
+            Text(verbatim: WordLine.shown(word))
                 .font(.nm(11))
-                .foregroundStyle(Palette.text(0.9))
+                .italic(word.removed == true)
+                .foregroundStyle(Palette.text(word.removed == true ? 0.5 : 0.9))
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
         }
+        .contextMenu {
+            if let report {
+                Button("Report to the realm's steward", action: report)
+            }
+        }
         .accessibilityElement(children: .combine)
+        .accessibilityActions {
+            if let report {
+                Button("Report to the realm's steward", action: report)
+            }
+        }
     }
 
     /// Who said it, as the line names them: you, or the keeper's House.

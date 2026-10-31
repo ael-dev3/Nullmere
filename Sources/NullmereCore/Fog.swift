@@ -94,6 +94,10 @@ extension GameState {
         }
         // Words to the realm to all; an alliance's to its own Houses.
         view.words = words.map { _ in words(heardBy: house) }
+        // A keeper's reports are theirs alone, and the realm's bar on a House
+        // that House's.
+        view.reports = reports.map { $0.filter { $0.by == house } }.flatMap { $0.isEmpty ? nil : $0 }
+        view.bars = bars.map { $0.filter { $0.house == house } }.flatMap { $0.isEmpty ? nil : $0 }
         // A rally only to its own side; a host on the march, also to the
         // House whose hold it marches on.
         view.rallies = rallies?.filter { rally in
@@ -254,6 +258,12 @@ extension GameState {
                 return from == house || visible(at)
             case .bottleFound(let bottle, let by):
                 return by == house || bottle.from == house
+            case .wordReported(_, let by):
+                return by == house
+            case .wordRemoved:
+                return true
+            case .barredFromWords(let barred, _):
+                return barred == house
             case .edictProposed, .edictVoted, .edictPassed, .edictFailed, .edictLapsed, .edictBroken:
                 // The realm's law is every House's to know.
                 return true

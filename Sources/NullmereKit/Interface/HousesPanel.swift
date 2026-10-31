@@ -477,12 +477,14 @@ struct HouseRow: View {
     /// The gifts on offer, shown.
     @State private var choosingGift = false
 
-    init(session: GameSession, house: House, draft: OfferDraft, expanded: Bool = true, toggle: (() -> Void)? = nil) {
+    init(session: GameSession, house: House, draft: OfferDraft, expanded: Bool = true, choosingGift: Bool = false,
+         toggle: (() -> Void)? = nil) {
         self.session = session
         self.house = house
         self.draft = draft
         self.expanded = expanded
         self.toggle = toggle
+        _choosingGift = State(initialValue: choosingGift)
     }
 
     var body: some View {
@@ -512,6 +514,9 @@ struct HouseRow: View {
                 // In a row when they fit, wrapping onto the next when not,
                 // far enough apart that one is never pressed for another.
                 FlowLayout(spacing: 8, lineSpacing: 6) { actions(stance: stance) }
+                if choosingGift, stance != .war {
+                    gifts
+                }
             }
         }
         .accessibilityElement(children: .contain)
@@ -608,26 +613,31 @@ struct HouseRow: View {
             let _ = choices.forEach { choice in
                 PressableButtons.note("Send \(choice.amount) \(choice.resource.title.lowercased())", enabled: true) { send(choice) }
             }
-            // A button as those beside it, its gifts in a popover: each a
-            // button, plain to the pointer, the keys and VoiceOver.
-            QuietButton(title: "Send a gift", size: 8.5) { choosingGift.toggle() }
-                .popover(isPresented: $choosingGift, arrowEdge: .bottom) {
-                    // Headed as the trade's popover is: the popover reads by its heading.
-                    VStack(alignment: .leading, spacing: 2) {
-                        Caps("Gifts to \(house.title)", size: 9, weight: .medium)
-                            .foregroundStyle(Palette.ink)
-                            .padding(.bottom, 4)
-                        ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
-                            QuietButton(title: "Send \(choice.amount) \(choice.resource.title.lowercased())", size: 9, pressable: false) {
-                                choosingGift = false
-                                send(choice)
-                            }
-                        }
-                    }
-                    .padding(8)
-                }
+            // A button as those beside it; its gifts open beneath the row's
+            // actions, each a button, plain to the pointer, the keys and VoiceOver.
+            QuietButton(title: "Send a gift", size: 8.5, prominent: choosingGift,
+                        name: choosingGift ? "Put the gifts away" : "Send a gift") { choosingGift.toggle() }
                 .help("Stores sent now buy goodwill: a steward sees a war as older, and takes a pact from a House that has given enough, unless that House once made war on it or a pact between them was broken. Making war on it throws the goodwill away. A House takes in gifts worth \(GameState.giftsTakenPerWatch) a watch at most, moonsalt counting four.")
         }
+    }
+
+    /// The gifts that may be sent, from what the keeper has, open beneath
+    /// the row's actions while Send a gift is asked.
+    private var gifts: some View {
+        let choices = HouseRow.giftChoices(from: session.playerHouse.stock)
+        return VStack(alignment: .leading, spacing: 4) {
+            Caps("Gifts to \(house.title)", size: 8.5).foregroundStyle(Palette.text(0.55))
+            FlowLayout(spacing: 8, lineSpacing: 4) {
+                ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
+                    QuietButton(title: "Send \(choice.amount) \(choice.resource.title.lowercased())", size: 8.5, pressable: false) {
+                        choosingGift = false
+                        send(choice)
+                    }
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Gifts to \(house.title)")
     }
 
     private var tradeButton: some View {

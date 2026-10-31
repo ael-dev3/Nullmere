@@ -341,6 +341,17 @@ public struct RealmState: Codable, Equatable, Sendable {
         set { pendingArrivals = newValue.isEmpty ? nil : newValue }
     }
 
+    /// Whoever runs the realm takes a line out of the Words: it stands where
+    /// it was, its words gone. Nothing comes of a line not kept.
+    public mutating func removeWord(_ id: Int) -> [GameEvent] {
+        world.removeWord(id)
+    }
+
+    /// Whoever runs the realm bars a House from the Words for so many watches.
+    public mutating func bar(_ house: Int, fromWordsFor watches: Int) -> [GameEvent] {
+        world.bar(house, watches: watches)
+    }
+
     /// What came of arrivals, taken by the one who tells them.
     public mutating func takeArrivals() -> [GameEvent] {
         defer { arrivals = [] }

@@ -21,6 +21,69 @@ final class WordsTests: XCTestCase {
         return (state, me, other, ally, apart)
     }
 
+    /// A line reported to the realm's steward with what was said round it,
+    /// the report the reporter's alone; a line taken away stands where it
+    /// was, its words gone; a House barred from the Words says nothing
+    /// until the watch the bar lifts.
+    func testWordsAreMadeSafeAtTheRealm() throws {
+        var (state, me, other, _, apart) = try world()
+        for line in ["Good morrow.", "Grain for sale.", "You are all fools.", "Peace, friends.", "Who rules the ford?"] {
+            _ = try state.perform(.say(words: line, toAlliance: false), as: other)
+        }
+        let rude = try XCTUnwrap(state.wordsSaid.first { $0.text == "You are all fools." })
+        XCTAssertEqual(try state.perform(.reportWord(word: rude.id), as: me), [.wordReported(word: rude.id, by: me)])
+        let report = try XCTUnwrap(state.wordReports.last)
+        XCTAssertEqual(report.by, me)
+        XCTAssertEqual(report.context.map(\.text), ["Good morrow.", "Grain for sale.", "You are all fools.", "Peace, friends.", "Who rules the ford?"],
+                       "Three before and three after, as many as were said")
+        XCTAssertEqual(state.tidings(of: .wordReported(word: rude.id, by: me), for: me)?.text,
+                       "Your report is with the realm's steward, with what was said about it.")
+        XCTAssertNil(state.tidings(of: .wordReported(word: rude.id, by: me), for: other), "Never told to the one reported")
+        XCTAssertTrue(state.events([.wordReported(word: rude.id, by: me)], heardBy: other).isEmpty)
+        XCTAssertEqual(state.view(for: me).wordReports.count, 1)
+        XCTAssertTrue(state.view(for: other).wordReports.isEmpty, "A report is its reporter's alone")
+        func refusal(_ command: Command, as house: Int) -> RuleError? {
+            var trial = state
+            do { try trial.perform(command, as: house); return nil } catch { return error }
+        }
+        XCTAssertEqual(refusal(.reportWord(word: rude.id), as: me), .reportedAlready)
+        XCTAssertEqual(refusal(.reportWord(word: rude.id), as: other), .ownWord)
+        XCTAssertEqual(refusal(.reportWord(word: 987_654), as: me), .unknownWord)
+        XCTAssertEqual(refusal(.reportWord(word: rude.id), as: apart), .notAKeeper)
+
+        // The realm's steward takes the line away.
+        XCTAssertEqual(state.removeWord(rude.id), [.wordRemoved(word: rude.id)])
+        let removed = try XCTUnwrap(state.wordsSaid.first { $0.id == rude.id })
+        XCTAssertEqual(removed.text, "")
+        XCTAssertEqual(removed.removed, true)
+        XCTAssertEqual(state.removeWord(rude.id), [], "Once")
+        XCTAssertEqual(state.removeWord(424_242), [])
+        XCTAssertEqual(refusal(.reportWord(word: rude.id), as: me), .unknownWord, "A line taken away is no more to report")
+        XCTAssertNil(state.tidings(of: .wordRemoved(word: rude.id), for: me))
+        XCTAssertEqual(state.events([.wordRemoved(word: rude.id)], heardBy: apart).count, 1)
+
+        // And bars its keeper from the Words for a while.
+        XCTAssertEqual(state.bar(other, watches: 5), [.barredFromWords(house: other, until: state.watch + 5)])
+        XCTAssertEqual(refusal(.say(words: "Let me speak.", toAlliance: false), as: other), .barredFromWords(until: state.watch + 5))
+        XCTAssertEqual(RuleError.barredFromWords(until: 12).description, "The realm's steward has barred your House from the Words until the 12th watch.")
+        XCTAssertEqual(state.tidings(of: .barredFromWords(house: other, until: 7), for: other)?.text,
+                       "The realm's steward bars your House from the Words until the seventh watch.")
+        XCTAssertNil(state.tidings(of: .barredFromWords(house: other, until: 7), for: me))
+        XCTAssertTrue(state.view(for: me).bars == nil, "A bar is the barred House's to know")
+        XCTAssertEqual(state.bar(other, watches: 0), [])
+        XCTAssertEqual(state.bar(99, watches: 3), [])
+        XCTAssertEqual(state.problems(), [])
+        let data = try JSONEncoder().encode(state)
+        XCTAssertEqual(try JSONDecoder().decode(GameState.self, from: data), state)
+        state.watch += 5
+        XCTAssertNil(state.barredFromWords(other))
+        XCTAssertNil(refusal(.say(words: "I am sorry.", toAlliance: false), as: other), "The bar lifted")
+        var unsound = state
+        unsound.bars = [WordsBar(house: 77, until: 99)]
+        unsound.reports = [WordReport(word: 1, by: 88, watch: 1, context: [])]
+        XCTAssertEqual(unsound.problems().filter { $0.hasPrefix("A bar") || $0.hasPrefix("A report") }.count, 2)
+    }
+
     func testWordsAreSaidToTheRealmOrToAnAllianceAlone() throws {
         var (state, me, other, ally, apart) = try world()
         let events = try state.perform(.say(words: "  Well met,\tneighbours!  ", toAlliance: false), as: me)

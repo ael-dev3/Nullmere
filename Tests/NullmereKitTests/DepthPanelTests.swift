@@ -558,6 +558,28 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertFalse(session.perform(.say(words: "Hail", toAlliance: true)), "Sworn to none, no alliance to say it to")
         draw(WordsPanel(session: session))
         XCTAssertEqual(GameSession.cues(for: .say(words: "Hail", toAlliance: false), events: [], in: session.state, player: me), [.parley])
+
+        // Another's line reported to the realm's steward from its menu; once.
+        let met = try XCTUnwrap(said.first)
+        XCTAssertFalse(PressableButtons.actions.keys.contains("Report line \(try XCTUnwrap(said.last).id)"), "One's own line isn't reported")
+        XCTAssertTrue(PressableButtons.press("Report line \(met.id)"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .reportWord(word: met.id))
+        XCTAssertEqual(session.state.wordReports.map(\.word), [met.id])
+        draw(WordsPanel(session: session))
+        XCTAssertFalse(PressableButtons.actions.keys.contains("Report line \(met.id)"), "Reported once")
+
+        // Taken away by the realm's steward, a line stands as taken away;
+        // barred, the keeper is told why nothing is said.
+        var judged = session.state
+        _ = judged.removeWord(met.id)
+        _ = judged.bar(me, watches: 3)
+        link.onEvent?(.changed(judged))
+        let gone = try XCTUnwrap(session.state.wordsSaid.first { $0.id == met.id })
+        XCTAssertEqual(WordLine.shown(gone), GameState.removedWords)
+        XCTAssertEqual(WordLine.shown(try XCTUnwrap(session.state.wordsSaid.last)), session.state.wordsSaid.last?.text)
+        XCTAssertEqual(session.state.sayRefusal("Again", toAlliance: false, as: me), .barredFromWords(until: judged.watch + 3))
+        draw(WordsPanel(session: session))
+        XCTAssertFalse(PressableButtons.actions.keys.contains("Report line \(met.id)"), "A line taken away is no more to report")
     }
 
     /// A House's keeper hidden is hidden everywhere: their words in the

@@ -427,6 +427,14 @@ extension GameState {
             }
             guard bottle.from == viewer, houses.indices.contains(by) else { return nil }
             return Tidings("A bottle of yours washed up and was found by \(houses[by].title).", .neutral)
+        case .wordReported(_, let by):
+            guard by == viewer else { return nil }
+            return Tidings("Your report is with the realm's steward, with what was said about it.", .neutral)
+        case .wordRemoved:
+            return nil
+        case .barredFromWords(let house, let until):
+            guard house == viewer else { return nil }
+            return Tidings("The realm's steward bars your House from the Words until the \(ordinal(until)) watch.", .bad)
         case .edictProposed(let edict):
             guard houses.indices.contains(edict.proposer) else { return nil }
             let who = edict.proposer == viewer ? "Your House puts" : "\(houses[edict.proposer].title) puts"

@@ -286,6 +286,13 @@ extension GameState {
         for bottle in bottlesOnTheLake where map[bottle.position] == nil {
             found.append("Bottle \(bottle.id) lies outside the world at \(bottle.position)")
         }
+        // Each report and bar a House's.
+        for report in wordReports where !houseIDs.contains(report.by) {
+            found.append("A report of line \(report.word) by no House (\(report.by))")
+        }
+        for bar in bars ?? [] where !houseIDs.contains(bar.house) {
+            found.append("A bar from the Words on no House (\(bar.house))")
+        }
         // Each edict a House's, voted on once by each House, closed after it was put.
         for edict in edictsOfTheRealm {
             let voters = edict.ayes + edict.nays

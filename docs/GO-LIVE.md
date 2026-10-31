@@ -84,6 +84,13 @@ answers again. `scripts/raise-realm.sh maincloud --stop` stops it. Release
 builds already point at `https://maincloud.spacetimedb.com/nullmere`;
 nothing in the app changes.
 
+Keeping the Words safe: each line a keeper reports shows in that log as
+`REPORT by …`, with the lines said round it. Started with
+`NULLMERE_STEWARD_ORDERS` naming a file, the steward reads orders added
+to it, a line each: `remove 123` takes line 123 out of the Words, and
+`bar 4 20` bars House 4 from them for twenty watches. The log answers
+each `ORDER` with what was done.
+
 ## 2. Sign and notarize the release
 
 Needs an Apple Developer account, and the GitHub CLI signed in to this

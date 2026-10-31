@@ -76,6 +76,8 @@ extension GameState {
             return try sing(ballad, of: entry, as: house)
         case let .castBottle(words, holdID, signed):
             return try castBottle(words, from: holdID, signed: signed, as: house)
+        case let .reportWord(wordID):
+            return try report(wordID, as: house)
         case let .proposeEdict(kind):
             return try proposeEdict(kind, as: house)
         case let .voteEdict(edictID, aye):

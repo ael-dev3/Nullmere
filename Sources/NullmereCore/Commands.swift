@@ -81,6 +81,8 @@ public enum Command: Codable, Equatable, Sendable {
     /// Words sealed in a bottle and set on the water from a hold on the
     /// shore, signed or not.
     case castBottle(words: String, from: Int, signed: Bool)
+    /// A line of another keeper's reported to the realm's steward.
+    case reportWord(word: Int)
     /// An edict put to the realm, for every House to vote on.
     case proposeEdict(kind: EdictKind)
     /// A House's vote on the edict before the realm: aye or nay.
@@ -220,6 +222,13 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case sangThisWatch
     case noWaterBeside
     case castThisWatch
+    /// A line the House never heard, or one taken away.
+    case unknownWord
+    /// A House's own line, reported.
+    case ownWord
+    case reportedAlready
+    /// Barred from the Words by the realm's steward, until a watch.
+    case barredFromWords(until: Int)
     /// A House of one hold, putting an edict to the realm.
     case tooFewHolds
     /// An edict before the realm already.
@@ -427,6 +436,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .sangThisWatch: return "Your House has sung this watch; sing again at the next."
         case .noWaterBeside: return "No water lies beside this hold to set a bottle on."
         case .castThisWatch: return "Your House has set a bottle on the water this watch; another at the next."
+        case .unknownWord: return "No such line is in the Words."
+        case .ownWord: return "That line is your own."
+        case .reportedAlready: return "You have reported that line already."
+        case .barredFromWords(let until): return "The realm's steward has barred your House from the Words until the \(ordinal(until)) watch."
         case .tooFewHolds: return "Only a House of two holds or more may put an edict to the realm."
         case .edictInVote: return "An edict is before the realm already; another when its vote is done."
         case .edictInForce: return "That edict holds the realm already."
@@ -710,6 +723,12 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case bottleCast(bottle: Int, from: Int, at: Hex)
     /// A bottle washed up and found, with the words in it.
     case bottleFound(bottle: Bottle, by: Int)
+    /// A line reported to the realm's steward.
+    case wordReported(word: Int, by: Int)
+    /// A line taken away by the realm's steward.
+    case wordRemoved(word: Int)
+    /// A House barred from the Words by the realm's steward, until a watch.
+    case barredFromWords(house: Int, until: Int)
     /// An edict put to the realm, its vote open.
     case edictProposed(Edict)
     /// A House's vote on an edict before the realm.

@@ -318,6 +318,42 @@ public actor RealmSteward {
         return changed
     }
 
+    /// An order of whoever runs the realm, in plain words, carried out now
+    /// and heard by the keepers with the next publication: "remove 123"
+    /// takes line 123 out of the Words; "bar 4 20" bars House 4 from them
+    /// for twenty watches. What was done, or why nothing was, in a line.
+    public func obey(_ order: String) -> String {
+        let words = order.split(separator: " ").map(String.init)
+        switch (words.first?.lowercased(), words.dropFirst().compactMap { Int($0) }) {
+        case ("remove", let numbers) where numbers.count == 1:
+            let done = state.removeWord(numbers[0])
+            guard !done.isEmpty else { return "No line \(numbers[0]) is kept in the Words." }
+            pendingActs.append(("", done))
+            worldChanged = true
+            return "Took line \(numbers[0]) out of the Words."
+        case ("bar", let numbers) where numbers.count == 2:
+            let done = state.bar(numbers[0], fromWordsFor: numbers[1])
+            guard case .barredFromWords(_, let until)? = done.first else { return "No House \(numbers[0]) to bar, or no watches to bar it for." }
+            pendingActs.append(("", done))
+            worldChanged = true
+            return "Barred \(state.world.houses[numbers[0]].title) from the Words until watch \(until)."
+        default:
+            return "Not an order the steward knows: \(order). Orders: remove <line>, bar <House> <watches>."
+        }
+    }
+
+    /// A line reported, told to whoever runs the realm with what was said
+    /// round it, as the realm keeps it.
+    private func tellReports(_ events: [GameEvent]) {
+        for case .wordReported(let id, let by) in events {
+            guard let kept = state.world.wordReports.last(where: { $0.word == id && $0.by == by }) else { continue }
+            let houses = state.world.houses
+            func name(_ house: Int) -> String { houses.indices.contains(house) ? "\(houses[house].title) (\(house))" : "House \(house)" }
+            let lines = kept.context.map { "\($0.id == id ? ">" : " ") \($0.id) \(name($0.from)): \($0.text)" }
+            report("REPORT by \(name(by)) of line \(id), watch \(kept.watch):\n" + lines.joined(separator: "\n"))
+        }
+    }
+
     private func handle(kind: String, keeper: String, payload: String, now: Double) -> (RealmReply, Bool, [GameEvent]) {
         switch kind {
         case "arrive":
@@ -338,6 +374,7 @@ public actor RealmSteward {
             }
             do {
                 let done = try state.perform(command, by: keeper)
+                tellReports(done)
                 // The others hear of it with the next publication; the
                 // keeper, with the answer.
                 if !done.isEmpty { pendingActs.append((keeper, done)) }

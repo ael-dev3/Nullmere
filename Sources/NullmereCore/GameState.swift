@@ -88,6 +88,12 @@ public struct GameState: Codable, Equatable, Sendable {
     var alliances: [Alliance]?
     /// The keepers' words, the latest last; absent before any were said.
     var words: [Word]?
+    /// The lines keepers have reported to the realm's steward, with what was
+    /// said round them; absent before the first.
+    var reports: [WordReport]?
+    /// The Houses the realm's steward has barred from the Words, and until
+    /// when; absent before the first.
+    var bars: [WordsBar]?
     /// The realm's songbook: the ballads its keepers have sung this age,
     /// the latest last; absent before the first.
     var ballads: [Ballad]?

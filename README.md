@@ -1116,6 +1116,14 @@ realm; keepers are told in plain words, never a status code.
   the Houses panel, hides its keeper everywhere on this Mac: their Words,
   their notices, their ballads and their envoys' words. The rail's Words
   shows how many lines others have said since the keeper last read them.
+  Another's line is reported to the realm's steward from its menu (or
+  VoiceOver's actions), once: the realm keeps the report with the three
+  lines before it and after, the reporter alone knows of it, and the
+  steward's log shows it to whoever runs the realm, who may take a line
+  away (it stands where it was, as taken away) or bar a House from the
+  Words for so many watches (its keeper is told until when, and nothing
+  they write is said) by writing "remove <line>" or "bar <House>
+  <watches>" into the file named by `NULLMERE_STEWARD_ORDERS`.
 - **The world first.** The map is the screen; the interface keeps to
   its edges and comes when it is wanted. The top bar is three small
   islands, the House and the watch, the stores, and Ready, with the
