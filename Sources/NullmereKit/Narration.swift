@@ -163,7 +163,8 @@ enum Narration {
              .happeningBegun, .happeningMark, .happeningEnded, .sunderingBegun, .sunderingEnded, .fieldJoined, .fieldEnded,
              .fordOpened, .fordClosed, .carriedAshore, .recalled,
              .deedDone, .chargeDone, .said, .sung, .bottleCast, .bottleFound,
-             .edictProposed, .edictVoted, .edictPassed, .edictFailed, .edictLapsed, .edictBroken:
+             .edictProposed, .edictVoted, .edictPassed, .edictFailed, .edictLapsed, .edictBroken,
+             .wordReported, .wordRemoved, .barredFromWords:
             // The deeper systems' words are the rules' own.
             return state.tidings(of: event, for: viewer).map { Line(text: $0.text, tone: Narration.tone($0.tone)) }
         }
