@@ -30,17 +30,17 @@
       "note": "the world drawn in three dimensions, as CI's runner first measured it (cb5988b)"
     },
     "world.gpu.scale60.p50": {
-      "baseline": 4.74,
+      "baseline": 5.7,
       "gpu": true,
       "limit": 16.7,
-      "note": "the world drawn in three dimensions, as CI's runner first measured it (cb5988b)"
+      "note": "the world drawn in three dimensions, far out: the mean of CI's first two figures (cb5988b, 5b3b85c), which vary the most"
     },
     "world.gpu.scale60.p95": {
-      "baseline": 6.7,
+      "baseline": 7.37,
       "gpu": true,
       "ratio": 1.5,
       "limit": 16.7,
-      "note": "the world drawn in three dimensions, as CI's runner first measured it (cb5988b)"
+      "note": "the world drawn in three dimensions, far out: the mean of CI's first two figures (cb5988b, 5b3b85c), which vary the most"
     },
     "pan.frame.p50": {
       "baseline": 8.96,

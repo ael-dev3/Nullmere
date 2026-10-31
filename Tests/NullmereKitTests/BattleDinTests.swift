@@ -43,29 +43,38 @@ final class BattleDinTests: XCTestCase {
     }
 
     func testABattleIsHeardFromWhereItIsAboveTheNightAndNeverClips() {
-        let quiet = render(settled(), seconds: 4)
-        let bed = rms(quiet.left[...])
+        // The night alone, over the same seconds as the din is heard and
+        // after it is gone: from two to four, and from six to eight.
+        let rate = Int(Self.rate)
+        let held = (2 * rate)..<(4 * rate), after = (6 * rate)..<(8 * rate)
+        let quiet = render(settled(), seconds: 8)
+        let bed = (left: rms(quiet.left[held]), right: rms(quiet.right[held]))
+        let bedAfter = rms(quiet.left[after])
+        // How much of a channel is the din's, past the night's.
+        func din(_ heard: Float, over night: Float) -> Float { max(heard * heard - night * night, 0) }
+
         let loud = settled()
         loud.setDin(level: 1, pan: 0.8)
         let battle = render(loud, seconds: 4)
-        // Past its easing in, the last two seconds.
-        let second = Int(2 * Self.rate)
-        let left = rms(battle.left[second...]), right = rms(battle.right[second...])
-        print("SOUND din \(String(format: "%.1f", 20 * log10(max(left, right)))) dBFS rms beside a bed of \(String(format: "%.1f", 20 * log10(bed)))")
-        XCTAssertGreaterThan(right, bed * 2, "A great battle close by is heard well above the night")
-        XCTAssertGreaterThan(right, left * 1.5, "from the right, where it is")
+        let left = rms(battle.left[held]), right = rms(battle.right[held])
+        print("SOUND din \(String(format: "%.1f", 20 * log10(max(left, right)))) dBFS rms beside a bed of \(String(format: "%.1f", 20 * log10(bed.right)))")
+        XCTAssertGreaterThan(right, bed.right * 2, "A great battle close by is heard well above the night")
+        XCTAssertGreaterThan(din(right, over: bed.right), 4 * din(left, over: bed.left), "from the right, where it is")
         XCTAssertLessThan(max(battle.left.map(abs).max() ?? 0, battle.right.map(abs).max() ?? 0), 0.95, "and never clips")
         XCTAssertEqual(loud.dinHeard.level, 1, accuracy: 0.05)
 
-        // A small fight far off is fainter; and the din eases out when none is in sight.
+        // A smaller fight farther off is fainter, and heard from the left.
         let faint = settled()
-        faint.setDin(level: 0.15, pan: -1)
+        faint.setDin(level: 0.35, pan: -1)
         let far = render(faint, seconds: 4)
-        XCTAssertLessThan(rms(far.left[second...]), right, "Fainter for fewer, farther off")
-        XCTAssertGreaterThan(rms(far.left[second...]), rms(far.right[second...]), "from the left")
+        let farLeft = rms(far.left[held]), farRight = rms(far.right[held])
+        XCTAssertLessThan(din(farLeft, over: bed.left), din(right, over: bed.right) / 2, "Fainter for fewer, farther off")
+        XCTAssertGreaterThan(din(farLeft, over: bed.left), 4 * din(farRight, over: bed.right), "from the left")
+        // And the din eases out when none is in sight.
         loud.setDin(level: 0, pan: 0)
-        let after = render(loud, seconds: 4)
-        XCTAssertLessThan(rms(after.left[second...]), bed * 1.2, "Gone again with the battle")
+        let gone = render(loud, seconds: 4)
+        XCTAssertLessThan(rms(gone.left[(2 * rate)...]), bedAfter * 1.2, "Gone again with the battle")
+        XCTAssertEqual(loud.dinHeard.level, 0, accuracy: 0.01)
     }
 
     @MainActor
@@ -88,13 +97,15 @@ final class BattleDinTests: XCTestCase {
                           Fighter(unit: 999, owner: (player + 1) % 4, side: 1, kind: .spear, tier: 2, leader: nil, troops: 6_000)]
         state.fields = [field]
         let session = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("battle")))
-        // The view a little to the left of it: the field to its right.
+        // The view a little to the left of it, the field within its
+        // middle: to its right.
         var camera = session.camera
         camera.focus(on: mine.position)
-        camera.centerX -= 40
+        camera.heading = 0
+        camera.centerX -= 0.3 * 600 / camera.scale
         session.camera = camera
         let din = try XCTUnwrap(session.battleDin())
-        XCTAssertGreaterThan(din.level, 0.5, "Fifteen thousand fighting, close by")
+        XCTAssertEqual(din.level, 1, accuracy: 1e-4, "Fifteen thousand fighting, close by: as loud as it gets")
         XCTAssertGreaterThan(din.pan, 0, "to the right of the view")
         var heard: [(Float, Float)] = []
         session.onDin = { heard.append(($0, $1)) }
