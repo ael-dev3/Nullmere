@@ -91,6 +91,28 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertFalse(still.batches.contains { $0.key == .prop(.bird) || $0.key == .prop(.puff) })
     }
 
+    /// The veil of the Still lies on the world as a low mist about the
+    /// veiled House's holds in sight, six banks to each, faint and flat.
+    func testAVeilLiesAsMistAboutItsHolds() throws {
+        let clear = try session()
+        let veiled = try session { state in
+            state.houses[state.player].stock.moonsalt = 60
+            _ = try state.perform(.drawVeil, as: state.player)
+        }
+        XCTAssertTrue(veiled.state.isVeiled(veiled.player))
+        func puffs(_ session: GameSession) -> [ModelInstance] {
+            session.sceneFrame(at: 2).batches.first { $0.key == .prop(.puff) }?.instances ?? []
+        }
+        let mist = puffs(veiled).count - puffs(clear).count
+        XCTAssertGreaterThanOrEqual(mist, 6, "Mist about the seat at least")
+        XCTAssertEqual(mist % 6, 0, "Six banks to a hold")
+        let banks = puffs(veiled).filter { $0.model.c0.x > 3 }
+        XCTAssertEqual(banks.count, mist)
+        XCTAssertTrue(banks.allSatisfy { $0.params.y < 0.4 }, "Faint")
+        veiled.motion = .still
+        XCTAssertTrue(puffs(veiled).filter { $0.model.c0.x > 3 }.count == mist, "Mist lies still, too")
+    }
+
     func testTheOmensWeatherFallsOnTheWorld() throws {
         let clear = try session()
         XCTAssertEqual(clear.sceneFrame(at: 2).weather, .clear)

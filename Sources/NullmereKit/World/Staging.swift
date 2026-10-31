@@ -143,11 +143,14 @@ extension GameSession {
         let furniture = stage.furnish(occupied: standing,
                                       holds: Set(sights.map(\.hold.position) + hallSights.map(\.hex) + storehouseSights.map(\.hex)))
 
-        // Arrows in flight, birds over the water, smoke from the hearths in sight.
+        // Arrows in flight, birds over the water, smoke from the hearths in
+        // sight, and the veil of the Still's mist about the veiled holds.
         let lake = Relief.centre(of: Hex(0, 0))
+        let veiled = state.veils == nil ? [] : shown.filter { state.isVeiled($0.hold.owner) && isVisible($0.hold.position) }
         let flights = WorldStage.flights(arrows: full ? arrows(at: now) : [],
                                          birdsOver: full ? Vec3(lake.x, Relief.waterline, lake.z) : nil,
                                          hearths: full ? (hearths + lairs.hearths + hallHearths + yards.hearths).filter { isVisible($0.hex) } : [],
+                                         mists: veiled.flatMap { WorldStage.mist(about: $0.hold.position, height: Float(groundHeight(of: $0.hold.position))) },
                                          time: t,
                                          into: &frame)
         frame.fixed = furniture

@@ -471,8 +471,9 @@ as the realm will, and takes the realm's word as final.
   though the House's companies abroad may still be met. It lifts the
   moment the House strikes another House, calls or joins a rally on a
   hold, or scouts one, and may be drawn again ten watches after it lifts.
-  The holds' records and the pointer say while it lies; stewards draw
-  none, and let veiled holds be.
+  The holds' records and the pointer say while it lies, and in the world
+  a low mist lies about each of the House's holds, six faint banks
+  breathing round its walls; stewards draw none, and let veiled holds be.
 - **A seat raised anew.** Rise of Kingdoms' teleport, within a House's
   own land: from a tile of that land a keeper raises their seat anew there
   for 40 moonsalt, its works, walls, ward and wounded as they stood and the

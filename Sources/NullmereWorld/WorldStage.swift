@@ -784,9 +784,20 @@ public final class WorldStage: @unchecked Sendable {
 
     // MARK: What flies
 
-    /// Arrows in flight, the night's birds wheeling over the lake, and the
-    /// smoke of the holds' hearths, as a frame at `time` sees them.
-    public static func flights(arrows: [ArrowFlight], birdsOver lake: Vec3?, hearths: [Hearth], time: Float,
+    /// The veil of the Still about a hold: six banks of low mist ringing
+    /// its walls, on the ground at `height`.
+    public static func mist(about hex: Hex, height: Float) -> [Hearth] {
+        let centre = Relief.centre(of: hex)
+        return (0..<6).map { index in
+            let angle = Double(index) * .pi / 3
+            return Hearth(point: Vec3(centre.x + 0.42 * Float(cos(angle)), height + 0.04, centre.z + 0.42 * Float(sin(angle))), hex: hex)
+        }
+    }
+
+    /// Arrows in flight, the night's birds wheeling over the lake, the
+    /// smoke of the holds' hearths and the mist of the veils, as a frame at
+    /// `time` sees them.
+    public static func flights(arrows: [ArrowFlight], birdsOver lake: Vec3?, hearths: [Hearth], mists: [Hearth] = [], time: Float,
                                into frame: inout SceneFrame) -> [ModelBatch] {
         var placed: [(ModelKey, ModelInstance)] = []
         for arrow in arrows where (0...1).contains(arrow.progress) {
@@ -815,6 +826,14 @@ public final class WorldStage: @unchecked Sendable {
             let pose = pose(.prop(.puff), .idle, at: local, shared: &shared, into: &frame)
             placed.append((.prop(.puff), ModelInstance(model: .translation(hearth.point), opacity: 0.85 * (1 - progress),
                                                        hex: SIMD2(Int32(hearth.hex.q), Int32(hearth.hex.r)), palette: pose)))
+        }
+        for (index, mist) in mists.enumerated() {
+            // Low banks of the lake's mist, wide and flat, breathing slowly in
+            // and out of sight but never rising.
+            let pose = pose(.prop(.puff), .idle, at: Float(index % 6) * 0.11, shared: &shared, into: &frame)
+            let breath = 0.5 + 0.5 * Float(sin(Double(time * 0.45 + Float(index) * 1.3)))
+            placed.append((.prop(.puff), ModelInstance(model: .translation(mist.point) * .scale(Vec3(3.2, 0.55, 3.2)), opacity: 0.2 + 0.14 * breath,
+                                                       hex: SIMD2(Int32(mist.hex.q), Int32(mist.hex.r)), palette: pose)))
         }
         return batches(placed)
     }
