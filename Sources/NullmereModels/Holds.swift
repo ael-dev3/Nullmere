@@ -353,8 +353,56 @@ enum Holds {
                 }
             }
         }
+        dressWalls(&b, level: level, height: h, thick: thick, runs: runs, half: gateHalf)
         gate(&b, level: level, height: h, half: gateHalf)
         return Model(name: name, mesh: b.mesh)
+    }
+
+    /// The walls' dressing: from the second level, buttresses along their
+    /// outer face and, on a low wall, a coping of pale stone; torches
+    /// burning either side of the gate at every level; and from the fourth,
+    /// the House's banners hung either side of it.
+    static func dressWalls(_ b: inout MeshBuilder, level: Int, height h: Float, thick: Float, runs: [(Vec3, Vec3)], half: Float) {
+        if level >= 2 {
+            for (a, c) in runs {
+                let along = c - a
+                let turn = Float(atan2(Double(along.x), Double(along.z))) - .pi / 2
+                let middle = (a + c) * 0.5
+                let out = Vec3(middle.x, 0, middle.z).normalized
+                if level == 2 {
+                    b.beam(from: a + Vec3(0, h, 0), to: c + Vec3(0, h, 0), width: thick + 0.024, depth: 0.022, color: Palette.stonePale)
+                }
+                let count = max(Int((along.length / 0.2).rounded()) - 1, 1)
+                for index in 1...count {
+                    let at = a.mix(c, Float(index) / Float(count + 1)) + out * (thick / 2 + 0.014)
+                    b.box(center: at + Vec3(0, (h * 0.8 - 0.3) / 2, 0), size: Vec3(0.036, h * 0.8 + 0.3, 0.028), turn: turn,
+                          color: Palette.stoneDark)
+                }
+            }
+        }
+        // Torches either side of the gate, out before it.
+        let z = wallCorner(1).z + 0.09
+        for side in [Float(1), -1] {
+            let x = side * (half + 0.012)
+            b.limb(from: Vec3(x, -0.05, z), to: Vec3(x, 0.15, z), radius: 0.006, sides: 4, color: Palette.timberDark)
+            b.box(center: Vec3(x, 0.155, z), size: Vec3(0.02, 0.012, 0.02), color: Palette.iron)
+            b.with(material: .glow) {
+                $0.box(center: Vec3(x, 0.175, z), size: Vec3(0.014, 0.028, 0.014), color: Palette.fire)
+            }
+        }
+        // The House's banners down the walls either side of the gate.
+        if level >= 4 {
+            for (a, c) in runs where a.z > 0.5 && c.z > 0.5 {
+                let middle = (a + c) * 0.5, top = middle + Vec3(0, h - 0.03, thick / 2 + 0.006)
+                b.with(material: .cloth, sway: 0.3) {
+                    $0.swayRange = (0, 0.14)
+                    $0.place(.translation(top) * .rotationZ(.pi)) {
+                        $0.sheet([Vec3(-0.03, 0, 0), Vec3(0.03, 0, 0), Vec3(0.03, 0.14, 0), Vec3(0, 0.16, 0), Vec3(-0.03, 0.14, 0)],
+                                 normal: Vec3(0, 0, 1), thickness: 0.004, color: Palette.house)
+                    }
+                }
+            }
+        }
     }
 
     /// The gate in the +z side: leaves of timber, then a gatehouse of two
