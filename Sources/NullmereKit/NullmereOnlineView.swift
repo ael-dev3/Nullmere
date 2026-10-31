@@ -25,11 +25,22 @@ public final class OnlineShell {
         launcher.enterRealm = { [weak self] in self?.enterRealm() }
         app.onLeave = { [weak self] in self?.leaveRealm() }
         app.display = launcher
+        // The launcher's Music and the realm's are one choice.
+        launcher.onMusicChanged = { [weak app] on in app?.isMusicOn = on }
+    }
+
+    /// Over the launcher, the title theme of the lake the keeper's realm
+    /// last lay on, with the night about it.
+    func playTitle() {
+        app.ambience.titleLake = GameApp.lastLake
+        app.ambience.start()
     }
 
     func enterRealm() {
         inRealm = true
         RunLedger.shared.note(.door)
+        // The realm's own score, at peace or at war, from its door on.
+        app.ambience.titleLake = nil
         app.open()
     }
 
@@ -37,6 +48,7 @@ public final class OnlineShell {
         inRealm = false
         RunLedger.shared.note(.launcher)
         launcher.returnFromRealm()
+        playTitle()
     }
 
     /// What Settings… opens: the launcher's panel, or the game's settings.
@@ -71,5 +83,6 @@ public struct NullmereOnlineView: View {
         }
         .animation(.easeInOut(duration: 0.8), value: shell.inRealm)
         .background(WindowFitter())
+        .onAppear { if !shell.inRealm { shell.playTitle() } }
     }
 }

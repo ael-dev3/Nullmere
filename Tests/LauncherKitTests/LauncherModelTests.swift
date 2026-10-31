@@ -399,4 +399,26 @@ final class LauncherModelTests: XCTestCase {
         XCTAssertNil(model.mishap)
         try await waitUntil(self.crossings == 1)
     }
+
+    /// The launcher's Music and the realm's are one choice: chosen here, it
+    /// is told to whoever plays the score; chosen in the realm, it shows
+    /// here without being told back.
+    func testMusicIsOneChoiceWithTheRealms() {
+        let model = makeModel()
+        var heard: [Bool] = []
+        model.onMusicChanged = { heard.append($0) }
+        XCTAssertTrue(model.settings.music)
+        model.choose(0, for: .music)
+        XCTAssertFalse(model.settings.music)
+        XCTAssertEqual(heard, [false])
+        XCTAssertEqual(defaults.object(forKey: "music.enabled") as? Bool, false)
+        model.choose(0, for: .music)
+        XCTAssertEqual(heard, [false], "Nothing changed, nothing told")
+        model.noteMusic(true)
+        XCTAssertTrue(model.settings.music)
+        XCTAssertEqual(heard, [false], "From the realm, not told back")
+        XCTAssertEqual(defaults.object(forKey: "music.enabled") as? Bool, true)
+        model.noteMusic(true)
+        XCTAssertEqual(heard, [false])
+    }
 }

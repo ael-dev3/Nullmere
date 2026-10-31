@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import NullmereCore
 import os
 
 /// The game's sound, all of it made as it plays: a cold drone and the
@@ -192,8 +193,19 @@ public final class Ambience {
         didSet { if isAtWar != oldValue { applyMusic() } }
     }
 
+    /// The lake whose title theme plays, over the launcher; nil in the realm.
+    public var titleLake: Lake? {
+        didSet { if titleLake != oldValue { applyMusic() } }
+    }
+
+    /// What the score plays now: the title theme over the launcher, war or
+    /// peace in the realm.
+    var mood: Score.Mood {
+        titleLake.map { .title($0) } ?? (isAtWar ? .war : .peace)
+    }
+
     private func applyMusic() {
-        synth.setMusic(on: isMusicOn, mood: isAtWar ? .war : .peace)
+        synth.setMusic(on: isMusicOn, mood: mood)
     }
 
     /// How loud each part of the sound plays, from silent (0) to full (1):

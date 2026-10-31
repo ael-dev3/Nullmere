@@ -1,3 +1,4 @@
+import LauncherCore
 import Foundation
 import LauncherKit
 import NullmereRealm
@@ -182,6 +183,8 @@ final class NearTheEndTests: XCTestCase {
         let shell = OnlineShell()
         XCTAssertFalse(shell.inRealm)
         XCTAssertFalse(shell.app.isSoundOn)
-        XCTAssertEqual(shell.launcher.screen, .title)
+        // On the menu, or on the page of a run that stopped on a fault
+        // before, should this Mac have one.
+        XCTAssertEqual(shell.launcher.screen, RunLedger.shared.atLaunch == nil ? .title : .mishap)
     }
 }

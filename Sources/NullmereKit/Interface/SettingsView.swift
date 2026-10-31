@@ -19,7 +19,9 @@ public struct GameSettingsView: View {
         VStack(alignment: .leading, spacing: 18) {
             PanelTitle(title: "Settings", subtitle: "The launcher's display settings, and the realm's own")
             part("Display") {
-                ForEach(SettingsRow.allCases, id: \.self) { row in
+                // The launcher's rows but its Music, which is the realm's
+                // own below, with its volume.
+                ForEach(SettingsRow.allCases.filter { $0 != .music }, id: \.self) { row in
                     ChoiceLine(title: row.title, options: app.displaySettings.options(for: row),
                                chosen: app.displaySettings.selectedIndex(for: row)) { app.display?.setDisplay(row, to: $0) }
                 }

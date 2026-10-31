@@ -23,7 +23,7 @@ final class LauncherSettingsTests: XCTestCase {
     func testResolutionsAndRowsAreNamedAndScaled() {
         XCTAssertEqual(RenderQuality.allCases.map(\.scale), [1, 0.75, 0.5])
         XCTAssertEqual(RenderQuality.allCases.map(\.title), ["Native", "Balanced", "Efficient"])
-        XCTAssertEqual(SettingsRow.allCases.map(\.title), ["Motion", "Resolution", "Frame rate", "Text", "Full screen at launch"])
+        XCTAssertEqual(SettingsRow.allCases.map(\.title), ["Motion", "Resolution", "Frame rate", "Text", "Music", "Full screen at launch"])
     }
 
     func testEmptyDefaultsProduceDefaultSettings() {
@@ -32,12 +32,27 @@ final class LauncherSettingsTests: XCTestCase {
         XCTAssertEqual(LauncherSettings().frameRate, .sixty)
         XCTAssertFalse(LauncherSettings().startsInFullScreen)
         XCTAssertFalse(LauncherSettings().largerText)
+        XCTAssertTrue(LauncherSettings().music, "The score plays until it is turned off")
     }
 
     func testSettingsRoundTrip() {
-        let settings = LauncherSettings(motion: .still, quality: .efficient, frameRate: .oneTwenty, largerText: true, startsInFullScreen: true)
+        let settings = LauncherSettings(motion: .still, quality: .efficient, frameRate: .oneTwenty, largerText: true, music: false,
+                                        startsInFullScreen: true)
         settings.save(to: defaults)
         XCTAssertEqual(LauncherSettings(defaults: defaults), settings)
+    }
+
+    /// The launcher's Music is the realm's: kept where the realm always
+    /// kept it, so one choice serves both.
+    func testMusicIsReadWhereTheRealmKeepsIt() {
+        defaults.set(false, forKey: "music.enabled")
+        XCTAssertFalse(LauncherSettings(defaults: defaults).music)
+        var settings = LauncherSettings(defaults: defaults)
+        XCTAssertEqual(settings.options(for: .music), ["Off", "On"])
+        XCTAssertEqual(settings.selectedIndex(for: .music), 0)
+        settings.select(1, for: .music)
+        settings.save(to: defaults)
+        XCTAssertEqual(defaults.object(forKey: "music.enabled") as? Bool, true)
     }
 
     /// Larger Text keeps its choice where it always has, so a choice made

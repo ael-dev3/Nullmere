@@ -105,6 +105,9 @@ public struct LauncherSettings: Equatable, Sendable {
     public var frameRate: FrameRateCap
     /// All the type a fifth larger, the launcher's and the game's.
     public var largerText: Bool
+    /// The score: the title theme of the lake over the launcher, and the
+    /// realm's music within it, one choice for both.
+    public var music: Bool
     public var startsInFullScreen: Bool
 
     public init(
@@ -112,12 +115,14 @@ public struct LauncherSettings: Equatable, Sendable {
         quality: RenderQuality = .native,
         frameRate: FrameRateCap = .sixty,
         largerText: Bool = false,
+        music: Bool = true,
         startsInFullScreen: Bool = false
     ) {
         self.motion = motion
         self.quality = quality
         self.frameRate = frameRate
         self.largerText = largerText
+        self.music = music
         self.startsInFullScreen = startsInFullScreen
     }
 
@@ -127,6 +132,8 @@ public struct LauncherSettings: Equatable, Sendable {
         static let frameRate = "launcher.frameRate"
         /// Where Larger Text has always kept its choice.
         static let largerText = "text.larger"
+        /// Where the realm's Music has always kept its choice.
+        static let music = "music.enabled"
         static let startsInFullScreen = "launcher.startsInFullScreen"
     }
 
@@ -143,6 +150,7 @@ public struct LauncherSettings: Equatable, Sendable {
             frameRate = value
         }
         largerText = defaults.bool(forKey: Key.largerText)
+        music = defaults.object(forKey: Key.music) as? Bool ?? true
         startsInFullScreen = defaults.bool(forKey: Key.startsInFullScreen)
     }
 
@@ -151,6 +159,7 @@ public struct LauncherSettings: Equatable, Sendable {
         defaults.set(quality.rawValue, forKey: Key.quality)
         defaults.set(frameRate.rawValue, forKey: Key.frameRate)
         defaults.set(largerText, forKey: Key.largerText)
+        defaults.set(music, forKey: Key.music)
         defaults.set(startsInFullScreen, forKey: Key.startsInFullScreen)
     }
 }
@@ -161,6 +170,7 @@ public enum SettingsRow: CaseIterable, Sendable {
     case quality
     case frameRate
     case text
+    case music
     case startsInFullScreen
 
     public var title: String {
@@ -169,6 +179,7 @@ public enum SettingsRow: CaseIterable, Sendable {
         case .quality: return "Resolution"
         case .frameRate: return "Frame rate"
         case .text: return "Text"
+        case .music: return "Music"
         case .startsInFullScreen: return "Full screen at launch"
         }
     }
@@ -182,7 +193,7 @@ extension LauncherSettings {
         case .quality: return RenderQuality.allCases.map(\.title)
         case .frameRate: return FrameRateCap.allCases.map(\.title)
         case .text: return ["Standard", "Larger"]
-        case .startsInFullScreen: return ["Off", "On"]
+        case .music, .startsInFullScreen: return ["Off", "On"]
         }
     }
 
@@ -193,6 +204,7 @@ extension LauncherSettings {
         case .quality: return RenderQuality.allCases.firstIndex(of: quality) ?? 0
         case .frameRate: return FrameRateCap.allCases.firstIndex(of: frameRate) ?? 0
         case .text: return largerText ? 1 : 0
+        case .music: return music ? 1 : 0
         case .startsInFullScreen: return startsInFullScreen ? 1 : 0
         }
     }
@@ -205,6 +217,7 @@ extension LauncherSettings {
         case .quality: quality = RenderQuality.allCases[index]
         case .frameRate: frameRate = FrameRateCap.allCases[index]
         case .text: largerText = index == 1
+        case .music: music = index == 1
         case .startsInFullScreen: startsInFullScreen = index == 1
         }
     }

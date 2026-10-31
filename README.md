@@ -275,12 +275,20 @@ follow them:
 | Resolution | Native, Balanced, Efficient | Renders the lake at 100%, 75% or 50% of native pixels, and the map at most at that |
 | Frame rate | 30, 60, 120 | Upper bound for the lake's and the map's frame rate. Reduced motion, Low Power Mode, a Mac running hot, or another app in front lowers it to 30 |
 | Text | Standard, Larger | Larger sets all the type a fifth larger, the launcher's and the game's, none of it under eleven points. ⇧⌘+ in the Watch menu sets it too |
+| Music | Off, On | The score: over the launcher, the title theme of the lake the keeper's realm last lay on; within the realm, its own. One choice with the realm's Music |
 | Full screen at launch | Off, On | Applies the next time the launcher opens |
 
-The realm's Settings also hold its sound (on or off, the effects, the
-night, the music and its score's volume) and counsel. The
-launcher makes no sound; ⇧⌘M and ⇧⌘U turn sound and music off or on once
-the realm shows.
+Over the launcher, the night's drone and wind play beneath a title theme
+for the lake the keeper's realm last lay on (the Nullmere before any),
+written as it plays as the realm's score is, each lake in a mode of its
+own: the Nullmere in D dorian, slow and open; the Twin Waters in A minor,
+each note answered a fifth above a breath later; the Sickle in E
+phrygian, its half step down to the home note sharp; the Drowned Isles
+in F lydian, with long silences. Crossing to the realm, the score turns
+to its own, at peace or at war. The realm's Settings also hold its sound
+(on or off, the effects, the night, the music and its score's volume)
+and counsel; ⇧⌘M and ⇧⌘U turn sound and music off or on once the realm
+shows.
 
 ## The realm
 

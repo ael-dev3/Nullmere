@@ -152,7 +152,7 @@ To build, reimagined:
 - [ ] A House's crest (Warpkeep's profile and portrait): a shield, its tinctures and a charge chosen once, shown on the House's records, banners and the front door
 - [ ] Rivers: streams from the Spine to the lake, crossed at fords, named and followed; the shores' regions named, with a legend
 - [ ] Graphics chosen for the Mac: an Auto that reads the hardware, detail tiers, a reset to the defaults; when the GPU fails, a step down before the painting, with what to tell
-- [ ] Title and menu music in the launcher, a theme for each lake
+- [x] Title and menu music in the launcher, a theme for each lake: the night beneath a title theme for the lake the keeper's realm last lay on, each lake in a mode of its own (the Twin Waters answering each note a fifth above), and Music among the launcher's settings, one choice with the realm's
 - [ ] A work that hastens marches and one that hastens building (Warpkeep's Barracks and Cathedral)
 - [ ] Works placed by the keeper within a hold (Warpkeep's free placement), on the town's grid
 - [x] A crash met by a page that says what happened and opens the world again: a fault caught as it strikes, and the next launch opening on where the keeper was, when, and what stopped it, with Open the world again, Report it (a new issue, written out) and Back

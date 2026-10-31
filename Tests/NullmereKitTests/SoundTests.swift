@@ -1,4 +1,5 @@
 import AVFoundation
+import NullmereCore
 import XCTest
 @testable import NullmereKit
 
@@ -229,5 +230,52 @@ final class MusicTests: XCTestCase {
     func testTheSameSeedPlaysTheSameMusic() {
         let a = synth(music: true), b = synth(music: true)
         XCTAssertEqual(render(a, seconds: 20), render(b, seconds: 20))
+    }
+
+    /// Over the launcher, each lake's title theme in its own mode: every
+    /// note from its own melody, the chords moving, no drum, and the Twin
+    /// Waters answering each note a fifth above.
+    func testEachLakeHasItsOwnTitleTheme() {
+        for lake in Lake.allCases {
+            let s = synth(music: true, mood: .title(lake))
+            _ = render(s, seconds: 90)
+            let score = s.scoreSnapshot
+            let theme = Theme.of(.title(lake))
+            XCTAssertGreaterThanOrEqual(score.playedNotes.count, 4, "\(lake)")
+            XCTAssertTrue(score.playedNotes.allSatisfy(theme.melody.contains), "\(lake) keeps its mode")
+            XCTAssertGreaterThanOrEqual(score.chordChanges, 3, "\(lake)")
+            XCTAssertEqual(score.drumStrokes, 0, "No drum over the launcher")
+        }
+        XCTAssertEqual(Set(Lake.allCases.map { Theme.of(.title($0)).melody }).count, Lake.allCases.count, "Each lake its own")
+        XCTAssertEqual(Theme.of(.title(.twin)).echo, 7)
+        XCTAssertNil(Theme.of(.peace).echo)
+        XCTAssertEqual(Theme.of(.peace).melody, Score.melody, "The realm's peace as it was")
+        XCTAssertEqual(Theme.of(.war).chords, Score.warChords)
+    }
+
+    /// The ambience plays the title theme while a lake is named for it, war
+    /// or not, and the realm's own score once none is; the lake a realm
+    /// tells of is kept as the one it last lay on.
+    func testTheLauncherPlaysTheLastLakesTheme() {
+        let ambience = Ambience(enabled: false)
+        XCTAssertEqual(ambience.mood, .peace)
+        ambience.isAtWar = true
+        XCTAssertEqual(ambience.mood, .war)
+        ambience.titleLake = .isles
+        XCTAssertEqual(ambience.mood, .title(.isles), "The title theme over the launcher")
+        ambience.titleLake = nil
+        XCTAssertEqual(ambience.mood, .war)
+
+        let kept = UserDefaults.standard.object(forKey: GameApp.lakeKey)
+        defer { kept == nil ? UserDefaults.standard.removeObject(forKey: GameApp.lakeKey) : UserDefaults.standard.set(kept, forKey: GameApp.lakeKey) }
+        UserDefaults.standard.removeObject(forKey: GameApp.lakeKey)
+        XCTAssertEqual(GameApp.lastLake, .round, "The Nullmere before any")
+        let status = RealmStatus(name: "R", age: 4, watch: 1, seats: 4, freeSeats: 4, keepers: 0, online: 0, ready: 0, secondsLeft: 60,
+                                 isEnding: false, lake: Lake.isles.title)
+        GameApp.remember(lakeOf: status)
+        XCTAssertEqual(GameApp.lastLake, .isles)
+        GameApp.remember(lakeOf: RealmStatus(name: "R", age: 1, watch: 1, seats: 4, freeSeats: 4, keepers: 0, online: 0, ready: 0,
+                                             secondsLeft: 60, isEnding: false))
+        XCTAssertEqual(GameApp.lastLake, .isles, "A realm that tells of no lake leaves it be")
     }
 }

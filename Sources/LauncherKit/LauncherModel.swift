@@ -561,8 +561,23 @@ public final class LauncherModel {
         var updated = settings
         change(&updated)
         guard updated != settings else { return }
+        let musicWas = settings.music
         settings = updated
         updated.save(to: defaults)
         if TextSize.shared.isLarger != updated.largerText { TextSize.shared.isLarger = updated.largerText }
+        if updated.music != musicWas { onMusicChanged?(updated.music) }
+    }
+
+    /// The score turned on or off here, for whoever plays it.
+    public var onMusicChanged: ((Bool) -> Void)?
+
+    /// The score turned on or off in the realm's own Settings: the
+    /// launcher's row shows it so, without telling it back.
+    public func noteMusic(_ on: Bool) {
+        guard settings.music != on else { return }
+        var updated = settings
+        updated.music = on
+        settings = updated
+        updated.save(to: defaults)
     }
 }

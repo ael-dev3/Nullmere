@@ -399,6 +399,7 @@ public final class GameApp {
         switch event {
         case .status(let status):
             door = .open(status)
+            Self.remember(lakeOf: status)
             if journeyTries != nil, !isEntering, case .frontDoor = phase {
                 // Across from another realm: in by the keeper's identity.
                 if keeperName != nil { enterWorld(name: "") }
@@ -676,7 +677,24 @@ public final class GameApp {
         didSet {
             ambience.isMusicOn = isMusicOn
             UserDefaults.standard.set(isMusicOn, forKey: "music.enabled")
+            // One choice with the launcher's Music.
+            display?.noteMusic(isMusicOn)
         }
+    }
+
+    /// The lake the keeper's realm last lay on, whose title theme plays
+    /// over the launcher; the Nullmere before any.
+    public static var lastLake: Lake {
+        UserDefaults.standard.string(forKey: lakeKey).flatMap(Lake.init(rawValue:)) ?? .round
+    }
+
+    static let lakeKey = "lake.last"
+
+    /// Keeps the lake a realm tells of as the one it last lay on.
+    static func remember(lakeOf status: RealmStatus) {
+        guard let lake = Lake.allCases.first(where: { $0.title == status.lake }),
+              UserDefaults.standard.string(forKey: lakeKey) != lake.rawValue else { return }
+        UserDefaults.standard.set(lake.rawValue, forKey: lakeKey)
     }
 
     /// How loud the cues, the night and the score play, each from 0 to 1.

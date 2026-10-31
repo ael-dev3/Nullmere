@@ -1,14 +1,19 @@
 import Foundation
+import NullmereCore
 
 /// The game's music: an original score written as it plays. Slow chords in
 /// D minor drift beneath a sparse line of bell-like notes from the minor
 /// pentatonic; at war a low, distant drum keeps time and the chords darken.
-/// It renders on the audio thread inside `Synth`, from its own seeded
-/// generator, so the same seed always plays the same music.
+/// Over the launcher, the title theme of the lake the keeper's realm last
+/// lay on, each lake in its own mode. It renders on the audio thread inside
+/// `Synth`, from its own seeded generator, so the same seed always plays
+/// the same music.
 struct Score {
     enum Mood: Equatable {
         case peace
         case war
+        /// The title theme of a lake, over the launcher.
+        case title(Lake)
     }
 
     /// MIDI notes of the chords the score moves among, and which may follow.
@@ -84,7 +89,8 @@ struct Score {
     }
 
     private mutating func nextChord() {
-        let pool = mood == .war ? Score.warChords : Score.chords
+        let theme = Theme.of(mood)
+        let pool = theme.chords
         let chord = pool[Int(random() * Float(pool.count)) % pool.count]
         // The chord sounding becomes the one fading, as it was, phases and
         // all; the new one is written into the room the old fading one
@@ -93,20 +99,27 @@ struct Score {
         current.removeAll(keepingCapacity: true)
         for note in chord { current.append(Voice(frequency: Score.frequency(note))) }
         crossfade = 0
-        chordLength = (mood == .war ? 7 : 9) + random() * 6
+        chordLength = theme.chordLength + random() * theme.chordSpread
         chordChanges += 1
     }
 
     private mutating func nextBell() {
         // A small step from the last note, now and then a leap.
-        let index = Score.melody.firstIndex(of: lastNote) ?? 3
+        let theme = Theme.of(mood)
+        let melody = theme.melody
+        let index = melody.firstIndex(of: lastNote) ?? 3
         let step = random() < 0.8 ? Int(random() * 5) - 2 : Int(random() * 9) - 4
-        let next = Score.melody[min(max(index + step, 0), Score.melody.count - 1)]
+        let next = melody[min(max(index + step, 0), melody.count - 1)]
         lastNote = next
         bells.append(Bell(frequency: Score.frequency(next)))
+        // A theme that answers itself: the same note again, higher, a
+        // breath later, as one water answers the other.
+        if let echo = theme.echo {
+            bells.append(Bell(frequency: Score.frequency(next + echo), age: -Theme.echoDelay))
+        }
         if playedNotes.count < 4096 { playedNotes.append(next) }
         // Silence matters as much as the notes.
-        bellClock = (mood == .war ? 2.5 : 3.5) + random() * 5
+        bellClock = theme.bellGap + random() * 5
         if random() < 0.25 { bellClock += 6 }
     }
 
@@ -154,7 +167,8 @@ struct Score {
             bells[i].phase += tau * bells[i].frequency * dt
             if bells[i].phase > tau { bells[i].phase -= tau }
             let b = bells[i]
-            let envelope = min(b.age * 25, 1) * exp(-b.age * 0.55)
+            // An echo waiting its breath sounds nothing yet.
+            let envelope = b.age < 0 ? 0 : min(b.age * 25, 1) * exp(-b.age * 0.55)
             bell += (sin(b.phase) + 0.25 * sin(b.phase * 2) + 0.08 * sin(b.phase * 3.01)) * envelope
         }
         bells.removeAll { $0.age > 9 }
@@ -179,5 +193,55 @@ struct Score {
         }
 
         return (pad + bell + drum) * level
+    }
+}
+
+/// What a mood plays: its chords and how long each lasts, its melody's
+/// notes and the silence between them, and whether each note is answered.
+/// The realm's peace and war, and a title theme for each lake, each lake in
+/// a mode of its own.
+struct Theme {
+    let chords: [[Int]]
+    let melody: [Int]
+    /// Seconds a chord lasts at least, and as much more at most.
+    let chordLength: Float
+    let chordSpread: Float
+    /// Seconds between bells at least, before chance adds more.
+    let bellGap: Float
+    /// Each bell answered this many semitones above, a breath later.
+    var echo: Int?
+
+    /// How long an answering bell waits, in seconds.
+    static let echoDelay: Float = 0.6
+
+    static let peace = Theme(chords: Score.chords, melody: Score.melody, chordLength: 9, chordSpread: 6, bellGap: 3.5)
+    static let war = Theme(chords: Score.warChords, melody: Score.melody, chordLength: 7, chordSpread: 6, bellGap: 2.5)
+
+    /// The Nullmere, the first lake: D dorian, the minor brightened by its
+    /// sixth, slow and open.
+    static let round = Theme(chords: [[50, 57, 60, 64], [43, 55, 59, 62], [45, 52, 55, 60], [41, 53, 57, 64]],
+                             melody: [62, 64, 65, 69, 71, 74, 76, 77, 81], chordLength: 12, chordSpread: 6, bellGap: 4)
+    /// The Twin Waters: A minor, every note answered a fifth above, as
+    /// one water answers the other.
+    static let twin = Theme(chords: [[45, 52, 57, 60], [41, 53, 57, 60], [48, 55, 60, 64], [43, 55, 59, 62]],
+                            melody: [57, 60, 62, 64, 67, 69, 72, 74, 76], chordLength: 11, chordSpread: 5, bellGap: 4.5, echo: 7)
+    /// The Sickle: E phrygian, its half step down to the home note sharp
+    /// as the blade the land makes of the lake.
+    static let crescent = Theme(chords: [[40, 52, 55, 59], [41, 53, 57, 60], [38, 50, 53, 57], [40, 52, 55, 65]],
+                                melody: [64, 65, 67, 71, 72, 74, 76, 77, 79], chordLength: 10, chordSpread: 5, bellGap: 3)
+    /// The Drowned Isles: F lydian, its raised fourth afloat, and long
+    /// silences, as of water over roofs.
+    static let isles = Theme(chords: [[41, 53, 57, 64], [43, 55, 59, 62], [40, 52, 55, 62], [45, 57, 60, 64]],
+                             melody: [65, 67, 69, 71, 72, 76, 77, 79, 81], chordLength: 14, chordSpread: 8, bellGap: 5.5)
+
+    static func of(_ mood: Score.Mood) -> Theme {
+        switch mood {
+        case .peace: return .peace
+        case .war: return .war
+        case .title(.round): return .round
+        case .title(.twin): return .twin
+        case .title(.crescent): return .crescent
+        case .title(.isles): return .isles
+        }
     }
 }

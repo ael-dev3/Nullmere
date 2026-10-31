@@ -174,14 +174,27 @@ final class RootRenderTests: XCTestCase {
         launcher.refreshReadiness()
         launcher.completeIntro()
         try draw(NullmereOnlineView(shell: shell))
+        shell.playTitle()
+        XCTAssertEqual(shell.app.ambience.titleLake, GameApp.lastLake, "Over the launcher, the last lake's title theme")
         shell.showSettings()
         shell.enterRealm()
         XCTAssertTrue(shell.inRealm)
+        XCTAssertNil(shell.app.ambience.titleLake, "Within the realm, its own score")
         try draw(NullmereOnlineView(shell: shell))
         shell.showSettings()
         XCTAssertTrue(shell.app.showsSettings, "In the realm, Settings is the game's")
         shell.leaveRealm()
         XCTAssertFalse(shell.inRealm)
+        XCTAssertEqual(shell.app.ambience.titleLake, GameApp.lastLake, "The title theme again")
+
+        // The launcher's Music and the realm's are one choice, either way.
+        let music = UserDefaults.standard.object(forKey: "music.enabled")
+        defer { music == nil ? UserDefaults.standard.removeObject(forKey: "music.enabled") : UserDefaults.standard.set(music, forKey: "music.enabled") }
+        shell.app.isMusicOn = true
+        launcher.setDisplay(.music, to: 0)
+        XCTAssertFalse(shell.app.isMusicOn, "Turned off in the launcher, off in the realm")
+        shell.app.isMusicOn = true
+        XCTAssertTrue(launcher.displaySettings.music, "Turned on in the realm, on in the launcher")
     }
 
     func testEveryKindOfNewsCanBeTold() {
