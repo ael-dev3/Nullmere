@@ -37,7 +37,7 @@ final class DrillTests: XCTestCase {
         let ordered = try XCTUnwrap(state.unit(spear))
         XCTAssertEqual(ordered.drillAt, seat.position)
         XCTAssertTrue(state.isDrilling(ordered))
-        XCTAssertEqual(state.drillCapacity(of: ordered), 10_800, "Once, and four times more for each of the hall's two levels")
+        XCTAssertEqual(state.drillCapacity(of: ordered), 20_400, "Once, and eight times more for each of the hall's two levels")
         XCTAssertEqual(state.drillRate(of: ordered, hall: 2), 1_200, "Half its first muster for each level")
 
         let events = state.drillCompanies(territory: state.territory())
@@ -55,24 +55,24 @@ final class DrillTests: XCTestCase {
 
         // Watch after watch, until it musters as many as it may lead.
         var watches = 1
-        while state.unit(spear)?.drillAt != nil, watches < 20 {
+        while state.unit(spear)?.drillAt != nil, watches < 30 {
             watches += 1
             for (unit, _, whole) in drilled(state.drillCompanies(territory: state.territory())) where unit == spear && whole {
-                XCTAssertEqual(state.fullMuster(of: try XCTUnwrap(state.unit(spear))), 10_800)
+                XCTAssertEqual(state.fullMuster(of: try XCTUnwrap(state.unit(spear))), 20_400)
             }
         }
-        XCTAssertEqual(watches, 8, "Nine thousand six hundred, twelve hundred a watch")
+        XCTAssertEqual(watches, 16, "Nineteen thousand two hundred, twelve hundred a watch")
         let whole = try XCTUnwrap(state.unit(spear))
         XCTAssertNil(whole.drillAt, "Drilled whole, it drills no more")
         XCTAssertFalse(state.isDrilling(whole))
         XCTAssertEqual(state.drillRefusal(of: whole), .drilledWhole)
-        XCTAssertEqual(state.army(of: me), 10_800)
+        XCTAssertEqual(state.army(of: me), 20_400)
         // Told once it is drilled whole; not before, nor to another House.
         let told = GameEvent.drilled(unit: spear, owner: me, troops: 1_200, whole: true)
-        XCTAssertEqual(state.tidings(of: told, for: me), Tidings("Your Spears at \(seat.name) are drilled whole: 10,800 troops.", .good))
+        XCTAssertEqual(state.tidings(of: told, for: me), Tidings("Your Spears at \(seat.name) are drilled whole: 20,400 troops.", .good))
         XCTAssertNil(state.tidings(of: .drilled(unit: spear, owner: me, troops: 1_200, whole: false), for: me))
         XCTAssertNil(state.tidings(of: told, for: (me + 1) % state.houses.count))
-        XCTAssertEqual(state.upkeep(of: whole), 3, "A quarter as much again for each first muster drilled")
+        XCTAssertEqual(state.upkeep(of: whole), 5, "A quarter as much again for each first muster drilled")
         XCTAssertThrowsError(try state.perform(.drill(unit: spear), as: me)) { error in
             XCTAssertEqual(error as? RuleError, .drilledWhole)
         }
@@ -185,20 +185,20 @@ final class DrillTests: XCTestCase {
     func testAHigherHallAndACommanderLeadMore() throws {
         var (state, me, spear, seat) = try drillYard("drill led", hall: 1, tier: 5)
         let unit = try XCTUnwrap(state.unit(spear))
-        XCTAssertEqual(state.drillTimes(of: unit), 5)
-        XCTAssertEqual(state.drillCapacity(of: unit), 12_000)
+        XCTAssertEqual(state.drillTimes(of: unit), 9)
+        XCTAssertEqual(state.drillCapacity(of: unit), 21_600)
         XCTAssertEqual(state.drillCost(of: unit, troops: 2_400), Stock(grain: 60), "Dearer by tier, as mustering is")
         let index = try XCTUnwrap(state.holdIndex(seat.id))
         state.holds[index].levels[.musterHall] = 5
-        XCTAssertEqual(state.drillTimes(of: unit), 21, "The House's best hall")
+        XCTAssertEqual(state.drillTimes(of: unit), 41, "The House's best hall")
         let commander = try XCTUnwrap(state.commanders(of: me).first)
         _ = try state.perform(.assign(commander: commander.id, unit: spear), as: me)
         let led = try XCTUnwrap(state.unit(spear))
-        XCTAssertEqual(state.drillTimes(of: led), 21 + commander.level / 3)
+        XCTAssertEqual(state.drillTimes(of: led), 41 + commander.level / 3)
         let commanderIndex = try XCTUnwrap(state.commanders?.firstIndex { $0.id == commander.id })
         state.commanders![commanderIndex].experience = Commander.experience(forLevel: 20)
-        XCTAssertEqual(state.drillTimes(of: led), 27, "Once more for every three of its levels")
-        XCTAssertEqual(state.drillCapacity(of: led), 64_800)
+        XCTAssertEqual(state.drillTimes(of: led), 47, "Once more for every three of its levels")
+        XCTAssertEqual(state.drillCapacity(of: led), 112_800)
     }
 
     func testEveryTroopCountsInBattle() throws {

@@ -497,12 +497,13 @@ final class ExpansionAndFallTests: XCTestCase {
     /// A House can be destroyed outright.
     func testAHouseCanBeDestroyed() {
         // In one of a few worlds, played out, a House falls outright: the
-        // first of them to see one is enough (56, as the rules now stand,
-        // at the 96th watch; with companies drilled at the Muster Halls,
-        // five worlds in 48, 49 to 96, see a House fall by the 170th watch).
-        var state = GameState(settings: GameSettings(seedText: "siege check 56", keepers: 1))
+        // first of them to see one is enough (43, as the rules now stand,
+        // at the 55th watch; with each level of a Muster Hall leading eight
+        // first musters more, sixteen worlds in 160, 0 to 159, see a House
+        // fall by the 170th watch).
+        var state = GameState(settings: GameSettings(seedText: "siege check 43", keepers: 1))
         var fallen: ChronicleEntry?
-        for seed in 56..<66 where fallen == nil {
+        for seed in 43..<53 where fallen == nil {
             state = GameState(settings: GameSettings(seedText: "siege check \(seed)", keepers: 1))
             while state.outcome == nil, state.watch < 170, fallen == nil {
                 _ = state.stewardTurn(for: state.player)

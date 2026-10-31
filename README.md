@@ -887,10 +887,10 @@ realm; keepers are told in plain words, never a status code.
   panel), taking on troops as each watch turns while it stays: half its
   first muster for each of the hall's levels, for twelve grain a first
   muster's worth at the first tier, dearer by tier as mustering is. It may
-  lead its first muster once, four times more for each level of its
+  lead its first muster once, eight times more for each level of its
   House's best Muster Hall, and once more for every three levels of the
   commander at its head: Spears of the fifth tier, with a Muster Hall V
-  and a commander of the thirtieth level, lead 74,400. No hall drills
+  and a commander of the thirtieth level, lead 122,400. No hall drills
   troops its House's grain can't feed: none while its grain income would
   not cover what its companies eat, each a quarter as much again for every
   first muster drilled into it. Every troop counts, each the less the more
@@ -1075,17 +1075,17 @@ realm; keepers are told in plain words, never a status code.
 - **How ages end.** In 48 ages of a realm as it stands by default, twelve
   seats on a lake of radius 36, played through by stewards alone, pace by
   pace, under the rules as they now stand, the shores at war in every
-  Sundering and a field of battle five tiles about its heart, the
-  Moonspire decided 42 and dominion 6; an age ran 155 watches at the
-  median and 354 at the longest, and more than a quarter saw a House fall
-  outright. The seats won alike, within chance (χ² 8.5 on 11 degrees of
-  freedom), and so did the tempers (χ² 5.2 on 3), the ambitious 27%, the
-  cunning 17%, the wary 19% and the steadfast 38%, the Moonspire most of
-  all for each: the six dominions went two to the ambitious, two to the
-  cunning, and one each to the wary and the steadfast. A realm's armies
-  came to 1,230,000 troops at the median as its age ended, and its
-  greatest battles to 50,500 troops at the median and 124,000 at the
-  most.
+  Sundering, a field of battle five tiles about its heart and each level
+  of a Muster Hall leading eight first musters more, the Moonspire
+  decided 41 and dominion 7; an age ran 151 watches at the median and 215
+  at the longest, and one in seven saw a House fall outright. The seats
+  won alike, within chance (χ² 12.0 on 11 degrees of freedom), and so did
+  the tempers (χ² 0.7 on 3), the ambitious 29%, the cunning 25%, the wary
+  21% and the steadfast 25%, the Moonspire most of all for each: the seven
+  dominions went four to the ambitious, two to the cunning and one to the
+  wary. A realm's armies came to 1,720,000 troops at the median as its age
+  ended, and its greatest battles to 74,500 troops at the median and
+  119,800 at the most, over 100,000 in eight of the ages.
 - **Tribute.** From watch twenty, an ambitious or cunning steward a quarter
   stronger than a neighbour may demand a fifth of its stores. Paid, it keeps
   the peace for twenty watches, unless that neighbour's Moonspire rises;

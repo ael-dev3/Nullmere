@@ -37,13 +37,13 @@ extension GameState {
         Int((Double(musterPercent(of: unit)) * 100).squareRoot().rounded())
     }
 
-    /// The times its first muster a company may lead: once, four times
+    /// The times its first muster a company may lead: once, eight times
     /// more for each level of its House's best Muster Hall, and once more
     /// for every three levels of the commander at its head.
     public func drillTimes(of unit: Unit) -> Int {
         let hall = holds(of: unit.owner).map { $0.level(.musterHall) }.max() ?? 0
         let led = unit.leader.flatMap(commander).map { $0.level / 3 } ?? 0
-        return 1 + 4 * hall + led
+        return 1 + 8 * hall + led
     }
 
     /// The most a company may muster.
