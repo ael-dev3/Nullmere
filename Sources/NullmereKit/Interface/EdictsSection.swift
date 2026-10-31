@@ -8,7 +8,10 @@ import SwiftUI
 struct EdictsSection: View {
     let session: GameSession
 
-    @State private var proposing = false
+    /// The edicts that may be put, folded until asked for; the keeper's
+    /// choice kept.
+    @AppStorage(EdictsSection.proposingKey) private var proposing = false
+    static let proposingKey = "edicts.open"
 
     /// An edict holding the realm, in a line: how long, what it forbids,
     /// and how often it was broken.

@@ -99,6 +99,14 @@ final class PressTests: XCTestCase {
         return (session, link, session.state.houses[other])
     }
 
+    /// Opens a House in the hosted Houses panel, where each is a line until
+    /// chosen: what may be said to it shown.
+    private func open(_ house: House, in window: NSWindow) {
+        spin(until: "\(house.title) in the list") { PressableButtons.actions[house.title] != nil }
+        XCTAssertTrue(PressableButtons.press(house.title))
+        spin(until: "\(house.title) open") { PressableButtons.actions["Offer a trade"] != nil }
+    }
+
     private func offers(_ link: RecordingLink) -> Int {
         link.sent.filter { if case .offerTrade = $0 { return true } else { return false } }.count
     }
@@ -579,10 +587,11 @@ final class PressTests: XCTestCase {
     }
 
     func testTheHousesPanelLetsItsWordsGoWhenItCloses() throws {
-        let (session, _, _) = keepersHouse("words let go")
+        let (session, _, house) = keepersHouse("words let go")
         session.panel = .houses
         let window = window(hosting: HousesPanelHost(session: session), width: 420, height: 760)
         defer { window.close() }
+        open(house, in: window)
 
         let editor = try XCTUnwrap(tabToTextField(in: window), "The words' field in the open panel")
         type("Hear us.", into: editor)
@@ -601,6 +610,7 @@ final class PressTests: XCTestCase {
         session.panel = .houses
         let window = window(hosting: HousesPanelHost(session: session), width: 420, height: 760)
         defer { window.close() }
+        open(house, in: window)
 
         // Words for the keeper there, typed into the field.
         let editor = try XCTUnwrap(tabToTextField(in: window), "The words' field in the open panel")
@@ -719,6 +729,7 @@ final class PressTests: XCTestCase {
         session.panel = .houses
         let window = window(hosting: HousesPanelHost(session: session), width: 420, height: 760)
         defer { window.close() }
+        open(house, in: window)
         let editor = try XCTUnwrap(tabToTextField(in: window), "The words' field in the open panel")
         let field = try XCTUnwrap(editor.delegate as? NSTextField, "The field being typed in")
         let history = try XCTUnwrap(editor.undoManager, "The field's history")
@@ -745,6 +756,7 @@ final class PressTests: XCTestCase {
         session.panel = .houses
         let window = window(hosting: HousesPanelHost(session: session), width: 420, height: 760)
         defer { window.close() }
+        open(house, in: window)
         let editor = try XCTUnwrap(tabToTextField(in: window), "The words' field in the open panel")
         type("For Ama ", into: editor)
         compose("か", in: editor)
@@ -974,7 +986,7 @@ final class PressTests: XCTestCase {
     /// Page Down pages the open panel most of a height on, in its window;
     /// Page Up brings it back.
     func testThePageKeysScrollTheOpenPanel() throws {
-        let state = GameState(settings: GameSettings(seedText: "paged by the keys", houseCount: 8, radius: 22, keepers: 1))
+        let state = GameState(settings: GameSettings(seedText: "paged by the keys", houseCount: 12, radius: 24, keepers: 1))
         let (session, _) = session(state)
         session.panel = .houses
         let window = window(hosting: HousesPanelHost(session: session), width: 420, height: 760)

@@ -384,6 +384,8 @@ final class DepthPanelTests: XCTestCase {
     /// The realm's law at the head of the Houses: an edict put, voted on,
     /// and those holding the realm; the rail marks a vote awaiting.
     func testTheRealmsLawIsPutAndVotedOnFromTheHouses() throws {
+        UserDefaults.standard.removeObject(forKey: EdictsSection.proposingKey)
+        defer { UserDefaults.standard.removeObject(forKey: EdictsSection.proposingKey) }
         var state = world("the realm's law")
         let me = state.player
         let other = try XCTUnwrap(state.houses.indices.first { $0 != me })
@@ -428,7 +430,7 @@ final class DepthPanelTests: XCTestCase {
         after.edicts = after.edictsOfTheRealm.filter { $0.id == 51 }
         let (proposer, sent) = self.session(after)
         draw(EdictsSection(session: proposer), width: 330, height: 400)
-        XCTAssertTrue(PressableButtons.press("Put an edict…"))
+        XCTAssertTrue(PressableButtons.press("Put an edict…"), "Folded again: \(shown)")
         draw(EdictsSection(session: proposer), width: 330, height: 700)
         XCTAssertTrue(PressableButtons.press("Propose"), "Among \(shown)")
         guard case .proposeEdict(let kind)? = sent.sent.last else { return XCTFail("An edict put: \(String(describing: sent.sent.last))") }

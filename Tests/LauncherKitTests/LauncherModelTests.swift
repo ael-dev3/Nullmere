@@ -104,6 +104,8 @@ final class LauncherModelTests: XCTestCase {
         XCTAssertEqual(model.screen, .title)
 
         model.handle(.right)
+        XCTAssertEqual(model.menuSelection, .credits)
+        model.handle(.right)
         XCTAssertEqual(model.menuSelection, .quit)
         model.handle(.right)
         XCTAssertEqual(model.menuSelection, .play, "The row wraps around")
