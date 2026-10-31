@@ -602,10 +602,14 @@ final class PressTests: XCTestCase {
         type("Hear us.", into: editor)
         spin(until: "the words shown") { editor.string == "Hear us." }
 
-        // Closed, then opened again: the panel's words went with it.
+        // Closed, then opened again: the panel's words went with it, and
+        // the House is a line again until it is chosen.
         session.panel = nil
         spin(until: "the field gone with the panel") { !(window.firstResponder is NSTextView) }
+        PressableButtons.forget(house.title)
+        PressableButtons.forget("Offer a trade")
         session.panel = .houses
+        open(house, in: window)
         let again = try XCTUnwrap(tabToTextField(in: window), "The words' field once the panel is open again")
         XCTAssertEqual(again.string, "", "Opened again, the panel starts afresh")
     }

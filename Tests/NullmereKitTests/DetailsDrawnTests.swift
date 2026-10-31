@@ -210,9 +210,12 @@ final class DetailsDrawnTests: XCTestCase {
         window.orderFrontRegardless()
         defer { window.close() }
         RunLoop.main.run(until: Date().addingTimeInterval(0.5))
-        XCTAssertNil(PressableButtons.actions["Offer a pact"], "No House's offers while the Houses are shut")
+        // The realm's law heads the Houses, and is nowhere else; the edicts
+        // that may be put folded, as a keeper first finds them.
+        UserDefaults.standard.removeObject(forKey: EdictsSection.proposingKey)
+        XCTAssertNil(PressableButtons.actions["Put an edict…"], "No realm's law while the Houses are shut")
         XCTAssertTrue(session.handle(.houses))
-        spin(until: "the Houses over the map") { PressableButtons.actions["Offer a pact"] != nil }
+        spin(until: "the Houses over the map") { PressableButtons.actions["Put an edict…"] != nil }
         XCTAssertTrue(session.handle(.houses))
         XCTAssertNil(session.panel, "Put away by its key")
     }
