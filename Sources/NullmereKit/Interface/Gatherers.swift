@@ -27,7 +27,8 @@ struct GathererList: View {
         case .gather(let siteID)?:
             let site = state.site(siteID).map { "the \(Site.title(of: $0.store)) \(Narration.roman($0.level))" } ?? "a site of the land"
             if let left = state.watchesToFill(unit) {
-                return "\(name) at \(site), full " + (left <= 1 ? "as the watch turns" : "in \(left) watches")
+                let ends = unit.gatherFor.map { $0 <= left } == true ? "home" : "full"
+                return "\(name) at \(site), \(ends) " + (left <= 1 ? "as the watch turns" : "in \(left) watches")
             }
             return "\(name) bound for \(site)\(there)"
         case .homeward?:
@@ -78,5 +79,31 @@ private struct GathererRow: View {
         .onHover { hovering = $0 }
         .accessibilityLabel(line)
         .accessibilityHint("Go to them")
+    }
+}
+
+/// How long a gatherer works its site before it turns for home: a watch,
+/// three, or until it carries all it can; chosen again here, and kept for
+/// the next company sent.
+struct GatheringLength: View {
+    let session: GameSession
+    let unit: NullmereCore.Unit
+
+    /// The lengths offered, as the keeper reads them.
+    static let lengths: [(watches: Int?, title: String)] = [(1, "A watch"), (3, "Three watches"), (nil, "Until full")]
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Caps("Home after", size: 8.5).foregroundStyle(Palette.text(0.5))
+            ForEach(GatheringLength.lengths.indices, id: \.self) { index in
+                let length = GatheringLength.lengths[index]
+                QuietButton(title: length.title, size: 8.5, prominent: unit.gatherFor == length.watches,
+                            name: "Gather \(length.title.lowercased())") {
+                    session.gather(unit, for: length.watches)
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Home after")
     }
 }

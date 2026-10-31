@@ -68,8 +68,8 @@ extension GameState {
             return try assign(commanderID, to: unitID, as: house)
         case let .unassign(commanderID):
             return try unassign(commanderID, as: house)
-        case let .gather(unitID, siteID):
-            return try gather(unitID, at: siteID, as: house)
+        case let .gather(unitID, siteID, watches):
+            return try gather(unitID, at: siteID, for: watches, as: house)
         case let .foundAlliance(name):
             return try foundAlliance(named: name, by: house)
         case let .sing(ballad, entry):

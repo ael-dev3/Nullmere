@@ -170,6 +170,9 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
     /// Where it drills, for as long as it stands there: one of its House's
     /// holds with a Muster Hall.
     public var drillAt: Hex?
+    /// The watches of work it still gives its site before it turns for
+    /// home, when it was sent for so many; nil, until it carries all it can.
+    public var gatherFor: Int?
     /// The way it has yet to go to its destination, as last found: the
     /// hexes it steps through, in order. Kept by the realm alone; no
     /// keeper's view carries it.

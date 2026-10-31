@@ -628,7 +628,10 @@ realm; keepers are told in plain words, never a status code.
   to gather and it marches there, gathers each watch at its rate (by kind
   and tier, its House's studies and its commander), and once it carries all
   it can, or the site is worked out, brings its load home to the nearest
-  hold. Any other order ends the errand, but a load is kept until the
+  hold. A gatherer's record chooses how long it works: a watch, three
+  watches, or until full; the choice is kept for the next company sent, so
+  a right-click to a site sends it for that long, and the record then says
+  when it turns for home. Any other order ends the errand, but a load is kept until the
   company comes by one of its holds. Bring home calls a gatherer back at
   once with what it carries (given up on the spot beside one of its
   holds), and All home calls every one of the House's gatherers so. A

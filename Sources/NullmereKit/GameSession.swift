@@ -567,7 +567,7 @@ public final class GameSession {
         // what it gathers home.
         if unit.kind.isMilitary, let site = state.site(at: hex), state.wild(at: hex) == nil,
            state.gatherRefusal(unit.id, at: site.id, as: player) == nil {
-            perform(.gather(unit: unit.id, site: site.id))
+            perform(.gather(unit: unit.id, site: site.id, watches: gatherLength))
             return
         }
         let foe = (state.unit(at: hex).map { $0.owner != player } ?? false)
@@ -742,6 +742,27 @@ public final class GameSession {
 
     /// Words said to this keeper by others since they last opened the
     /// Words, but those of the Houses they hide.
+    /// How long the keeper sends a company to gather, as a right-click to
+    /// a site sends it: so many watches of work, or until full (nil); kept
+    /// on this Mac as the keeper last chose it.
+    public var gatherLength: Int? = GameSession.storedGatherLength() {
+        didSet { UserDefaults.standard.set(gatherLength ?? 0, forKey: GameSession.gatherLengthKey) }
+    }
+    static let gatherLengthKey = "gather.length"
+
+    static func storedGatherLength() -> Int? {
+        let watches = UserDefaults.standard.integer(forKey: gatherLengthKey)
+        return watches > 0 ? watches : nil
+    }
+
+    /// Sends a gatherer for so many watches of work, or until full, and
+    /// sends the next the same.
+    func gather(_ unit: NullmereCore.Unit, for watches: Int?) {
+        gatherLength = watches
+        guard case .gather(let site)? = unit.errand else { return }
+        perform(.gather(unit: unit.id, site: site, watches: watches))
+    }
+
     /// Whether an edict is before the realm that the keeper's House has
     /// not voted on.
     public var voteAwaits: Bool {

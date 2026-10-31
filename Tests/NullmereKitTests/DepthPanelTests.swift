@@ -970,6 +970,9 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(HoverInfo.named(Wild(id: 1, kind: .drowned, level: 2, position: lair, raised: 0)), "The Drowned, level II")
 
         // Right-clicked, the site is worked, and the company says so.
+        UserDefaults.standard.removeObject(forKey: GameSession.gatherLengthKey)
+        defer { UserDefaults.standard.removeObject(forKey: GameSession.gatherLengthKey) }
+        session.gatherLength = nil
         session.order(spot)
         XCTAssertEqual(link.sent.last, .gather(unit: company.id, site: site.id))
         let sent = try XCTUnwrap(session.state.unit(company.id))
@@ -977,6 +980,22 @@ final class DepthPanelTests: XCTestCase {
         let left = try XCTUnwrap(session.state.watchesToFill(sent))
         XCTAssertEqual(UnitPanel.errand(of: sent, in: session.state),
                        "Gathering at the Deadfall II, 600 timber left: full " + (left <= 1 ? "as the watch turns." : "in \(left) watches."))
+
+        // How long it works there, chosen again on its record, and kept for the next sent.
+        session.selection = .unit(company.id)
+        draw(SelectionPanel(session: session), width: 330, height: 700)
+        XCTAssertTrue(PressableButtons.press("A watch"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .gather(unit: company.id, site: site.id, watches: 1))
+        XCTAssertEqual(session.gatherLength, 1)
+        XCTAssertEqual(UserDefaults.standard.integer(forKey: GameSession.gatherLengthKey), 1)
+        XCTAssertEqual(GameSession.storedGatherLength(), 1)
+        XCTAssertEqual(UnitPanel.errand(of: try XCTUnwrap(session.state.unit(company.id)), in: session.state),
+                       "Gathering at the Deadfall II, 600 timber left: home as the watch turns.")
+        XCTAssertTrue(GathererList.line(for: try XCTUnwrap(session.state.unit(company.id)), in: session.state).hasSuffix(", home as the watch turns"))
+        draw(SelectionPanel(session: session), width: 330, height: 700)
+        XCTAssertTrue(PressableButtons.press("Until full"))
+        XCTAssertNil(session.gatherLength)
+        XCTAssertEqual(link.sent.last, .gather(unit: company.id, site: site.id))
         session.selection = .tile(spot)
         draw(SelectionPanel(session: session), width: 330, height: 600)
         session.selection = .tile(lair)

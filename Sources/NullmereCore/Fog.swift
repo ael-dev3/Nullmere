@@ -38,6 +38,7 @@ extension GameState {
             view.units[index].errand = nil
             view.units[index].load = nil
             view.units[index].drillAt = nil
+            view.units[index].gatherFor = nil
         }
         // Allies know what each other has under way, for they help it.
         let allies = Set(alliance(of: house)?.members ?? [])

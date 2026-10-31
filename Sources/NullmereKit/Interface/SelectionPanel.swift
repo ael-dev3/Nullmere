@@ -717,6 +717,10 @@ struct UnitPanel: View {
                     }
                     ConfirmButton(title: "Disband", confirm: "Disband them?", size: 10) { session.perform(.disband(unit: unit.id)) }
                 }
+                // How long it works its site, chosen as it was sent, or again.
+                if case .gather? = unit.errand {
+                    GatheringLength(session: session, unit: unit)
+                }
                 // The House's other gatherers, folded until asked for.
                 if state.isOutGathering(unit) {
                     GathererList(session: session)
@@ -783,7 +787,9 @@ struct UnitPanel: View {
             let carrying = load.map { ", carrying \($0)" } ?? ""
             // At its site, when it will be full; on its way, bound there.
             if let left = state.watchesToFill(unit) {
-                return "Gathering at \(site)\(carrying): full " + (left <= 1 ? "as the watch turns." : "in \(left) watches.")
+                // Sent for fewer watches than would fill it, it turns for home first.
+                let ends = unit.gatherFor.map { $0 <= left } == true ? "home" : "full"
+                return "Gathering at \(site)\(carrying): \(ends) " + (left <= 1 ? "as the watch turns." : "in \(left) watches.")
             }
             return (unit.destination == nil ? "Gathering at " : "Bound to gather at ") + site + carrying + "."
         case .homeward?:

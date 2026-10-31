@@ -11,6 +11,9 @@ struct HousesPanel: View {
     /// What the keeper is putting together for each House, kept while the
     /// panel is open.
     @State private var drafts = OfferDrafts()
+    /// The House opened to what may be said to it: one at a time, the rest
+    /// each a line.
+    @State private var open: Int?
 
     var body: some View {
         let state = session.state
@@ -26,7 +29,9 @@ struct HousesPanel: View {
                     RaceTable(session: session)
                     Rule(opacity: 0.18)
                     ForEach(state.houses.filter { $0.id != session.player }) { house in
-                        HouseRow(session: session, house: house, draft: drafts.draft(for: house))
+                        HouseRow(session: session, house: house, draft: drafts.draft(for: house), expanded: open == house.id) {
+                            withAnimation(.easeOut(duration: 0.2)) { open = open == house.id ? nil : house.id }
+                        }
                         Rule(opacity: 0.18)
                     }
                 }
@@ -465,13 +470,19 @@ struct HouseRow: View {
     let session: GameSession
     let house: House
     let draft: OfferDraft
+    /// Whether its figures and what may be said to it are shown, or the
+    /// House is a line of the list, opened by choosing it.
+    let expanded: Bool
+    let toggle: (() -> Void)?
     /// The gifts on offer, shown.
     @State private var choosingGift = false
 
-    init(session: GameSession, house: House, draft: OfferDraft) {
+    init(session: GameSession, house: House, draft: OfferDraft, expanded: Bool = true, toggle: (() -> Void)? = nil) {
         self.session = session
         self.house = house
         self.draft = draft
+        self.expanded = expanded
+        self.toggle = toggle
     }
 
     var body: some View {
@@ -481,31 +492,10 @@ struct HouseRow: View {
         let relation = state.relation(player, house.id)
         let spire = state.seat(of: house.id)?.level(.moonspire) ?? 0
         VStack(alignment: .leading, spacing: 7) {
-            // Who the House is and how it stands with you, read as one.
-            VStack(alignment: .leading, spacing: 7) {
-                HStack(alignment: .firstTextBaseline) {
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(Palette.house(house))
-                        .frame(width: 3, height: 12)
-                    Caps(house.title, size: 10.5, weight: .medium)
-                        .foregroundStyle(house.isEliminated ? Palette.text(0.35) : Palette.ink)
-                    Spacer()
-                    if house.isEliminated {
-                        Caps("Fallen", size: 8.5).foregroundStyle(Palette.text(0.4))
-                    } else {
-                        Caps(stance.title, size: 8.5, weight: .medium)
-                            .foregroundStyle(stance == .war ? Palette.bad : (stance == .pact ? Palette.good : Palette.text(0.65)))
-                    }
-                }
-                if !house.isEliminated {
-                    Text(verbatim: summary(stance: stance, relation: relation, spire: spire))
-                        .font(.nm(10.5))
-                        .foregroundStyle(Palette.text(0.55))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .accessibilityElement(children: .combine)
-            if !house.isEliminated {
+            // Who the House is and how it stands with you, read as one; in
+            // the list, chosen to open it.
+            heading(stance: stance, relation: relation, spire: spire)
+            if !house.isEliminated, expanded {
                 if house.isPlayer {
                     // Words for the keeper there, sent with the next offer.
                     EnvoyWordsField(draft: draft, words: draft.words, sent: draft.sent, placeholder: "Words to send with an offer",
@@ -525,6 +515,48 @@ struct HouseRow: View {
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    /// The House's name, its stance and the line of what it is; a button
+    /// that opens or folds it where the list folds Houses.
+    @ViewBuilder
+    private func heading(stance: Stance, relation: Relation?, spire: Int) -> some View {
+        let lines = VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .firstTextBaseline) {
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(Palette.house(house))
+                    .frame(width: 3, height: 12)
+                Caps(house.title, size: 10.5, weight: .medium)
+                    .foregroundStyle(house.isEliminated ? Palette.text(0.35) : Palette.ink)
+                Spacer()
+                if house.isEliminated {
+                    Caps("Fallen", size: 8.5).foregroundStyle(Palette.text(0.4))
+                } else {
+                    Caps(stance.title, size: 8.5, weight: .medium)
+                        .foregroundStyle(stance == .war ? Palette.bad : (stance == .pact ? Palette.good : Palette.text(0.65)))
+                }
+            }
+            if !house.isEliminated {
+                Text(verbatim: summary(stance: stance, relation: relation, spire: spire))
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        if let toggle {
+            let _ = PressableButtons.note(house.title, enabled: true, toggle)
+            Button(action: toggle) {
+                lines
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("house-row")
+            .accessibilityHint(expanded ? "Folds them back into the list" : "Shows what may be said to them")
+        } else {
+            lines.accessibilityElement(children: .combine)
+        }
     }
 
     /// An envoy of the keeper's with this offer is on the road to the House:

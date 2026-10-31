@@ -68,6 +68,15 @@ final class PressTests: XCTestCase {
         XCTAssertEqual(link.sent.last, .propose(.peace, to: other.id))
         draw(HousesPanel(session: session), height: 900)
         XCTAssertFalse(shown.isEmpty)
+        // In the list each House is a line until it is chosen, and chosen, opens.
+        let title = session.state.houses[other.id].title
+        XCTAssertFalse(shown.contains("Offer peace"), "Folded: \(shown)")
+        XCTAssertTrue(shown.contains(title), "Among \(shown)")
+        var opened = false
+        draw(HouseRow(session: session, house: session.state.houses[other.id], draft: draft, expanded: false) { opened = true })
+        XCTAssertFalse(shown.contains("Offer peace"))
+        XCTAssertTrue(PressableButtons.press(title))
+        XCTAssertTrue(opened)
     }
 
     private func spin(until what: String, timeout: Double = 5, _ condition: () -> Bool) {

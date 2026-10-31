@@ -41,8 +41,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// A commander leaves its company, wherever it is, and rides home.
     case unassign(commander: Int)
     /// A company of war marches to a site of the land and works it until
-    /// it carries all it can, then brings it home to the nearest hold.
-    case gather(unit: Int, site: Int)
+    /// it carries all it can, or for so many watches when they are named,
+    /// then brings what it carries home to the nearest hold.
+    case gather(unit: Int, site: Int, watches: Int? = nil)
     /// A company gathering, or carrying a load, is called home: it turns
     /// for the nearest of its House's holds with all it carries.
     case recall(unit: Int)

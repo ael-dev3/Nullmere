@@ -166,10 +166,14 @@ extension GameState {
         return nil
     }
 
-    mutating func gather(_ unitID: Int, at siteID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
+    /// The most watches a company may be sent to work a site for.
+    public static let longestGathering = 20
+
+    mutating func gather(_ unitID: Int, at siteID: Int, for watches: Int? = nil, as house: Int) throws(RuleError) -> [GameEvent] {
         if let refusal = gatherRefusal(unitID, at: siteID, as: house) { throw refusal }
         let index = unitIndex(unitID)!
         units[index].errand = .gather(site: siteID)
+        units[index].gatherFor = watches.map { min(max($0, 1), GameState.longestGathering) }
         units[index].fortified = false
         units[index].destination = units[index].position == site(siteID)!.position ? nil : site(siteID)!.position
         return [.sentToGather(unit: unitID, site: siteID)] + march(unitID)
@@ -215,7 +219,9 @@ extension GameState {
                 sites!.remove(at: siteIndex)
                 events.append(.siteWorkedOut(site: site.id, store: site.store, at: site.position))
             }
-            if sites?.contains(where: { $0.id == siteID }) != true || amount >= room {
+            // Sent for so many watches, a watch of them is worked.
+            if let left = units[index].gatherFor { units[index].gatherFor = left - 1 }
+            if sites?.contains(where: { $0.id == siteID }) != true || amount >= room || units[index].gatherFor.map({ $0 <= 0 }) == true {
                 events.append(.gathered(unit: unit.id, owner: unit.owner, load: units[index].load ?? .zero))
                 events += turnHome(index)
             }
@@ -223,15 +229,16 @@ extension GameState {
         return events
     }
 
-    /// The watches a gatherer at its site still takes to fill its load, or
-    /// to work the site out if that comes first; nil for a company not at
-    /// work on its site.
+    /// The watches a gatherer at its site still takes to fill its load, to
+    /// work the site out, or to give the watches it was sent for, whichever
+    /// comes first; nil for a company not at work on its site.
     public func watchesToFill(_ unit: Unit) -> Int? {
         guard case .gather(let siteID)? = unit.errand, let site = site(siteID), unit.position == site.position else { return nil }
         let room = max(capacity(of: unit, for: site.store) - (unit.load?[site.store] ?? 0), 0)
         let rate = gatheringRate(of: unit, at: site)
         guard rate > 0 else { return nil }
-        return max((min(room, site.remaining) + rate - 1) / rate, 1)
+        let fill = max((min(room, site.remaining) + rate - 1) / rate, 1)
+        return unit.gatherFor.map { min(max($0, 1), fill) } ?? fill
     }
 
     /// Whether a company is out at the land's work: gathering at a site, or
@@ -277,6 +284,7 @@ extension GameState {
     /// A company sets out for the nearest of its House's holds with what it
     /// carries, or, carrying nothing, is done.
     private mutating func turnHome(_ index: Int) -> [GameEvent] {
+        units[index].gatherFor = nil
         guard let load = units[index].load, !load.isZero else {
             units[index].errand = nil
             return []

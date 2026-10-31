@@ -271,6 +271,38 @@ final class GatheringTests: XCTestCase {
         XCTAssertNil(state.watchesToFill(try XCTUnwrap(state.unit(spear))), "Away from its site")
     }
 
+    /// A company sent for so many watches works its site for them, then
+    /// turns for home with what it has, full or not; sent until full, as
+    /// ever; and the watches it was sent for are told when it will be done.
+    func testAGatheringsLengthIsChosenAsItIsSent() throws {
+        var (state, me, spear, site, _) = try field("a gathering's length")
+        _ = try state.perform(.gather(unit: spear, site: site, watches: 3), as: me)
+        XCTAssertEqual(state.unit(spear)?.gatherFor, 3)
+        XCTAssertEqual(state.watchesToFill(try XCTUnwrap(state.unit(spear))), 3, "Three watches sent for, though five would fill it")
+        _ = state.endWatch()
+        _ = state.endWatch()
+        XCTAssertEqual(state.watchesToFill(try XCTUnwrap(state.unit(spear))), 1)
+        XCTAssertEqual(state.unit(spear)?.errand, .gather(site: site))
+        let events = state.endWatch()
+        XCTAssertTrue(events.contains { if case .gathered(spear, me, let load) = $0 { return load.grain == 90 } else { return false } },
+                      "Three watches of thirty: \(events)")
+        XCTAssertEqual(state.unit(spear)?.errand, .homeward, "Home with what it has")
+        XCTAssertNil(state.unit(spear)?.gatherFor)
+
+        // A watch at the most twenty, at the least one; until full when none is named.
+        var (other, _, second, place, _) = try field("lengths bounded")
+        _ = try other.perform(.gather(unit: second, site: place, watches: 0), as: me)
+        XCTAssertEqual(other.unit(second)?.gatherFor, 1)
+        _ = try other.perform(.gather(unit: second, site: place, watches: 999), as: me)
+        XCTAssertEqual(other.unit(second)?.gatherFor, GameState.longestGathering)
+        _ = try other.perform(.gather(unit: second, site: place), as: me)
+        XCTAssertNil(other.unit(second)?.gatherFor)
+        let data = try JSONEncoder().encode(Command.gather(unit: 1, site: 2, watches: 3))
+        XCTAssertEqual(try JSONDecoder().decode(Command.self, from: data), .gather(unit: 1, site: 2, watches: 3))
+        let older = try JSONSerialization.data(withJSONObject: ["gather": ["unit": 1, "site": 2]])
+        XCTAssertEqual(try JSONDecoder().decode(Command.self, from: older), .gather(unit: 1, site: 2), "An order from before lengths")
+    }
+
     /// Every gatherer of a House called home at once, the first mustered
     /// first: one beside its hold gives up its load there and then, one
     /// carrying a load it was left with turns for home, and a company at

@@ -228,6 +228,13 @@ final class NullmereUITests: XCTestCase {
     /// What the Houses panel opens for a House: the gifts to send, a trade
     /// to write, and war asked twice, never declared.
     private func houses(in window: XCUIElement) {
+        // Each House a line until it is chosen: the first opened.
+        let row = window.buttons.matching(identifier: "house-row").firstMatch
+        if row.waitForExistence(timeout: 5) {
+            row.click()
+        } else {
+            found("UIWALK the Houses panel lists no House to open")
+        }
         let gift = window.buttons["Send a gift"].firstMatch
         if gift.waitForExistence(timeout: 5) {
             gift.click()
