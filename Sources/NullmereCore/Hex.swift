@@ -50,6 +50,19 @@ public struct Hex: Hashable, Codable, Sendable, Comparable, CustomStringConverti
         return result
     }
 
+    /// This hex and every hex within `radius` steps, as `spiral` holds
+    /// them but row by row, none laid out: for those that ask of each
+    /// what it is, not which comes first.
+    @inline(__always)
+    func forEach(within radius: Int, _ body: (Hex) -> Void) {
+        let radius = max(radius, 0)
+        for dr in -radius...radius {
+            for dq in max(-radius, -dr - radius)...min(radius, radius - dr) {
+                body(Hex(q + dq, r + dr))
+            }
+        }
+    }
+
     /// This hex and every hex within `radius` steps, nearest first.
     public func spiral(_ radius: Int) -> [Hex] {
         var result = [self]

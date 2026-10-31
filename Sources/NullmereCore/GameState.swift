@@ -335,12 +335,19 @@ public struct GameState: Codable, Equatable, Sendable {
     /// tile when two reach it.
     public func territory() -> [Int?] {
         var owners = [Int?](repeating: nil, count: map.count)
-        for hold in holds.sorted(by: { ($0.foundedWatch, $0.id) < ($1.foundedWatch, $1.id) }) {
-            for hex in hold.position.spiral(hold.territoryRadius) {
-                guard let index = map.index(of: hex), owners[index] == nil else { continue }
-                let terrain = map[index].terrain
-                guard !terrain.isWater, terrain != .spine || hex == hold.position else { continue }
-                owners[index] = hold.id
+        // The holds in the order they were founded, by index, none copied;
+        // what each claims is the same in whatever order its hexes come.
+        let order = holds.indices.sorted { (holds[$0].foundedWatch, holds[$0].id) < (holds[$1].foundedWatch, holds[$1].id) }
+        for index in order {
+            let id = holds[index].id, at = holds[index].position
+            at.forEach(within: holds[index].territoryRadius) { hex in
+                guard let tile = map.index(of: hex), owners[tile] == nil else { return }
+                switch map[tile].terrain {
+                case .still, .shallows: return
+                case .spine: if hex != at { return }
+                case .strand, .saltFlat, .greyfield, .blackwood, .barrow: break
+                }
+                owners[tile] = id
             }
         }
         return owners
@@ -475,14 +482,16 @@ public struct GameState: Codable, Equatable, Sendable {
         // Its watchers' companies and holds found in one pass over each,
         // not a pass for every ally.
         let watchers = Set(watchers(for: house))
-        for unit in units where watchers.contains(unit.owner) {
-            for hex in unit.position.spiral(sight(of: unit)) {
-                if let index = map.index(of: hex) { seen(index) }
+        for index in units.indices where watchers.contains(units[index].owner) {
+            let unit = units[index]
+            unit.position.forEach(within: sight(of: unit)) { hex in
+                if let tile = map.index(of: hex) { seen(tile) }
             }
         }
-        for hold in holds where watchers.contains(hold.owner) {
-            for hex in hold.position.spiral(sight(of: hold)) {
-                if let index = map.index(of: hex) { seen(index) }
+        for index in holds.indices where watchers.contains(holds[index].owner) {
+            let hold = holds[index]
+            hold.position.forEach(within: sight(of: hold)) { hex in
+                if let tile = map.index(of: hex) { seen(tile) }
             }
         }
     }
@@ -503,14 +512,16 @@ public struct GameState: Codable, Equatable, Sendable {
     /// only the tiles in sight touched.
     mutating func refreshSight() {
         var own = [[Int]](repeating: [], count: houses.count)
-        for unit in units where own.indices.contains(unit.owner) {
-            for hex in unit.position.spiral(sight(of: unit)) {
-                if let index = map.index(of: hex) { own[unit.owner].append(index) }
+        for index in units.indices where own.indices.contains(units[index].owner) {
+            let unit = units[index]
+            unit.position.forEach(within: sight(of: unit)) { hex in
+                if let tile = map.index(of: hex) { own[unit.owner].append(tile) }
             }
         }
-        for hold in holds where own.indices.contains(hold.owner) {
-            for hex in hold.position.spiral(sight(of: hold)) {
-                if let index = map.index(of: hex) { own[hold.owner].append(index) }
+        for index in holds.indices where own.indices.contains(holds[index].owner) {
+            let hold = holds[index]
+            hold.position.forEach(within: sight(of: hold)) { hex in
+                if let tile = map.index(of: hex) { own[hold.owner].append(tile) }
             }
         }
         for index in houses.indices where !houses[index].isEliminated {

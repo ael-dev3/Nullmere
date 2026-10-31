@@ -1228,21 +1228,25 @@ struct RivalMind {
         guard !short.isEmpty else { return nil }
         let holds = state.holds(of: house).map(\.position)
         let explored = state.houses[house].explored
-        // The sites a company works or is bound for, and the hexes companies
-        // stand on, found in one pass, not one for every site.
-        var bound: Set<Int> = [], occupied: Set<Hex> = []
-        for other in state.units {
-            occupied.insert(other.position)
-            if case .gather(let site)? = other.errand { bound.insert(site) }
-        }
         let sworn = state.alliance(of: house)?.id
-        return state.sitesInLand.filter { site in
-            short.contains(site.store) && !bound.contains(site.id) && !occupied.contains(site.position)
-                && (site.alliance == nil || site.alliance == sworn)
+        let near = state.sitesInLand.filter { site in
+            short.contains(site.store) && (site.alliance == nil || site.alliance == sworn)
                 && (state.map.index(of: site.position).map { explored[$0] } ?? false)
                 && site.position.distance(to: unit.position) <= RivalMind.huntingGround
                 && holds.contains { $0.distance(to: site.position) <= RivalMind.huntingGround }
-        }.min { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }?.id
+        }
+        guard !near.isEmpty else { return nil }
+        // Of these few, those a company works or is bound for, or stands
+        // on, found in one pass over the companies.
+        var taken = [Bool](repeating: false, count: near.count)
+        for index in state.units.indices {
+            let position = state.units[index].position
+            var bound: Int?
+            if case .gather(let site)? = state.units[index].errand { bound = site }
+            for (entry, site) in near.enumerated() where site.position == position || site.id == bound { taken[entry] = true }
+        }
+        return near.indices.filter { !taken[$0] }.map { near[$0] }
+            .min { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }?.id
     }
 
     /// The wilds a company would hunt: the nearest within its hunting

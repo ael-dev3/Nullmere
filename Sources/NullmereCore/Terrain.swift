@@ -77,7 +77,10 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
     }
 
     /// Extra sight for a unit standing here.
-    public var visionBonus: Int { self == .barrow ? 1 : 0 }
+    public var visionBonus: Int {
+        if case .barrow = self { return 1 }
+        return 0
+    }
 
     /// What one worked tile yields each watch.
     public var yield: Stock {
