@@ -1,7 +1,8 @@
 /// A person on the realm, known only by the name they chose.
 public struct Keeper: Codable, Equatable, Identifiable, Sendable {
-    /// The keeper's identity: an opaque token the realm knows them by.
-    public let id: String
+    /// The keeper's identity: an opaque token the realm knows them by. It
+    /// changes only as the keeper takes themself up on another Mac.
+    public internal(set) var id: String
     /// The name they go by; it names the House they hold.
     public let name: String
     /// The House they hold this age, if a seat was free.
@@ -34,6 +35,9 @@ public struct Keeper: Codable, Equatable, Identifiable, Sendable {
     public internal(set) var streak: Int?
     /// The Frontier's season they have crossed for, until it is told home.
     public internal(set) var crossing: Int?
+    /// What the realm keeps of the words they wrote down to carry their
+    /// identity to another Mac (see `KeeperWords`); absent until they do.
+    public internal(set) var seal: String?
 }
 
 /// What anyone may know of the realm before entering it.
@@ -112,6 +116,10 @@ public enum RealmError: Error, Equatable, Sendable, CustomStringConvertible {
     case rule(RuleError)
     /// Refused across the network, for the reason the realm gave.
     case refused(String)
+    /// No keeper of the realm is sealed with the words brought.
+    case unknownWords
+    /// Words brought to a Mac whose own identity already keeps a House.
+    case keepsAnother
 
     public var description: String {
         switch self {
@@ -122,6 +130,8 @@ public enum RealmError: Error, Equatable, Sendable, CustomStringConvertible {
         case .noSeat: return "You hold no House standing on the lake."
         case .rule(let error): return error.description
         case .refused(let reason): return reason
+        case .unknownWords: return "No keeper of this realm is sealed with those words."
+        case .keepsAnother: return "This Mac already keeps a House here as itself: leave its identity first, then bring the words."
         }
     }
 }
@@ -377,6 +387,28 @@ public struct RealmState: Codable, Equatable, Sendable {
             world.record(.seating, [house], "\(world.houses[house].title) passes to the stewards, its keeper gone from the realm for good.")
         }
         return keeper
+    }
+
+    /// A keeper seals themself with the words they wrote down: the realm
+    /// keeps the digest of their proof, and whoever brings the words again
+    /// takes them up. Sealing again lets the old words go.
+    public mutating func seal(_ id: String, proof: String) throws(RealmError) {
+        guard let index = keepers.firstIndex(where: { $0.id == id }) else { throw .unknownKeeper }
+        guard KeeperWords.isProof(proof) else { throw .refused("The words' proof couldn't be read.") }
+        keepers[index].seal = KeeperWords.seal(of: proof)
+    }
+
+    /// A keeper brings their words to another Mac: the keeper they seal is
+    /// known by this Mac's identity from now on, and arrives by it. The Mac
+    /// they left no longer speaks for them.
+    @discardableResult
+    public mutating func reclaim(_ id: String, proof: String, now: Double) throws(RealmError) -> Keeper {
+        guard KeeperWords.isProof(proof) else { throw .unknownWords }
+        guard !keepers.contains(where: { $0.id == id }) else { throw .keepsAnother }
+        let sealed = KeeperWords.seal(of: proof)
+        guard let index = keepers.firstIndex(where: { $0.seal == sealed }) else { throw .unknownWords }
+        keepers[index].id = id
+        return try arrive(id, name: nil, now: now)
     }
 
     /// What came of arrivals, taken by the one who tells them.

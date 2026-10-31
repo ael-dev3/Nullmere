@@ -250,6 +250,19 @@ pub fn leave(ctx: &ReducerContext, nonce: String) -> Result<(), String> {
     ask(ctx, "leave", nonce, String::new())
 }
 
+/// Seal the keeper with the words they wrote down, by the words' proof:
+/// whoever brings the words again takes up the keeper.
+#[reducer]
+pub fn seal(ctx: &ReducerContext, nonce: String, proof: String) -> Result<(), String> {
+    ask(ctx, "seal", nonce, proof)
+}
+
+/// Take up the keeper the words seal, by their proof, as this identity.
+#[reducer]
+pub fn reclaim(ctx: &ReducerContext, nonce: String, proof: String) -> Result<(), String> {
+    ask(ctx, "reclaim", nonce, proof)
+}
+
 /// The steward forgets answers that have been read.
 #[reducer]
 pub fn forget(ctx: &ReducerContext, nonces: Vec<String>) -> Result<(), String> {

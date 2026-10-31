@@ -210,13 +210,13 @@ public actor FakeSpacetime: SpacetimeTransport {
             return value
         }
         switch reducer {
-        case "arrive", "order", "ready", "ready_in_watch", "here", "leave":
+        case "arrive", "order", "ready", "ready_in_watch", "here", "leave", "seal", "reclaim":
             let nonce = try string(0)
             var payload = ""
             if reducer == "ready", case .bool(let ready)? = arguments.dropFirst().first { payload = ready ? "true" : "false" }
             else if reducer == "ready_in_watch", arguments.count == 3, case .bool(let ready) = arguments[1], case .integer(let watch) = arguments[2] {
                 payload = "\(ready)@\(watch)"
-            } else if reducer == "arrive" || reducer == "order" { payload = try string(1) }
+            } else if ["arrive", "order", "seal", "reclaim"].contains(reducer) { payload = try string(1) }
             // As the module asks it: readiness in a watch is a "ready" request.
             let kind = reducer == "ready_in_watch" ? "ready" : reducer
             // Its bounds, in bytes, as the module counts them.

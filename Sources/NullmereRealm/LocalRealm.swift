@@ -94,6 +94,27 @@ public final class LocalRealm {
         }
     }
 
+    func seal(_ identity: String, proof: String) -> RealmError? {
+        do {
+            try state.seal(identity, proof: proof)
+            persist()
+            return nil
+        } catch {
+            return error
+        }
+    }
+
+    func reclaim(_ identity: String, proof: String) {
+        do {
+            let keeper = try state.reclaim(identity, proof: proof, now: clock())
+            persist()
+            deliver(.arrived(keeper, world(for: identity)), to: identity)
+            broadcastStatus()
+        } catch {
+            deliver(.refused(error), to: identity)
+        }
+    }
+
     func send(_ command: Command, from identity: String) {
         do {
             let events = try state.perform(command, by: identity)
@@ -203,6 +224,15 @@ public final class LocalLink: RealmLink {
 
     public func arrive(name: String?) {
         realm?.arrive(identity, name: name)
+    }
+
+    public func seal(proof: String, done: @escaping @MainActor (String?) -> Void) {
+        guard let realm else { return done("The realm has closed.") }
+        done(realm.seal(identity, proof: proof)?.description)
+    }
+
+    public func reclaim(proof: String) {
+        realm?.reclaim(identity, proof: proof)
     }
 
     public func send(_ command: Command) {

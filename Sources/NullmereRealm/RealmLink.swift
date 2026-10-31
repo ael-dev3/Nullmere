@@ -43,6 +43,13 @@ public protocol RealmLink: AnyObject {
     /// Arrives as the keeper this link speaks for: a returning keeper needs
     /// no name; a new one gives the name they'll go by.
     func arrive(name: String?)
+    /// Seals the keeper this link speaks for with the words they wrote
+    /// down, by the words' proof (see `KeeperWords`); `done` hears nothing
+    /// when the realm keeps it, or why it didn't.
+    func seal(proof: String, done: @escaping @MainActor (String?) -> Void)
+    /// Takes up the keeper the words seal, by their proof, as the identity
+    /// this link speaks for, and arrives as them: heard as an arrival is.
+    func reclaim(proof: String)
     func send(_ command: Command)
     func setReady(_ ready: Bool)
     /// Leaves the realm, once what the keeper ordered has gone to it; after
@@ -56,5 +63,14 @@ public protocol RealmLink: AnyObject {
 extension RealmLink {
     public func close() {
         onEvent = nil
+    }
+
+    /// A link to a realm that keeps no words.
+    public func seal(proof: String, done: @escaping @MainActor (String?) -> Void) {
+        done("This realm keeps no words.")
+    }
+
+    public func reclaim(proof: String) {
+        onEvent?(.refused(.unknownWords))
     }
 }

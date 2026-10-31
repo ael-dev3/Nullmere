@@ -408,6 +408,22 @@ public actor RealmSteward {
             left[keeper] = now
             state.depart(keeper, now: now)
             return (.done, true, [])
+        case "seal":
+            do {
+                try state.seal(keeper, proof: payload)
+                return (.done, true, [])
+            } catch {
+                return (.refused(error), false, [])
+            }
+        case "reclaim":
+            // The keeper the words seal, taken up by this Mac's identity
+            // and arrived by it, as "arrive" answers.
+            do {
+                let arrived = try state.reclaim(keeper, proof: payload, now: now)
+                return (RealmReply(ok: true, keeper: arrived, refusal: nil, events: nil), true, [])
+            } catch {
+                return (.refused(error), false, [])
+            }
         default:
             return (.refused(.refused("The realm doesn't know that request.")), false, [])
         }

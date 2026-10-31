@@ -64,6 +64,49 @@ final class LocalRealmEdgeTests: XCTestCase {
             link.onEvent = { _ in }
             link.close()
             XCTAssertNil(link.onEvent)
+            // Nor does such a link keep words, or take anyone up by them.
+            var said: String?
+            link.seal(proof: KeeperWords.proof(of: KeeperWords.make())) { said = $0 }
+            XCTAssertEqual(said, "This realm keeps no words.")
+            var heard: [RealmEvent] = []
+            link.onEvent = { heard.append($0) }
+            link.reclaim(proof: "anything")
+            guard case .refused(.unknownWords)? = heard.first else { return XCTFail("Refused, by no words") }
+        }
+    }
+
+    /// Words sealed through one link take the keeper up through another,
+    /// as on another Mac; the realm's answer heard as an arrival is.
+    func testAKeeperIsCarriedByTheirWordsInThisProcess() {
+        MainActor.assumeIsolated {
+            let realm = LocalRealm(state: state(), clock: { 0 })
+            let first = realm.link(identity: "first-mac")
+            first.arrive(name: "Ama")
+            let proof = KeeperWords.proof(of: KeeperWords.make())
+            var told: [String?] = []
+            first.seal(proof: proof) { told.append($0) }
+            first.seal(proof: "garbled") { told.append($0) }
+            XCTAssertEqual(told, [nil, "The words' proof couldn't be read."])
+
+            let second = realm.link(identity: "second-mac")
+            var heard: [RealmEvent] = []
+            second.onEvent = { heard.append($0) }
+            second.reclaim(proof: KeeperWords.proof(of: KeeperWords.make()))
+            second.reclaim(proof: proof)
+            guard heard.count >= 2, case .refused(.unknownWords) = heard[0], case .arrived(let keeper, _) = heard[1] else {
+                return XCTFail("Refused for words not Ama's, then in as Ama: \(heard)")
+            }
+            XCTAssertEqual(keeper.name, "Ama")
+            XCTAssertNil(realm.state.keeper("first-mac"))
+
+            // A realm let go keeps no words for anyone.
+            var gone: LocalRealm? = LocalRealm(state: state(), clock: { 0 })
+            let orphan = gone!.link(identity: "x")
+            gone = nil
+            var closed: String?
+            orphan.seal(proof: proof) { closed = $0 }
+            XCTAssertEqual(closed, "The realm has closed.")
+            orphan.reclaim(proof: proof)
         }
     }
 

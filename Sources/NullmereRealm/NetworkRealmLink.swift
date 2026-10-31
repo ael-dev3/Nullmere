@@ -489,9 +489,29 @@ public final class NetworkRealmLink: RealmLink {
     }
 
     public func arrive(name: String?) {
+        enter("arrive", name ?? "")
+    }
+
+    public func reclaim(proof: String) {
+        enter("reclaim", proof)
+    }
+
+    public func seal(proof: String, done: @escaping @MainActor (String?) -> Void) {
         Task {
             do {
-                let reply = try await request("arrive", [.string(name ?? "")])
+                let reply = try await request("seal", [.string(proof)])
+                done(reply.ok ? nil : reply.refusal ?? "The realm wouldn't keep the words.")
+            } catch {
+                done(RealmTrouble.words(for: error))
+            }
+        }
+    }
+
+    /// In as the keeper the realm answers with: by a name, or by words.
+    private func enter(_ reducer: String, _ argument: String) {
+        Task {
+            do {
+                let reply = try await request(reducer, [.string(argument)])
                 guard reply.ok, reply.keeper != nil else {
                     onEvent?(.refused(.refused(reply.refusal ?? "The realm wouldn't take you in.")))
                     return

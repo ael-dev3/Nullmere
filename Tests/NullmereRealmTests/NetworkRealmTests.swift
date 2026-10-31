@@ -102,6 +102,46 @@ final class NetworkRealmTests: XCTestCase {
         await MainActor.run { link.leave() }
     }
 
+    /// A keeper's words carry them to another Mac across the network: the
+    /// first Mac seals them, words not theirs take up no one, and the
+    /// second Mac, bringing theirs, arrives as them.
+    func testAKeeperIsCarriedToAnotherMacByTheirWords() async throws {
+        let db = FakeSpacetime()
+        let (steward, running, _) = try await steward(db)
+        defer { running.cancel() }
+        let (first, earFirst) = await MainActor.run { keeper(db) }
+        let (second, earSecond) = await MainActor.run { keeper(db) }
+        try await until("the realm's status") { earFirst.hasStatus && earSecond.hasStatus }
+        await MainActor.run { first.arrive(name: "Ama") }
+        try await until("Ama in") { earFirst.keeper != nil }
+
+        let proof = KeeperWords.proof(of: KeeperWords.make())
+        func seal(_ proof: String) async -> String? {
+            await withCheckedContinuation { (done: CheckedContinuation<String?, Never>) in
+                Task { @MainActor in first.seal(proof: proof) { done.resume(returning: $0) } }
+            }
+        }
+        let kept = await seal(proof)
+        XCTAssertNil(kept, "The realm keeps the words")
+        let garbled = await seal("garbled")
+        XCTAssertEqual(garbled, "The words' proof couldn't be read.")
+        let firstIdentity = await MainActor.run { first.credentials?.identity }
+        let sealed = await steward.state.keeper(try XCTUnwrap(firstIdentity))?.seal
+        XCTAssertEqual(sealed, KeeperWords.seal(of: proof))
+
+        await MainActor.run { second.reclaim(proof: KeeperWords.proof(of: KeeperWords.make())) }
+        try await until("words not Ama's refused") { !earSecond.refusals.isEmpty }
+        let refused = await MainActor.run { earSecond.refusals }
+        XCTAssertEqual(refused, [RealmError.unknownWords.description])
+        await MainActor.run { second.reclaim(proof: proof) }
+        try await until("Ama on the second Mac") { earSecond.keeper != nil }
+        let carried = await MainActor.run { earSecond.keeper?.name }
+        XCTAssertEqual(carried, "Ama")
+        let left = await steward.state.keeper(try XCTUnwrap(firstIdentity))
+        XCTAssertNil(left, "The first Mac no longer speaks for Ama")
+        await MainActor.run { second.leave() }
+    }
+
     func testKeepersMeetThroughTheSteward() async throws {
         let db = FakeSpacetime()
         let (_, running, _) = try await steward(db)
