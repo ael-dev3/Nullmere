@@ -582,6 +582,16 @@ realm; keepers are told in plain words, never a status code.
   The Still, the lake's deep water, yields nothing and cannot be crossed;
   the shallows can.
   Drowned ruins hide something for the first company to search them.
+- **Dreams of the Still.** At the dark of each moon, the fifteenth watch
+  of every thirty, the lake shows each keeper's House one true thing it
+  cannot see, in turn: the greatest host on the lake that is not its own,
+  its troops and where its largest company stands; the fullest stores on
+  the lake and whose they are; or a drowned ruin no company has searched,
+  where the House has never been. The realm chooses the sight by the moon
+  and the House, with no chance in it, and only that House hears of it;
+  the keeper's Mac has its on-device model tell the dream in the Still's
+  own voice, the plain sight kept beneath, at the head of the Chronicle's
+  Reports, a House keeping its last four. Stewards dream nothing.
 - **Streams and regions.** In a realm's ages, streams run from the Spine
   down to the lake in the gaps between the seats, one for every two seats
   (three at the fewest, twelve at the most), each with its name. No company

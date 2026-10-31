@@ -51,6 +51,7 @@ extension GameState {
         if isPaced { pacing = Pacing() }
         turnOmens()
         events += turnTide()
+        events += dream()
         events += driftBottles()
         events += turnEdicts()
         forgetOldGifts()

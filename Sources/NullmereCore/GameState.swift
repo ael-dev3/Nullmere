@@ -90,6 +90,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The omen on the realm, and when the last lifted.
     var omen: Omen?
     var omenLifted: Int?
+    /// The dreams the Still has shown keepers' Houses, a House's last few
+    /// each; absent before any dreamed.
+    public internal(set) var dreams: [Dream]?
     /// What every keeper knows of the land from the first watch: its
     /// streams and regions, and the crests the lake gave its Houses. Absent
     /// in a world without streams, and in saves from before them.

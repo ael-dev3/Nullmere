@@ -95,7 +95,7 @@ struct ChroniclePanel: View {
     static func subtitle(_ shown: Shown) -> String {
         switch shown {
         case .history: return "What the lake remembers"
-        case .reports: return "Your House's battles and scouting, the latest first"
+        case .reports: return "Your House's dreams, battles and scouting, the latest first"
         case .songs: return "The ballads the keepers have sung this age"
         }
     }
@@ -117,11 +117,30 @@ struct ReportList: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
-                if session.reports.isEmpty {
-                    Text(verbatim: "No report yet. Each battle your House fights, each blow on the wilds and each hold its Lanterns scout is reported here.")
+                let dreams = session.state.dreams(of: session.player)
+                if session.reports.isEmpty && dreams.isEmpty {
+                    Text(verbatim: "No report yet. Each battle your House fights, each blow on the wilds and each hold its Lanterns scout is reported here, and what the Still shows your House at the dark of each moon.")
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.text(0.55))
                         .fixedSize(horizontal: false, vertical: true)
+                }
+                // What the Still showed, in its own voice where this Mac's
+                // model gave it one, and plainly beneath.
+                ForEach(dreams.reversed(), id: \.watch) { dream in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Caps("Dream · watch \(dream.watch)", size: 8.5, weight: .medium).foregroundStyle(Palette.glowWords)
+                        if let spoken = session.spoken[.dream(dream.watch)] {
+                            Text(verbatim: spoken)
+                                .font(.nm(11.5, weight: .light).italic())
+                                .foregroundStyle(Palette.glowWords)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Text(verbatim: session.state.told(dream))
+                            .font(.nm(10.5))
+                            .foregroundStyle(Palette.text(0.72))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .combine)
                 }
                 ForEach(session.reports) { report in
                     VStack(alignment: .leading, spacing: 3) {

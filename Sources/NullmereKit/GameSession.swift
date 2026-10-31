@@ -158,11 +158,14 @@ public final class GameSession {
     public enum Spoken: Hashable, Sendable {
         case envoy(Int)
         case chronicle(Int)
+        /// A dream, by the watch the House woke to.
+        case dream(Int)
 
         var key: String {
             switch self {
             case .envoy(let id): return "envoy-\(id)"
             case .chronicle(let index): return "chronicle-\(index)"
+            case .dream(let watch): return "dream-\(watch)"
             }
         }
 
@@ -172,6 +175,7 @@ public final class GameSession {
             switch parts[0] {
             case "envoy": self = .envoy(number)
             case "chronicle": self = .chronicle(number)
+            case "dream": self = .dream(number)
             default: return nil
             }
         }
@@ -1836,6 +1840,11 @@ public final class GameSession {
         for envoy in envoys where !asked.contains(.envoy(envoy.id)) && !state.houses[envoy.from].isPlayer {
             asked.insert(.envoy(envoy.id))
             voiceQueue.append((.envoy(envoy.id), VoiceFacts.envoy(envoy, in: state)))
+        }
+        // What the Still showed, told in its own voice.
+        for dream in state.dreams(of: player) where !asked.contains(.dream(dream.watch)) {
+            asked.insert(.dream(dream.watch))
+            voiceQueue.append((.dream(dream.watch), VoiceFacts.dream(dream, in: state)))
         }
         for (index, entry) in state.chronicle.enumerated() where !asked.contains(.chronicle(index)) {
             asked.insert(.chronicle(index))

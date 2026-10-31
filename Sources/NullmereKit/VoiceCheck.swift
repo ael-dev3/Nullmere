@@ -45,6 +45,10 @@ public enum VoiceCheck {
         for entry in state.chronicle.reversed() where VoiceFacts.isVoiced(entry.kind) && kinds.insert(entry.kind.rawValue).inserted {
             moments.append(("chronicle of \(entry.kind.rawValue)", VoiceFacts.chronicle(entry, in: state)))
         }
+        // The latest dream the Still showed the keeper's House.
+        if let dream = state.dreams(of: state.player).last {
+            moments.append(("dream of the Still", VoiceFacts.dream(dream, in: state)))
+        }
         // A ballad of the latest deed of arms the age brought.
         if let entry = state.chronicle.last(where: { [.battle, .capture, .fall, .war].contains($0.kind) }) {
             let singer = entry.houses.first ?? state.player

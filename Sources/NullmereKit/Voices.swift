@@ -26,6 +26,9 @@ public struct VoiceMoment: Sendable, Equatable {
         case chronicle(ChronicleEntry.Kind)
         /// A ballad of a deed, as the halls around the lake would sing it.
         case ballad
+        /// What the Still shows a keeper's House in a dream at the dark of
+        /// the moon.
+        case dream
     }
 
     public let kind: Kind
@@ -56,6 +59,9 @@ public struct VoiceMoment: Sendable, Equatable {
         case .ballad:
             task = "Make a short ballad of this deed, as the halls around the lake would sing it: four lines, each of at most ten words. "
                 + "Reply with the four lines alone, one to a line, with no title."
+        case .dream:
+            task = "Speak as the still black lake itself, to one who wakes from a dream at the dark of the moon: tell them what the water "
+                + "showed them, keeping every name and number as given. Two sentences, at most 40 words."
         }
         return task + "\n\nWhat is known:\n" + facts.map { "- \($0)" }.joined(separator: "\n")
     }
@@ -173,6 +179,11 @@ public struct OnDeviceVoice: Voice {
 }
 
 enum VoiceFacts {
+    /// A dream, for the Still to tell: what it showed, plainly, and when.
+    static func dream(_ dream: Dream, in state: GameState) -> VoiceMoment {
+        VoiceMoment(kind: .dream, facts: [state.told(dream), "It is the dark of the moon."])
+    }
+
     static func envoy(_ envoy: Envoy, in state: GameState) -> VoiceMoment {
         let house = state.houses[envoy.from]
         let player = state.houses[envoy.to]

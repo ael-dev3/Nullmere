@@ -622,6 +622,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case crestTaken(house: Int, crest: Crest)
     /// A keeper sets a work of a hold in a place of its own.
     case workPlaced(hold: Int, kind: BuildingKind, place: Int)
+    /// A keeper's House dreams at the dark of the moon.
+    case dreamt(Dream)
     /// An alliance's leader sets it to pursue a study.
     case allianceStudyChosen(alliance: Int, study: AllianceStudy)
     /// A House gives stores toward a grade of its alliance's study.

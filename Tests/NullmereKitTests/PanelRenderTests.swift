@@ -210,6 +210,26 @@ final class PanelRenderTests: XCTestCase {
         try draw(ChroniclePanel(session: session), width: 360, height: 700)
     }
 
+    /// The Reports show the dreams the Still showed the House, in its own
+    /// voice where this Mac's model gave it one, and plainly beneath.
+    func testTheReportsShowTheHousesDreams() throws {
+        var state = GameState(settings: GameSettings(seedText: "dreams told", houseCount: 4, radius: 18, keepers: 1))
+        state.watch = GameState.dreamingMoon
+        _ = state.dream()
+        let dream = try XCTUnwrap(state.dreams(of: state.player).first)
+        let store = LocalStore(directory: dir.appendingPathComponent("dreams"))
+        store.saveVoices([GameSession.Spoken.dream(dream.watch).key: "The water showed you a host upon the far shore."])
+        let session = GameSession(state: state, store: store)
+        XCTAssertEqual(session.spoken[.dream(dream.watch)], "The water showed you a host upon the far shore.")
+        XCTAssertEqual(GameSession.Spoken(key: "dream-15"), .dream(15))
+        try draw(ChroniclePanel(session: session, shown: .reports), width: 360, height: 700)
+        XCTAssertEqual(ChroniclePanel.subtitle(.reports), "Your House's dreams, battles and scouting, the latest first")
+        let moment = VoiceFacts.dream(dream, in: state)
+        XCTAssertEqual(moment.kind, .dream)
+        XCTAssertEqual(moment.facts, [state.told(dream), "It is the dark of the moon."])
+        XCTAssertTrue(moment.prompt.contains("dark of the moon"), moment.prompt)
+    }
+
     /// What the selection panel shows of a hold whose works are all built,
     /// a foreign hold out of sight with its Moonspire rising, and ground
     /// no lantern has seen.

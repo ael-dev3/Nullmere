@@ -15,6 +15,8 @@ extension GameState {
         // The realm's words would grow the whole map again; where its
         // rounds begin is all the keeper's copy needs of them.
         view.dealing = dealt
+        // A keeper's dreams are their own.
+        view.dreams = dreams.map { all in all.filter { $0.house == house } }
         view.settings.seedText = ""
         let explored = houses.indices.contains(house) ? houses[house].explored : []
         for index in 0..<map.count where !(explored.indices.contains(index) && explored[index]) {
@@ -240,6 +242,8 @@ extension GameState {
                 return true
             case .workPlaced(let holdID, _, _):
                 return hold(holdID)?.owner == house
+            case .dreamt(let dream):
+                return dream.house == house
             case .carriedAshore(_, let owner, _, let to):
                 return owner == house || visible(to)
             case .recalled(_, let owner):

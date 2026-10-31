@@ -223,6 +223,18 @@ designed, ticked when it is real, tested and shown in CI.
   standing on it, whose holders' side takes its stones, every work raised
   for less and sooner. A landmark of the realm's history worth fighting
   over.
+- [x] **Dreams of the Still.** At the dark of each moon the lake shows
+  every keeper's House, in a dream, one true thing it cannot see: the
+  greatest host on the lake that is not its own, how many troops and the
+  region its largest company stands in; the fullest stores on the lake
+  and whose they are; or a drowned ruin no company has searched where the
+  House has never been. The realm chooses the sight by the moon and the
+  House, with no chance in it, and keeps it for that House alone; the
+  keeper's own Mac has the Still tell it in its voice, the plain sight
+  kept beneath, in the Chronicle's Reports. Intelligence no spy brings,
+  told by a model no server runs. Stewards dream nothing, so a world of
+  stewards goes as it always did. CI asks its runner's own model for a
+  dream and holds it to the voices' rules.
 
 ## The order of the work
 

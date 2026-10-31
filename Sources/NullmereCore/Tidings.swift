@@ -236,6 +236,9 @@ extension GameState {
         case .allianceStudied(let id, let study, let grade):
             guard alliance(id)?.members.contains(viewer) == true else { return nil }
             return Tidings("Your alliance learns \(study.title) \(BuildingKind.numeral(grade)): \(study.effect(grade: grade)).", .good)
+        case .dreamt(let dream):
+            guard dream.house == viewer else { return nil }
+            return Tidings(told(dream), .good)
         case .workPlaced(let holdID, let kind, _):
             guard let hold = hold(holdID), hold.owner == viewer else { return nil }
             return Tidings("The \(kind.title) of \(hold.name) stands where you set it.", .neutral)
