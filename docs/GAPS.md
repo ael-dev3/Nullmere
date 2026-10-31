@@ -45,7 +45,7 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 - [x] The lake as a 3D surface that mirrors the moon and the stars, black and still
 - [x] A camera that pans, zooms, tilts and turns, with the map's picking and VoiceOver's elements through it
 - [x] A model for every company kind and tier, every work at every level, every hold, and every feature of the land
-- [x] Moonlight, firelight and the world's own lights; the render's frame times measured in CI
+- [x] Moonlight, firelight and the world's own lights; the render's frame times measured in CI and held there: the world at three zooms, panning, staging and the marks, each within half again CI's first figure
 - [x] Textured detail: every model's stone, timber, thatch, slate and earth drawn with its grain in the shader, fading to its mean with distance; the ground's own grain
 - [x] Weather: each omen's own over the world, rain and dimmed moon, banks of mist and thick haze, a clearer still night
 - [x] Each heritage's own architecture: a keep for each people, its walls, roof and crown its own; every work and wall of its holds in its people's slates, stone and timber; and a company of its own at the fifth tier in its people's gear

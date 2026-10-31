@@ -155,8 +155,9 @@ menu's items, and VoiceOver's actions on the map (a test process has no
 assistive technology to build SwiftUI's accessibility tree for).
 
 Speed is held too (`scripts/perf-check.py`, against `perf/baseline.json`):
-the tests print the GPU time of the map's and the lake's frames, panning,
-the marks over the map, an order's way through the realm and a watch of
+the tests print the GPU time of the world's frames at three zooms, the
+lake's, panning, the models staged for a frame, the marks over the world
+and the flat map's, an order's way through the realm and a watch of
 twelve keepers, and each must stay within half again its baseline, a frame
 never over a 60 Hz frame's 16.7 ms on CI's virtual GPU. A slow runner
 widens the CPU figures' allowance by its pace, timed on plain work none of

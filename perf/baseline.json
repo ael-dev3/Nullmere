@@ -4,69 +4,69 @@
   "slack_ms": 1.0,
   "metrics": {
     "world.gpu.scale12.p50": {
-      "baseline": null,
+      "baseline": 6.19,
       "gpu": true,
       "limit": 16.7,
-      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
+      "note": "the world drawn in three dimensions, as CI's runner first measured it (cb5988b)"
     },
     "world.gpu.scale12.p95": {
-      "baseline": null,
+      "baseline": 6.62,
       "gpu": true,
       "ratio": 1.5,
       "limit": 16.7,
-      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
+      "note": "the world drawn in three dimensions, as CI's runner first measured it (cb5988b)"
     },
     "world.gpu.scale28.p50": {
-      "baseline": null,
+      "baseline": 8.61,
       "gpu": true,
       "limit": 16.7,
-      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
+      "note": "the world drawn in three dimensions, as CI's runner first measured it (cb5988b)"
     },
     "world.gpu.scale28.p95": {
-      "baseline": null,
+      "baseline": 8.95,
       "gpu": true,
       "ratio": 1.5,
       "limit": 16.7,
-      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
+      "note": "the world drawn in three dimensions, as CI's runner first measured it (cb5988b)"
     },
     "world.gpu.scale60.p50": {
-      "baseline": null,
+      "baseline": 4.74,
       "gpu": true,
       "limit": 16.7,
-      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
+      "note": "the world drawn in three dimensions, as CI's runner first measured it (cb5988b)"
     },
     "world.gpu.scale60.p95": {
-      "baseline": null,
+      "baseline": 6.7,
       "gpu": true,
       "ratio": 1.5,
       "limit": 16.7,
-      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
+      "note": "the world drawn in three dimensions, as CI's runner first measured it (cb5988b)"
     },
     "pan.frame.p50": {
-      "baseline": null,
+      "baseline": 8.96,
       "gpu": true,
       "limit": 16.7,
-      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
+      "note": "the world drawn in three dimensions, as CI's runner first measured it (cb5988b)"
     },
     "pan.frame.p95": {
-      "baseline": null,
+      "baseline": 9.39,
       "gpu": true,
       "ratio": 1.5,
       "limit": 16.7,
-      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
+      "note": "the world drawn in three dimensions, as CI's runner first measured it (cb5988b)"
     },
     "pan.gpu.p50": {
-      "baseline": null,
+      "baseline": 8.56,
       "gpu": true,
       "limit": 16.7,
-      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
+      "note": "the world drawn in three dimensions, as CI's runner first measured it (cb5988b)"
     },
     "pan.gpu.p95": {
-      "baseline": null,
+      "baseline": 8.87,
       "gpu": true,
       "ratio": 1.5,
       "limit": 16.7,
-      "note": "the world drawn in three dimensions: recorded until CI's runner has measured it, then held"
+      "note": "the world drawn in three dimensions, as CI's runner first measured it (cb5988b)"
     },
     "lake.gpu.p50": {
       "baseline": 8.3,
@@ -81,16 +81,16 @@
       "note": "the worst frames: half again the baseline, and never over a 60 Hz frame"
     },
     "marks.cpu.p50": {
-      "baseline": null,
+      "baseline": 1.24,
       "gpu": true,
       "cpu": true,
-      "note": "the marks as drawn over the world's models: recorded until CI's runner has measured it, then held"
+      "note": "the marks as drawn over the world's models: CI's first figure, 1.78 (cb5988b), at the calibration's pace there, x1.44"
     },
     "marks.flat.cpu.p50": {
-      "baseline": null,
+      "baseline": 2.78,
       "gpu": true,
       "cpu": true,
-      "note": "the flat marks of a Mac that cannot draw the world, tokens and all: recorded until CI's runner has measured it, then held"
+      "note": "the flat marks of a Mac that cannot draw the world, tokens and all: CI's first figure, 4.01 (cb5988b), at the calibration's pace there, x1.44"
     },
     "order.cpu.p50": {
       "baseline": 3.9,
@@ -117,17 +117,17 @@
       "note": "plain work, none of it the game's, by thread CPU, as CI's runner does it on a quick day: the old work's 250 times the two works' measured ratio (1.41). The old work ran 277 to 505 on CI; CI's first figure for this one, 476, came with the realm's watches at 1.3 to 1.5 times their baselines, a slow day"
     },
     "stage.cpu.p50": {
-      "baseline": null,
+      "baseline": 1.64,
       "cpu": true,
       "limit": 8.3,
-      "note": "the world's models staged for a frame on the main thread: recorded until CI's runner has measured it, then held"
+      "note": "the world's models staged for a frame on the main thread: CI's first figure, 2.36 (cb5988b), at the calibration's pace there, x1.44"
     },
     "stage.cpu.p95": {
-      "baseline": null,
+      "baseline": 1.74,
       "cpu": true,
       "ratio": 1.5,
       "limit": 16.7,
-      "note": "the world's models staged for a frame on the main thread: recorded until CI's runner has measured it, then held"
+      "note": "the world's models staged for a frame on the main thread: CI's first figure, 2.50 (cb5988b), at the calibration's pace there, x1.44"
     }
   }
 }
