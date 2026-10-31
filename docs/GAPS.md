@@ -111,6 +111,96 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 - [ ] Painted illustration for the interface at RoK's richness
 - [ ] The world first (direction of October 31): the interface minimal, contextual and uncluttered, panels collapsed until wanted. Done so far: the top bar three islands rather than a band across the map; every panel on one rail (the top bar's Houses, Chronicle and Guide moved there); the small map of the lake hidden until the rail's Map shows it; notices on the map for nine seconds, three at most, then gone (VoiceOver says each, the Chronicle keeps the story); the charge a line, More for how and the reward; counsel only when no charge speaks; envoys one at a time, the rest a line each; the keys shown only during the first steps; the map's darkened edges halved. CI photographs the plain view (nothing chosen, no panel) and prints each game screen at the foot of a log of its own, to judge what the interface leaves of the world. Still to do: a hold's and a company's panels opening as a summary with their lists folded, the panels themselves narrower, and the opening view showing more known land than mist
 
+## Warpkeep parity
+
+Direction of October 31: Nullmere is to have every feature of Warpkeep
+(github.com/ael-dev3/Warpkeep), reimagined with its own assets. Warpkeep
+shipped no companies, battles, alliances or ending of its own (its last
+patch notes say so); Nullmere goes far past it there. What Warpkeep did
+have, feature by feature, audited from its source:
+
+Already in Nullmere, in its own way:
+- [x] A title over a living backdrop (Warpkeep's stone wordmark over a galaxy; here NULLMERE ONLINE over the moonlit lake), a transition into the game, and a menu that the keyboard alone can drive
+- [x] A build stamp and patch notes (the launcher's footer, News from the repository)
+- [x] Plain notices when the realm can't be reached, a boot painting when the GPU can't draw
+- [x] Sound and music settings, reduced motion, keyboard and screen-reader play, meaning beyond colour; settings inside the world
+- [x] An identity kept on the device between sessions; open admission with a queue
+- [x] New worlds by generation (ages on a fresh lake, Frontier seasons), honest outcomes for every order, the realm's state before entry
+- [x] Four resources with yield, storage and their accounts; a daily reward (favour for each watch kept, with chests)
+- [x] Sites of the land to gather from, sent from the map, full sites refused, journeys drawn and heard
+- [x] Works at five levels with costs and times, yield works, one rising at a time, the catalogue with each level's gain, construction drawn rising, the seat entered close (the city view)
+- [x] A seeded hex world with its terrain recorded, landmarks, a bounded edge
+- [x] A camera that pans, zooms and turns, labels on every hold, records for holds and companies, selection and hover, one step back at a time, a steady world
+- [x] A first journey taught in play, a guide, a reason on every refused button, a welcome back
+- [x] A shared world, public standing, generated cues placed where they happen, a sound for the water
+- [x] Original models, detail by distance, living land, towns at work, a lit sky
+- [x] Drawing paused in the background
+
+To build, reimagined:
+- [ ] Credits, rolled in the launcher, still under reduced motion
+- [ ] The founding watch on a hold's record
+- [ ] Bring it home: a gatherer recalled with what it carries, and every gatherer at once; the watches left of a gathering and of the way home on its record; a list of the House's gatherers
+- [ ] A gathering's length chosen as it is sent (a watch, three, until full)
+- [ ] The camera's buttons on screen, and Reset View to the whole House
+- [ ] Sounds for the interface (a panel opening and closing, going back, an order refused), and the trackpad's taps where the Mac has them
+- [ ] Words made safe: a keeper's Words muted everywhere, not only an envoy's; a line reported, kept with what was said round it for the realm's steward; the realm able to remove a line and bar a keeper; an unread count on the rail, and the realm's whole record of Words paged back
+- [ ] The realm's compact: terms and privacy in plain words, read and accepted at the front door before first entry, asked again when they change
+- [ ] A keeper's identity carried to another Mac: a recovery phrase written down, and taken up on the other; leaving an identity, and taking up another
+- [ ] A newer build known: the launcher and the realm each tell their version, and a client too old for its realm is told so and where to get the new one
+- [ ] A House's crest (Warpkeep's profile and portrait): a shield, its tinctures and a charge chosen once, shown on the House's records, banners and the front door
+- [ ] Rivers: streams from the Spine to the lake, crossed at fords, named and followed; the shores' regions named, with a legend
+- [ ] Graphics chosen for the Mac: an Auto that reads the hardware, detail tiers, a reset to the defaults; when the GPU fails, a step down before the painting, with what to tell
+- [ ] Title and menu music in the launcher, a theme for each lake
+- [ ] A work that hastens marches and one that hastens building (Warpkeep's Barracks and Cathedral)
+- [ ] Works placed by the keeper within a hold (Warpkeep's free placement), on the town's grid
+- [ ] A crash met by a page that says what happened and opens the world again
+
+Left out by design, with what stands in their place:
+- Play in a browser, on phones and tablets, and as a Farcaster Mini App: Nullmere Online is a native Mac game on Apple silicon (the on-device model is part of it); Sign In With Farcaster becomes the keychain identity and its recovery phrase
+- One keep for good: a seat lasts an age, and renown, favour, titles and deeds carry across ages
+- Hand-curated admission: admission is open, with a queue
+- Time passing with nobody in the realm: an empty realm sleeps, and a caretaker keeps an absent keeper's House
+- A lyric film and moving water: the lake is still by design, under a night that never ends
+
+## Beyond Rise of Kingdoms: what nobody has shipped
+
+Direction of October 31: cover Rise of Kingdoms whole, then go past it
+with mechanics of Nullmere's own, from what no other game of its kind
+has: a still lake under a moon, an on-device model on every keeper's Mac,
+and a realm that persists, age after age. Each is listed here as it is
+designed, ticked when it is real, tested and shown in CI.
+
+- [ ] **The Moonpath.** The moon waxes and wanes over twenty-four
+  watches, and at the full its light lies on the still water as a road:
+  for three watches a causeway of moonlight runs across the lake from
+  the Western Shore to the Eastern through the deep water, ground a
+  company may walk, a single hex wide. The two kingdoms of a Sundering
+  meet on it; armies race to hold its ends; and as the moon wanes the
+  road goes back to the water, and the lake carries whoever still stands
+  on it to the nearest shore, the poorer by a tenth of its troops. A
+  calendar no other strategy game keeps, read in the sky as well as told.
+- [ ] **Edicts of the realm.** Laws a realm makes for itself: a House of
+  standing proposes one from a set (no siege under a full moon, a truce
+  for the harvest, open roads for envoys, a toll on the moonpath), the
+  realm's Houses vote over three watches, each with its might, and the
+  rules hold every House to an edict passed for the twenty watches it
+  lasts, the breaker named in the Chronicle and fined. Politics kept by
+  the server itself, not by players' good faith.
+- [ ] **Ballads.** After a great battle, a fall or a Moonspire raised, the
+  keeper's own on-device model makes a ballad of it from the Chronicle,
+  sung by the keeper's voice and kept in the realm's songbook, so the
+  age's story is told in verse that no server wrote and no other keeper's
+  Mac made; a House's ballads are its renown in the next age.
+- [ ] **Bottles on the lake.** Words sealed in a bottle and set on the
+  water drift on the lake's currents, watch by watch, to whatever shore
+  they wash up on, read by whoever finds them: messages anonymous or
+  signed, offers, warnings and lies, a way to speak to strangers no chat
+  has.
+- [ ] **Drowned ages.** What an age leaves is the next age's lake: the
+  holds of a House that fell lie drowned in the shallows of the age after
+  as ruins to be searched, and the Moonspire raised stands broken where it
+  was, a site of the land; the realm's history is its map.
+
 ## The order of the work
 
 1. The 3D world: the model library, then the Metal renderer for terrain, lake and models, then the camera, picking and VoiceOver through it.
