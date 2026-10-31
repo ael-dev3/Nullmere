@@ -97,6 +97,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// Bottles on the lake: afloat, washed up, or found and kept; absent
     /// before the first is set on the water.
     var bottles: [Bottle]?
+    /// The edicts put to the realm this age, the latest last; absent
+    /// before the first.
+    var edicts: [Edict]?
     /// The rallies gathering or on the march; absent in saves from before them.
     var rallies: [Rally]?
     /// How far the watch has been walked, in a realm, whose watch passes

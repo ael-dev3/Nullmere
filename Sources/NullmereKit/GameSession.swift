@@ -411,9 +411,10 @@ public final class GameSession {
         self.store = store
         self.voice = voice
         self.relief = Relief(map: world.map)
-        var camera = Camera(scale: 28)
+        var camera = Camera(scale: GameSession.lakeScale)
         if let seat = world.seat(of: house) {
             camera.focus(on: seat.position)
+            camera.scale = GameSession.openingScale(knownRadius: GameSession.knownRadius(about: seat.position, in: world, for: house))
         }
         self.camera = camera
         // A game picked up again keeps what was said, and doesn't retell
@@ -733,6 +734,13 @@ public final class GameSession {
 
     /// Words said to this keeper by others since they last opened the
     /// Words, but those of the Houses they hide.
+    /// Whether an edict is before the realm that the keeper's House has
+    /// not voted on.
+    public var voteAwaits: Bool {
+        guard let edict = state.edictInVote else { return false }
+        return !edict.ayes.contains(player) && !edict.nays.contains(player)
+    }
+
     public var unreadWords: Int {
         let read = wordsRead ?? Int.max
         return wordsHeard.filter { $0.id > read && $0.from != player }.count
@@ -1290,6 +1298,8 @@ public final class GameSession {
         case .say: return .parley
         case .sing: return .lore
         case .castBottle: return .order
+        case .proposeEdict: return .horn
+        case .voteEdict: return .order
         case .learnTalent: return .lore
         case .forgetTalents: return .stand
         case .wear: return .order
@@ -1415,6 +1425,9 @@ public final class GameSession {
         case .said(let word) where word.from != player: return .parley
         case .sung(let ballad) where ballad.house != player: return .lore
         case .bottleFound(_, let by) where by == player: return .lore
+        case .edictProposed(let edict) where edict.proposer != player: return .parley
+        case .edictPassed: return .honour
+        case .edictBroken(_, _, _, let against, _) where against == player: return .horn
         case .fieldJoined(_, _, let first, let second) where first == player || second == player: return .horn
         case .fieldEnded(let field):
             guard let side = field.side(of: player) else { return nil }

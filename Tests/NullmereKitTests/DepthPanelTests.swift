@@ -381,6 +381,81 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(GameSession.cues(for: .castBottle(words: "x", from: hold.id, signed: true), events: [], in: session.state, player: me), [.order])
     }
 
+    /// The realm's law at the head of the Houses: an edict put, voted on,
+    /// and those holding the realm; the rail marks a vote awaiting.
+    func testTheRealmsLawIsPutAndVotedOnFromTheHouses() throws {
+        var state = world("the realm's law")
+        let me = state.player
+        let other = try XCTUnwrap(state.houses.indices.first { $0 != me })
+        state.houses[me].stock = Stock(grain: 400, timber: 100, stone: 100, moonsalt: 40)
+        let seat = try XCTUnwrap(state.holds.first { $0.owner == me && $0.isSeat })
+        let ground = try XCTUnwrap(seat.position.spiral(5).first { hex in
+            hex.distance(to: seat.position) >= 3 && state.map[hex]?.terrain.isSettleable == true && state.hold(at: hex) == nil && state.unit(at: hex) == nil
+        })
+        state.holds.append(Hold(id: state.takeID(), name: "Second", owner: me, position: ground, isSeat: false, foundedWatch: 1))
+        // Safe Conduct holds, broken once; the Moon's Peace is before the realm, put by another.
+        state.edicts = [Edict(id: 51, kind: .safeConduct, proposer: other, proposed: 1, ayes: [other], closed: state.watch, ayeMight: 5, nayMight: 1,
+                              breaches: [Edict.Breach(house: other, against: me, watch: state.watch)]),
+                        Edict(id: 52, kind: .moonPeace, proposer: other, proposed: state.watch, ayes: [other])]
+        let (session, link) = session(state)
+        XCTAssertTrue(session.voteAwaits)
+        let held = try XCTUnwrap(session.state.edictsInForce.first)
+        XCTAssertEqual(EdictsSection.inForce(held, in: session.state),
+                       "Safe Conduct holds 20 more watches: no House strikes Founders or Lanterns. Broken once.")
+        let before = try XCTUnwrap(session.state.edictInVote)
+        XCTAssertTrue(EdictsSection.tally(before, in: session.state).hasPrefix("Aye 1, might "), EdictsSection.tally(before, in: session.state))
+        XCTAssertTrue(EdictsSection.tally(before, in: session.state).hasSuffix(" · 3 watches to vote"))
+        draw(PanelRail(session: session), width: 120, height: 400)
+        session.panel = .houses
+        draw(HousesPanel(session: session), width: 360, height: 900)
+
+        // The keeper votes aye; the mark is gone.
+        XCTAssertTrue(PressableButtons.press("Aye"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .voteEdict(edict: 52, aye: true))
+        XCTAssertEqual(session.state.edictInVote?.ayes, [other, me])
+        XCTAssertFalse(session.voteAwaits)
+        draw(EdictsSection(session: session), width: 330, height: 500)
+        XCTAssertFalse(PressableButtons.actions.keys.contains("Aye"), "Voted")
+
+        // Edicts to put, folded until asked for; none while one is before the realm.
+        XCTAssertTrue(PressableButtons.press("Put an edict…"), "Among \(shown)")
+        draw(EdictsSection(session: session), width: 330, height: 700)
+        XCTAssertFalse(PressableButtons.press("Propose"), "One before the realm at a time")
+        XCTAssertTrue(PressableButtons.press("Fold the edicts"))
+
+        // Its vote closed, the keeper puts one of their own.
+        var after = session.state
+        after.edicts = after.edictsOfTheRealm.filter { $0.id == 51 }
+        let (proposer, sent) = self.session(after)
+        draw(EdictsSection(session: proposer), width: 330, height: 400)
+        XCTAssertTrue(PressableButtons.press("Put an edict…"))
+        draw(EdictsSection(session: proposer), width: 330, height: 700)
+        XCTAssertTrue(PressableButtons.press("Propose"), "Among \(shown)")
+        guard case .proposeEdict(let kind)? = sent.sent.last else { return XCTFail("An edict put: \(String(describing: sent.sent.last))") }
+        XCTAssertEqual(proposer.state.edictInVote?.kind, kind)
+        XCTAssertEqual(Narration.line(for: .edictProposed(try XCTUnwrap(proposer.state.edictInVote)), in: proposer.state, viewer: me)?.text
+                       .hasPrefix("Your House puts \(kind.title) to the realm"), true)
+        XCTAssertEqual(GameSession.cues(for: .proposeEdict(kind: kind), events: [], in: proposer.state, player: me), [.horn])
+    }
+
+    /// The view opens close enough over the seat that the land the House
+    /// knows fills most of it; a House that knows more opens further out.
+    func testTheViewOpensOnMoreLandThanMist() throws {
+        var state = world("the opening view")
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let known = GameSession.knownRadius(about: seat.position, in: state, for: me)
+        XCTAssertTrue((GameState.knownAtStart...8).contains(known), "As the age opens: \(known)")
+        let (opening, _) = session(state)
+        XCTAssertEqual(opening.camera.scale, GameSession.openingScale(knownRadius: known), accuracy: 1e-9)
+        XCTAssertGreaterThan(opening.camera.scale, GameSession.lakeScale, "Closer than the lake's view")
+        XCTAssertLessThan(opening.camera.scale, GameSession.fineScale, "Short of the fine work")
+        state.houses[me].explored = Array(repeating: true, count: state.map.count)
+        let (knowing, _) = session(state)
+        XCTAssertEqual(knowing.camera.scale, GameSession.lakeScale, accuracy: 1e-9, "Knowing the whole lake, the lake's view")
+        XCTAssertEqual(GameSession.openingScale(knownRadius: 0), GameSession.fineScale * 0.85, accuracy: 1e-9)
+    }
+
     func testAHoldsRecordSaysWhenItWasRaised() {
         let seat = Hold(id: 1, name: "Ilsen", owner: 0, position: .origin, isSeat: true, foundedWatch: 1)
         let later = Hold(id: 2, name: "Vael", owner: 0, position: Hex(3, 0), isSeat: false, foundedWatch: 23)

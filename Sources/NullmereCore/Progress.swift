@@ -261,7 +261,8 @@ extension RealmState {
     /// As an age ends, each keeper who held a House in it is remembered for
     /// it: five renown for each deed their House did, ten if it stood at
     /// the end, two for each ballad they sang of it (five at the most), and
-    /// fifty and a title to the age's victor; and every deed
+    /// fifty and a title to the age's victor, less three for each time their
+    /// House broke the realm's edicts (never below nothing); and every deed
     /// joins those of their other ages. Nothing of it goes into the next
     /// age's world: there a keeper's House begins as every other does.
     mutating func rememberTheAge() {
@@ -276,6 +277,7 @@ extension RealmState {
                 let title = outcome.kind == .ascendancy ? "Raiser of the Moonspire" : "Lord of the Lake"
                 keepers[index].titles = (keepers[index].titles ?? []) + ["\(title), Age \(age)"]
             }
+            gained = max(gained - GameState.renownPerBreach * world.breaches(by: house), 0)
             keepers[index].renown = (keepers[index].renown ?? 0) + gained
             let known = keepers[index].deeds ?? []
             let all = Deed.allCases.filter { known.contains($0) || deeds.contains($0) }

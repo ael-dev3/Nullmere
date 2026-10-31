@@ -286,6 +286,17 @@ extension GameState {
         for bottle in bottlesOnTheLake where map[bottle.position] == nil {
             found.append("Bottle \(bottle.id) lies outside the world at \(bottle.position)")
         }
+        // Each edict a House's, voted on once by each House, closed after it was put.
+        for edict in edictsOfTheRealm {
+            let voters = edict.ayes + edict.nays
+            if !houseIDs.contains(edict.proposer) || !voters.allSatisfy({ houseIDs.contains($0) })
+                || !edict.breaches.allSatisfy({ houseIDs.contains($0.house) && houseIDs.contains($0.against) }) {
+                found.append("Edict \(edict.id) names a House that isn't")
+            }
+            if Set(voters).count != voters.count { found.append("Edict \(edict.id) counts a House's vote twice") }
+            if let closed = edict.closed, closed < edict.proposed { found.append("Edict \(edict.id) closed before it was put") }
+        }
+        if edictsOfTheRealm.filter({ $0.closed == nil }).count > 1 { found.append("More than one edict is before the realm") }
         for hold in drownedHolds where map[hold.position] == nil {
             found.append("The drowned hold of \(hold.name) lies outside the world at \(hold.position)")
         }

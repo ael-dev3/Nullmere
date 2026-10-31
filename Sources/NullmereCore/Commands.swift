@@ -80,6 +80,10 @@ public enum Command: Codable, Equatable, Sendable {
     /// Words sealed in a bottle and set on the water from a hold on the
     /// shore, signed or not.
     case castBottle(words: String, from: Int, signed: Bool)
+    /// An edict put to the realm, for every House to vote on.
+    case proposeEdict(kind: EdictKind)
+    /// A House's vote on the edict before the realm: aye or nay.
+    case voteEdict(edict: Int, aye: Bool)
     /// A commander learns the next rank of a talent, for a talent point.
     case learnTalent(commander: Int, talent: Talent)
     /// A commander forgets every talent it has learned, its points given
@@ -215,6 +219,17 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case sangThisWatch
     case noWaterBeside
     case castThisWatch
+    /// A House of one hold, putting an edict to the realm.
+    case tooFewHolds
+    /// An edict before the realm already.
+    case edictInVote
+    /// That edict holds the realm already.
+    case edictInForce
+    /// A House that put an edict to the realm within its last twenty watches.
+    case proposedLately
+    case unknownEdict
+    case voteClosed
+    case votedAlready
     /// A House sworn to an alliance already.
     case inAnAlliance
     /// A House sworn to no alliance.
@@ -411,6 +426,13 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .sangThisWatch: return "Your House has sung this watch; sing again at the next."
         case .noWaterBeside: return "No water lies beside this hold to set a bottle on."
         case .castThisWatch: return "Your House has set a bottle on the water this watch; another at the next."
+        case .tooFewHolds: return "Only a House of two holds or more may put an edict to the realm."
+        case .edictInVote: return "An edict is before the realm already; another when its vote is done."
+        case .edictInForce: return "That edict holds the realm already."
+        case .proposedLately: return "Your House has put an edict to the realm within the last twenty watches."
+        case .unknownEdict: return "No such edict is before the realm."
+        case .voteClosed: return "The vote on that edict is over."
+        case .votedAlready: return "Your House has voted on that edict."
         case .inAnAlliance: return "That House is sworn to an alliance already."
         case .notInAlliance: return "Your House is sworn to no alliance."
         case .notAllianceLeader: return "Only the alliance's leader can do that."
@@ -687,6 +709,17 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case bottleCast(bottle: Int, from: Int, at: Hex)
     /// A bottle washed up and found, with the words in it.
     case bottleFound(bottle: Bottle, by: Int)
+    /// An edict put to the realm, its vote open.
+    case edictProposed(Edict)
+    /// A House's vote on an edict before the realm.
+    case edictVoted(edict: Int, house: Int, aye: Bool)
+    /// An edict's vote closed: passed, holding the realm, or refused.
+    case edictPassed(Edict)
+    case edictFailed(Edict)
+    /// An edict passed whose watches are done.
+    case edictLapsed(Edict)
+    /// A House broke an edict in force, striking another, and paid it the fine.
+    case edictBroken(edict: Int, kind: EdictKind, by: Int, against: Int, fine: Stock)
 }
 
 /// One exchange of blows.

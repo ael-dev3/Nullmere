@@ -814,6 +814,8 @@ struct RivalMind {
               sworn.members.contains(where: { $0 != house && state.isAtWar($0, target.owner) }) else {
             return rallyOnALair(in: &state, random: &random)
         }
+        // While the Moon's Peace holds, no host is called on a hold.
+        if state.edictsInForce.contains(where: { $0.kind == .moonPeace }) { return [] }
         let musters = state.holds(of: house).filter { $0.level(.musterHall) >= 1 && $0.position.distance(to: target.position) <= RivalMind.rallyReach }
         guard let muster = musters.min(by: { a, b in
             (a.position.distance(to: target.position), a.id) < (b.position.distance(to: target.position), b.id)
@@ -1120,11 +1122,15 @@ struct RivalMind {
         for hold in state.holds(within: range, of: unit.position) where holding[hold.position] == nil {
             holding[hold.position] = hold
         }
+        // A steward keeps the realm's edicts: what a strike would break them on, it leaves.
+        let lawful = state.edictsInForce.isEmpty
         return unit.position.spiral(range).dropFirst().first { hex in
             if let other = standing[hex], other.owner != house, state.isAtWar(house, other.owner) {
-                return other.kind.isMilitary || !companiesOfWarOnly
+                return (other.kind.isMilitary || !companiesOfWarOnly) && (lawful || state.edictsBroken(striking: hex, from: unit).isEmpty)
             }
-            if let hold = holding[hex], hold.owner != house, state.isAtWar(house, hold.owner) { return !companiesOfWarOnly }
+            if let hold = holding[hex], hold.owner != house, state.isAtWar(house, hold.owner) {
+                return !companiesOfWarOnly && (lawful || state.edictsBroken(striking: hex, from: unit).isEmpty)
+            }
             return false
         }
     }

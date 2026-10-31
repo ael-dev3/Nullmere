@@ -76,6 +76,10 @@ extension GameState {
             return try sing(ballad, of: entry, as: house)
         case let .castBottle(words, holdID, signed):
             return try castBottle(words, from: holdID, signed: signed, as: house)
+        case let .proposeEdict(kind):
+            return try proposeEdict(kind, as: house)
+        case let .voteEdict(edictID, aye):
+            return try vote(on: edictID, aye: aye, as: house)
         case let .say(words, toAlliance):
             return try say(words, toAlliance: toAlliance, as: house)
         case let .learnTalent(commanderID, talent):
@@ -356,6 +360,8 @@ extension GameState {
     /// ward. Companies keeping the gates of a hold struck strike back.
     mutating func assault(with unitID: Int, at target: Hex) -> [GameEvent] {
         guard let index = unitIndex(unitID), let foe = foe(at: target, for: units[index].owner) else { return [] }
+        // A strike that breaks the realm's edicts is named and fined as it falls.
+        let broken = breakEdicts(striking: target, from: units[index])
         units[index].movesLeft = 0
         units[index].acted = true
         units[index].fortified = false
@@ -372,7 +378,7 @@ extension GameState {
         if let held = foe.hold {
             events += sally(against: unitID, striking: held)
         }
-        return events
+        return broken + events
     }
 
     /// Companies keeping the gates of a hold for an ally strike back, from

@@ -427,6 +427,31 @@ extension GameState {
             }
             guard bottle.from == viewer, houses.indices.contains(by) else { return nil }
             return Tidings("A bottle of yours washed up and was found by \(houses[by].title).", .neutral)
+        case .edictProposed(let edict):
+            guard houses.indices.contains(edict.proposer) else { return nil }
+            let who = edict.proposer == viewer ? "Your House puts" : "\(houses[edict.proposer].title) puts"
+            return Tidings("\(who) \(edict.kind.title) to the realm: \(edict.kind.law). Every House votes aye or nay, "
+                           + "each with its might, for \(GameState.edictVote) watches.", .neutral)
+        case .edictVoted(_, let house, let aye):
+            guard house == viewer else { return nil }
+            return Tidings("Your House votes \(aye ? "aye" : "nay").", .neutral)
+        case .edictPassed(let edict):
+            return Tidings("The realm passes \(edict.kind.title): for \(GameState.edictLasts) watches \(edict.kind.law).", .good)
+        case .edictFailed(let edict):
+            return Tidings("The realm refuses \(edict.kind.title).", .neutral)
+        case .edictLapsed(let edict):
+            return Tidings("\(edict.kind.heading) holds the realm no longer.", .neutral)
+        case .edictBroken(_, let kind, let by, let against, let fine):
+            guard houses.indices.contains(by), houses.indices.contains(against) else { return nil }
+            if by == viewer {
+                let paid = fine == .zero ? ", with nothing to pay them" : ", and pays them \(fine)"
+                return Tidings("Your House breaks \(kind.title), striking \(houses[against].title)\(paid).", .bad)
+            }
+            if against == viewer {
+                let paid = fine == .zero ? ", with nothing to pay you" : ", and pays you \(fine)"
+                return Tidings("\(houses[by].title) breaks \(kind.title), striking your House\(paid).", .neutral)
+            }
+            return Tidings("\(houses[by].title) breaks \(kind.title), striking \(houses[against].title).", .neutral)
         case .sung(let ballad):
             guard houses.indices.contains(ballad.house), chronicle.indices.contains(ballad.entry) else { return nil }
             let who = ballad.house == viewer ? "Your House sings" : "\(houses[ballad.house].title) sings"

@@ -41,7 +41,7 @@ extension GameState {
         switch kind {
         case .war, .betrayal, .capture, .fall, .greatWork, .battle, .ending: return true
         case .beginning, .founding, .peace, .pact, .discovery, .tribute, .omen, .gift, .trade, .seating, .learning,
-             .commander, .hunt, .alliance, .rally, .happening: return false
+             .commander, .hunt, .alliance, .rally, .happening, .edict: return false
         }
     }
 

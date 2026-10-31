@@ -52,6 +52,7 @@ extension GameState {
         turnOmens()
         events += turnTide()
         events += driftBottles()
+        events += turnEdicts()
         forgetOldGifts()
         // An envoy unanswered is an envoy refused.
         let unanswered = envoys.filter { watch - $0.arrived >= Envoy.patience }

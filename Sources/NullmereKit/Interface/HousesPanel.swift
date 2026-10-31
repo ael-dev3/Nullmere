@@ -21,6 +21,8 @@ struct HousesPanel: View {
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    EdictsSection(session: session)
+                    Rule(opacity: 0.18)
                     RaceTable(session: session)
                     Rule(opacity: 0.18)
                     ForEach(state.houses.filter { $0.id != session.player }) { house in

@@ -253,6 +253,9 @@ extension GameState {
                 return from == house || visible(at)
             case .bottleFound(let bottle, let by):
                 return by == house || bottle.from == house
+            case .edictProposed, .edictVoted, .edictPassed, .edictFailed, .edictLapsed, .edictBroken:
+                // The realm's law is every House's to know.
+                return true
             case .promoted(_, let owner, _):
                 return owner == house
             case .ruinSearched(let at, let by, _):

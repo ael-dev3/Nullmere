@@ -187,13 +187,16 @@ designed, ticked when it is real, tested and shown in CI.
   leaves how ages end where it was (median 152nd watch against 153rd, the
   seats and tempers as even) and battles a little larger (median 85,020
   troops against 79,206, the largest 156,513 against 138,414).
-- [ ] **Edicts of the realm.** Laws a realm makes for itself: a House of
-  standing proposes one from a set (no siege under a full moon, a truce
-  for the harvest, open roads for envoys, a toll on the moonpath), the
-  realm's Houses vote over three watches, each with its might, and the
-  rules hold every House to an edict passed for the twenty watches it
-  lasts, the breaker named in the Chronicle and fined. Politics kept by
-  the server itself, not by players' good faith.
+- [x] **Edicts of the realm.** Laws a realm makes for itself: a keeper's
+  House of two holds puts one of four to the realm (the Moon's Peace, no
+  hold struck about the full moon; the Harvest Truce, no gatherer struck;
+  Safe Conduct, no Founders or Lanterns struck; Holy Ground, no company
+  struck on a holy site), every House votes over three watches, each
+  with its might (the stewards by their temper and their interest), and
+  the rules hold every House to an edict passed for the twenty watches it
+  lasts: the breaker named in the Chronicle, fined to the House it
+  wronged and less renowned as the age ends, and the stewards keeping
+  it. Politics kept by the server itself, not by players' good faith.
 - [x] **Ballads.** Of a deed of its own in the Chronicle (a battle, a
   hold taken or lost, a war, a betrayal, a great work) or of the age's
   end, a keeper asks their Mac's own on-device model for a few lines of

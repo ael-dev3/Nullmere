@@ -23,11 +23,34 @@ extension GameSession {
     /// How close the city view comes over a hold, and how far it leans in.
     static let cityScale = 165.0
     static let cityTilt = 0.86
-    /// How close the view stands over the lake as a world opens.
+    /// How close the view stands over the lake: the furthest a world opens
+    /// at, and where the city view steps back to.
     static let lakeScale = 28.0
     /// How near the camera comes before the models' fine work is drawn:
     /// twice the lake's view, where a keep's quoins are a point across.
     static let fineScale = 56.0
+
+    /// How close the view opens over the seat: near enough that the land
+    /// the House knows about it fills most of a window of the usual size,
+    /// more land than mist, never further out than the lake's view nor so
+    /// near that the fine work is drawn.
+    static func openingScale(knownRadius: Int, height: Double = 800) -> Double {
+        let rows = Double(2 * knownRadius + 3) * 1.5
+        return min(max(height / rows, lakeScale), fineScale * 0.85)
+    }
+
+    /// How far about a hex its House knows the land, ring by ring, up to twelve.
+    static func knownRadius(about hex: Hex, in world: GameState, for house: Int) -> Int {
+        guard world.houses.indices.contains(house) else { return 0 }
+        let explored = world.houses[house].explored
+        func known(_ hex: Hex) -> Bool {
+            guard let index = world.map.index(of: hex), explored.indices.contains(index) else { return false }
+            return explored[index]
+        }
+        var radius = 0
+        while radius < 12, hex.ring(radius + 1).contains(where: known) { radius += 1 }
+        return radius
+    }
 
     /// The city view, as RoK's: the view close over one of the keeper's
     /// holds (the seat unless another is named), leaning in, the hold

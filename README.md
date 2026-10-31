@@ -895,6 +895,27 @@ realm; keepers are told in plain words, never a status code.
   who set it and the one who found it read its words, and an unsigned
   bottle's finder is not told whose it was. A bottle forty watches afloat
   sinks.
+- **Edicts of the realm.** Laws a realm makes for itself. A keeper's House
+  of two holds or more may put one of four to the realm (a hundred grain
+  and ten moonsalt, once in twenty watches): the Moon's Peace (no House
+  strikes another's hold in the five watches about each full moon), the
+  Harvest Truce (no House strikes another's companies out at the land's
+  work), Safe Conduct (no House strikes Founders or Lanterns) or Holy
+  Ground (no House strikes a company standing on a holy site). One is
+  before the realm at a time, for three watches: every House votes aye or
+  nay, the keepers from the head of the Houses (the rail marks a vote
+  awaiting theirs), the stewards as the watch turns (the wary and the
+  steadfast for the law, the ambitious and the cunning against it unless
+  theirs is of the weaker half of the realm, and any House holding a holy
+  site for Holy Ground), and it passes if the might of its ayes outweighs
+  its nays'. Passed, it holds every House for twenty watches, and the
+  rules keep it, not the Houses' good faith: a House may still strike,
+  but the strike is named in the Chronicle as a betrayal, and the House
+  pays the House it wronged a fine (150 grain, 75 timber, 75 stone and 15
+  moonsalt, as much as it has), once a watch for each edict, and loses
+  three renown for each breach as the age ends. Stewards keep the law:
+  they leave what a strike would break it on, and call no host on a hold
+  while the Moon's Peace holds.
 - **The Frontier.** Kingdom against kingdom across realms: the Frontier is
   a realm of its own, a database of its own with its own steward, where
   the kingdoms of the realms that border it meet, a season of twenty-four

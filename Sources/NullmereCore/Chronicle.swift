@@ -36,6 +36,8 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         case rally
         /// A happening of the realm begins, or ends with its foremost honoured.
         case happening
+        /// An edict is put to the realm, passed or refused, or lapses.
+        case edict
     }
 
     public let watch: Int
