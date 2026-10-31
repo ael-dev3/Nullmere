@@ -7,10 +7,12 @@ import XCTest
 /// and each way of breaking them is caught and named.
 final class VoiceCheckTests: XCTestCase {
     /// Speaks every moment in the same grave line, which keeps every rule,
-    /// and makes every ballad the same two.
+    /// sets every riddle keeping its blank, and makes every ballad the
+    /// same two.
     private struct Steady: Voice {
         func speak(_ moment: VoiceMoment) async -> String? {
-            "The water keeps its silence, and the Houses watch the shore."
+            moment.kind == .riddle ? "Whose House was it, ———, that the water remembers?"
+                : "The water keeps its silence, and the Houses watch the shore."
         }
 
         func compose(_ moment: VoiceMoment) async -> String? {
@@ -32,8 +34,12 @@ final class VoiceCheckTests: XCTestCase {
         let told = report.text.components(separatedBy: "\n")
         let heard = told.filter { $0.hasSuffix("s): The water keeps its silence, and the Houses watch the shore.") }
         let sung = told.filter { $0.hasPrefix("ballad of ") && $0.hasSuffix("s): The moon lay still upon the water, / and the shore remembered.") }
+        let asked = told.filter { $0.hasPrefix("riddle of the lake ") && $0.hasSuffix("s): Whose House was it, ———, that the water remembers?") }
         XCTAssertEqual(sung.count, 1, "A ballad made of the latest deed of arms, its lines on one")
-        XCTAssertEqual(heard.count + sung.count, report.moments, "A line told for every moment")
+        let riddles = VoiceCheck.moments().filter { $0.moment.kind == .riddle }.count
+        XCTAssertLessThanOrEqual(riddles, 1)
+        XCTAssertEqual(asked.count, riddles, "The riddle the lake set at the last half moon, if the House stood to be set one")
+        XCTAssertEqual(heard.count + sung.count + asked.count, report.moments, "A line told for every moment")
         for proposal in Proposal.allCases {
             XCTAssertTrue(report.text.contains("envoy offering \(proposal.title.lowercased())"), "An envoy offering \(proposal.title)")
         }

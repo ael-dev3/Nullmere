@@ -46,6 +46,14 @@ struct RiddleSection: View {
                 .foregroundStyle(riddle.answered == nil ? Palette.text(0.7) : riddle.isRight ? Palette.good : Palette.text(0.55))
                 .fixedSize(horizontal: false, vertical: true)
             if open || riddle.answered != nil {
+                // In the Still's voice where this Mac's model gave it one,
+                // keeping its blank, and plainly beneath.
+                if let spoken = session.spoken[.riddle(riddle.set)], spoken.contains("———") {
+                    Text(verbatim: spoken)
+                        .font(.nm(11.5, weight: .light).italic())
+                        .foregroundStyle(Palette.glowWords)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 Text(verbatim: riddle.line)
                     .font(.nm(11))
                     .foregroundStyle(Palette.text(0.88))

@@ -29,6 +29,9 @@ public struct VoiceMoment: Sendable, Equatable {
         /// What the Still shows a keeper's House in a dream at the dark of
         /// the moon.
         case dream
+        /// The riddle of the realm's past the lake sets a keeper's House at
+        /// the half moon.
+        case riddle
     }
 
     public let kind: Kind
@@ -62,6 +65,10 @@ public struct VoiceMoment: Sendable, Equatable {
         case .dream:
             task = "Speak as the still black lake itself, to one who wakes from a dream at the dark of the moon: tell them what the water "
                 + "showed them, keeping every name and number as given. Two sentences, at most 40 words."
+        case .riddle:
+            task = "Speak as the still black lake itself, setting a riddle of the realm's past at the half moon: ask whose House did "
+                + "what is told, keeping every name and number as given and the blank ——— where the name was taken out. "
+                + "One or two sentences, at most 40 words."
         }
         return task + "\n\nWhat is known:\n" + facts.map { "- \($0)" }.joined(separator: "\n")
     }
@@ -179,6 +186,12 @@ public struct OnDeviceVoice: Voice {
 }
 
 enum VoiceFacts {
+    /// A riddle, for the Still to set: the line of the past with its name
+    /// taken out, and when. The name itself the model is never given.
+    static func riddle(_ riddle: Riddle) -> VoiceMoment {
+        VoiceMoment(kind: .riddle, facts: [riddle.line, "It is the half moon."])
+    }
+
     /// A dream, for the Still to tell: what it showed, plainly, and when.
     static func dream(_ dream: Dream, in state: GameState) -> VoiceMoment {
         VoiceMoment(kind: .dream, facts: [state.told(dream), "It is the dark of the moon."])

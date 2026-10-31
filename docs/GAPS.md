@@ -273,9 +273,10 @@ designed, ticked when it is real, tested and shown in CI.
   line of its Chronicle or a hold of the age drowned beneath it with one
   House's name taken out, four names to choose from, answered once for 15
   moonsalt. The realm draws it from its own record and alone knows the
-  name until it is answered, the keeper's view keeping it back. A
-  persistent realm's history made into play, age after age. Stewards are
-  set none.
+  name until it is answered, the keeper's view keeping it back; the
+  keeper's own Mac's model sets it in the Still's voice, never given the
+  name, its blank held to by the voices' check. A persistent realm's
+  history made into play, age after age. Stewards are set none.
 
 ## The order of the work
 

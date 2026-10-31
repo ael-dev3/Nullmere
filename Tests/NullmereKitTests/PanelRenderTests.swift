@@ -230,6 +230,36 @@ final class PanelRenderTests: XCTestCase {
         XCTAssertTrue(moment.prompt.contains("dark of the moon"), moment.prompt)
     }
 
+    /// The Remembering's riddle in the Still's voice where this Mac's model
+    /// gave it one, its blank kept, and plainly beneath; the model is
+    /// never given the name taken out.
+    func testTheRiddleIsSetInTheStillsVoice() throws {
+        var state = GameState(settings: GameSettings(seedText: "a riddle voiced", houseCount: 4, radius: 18, keepers: 1))
+        state.chronicle = []
+        state.drowned = ["House Aske", "House Brine", "House Corrow", "House Dovet"].enumerated().map { index, house in
+            DrownedHold(position: Hex(index, 0), name: "Hold \(index)", house: house, age: 1, works: 3, spire: 0)
+        }
+        state.watch = GameState.lunarMonth + 7
+        _ = state.setRiddles()
+        let riddle = try XCTUnwrap(state.riddle(of: state.player))
+        let answer = try XCTUnwrap(riddle.answer)
+        let spoken = "Whose House was it, ———, that held a hold the water took in the first age?"
+        let store = LocalStore(directory: dir.appendingPathComponent("riddle"))
+        store.saveVoices([GameSession.Spoken.riddle(riddle.set).key: spoken])
+        let session = GameSession(state: state, store: store)
+        XCTAssertEqual(session.spoken[.riddle(riddle.set)], spoken)
+        XCTAssertEqual(GameSession.Spoken(key: "riddle-37"), .riddle(37))
+        XCTAssertEqual(GameSession.Spoken.riddle(37).key, "riddle-37")
+        try draw(RiddleSection(session: session, riddle: riddle, open: true), width: 360, height: 400)
+        let moment = VoiceFacts.riddle(riddle)
+        XCTAssertEqual(moment.kind, .riddle)
+        XCTAssertEqual(moment.facts, [riddle.line, "It is the half moon."])
+        XCTAssertFalse(moment.prompt.contains(answer), "The name taken out is never given")
+        XCTAssertTrue(moment.prompt.contains("half moon"), moment.prompt)
+        XCTAssertEqual(VoiceCheck.problems(of: "Whose House held the drowned hold in the first age?", for: moment), ["loses the riddle's blank"])
+        XCTAssertEqual(VoiceCheck.problems(of: spoken, for: moment), [])
+    }
+
     /// What the selection panel shows of a hold whose works are all built,
     /// a foreign hold out of sight with its Moonspire rising, and ground
     /// no lantern has seen.

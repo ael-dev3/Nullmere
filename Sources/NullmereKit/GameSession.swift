@@ -160,12 +160,15 @@ public final class GameSession {
         case chronicle(Int)
         /// A dream, by the watch the House woke to.
         case dream(Int)
+        /// A riddle of the lake, by the watch it was set.
+        case riddle(Int)
 
         var key: String {
             switch self {
             case .envoy(let id): return "envoy-\(id)"
             case .chronicle(let index): return "chronicle-\(index)"
             case .dream(let watch): return "dream-\(watch)"
+            case .riddle(let watch): return "riddle-\(watch)"
             }
         }
 
@@ -176,6 +179,7 @@ public final class GameSession {
             case "envoy": self = .envoy(number)
             case "chronicle": self = .chronicle(number)
             case "dream": self = .dream(number)
+            case "riddle": self = .riddle(number)
             default: return nil
             }
         }
@@ -1879,6 +1883,11 @@ public final class GameSession {
         for dream in state.dreams(of: player) where !asked.contains(.dream(dream.watch)) {
             asked.insert(.dream(dream.watch))
             voiceQueue.append((.dream(dream.watch), VoiceFacts.dream(dream, in: state)))
+        }
+        // The lake's riddle, set in the Still's voice.
+        if let riddle = state.riddle(of: player), riddle.answered == nil, !asked.contains(.riddle(riddle.set)) {
+            asked.insert(.riddle(riddle.set))
+            voiceQueue.append((.riddle(riddle.set), VoiceFacts.riddle(riddle)))
         }
         for (index, entry) in state.chronicle.enumerated() where !asked.contains(.chronicle(index)) {
             asked.insert(.chronicle(index))

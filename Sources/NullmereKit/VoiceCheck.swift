@@ -49,6 +49,10 @@ public enum VoiceCheck {
         if let dream = state.dreams(of: state.player).last {
             moments.append(("dream of the Still", VoiceFacts.dream(dream, in: state)))
         }
+        // The riddle the lake set it at the last half moon.
+        if let riddle = state.riddle(of: state.player) {
+            moments.append(("riddle of the lake", VoiceFacts.riddle(riddle)))
+        }
         // A ballad of the latest deed of arms the age brought.
         if let entry = state.chronicle.last(where: { [.battle, .capture, .fall, .war].contains($0.kind) }) {
             let singer = entry.houses.first ?? state.player
@@ -64,6 +68,9 @@ public enum VoiceCheck {
         var problems: [String] = []
         if moment.kind == .ballad, GameState.sung(line)?.joined(separator: "\n") != line {
             problems.append("no ballad the realm would keep")
+        }
+        if moment.kind == .riddle, !line.contains("———") {
+            problems.append("loses the riddle's blank")
         }
         let words = line.split(separator: " ").count
         if words > 60 { problems.append("\(words) words") }
