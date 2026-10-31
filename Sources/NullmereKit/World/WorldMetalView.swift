@@ -41,7 +41,7 @@ final class WorldMetalView: MTKView {
     /// The land under the view, for finding the hex under the pointer.
     var relief: Relief?
     /// The models standing in the world at a moment of the map's clock.
-    var scene: ((Double) -> SceneFrame)?
+    var scene: ((Double, CGSize) -> SceneFrame)?
     /// Each House's colour by its sigil, linear.
     var houseColours: [Vec4] = []
     /// How much the map moves: still, it is drawn only when something
@@ -303,7 +303,7 @@ final class WorldMetalView: MTKView {
         var frame = FrameUniforms.make(camera: camera, size: bounds.size, pixelsPerPoint: pixelsPerPoint, time: Float(time),
                                        motion: Float(motion.clockRate), radius: radius, terrain: land.terrain,
                                        hovered: hovered, selected: selected, houses: houseColours)
-        let staged = scene?(time) ?? SceneFrame()
+        let staged = scene?(time, bounds.size) ?? SceneFrame()
         frame.light(with: PointLight.strongest(staged.lights, near: camera.focus))
         frame.weather(staged.weather)
         renderer.draw(frame, scene: staged, in: pass, to: drawable)

@@ -61,8 +61,14 @@ extension GameSession {
         let at: Date
     }
 
-    /// The models a frame draws at `time` on the map's clock.
-    func sceneFrame(at time: Double, now: Date = Date()) -> SceneFrame {
+    /// How far round a hold's heart its works and town can be seen, and a
+    /// company's ranks, for leaving those out of view out of a frame.
+    static let holdReach: Float = HoldLayout.reach + 1.5
+    static let companyReach: Float = 2
+
+    /// The models a frame draws at `time` on the map's clock; for a view of
+    /// `size`, only the holds, towns and companies it can show.
+    func sceneFrame(at time: Double, now: Date = Date(), in size: CGSize? = nil) -> SceneFrame {
         // Laid out afresh with each new map, as the land's relief is.
         if stage == nil {
             stage = WorldStage(map: state.map, relief: relief)
@@ -73,6 +79,10 @@ extension GameSession {
         var frame = SceneFrame()
         frame.fine = camera.scale >= GameSession.fineScale
         let t = Float(time)
+        // What the view takes in, when its size is known: a wide realm's
+        // holds and companies beyond it are not staged.
+        let view = size.map { ViewFrustum(viewProjection: camera.viewProjection(in: $0)) }
+        func inView(_ hex: Hex, within reach: Float) -> Bool { view?.sees(hex, within: reach) ?? true }
 
         // The holds the keeper knows of, each with its works.
         var sights: [HoldSight] = []
@@ -82,10 +92,11 @@ extension GameSession {
             sights.append(HoldSight(hold: hold, colour: colour, progress: progress, finishing: finishing,
                                     heritage: state.heritage(of: hold.owner)))
         }
-        let (holds, hearths) = stage.holds(sights, time: t, into: &frame)
+        let shown = sights.filter { inView($0.hold.position, within: GameSession.holdReach) }
+        let (holds, hearths) = stage.holds(shown, time: t, into: &frame)
         // Their townsfolk about their works, in sight and in full motion,
         // and carts on the ways between them.
-        let townsfolk = full ? stage.townsfolk(sights.filter { isVisible($0.hold.position) }, time: t, into: &frame)
+        let townsfolk = full ? stage.townsfolk(shown.filter { isVisible($0.hold.position) }, time: t, into: &frame)
             + stage.traffic(ways, time: t, into: &frame) : []
         // The alliances' halls the keeper knows of, each in its leader's
         // colour, one rising easing up a watch's height as the watch turns.
@@ -93,17 +104,17 @@ extension GameSession {
             HallSight(hex: hall.position, colour: allianceColour(hall.alliance, else: hall.raisedBy, houses),
                       progress: risen(hall, at: now, animated: full))
         }
-        let (halls, hallHearths) = stage.halls(hallSights)
+        let (halls, hallHearths) = stage.halls(hallSights.filter { inView($0.hex, within: GameSession.holdReach) })
         // Their storehouses, rising as their halls do.
         let storehouseSights = state.storehousesStanding.filter { isExplored($0.position) }.map { storehouse in
             HallSight(hex: storehouse.position, colour: allianceColour(storehouse.alliance, else: storehouse.raisedBy, houses),
                       progress: risen(storehouse.id, to: Float(storehouse.progress), at: now, animated: full))
         }
-        let storehouses = stage.storehouses(storehouseSights, time: t, into: &frame)
+        let storehouses = stage.storehouses(storehouseSights.filter { inView($0.hex, within: GameSession.holdReach) }, time: t, into: &frame)
 
         // The companies in sight, and the fallen.
         let poses = companyPoses(at: now, animated: full, time: time)
-        let companies = stage.companies(poses, houses: houses, into: &frame)
+        let companies = stage.companies(poses.filter { inView($0.hex, within: GameSession.companyReach) }, houses: houses, into: &frame)
 
         // The land's sites the keeper knows, its holy sites and the lairs of
         // the wilds, and its furniture, cleared where companies, sites,

@@ -1,6 +1,35 @@
 import NullmereCore
 import NullmereModels
 
+/// What a frame's view takes in, as the six planes of its view-projection:
+/// for leaving out of a frame what it could not show.
+public struct ViewFrustum: Sendable {
+    public let planes: [Vec4]
+
+    public init(viewProjection: Mat4) {
+        planes = Regions.planes(of: viewProjection)
+    }
+
+    /// Whether any of a ball about `centre`, `radius` across from it, lies
+    /// in the view.
+    public func sees(_ centre: Vec3, within radius: Float) -> Bool {
+        planes.allSatisfy { plane in
+            let length = (plane.x * plane.x + plane.y * plane.y + plane.z * plane.z).squareRoot()
+            return plane.x * centre.x + plane.y * centre.y + plane.z * centre.z + plane.w >= -radius * length
+        }
+    }
+
+    /// Whether anything standing within `radius` of a hex's heart, as high
+    /// as the land and what stands on it go, can be in the view.
+    public func sees(_ hex: Hex, within radius: Float) -> Bool {
+        let centre = Relief.centre(of: hex)
+        return sees(Vec3(centre.x, ViewFrustum.standing, centre.z), within: radius + ViewFrustum.standing)
+    }
+
+    /// Half the height of the land and what stands tallest on it.
+    static let standing: Float = 2
+}
+
 /// The land cut into square regions of hexes, so that a frame draws the
 /// land's furniture only where its view reaches: what each region holds
 /// lies together in every batch, and its bounds are kept, so a frame finds

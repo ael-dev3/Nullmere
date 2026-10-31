@@ -81,7 +81,7 @@ private struct WorldMetalRepresentable: NSViewRepresentable {
         view.onSecondaryClick = { hex in session.order(hex) }
         view.onCameraChange = { camera in session.camera = camera }
         // The world's models, posed afresh for every frame.
-        view.scene = { [weak session] time in session?.sceneFrame(at: time) ?? SceneFrame() }
+        view.scene = { [weak session] time, size in session?.sceneFrame(at: time, in: size) ?? SceneFrame() }
         update(view)
         return view
     }

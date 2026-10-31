@@ -1238,8 +1238,10 @@ There is no music in the launcher; the game makes its own sound as it plays.
   and draws just their runs of each kind. Near, over the realm proper's
   lake, a frame draws 7,600 of its 19,300 pieces; over a lake of
   forty-eight seats, 10,500 of 76,000, so a wider realm costs a near view
-  little more than the realm proper's. Zoomed out over the whole lake,
-  all of it is drawn, as before.
+  little more than the realm proper's: on CI's Mac, 12.6 ms of the GPU
+  where drawing all of it took 23.3 ms. The holds, their towns and the
+  companies out of view are not staged for the frame at all. Zoomed out
+  over the whole lake, all of it is drawn, as before.
 - **Portraits from the world itself.** The panels show each commander,
   each company to be trained (in the tier chosen) and each work to be
   built (at the stage it will be), drawn by the world's own renderer on a

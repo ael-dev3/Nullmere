@@ -91,6 +91,41 @@ final class RegionsTests: XCTestCase {
         XCTAssertTrue(regions.runs(seenBy: away.viewProjection(in: size)).allSatisfy(\.isEmpty))
     }
 
+    /// What the view takes in: every point it shows seen, those far off
+    /// not, and one just past an edge seen once a ball about it reaches in.
+    func testTheViewSeesWhatItShowsAndLittleMore() throws {
+        let size = CGSize(width: 1512, height: 982)
+        let seat = try XCTUnwrap(RegionsTests.state.holds.first { $0.isSeat }).position
+        var camera = Camera(scale: 28)
+        camera.focus(on: seat)
+        let viewProjection = camera.viewProjection(in: size)
+        let view = ViewFrustum(viewProjection: viewProjection)
+        XCTAssertEqual(view.planes.count, 6)
+        XCTAssertTrue(view.sees(seat, within: 0))
+        XCTAssertFalse(view.sees(Hex(seat.q + 60, seat.r), within: 4), "Far off")
+        var shown = 0, seen = 0
+        for x in stride(from: -40 as Float, through: 40, by: 1.7) {
+            for z in stride(from: -40 as Float, through: 40, by: 1.7) {
+                for y in [0 as Float, 1.5] {
+                    let point = Vec3(camera.focus.x + x, y, camera.focus.z + z)
+                    let at = clip(Vec4(point.x, point.y, point.z, 1), viewProjection)
+                    let inside = at.w > 0 && abs(at.x) <= at.w && abs(at.y) <= at.w && at.z >= 0 && at.z <= at.w
+                    if inside { shown += 1 }
+                    if view.sees(point, within: 0) { seen += 1 }
+                    if inside { XCTAssertTrue(view.sees(point, within: 0), "\(point) in view") }
+                }
+            }
+        }
+        XCTAssertGreaterThan(shown, 100)
+        XCTAssertLessThanOrEqual(seen, shown + shown / 100, "No more seen than shown, but on the edges")
+        // A point a unit past the right edge: not itself, but a ball of a
+        // unit and a half about it.
+        let edge = camera.world(at: CGPoint(x: size.width, y: size.height / 2), in: size)
+        let past = Vec3(Float(edge.x) + 1, 0, Float(edge.y))
+        XCTAssertFalse(view.sees(past, within: 0))
+        XCTAssertTrue(view.sees(past, within: 1.5))
+    }
+
     /// A lake of forty-eight seats has four times the land, and near, a
     /// frame draws no more of it than over the realm proper's.
     func testAWideLakeDrawsNearAsMuchAsTheRealmPropers() throws {

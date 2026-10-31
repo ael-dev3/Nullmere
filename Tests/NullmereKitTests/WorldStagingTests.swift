@@ -100,6 +100,39 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertLessThan(p50, 16.7, "well inside a frame")
     }
 
+    /// A realm of forty-eight seats, every hold known: a frame staged for
+    /// the view stages only the holds, towns and companies it can show, the
+    /// land's furniture laid out once whatever the view, and in a small
+    /// share of a frame.
+    func testAWideRealmStagesOnlyWhatTheViewTakesIn() throws {
+        var state = GameState(settings: GameSettings(seedText: "a wide realm staged", houseCount: 48, radius: 72, keepers: 1))
+        state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        session.dismissSeatBriefing()
+        let seat = try XCTUnwrap(state.seat(of: state.player)).position
+        session.camera = Camera(scale: 28)
+        session.camera.focus(on: seat)
+        let size = CGSize(width: 1512, height: 982)
+        let whole = session.sceneFrame(at: 1)
+        let viewed = session.sceneFrame(at: 1, in: size)
+        let count = { (frame: SceneFrame) in frame.batches.reduce(0) { $0 + $1.instances.count } }
+        XCTAssertEqual(viewed.fixedVersion, whole.fixedVersion, "The land laid out once, whatever the view")
+        XCTAssertLessThan(count(viewed) * 4, count(whole), "Most of a wide realm's holds out of view, and not staged")
+        let seatHex = SIMD2(Int32(seat.q), Int32(seat.r))
+        XCTAssertTrue(viewed.batches.contains { $0.instances.contains { $0.hex == seatHex } }, "The seat in view, staged")
+        var times: [Double] = []
+        for index in 1...30 {
+            let start = ThreadClock.milliseconds()
+            _ = session.sceneFrame(at: 1 + Double(index) / 60, in: size)
+            times.append(ThreadClock.milliseconds() - start)
+        }
+        times.sort()
+        let p50 = times[times.count / 2]
+        print("PERF staging a wide realm's frame near: \(count(viewed)) of \(count(whole)) models, p50 \(String(format: "%.2f", p50)) ms")
+        print("PERFMETRIC stage.wide.cpu.p50 \(String(format: "%.3f", p50))")
+        XCTAssertLessThan(p50, 16.7, "well inside a frame")
+    }
+
     func testAWorkRisesAsTheWatchesPassAndFinishesItsLastStretch() throws {
         var seatID = 0
         let session = try session { state in
