@@ -154,4 +154,42 @@ final class MarchTests: XCTestCase {
         XCTAssertNil(older.world.marches)
         XCTAssertEqual(try JSONDecoder().decode(RealmView.self, from: JSONEncoder().encode(view)), view)
     }
+
+    /// The routes a keeper's view finds many at a time are, hex for hex,
+    /// those found one at a time: on every House's view of a realm played
+    /// on, for every march they know of and for ways to hexes all about.
+    func testRoutesFoundTogetherAreTheRoutesFoundAlone() throws {
+        var realm = RealmState(name: "R", seed: "routes together", seats: 8, now: 0)
+        try realm.arrive("a", name: "Ama", now: 0)
+        for _ in 1...30 {
+            for pace in 1..<GameState.pacesPerWatch { _ = realm.world.walk(to: pace) }
+            _ = realm.world.endWatch()
+        }
+        var compared = 0
+        for house in realm.world.livingHouses.map(\.id) {
+            let view = realm.world.view(for: house)
+            var routes = Routes(on: view)
+            let marching = view.units.compactMap { unit in realm.world.unit(unit.id)?.destination.map { (unit, $0) } }
+            let ahead = view.units.prefix(6).flatMap { unit in unit.position.spiral(9).filter { $0.distance(to: unit.position) == 9 }.prefix(4).map { (unit, $0) } }
+            for (unit, target) in marching + ahead {
+                XCTAssertEqual(routes.path(for: unit, to: target), view.path(for: unit, to: target), "\(unit.id) to \(target) for \(house)")
+                compared += 1
+            }
+        }
+        XCTAssertGreaterThan(compared, 100)
+
+        // The ways of the marches found once for every view give each
+        // House the view it is given without them, and another House's
+        // march is shown along the way it truly goes.
+        let ways = realm.world.ways()
+        XCTAssertFalse(ways.isEmpty)
+        for house in realm.world.livingHouses.map(\.id) {
+            let view = realm.world.view(for: house, ways: ways)
+            XCTAssertEqual(view, realm.world.view(for: house))
+            for march in view.marches ?? [] where march.owner != house && march.destination == nil {
+                guard let way = ways[march.unit] else { continue }
+                XCTAssertEqual(Array(way.prefix(march.route.count)), march.route)
+            }
+        }
+    }
 }

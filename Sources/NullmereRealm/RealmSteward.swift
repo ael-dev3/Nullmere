@@ -447,12 +447,16 @@ public actor RealmSteward {
         // "here" answered): every view as published stands, and none is
         // worked out and written again only to be found the same.
         let unchanged = !worldChanged && pendingEvents.isEmpty && pendingActs.isEmpty
+        // The way each company on the march goes, found once for every
+        // keeper who sees a stretch of it.
+        var ways: [Int: [Hex]]?
         for keeper in state.keepers where keeper.isOnline {
             var batches = Array((recentlyHeard[keeper.id] ?? []).filter { now - $0.at <= RealmSteward.heardKept }
                 .suffix(RealmSteward.heardBatches))
             lately[keeper.id] = batches
             if unchanged, published[keeper.id] != nil { continue }
-            guard let view = state.view(for: keeper.id) else { continue }
+            if ways == nil { ways = state.world.ways() }
+            guard let view = state.view(for: keeper.id, ways: ways) else { continue }
             viewsWorkedOut += 1
             // Their view in parts: only those that changed are sent, with
             // the names of all it has now and the version each was written

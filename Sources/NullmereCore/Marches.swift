@@ -107,22 +107,36 @@ extension GameState {
         return watches
     }
 
-    /// The marches the keeper of a House may know of now, worked out on
-    /// their own view of the world, so no way bends round what they can't
-    /// see: every march of their own companies, with where it ends and
-    /// when; each company of a host of their side, or of one marching on a
-    /// hold of theirs, with the hold and when it should be in reach; and of
-    /// any other company in their sight that is on the march, the way it
-    /// goes as far as they see it.
+    /// The marches the keeper of a House may know of now: every march of
+    /// their own companies, with where it ends and when, and each company
+    /// of a host of their side, or of one marching on a hold of theirs,
+    /// with the hold and when it should be in reach, both worked out on
+    /// their own view of the world, so no way they are told the end of
+    /// bends round what they can't see; and of any other company in their
+    /// sight that is on the march, the way it goes as far as they see it.
     public func marches(seenBy house: Int) -> [March] {
         view(for: house).marches ?? []
     }
 
-    func marches(seenBy house: Int, in view: GameState) -> [March] {
+    /// The way every company on the march goes, as it will go it, found
+    /// once for every keeper who sees a stretch of it.
+    public func ways() -> [Int: [Hex]] {
+        var routes = Routes(on: self)
+        var ways: [Int: [Hex]] = [:]
+        for unit in units {
+            guard let destination = unit.destination else { continue }
+            ways[unit.id] = routes.path(for: unit, to: destination) ?? []
+        }
+        return ways
+    }
+
+    func marches(seenBy house: Int, in view: GameState, ways: [Int: [Hex]]? = nil) -> [March] {
         let seen = visibility(for: house)
         func inSight(_ hex: Hex) -> Bool { map.index(of: hex).map { seen[$0] } ?? false }
         var found: [March] = []
         var hosted: Set<Int> = []
+        // Every way found on their view, what stands in it found once.
+        var routes = Routes(on: view)
         for rally in ralliesStanding where rally.marching {
             guard let target = self.target(of: rally), isOfRally(house, rally) || target.owner == house else { continue }
             let walkers = rally.companies.compactMap { view.unit($0) }
@@ -130,7 +144,7 @@ extension GameState {
             for unit in walkers {
                 hosted.insert(unit.id)
                 guard unit.position.distance(to: target.position) > unit.kind.range,
-                      let way = view.path(for: unit, to: target.position) else { continue }
+                      let way = routes.path(for: unit, to: target.position) else { continue }
                 let end = way.firstIndex { $0.distance(to: target.position) <= unit.kind.range } ?? way.count - 1
                 let route = Array(way[...end])
                 found.append(March(unit: unit.id, owner: unit.owner, route: route, destination: target.position,
@@ -138,13 +152,15 @@ extension GameState {
             }
         }
         for unit in view.units.sorted(by: { $0.id < $1.id }) where !hosted.contains(unit.id) {
-            guard let destination = self.unit(unit.id)?.destination else { continue }
-            let way = view.path(for: unit, to: destination) ?? []
+            guard let real = self.unit(unit.id), let destination = real.destination else { continue }
             if unit.owner == house {
+                let way = routes.path(for: unit, to: destination) ?? []
                 let watches = view.watchesToWalk(way, pace: view.movement(of: unit))
                 found.append(March(unit: unit.id, owner: house, route: way, destination: destination,
                                    arrives: watches > 0 ? watch + watches : nil))
             } else {
+                // The way it goes, as far as they see it go.
+                let way = ways?[unit.id] ?? path(for: real, to: destination) ?? []
                 let shown = Array(way.prefix(while: inSight))
                 guard !shown.isEmpty else { continue }
                 found.append(March(unit: unit.id, owner: unit.owner, route: shown, destination: nil, arrives: nil))

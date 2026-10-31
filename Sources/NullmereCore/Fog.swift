@@ -8,7 +8,9 @@ extension GameState {
     /// and the realm finds the true way.
     public static let unknownGround = Tile(terrain: .greyfield)
 
-    public func view(for house: Int) -> GameState {
+    /// `ways`, the way of every company on the march as `ways()` finds
+    /// them, found once for many views; found as needed without.
+    public func view(for house: Int, ways: [Int: [Hex]]? = nil) -> GameState {
         var view = self
         // The realm's words would grow the whole map again; where its
         // rounds begin is all the keeper's copy needs of them.
@@ -110,7 +112,7 @@ extension GameState {
         // The battles going on that they can see a side of.
         view.fields = fields?.filter { field in field.side(of: house) != nil || (map.index(of: field.at).map { seen[$0] } ?? false) }
         // The marches they may know of, worked out on what they see.
-        view.marches = marches(seenBy: house, in: view)
+        view.marches = marches(seenBy: house, in: view, ways: ways)
         return view
     }
 }
@@ -265,9 +267,9 @@ public struct RealmView: Codable, Equatable, Sendable {
 
 extension RealmState {
     /// What the realm tells one keeper: their own view of its world.
-    public func view(for id: String) -> RealmView? {
+    public func view(for id: String, ways: [Int: [Hex]]? = nil) -> RealmView? {
         guard let keeper = keeper(id) else { return nil }
-        let world = keeper.house.map { self.world.view(for: $0) } ?? self.world.view(for: -1)
+        let world = keeper.house.map { self.world.view(for: $0, ways: ways) } ?? self.world.view(for: -1, ways: ways)
         return RealmView(keeper: keeper, age: age, world: world)
     }
 }

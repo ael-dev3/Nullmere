@@ -142,6 +142,106 @@ extension GameState {
 }
 
 /// A binary heap, smallest first.
+/// Routes found many at a time on one state, as a keeper's view finds the
+/// way of every march they know of: what stands in the way of each House's
+/// companies found once, and the search's room kept from one route to the
+/// next, not made anew for each. Each route is the one `path(for:to:)`
+/// finds, hex for hex.
+struct Routes {
+    private let state: GameState
+    private var inTheWay: [Int: [Bool]] = [:]
+    private var best: [Int]
+    private var cameFrom: [Int]
+    /// The tiles the last search reached, set back before the next.
+    private var touched: [Int] = []
+
+    init(on state: GameState) {
+        self.state = state
+        best = [Int](repeating: Int.max, count: state.map.count)
+        cameFrom = [Int](repeating: -1, count: state.map.count)
+    }
+
+    /// What stands in the way of a House's companies: every company, and
+    /// what else `path(for:to:)` goes round for them. A company's own hex
+    /// is among them, but a search never comes back to where it began.
+    private mutating func blocked(for owner: Int) -> [Bool] {
+        if let found = inTheWay[owner] { return found }
+        let map = state.map
+        var blocked = [Bool](repeating: false, count: map.count)
+        func mark(_ hex: Hex) {
+            if let index = map.index(of: hex) { blocked[index] = true }
+        }
+        for unit in state.units { mark(unit.position) }
+        for hold in state.holds where hold.owner != owner { mark(hold.position) }
+        for wild in state.wildsStanding { mark(wild.position) }
+        for lair in state.lairsStanding { mark(lair.position) }
+        for hall in state.hallsStanding where !state.isOfHall(owner, hall) { mark(hall.position) }
+        for storehouse in state.storehousesStanding where !state.isOf(storehouse.alliance, owner) { mark(storehouse.position) }
+        inTheWay[owner] = blocked
+        return blocked
+    }
+
+    private struct Node: Comparable {
+        let priority: Int
+        let tile: Int
+        static func < (a: Node, b: Node) -> Bool {
+            (a.priority, a.tile) < (b.priority, b.tile)
+        }
+    }
+
+    /// The route `path(for:to:)` finds for the unit to `target`.
+    mutating func path(for unit: Unit, to target: Hex) -> [Hex]? {
+        let map = state.map
+        guard unit.position != target,
+              let start = map.index(of: unit.position),
+              let goal = map.index(of: target),
+              map[goal].terrain.isPassable
+        else { return nil }
+        let blocked = blocked(for: unit.owner)
+        for tile in touched {
+            best[tile] = Int.max
+            cameFrom[tile] = -1
+        }
+        touched.removeAll(keepingCapacity: true)
+        let hexes = map.hexes
+        best[start] = 0
+        touched.append(start)
+        var open = MinHeap<Node>()
+        open.push(Node(priority: unit.position.distance(to: target), tile: start))
+        var expanded = 0
+
+        while let node = open.pop() {
+            if node.tile == goal {
+                var route: [Hex] = []
+                var cursor = goal
+                while cursor != start {
+                    route.append(hexes[cursor])
+                    cursor = cameFrom[cursor]
+                }
+                return route.reversed()
+            }
+            let hex = hexes[node.tile]
+            let cost = best[node.tile]
+            guard node.priority == cost + hex.distance(to: target) else { continue }
+            expanded += 1
+            if expanded > 6_000 { return nil }
+            for direction in Hex.directions {
+                guard let next = map.index(of: hex + direction), next == goal || !blocked[next] else { continue }
+                let terrain = map[next].terrain
+                guard terrain.isPassable else { continue }
+                let total = cost + terrain.moveCost
+                if total < best[next] {
+                    if best[next] == Int.max { touched.append(next) }
+                    best[next] = total
+                    cameFrom[next] = node.tile
+                    open.push(Node(priority: total + hexes[next].distance(to: target), tile: next))
+                }
+            }
+        }
+        return nil
+    }
+}
+
 struct MinHeap<Element: Comparable> {
     private var items: [Element] = []
 
