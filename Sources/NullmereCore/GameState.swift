@@ -251,9 +251,21 @@ public struct GameState: Codable, Equatable, Sendable {
     // MARK: Diplomacy
 
     public func relation(_ a: Int, _ b: Int) -> Relation? {
-        let first = min(a, b)
-        let second = max(a, b)
-        return relations.first { $0.first == first && $0.second == second }
+        relationIndex(a, b).map { relations[$0] }
+    }
+
+    /// Where the relation between two Houses lies: in the order the
+    /// relations are made, each House with every House after it, so found
+    /// at once however many Houses sit around the lake; sought through them
+    /// all only where they lie otherwise.
+    func relationIndex(_ a: Int, _ b: Int) -> Int? {
+        let first = min(a, b), second = max(a, b), count = houses.count
+        guard first >= 0, first != second else { return nil }
+        let index = first * (2 * count - first - 1) / 2 + (second - first - 1)
+        if second < count, relations.indices.contains(index), relations[index].first == first, relations[index].second == second {
+            return index
+        }
+        return relations.firstIndex { $0.first == first && $0.second == second }
     }
 
     public func stance(_ a: Int, _ b: Int) -> Stance {
@@ -266,7 +278,7 @@ public struct GameState: Codable, Equatable, Sendable {
     }
 
     mutating func setStance(_ stance: Stance, between a: Int, and b: Int, by actor: Int) {
-        guard let index = relations.firstIndex(where: { $0.first == min(a, b) && $0.second == max(a, b) }) else { return }
+        guard let index = relationIndex(a, b) else { return }
         let previous = relations[index].stance
         relations[index].stance = stance
         relations[index].since = watch

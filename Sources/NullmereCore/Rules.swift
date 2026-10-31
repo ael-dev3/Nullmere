@@ -838,7 +838,7 @@ extension GameState {
             houses[other].stock.debit(paid)
             // What the demander has no room for is lost on the road.
             store(paid, for: proposer)
-            if let index = relations.firstIndex(where: { $0.first == min(proposer, other) && $0.second == max(proposer, other) }) {
+            if let index = relationIndex(proposer, other) {
                 relations[index].tributePaid = watch
             }
             record(.tribute, [other, proposer], "\(houses[other].title) pays tribute to \(houses[proposer].title): \(paid).")
@@ -882,7 +882,7 @@ extension GameState {
     /// answers a demand as it makes one. Only a keeper refused by a keeper
     /// is left to choose war or not, and can't demand again for a while.
     mutating func refuseTribute(demandedBy demander: Int, of refuser: Int) -> [GameEvent] {
-        if let index = relations.firstIndex(where: { $0.first == min(demander, refuser) && $0.second == max(demander, refuser) }) {
+        if let index = relationIndex(demander, refuser) {
             relations[index].tributeRefused = watch
         }
         record(.tribute, [refuser, demander], "\(houses[refuser].title) refuses tribute to \(houses[demander].title).")
