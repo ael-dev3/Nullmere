@@ -11,9 +11,9 @@ struct FrontDoor: View {
 
     @State private var name: String
     /// Words being brought from another Mac.
-    @State private var words = ""
+    @State private var words: String
     /// Leave this identity, pressed once: pressed again, it is left.
-    @State private var leaving = false
+    @State private var leaving: Bool
     @State private var appeared = false
     /// The lit choice, the one Return performs.
     @State private var selection = 0
@@ -23,10 +23,14 @@ struct FrontDoor: View {
     @FocusState private var focusedChoice: Int?
 
     /// `name` begins the name field: empty at the door, a name already
-    /// written where one is given.
-    init(app: GameApp, name: String = "") {
+    /// written where one is given; `words` the words brought from another
+    /// Mac the same; and `leaving`, whether Leave this identity was pressed
+    /// once already.
+    init(app: GameApp, name: String = "", words: String = "", leaving: Bool = false) {
         self.app = app
         _name = State(initialValue: name)
+        _words = State(initialValue: words)
+        _leaving = State(initialValue: leaving)
     }
 
     /// A choice the door offers, in the order it shows them.
@@ -43,11 +47,11 @@ struct FrontDoor: View {
                 Choice(title: "Accept and enter", enabled: app.canAccept(enteringAs: name), hint: "Accepts the realm's compact and enters the world") {
                     app.acceptCompact(enteringAs: name)
                 },
-                Choice(title: "Back", hint: "Returns to the door, nothing accepted") { app.closeCompact() },
+                Choice(title: "Back", hint: "Returns to the door, nothing accepted") { goBack() },
             ]
         }
         if app.carriedWords != nil {
-            return [Choice(title: "Written down", hint: "Puts the words away: they are shown only now") { app.putWordsAway() }]
+            return [Choice(title: "Written down", hint: "Puts the words away: they are shown only now") { goBack() }]
         }
         if app.isBringingWords {
             var choices = [Choice(title: app.isEntering ? "Taking it up…" : "Take it up",
@@ -67,10 +71,7 @@ struct FrontDoor: View {
                     }
                 })
             }
-            choices.append(Choice(title: "Back", hint: "Returns to the door") {
-                leaving = false
-                app.stopBringingWords()
-            })
+            choices.append(Choice(title: "Back", hint: "Returns to the door") { goBack() })
             return choices
         }
         var choices = [Choice(title: enterTitle, enabled: app.canEnter(with: name), hint: enterHint) {
@@ -82,8 +83,24 @@ struct FrontDoor: View {
         if isOutOfReach {
             choices.append(Choice(title: "Try again", hint: "Reaches for the realm again") { app.openDoor() })
         }
-        choices.append(Choice(title: "Back", hint: "Returns to the launcher") { app.leaveDoor() })
+        choices.append(Choice(title: "Back", hint: "Returns to the launcher") { goBack() })
         return choices
+    }
+
+    /// Back a step, as Esc goes and every Back: from the compact to the
+    /// door with nothing accepted, the words made put away, the words
+    /// brought no longer brought, or from the door to the launcher.
+    private func goBack() {
+        if isReadingCompact {
+            app.closeCompact()
+        } else if app.carriedWords != nil {
+            app.putWordsAway()
+        } else if app.isBringingWords {
+            leaving = false
+            app.stopBringingWords()
+        } else {
+            app.leaveDoor()
+        }
     }
 
     var body: some View {
@@ -134,18 +151,7 @@ struct FrontDoor: View {
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
-            Button("") {
-                if isReadingCompact {
-                    app.closeCompact()
-                } else if app.carriedWords != nil {
-                    app.putWordsAway()
-                } else if app.isBringingWords {
-                    leaving = false
-                    app.stopBringingWords()
-                } else {
-                    app.leaveDoor()
-                }
-            }
+            Button("") { goBack() }
                 .keyboardShortcut(.cancelAction)
                 .opacity(0)
                 .allowsHitTesting(false)
@@ -277,10 +283,10 @@ struct FrontDoor: View {
                         HStack(spacing: 22 * unit) {
                             if app.keeperName != nil {
                                 aside(app.isSealing ? "Making your words…" : "Carry this identity to another Mac", unit: unit,
+                                      enabled: app.canMakeWords,
                                       hint: "Makes sixteen words to write down: brought to another Mac, they take up your House there") {
                                     app.makeWords()
                                 }
-                                .disabled(!app.canMakeWords)
                             }
                             aside("Words from another Mac? Bring them", unit: unit,
                                   hint: "Takes up your identity from another Mac by the sixteen words you wrote down there") {
@@ -516,8 +522,10 @@ struct FrontDoor: View {
     }
 
     /// A quiet way aside from the door, underlined beneath its choices.
-    private func aside(_ title: String, unit: CGFloat, hint: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private func aside(_ title: String, unit: CGFloat, enabled: Bool = true, hint: String,
+                       action: @escaping () -> Void) -> some View {
+        PressableButtons.note(title, enabled: enabled, action)
+        return Button(action: action) {
             Text(verbatim: title)
                 .font(.launcher(.launcherType(10, unit: unit), weight: .regular))
                 .underline()
@@ -525,6 +533,7 @@ struct FrontDoor: View {
                 .onNight()
         }
         .buttonStyle(.plain)
+        .disabled(!enabled)
         .accessibilityHint(hint)
     }
 }

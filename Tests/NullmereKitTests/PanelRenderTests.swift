@@ -234,6 +234,9 @@ final class PanelRenderTests: XCTestCase {
     /// a foreign hold out of sight with its Moonspire rising, and ground
     /// no lantern has seen.
     func testTheSelectionPanelAtItsEdges() throws {
+        // The works open, each standing complete.
+        UserDefaults.standard.set(true, forKey: OwnHoldDetails.worksKey)
+        defer { UserDefaults.standard.removeObject(forKey: OwnHoldDetails.worksKey) }
         var state = GameState(settings: GameSettings(seedText: "selection edges", houseCount: 4, radius: 18, keepers: 1))
         let me = state.player
         let mine = try XCTUnwrap(state.holds.firstIndex { $0.owner == me })

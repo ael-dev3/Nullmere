@@ -369,9 +369,14 @@ final class DepthPanelTests: XCTestCase {
         let (session, link) = session(state)
         draw(BottleComposer(session: session, hold: hold), width: 330, height: 200)
         XCTAssertTrue(PressableButtons.press("A bottle…"), "Among \(PressableButtons.actions.keys.sorted())")
-        draw(BottleComposer(session: session, hold: hold), width: 330, height: 200)
-        XCTAssertTrue(session.perform(.castBottle(words: "The ford is false", from: hold.id, signed: false)))
-        XCTAssertEqual(link.sent.last, .castBottle(words: "The ford is false", from: hold.id, signed: false))
+        // Open: nothing written, nothing cast; words written, cast, signed.
+        PressableButtons.forget("Cast")
+        draw(BottleComposer(session: session, hold: hold, open: true), width: 330, height: 260)
+        XCTAssertFalse(PressableButtons.press("Cast"), "Nothing written, nothing to cast")
+        draw(BottleComposer(session: session, hold: hold, open: true, draft: "The ford is false"), width: 330, height: 260)
+        XCTAssertTrue(PressableButtons.press("Cast"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .castBottle(words: "The ford is false", from: hold.id, signed: true))
+        XCTAssertEqual(session.state.castRefusal("Again", from: hold.id, as: me), .castThisWatch, "One a watch")
         let bottle = try XCTUnwrap(session.state.bottlesOnTheLake.last)
         XCTAssertEqual(HoverInfo.line(for: bottle.position, in: session.state, explored: true, territory: session.state.territory())?
             .contains("a bottle afloat"), true)
@@ -634,6 +639,53 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(PressableButtons.press("Fold the regions"))
     }
 
+    /// A hold's companies opened: each kind with tiers trained at the
+    /// highest its Muster Hall and studies allow, unless a lower is chosen.
+    func testAHoldTrainsTheHighestTierItMayMuster() throws {
+        UserDefaults.standard.set(true, forKey: OwnHoldDetails.companiesKey)
+        defer { UserDefaults.standard.removeObject(forKey: OwnHoldDetails.companiesKey) }
+        var state = world("tiers mustered")
+        let me = state.player
+        let seat = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+        state.holds[seat].levels[.musterHall] = 3
+        state.holds[seat].training = nil
+        state.holds[seat].project = nil
+        state.houses[me].research = Research(known: [Learned(study: .drill, grade: 1), Learned(study: .ironRanks, grade: 1)])
+        state.houses[me].stock = Stock(grain: 9000, timber: 9000, stone: 9000, moonsalt: 900)
+        let hold = state.holds[seat]
+        XCTAssertGreaterThan(UnitKind.allCases.map { state.highestTier(of: $0, at: hold, for: me) }.max() ?? 1, 1, "Tiers above the first")
+        let (session, link) = session(state)
+        session.selection = .hold(hold.id)
+        draw(SelectionPanel(session: session), width: 360, height: 2000)
+        XCTAssertTrue(PressableButtons.press("Train"), "Among \(shown)")
+        guard case .train(_, let kind, let tier)? = link.sent.last else { return XCTFail("Trained: \(link.sent)") }
+        let highest = session.state.highestTier(of: kind, at: hold, for: me)
+        XCTAssertEqual(tier, highest > 1 ? highest : nil, "The highest first chosen, for \(kind)")
+    }
+
+    /// The Frontier on the Realm screen: how its kingdoms stand, the way
+    /// across with the House's levy, and, there, the way home.
+    func testTheFrontierIsCrossedAndLeftFromTheRealm() throws {
+        let (session, link) = session(world("the frontier's way"))
+        let news = FrontierNews(address: "https://realm.test/frontier", season: 2, watch: 3, lasts: 24, open: true,
+                                standings: [KingdomStanding(realm: "The Farmere", points: 40, keepers: 3),
+                                            KingdomStanding(realm: "The Nullmere", points: 12, keepers: 1)], last: nil)
+        link.onEvent?(.status(RealmStatus(name: "The Nullmere", age: 1, watch: 3, seats: 6, freeSeats: 0, keepers: 1, online: 1, ready: 0,
+                                          secondsLeft: 60, isEnding: false, frontier: news)))
+        XCTAssertTrue(session.canCross)
+        draw(RealmPanel(session: session), width: 360, height: 2400)
+        XCTAssertTrue(PressableButtons.press("Cross to the Frontier"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .crossToFrontier)
+
+        // There, the way home and no way across.
+        var returned = 0
+        session.onReturnHome = { returned += 1 }
+        XCTAssertFalse(session.canCross)
+        draw(RealmPanel(session: session), width: 360, height: 2400)
+        XCTAssertTrue(PressableButtons.press("Return Home"), "Among \(shown)")
+        XCTAssertEqual(returned, 1)
+    }
+
     // MARK: Words
 
     func testWordsAreHeardSaidAndShown() throws {
@@ -641,12 +693,16 @@ final class DepthPanelTests: XCTestCase {
         let me = state.player
         let other = (me + 1) % 6
         state.houses[other].isPlayer = true
+        // Nothing said yet: the Words say where words said go.
+        let (quiet, _) = session(state)
+        draw(WordsPanel(session: quiet))
         _ = try state.perform(.say(words: "Well met", toAlliance: false), as: other)
         let (session, link) = session(state)
         XCTAssertEqual(session.state.words(heardBy: me).map(\.text), ["Well met"])
         draw(WordsPanel(session: session))
         XCTAssertFalse(PressableButtons.press("Say"), "Nothing written, nothing to say")
-        XCTAssertTrue(session.perform(.say(words: "And you", toAlliance: false)))
+        draw(WordsPanel(session: session, draft: "And you"))
+        XCTAssertTrue(PressableButtons.press("Say"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .say(words: "And you", toAlliance: false))
         let said = session.state.wordsSaid
         XCTAssertEqual(said.map(\.text), ["Well met", "And you"])
@@ -1301,6 +1357,14 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(GameSession.isRealmsToTell(.lairAssaulted(assault)))
         // A keeper with no Muster Hall is told where a rally gathers.
         XCTAssertNil(LairRally.muster(for: lair, in: session.state, player: (me + 1) % 6))
+        var unmustered = state
+        unmustered.holds[index].levels[.musterHall] = nil
+        let (none, _) = self.session(unmustered)
+        XCTAssertNil(LairRally.muster(for: lair, in: none.state, player: me))
+        none.selection = .tile(spot)
+        PressableButtons.forget("Call a rally")
+        draw(SelectionPanel(session: none), width: 330, height: 900)
+        XCTAssertFalse(PressableButtons.press("Call a rally"), "No Muster Hall, no rally")
         // The Realm lists the lairs found.
         draw(RealmPanel(session: session))
         XCTAssertEqual(RealmPanel.standing(lair), "Whole, 450")

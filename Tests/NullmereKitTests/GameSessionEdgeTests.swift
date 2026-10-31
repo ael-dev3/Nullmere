@@ -1,5 +1,6 @@
 import Foundation
 import NullmereRealm
+import NullmereWorld
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
@@ -33,6 +34,24 @@ final class GameSessionEdgeTests: XCTestCase {
         let enemy = try XCTUnwrap(state.units.firstIndex { $0.owner == foe && $0.kind.isMilitary })
         state.units[enemy].position = beside
         return (state, spear, beside, foe)
+    }
+
+    /// A House with no hold left to take in: the view is set back where it
+    /// is, north up, at the tilt the view began with.
+    func testTheViewSetBackWithNoHoldStaysWhereItIs() {
+        var state = GameState(settings: GameSettings(seedText: "no hold to see", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        state.holds.removeAll { $0.owner == me }
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        session.motion = .reduced
+        session.camera.heading = 1.2
+        session.camera.tilt = 0.3
+        session.camera.focus(on: Hex(2, -1))
+        let centre = session.camera.centreHex
+        session.resetView()
+        XCTAssertEqual(session.camera.heading, 0)
+        XCTAssertEqual(session.camera.tilt, Camera.defaultTilt, accuracy: 1e-9)
+        XCTAssertEqual(session.camera.centreHex, centre, "Nowhere else to look")
     }
 
     func testAClickChoosesWhatIsThere() throws {

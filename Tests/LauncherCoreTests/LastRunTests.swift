@@ -121,6 +121,10 @@ final class LastRunTests: XCTestCase {
         let items = URLComponents(url: address, resolvingAgainstBaseURL: false)?.queryItems ?? []
         XCTAssertEqual(items.first { $0.name == "title" }?.value, "Nullmere Online 1.2.0 stopped in the world")
         XCTAssertEqual(items.first { $0.name == "body" }?.value, report)
+
+        // From the launcher, with no realm or watch to say.
+        let early = Mishap(mark: RunMark(version: "1.0.0", began: evening), cause: "SIGTRAP").report(timeZone: utc)
+        XCTAssertTrue(early.contains("\nWhere: in the launcher\nWhat: SIGTRAP\n"), early)
     }
 
     /// A mark left with nothing caught beside it (quit by force, or the Mac
@@ -163,9 +167,13 @@ final class LastRunTests: XCTestCase {
         ledger.end()
     }
 
-    /// The app's own ledger lies in its Application Support folder.
+    /// The app's own ledger lies in its Application Support folder, or in
+    /// the temporary folder on a Mac that has none.
     func testTheAppsLedgerLiesInItsOwnFolder() {
         XCTAssertEqual(RunLedger.shared.folder.lastPathComponent, "Nullmere Online")
         XCTAssertNil(RunLedger.shared.current, "Not begun outside the app")
+        let support = URL(fileURLWithPath: "/Users/keeper/Library/Application Support", isDirectory: true)
+        XCTAssertEqual(RunLedger.appFolder(in: [support]), support.appendingPathComponent("Nullmere Online", isDirectory: true))
+        XCTAssertEqual(RunLedger.appFolder(in: []), FileManager.default.temporaryDirectory.appendingPathComponent("Nullmere Online", isDirectory: true))
     }
 }

@@ -154,6 +154,98 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertFalse(second.isBringingWords)
     }
 
+    /// The door's ways aside, pressed as a keeper known here presses them:
+    /// words asked for while the realm doesn't answer are refused, and the
+    /// door says why; words brought that the realm doesn't know take up no
+    /// one; leaving this Mac's identity is asked once more first; and Back
+    /// goes a step back from each.
+    func testTheDoorsWaysAsideArePressed() async throws {
+        let db = FakeSpacetime()
+        let running = try await steward(db, seats: 4)
+        defer { running.cancel() }
+        PressableButtons.isListening = true
+        defer { PressableButtons.isListening = false }
+        defer { UserDefaults.standard.removeObject(forKey: GameApp.compactKey) }
+        let identity = MemoryStore()
+        let app = app(db, identity: identity, realm: "ways aside")
+        func doorOpens() async throws {
+            try await until("the door open") { if case .open = app.door { return true } else { return false } }
+        }
+        app.open()
+        try await doorOpens()
+        app.enterWorld(name: "Ama")
+        try await until("Ama in the world") { app.session != nil }
+        app.leaveWorld()
+        try await doorOpens()
+        XCTAssertEqual(app.keeperName, "Ama", "Known here still")
+
+        // Words asked for while the realm doesn't answer: none are made.
+        draw(FrontDoor(app: app))
+        await db.setReachable(false)
+        XCTAssertTrue(PressableButtons.press("Carry this identity to another Mac"), "Among \(PressableButtons.actions.keys.sorted())")
+        try await until("the words refused") { app.carryProblem != nil }
+        XCTAssertNil(app.carriedWords)
+        draw(FrontDoor(app: app))
+        await db.setReachable(true)
+        app.openDoor()
+        try await doorOpens()
+
+        // Words brought: two take up no one; sixteen the compact first, and
+        // Back from it accepts nothing.
+        draw(FrontDoor(app: app))
+        XCTAssertTrue(PressableButtons.press("Words from another Mac? Bring them"), "Among \(PressableButtons.actions.keys.sorted())")
+        XCTAssertTrue(app.isBringingWords)
+        PressableButtons.forget("Take it up")
+        draw(FrontDoor(app: app, words: "acorn alder"))
+        XCTAssertFalse(PressableButtons.press("Take it up"), "Two words take up no one")
+        let strange = KeeperWords.make().joined(separator: " ")
+        draw(FrontDoor(app: app, words: strange))
+        XCTAssertTrue(PressableButtons.press("Take it up"))
+        XCTAssertTrue(app.readsCompact, "The compact first, on a Mac that never accepted it")
+        draw(FrontDoor(app: app))
+        XCTAssertTrue(PressableButtons.press("Back"))
+        XCTAssertFalse(app.readsCompact)
+        XCTAssertTrue(app.isBringingWords, "Back to the words")
+
+        // This Mac keeps House Ama as itself: leaving its identity is asked
+        // once more, then done.
+        let kept = identity.value
+        draw(FrontDoor(app: app))
+        XCTAssertTrue(PressableButtons.press("Leave this identity"), "Among \(PressableButtons.actions.keys.sorted())")
+        XCTAssertEqual(app.keeperName, "Ama", "Asked once more, not left")
+        draw(FrontDoor(app: app, leaving: true))
+        XCTAssertTrue(PressableButtons.press("Leave it for good"))
+        XCTAssertNil(app.keeperName)
+        try await until("a new identity made") { identity.value.map { !$0.isEmpty && $0 != kept } ?? false }
+        try await doorOpens()
+
+        // Words the realm doesn't know are refused at the door once the
+        // compact is accepted for them, and again, not asked twice.
+        draw(FrontDoor(app: app, words: strange))
+        XCTAssertTrue(PressableButtons.press("Take it up"))
+        XCTAssertTrue(app.readsCompact)
+        draw(FrontDoor(app: app))
+        XCTAssertTrue(PressableButtons.press("Accept and enter"), "Among \(PressableButtons.actions.keys.sorted())")
+        try await until("the words refused") { app.arrivalProblem != nil && !app.isEntering }
+        XCTAssertNil(app.session)
+        XCTAssertFalse(app.mustReadCompact)
+        draw(FrontDoor(app: app, words: strange))
+        XCTAssertTrue(PressableButtons.press("Take it up"))
+        XCTAssertFalse(app.readsCompact, "Accepted, not read again")
+        try await until("the words refused again") { app.arrivalProblem != nil && !app.isEntering }
+        XCTAssertNil(app.session)
+        draw(FrontDoor(app: app))
+        XCTAssertTrue(PressableButtons.press("Back"))
+        XCTAssertFalse(app.isBringingWords, "Back at the door")
+
+        // And in by a new name, the compact already accepted.
+        draw(FrontDoor(app: app, name: "Bel"))
+        XCTAssertTrue(PressableButtons.press("Enter the world"))
+        try await until("Bel in the world") { app.session != nil }
+        XCTAssertEqual(app.keeperName, "Bel")
+        app.leaveWorld()
+    }
+
     func testAKeeperEntersPlaysAndKeepsTheirKey() async throws {
         let db = FakeSpacetime()
         let running = try await steward(db, seats: 4)

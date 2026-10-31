@@ -260,8 +260,14 @@ final class AdvisorTests: XCTestCase {
         advisor.isEnabled = true
         XCTAssertTrue(advisor.counsel("Muster a company."))
         XCTAssertEqual(ear.heard, ["Raise a Granary.", "Muster a company."])
-        // The Mac's own voice is made and hushed without a word said.
+        // The Mac's own voice is made and hushed without a word said; it
+        // would speak a little slower and lower than the Mac's own way.
         MacVoice().hush()
+        let utterance = MacVoice.utterance("Raise a Granary.")
+        XCTAssertEqual(utterance.speechString, "Raise a Granary.")
+        XCTAssertLessThan(utterance.rate, AVSpeechUtteranceDefaultSpeechRate)
+        XCTAssertLessThan(utterance.pitchMultiplier, 1)
+        XCTAssertLessThan(utterance.volume, 1)
         XCTAssertEqual(Advisor.defaultsKey, "advisor.speaks")
     }
 }

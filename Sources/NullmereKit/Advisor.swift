@@ -14,12 +14,18 @@ final class MacVoice: Speaking {
     private let synthesizer = AVSpeechSynthesizer()
 
     func say(_ words: String) {
+        synthesizer.speak(MacVoice.utterance(words))
+    }
+
+    /// The words as the voice speaks them: a little slower and lower than
+    /// the Mac's own way, quieter than the game, in an English voice.
+    static func utterance(_ words: String) -> AVSpeechUtterance {
         let utterance = AVSpeechUtterance(string: words)
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92
         utterance.pitchMultiplier = 0.9
         utterance.volume = 0.85
         utterance.voice = AVSpeechSynthesisVoice(language: "en-GB") ?? AVSpeechSynthesisVoice(language: "en-US")
-        synthesizer.speak(utterance)
+        return utterance
     }
 
     func hush() {

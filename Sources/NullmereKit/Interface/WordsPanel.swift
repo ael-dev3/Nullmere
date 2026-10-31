@@ -6,8 +6,14 @@ import SwiftUI
 /// keeper's alliance, the latest last, and a line to say more to either.
 struct WordsPanel: View {
     let session: GameSession
-    @State private var draft = ""
+    @State private var draft: String
     @State private var toAlliance = false
+
+    /// `draft` begins the line to say: empty, or words already written.
+    init(session: GameSession, draft: String = "") {
+        self.session = session
+        _draft = State(initialValue: draft)
+    }
 
     var body: some View {
         let state = session.state

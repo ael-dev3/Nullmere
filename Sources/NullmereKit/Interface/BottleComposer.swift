@@ -8,9 +8,18 @@ struct BottleComposer: View {
     let session: GameSession
     let hold: Hold
 
-    @State private var open = false
-    @State private var draft = ""
+    @State private var open: Bool
+    @State private var draft: String
     @State private var signed = true
+
+    /// `open` and `draft` begin the composer: folded and empty on a hold's
+    /// record, or open with words already written where they are given.
+    init(session: GameSession, hold: Hold, open: Bool = false, draft: String = "") {
+        self.session = session
+        self.hold = hold
+        _open = State(initialValue: open)
+        _draft = State(initialValue: draft)
+    }
 
     var body: some View {
         let state = session.state

@@ -207,8 +207,13 @@ public final class RunLedger: @unchecked Sendable {
     }
 
     /// The app's own: in its Application Support folder.
-    public static let shared = RunLedger(folder: (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        ?? FileManager.default.temporaryDirectory).appendingPathComponent("Nullmere Online", isDirectory: true))
+    public static let shared = RunLedger(folder: appFolder(in: FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)))
+
+    /// The app's own folder within the first of the folders given, or within
+    /// the temporary folder where none is.
+    static func appFolder(in folders: [URL]) -> URL {
+        (folders.first ?? FileManager.default.temporaryDirectory).appendingPathComponent("Nullmere Online", isDirectory: true)
+    }
 }
 
 /// Catches the faults that stop the app (a trap in the game's own code, a

@@ -77,6 +77,9 @@ final class PressTests: XCTestCase {
         XCTAssertEqual(session.state.stance(session.player, calm.id), .peace)
         draw(HouseRow(session: session, house: calm, draft: OfferDraft(for: calm), choosingGift: true))
         XCTAssertTrue(shown.contains { $0.hasPrefix("Send ") && $0 != "Send a gift" }, "Among \(shown)")
+        let choice = try XCTUnwrap(HouseRow.giftChoices(from: session.playerHouse.stock).first)
+        XCTAssertTrue(PressableButtons.press("Send \(choice.amount) \(choice.resource.title.lowercased())"))
+        XCTAssertEqual(link.sent.last, .gift(to: calm.id, resource: choice.resource, amount: choice.amount), "Sent from the gifts beneath")
         var opened = false
         draw(HouseRow(session: session, house: session.state.houses[other.id], draft: draft, expanded: false) { opened = true })
         XCTAssertFalse(shown.contains("Offer peace"))
