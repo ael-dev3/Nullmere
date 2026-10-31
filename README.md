@@ -1074,15 +1074,16 @@ realm; keepers are told in plain words, never a status code.
   turns on a vassal frees it, and a liege's fall frees all its vassals.
 - **How ages end.** In 48 ages of a realm as it stands by default, twelve
   seats on a lake of radius 36, played through by stewards alone, pace by
-  pace, under the rules as they now stand, the Moonspire decided 42 and
-  dominion 6; an age ran 145 watches at the median, and a third saw a
-  House fall outright. The seats won alike, within chance (χ² 16.0 on 11
-  degrees of freedom), and so did the tempers, the ambitious 21%, the
-  cunning 25%, the wary 25% and the steadfast 29%, but each its own way:
-  five of the six dominions went to the ambitious and the cunning, and the
-  wary won by the Moonspire alone. A realm's armies came to 1,150,000
-  troops at the median as its age ended, and its greatest battles to
-  35,000 troops at the median and 68,000 at the most.
+  pace, under the rules as they now stand, the shores at war in every
+  Sundering, the Moonspire decided 43 and dominion 5; an age ran 147
+  watches at the median, and a third saw a House fall outright. The seats
+  won alike, within chance (χ² 10.0 on 11 degrees of freedom), and so did
+  the tempers (χ² 1.7 on 3), the ambitious 23%, the cunning 27%, the wary
+  19% and the steadfast 31%, but each its own way: every dominion went to
+  the ambitious and the cunning, and the wary won by the Moonspire alone.
+  A realm's armies came to 1,170,000 troops at the median as its age
+  ended, and its greatest battles to 36,500 troops at the median and
+  69,000 at the most.
 - **Tribute.** From watch twenty, an ambitious or cunning steward a quarter
   stronger than a neighbour may demand a fifth of its stores. Paid, it keeps
   the peace for twenty watches, unless that neighbour's Moonspire rises;
