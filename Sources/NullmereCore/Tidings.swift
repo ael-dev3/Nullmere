@@ -254,6 +254,22 @@ extension GameState {
             }
             let giver = houses.indices.contains(by) ? houses[by].title : "a fallen House"
             return Tidings("The titles \(giver) named lapse with the broken Spire.", .neutral)
+        case .prophesied(let prophecy):
+            let foretold = "\(told(prophecy.claim)) by watch \(prophecy.until)"
+            if prophecy.by == viewer { return Tidings("You foretell that \(foretold), staking \(prophecy.pool) moonsalt.", .neutral) }
+            return Tidings("\(houses[prophecy.by].title) foretells that \(foretold), staking \(prophecy.pool) moonsalt: back it or stand against it "
+                           + "until watch \(prophecy.stakesClose).", .neutral)
+        case .staked(let id, let house, let backs, let moonsalt):
+            guard let prophecy = prophecies.first(where: { $0.id == id }) else { return nil }
+            let side = backs ? "backing" : "against"
+            if house == viewer { return Tidings("You lay \(moonsalt) moonsalt \(side) the prophecy that \(told(prophecy.claim)).", .neutral) }
+            return Tidings("\(houses[house].title) lays \(moonsalt) moonsalt \(side) the prophecy that \(told(prophecy.claim)).", .neutral)
+        case .prophecyJudged(let id, let cameToPass, let paid):
+            guard let prophecy = prophecies.first(where: { $0.id == id }) else { return nil }
+            let judged = "The prophecy that \(told(prophecy.claim)) \(cameToPass ? "has come to pass" : "has failed")"
+            if let share = paid.first(where: { $0.house == viewer }) { return Tidings("\(judged): your House takes \(share.moonsalt) moonsalt.", .good) }
+            if prophecy.stakes.contains(where: { $0.house == viewer }) { return Tidings("\(judged): your stake is lost.", .bad) }
+            return Tidings("\(judged).", .neutral)
         case .crestTaken(let house, let crest):
             guard house == viewer else { return Tidings("\(houses[house].title) takes for its crest \(crest.blazon).", .neutral) }
             return Tidings("Your House takes for its crest \(crest.blazon), and bears it until the age ends.", .good)

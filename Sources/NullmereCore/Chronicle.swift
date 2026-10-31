@@ -41,6 +41,9 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         /// The broken Spire's keeper names a House to a title, or the titles
         /// lapse.
         case title
+        /// A keeper foretells a turn of the realm's course, or the realm
+        /// judges a prophecy.
+        case augury
     }
 
     public let watch: Int

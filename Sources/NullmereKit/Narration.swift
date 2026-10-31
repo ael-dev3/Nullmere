@@ -154,7 +154,7 @@ enum Narration {
              .commanderWounded, .skillFired, .talentLearned, .talentsForgotten, .gearFound, .gearWorn, .gearTakenOff, .gearScrapped, .shrineTaken,
              .carriedToInfirmary, .healingBegun, .unitHealed, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted,
              .standardRaised, .standardStruck, .standardTorn, .itemsGiven, .itemUsed, .heritageTaken, .crestTaken, .workPlaced, .dreamt,
-             .titleBestowed, .titlesLapsed,
+             .titleBestowed, .titlesLapsed, .prophesied, .staked, .prophecyJudged,
              .allianceStudyChosen, .allianceGift, .allianceStudied, .hallRaised, .hallRisen, .hallStruck, .hallTorn,
              .storehouseRaised, .storehouseRisen, .storehouseStruck, .storehouseTorn, .laidUp, .tookBack, .yardRaised, .favourRose, .frontier,
              .makingsFound, .gearForged, .drilled,

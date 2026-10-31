@@ -712,6 +712,65 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(TitlesSection.giverLine(stewards, player: me), "No broken Spire stands this age, and no titles are named.")
     }
 
+    /// The Augury on the Realm screen: another keeper's prophecy stood
+    /// against; one of the keeper's own chosen, its kind, then its House,
+    /// and spoken with its stake; and prophecies judged shown as judged.
+    func testAProphecyIsSpokenAndStakedFromTheRealm() throws {
+        var state = world("an augury")
+        let me = state.player
+        let other = try XCTUnwrap(state.livingHouses.map(\.id).first { $0 != me })
+        state.houses[other].isPlayer = true
+        state.houses[other].stock.moonsalt = 50
+        state.houses[me].stock.moonsalt = 80
+        _ = try state.perform(.prophesy(.takesAHold(house: me), until: state.watch + 10, moonsalt: 10), as: other)
+        let (session, link) = session(state)
+        draw(RealmPanel(session: session), width: 360, height: 2600)
+        XCTAssertTrue(PressableButtons.press("Stand against it"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .stake(prophecy: 1, backs: false, moonsalt: AugurySection.stake))
+        XCTAssertFalse(shown.contains("A House falls"), "Folded until asked for")
+        XCTAssertTrue(PressableButtons.press("Foretell…"), "Among \(shown)")
+
+        // The keeper's own: its kind, its House, and spoken.
+        draw(AugurySection(session: session, composing: true), width: 360, height: 500)
+        XCTAssertTrue(PressableButtons.press("A House falls"), "Among \(shown)")
+        draw(AugurySection(session: session, composing: true, kind: .falls), width: 360, height: 500)
+        XCTAssertTrue(PressableButtons.press("Of \(session.state.houses[other].title)"), "Among \(shown)")
+        draw(AugurySection(session: session, composing: true, kind: .falls, first: other), width: 360, height: 600)
+        XCTAssertTrue(PressableButtons.press("Foretell"), "Among \(shown)")
+        let until = session.state.watch + AugurySection.span
+        XCTAssertEqual(link.sent.last, .prophesy(.falls(house: other), until: until, moonsalt: AugurySection.stake))
+        XCTAssertEqual(session.state.openProphecies.count, 2)
+        let mine = try XCTUnwrap(session.state.openProphecies.last)
+        XCTAssertEqual(AugurySection.standing(mine, at: session.state.watch),
+                       "\(AugurySection.stake) moonsalt backing it, 0 against; stakes close at watch \(mine.stakesClose).")
+        XCTAssertEqual(AugurySection.standing(mine, at: mine.stakesClose + 1), "\(AugurySection.stake) moonsalt backing it, 0 against; stakes are closed.")
+        draw(AugurySection(session: session), width: 360, height: 500)
+
+        // A war's second House after its first; each kind's prophecy.
+        XCTAssertNil(AugurySection.claim(.war, first: other, second: nil, in: session.state))
+        XCTAssertNil(AugurySection.claim(.falls, first: nil, second: nil, in: session.state))
+        XCTAssertEqual(AugurySection.claim(.war, first: other, second: me, in: session.state), .war(other, me))
+        XCTAssertEqual(AugurySection.claim(.takesAHold, first: me, second: nil, in: session.state), .takesAHold(house: me))
+        XCTAssertEqual(AugurySection.claim(.spireRises, first: me, second: nil, in: session.state), .spireRises(house: me, stage: 1))
+        draw(AugurySection(session: session, composing: true, kind: .war, first: other), width: 360, height: 600)
+        XCTAssertTrue(PressableButtons.press("With Your House"), "Among \(shown)")
+        XCTAssertEqual(AugurySection.Kind.allCases.map(\.title), ["A House falls", "A House takes a hold", "Two Houses at war", "A Moonspire rises"])
+
+        // Judged, as the realm judged them; heard as they are.
+        var judged = session.state
+        judged.auguries![0].cameToPass = true
+        judged.auguries![1].cameToPass = false
+        XCTAssertTrue(AugurySection.standing(judged.prophecies[0], at: judged.watch).hasPrefix("Came to pass."))
+        XCTAssertTrue(AugurySection.standing(judged.prophecies[1], at: judged.watch).hasPrefix("Failed."))
+        link.onEvent?(.changed(judged))
+        draw(AugurySection(session: session), width: 360, height: 500)
+        XCTAssertEqual(GameSession.cues(for: .prophesy(.falls(house: other), until: until, moonsalt: 10), events: [], in: session.state, player: me), [.lore])
+        XCTAssertEqual(GameSession.cues(for: .stake(prophecy: 1, backs: true, moonsalt: 10), events: [], in: session.state, player: me), [.coin])
+        let paid = GameEvent.prophecyJudged(prophecy: 2, cameToPass: false, paid: [Prophecy.Stake(house: me, backs: false, moonsalt: 20)])
+        XCTAssertEqual(GameSession.cue(forDepth: paid, in: session.state, player: me), .triumph)
+        XCTAssertNil(GameSession.cue(forDepth: paid, in: session.state, player: other))
+    }
+
     /// The Frontier on the Realm screen: how its kingdoms stand, the way
     /// across with the House's levy, and, there, the way home.
     func testTheFrontierIsCrossedAndLeftFromTheRealm() throws {

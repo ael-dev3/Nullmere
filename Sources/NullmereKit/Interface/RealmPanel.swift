@@ -50,6 +50,10 @@ struct RealmPanel: View {
                         Rule(opacity: 0.18)
                         TitlesSection(session: session)
                     }
+                    if session.playerHouse.isPlayer {
+                        Rule(opacity: 0.18)
+                        AugurySection(session: session)
+                    }
                     if !state.lairsStanding.isEmpty {
                         Rule(opacity: 0.18)
                         lairs(state)

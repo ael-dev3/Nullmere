@@ -241,6 +241,18 @@ designed, ticked when it is real, tested and shown in CI.
   told by a model no server runs. Stewards dream nothing, so a world of
   stewards goes as it always did. CI asks its runner's own model for a
   dream and holds it to the voices' rules.
+- [x] **The Augury.** A market in foresight that the realm itself keeps:
+  a keeper foretells a turn of the realm's course six to thirty watches
+  ahead (a House fallen, a hold taken, two Houses at war, a Moonspire
+  risen to its next stage) and stakes moonsalt on it; any other keeper
+  backs it or stands against it, once, until halfway through its span;
+  and as the watches turn the realm judges it by what has come to pass,
+  a hold taken read from the Chronicle, the side that saw true sharing
+  every stake laid, each by its own, the lake keeping them when none did.
+  No odds are set and no player judges. Told to the realm, kept in the
+  Chronicle, played from the Realm screen, folded until asked for.
+  Stewards foretell and stake nothing, so a world of stewards goes as it
+  always did.
 
 ## The order of the work
 

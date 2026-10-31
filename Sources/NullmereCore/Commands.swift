@@ -124,6 +124,11 @@ public enum Command: Codable, Equatable, Sendable {
     /// The keeper whose House holds the broken Spire names another House
     /// to one of the realm's titles.
     case bestow(Title, on: Int)
+    /// A keeper foretells a turn of the realm's course by a watch to come,
+    /// staking moonsalt that it comes to pass.
+    case prophesy(Prophecy.Claim, until: Int, moonsalt: Int)
+    /// A keeper backs a prophecy, or stands against it, with moonsalt.
+    case stake(prophecy: Int, backs: Bool, moonsalt: Int)
     /// An alliance's leader sets it to pursue a study together.
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
@@ -342,6 +347,16 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case notTheSpiresHolder
     /// A title named anew before it has rested since it was last named.
     case titleResting(until: Int)
+    /// A prophecy spoken by a House with one of its own still open.
+    case prophecyOpen
+    /// A prophecy of what has come to pass already.
+    case comeToPassAlready
+    /// A stake on a prophecy that isn't open.
+    case unknownProphecy
+    /// A second stake on a prophecy by the same House.
+    case stakedAlready
+    /// A stake laid after the watch stakes on it closed.
+    case stakesClosed(Int)
     /// An alliance study learned to its last grade.
     case allianceStudyMastered
     /// The study the alliance pursues already.
@@ -514,6 +529,11 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .crestChosenAlready: return "Your House took its crest this age; it bears it until the age ends."
         case .notTheSpiresHolder: return "Only the keeper whose House holds the broken Spire names the realm's titles."
         case .titleResting(let until): return "That title was named lately; it may be named anew at watch \(until)."
+        case .prophecyOpen: return "Your House's prophecy is still open; it may foretell again once the realm has judged it."
+        case .comeToPassAlready: return "That has come to pass already."
+        case .unknownProphecy: return "No such prophecy is open."
+        case .stakedAlready: return "Your House has laid its stake on that prophecy."
+        case .stakesClosed(let watch): return "Stakes on that prophecy closed at watch \(watch)."
         case .allianceStudyMastered: return "Your alliance has learned that study to its last grade."
         case .alreadyPursued: return "Your alliance pursues that study already."
         case .noAllianceStudy: return "Your alliance pursues no study: its leader chooses one in the Alliance screen."
@@ -637,6 +657,13 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case titleBestowed(title: Title, house: Int, by: Int)
     /// The titles a House named lapse, the Spire no longer its.
     case titlesLapsed(by: Int, titles: [Bestowal])
+    /// A keeper foretells.
+    case prophesied(Prophecy)
+    /// A keeper lays a stake on a prophecy.
+    case staked(prophecy: Int, house: Int, backs: Bool, moonsalt: Int)
+    /// The realm judges a prophecy: whether it came to pass, and what each
+    /// House that saw true took.
+    case prophecyJudged(prophecy: Int, cameToPass: Bool, paid: [Prophecy.Stake])
     /// An alliance's leader sets it to pursue a study.
     case allianceStudyChosen(alliance: Int, study: AllianceStudy)
     /// A House gives stores toward a grade of its alliance's study.

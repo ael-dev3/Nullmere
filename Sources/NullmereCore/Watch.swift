@@ -91,6 +91,7 @@ extension GameState {
         noteDeeds(Array(events[turning...]))
         events += tellDeeds()
         events += fulfilCharges()
+        events += judgeProphecies()
         events += checkForEnd()
         takeSnapshot()
         return events

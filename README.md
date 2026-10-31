@@ -464,6 +464,17 @@ as the realm will, and takes the realm's word as final.
   the Houses' list says what each House bears. Every title lapses when the
   Spire passes from the House that named them, and a steward holding it
   names none, so a world of stewards goes as it always did.
+- **The Augury.** A keeper foretells a turn of the realm's course from
+  the Realm screen, twelve watches ahead (a House fallen, a hold taken,
+  two Houses at war, or a Moonspire risen to its next stage), staking ten
+  moonsalt; the rules take any span of six to thirty watches and stakes of
+  five to fifty, one prophecy of a House's own open at a time. Every other
+  keeper may back it or stand against it, once, until halfway through its
+  span. As the watches turn the realm judges it by what has come to pass,
+  a hold taken as the Chronicle tells it: the side that saw true shares
+  every stake laid, each by its own, and if none did, the lake keeps them.
+  The realm keeps its last twelve judged, and stewards foretell and stake
+  nothing.
 - **The server.** SpacetimeDB is the realm's authority of record: it knows
   each keeper by their identity, keeps the world, and lets no one but the
   steward write it. The steward runs the same Swift rules core the clients

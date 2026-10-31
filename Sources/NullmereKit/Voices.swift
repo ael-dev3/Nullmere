@@ -226,7 +226,7 @@ enum VoiceFacts {
         switch kind {
         case .war, .peace, .pact, .betrayal, .capture, .fall, .greatWork, .ending, .tribute, .battle: return true
         case .beginning, .founding, .discovery, .omen, .gift, .trade, .seating, .learning, .commander, .hunt, .alliance, .rally, .happening,
-             .edict, .title: return false
+             .edict, .title, .augury: return false
         }
     }
 }
