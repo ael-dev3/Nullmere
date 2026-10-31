@@ -189,6 +189,9 @@ public final class WorldStage: @unchecked Sendable {
     private var furniture: [ModelBatch] = []
     /// Moves each time the furniture is laid out again.
     public private(set) var furnitureVersion = 0
+    /// Where the furniture lies, region by region, so a frame draws only
+    /// what its view reaches.
+    public private(set) var furnitureRegions: Regions?
     private var laid: [Int: (hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising?, heritage: Heritage?, pieces: [Piece])] = [:]
     /// The land's height where figures have stood, by the 64th of a unit:
     /// worked out once, not each frame.
@@ -231,7 +234,9 @@ public final class WorldStage: @unchecked Sendable {
                                                         hex: SIMD2(Int32(piece.hex.q), Int32(piece.hex.r)))))
             }
         }
-        furniture = WorldStage.batches(placed)
+        let gathered = Regions.gather(placed, radius: map.radius)
+        furniture = gathered.batches
+        furnitureRegions = gathered.regions
         furnished = (occupied, holds)
         furnitureVersion += 1
         return furniture

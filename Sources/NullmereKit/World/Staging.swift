@@ -139,6 +139,7 @@ extension GameSession {
                                          into: &frame)
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
+        frame.fixedRegions = stage.furnitureRegions
         frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairs.batches + standards + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,

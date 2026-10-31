@@ -1232,6 +1232,14 @@ There is no music in the launcher; the game makes its own sound as it plays.
   finials; and in every work's yard but the Moonspire's, its odds and ends,
   barrels, crates, sacks, a bucket, a bench and stacks of logs, set down
   where nothing of the work stands and clear of the way to its door.
+- **Only what the view reaches is drawn.** The land's furniture is kept
+  on the GPU in square regions eight hexes on a side, each with the bounds
+  of all it holds; each frame finds the regions inside the camera's view
+  and draws just their runs of each kind. Near, over the realm proper's
+  lake, a frame draws 7,600 of its 19,300 pieces; over a lake of
+  forty-eight seats, 10,500 of 76,000, so a wider realm costs a near view
+  little more than the realm proper's. Zoomed out over the whole lake,
+  all of it is drawn, as before.
 - **Portraits from the world itself.** The panels show each commander,
   each company to be trained (in the tier chosen) and each work to be
   built (at the stage it will be), drawn by the world's own renderer on a

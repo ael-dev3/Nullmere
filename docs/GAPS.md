@@ -56,6 +56,7 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 - [x] Every hold a town: lanes from the keep's door through the gate and to every work, a ring lane outside the walls; homes of four kinds (cottages, longhouses, roundhouses, townhouses) lit at night with doors in the House's colour, built their people's way, a few about a bare keep and up to 44 (a seat's 64) as its works rise, each facing its lane and never on a lane, a work's ground, the walls' or a company's; a well, a seat's market, a granary's fields; the townsfolk keep to the lanes
 - [x] The land's undergrowth: heather on the greyfields, the barrows and the Spine; ferns and birches in the blackwood, and birches out on the greyfields; pebbles on the strand and the flats; among the firs, grass, reeds, crags and stones, every piece within its hex and clear of hearts, previewed
 - [x] Fine work near, left off afar: a keep's quoins, framed and shuttered windows, roof ribs and courses, a half-timbered hall with a capped chimney, logs and a handcart (a seat's keep 2,728 triangles, from 778); the walls' arrow loops, string courses, wall-walks, tower slits, finials and gate bands; courses, gable boards, vents, hoops and finials on every hall and round house of the works; every work's yard (but the Moonspire's) with its barrels, crates, sacks, buckets, benches and logs, set where nothing of it stands; the renderer draws it only with the camera near, as close as twice the lake's opening view or closer, so the lake's view costs no more
+- [x] A wide realm drawn only where the view reaches: the land's furniture kept in regions of eight hexes a side, each frame drawing only the regions in its view (near, 10,500 of a forty-eight-seat lake's 76,000 pieces, against 7,600 of the realm proper's 19,300), measured on the GPU in CI against drawing it all
 - [ ] Hand-modelled detail at RoK's density
 
 ### 3. Animation
@@ -121,7 +122,8 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 8. Armies by the hundred thousand: drill at the Muster Halls.
 9. The land's undergrowth, and fine work on the keeps, walls and works, drawn near.
 10. Realms of many Houses: up to ninety-six seats round a wider lake.
-11. Next: a wide realm drawn only where the view reaches, and its watch made to grow no faster than its seats; battles of hundreds of thousands; hand-modelled detail at RoK's density.
+11. A wide realm drawn only where the view reaches.
+12. Next: a wide realm's watch made to grow no faster than its seats; battles of hundreds of thousands; hand-modelled detail at RoK's density.
 
 What only a person can do stays as it was: raising the realm on maincloud
 with the maintainer's account, signing and notarizing the release, and

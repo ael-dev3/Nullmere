@@ -240,7 +240,9 @@ final class WorldRenderer {
             encoder.setRenderPipelineState(modelPipeline)
             encoder.setVertexBuffer(paletteBuffer, offset: 0, index: 2)
             if let fixed {
-                draw(scene.fixed, from: fixed.buffer, fine: scene.fine, with: encoder)
+                // Only the regions of the land in view.
+                draw(scene.fixed, from: fixed.buffer, fine: scene.fine, runs: scene.fixedRegions?.runs(seenBy: frame.viewProjection),
+                     with: encoder)
             }
             if !instances.isEmpty,
                let moving = device.makeBuffer(bytes: instances, length: instances.count * MemoryLayout<ModelInstance>.stride,
@@ -270,16 +272,23 @@ final class WorldRenderer {
 
     /// Each batch's mesh, once for each of its instances, which lie in
     /// `buffer` one batch after another: with its fine work when the
-    /// camera is near.
-    private func draw(_ batches: [ModelBatch], from buffer: any MTLBuffer, fine: Bool, with encoder: any MTLRenderCommandEncoder) {
+    /// camera is near, and only those of `runs`, batch by batch, when
+    /// given.
+    private func draw(_ batches: [ModelBatch], from buffer: any MTLBuffer, fine: Bool, runs: [[Range<Int>]]? = nil,
+                      with encoder: any MTLRenderCommandEncoder) {
+        let runs = runs?.count == batches.count ? runs : nil
         var first = 0
-        for batch in batches {
+        for (index, batch) in batches.enumerated() {
             defer { first += batch.instances.count }
             guard !batch.instances.isEmpty, let mesh = mesh(for: batch.key) else { continue }
+            let drawn = runs?[index] ?? [0..<batch.instances.count]
+            guard !drawn.isEmpty else { continue }
             encoder.setVertexBuffer(mesh.vertices, offset: 0, index: 0)
-            encoder.setVertexBuffer(buffer, offset: first * MemoryLayout<ModelInstance>.stride, index: 1)
-            encoder.drawIndexedPrimitives(type: .triangle, indexCount: fine ? mesh.indexCount : mesh.coarseCount, indexType: .uint32,
-                                          indexBuffer: mesh.indices, indexBufferOffset: 0, instanceCount: batch.instances.count)
+            for run in drawn where !run.isEmpty && run.upperBound <= batch.instances.count {
+                encoder.setVertexBuffer(buffer, offset: (first + run.lowerBound) * MemoryLayout<ModelInstance>.stride, index: 1)
+                encoder.drawIndexedPrimitives(type: .triangle, indexCount: fine ? mesh.indexCount : mesh.coarseCount, indexType: .uint32,
+                                              indexBuffer: mesh.indices, indexBufferOffset: 0, instanceCount: run.count)
+            }
         }
     }
 

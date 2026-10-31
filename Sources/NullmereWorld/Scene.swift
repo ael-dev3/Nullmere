@@ -23,6 +23,9 @@ public struct SceneFrame: Equatable, Sendable {
     /// `fixedVersion` moves.
     public var fixed: [ModelBatch]
     public var fixedVersion: Int
+    /// Where `fixed`'s pieces lie, region by region, so the frame draws
+    /// only the regions its view reaches; without it, all of them.
+    public var fixedRegions: Regions?
     /// The motes the world throws up this frame, drawn last.
     public var motes: [Mote]
     /// The world's own lights this frame: fires burning, blows landing.
