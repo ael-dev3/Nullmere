@@ -68,8 +68,8 @@ extension GameState {
         view.reputed = strengths()
         view.reputedMight = houses.map { might(of: $0.id) }
         // Its own commanders, and of others only those at the head of a
-        // company in sight.
-        let leading = Set(view.units.compactMap(\.leader))
+        // company in sight, or standing in the Ring, where every line is seen.
+        let leading = Set(view.units.compactMap(\.leader)).union(ring?.entries.flatMap(\.line) ?? [])
         view.commanders = commanders?.filter { $0.owner == house || leading.contains($0.id) }
         // Its own gear; of others, what those commanders wear.
         view.armoury = armoury?.filter { $0.owner == house || $0.wornBy.map(leading.contains) == true }
@@ -245,6 +245,12 @@ extension GameState {
                 return hold(holdID)?.owner == house
             case .seatRaisedAnew(_, let owner, let from, let to):
                 return owner == house || visible(from) || visible(to)
+            case .ringLineStood(let owner, _):
+                return owner == house
+            case .bout(let bout):
+                return bout.challenger == house || bout.defender == house
+            case .ringHonoured:
+                return true
             case .dreamt(let dream):
                 return dream.house == house
             case .carriedAshore(_, let owner, _, let to):

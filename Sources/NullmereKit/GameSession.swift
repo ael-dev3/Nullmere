@@ -1359,6 +1359,8 @@ public final class GameSession {
         case .stake: return .coin
         case .drawVeil: return .stand
         case .raiseSeat: return .rise
+        case .standInTheRing: return .muster
+        case .challenge: return .clash
         case .pursueAllianceStudy: return .lore
         case .giveToAlliance: return .coin
         case .raiseAllianceHall, .raiseStorehouse, .raiseYard: return .rise
@@ -1479,6 +1481,8 @@ public final class GameSession {
         case .titleBestowed(let title, let house, _) where house == player: return title.isBoon ? .honour : .dread
         case .prophecyJudged(_, _, let paid) where paid.contains(where: { $0.house == player }): return .triumph
         case .veilLifted(let house, _) where house == player: return .horn
+        case .bout(let bout) where bout.challenger == player || bout.defender == player: return bout.winner == player ? .triumph : .refusal
+        case .ringHonoured(let houses) where houses.contains(player): return .honour
         case .edictBroken(_, _, _, let against, _) where against == player: return .horn
         case .fieldJoined(_, _, let first, let second) where first == player || second == player: return .horn
         case .fieldEnded(let field):

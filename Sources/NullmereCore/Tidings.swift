@@ -281,6 +281,23 @@ extension GameState {
             let name = hold(holdID)?.name ?? "its seat"
             if house == viewer { return Tidings("Your seat, \(name), is raised anew \(placeName(of: to)), its works, walls and ward as they stood.", .good) }
             return Tidings("\(houses[house].title) raises its seat, \(name), anew \(placeName(of: to)).", .neutral)
+        case .ringLineStood(let house, let line):
+            guard house == viewer else { return nil }
+            let names = line.compactMap { commander($0)?.name }
+            return Tidings("You stand \(names.isEmpty ? "your line" : names.joined(separator: ", ")) in the Ring.", .neutral)
+        case .bout(let bout):
+            let other = bout.challenger == viewer ? bout.defender : bout.challenger
+            guard bout.challenger == viewer || bout.defender == viewer, houses.indices.contains(other) else { return nil }
+            let weighed = "\(bout.challenger == viewer ? bout.challengerWeight : bout.defenderWeight) against \(bout.challenger == viewer ? bout.defenderWeight : bout.challengerWeight)"
+            let how = bout.challenger == viewer ? "Your line challenges that of \(houses[other].title)" : "The line of \(houses[other].title) challenges yours"
+            if bout.winner == viewer { return Tidings("\(how) in the Ring and wins, \(weighed): your standing rises by \(bout.change).", .good) }
+            return Tidings("\(how) in the Ring and loses, \(weighed): your standing falls by \(bout.change).", .bad)
+        case .ringHonoured(let honoured):
+            if let place = honoured.firstIndex(of: viewer) {
+                return Tidings("Your House stands \(ordinal(place + 1)) in the Ring at the full moon: \(GameState.ringHonours[place]) moonsalt to your stores.", .good)
+            }
+            let names = honoured.filter(houses.indices.contains).map { houses[$0].title }
+            return Tidings("The Ring honours \(names.joined(separator: ", ")) at the full moon.", .neutral)
         case .crestTaken(let house, let crest):
             guard house == viewer else { return Tidings("\(houses[house].title) takes for its crest \(crest.blazon).", .neutral) }
             return Tidings("Your House takes for its crest \(crest.blazon), and bears it until the age ends.", .good)

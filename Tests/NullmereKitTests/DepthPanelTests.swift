@@ -830,6 +830,76 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(GameSession.cues(for: .raiseSeat(at: ground), events: [], in: session.state, player: me), [.rise])
     }
 
+    /// The Ring at the foot of the Commanders: folded until asked for; a
+    /// line chosen and stood; another keeper's line challenged, the bout
+    /// shown and heard; and the full moon's honours heard by those honoured.
+    func testTheRingIsEnteredFromTheCommanders() throws {
+        var state = world("the ring entered")
+        let me = state.player
+        let other = try XCTUnwrap(state.livingHouses.map(\.id).first { $0 != me })
+        state.houses[other].isPlayer = true
+        let (session, link) = session(state)
+        let mine = try XCTUnwrap(session.state.commanders(of: me).first)
+        XCTAssertTrue(RingSection.standingLine(session.state, player: me).hasPrefix("Your House stands no line in the Ring."))
+        draw(CommandersPanel(session: session), width: 360, height: 2600)
+        XCTAssertFalse(shown.contains("Stand this line"), "Folded until asked for")
+        XCTAssertTrue(PressableButtons.press("Enter the Ring…"), "Among \(shown)")
+
+        // A commander chosen, then the line stood; no rival stands one yet.
+        draw(RingSection(session: session, open: true), width: 360, height: 600)
+        XCTAssertTrue(PressableButtons.press("\(mine.name) · \(session.state.ringWeight(of: mine))"), "Among \(shown)")
+        draw(RingSection(session: session, open: true, picked: [mine.id]), width: 360, height: 600)
+        XCTAssertTrue(PressableButtons.press("Stand this line"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .standInTheRing([mine.id]))
+        XCTAssertEqual(session.state.ringLine(of: me), [mine.id])
+        draw(RingSection(session: session, open: true), width: 360, height: 600)
+        XCTAssertFalse(PressableButtons.press("This line stands"), "Stood already")
+        XCTAssertTrue(PressableButtons.press("\(mine.name) · \(session.state.ringWeight(of: mine))"), "Taken from the line")
+
+        // Another keeper's line, seen in the Ring and challenged.
+        _ = try state.perform(.standInTheRing([mine.id]), as: me)
+        let theirs = try XCTUnwrap(state.commanders(of: other).first)
+        _ = try state.perform(.standInTheRing([theirs.id]), as: other)
+        link.onEvent?(.changed(state.view(for: me)))
+        XCTAssertNotNil(session.state.commander(theirs.id), "Every line in the Ring is seen")
+        let challenge = "Challenge \(session.state.houses[other].title)"
+        draw(RingSection(session: session, open: true), width: 360, height: 600)
+        XCTAssertTrue(PressableButtons.press(challenge), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .challenge(house: other))
+        let bout = try XCTUnwrap(session.state.ring?.bouts.last)
+        XCTAssertTrue(RingSection.standingLine(session.state, player: me).hasSuffix("2 challenges left this watch."))
+        XCTAssertTrue(RingSection.standingLine(session.state, player: me).contains(" of 2."))
+        XCTAssertTrue(RingSection.boutLine(bout, in: session.state, player: me).hasPrefix("Watch \(bout.watch): You challenged \(session.state.houses[other].title), and"))
+        XCTAssertTrue(RingSection.boutLine(bout, in: session.state, player: other).hasPrefix("Watch \(bout.watch): \(session.state.houses[me].title) challenged you"))
+        draw(RingSection(session: session), width: 360, height: 400)
+
+        // The last of the watch's challenges spent, the rest say why.
+        var spent = session.state
+        _ = try spent.perform(.challenge(house: other), as: me)
+        _ = try spent.perform(.challenge(house: other), as: me)
+        link.onEvent?(.changed(spent))
+        XCTAssertTrue(RingSection.standingLine(session.state, player: me).hasSuffix("0 challenges left this watch."))
+        PressableButtons.forget(challenge)
+        draw(RingSection(session: session, open: true), width: 360, height: 600)
+        XCTAssertFalse(PressableButtons.press(challenge), "Spent")
+        var once = spent
+        once.ring?.bouts.removeLast()
+        XCTAssertTrue(RingSection.standingLine(once, player: me).hasSuffix("1 challenge left this watch."))
+
+        // Heard: the orders, the bout by both Houses, the honours by those honoured.
+        XCTAssertEqual(GameSession.cues(for: .standInTheRing([mine.id]), events: [], in: session.state, player: me), [.muster])
+        XCTAssertEqual(GameSession.cues(for: .challenge(house: other), events: [], in: session.state, player: me), [.clash])
+        XCTAssertEqual(GameSession.cue(forDepth: .bout(bout), in: session.state, player: bout.winner), .triumph)
+        XCTAssertEqual(GameSession.cue(forDepth: .bout(bout), in: session.state, player: bout.loser), .refusal)
+        let steward = try XCTUnwrap(session.state.livingHouses.map(\.id).first { $0 != me && $0 != other })
+        XCTAssertNil(GameSession.cue(forDepth: .bout(bout), in: session.state, player: steward))
+        XCTAssertEqual(GameSession.cue(forDepth: .ringHonoured(houses: [other, me]), in: session.state, player: me), .honour)
+        XCTAssertNil(GameSession.cue(forDepth: .ringHonoured(houses: [other]), in: session.state, player: me))
+        XCTAssertNotNil(Narration.line(for: .bout(bout), in: session.state, viewer: me))
+        XCTAssertNotNil(Narration.line(for: .ringHonoured(houses: [other]), in: session.state, viewer: me))
+        XCTAssertNil(Narration.line(for: .ringLineStood(house: other, line: [theirs.id]), in: session.state, viewer: me))
+    }
+
     /// The Frontier on the Realm screen: how its kingdoms stand, the way
     /// across with the House's levy, and, there, the way home.
     func testTheFrontierIsCrossedAndLeftFromTheRealm() throws {

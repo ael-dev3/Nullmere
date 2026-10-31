@@ -93,6 +93,7 @@ extension GameState {
         events += tellDeeds()
         events += fulfilCharges()
         events += judgeProphecies()
+        events += turnTheRing()
         events += checkForEnd()
         takeSnapshot()
         return events

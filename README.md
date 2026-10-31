@@ -480,6 +480,21 @@ as the realm will, and takes the realm's word as final.
   its ward is short of whole or a foe at war stands within three tiles of
   it; the ground must be open, three tiles from every other hold and clear
   of holy sites and alliance ground. Stewards move no seat.
+- **The Ring.** Rise of Kingdoms' arena of commanders: at the foot of the
+  Commanders screen a keeper stands a line of up to three of their
+  commanders, each weighing 40, ten for each of its levels, four for each
+  talent rank it has learned and six for each grade of the gear it wears,
+  and challenges another keeper's line three times a watch. Each line is
+  weighed with a draw of the realm's chance a fifth either way; the
+  heavier wins, a tie the defender's, and takes 16 of the loser's
+  standing, a point more for every 25 the loser stood above the winner
+  and a point less for every 25 below (4 at the least, 30 at most).
+  Every standing begins at 1000;
+  at each full moon the three standing highest take 30, 20 and 10
+  moonsalt and every standing drifts halfway back to 1000. Every line in
+  the Ring is seen by every keeper, with what its commanders wear, and the
+  realm keeps its last 24 bouts. No company fights and no commander is
+  hurt; stewards stand no line.
 - **The Augury.** A keeper foretells a turn of the realm's course from
   the Realm screen, twelve watches ahead (a House fallen, a hold taken,
   two Houses at war, or a Moonspire risen to its next stage), staking ten

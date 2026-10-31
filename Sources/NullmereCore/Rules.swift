@@ -119,6 +119,10 @@ extension GameState {
             return try drawVeil(as: house)
         case let .raiseSeat(hex):
             return try raiseSeatAnew(at: hex, as: house)
+        case let .standInTheRing(line):
+            return try standInTheRing(line, as: house)
+        case let .challenge(other):
+            return try challenge(other, as: house)
         case let .pursueAllianceStudy(study):
             return try pursue(study, by: house)
         case let .giveToAlliance(stock):

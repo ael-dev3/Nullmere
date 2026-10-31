@@ -133,6 +133,10 @@ public enum Command: Codable, Equatable, Sendable {
     case drawVeil
     /// A keeper raises their House's seat anew on open ground of its own land.
     case raiseSeat(at: Hex)
+    /// A keeper stands a line of their House's commanders in the Ring.
+    case standInTheRing([Int])
+    /// A keeper's line in the Ring challenges another House's.
+    case challenge(house: Int)
     /// An alliance's leader sets it to pursue a study together.
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
@@ -373,6 +377,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case occupiedGround
     /// A seat beset: its ward short of whole, or a foe at war near it.
     case seatBeset
+    /// A challenge in the Ring by a House with no line standing in it.
+    case noLineStanding
+    /// A challenge in the Ring past a House's three of the watch.
+    case challengesSpent
     /// An alliance study learned to its last grade.
     case allianceStudyMastered
     /// The study the alliance pursues already.
@@ -556,6 +564,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .seatRaisedLately(let until): return "Your seat was raised anew lately; it may be again at watch \(until)."
         case .occupiedGround: return "Another House's company stands there."
         case .seatBeset: return "Your seat is beset: not while its ward is short of whole, or a foe at war stands within three tiles of it."
+        case .noLineStanding: return "Your House stands no line in the Ring: choose up to three of your commanders for it first."
+        case .challengesSpent: return "Your House has made its three challenges in the Ring this watch; it may challenge again next watch."
         case .allianceStudyMastered: return "Your alliance has learned that study to its last grade."
         case .alreadyPursued: return "Your alliance pursues that study already."
         case .noAllianceStudy: return "Your alliance pursues no study: its leader chooses one in the Alliance screen."
@@ -692,6 +702,13 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case veilLifted(house: Int, struck: Bool)
     /// A keeper raises their House's seat anew elsewhere on its land.
     case seatRaisedAnew(hold: Int, house: Int, from: Hex, to: Hex)
+    /// A keeper stands a line of their commanders in the Ring.
+    case ringLineStood(house: Int, line: [Int])
+    /// A bout in the Ring: one House's line challenges another's.
+    case bout(Ring.Bout)
+    /// At the moon's turn the Ring honours the three standing highest,
+    /// the highest first.
+    case ringHonoured(houses: [Int])
     /// An alliance's leader sets it to pursue a study.
     case allianceStudyChosen(alliance: Int, study: AllianceStudy)
     /// A House gives stores toward a grade of its alliance's study.

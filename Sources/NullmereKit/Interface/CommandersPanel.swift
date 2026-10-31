@@ -36,6 +36,10 @@ struct CommandersPanel: View {
                     ArmouryView(session: session, commanders: board.lines.map(\.commander))
                     Rule(opacity: 0.18)
                     ForgeView(session: session)
+                    if session.playerHouse.isPlayer, !board.lines.isEmpty {
+                        Rule(opacity: 0.18)
+                        RingSection(session: session)
+                    }
                 }
             }
             .scrollEdgeFade()
