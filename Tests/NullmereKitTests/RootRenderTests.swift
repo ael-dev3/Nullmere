@@ -197,6 +197,14 @@ final class RootRenderTests: XCTestCase {
         XCTAssertTrue(launcher.displaySettings.music, "Turned on in the realm, on in the launcher")
     }
 
+    /// The realm's Settings stand as tall as the window leaves room for,
+    /// the rest scrolling, so Done is in reach on the smallest screen.
+    func testTheSettingsFitTheWindow() {
+        XCTAssertEqual(GameRootView.settingsHeight(in: 674), 564, "A small screen's window: the settings scroll")
+        XCTAssertEqual(GameRootView.settingsHeight(in: 1400), 800, "No taller than they are")
+        XCTAssertEqual(GameRootView.settingsHeight(in: 300), 280, "Never squeezed to nothing")
+    }
+
     func testEveryKindOfNewsCanBeTold() {
         // A long age among stewards brings every kind of event the rules
         // make; each is told from every House's side, or kept from it.

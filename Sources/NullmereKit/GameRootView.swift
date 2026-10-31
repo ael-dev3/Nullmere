@@ -9,9 +9,17 @@ public struct GameRootView: View {
     let app: GameApp
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
+    /// How tall the window is, for Settings to fit in it.
+    @State private var height: CGFloat = 768
 
     public init(app: GameApp) {
         self.app = app
+    }
+
+    /// How tall the settings may stand in a window `window` tall: what of
+    /// them doesn't fit scrolls, so Done is always in reach.
+    static func settingsHeight(in window: CGFloat) -> CGFloat {
+        min(800, max(280, window - 110))
     }
 
     public var body: some View {
@@ -31,9 +39,17 @@ public struct GameRootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.8), value: phaseKey)
+        .background(GeometryReader { proxy in
+            Color.clear
+                .onAppear { height = proxy.size.height }
+                .onChange(of: proxy.size.height) { _, tall in height = tall }
+        })
         .sheet(isPresented: Binding(get: { app.showsSettings }, set: { app.showsSettings = $0 })) {
             VStack(spacing: 0) {
-                GameSettingsView(app: app)
+                ScrollView {
+                    GameSettingsView(app: app)
+                }
+                .frame(height: GameRootView.settingsHeight(in: height))
                 HStack {
                     Spacer()
                     QuietButton(title: "Done", size: 10, prominent: true) { app.showsSettings = false }
