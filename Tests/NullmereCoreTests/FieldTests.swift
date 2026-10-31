@@ -120,6 +120,45 @@ final class FieldTests: XCTestCase {
         XCTAssertEqual(state.problems(), [])
     }
 
+    /// Two Houses' armies massed and drilled, met whole on one field: every
+    /// company that strikes or is struck there is in the one battle, told
+    /// as one, in hundreds of thousands of troops.
+    func testArmiesMetWholeFightABattleOfHundredsOfThousands() throws {
+        var (state, me, foe, ground) = try lake("hundreds of thousands")
+        let east = Hex.directions[0], along = Hex.directions[5]
+        func drilled(_ kind: UnitKind, of house: Int, at hex: Hex) -> Int {
+            let id = state.put(kind, tier: 5, of: house, at: hex)
+            let index = state.unitIndex(id)!
+            state.units[index].drilled = 25_000 - state.firstMuster(of: state.units[index])
+            return id
+        }
+        // Five Spears a side face each other along the front, and Bows stand
+        // behind each line, within reach of the foe's Spears.
+        var mine: [(Int, Hex)] = [], theirs: [(Int, Hex)] = []
+        // The first blow at the middle of the front, its heart.
+        for step in [0, -1, 1, -2, 2] {
+            let front = ground + along * step
+            mine.append((drilled(.spear, of: me, at: front), front + east))
+            theirs.append((drilled(.spear, of: foe, at: front + east), front))
+        }
+        for step in [0, -1, 1] {
+            let front = ground + along * step
+            mine.append((drilled(.bow, of: me, at: front - east), front + east))
+            theirs.append((drilled(.bow, of: foe, at: front + east * 2), front))
+        }
+        let everyone = (mine + theirs).reduce(0) { $0 + state.troops(of: state.unit($1.0)!) }
+        XCTAssertEqual(everyone, 16 * 25_000)
+        for (unit, target) in mine { _ = try state.perform(.attack(unit: unit, target: target), as: me) }
+        for (unit, target) in theirs { _ = try state.perform(.attack(unit: unit, target: target), as: foe) }
+        XCTAssertEqual(state.fieldsOfBattle.count, 1, "One field of battle, not a fight for each pair")
+        let events = fightItOut(&state)
+        let field = try XCTUnwrap(ended(events).first)
+        XCTAssertEqual(field.fighters.count, 16)
+        XCTAssertEqual(field.troops(of: 0) + field.troops(of: 1), everyone, "Every troop of both armies in the one battle")
+        let told = try XCTUnwrap(state.chronicle.last { $0.kind == .battle })
+        XCTAssertTrue(told.text.contains("400,000 troops in all"), told.text)
+    }
+
     func testAlliesJoinTheSideTheyStrikeForAndHousesAtWarWithBothCannot() throws {
         var (state, me, foe, ground) = try lake("allied field")
         let ally = (me + 2) % 4, other = (me + 3) % 4
