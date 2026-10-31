@@ -97,7 +97,8 @@ extension GameState {
         case let .heal(holdID):
             return try heal(at: holdID, as: house)
         case let .scout(unitID, holdID):
-            return try scout(holdID, with: unitID, as: house)
+            // A House that scouts another's hold lifts its own veil.
+            return try scout(holdID, with: unitID, as: house) + liftVeil(of: house)
         case let .raiseStandard(hex):
             return try raiseStandard(at: hex, by: house)
         case let .useItem(kind, holdID):
@@ -114,6 +115,8 @@ extension GameState {
             return try prophesy(claim, until: until, moonsalt: moonsalt, as: house)
         case let .stake(id, backs, moonsalt):
             return try stake(on: id, backs: backs, moonsalt: moonsalt, as: house)
+        case .drawVeil:
+            return try drawVeil(as: house)
         case let .pursueAllianceStudy(study):
             return try pursue(study, by: house)
         case let .giveToAlliance(stock):
@@ -150,7 +153,9 @@ extension GameState {
         case let .callRally(holdID, targetID, watches):
             return try callRally(from: holdID, against: targetID, gathering: watches, by: house)
         case let .joinRally(rallyID, unitID):
-            return try joinRally(rallyID, with: unitID, as: house)
+            let events = try joinRally(rallyID, with: unitID, as: house)
+            if let rally = rally(rallyID), case .hold? = target(of: rally) { return liftVeil(of: house) + events }
+            return events
         case let .reinforce(unitID, holdID):
             return try reinforce(holdID, with: unitID, as: house)
         }
@@ -335,13 +340,13 @@ extension GameState {
         if unit(at: target) == nil, let standard = standard(at: target), standard.raisedBy != house {
             guard isAtWar(house, standard.raisedBy) else { throw .notAtWar(standard.raisedBy) }
             guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
-            return strike(standard: standard.id, with: unitID)
+            return liftVeil(of: house) + strike(standard: standard.id, with: unitID)
         }
         // An alliance's hall with no company keeping it.
         if unit(at: target) == nil, let hall = hall(at: target), !isOfHall(house, hall) {
             guard isFoe(house, of: hall) else { throw .notAtWar(alliance(hall.alliance)?.leader ?? hall.raisedBy) }
             guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
-            return strike(hall: hall.id, with: unitID)
+            return liftVeil(of: house) + strike(hall: hall.id, with: unitID)
         }
         // An alliance's storehouse with no company keeping it.
         if unit(at: target) == nil, let storehouse = storehouse(at: target), !isOf(storehouse.alliance, house) {
@@ -349,7 +354,7 @@ extension GameState {
                 throw .notAtWar(alliance(storehouse.alliance)?.leader ?? storehouse.raisedBy)
             }
             guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
-            return strike(storehouse: storehouse.id, with: unitID)
+            return liftVeil(of: house) + strike(storehouse: storehouse.id, with: unitID)
         }
         // The wilds are every House's foe: no war is needed to strike them.
         if let wild = wild(at: target) {
@@ -364,7 +369,9 @@ extension GameState {
         guard let foe = foe(at: target, for: house) else { throw .nothingToAttack }
         guard isAtWar(house, foe.owner) else { throw .notAtWar(foe.owner) }
         guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
-        return assault(with: unitID, at: target)
+        // A hold under its House's veil, and whoever keeps it, may not be struck.
+        if let held = foe.hold.flatMap({ hold($0) }), let refusal = veiledRefusal(of: held.owner) { throw refusal }
+        return liftVeil(of: house) + assault(with: unitID, at: target)
     }
 
     /// A company strikes the foe at a hex, its moves spent and whatever it

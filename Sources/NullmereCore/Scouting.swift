@@ -73,6 +73,7 @@ extension GameState {
         guard unit.kind == .lantern else { throw .notAScout }
         guard let hold = hold(holdID) else { throw .unknownHold }
         guard hold.owner != house else { throw .ownHold }
+        if let refusal = veiledRefusal(of: hold.owner) { throw refusal }
         guard unit.position.distance(to: hold.position) <= GameState.scoutReach else { throw .outOfReach }
         guard unit.movesLeft > 0 else { throw .noMovesLeft }
         units[index].movesLeft = 0

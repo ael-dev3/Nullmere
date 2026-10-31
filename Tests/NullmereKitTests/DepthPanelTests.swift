@@ -771,6 +771,45 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertNil(GameSession.cue(forDepth: paid, in: session.state, player: other))
     }
 
+    /// The veil of the Still from the seat's record: drawn for moonsalt,
+    /// shown while it lies on the keeper's holds and on another's, named
+    /// under the pointer, and resting once lifted.
+    func testTheVeilIsDrawnFromTheSeat() throws {
+        var state = world("a veil drawn")
+        let me = state.player
+        state.houses[me].stock.moonsalt = 60
+        let other = try XCTUnwrap(state.livingHouses.map(\.id).first { $0 != me })
+        state.houses[other].isPlayer = true
+        state.houses[other].stock.moonsalt = 60
+        _ = try state.perform(.drawVeil, as: other)
+        let theirs = try XCTUnwrap(state.seat(of: other))
+        state.reveal(around: theirs.position, range: 1, for: me)
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let (session, link) = session(state)
+        XCTAssertTrue(VeilLine.words(session.state, house: me).hasPrefix("The veil of the Still, for 30 moonsalt"))
+        session.selection = .hold(seat.id)
+        draw(SelectionPanel(session: session), width: 330, height: 1200)
+        XCTAssertTrue(PressableButtons.press("Draw the veil"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .drawVeil)
+        XCTAssertTrue(session.state.isVeiled(me))
+        XCTAssertTrue(VeilLine.words(session.state, house: me).hasPrefix("Veiled until watch \(session.state.watch + GameState.veilLasts)"))
+        draw(SelectionPanel(session: session), width: 330, height: 1200)
+
+        // Another's, on its hold's record and under the pointer.
+        session.selection = .hold(theirs.id)
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        let line = try XCTUnwrap(HoverInfo.line(for: theirs.position, in: session.state, explored: true, territory: session.state.territory()))
+        XCTAssertTrue(line.contains("veiled until watch"), line)
+
+        // Lifted, it rests.
+        var lifted = session.state
+        _ = lifted.liftVeil(of: me)
+        XCTAssertTrue(VeilLine.words(lifted, house: me).hasPrefix("The mist gathers again"))
+        XCTAssertEqual(GameSession.cues(for: .drawVeil, events: [], in: session.state, player: me), [.stand])
+        XCTAssertEqual(GameSession.cue(forDepth: .veilLifted(house: me, struck: true), in: session.state, player: me), .horn)
+        XCTAssertNil(GameSession.cue(forDepth: .veilLifted(house: other, struck: false), in: session.state, player: me))
+    }
+
     /// The Frontier on the Realm screen: how its kingdoms stand, the way
     /// across with the House's levy, and, there, the way home.
     func testTheFrontierIsCrossedAndLeftFromTheRealm() throws {

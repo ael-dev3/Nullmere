@@ -464,6 +464,15 @@ as the realm will, and takes the realm's word as final.
   the Houses' list says what each House bears. Every title lapses when the
   Spire passes from the House that named them, and a steward holding it
   names none, so a world of stewards goes as it always did.
+- **The veil of the Still.** Rise of Kingdoms' peace shield: from their
+  seat's record a keeper draws the lake's mist over their House's holds
+  for 30 moonsalt, and for eight watches none may strike them, call a
+  rally on them or scout them (a rally already called on one turns back),
+  though the House's companies abroad may still be met. It lifts the
+  moment the House strikes another House, calls or joins a rally on a
+  hold, or scouts one, and may be drawn again ten watches after it lifts.
+  The holds' records and the pointer say while it lies; stewards draw
+  none, and let veiled holds be.
 - **The Augury.** A keeper foretells a turn of the realm's course from
   the Realm screen, twelve watches ahead (a House fallen, a hold taken,
   two Houses at war, or a Moonspire risen to its next stage), staking ten

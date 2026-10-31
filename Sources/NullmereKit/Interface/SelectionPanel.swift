@@ -136,6 +136,10 @@ struct OwnHoldDetails: View {
                 }
                 .accessibilityElement(children: .combine)
                 Meter(fraction: Double(hold.ward) / Double(max(hold.maximumWard, 1)), label: "Ward")
+                // The House's veil, on its seat's record, or lying, on every hold's.
+                if session.playerHouse.isPlayer, hold.isSeat || state.isVeiled(session.player) {
+                    VeilLine(session: session)
+                }
                 HStack {
                     Caps("Yield each watch", size: 8.5).foregroundStyle(Palette.text(0.5))
                     Spacer()
@@ -490,6 +494,12 @@ struct ForeignHoldPanel: View {
                 } else {
                     Text(verbatim: "Out of sight").font(.nm(10.5)).foregroundStyle(Palette.text(0.45))
                 }
+            }
+            if session.state.isVeiled(owner.id), let veil = session.state.veil(of: owner.id) {
+                Text(verbatim: "Veiled until watch \(veil.until): none may strike, rally on or scout its holds.")
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.glowWords)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if hold.level(.moonspire) > 0 {
                 Text(verbatim: "Its Moonspire rises: stage \(hold.level(.moonspire)) of \(BuildingKind.moonspire.maxLevel).")
@@ -1233,5 +1243,41 @@ extension SelectionPanel {
         guard site.isYard else { return left + " Choose a company of war and right-click here to send it." }
         return left + " Only its alliance's companies work it, \(Yard.gathering)% faster than anywhere else, and its coffers take a "
             + "tithe besides. Choose a company of war of the alliance and right-click here to send it."
+    }
+}
+
+/// A keeper's veil of the Still, on the seat's record: lying, and until
+/// when; resting, and when it may be drawn again; or to draw, for moonsalt.
+struct VeilLine: View {
+    let session: GameSession
+
+    /// How the House's veil stands, in a line.
+    static func words(_ state: GameState, house: Int) -> String {
+        if state.isVeiled(house), let veil = state.veil(of: house) {
+            return "Veiled until watch \(veil.until): none may strike, rally on or scout your holds, unless you strike first."
+        }
+        if let veil = state.veil(of: house), state.watch < veil.until + GameState.veilRest {
+            return "The mist gathers again: the veil may be drawn anew at watch \(veil.until + GameState.veilRest)."
+        }
+        return "The veil of the Still, for \(GameState.veilCost): for \(GameState.veilLasts) watches none may strike your holds, unless you strike first."
+    }
+
+    var body: some View {
+        let state = session.state, me = session.player
+        let refusal = state.veilRefusal(as: me)
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(verbatim: VeilLine.words(state, house: me))
+                .font(.nm(10))
+                .foregroundStyle(state.isVeiled(me) ? Palette.glowWords : Palette.text(0.55))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            if !state.isVeiled(me) {
+                QuietButton(title: "Draw the veil", size: 8.5, enabled: refusal == nil, name: "Draw the veil of the Still over your holds",
+                            why: refusal?.description) {
+                    session.perform(.drawVeil)
+                }
+            }
+        }
+        .padding(.top, 2)
     }
 }

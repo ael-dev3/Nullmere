@@ -105,7 +105,7 @@ extension GameState {
     /// a lair, any of its side's; on a hold, those at war with its House.
     func mayStrike(_ house: Int, _ target: RallyTarget) -> Bool {
         switch target {
-        case .hold(let hold): return isAtWar(house, hold.owner)
+        case .hold(let hold): return isAtWar(house, hold.owner) && !isVeiled(hold.owner)
         case .lair: return true
         }
     }
@@ -121,13 +121,15 @@ extension GameState {
         } else {
             guard let target = hold(targetID), isExplored(target.position, by: house) else { throw .unknownHold }
             guard isAtWar(house, target.owner) else { throw .notAtWar(target.owner) }
+            if let refusal = veiledRefusal(of: target.owner) { throw refusal }
         }
         guard muster.level(.musterHall) >= 1 else { throw .needsMusterHall(1) }
         guard Rally.gatherings.contains(watches) else { throw .rallyWatches }
         guard !ralliesStanding.contains(where: { $0.caller == house }) else { throw .rallyCalled }
         let rally = Rally(id: takeID(), caller: house, muster: holdID, target: targetID, called: watch, setsOut: watch + watches)
         rallies = ralliesStanding + [rally]
-        return [.rallyCalled(rally: rally.id, caller: house, target: targetID)]
+        let lifted = hold(targetID) != nil ? liftVeil(of: house) : []
+        return lifted + [.rallyCalled(rally: rally.id, caller: house, target: targetID)]
     }
 
     mutating func joinRally(_ rallyID: Int, with unitID: Int, as house: Int) throws(RuleError) -> [GameEvent] {

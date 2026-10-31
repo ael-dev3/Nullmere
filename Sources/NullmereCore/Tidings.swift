@@ -270,6 +270,13 @@ extension GameState {
             if let share = paid.first(where: { $0.house == viewer }) { return Tidings("\(judged): your House takes \(share.moonsalt) moonsalt.", .good) }
             if prophecy.stakes.contains(where: { $0.house == viewer }) { return Tidings("\(judged): your stake is lost.", .bad) }
             return Tidings("\(judged).", .neutral)
+        case .veilDrawn(let house, let until):
+            if house == viewer { return Tidings("You draw the veil of the Still over your holds until watch \(until): none may strike, rally on or scout them while it lies, and it lifts if you strike another.", .good) }
+            return Tidings("\(houses[house].title) draws the veil of the Still over its holds until watch \(until).", .neutral)
+        case .veilLifted(let house, let struck):
+            let why = struck ? "your House struck another" : "its watches are out"
+            if house == viewer { return Tidings("Your veil lifts: \(why). Your holds may be struck again.", .bad) }
+            return Tidings("The veil over the holds of \(houses[house].title) lifts.", .neutral)
         case .crestTaken(let house, let crest):
             guard house == viewer else { return Tidings("\(houses[house].title) takes for its crest \(crest.blazon).", .neutral) }
             return Tidings("Your House takes for its crest \(crest.blazon), and bears it until the age ends.", .good)

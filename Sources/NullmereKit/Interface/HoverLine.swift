@@ -26,6 +26,9 @@ enum HoverInfo {
         }
         if let hold = state.hold(at: hex) {
             parts.append(hold.name)
+            if state.isVeiled(hold.owner), let veil = state.veil(of: hold.owner) {
+                parts.append("veiled until watch \(veil.until)")
+            }
         }
         if let wild = state.wild(at: hex) {
             parts.append(HoverInfo.named(wild) + ", of the wilds")

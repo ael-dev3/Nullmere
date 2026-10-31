@@ -78,6 +78,7 @@ extension GameState {
         raiseShrines()
         events += holdShrines()
         events += keepTitles()
+        events += keepVeils()
         events += keepStandards()
         events += keepHalls()
         events += keepAllianceStores()
