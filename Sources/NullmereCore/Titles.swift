@@ -100,6 +100,10 @@ extension GameState {
 
     /// The House that may name the realm's titles now: a keeper's House
     /// that holds the broken Spire.
+    /// Whether the last age's Moonspire stands broken in this one, whether
+    /// or not a keeper's House has found it.
+    public var brokenSpireStands: Bool { brokenSpire != nil }
+
     public var titleGiver: Int? {
         guard let spire = shrines?.first(where: { $0.kind == .brokenSpire }), let holder = spire.holder,
               houses.indices.contains(holder), houses[holder].isPlayer, !houses[holder].isEliminated else { return nil }

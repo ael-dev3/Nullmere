@@ -674,6 +674,8 @@ final class DepthPanelTests: XCTestCase {
             state.map[hex]?.terrain.isPassable == true && state.map[hex]?.terrain.isWater == false && state.hold(at: hex) == nil
         })
         state.shrines = (state.shrines ?? []) + [Shrine(id: 99, kind: .brokenSpire, position: ground, holder: me, since: state.watch)]
+        // Held by a company standing on it, its ground is known.
+        state.reveal(around: ground, range: 1, for: me)
         let (session, link) = session(state)
         XCTAssertEqual(session.state.titleGiver, me)
         XCTAssertEqual(TitlesSection.giverLine(session.state, player: me), "Your House holds the broken Spire: you name the realm's titles.")
@@ -710,6 +712,10 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(TitlesSection.giverLine(stewards, player: me).hasPrefix("The broken Spire is held by none."))
         stewards.shrines!.remove(at: spire)
         XCTAssertEqual(TitlesSection.giverLine(stewards, player: me), "No broken Spire stands this age, and no titles are named.")
+        // One standing where the keeper's House has not been is not denied.
+        stewards.brokenSpire = BrokenSpire(position: ground, house: "House Old", age: 1, stages: 3)
+        XCTAssertTrue(stewards.brokenSpireStands)
+        XCTAssertTrue(TitlesSection.giverLine(stewards, player: me).hasPrefix("The broken Spire stands where your House has not yet been."))
     }
 
     /// The Augury on the Realm screen: another keeper's prophecy stood

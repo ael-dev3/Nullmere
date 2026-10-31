@@ -110,5 +110,9 @@ final class TitleTests: XCTestCase {
         XCTAssertNil(state.bestowals)
         XCTAssertEqual(Title.sageOfTheStill.effect, "every study done 10% sooner")
         XCTAssertEqual(Title.swordOfTheLake.title, "Sword of the Lake")
+        // A first age raises no broken Spire; an age after one with a Moonspire does.
+        XCTAssertFalse(state.brokenSpireStands)
+        state.brokenSpire = BrokenSpire(position: ground, house: "House Old", age: 1, stages: 3)
+        XCTAssertTrue(state.brokenSpireStands)
     }
 }
