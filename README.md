@@ -1026,6 +1026,15 @@ realm; keepers are told in plain words, never a status code.
   against 10,000 and 18,000. The ages ran longer, 136 watches at the
   median against 107; the Moonspire decided 14 of them, against 10 before,
   and one of the 32 had no end by the 240th watch.
+- **Crests.** Every House bears a crest: a shield of one of seven
+  tinctures (silver, gold, black, blue, red, green, purple) bearing one of
+  ten charges (a moon, a tower, a heron, a star, an oar, a key, a wave, a
+  flame, an antler, a bell) in another, drawn in the interface. The lake
+  gives each House its own, the same for the same realm and no two of
+  seventy side by side alike; a keeper takes their own once an age from
+  the Realm screen, choosing its field, charge and tincture on a shield
+  drawn as they choose, and every House hears of it and the chronicle
+  keeps it. Each House's line among the Houses bears its crest.
 - **Heritages.** Every House comes of one of the lake's six peoples,
   dealt round the lake as an age begins, from a seat the seed chooses, so
   each has its seats: the Saltborn (half again the moonsalt from their

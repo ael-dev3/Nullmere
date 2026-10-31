@@ -1343,7 +1343,7 @@ public final class GameSession {
         case .scout: return .ride
         case .raiseStandard: return .banner
         case .useItem(let kind, _): return cue(using: kind)
-        case .takeHeritage: return .banner
+        case .takeHeritage, .takeCrest: return .banner
         case .pursueAllianceStudy: return .lore
         case .giveToAlliance: return .coin
         case .raiseAllianceHall, .raiseStorehouse, .raiseYard: return .rise

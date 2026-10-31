@@ -531,6 +531,8 @@ struct HouseRow: View {
                 RoundedRectangle(cornerRadius: 1)
                     .fill(Palette.house(house))
                     .frame(width: 3, height: 12)
+                CrestView(crest: session.state.crest(of: house.id), size: 12)
+                    .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 2 }
                 Caps(house.title, size: 10.5, weight: .medium)
                     .foregroundStyle(house.isEliminated ? Palette.text(0.35) : Palette.ink)
                 Spacer()

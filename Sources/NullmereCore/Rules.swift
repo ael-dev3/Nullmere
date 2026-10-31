@@ -104,6 +104,8 @@ extension GameState {
             return try use(kind, on: holdID, as: house)
         case let .takeHeritage(heritage):
             return try takeUp(heritage, as: house)
+        case let .takeCrest(crest):
+            return try take(crest, as: house)
         case let .pursueAllianceStudy(study):
             return try pursue(study, by: house)
         case let .giveToAlliance(stock):

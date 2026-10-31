@@ -115,6 +115,8 @@ public enum Command: Codable, Equatable, Sendable {
     /// A House takes up a heritage: the first time freely, after that for
     /// moonsalt.
     case takeHeritage(Heritage)
+    /// A House takes its crest, once an age.
+    case takeCrest(Crest)
     /// An alliance's leader sets it to pursue a study together.
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
@@ -325,6 +327,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case drilledWhole
     /// A heritage taken up by a House already of it.
     case alreadyOfHeritage
+    /// A crest whose charge is of its field's tincture.
+    case crestUnreadable
+    /// A crest taken by a House that took its own this age.
+    case crestChosenAlready
     /// An alliance study learned to its last grade.
     case allianceStudyMastered
     /// The study the alliance pursues already.
@@ -493,6 +499,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .drillsAtMusterHall: return "A company of war drills at or beside one of your holds with a Muster Hall."
         case .drilledWhole: return "That company musters as many as it can lead: raise your Muster Hall, or give it a commander, to drill it further."
         case .alreadyOfHeritage: return "Your House is of that heritage already."
+        case .crestUnreadable: return "A charge must be of another tincture than its field, to be seen."
+        case .crestChosenAlready: return "Your House took its crest this age; it bears it until the age ends."
         case .allianceStudyMastered: return "Your alliance has learned that study to its last grade."
         case .alreadyPursued: return "Your alliance pursues that study already."
         case .noAllianceStudy: return "Your alliance pursues no study: its leader chooses one in the Alliance screen."
@@ -606,6 +614,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case itemUsed(house: Int, kind: ItemKind, hold: Int?)
     /// A House takes up a heritage.
     case heritageTaken(house: Int, heritage: Heritage)
+    /// A House takes its crest.
+    case crestTaken(house: Int, crest: Crest)
     /// An alliance's leader sets it to pursue a study.
     case allianceStudyChosen(alliance: Int, study: AllianceStudy)
     /// A House gives stores toward a grade of its alliance's study.

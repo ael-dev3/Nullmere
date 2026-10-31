@@ -533,6 +533,40 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertNil(EnvoyCards.heard(of: [], forward: nil))
     }
 
+    // MARK: Crests
+
+    /// Every charge drawn, each its own; the keeper's House takes its own
+    /// crest from the Realm panel once, and every House's row bears its.
+    func testCrestsAreDrawnAndTaken() throws {
+        UserDefaults.standard.removeObject(forKey: CrestSection.choosingKey)
+        defer { UserDefaults.standard.removeObject(forKey: CrestSection.choosingKey) }
+        var drawn: [Data] = []
+        for charge in Crest.Charge.allCases {
+            let renderer = ImageRenderer(content: CrestView(crest: Crest(field: .blue, charge: charge, tincture: .silver), size: 48))
+            renderer.scale = 1
+            let image = try XCTUnwrap(renderer.cgImage)
+            drawn.append(try XCTUnwrap(image.dataProvider?.data) as Data)
+        }
+        XCTAssertEqual(Set(drawn).count, Crest.Charge.allCases.count, "Each charge its own")
+        XCTAssertEqual(Set(Crest.Tincture.allCases.map { "\(CrestView.colour($0))" }).count, Crest.Tincture.allCases.count, "Each tincture its own")
+
+        let (session, link) = session(world("crests taken"))
+        let me = session.player
+        let given = session.state.crest(of: me)
+        XCTAssertEqual(CrestSection.line(given, chosen: false), "Your House bears \(given.blazon), as the lake gave it. Take your own once this age.")
+        draw(RealmPanel(session: session), width: 360, height: 2400)
+        XCTAssertFalse(shown.contains("Take this crest"), "Folded until asked for")
+        XCTAssertTrue(PressableButtons.press("Take your own…"), "Among \(shown)")
+        draw(RealmPanel(session: session), width: 360, height: 2400)
+        XCTAssertTrue(PressableButtons.press("Take this crest"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .takeCrest(given))
+        XCTAssertEqual(session.state.houses[me].crest, given, "Taken as the lake gave it, the keeper's own now")
+        draw(RealmPanel(session: session), width: 360, height: 2400)
+        XCTAssertFalse(shown.contains("Take your own…"), "Once an age")
+        XCTAssertEqual(CrestSection.line(given, chosen: true), "Your House bears \(given.blazon), its own until the age ends.")
+        draw(HousesPanel(session: session), width: 360, height: 900)
+    }
+
     // MARK: Words
 
     func testWordsAreHeardSaidAndShown() throws {
