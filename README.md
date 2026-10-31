@@ -1219,8 +1219,12 @@ realm; keepers are told in plain words, never a status code.
   there (twelve thousand or more as loud as it gets) and as near as the
   view stands, heard from where the field is across the view, easing in
   and out as battles are joined and end; it plays at the ambience's
-  volume, and is still under the stillest motion. Sound fades out with
-  the picture, and as the app quits, and back in from silence.
+  volume, and is still under the stillest motion. The interface is heard
+  too, quietly: a leaf turned as a panel opens and laid down as it closes,
+  and two muted knocks on wood when the rules refuse an order; on a Mac
+  whose trackpad gives them, a light tap as an order is given and a
+  firmer one as one is refused. Sound fades out with the picture, and as
+  the app quits, and back in from silence.
 - **The advisor.** The House's steward reads each new charge aloud as it
   comes, what it is and how to keep it, in the Mac's own voice, a little
   low and unhurried; the first as the keeper enters the world. It is

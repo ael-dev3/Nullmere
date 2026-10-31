@@ -639,6 +639,7 @@ public final class GameApp {
 
     private func play(_ session: GameSession) {
         session.onPlacedCue = { [weak self] cue, place in self?.ambience.play(cue, at: place) }
+        session.onCue = { Haptics.tap(for: $0) }
         session.onDin = { [weak self] level, pan in self?.ambience.setDin(level: level, pan: pan) }
         session.onCounsel = { [weak self] words in self?.advisor.counsel(words) }
         advisor.isSoundOn = isSoundOn

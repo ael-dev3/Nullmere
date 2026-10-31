@@ -143,7 +143,7 @@ To build, reimagined:
 - [x] The watches left of a gathering and of the way home on a gatherer's record; a list of the House's gatherers (folded under a gatherer's record)
 - [ ] A gathering's length chosen as it is sent (a watch, three, until full)
 - [x] The camera's buttons on screen (under the small map, while it is shown), and Reset View to the whole House (⌘0)
-- [ ] Sounds for the interface (a panel opening and closing, going back, an order refused), and the trackpad's taps where the Mac has them
+- [x] Sounds for the interface (a panel opening and closing, going back, an order refused), and the trackpad's taps where the Mac has them
 - [x] A keeper's House hidden everywhere (its Words, its notices, its ballads, its envoys' words), not only an envoy's; an unread count on the rail's Words
 - [ ] Words made safe at the realm: a line reported, kept with what was said round it for the realm's steward; the realm able to remove a line and bar a keeper; the realm's whole record of Words paged back
 - [ ] The realm's compact: terms and privacy in plain words, read and accepted at the front door before first entry, asked again when they change

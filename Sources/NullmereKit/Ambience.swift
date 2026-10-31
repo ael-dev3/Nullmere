@@ -90,11 +90,19 @@ public final class Ambience {
         /// The smith's hammer on the anvil, three bright blows, the last
         /// left to ring: gear forged.
         case anvil
+        /// A panel opened: a leaf turned, a brush of paper and a faint high note.
+        case leaf
+        /// A panel closed, or the keeper stepping back: the leaf laid down,
+        /// lower and softer.
+        case fold
+        /// An order the rules refuse: two muted knocks on wood, the second lower.
+        case deny
 
         /// Every cue, for tests and previews.
         public static let all: [Cue] = [.select, .order, .watch, .rise, .dread, .envoy, .triumph, .accord, .toll,
                                         .clash, .loose, .ride, .dig, .coin, .parley, .stand, .complete, .muster,
-                                        .refusal, .batter, .lore, .horn, .banner, .herald, .honour, .tend, .sift, .anvil]
+                                        .refusal, .batter, .lore, .horn, .banner, .herald, .honour, .tend, .sift, .anvil,
+                                        .leaf, .fold, .deny]
     }
 
     private static let logger = Logger(subsystem: "online.nullmere.game", category: "sound")
@@ -579,6 +587,18 @@ final class Synth: @unchecked Sendable {
                 }
             }
             note = Note(partials: horn(196, 0, 2.4) + horn(293.7, 0.32, 1.6), noise: 0.006, noiseDecay: 6)
+        case .leaf:
+            // A page turned: paper's brush, and the faintest high note.
+            note = Note(partials: [Partial(frequency: 2_637, amplitude: 0.03, decay: 24)], noise: 0.055, noiseDecay: 36)
+        case .fold:
+            // The page laid down: lower, softer, and quicker gone.
+            note = Note(partials: [Partial(frequency: 1_760, amplitude: 0.026, decay: 30)], noise: 0.045, noiseDecay: 44)
+        case .deny:
+            // Two knocks on muffled wood, the second a step lower: not so.
+            note = Note(partials: [Partial(frequency: 196, amplitude: 0.07, decay: 24), Partial(frequency: 588, amplitude: 0.026, decay: 34)],
+                        noise: 0.02, noiseDecay: 70)
+            more = [Note(partials: [Partial(frequency: 165, amplitude: 0.06, decay: 24), Partial(frequency: 495, amplitude: 0.022, decay: 34)],
+                         noise: 0.016, noiseDecay: 70, delay: 0.11)]
         case .refusal:
             // A minor third falling, soft and reedy: not this time.
             note = Note(partials: [

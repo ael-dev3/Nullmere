@@ -82,7 +82,14 @@ public final class GameSession {
             }
         }
     }
-    public var panel: Panel?
+    /// The panel open over the map; a leaf turned as one opens, laid down
+    /// as the last closes.
+    public var panel: Panel? {
+        didSet {
+            guard panel != oldValue else { return }
+            emit(panel == nil ? .fold : .leaf)
+        }
+    }
     /// Page Up and Page Down, as heard: each panel that scrolls pages
     /// itself when one is meant for it.
     var pageRequest = PageRequest()
@@ -603,6 +610,7 @@ public final class GameSession {
             return true
         } catch {
             post(String(describing: error), tone: .bad)
+            emit(.deny)
             return false
         }
     }

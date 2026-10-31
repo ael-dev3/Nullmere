@@ -456,6 +456,27 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(GameSession.openingScale(knownRadius: 0), GameSession.fineScale * 0.85, accuracy: 1e-9)
     }
 
+    /// The interface heard: a leaf turned as a panel opens and laid down
+    /// as it closes, a muted knock as the rules refuse an order, and the
+    /// trackpad's taps for an order given and one refused.
+    func testTheInterfaceIsHeardAndFelt() throws {
+        let (session, _) = session(world("the interface heard"))
+        var heard: [Ambience.Cue] = []
+        session.onCue = { heard.append($0) }
+        session.panel = .houses
+        session.panel = .houses
+        session.panel = .chronicle
+        session.panel = nil
+        XCTAssertEqual(heard, [.leaf, .leaf, .fold], "Once for each change")
+        XCTAssertFalse(session.perform(.disband(unit: 987_654)))
+        XCTAssertEqual(heard.last, .deny)
+        XCTAssertEqual(Haptics.pattern(for: .order), .alignment)
+        XCTAssertEqual(Haptics.pattern(for: .deny), .levelChange)
+        XCTAssertNil(Haptics.pattern(for: .watch))
+        Haptics.tap(for: .deny)
+        Haptics.tap(for: .watch)
+    }
+
     func testAHoldsRecordSaysWhenItWasRaised() {
         let seat = Hold(id: 1, name: "Ilsen", owner: 0, position: .origin, isSeat: true, foundedWatch: 1)
         let later = Hold(id: 2, name: "Vael", owner: 0, position: Hex(3, 0), isSeat: false, foundedWatch: 23)
