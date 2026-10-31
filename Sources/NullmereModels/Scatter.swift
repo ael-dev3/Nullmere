@@ -96,6 +96,11 @@ public enum Scatter {
         case .still, .ford:
             // Nothing stands on the lake's bed, laid bare a while or not.
             break
+        case .stream:
+            list.append(Recipe(furnishing: .reeds, count: 0...2, scale: 0.6...0.9))
+        case .shoal:
+            list += [Recipe(furnishing: .steppingStones, count: 1...1, scale: 1.0...1.1, central: true),
+                     Recipe(furnishing: .pebbles, count: 1...2, scale: 0.8...1.1)]
         case .shallows:
             list.append(Recipe(furnishing: .reeds, count: 0...2, scale: 0.8...1.2))
         case .strand:

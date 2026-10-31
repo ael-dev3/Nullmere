@@ -56,10 +56,14 @@ public struct Crest: Codable, Equatable, Hashable, Sendable {
 }
 
 extension GameState {
-    /// The crest House `house` bears: its keeper's choice, or the lake's.
+    /// The crest House `house` bears: its keeper's choice, or the lake's,
+    /// as the atlas keeps it for every keeper's view, which has no words to
+    /// work it out from.
     public func crest(of house: Int) -> Crest {
         guard houses.indices.contains(house) else { return Crest(field: .black, charge: .moon, tincture: .silver) }
-        return houses[house].crest ?? Crest.given(to: house, seedText: settings.seedText)
+        if let chosen = houses[house].crest { return chosen }
+        if let atlas, atlas.crests.indices.contains(house) { return atlas.crests[house] }
+        return Crest.given(to: house, seedText: settings.seedText)
     }
 
     /// Why a House can't take this crest now, if it can't.

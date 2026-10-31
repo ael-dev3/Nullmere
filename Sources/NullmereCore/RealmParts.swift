@@ -110,6 +110,17 @@ extension GameState {
         // The songbook, like the Chronicle, is every keeper's to read.
         try shared("ballads", ballads) { $0.ballads }
         head.ballads = ballads.map { _ in [] }
+        // The atlas, the same all age long and in every view, apart: the
+        // head, written at every pace, leaves it out, keeping only an empty
+        // one to say there is one.
+        if let atlas {
+            if let whole, whole.world.atlas == atlas, let written = whole.parts["atlas"] {
+                parts["atlas"] = written
+            } else {
+                parts["atlas"] = try text(atlas)
+            }
+            head.atlas = Atlas(rivers: [], regions: [], crests: [])
+        }
         return head
     }
 
@@ -142,6 +153,9 @@ extension GameState {
         }
         if ballads != nil {
             ballads = try pages("ballads", of: Ballad.self)
+        }
+        if atlas != nil {
+            atlas = try GameState.part("atlas", of: parts, using: decoder)
         }
     }
 

@@ -116,6 +116,8 @@ public final class GameSession {
     @ObservationIgnored private var keptForWorld: (version: Int, values: [String: Any]) = (-1, [:])
     /// The small map's ground, drawn for one change of the world.
     @ObservationIgnored var miniGround: (version: Int, image: CGImage)?
+    /// The region each tile lies in, worked out once for the age's atlas.
+    @ObservationIgnored private var regionsKept: (atlas: Atlas, owners: [Int?])?
     /// The texture's unchanging ground, made again only when the map changes.
     @ObservationIgnored private var ground: TileTexture.Ground?
     /// Where the moon lies in this lake's water, for the map drawn without Metal.
@@ -1171,7 +1173,7 @@ public final class GameSession {
         case .none:
             return
         case .tile(let hex):
-            if let ground = HoverInfo.line(for: hex, in: state, explored: isExplored(hex), territory: territory) {
+            if let ground = HoverInfo.line(for: hex, in: state, explored: isExplored(hex), territory: territory, regions: regions()) {
                 sayNow("Chosen: \(ground.replacingOccurrences(of: " · ", with: ", ")).")
             }
         case .unit, .hold:
@@ -1960,6 +1962,18 @@ extension GameSession {
         let ledger = Ledger(income: income, upkeep: state.upkeep(of: house), room: state.storage(of: house), summaries: summaries)
         ledgerKept = (tilesVersion, ledger)
         return ledger
+    }
+}
+
+extension GameSession {
+    /// The region of the shores each tile lies in, by its index, from the
+    /// atlas the realm sent; none where the world has no regions.
+    func regions() -> [Int?] {
+        guard let atlas = state.atlas, !atlas.regions.isEmpty else { return [] }
+        if let kept = regionsKept, kept.atlas == atlas, kept.owners.count == state.map.count { return kept.owners }
+        let owners = atlas.regionIndices(over: state.map)
+        regionsKept = (atlas, owners)
+        return owners
     }
 }
 

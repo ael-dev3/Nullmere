@@ -13,19 +13,25 @@ public struct GameSettings: Codable, Equatable, Sendable {
     public var keepers: Int
     /// The shape of the lake.
     public var lake: Lake
+    /// Whether streams run from the Spine down to the lake, crossed at
+    /// their shoals, with the regions of the shores between them named:
+    /// as a realm's worlds are made. A world without them is made as it
+    /// always was.
+    public var rivers: Bool
 
     public init(seedText: String, houseCount: Int = 5, radius: Int = 24, playerHouse: String = "Aurel", keepers: Int = 0,
-                lake: Lake = .round) {
+                lake: Lake = .round, rivers: Bool = false) {
         self.seedText = seedText
         self.houseCount = houseCount
         self.radius = radius
         self.playerHouse = playerHouse
         self.keepers = min(max(keepers, 0), 1)
         self.lake = lake
+        self.rivers = rivers
     }
 
     private enum CodingKeys: String, CodingKey {
-        case seedText, houseCount, radius, playerHouse, keepers, lake
+        case seedText, houseCount, radius, playerHouse, keepers, lake, rivers
     }
 
     public init(from decoder: any Decoder) throws {
@@ -36,6 +42,19 @@ public struct GameSettings: Codable, Equatable, Sendable {
         playerHouse = try container.decode(String.self, forKey: .playerHouse)
         keepers = try container.decodeIfPresent(Int.self, forKey: .keepers) ?? 0
         lake = try container.decodeIfPresent(Lake.self, forKey: .lake) ?? .round
+        rivers = try container.decodeIfPresent(Bool.self, forKey: .rivers) ?? false
+    }
+
+    // A world without streams is kept as it always was.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(seedText, forKey: .seedText)
+        try container.encode(houseCount, forKey: .houseCount)
+        try container.encode(radius, forKey: .radius)
+        try container.encode(playerHouse, forKey: .playerHouse)
+        try container.encode(keepers, forKey: .keepers)
+        try container.encode(lake, forKey: .lake)
+        if rivers { try container.encode(rivers, forKey: .rivers) }
     }
 
     public var seed: UInt64 { Seed.from(seedText) }
@@ -71,6 +90,10 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The omen on the realm, and when the last lifted.
     var omen: Omen?
     var omenLifted: Int?
+    /// What every keeper knows of the land from the first watch: its
+    /// streams and regions, and the crests the lake gave its Houses. Absent
+    /// in a world without streams, and in saves from before them.
+    public internal(set) var atlas: Atlas?
     /// Where the moon's reflection lies: found on the whole map as the world
     /// is made, so a keeper's view, the unexplored left as land, shows it
     /// in the same place from the first watch. Absent in older saves.
@@ -175,7 +198,8 @@ public struct GameState: Codable, Equatable, Sendable {
     /// Makes an age's world: its lake, its Houses at their seats.
     public init(settings: GameSettings) {
         let seed = settings.seed
-        let world = WorldGenerator(seed: seed, radius: settings.radius, houseCount: settings.houseCount, lake: settings.lake).generate()
+        let world = WorldGenerator(seed: seed, radius: settings.radius, houseCount: settings.houseCount, lake: settings.lake,
+                                   rivers: settings.rivers).generate()
         var random = SeededRandom(seed: Seed.mix(seed, 100))
 
         formatVersion = GameState.formatVersion
@@ -184,6 +208,9 @@ public struct GameState: Codable, Equatable, Sendable {
         watch = 1
         map = world.map
         moonWater = world.map.deepestWater()
+        if settings.rivers {
+            atlas = Atlas(streams: world.streams, hearts: world.hearts, seats: world.seats.count, seed: seed, seedText: settings.seedText)
+        }
         houses = []
         holds = []
         units = []
@@ -367,7 +394,7 @@ public struct GameState: Codable, Equatable, Sendable {
             at.forEach(within: holds[index].territoryRadius) { hex in
                 guard let tile = map.index(of: hex), owners[tile] == nil else { return }
                 switch map[tile].terrain {
-                case .still, .shallows, .ford: return
+                case .still, .shallows, .ford, .stream, .shoal: return
                 case .spine: if hex != at { return }
                 case .strand, .saltFlat, .greyfield, .blackwood, .barrow: break
                 }

@@ -157,6 +157,46 @@ struct WorldMarks: View {
         }
     }
 
+    /// How far out the view must stand for the land's names to show, and
+    /// how fully at a scale: none close in, all of them far out.
+    static func landNames(at scale: Double) -> Double {
+        min(max((18 - scale) / 6, 0), 1)
+    }
+
+    /// The regions' and streams' names over the land, and a hovered
+    /// stream's course traced.
+    static func drawLand(_ atlas: Atlas, hovered: Hex?, scale: Double, size: CGSize, in context: inout GraphicsContext,
+                         point: (Hex) -> CGPoint) {
+        if let hovered, let river = atlas.river(at: hovered) {
+            var course = Path()
+            for (step, hex) in river.course.enumerated() {
+                if step == 0 { course.move(to: point(hex)) } else { course.addLine(to: point(hex)) }
+            }
+            context.stroke(course, with: .color(Palette.glow.opacity(0.55)), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+        }
+        let shown = landNames(at: scale)
+        guard shown > 0 else { return }
+        func onScreen(_ p: CGPoint) -> Bool { p.x > -80 && p.y > -20 && p.x < size.width + 80 && p.y < size.height + 20 }
+        for region in atlas.regions {
+            let at = point(region.heart)
+            guard onScreen(at) else { continue }
+            var name = context.resolve(Text(verbatim: region.name.uppercased()).font(.nm(11, weight: .light)).tracking(3.4))
+            name.shading = .color(Color.black.opacity(0.7 * shown))
+            context.draw(name, at: CGPoint(x: at.x + 1, y: at.y + 1))
+            name.shading = .color(Palette.text(0.62 * shown))
+            context.draw(name, at: at)
+        }
+        for river in atlas.rivers where !river.course.isEmpty {
+            let at = point(river.course[river.course.count / 2])
+            guard onScreen(at) else { continue }
+            var name = context.resolve(Text(verbatim: river.name).font(.nm(9.5, weight: .light)).italic())
+            name.shading = .color(Color.black.opacity(0.7 * shown))
+            context.draw(name, at: CGPoint(x: at.x + 1, y: at.y - 9))
+            name.shading = .color(Palette.glowWords.opacity(0.7 * shown))
+            context.draw(name, at: CGPoint(x: at.x, y: at.y - 10))
+        }
+    }
+
     /// Where a company is drawn: along its march, leaning into a blow it
     /// strikes, shaken by one it takes.
     private func position(of unit: NullmereCore.Unit, at date: Date, camera: Camera, size: CGSize) -> CGPoint {
@@ -195,6 +235,16 @@ struct WorldMarks: View {
             let state = session.state
             let scale = camera.scale
             let player = session.player
+
+            // The land named as a map of it would name it: the regions of
+            // the shores and the streams between them, while the view takes
+            // in the country rather than its holds; and a stream under the
+            // pointer followed from its spring to its mouth.
+            if let atlas = state.atlas {
+                WorldMarks.drawLand(atlas, hovered: session.hovered, scale: scale, size: size, in: &context) {
+                    session.viewPoint(of: $0, in: size)
+                }
+            }
 
             // The route the selected company would march.
             if !session.pathPreview.isEmpty, let unit = session.selectedUnit {
@@ -709,6 +759,9 @@ struct WorldFallback: View {
         case .still: return water
         case .shallows: return Color(red: 0.022, green: 0.029, blue: 0.037)
         case .ford: return Color(red: 0.42, green: 0.44, blue: 0.48)
+        // A stream as dark as the shallows it runs to; its shoal paler.
+        case .stream: return Color(red: 0.03, green: 0.042, blue: 0.055)
+        case .shoal: return Color(red: 0.3, green: 0.315, blue: 0.34)
         case .strand: return Color(red: 0.36, green: 0.355, blue: 0.34)
         case .saltFlat: return Color(red: 0.71, green: 0.745, blue: 0.80)
         case .greyfield: return Color(red: 0.21, green: 0.23, blue: 0.21)

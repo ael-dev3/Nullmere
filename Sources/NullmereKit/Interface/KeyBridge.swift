@@ -166,7 +166,7 @@ extension GameSession {
         if let unit = state.unit(at: hex), unit.owner == player || isVisible(hex) {
             parts.append(unit.owner == player ? "Your \(unit.kind.title)" : "The \(unit.kind.title) of \(state.houses[unit.owner].title)")
         }
-        if let ground = HoverInfo.line(for: hex, in: state, explored: isExplored(hex), territory: territory) {
+        if let ground = HoverInfo.line(for: hex, in: state, explored: isExplored(hex), territory: territory, regions: regions()) {
             parts.append(ground.replacingOccurrences(of: " · ", with: ", "))
         }
         if let unit = selectedUnit, unit.owner == player, unit.position != hex {

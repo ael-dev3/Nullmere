@@ -31,6 +31,9 @@ public struct Relief: Sendable {
         case .shallows: return -0.09
         // Just under the water: the moon's road shows pale through it.
         case .ford: return -0.03
+        // A stream runs deep between its banks; its shoals lie just under.
+        case .stream: return -0.2
+        case .shoal: return -0.025
         case .strand: return 0.04
         case .saltFlat: return 0.06
         case .greyfield: return 0.16
@@ -43,7 +46,7 @@ public struct Relief: Sendable {
     /// How much the map's own shading lifts a hex of this terrain.
     static func reliefLift(_ terrain: Terrain) -> Float {
         switch terrain {
-        case .still, .shallows, .strand, .saltFlat, .ford: return 0
+        case .still, .shallows, .strand, .saltFlat, .ford, .stream, .shoal: return 0
         case .greyfield, .blackwood: return 0.12
         case .barrow: return 0.18
         case .spine: return 0.5
@@ -56,6 +59,8 @@ public struct Relief: Sendable {
         case .still: return -0.18 * Noise.fractal(x * 0.35, z * 0.35, octaves: 3, seed: 11)
         case .shallows: return 0.03 * Noise.fractal(x * 1.7, z * 1.7, octaves: 2, seed: 12)
         case .ford: return 0.012 * Noise.value(x * 3.7, z * 3.7, seed: 19)
+        case .stream: return 0.03 * Noise.value(x * 2.9, z * 2.9, seed: 34)
+        case .shoal: return 0.012 * Noise.value(x * 4.1, z * 4.1, seed: 35)
         case .strand: return 0.025 * Noise.value(x * 3.1, z * 3.1, seed: 13)
         case .saltFlat: return 0.008 * Noise.value(x * 4.3, z * 4.3, seed: 14)
         case .greyfield: return 0.08 * Noise.fractal(x * 0.8, z * 0.8, octaves: 3, seed: 15)

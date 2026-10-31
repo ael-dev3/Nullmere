@@ -35,8 +35,9 @@ final class WorldStagingTests: XCTestCase {
     /// steps down a tier at a time, told, before the painting.
     func testDetailThinsTheLandAndStepsDownWhenTheGraphicsFalter() throws {
         let session = try session()
+        // The land's growth: its landmarks are drawn at every Detail.
         func furniture() -> Int {
-            session.sceneFrame(at: 4).fixed.filter { if case .furnishing = $0.key { return true } else { return false } }
+            session.sceneFrame(at: 4).fixed.filter { if case .furnishing(let piece) = $0.key { return !piece.isLandmark } else { return false } }
                 .reduce(0) { $0 + $1.instances.count }
         }
         let whole = furniture()

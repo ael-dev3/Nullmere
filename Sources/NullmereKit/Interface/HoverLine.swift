@@ -4,12 +4,18 @@ import SwiftUI
 /// One line about the ground under the pointer: what it is, what it
 /// yields, whose land it is, and what it costs to cross.
 enum HoverInfo {
-    static func line(for hex: Hex, in state: GameState, explored: Bool, territory: [Int?]) -> String? {
+    static func line(for hex: Hex, in state: GameState, explored: Bool, territory: [Int?], regions: [Int?] = []) -> String? {
         guard let index = state.map.index(of: hex) else { return nil }
         guard explored else { return "Unknown country · send Lanterns" }
         let tile = state.map[index]
         var parts = [tile.terrain.title]
         if let feature = tile.feature { parts.append(feature.title) }
+        // The stream it is, or the region of the shores it lies in.
+        if let river = state.atlas?.river(at: hex) {
+            parts.append(river.name)
+        } else if regions.indices.contains(index), let region = regions[index], let atlas = state.atlas, atlas.regions.indices.contains(region) {
+            parts.append(atlas.regions[region].name)
+        }
         // A bottle afloat here, or washed up and waiting to be found.
         if let bottle = state.bottlesOnTheLake.first(where: { $0.position == hex && $0.foundBy == nil }) {
             parts.append(bottle.ashore ? "a bottle washed up" : "a bottle afloat")
@@ -50,7 +56,11 @@ enum HoverInfo {
             parts.append("the moon's road, 1 move, under water again " + (left <= 1 ? "as the watch turns" : "in \(left) watches"))
             return parts.joined(separator: " · ")
         }
-        if tile.terrain.isWater, tile.terrain != .shallows {
+        if case .stream = tile.terrain {
+            parts.append("yields nothing, crossed only at its shoals")
+            return parts.joined(separator: " · ")
+        }
+        if tile.terrain.isWater, tile.terrain != .shallows, tile.terrain != .shoal {
             parts.append("yields nothing, impassable")
             return parts.joined(separator: " · ")
         }
@@ -169,7 +179,8 @@ struct HoverLine: View {
 
     var body: some View {
         if session.hoverForecast == nil, let hex = session.hovered,
-           let line = HoverInfo.line(for: hex, in: session.state, explored: session.isExplored(hex), territory: session.territory) {
+           let line = HoverInfo.line(for: hex, in: session.state, explored: session.isExplored(hex), territory: session.territory,
+                                     regions: session.regions()) {
             Text(verbatim: line)
                 .font(.nm(11, weight: .light))
                 .foregroundStyle(Palette.text(0.85))

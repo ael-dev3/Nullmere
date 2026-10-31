@@ -1,3 +1,5 @@
+import Foundation
+
 /// The shape of the black water. Each age of the realm lies on a lake of
 /// its own shape, in turn.
 public enum Lake: String, Codable, CaseIterable, Sendable {
@@ -35,23 +37,31 @@ public struct WorldGenerator: Sendable {
         public var map: WorldMap
         /// One seat position per House, spread evenly around the lake.
         public var seats: [Hex]
+        /// Each stream's course, from its spring under the Spine to its
+        /// mouth on the lake; none in a world without them.
+        public var streams: [[Hex]] = []
+        /// The heart of each region of the shores between the streams.
+        public var hearts: [Hex] = []
     }
 
     public let seed: UInt64
     public let radius: Int
     public let houseCount: Int
     public let lake: Lake
+    /// Whether streams run from the Spine to the lake.
+    public let rivers: Bool
 
     /// The most Houses a lake seats: one for every House with a name.
     public static let mostHouses = 96
 
-    public init(seed: UInt64, radius: Int = 24, houseCount: Int = 5, lake: Lake = .round) {
+    public init(seed: UInt64, radius: Int = 24, houseCount: Int = 5, lake: Lake = .round, rivers: Bool = false) {
         precondition(radius >= 12, "the world needs room for a lake and its shores")
         precondition((2...WorldGenerator.mostHouses).contains(houseCount), "between two and ninety-six Houses")
         self.seed = seed
         self.radius = radius
         self.houseCount = houseCount
         self.lake = lake
+        self.rivers = rivers
     }
 
     /// How far a point lies from open water, for the lake's shape: under
@@ -279,7 +289,188 @@ public struct WorldGenerator: Sendable {
             map.set(hex, Tile(terrain: .strand, feature: .drownedRuin, relief: map[hex]?.relief ?? 0))
         }
 
-        return Result(map: map, seats: seats)
+        // 10. Streams, where the world runs them, laid over the land as it
+        // was made: the same land, seats and ruins with them or without.
+        guard rivers, seats.count >= 2 else { return Result(map: map, seats: seats) }
+        let (streams, hearts) = carveStreams(in: &map, seats: seats, position: position)
+        return Result(map: map, seats: seats, streams: streams, hearts: hearts)
+    }
+
+    /// How many streams a lake of `seats` seats runs: one for every two
+    /// seats, three at the fewest and twelve at the most, and never more
+    /// than there are gaps between its seats.
+    public static func streamCount(seats: Int) -> Int {
+        min(seats, min(12, max(3, seats / 2)))
+    }
+
+    /// Streams from the Spine down to the lake, in the gaps between the
+    /// seats, each crossed at shoals every few steps: no seat's country
+    /// cut, no feature drowned, and no land a company could walk to before
+    /// shut off after. With the heart of each region of the shores between
+    /// them. Worked out with randomness of their own, never the world's.
+    private func carveStreams(in map: inout WorldMap, seats: [Hex],
+                              position: (Hex) -> (x: Double, y: Double, d: Double)) -> (streams: [[Hex]], hearts: [Hex]) {
+        var random = SeededRandom(seed: Seed.mix(seed, 0x5712EA))
+        let hexes = map.hexes
+        let count = map.count
+        let tau = 2 * Double.pi
+        let angles = hexes.map { hex -> Double in
+            let p = position(hex)
+            let a = atan2(p.y, p.x)
+            return a < 0 ? a + tau : a
+        }
+        /// How far round the lake one angle lies from another, either way.
+        func apart(_ a: Double, _ b: Double) -> Double {
+            let d = abs(a - b).truncatingRemainder(dividingBy: tau)
+            return min(d, tau - d)
+        }
+        /// A tile's neighbours' indices, laid out once on the map.
+        func around(_ index: Int, _ body: (Int) -> Void) {
+            for slot in index * 6..<index * 6 + 6 where map.neighbours[slot] >= 0 { body(Int(map.neighbours[slot])) }
+        }
+        /// Each tile's group of tiles a company can walk between, from the
+        /// tiles it can walk on.
+        func groups() -> [Int] {
+            var group = [Int](repeating: -1, count: count)
+            var next = 0
+            for start in 0..<count where group[start] < 0 && map[start].terrain.isPassable {
+                group[start] = next
+                var queue = [start], head = 0
+                while head < queue.count {
+                    let index = queue[head]
+                    head += 1
+                    around(index) { step in
+                        if group[step] < 0, map[step].terrain.isPassable {
+                            group[step] = next
+                            queue.append(step)
+                        }
+                    }
+                }
+                next += 1
+            }
+            return group
+        }
+        guard let first = map.index(of: seats[0]) else { return ([], []) }
+        let before = groups()
+        let walked = before.map { $0 == before[first] }
+        let fromLake = distances(in: map, from: hexes.filter { map[$0]?.terrain == .still || map[$0]?.terrain == .shallows })
+        // Each seat's country, which no stream crosses.
+        var country = [Bool](repeating: false, count: count)
+        for seat in seats {
+            for hex in seat.spiral(2) { if let index = map.index(of: hex) { country[index] = true } }
+        }
+
+        // The gaps between neighbouring seats round the lake, and the
+        // streams' places among them, spread evenly from a gap at random.
+        let round = seats.compactMap { map.index(of: $0) }.map { angles[$0] }.sorted()
+        let gaps = round.indices.map { i -> Double in
+            let a = round[i], b = i + 1 < round.count ? round[i + 1] : round[0] + tau
+            let mid = (a + b) / 2
+            return mid >= tau ? mid - tau : mid
+        }
+        let wanted = WorldGenerator.streamCount(seats: seats.count)
+        let start = random.int(below: gaps.count)
+        let places = (0..<wanted).map { gaps[(start + $0 * gaps.count / wanted) % gaps.count] }
+
+        var streams: [[Hex]] = []
+        var carved = [Bool](repeating: false, count: count)
+        // Ground a stream may run over: open land, no feature on it, clear
+        // of every seat's country and of every other stream.
+        func open(_ index: Int) -> Bool {
+            let tile = map[index]
+            guard tile.terrain.isSettleable, tile.feature == nil, !country[index], !carved[index] else { return false }
+            var clear = true
+            around(index) { if carved[$0] { clear = false } }
+            return clear
+        }
+        // A little meander to each tile, the same for the same world.
+        let meander = hexes.map { _ in random.int(below: 5) }
+        for place in places {
+            // Its spring: open land under the Spine, nearest its place.
+            var spring: Int?
+            for index in 0..<count where open(index) {
+                var underSpine = false
+                around(index) { if map[$0].terrain == .spine { underSpine = true } }
+                guard underSpine else { continue }
+                if spring.map({ apart(angles[index], place) < apart(angles[$0], place) }) ?? true { spring = index }
+            }
+            guard let spring, apart(angles[spring], place) < 0.5 else { continue }
+            // Its course: the cheapest way down to a tile beside the lake,
+            // keeping near its place round the lake.
+            var cost = [Int](repeating: Int.max, count: count)
+            var from = [Int](repeating: -1, count: count)
+            var frontier = Frontier()
+            frontier.push(0, spring)
+            cost[spring] = 0
+            var mouth: Int?
+            while let (spent, index) = frontier.pop() {
+                guard spent == cost[index] else { continue }
+                if fromLake[index] <= 1 {
+                    mouth = index
+                    break
+                }
+                around(index) { step in
+                    guard open(step) else { return }
+                    let drift = Int(apart(angles[step], place) * 60)
+                    let climb = fromLake[step] >= fromLake[index] ? 6 : 0
+                    let total = spent + 10 + meander[step] + drift + climb
+                    if total < cost[step] {
+                        cost[step] = total
+                        from[step] = index
+                        frontier.push(total, step)
+                    }
+                }
+            }
+            guard let mouth else { continue }
+            var course: [Int] = [mouth]
+            while let back = course.last.map({ from[$0] }), back >= 0 { course.append(back) }
+            course.reverse()
+            for index in course {
+                carved[index] = true
+                map[index] = Tile(terrain: .stream, relief: map[index].relief)
+            }
+            // A shoal every few steps, and at least one.
+            let shoals = max(1, course.count / 4)
+            for n in 0..<shoals {
+                let index = course[(n + 1) * course.count / (shoals + 1)]
+                map[index] = Tile(terrain: .shoal, relief: map[index].relief)
+            }
+            streams.append(course.map { hexes[$0] })
+        }
+
+        // Nothing a company could walk to before is shut off now: where a
+        // stream would, a shoal opens across it.
+        for _ in 0..<64 {
+            let now = groups()
+            let main = now[first]
+            guard let lost = (0..<count).first(where: { walked[$0] && now[$0] >= 0 && now[$0] != main }) else { break }
+            let cut = now[lost]
+            let across = (0..<count).first { index in
+                guard carved[index], map[index].terrain == .stream else { return false }
+                var toCut = false, toMain = false
+                around(index) { step in
+                    if now[step] == cut { toCut = true }
+                    if now[step] == main { toMain = true }
+                }
+                return toCut && toMain
+            }
+            guard let across else { break }
+            map[across] = Tile(terrain: .shoal, relief: map[across].relief)
+        }
+
+        // Each region's heart: open land a few steps from the lake, midway
+        // round it between one stream and the next.
+        let land = (0..<count).filter { map[$0].terrain.isSettleable }
+        let inland = land.filter { (3...6).contains(fromLake[$0]) }
+        let pool = inland.isEmpty ? land : inland
+        let marks = streams.compactMap { map.index(of: $0[0]) }.map { angles[$0] }.sorted()
+        let hearts: [Hex] = marks.indices.compactMap { i in
+            let a = marks[i], b = i + 1 < marks.count ? marks[i + 1] : marks[0] + tau
+            var mid = (a + b) / 2
+            if mid >= tau { mid -= tau }
+            return pool.min { (apart(angles[$0], mid), $0) < (apart(angles[$1], mid), $1) }.map { hexes[$0] }
+        }
+        return (streams, hearts)
     }
 
     /// Makes sure the land around a seat can feed and build a House.
@@ -345,6 +536,44 @@ public struct WorldGenerator: Sendable {
             }
         }
         return result
+    }
+
+    /// The tiles a search has yet to look at, the cheapest first, then the
+    /// lowest index: a heap.
+    private struct Frontier {
+        private var items: [(cost: Int, index: Int)] = []
+
+        private func before(_ a: Int, _ b: Int) -> Bool {
+            (items[a].cost, items[a].index) < (items[b].cost, items[b].index)
+        }
+
+        mutating func push(_ cost: Int, _ index: Int) {
+            items.append((cost, index))
+            var child = items.count - 1
+            while child > 0 {
+                let parent = (child - 1) / 2
+                guard before(child, parent) else { break }
+                items.swapAt(child, parent)
+                child = parent
+            }
+        }
+
+        mutating func pop() -> (Int, Int)? {
+            guard let top = items.first else { return nil }
+            items.swapAt(0, items.count - 1)
+            items.removeLast()
+            var parent = 0
+            while true {
+                let left = 2 * parent + 1, right = left + 1
+                var least = parent
+                if left < items.count, before(left, least) { least = left }
+                if right < items.count, before(right, least) { least = right }
+                guard least != parent else { break }
+                items.swapAt(parent, least)
+                parent = least
+            }
+            return (top.cost, top.index)
+        }
     }
 
     /// Tile indices reachable on foot from `start`.

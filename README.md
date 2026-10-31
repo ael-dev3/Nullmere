@@ -582,6 +582,24 @@ realm; keepers are told in plain words, never a status code.
   The Still, the lake's deep water, yields nothing and cannot be crossed;
   the shallows can.
   Drowned ruins hide something for the first company to search them.
+- **Streams and regions.** In a realm's ages, streams run from the Spine
+  down to the lake in the gaps between the seats, one for every two seats
+  (three at the fewest, twelve at the most), each with its name. No company
+  wades a stream and nothing is raised on it; it is crossed at its shoals,
+  a shoal every few steps, waded at two moves, where a company stands a
+  quarter less firm and stepping stones show the way. No land a company
+  could walk to without the streams is shut off by them, and no seat's
+  country is cut. Between the streams lie the regions of the shores, each
+  named. Every keeper knows the realm's atlas from the first watch, the
+  streams' courses, the regions' names and the crests the lake gave each
+  House, whatever the fog hides: its names are written over the land when
+  the view is drawn back, the line under the pointer names the stream or
+  region there, a stream under the pointer is traced from its spring to its
+  mouth, and The land, in the Realm (6), sets out each region, the streams
+  that bound it and whose holds stand in it, folded until asked for. A
+  world made without streams, as the rules' tests make theirs, is made as
+  it always was; the streams are laid over the land with randomness of
+  their own, and a realm kept from before them has them from its next age.
 - **Holds** gather what their land yields and store it, up to a limit that
   grows with each hold. Build Granaries, Sawpits, Quarries and Saltworks to
   boost a store, Walls to thicken the ward, Beacons to see further (at

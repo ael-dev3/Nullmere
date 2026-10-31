@@ -25,6 +25,7 @@ enum Land {
         case .fern: fern(&b, seed: 23)
         case .pebbles: pebbles(&b, seed: 27)
         case .birch: birch(&b)
+        case .steppingStones: steppingStones(&b)
         }
         return b.mesh
     }
@@ -250,6 +251,18 @@ enum Land {
                         color: frond % 2 == 0 ? Palette.fern : Palette.leaf)
                 $0.limb(from: middle, to: tip, radius: 0.009, topRadius: 0.002, sides: 3, color: Palette.fern)
             }
+        }
+    }
+
+    /// Stones laid across a shoal, a stride apart along its ford: broad,
+    /// flat-topped and worn, each its own shape, the water round their feet.
+    static func steppingStones(_ b: inout MeshBuilder) {
+        for index in 0..<5 {
+            let x = (Float(index) - 2) * 0.13
+            let wander = (Noise.unit(Int32(index), 41, 7) - 0.5) * 0.05
+            let size = 0.045 + 0.012 * Noise.unit(Int32(index), 42, 7)
+            b.rock(center: Vec3(x, 0.012, wander), size: Vec3(size * 1.2, 0.022, size), rings: 2, sides: 6, jitter: 0.12,
+                   seed: 61 &+ UInt32(index), color: index % 2 == 0 ? Palette.stonePale : Palette.stone)
         }
     }
 

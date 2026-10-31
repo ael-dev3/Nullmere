@@ -37,7 +37,11 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(half.flatMap(\.instances).allSatisfy { kept.contains("\($0.model)") }, "Only pieces the whole land has")
         XCTAssertEqual(WorldStage(map: Self.state.map, relief: Self.relief).thinned(0.5), half, "Always the same pieces")
         stage.furnitureShare = 0
-        XCTAssertEqual(count(stage.furnish(occupied: [], holds: [])), 0, "None at none")
+        let none = stage.furnish(occupied: [], holds: [])
+        XCTAssertTrue(none.allSatisfy { if case .furnishing(let piece) = $0.key { return piece.isLandmark } else { return false } },
+                      "None of the growth at none")
+        XCTAssertEqual(count(none), count(all.filter { if case .furnishing(let piece) = $0.key { return piece.isLandmark } else { return false } }),
+                       "The landmarks all kept")
         stage.furnitureShare = 1
         XCTAssertEqual(stage.furnish(occupied: [], holds: []), all, "Whole again")
     }

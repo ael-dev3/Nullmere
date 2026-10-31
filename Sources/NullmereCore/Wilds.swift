@@ -30,7 +30,7 @@ public enum WildKind: String, CaseIterable, Codable, Sendable {
         case .saltFlat: return .saltwights
         case .blackwood: return .reavers
         case .barrow: return .barrowkin
-        case .strand, .shallows, .still, .ford: return .drowned
+        case .strand, .shallows, .still, .ford, .stream, .shoal: return .drowned
         case .greyfield, .spine: return .spineHunters
         }
     }

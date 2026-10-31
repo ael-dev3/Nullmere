@@ -215,19 +215,26 @@ public struct RealmState: Codable, Equatable, Sendable {
     }
 
     static func world(seed: String, age: Int, seats: Int, radius: Int) -> GameState {
+        // A realm's worlds run streams down to the lake, its shores named
+        // between them.
         var world = GameState(settings: GameSettings(seedText: "\(seed) · age \(age)", houseCount: seats, radius: radius, keepers: 0,
-                                                     lake: Lake.of(age: age)))
+                                                     lake: Lake.of(age: age), rivers: true))
         // A realm's watch passes pace by pace: marches walk through it.
         world.pacing = Pacing()
         return world
     }
 
     /// A realm kept from before the moon's water was found as the world was
-    /// made: found now, on the whole map; and one from before its watches
-    /// passed pace by pace, walked so from now on.
+    /// made: found now, on the whole map; one from before its watches
+    /// passed pace by pace, walked so from now on; and one from before its
+    /// atlas, given one with the crests the lake gave its Houses, and no
+    /// streams until its next age.
     public mutating func fillIn() {
         if world.moonWater == nil { world.moonWater = world.map.deepestWater() }
         if world.pacing == nil { world.pacing = Pacing() }
+        if world.atlas == nil {
+            world.atlas = Atlas(rivers: [], regions: [], crests: world.houses.indices.map { Crest.given(to: $0, seedText: world.settings.seedText) })
+        }
     }
 
     public func keeper(_ id: String) -> Keeper? {

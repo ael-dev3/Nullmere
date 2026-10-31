@@ -27,6 +27,9 @@ public struct TerrainMesh: Sendable {
         case .shallows: return Vec3(0.14, 0.15, 0.14)
         // Shingle washed silver by the moon.
         case .ford: return Vec3(0.56, 0.58, 0.62)
+        // A stream's dark wet stones, and its shoal's paler shingle.
+        case .stream: return Vec3(0.09, 0.10, 0.10)
+        case .shoal: return Vec3(0.44, 0.45, 0.47)
         case .strand: return Vec3(0.47, 0.46, 0.43)
         case .saltFlat: return Vec3(0.84, 0.87, 0.90)
         case .greyfield: return Vec3(0.33, 0.36, 0.30)

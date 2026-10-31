@@ -181,6 +181,20 @@ public enum Furnishing: String, CaseIterable, Sendable {
     case pebbles
     /// A pale birch at the forest's edge and out on the greyfields.
     case birch
+    /// Flat stones laid across a stream's shoal, a stride apart.
+    case steppingStones
+
+    /// Whether it marks something a keeper looks for on the map, a feature
+    /// of the land or a stream's crossing: drawn at every Detail, where the
+    /// growth between is thinned.
+    public var isLandmark: Bool {
+        switch self {
+        case .elderTree, .stoneFace, .ruin, .furrows, .steppingStones: return true
+        case .fir, .deadTree, .crag, .boulder, .reeds, .saltCrystals, .barrowMound, .standingStone, .grass, .driftwood, .heather,
+             .fern, .pebbles, .birch:
+            return false
+        }
+    }
 }
 
 /// What moves through the world, apart from companies.

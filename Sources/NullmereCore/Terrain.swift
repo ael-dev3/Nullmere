@@ -22,6 +22,13 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
     /// Walked a step a move; nothing is raised on it, for the water comes
     /// back over it as the moon wanes.
     case ford
+    /// A stream running from the Spine down to the lake, cold and quick
+    /// between steep banks: no company wades it, and nothing is raised on
+    /// it. It is crossed at its shoals.
+    case stream
+    /// Where a stream runs wide and shallow over stones: its ford, waded a
+    /// step at a time, and a poor place to stand and fight.
+    case shoal
 
     public var title: String {
         switch self {
@@ -34,6 +41,8 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
         case .barrow: return "Barrows"
         case .spine: return "The Spine"
         case .ford: return "The Moonford"
+        case .stream: return "Stream"
+        case .shoal: return "Shoal"
         }
     }
 
@@ -42,7 +51,7 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
     // tile it looks at.
     public var isWater: Bool {
         switch self {
-        case .still, .shallows, .ford: return true
+        case .still, .shallows, .ford, .stream, .shoal: return true
         case .strand, .saltFlat, .greyfield, .blackwood, .barrow, .spine: return false
         }
     }
@@ -50,8 +59,8 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
     /// Whether units can enter it.
     public var isPassable: Bool {
         switch self {
-        case .still, .spine: return false
-        case .shallows, .strand, .saltFlat, .greyfield, .blackwood, .barrow, .ford: return true
+        case .still, .spine, .stream: return false
+        case .shallows, .strand, .saltFlat, .greyfield, .blackwood, .barrow, .ford, .shoal: return true
         }
     }
 
@@ -59,7 +68,7 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
     public var isSettleable: Bool {
         switch self {
         case .strand, .saltFlat, .greyfield, .blackwood, .barrow: return true
-        case .still, .shallows, .spine, .ford: return false
+        case .still, .shallows, .spine, .ford, .stream, .shoal: return false
         }
     }
 
@@ -67,8 +76,8 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
     public var moveCost: Int {
         switch self {
         case .strand, .saltFlat, .greyfield, .ford: return 1
-        case .shallows, .blackwood, .barrow: return 2
-        case .still, .spine: return 99
+        case .shallows, .blackwood, .barrow, .shoal: return 2
+        case .still, .spine, .stream: return 99
         }
     }
 
@@ -77,7 +86,7 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
         switch self {
         case .blackwood: return 25
         case .barrow: return 50
-        case .shallows: return -25
+        case .shallows, .shoal: return -25
         default: return 0
         }
     }
@@ -91,7 +100,7 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
     /// What one worked tile yields each watch.
     public var yield: Stock {
         switch self {
-        case .still, .shallows, .spine, .ford: return .zero
+        case .still, .shallows, .spine, .ford, .stream, .shoal: return .zero
         case .strand: return Stock(grain: 1)
         case .saltFlat: return Stock(moonsalt: 1)
         case .greyfield: return Stock(grain: 2)

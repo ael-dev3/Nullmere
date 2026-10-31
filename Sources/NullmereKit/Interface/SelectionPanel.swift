@@ -1076,9 +1076,33 @@ struct YardRow: View {
     }
 }
 
-private struct TilePanel: View {
+struct TilePanel: View {
     let session: GameSession
     let hex: Hex
+
+    /// What the record says of ground that yields nothing.
+    static func bare(_ terrain: Terrain, river: Atlas.River?) -> String {
+        switch terrain {
+        case .still: return "Nothing lives in the Still, and nothing grows."
+        case .shallows: return "Nothing lives in the shallows, and nothing grows; they can be waded."
+        case .ford:
+            return "The lake's bed, laid bare along the moon's road while the moon is full: walked a step a move, "
+                + "and nothing raised on it. The water comes back over it as the moon wanes, and carries whoever stands on it ashore."
+        case .stream: return stream(river, cold: true)
+        case .shoal: return stream(river, cold: false)
+        case .strand, .saltFlat, .greyfield, .blackwood, .barrow, .spine: return "Bare ground."
+        }
+    }
+
+    /// What the record says of a stream, or of a shoal across it: its name,
+    /// how far it runs and where it is crossed.
+    static func stream(_ river: Atlas.River?, cold: Bool) -> String {
+        let name = river.map { $0.name.prefix(1).uppercased() + $0.name.dropFirst() } ?? "The stream"
+        let steps = river?.course.count ?? 0
+        let run = steps > 0 ? ", \(steps) steps from the Spine to the lake," : ""
+        return cold ? "\(name) runs cold and quick between steep banks\(run) and no company wades it: it is crossed at its shoals."
+            : "\(name) runs wide and shallow over stones here: a ford, waded a step at two moves, and a poor place to stand and fight."
+    }
 
     var body: some View {
         let state = session.state
@@ -1087,11 +1111,7 @@ private struct TilePanel: View {
                 PanelTitle(title: tile.terrain.title, subtitle: tile.feature?.title)
                 let yield = tile.yield
                 if yield.isZero {
-                    Text(verbatim: tile.terrain == .still ? "Nothing lives in the Still, and nothing grows."
-                                   : tile.terrain == .shallows ? "Nothing lives in the shallows, and nothing grows; they can be waded."
-                                   : tile.terrain == .ford ? "The lake's bed, laid bare along the moon's road while the moon is full: walked a step a move, "
-                                       + "and nothing raised on it. The water comes back over it as the moon wanes, and carries whoever stands on it ashore."
-                                   : "Bare ground.")
+                    Text(verbatim: TilePanel.bare(tile.terrain, river: state.atlas?.river(at: hex)))
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.text(0.55))
                 } else {

@@ -55,7 +55,7 @@ public struct Site: Codable, Equatable, Identifiable, Sendable {
         case .blackwood: return .timber
         case .barrow: return .stone
         case .saltFlat: return .moonsalt
-        case .still, .shallows, .spine, .ford: return nil
+        case .still, .shallows, .spine, .ford, .stream, .shoal: return nil
         }
     }
 }

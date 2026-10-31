@@ -35,6 +35,10 @@ struct RealmPanel: View {
                     heritage(state)
                     Rule(opacity: 0.18)
                     CrestSection(session: session)
+                    if state.atlas?.regions.isEmpty == false {
+                        Rule(opacity: 0.18)
+                        LandSection(session: session)
+                    }
                     Rule(opacity: 0.18)
                     deeds(board)
                     if !state.holySites.isEmpty {

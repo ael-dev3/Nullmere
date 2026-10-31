@@ -443,7 +443,9 @@ final class PlacementTests: XCTestCase {
         XCTAssertEqual(first, state.map.hexes.flatMap { Scatter.pieces(in: $0, map: state.map, relief: relief) }, "hex by hex alike")
         XCTAssertGreaterThan(first.count, state.map.count, "the land is furnished")
         XCTAssertEqual(Scatter.pieces(in: Hex(40, 0), map: state.map, relief: relief), [], "nothing beyond the map")
-        let kinds = Set(PlacementTests.worlds.flatMap { Scatter.pieces(map: $0.map, relief: Relief(map: $0.map)) }.map(\.key))
+        // And a world of the realm's, whose streams' shoals have their stones.
+        let streams = GameState(settings: GameSettings(seedText: "placement", houseCount: 6, radius: 14, rivers: true))
+        let kinds = Set((PlacementTests.worlds + [streams]).flatMap { Scatter.pieces(map: $0.map, relief: Relief(map: $0.map)) }.map(\.key))
         for furnishing in Furnishing.allCases {
             XCTAssertTrue(kinds.contains(.furnishing(furnishing)), "\(furnishing) is found somewhere")
         }

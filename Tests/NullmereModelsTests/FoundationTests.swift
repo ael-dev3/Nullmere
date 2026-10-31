@@ -230,12 +230,35 @@ final class ReliefTests: XCTestCase {
             let height = ReliefTests.relief.height(of: hex)
             switch tile.terrain {
             case .still: XCTAssertLessThan(height, -0.5, "\(hex)")
-            case .shallows, .ford: XCTAssertLessThan(height, 0, "\(hex) lies under the water")
+            case .shallows, .ford, .stream, .shoal: XCTAssertLessThan(height, 0, "\(hex) lies under the water")
             case .spine: XCTAssertGreaterThan(height, 1.2, "\(hex)")
             case .strand, .saltFlat: XCTAssertGreaterThan(height, 0, "\(hex) stands dry")
             case .greyfield, .blackwood, .barrow: XCTAssertGreaterThan(height, 0.1, "\(hex)")
             }
         }
+    }
+
+    /// A stream runs deep between its banks, the water over it; its shoal
+    /// lies just under, the shingle showing, its stones across it at every
+    /// Detail.
+    func testAStreamRunsUnderTheWaterBetweenItsBanks() throws {
+        let state = GameState(settings: GameSettings(seedText: "relief", houseCount: 6, radius: 14, rivers: true))
+        let relief = Relief(map: state.map)
+        let river = try XCTUnwrap(state.atlas?.rivers.first)
+        for hex in river.course {
+            let height = relief.height(of: hex)
+            XCTAssertLessThan(height, 0, "\(hex) under the water")
+            let banks = state.map.neighbors(of: hex).filter { state.map[$0]?.terrain.isSettleable == true }
+            XCTAssertTrue(banks.allSatisfy { relief.height(of: $0) > height }, "Its banks stand above it")
+        }
+        XCTAssertGreaterThan(Relief.baseHeight(.shoal), Relief.baseHeight(.stream), "The shoal shallower")
+        XCTAssertNotEqual(TerrainMesh.colour(.shoal), TerrainMesh.colour(.stream))
+        let shoal = try XCTUnwrap(river.course.first { state.map[$0]?.terrain == .shoal })
+        let pieces = Scatter.pieces(in: shoal, map: state.map, relief: relief)
+        XCTAssertTrue(pieces.contains { $0.key == .furnishing(.steppingStones) }, "Stones across it")
+        XCTAssertTrue(Furnishing.steppingStones.isLandmark)
+        XCTAssertFalse(Furnishing.heather.isLandmark)
+        XCTAssertGreaterThan(Scatter.footprint(.steppingStones), 0.2, "A stride across")
     }
 
     func testTheMoonfordLiesJustUnderTheWater() {

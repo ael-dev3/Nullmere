@@ -567,6 +567,73 @@ final class DepthPanelTests: XCTestCase {
         draw(HousesPanel(session: session), width: 360, height: 900)
     }
 
+    // MARK: The land
+
+    /// A realm's streams and regions: told under the pointer and in a
+    /// tile's record, a stream followed from spring to mouth, named over the
+    /// land when the view is drawn back, and set out in the Realm panel's
+    /// legend, folded until asked for.
+    func testTheLandIsNamedFollowedAndSetOut() throws {
+        UserDefaults.standard.removeObject(forKey: LandSection.openKey)
+        defer { UserDefaults.standard.removeObject(forKey: LandSection.openKey) }
+        var state = GameState(settings: GameSettings(seedText: "land named", houseCount: 6, radius: 20, keepers: 1, rivers: true))
+        // The whole land found, so its streams show in the keeper's view.
+        state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
+        let atlas = try XCTUnwrap(state.atlas)
+        let (session, _) = session(state)
+        let regions = session.regions()
+        XCTAssertEqual(regions, atlas.regionIndices(over: session.state.map))
+        XCTAssertEqual(session.regions(), regions, "Kept")
+
+        // Under the pointer, and in the tile's record.
+        let river = atlas.rivers[0]
+        let stream = try XCTUnwrap(river.course.first { state.map[$0]?.terrain == .stream })
+        let shoal = try XCTUnwrap(river.course.first { state.map[$0]?.terrain == .shoal })
+        let streamLine = try XCTUnwrap(HoverInfo.line(for: stream, in: session.state, explored: true, territory: session.territory, regions: regions))
+        XCTAssertEqual(streamLine, "Stream · \(river.name) · yields nothing, crossed only at its shoals")
+        let shoalLine = try XCTUnwrap(HoverInfo.line(for: shoal, in: session.state, explored: true, territory: session.territory, regions: regions))
+        XCTAssertTrue(shoalLine.hasPrefix("Shoal · \(river.name)"), shoalLine)
+        XCTAssertTrue(shoalLine.contains("2 moves") && shoalLine.contains("-25% defence"), shoalLine)
+        let heart = atlas.regions[0].heart
+        XCTAssertTrue(HoverInfo.line(for: heart, in: session.state, explored: true, territory: session.territory, regions: regions)?
+            .contains(atlas.regions[0].name) == true)
+        XCTAssertTrue(TilePanel.stream(river, cold: true).contains("crossed at its shoals"))
+        XCTAssertTrue(TilePanel.stream(river, cold: true).hasPrefix(river.name.prefix(1).uppercased()))
+        XCTAssertTrue(TilePanel.stream(nil, cold: false).hasPrefix("The stream runs wide and shallow"))
+        XCTAssertTrue(Terrain.allCases.allSatisfy { !TilePanel.bare($0, river: river).isEmpty })
+        XCTAssertEqual(TilePanel.bare(.greyfield, river: nil), "Bare ground.")
+        session.selection = .tile(stream)
+        draw(SelectionPanel(session: session), width: 360, height: 400)
+        session.selection = .tile(shoal)
+        draw(SelectionPanel(session: session), width: 360, height: 400)
+
+        // Over the land: named far out, not close in; a stream followed.
+        XCTAssertEqual(WorldMarks.landNames(at: 30), 0)
+        XCTAssertEqual(WorldMarks.landNames(at: 12), 1)
+        XCTAssertEqual(WorldMarks.landNames(at: 15), 0.5)
+        session.camera.scale = 10
+        session.hovered = stream
+        draw(WorldMarks(session: session, moment: Date()), width: 900, height: 700)
+        session.camera.scale = 30
+        draw(WorldMarks(session: session, moment: Date()), width: 900, height: 700)
+
+        // The legend in the Realm panel, folded until asked for.
+        XCTAssertTrue(LandSection.summary(atlas).hasPrefix("Three streams run from the Spine down to the lake"), LandSection.summary(atlas))
+        XCTAssertTrue(LandSection.summary(atlas).hasSuffix("Between them lie three regions of the shores."))
+        XCTAssertEqual(LandSection.spelled(0), "no")
+        XCTAssertEqual(LandSection.spelled(13), "13")
+        let rows = LandSection.rows(session.state, regions: regions, player: session.player)
+        XCTAssertEqual(rows.count, atlas.regions.count)
+        XCTAssertTrue(rows.allSatisfy { $0.line.hasPrefix("by ") }, "\(rows)")
+        XCTAssertTrue(rows.contains { $0.line.contains("of yours") }, "The keeper's seat stands in one")
+        XCTAssertEqual(LandSection.rows(GameState(settings: GameSettings(seedText: "no streams", houseCount: 3, radius: 14)), regions: [], player: 0), [])
+        draw(RealmPanel(session: session), width: 360, height: 2400)
+        XCTAssertFalse(shown.contains("Fold the regions"))
+        XCTAssertTrue(PressableButtons.press("Show the regions"), "Among \(shown)")
+        draw(RealmPanel(session: session), width: 360, height: 2400)
+        XCTAssertTrue(PressableButtons.press("Fold the regions"))
+    }
+
     // MARK: Words
 
     func testWordsAreHeardSaidAndShown() throws {
