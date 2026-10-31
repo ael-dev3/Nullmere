@@ -234,6 +234,12 @@ struct Theme {
     static let isles = Theme(chords: [[41, 53, 57, 64], [43, 55, 59, 62], [40, 52, 55, 62], [45, 57, 60, 64]],
                              melody: [65, 67, 69, 71, 72, 76, 77, 79, 81], chordLength: 14, chordSpread: 8, bellGap: 5.5)
 
+    /// The Marches: G mixolydian, a major mode with its seventh lowered,
+    /// bright and martial, its chords stepping down a tone and back as
+    /// companies march, quicker than any lake's.
+    static let marches = Theme(chords: [[43, 55, 59, 62], [41, 53, 57, 60], [36, 48, 55, 64], [38, 50, 57, 65]],
+                               melody: [62, 65, 67, 69, 71, 72, 74, 77, 79], chordLength: 9, chordSpread: 4, bellGap: 3.5)
+
     static func of(_ mood: Score.Mood) -> Theme {
         switch mood {
         case .peace: return .peace
@@ -242,6 +248,7 @@ struct Theme {
         case .title(.twin): return .twin
         case .title(.crescent): return .crescent
         case .title(.isles): return .isles
+        case .title(.marches): return .marches
         }
     }
 }

@@ -11,6 +11,9 @@ public enum Lake: String, Codable, CaseIterable, Sendable {
     case crescent
     /// A wider lake, crowded with drowned isles.
     case isles
+    /// The Frontier's own: four meres at its quarters, where the realms'
+    /// shores reach it, and the land between them all to be fought over.
+    case marches
 
     public var title: String {
         switch self {
@@ -18,13 +21,18 @@ public enum Lake: String, Codable, CaseIterable, Sendable {
         case .twin: return "the Twin Waters"
         case .crescent: return "the Sickle"
         case .isles: return "the Drowned Isles"
+        case .marches: return "the Marches"
         }
     }
+
+    /// The lakes a realm's ages lie on, in turn; the Marches are the
+    /// Frontier's alone.
+    public static let ofTheRealm: [Lake] = [.round, .twin, .crescent, .isles]
 
     /// The lake of an age of the realm: the round lake first, then each
     /// shape in turn.
     public static func of(age: Int) -> Lake {
-        allCases[(max(age, 1) - 1) % allCases.count]
+        ofTheRealm[(max(age, 1) - 1) % ofTheRealm.count]
     }
 }
 
@@ -79,6 +87,11 @@ public struct WorldGenerator: Sendable {
             return bite < 0.3 ? max(d, 0.5 + (0.3 - bite)) : d
         case .isles:
             return d * 0.86
+        case .marches:
+            // The nearest of the four meres, each a fifth of the way across.
+            let meres: [(x: Double, y: Double)] = [(0.5, 0), (-0.5, 0), (0, 0.5), (0, -0.5)]
+            let nearest = meres.map { ((x - $0.x) * (x - $0.x) + (y - $0.y) * (y - $0.y)).squareRoot() }.min() ?? d
+            return nearest / 0.2 * 0.48
         }
     }
 
@@ -122,7 +135,8 @@ public struct WorldGenerator: Sendable {
             return lakeDistance(x: p.x, y: p.y, d: p.d) < 0.26 && map[hex]?.terrain == .still
         }
         if !deep.isEmpty {
-            let count = lake == .isles ? 5 + random.int(below: 2) : 2 + random.int(below: 2)
+            // The Marches' meres are too small for isles of their own.
+            let count = lake == .marches ? 0 : lake == .isles ? 5 + random.int(below: 2) : 2 + random.int(below: 2)
             for _ in 0..<(count * 8) where islandCentres.count < count {
                 let candidate = random.pick(deep)
                 if islandCentres.allSatisfy({ $0.distance(to: candidate) >= 5 }) {

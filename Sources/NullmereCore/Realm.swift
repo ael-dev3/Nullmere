@@ -185,6 +185,11 @@ public struct RealmState: Codable, Equatable, Sendable {
     /// A new realm; its lake as wide as its seats ask unless `radius` says.
     public init(name: String, seed: String, seats: Int = RealmState.defaultSeats, radius: Int? = nil, watchLength: Double = RealmState.defaultWatchLength,
                 now: Double) {
+        self.init(name: name, seed: seed, seats: seats, radius: radius, watchLength: watchLength, now: now, lake: nil)
+    }
+
+    /// A new realm on this lake, or the first age's if none is given.
+    init(name: String, seed: String, seats: Int, radius: Int?, watchLength: Double, now: Double, lake: Lake?) {
         // A realm of a size no lake can seat is refused aloud, never quietly
         // made another size.
         precondition(RealmState.seatRange.contains(seats),
@@ -195,7 +200,7 @@ public struct RealmState: Codable, Equatable, Sendable {
         self.radius = radius ?? RealmState.radius(forSeats: seats)
         self.watchLength = watchLength
         age = 1
-        world = RealmState.world(seed: seed, age: 1, seats: self.seats, radius: self.radius)
+        world = RealmState.world(seed: seed, age: 1, seats: self.seats, radius: self.radius, lake: lake)
         keepers = []
         watchBegan = now
     }
@@ -214,11 +219,11 @@ public struct RealmState: Codable, Equatable, Sendable {
         watchBegan = now
     }
 
-    static func world(seed: String, age: Int, seats: Int, radius: Int) -> GameState {
+    static func world(seed: String, age: Int, seats: Int, radius: Int, lake: Lake? = nil) -> GameState {
         // A realm's worlds run streams down to the lake, its shores named
         // between them.
         var world = GameState(settings: GameSettings(seedText: "\(seed) · age \(age)", houseCount: seats, radius: radius, keepers: 0,
-                                                     lake: Lake.of(age: age), rivers: true))
+                                                     lake: lake ?? Lake.of(age: age), rivers: true))
         // A realm's watch passes pace by pace: marches walk through it.
         world.pacing = Pacing()
         return world
@@ -646,7 +651,7 @@ public struct RealmState: Codable, Equatable, Sendable {
         rememberTheAge()
         age += 1
         let before = world
-        world = RealmState.world(seed: seedText, age: age, seats: seats, radius: radius)
+        world = RealmState.world(seed: seedText, age: age, seats: seats, radius: radius, lake: frontier == nil ? nil : .marches)
         // The age before lies drowned in this one.
         world.drown(before, age: age)
         if frontier != nil { world.unsundered = true }

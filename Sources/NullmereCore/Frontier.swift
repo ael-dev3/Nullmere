@@ -283,7 +283,8 @@ extension RealmState {
     /// realms it borders take.
     public init(frontier name: String, seed: String, seats: Int = RealmState.defaultSeats, radius: Int? = nil,
                 watchLength: Double = RealmState.defaultWatchLength, now: Double) {
-        self.init(name: name, seed: seed, seats: seats, radius: radius, watchLength: watchLength, now: now)
+        // It lies on a lake of its own, every season: the Marches.
+        self.init(name: name, seed: seed, seats: seats, radius: radius, watchLength: watchLength, now: now, lake: .marches)
         frontier = FrontierState(season: 1, houses: world.houses.count)
         // Its kingdoms are the realms its keepers come from: its shores
         // never sunder.

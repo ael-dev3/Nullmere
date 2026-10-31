@@ -289,7 +289,8 @@ written as it plays as the realm's score is, each lake in a mode of its
 own: the Nullmere in D dorian, slow and open; the Twin Waters in A minor,
 each note answered a fifth above a breath later; the Sickle in E
 phrygian, its half step down to the home note sharp; the Drowned Isles
-in F lydian, with long silences. Crossing to the realm, the score turns
+in F lydian, with long silences; and the Frontier's Marches in G
+mixolydian, bright and martial, quicker than any. Crossing to the realm, the score turns
 to its own, at peace or at war. The realm's Settings also hold its sound
 (on or off, the effects, the night, the music and its score's volume)
 and counsel; ⇧⌘M and ⇧⌘U turn sound and music off or on once the realm
@@ -439,8 +440,10 @@ as the realm will, and takes the realm's word as final.
   moment one falls free. Each age's lake has a shape of its own, in turn:
   the round Nullmere, the Twin Waters with a neck of land between them,
   the Sickle with land pushing in from one shore, and the Drowned Isles.
-  The front door names the lake of the age, and the moon lies in the
-  deepest water of each. The age before lies drowned in the new one: its
+  The Frontier lies on a lake of its own every season, the Marches: four
+  meres at its quarters, and between them open land with no shore to hold
+  a line on. The front door names the lake of the age, and the moon lies
+  in the deepest water of each. The age before lies drowned in the new one: its
   holds, the greatest first and twelve at most, lie as ruins where they
   stood, wherever the new lake has ground a company may reach (the
   shallows too) clear of the new seats, each with its name, its House
@@ -1112,7 +1115,9 @@ realm; keepers are told in plain words, never a status code.
 - **The Frontier.** Kingdom against kingdom across realms: the Frontier is
   a realm of its own, a database of its own with its own steward, where
   the kingdoms of the realms that border it meet, a season of twenty-four
-  watches at a time. While a season is open there, a keeper presses Cross
+  watches at a time, on a lake of its own, the Marches: four meres at its
+  quarters and the land between them all to be fought over, no isles in
+  them. While a season is open there, a keeper presses Cross
   to the Frontier on the Realm screen: their realm takes the order, lists
   them as crossing with a levy of their House's strongest companies of
   war, up to six, and the app takes them across to the Frontier's database

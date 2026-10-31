@@ -80,10 +80,12 @@ final class FrontierTests: XCTestCase {
     /// kingdom's Houses on each other across its water.
     func testTheFrontiersShoresNeverSunder() throws {
         var frontier = frontier()
+        XCTAssertEqual(frontier.world.settings.lake, .marches, "A lake of its own")
         frontier.world.watch = Sundering.first
         XCTAssertEqual(frontier.world.turnSundering(), [])
         XCTAssertNil(frontier.world.sundering)
         var home = home()
+        XCTAssertEqual(home.world.settings.lake, .round, "A realm's first age lies on the round lake")
         home.world.watch = Sundering.first
         XCTAssertFalse(home.world.turnSundering().isEmpty, "A realm's own shores sunder")
     }
@@ -173,6 +175,7 @@ final class FrontierTests: XCTestCase {
             turns += 1
         }
         XCTAssertEqual(frontier.frontier?.season, 2, "A new season begins")
+        XCTAssertEqual(frontier.world.settings.lake, .marches, "On the Marches again")
         XCTAssertGreaterThanOrEqual(turns, FrontierState.lasts - 1)
         XCTAssertTrue(frontier.keepers.isEmpty, "No one seated until they cross again")
         XCTAssertTrue(frontier.frontier?.admitted.isEmpty == true)
