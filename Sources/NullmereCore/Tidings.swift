@@ -337,15 +337,18 @@ extension GameState {
             default: return Tidings("You open a \(kind.title): \(kind.stores) to your stores.", .good)
             }
         case .lairAssaulted(let assault):
-            let lair = "the \(assault.kind.lairTitle) of the \(ordinal(assault.level)) level"
+            let lair = assault.named
+            // A gate of the Crown struck by one company, and not by a host.
+            let yours = assault.rally == 0 ? "Your company" : "Your host"
             if assault.houses.contains(viewer) {
                 guard assault.broken else {
-                    return Tidings("Your host strikes \(lair) for \(assault.dealt); it holds, \(assault.strength) of \(assault.might) still standing.", .neutral)
+                    return Tidings("\(yours) strikes \(lair) for \(assault.dealt); it holds, \(assault.strength) of \(assault.might) still standing.", .neutral)
                 }
                 let share = assault.shares.first { $0.house == viewer }?.spoils ?? .zero
-                return Tidings("Your host breaks \(lair)" + (share.isZero ? "!" : ", and your House carries off \(share)."), .good)
+                return Tidings("\(yours) breaks \(lair)" + (share.isZero ? "!" : ", and your House carries off \(share)."), .good)
             }
-            let host = houses.indices.contains(assault.caller) ? "A host of \(houses[assault.caller].title)" : "A host"
+            let host = !houses.indices.contains(assault.caller) ? "A host"
+                : assault.rally == 0 ? houses[assault.caller].title : "A host of \(houses[assault.caller].title)"
             return Tidings("\(host) " + (assault.broken ? "breaks \(lair)." : "strikes \(lair), but it holds."), .neutral)
         case .woundedLost(let holdID, let house, let count):
             guard house == viewer, let hold = hold(holdID) else { return nil }

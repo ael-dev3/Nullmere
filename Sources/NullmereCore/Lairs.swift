@@ -26,17 +26,25 @@ public struct Lair: Codable, Equatable, Identifiable, Sendable {
     public internal(set) var strength: Int
     /// The watch it rose.
     public let raised: Int
+    /// Which of the Crown's gates it holds, if it holds one (see
+    /// `Lair.gateQuarters`): a gate any company may strike alone.
+    public let gate: Int?
 
-    public init(id: Int, kind: WildKind, level: Int, position: Hex, raised: Int) {
+    public init(id: Int, kind: WildKind, level: Int, position: Hex, raised: Int, gate: Int? = nil) {
         self.id = id
         self.kind = kind
         self.level = min(max(level, 1), Lair.highestLevel)
         self.position = position
         self.raised = raised
+        self.gate = gate
         self.strength = Lair.might(level: self.level)
     }
 
     public static let highestLevel = 5
+    /// The level the wilds hold the Crown's gates at.
+    public static let gateLevel = 2
+    /// The quarters the Crown's gates face, in turn.
+    public static let gateQuarters = ["South-East", "South-West", "North-West", "North-East"]
 
     /// The strength a lair of a level stands with when whole.
     public static func might(level: Int) -> Int {
@@ -44,7 +52,10 @@ public struct Lair: Codable, Equatable, Identifiable, Sendable {
     }
 
     public var might: Int { Lair.might(level: level) }
-    public var title: String { kind.lairTitle }
+    /// Its name: its kind's lair's, or the gate it holds.
+    public var title: String { gate.map { "\(Lair.gateQuarters[$0 % Lair.gateQuarters.count]) Gate" } ?? kind.lairTitle }
+    /// As a line names it: a lair by its kind and level, a gate of the Crown by its quarter.
+    public var named: String { gate == nil ? "the \(title) of the \(ordinal(level)) level" : "the \(title) of the Crown" }
 
     /// Its defence against a company's blow: its kind's, the higher the
     /// lair the harder.
@@ -112,9 +123,13 @@ public struct LairAssault: Codable, Equatable, Sendable {
     /// The Houses of the host, its caller first, each with its share of
     /// the spoils if the lair broke.
     public let shares: [Share]
+    /// The gate of the Crown it held, if it held one; struck by one
+    /// company, `rally` is 0.
+    public let gate: Int?
 
     public init(rally: Int, caller: Int, lair: Int, kind: WildKind, level: Int, at: Hex, strikes: [Strike],
-                before: Int, strength: Int, might: Int, shares: [Share]) {
+                before: Int, strength: Int, might: Int, shares: [Share], gate: Int? = nil) {
+        self.gate = gate
         self.rally = rally
         self.caller = caller
         self.lair = lair
@@ -131,6 +146,11 @@ public struct LairAssault: Codable, Equatable, Sendable {
     public var broken: Bool { strength == 0 }
     public var houses: [Int] { shares.map(\.house) }
     public var dealt: Int { before - strength }
+    /// What it struck, as a line names it.
+    public var named: String {
+        gate.map { "the \(Lair.gateQuarters[$0 % Lair.gateQuarters.count]) Gate of the Crown" }
+            ?? "the \(kind.lairTitle) of the \(ordinal(level)) level"
+    }
 }
 
 extension GameState {
@@ -167,12 +187,16 @@ extension GameState {
     /// open land far from every hold, holy site and other lair: the later
     /// in the age, the higher. Drawn apart from the world's other draws.
     mutating func raiseLairs() {
+        if var standing = lairs {
+            for index in standing.indices where standing[index].strength < standing[index].might {
+                standing[index].strength = min(standing[index].might, standing[index].strength + standing[index].might / 20)
+            }
+            lairs = standing
+        }
         guard watch >= GameState.lairsFrom else { return }
         if lairs == nil { lairs = [] }
-        for index in lairs!.indices where lairs![index].strength < lairs![index].might {
-            lairs![index].strength = min(lairs![index].might, lairs![index].strength + lairs![index].might / 20)
-        }
-        guard lairs!.count < lairsWanted, (watch - GameState.lairsFrom) % GameState.lairEvery == 0 else { return }
+        // The Crown's gates are not of the far country's lairs.
+        guard lairs!.filter({ $0.gate == nil }).count < lairsWanted, (watch - GameState.lairsFrom) % GameState.lairEvery == 0 else { return }
         var random = SeededRandom(seed: Seed.mix(settings.seed, 1_000 + UInt64(max(watch, 0))))
         for _ in 0..<40 {
             let hex = map.hex(at: random.int(below: map.count))
@@ -257,11 +281,12 @@ extension GameState {
             events += awardGear(from: target.kind, level: target.level * 2, to: rally.caller)
             let host = sides.map { houses[$0].title }
             let named = host.count == 1 ? host[0] : host.dropLast().joined(separator: ", ") + " and " + host.last!
-            record(.hunt, sides, "A host of \(named) breaks the \(target.title) of the \(ordinal(target.level)) level \(placeName(of: target.position)).")
+            record(.hunt, sides, target.gate == nil ? "A host of \(named) breaks \(target.named) \(placeName(of: target.position))."
+                   : "A host of \(named) breaks \(target.named): the way to the Heartstone lies open there.")
         }
         let assault = LairAssault(rally: rallyID, caller: rally.caller, lair: target.id, kind: target.kind,
                                   level: target.level, at: target.position, strikes: strikes, before: before,
-                                  strength: broken ? 0 : lairs![lairAt].strength, might: target.might, shares: shares)
+                                  strength: broken ? 0 : lairs![lairAt].strength, might: target.might, shares: shares, gate: target.gate)
         events.insert(.lairAssaulted(assault), at: 0)
         if broken { events += rewardLair(assault) }
         return events

@@ -135,7 +135,11 @@ extension GameSession {
         }
         let yards = stage.yards(yardSights, time: t, into: &frame)
         let found = state.lairsStanding.filter { isExplored($0.position) }
-        let lairs = stage.lairs(found.map { ($0.kind, $0.position) })
+        let lairs = stage.lairs(found.filter { $0.gate == nil }.map { ($0.kind, $0.position) })
+        // The Crown's gates, each held across its pass.
+        let gates = stage.gates(found.filter { $0.gate != nil }.map(\.position))
+        let lairBatches: [ModelBatch] = lairs.batches + gates.batches
+        let lairHearths: [Hearth] = lairs.hearths + gates.hearths
         // The alliances' standards, each in its leader's colour.
         let flags = state.standardsStanding.filter { isExplored($0.position) }
         let standards = stage.standards(flags.map { ($0.position, allianceColour($0.alliance, else: $0.raisedBy, houses)) })
@@ -149,14 +153,14 @@ extension GameSession {
         let veiled = state.veils == nil ? [] : shown.filter { state.isVeiled($0.hold.owner) && isVisible($0.hold.position) }
         let flights = WorldStage.flights(arrows: full ? arrows(at: now) : [],
                                          birdsOver: full ? Vec3(lake.x, Relief.waterline, lake.z) : nil,
-                                         hearths: full ? (hearths + lairs.hearths + hallHearths + yards.hearths).filter { isVisible($0.hex) } : [],
+                                         hearths: full ? (hearths + lairHearths + hallHearths + yards.hearths).filter { isVisible($0.hex) } : [],
                                          mists: veiled.flatMap { WorldStage.mist(about: $0.hold.position, height: Float(groundHeight(of: $0.hold.position))) },
                                          time: t,
                                          into: &frame)
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
         frame.fixedRegions = stage.furnitureRegions
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairs.batches + standards + companies + flights
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
                                                      time: time)

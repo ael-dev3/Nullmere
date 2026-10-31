@@ -281,6 +281,28 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(stage.lairs([]).batches.isEmpty)
     }
 
+    /// The Crown's gates stand across their passes, each turned so its way
+    /// through runs toward the Crown's heart, and their fires smoke.
+    func testTheCrownsGatesStandAcrossTheirPassesTurnedToTheHeart() throws {
+        let stage = stage()
+        let gates = [Hex(4, 0), Hex(-4, 4), Hex(0, -4)]
+        let (batches, hearths) = stage.gates(gates)
+        XCTAssertEqual(batches.map(\.key), [.gatehold])
+        let instances = try XCTUnwrap(batches.first).instances
+        XCTAssertEqual(instances.count, 3)
+        for (instance, hex) in zip(instances, gates) {
+            let centre = Relief.centre(of: hex), heart = Relief.centre(of: .origin)
+            XCTAssertEqual(instance.model.c3.x, centre.x, accuracy: 1e-4)
+            XCTAssertEqual(instance.model.c3.z, centre.z, accuracy: 1e-4)
+            // Its own z, the way through, runs out from the heart.
+            let through = Vec3(instance.model.c2.x, 0, instance.model.c2.z)
+            let out = Vec3(centre.x - heart.x, 0, centre.z - heart.z)
+            XCTAssertGreaterThan((through.x * out.x + through.z * out.z) / out.length, 0.99, "Turned to the heart at \(hex)")
+        }
+        XCTAssertEqual(hearths.map(\.hex), gates, "Each its fire")
+        XCTAssertTrue(stage.gates([]).batches.isEmpty)
+    }
+
     func testStandardsStandInTheirHexesInTheirAlliancesColours() throws {
         let stage = stage()
         let hexes = Array(Self.state.map.hexes.filter { Self.state.map[$0]?.terrain.isPassable == true }.prefix(2))

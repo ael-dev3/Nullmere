@@ -212,7 +212,8 @@ extension GameState {
             case .scoutSeen(let holdID, _):
                 return hold(holdID)?.owner == house
             case .lairAssaulted(let assault):
-                return assault.houses.contains(house) || visible(assault.at)
+                // A gate of the Crown broken, the whole Frontier hears.
+                return assault.houses.contains(house) || visible(assault.at) || (assault.gate != nil && assault.broken)
             case .standardRaised(_, let id, _, let at):
                 return alliance(id)?.members.contains(house) == true || visible(at)
             case .standardTorn(_, let id, let by, let at):

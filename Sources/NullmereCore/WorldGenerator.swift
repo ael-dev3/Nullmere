@@ -50,6 +50,10 @@ public struct WorldGenerator: Sendable {
         public var streams: [[Hex]] = []
         /// The heart of each region of the shores between the streams.
         public var hearts: [Hex] = []
+        /// The gates through the Crown, where the world has one: the
+        /// Marches', at its south-east, south-west, north-west and
+        /// north-east, between the meres.
+        public var gates: [Hex] = []
     }
 
     public let seed: UInt64
@@ -61,6 +65,13 @@ public struct WorldGenerator: Sendable {
 
     /// The most Houses a lake seats: one for every House with a name.
     public static let mostHouses = 96
+
+    /// How many tiles from the world's middle the Marches' Crown stands: a
+    /// ring of the Spine about the land between its meres, a sixth of the
+    /// way out, three at the least.
+    public static func crown(radius: Int) -> Int {
+        max(3, Int((Double(radius) * 0.17).rounded()))
+    }
 
     public init(seed: UInt64, radius: Int = 24, houseCount: Int = 5, lake: Lake = .round, rivers: Bool = false) {
         precondition(radius >= 12, "the world needs room for a lake and its shores")
@@ -116,15 +127,48 @@ public struct WorldGenerator: Sendable {
             return (x, y, (x * x + y * y).squareRoot())
         }
 
+        // The Marches' Crown: a ring of the Spine about their heart, with
+        // its foothills here and there, before anything else is laid.
+        let crown = lake == .marches ? WorldGenerator.crown(radius: radius) : -1
+        func crowned(_ hex: Hex, _ p: (x: Double, y: Double, d: Double)) -> Bool {
+            hex.length == crown || (hex.length == crown + 1 && rimNoise.fractal(p.x * 9 + 1, p.y * 9 + 4) > 0.62)
+        }
+
         // 1. Lake and rim.
         for (index, hex) in hexes.enumerated() {
             let p = position(hex)
             let wobble = lakeNoise.fractal(p.x * 2.4 + 11, p.y * 2.4 + 7) - 0.5
             let edge = rimNoise.fractal(p.x * 3 + 3, p.y * 3 + 5) - 0.5
-            if lakeDistance(x: p.x, y: p.y, d: p.d) + wobble * 0.32 < 0.48 {
+            if crown > 0, crowned(hex, p) {
+                map[index] = Tile(terrain: .spine)
+            } else if lakeDistance(x: p.x, y: p.y, d: p.d) + wobble * 0.32 < 0.48 {
                 map[index] = Tile(terrain: .still)
             } else if p.d + edge * 0.14 > 0.9 || hex.length == radius {
                 map[index] = Tile(terrain: .spine)
+            }
+        }
+
+        // Its four gates, between the meres: the one tile of the ring
+        // nearest each way between them opened, and the foothills before
+        // it cleared, so that each is one tile wide and walked straight
+        // through.
+        var gates: [Hex] = []
+        if crown > 0 {
+            let ring = hexes.filter { $0.length == crown }
+            for quarter in [1.0, 3.0, 5.0, 7.0] {
+                let way = quarter * .pi / 4
+                func off(_ hex: Hex) -> Double {
+                    let c = layout.center(of: hex)
+                    let a = atan2(c.y, c.x)
+                    let d = abs((a < 0 ? a + 2 * .pi : a) - way)
+                    return min(d, 2 * .pi - d)
+                }
+                // A world is wider than its Crown, so the ring is never empty.
+                let gate = ring.min { (off($0), $0) < (off($1), $1) }!
+                gates.append(gate)
+                for hex in gate.spiral(2) where hex == gate || hex.length > crown {
+                    if map[hex]?.terrain == .spine || map[hex]?.terrain.isWater == true { map.set(hex, Tile(terrain: .greyfield)) }
+                }
             }
         }
 
@@ -211,6 +255,14 @@ public struct WorldGenerator: Sendable {
             let p = position(hex)
             map[index].relief = Int((reliefNoise.fractal(p.x * 6, p.y * 6) * 100).rounded())
         }
+        // The gates, and the heart of the Crown where the Heartstone
+        // stands, are bare ground.
+        for hex in gates + (crown > 0 ? [Hex.origin] : []) {
+            if var tile = map[hex] {
+                tile.feature = nil
+                map.set(hex, tile)
+            }
+        }
 
         // 7. Seats, as far apart as possible, a short walk from the shore:
         // a walk as much longer as a wider lake is wider than the realm
@@ -221,6 +273,8 @@ public struct WorldGenerator: Sendable {
             let shore = fromWater[index]
             return (2...walk).contains(shore) && position(hex).d < 0.8
                 && !map.neighbors(of: hex).contains { map[$0]?.terrain == .spine }
+                // No seat within the Crown, or at its gates.
+                && (crown < 0 || hex.length > crown + 2)
         }
         var seats: [Hex] = []
         if !candidates.isEmpty {
@@ -305,9 +359,9 @@ public struct WorldGenerator: Sendable {
 
         // 10. Streams, where the world runs them, laid over the land as it
         // was made: the same land, seats and ruins with them or without.
-        guard rivers, seats.count >= 2 else { return Result(map: map, seats: seats) }
+        guard rivers, seats.count >= 2 else { return Result(map: map, seats: seats, gates: gates) }
         let (streams, hearts) = carveStreams(in: &map, seats: seats, position: position)
-        return Result(map: map, seats: seats, streams: streams, hearts: hearts)
+        return Result(map: map, seats: seats, streams: streams, hearts: hearts, gates: gates)
     }
 
     /// How many streams a lake of `seats` seats runs: one for every two
@@ -368,10 +422,15 @@ public struct WorldGenerator: Sendable {
         let before = groups()
         let walked = before.map { $0 == before[first] }
         let fromLake = distances(in: map, from: hexes.filter { map[$0]?.terrain == .still || map[$0]?.terrain == .shallows })
-        // Each seat's country, which no stream crosses.
+        // Each seat's country, which no stream crosses; nor the Crown, its
+        // heart, or the ground before its gates.
         var country = [Bool](repeating: false, count: count)
         for seat in seats {
             for hex in seat.spiral(2) { if let index = map.index(of: hex) { country[index] = true } }
+        }
+        if lake == .marches {
+            let crown = WorldGenerator.crown(radius: radius)
+            for (index, hex) in hexes.enumerated() where hex.length <= crown + 3 { country[index] = true }
         }
 
         // The gaps between neighbouring seats round the lake, and the

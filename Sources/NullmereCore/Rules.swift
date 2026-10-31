@@ -344,8 +344,12 @@ extension GameState {
         let attacker = units[index]
         guard attacker.kind.isMilitary else { throw .cannotFight }
         guard attacker.movesLeft > 0 else { throw .noMovesLeft }
-        // A lair stands against any company alone.
-        if lair(at: target) != nil { throw .lairNeedsRally }
+        // A lair stands against any company alone; a gate of the Crown does not.
+        if let lair = lair(at: target) {
+            guard lair.gate != nil else { throw .lairNeedsRally }
+            guard attacker.position.distance(to: target) <= attacker.kind.range else { throw .outOfReach }
+            return strike(gate: lair, with: unitID)
+        }
         // A standard of a House at war, with no company standing on it.
         if unit(at: target) == nil, let standard = standard(at: target), standard.raisedBy != house {
             guard isAtWar(house, standard.raisedBy) else { throw .notAtWar(standard.raisedBy) }

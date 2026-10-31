@@ -9,6 +9,9 @@ public enum ShrineKind: String, CaseIterable, Codable, Sendable {
     /// The Moonspire the age before raised, standing broken where it stood:
     /// its stones raise its holders' works for less, and sooner.
     case brokenSpire
+    /// The stone in the heart of the Marches' Crown: each watch it is held,
+    /// its holder's kingdom scores at the Frontier.
+    case heartstone
 
     /// The kinds the lake raises as an age opens, in turn; the Broken
     /// Spire is only ever the last age's.
@@ -20,6 +23,7 @@ public enum ShrineKind: String, CaseIterable, Codable, Sendable {
         case .stillStone: return "Still Stone"
         case .saltAltar: return "Salt Altar"
         case .brokenSpire: return "Broken Spire"
+        case .heartstone: return "Heartstone"
         }
     }
 
@@ -30,6 +34,7 @@ public enum ShrineKind: String, CaseIterable, Codable, Sendable {
         case .stillStone: return "+8% defence to every company of its holders' side"
         case .saltAltar: return "+15% gathered at the land's sites by its holders' side"
         case .brokenSpire: return "its stones raise every work of its holders' side for 15% less, and 15% sooner"
+        case .heartstone: return "\(FrontierState.heartPoints) points a watch for its holder's kingdom at the Frontier"
         }
     }
 
@@ -85,21 +90,24 @@ extension GameState {
 
     /// The realm's holy sites, found as the world is made: one for every
     /// two seats, two at least, on open land far from every hold and from
-    /// each other, each kind in turn. Drawn apart from the world's other
-    /// draws, and numbered apart, so the world is otherwise as it was.
+    /// each other, each kind in turn; on the Marches, the Heartstone first,
+    /// in the Crown's heart. Drawn apart from the world's other draws, and
+    /// numbered apart, so the world is otherwise as it was.
     mutating func raiseShrines() {
         guard shrines == nil else { return }
         var random = SeededRandom(seed: Seed.mix(settings.seed, 900))
         let wanted = max(2, houses.count / 2)
+        let heart = settings.lake == .marches ? [Shrine(id: 1, kind: .heartstone, position: .origin)] : []
         var open = map.hexes.filter { hex in
             guard let tile = map[hex], tile.terrain.isPassable, !tile.terrain.isWater, tile.feature == nil else { return false }
-            return unit(at: hex) == nil && holds.allSatisfy { $0.position.distance(to: hex) >= GameState.shrinesFromHolds }
+            return unit(at: hex) == nil && lair(at: hex) == nil && holds.allSatisfy { $0.position.distance(to: hex) >= GameState.shrinesFromHolds }
         }
         random.shuffle(&open)
-        var raised: [Shrine] = []
-        for hex in open where raised.count < wanted {
+        var raised: [Shrine] = heart
+        for hex in open where raised.count < wanted + heart.count {
             guard raised.allSatisfy({ $0.position.distance(to: hex) >= GameState.shrinesApart }) else { continue }
-            raised.append(Shrine(id: raised.count + 1, kind: ShrineKind.raised[raised.count % ShrineKind.raised.count], position: hex))
+            let kind = ShrineKind.raised[(raised.count - heart.count) % ShrineKind.raised.count]
+            raised.append(Shrine(id: raised.count + 1, kind: kind, position: hex))
         }
         // The last age's Moonspire, broken where it stood, among them.
         if let spire = brokenSpire, !raised.contains(where: { $0.position == spire.position }) {

@@ -372,6 +372,21 @@ enum Land {
                 b.place(.translation(Vec3(x, 0, z))) { $0.cone(sides: 5, radius: 0.02, from: 0.0, to: h, color: Palette.moonsalt) }
             }
             b.material = .plain
+        case .heartstone:
+            // The stone in the Crown's heart: a tall dark menhir on a
+            // stepped plinth, taller than any stone of the ring, veined
+            // with moonsalt that glows by night.
+            b.lathe([(0.17, 0.0), (0.17, 0.04), (0.13, 0.045), (0.13, 0.08), (0.0, 0.085)], sides: 8, color: Palette.stoneDark)
+            b.place(.translation(Vec3(0, 0.08, 0)) * .rotationY(0.3)) {
+                $0.lathe([(0.075, 0.0), (0.085, 0.2), (0.065, 0.48), (0.03, 0.6), (0.0, 0.62)], sides: 5, color: Palette.slate, twist: 0.2)
+            }
+            b.material = .crystal
+            for (y, radius, turn) in [(Float(0.18), Float(0.084), Float(0.2)), (0.32, 0.076, 1.9), (0.46, 0.066, 3.6)] {
+                b.place(.translation(Vec3(0, 0.08 + y, 0)) * .rotationY(turn)) {
+                    $0.box(center: Vec3(radius, 0, 0), size: Vec3(0.014, 0.07, 0.03), color: Palette.moonGlow)
+                }
+            }
+            b.material = .plain
         }
         // The pole, and its pennant in the holder's colour.
         b.box(center: Vec3(0.2, 0.22, -0.2), size: Vec3(0.012, 0.44, 0.012), color: Palette.timberDark)

@@ -19,6 +19,55 @@ enum Lairs {
         return Model(name: name, mesh: b.mesh)
     }
 
+    // MARK: A gate of the Crown
+
+    /// A gate of the Marches' Crown as the Spine Hunters hold it: two squat
+    /// towers of rough stone either side of the pass, a gate of sharpened
+    /// stakes between them under a lintel of logs, hides hung from their
+    /// tops, rubble fallen from the peaks about their feet, and the
+    /// hunters' fire before it. The way through runs along z.
+    static func gatehold(name: String) -> Model {
+        var b = MeshBuilder()
+        for side in [Float(-1), 1] {
+            let x = side * 0.3
+            // A tower, a little narrower as it rises, its top ringed with
+            // merlons.
+            b.place(.translation(Vec3(x, 0, 0)) * .rotationY(side * 0.4)) {
+                $0.lathe([(0.13, -0.04), (0.13, 0.0), (0.11, 0.34), (0.12, 0.36), (0.12, 0.38), (0.0, 0.38)], sides: 7,
+                         color: Palette.stone, twist: 0.12)
+                for index in 0..<4 {
+                    let angle = Float(index) * .pi / 2 + 0.3
+                    $0.box(center: MeshBuilder.ring(0.095, 0.41, angle), size: Vec3(0.045, 0.06, 0.045), color: Palette.stoneDark)
+                }
+            }
+            // A hide hung from its top, toward the pass.
+            b.sheet([Vec3(x - side * 0.1, 0.34, 0.06), Vec3(x - side * 0.1, 0.34, -0.06), Vec3(x - side * 0.12, 0.16, -0.05),
+                     Vec3(x - side * 0.12, 0.17, 0.05)], normal: Vec3(-side, 0, 0), color: Palette.leather)
+            // Rubble fallen from the peaks.
+            b.rock(center: Vec3(x + side * 0.14, 0.03, 0.12), size: Vec3(0.1, 0.07, 0.09), rings: 2, sides: 5, jitter: 0.22,
+                   seed: side > 0 ? 41 : 42, color: Palette.rock)
+        }
+        // The gate of stakes across the pass, and the lintel above it.
+        for index in 0..<7 {
+            let x = Float(index) * 0.06 - 0.18
+            let lean = index % 2 == 0 ? Float(0.02) : -0.02
+            b.limb(from: Vec3(x, -0.02, 0), to: Vec3(x + lean, 0.22, 0), radius: 0.016, topRadius: 0.012, color: Palette.timber)
+            b.place(.translation(Vec3(x + lean, 0.22, 0))) { $0.cone(sides: 4, radius: 0.012, to: 0.04, color: Palette.timberPale) }
+        }
+        b.beam(from: Vec3(-0.21, 0.31, 0), to: Vec3(0.21, 0.31, 0), width: 0.03, color: Palette.timberDark)
+        b.limb(from: Vec3(-0.19, 0.12, 0.012), to: Vec3(0.19, 0.12, 0.012), radius: 0.01, color: Palette.timberDark)
+        // The hunters' fire before the gate, and a spear stood by it.
+        fire(&b, at: Vec3(0.12, 0.0, 0.26), size: 0.05)
+        b.limb(from: Vec3(-0.08, 0.0, 0.3), to: Vec3(-0.06, 0.34, 0.31), radius: 0.006, color: Palette.timberDark)
+        b.with(material: .metal) {
+            $0.place(.translation(Vec3(-0.06, 0.34, 0.31))) { $0.cone(sides: 4, radius: 0.012, to: 0.05, color: Palette.iron) }
+        }
+        return Model(name: name, mesh: b.mesh)
+    }
+
+    /// Where smoke rises from a gatehold's fire, in its own frame.
+    static let gateFire = Vec3(0.12, 0.08, 0.26)
+
     /// Where smoke rises from a lair's fire, in its own frame.
     static func fire(of kind: WildKind) -> Vec3? {
         switch kind {

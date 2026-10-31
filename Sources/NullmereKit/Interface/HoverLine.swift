@@ -105,7 +105,10 @@ enum HoverInfo {
     /// A lair of the wilds as the map names it: its level, what still
     /// stands of it, and what alone breaks it.
     static func named(_ lair: Lair) -> String {
-        "the \(lair.title), a lair of the wilds of level \(Narration.roman(lair.level)), \(lair.strength) of \(lair.might) standing; "
+        guard lair.gate == nil else {
+            return "\(lair.named), held by the wilds, \(lair.strength) of \(lair.might) standing; any company of war may strike it"
+        }
+        return "the \(lair.title), a lair of the wilds of level \(Narration.roman(lair.level)), \(lair.strength) of \(lair.might) standing; "
             + "only a rally's host breaks it"
     }
 

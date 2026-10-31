@@ -116,5 +116,25 @@ final class FrontierAppTests: XCTestCase {
         let closed = FrontierNews(address: "", season: 2, watch: 24, lasts: 24, open: false, standings: [], last: nil)
         XCTAssertEqual(RealmPanel.frontierLine(closed, atFrontier: false, levy: 3), "The Frontier's second season is ending; the next opens as it does.")
         XCTAssertEqual(RealmPanel.kingdomsLine(open.standings), "The Farmere 40 (3 keepers) · The Nullmere 12 (1 keeper)")
+        let there = RealmPanel.frontierLine(open, atFrontier: true, levy: 3)
+        XCTAssertTrue(there.contains("a gate of the Crown broken, \(FrontierState.gatePoints)"), there)
+        XCTAssertTrue(there.contains("the Heartstone in its heart, \(FrontierState.heartPoints) for every watch your House holds it"), there)
+    }
+
+    /// The Crown's gates as the app tells them: any company may strike one,
+    /// where a lair needs a rally's host.
+    func testTheCrownsGatesAreToldAsAnyCompanysToStrike() throws {
+        let state = GameState(settings: GameSettings(seedText: "a crowned app", houseCount: 4, radius: 18, keepers: 1, lake: .marches))
+        let gate = try XCTUnwrap(state.gatesStanding.first)
+        let lair = Lair(id: 999, kind: .reavers, level: 2, position: Hex(3, 3), raised: 1)
+        let about = LairRally.about(gate)
+        XCTAssertTrue(about.hasPrefix("A gate of the Crown, held by Spine Hunters: any company of war may strike it"), about)
+        XCTAssertTrue(about.hasSuffix("counts \(FrontierState.gatePoints) for your kingdom at the Frontier."), about)
+        XCTAssertTrue(LairRally.about(lair).hasPrefix("A lair of Blackwood Reavers, too strong for any company alone"))
+        XCTAssertEqual(RealmPanel.lairsLine([gate]), "Any company of war may strike a gate of the Crown; broken, it lies open to all for the season.")
+        XCTAssertEqual(RealmPanel.lairsLine([lair]), "Only a rally's host breaks a lair: select its ground and call one against it.")
+        XCTAssertEqual(RealmPanel.lairsLine([lair, gate]), RealmPanel.lairsLine([lair]) + " " + RealmPanel.lairsLine([gate]))
+        XCTAssertTrue(HoverInfo.named(gate).hasPrefix("the South-East Gate of the Crown, held by the wilds, \(gate.might) of \(gate.might) standing"))
+        XCTAssertTrue(HoverInfo.named(lair).hasSuffix("only a rally's host breaks it"))
     }
 }

@@ -21,7 +21,7 @@ final class ShrineTests: XCTestCase {
         XCTAssertEqual(state, GameState(settings: state.settings), "The same words, the same holy sites")
         XCTAssertEqual(GameState(settings: GameSettings(seedText: "a small lake", houseCount: 3, radius: 16, keepers: 1)).holySites.count, 2,
                        "Two at least")
-        XCTAssertEqual(ShrineKind.allCases.map(\.title), ["Moonwell", "Still Stone", "Salt Altar", "Broken Spire"])
+        XCTAssertEqual(ShrineKind.allCases.map(\.title), ["Moonwell", "Still Stone", "Salt Altar", "Broken Spire", "Heartstone"])
     }
 
     func testAShrineIsTakenByStandingOnItAndGivesItsHoldersSide() throws {

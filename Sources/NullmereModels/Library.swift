@@ -41,6 +41,10 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     case shrine(ShrineKind)
     /// A lair of the wilds, one for each kind of them.
     case lair(WildKind)
+    /// A gate of the Marches' Crown held by the wilds: two towers of rough
+    /// stone across the pass, a gate of stakes between them, its way
+    /// through running along z.
+    case gatehold
     /// An alliance's standard, its banner in the alliance's colour.
     case standard
     /// An alliance's hall, its roof, cone and banners in the alliance's
@@ -76,6 +80,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .study(let level): return "study \(level)"
         case .shrine(let kind): return "\(kind.rawValue) shrine"
         case .lair(let kind): return "\(kind.rawValue) lair"
+        case .gatehold: return "gatehold"
         case .standard: return "standard"
         case .allianceHall: return "alliance hall"
         case .storehouse: return "storehouse"
@@ -123,8 +128,8 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
             return .commander(variant: (variant % count + count) % count)
         case .study(let level): return .study(level: clamp(level, ModelKey.studyLevels))
         case .folk(let variant): return .folk(variant: (variant % Folk.variants + Folk.variants) % Folk.variants)
-        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .standard, .allianceHall, .storehouse, .yard, .signature,
-             .town:
+        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .allianceHall, .storehouse, .yard,
+             .signature, .town:
             return self
         }
     }
@@ -141,7 +146,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .figure, .signature, .wild, .commander, .folk: return 700
         case .furnishing, .prop, .town: return 300
         case .keep, .keepOf, .allianceHall: return 4500
-        case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .standard, .storehouse, .yard: return 3000
+        case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .gatehold, .standard, .storehouse, .yard: return 3000
         }
     }
 }
@@ -283,6 +288,7 @@ public enum Library {
         keys += Prop.allCases.map { .prop($0) }
         keys += ShrineKind.allCases.map { .shrine($0) }
         keys += WildKind.allCases.map { .lair($0) }
+        keys.append(.gatehold)
         keys.append(.standard)
         keys.append(.allianceHall)
         keys.append(.storehouse)
@@ -312,6 +318,7 @@ public enum Library {
         case .prop(let prop): return Props.build(prop, name: key.canonical.description)
         case .shrine(let kind): return Land.shrine(kind, name: key.canonical.description)
         case .lair(let kind): return Lairs.build(kind, name: key.canonical.description)
+        case .gatehold: return Lairs.gatehold(name: key.canonical.description)
         case .standard: return Land.standard(name: key.canonical.description)
         case .allianceHall: return Halls.hall(name: key.canonical.description)
         case .storehouse: return Stores.storehouse(name: key.canonical.description)
@@ -330,6 +337,7 @@ public enum Library {
         case .keep(let seat), .keepOf(_, let seat): return [Holds.chimney(seat: seat)]
         case .work(.saltworks, let level) where level >= 2: return [Works.saltChimney(level)]
         case .lair(let kind): return Lairs.fire(of: kind).map { [$0] } ?? []
+        case .gatehold: return [Lairs.gateFire]
         case .work(.infirmary, let level) where level >= 2: return [Works.infirmaryChimney(level)]
         case .work(.forge, let level): return [Works.forgeChimney(level)]
         case .allianceHall: return [Halls.smoke]

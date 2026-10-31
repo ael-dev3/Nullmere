@@ -84,7 +84,7 @@ extension GameState {
         for hold in greatest where laid.count < GameState.drownedAtMost {
             guard let tile = map[hold.position], tile.feature == nil, tile.terrain.isPassable, tile.terrain != .ford,
                   seats.allSatisfy({ $0.distance(to: hold.position) >= GameState.drownedFromSeats }),
-                  unit(at: hold.position) == nil else { continue }
+                  unit(at: hold.position) == nil, lair(at: hold.position) == nil else { continue }
             let title = before.houses.indices.contains(hold.owner) ? before.houses[hold.owner].title : "a House now gone"
             map.set(hold.position, Tile(terrain: tile.terrain, feature: .drownedRuin, relief: tile.relief))
             laid.append(DrownedHold(position: hold.position, name: hold.name, house: title, age: age - 1,
@@ -109,6 +109,7 @@ extension GameState {
         guard let at = raiser.position.spiral(3).first(where: { hex in
             guard let tile = map[hex], tile.terrain.isPassable, !tile.terrain.isWater, tile.terrain != .ford else { return false }
             return seats.allSatisfy { $0.distance(to: hex) >= GameState.drownedFromSeats } && unit(at: hex) == nil && shrine(at: hex) == nil
+                && lair(at: hex) == nil
         }) else { return }
         let title = before.houses.indices.contains(raiser.owner) ? before.houses[raiser.owner].title : "a House now gone"
         brokenSpire = BrokenSpire(position: at, house: title, age: age - 1, stages: raiser.level(.moonspire))

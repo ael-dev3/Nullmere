@@ -308,6 +308,22 @@ public final class WorldStage: @unchecked Sendable {
         return (batches, hearths)
     }
 
+    /// The Crown's gates the keeper has found, each held across its pass,
+    /// its way through turned toward the Crown's heart, and where their
+    /// fires smoke.
+    public func gates(_ gates: [Hex]) -> (batches: [ModelBatch], hearths: [Hearth]) {
+        var hearths: [Hearth] = []
+        let batches = WorldStage.batches(gates.map { hex in
+            let centre = Relief.centre(of: hex)
+            let at = Vec3(centre.x, ground(atX: centre.x, z: centre.z) - Scatter.sink, centre.z)
+            let transform = Mat4.translation(at) * .rotationY(CompanyPose.heading(from: Hex.origin, to: hex))
+            hearths += Library.smoke(of: .gatehold).map { Hearth(point: transform.transformPoint($0), hex: hex) }
+            return (.gatehold, ModelInstance(model: transform, phase: WorldStage.phase(of: hex, salt: 23),
+                                             hex: SIMD2(Int32(hex.q), Int32(hex.r))))
+        })
+        return (batches, hearths)
+    }
+
     /// The alliances' standards the keeper has found, each in its
     /// alliance's colour.
     public func standards(_ standards: [(hex: Hex, colour: Vec4)]) -> [ModelBatch] {

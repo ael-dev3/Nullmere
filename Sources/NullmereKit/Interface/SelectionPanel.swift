@@ -865,13 +865,26 @@ struct LairRally: View {
     /// Watches the rally gathers before it sets out.
     @State private var gathering = 2
 
+    /// What it is, and how it breaks: a lair of the wilds, too strong for
+    /// any company alone; or a gate of the Crown, which any company may
+    /// strike.
+    static func about(_ lair: Lair) -> String {
+        let wilds = lair.kind.title.hasPrefix("the ") ? String(lair.kind.title.dropFirst(4)) : lair.kind.title
+        guard lair.gate == nil else {
+            return "A gate of the Crown, held by \(wilds): any company of war may strike it, from beside it or with arrows from its reach, "
+                + "or a rally's host together. Broken, it lies open to all for the season, gives up \(lair.spoils), and counts "
+                + "\(FrontierState.gatePoints) for your kingdom at the Frontier."
+        }
+        return "A lair of \(wilds), too strong for any company alone; a rally's host, striking together, can break it. Broken, it gives up "
+            + "\(lair.spoils), shared by the companies each House brought, and gear for the rally's caller."
+    }
+
     var body: some View {
         let state = session.state
         VStack(alignment: .leading, spacing: 6) {
-            Caps("The \(lair.title) \(Narration.roman(lair.level))", size: 9.5, weight: .medium).foregroundStyle(Palette.bad)
-            Text(verbatim: "A lair of \(lair.kind.title.hasPrefix("the ") ? String(lair.kind.title.dropFirst(4)) : lair.kind.title), "
-                 + "too strong for any company alone; a rally's host, striking together, can break it. Broken, it gives up "
-                 + "\(lair.spoils), shared by the companies each House brought, and gear for the rally's caller.")
+            Caps(lair.gate == nil ? "The \(lair.title) \(Narration.roman(lair.level))" : "The \(lair.title) of the Crown", size: 9.5,
+                 weight: .medium).foregroundStyle(Palette.bad)
+            Text(verbatim: LairRally.about(lair))
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)

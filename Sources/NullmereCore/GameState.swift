@@ -290,6 +290,7 @@ public struct GameState: Codable, Equatable, Sendable {
             }
         }
         raiseFirstCommanders()
+        raiseTheCrown(gates: world.gates)
         raiseShrines()
         refreshSight()
         takeSnapshot()

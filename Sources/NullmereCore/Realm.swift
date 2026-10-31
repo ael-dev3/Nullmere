@@ -634,6 +634,7 @@ public struct RealmState: Codable, Equatable, Sendable {
         // Those there as it turns keep the watch, and stand the higher in favour.
         let events = world.endWatch(keptFor: caretaken) + keepFavour()
         tallyFrontier(events)
+        scoreTheHeart()
         return events
     }
 

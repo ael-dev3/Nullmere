@@ -125,7 +125,8 @@ struct RealmPanel: View {
         ForEach(state.lairsStanding) { lair in
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(verbatim: "The \(lair.title) \(Narration.roman(lair.level))").font(.nm(11, weight: .medium)).foregroundStyle(Palette.text(0.85))
+                    Text(verbatim: lair.gate == nil ? "The \(lair.title) \(Narration.roman(lair.level))" : "The \(lair.title) of the Crown")
+                        .font(.nm(11, weight: .medium)).foregroundStyle(Palette.text(0.85))
                     Spacer()
                     Text(verbatim: RealmPanel.standing(lair)).font(.nm(10.5)).foregroundStyle(Palette.text(0.6))
                 }
@@ -136,7 +137,7 @@ struct RealmPanel: View {
             }
             .accessibilityElement(children: .combine)
         }
-        Text(verbatim: "Only a rally's host breaks a lair: select its ground and call one against it.")
+        Text(verbatim: RealmPanel.lairsLine(state.lairsStanding))
             .font(.nm(10))
             .foregroundStyle(Palette.text(0.55))
             .fixedSize(horizontal: false, vertical: true)
@@ -291,6 +292,18 @@ struct RealmPanel: View {
         }
     }
 
+    /// How the lairs found break: a lair only to a rally's host, a gate of
+    /// the Crown to any company.
+    static func lairsLine(_ lairs: [Lair]) -> String {
+        let rally = "Only a rally's host breaks a lair: select its ground and call one against it."
+        let gate = "Any company of war may strike a gate of the Crown; broken, it lies open to all for the season."
+        switch (lairs.contains { $0.gate == nil }, lairs.contains { $0.gate != nil }) {
+        case (true, true): return rally + " " + gate
+        case (false, true): return gate
+        default: return rally
+        }
+    }
+
     /// The Frontier's season as a keeper reads it: at home, the season open
     /// there and what crossing means; there, what they stand for; and how
     /// the last season ended.
@@ -301,7 +314,9 @@ struct RealmPanel: View {
         } ?? ""
         if atFrontier {
             return "\(season), until the \(SeatBriefing.ordinal(news.lasts)) watch: you stand here for your realm's kingdom. "
-                + "Troops of the other realms' kingdoms slain, their companies felled and their holds taken count for yours." + last
+                + "Troops of the other realms' kingdoms slain, their companies felled and their holds taken count for yours; so does "
+                + "a gate of the Crown broken, \(FrontierState.gatePoints), and the Heartstone in its heart, \(FrontierState.heartPoints) "
+                + "for every watch your House holds it." + last
         }
         guard news.open else { return "\(season) is ending; the next opens as it does." + last }
         let sent = min(levy, FrontierState.levyMost)

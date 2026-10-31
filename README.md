@@ -1117,7 +1117,16 @@ realm; keepers are told in plain words, never a status code.
   the kingdoms of the realms that border it meet, a season of twenty-four
   watches at a time, on a lake of its own, the Marches: four meres at its
   quarters and the land between them all to be fought over, no isles in
-  them. While a season is open there, a keeper presses Cross
+  them. In its middle stands the Crown, a ring of peaks about the
+  Heartstone, with a gate through it between each two meres that the
+  wilds hold from the season's first watch, so the Marches open zone by
+  zone: Spine Hunters of the second level, known to every House from
+  afar. Any company of war may strike a gate, from beside it (taking its
+  blow back) or with arrows from its reach, or a rally's host together;
+  broken, it lies open to all for the season, its spoils, gear and items
+  the breaker's. The Heartstone is a holy site held as any other, by a
+  company of war standing on it as the watch turns with no foe beside it.
+  While a season is open there, a keeper presses Cross
   to the Frontier on the Realm screen: their realm takes the order, lists
   them as crossing with a levy of their House's strongest companies of
   war, up to six, and the app takes them across to the Frontier's database
@@ -1127,8 +1136,10 @@ realm; keepers are told in plain words, never a status code.
   in their people's way, with their levy raised about its seat and at war
   with every other realm's House from the first; the Lost Shore's own
   Houses stand for none. A point for every hundred troops of another
-  realm's kingdom slain, five for a company felled and twenty-five for a
-  hold taken count for the striker's kingdom and House. As the season
+  realm's kingdom slain, five for a company felled, twenty-five for a
+  hold taken and twenty for a gate of the Crown broken count for the
+  striker's kingdom and House, and ten for every watch a House holds the
+  Heartstone count for its kingdom. As the season
   ends its result is kept in the Frontier's status, a new season begins
   with no one seated, and each realm's steward reads it and tells it home
   once: every keeper who crossed is home again, and the Houses of the

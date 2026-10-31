@@ -182,6 +182,8 @@ public struct FrontierState: Codable, Equatable, Sendable {
             return (battle.attackerOwner, (battle.slain ?? 0) / 100 + (battle.defenderFell ? 5 : 0))
         case .holdCaptured(_, let from, let by) where across(by, from):
             return (by, 25)
+        case .lairAssaulted(let assault) where assault.gate != nil && assault.broken && kingdom(of: assault.caller) != nil:
+            return (assault.caller, FrontierState.gatePoints)
         default:
             return nil
         }
