@@ -140,6 +140,23 @@
       "cpu": true,
       "limit": 8.3,
       "note": "a frame of a realm of forty-eight seats near staged on the main thread, only what is in view: CI's first figure, 2.34 (55a08ad), at the calibration's pace there, x1.20"
+    },
+    "wide.gpu.scale28.whole.p50": {
+      "baseline": 23.23,
+      "gpu": true,
+      "note": "the same realm of forty-eight seats near with its whole land drawn, as before only what is in view was: for comparison, not a frame the game draws; CI's figure (2c57480)"
+    },
+    "wider.gpu.scale28.p50": {
+      "baseline": 14.37,
+      "gpu": true,
+      "limit": 16.7,
+      "note": "a realm of ninety-six seats, the widest, near, only the regions in view drawn: CI's first figure (2c57480), against 12.88 for forty-eight seats in the same run"
+    },
+    "stage.wider.cpu.p50": {
+      "baseline": 2.32,
+      "cpu": true,
+      "limit": 8.3,
+      "note": "a frame of a realm of ninety-six seats near staged on the main thread, 242 of 2,178 models in view: CI's first figure, 2.74 (2c57480), at the calibration's pace there, x1.18"
     }
   }
 }
