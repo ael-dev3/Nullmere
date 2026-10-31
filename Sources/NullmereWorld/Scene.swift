@@ -29,6 +29,8 @@ public struct SceneFrame: Equatable, Sendable {
     public var lights: [PointLight]
     /// The weather over the lake this frame.
     public var weather: Weather = .clear
+    /// Whether the camera is near enough for the models' fine work.
+    public var fine = true
 
     public init(batches: [ModelBatch] = [], palette: [Mat4] = [.identity], fixed: [ModelBatch] = [], fixedVersion: Int = 0,
                 motes: [Mote] = [], lights: [PointLight] = []) {

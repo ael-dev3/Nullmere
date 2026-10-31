@@ -3,7 +3,19 @@ import Foundation
 /// Builds a faceted mesh from solids: each face lit flat, as carved wood
 /// and cut stone are, which keeps the low moonlight crisp on every edge.
 public struct MeshBuilder: Sendable {
-    public private(set) var mesh = Mesh()
+    /// What is built so far: its coarse work, then its fine work, drawn
+    /// only near enough to see it.
+    public var mesh: Mesh {
+        guard !fineWork.isEmpty else { return coarse }
+        var whole = coarse
+        whole.append(fineWork)
+        whole.fineFrom = coarse.indices.count
+        return whole
+    }
+    private var coarse = Mesh()
+    private var fineWork = Mesh()
+    /// Whether the next triangles are fine work.
+    private var buildingFine = false
     /// The rig part the next triangles move with.
     public var part: UInt16 = 0
     public var material: Material = .plain
@@ -34,13 +46,24 @@ public struct MeshBuilder: Sendable {
         let n = (pb - pa).cross(pc - pa)
         guard n.length > MeshBuilder.degenerateArea else { return }
         let normal = n.normalized
-        let base = UInt32(mesh.vertices.count)
         let grain = surface ?? (material == .plain || material == .foliage ? Surface.of(color) : .smooth)
-        for (local, world) in [(a, pa), (b, pb), (c, pc)] {
-            mesh.vertices.append(MeshVertex(position: world, normal: normal, color: color, part: part, material: material,
-                                            sway: swayAt(local), surface: grain))
+        let corners = [(a, pa), (b, pb), (c, pc)].map { local, world in
+            MeshVertex(position: world, normal: normal, color: color, part: part, material: material, sway: swayAt(local), surface: grain)
         }
-        mesh.indices.append(contentsOf: [base, base + 1, base + 2])
+        if buildingFine {
+            fineWork.add(corners)
+        } else {
+            coarse.add(corners)
+        }
+    }
+
+    /// Builds fine work, too small to see from afar: whenever it is built,
+    /// it is kept after the rest, for the renderer to leave off far away.
+    public mutating func fine(_ body: (inout MeshBuilder) -> Void) {
+        let saved = buildingFine
+        buildingFine = true
+        body(&self)
+        buildingFine = saved
     }
 
     private func swayAt(_ local: Vec3) -> Float {

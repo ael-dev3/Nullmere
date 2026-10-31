@@ -220,6 +220,59 @@ final class CatalogueTests: XCTestCase {
         XCTAssertEqual(Library.model(.keep(seat: true)).mesh, Holds.keep(seat: true, name: "seat keep").mesh, "The common keep as it was")
     }
 
+    /// A keep's fine work comes last, drawn only near: its quoins, framed
+    /// windows, roof ribs, the hall's frame and the rest, more triangles
+    /// than the keep itself. What has none is drawn whole near and far, as
+    /// is a mesh put together from others.
+    func testAKeepsFineWorkComesLastAndIsDrawnOnlyNear() throws {
+        for key in [ModelKey.keep(seat: true), .keep(seat: false), .keepOf(.saltborn, seat: true), .keepOf(.fenfolk, seat: false)] {
+            let mesh = Library.model(key).mesh
+            let fine = try XCTUnwrap(mesh.fineFrom, "\(key) has fine work")
+            XCTAssertEqual(fine % 3, 0, "\(key)'s fine work begins on a whole triangle")
+            XCTAssertEqual(mesh.coarseIndexCount, fine)
+            XCTAssertGreaterThan(mesh.indices.count - fine, fine, "\(key)'s fine work outweighs the rest")
+            // Shutters in the House's colour, and the windows down the hall's sides lit.
+            let detail = mesh.indices[fine...].map { mesh.vertices[Int($0)] }
+            XCTAssertTrue(detail.contains { $0.material == .house }, "\(key)'s shutters")
+            XCTAssertTrue(detail.contains { $0.material == .glow }, "\(key)'s hall windows")
+        }
+        let fir = Library.model(.furnishing(.fir)).mesh
+        XCTAssertNil(fir.fineFrom)
+        XCTAssertEqual(fir.coarseIndexCount, fir.indices.count)
+        var whole = Library.model(.keep(seat: false)).mesh
+        whole.append(fir)
+        XCTAssertNil(whole.fineFrom, "Put together, drawn whole")
+        // Fine work kept after the rest, whenever it is built and however it nests.
+        var b = MeshBuilder()
+        b.box(center: .zero, size: Vec3(1, 1, 1), color: Palette.stone)
+        b.fine { $0.fine { $0.box(center: Vec3(2, 0, 0), size: Vec3(1, 1, 1), color: Palette.stone) } }
+        b.box(center: Vec3(4, 0, 0), size: Vec3(1, 1, 1), color: Palette.stone)
+        let built = b.mesh
+        XCTAssertEqual(built.fineFrom, 72)
+        XCTAssertEqual(built.indices.count, 108)
+        XCTAssertTrue(built.indices[72...].allSatisfy { (1.4...2.6).contains(built.vertices[Int($0)].position.x) }, "The fine box last")
+        XCTAssertEqual(Set(built.indices).count, built.vertices.count, "Every corner in a triangle")
+        var plain = MeshBuilder()
+        plain.box(center: .zero, size: Vec3(1, 1, 1), color: Palette.stone)
+        XCTAssertNil(plain.mesh.fineFrom)
+    }
+
+    /// The walls at every level, and the works built of halls and round
+    /// houses, carry fine work drawn only near: loops, courses, wall-walks
+    /// and finials; roof courses, gable boards, hoops and finials.
+    func testWallsAndWorksCarryFineWork() throws {
+        for level in 1...5 {
+            for key in [ModelKey.walls(level: level), .work(.granary, level: level), .work(.infirmary, level: level)] {
+                let mesh = Library.model(key).mesh
+                let fine = try XCTUnwrap(mesh.fineFrom, "\(key) has fine work")
+                XCTAssertGreaterThan(mesh.indices.count, fine, "\(key)")
+            }
+        }
+        // A palisade's lashings are rope.
+        let palisade = Library.model(.walls(level: 1)).mesh
+        XCTAssertTrue(palisade.indices[(palisade.fineFrom ?? 0)...].contains { palisade.vertices[Int($0)].color == Palette.leatherDark })
+    }
+
     func testFiguresAndKeepsWearTheirHouse() {
         for key in CatalogueTests.keys {
             let materials = Set(Library.model(key).mesh.vertices.map(\.material))

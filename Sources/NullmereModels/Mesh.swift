@@ -152,6 +152,9 @@ public struct PackedVertex: Equatable, Sendable {
 public struct Mesh: Equatable, Sendable {
     public var vertices: [MeshVertex]
     public var indices: [UInt32]
+    /// Where its fine work begins among the indices: what is too small to
+    /// see from afar, drawn only near. Nil when it has none.
+    public var fineFrom: Int?
 
     public init(vertices: [MeshVertex] = [], indices: [UInt32] = []) {
         self.vertices = vertices
@@ -159,6 +162,8 @@ public struct Mesh: Equatable, Sendable {
     }
 
     public var triangleCount: Int { indices.count / 3 }
+    /// The indices drawn from afar: all but the fine work.
+    public var coarseIndexCount: Int { fineFrom ?? indices.count }
     public var isEmpty: Bool { indices.isEmpty }
 
     /// The smallest box holding every vertex.
@@ -172,8 +177,10 @@ public struct Mesh: Equatable, Sendable {
         return (low, high)
     }
 
-    /// Adds another mesh's triangles, moved by `transform`.
+    /// Adds another mesh's triangles, moved by `transform`; the whole is
+    /// then drawn near and far alike.
     public mutating func append(_ other: Mesh, transform: Mat4 = .identity) {
+        fineFrom = nil
         let base = UInt32(vertices.count)
         let normals = transform.normalMatrix
         vertices.reserveCapacity(vertices.count + other.vertices.count)
@@ -183,6 +190,13 @@ public struct Mesh: Equatable, Sendable {
             vertices.append(vertex)
         }
         indices.append(contentsOf: other.indices.map { $0 + base })
+    }
+
+    /// Adds one triangle of three new corners.
+    mutating func add(_ corners: [MeshVertex]) {
+        let base = UInt32(vertices.count)
+        vertices.append(contentsOf: corners)
+        indices.append(contentsOf: [base, base + 1, base + 2])
     }
 
     /// The vertices as the GPU reads them.

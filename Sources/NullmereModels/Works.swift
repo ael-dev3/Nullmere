@@ -71,16 +71,54 @@ extension MeshBuilder {
                 $0.box(center: Vec3(0, height + 0.004, z), size: Vec3(width + 0.044, 0.01, 0.008), color: post)
             }
             $0.box(center: Vec3(0, height + depth * pitch + 0.004, 0), size: Vec3(width + 0.05, 0.012, 0.014), color: post)
+            // Its fine work: two courses across each slope of the roof,
+            // boards along the gables and a vent high in each.
+            $0.fine { b in
+                let eave = d + 0.022, end = w + 0.022, rise = depth * pitch
+                b.with(material: roofMaterial) { b in
+                    for t in [Float(0.3), 0.62] {
+                        for side in [Float(1), -1] {
+                            let z = side * eave * (1 - t)
+                            b.beam(from: Vec3(-end, height + rise * t, z), to: Vec3(end, height + rise * t, z), width: 0.008, depth: 0.008,
+                                   color: roof * 0.78)
+                        }
+                    }
+                }
+                for x in [-end + 0.003, end - 0.003] {
+                    for side in [Float(1), -1] {
+                        b.beam(from: Vec3(x, height + rise * 0.05, side * eave * 0.95), to: Vec3(x, height + rise + 0.006, 0), width: 0.012,
+                               depth: 0.012, color: post)
+                    }
+                    b.box(center: Vec3(x + (x > 0 ? 0.002 : -0.002), height + rise * 0.38, 0), size: Vec3(0.006, 0.022, 0.026),
+                          color: Palette.timberDark)
+                }
+            }
         }
     }
 
     /// A round bin or tower under a cone.
     mutating func roundHouse(at: Vec3, radius: Float, height: Float, wall: Vec3, roof: Vec3, roofMaterial: Material = .plain,
                              roofHeight: Float? = nil, sides: Int = 8) {
+        let rise = roofHeight ?? radius * 1.5
         place(.translation(at)) {
             $0.lathe([(radius, -0.06), (radius, height)], sides: sides, color: wall)
             $0.with(material: roofMaterial) {
-                $0.cone(sides: sides, radius: radius * 1.18, from: height, to: height + (roofHeight ?? radius * 1.5), color: roof)
+                $0.cone(sides: sides, radius: radius * 1.18, from: height, to: height + rise, color: roof)
+            }
+            // Its fine work: a stone one's string courses, or a timber one's
+            // hoops; a ring round its roof and a finial on its point.
+            $0.fine { b in
+                let band = Surface.of(wall) == .stone ? Palette.stonePale : Palette.timberDark
+                for y in [height * 0.3, height * 0.72] {
+                    b.lathe([(radius * 0.98, y), (radius * 1.05, y + 0.004), (radius * 1.05, y + 0.013), (radius * 0.98, y + 0.017)],
+                            sides: sides, color: band)
+                }
+                b.with(material: roofMaterial) { b in
+                    let r = radius * 1.18 * 0.55, y = height + rise * 0.45
+                    b.lathe([(r * 0.97, y - 0.006), (r * 1.04, y), (r * 0.97, y + 0.008)], sides: sides, color: roof * 0.78)
+                }
+                b.limb(from: Vec3(0, height + rise - 0.012, 0), to: Vec3(0, height + rise + 0.035, 0), radius: 0.006, topRadius: 0.002,
+                       color: Palette.timberDark)
             }
         }
     }

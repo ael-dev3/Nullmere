@@ -25,6 +25,9 @@ extension GameSession {
     static let cityTilt = 0.86
     /// How close the view stands over the lake as a world opens.
     static let lakeScale = 28.0
+    /// How near the camera comes before the models' fine work is drawn:
+    /// twice the lake's view, where a keep's quoins are a point across.
+    static let fineScale = 56.0
 
     /// The city view, as RoK's: the view close over one of the keeper's
     /// holds (the seat unless another is named), leaning in, the hold

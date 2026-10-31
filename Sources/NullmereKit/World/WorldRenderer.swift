@@ -34,6 +34,8 @@ final class WorldRenderer {
         let vertices: any MTLBuffer
         let indices: any MTLBuffer
         let indexCount: Int
+        /// The indices drawn from afar, the fine work left out.
+        let coarseCount: Int
     }
 
     /// What a frame is drawn into away from the screen: for measuring and
@@ -188,7 +190,7 @@ final class WorldRenderer {
                                               options: .storageModeShared)
         else { return nil }
         vertices.label = key.description
-        let made = GPUMesh(vertices: vertices, indices: indices, indexCount: mesh.indices.count)
+        let made = GPUMesh(vertices: vertices, indices: indices, indexCount: mesh.indices.count, coarseCount: mesh.coarseIndexCount)
         meshes[key] = made
         return made
     }
@@ -238,12 +240,12 @@ final class WorldRenderer {
             encoder.setRenderPipelineState(modelPipeline)
             encoder.setVertexBuffer(paletteBuffer, offset: 0, index: 2)
             if let fixed {
-                draw(scene.fixed, from: fixed.buffer, with: encoder)
+                draw(scene.fixed, from: fixed.buffer, fine: scene.fine, with: encoder)
             }
             if !instances.isEmpty,
                let moving = device.makeBuffer(bytes: instances, length: instances.count * MemoryLayout<ModelInstance>.stride,
                                               options: .storageModeShared) {
-                draw(scene.batches, from: moving, with: encoder)
+                draw(scene.batches, from: moving, fine: scene.fine, with: encoder)
             }
         }
 
@@ -267,15 +269,16 @@ final class WorldRenderer {
     }
 
     /// Each batch's mesh, once for each of its instances, which lie in
-    /// `buffer` one batch after another.
-    private func draw(_ batches: [ModelBatch], from buffer: any MTLBuffer, with encoder: any MTLRenderCommandEncoder) {
+    /// `buffer` one batch after another: with its fine work when the
+    /// camera is near.
+    private func draw(_ batches: [ModelBatch], from buffer: any MTLBuffer, fine: Bool, with encoder: any MTLRenderCommandEncoder) {
         var first = 0
         for batch in batches {
             defer { first += batch.instances.count }
             guard !batch.instances.isEmpty, let mesh = mesh(for: batch.key) else { continue }
             encoder.setVertexBuffer(mesh.vertices, offset: 0, index: 0)
             encoder.setVertexBuffer(buffer, offset: first * MemoryLayout<ModelInstance>.stride, index: 1)
-            encoder.drawIndexedPrimitives(type: .triangle, indexCount: mesh.indexCount, indexType: .uint32,
+            encoder.drawIndexedPrimitives(type: .triangle, indexCount: fine ? mesh.indexCount : mesh.coarseCount, indexType: .uint32,
                                           indexBuffer: mesh.indices, indexBufferOffset: 0, instanceCount: batch.instances.count)
         }
     }

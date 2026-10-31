@@ -71,6 +71,7 @@ extension GameSession {
         let houses = WorldView.houseColours
         let full = motion == .full
         var frame = SceneFrame()
+        frame.fine = camera.scale >= GameSession.fineScale
         let t = Float(time)
 
         // The holds the keeper knows of, each with its works.

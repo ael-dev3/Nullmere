@@ -120,11 +120,8 @@ enum Holds {
             }
         }
         // Lit windows high on the tower, on every face.
-        for (facing, offset) in [(Float(0), Vec3(0, 0, half - 0.05)), (.pi, Vec3(0, 0, -half - 0.05)), (.pi / 2, Vec3(half, 0, -0.05)),
-                                 (-.pi / 2, Vec3(-half, 0, -0.05))] {
-            for level in seat ? [Float(0.45), 0.72] : [Float(0.42)] {
-                b.window(offset + Vec3(0, level, 0), width: 0.035, height: 0.07, facing: facing)
-            }
+        for window in towerWindows(seat: seat, half: half) {
+            b.window(window.at, width: 0.035, height: 0.07, facing: window.facing)
         }
         // The hall before it, roofed in the House's colour.
         let hallFront: Float = seat ? 0.34 : 0.3
@@ -170,7 +167,19 @@ enum Holds {
             }
         }
         dress(&b, seat: seat, style: style, half: half, towerHeight: towerHeight, hallFront: hallFront, roofHeight: roofHeight)
+        b.fine { detail(&$0, seat: seat, style: style, half: half, towerHeight: towerHeight, hallFront: hallFront, roofHeight: roofHeight) }
         return Model(name: name, mesh: b.mesh)
+    }
+
+    /// Where the tower's lit windows are, and which way each faces: on
+    /// every face, twice up a seat's taller tower, but where its banner
+    /// hangs down the front.
+    static func towerWindows(seat: Bool, half: Float) -> [(facing: Float, at: Vec3)] {
+        let faces: [(Float, Vec3)] = [(0, Vec3(0, 0, half - 0.05)), (.pi, Vec3(0, 0, -half - 0.05)), (.pi / 2, Vec3(half, 0, -0.05)),
+                                      (-.pi / 2, Vec3(-half, 0, -0.05))]
+        return faces.dropFirst(seat ? 1 : 0).flatMap { facing, offset in
+            (seat ? [Float(0.45), 0.72] : [Float(0.42)]).map { (facing, offset + Vec3(0, $0, 0)) }
+        }
     }
 
     /// The keep's dressing: courses of dressed stone girdling the tower,
@@ -250,6 +259,121 @@ enum Holds {
             }
         }
         b.box(center: Vec3(0.24, 0.05, 0.25), size: Vec3(0.04, 0.04, 0.04), turn: 0.3, color: Palette.timberGrey)
+    }
+
+    /// The keep's finer work: quoins up the tower's corners above its
+    /// buttresses; its windows framed, a sill under each and a lintel over
+    /// it, the shutters thrown back in the House's colour; ribs down the
+    /// roof's hips and courses across it; the hall's frame of rails, posts
+    /// and braces, lit windows down its sides and its chimney capped with
+    /// two pots; at a seat, a string course and slits round each round
+    /// tower and a pennant over its cone; and a pile of logs and a handcart
+    /// beside the tower.
+    static func detail(_ b: inout MeshBuilder, seat: Bool, style: KeepStyle, half: Float, towerHeight: Float, hallFront: Float,
+                       roofHeight: Float) {
+        let back = -half - 0.05, front = half - 0.05, middle: Float = -0.05
+        b.with(surface: style.wallGrain) { b in
+            var y = towerHeight * 0.6, course = 0
+            while y + 0.036 <= towerHeight - 0.07 {
+                let along: Float = course % 2 == 0 ? 0.07 : 0.042, across: Float = course % 2 == 0 ? 0.042 : 0.07
+                for x in [-half, half] {
+                    for z in [back, front] {
+                        let sx: Float = x > 0 ? 1 : -1, sz: Float = z > middle ? 1 : -1
+                        b.box(center: Vec3(x + sx * (0.006 - along / 2), y + 0.018, z + sz * (0.006 - across / 2)),
+                              size: Vec3(along, 0.036, across), color: style.trim)
+                    }
+                }
+                y += 0.042
+                course += 1
+            }
+        }
+        for window in towerWindows(seat: seat, half: half) {
+            b.place(.translation(window.at) * .rotationY(window.facing)) {
+                $0.with(surface: style.wallGrain) {
+                    $0.box(center: Vec3(0, -0.041, 0.006), size: Vec3(0.054, 0.012, 0.026), color: style.trim)
+                    $0.box(center: Vec3(0, 0.042, 0.004), size: Vec3(0.05, 0.014, 0.02), color: style.trim)
+                }
+                $0.with(material: .house) {
+                    for side in [Float(-1), 1] {
+                        $0.box(center: Vec3(side * 0.03, 0, 0.007), size: Vec3(0.017, 0.068, 0.006), color: Palette.house)
+                    }
+                }
+            }
+        }
+        // The tower roof's hips ribbed and two courses across it.
+        let base = towerHeight + 0.04, reach = half * 0.85, rib = style.roof * 0.7
+        let apex = Vec3(0, base + roofHeight, middle)
+        b.with(surface: style.roofGrain) { b in
+            for (x, z) in [(-reach, -reach), (reach, -reach), (reach, reach), (-reach, reach)] {
+                b.beam(from: Vec3(x, base, middle + z), to: apex, width: 0.012, color: rib)
+            }
+            for t in [Float(0.22), 0.58] {
+                let r = reach * (1 - t), y = base + roofHeight * t
+                let corners = [Vec3(-r, y, middle - r), Vec3(r, y, middle - r), Vec3(r, y, middle + r), Vec3(-r, y, middle + r)]
+                for index in 0..<4 {
+                    b.beam(from: corners[index], to: corners[(index + 1) % 4], width: 0.009, color: rib)
+                }
+            }
+        }
+        // The hall's frame: rails across its front either side of the door,
+        // braces in the outer bays, and rails and a post down each side,
+        // where two windows are lit.
+        let hallMiddle = (half - 0.06 + hallFront) / 2, face = hallFront + 0.004
+        for side in [Float(-1), 1] {
+            b.beam(from: Vec3(side * 0.193, 0.205, face), to: Vec3(side * 0.062, 0.205, face), width: 0.012, depth: 0.012,
+                   color: Palette.timberDark)
+            b.beam(from: Vec3(side * 0.19, 0.045, face), to: Vec3(side * 0.143, 0.198, face), width: 0.01, depth: 0.01,
+                   color: Palette.timberDark)
+            let wall = side * 0.204
+            for y in [Float(0.07), 0.205] {
+                b.beam(from: Vec3(wall, y, front), to: Vec3(wall, y, hallFront), width: 0.012, depth: 0.012, color: Palette.timberDark)
+            }
+            b.box(center: Vec3(wall, 0.14, hallMiddle), size: Vec3(0.012, 0.22, 0.014), color: Palette.timberDark)
+            for z in [hallMiddle - 0.06, hallMiddle + 0.06] {
+                b.window(Vec3(side * 0.2, 0.15, z), width: 0.03, height: 0.05, facing: side * .pi / 2)
+            }
+        }
+        // The chimney capped, two pots on it.
+        let flue = chimney(seat: seat)
+        b.with(surface: style.wallGrain) {
+            $0.box(center: Vec3(flue.x, 0.415, flue.z), size: Vec3(0.066, 0.016, 0.066), color: style.trim)
+        }
+        for dx in [Float(-0.014), 0.014] {
+            b.place(.translation(Vec3(flue.x + dx, 0.423, flue.z))) {
+                $0.lathe([(0.009, 0), (0.0075, 0.022)], sides: 5, color: Palette.earth)
+            }
+        }
+        if seat {
+            for x in [Float(-0.26), 0.26] {
+                b.place(.translation(Vec3(x, 0.03, -0.08))) {
+                    $0.with(surface: style.wallGrain) {
+                        $0.lathe([(0.086, 0.36), (0.097, 0.366), (0.097, 0.38), (0.086, 0.386)], sides: 8, color: style.trim)
+                    }
+                    let outward: [Float] = x < 0 ? [.pi, .pi * 0.75, .pi * 1.25] : [0, .pi * 0.25, -.pi * 0.25]
+                    for angle in outward {
+                        $0.place(.translation(MeshBuilder.ring(0.087, 0.24, angle)) * .rotationY(angle + .pi / 2)) {
+                            $0.box(center: .zero, size: Vec3(0.012, 0.06, 0.016), color: Palette.timberDark)
+                        }
+                    }
+                    $0.limb(from: Vec3(0, 0.95, 0), to: Vec3(0, 1.08, 0), radius: 0.006, color: Palette.timberDark)
+                    $0.flag(at: Vec3(0, 1.075, 0), width: 0.075, height: 0.032, turn: x < 0 ? .pi : 0, tail: true)
+                }
+            }
+        }
+        // Logs stacked by the tower's flank, and a handcart on its other
+        // side, clear of a seat's round towers.
+        let logs: (Float, Float) = seat ? (0.035, 0.13) : (-0.06, 0.06)
+        for (x, y) in [(Float(-0.222), Float(0.047)), (-0.256, 0.047), (-0.239, 0.075)] {
+            b.log(from: Vec3(x, y, logs.0), to: Vec3(x, y, logs.1), radius: 0.016)
+        }
+        b.place(.translation(Vec3(0.27, 0.03, seat ? 0.065 : -0.03))) {
+            $0.box(min: Vec3(-0.032, 0.05, -0.05), max: Vec3(0.032, 0.062, 0.05), color: Palette.timberPale)
+            for side in [Float(-1), 1] {
+                $0.box(min: Vec3(side * 0.032 - 0.004, 0.062, -0.05), max: Vec3(side * 0.032 + 0.004, 0.085, 0.05), color: Palette.timber)
+                $0.beam(from: Vec3(side * 0.024, 0.056, 0.05), to: Vec3(side * 0.024, 0.012, 0.1), width: 0.008, color: Palette.timber)
+                $0.wheel(center: Vec3(side * 0.044, 0.04, 0), radius: 0.038, width: 0.008, color: Palette.timberDark)
+            }
+        }
     }
 
     /// The top of the keep's hall chimney.
@@ -355,7 +479,73 @@ enum Holds {
         }
         dressWalls(&b, level: level, height: h, thick: thick, runs: runs, half: gateHalf)
         gate(&b, level: level, height: h, half: gateHalf)
+        b.fine { detailWalls(&$0, level: level, height: h, thick: thick, runs: runs, half: gateHalf) }
         return Model(name: name, mesh: b.mesh)
+    }
+
+    /// The walls' finer work: a palisade's lashings; a stone wall's
+    /// arrow loops between its buttresses, and from the third level a
+    /// string course along its face and a wall-walk behind its merlons;
+    /// slits and a course round each round corner tower and a finial on its
+    /// roof; iron bands across the gate's leaves.
+    static func detailWalls(_ b: inout MeshBuilder, level: Int, height h: Float, thick: Float, runs: [(Vec3, Vec3)], half: Float) {
+        for (a, c) in runs {
+            let along = c - a
+            let turn = Float(atan2(Double(along.x), Double(along.z))) - .pi / 2
+            let middle = (a + c) * 0.5
+            let out = Vec3(middle.x, 0, middle.z).normalized
+            if level == 1 {
+                // Lashings binding the stakes, twice up.
+                for y in [h * 0.35, h * 0.75] {
+                    b.beam(from: a + Vec3(0, y, 0) + out * 0.021, to: c + Vec3(0, y, 0) + out * 0.021, width: 0.006, depth: 0.012,
+                           color: Palette.leatherDark)
+                }
+                continue
+            }
+            let face = out * (thick / 2 + 0.002)
+            // Arrow loops midway between the buttresses.
+            let count = max(Int((along.length / 0.2).rounded()) - 1, 1)
+            for index in stride(from: 1, to: count, by: 1) {
+                let at = a.mix(c, (Float(index) + 0.5) / Float(count + 1)) + face
+                b.box(center: at + Vec3(0, h * 0.55, 0), size: Vec3(0.012, 0.055, 0.012), turn: turn, color: Palette.timberDark)
+            }
+            if level >= 3 {
+                b.beam(from: a + Vec3(0, h * 0.82, 0) + face, to: c + Vec3(0, h * 0.82, 0) + face, width: 0.012, depth: 0.012,
+                       color: Palette.stonePale)
+                // The wall-walk's boards behind the merlons.
+                let walk = out * -(thick / 2 + 0.012)
+                b.beam(from: a + Vec3(0, h - 0.012, 0) + walk, to: c + Vec3(0, h - 0.012, 0) + walk, width: 0.024, depth: 0.008,
+                       color: Palette.timber)
+            }
+        }
+        if level >= 4 {
+            let towerHeight = h + 0.12 + 0.05 * Float(level - 3)
+            let radius: Float = 0.075 + 0.012 * Float(level - 3)
+            for index in 0..<6 {
+                let at = wallCorner(index)
+                let outward = Float(atan2(Double(-at.z), Double(at.x)))
+                b.place(.translation(at + Vec3(0, -0.1, 0))) {
+                    for spread in [Float(-0.5), 0.5] {
+                        let angle = outward + spread
+                        $0.place(.translation(MeshBuilder.ring(radius * 1.04, towerHeight * 0.62, angle)) * .rotationY(angle + .pi / 2)) {
+                            $0.box(center: .zero, size: Vec3(0.012, 0.05, 0.016), color: Palette.timberDark)
+                        }
+                    }
+                    let course = towerHeight * 0.45
+                    $0.lathe([(radius * 0.98, course), (radius * 1.1, course + 0.005), (radius * 1.1, course + 0.015),
+                              (radius * 0.98, course + 0.02)], sides: 8, color: Palette.stonePale)
+                    let top = towerHeight + 0.15 + radius * 2.6
+                    $0.limb(from: Vec3(0, top - 0.015, 0), to: Vec3(0, top + 0.05, 0), radius: 0.006, topRadius: 0.002, color: Palette.iron)
+                }
+            }
+        }
+        // Iron bands across the gate's open leaves.
+        let z = wallCorner(1).z
+        for side in [Float(1), -1] {
+            for y in [Float(0.05), min(h, 0.2) - 0.05] {
+                b.box(center: Vec3(side * half * 0.72, y, z + 0.035), size: Vec3(0.016, 0.01, 0.078), turn: side * 0.9, color: Palette.iron)
+            }
+        }
     }
 
     /// The walls' dressing: from the second level, buttresses along their

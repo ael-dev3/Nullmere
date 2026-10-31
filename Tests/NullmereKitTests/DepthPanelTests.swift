@@ -594,9 +594,11 @@ final class DepthPanelTests: XCTestCase {
         let (session, _) = session(state)
         session.motion = .still
         XCTAssertNil(session.cityInView, "Over the lake")
+        XCTAssertFalse(session.sceneFrame(at: 1).fine, "From the lake's view, the models' fine work is too small to draw")
         XCTAssertTrue(session.handle(.city))
         XCTAssertEqual(session.camera.scale, GameSession.cityScale, accuracy: 1e-9)
         XCTAssertEqual(session.camera.tilt, GameSession.cityTilt, accuracy: 1e-9)
+        XCTAssertTrue(session.sceneFrame(at: 1).fine, "Close over the city, it is drawn")
         XCTAssertEqual(session.cityInView?.id, hold.id)
         XCTAssertEqual(session.selection, .hold(hold.id))
         // Each work named where it stands, in the view.

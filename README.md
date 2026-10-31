@@ -1173,12 +1173,19 @@ There is no music in the launcher; the game makes its own sound as it plays.
   has never seen lies under mist; what they saw once and see no longer,
   greyed as memory.
 - **Every model is original and built from code**
-  ([`Sources/NullmereModels`](Sources/NullmereModels)): each kind of company in
-  its five tiers, the wilds and six commanders, keeps, walls and every work
-  at every level, the land's firs, birches, heather, ferns, crags, reeds,
-  pebbles, mounds and ruins, and what
-  moves through the world. Companies stand in formation, fewer as they are
-  worn down; holds lay out their works on the land around the keep.
+  ([`Sources/NullmereModels`](Sources/NullmereModels)): each kind of company
+  in its five tiers, the wilds and six commanders, keeps, walls and every
+  work at every level, the land's firs, birches, heather, ferns, crags,
+  reeds, pebbles, mounds and ruins, and what moves through the world.
+  Companies stand in formation, fewer as they are worn down; holds lay out
+  their works on the land around the keep. Near, the models show fine work
+  that is left off from afar, where it is too small to see: a keep's quoins,
+  framed windows with shutters in its House's colour, roof ribs, a
+  half-timbered hall with a capped chimney, a log pile and a handcart (a
+  seat's keep is 2,728 triangles, where it was 778); the walls' arrow loops,
+  string courses, wall-walks, tower slits and finials, and iron bands on the
+  gate; and on every hall and round house of the works, courses across the
+  roofs, boards and vents in the gables, hoops and finials.
 - **Portraits from the world itself.** The panels show each commander,
   each company to be trained (in the tier chosen) and each work to be
   built (at the stage it will be), drawn by the world's own renderer on a
