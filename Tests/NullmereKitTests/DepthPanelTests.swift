@@ -344,7 +344,7 @@ final class DepthPanelTests: XCTestCase {
         searched.map.set(hold.position, Tile(terrain: ground.terrain, relief: ground.relief))
         let after = try XCTUnwrap(HoverInfo.line(for: hold.position, in: searched, explored: true, territory: searched.territory()))
         XCTAssertTrue(after.contains("where \(hold.title) stood"), after)
-        let (later, _) = session(searched)
+        let (later, _) = self.session(searched)
         later.selection = .tile(hold.position)
         draw(SelectionPanel(session: later), width: 330, height: 600)
     }
@@ -428,6 +428,46 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertFalse(session.perform(.say(words: "Hail", toAlliance: true)), "Sworn to none, no alliance to say it to")
         draw(WordsPanel(session: session))
         XCTAssertEqual(GameSession.cues(for: .say(words: "Hail", toAlliance: false), events: [], in: session.state, player: me), [.parley])
+    }
+
+    /// A House's keeper hidden is hidden everywhere: their words in the
+    /// Words, as notices and in the songbook. Words said by others since
+    /// the keeper last read them are counted on the rail until they do.
+    func testHiddenWordsAreHiddenEverywhereAndUnreadOnesCounted() throws {
+        UserDefaults.standard.removeObject(forKey: GameSession.mutedKey)
+        defer { UserDefaults.standard.removeObject(forKey: GameSession.mutedKey) }
+        var state = world("hidden words")
+        let me = state.player
+        let (other, third) = ((me + 1) % 6, (me + 2) % 6)
+        state.houses[other].isPlayer = true
+        state.houses[third].isPlayer = true
+        _ = try state.perform(.say(words: "Before you came", toAlliance: false), as: other)
+        let (session, link) = session(state)
+        XCTAssertEqual(session.unreadWords, 0, "What was said before the keeper came counts as read")
+
+        // Others speak while the keeper is away from the Words.
+        _ = try state.perform(.say(words: "Well met", toAlliance: false), as: other)
+        _ = try state.perform(.say(words: "Hold the ford", toAlliance: false), as: third)
+        link.onEvent?(.changed(state.view(for: me)))
+        XCTAssertEqual(session.unreadWords, 2)
+        draw(PanelRail(session: session), width: 720, height: 40)
+        XCTAssertTrue(PressableButtons.press("Words"), "Among \(PressableButtons.actions.keys.sorted())")
+        draw(WordsPanel(session: session))
+        session.markWordsRead()
+        XCTAssertEqual(session.unreadWords, 0, "Read")
+
+        // One keeper's House hidden: gone from the Words, and from what is told.
+        session.setMuted(true, house: session.state.houses[other])
+        XCTAssertTrue(session.isMuted(other))
+        XCTAssertEqual(session.wordsHeard.map(\.text), ["Hold the ford"])
+        _ = try state.perform(.say(words: "Do you hear me", toAlliance: false), as: other)
+        link.onEvent?(.changed(state.view(for: me)))
+        XCTAssertEqual(session.unreadWords, 0, "Nothing counted of a hidden House")
+        let notices = session.notices.count
+        link.onEvent?(.heard([.said(try XCTUnwrap(state.wordsSaid.last))]))
+        XCTAssertEqual(session.notices.count, notices, "Nor told")
+        session.setMuted(false, house: session.state.houses[other])
+        XCTAssertEqual(session.unreadWords, 1)
     }
 
     // MARK: Every state drawn

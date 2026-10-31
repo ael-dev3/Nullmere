@@ -413,6 +413,8 @@ public final class GameSession {
                 asked.insert(spoken)
             }
         }
+        // Words said before the keeper came count as read.
+        wordsRead = world.wordsSaid.last?.id ?? 0
         refreshWorld()
         // Back to the House last seen: what changed while away. A House new
         // to the keeper (a new age, a seat that lapsed, a free House taken
@@ -701,6 +703,32 @@ public final class GameSession {
     public func setMuted(_ muted: Bool, house: House) {
         if muted { mutedHouses.insert(house.name) } else { mutedHouses.remove(house.name) }
         UserDefaults.standard.set(mutedHouses.sorted(), forKey: Self.mutedKey)
+    }
+
+    /// Whether a House's keeper's words are hidden from this keeper.
+    public func isMuted(_ house: Int) -> Bool {
+        state.houses.indices.contains(house) && mutedHouses.contains(state.houses[house].name)
+    }
+
+    /// The words this keeper hears, but those of the Houses they hide.
+    public var wordsHeard: [Word] {
+        state.words(heardBy: player).filter { !isMuted($0.from) }
+    }
+
+    /// The latest word this keeper has read: those said before they came
+    /// count as read.
+    @ObservationIgnored private var wordsRead: Int?
+
+    /// Words said to this keeper by others since they last opened the
+    /// Words, but those of the Houses they hide.
+    public var unreadWords: Int {
+        let read = wordsRead ?? Int.max
+        return wordsHeard.filter { $0.id > read && $0.from != player }.count
+    }
+
+    /// The Words read, as far as they go now.
+    func markWordsRead() {
+        wordsRead = max(wordsRead ?? 0, state.wordsSaid.last?.id ?? 0)
     }
 
     /// The words an envoy carries, if any and not silenced.
@@ -1830,6 +1858,9 @@ public final class GameSession {
 
     private func report(_ events: [GameEvent]) {
         for event in events {
+            // What a hidden House's keeper says or sings is not shown.
+            if case .said(let word) = event, isMuted(word.from) { continue }
+            if case .sung(let ballad) = event, isMuted(ballad.house) { continue }
             if let line = Narration.line(for: event, in: state, viewer: player) {
                 post(line.text, tone: line.tone)
             }

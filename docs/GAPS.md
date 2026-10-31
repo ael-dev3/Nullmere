@@ -144,7 +144,8 @@ To build, reimagined:
 - [ ] A gathering's length chosen as it is sent (a watch, three, until full)
 - [x] The camera's buttons on screen (under the small map, while it is shown), and Reset View to the whole House (⌘0)
 - [ ] Sounds for the interface (a panel opening and closing, going back, an order refused), and the trackpad's taps where the Mac has them
-- [ ] Words made safe: a keeper's Words muted everywhere, not only an envoy's; a line reported, kept with what was said round it for the realm's steward; the realm able to remove a line and bar a keeper; an unread count on the rail, and the realm's whole record of Words paged back
+- [x] A keeper's House hidden everywhere (its Words, its notices, its ballads, its envoys' words), not only an envoy's; an unread count on the rail's Words
+- [ ] Words made safe at the realm: a line reported, kept with what was said round it for the realm's steward; the realm able to remove a line and bar a keeper; the realm's whole record of Words paged back
 - [ ] The realm's compact: terms and privacy in plain words, read and accepted at the front door before first entry, asked again when they change
 - [ ] A keeper's identity carried to another Mac: a recovery phrase written down, and taken up on the other; leaving an identity, and taking up another
 - [ ] A newer build known: the launcher and the realm each tell their version, and a client too old for its realm is told so and where to get the new one

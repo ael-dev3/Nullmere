@@ -249,7 +249,7 @@ struct Songbook: View {
                         .foregroundStyle(Palette.text(0.55))
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                ForEach(state.songbook.reversed()) { ballad in
+                ForEach(state.songbook.reversed().filter { !session.isMuted($0.house) }) { ballad in
                     VStack(alignment: .leading, spacing: 3) {
                         Text(verbatim: Songbook.heading(ballad, in: state))
                             .font(.nm(10))

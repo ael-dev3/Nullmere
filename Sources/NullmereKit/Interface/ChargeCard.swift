@@ -250,12 +250,21 @@ struct PanelRail: View {
 
     private func buttons(_ items: ArraySlice<(title: String, panel: GameSession.Panel, key: String)>) -> some View {
         ForEach(items, id: \.key) { item in
-            QuietButton(title: item.title, size: 9, prominent: session.panel == item.panel) {
+            let unread = item.panel == .words ? session.unreadWords : 0
+            QuietButton(title: item.title, size: 9, prominent: session.panel == item.panel || unread > 0,
+                        name: unread > 0 ? "\(item.title), \(unread) unread" : nil) {
                 withAnimation(.easeOut(duration: 0.2)) {
                     session.panel = session.panel == item.panel ? nil : item.panel
                 }
             }
             .help("\(item.title) (\(item.key))")
+            // Words said since the keeper last read them.
+            if unread > 0 {
+                Text(verbatim: "\(unread)")
+                    .font(.nm(8.5, weight: .medium).monospacedDigit())
+                    .foregroundStyle(Palette.glowWords)
+                    .accessibilityHidden(true)
+            }
         }
     }
 }

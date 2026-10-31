@@ -1069,7 +1069,10 @@ realm; keepers are told in plain words, never a status code.
 - **Words.** A keeper says a line to every keeper of the realm, or to their
   alliance alone: plain words, a hundred and forty letters at most, with no
   addresses, twenty lines a watch. The realm keeps the latest eighty; an
-  alliance's words reach only its own Houses.
+  alliance's words reach only its own Houses. Hide words, on a House in
+  the Houses panel, hides its keeper everywhere on this Mac: their Words,
+  their notices, their ballads and their envoys' words. The rail's Words
+  shows how many lines others have said since the keeper last read them.
 - **The world first.** The map is the screen; the interface keeps to
   its edges and comes when it is wanted. The top bar is three small
   islands, the House and the watch, the stores, and Ready, with the

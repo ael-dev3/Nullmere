@@ -11,7 +11,7 @@ struct WordsPanel: View {
     var body: some View {
         let state = session.state
         let sworn = state.alliance(of: session.player)
-        let words = state.words(heardBy: session.player)
+        let words = session.wordsHeard
         let alliance = toAlliance && sworn != nil
         let refusal = state.sayRefusal(draft, toAlliance: alliance, as: session.player)
         VStack(alignment: .leading, spacing: 12) {
@@ -37,6 +37,8 @@ struct WordsPanel: View {
             .scrollIndicators(.never)
             .defaultScrollAnchor(.bottom)
             .pagedByKeys(session, as: .panel(.words))
+            .onAppear { session.markWordsRead() }
+            .onChange(of: words.count) { session.markWordsRead() }
             Rule(opacity: 0.18)
             if sworn != nil {
                 Picker("Say it to", selection: $toAlliance) {
