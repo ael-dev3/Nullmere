@@ -318,6 +318,37 @@ final class DepthPanelTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: MiniMap.shownKey)
     }
 
+    /// A hold of the age before, drowned where it stood: named on its
+    /// ground, under the pointer and chosen, and when searched.
+    func testADrownedHoldIsToldOnItsGround() throws {
+        var state = world("drowned ground")
+        var before = world("the age before")
+        for index in before.holds.indices { before.holds[index].levels[.granary] = 3 }
+        state.drown(before, age: 2)
+        let hold = try XCTUnwrap(state.drownedHolds.first)
+        let me = state.player
+        state.reveal(around: hold.position, range: 1, for: me)
+        let line = try XCTUnwrap(HoverInfo.line(for: hold.position, in: state, explored: true, territory: state.territory()))
+        XCTAssertTrue(line.contains("Drowned Ruin · the drowned hold of \(hold.title)"), line)
+        XCTAssertEqual(Narration.line(for: .ruinSearched(at: hold.position, by: me, reward: Stock(grain: 40)), in: state, viewer: me)?.text,
+                       "The drowned hold of \(hold.title) gives up 40 grain.")
+        XCTAssertEqual(Narration.line(for: .ruinSearched(at: Hex(99, 99), by: me, reward: Stock(grain: 40)), in: state, viewer: me)?.text,
+                       "A drowned ruin gives up 40 grain.")
+        let (session, _) = session(state)
+        session.selection = .tile(hold.position)
+        draw(SelectionPanel(session: session), width: 330, height: 600)
+
+        // Searched, the ground remembers where it stood.
+        var searched = state
+        let ground = try XCTUnwrap(searched.map[hold.position])
+        searched.map.set(hold.position, Tile(terrain: ground.terrain, relief: ground.relief))
+        let after = try XCTUnwrap(HoverInfo.line(for: hold.position, in: searched, explored: true, territory: searched.territory()))
+        XCTAssertTrue(after.contains("where \(hold.title) stood"), after)
+        let (later, _) = session(searched)
+        later.selection = .tile(hold.position)
+        draw(SelectionPanel(session: later), width: 330, height: 600)
+    }
+
     func testAHoldsRecordSaysWhenItWasRaised() {
         let seat = Hold(id: 1, name: "Ilsen", owner: 0, position: .origin, isSeat: true, foundedWatch: 1)
         let later = Hold(id: 2, name: "Vael", owner: 0, position: Hex(3, 0), isSeat: false, foundedWatch: 23)

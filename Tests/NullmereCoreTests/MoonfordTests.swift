@@ -104,6 +104,32 @@ final class MoonfordTests: XCTestCase {
         XCTAssertEqual(state.tidings(of: .carriedAshore(unit: id, owner: state.player, from: middle, to: carried.position), for: state.player)?.tone, .bad)
         XCTAssertNil(state.tidings(of: .carriedAshore(unit: id, owner: state.player, from: middle, to: carried.position), for: (state.player + 1) % state.houses.count))
 
+        // A march bound for the ford ends as the water comes back, and no
+        // company ever steps into the Still.
+        var bound = eve("bound for the ford")
+        _ = bound.endWatch()
+        let crossing = try XCTUnwrap(bound.ford)
+        let row = crossing.filter { $0.r == crossing[0].r }.map(\.q)
+        let shore = Hex(try XCTUnwrap(row.min()) - 1, crossing[0].r)
+        bound.units.removeAll { $0.position == shore }
+        let walker = bound.takeID()
+        bound.units.append(NullmereCore.Unit(id: walker, kind: .spear, owner: bound.player, position: shore))
+        let far = Hex(try XCTUnwrap(row.max()), crossing[0].r)
+        bound.units[try XCTUnwrap(bound.unitIndex(walker))].destination = far
+        bound.watch = Sundering.first + GameState.fordLasts - 1
+        _ = bound.endWatch()
+        let stood = try XCTUnwrap(bound.unit(walker))
+        XCTAssertNil(stood.destination, "Bound for water, the march ends")
+        XCTAssertNotEqual(bound.map[stood.position]?.terrain, .still)
+        // Even a march found before the water came back steps no further than the shore.
+        var late = bound
+        late.units[try XCTUnwrap(late.unitIndex(walker))].destination = far
+        late.units[try XCTUnwrap(late.unitIndex(walker))].movesLeft = late.movement(of: stood)
+        _ = late.march(walker, planned: [far])
+        XCTAssertNotEqual(late.map[try XCTUnwrap(late.unit(walker)).position]?.terrain, .still, "Never into the Still")
+        XCTAssertNil(late.unit(walker)?.destination)
+        XCTAssertEqual(late.problems(), [])
+
         // A lake with no deep water has no ford.
         var shallow = eve("no deep water")
         for index in 0..<shallow.map.count where shallow.map[index].terrain == .still {

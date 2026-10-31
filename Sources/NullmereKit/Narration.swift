@@ -79,8 +79,11 @@ enum Narration {
         case .bartered(let owner, let gave, let took):
             guard owner == viewer else { return nil }
             return Line(text: "Bartered \(gave) for \(took).", tone: .neutral)
-        case .ruinSearched(_, let by, let reward):
+        case .ruinSearched(let at, let by, let reward):
             guard by == viewer else { return nil }
+            if let hold = state.drowned(at: at) {
+                return Line(text: "The drowned hold of \(hold.title) gives up \(reward).", tone: .good)
+            }
             return Line(text: "A drowned ruin gives up \(reward).", tone: .good)
         case .stanceChanged(let first, let second, let stance, let by):
             let other = first == by ? second : first
@@ -159,7 +162,7 @@ enum Narration {
              .allianceDisbanded, .helpGiven, .rallyCalled, .rallyJoined, .rallySetOut, .rallyStruck, .rallyDispersed, .sentToReinforce,
              .happeningBegun, .happeningMark, .happeningEnded, .sunderingBegun, .sunderingEnded, .fieldJoined, .fieldEnded,
              .fordOpened, .fordClosed, .carriedAshore, .recalled,
-             .deedDone, .chargeDone, .said:
+             .deedDone, .chargeDone, .said, .sung:
             // The deeper systems' words are the rules' own.
             return state.tidings(of: event, for: viewer).map { Line(text: $0.text, tone: Narration.tone($0.tone)) }
         }

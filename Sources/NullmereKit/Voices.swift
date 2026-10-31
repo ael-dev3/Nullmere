@@ -4,9 +4,17 @@ import NullmereCore
 import os
 
 /// Something that can put a moment of the game into a character's words.
-/// Voices only speak: what they say never changes the game.
+/// Voices only speak: what they say never changes the game, but for a
+/// ballad the keeper chooses to sing to the realm.
 public protocol Voice: Sendable {
     func speak(_ moment: VoiceMoment) async -> String?
+    /// A few lines of verse for a moment, one to a line; nil from a voice
+    /// that makes none.
+    func compose(_ moment: VoiceMoment) async -> String?
+}
+
+extension Voice {
+    public func compose(_ moment: VoiceMoment) async -> String? { nil }
 }
 
 /// A moment worth a few spoken words, with everything the speaker may know.
@@ -16,6 +24,8 @@ public struct VoiceMoment: Sendable, Equatable {
         case envoy(proposal: Proposal)
         /// The chronicler recording an entry of the lake's history.
         case chronicle(ChronicleEntry.Kind)
+        /// A ballad of a deed, as the halls around the lake would sing it.
+        case ballad
     }
 
     public let kind: Kind
@@ -43,6 +53,9 @@ public struct VoiceMoment: Sendable, Equatable {
             task = "Speak as the envoy, addressing the player's House directly, \(verb) \(offer). One or two sentences, at most 40 words."
         case .chronicle:
             task = "Write the chronicler's single line recording this, as it would stand in an old book of the lake. One sentence, at most 30 words."
+        case .ballad:
+            task = "Make a short ballad of this deed, as the halls around the lake would sing it: four lines, each of at most ten words. "
+                + "Reply with the four lines alone, one to a line, with no title."
         }
         return task + "\n\nWhat is known:\n" + facts.map { "- \($0)" }.joined(separator: "\n")
     }
@@ -92,7 +105,7 @@ public struct OnDeviceVoice: Voice {
     /// One line from Apple's on-device model, in a fresh session.
     private static func askTheModel(instructions: String, prompt: String) async throws -> String {
         let session = LanguageModelSession(instructions: instructions)
-        let response = try await session.respond(to: prompt, options: GenerationOptions(temperature: 0.8, maximumResponseTokens: 90))
+        let response = try await session.respond(to: prompt, options: GenerationOptions(temperature: 0.8, maximumResponseTokens: 160))
         return response.content
     }
 
@@ -104,6 +117,38 @@ public struct OnDeviceVoice: Voice {
             OnDeviceVoice.logger.notice("A voice stayed silent: \(String(describing: error), privacy: .public)")
             return nil
         }
+    }
+
+    public func compose(_ moment: VoiceMoment) async -> String? {
+        guard isReady() else { return nil }
+        do {
+            return Self.verse(try await respond(OnDeviceVoice.instructions, moment.prompt))
+        } catch {
+            OnDeviceVoice.logger.notice("A ballad stayed unmade: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
+    /// A ballad's lines as the realm would keep them, from what the model
+    /// said: a title, numbering and quotes dropped, no exclamations; nil
+    /// when what is left is no ballad.
+    static func verse(_ text: String) -> String? {
+        var lines = text.split(whereSeparator: \.isNewline).map { line -> String in
+            var kept = line.trimmingCharacters(in: .whitespaces)
+            // "1. ", "2) ", "- " or "• " before a line.
+            if let space = kept.firstIndex(of: " "), kept[..<space].allSatisfy({ $0.isNumber || ".)-•*".contains($0) }),
+               kept[..<space].contains(where: { !$0.isNumber }) {
+                kept = String(kept[space...])
+            }
+            kept = kept.trimmingCharacters(in: CharacterSet(charactersIn: "\"“”'‘’*_ ").union(.whitespaces))
+            return kept.replacingOccurrences(of: "!", with: ".")
+        }.filter { !$0.isEmpty }
+        // "The Ballad of the Grey Ford", "Title: …", "Verse:" above the lines.
+        if let first = lines.first?.lowercased(), first.hasPrefix("the ballad") || first.hasPrefix("ballad") || first.hasPrefix("title")
+            || first.hasSuffix(":") {
+            lines.removeFirst()
+        }
+        return GameState.sung(lines.prefix(GameState.balladLines.upperBound).joined(separator: "\n"))?.joined(separator: "\n")
     }
 
     /// Trims what models like to add: quotes, a speaker's name, stray lines.
@@ -149,6 +194,16 @@ enum VoiceFacts {
             facts.append("\(house.title) would give \(trade.given) for \(trade.taken).")
         }
         return VoiceMoment(kind: .envoy(proposal: envoy.proposal), facts: facts)
+    }
+
+    /// A ballad of a Chronicle entry, as a House's keeper would have it
+    /// sung: the deed, when it was, and whose hall sings it.
+    static func ballad(_ entry: ChronicleEntry, in state: GameState, by house: Int) -> VoiceMoment {
+        var facts = [entry.text, "It happened in watch \(entry.watch) after the Houses took their seats."]
+        if state.houses.indices.contains(house) {
+            facts.append("It is sung in the hall of \(state.houses[house].title), of the \(state.heritage(of: house).title).")
+        }
+        return VoiceMoment(kind: .ballad, facts: facts)
     }
 
     static func chronicle(_ entry: ChronicleEntry, in state: GameState) -> VoiceMoment {

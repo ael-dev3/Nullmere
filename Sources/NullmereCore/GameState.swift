@@ -88,6 +88,12 @@ public struct GameState: Codable, Equatable, Sendable {
     var alliances: [Alliance]?
     /// The keepers' words, the latest last; absent before any were said.
     var words: [Word]?
+    /// The realm's songbook: the ballads its keepers have sung this age,
+    /// the latest last; absent before the first.
+    var ballads: [Ballad]?
+    /// The holds of the age before, drowned where they stood in this one;
+    /// absent in a realm's first age, and in worlds made apart from a realm.
+    var drowned: [DrownedHold]?
     /// The rallies gathering or on the march; absent in saves from before them.
     var rallies: [Rally]?
     /// How far the watch has been walked, in a realm, whose watch passes

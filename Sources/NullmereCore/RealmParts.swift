@@ -107,6 +107,9 @@ extension GameState {
         head.sites = sites.map { _ in [] }
         try paged("armoury", armoury)
         head.armoury = armoury.map { _ in [] }
+        // The songbook, like the Chronicle, is every keeper's to read.
+        try shared("ballads", ballads) { $0.ballads }
+        head.ballads = ballads.map { _ in [] }
         return head
     }
 
@@ -136,6 +139,9 @@ extension GameState {
         }
         if armoury != nil {
             armoury = try pages("armoury", of: Gear.self)
+        }
+        if ballads != nil {
+            ballads = try pages("ballads", of: Ballad.self)
         }
     }
 

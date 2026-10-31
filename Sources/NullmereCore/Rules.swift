@@ -72,6 +72,8 @@ extension GameState {
             return try gather(unitID, at: siteID, as: house)
         case let .foundAlliance(name):
             return try foundAlliance(named: name, by: house)
+        case let .sing(ballad, entry):
+            return try sing(ballad, of: entry, as: house)
         case let .say(words, toAlliance):
             return try say(words, toAlliance: toAlliance, as: house)
         case let .learnTalent(commanderID, talent):
@@ -221,6 +223,13 @@ extension GameState {
                 route = planned
             }
             let next = route[0]
+            // Ground gone under water since it was bound there (the Moonford
+            // as the tide comes back): the march ends at the water's edge.
+            guard map[next]?.terrain.isPassable == true else {
+                units[index].destination = nil
+                route = []
+                break
+            }
             // Another company holds the destination, or the wilds or their lair: wait beside it.
             if self.unit(at: next) != nil || wild(at: next) != nil || lair(at: next) != nil { break }
             if let hold = hold(at: next), hold.owner != unit.owner {
@@ -282,13 +291,16 @@ extension GameState {
             Stock(moonsalt: 25), Stock(grain: 80), Stock(timber: 70), Stock(stone: 70),
             Stock(grain: 30, timber: 30, stone: 30, moonsalt: 10),
         ]
-        let reward = random.pick(rewards)
+        // A hold of an age before gives up what its works held besides.
+        let hold = drowned(at: hex)
+        let reward = random.pick(rewards) + (hold.map(GameState.spoils) ?? .zero)
         store(reward, for: house)
         if var tile = map[hex] {
             tile.feature = nil
             map.set(hex, tile)
         }
-        record(.discovery, [house], "\(houses[house].title) searches a drowned ruin and recovers \(reward).")
+        let ruin = hold.map { "the drowned hold of \($0.title)" } ?? "a drowned ruin"
+        record(.discovery, [house], "\(houses[house].title) searches \(ruin) and recovers \(reward).")
         return .ruinSearched(at: hex, by: house, reward: reward)
     }
 

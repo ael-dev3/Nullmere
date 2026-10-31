@@ -568,7 +568,10 @@ public struct RealmState: Codable, Equatable, Sendable {
     private mutating func beginAge(now: Double) {
         rememberTheAge()
         age += 1
+        let before = world
         world = RealmState.world(seed: seedText, age: age, seats: seats, radius: radius)
+        // The age before lies drowned in this one.
+        world.drown(before, age: age)
         if frontier != nil { world.unsundered = true }
         // The Frontier's season over, told; the next begins with no one
         // seated until they cross again.

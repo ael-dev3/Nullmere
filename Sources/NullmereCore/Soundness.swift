@@ -283,6 +283,15 @@ extension GameState {
         for relation in relations where !houseIDs.contains(relation.first) || !houseIDs.contains(relation.second) || relation.first == relation.second {
             found.append("A standing between \(relation.first) and \(relation.second)")
         }
+        for hold in drownedHolds where map[hold.position] == nil {
+            found.append("The drowned hold of \(hold.name) lies outside the world at \(hold.position)")
+        }
+        // Each ballad a House's, of an entry in the Chronicle, as sung.
+        for ballad in songbook {
+            if !houseIDs.contains(ballad.house) { found.append("Ballad \(ballad.id) was sung by no House (\(ballad.house))") }
+            if !chronicle.indices.contains(ballad.entry) { found.append("Ballad \(ballad.id) sings of no entry (\(ballad.entry))") }
+            if GameState.sung(ballad.lines.joined(separator: "\n")) != ballad.lines { found.append("Ballad \(ballad.id) is not as sung") }
+        }
         return found
     }
 }

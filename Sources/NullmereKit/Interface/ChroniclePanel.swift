@@ -1,34 +1,40 @@
 import NullmereCore
 import SwiftUI
 
-/// The lake's history, newest first; or the House's own battle reports.
+/// The lake's history, newest first; the House's own battle reports; or
+/// the realm's songbook.
 struct ChroniclePanel: View {
     let session: GameSession
-    /// The House's battle reports shown, rather than the lake's history.
-    @State private var showingReports: Bool
 
-    init(session: GameSession, showingReports: Bool = false) {
+    enum Shown: Hashable {
+        case history, reports, songs
+    }
+
+    @State private var shown: Shown
+
+    init(session: GameSession, showingReports: Bool = false, shown: Shown? = nil) {
         self.session = session
-        _showingReports = State(initialValue: showingReports)
+        _shown = State(initialValue: shown ?? (showingReports ? .reports : .history))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                PanelTitle(title: "Chronicle", subtitle: showingReports ? "Your House's battles and scouting, the latest first" : "What the lake remembers")
+                PanelTitle(title: "Chronicle", subtitle: ChroniclePanel.subtitle(shown))
                 CloseButton(label: "Close the Chronicle") { session.panel = nil }
             }
-            Picker("Show", selection: $showingReports) {
-                Text(verbatim: "History").tag(false)
-                Text(verbatim: "Reports").tag(true)
+            Picker("Show", selection: $shown) {
+                Text(verbatim: "History").tag(Shown.history)
+                Text(verbatim: "Reports").tag(Shown.reports)
+                Text(verbatim: "Songs").tag(Shown.songs)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
             .accessibilityLabel("Show")
-            if showingReports {
-                ReportList(session: session)
-            } else {
-                history
+            switch shown {
+            case .history: history
+            case .reports: ReportList(session: session)
+            case .songs: Songbook(session: session)
             }
         }
         .padding(16)
@@ -71,6 +77,11 @@ struct ChroniclePanel: View {
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel(["Watch \(entry.watch).", entry.text, session.spoken[.chronicle(item.offset)]]
                             .compactMap { $0 }.joined(separator: " "))
+                        // A deed of the House's own: a ballad made of it here, and sung.
+                        if session.makesBallads, state.isSingable(item.offset, by: session.player) {
+                            BalladMaking(session: session, entry: item.offset)
+                                .padding(.leading, 36)
+                        }
                     }
                 }
                 .accessibilityElement(children: .contain)
@@ -79,6 +90,14 @@ struct ChroniclePanel: View {
             .scrollEdgeFade()
             .scrollIndicators(.never)
             .pagedByKeys(session, as: .panel(.chronicle))
+    }
+
+    static func subtitle(_ shown: Shown) -> String {
+        switch shown {
+        case .history: return "What the lake remembers"
+        case .reports: return "Your House's battles and scouting, the latest first"
+        case .songs: return "The ballads the keepers have sung this age"
+        }
     }
 
     private func weight(_ kind: ChronicleEntry.Kind) -> Font.Weight {
@@ -162,5 +181,97 @@ struct ReportList: View {
         case .held: return "Both stood"
         case .scouted: return "Scouted"
         }
+    }
+}
+
+/// A ballad of a deed of the House's own, made by this Mac's model: asked
+/// for, read, then sung to the realm or let be; once sung, its lines.
+struct BalladMaking: View {
+    let session: GameSession
+    let entry: Int
+
+    var body: some View {
+        let sung = session.state.songbook.first { $0.house == session.player && $0.entry == entry }
+        VStack(alignment: .leading, spacing: 4) {
+            if let sung {
+                BalladLines(lines: sung.lines)
+            } else if let draft = session.balladDrafts[entry] {
+                BalladLines(lines: draft.components(separatedBy: "\n"))
+                HStack(spacing: 4) {
+                    QuietButton(title: "Sing it", size: 8.5, prominent: true, name: "Sing the ballad to the realm") {
+                        session.singBallad(of: entry)
+                    }
+                    QuietButton(title: "Another", size: 8.5, name: "Ask for another ballad") { session.makeBallad(of: entry) }
+                    QuietButton(title: "Let it be", size: 8.5, name: "Let the ballad go unsung") { session.letBalladBe(of: entry) }
+                }
+            } else if session.composing.contains(entry) {
+                Text(verbatim: "The verse comes…")
+                    .font(.nm(10.5, weight: .light).italic())
+                    .foregroundStyle(Palette.text(0.5))
+            } else {
+                QuietButton(title: "Make a ballad", size: 8.5, name: "Make a ballad of this on your Mac") { session.makeBallad(of: entry) }
+                    .help("Your Mac's own model makes a few lines of verse of this deed; sing them to the realm if they please you.")
+            }
+        }
+    }
+}
+
+/// A ballad's lines, as sung.
+struct BalladLines: View {
+    let lines: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            ForEach(Array(lines.enumerated()), id: \.offset) { line in
+                Text(verbatim: line.element)
+                    .font(.nm(11, weight: .light).italic())
+                    .foregroundStyle(Palette.glowWords)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The realm's songbook, the latest ballad first: whose hall sang it, of
+/// which deed, and its lines.
+struct Songbook: View {
+    let session: GameSession
+
+    var body: some View {
+        let state = session.state
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 12) {
+                if state.songbook.isEmpty {
+                    Text(verbatim: "No ballad yet. Make one of a deed of your House's in the History: your Mac's own model writes the verse, "
+                         + "and you sing it to the realm.")
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.55))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                ForEach(state.songbook.reversed()) { ballad in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(verbatim: Songbook.heading(ballad, in: state))
+                            .font(.nm(10))
+                            .foregroundStyle(Palette.text(0.5))
+                            .fixedSize(horizontal: false, vertical: true)
+                        BalladLines(lines: ballad.lines)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+        }
+        .scrollEdgeFade()
+        .scrollIndicators(.never)
+    }
+
+    /// Whose hall sang a ballad, and of what: "House Aurel, of the 52nd
+    /// watch: A battle at the Grey Ford…"
+    static func heading(_ ballad: Ballad, in state: GameState) -> String {
+        let who = state.houses.indices.contains(ballad.house) ? state.houses[ballad.house].title : "A House now gone"
+        guard state.chronicle.indices.contains(ballad.entry) else { return who }
+        let entry = state.chronicle[ballad.entry]
+        let deed = entry.text.count > 70 ? String(entry.text.prefix(70)) + "…" : entry.text
+        return "\(who), of the \(SeatBriefing.ordinal(entry.watch)) watch: \(deed)"
     }
 }

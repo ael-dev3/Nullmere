@@ -2,11 +2,12 @@ import Foundation
 import NullmereCore
 
 /// The voices held to their rules. Each kind of envoy's offer, and each kind
-/// of chronicle entry a long age brings, is spoken, and every line checked:
-/// spoken at all, short, grave (no exclamations), no numbers but the facts',
-/// and no talk of games or players. scripts/check-voices.sh asks it of
-/// Apple's on-device model through the app, as a keeper's Mac runs it; its
-/// tests ask it of stand-ins.
+/// of chronicle entry a long age brings, is spoken, a ballad is made of
+/// the latest deed of arms, and every line checked: spoken at all, short,
+/// grave (no exclamations), no numbers but the facts', and no talk of
+/// games or players; a ballad, besides, a ballad the realm would keep.
+/// scripts/check-voices.sh asks it of Apple's on-device model through the
+/// app, as a keeper's Mac runs it; its tests ask it of stand-ins.
 public enum VoiceCheck {
     /// Words a voice never says, one or many: the tide may turn, but a
     /// voice never speaks of turns.
@@ -44,6 +45,11 @@ public enum VoiceCheck {
         for entry in state.chronicle.reversed() where VoiceFacts.isVoiced(entry.kind) && kinds.insert(entry.kind.rawValue).inserted {
             moments.append(("chronicle of \(entry.kind.rawValue)", VoiceFacts.chronicle(entry, in: state)))
         }
+        // A ballad of the latest deed of arms the age brought.
+        if let entry = state.chronicle.last(where: { [.battle, .capture, .fall, .war].contains($0.kind) }) {
+            let singer = entry.houses.first ?? state.player
+            moments.append(("ballad of \(entry.kind.rawValue)", VoiceFacts.ballad(entry, in: state, by: singer)))
+        }
         return moments
     }
 
@@ -52,6 +58,9 @@ public enum VoiceCheck {
     static func problems(of line: String?, for moment: VoiceMoment) -> [String] {
         guard let line else { return ["silent"] }
         var problems: [String] = []
+        if moment.kind == .ballad, GameState.sung(line)?.joined(separator: "\n") != line {
+            problems.append("no ballad the realm would keep")
+        }
         let words = line.split(separator: " ").count
         if words > 60 { problems.append("\(words) words") }
         if line.contains("!") { problems.append("an exclamation") }
@@ -74,9 +83,11 @@ public enum VoiceCheck {
         var failures: [String] = []
         for (name, moment) in moments {
             let started = Date()
-            let line = await voice.speak(moment)
+            let line = await (moment.kind == .ballad ? voice.compose(moment) : voice.speak(moment))
             let seconds = Date().timeIntervalSince(started)
-            lines.append("\(name) (\(String(format: "%.1f", seconds)) s): \(line ?? "(silent)")")
+            // A ballad's lines told on one, as sung, a slash between.
+            let told = line?.replacingOccurrences(of: "\n", with: " / ")
+            lines.append("\(name) (\(String(format: "%.1f", seconds)) s): \(told ?? "(silent)")")
             failures += problems(of: line, for: moment).map { "\(name): \($0)" }
         }
         lines += ["", failures.isEmpty ? passed : "Out of bounds:"] + failures

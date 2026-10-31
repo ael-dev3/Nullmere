@@ -154,6 +154,28 @@ final class OnDeviceVoiceTests: XCTestCase {
         XCTAssertNil(tooShort, "Too short to be a line")
     }
 
+    /// A ballad asked of the model with the voices' rules and the deed's
+    /// facts, its verse made one the realm would keep; none from a model
+    /// not ready, failing, or giving no ballad.
+    func testABalladIsComposedFromTheDeed() async {
+        let asked = Asked()
+        let voice = OnDeviceVoice(isReady: { true }) { instructions, prompt in
+            asked.record(instructions, prompt)
+            return "The Ballad of the Ford\nThe moon lay on the water!\nAnd the walls of Vael fell."
+        }
+        let ballad = VoiceMoment(kind: .ballad, facts: ["A battle at the Grey Ford."])
+        let verse = await voice.compose(ballad)
+        XCTAssertEqual(verse, "The moon lay on the water.\nAnd the walls of Vael fell.")
+        XCTAssertEqual(asked.instructions, OnDeviceVoice.instructions)
+        XCTAssertTrue(asked.prompt?.contains("ballad") == true)
+        let unready = await OnDeviceVoice(isReady: { false }) { _, _ in "A\nB" }.compose(ballad)
+        XCTAssertNil(unready)
+        let failing = await OnDeviceVoice(isReady: { true }) { _, _ in throw CancellationError() }.compose(ballad)
+        XCTAssertNil(failing)
+        let single = await OnDeviceVoice(isReady: { true }) { _, _ in "Only one line." }.compose(ballad)
+        XCTAssertNil(single)
+    }
+
     func testTheLiveVoiceAnswersWhetherTheModelIsReady() async {
         // On CI's Mac there is no Apple Intelligence: the live voice says
         // so, and stays silent rather than failing.

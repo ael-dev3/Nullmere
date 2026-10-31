@@ -6,10 +6,15 @@ import XCTest
 /// holds Apple's on-device model to them: a voice that keeps them passes,
 /// and each way of breaking them is caught and named.
 final class VoiceCheckTests: XCTestCase {
-    /// Speaks every moment in the same grave line, which keeps every rule.
+    /// Speaks every moment in the same grave line, which keeps every rule,
+    /// and makes every ballad the same two.
     private struct Steady: Voice {
         func speak(_ moment: VoiceMoment) async -> String? {
             "The water keeps its silence, and the Houses watch the shore."
+        }
+
+        func compose(_ moment: VoiceMoment) async -> String? {
+            "The moon lay still upon the water,\nand the shore remembered."
         }
     }
 
@@ -24,8 +29,11 @@ final class VoiceCheckTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(report.moments, Proposal.allCases.count + 2, "Envoys and chronicle entries enough to hear")
         XCTAssertTrue(report.text.hasPrefix("Nullmere Online's voices, spoken by a stand-in."), report.text)
         XCTAssertTrue(report.text.hasSuffix(VoiceCheck.passed), report.text)
-        let heard = report.text.components(separatedBy: "\n").filter { $0.hasSuffix("s): The water keeps its silence, and the Houses watch the shore.") }
-        XCTAssertEqual(heard.count, report.moments, "A line told for every moment")
+        let told = report.text.components(separatedBy: "\n")
+        let heard = told.filter { $0.hasSuffix("s): The water keeps its silence, and the Houses watch the shore.") }
+        let sung = told.filter { $0.hasPrefix("ballad of ") && $0.hasSuffix("s): The moon lay still upon the water, / and the shore remembered.") }
+        XCTAssertEqual(sung.count, 1, "A ballad made of the latest deed of arms, its lines on one")
+        XCTAssertEqual(heard.count + sung.count, report.moments, "A line told for every moment")
         for proposal in Proposal.allCases {
             XCTAssertTrue(report.text.contains("envoy offering \(proposal.title.lowercased())"), "An envoy offering \(proposal.title)")
         }
@@ -42,6 +50,9 @@ final class VoiceCheckTests: XCTestCase {
         XCTAssertEqual(VoiceCheck.problems(of: "The tide turned at the return of the moon.", for: moment), [],
                        "Words that only hold a forbidden one are the voices' own")
         XCTAssertEqual(VoiceCheck.problems(of: "Since watch 13 they war.", for: moment), ["invents the number 13"])
+        let ballad = VoiceMoment(kind: .ballad, facts: ["A battle at the Grey Ford."])
+        XCTAssertEqual(VoiceCheck.problems(of: "The ford ran red,\nand the moon looked on.", for: ballad), [])
+        XCTAssertEqual(VoiceCheck.problems(of: "The ford ran red.", for: ballad), ["no ballad the realm would keep"], "One line is no ballad")
     }
 
     func testAVoiceThatBreaksTheRulesFailsWithEachBreachNamed() async {

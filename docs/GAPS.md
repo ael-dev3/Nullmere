@@ -193,20 +193,28 @@ designed, ticked when it is real, tested and shown in CI.
   rules hold every House to an edict passed for the twenty watches it
   lasts, the breaker named in the Chronicle and fined. Politics kept by
   the server itself, not by players' good faith.
-- [ ] **Ballads.** After a great battle, a fall or a Moonspire raised, the
-  keeper's own on-device model makes a ballad of it from the Chronicle,
-  sung by the keeper's voice and kept in the realm's songbook, so the
-  age's story is told in verse that no server wrote and no other keeper's
-  Mac made; a House's ballads are its renown in the next age.
+- [x] **Ballads.** Of a deed of its own in the Chronicle (a battle, a
+  hold taken or lost, a war, a betrayal, a great work) or of the age's
+  end, a keeper asks their Mac's own on-device model for a few lines of
+  verse, reads them, asks again or lets them be, or sings them to the
+  realm, which holds them to plain words and keeps them in its songbook
+  (Songs, in the Chronicle) for every House to read: verse no server
+  wrote and no other keeper's Mac made. A keeper's ballads count toward
+  their renown as the age ends. CI asks its runner's own model for one
+  and holds it to the voices' rules.
 - [ ] **Bottles on the lake.** Words sealed in a bottle and set on the
   water drift on the lake's currents, watch by watch, to whatever shore
   they wash up on, read by whoever finds them: messages anonymous or
   signed, offers, warnings and lies, a way to speak to strangers no chat
   has.
-- [ ] **Drowned ages.** What an age leaves is the next age's lake: the
-  holds of a House that fell lie drowned in the shallows of the age after
-  as ruins to be searched, and the Moonspire raised stands broken where it
-  was, a site of the land; the realm's history is its map.
+- [x] **Drowned ages.** What an age leaves is the next age's lake: the
+  holds of the age before, the greatest first, lie drowned where they
+  stood (in the shallows or on the shore of the new lake) as named ruins:
+  the first company there finds what their works held, the more for a
+  Moonspire, and searched, their ground still says what stood there. The
+  realm's history is its map.
+- [ ] **The broken Spire.** The Moonspire an age raised stands broken
+  where it was in the next, a site of the land.
 
 ## The order of the work
 

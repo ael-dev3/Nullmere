@@ -335,6 +335,8 @@ jobs:
           cat build/perf-check.log 2>/dev/null || true
           # Whose voices were heard, and their verdict.
           sed -n '1p;/^Every line within the rules\.$/p;/^Out of bounds:$/,$p' build/voices-report.txt 2>/dev/null | head -n 20 || true
+          # The ballad the runner's own model made, as a keeper's Mac makes one.
+          grep -h "^ballad of " build/voices-report.txt 2>/dev/null || true
           grep -h "REHEARSAL\|error:" build/rehearsal.log 2>/dev/null || true
           grep -hE "error|warning" build/smoke-*.log 2>/dev/null | head -20 || true
           tail -n 15 build/game-stdout.log 2>/dev/null || true

@@ -119,6 +119,10 @@ extension GameState {
         view.fields = fields?.filter { field in field.side(of: house) != nil || (map.index(of: field.at).map { seen[$0] } ?? false) }
         // The marches they may know of, worked out on what they see.
         view.marches = marches(seenBy: house, in: view, ways: ways)
+        // The holds of the ages before, where they have seen the ground.
+        view.drowned = drowned.map { all in
+            all.filter { hold in map.index(of: hold.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
+        }
         return view
     }
 }
@@ -232,6 +236,8 @@ extension GameState {
                 return owner == house
             case .said(let word):
                 return word.alliance == nil || word.alliance == alliance(of: house)?.id
+            case .sung:
+                return true
             case .promoted(_, let owner, _):
                 return owner == house
             case .ruinSearched(let at, let by, _):

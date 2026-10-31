@@ -165,6 +165,12 @@ public final class GameSession {
 
     public private(set) var spoken: [Spoken: String] = [:]
 
+    /// Ballads this Mac's model made that the keeper has not yet sung, by
+    /// the Chronicle entry each sings of.
+    public private(set) var balladDrafts: [Int: String] = [:]
+    /// The Chronicle entries whose ballads the model is making now.
+    public private(set) var composing: Set<Int> = []
+
     /// The keeper's line to the realm.
     private let link: any RealmLink
     /// A realm hosted in this process, kept alive while the session lives.
@@ -1221,6 +1227,7 @@ public final class GameSession {
         case .expel: return .refusal
         case .callRally: return .horn
         case .say: return .parley
+        case .sing: return .lore
         case .learnTalent: return .lore
         case .forgetTalents: return .stand
         case .wear: return .order
@@ -1344,6 +1351,7 @@ public final class GameSession {
         case .deedDone(let house, _) where house == player: return .honour
         case .chargeDone(let house, _, _) where house == player: return .honour
         case .said(let word) where word.from != player: return .parley
+        case .sung(let ballad) where ballad.house != player: return .lore
         case .fieldJoined(_, _, let first, let second) where first == player || second == player: return .horn
         case .fieldEnded(let field):
             guard let side = field.side(of: player) else { return nil }
@@ -1661,6 +1669,42 @@ public final class GameSession {
             guard let self else { return }
             self.marches = self.marches.filter { Date().timeIntervalSince($0.value.start) < $0.value.duration }
         }
+    }
+
+    // MARK: Ballads
+
+    /// Whether this Mac makes ballads: there is a voice to make them.
+    var makesBallads: Bool { voice != nil }
+
+    /// Asks this Mac's model for a ballad of a Chronicle entry the House
+    /// may sing of; the verse waits for the keeper to sing it or let it be.
+    func makeBallad(of entry: Int) {
+        guard let voice, state.isSingable(entry, by: player), !composing.contains(entry) else { return }
+        composing.insert(entry)
+        let moment = VoiceFacts.ballad(state.chronicle[entry], in: state, by: player)
+        Task { [weak self] in
+            let verse = await voice.compose(moment)
+            guard let self else { return }
+            self.composing.remove(entry)
+            if let verse {
+                withAnimation(.easeOut(duration: 0.6)) { self.balladDrafts[entry] = verse }
+            } else {
+                self.post("No verse came. Ask again in a while.", tone: .neutral)
+            }
+        }
+    }
+
+    /// Sings the ballad made of an entry to the realm, for its songbook.
+    @discardableResult
+    func singBallad(of entry: Int) -> Bool {
+        guard let verse = balladDrafts[entry], perform(.sing(ballad: verse, of: entry)) else { return false }
+        balladDrafts[entry] = nil
+        return true
+    }
+
+    /// Lets a ballad made go unsung.
+    func letBalladBe(of entry: Int) {
+        balladDrafts[entry] = nil
     }
 
     // MARK: Voices

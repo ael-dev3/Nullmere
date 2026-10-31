@@ -393,7 +393,14 @@ as the realm will, and takes the realm's word as final.
   the round Nullmere, the Twin Waters with a neck of land between them,
   the Sickle with land pushing in from one shore, and the Drowned Isles.
   The front door names the lake of the age, and the moon lies in the
-  deepest water of each.
+  deepest water of each. The age before lies drowned in the new one: its
+  holds, the greatest first and twelve at most, lie as ruins where they
+  stood, wherever the new lake has ground a company may reach (the
+  shallows too) clear of the new seats, each with its name, its House
+  and its age. The first company to reach one searches it and finds a
+  ruin's spoils and what its works held besides, more for its Moonspire;
+  searched, its ground still says what stood there. The Chronicle opens
+  with them.
 - **The server.** SpacetimeDB is the realm's authority of record: it knows
   each keeper by their identity, keeps the world, and lets no one but the
   steward write it. The steward runs the same Swift rules core the clients
@@ -865,6 +872,18 @@ realm; keepers are told in plain words, never a status code.
   comes back over it, and the lake carries whoever still stands on it to
   the nearest shore, a fifth of its strength the poorer. A band under the
   top bar says when it opens and when the water returns, and only then.
+- **Ballads.** Of a deed of its own in the Chronicle (a battle, a hold
+  taken or lost, a war begun, a betrayal, a great work) or of the age's
+  end, a keeper may ask their Mac's own on-device model for a ballad: a
+  few short lines of verse made from the Chronicle's words and nothing
+  else. They read it, ask for another or let it be, or sing it to the
+  realm, which holds it to plain words (two to six lines, none long, no
+  addresses), one ballad of each deed and one a watch for each House, and
+  keeps it in its songbook, Songs in the Chronicle, for every House to
+  read. No server writes them, and no other keeper's Mac made them. As
+  the age ends each ballad, five at the most, adds two renown to the
+  keeper's name. CI hears one from its runner's own model, held to the
+  voices' rules.
 - **The Frontier.** Kingdom against kingdom across realms: the Frontier is
   a realm of its own, a database of its own with its own steward, where
   the kingdoms of the realms that border it meet, a season of twenty-four

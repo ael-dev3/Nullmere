@@ -417,6 +417,10 @@ extension GameState {
         case .deedDone(let house, let deed):
             guard house == viewer else { return nil }
             return Tidings("A deed of your House, \(deed.title): it has \(deed.deed).", .good)
+        case .sung(let ballad):
+            guard houses.indices.contains(ballad.house), chronicle.indices.contains(ballad.entry) else { return nil }
+            let who = ballad.house == viewer ? "Your House sings" : "\(houses[ballad.house].title) sings"
+            return Tidings("\(who) of the \(ordinal(chronicle[ballad.entry].watch)) watch: “\(ballad.lines[0])…”", .neutral)
         case .said(let word):
             guard word.from != viewer, houses.indices.contains(word.from) else { return nil }
             let channel = word.alliance == nil ? "" : " to your alliance"

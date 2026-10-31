@@ -74,6 +74,9 @@ public enum Command: Codable, Equatable, Sendable {
     case reinforce(unit: Int, hold: Int)
     /// A keeper's words, to the whole realm or to their alliance alone.
     case say(words: String, toAlliance: Bool)
+    /// A ballad of a Chronicle entry, made on the keeper's Mac, sung to
+    /// the realm for its songbook.
+    case sing(ballad: String, of: Int)
     /// A commander learns the next rank of a talent, for a talent point.
     case learnTalent(commander: Int, talent: Talent)
     /// A commander forgets every talent it has learned, its points given
@@ -203,6 +206,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     /// It is neither gathering nor carrying anything home.
     case notGathering
     case noneGathering
+    case notSingable
+    case notABallad
+    case sungAlready
+    case sangThisWatch
     /// A House sworn to an alliance already.
     case inAnAlliance
     /// A House sworn to no alliance.
@@ -393,6 +400,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .loadFull: return "It carries all it can; bring it home first."
         case .notGathering: return "It isn't gathering, and carries nothing home."
         case .noneGathering: return "None of your companies is out gathering."
+        case .notSingable: return "That is no deed of your House's to sing of."
+        case .notABallad: return "A ballad is two to six short lines of plain words."
+        case .sungAlready: return "Your House has sung of that already."
+        case .sangThisWatch: return "Your House has sung this watch; sing again at the next."
         case .inAnAlliance: return "That House is sworn to an alliance already."
         case .notInAlliance: return "Your House is sworn to no alliance."
         case .notAllianceLeader: return "Only the alliance's leader can do that."
@@ -663,6 +674,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case chargeDone(house: Int, charge: Charge, reward: Stock)
     /// A keeper's words, said to the realm or to their alliance.
     case said(Word)
+    /// A ballad sung to the realm, kept in its songbook.
+    case sung(Ballad)
 }
 
 /// One exchange of blows.

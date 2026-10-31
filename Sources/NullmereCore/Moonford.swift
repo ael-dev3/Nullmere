@@ -94,6 +94,11 @@ extension GameState {
             map.set(hex, Tile(terrain: .still, feature: tile.feature, relief: tile.relief))
         }
         ford = nil
+        // A march bound for it ends where the company stands.
+        for index in units.indices where units[index].destination.map(course.contains) == true {
+            units[index].destination = nil
+            units[index].way = nil
+        }
         // Whoever still stands on it is carried to the nearest shore, the
         // first mustered first, worn by the tide.
         var events: [GameEvent] = []

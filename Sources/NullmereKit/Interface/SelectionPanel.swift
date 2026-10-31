@@ -1073,6 +1073,13 @@ private struct TilePanel: View {
                         CostLine(cost: yield, available: Stock(grain: .max, timber: .max, stone: .max, moonsalt: .max))
                     }
                 }
+                // A hold of an age before, drowned here.
+                if let drowned = state.drowned(at: hex) {
+                    Text(verbatim: drowned.told(searched: tile.feature != .drownedRuin))
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.glowWords)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 HStack {
                     Caps("Moves", size: 8.5).foregroundStyle(Palette.text(0.5))
                     Spacer()
