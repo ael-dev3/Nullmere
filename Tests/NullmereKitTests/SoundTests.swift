@@ -256,6 +256,7 @@ final class MusicTests: XCTestCase {
     /// The ambience plays the title theme while a lake is named for it, war
     /// or not, and the realm's own score once none is; the lake a realm
     /// tells of is kept as the one it last lay on.
+    @MainActor
     func testTheLauncherPlaysTheLastLakesTheme() {
         let ambience = Ambience(enabled: false)
         XCTAssertEqual(ambience.mood, .peace)
