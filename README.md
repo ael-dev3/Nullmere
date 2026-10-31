@@ -878,6 +878,22 @@ realm; keepers are told in plain words, never a status code.
   house whose fire leaps and chimney smokes. They are named on hover and
   to VoiceOver, raised from their ground's panel, told on the Alliance
   screen, and heard as they happen.
+- **The Wayhouse and the Masons' Lodge.** Two works of five levels that
+  hasten a House, raised by its keeper alone (the stewards raise neither,
+  so a world of stewards goes as it always did). Each level of a Wayhouse
+  sends one more kind of the House's companies a step further every watch:
+  Lanterns at I, Founders at II, Spears at III, Bows at IV and Riders at V.
+  Each level of a Masons' Lodge raises every work of the House 6% sooner.
+  The House's highest of each, in any of its holds, counts. A Wayhouse is
+  modelled as a post-house on the road out of the hold: a hall with its
+  stable under a lean-to, horses at the half-doors, a signpost and a
+  trough, a rick of hay, then a dovecote for the post-birds, a gate over
+  the road with its lantern lit and at the fifth a waymark pillar crowned
+  with a moonsalt lamp. A Lodge is an open shed over a banker where a stone
+  is dressed, blocks stacked by it and a jib to lift them, becoming a hall
+  of white stone with a tracing floor before it where a work is drawn out
+  full size, a great treadwheel, and at the fifth a carved arch on the
+  yard and a moonsalt finial on its ridge.
 - **The Forge.** A work of five levels where a House's smiths work makings
   into gear of three sets: the Warden's Harness, the Raider's Kit and the
   Pathfinder's Gear, each a weapon, an armour and a charm. The makings are

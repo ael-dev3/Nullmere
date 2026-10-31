@@ -22,6 +22,14 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
     /// gear of its own sets for its commanders: the higher it stands, the
     /// finer the gear and the fewer the makings it takes.
     case forge
+    /// Where a House's roads begin: post-riders and fresh horses, guides
+    /// and maps of the ways. Each level sends one more kind of the House's
+    /// companies a step further every watch. Stewards raise none.
+    case wayhouse
+    /// Where a House's masons are trained and its works drawn out before a
+    /// stone is laid: each level raises every work of the House sooner.
+    /// Stewards raise none.
+    case lodge
 
     public var title: String {
         switch self {
@@ -36,6 +44,8 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
         case .archive: return "Archive"
         case .moonspire: return "Moonspire"
         case .forge: return "Forge"
+        case .wayhouse: return "Wayhouse"
+        case .lodge: return "Masons' Lodge"
         }
     }
 
@@ -76,6 +86,8 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
         case .archive: return Stock(grain: 20, timber: 40, stone: 30, moonsalt: 3)
         case .moonspire: return Stock(grain: 60, timber: 60, stone: 80, moonsalt: 24)
         case .forge: return Stock(grain: 20, timber: 35, stone: 35, moonsalt: 2)
+        case .wayhouse: return Stock(grain: 35, timber: 40, stone: 25, moonsalt: 3)
+        case .lodge: return Stock(grain: 25, timber: 30, stone: 45, moonsalt: 3)
         }
     }
 
@@ -127,6 +139,24 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable {
             let finest = GearQuality.forged(atLevel: level)?.title.lowercased() ?? "no"
             let thrift = GameState.forgeThrift * (level - 1)
             return "Forges \(finest) gear of the three sets" + (thrift > 0 ? ", for \(thrift)% fewer makings" : "")
+        case .wayhouse:
+            let kinds = UnitKind.allCases.filter { BuildingKind.roadLevel(for: $0) == level }.map(\.title)
+            return kinds.joined(separator: " and ") + " of the House a step further every watch"
+        case .lodge:
+            return "Every work of the House \(GameState.lodgePace * level)% sooner"
+        }
+    }
+
+    /// The Wayhouse whose level sends a kind of company a step further
+    /// every watch: Lanterns first, then Founders, Spears, Bows, and last
+    /// the Riders.
+    public static func roadLevel(for kind: UnitKind) -> Int {
+        switch kind {
+        case .lantern: return 1
+        case .founder: return 2
+        case .spear: return 3
+        case .bow: return 4
+        case .rider: return 5
         }
     }
 

@@ -309,7 +309,25 @@ extension GameState {
         guard houses.indices.contains(house) else { return 0 }
         let studied = houses[house].research.total(bonus) + shrineBonus(bonus, for: house) + heritage(of: house).bonus(bonus)
             + allianceLoreBonus(bonus, for: house) + Favour.bonus(bonus, level: houses[house].favour ?? 0)
-        return bonus == .studySpeed ? studied + GameState.archivePace * archiveLevel(of: house) : studied
+        switch bonus {
+        case .studySpeed: return studied + GameState.archivePace * archiveLevel(of: house)
+        case .buildSpeed: return studied + GameState.lodgePace * highest(.lodge, of: house)
+        case .moves(let kind): return studied + (highest(.wayhouse, of: house) >= BuildingKind.roadLevel(for: kind) ? 1 : 0)
+        default: return studied
+        }
+    }
+
+    /// Percent sooner every work of a House rises for each level of its
+    /// Masons' Lodge.
+    public static let lodgePace = 6
+
+    /// The highest of a kind of work among a House's holds.
+    public func highest(_ kind: BuildingKind, of house: Int) -> Int {
+        var best = 0
+        for hold in holds where hold.owner == house {
+            if let level = hold.levels[kind], level > best { best = level }
+        }
+        return best
     }
 
     /// Each store's yield bonus for a House at once, in percent: its

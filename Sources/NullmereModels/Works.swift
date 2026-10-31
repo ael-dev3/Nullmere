@@ -211,7 +211,166 @@ enum Works {
         case .moonspire: return moonspire(level, name)
         case .archive: return study(level: level, name: name)
         case .forge: return forge(level, name)
+        case .wayhouse: return wayhouse(level, name)
+        case .lodge: return lodge(level, name)
         }
+    }
+
+    // MARK: The Wayhouse
+
+    /// A post-house where the House's roads begin: a timber hall with its
+    /// stable under a lean-to, a signpost and a trough by the road; from
+    /// the second level a second bay and a rick of hay; from the third, a
+    /// hall of pale stone and a dovecote for the post-birds; then a gate
+    /// over the road with its lantern lit; at the fifth, a waymark pillar
+    /// crowned with a moonsalt lamp that burns through the night.
+    static func wayhouse(_ level: Int, _ name: String) -> Model {
+        var b = MeshBuilder()
+        b.pad(radius: 0.31)
+        let height = wardHeight(level)
+        let stone = level >= 3
+        b.hall(at: Vec3(-0.07, 0, -0.11), width: 0.24, depth: 0.14, height: height,
+               wall: stone ? Palette.stonePale : Palette.timber, roof: level == 1 ? Palette.thatch : Palette.slate,
+               pitch: 0.65, footing: level >= 2 ? Palette.stone : nil)
+        b.door(Vec3(-0.06, 0.05, -0.039), width: 0.05, height: 0.09, facing: 0)
+        b.window(Vec3(-0.15, height * 0.62, -0.039), width: 0.024, height: 0.034, facing: 0)
+        // The stable under its lean-to: a bay, two from the second level,
+        // a horse's head over each half-door.
+        for bay in 0..<(level >= 2 ? 2 : 1) {
+            let x = 0.1 + Float(bay) * 0.09
+            for post in [Float(-0.042), 0.042] {
+                b.limb(from: Vec3(x + post, 0, -0.04), to: Vec3(x + post, 0.1, -0.04), radius: 0.006, color: Palette.timberDark)
+            }
+            b.box(min: Vec3(x - 0.05, 0.1, -0.18), max: Vec3(x + 0.05, 0.112, -0.035), color: level == 1 ? Palette.thatch : Palette.slate)
+            b.box(min: Vec3(x - 0.042, 0, -0.17), max: Vec3(x + 0.042, 0.1, -0.16), color: Palette.timberDark)
+            b.box(min: Vec3(x - 0.036, 0, -0.045), max: Vec3(x + 0.036, 0.045, -0.04), color: Palette.timber)
+            b.place(.translation(Vec3(x, 0.06, -0.06))) {
+                $0.limb(from: Vec3(0, 0, 0), to: Vec3(0, 0.02, 0.035), radius: 0.011, topRadius: 0.008,
+                        color: bay == 0 ? Palette.horseBay : Palette.horseGrey)
+            }
+        }
+        // The signpost by the road, and the trough for the post-horses.
+        b.limb(from: Vec3(0.2, 0, 0.12), to: Vec3(0.2, 0.16, 0.12), radius: 0.006, color: Palette.timberDark)
+        for (y, turn) in [(Float(0.14), Float(0.5)), (0.115, -0.7)] {
+            b.box(center: Vec3(0.2, y, 0.12), size: Vec3(0.075, 0.016, 0.006), turn: turn, color: Palette.timberPale)
+        }
+        b.box(min: Vec3(0.05, 0, 0.08), max: Vec3(0.14, 0.03, 0.11), color: Palette.timberDark)
+        b.box(min: Vec3(0.056, 0.02, 0.086), max: Vec3(0.134, 0.028, 0.104), color: Palette.slate)
+        if level >= 2 {
+            // A rick of hay for the horses.
+            b.place(.translation(Vec3(0.25, 0, 0.0))) {
+                $0.lathe([(0.04, 0), (0.044, 0.04), (0.03, 0.075), (0.0, 0.095)], sides: 7, color: Palette.straw)
+            }
+        }
+        if stone {
+            // The dovecote for the post-birds, round, its holes in rows.
+            b.roundHouse(at: Vec3(-0.21, 0, 0.06), radius: 0.045, height: 0.17, wall: Palette.stonePale, roof: Palette.slate)
+            b.place(.translation(Vec3(-0.21, 0, 0.06))) {
+                for row in 0..<2 {
+                    for angle in [Float(0.3), 1.2, 2.1] {
+                        $0.window(onRound: 0.046, y: 0.11 + Float(row) * 0.03, angle: angle, width: 0.012, height: 0.012,
+                                  color: Palette.timberDark)
+                    }
+                }
+            }
+        }
+        if level >= 4 {
+            // The gate over the road, a lantern lit beneath its beam.
+            for x in [Float(0.02), 0.16] {
+                b.limb(from: Vec3(x, 0, 0.24), to: Vec3(x, 0.17, 0.24), radius: 0.009, color: stone ? Palette.stone : Palette.timberDark)
+            }
+            b.beam(from: Vec3(0.005, 0.17, 0.24), to: Vec3(0.175, 0.17, 0.24), width: 0.016, color: Palette.timberDark)
+            b.limb(from: Vec3(0.09, 0.17, 0.24), to: Vec3(0.09, 0.14, 0.24), radius: 0.002, color: Palette.iron)
+            b.with(material: .glow) {
+                $0.box(center: Vec3(0.09, 0.128, 0.24), size: Vec3(0.016, 0.022, 0.016), color: Palette.candle)
+            }
+        }
+        if level >= 5 {
+            // The waymark: a pillar of pale stone, a moonsalt lamp on it.
+            b.place(.translation(Vec3(-0.17, 0, 0.19))) {
+                $0.prism(sides: 4, radius: 0.022, topRadius: 0.016, to: 0.24, color: Palette.stoneWhite)
+            }
+            b.with(material: .crystal) {
+                $0.place(.translation(Vec3(-0.17, 0.24, 0.19))) {
+                    $0.lathe([(0.0, 0.0), (0.02, 0.03), (0.0, 0.07)], sides: 6, color: Palette.moonsalt)
+                }
+            }
+        }
+        b.banner(at: Vec3(-0.17, height + 0.06, -0.11), height: 0.12, width: 0.05, drop: 0.07)
+        return model(name, b)
+    }
+
+    // MARK: The Masons' Lodge
+
+    /// Where the House's masons are trained: an open shed of timber over a
+    /// banker where a stone is dressed, blocks stacked beside it and a jib
+    /// to lift them; from the second level, walls on two sides and more
+    /// blocks; from the third, a hall of white stone with a pale tracing
+    /// floor before it, where a work is drawn out full size before a stone
+    /// is laid; then a great treadwheel; at the fifth, a carved arch on the
+    /// yard and a moonsalt finial on the ridge.
+    static func lodge(_ level: Int, _ name: String) -> Model {
+        var b = MeshBuilder()
+        b.pad(radius: 0.31)
+        let height = wardHeight(level) + 0.02
+        if level >= 3 {
+            b.hall(at: Vec3(-0.06, 0, -0.13), width: 0.3, depth: 0.14, height: height, wall: Palette.stoneWhite, roof: Palette.slate,
+                   pitch: 0.6, footing: Palette.stone)
+            b.door(Vec3(-0.02, 0.05, -0.059), width: 0.05, height: 0.1, facing: 0)
+            for x in [Float(-0.12), 0.06] {
+                b.window(Vec3(x, height * 0.6, -0.059), width: 0.03, height: 0.045, facing: 0)
+            }
+            // The tracing floor, the work's lines cut in it.
+            b.box(min: Vec3(-0.22, -0.02, -0.03), max: Vec3(0.02, 0.008, 0.11), color: Palette.stonePale)
+            for (from, to) in [(Vec3(-0.2, 0.009, 0.0), Vec3(0.0, 0.009, 0.0)), (Vec3(-0.2, 0.009, 0.08), Vec3(0.0, 0.009, 0.08)),
+                               (Vec3(-0.1, 0.009, -0.01), Vec3(-0.1, 0.009, 0.1))] {
+                b.beam(from: from, to: to, width: 0.004, depth: 0.002, color: Palette.stoneDark)
+            }
+        } else {
+            // An open shed: four posts and its roof, walls on two sides from
+            // the second level.
+            for x in [Float(-0.2), 0.04] {
+                for z in [Float(-0.2), -0.06] {
+                    b.limb(from: Vec3(x, 0, z), to: Vec3(x, 0.13, z), radius: 0.007, color: Palette.timberDark)
+                }
+            }
+            b.box(min: Vec3(-0.22, 0.13, -0.22), max: Vec3(0.06, 0.142, -0.04), color: level == 1 ? Palette.thatch : Palette.slate)
+            if level == 2 {
+                b.box(min: Vec3(-0.21, 0, -0.21), max: Vec3(0.05, 0.13, -0.195), color: Palette.timber)
+                b.box(min: Vec3(-0.21, 0, -0.21), max: Vec3(-0.195, 0.13, -0.05), color: Palette.timber)
+            }
+        }
+        // The banker, a stone on it being dressed.
+        b.box(center: Vec3(0.12, 0.03, 0.04), size: Vec3(0.08, 0.06, 0.05), color: Palette.timberDark)
+        b.box(center: Vec3(0.12, 0.075, 0.04), size: Vec3(0.045, 0.03, 0.035), color: Palette.stonePale)
+        // Blocks stacked, more at each level.
+        b.blocks(at: Vec3(0.16, 0, -0.16), count: min(3 + level, 8), seed: seed(of: name))
+        // The jib to lift them.
+        let top = 0.22 + 0.015 * Float(level)
+        b.limb(from: Vec3(0.24, 0, 0.12), to: Vec3(0.24, top, 0.12), radius: 0.009, color: Palette.timberDark)
+        b.beam(from: Vec3(0.24, top - 0.01, 0.12), to: Vec3(0.12, top - 0.04, 0.12), width: 0.01, color: Palette.timberDark)
+        b.limb(from: Vec3(0.13, top - 0.04, 0.12), to: Vec3(0.13, 0.07, 0.12), radius: 0.002, color: Palette.canvas)
+        b.box(center: Vec3(0.13, 0.05, 0.12), size: Vec3(0.04, 0.03, 0.03), color: Palette.stonePale)
+        if level >= 4 {
+            // The great treadwheel that winds the heavier stones.
+            b.wheel(center: Vec3(-0.24, 0.075, 0.12), radius: 0.07, width: 0.035, spokes: 6, color: Palette.timber, rim: Palette.timberDark)
+        }
+        if level >= 5 {
+            // A carved arch on the yard, the lodge's masterwork, and a
+            // moonsalt finial on its ridge.
+            for x in [Float(-0.05), 0.05] {
+                b.place(.translation(Vec3(x, 0, 0.22))) {
+                    $0.prism(sides: 6, radius: 0.016, to: 0.15, color: Palette.stoneWhite)
+                }
+            }
+            b.beam(from: Vec3(-0.065, 0.16, 0.22), to: Vec3(0.065, 0.16, 0.22), width: 0.03, depth: 0.025, color: Palette.stoneWhite)
+            b.with(material: .crystal) {
+                $0.place(.translation(Vec3(-0.06, height + 0.14 * 0.6 + 0.01, -0.13))) {
+                    $0.cone(sides: 6, radius: 0.016, to: 0.08, color: Palette.moonsalt)
+                }
+            }
+        }
+        return model(name, b)
     }
 
     static func model(_ name: String, _ b: MeshBuilder, rig: Rig = Rig(), machinery: Machinery? = nil) -> Model {

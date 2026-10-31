@@ -49,10 +49,15 @@ public enum HoldLayout {
         /// muster hall by the gate, the beacon on the heights, the study,
         /// the works that draw on the land, each toward its own ground, the
         /// Infirmary, in the quiet away from the gate, and the Forge, near
-        /// the gate for the companies it arms.
+        /// the gate for the companies it arms; last the works a keeper
+        /// alone raises, the Wayhouse on the road out and the Masons' Lodge.
         static let order: [Work] = [.building(.moonspire), .building(.musterHall), .building(.beacon), .study,
                                     .building(.granary), .building(.sawpit), .building(.quarry), .building(.saltworks),
-                                    .building(.infirmary), .building(.forge)]
+                                    .building(.infirmary), .building(.forge)] + keepersOwn
+
+        /// The works only a keeper raises: a hold the stewards keep never has
+        /// them, so its other works keep the slots they always had.
+        static let keepersOwn: [Work] = [.building(.wayhouse), .building(.lodge)]
     }
 
     /// What a hold has, for its pieces to be laid out.
@@ -256,7 +261,11 @@ public enum HoldLayout {
         let slots = slots(plan, relief: relief)
         let possible = Work.order.filter { $0 != .building(.moonspire) || plan.isSeat }
         let present = Set(plan.levels.filter { $0.value > 0 }.map(\.key) + (plan.rising.map { [$0.work] } ?? []))
-        let wanted = slots.count >= possible.count ? possible : possible.filter(present.contains)
+        // Slots for every work but a keeper's own: each of the rest keeps
+        // its slot, and a keeper's own takes what is left.
+        let wanted = slots.count >= possible.count ? possible
+            : slots.count >= possible.count - Work.keepersOwn.count ? possible.filter { !Work.keepersOwn.contains($0) || present.contains($0) }
+            : possible.filter(present.contains)
         let front = frontAngle(of: plan.hex)
         var free = slots
         var assigned: [(Work, Slot)] = []
@@ -286,6 +295,8 @@ public enum HoldLayout {
         case .study: score += 10 - abs(around - 2.5)
         case .building(.infirmary): score += 10 - abs(around - 2)
         case .building(.forge): score += 10 - abs(around - 1.2)
+        case .building(.wayhouse): score += 10 - abs(around - 0.6)
+        case .building(.lodge): score += 10 - abs(around - 1.8)
         case .building(let kind):
             score += affinity(kind, terrain: relief.terrain(of: hex), feature: relief.map[hex]?.feature) * 10 + around * 0.2
         }

@@ -45,6 +45,7 @@ enum Guide {
             "A company trained with no free tile within three of its hold waits, trained, and the hold trains no other until it has room to stand.",
             "To take a hold, break its ward, then march Spears or Riders in; one that falls to the walls' blow back takes nothing. You carry off its share of their stores; a seat holds half.",
             "Raise an Infirmary, and your companies of war that fall are carried to the nearest hold with a bed free, two beds at I and one more at each level, rather than lost. Heal them from the hold's panel for half what mustering them anew costs: they rise whole, their rank kept, as the watch turns. A hold taken loses those in its beds.",
+            "Two works hasten a House, and a keeper alone raises them: each level of a Wayhouse sends one more kind of your companies a step further every watch (Lanterns at I, Founders at II, Spears at III, Bows at IV, Riders at V), and each level of a Masons' Lodge raises every work of yours 6% sooner. Your highest of each, in any hold, counts.",
         ]),
         Section(title: "Tiers and studies", lines: [
             "Spears, Bows and Riders muster in five tiers, each stronger and dearer than the last: a tier needs its study (Close Order for II, Iron Ranks for III, Grey Companies for IV, Moonsteel for V) and a Muster Hall as high as the tier. Choose the tier as you train.",
