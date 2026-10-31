@@ -273,10 +273,15 @@ follow them:
 | --- | --- | --- |
 | Motion | System, Full, Reduced, Still | How much the lake and the map move. Full: flickering and falling stars, the opening, marches and blows played out, panels sliding in. Reduced: slower, gentler twinkling and water, no falling stars, no opening; marches and blows shown where they end, panels fading in. Still: a single frame, drawn again only when something changes. System follows *Reduce Motion*. |
 | Resolution | Native, Balanced, Efficient | Renders the lake at 100%, 75% or 50% of native pixels, and the map at most at that |
+| Detail | Auto, High, Medium, Low | How much of the land's growth (heather, ferns, pebbles, birches) the map draws: all of it, half, or none. Auto reads the memory this Mac's graphics may work in. Should the graphics falter (three frames the GPU couldn't finish), the map steps down a detail, and says so, before it gives way to its painting |
 | Frame rate | 30, 60, 120 | Upper bound for the lake's and the map's frame rate. Reduced motion, Low Power Mode, a Mac running hot, or another app in front lowers it to 30 |
 | Text | Standard, Larger | Larger sets all the type a fifth larger, the launcher's and the game's, none of it under eleven points. ⇧⌘+ in the Watch menu sets it too |
 | Music | Off, On | The score: over the launcher, the title theme of the lake the keeper's realm last lay on; within the realm, its own. One choice with the realm's Music |
 | Full screen at launch | Off, On | Applies the next time the launcher opens |
+
+Reset, in the launcher's Settings and the realm's, puts every display
+setting back as it first was, keeping the type's size, the music and
+full screen at launch as chosen.
 
 Over the launcher, the night's drone and wind play beneath a title theme
 for the lake the keeper's realm last lay on (the Nullmere before any),

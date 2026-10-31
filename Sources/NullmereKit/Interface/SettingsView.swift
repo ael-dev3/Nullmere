@@ -25,7 +25,11 @@ public struct GameSettingsView: View {
                     ChoiceLine(title: row.title, options: app.displaySettings.options(for: row),
                                chosen: app.displaySettings.selectedIndex(for: row)) { app.display?.setDisplay(row, to: $0) }
                 }
-                Note("Motion is how much the lake and the map move; System follows Reduce Motion. Text set to Larger makes all the type a fifth larger.")
+                Note("Motion is how much the lake and the map move; System follows Reduce Motion. Detail is how much of the land's growth the map draws; Auto reads this Mac, and should its graphics falter, the map steps down a detail before it gives way to its painting. Text set to Larger makes all the type a fifth larger.")
+                HStack {
+                    Spacer()
+                    QuietButton(title: "Reset the display", size: 9, name: "Reset every display setting") { app.display?.resetDisplay() }
+                }
             }
             part("Sound") {
                 ChoiceLine(title: "Sound", options: ["Off", "On"], chosen: app.isSoundOn ? 1 : 0) { app.isSoundOn = $0 == 1 }

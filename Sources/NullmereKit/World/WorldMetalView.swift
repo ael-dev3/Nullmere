@@ -72,6 +72,29 @@ final class WorldMetalView: MTKView {
     var onSecondaryClick: ((Hex) -> Void)?
     var onCameraChange: ((Camera) -> Void)?
     var onFailure: (() -> Void)?
+    /// The Mac's graphics faltered again and again: the world steps down a
+    /// detail, or, at the lowest, gives way to its painting.
+    var onFaltering: (() -> Void)?
+    /// Frames the GPU couldn't finish since the last step down.
+    private(set) var faults = 0
+    /// How many unfinished frames make the graphics faltering.
+    static let faultsToStepDown = 3
+
+    /// A frame the GPU couldn't finish: counted, and the third since the
+    /// last step down steps down.
+    func gpuFaulted() {
+        faults += 1
+        guard faults >= Self.faultsToStepDown else { return }
+        faults = 0
+        WorldMetalView.logger.error("The Mac's graphics faltered \(Self.faultsToStepDown) times: a step down.")
+        onFaltering?()
+    }
+
+    /// The memory this Mac's graphics may work in, in gigabytes, for
+    /// Detail's Auto.
+    static var gpuMemoryGB: Double {
+        Double(systemDevice?.recommendedMaxWorkingSetSize ?? 0) / 1_073_741_824
+    }
 
     private(set) var renderer: WorldRenderer?
     private var isLoadingRenderer = false
@@ -264,6 +287,7 @@ final class WorldMetalView: MTKView {
         do {
             let renderer = try WorldRenderer(device: device, library: library, pixelFormat: pixelFormat)
             renderer.meshSource = WorldMetalView.meshSource
+            renderer.onFault = { [weak self] in self?.gpuFaulted() }
             if let pendingTiles {
                 try renderer.updateTiles(pendingTiles.bytes, side: pendingTiles.side)
                 self.pendingTiles = nil

@@ -10,6 +10,7 @@ struct SettingsPanel: View {
     @Environment(\.launcherRhythm) private var rhythm
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isReturnHovered = false
+    @State private var isResetHovered = false
     /// The row whose option has keyboard focus, with keyboard navigation
     /// on: the ticked row follows it, so ← → and Return act where the focus
     /// ring is.
@@ -40,10 +41,17 @@ struct SettingsPanel: View {
                 }
             }
 
-            MenuButton(title: "Back", isSelected: isReturnHovered) {
-                model.returnToTitle()
+            HStack(spacing: 48 * unit) {
+                MenuButton(title: "Reset", isSelected: isResetHovered) {
+                    model.resetDisplay()
+                }
+                .onPointer { isResetHovered = $0 }
+                .accessibilityHint("Puts every display setting back as it first was")
+                MenuButton(title: "Back", isSelected: isReturnHovered) {
+                    model.returnToTitle()
+                }
+                .onPointer { isReturnHovered = $0 }
             }
-            .onPointer { isReturnHovered = $0 }
             .padding(.top, 18 * unit * rhythm)
         }
         .frame(width: 560 * unit)

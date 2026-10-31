@@ -568,6 +568,12 @@ public final class LauncherModel {
         if updated.music != musicWas { onMusicChanged?(updated.music) }
     }
 
+    /// Every display setting as it first was: Reset in the launcher's
+    /// Settings and the realm's.
+    public func resetDisplay() {
+        updateSettings { $0 = $0.reset }
+    }
+
     /// The score turned on or off here, for whoever plays it.
     public var onMusicChanged: ((Bool) -> Void)?
 

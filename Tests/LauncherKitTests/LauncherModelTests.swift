@@ -421,4 +421,21 @@ final class LauncherModelTests: XCTestCase {
         model.noteMusic(true)
         XCTAssertEqual(heard, [false])
     }
+
+    /// Reset puts every display setting back as it first was, the type's
+    /// size, the music and full screen at launch kept as chosen.
+    func testResetPutsTheDisplayBack() {
+        let model = makeModel()
+        model.choose(3, for: .motion)
+        model.choose(2, for: .quality)
+        model.choose(3, for: .detail)
+        model.choose(1, for: .startsInFullScreen)
+        XCTAssertEqual(model.settings.detail, .low)
+        model.resetDisplay()
+        XCTAssertEqual(model.settings.motion, .system)
+        XCTAssertEqual(model.settings.quality, .native)
+        XCTAssertEqual(model.settings.detail, .auto)
+        XCTAssertTrue(model.settings.startsInFullScreen, "Full screen at launch kept as chosen")
+        XCTAssertEqual(LauncherSettings(defaults: defaults).detail, .auto, "Kept so")
+    }
 }

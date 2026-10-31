@@ -200,8 +200,18 @@ final class WorldRenderer {
     func draw(_ frame: FrameUniforms, scene: SceneFrame, in pass: MTLRenderPassDescriptor, to drawable: any CAMetalDrawable) {
         guard let commandBuffer = encode(frame, scene: scene, in: pass) else { return }
         commandBuffer.present(drawable)
+        // A frame the GPU couldn't finish, told on the main thread.
+        if let onFault {
+            commandBuffer.addCompletedHandler { buffer in
+                guard buffer.status == .error else { return }
+                DispatchQueue.main.async { MainActor.assumeIsolated { onFault() } }
+            }
+        }
         commandBuffer.commit()
     }
+
+    /// Told of each frame the GPU couldn't finish.
+    var onFault: (@MainActor @Sendable () -> Void)?
 
     private func encode(_ frame: FrameUniforms, scene: SceneFrame, in pass: MTLRenderPassDescriptor) -> (any MTLCommandBuffer)? {
         guard let tiles, let land,

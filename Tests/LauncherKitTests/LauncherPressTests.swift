@@ -77,6 +77,12 @@ final class LauncherPressTests: XCTestCase {
         XCTAssertEqual(model.settings.motion, .full)
         XCTAssertTrue(PressableButtons.press("On"))
         XCTAssertTrue(model.settings.startsInFullScreen)
+        XCTAssertTrue(PressableButtons.press("Low"), "Among \(shown)")
+        XCTAssertEqual(model.settings.detail, .low)
+        XCTAssertTrue(PressableButtons.press("Reset"))
+        XCTAssertEqual(model.settings.motion, .system, "Reset")
+        XCTAssertEqual(model.settings.detail, .auto)
+        XCTAssertTrue(model.settings.startsInFullScreen, "Kept as chosen")
         XCTAssertTrue(PressableButtons.press("Back"))
         XCTAssertEqual(model.screen, .title)
 

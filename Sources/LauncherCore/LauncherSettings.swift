@@ -109,6 +109,8 @@ public struct LauncherSettings: Equatable, Sendable {
     /// realm's music within it, one choice for both.
     public var music: Bool
     public var startsInFullScreen: Bool
+    /// How much of the world's detail the map draws.
+    public var detail: WorldDetail
 
     public init(
         motion: MotionPreference = .system,
@@ -116,7 +118,8 @@ public struct LauncherSettings: Equatable, Sendable {
         frameRate: FrameRateCap = .sixty,
         largerText: Bool = false,
         music: Bool = true,
-        startsInFullScreen: Bool = false
+        startsInFullScreen: Bool = false,
+        detail: WorldDetail = .auto
     ) {
         self.motion = motion
         self.quality = quality
@@ -124,6 +127,14 @@ public struct LauncherSettings: Equatable, Sendable {
         self.largerText = largerText
         self.music = music
         self.startsInFullScreen = startsInFullScreen
+        self.detail = detail
+    }
+
+    /// The settings as they first were, for Reset: every display setting
+    /// back to its default; the type's size, the music and full screen at
+    /// launch kept as chosen.
+    public var reset: LauncherSettings {
+        LauncherSettings(largerText: largerText, music: music, startsInFullScreen: startsInFullScreen)
     }
 
     enum Key {
@@ -135,6 +146,7 @@ public struct LauncherSettings: Equatable, Sendable {
         /// Where the realm's Music has always kept its choice.
         static let music = "music.enabled"
         static let startsInFullScreen = "launcher.startsInFullScreen"
+        static let detail = "launcher.detail"
     }
 
     /// Reads stored settings. Missing or unrecognised values fall back to defaults.
@@ -152,6 +164,9 @@ public struct LauncherSettings: Equatable, Sendable {
         largerText = defaults.bool(forKey: Key.largerText)
         music = defaults.object(forKey: Key.music) as? Bool ?? true
         startsInFullScreen = defaults.bool(forKey: Key.startsInFullScreen)
+        if let raw = defaults.string(forKey: Key.detail), let value = WorldDetail(rawValue: raw) {
+            detail = value
+        }
     }
 
     public func save(to defaults: UserDefaults) {
@@ -161,6 +176,7 @@ public struct LauncherSettings: Equatable, Sendable {
         defaults.set(largerText, forKey: Key.largerText)
         defaults.set(music, forKey: Key.music)
         defaults.set(startsInFullScreen, forKey: Key.startsInFullScreen)
+        defaults.set(detail.rawValue, forKey: Key.detail)
     }
 }
 
@@ -168,6 +184,7 @@ public struct LauncherSettings: Equatable, Sendable {
 public enum SettingsRow: CaseIterable, Sendable {
     case motion
     case quality
+    case detail
     case frameRate
     case text
     case music
@@ -177,6 +194,7 @@ public enum SettingsRow: CaseIterable, Sendable {
         switch self {
         case .motion: return "Motion"
         case .quality: return "Resolution"
+        case .detail: return "Detail"
         case .frameRate: return "Frame rate"
         case .text: return "Text"
         case .music: return "Music"
@@ -191,6 +209,7 @@ extension LauncherSettings {
         switch row {
         case .motion: return MotionPreference.allCases.map(\.title)
         case .quality: return RenderQuality.allCases.map(\.title)
+        case .detail: return WorldDetail.allCases.map(\.title)
         case .frameRate: return FrameRateCap.allCases.map(\.title)
         case .text: return ["Standard", "Larger"]
         case .music, .startsInFullScreen: return ["Off", "On"]
@@ -202,6 +221,7 @@ extension LauncherSettings {
         switch row {
         case .motion: return MotionPreference.allCases.firstIndex(of: motion) ?? 0
         case .quality: return RenderQuality.allCases.firstIndex(of: quality) ?? 0
+        case .detail: return WorldDetail.allCases.firstIndex(of: detail) ?? 0
         case .frameRate: return FrameRateCap.allCases.firstIndex(of: frameRate) ?? 0
         case .text: return largerText ? 1 : 0
         case .music: return music ? 1 : 0
@@ -215,6 +235,7 @@ extension LauncherSettings {
         switch row {
         case .motion: motion = MotionPreference.allCases[index]
         case .quality: quality = RenderQuality.allCases[index]
+        case .detail: detail = WorldDetail.allCases[index]
         case .frameRate: frameRate = FrameRateCap.allCases[index]
         case .text: largerText = index == 1
         case .music: music = index == 1

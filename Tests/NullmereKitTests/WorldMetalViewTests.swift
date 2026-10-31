@@ -82,6 +82,21 @@ final class WorldMetalViewTests: XCTestCase {
         XCTAssertNil(unbuilt.renderer)
     }
 
+    /// Frames the GPU couldn't finish are counted; the third steps the
+    /// world down a detail, and the count begins again.
+    func testTheGraphicsFalteringStepsDownAfterAFewFaults() {
+        let view = WorldMetalView()
+        var steps = 0
+        view.onFaltering = { steps += 1 }
+        view.gpuFaulted()
+        view.gpuFaulted()
+        XCTAssertEqual(steps, 0, "A fault or two is weather")
+        view.gpuFaulted()
+        XCTAssertEqual(steps, 1)
+        XCTAssertEqual(view.faults, 0, "Counted afresh")
+        XCTAssertGreaterThanOrEqual(WorldMetalView.gpuMemoryGB, 0)
+    }
+
     func testTheDrawingScaleFollowsTheZoom() {
         XCTAssertEqual(WorldMetalView.renderScale(forCameraScale: 28), 1)
         XCTAssertEqual(WorldMetalView.renderScale(forCameraScale: 60), 0.75, "Close in, three quarters of native")

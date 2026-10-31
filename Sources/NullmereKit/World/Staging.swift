@@ -73,6 +73,7 @@ extension GameSession {
         // Laid out afresh with each new map, as the land's relief is.
         if stage == nil {
             stage = WorldStage(map: state.map, relief: relief)
+            stage?.furnitureShare = detail.furnitureShare
         }
         guard let stage else { return SceneFrame() }
         let houses = WorldView.houseColours

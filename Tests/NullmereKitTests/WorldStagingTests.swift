@@ -1,4 +1,5 @@
 import Foundation
+import LauncherCore
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
@@ -27,6 +28,34 @@ final class WorldStagingTests: XCTestCase {
         let session = GameSession(state: state, store: LocalStore(directory: dir))
         session.dismissSeatBriefing()
         return session
+    }
+
+    /// The keeper's Detail reaches the land's furniture: less of it drawn
+    /// a tier down, none at the lowest; and a Mac whose graphics falter
+    /// steps down a tier at a time, told, before the painting.
+    func testDetailThinsTheLandAndStepsDownWhenTheGraphicsFalter() throws {
+        let session = try session()
+        func furniture() -> Int {
+            session.sceneFrame(at: 4).fixed.filter { if case .furnishing = $0.key { return true } else { return false } }
+                .reduce(0) { $0 + $1.instances.count }
+        }
+        let whole = furniture()
+        XCTAssertGreaterThan(whole, 0)
+        XCTAssertEqual(session.stage?.furnitureShare, 1)
+        session.detail = .medium
+        XCTAssertEqual(session.stage?.furnitureShare, 0.5)
+        XCTAssertLessThan(furniture(), whole)
+        session.detail = .low
+        XCTAssertEqual(furniture(), 0)
+
+        session.detail = .high
+        XCTAssertTrue(WorldView.stepDown(session))
+        XCTAssertEqual(session.detail, .medium)
+        XCTAssertTrue(session.notices.last?.text.hasPrefix("This Mac's graphics faltered") == true)
+        XCTAssertTrue(WorldView.stepDown(session))
+        XCTAssertEqual(session.detail, .low)
+        XCTAssertFalse(WorldView.stepDown(session), "Below the lowest, the painting")
+        XCTAssertEqual(session.detail, .low)
     }
 
     func testTheWorldIsStagedFromWhatTheKeeperKnows() throws {

@@ -151,7 +151,7 @@ To build, reimagined:
 - [x] A newer build known: the launcher tells its build in its footer and the realm the tongue it speaks and the oldest it hears; a Mac too old for its realm is told so at the door, which won't open, and where to get the new one (and in the world, once, should the realm move on)
 - [x] A House's crest (Warpkeep's profile and portrait): a shield of one of seven tinctures bearing one of ten charges in another, drawn in the interface; the lake gives every House its own, the same for the same realm, and a keeper takes their own once an age from the Realm panel, told to every House; borne on each House's line among the Houses (on the map's banners still to come)
 - [ ] Rivers: streams from the Spine to the lake, crossed at fords, named and followed; the shores' regions named, with a legend
-- [ ] Graphics chosen for the Mac: an Auto that reads the hardware, detail tiers, a reset to the defaults; when the GPU fails, a step down before the painting, with what to tell
+- [x] Graphics chosen for the Mac: Detail (Auto, High, Medium, Low), Auto reading the memory the Mac's graphics may work in; Reset to the defaults in both Settings; when the GPU fails three frames, a step down, told, before the painting
 - [x] Title and menu music in the launcher, a theme for each lake: the night beneath a title theme for the lake the keeper's realm last lay on, each lake in a mode of its own (the Twin Waters answering each note a fifth above), and Music among the launcher's settings, one choice with the realm's
 - [ ] A work that hastens marches and one that hastens building (Warpkeep's Barracks and Cathedral)
 - [ ] Works placed by the keeper within a hold (Warpkeep's free placement), on the town's grid

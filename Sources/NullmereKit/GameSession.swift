@@ -129,6 +129,11 @@ public final class GameSession {
     @ObservationIgnored var heartHeights: [Double] = []
     /// The world's models, laid out for the map in play when first drawn.
     @ObservationIgnored var stage: WorldStage?
+    /// How much of the world's detail the map draws: the display setting's,
+    /// Auto read for this Mac, and lower should its graphics falter.
+    public var detail: WorldDetail = .high {
+        didSet { stage?.furnitureShare = detail.furnitureShare }
+    }
     /// Which way each company faces: toward where it last marched or struck.
     @ObservationIgnored var headings: [Int: Float] = [:]
     /// Where each company stood before the realm's latest world was taken:

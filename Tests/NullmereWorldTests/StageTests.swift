@@ -20,6 +20,28 @@ final class StageTests: XCTestCase {
         batches.reduce(0) { $0 + $1.instances.count }
     }
 
+    /// Detail thins the land's furniture: about half of it at a half
+    /// share, always the same pieces, none at none; laid out again as the
+    /// share changes, and whole again at a whole one.
+    func testDetailThinsTheLandsFurniture() {
+        let stage = stage()
+        let all = stage.furnish(occupied: [], holds: [])
+        stage.furnitureShare = 1
+        XCTAssertEqual(stage.furnitureVersion, 1, "No change, nothing laid out again")
+        stage.furnitureShare = 0.5
+        let half = stage.furnish(occupied: [], holds: [])
+        XCTAssertEqual(stage.furnitureVersion, 2, "Laid out again at the new share")
+        let share = Double(count(half)) / Double(count(all))
+        XCTAssertEqual(share, 0.5, accuracy: 0.1, "About half: \(count(half)) of \(count(all))")
+        let kept = Set(all.flatMap(\.instances).map { "\($0.model)" })
+        XCTAssertTrue(half.flatMap(\.instances).allSatisfy { kept.contains("\($0.model)") }, "Only pieces the whole land has")
+        XCTAssertEqual(WorldStage(map: Self.state.map, relief: Self.relief).thinned(0.5), half, "Always the same pieces")
+        stage.furnitureShare = 0
+        XCTAssertEqual(count(stage.furnish(occupied: [], holds: [])), 0, "None at none")
+        stage.furnitureShare = 1
+        XCTAssertEqual(stage.furnish(occupied: [], holds: []), all, "Whole again")
+    }
+
     func testTheLandIsFurnishedOnceAndClearedWhereACompanyStands() throws {
         let stage = stage()
         let started = Date()
@@ -466,5 +488,13 @@ final class StageTests: XCTestCase {
         XCTAssertEqual(WorldStage.colour([], sigil: 3), Vec4(0.6, 0.6, 0.6, 1))
         XCTAssertEqual(WorldStage.colour([Vec4(1, 0, 0, 1), Vec4(0, 1, 0, 1)], sigil: -1), Vec4(0, 1, 0, 1))
         XCTAssertNotEqual(WorldStage.phase(of: Hex(1, 2), salt: 1), WorldStage.phase(of: Hex(2, 1), salt: 1))
+    }
+}
+
+private extension WorldStage {
+    /// This stage's furniture, all of it, at `share`.
+    func thinned(_ share: Float) -> [ModelBatch] {
+        furnitureShare = share
+        return furnish(occupied: [], holds: [])
     }
 }

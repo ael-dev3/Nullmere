@@ -232,6 +232,10 @@ struct PlayView: View {
         .environment(\.worldFrameRate, app.displaySettings.frameRate)
         .environment(\.worldQuality, app.displaySettings.quality)
         .onChange(of: motion, initial: true) { _, motion in session.motion = motion }
+        // The display setting's Detail, Auto read for this Mac.
+        .onChange(of: app.displaySettings.detail, initial: true) { _, chosen in
+            session.detail = chosen.resolved(gpuMemoryGB: WorldMetalView.gpuMemoryGB)
+        }
         .onChange(of: session.panel) { _, panel in
             if panel != nil { panelFocused = true }
         }

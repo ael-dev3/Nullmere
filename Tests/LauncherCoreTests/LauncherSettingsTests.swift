@@ -23,7 +23,7 @@ final class LauncherSettingsTests: XCTestCase {
     func testResolutionsAndRowsAreNamedAndScaled() {
         XCTAssertEqual(RenderQuality.allCases.map(\.scale), [1, 0.75, 0.5])
         XCTAssertEqual(RenderQuality.allCases.map(\.title), ["Native", "Balanced", "Efficient"])
-        XCTAssertEqual(SettingsRow.allCases.map(\.title), ["Motion", "Resolution", "Frame rate", "Text", "Music", "Full screen at launch"])
+        XCTAssertEqual(SettingsRow.allCases.map(\.title), ["Motion", "Resolution", "Detail", "Frame rate", "Text", "Music", "Full screen at launch"])
     }
 
     func testEmptyDefaultsProduceDefaultSettings() {
@@ -40,6 +40,38 @@ final class LauncherSettingsTests: XCTestCase {
                                         startsInFullScreen: true)
         settings.save(to: defaults)
         XCTAssertEqual(LauncherSettings(defaults: defaults), settings)
+    }
+
+    /// Detail: Auto reads the Mac's graphics memory; each tier draws its
+    /// share of the land's growth; a Mac whose graphics falter steps down a
+    /// tier at a time, to none below the lowest; kept and reset.
+    func testDetailIsChosenReadAndSteppedDown() {
+        XCTAssertEqual(LauncherSettings().detail, .auto)
+        XCTAssertEqual(WorldDetail.allCases.map(\.title), ["Auto", "High", "Medium", "Low"])
+        XCTAssertEqual(WorldDetail.auto.resolved(gpuMemoryGB: 21), .high)
+        XCTAssertEqual(WorldDetail.auto.resolved(gpuMemoryGB: 8), .medium)
+        XCTAssertEqual(WorldDetail.auto.resolved(gpuMemoryGB: 0), .low, "Unread, the least")
+        XCTAssertEqual(WorldDetail.low.resolved(gpuMemoryGB: 64), .low, "A choice made is kept")
+        XCTAssertEqual(WorldDetail.allCases.map(\.furnitureShare), [1, 1, 0.5, 0])
+        XCTAssertEqual(WorldDetail.auto.steppedDown, .medium)
+        XCTAssertEqual(WorldDetail.high.steppedDown, .medium)
+        XCTAssertEqual(WorldDetail.medium.steppedDown, .low)
+        XCTAssertNil(WorldDetail.low.steppedDown, "Below the lowest, only the painting")
+
+        var settings = LauncherSettings(defaults: defaults)
+        settings.select(3, for: .detail)
+        XCTAssertEqual(settings.detail, .low)
+        XCTAssertEqual(settings.options(for: .detail)[settings.selectedIndex(for: .detail)], "Low")
+        settings.save(to: defaults)
+        XCTAssertEqual(LauncherSettings(defaults: defaults).detail, .low)
+        defaults.set("ultra", forKey: "launcher.detail")
+        XCTAssertEqual(LauncherSettings(defaults: defaults).detail, .auto, "Unread, Auto")
+
+        // Reset: the display as it first was, the type, music and full
+        // screen at launch as chosen.
+        let chosen = LauncherSettings(motion: .still, quality: .efficient, frameRate: .thirty, largerText: true, music: false,
+                                      startsInFullScreen: true, detail: .low)
+        XCTAssertEqual(chosen.reset, LauncherSettings(largerText: true, music: false, startsInFullScreen: true))
     }
 
     /// The launcher's Music is the realm's: kept where the realm always

@@ -192,6 +192,14 @@ public final class WorldStage: @unchecked Sendable {
     /// Where the furniture lies, region by region, so a frame draws only
     /// what its view reaches.
     public private(set) var furnitureRegions: Regions?
+    /// The share of the land's furniture laid out, from none (0) to all
+    /// (1), as the keeper's Detail sets it: the same pieces always kept
+    /// at the same share, so nothing flickers as it is laid out again.
+    public var furnitureShare: Float = 1 {
+        didSet {
+            if furnitureShare != oldValue { furnished = nil }
+        }
+    }
     private var laid: [Int: (hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising?, heritage: Heritage?, pieces: [Piece])] = [:]
     /// The land's height where figures have stood, by the 64th of a unit:
     /// worked out once, not each frame.
@@ -228,8 +236,10 @@ public final class WorldStage: @unchecked Sendable {
                                                  clearHeart: occupied.contains(hex) || holds.contains(hex), holds: holds)
         }
         var placed: [(ModelKey, ModelInstance)] = []
-        for hex in map.hexes {
-            for piece in furnitureByHex[hex] ?? [] {
+        let share = min(max(furnitureShare, 0), 1)
+        for hex in map.hexes where share > 0 {
+            for (index, piece) in (furnitureByHex[hex] ?? []).enumerated()
+            where share >= 1 || Noise.unit(Int32(truncatingIfNeeded: hex.q), Int32(truncatingIfNeeded: hex.r), UInt32(41 + index)) < share {
                 placed.append((piece.key, ModelInstance(model: piece.transform, phase: WorldStage.phase(of: piece.hex, salt: 3),
                                                         hex: SIMD2(Int32(piece.hex.q), Int32(piece.hex.r)))))
             }

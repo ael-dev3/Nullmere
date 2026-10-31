@@ -23,6 +23,9 @@ struct WorldView: View {
             } else {
                 WorldMetalRepresentable(session: session, motion: motion, frameRate: frameRate, quality: quality) {
                     metalFailed = true
+                } onFaltering: {
+                    // A detail down, before the painting.
+                    if !WorldView.stepDown(session) { metalFailed = true }
                 }
             }
             WorldMarks(session: session, modelsDrawn: !metalFailed && WorldMetalView.systemDevice != nil)
@@ -59,16 +62,30 @@ struct WorldView: View {
     }
 }
 
+extension WorldView {
+    /// The Mac's graphics faltered: the map draws a detail less, and the
+    /// keeper is told; false at the lowest, when only the painting is left.
+    @MainActor
+    static func stepDown(_ session: GameSession) -> Bool {
+        guard let lower = session.detail.steppedDown else { return false }
+        session.detail = lower
+        session.post("This Mac's graphics faltered: the map draws less of the land's growth now (Detail \(lower.title)).", tone: .neutral)
+        return true
+    }
+}
+
 private struct WorldMetalRepresentable: NSViewRepresentable {
     let session: GameSession
     let motion: ResolvedMotion
     let frameRate: FrameRateCap
     let quality: RenderQuality
     let onFailure: () -> Void
+    let onFaltering: () -> Void
 
     func makeNSView(context: Context) -> WorldMetalView {
         let view = WorldMetalView()
         view.onFailure = onFailure
+        view.onFaltering = onFaltering
         view.onHover = { hex in session.hover(hex) }
         view.cursor = { hex in
             switch session.pointerAction(at: hex) {
