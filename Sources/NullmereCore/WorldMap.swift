@@ -40,6 +40,10 @@ public struct WorldMap: Codable, Equatable, Sendable {
     private let rowStarts: [Int]
     /// Every hex in index order, laid out once.
     private let hexList: [Hex]
+    /// Each tile's neighbours' indices, six to a tile in the order of
+    /// `Hex.directions`, -1 past the world's edge: laid out once, for the
+    /// search for ways.
+    let neighbours: [Int32]
 
     private enum CodingKeys: String, CodingKey {
         case radius
@@ -54,6 +58,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
         self.tiles = Array(repeating: fill, count: WorldMap.count(radius: radius))
         self.rowStarts = WorldMap.rowStarts(radius: radius)
         hexList = WorldMap.hexes(radius: radius)
+        neighbours = WorldMap.neighbours(radius: radius, of: hexList)
     }
 
     public init(from decoder: any Decoder) throws {
@@ -72,6 +77,12 @@ public struct WorldMap: Codable, Equatable, Sendable {
         }
         rowStarts = WorldMap.rowStarts(radius: radius)
         hexList = WorldMap.hexes(radius: radius)
+        neighbours = WorldMap.neighbours(radius: radius, of: hexList)
+    }
+
+    // The rest of a map is laid out from its radius.
+    public static func == (a: WorldMap, b: WorldMap) -> Bool {
+        a.radius == b.radius && a.tiles == b.tiles
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -159,6 +170,23 @@ public struct WorldMap: Codable, Equatable, Sendable {
 
     /// Every hex in index order.
     public var hexes: [Hex] { hexList }
+
+    private static func neighbours(radius: Int, of hexes: [Hex]) -> [Int32] {
+        let starts = rowStarts(radius: radius)
+        var neighbours: [Int32] = []
+        neighbours.reserveCapacity(hexes.count * 6)
+        for hex in hexes {
+            for direction in Hex.directions {
+                let next = hex + direction
+                guard next.q >= -radius, next.q <= radius, next.r >= -radius, next.r <= radius, next.length <= radius else {
+                    neighbours.append(-1)
+                    continue
+                }
+                neighbours.append(Int32(starts[next.r + radius] + next.q - max(-radius, -next.r - radius)))
+            }
+        }
+        return neighbours
+    }
 
     private static func hexes(radius: Int) -> [Hex] {
         var result: [Hex] = []

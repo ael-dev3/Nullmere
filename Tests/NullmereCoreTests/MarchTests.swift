@@ -192,4 +192,85 @@ final class MarchTests: XCTestCase {
             }
         }
     }
+
+    /// The search for ways, with its room kept and its open tiles in a heap
+    /// of keys, finds every way a plain A* finds, hex for hex: of tiles
+    /// equally promising the lower index first, round every company, the
+    /// wilds and others' holds, halls and storehouses, but the goal.
+    func testTheSearchFindsTheWaysAPlainSearchFinds() throws {
+        var realm = RealmState(name: "R", seed: "plain search", seats: 8, now: 0)
+        try realm.arrive("a", name: "Ama", now: 0)
+        for _ in 1...30 {
+            for pace in 1..<GameState.pacesPerWatch { _ = realm.world.walk(to: pace) }
+            _ = realm.world.endWatch()
+        }
+        let state = realm.world
+        var compared = 0, found = 0
+        for house in state.livingHouses.map(\.id) {
+            for unit in state.units(of: house).prefix(8) {
+                let targets = [unit.destination].compactMap { $0 }
+                    + [6, 12].flatMap { unit.position.ring($0).enumerated().filter { $0.offset % 9 == 0 }.map(\.element) }
+                for target in targets {
+                    let way = state.path(for: unit, to: target)
+                    XCTAssertEqual(way, plainWay(in: state, for: unit, to: target), "\(unit.id) to \(target)")
+                    compared += 1
+                    if way != nil { found += 1 }
+                }
+            }
+        }
+        XCTAssertGreaterThan(compared, 300)
+        XCTAssertGreaterThan(found, compared / 3, "most ways found, some not")
+        XCTAssertLessThan(found, compared, "some ways not")
+    }
+
+    /// A* as first written: hex by hex, the open tiles in a list kept in
+    /// order of (priority, index), the least taken each time.
+    private func plainWay(in state: GameState, for unit: NullmereCore.Unit, to target: Hex) -> [Hex]? {
+        let map = state.map
+        guard unit.position != target, let start = map.index(of: unit.position), let goal = map.index(of: target),
+              map[goal].terrain.isPassable else { return nil }
+        var blocked = Set<Hex>(state.units.filter { $0.id != unit.id }.map(\.position))
+        blocked.formUnion(state.holds.filter { $0.owner != unit.owner }.map(\.position))
+        blocked.formUnion(state.wildsStanding.map(\.position) + state.lairsStanding.map(\.position))
+        blocked.formUnion(state.hallsStanding.filter { !state.isOfHall(unit.owner, $0) }.map(\.position))
+        blocked.formUnion(state.storehousesStanding.filter { !state.isOf($0.alliance, unit.owner) }.map(\.position))
+        blocked.remove(target)
+        var best = [start: 0], cameFrom: [Int: Int] = [:]
+        // Most promising last.
+        var open = [(unit.position.distance(to: target), start)]
+        var expanded = 0
+        while let (priority, tile) = open.popLast() {
+            let hex = map.hexes[tile]
+            if tile == goal {
+                var route: [Hex] = []
+                var cursor = goal
+                while cursor != start {
+                    route.append(map.hexes[cursor])
+                    cursor = cameFrom[cursor]!
+                }
+                return route.reversed()
+            }
+            let cost = best[tile]!
+            guard priority == cost + hex.distance(to: target) else { continue }
+            expanded += 1
+            if expanded > 6_000 { return nil }
+            for direction in Hex.directions {
+                let step = hex + direction
+                guard let next = map.index(of: step), !blocked.contains(step), let ground = map[step]?.terrain,
+                      ground.isPassable else { continue }
+                let total = cost + ground.moveCost
+                guard total < best[next] ?? Int.max else { continue }
+                best[next] = total
+                cameFrom[next] = tile
+                let node = (total + step.distance(to: target), next)
+                var low = 0, high = open.count
+                while low < high {
+                    let middle = (low + high) / 2
+                    if open[middle] > node { low = middle + 1 } else { high = middle }
+                }
+                open.insert(node, at: low)
+            }
+        }
+        return nil
+    }
 }

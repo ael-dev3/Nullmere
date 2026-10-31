@@ -62,10 +62,10 @@ extension GameState {
                 events += mind.takeTurn(in: &self)
             }
             var stepped = fightFields()
-            for unit in units.sorted(by: { $0.id < $1.id }) where unit.destination != nil {
-                guard let current = self.unit(unit.id) else { continue }
+            for id in marchingIDs() {
+                guard let current = self.unit(id) else { continue }
                 let moves = movement(of: current)
-                stepped += march(unit.id, keeping: moves - GameState.allowance(of: moves, by: now))
+                stepped += march(id, keeping: moves - GameState.allowance(of: moves, by: now))
             }
             stepped += walkRallies(by: now)
             tally(stepped)
@@ -75,13 +75,21 @@ extension GameState {
         return events
     }
 
+    /// The companies on the march, by id from the first mustered: their
+    /// ids, not the companies, sorted.
+    private func marchingIDs() -> [Int] {
+        var ids: [Int] = []
+        for index in units.indices where units[index].destination != nil { ids.append(units[index].id) }
+        return ids.sorted()
+    }
+
     /// What the paces left unwalked when the watch turns, early or on time:
     /// every company on the march spends the rest of the watch's moves, and
     /// every host walks the rest of its way and strikes if it is there.
     mutating func walkTheRest() -> [GameEvent] {
         var events: [GameEvent] = []
-        for unit in units.sorted(by: { $0.id < $1.id }) where unit.destination != nil {
-            events += march(unit.id)
+        for id in marchingIDs() {
+            events += march(id)
         }
         events += walkRallies(by: nil)
         tally(events)

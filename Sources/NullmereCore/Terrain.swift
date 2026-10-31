@@ -31,10 +31,23 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
         }
     }
 
-    public var isWater: Bool { self == .still || self == .shallows }
+    // These ask by case, not `==`, which for an enum of strings can come
+    // to comparing the strings: the search for ways asks them of every
+    // tile it looks at.
+    public var isWater: Bool {
+        switch self {
+        case .still, .shallows: return true
+        case .strand, .saltFlat, .greyfield, .blackwood, .barrow, .spine: return false
+        }
+    }
 
     /// Whether units can enter it.
-    public var isPassable: Bool { self != .still && self != .spine }
+    public var isPassable: Bool {
+        switch self {
+        case .still, .spine: return false
+        case .shallows, .strand, .saltFlat, .greyfield, .blackwood, .barrow: return true
+        }
+    }
 
     /// Whether a hold can be founded on it.
     public var isSettleable: Bool {

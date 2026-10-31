@@ -1114,10 +1114,10 @@ struct RivalMind {
         // and one over the holds, not one for every hex: the first on a hex,
         // as `unit(at:)` and `hold(at:)` find it.
         var standing: [Hex: Unit] = [:], holding: [Hex: Hold] = [:]
-        for other in state.units where standing[other.position] == nil && other.position.distance(to: unit.position) <= range {
+        for other in state.units(within: range, of: unit.position) where standing[other.position] == nil {
             standing[other.position] = other
         }
-        for hold in state.holds where holding[hold.position] == nil && hold.position.distance(to: unit.position) <= range {
+        for hold in state.holds(within: range, of: unit.position) where holding[hold.position] == nil {
             holding[hold.position] = hold
         }
         return unit.position.spiral(range).dropFirst().first { hex in
@@ -1154,8 +1154,8 @@ struct RivalMind {
         // this House's own gates, never one that would lead it off.
         let siege = siegePlan(in: state)
         let gates = state.holds(of: house).map(\.position)
-        let skirmish = state.units
-            .filter { $0.owner != house && $0.kind.isMilitary && state.isAtWar(house, $0.owner) && $0.position.distance(to: unit.position) <= 3 }
+        let skirmish = state.units(within: 3, of: unit.position)
+            .filter { $0.owner != house && $0.kind.isMilitary && state.isAtWar(house, $0.owner) }
             .filter { foe in
                 guard let siege else { return true }
                 return foe.position.distance(to: siege.target) <= unit.position.distance(to: siege.target)
@@ -1286,9 +1286,13 @@ struct RivalMind {
     func siegePlan(in state: GameState) -> Siege? {
         guard let seat = state.seat(of: house) else { return nil }
         let explored = state.houses[house].explored
-        let enemyHolds = state.holds.filter { hold in
-            hold.owner != house && state.isAtWar(house, hold.owner)
-                && (state.map.index(of: hold.position).map { explored[$0] } ?? false)
+        // By index, so only the holds taken up are copied.
+        var enemyHolds: [Hold] = []
+        for index in state.holds.indices {
+            let owner = state.holds[index].owner
+            guard owner != house, state.isAtWar(house, owner),
+                  state.map.index(of: state.holds[index].position).map({ explored[$0] }) ?? false else { continue }
+            enemyHolds.append(state.holds[index])
         }
         let target: Hold?
         if let rising = spireThreats(in: state).first(where: { state.isAtWar(house, $0) }), let spire = state.seat(of: rising) {
@@ -1301,7 +1305,7 @@ struct RivalMind {
             // Each House's holds counted, and its strength weighed, once for
             // the plan, not at every comparison of its holds.
             var held: [Int: Int] = [:], strong: [Int: Int] = [:]
-            for hold in state.holds { held[hold.owner, default: 0] += 1 }
+            for index in state.holds.indices { held[state.holds[index].owner, default: 0] += 1 }
             func cost(_ hold: Hold) -> Int {
                 var cost = hold.position.distance(to: seat.position) + 4 * (held[hold.owner] ?? 0)
                 if hold.isSeat {
@@ -1326,7 +1330,7 @@ struct RivalMind {
         let garrisons = Set(assignGarrisons(in: state).keys)
         let army = state.units(of: house).filter { $0.kind.isMilitary && !garrisons.contains($0.id) }
         let gathered = army.filter { $0.position.distance(to: target.position) <= RivalMind.siegeReach + 1 }.count
-        let defenders = state.units.filter { $0.owner == target.owner && $0.kind.isMilitary && $0.position.distance(to: target.position) <= 2 }.count
+        let defenders = state.units(within: 2, of: target.position).filter { $0.owner == target.owner && $0.kind.isMilitary }.count
         let needed = max(3, defenders + 2)
         let ready = target.ward == 0 || gathered >= needed || (gathered >= 2 && gathered == army.count && army.count >= defenders + 2)
         return Siege(target: target.position, muster: muster, ready: ready)

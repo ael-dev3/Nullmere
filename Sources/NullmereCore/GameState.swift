@@ -231,32 +231,56 @@ public struct GameState: Codable, Equatable, Sendable {
         houses.indices.contains(id) ? houses[id] : nil
     }
 
+    // Companies and holds are looked over by index, so only the ones found
+    // are copied: these are asked many thousands of times a watch, and a
+    // company is two hundred bytes.
     public func unit(_ id: Int) -> Unit? {
-        units.first { $0.id == id }
+        unitIndex(id).map { units[$0] }
     }
 
     public func hold(_ id: Int) -> Hold? {
-        holds.first { $0.id == id }
+        holdIndex(id).map { holds[$0] }
     }
 
     public func unit(at hex: Hex) -> Unit? {
-        units.first { $0.position == hex }
+        for index in units.indices where units[index].position == hex { return units[index] }
+        return nil
     }
 
     public func hold(at hex: Hex) -> Hold? {
-        holds.first { $0.position == hex }
+        for index in holds.indices where holds[index].position == hex { return holds[index] }
+        return nil
     }
 
     public func holds(of house: Int) -> [Hold] {
-        holds.filter { $0.owner == house }
+        var found: [Hold] = []
+        for index in holds.indices where holds[index].owner == house { found.append(holds[index]) }
+        return found
     }
 
     public func units(of house: Int) -> [Unit] {
-        units.filter { $0.owner == house }
+        var found: [Unit] = []
+        for index in units.indices where units[index].owner == house { found.append(units[index]) }
+        return found
     }
 
     public func seat(of house: Int) -> Hold? {
-        holds.first { $0.owner == house && $0.isSeat }
+        for index in holds.indices where holds[index].owner == house && holds[index].isSeat { return holds[index] }
+        return nil
+    }
+
+    /// The companies within `range` of a hex, in the order of `units`.
+    func units(within range: Int, of hex: Hex) -> [Unit] {
+        var found: [Unit] = []
+        for index in units.indices where units[index].position.distance(to: hex) <= range { found.append(units[index]) }
+        return found
+    }
+
+    /// The holds within `range` of a hex, in the order of `holds`.
+    func holds(within range: Int, of hex: Hex) -> [Hold] {
+        var found: [Hold] = []
+        for index in holds.indices where holds[index].position.distance(to: hex) <= range { found.append(holds[index]) }
+        return found
     }
 
     public var livingHouses: [House] {
@@ -421,7 +445,8 @@ public struct GameState: Codable, Equatable, Sendable {
             weighed[unit.kind] = bonuses
             return total + strength(of: unit, house: bonuses)
         }
-        let walls = holds(of: house).reduce(0) { $0 + $1.ward / 2 }
+        var walls = 0
+        for index in holds.indices where holds[index].owner == house { walls += holds[index].ward / 2 }
         return army + walls
     }
 
@@ -529,10 +554,12 @@ public struct GameState: Codable, Equatable, Sendable {
     }
 
     func unitIndex(_ id: Int) -> Int? {
-        units.firstIndex { $0.id == id }
+        for index in units.indices where units[index].id == id { return index }
+        return nil
     }
 
     func holdIndex(_ id: Int) -> Int? {
-        holds.firstIndex { $0.id == id }
+        for index in holds.indices where holds[index].id == id { return index }
+        return nil
     }
 }

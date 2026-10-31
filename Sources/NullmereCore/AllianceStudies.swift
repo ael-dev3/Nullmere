@@ -90,8 +90,14 @@ public struct AllianceLore: Codable, Equatable, Sendable {
     }
 
     /// What every grade learned gives a figure of the alliance's Houses.
+    /// A study's grade is looked up only if its grades give the figure
+    /// anything, so much a grade: this is asked for every figure of every
+    /// company weighed, and each study gives one.
     func bonus(_ bonus: Bonus) -> Int {
-        grades.isEmpty ? 0 : AllianceStudy.allCases.reduce(0) { $0 + $1.bonus(bonus, grade: grade(of: $1)) }
+        guard !grades.isEmpty else { return 0 }
+        return AllianceStudy.allCases.reduce(0) { total, study in
+            study.bonus(bonus, grade: 1) == 0 ? total : total + study.bonus(bonus, grade: grade(of: study))
+        }
     }
 
     /// What a House has given in all, in barter worth.
