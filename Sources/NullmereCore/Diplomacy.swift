@@ -56,6 +56,54 @@ public struct Relation: Codable, Equatable, Sendable {
     public func other(than house: Int) -> Int {
         first == house ? second : first
     }
+
+    // A relation travels as one line, "first,second,stance,since", with
+    // its aggressor, betrayals and tributes after only as far as it has
+    // any: a realm keeps one for every two of its Houses, 1,128 in one of
+    // forty-eight seats, and every keeper's view carries them all. One
+    // kept field by field, as before, still opens.
+    private enum CodingKeys: String, CodingKey {
+        case first, second, stance, since, aggressor, betrayals, tributePaid, tributeRefused
+    }
+
+    public init(from decoder: any Decoder) throws {
+        if let line = try? decoder.singleValueContainer().decode(String.self) {
+            let fields = line.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+            func number(_ index: Int) -> Int? { fields.indices.contains(index) ? Int(fields[index]) : nil }
+            guard fields.count >= 4, fields.count <= 8, let first = number(0), let second = number(1),
+                  let stance = Stance(rawValue: fields[2]), let since = number(3),
+                  fields.indices.dropFirst(4).allSatisfy({ fields[$0].isEmpty || Int(fields[$0]) != nil }) else {
+                throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Not a relation: \(line)"))
+            }
+            self.first = first
+            self.second = second
+            self.stance = stance
+            self.since = since
+            aggressor = number(4)
+            betrayals = number(5) ?? 0
+            tributePaid = number(6)
+            tributeRefused = number(7)
+            return
+        }
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        first = try container.decode(Int.self, forKey: .first)
+        second = try container.decode(Int.self, forKey: .second)
+        stance = try container.decode(Stance.self, forKey: .stance)
+        since = try container.decode(Int.self, forKey: .since)
+        aggressor = try container.decodeIfPresent(Int.self, forKey: .aggressor)
+        betrayals = try container.decode(Int.self, forKey: .betrayals)
+        tributePaid = try container.decodeIfPresent(Int.self, forKey: .tributePaid)
+        tributeRefused = try container.decodeIfPresent(Int.self, forKey: .tributeRefused)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        func field(_ value: Int?) -> String { value.map { "\($0)" } ?? "" }
+        var fields: [String] = [field(first), field(second), stance.rawValue, field(since)]
+        let rest: [String] = [field(aggressor), field(betrayals == 0 ? nil : betrayals), field(tributePaid), field(tributeRefused)]
+        if let last = rest.lastIndex(where: { !$0.isEmpty }) { fields += rest[...last] }
+        var container = encoder.singleValueContainer()
+        try container.encode(fields.joined(separator: ","))
+    }
 }
 
 /// What one House can offer another.

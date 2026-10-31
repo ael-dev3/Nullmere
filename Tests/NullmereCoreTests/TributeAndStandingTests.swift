@@ -131,12 +131,15 @@ final class StandingAndHistoryTests: XCTestCase {
         let state = GameState(settings: GameSettings(seedText: "old history", houseCount: 3, radius: 16, keepers: 1))
         var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(state)) as? [String: Any])
         json["recorded"] = nil
-        var relations = try XCTUnwrap(json["relations"] as? [[String: Any]])
-        for index in relations.indices { relations[index]["tributePaid"] = nil }
-        json["relations"] = relations
+        // Its relations kept field by field, as they were then, with no tribute.
+        json["relations"] = state.relations.map { relation -> [String: Any] in
+            ["first": relation.first, "second": relation.second, "stance": relation.stance.rawValue, "since": relation.since,
+             "betrayals": relation.betrayals]
+        }
         let restored = try JSONDecoder().decode(GameState.self, from: JSONSerialization.data(withJSONObject: json))
         XCTAssertTrue(restored.history.isEmpty)
         XCTAssertNil(restored.relations.first?.tributePaid)
+        XCTAssertEqual(restored.relations, state.relations)
     }
 
     func testStandingsNameTheNearestThreat() throws {

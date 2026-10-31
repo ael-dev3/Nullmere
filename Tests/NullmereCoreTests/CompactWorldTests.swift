@@ -103,6 +103,43 @@ final class CompactWorldTests: XCTestCase {
         let world = try JSONDecoder().decode(WorldMap.self, from: try JSONSerialization.data(withJSONObject: map))
         XCTAssertEqual(world.tiles[3], Tile(terrain: .blackwood, feature: .elderGrove, relief: 40))
         XCTAssertEqual(world.tiles[0].terrain, .still)
+
+        let relation: [String: Any] = ["first": 2, "second": 5, "stance": "war", "since": 40, "aggressor": 5, "betrayals": 1]
+        let kept = try JSONDecoder().decode(Relation.self, from: try JSONSerialization.data(withJSONObject: relation))
+        XCTAssertEqual([kept.first, kept.second, kept.since, kept.aggressor, kept.betrayals], [2, 5, 40, 5, 1])
+        XCTAssertEqual(kept.stance, .war)
+        XCTAssertNil(kept.tributePaid)
+    }
+
+    /// A relation travels as one line, what it holds beyond its stance only
+    /// as far as it holds any, and comes back exactly.
+    func testARelationTravelsAsOneLine() throws {
+        func line(_ relation: Relation) throws -> String { String(decoding: try JSONEncoder().encode(relation), as: UTF8.self) }
+        var relation = Relation(first: 7, second: 3)
+        XCTAssertEqual(try line(relation), #""3,7,peace,1""#)
+        relation.stance = .war
+        relation.since = 55
+        relation.aggressor = 7
+        XCTAssertEqual(try line(relation), #""3,7,war,55,7""#)
+        relation.tributeRefused = 60
+        XCTAssertEqual(try line(relation), #""3,7,war,55,7,,,60""#)
+        relation.betrayals = 2
+        relation.tributePaid = 30
+        relation.aggressor = nil
+        XCTAssertEqual(try line(relation), #""3,7,war,55,,2,30,60""#)
+        for kept in [Relation(first: 0, second: 1), relation] {
+            XCTAssertEqual(try JSONDecoder().decode(Relation.self, from: try JSONEncoder().encode(kept)), kept)
+        }
+        for bad in ["", "3,7,peace", "3,7,truce,1", "x,7,peace,1", "3,7,peace,1,a", "3,7,peace,1,,,,,9"] {
+            XCTAssertThrowsError(try JSONDecoder().decode(Relation.self, from: Data("\"\(bad)\"".utf8)), bad)
+        }
+        // A realm of forty-eight seats keeps 1,128 relations: as lines, a
+        // tenth of a keeper's first view, not half.
+        let wide = RealmState.world(seed: "relations", age: 1, seats: 48, radius: RealmState.radius(forSeats: 48))
+        XCTAssertEqual(wide.relations.count, 48 * 47 / 2)
+        let size = try JSONEncoder().encode(wide.relations).count
+        print("PERF a realm of 48 seats' relations: \(size / 1024) KB")
+        XCTAssertLessThan(size, 20 * 1024)
     }
 
     /// Stored worlds name terrains and features by their place in these
