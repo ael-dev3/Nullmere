@@ -20,7 +20,7 @@ struct SelectionPanel: View {
                 TilePanel(session: session, hex: hex)
             }
         }
-        .frame(width: 330)
+        .frame(width: PanelWidth.record)
     }
 }
 
@@ -313,7 +313,7 @@ private struct BuildingRow: View {
                     Text(verbatim: kind.effect(atLevel: next, isSeat: hold.isSeat))
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.text(0.55))
-                    HStack(spacing: 10) {
+                    FlowLayout(spacing: 10, lineSpacing: 3) {
                         CostLine(cost: session.state.buildCost(of: kind, toLevel: next, for: session.player), available: stock)
                         Text(verbatim: "\(session.state.buildWatches(of: kind, toLevel: next, for: session.player)) watches")
                             .font(.nm(10))

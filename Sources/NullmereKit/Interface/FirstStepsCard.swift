@@ -31,7 +31,7 @@ struct FirstStepsCard: View {
             }
         }
         .padding(14)
-        .frame(width: 330)
+        .frame(width: PanelWidth.record)
         .panelBackground()
     }
 }

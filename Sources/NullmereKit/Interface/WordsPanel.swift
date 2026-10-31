@@ -69,7 +69,7 @@ struct WordsPanel: View {
                 .foregroundStyle(Palette.text(0.45))
         }
         .padding(16)
-        .frame(width: 360)
+        .frame(width: PanelWidth.rail)
         .frame(maxHeight: 620)
         .panelBackground()
     }

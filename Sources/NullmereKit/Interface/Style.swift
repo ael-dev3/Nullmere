@@ -329,6 +329,16 @@ extension View {
     }
 }
 
+/// How wide the interface's pieces lie over the map: narrow, so the world
+/// keeps the screen. A panel on the rail; one read at length, the
+/// Chronicle and the Guide, a little wider; and the column at the foot of
+/// the map that holds what is chosen, the charge and counsel.
+enum PanelWidth {
+    static let rail: CGFloat = 328
+    static let reading: CGFloat = 344
+    static let record: CGFloat = 312
+}
+
 /// A quiet text button: spaced capitals that brighten on hover.
 struct QuietButton: View {
     let title: String
@@ -414,7 +424,9 @@ struct CostLine: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
+        // On as many lines as the width it is given needs: a long cost in a
+        // narrow record, or in larger type, goes on beneath, not cut short.
+        FlowLayout(spacing: 10, lineSpacing: 3) {
             ForEach(Resource.allCases, id: \.self) { resource in
                 if cost[resource] > 0 {
                     let short = available[resource] < cost[resource]

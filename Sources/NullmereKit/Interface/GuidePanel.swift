@@ -32,7 +32,7 @@ struct GuidePanel: View {
             .pagedByKeys(session, as: .panel(.guide))
         }
         .padding(16)
-        .frame(width: 380)
+        .frame(width: PanelWidth.reading)
         .frame(maxHeight: 620)
         .panelBackground()
     }

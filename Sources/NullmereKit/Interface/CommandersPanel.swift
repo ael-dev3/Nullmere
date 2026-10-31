@@ -43,7 +43,7 @@ struct CommandersPanel: View {
             .pagedByKeys(session, as: .panel(.commanders))
         }
         .padding(16)
-        .frame(width: 360)
+        .frame(width: PanelWidth.rail)
         .frame(maxHeight: 620)
         .panelBackground()
     }

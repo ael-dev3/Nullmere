@@ -38,7 +38,7 @@ struct ChroniclePanel: View {
             }
         }
         .padding(16)
-        .frame(width: 380)
+        .frame(width: PanelWidth.reading)
         .frame(maxHeight: 620)
         .panelBackground()
     }

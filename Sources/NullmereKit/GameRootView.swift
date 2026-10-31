@@ -292,7 +292,7 @@ private struct CounselCard: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .frame(width: 330, alignment: .leading)
+            .frame(width: PanelWidth.record, alignment: .leading)
             .panelBackground()
             .animation(.easeInOut(duration: 0.4), value: advice)
             .accessibilityElement(children: .contain)

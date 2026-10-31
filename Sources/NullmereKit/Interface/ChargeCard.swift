@@ -171,7 +171,7 @@ struct ChargeCard: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .frame(width: 330, alignment: .leading)
+            .frame(width: PanelWidth.record, alignment: .leading)
             .panelBackground()
             .id(charge)
             .transition(.opacity)

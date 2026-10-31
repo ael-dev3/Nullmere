@@ -64,7 +64,7 @@ struct RealmPanel: View {
             .pagedByKeys(session, as: .panel(.realm))
         }
         .padding(16)
-        .frame(width: 360)
+        .frame(width: PanelWidth.rail)
         .frame(maxHeight: 620)
         .panelBackground()
     }

@@ -41,7 +41,7 @@ struct HousesPanel: View {
             .pagedByKeys(session, as: .panel(.houses))
         }
         .padding(16)
-        .frame(width: 360)
+        .frame(width: PanelWidth.rail)
         .frame(maxHeight: 620)
         .panelBackground()
     }
@@ -769,7 +769,7 @@ struct EnvoyCards: View {
                         Caps(envoy.proposal.title, size: 8).foregroundStyle(Palette.text(0.65))
                     }
                     .padding(.horizontal, 12)
-                    .frame(width: 320, alignment: .leading)
+                    .frame(width: PanelWidth.record, alignment: .leading)
                     .frame(minHeight: QuietButton.least)
                     .contentShape(Rectangle())
                 }
@@ -837,7 +837,7 @@ struct EnvoyCards: View {
                     }
                 }
                 .padding(14)
-                .frame(width: 320)
+                .frame(width: PanelWidth.record)
                 .panelBackground()
                 // Below full motion it fades in where it rests.
                 .transition(motion == .full ? .move(edge: .trailing).combined(with: .opacity) : .opacity)
