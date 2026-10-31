@@ -1354,7 +1354,7 @@ public final class GameSession {
         case .scout: return .ride
         case .raiseStandard: return .banner
         case .useItem(let kind, _): return cue(using: kind)
-        case .takeHeritage, .takeCrest: return .banner
+        case .takeHeritage, .takeCrest, .bestow: return .banner
         case .pursueAllianceStudy: return .lore
         case .giveToAlliance: return .coin
         case .raiseAllianceHall, .raiseStorehouse, .raiseYard: return .rise
@@ -1472,6 +1472,7 @@ public final class GameSession {
         case .bottleFound(_, let by) where by == player: return .lore
         case .edictProposed(let edict) where edict.proposer != player: return .parley
         case .edictPassed: return .honour
+        case .titleBestowed(let title, let house, _) where house == player: return title.isBoon ? .honour : .dread
         case .edictBroken(_, _, _, let against, _) where against == player: return .horn
         case .fieldJoined(_, _, let first, let second) where first == player || second == player: return .horn
         case .fieldEnded(let field):

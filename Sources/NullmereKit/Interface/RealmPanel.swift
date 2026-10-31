@@ -45,6 +45,11 @@ struct RealmPanel: View {
                         Rule(opacity: 0.18)
                         shrines(state)
                     }
+                    // The titles, in an age with a broken Spire to name them from.
+                    if state.holySites.contains(where: { $0.kind == .brokenSpire }) || !state.titlesBorne.isEmpty {
+                        Rule(opacity: 0.18)
+                        TitlesSection(session: session)
+                    }
                     if !state.lairsStanding.isEmpty {
                         Rule(opacity: 0.18)
                         lairs(state)

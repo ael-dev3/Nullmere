@@ -93,6 +93,8 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The dreams the Still has shown keepers' Houses, a House's last few
     /// each; absent before any dreamed.
     public internal(set) var dreams: [Dream]?
+    /// The titles of the Spire borne now; absent while none is.
+    public internal(set) var bestowals: [Bestowal]?
     /// What every keeper knows of the land from the first watch: its
     /// streams and regions, and the crests the lake gave its Houses. Absent
     /// in a world without streams, and in saves from before them.

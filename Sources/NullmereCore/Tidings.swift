@@ -242,6 +242,18 @@ extension GameState {
         case .workPlaced(let holdID, let kind, _):
             guard let hold = hold(holdID), hold.owner == viewer else { return nil }
             return Tidings("The \(kind.title) of \(hold.name) stands where you set it.", .neutral)
+        case .titleBestowed(let title, let house, let by):
+            let named = "\(title.title): \(title.effect)"
+            if house == viewer { return Tidings("\(houses[by].title) names your House \(named).", title.isBoon ? .good : .bad) }
+            if by == viewer { return Tidings("You name \(houses[house].title) \(named).", .neutral) }
+            return Tidings("\(houses[by].title) names \(houses[house].title) \(named).", .neutral)
+        case .titlesLapsed(let by, let titles):
+            guard by != viewer else { return Tidings("The titles you named lapse: the broken Spire is no longer your House's.", .bad) }
+            if let borne = titles.first(where: { $0.house == viewer }) {
+                return Tidings("Your House is \(borne.title.title) no more: the title lapses with the broken Spire.", borne.title.isBoon ? .bad : .good)
+            }
+            let giver = houses.indices.contains(by) ? houses[by].title : "a fallen House"
+            return Tidings("The titles \(giver) named lapse with the broken Spire.", .neutral)
         case .crestTaken(let house, let crest):
             guard house == viewer else { return Tidings("\(houses[house].title) takes for its crest \(crest.blazon).", .neutral) }
             return Tidings("Your House takes for its crest \(crest.blazon), and bears it until the age ends.", .good)

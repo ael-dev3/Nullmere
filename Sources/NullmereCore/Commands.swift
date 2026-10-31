@@ -121,6 +121,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// the keep, one of `Hold.placeCount`; a work set there before takes
     /// the moved work's place.
     case placeWork(hold: Int, kind: BuildingKind, place: Int)
+    /// The keeper whose House holds the broken Spire names another House
+    /// to one of the realm's titles.
+    case bestow(Title, on: Int)
     /// An alliance's leader sets it to pursue a study together.
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
@@ -335,6 +338,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case crestUnreadable
     /// A crest taken by a House that took its own this age.
     case crestChosenAlready
+    /// A title named by a House that isn't a keeper's holding the broken Spire.
+    case notTheSpiresHolder
+    /// A title named anew before it has rested since it was last named.
+    case titleResting(until: Int)
     /// An alliance study learned to its last grade.
     case allianceStudyMastered
     /// The study the alliance pursues already.
@@ -505,6 +512,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .alreadyOfHeritage: return "Your House is of that heritage already."
         case .crestUnreadable: return "A charge must be of another tincture than its field, to be seen."
         case .crestChosenAlready: return "Your House took its crest this age; it bears it until the age ends."
+        case .notTheSpiresHolder: return "Only the keeper whose House holds the broken Spire names the realm's titles."
+        case .titleResting(let until): return "That title was named lately; it may be named anew at watch \(until)."
         case .allianceStudyMastered: return "Your alliance has learned that study to its last grade."
         case .alreadyPursued: return "Your alliance pursues that study already."
         case .noAllianceStudy: return "Your alliance pursues no study: its leader chooses one in the Alliance screen."
@@ -624,6 +633,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case workPlaced(hold: Int, kind: BuildingKind, place: Int)
     /// A keeper's House dreams at the dark of the moon.
     case dreamt(Dream)
+    /// The broken Spire's keeper names a House to a title.
+    case titleBestowed(title: Title, house: Int, by: Int)
+    /// The titles a House named lapse, the Spire no longer its.
+    case titlesLapsed(by: Int, titles: [Bestowal])
     /// An alliance's leader sets it to pursue a study.
     case allianceStudyChosen(alliance: Int, study: AllianceStudy)
     /// A House gives stores toward a grade of its alliance's study.

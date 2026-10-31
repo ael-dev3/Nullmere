@@ -38,6 +38,9 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
         case happening
         /// An edict is put to the realm, passed or refused, or lapses.
         case edict
+        /// The broken Spire's keeper names a House to a title, or the titles
+        /// lapse.
+        case title
     }
 
     public let watch: Int

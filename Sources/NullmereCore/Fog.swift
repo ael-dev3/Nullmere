@@ -238,7 +238,8 @@ extension GameState {
                 return caller == house || defender == house || areAllied(caller, house)
             case .sentToReinforce(_, let owner, let holdID):
                 return owner == house || hold(holdID)?.owner == house
-            case .happeningBegun, .happeningEnded, .heritageTaken, .crestTaken, .sunderingBegun, .sunderingEnded, .fordOpened, .fordClosed:
+            case .happeningBegun, .happeningEnded, .heritageTaken, .crestTaken, .sunderingBegun, .sunderingEnded, .fordOpened, .fordClosed,
+                 .titleBestowed, .titlesLapsed:
                 return true
             case .workPlaced(let holdID, _, _):
                 return hold(holdID)?.owner == house

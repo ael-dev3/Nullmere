@@ -451,7 +451,19 @@ as the realm will, and takes the realm's word as final.
   the new one, where it stood or on the nearest land within three tiles
   clear of the new seats: a holy site of its own, the Broken Spire, held
   as the others are by a company standing on it, and its holders' side
-  takes its stones, every work raised for 15% less and 15% sooner.
+  takes its stones, every work raised for 15% less and 15% sooner. The
+  keeper whose House holds it names the realm's titles, as a kingdom's
+  king names its lords, from the Realm screen: four boons (the Warden of
+  the Granaries, +10% gathered at the land's sites; the Master Mason,
+  every work raised 10% sooner; the Sword of the Lake, +5% attack; the
+  Sage of the Still, every study done 10% sooner) and three slights (the
+  Beggar of the Shore, 10% less gathered; the Craven, 5% less attack; the
+  Oathbreaker, 5% less defence). Each is borne by one House at a time,
+  each House bears one at most, and a title is named anew no sooner than
+  three watches after it was last named; the realm is told each one, and
+  the Houses' list says what each House bears. Every title lapses when the
+  Spire passes from the House that named them, and a steward holding it
+  names none, so a world of stewards goes as it always did.
 - **The server.** SpacetimeDB is the realm's authority of record: it knows
   each keeper by their identity, keeps the world, and lets no one but the
   steward write it. The steward runs the same Swift rules core the clients

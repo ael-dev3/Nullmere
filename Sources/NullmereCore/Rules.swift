@@ -108,6 +108,8 @@ extension GameState {
             return try take(crest, as: house)
         case let .placeWork(holdID, kind, place):
             return try set(kind, of: holdID, at: place, as: house)
+        case let .bestow(title, other):
+            return try bestow(title, on: other, as: house)
         case let .pursueAllianceStudy(study):
             return try pursue(study, by: house)
         case let .giveToAlliance(stock):

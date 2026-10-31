@@ -663,6 +663,55 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(tier, highest > 1 ? highest : nil, "The highest first chosen, for \(kind)")
     }
 
+    /// The titles of the Spire on the Realm screen: the keeper whose House
+    /// holds the broken Spire chooses a title, then the House to name to
+    /// it; the House named reads it in the Houses' list, and hears it.
+    func testTheSpiresKeeperNamesATitleFromTheRealm() throws {
+        var state = world("titles named")
+        let me = state.player
+        let other = try XCTUnwrap(state.livingHouses.map(\.id).first { $0 != me })
+        let ground = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex]?.terrain.isPassable == true && state.map[hex]?.terrain.isWater == false && state.hold(at: hex) == nil
+        })
+        state.shrines = (state.shrines ?? []) + [Shrine(id: 99, kind: .brokenSpire, position: ground, holder: me, since: state.watch)]
+        let (session, link) = session(state)
+        XCTAssertEqual(session.state.titleGiver, me)
+        XCTAssertEqual(TitlesSection.giverLine(session.state, player: me), "Your House holds the broken Spire: you name the realm's titles.")
+        draw(RealmPanel(session: session), width: 360, height: 2600)
+        XCTAssertFalse(shown.contains("Sword of the Lake"), "Folded until asked for")
+        XCTAssertTrue(PressableButtons.press("Name a title…"), "Among \(shown)")
+        draw(TitlesSection(session: session, open: true), width: 360, height: 400)
+        XCTAssertTrue(PressableButtons.press("Sword of the Lake"), "Among \(shown)")
+        draw(TitlesSection(session: session, open: true, naming: .swordOfTheLake), width: 360, height: 500)
+        let name = "Name \(session.state.houses[other].title)"
+        XCTAssertTrue(PressableButtons.press(name), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .bestow(.swordOfTheLake, on: other))
+        XCTAssertEqual(session.state.title(of: other)?.title, .swordOfTheLake)
+
+        // Borne, it is shown with whose it is, and named no more to the same House.
+        PressableButtons.forget(name)
+        draw(TitlesSection(session: session, open: true, naming: .swordOfTheLake), width: 360, height: 500)
+        XCTAssertFalse(PressableButtons.press(name), "Borne already")
+        draw(HouseRow(session: session, house: session.state.houses[other], draft: OfferDraft(for: session.state.houses[other])))
+        XCTAssertEqual(GameSession.cues(for: .bestow(.craven, on: other), events: [], in: session.state, player: me), [.banner])
+        let named = GameEvent.titleBestowed(title: .swordOfTheLake, house: other, by: me)
+        XCTAssertEqual(GameSession.cue(forDepth: named, in: session.state, player: other), .honour)
+        XCTAssertEqual(GameSession.cue(forDepth: GameEvent.titleBestowed(title: .craven, house: other, by: me), in: session.state, player: other), .dread)
+        XCTAssertNil(GameSession.cue(forDepth: named, in: session.state, player: me))
+
+        // As others see who names them: a keeper, a steward, none, or no Spire this age.
+        XCTAssertEqual(TitlesSection.giverLine(session.state, player: other),
+                       "\(session.state.houses[me].title) holds the broken Spire, and names the realm's titles.")
+        var stewards = session.state
+        let spire = try XCTUnwrap(stewards.shrines?.firstIndex { $0.kind == .brokenSpire })
+        stewards.shrines![spire].holder = other
+        XCTAssertTrue(TitlesSection.giverLine(stewards, player: me).hasSuffix("its steward names no titles."))
+        stewards.shrines![spire].holder = nil
+        XCTAssertTrue(TitlesSection.giverLine(stewards, player: me).hasPrefix("The broken Spire is held by none."))
+        stewards.shrines!.remove(at: spire)
+        XCTAssertEqual(TitlesSection.giverLine(stewards, player: me), "No broken Spire stands this age, and no titles are named.")
+    }
+
     /// The Frontier on the Realm screen: how its kingdoms stand, the way
     /// across with the House's levy, and, there, the way home.
     func testTheFrontierIsCrossedAndLeftFromTheRealm() throws {
