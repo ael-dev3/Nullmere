@@ -59,7 +59,7 @@ struct WatchCard: View {
 struct MapVignette: View {
     var body: some View {
         RadialGradient(
-            colors: [.clear, .clear, .black.opacity(0.45)],
+            colors: [.clear, .clear, .black.opacity(0.22)],
             center: .center,
             startRadius: 0,
             endRadius: 900

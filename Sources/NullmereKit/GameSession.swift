@@ -60,6 +60,8 @@ public final class GameSession {
         public let id: Int
         public let text: String
         public let tone: Tone
+        /// When it came: it shows on the map a little while, then fades.
+        public let posted: Date
     }
 
     public private(set) var state: GameState
@@ -1732,7 +1734,7 @@ public final class GameSession {
 
     public func post(_ text: String, tone: Notice.Tone) {
         noticeCounter += 1
-        notices.append(Notice(id: noticeCounter, text: text, tone: tone))
+        notices.append(Notice(id: noticeCounter, text: text, tone: tone, posted: Date()))
         announce(text)
         if notices.count > 6 {
             notices.removeFirst(notices.count - 6)

@@ -688,16 +688,59 @@ struct CloseButton: View {
     }
 }
 
-/// Envoys waiting on the player's answer, one card each.
+/// Envoys waiting on the player's answer: one card at a time, the others
+/// waiting behind it a line each, any of them brought forward when chosen.
 struct EnvoyCards: View {
     let session: GameSession
 
+    /// The most envoys told a line each behind the one heard.
+    static let waitingLines = 3
+
     @Environment(\.worldMotion) private var motion
+    /// The envoy brought forward, if the keeper chose one.
+    @State private var forward: Int?
+
+    /// The envoy heard now: the one brought forward while it waits, else
+    /// the first to come.
+    static func heard(of envoys: [Envoy], forward: Int?) -> Envoy? {
+        envoys.first { $0.id == forward } ?? envoys.first
+    }
 
     var body: some View {
         let state = session.state
+        let heard = EnvoyCards.heard(of: session.envoys, forward: forward)
+        let waiting = session.envoys.filter { $0.id != heard?.id }
         VStack(alignment: .trailing, spacing: 8) {
-            ForEach(session.envoys) { envoy in
+            ForEach(waiting.prefix(EnvoyCards.waitingLines)) { envoy in
+                let house = state.houses[envoy.from]
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { forward = envoy.id }
+                } label: {
+                    HStack(spacing: 8) {
+                        RoundedRectangle(cornerRadius: 1).fill(Palette.house(house)).frame(width: 3, height: 12)
+                        Caps("An envoy of \(house.title)", size: 8.5, weight: .medium).foregroundStyle(Palette.text(0.85))
+                        Spacer(minLength: 8)
+                        Caps(envoy.proposal.title, size: 8).foregroundStyle(Palette.text(0.65))
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(width: 320, alignment: .leading)
+                    .frame(minHeight: QuietButton.least)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .panelBackground()
+                .accessibilityLabel("An envoy of \(house.title), \(envoy.proposal.title.lowercased()), waits")
+                .accessibilityHint("Hears it.")
+            }
+            if waiting.count > EnvoyCards.waitingLines {
+                Text(verbatim: "And \(waiting.count - EnvoyCards.waitingLines) more waiting")
+                    .font(.nm(10))
+                    .foregroundStyle(Palette.text(0.6))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Palette.panel, in: RoundedRectangle(cornerRadius: 3))
+            }
+            ForEach(heard.map { [$0] } ?? []) { envoy in
                 let house = state.houses[envoy.from]
                 let left = max(Envoy.patience - (state.watch - envoy.arrived), 1)
                 VStack(alignment: .leading, spacing: 8) {

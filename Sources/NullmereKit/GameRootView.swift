@@ -75,6 +75,10 @@ struct PlayView: View {
     /// VoiceOver's cursor, carried into a panel as it opens, by its key or
     /// a button alike.
     @AccessibilityFocusState private var panelFocused: Bool
+    /// The small map of the lake, shown only when asked for on the rail.
+    @AppStorage(MiniMap.shownKey) private var mapShown = false
+    /// The charges put away: counsel may speak in their place.
+    @AppStorage("charges.hidden") private var chargesHidden = false
 
     /// The display settings' Motion, the launcher's, with the system's
     /// Reduce Motion where it says to follow it.
@@ -115,9 +119,10 @@ struct PlayView: View {
                             if let steps = session.firstSteps {
                                 FirstStepsCard(steps: steps) { session.dismissFirstSteps() }
                                     .transition(.opacity)
-                            } else {
-                                // The first hour's charges, then counsel.
+                            } else if !chargesHidden, session.state.realmBoard(for: session.player).charge != nil {
+                                // The first hour's charges; counsel when none is before the House.
                                 ChargeCard(session: session)
+                            } else {
                                 CounselCard(session: session)
                             }
                         }
@@ -151,12 +156,18 @@ struct PlayView: View {
                         // With a panel open, its keys and its close button
                         // serve, and the panel keeps the column's height.
                         if session.panel == nil {
-                            MiniMap(session: session)
-                                .transition(.opacity)
+                            if mapShown {
+                                MiniMap(session: session)
+                                    .transition(.opacity)
+                            }
                             PanelRail(session: session)
                                 .transition(.opacity)
                         }
-                        KeyHints()
+                        // The keys, while the first steps are taught; the
+                        // Guide and each button's tooltip keep them after.
+                        if session.firstSteps != nil {
+                            KeyHints()
+                        }
                     }
                 }
                 .padding(16)

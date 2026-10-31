@@ -254,6 +254,14 @@ final class DepthPanelTests: XCTestCase {
         let board = session.state.realmBoard(for: session.player)
         XCTAssertTrue(RealmPanel.mightLine(board, standing: 6).hasPrefix("Might \(board.might)"))
         UserDefaults.standard.removeObject(forKey: "charges.hidden")
+        UserDefaults.standard.removeObject(forKey: "charges.open")
+        draw(ChargeCard(session: session), width: 330, height: 200)
+        // A line until asked for more: how to keep it, and its reward.
+        XCTAssertTrue(PressableButtons.press("More"), "Among \(shown)")
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: "charges.open"))
+        draw(ChargeCard(session: session), width: 330, height: 200)
+        XCTAssertTrue(PressableButtons.press("Less"), "Among \(shown)")
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: "charges.open"))
         draw(ChargeCard(session: session), width: 330, height: 200)
         XCTAssertTrue(PressableButtons.press("Show me"), "Among \(shown)")
         XCTAssertEqual(session.selection, .hold(try XCTUnwrap(session.state.seat(of: session.player)).id), "A Granary is built at the seat")
@@ -290,13 +298,42 @@ final class DepthPanelTests: XCTestCase {
 
     func testTheRailOpensAndClosesEachPanel() throws {
         let (session, _) = session(world("pressed rail"))
-        draw(PanelRail(session: session), width: 420, height: 40)
+        draw(PanelRail(session: session), width: 720, height: 40)
+        XCTAssertEqual(PanelRail.panels.map { $0.panel }, [.houses, .chronicle, .archive, .commanders, .alliance, .realm, .words, .guide],
+                       "Every panel on the rail, and nowhere else")
         for (title, panel, _) in PanelRail.panels {
             XCTAssertTrue(PressableButtons.press(title), "Among \(shown)")
             XCTAssertEqual(session.panel, panel)
             XCTAssertTrue(PressableButtons.press(title))
             XCTAssertNil(session.panel, "\(title) again closes it")
         }
+        // The small map of the lake is shown only when asked for.
+        UserDefaults.standard.removeObject(forKey: MiniMap.shownKey)
+        draw(PanelRail(session: session), width: 720, height: 40)
+        XCTAssertTrue(PressableButtons.press("Map"), "Among \(shown)")
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: MiniMap.shownKey))
+        draw(PanelRail(session: session), width: 720, height: 40)
+        XCTAssertTrue(PressableButtons.press("Map"))
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: MiniMap.shownKey), "and hidden again")
+        UserDefaults.standard.removeObject(forKey: MiniMap.shownKey)
+    }
+
+    func testNoticesFadeAndEnvoysWaitTheirTurn() throws {
+        let now = Date()
+        let notices = (1...5).map { index in
+            GameSession.Notice(id: index, text: "Notice \(index)", tone: .neutral, posted: now.addingTimeInterval(Double(index - 5) * 3))
+        }
+        // Posted 12, 9, 6, 3 and 0 seconds ago: those within the while a
+        // notice lingers, the latest three of them.
+        XCTAssertEqual(NoticeFeed.fresh(notices, at: now).map(\.id), [3, 4, 5])
+        XCTAssertEqual(NoticeFeed.fresh(notices, at: now.addingTimeInterval(7)).map(\.id), [5])
+        XCTAssertTrue(NoticeFeed.fresh(notices, at: now.addingTimeInterval(NoticeFeed.lingers)).isEmpty, "The map clear again")
+
+        let envoys = (0..<3).map { Envoy(id: 70 + $0, from: $0 + 1, to: 0, proposal: .peace, arrived: 1) }
+        XCTAssertEqual(EnvoyCards.heard(of: envoys, forward: nil)?.id, 70, "The first to come heard first")
+        XCTAssertEqual(EnvoyCards.heard(of: envoys, forward: 72)?.id, 72, "One brought forward")
+        XCTAssertEqual(EnvoyCards.heard(of: envoys, forward: 99)?.id, 70, "One gone, the first again")
+        XCTAssertNil(EnvoyCards.heard(of: [], forward: nil))
     }
 
     // MARK: Words

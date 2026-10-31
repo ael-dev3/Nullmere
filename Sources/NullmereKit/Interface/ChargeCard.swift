@@ -124,20 +124,29 @@ enum ChargeGuide {
 }
 
 /// The charge before the House, in the corner, as the first steps give way:
-/// what to do, how, and what it brings.
+/// what it is, in a line, and Show me; how to keep it and what it brings
+/// when the keeper asks for more. The advisor says it all as it comes.
 struct ChargeCard: View {
     let session: GameSession
 
     @AppStorage("charges.hidden") private var hidden = false
+    /// Whether the keeper asked for more than the charge's name.
+    @AppStorage("charges.open") private var open = false
 
     var body: some View {
         let board = session.state.realmBoard(for: session.player)
         if !hidden, let charge = board.charge {
             VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .center, spacing: 6) {
                     Caps("Charge \(board.chargesKept + 1) of \(Charge.allCases.count)", size: 8, weight: .medium)
                         .foregroundStyle(Palette.glowWords)
                     Spacer()
+                    QuietButton(title: "Show me", size: 8.5, name: "Show me how to \(charge.title.lowercased())") {
+                        ChargeGuide.show(charge, in: session)
+                    }
+                    QuietButton(title: open ? "Less" : "More", size: 8.5, name: open ? "Less of this charge" : "More of this charge") {
+                        withAnimation(.easeOut(duration: 0.2)) { open.toggle() }
+                    }
                     CloseButton(label: "Hide the charges") { withAnimation(.easeOut(duration: 0.2)) { hidden = true } }
                         .help("Hide the charges")
                 }
@@ -145,17 +154,19 @@ struct ChargeCard: View {
                     .font(.nm(12, weight: .medium))
                     .foregroundStyle(Palette.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(verbatim: ChargeGuide.how(charge))
-                    .font(.nm(11, weight: .light))
-                    .foregroundStyle(Palette.text(0.8))
-                    .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 8) {
-                    Caps("Reward", size: 8).foregroundStyle(Palette.text(0.5))
-                    CostLine(cost: charge.reward, available: Stock(grain: .max, timber: .max, stone: .max, moonsalt: .max))
-                    Spacer()
-                    QuietButton(title: "Show me", size: 8.5, name: "Show me how to \(charge.title.lowercased())") {
-                        ChargeGuide.show(charge, in: session)
+                    .help(ChargeGuide.how(charge))
+                if open {
+                    Text(verbatim: ChargeGuide.how(charge))
+                        .font(.nm(11, weight: .light))
+                        .foregroundStyle(Palette.text(0.8))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .transition(.opacity)
+                    HStack(spacing: 8) {
+                        Caps("Reward", size: 8).foregroundStyle(Palette.text(0.5))
+                        CostLine(cost: charge.reward, available: Stock(grain: .max, timber: .max, stone: .max, moonsalt: .max))
+                        Spacer()
                     }
+                    .transition(.opacity)
                 }
             }
             .padding(.horizontal, 14)
@@ -199,25 +210,35 @@ extension View {
     }
 }
 
-/// The realm's deeper panels, at hand by the corner: each opens and closes
-/// as its key (3 to 7) does.
+/// Every panel, at hand in the corner and nowhere else: each opens and
+/// closes as its key (1 to 7, ? for the Guide) does; and the small map of
+/// the lake, shown only when asked for.
 struct PanelRail: View {
     let session: GameSession
 
     static let panels: [(title: String, panel: GameSession.Panel, key: String)] = [
-        ("Archive", .archive, "3"), ("Commanders", .commanders, "4"), ("Alliance", .alliance, "5"), ("Realm", .realm, "6"),
-        ("Words", .words, "7"),
+        ("Houses", .houses, "1"), ("Chronicle", .chronicle, "2"), ("Archive", .archive, "3"), ("Commanders", .commanders, "4"),
+        ("Alliance", .alliance, "5"), ("Realm", .realm, "6"), ("Words", .words, "7"), ("Guide", .guide, "?"),
     ]
 
+    /// Whether the small map of the lake is shown: not until asked for.
+    @AppStorage(MiniMap.shownKey) private var mapShown = false
+
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(Self.panels, id: \.key) { item in
-                QuietButton(title: item.title, size: 9, prominent: session.panel == item.panel) {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        session.panel = session.panel == item.panel ? nil : item.panel
-                    }
+        // Two short rows, not one long one: beside a hold's panel in the
+        // narrowest window there is room for no more.
+        VStack(alignment: .trailing, spacing: 0) {
+            HStack(spacing: 2) {
+                buttons(Self.panels.prefix(4))
+            }
+            HStack(spacing: 2) {
+                buttons(Self.panels.dropFirst(4))
+                Rectangle().fill(Palette.line(0.2)).frame(width: 1, height: 14).padding(.horizontal, 4)
+                    .accessibilityHidden(true)
+                QuietButton(title: "Map", size: 9, prominent: mapShown, name: mapShown ? "Hide the map of the lake" : "Show the map of the lake") {
+                    withAnimation(.easeOut(duration: 0.2)) { mapShown.toggle() }
                 }
-                .help("\(item.title) (\(item.key))")
+                .help(mapShown ? "Hide the map of the lake" : "Show the map of the lake")
             }
         }
         .padding(.horizontal, 6)
@@ -225,5 +246,16 @@ struct PanelRail: View {
         .background(Palette.panel, in: RoundedRectangle(cornerRadius: 3))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Panels")
+    }
+
+    private func buttons(_ items: ArraySlice<(title: String, panel: GameSession.Panel, key: String)>) -> some View {
+        ForEach(items, id: \.key) { item in
+            QuietButton(title: item.title, size: 9, prominent: session.panel == item.panel) {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    session.panel = session.panel == item.panel ? nil : item.panel
+                }
+            }
+            .help("\(item.title) (\(item.key))")
+        }
     }
 }

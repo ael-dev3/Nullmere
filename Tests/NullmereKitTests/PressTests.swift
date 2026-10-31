@@ -1115,13 +1115,17 @@ final class PressTests: XCTestCase {
     func testTheTopBarsPanelsAndReady() throws {
         let state = GameState(settings: GameSettings(seedText: "pressed bar", houseCount: 4, radius: 18, keepers: 1))
         let (session, link) = session(state)
-        draw(TopBar(session: session), width: 1200, height: 90)
+        // The panels are on the rail, every one; the bar keeps the House, the
+        // stores and Ready.
+        draw(PanelRail(session: session), width: 720, height: 40)
         for (label, panel) in [("Houses", GameSession.Panel.houses), ("Chronicle", .chronicle), ("Guide", .guide)] {
             XCTAssertTrue(PressableButtons.press(label), "Among \(shown)")
             XCTAssertEqual(session.panel, panel)
             XCTAssertTrue(PressableButtons.press(label))
             XCTAssertNil(session.panel, "Pressed again, it closes")
         }
+        draw(TopBar(session: session), width: 1200, height: 90)
+        XCTAssertFalse(PressableButtons.press("Houses"), "No panel on the bar: \(shown)")
         XCTAssertTrue(PressableButtons.press("Ready"))
         XCTAssertTrue(session.isReady)
         XCTAssertEqual(link.readies.last, true)

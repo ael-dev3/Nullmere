@@ -1034,8 +1034,19 @@ realm; keepers are told in plain words, never a status code.
   alliance alone: plain words, a hundred and forty letters at most, with no
   addresses, twenty lines a watch. The realm keeps the latest eighty; an
   alliance's words reach only its own Houses.
+- **The world first.** The map is the screen; the interface keeps to
+  its edges and comes when it is wanted. The top bar is three small
+  islands, the House and the watch, the stores, and Ready, with the
+  world between them. Every panel is on one rail in the corner, and
+  nowhere else; the small map of the lake comes when the rail's Map asks
+  for it. A notice shows for a few moments as it comes and fades (VoiceOver
+  says each; the Chronicle keeps the realm's story); the charge before the
+  House is a line, its name and Show me, until More asks how and what it
+  brings; counsel speaks only when no charge does; envoys wait behind the
+  one being heard, a line each; the keys are shown only while the first
+  steps are taught.
 - **The screens.** Each system has its panel, on a key, in the Watch menu
-  and on a row of buttons by the corner: the Archive (3) with the whole
+  and on the rail in the corner: the Archive (3) with the whole
   tree of studies, each grade's gain, price and time and why one can't be
   begun yet; Commanders (4), each with its level, experience and skills, set
   at the head of the company chosen or called back; Alliance (5), to raise
@@ -1044,14 +1055,15 @@ realm; keepers are told in plain words, never a status code.
   foremost, the charges kept, every deed, might and renown; and Words (7).
   The Chronicle switches to the House's battle reports: each battle and
   each blow on the wilds, how it came out, who struck whom, the blows and
-  the fallen. A small map of the whole lake sits in the corner; a click
+  the fallen. A small map of the whole lake, on the rail's Map; a click
   there carries the view. Training chooses the tier; an enemy hold's panel
   calls a rally against it; a company says its tier, its commander and what
   it was sent to do;
   the wilds and the sites are named on hover and read to VoiceOver. Once
   the first steps are done, the charge before the House sits in the corner,
-  saying how to keep it, with Show me to open the panel or choose what
-  keeps it, and its reward: the first hour, taught in play.
+  its name with Show me to open the panel or choose what keeps it, and,
+  asked for more, how to keep it and its reward: the first hour, taught in
+  play.
 - **Houses.** Other Houses are held by keepers, or by stewards with
   temperaments: ambitious, steadfast, wary or cunning. Declare war, offer
   peace or a pact, and answer envoys. Pacts share sight; breaking one is

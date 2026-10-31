@@ -3,9 +3,11 @@ import NullmereCore
 import SwiftUI
 
 /// The House, the watch, each resource with what it brings in and how much
-/// can be stored, and the end of the watch. Where the window is too narrow
-/// for it all (larger type in a small window), the resources lose their
-/// names, which their glyphs and tooltips still give.
+/// can be stored, and the end of the watch: three small islands over the
+/// map, not a band across it, so the world shows between them. The panels
+/// are on the rail. Where the window is too narrow for it all (larger type
+/// in a small window), the resources lose their names, which their glyphs
+/// and tooltips still give.
 struct TopBar: View {
     let session: GameSession
     /// Nil: whichever fits.
@@ -45,6 +47,7 @@ struct TopBar: View {
             .fixedSize()
             .layoutPriority(1)
             .accessibilityElement(children: .combine)
+            .barIsland()
 
             Spacer(minLength: compact ? 12 : 18)
 
@@ -57,31 +60,27 @@ struct TopBar: View {
                 }
             }
             .fixedSize()
+            .barIsland()
 
             Spacer(minLength: compact ? 12 : 18)
 
-            HStack(spacing: compact ? 2 : 6) {
-                QuietButton(title: "Houses", action: { toggle(.houses) })
-                QuietButton(title: "Chronicle", action: { toggle(.chronicle) })
-                QuietButton(title: "Guide", action: { toggle(.guide) })
-                EndWatchButton(session: session, compact: compact)
-                    .padding(.leading, 8)
-            }
-            // Only the space between gives way; nothing in the bar wraps.
-            .fixedSize()
+            EndWatchButton(session: session, compact: compact)
+                // Only the space between gives way; nothing in the bar wraps.
+                .fixedSize()
+                .barIsland()
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
-        // Wholly dark, as the panels are: the map never shows through behind
-        // the bar's type.
-        .background(Palette.panel)
-        .overlay(alignment: .bottom) { Rule(opacity: 0.25) }
+        .padding(.horizontal, 12)
+        .padding(.top, 10)
     }
+}
 
-    private func toggle(_ panel: GameSession.Panel) {
-        withAnimation(.easeOut(duration: 0.2)) {
-            session.panel = session.panel == panel ? nil : panel
-        }
+extension View {
+    /// One of the top bar's islands: as dark as a panel behind its type, so
+    /// it reads over the palest ground, and no wider than what it holds.
+    func barIsland() -> some View {
+        padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(Palette.panel, in: RoundedRectangle(cornerRadius: 4))
     }
 }
 
@@ -282,22 +281,36 @@ struct WatchClock: View {
     }
 }
 
-/// The last few things that happened, newest last.
+/// What has just happened, newest last: each notice for a few moments as
+/// it comes, then gone, so the map is clear the rest of the time. VoiceOver
+/// says each as it comes; the Chronicle keeps the realm's story.
 struct NoticeFeed: View {
     let session: GameSession
 
+    /// How long a notice stays on the map.
+    static let lingers: TimeInterval = 9
+    /// The most on the map at once.
+    static let most = 3
+
     @Environment(\.worldMotion) private var motion
 
+    /// The notices still on the map at a moment: the latest few, none older
+    /// than a notice lingers.
+    static func fresh(_ notices: [GameSession.Notice], at now: Date) -> [GameSession.Notice] {
+        Array(notices.filter { now.timeIntervalSince($0.posted) < lingers }.suffix(most))
+    }
+
     var body: some View {
-        // As many of the latest as the column has room for, after the
-        // panels below have theirs; the newest always, a hold's panel
-        // giving way for it.
-        ViewThatFits(in: .vertical) {
-            feed(session.notices)
-            feed(Array(session.notices.suffix(3)))
-            feed(Array(session.notices.suffix(1)))
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let fresh = NoticeFeed.fresh(session.notices, at: context.date)
+            // As many as the column has room for, after the panels below
+            // have theirs; the newest always, a hold's panel giving way.
+            ViewThatFits(in: .vertical) {
+                feed(fresh)
+                feed(Array(fresh.suffix(1)))
+            }
+            .animation(.easeOut(duration: 0.25), value: fresh)
         }
-        .animation(.easeOut(duration: 0.25), value: session.notices)
         .frame(maxWidth: 420, alignment: .leading)
     }
 

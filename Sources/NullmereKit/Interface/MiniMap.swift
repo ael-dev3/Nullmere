@@ -10,6 +10,9 @@ struct MiniMap: View {
 
     static let side: CGFloat = 148
 
+    /// Where the keeper's choice to show it is kept: hidden until asked for.
+    static let shownKey = "minimap.shown"
+
     /// The hexes' layout in the map's square, the lake's width filling it.
     static func layout(radius: Int, side: CGFloat = side) -> HexLayout {
         HexLayout(size: Double(side) / (3.0.squareRoot() * Double(2 * radius + 1)))
