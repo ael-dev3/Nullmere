@@ -67,6 +67,14 @@ extension GameState {
         view.gifts = gifts?.filter { $0.from == house || $0.to == house }
         view.reputed = strengths()
         view.reputedMight = houses.map { might(of: $0.id) }
+        // A House's riddle is its own, and its answer kept until it is answered.
+        view.riddles = riddles.map { all in
+            all.filter { $0.house == house }.map { riddle in
+                var seen = riddle
+                if riddle.answered == nil { seen.answer = nil }
+                return seen
+            }
+        }
         // Whose a whisper is, and whether it is true, a keeper knows only of
         // its own, of those its Lanterns have tried, and of those found false.
         view.whispers = whispers?.map { whisper in
@@ -268,6 +276,8 @@ extension GameState {
                 return teller == house
             case .whisperTried(_, let trier, _):
                 return trier == house
+            case .riddleSet(let asked), .riddleAnswered(let asked, _, _):
+                return asked == house
             case .dreamt(let dream):
                 return dream.house == house
             case .carriedAshore(_, let owner, _, let to):

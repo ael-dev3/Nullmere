@@ -819,16 +819,18 @@ public final class GameSession {
 
     /// What came of an order that the keeper's copy can only guess at: what
     /// chance decides (a blow, its losses, a company's rise, a ruin's spoils,
-    /// a new hold's name), what follows from it (a hold taken, a House
-    /// fallen, an age won, the fallen carried to an Infirmary or lost with
-    /// it), what turns on what the copy can't see (what Lanterns saw of a
-    /// hold), and an answer. Told when the realm answers.
+    /// a new hold's name, a bout in the Ring), what follows from it (a hold
+    /// taken, a House fallen, an age won, the fallen carried to an Infirmary
+    /// or lost with it), what turns on what the copy can't see (what
+    /// Lanterns saw of a hold, a whisper's truth and teller, a riddle's
+    /// answer), and an answer. Told when the realm answers.
     static func isRealmsToTell(_ event: GameEvent) -> Bool {
         switch event {
         case .battle, .unitLost, .holdStruck, .holdCaptured, .seatMoved, .promoted, .ruinSearched, .holdFounded,
              .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired, .hunted,
              .gearFound, .carriedToInfirmary, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted, .standardStruck, .standardTorn,
-             .hallStruck, .hallTorn, .storehouseStruck, .storehouseTorn, .fieldJoined, .fieldEnded:
+             .hallStruck, .hallTorn, .storehouseStruck, .storehouseTorn, .fieldJoined, .fieldEnded,
+             .bout, .whisperTried, .whisperUnmasked, .riddleAnswered:
             return true
         default:
             return false
@@ -1376,6 +1378,7 @@ public final class GameSession {
         case .standInTheRing: return .muster
         case .challenge: return .clash
         case .whisper: return .parley
+        case .answerRiddle: return .lore
         case .pursueAllianceStudy: return .lore
         case .giveToAlliance: return .coin
         case .raiseAllianceHall, .raiseStorehouse, .raiseYard: return .rise
@@ -1500,6 +1503,8 @@ public final class GameSession {
         case .ringHonoured(let houses) where houses.contains(player): return .honour
         case .whisperUnmasked(_, let teller, _, _) where teller == player: return .dread
         case .whisperUnmasked(_, _, let belied, _) where belied == player: return .coin
+        case .riddleSet(let house) where house == player: return .lore
+        case .riddleAnswered(let house, let right, _) where house == player: return right ? .triumph : .refusal
         case .edictBroken(_, _, _, let against, _) where against == player: return .horn
         case .fieldJoined(_, _, let first, let second) where first == player || second == player: return .horn
         case .fieldEnded(let field):

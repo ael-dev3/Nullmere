@@ -519,6 +519,16 @@ as the realm will, and takes the realm's word as final.
   every stake laid, each by its own, and if none did, the lake keeps them.
   The realm keeps its last twelve judged, and stewards foretell and stake
   nothing.
+- **The Remembering.** At each half moon (the seventh and twenty-second
+  watch of every thirty) the lake sets every keeper's House a riddle of
+  the realm's own past: a line of its Chronicle at least three watches
+  old, or a hold of the age drowned beneath it once that age held four
+  Houses or more, with one House's name taken out and four names to
+  choose from. Answered rightly before the next half moon, it brings 15
+  moonsalt; each is answered once. The realm draws each riddle from its
+  own record by the moon and the House, and alone knows the name until
+  it is answered: the keeper's view keeps it back, and the app tells the
+  answer as the realm judges it. Stewards are set none.
 - **Whispers on the water.** From the Realm screen a keeper lets a whisper
   loose about another House for 10 moonsalt, unsigned: its host gathered
   at one of its holds (2,000 troops of its companies of war within two

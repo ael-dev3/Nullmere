@@ -139,6 +139,8 @@ public enum Command: Codable, Equatable, Sendable {
     case challenge(house: Int)
     /// A keeper lets a whisper loose about another House, unsigned.
     case whisper(Whisper.Claim)
+    /// A keeper answers their House's riddle with one of its names.
+    case answerRiddle(String)
     /// An alliance's leader sets it to pursue a study together.
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
@@ -385,6 +387,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case challengesSpent
     /// A whisper let loose before the House's last has rested.
     case whisperedLately(until: Int)
+    /// A riddle answered a second time.
+    case answeredAlready
     /// An alliance study learned to its last grade.
     case allianceStudyMastered
     /// The study the alliance pursues already.
@@ -571,6 +575,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .noLineStanding: return "Your House stands no line in the Ring: choose up to three of your commanders for it first."
         case .challengesSpent: return "Your House has made its three challenges in the Ring this watch; it may challenge again next watch."
         case .whisperedLately(let until): return "Your House let a whisper loose lately; it may whisper again at watch \(until)."
+        case .answeredAlready: return "Your House has answered this riddle; the lake sets another at the next half moon."
         case .allianceStudyMastered: return "Your alliance has learned that study to its last grade."
         case .alreadyPursued: return "Your alliance pursues that study already."
         case .noAllianceStudy: return "Your alliance pursues no study: its leader chooses one in the Alliance screen."
@@ -723,6 +728,11 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// A whisper is found false: its teller named, and what it paid the
     /// House it belied.
     case whisperUnmasked(id: Int, teller: Int, belied: Int, paid: Int)
+    /// At the half moon the lake sets a keeper's House a riddle.
+    case riddleSet(house: Int)
+    /// A keeper's House answers its riddle, rightly or not, and the name
+    /// that was taken out.
+    case riddleAnswered(house: Int, right: Bool, answer: String)
     /// An alliance's leader sets it to pursue a study.
     case allianceStudyChosen(alliance: Int, study: AllianceStudy)
     /// A House gives stores toward a grade of its alliance's study.

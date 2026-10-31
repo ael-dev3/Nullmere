@@ -55,6 +55,10 @@ struct RealmPanel: View {
                         AugurySection(session: session)
                         Rule(opacity: 0.18)
                         WhispersSection(session: session)
+                        if let riddle = state.riddle(of: session.player) {
+                            Rule(opacity: 0.18)
+                            RiddleSection(session: session, riddle: riddle)
+                        }
                     }
                     if !state.lairsStanding.isEmpty {
                         Rule(opacity: 0.18)

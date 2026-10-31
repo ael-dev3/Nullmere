@@ -106,6 +106,9 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var ring: Ring?
     /// The whispers on the water the realm remembers; absent while none is.
     public internal(set) var whispers: [Whisper]?
+    /// The riddles the lake has set keepers' Houses, one each at most;
+    /// absent before the first half moon with a keeper and a past to ask of.
+    public internal(set) var riddles: [Riddle]?
     /// What every keeper knows of the land from the first watch: its
     /// streams and regions, and the crests the lake gave its Houses. Absent
     /// in a world without streams, and in saves from before them.

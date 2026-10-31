@@ -847,6 +847,56 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertNotNil(Narration.line(for: .whispered(id: 2, claim: claim), in: session.state, viewer: me))
     }
 
+    /// The Remembering on the Realm screen: the riddle folded to a line,
+    /// opened to the line of the past and its four names, answered, and
+    /// weighed until the realm, which alone knows the name, tells it.
+    func testARiddleIsAnsweredFromTheRealm() throws {
+        var state = world("a riddle on the realm")
+        let me = state.player
+        state.chronicle = []
+        state.drowned = ["House Aske", "House Brine", "House Corrow", "House Dovet"].enumerated().map { index, house in
+            DrownedHold(position: Hex(index, 0), name: "Hold \(index)", house: house, age: 1, works: 3, spire: 0)
+        }
+        state.watch = GameState.lunarMonth + 7
+        XCTAssertEqual(state.setRiddles(), [.riddleSet(house: me)])
+        let answer = try XCTUnwrap(state.riddle(of: me)?.answer)
+        let (session, link) = session(state)
+        let riddle = try XCTUnwrap(session.state.riddle(of: me))
+        XCTAssertNil(riddle.answer, "Kept from the keeper's view")
+        XCTAssertTrue(RiddleSection.standing(riddle).hasPrefix("Set at watch \(riddle.set): answer it rightly"))
+        draw(RealmPanel(session: session), width: 360, height: 3200)
+        XCTAssertFalse(shown.contains(answer), "Folded until asked for")
+        XCTAssertTrue(PressableButtons.press("Answer…"), "Among \(shown)")
+        draw(RiddleSection(session: session, riddle: riddle, open: true), width: 360, height: 400)
+        XCTAssertTrue(PressableButtons.press(answer), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .answerRiddle(answer))
+        let weighed = try XCTUnwrap(session.state.riddle(of: me))
+        XCTAssertEqual(RiddleSection.standing(weighed), "You said \(answer); the lake weighs your answer.")
+        draw(RiddleSection(session: session, riddle: weighed), width: 360, height: 400)
+
+        // The realm's word: rightly remembered, or not.
+        var told = state
+        _ = try told.perform(.answerRiddle(answer), as: me)
+        let right = try XCTUnwrap(told.view(for: me).riddle(of: me))
+        XCTAssertEqual(RiddleSection.standing(right), "Rightly remembered: it was \(answer).")
+        var missed = state
+        let miss = try XCTUnwrap(riddle.choices.first { $0 != answer })
+        _ = try missed.perform(.answerRiddle(miss), as: me)
+        XCTAssertEqual(RiddleSection.standing(try XCTUnwrap(missed.view(for: me).riddle(of: me))), "You said \(miss); it was \(answer).")
+        link.onEvent?(.changed(told.view(for: me)))
+        draw(RealmPanel(session: session), width: 360, height: 3200)
+
+        // Heard as the realm tells it, and the guesses kept back till then.
+        XCTAssertEqual(GameSession.cues(for: .answerRiddle(answer), events: [], in: session.state, player: me), [.lore])
+        XCTAssertEqual(GameSession.cue(forDepth: .riddleAnswered(house: me, right: true, answer: answer), in: session.state, player: me), .triumph)
+        XCTAssertEqual(GameSession.cue(forDepth: .riddleAnswered(house: me, right: false, answer: answer), in: session.state, player: me), .refusal)
+        XCTAssertEqual(GameSession.cue(forDepth: .riddleSet(house: me), in: session.state, player: me), .lore)
+        XCTAssertTrue([GameEvent.riddleAnswered(house: me, right: true, answer: answer), .bout(Ring.Bout(watch: 1, challenger: me, defender: 1,
+            challengerWeight: 50, defenderWeight: 40, won: true, change: 16)), .whisperTried(id: 1, house: me, truth: true),
+            .whisperUnmasked(id: 1, teller: 1, belied: me, paid: 30)].allSatisfy(GameSession.isRealmsToTell))
+        XCTAssertNotNil(Narration.line(for: .riddleSet(house: me), in: session.state, viewer: me))
+    }
+
     /// The veil of the Still from the seat's record: drawn for moonsalt,
     /// shown while it lies on the keeper's holds and on another's, named
     /// under the pointer, and resting once lifted.

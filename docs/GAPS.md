@@ -267,6 +267,15 @@ designed, ticked when it is real, tested and shown in CI.
   on a persistent server, with no game master. Played from the Realm
   screen, folded until asked for; stewards whisper nothing, so a world
   of stewards goes as it always did.
+- [x] **The Remembering.** Rise of Kingdoms' Lyceum asks of a world's
+  lore; the Remembering asks of what its keepers did. At each half moon
+  the lake sets every keeper's House a riddle of the realm's own past, a
+  line of its Chronicle or a hold of the age drowned beneath it with one
+  House's name taken out, four names to choose from, answered once for 15
+  moonsalt. The realm draws it from its own record and alone knows the
+  name until it is answered, the keeper's view keeping it back. A
+  persistent realm's history made into play, age after age. Stewards are
+  set none.
 
 ## The order of the work
 

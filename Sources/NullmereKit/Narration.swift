@@ -155,7 +155,7 @@ enum Narration {
              .carriedToInfirmary, .healingBegun, .unitHealed, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted,
              .standardRaised, .standardStruck, .standardTorn, .itemsGiven, .itemUsed, .heritageTaken, .crestTaken, .workPlaced, .dreamt,
              .titleBestowed, .titlesLapsed, .prophesied, .staked, .prophecyJudged, .veilDrawn, .veilLifted, .seatRaisedAnew,
-             .ringLineStood, .bout, .ringHonoured, .whispered, .whisperLet, .whisperTried, .whisperUnmasked,
+             .ringLineStood, .bout, .ringHonoured, .whispered, .whisperLet, .whisperTried, .whisperUnmasked, .riddleSet, .riddleAnswered,
              .allianceStudyChosen, .allianceGift, .allianceStudied, .hallRaised, .hallRisen, .hallStruck, .hallTorn,
              .storehouseRaised, .storehouseRisen, .storehouseStruck, .storehouseTorn, .laidUp, .tookBack, .yardRaised, .favourRose, .frontier,
              .makingsFound, .gearForged, .drilled,

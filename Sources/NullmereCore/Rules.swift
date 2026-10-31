@@ -125,6 +125,8 @@ extension GameState {
             return try challenge(other, as: house)
         case let .whisper(claim):
             return try whisper(claim, as: house)
+        case let .answerRiddle(name):
+            return try answerRiddle(name, as: house)
         case let .pursueAllianceStudy(study):
             return try pursue(study, by: house)
         case let .giveToAlliance(stock):
