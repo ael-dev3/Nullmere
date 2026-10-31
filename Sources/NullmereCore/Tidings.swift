@@ -277,6 +277,10 @@ extension GameState {
             let why = struck ? "your House struck another" : "its watches are out"
             if house == viewer { return Tidings("Your veil lifts: \(why). Your holds may be struck again.", .bad) }
             return Tidings("The veil over the holds of \(houses[house].title) lifts.", .neutral)
+        case .seatRaisedAnew(let holdID, let house, _, let to):
+            let name = hold(holdID)?.name ?? "its seat"
+            if house == viewer { return Tidings("Your seat, \(name), is raised anew \(placeName(of: to)), its works, walls and ward as they stood.", .good) }
+            return Tidings("\(houses[house].title) raises its seat, \(name), anew \(placeName(of: to)).", .neutral)
         case .crestTaken(let house, let crest):
             guard house == viewer else { return Tidings("\(houses[house].title) takes for its crest \(crest.blazon).", .neutral) }
             return Tidings("Your House takes for its crest \(crest.blazon), and bears it until the age ends.", .good)

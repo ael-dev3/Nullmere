@@ -243,6 +243,8 @@ extension GameState {
                 return true
             case .workPlaced(let holdID, _, _):
                 return hold(holdID)?.owner == house
+            case .seatRaisedAnew(_, let owner, let from, let to):
+                return owner == house || visible(from) || visible(to)
             case .dreamt(let dream):
                 return dream.house == house
             case .carriedAshore(_, let owner, _, let to):

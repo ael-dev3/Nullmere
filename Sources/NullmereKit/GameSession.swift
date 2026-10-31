@@ -1358,6 +1358,7 @@ public final class GameSession {
         case .prophesy: return .lore
         case .stake: return .coin
         case .drawVeil: return .stand
+        case .raiseSeat: return .rise
         case .pursueAllianceStudy: return .lore
         case .giveToAlliance: return .coin
         case .raiseAllianceHall, .raiseStorehouse, .raiseYard: return .rise

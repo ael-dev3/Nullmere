@@ -34,7 +34,9 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
     public let id: Int
     public var name: String
     public var owner: Int
-    public let position: Hex
+    /// Where it stands: where it was founded, or, a seat raised anew,
+    /// where its keeper raised it.
+    public internal(set) var position: Hex
     public var isSeat: Bool
     public var levels: [BuildingKind: Int]
     public var project: Project?
@@ -50,6 +52,8 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
     /// place; absent until one is set, the works then standing where the
     /// hold's ground suits them.
     public var places: [BuildingKind: Int]?
+    /// The watch its keeper last raised it anew elsewhere; absent if never.
+    public internal(set) var raisedAnew: Int?
 
     public init(id: Int, name: String, owner: Int, position: Hex, isSeat: Bool, foundedWatch: Int) {
         self.id = id
@@ -73,7 +77,7 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
     // Written in a fixed order, as a dictionary would be in any order: the
     // steward sends a keeper's view only when its words change.
     private enum CodingKeys: String, CodingKey {
-        case id, name, owner, position, isSeat, levels, project, training, ward, struck, foundedWatch, wounded, places
+        case id, name, owner, position, isSeat, levels, project, training, ward, struck, foundedWatch, wounded, places, raisedAnew
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -105,6 +109,7 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
                 }
             }
         }
+        try container.encodeIfPresent(raisedAnew, forKey: .raisedAnew)
     }
 
     public var maximumWard: Int { Hold.maximumWard(wallLevel: level(.walls), isSeat: isSeat) }

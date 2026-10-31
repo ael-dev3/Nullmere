@@ -810,6 +810,26 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertNil(GameSession.cue(forDepth: .veilLifted(house: other, struck: false), in: session.state, player: me))
     }
 
+    /// A seat raised anew from a tile of the House's own land: offered
+    /// there and nowhere a hold stands, and raised with its cost.
+    func testTheSeatIsRaisedAnewFromItsLand() throws {
+        var state = world("a seat moved")
+        let me = state.player
+        state.houses[me].stock.moonsalt = 80
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let ground = try XCTUnwrap(state.map.hexes.first { state.seatMoveRefusal(to: $0, as: me) == nil })
+        let (session, link) = session(state)
+        XCTAssertTrue(SeatMoveRow.offered(at: ground, in: session.state, player: me))
+        XCTAssertFalse(SeatMoveRow.offered(at: seat.position, in: session.state, player: me), "Not where a hold stands")
+        XCTAssertFalse(SeatMoveRow.offered(at: ground, in: session.state, player: (me + 1) % 6), "Nor on another's land")
+        session.selection = .tile(ground)
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        XCTAssertTrue(PressableButtons.press("Raise the seat here"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .raiseSeat(at: ground))
+        XCTAssertEqual(session.state.hold(seat.id)?.position, ground)
+        XCTAssertEqual(GameSession.cues(for: .raiseSeat(at: ground), events: [], in: session.state, player: me), [.rise])
+    }
+
     /// The Frontier on the Realm screen: how its kingdoms stand, the way
     /// across with the House's levy, and, there, the way home.
     func testTheFrontierIsCrossedAndLeftFromTheRealm() throws {

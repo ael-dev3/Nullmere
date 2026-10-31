@@ -131,6 +131,8 @@ public enum Command: Codable, Equatable, Sendable {
     case stake(prophecy: Int, backs: Bool, moonsalt: Int)
     /// A keeper draws the veil of the Still over their House's holds.
     case drawVeil
+    /// A keeper raises their House's seat anew on open ground of its own land.
+    case raiseSeat(at: Hex)
     /// An alliance's leader sets it to pursue a study together.
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
@@ -365,6 +367,12 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case veiledAlready(until: Int)
     /// A veil drawn before the last has rested.
     case veilResting(until: Int)
+    /// A seat raised anew before it has rested since it was last.
+    case seatRaisedLately(until: Int)
+    /// Ground another House's company stands on.
+    case occupiedGround
+    /// A seat beset: its ward short of whole, or a foe at war near it.
+    case seatBeset
     /// An alliance study learned to its last grade.
     case allianceStudyMastered
     /// The study the alliance pursues already.
@@ -545,6 +553,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .veiled(let until): return "The veil of the Still lies over that House's holds until watch \(until): none may strike, rally on or scout them."
         case .veiledAlready(let until): return "Your House's veil lies until watch \(until)."
         case .veilResting(let until): return "The mist gathers again: your House may draw its veil anew at watch \(until)."
+        case .seatRaisedLately(let until): return "Your seat was raised anew lately; it may be again at watch \(until)."
+        case .occupiedGround: return "Another House's company stands there."
+        case .seatBeset: return "Your seat is beset: not while its ward is short of whole, or a foe at war stands within three tiles of it."
         case .allianceStudyMastered: return "Your alliance has learned that study to its last grade."
         case .alreadyPursued: return "Your alliance pursues that study already."
         case .noAllianceStudy: return "Your alliance pursues no study: its leader chooses one in the Alliance screen."
@@ -679,6 +690,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case veilDrawn(house: Int, until: Int)
     /// A House's veil lifts: its House struck another, or its watches are out.
     case veilLifted(house: Int, struck: Bool)
+    /// A keeper raises their House's seat anew elsewhere on its land.
+    case seatRaisedAnew(hold: Int, house: Int, from: Hex, to: Hex)
     /// An alliance's leader sets it to pursue a study.
     case allianceStudyChosen(alliance: Int, study: AllianceStudy)
     /// A House gives stores toward a grade of its alliance's study.

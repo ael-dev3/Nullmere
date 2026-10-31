@@ -473,6 +473,13 @@ as the realm will, and takes the realm's word as final.
   hold, or scouts one, and may be drawn again ten watches after it lifts.
   The holds' records and the pointer say while it lies; stewards draw
   none, and let veiled holds be.
+- **A seat raised anew.** Rise of Kingdoms' teleport, within a House's
+  own land: from a tile of that land a keeper raises their seat anew there
+  for 40 moonsalt, its works, walls, ward and wounded as they stood and the
+  company at its gates with it. Once in thirty watches, and never while
+  its ward is short of whole or a foe at war stands within three tiles of
+  it; the ground must be open, three tiles from every other hold and clear
+  of holy sites and alliance ground. Stewards move no seat.
 - **The Augury.** A keeper foretells a turn of the realm's course from
   the Realm screen, twelve watches ahead (a House fallen, a hold taken,
   two Houses at war, or a Moonspire risen to its next stage), staking ten
