@@ -1112,6 +1112,32 @@ final class PressTests: XCTestCase {
         XCTAssertEqual(link.sent.last, .halt(unit: walker.id))
     }
 
+    /// Companies out at the land's work are called home from the panel,
+    /// one or every one.
+    func testGatherersAreCalledHome() throws {
+        var state = GameState(settings: GameSettings(seedText: "pressed homeward", houseCount: 4, radius: 18, keepers: 1))
+        let me = state.player
+        let seat = try XCTUnwrap(state.seat(of: me)).position
+        // Two companies on their way back with loads to give up.
+        let porters = [try XCTUnwrap(state.placeUnit(.spear, for: me, near: seat)), try XCTUnwrap(state.placeUnit(.bow, for: me, near: seat))]
+        for porter in porters {
+            state.units[try XCTUnwrap(state.unitIndex(porter.id))].load = Stock(grain: 10)
+        }
+        let (session, link) = session(state)
+        session.selection = .unit(porters[0].id)
+        draw(SelectionPanel(session: session), height: 600)
+        XCTAssertTrue(PressableButtons.press("Bring home"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .recall(unit: porters[0].id))
+        XCTAssertTrue(PressableButtons.press("All home"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .recallAll)
+
+        // A company at no such work is offered neither.
+        let idle = try XCTUnwrap(session.state.units(of: me).first { $0.kind == .lantern })
+        session.selection = .unit(idle.id)
+        draw(SelectionPanel(session: session), height: 600)
+        XCTAssertFalse(PressableButtons.press("Bring home"), "Not among \(shown)")
+    }
+
     func testTheTopBarsPanelsAndReady() throws {
         let state = GameState(settings: GameSettings(seedText: "pressed bar", houseCount: 4, radius: 18, keepers: 1))
         let (session, link) = session(state)

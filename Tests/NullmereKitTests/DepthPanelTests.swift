@@ -318,6 +318,35 @@ final class DepthPanelTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: MiniMap.shownKey)
     }
 
+    func testTheMoonBandSpeaksOnlyAboutTheFull() throws {
+        let first = Sundering.first
+        XCTAssertNil(MoonBand.line(watch: first - 10, open: false), "Nothing while the moon is far from full")
+        XCTAssertEqual(MoonBand.line(watch: first - 3, open: false), "The moon waxes: the Moonford lies bare across the lake in 3 watches.")
+        XCTAssertEqual(MoonBand.line(watch: first - 1, open: false), "The moon waxes: the Moonford lies bare across the lake as the watch turns.")
+        XCTAssertEqual(MoonBand.line(watch: first, open: true),
+                       "The Moonford lies open across the lake: the water comes back over it in \(GameState.fordLasts) watches.")
+        XCTAssertEqual(MoonBand.line(watch: first + GameState.fordLasts - 1, open: true),
+                       "The Moonford lies open across the lake: the water comes back over it as the watch turns.")
+        XCTAssertNil(MoonBand.line(watch: first + GameState.fordLasts + 2, open: false))
+        draw(MoonBand(line: try XCTUnwrap(MoonBand.line(watch: first, open: true))), width: 700, height: 40)
+
+        // The ford itself, under the pointer and chosen: what it is, and
+        // when the water comes back.
+        var state = world("the moon's road")
+        state.watch = first
+        _ = state.turnTide()
+        let course = try XCTUnwrap(state.ford)
+        let hex = course[course.count / 2]
+        XCTAssertEqual(HoverInfo.line(for: hex, in: state, explored: true, territory: state.territory()),
+                       "The Moonford · the moon's road, 1 move, under water again in \(GameState.fordLasts) watches")
+        state.watch = first + GameState.fordLasts - 1
+        XCTAssertEqual(HoverInfo.line(for: hex, in: state, explored: true, territory: state.territory()),
+                       "The Moonford · the moon's road, 1 move, under water again as the watch turns")
+        let (session, _) = session(state)
+        session.selection = .tile(hex)
+        draw(SelectionPanel(session: session), width: 330, height: 600)
+    }
+
     func testNoticesFadeAndEnvoysWaitTheirTurn() throws {
         let now = Date()
         let notices = (1...5).map { index in

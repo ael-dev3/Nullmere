@@ -25,6 +25,8 @@ public struct TerrainMesh: Sendable {
         switch terrain {
         case .still: return Vec3(0.06, 0.07, 0.07)
         case .shallows: return Vec3(0.14, 0.15, 0.14)
+        // Shingle washed silver by the moon.
+        case .ford: return Vec3(0.56, 0.58, 0.62)
         case .strand: return Vec3(0.47, 0.46, 0.43)
         case .saltFlat: return Vec3(0.84, 0.87, 0.90)
         case .greyfield: return Vec3(0.33, 0.36, 0.30)

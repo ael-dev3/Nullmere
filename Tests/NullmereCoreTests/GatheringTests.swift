@@ -203,6 +203,85 @@ final class GatheringTests: XCTestCase {
         XCTAssertGreaterThan(state.houses[me].stock.grain, before)
     }
 
+    /// Called home, a gatherer turns for the nearest hold with all it
+    /// carries and gives it up there; carrying nothing, it is done where it
+    /// stands. Only a company out at the land's work can be called.
+    func testAGathererIsCalledHomeWithWhatItCarries() throws {
+        var (state, me, spear, site, there) = try field("called home")
+        XCTAssertEqual(refusal(.recall(unit: spear), in: state, as: me), .notGathering, "Not yet sent")
+        _ = try state.perform(.gather(unit: spear, site: site), as: me)
+        XCTAssertTrue(state.isOutGathering(try XCTUnwrap(state.unit(spear))))
+        _ = state.endWatch()
+        let carried = try XCTUnwrap(state.unit(spear)?.load)
+        XCTAssertEqual(carried.grain, 30)
+        let home = try XCTUnwrap(state.holds(of: me).min { ($0.position.distance(to: there), $0.id) < ($1.position.distance(to: there), $1.id) })
+
+        let events = try state.perform(.recall(unit: spear), as: me)
+        XCTAssertTrue(events.contains(.recalled(unit: spear, owner: me)), "\(events)")
+        XCTAssertEqual(state.unit(spear)?.errand, .homeward, "Home with what it carries")
+        XCTAssertEqual(state.unit(spear)?.destination, home.position)
+        XCTAssertEqual(state.unit(spear)?.load, carried, "All of it")
+        XCTAssertEqual(state.site(site)?.remaining, Site.richness(of: .grain, level: 1) - 30, "The site keeps what was left")
+        XCTAssertEqual(state.tidings(of: .recalled(unit: spear, owner: me), for: me)?.tone, .neutral)
+        XCTAssertNil(state.tidings(of: .recalled(unit: spear, owner: me), for: (me + 1) % state.houses.count), "Told to its keeper alone")
+
+        var delivered: [GameEvent] = []
+        for _ in 0..<20 where delivered.isEmpty {
+            delivered += state.endWatch().filter { if case .delivered = $0 { return true } else { return false } }
+        }
+        XCTAssertEqual(delivered, [.delivered(unit: spear, owner: me, hold: home.id, load: carried)])
+        XCTAssertFalse(state.isOutGathering(try XCTUnwrap(state.unit(spear))), "Home, it is done")
+        XCTAssertEqual(refusal(.recall(unit: spear), in: state, as: me), .notGathering)
+
+        // Sent again and called back before it has gathered a thing, it is
+        // done where it stands.
+        var (fresh, _, idle, freshSite, _) = try field("called back")
+        _ = try fresh.perform(.gather(unit: idle, site: freshSite), as: me)
+        let stood = try XCTUnwrap(fresh.unit(idle)).position
+        let back = try fresh.perform(.recall(unit: idle), as: me)
+        XCTAssertEqual(back, [.recalled(unit: idle, owner: me)])
+        XCTAssertNil(fresh.unit(idle)?.errand)
+        XCTAssertNil(fresh.unit(idle)?.destination)
+        XCTAssertEqual(fresh.unit(idle)?.position, stood)
+        _ = fresh.endWatch()
+        XCTAssertNil(fresh.unit(idle)?.load, "Gathering no more")
+
+        // Not another House's company, nor one there is not.
+        let theirs = try XCTUnwrap(state.units(of: 1).first { $0.kind.isMilitary })
+        XCTAssertEqual(refusal(.recall(unit: theirs.id), in: state, as: me), .notYours)
+        XCTAssertEqual(refusal(.recall(unit: 987_654), in: state, as: me), .unknownUnit)
+        XCTAssertEqual(RuleError.notGathering.description, "It isn't gathering, and carries nothing home.")
+    }
+
+    /// Every gatherer of a House called home at once, the first mustered
+    /// first: one beside its hold gives up its load there and then, one
+    /// carrying a load it was left with turns for home, and a company at
+    /// other work is let be.
+    func testEveryGathererIsCalledHomeAtOnce() throws {
+        var (state, me, spear, site, _) = try field("all home")
+        XCTAssertEqual(refusal(.recallAll, in: state, as: me), .noneGathering, "None out")
+        XCTAssertEqual(RuleError.noneGathering.description, "None of your companies is out gathering.")
+        _ = try state.perform(.gather(unit: spear, site: site), as: me)
+        _ = state.endWatch()
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let porter = state.put(.spear, of: me, at: try XCTUnwrap(state.freeHex(near: seat.position)))
+        state.units[try XCTUnwrap(state.unitIndex(porter))].load = Stock(timber: 20)
+        let idler = state.put(.bow, of: me, at: try XCTUnwrap(state.freeHex(near: seat.position, within: 2...3)))
+        let before = state.houses[me].stock.timber
+
+        let events = try state.perform(.recallAll, as: me)
+        XCTAssertEqual(events.filter { if case .recalled = $0 { return true } else { return false } },
+                       [.recalled(unit: spear, owner: me), .recalled(unit: porter, owner: me)], "The first mustered first")
+        XCTAssertTrue(events.contains(.delivered(unit: porter, owner: me, hold: seat.id, load: Stock(timber: 20))), "At its gate, at once")
+        XCTAssertGreaterThanOrEqual(state.houses[me].stock.timber, min(before + 20, state.storage(of: me)))
+        XCTAssertNil(state.unit(porter)?.load)
+        XCTAssertNil(state.unit(porter)?.errand)
+        XCTAssertEqual(state.unit(spear)?.errand, .homeward)
+        XCTAssertNil(state.unit(idler)?.errand, "Let be")
+        XCTAssertEqual(refusal(.recallAll, in: state, as: me), nil, "One still on its way home is still out")
+        XCTAssertEqual(state.problems(), [])
+    }
+
     func testAGathererStruckLeavesHalfItsLoadToTheVictor() throws {
         var (state, me, spear, _, there) = try field("struck gatherer")
         let index = try XCTUnwrap(state.unitIndex(spear))

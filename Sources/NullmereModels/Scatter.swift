@@ -93,7 +93,8 @@ public enum Scatter {
         case nil: break
         }
         switch tile.terrain {
-        case .still:
+        case .still, .ford:
+            // Nothing stands on the lake's bed, laid bare a while or not.
             break
         case .shallows:
             list.append(Recipe(furnishing: .reeds, count: 0...2, scale: 0.8...1.2))

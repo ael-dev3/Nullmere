@@ -108,6 +108,13 @@ struct PlayView: View {
                         .allowsHitTesting(false)
                         .transition(.opacity)
                 }
+                // The moon's ford, only about the full.
+                if let line = MoonBand.line(watch: session.state.watch, open: session.state.ford != nil) {
+                    MoonBand(line: line)
+                        .padding(.top, 8)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
                 HStack(alignment: .top, spacing: 0) {
                     VStack(alignment: .leading, spacing: 12) {
                         NoticeFeed(session: session)

@@ -259,6 +259,50 @@ final class WorldRenderTests: XCTestCase {
         }
     }
 
+    /// The Moonford at the full: the lake's bed laid bare along the moon's
+    /// road, shingle under a skin of water from shore to shore, pale across
+    /// the black of the still water about it.
+    func testTheMoonfordLiesPaleAcrossTheBlackWater() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device available") }
+        var state = WorldRenderTests.world.state
+        state.watch = Sundering.first
+        _ = state.turnTide()
+        let course = try XCTUnwrap(state.ford, "The ford lies open")
+        let terrain = TerrainMesh.shared(for: state.map)
+        let relief = Relief(map: state.map)
+        let library = try device.makeLibrary(source: WorldShaders.source, options: nil)
+        let renderer = try WorldRenderer(device: device, library: library, pixelFormat: .bgra8Unorm)
+        try renderer.setLand(terrain, for: state.map)
+        try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
+        var camera = Camera(scale: 14, tilt: 0.75)
+        camera.focus(on: course[course.count / 2])
+        let target = try renderer.makeTarget(width: WorldRenderTests.width, height: WorldRenderTests.height)
+        let frame = FrameUniforms.make(camera: camera, size: WorldRenderTests.size, pixelsPerPoint: 1, time: 20, motion: 1,
+                                       radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil,
+                                       houses: WorldView.houseColours)
+        let drawn = Drawn(name: "moonford", pixels: try XCTUnwrap(renderer.pixels(frame, scene: SceneFrame(), into: target)), camera: camera)
+        try keep([drawn], as: "world-moonford")
+
+        var ford: [Double] = [], still: [Double] = []
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 3) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 3) {
+                let (origin, direction) = camera.ray(through: CGPoint(x: x, y: y), in: WorldRenderTests.size)
+                guard let hit = relief.intersect(origin: origin, direction: direction) else { continue }
+                let hex = HexLayout(size: 1).hex(atX: Double(hit.x), y: Double(hit.z))
+                switch state.map[hex]?.terrain {
+                case .ford?: ford.append(drawn.luminance(x, y))
+                case .still? where hex.neighbors.allSatisfy({ state.map[$0]?.terrain == .still }): still.append(drawn.luminance(x, y))
+                default: break
+                }
+            }
+        }
+        XCTAssertGreaterThan(ford.count, 200, "The view holds the ford")
+        XCTAssertGreaterThan(still.count, 200, "and the still water beside it")
+        guard !ford.isEmpty, !still.isEmpty else { return }
+        let median = { (values: [Double]) -> Double in values.sorted()[values.count / 2] }
+        XCTAssertGreaterThan(median(ford), median(still) + 10, "Pale shingle across the black water: \(median(ford)) against \(median(still))")
+    }
+
     /// Keeps the frames as one sheet when NULLMERE_KEEP_RENDERS names a
     /// folder, and prints it small for CI's log.
     func keep(_ frames: [Drawn], as name: String) throws {

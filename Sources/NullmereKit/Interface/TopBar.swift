@@ -366,6 +366,45 @@ struct OmenBand: View {
     }
 }
 
+/// The Moonford under the top bar while it lies open across the lake, or
+/// the moon is about to lay it bare: shown only then.
+struct MoonBand: View {
+    let line: String
+
+    /// What the band says at a watch, if anything: while the ford lies
+    /// open, when the water comes back; in the three watches before, when
+    /// it opens.
+    static func line(watch: Int, open: Bool) -> String? {
+        if open {
+            let left = GameState.fordWatchesLeft(at: watch)
+            return left <= 1 ? "The Moonford lies open across the lake: the water comes back over it as the watch turns."
+                : "The Moonford lies open across the lake: the water comes back over it in \(left) watches."
+        }
+        let coming = GameState.watchesToFord(from: watch)
+        guard (1...3).contains(coming) else { return nil }
+        return coming == 1 ? "The moon waxes: the Moonford lies bare across the lake as the watch turns."
+            : "The moon waxes: the Moonford lies bare across the lake in \(coming) watches."
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle().strokeBorder(Palette.glow, lineWidth: 1).frame(width: 7, height: 7)
+            Text(verbatim: line)
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.8))
+        }
+        .lineLimit(1)
+        .fixedSize()
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 3).fill(Palette.panel))
+        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Palette.glow.opacity(0.25), lineWidth: 1))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(line)
+        .accessibilityAddTraits(.isStaticText)
+    }
+}
+
 /// A notice's tone: a coloured dot, or, with "Differentiate without
 /// colour" on, a sign that says it in shape: + good, ! bad.
 struct ToneMark: View {

@@ -37,6 +37,11 @@ enum HoverInfo {
         } else if let land = state.allianceLand(at: hex).flatMap({ state.alliance($0) }) {
             parts.append("land of \(land.name)")
         }
+        if case .ford = tile.terrain {
+            let left = GameState.fordWatchesLeft(at: state.watch)
+            parts.append("the moon's road, 1 move, under water again " + (left <= 1 ? "as the watch turns" : "in \(left) watches"))
+            return parts.joined(separator: " · ")
+        }
         if tile.terrain.isWater, tile.terrain != .shallows {
             parts.append("yields nothing, impassable")
             return parts.joined(separator: " · ")

@@ -43,6 +43,12 @@ public enum Command: Codable, Equatable, Sendable {
     /// A company of war marches to a site of the land and works it until
     /// it carries all it can, then brings it home to the nearest hold.
     case gather(unit: Int, site: Int)
+    /// A company gathering, or carrying a load, is called home: it turns
+    /// for the nearest of its House's holds with all it carries.
+    case recall(unit: Int)
+    /// Every company of the House gathering at the land's sites, or
+    /// carrying a load, is called home at once.
+    case recallAll
     /// Raise a banner: found an alliance of this name, and lead it.
     case foundAlliance(name: String)
     /// Its leader invites a House into the alliance.
@@ -194,6 +200,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case cannotGather(UnitKind)
     /// A company carrying all it can, or another store than the site's.
     case loadFull
+    /// It is neither gathering nor carrying anything home.
+    case notGathering
+    case noneGathering
     /// A House sworn to an alliance already.
     case inAnAlliance
     /// A House sworn to no alliance.
@@ -382,6 +391,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .unknownSite: return "Your House knows of no such site."
         case .cannotGather(let kind): return "\(kind.title) gather nothing."
         case .loadFull: return "It carries all it can; bring it home first."
+        case .notGathering: return "It isn't gathering, and carries nothing home."
+        case .noneGathering: return "None of your companies is out gathering."
         case .inAnAlliance: return "That House is sworn to an alliance already."
         case .notInAlliance: return "Your House is sworn to no alliance."
         case .notAllianceLeader: return "Only the alliance's leader can do that."
@@ -575,6 +586,15 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case favourRose(house: Int, level: Int)
     /// The lake's shores stand as kingdoms until a watch.
     case sunderingBegun(ends: Int)
+    /// The moon is full: the Moonford lies open across the lake until a watch.
+    case fordOpened(closes: Int)
+    /// A company is called home from the land's work.
+    case recalled(unit: Int, owner: Int)
+    /// The moon wanes and the water comes back over the Moonford, carrying
+    /// so many companies ashore.
+    case fordClosed(carried: Int)
+    /// The tide carries a company from the Moonford to the nearest shore.
+    case carriedAshore(unit: Int, owner: Int, from: Hex, to: Hex)
     /// A Sundering ends: the kingdom that prevailed, if one did, each
     /// kingdom's points, and the House hailed its sword.
     case sunderingEnded(winner: Shore?, eastern: Int, western: Int, hailed: Int?)

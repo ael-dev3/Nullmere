@@ -368,6 +368,20 @@ extension GameState {
             }
             guard let first = leaders.first else { return Tidings("\(kind.title) ends with no House to honour.", .neutral) }
             return Tidings("\(kind.title) ends: \(houses[first].title) takes the honours.", .neutral)
+        case .fordOpened(let closes):
+            return Tidings("The moon is full: the tide lays bare a ford across the lake from shore to shore, two hexes wide, "
+                           + "walked a step a move, until the \(ordinal(closes)) watch. Whoever stands on it as the water comes back "
+                           + "is carried to the nearest shore, worn.", .neutral)
+        case .recalled(let id, let owner):
+            guard owner == viewer, let unit = unit(id) else { return nil }
+            return Tidings(unit.errand == .homeward ? "Your \(unit.kind.title) turn for home with what they carry." : "Your \(unit.kind.title) leave the land's work.", .neutral)
+        case .fordClosed(let carried):
+            return Tidings("The moon wanes and the water comes back over the ford"
+                           + (carried == 0 ? "." : "; the lake carries \(carried) compan\(carried == 1 ? "y" : "ies") ashore."), .neutral)
+        case .carriedAshore(let id, let owner, _, _):
+            guard owner == viewer else { return nil }
+            let kind = unit(id)?.kind.title ?? "company"
+            return Tidings("The water came back over the ford: the lake carried your \(kind) to the nearest shore, worn.", .bad)
         case .sunderingBegun(let ends):
             let begun = "The Sundering begins: the Eastern and the Western Shore war as kingdoms until the \(ordinal(ends)) watch."
             guard let shore = sundering?.shore(of: viewer) else { return Tidings(begun, .neutral) }

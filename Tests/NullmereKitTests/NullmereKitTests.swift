@@ -518,6 +518,8 @@ final class GuideTests: XCTestCase {
         XCTAssertTrue(all.contains("wins you favour with the lake, the more for every watch kept unbroken"), all)
         XCTAssertTrue(all.contains("From the fifty-fifth watch, and every ninety after, comes the Sundering: for twelve watches"), all)
         XCTAssertEqual([Sundering.first, Sundering.every, Sundering.lasts], [55, 90, 12])
+        XCTAssertTrue(all.contains("About each full moon from the fifty-fifth watch, for ten watches, the tide lays bare the Moonford"), all)
+        XCTAssertEqual([GameState.lunarMonth, GameState.fordLasts, GameState.tideToll], [30, 10, 20])
         XCTAssertTrue(all.contains("Spears 1,200 at I to 2,400 at V, Bows 1,000 to 2,000, Riders 800 to 1,600"), all)
         XCTAssertEqual([UnitKind.spear, .bow, .rider].map { [$0.troops(tier: 1), $0.troops(tier: 5)] }, [[1_200, 2_400], [1_000, 2_000], [800, 1_600]])
         XCTAssertEqual([Favour.chestEvery, Favour.highest], [10, 10])

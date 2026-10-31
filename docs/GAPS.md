@@ -139,7 +139,8 @@ Already in Nullmere, in its own way:
 To build, reimagined:
 - [ ] Credits, rolled in the launcher, still under reduced motion
 - [ ] The founding watch on a hold's record
-- [ ] Bring it home: a gatherer recalled with what it carries, and every gatherer at once; the watches left of a gathering and of the way home on its record; a list of the House's gatherers
+- [x] Bring it home: a gatherer recalled with what it carries, and every gatherer at once (Bring home and All home on its record)
+- [ ] The watches left of a gathering and of the way home on a gatherer's record; a list of the House's gatherers
 - [ ] A gathering's length chosen as it is sent (a watch, three, until full)
 - [ ] The camera's buttons on screen, and Reset View to the whole House
 - [ ] Sounds for the interface (a panel opening and closing, going back, an order refused), and the trackpad's taps where the Mac has them
@@ -170,15 +171,21 @@ has: a still lake under a moon, an on-device model on every keeper's Mac,
 and a realm that persists, age after age. Each is listed here as it is
 designed, ticked when it is real, tested and shown in CI.
 
-- [ ] **The Moonpath.** The moon waxes and wanes over twenty-four
-  watches, and at the full its light lies on the still water as a road:
-  for three watches a causeway of moonlight runs across the lake from
-  the Western Shore to the Eastern through the deep water, ground a
-  company may walk, a single hex wide. The two kingdoms of a Sundering
-  meet on it; armies race to hold its ends; and as the moon wanes the
-  road goes back to the water, and the lake carries whoever still stands
-  on it to the nearest shore, the poorer by a tenth of its troops. A
-  calendar no other strategy game keeps, read in the sky as well as told.
+- [x] **The Moonford.** The moon waxes and wanes over thirty watches,
+  and about each full moon from the fifty-fifth watch on (so every
+  Sundering has one) the lake's tide ebbs along the moon's road and lays
+  bare a ford of shingle two hexes wide across the still water from
+  shore to shore, for ten watches: ground a company walks a step a move,
+  where nothing may be raised, lit by the moon for every House. The two
+  kingdoms of a Sundering meet on it; as the moon wanes the water comes
+  back, and the lake carries whoever still stands on it to the nearest
+  shore, a fifth of its strength the poorer. A calendar no other
+  strategy game keeps, read in a band under the top bar only while it
+  matters, drawn as pale shingle under the black water (CI prints the
+  frame as world-moonford). Measured over 48 ages of twelve seats, it
+  leaves how ages end where it was (median 152nd watch against 153rd, the
+  seats and tempers as even) and battles a little larger (median 85,020
+  troops against 79,206, the largest 156,513 against 138,414).
 - [ ] **Edicts of the realm.** Laws a realm makes for itself: a House of
   standing proposes one from a set (no siege under a full moon, a truce
   for the harvest, open roads for envoys, a toll on the moonpath), the

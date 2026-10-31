@@ -682,6 +682,7 @@ struct WorldFallback: View {
         switch terrain {
         case .still: return water
         case .shallows: return Color(red: 0.022, green: 0.029, blue: 0.037)
+        case .ford: return Color(red: 0.42, green: 0.44, blue: 0.48)
         case .strand: return Color(red: 0.36, green: 0.355, blue: 0.34)
         case .saltFlat: return Color(red: 0.71, green: 0.745, blue: 0.80)
         case .greyfield: return Color(red: 0.21, green: 0.23, blue: 0.21)

@@ -17,6 +17,11 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
     case barrow
     /// The mountains that ring the basin. Impassable.
     case spine
+    /// The Moonford: the lake's bed laid bare along the moon's road while
+    /// the moon is full, shingle under a skin of water from shore to shore.
+    /// Walked a step a move; nothing is raised on it, for the water comes
+    /// back over it as the moon wanes.
+    case ford
 
     public var title: String {
         switch self {
@@ -28,6 +33,7 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
         case .blackwood: return "Blackwood"
         case .barrow: return "Barrows"
         case .spine: return "The Spine"
+        case .ford: return "The Moonford"
         }
     }
 
@@ -36,7 +42,7 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
     // tile it looks at.
     public var isWater: Bool {
         switch self {
-        case .still, .shallows: return true
+        case .still, .shallows, .ford: return true
         case .strand, .saltFlat, .greyfield, .blackwood, .barrow, .spine: return false
         }
     }
@@ -45,7 +51,7 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
     public var isPassable: Bool {
         switch self {
         case .still, .spine: return false
-        case .shallows, .strand, .saltFlat, .greyfield, .blackwood, .barrow: return true
+        case .shallows, .strand, .saltFlat, .greyfield, .blackwood, .barrow, .ford: return true
         }
     }
 
@@ -53,14 +59,14 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
     public var isSettleable: Bool {
         switch self {
         case .strand, .saltFlat, .greyfield, .blackwood, .barrow: return true
-        case .still, .shallows, .spine: return false
+        case .still, .shallows, .spine, .ford: return false
         }
     }
 
     /// Movement points to enter.
     public var moveCost: Int {
         switch self {
-        case .strand, .saltFlat, .greyfield: return 1
+        case .strand, .saltFlat, .greyfield, .ford: return 1
         case .shallows, .blackwood, .barrow: return 2
         case .still, .spine: return 99
         }
@@ -85,7 +91,7 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
     /// What one worked tile yields each watch.
     public var yield: Stock {
         switch self {
-        case .still, .shallows, .spine: return .zero
+        case .still, .shallows, .spine, .ford: return .zero
         case .strand: return Stock(grain: 1)
         case .saltFlat: return Stock(moonsalt: 1)
         case .greyfield: return Stock(grain: 2)

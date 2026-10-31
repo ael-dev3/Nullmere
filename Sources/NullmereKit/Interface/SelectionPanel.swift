@@ -633,7 +633,8 @@ struct UnitPanel: View {
                     .font(.nm(10.5))
                     .foregroundStyle(Palette.text(0.55))
                     .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 4) {
+                // Its orders wrap rather than run off the panel.
+                FlowLayout(spacing: 4) {
                     if unit.kind == .founder {
                         let problem = state.canFound(at: unit.position, for: session.player)
                         QuietButton(title: "Found a hold", prominent: problem == nil, enabled: problem == nil) {
@@ -662,6 +663,15 @@ struct UnitPanel: View {
                     }
                     if unit.destination != nil {
                         QuietButton(title: "Halt") { session.perform(.halt(unit: unit.id)) }
+                    }
+                    // Out at the land's work: home with what it carries, or every gatherer at once.
+                    if state.isOutGathering(unit) {
+                        QuietButton(title: "Bring home", name: "Bring them home with what they carry") {
+                            session.perform(.recall(unit: unit.id))
+                        }
+                        if state.units(of: session.player).filter(state.isOutGathering).count > 1 {
+                            QuietButton(title: "All home", name: "Bring every gatherer home") { session.perform(.recallAll) }
+                        }
                     }
                     if unit.kind.isMilitary {
                         QuietButton(title: unit.leader == nil ? "Commander" : "Commanders",
@@ -1023,7 +1033,10 @@ private struct TilePanel: View {
                 let yield = tile.yield
                 if yield.isZero {
                     Text(verbatim: tile.terrain == .still ? "Nothing lives in the Still, and nothing grows."
-                                   : tile.terrain == .shallows ? "Nothing lives in the shallows, and nothing grows; they can be waded." : "Bare ground.")
+                                   : tile.terrain == .shallows ? "Nothing lives in the shallows, and nothing grows; they can be waded."
+                                   : tile.terrain == .ford ? "The lake's bed, laid bare along the moon's road while the moon is full: walked a step a move, "
+                                       + "and nothing raised on it. The water comes back over it as the moon wanes, and carries whoever stands on it ashore."
+                                   : "Bare ground.")
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.text(0.55))
                 } else {

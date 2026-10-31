@@ -55,7 +55,7 @@ public struct Site: Codable, Equatable, Identifiable, Sendable {
         case .blackwood: return .timber
         case .barrow: return .stone
         case .saltFlat: return .moonsalt
-        case .still, .shallows, .spine: return nil
+        case .still, .shallows, .spine, .ford: return nil
         }
     }
 }
@@ -219,6 +219,46 @@ extension GameState {
                 events.append(.gathered(unit: unit.id, owner: unit.owner, load: units[index].load ?? .zero))
                 events += turnHome(index)
             }
+        }
+        return events
+    }
+
+    /// Whether a company is out at the land's work: gathering at a site, or
+    /// on its way home with a load.
+    public func isOutGathering(_ unit: Unit) -> Bool {
+        switch unit.errand {
+        case .gather?, .homeward?: return true
+        case nil: return !(unit.load ?? .zero).isZero
+        default: return false
+        }
+    }
+
+    /// A company called home: it gives up what it carries at once if a hold
+    /// of its House is beside it, and otherwise turns for the nearest with
+    /// all it carries; carrying nothing, it is done gathering where it stands.
+    mutating func recall(_ unitID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
+        let index = try ownedUnit(unitID, of: house)
+        guard isOutGathering(units[index]) else { throw .notGathering }
+        var events = deliver(index)
+        guard let after = unitIndex(unitID) else { return events }
+        if units[after].load.map({ !$0.isZero }) == true {
+            events += turnHome(after)
+        } else {
+            units[after].errand = nil
+            units[after].destination = nil
+        }
+        events.append(.recalled(unit: unitID, owner: house))
+        return events + march(unitID)
+    }
+
+    /// Every company of a House out at the land's work called home, the
+    /// first mustered first.
+    mutating func recallAll(of house: Int) throws(RuleError) -> [GameEvent] {
+        let out = units.indices.filter { units[$0].owner == house && isOutGathering(units[$0]) }.map { units[$0].id }.sorted()
+        guard !out.isEmpty else { throw .noneGathering }
+        var events: [GameEvent] = []
+        for id in out {
+            events += (try? recall(id, as: house)) ?? []
         }
         return events
     }

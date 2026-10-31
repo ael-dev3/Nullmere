@@ -120,6 +120,9 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var happening: Happening?
     /// The Sundering under way, or the last, settled, until the next.
     public internal(set) var sundering: Sundering?
+    /// The Moonford's hexes while the tide lays it bare about a full moon;
+    /// absent while the water lies over it.
+    public internal(set) var ford: [Hex]?
     /// A world whose shores never sunder: the Frontier's, whose kingdoms
     /// are the realms its keepers come from, not its shores. Absent
     /// elsewhere.
@@ -343,7 +346,7 @@ public struct GameState: Codable, Equatable, Sendable {
             at.forEach(within: holds[index].territoryRadius) { hex in
                 guard let tile = map.index(of: hex), owners[tile] == nil else { return }
                 switch map[tile].terrain {
-                case .still, .shallows: return
+                case .still, .shallows, .ford: return
                 case .spine: if hex != at { return }
                 case .strand, .saltFlat, .greyfield, .blackwood, .barrow: break
                 }

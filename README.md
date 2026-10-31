@@ -614,7 +614,10 @@ realm; keepers are told in plain words, never a status code.
   and tier, its House's studies and its commander), and once it carries all
   it can, or the site is worked out, brings its load home to the nearest
   hold. Any other order ends the errand, but a load is kept until the
-  company comes by one of its holds. A gatherer struck down by a House at
+  company comes by one of its holds. Bring home calls a gatherer back at
+  once with what it carries (given up on the spot beside one of its
+  holds), and All home calls every one of the House's gatherers so. A
+  gatherer struck down by a House at
   war with its own leaves half its load to the victor. Stewards at peace
   send idle companies to sites of the stores they run short of.
 - **Alliances.** Any House not sworn to one may raise a banner, a named
@@ -848,6 +851,17 @@ realm; keepers are told in plain words, never a status code.
   points, how the shores stand, or how the last ended), and its tally is
   known to all. The Frontier's shores never sunder: its kingdoms are the
   realms its keepers come from.
+- **The Moonford.** The moon waxes and wanes over thirty watches. About
+  each full moon from the fifty-fifth watch on (the fifty-fifth to the
+  sixty-fourth, the eighty-fifth to the ninety-fourth, and so on, so that
+  every Sundering has one), the lake's tide ebbs along the moon's road
+  across the still water and lays bare a ford of shingle from shore to
+  shore, two hexes wide, through the deep water: ground walked a step a
+  move, on which nothing may be raised, lit by the moon so that every
+  House sees it. The two shores meet on it. As the moon wanes the water
+  comes back over it, and the lake carries whoever still stands on it to
+  the nearest shore, a fifth of its strength the poorer. A band under the
+  top bar says when it opens and when the water returns, and only then.
 - **The Frontier.** Kingdom against kingdom across realms: the Frontier is
   a realm of its own, a database of its own with its own steward, where
   the kingdoms of the realms that border it meet, a season of twenty-four

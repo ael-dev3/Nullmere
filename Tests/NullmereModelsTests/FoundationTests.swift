@@ -230,12 +230,23 @@ final class ReliefTests: XCTestCase {
             let height = ReliefTests.relief.height(of: hex)
             switch tile.terrain {
             case .still: XCTAssertLessThan(height, -0.5, "\(hex)")
-            case .shallows: XCTAssertLessThan(height, 0, "\(hex) lies under the water")
+            case .shallows, .ford: XCTAssertLessThan(height, 0, "\(hex) lies under the water")
             case .spine: XCTAssertGreaterThan(height, 1.2, "\(hex)")
             case .strand, .saltFlat: XCTAssertGreaterThan(height, 0, "\(hex) stands dry")
             case .greyfield, .blackwood, .barrow: XCTAssertGreaterThan(height, 0.1, "\(hex)")
             }
         }
+    }
+
+    func testTheMoonfordLiesJustUnderTheWater() {
+        var map = ReliefTests.state.map
+        let still = try? XCTUnwrap(map.hexes.first { map[$0]?.terrain == .still })
+        guard let still else { return XCTFail("No still water") }
+        map.set(still, Tile(terrain: .ford))
+        let height = Relief(map: map).height(of: still)
+        XCTAssertLessThan(height, 0, "Under the water")
+        XCTAssertGreaterThan(height, Relief.baseHeight(.shallows), "but shallower than the shallows: the shingle shows through")
+        XCTAssertNotEqual(TerrainMesh.colour(.ford), TerrainMesh.colour(.still), "Pale where the Still is black")
     }
 
     func testTheLandHasNoSeams() {

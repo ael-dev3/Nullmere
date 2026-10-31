@@ -46,6 +46,10 @@ extension GameState {
             units[index].destination = nil
             units[index].errand = nil
             return []
+        case let .recall(unitID):
+            return try recall(unitID, as: house)
+        case .recallAll:
+            return try recallAll(of: house)
         case let .declareWar(target):
             return try declareWar(by: house, on: target)
         case let .propose(proposal, target):

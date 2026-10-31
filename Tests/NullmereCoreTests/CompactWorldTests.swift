@@ -145,7 +145,7 @@ final class CompactWorldTests: XCTestCase {
     /// Stored worlds name terrains and features by their place in these
     /// lists: new ones go at the end, and none moves.
     func testTheOrderOfTerrainsAndFeaturesHolds() {
-        XCTAssertEqual(Terrain.allCases.map(\.rawValue), ["still", "shallows", "strand", "saltFlat", "greyfield", "blackwood", "barrow", "spine"])
+        XCTAssertEqual(Terrain.allCases.map(\.rawValue), ["still", "shallows", "strand", "saltFlat", "greyfield", "blackwood", "barrow", "spine", "ford"])
         XCTAssertEqual(Feature.allCases.map(\.rawValue), ["moonsaltBed", "elderGrove", "stoneSeam", "darkLoam", "drownedRuin"])
         XCTAssertEqual(Bits.decode(Bits.encode([true, false, true, true, false, false, false, false, true])), [true, false, true, true, false, false, false, false, true])
         XCTAssertNil(Bits.decode("9:AAA"), "Too few bytes for the count")
