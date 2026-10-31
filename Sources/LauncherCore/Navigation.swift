@@ -4,6 +4,7 @@ public enum MenuItem: CaseIterable, Sendable {
     case news
     case settings
     case repository
+    case credits
     case quit
 
     public var title: String {
@@ -12,6 +13,7 @@ public enum MenuItem: CaseIterable, Sendable {
         case .news: return "News"
         case .settings: return "Settings"
         case .repository: return "Repository"
+        case .credits: return "Credits"
         case .quit: return "Quit"
         }
     }

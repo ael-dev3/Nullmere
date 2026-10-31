@@ -137,7 +137,7 @@ Already in Nullmere, in its own way:
 - [x] Drawing paused in the background
 
 To build, reimagined:
-- [ ] Credits, rolled in the launcher, still under reduced motion
+- [x] Credits, rolled in the launcher, still under reduced motion
 - [x] The founding watch on a hold's record ("raised in the 23rd watch", under its name)
 - [x] Bring it home: a gatherer recalled with what it carries, and every gatherer at once (Bring home and All home on its record)
 - [x] The watches left of a gathering and of the way home on a gatherer's record; a list of the House's gatherers (folded under a gatherer's record)

@@ -12,6 +12,7 @@ public final class LauncherModel {
         case title
         case news
         case settings
+        case credits
     }
 
     /// Where the news on show came from.
@@ -116,6 +117,7 @@ public final class LauncherModel {
         // Return opens a story's page; a story without one has none to open.
         case .news: return selectedNews?.link == nil ? "↑ ↓ choose  ·  Esc back" : "↑ ↓ choose  ·  Return open  ·  Esc back"
         case .settings: return "← → change  ·  Esc back"
+        case .credits: return "Esc back"
         }
     }
 
@@ -279,6 +281,7 @@ public final class LauncherModel {
         case .news: openNews()
         case .settings: show(.settings)
         case .repository: openRepository()
+        case .credits: show(.credits)
         case .quit: quit()
         }
     }
@@ -303,6 +306,7 @@ public final class LauncherModel {
         case .title: handleOnTitle(key)
         case .news: handleInNews(key)
         case .settings: handleInSettings(key)
+        case .credits: if key == .back || key == .confirm { returnToTitle() }
         }
     }
 

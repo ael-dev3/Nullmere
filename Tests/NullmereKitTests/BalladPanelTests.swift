@@ -90,12 +90,21 @@ final class BalladPanelTests: XCTestCase {
         try await waitForDraft(of: entry, in: session)
         draw(ChroniclePanel(session: session))
         XCTAssertTrue(PressableButtons.press("Another"), "Among \(shown)")
-        try await waitForDraft(of: entry, in: session)
+        // The verse before stays to read while another is made.
         XCTAssertNotNil(session.balladDrafts[entry])
         draw(ChroniclePanel(session: session))
         XCTAssertTrue(PressableButtons.press("Let it be"), "Among \(shown)")
         XCTAssertNil(session.balladDrafts[entry])
+        XCTAssertTrue(session.composing.isEmpty, "The one being made is let be with it")
+        // What was being made comes to nothing when it is done.
+        for _ in 0..<20 { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertNil(session.balladDrafts[entry], "Let be, it stays let be")
         XCTAssertTrue(session.state.songbook.isEmpty, "Unsung")
+        // Asked again, one is made.
+        session.makeBallad(of: entry)
+        try await waitForDraft(of: entry, in: session)
+        XCTAssertNotNil(session.balladDrafts[entry])
+        session.letBalladBe(of: entry)
 
         // Of a deed not its own, none is made; nor without a voice.
         session.makeBallad(of: 0)

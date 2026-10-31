@@ -346,6 +346,8 @@ jobs:
           grep -h "Test skipped" build-test.log 2>/dev/null | sed 's|^.*/Tests/||' | sort -u | head -20 || true
           cat build/coverage.log 2>/dev/null || true
           grep -h "Executed .* tests" build-test.log 2>/dev/null | tail -1 || true
+          # The world's share of the screen, measured: that its test ran.
+          grep -h "ChromeBudgetTests" build-test.log 2>/dev/null | tail -2 || true
           # Failures last, at the log's very foot, where its tail finds them.
           grep -hE "error: |failed \(" build.log build-test.log 2>/dev/null | grep -v "^ *|" | awk '!seen[$0]++' | head -40 || true
           # A figure over its allowance among them, with the runner's pace it

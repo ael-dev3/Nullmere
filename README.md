@@ -15,7 +15,7 @@ premise and principles of [Warpkeep](https://github.com/ael-dev3/Warpkeep),
 without Warpkeep's Farcaster identity.
 
 This repository holds one Mac app, **Nullmere Online**: a black lake under
-a full moon, with Play, News, Settings, Repository and Quit on the water.
+a full moon, with Play, News, Settings, Repository, Credits and Quit on the water.
 Play crosses to the realm's front door: who you are on the lake, how the
 realm stands, and the way in. Inside, you hold a House among other
 keepers' Houses: found holds, work the land, train companies, make and
@@ -213,6 +213,10 @@ Settings, Tab moves focus between controls and Space presses the focused one.
 - **News** lists the latest stories, with the chosen story beside them.
 - **Settings** is described below.
 - **Repository** opens this repository in your browser.
+- **Credits** rolls who made Nullmere Online, with what, and under what
+  licence, slowly up through a window on the water and round again; with
+  motion reduced, or Still chosen in Settings, the credits stand still and
+  scroll by hand. Esc or Return goes back.
 - **Quit** fades to black and quits.
 
 ### News

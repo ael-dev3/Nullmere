@@ -55,7 +55,7 @@ final class LauncherViewTests: XCTestCase {
     func testEveryScreenDraws() throws {
         let model = model()
         model.completeIntro()
-        for screen in [LauncherModel.Screen.title, .news, .settings] {
+        for screen in [LauncherModel.Screen.title, .news, .settings, .credits] {
             model.show(screen)
             XCTAssertEqual(model.screen, screen)
             try draw(LauncherRootView(model: model))
@@ -64,6 +64,26 @@ final class LauncherViewTests: XCTestCase {
         model.show(.title)
         try draw(LauncherRootView(model: model), width: 960, height: 600)
         try draw(LauncherRootView(model: model), width: 1920, height: 1200)
+    }
+
+    /// The credits, from the menu: rolled in full motion, still and
+    /// scrolled by hand with motion reduced; Escape or Return goes back.
+    func testTheCreditsRollAndStandStill() throws {
+        let model = model()
+        model.completeIntro()
+        model.activate(.credits)
+        XCTAssertEqual(model.screen, .credits)
+        XCTAssertEqual(model.footerHint, "Esc back")
+        try draw(CreditsPanel(model: model), width: 1000, height: 600)
+        model.choose(try XCTUnwrap(MotionPreference.allCases.firstIndex(of: .still)), for: .motion)
+        try draw(CreditsPanel(model: model), width: 1000, height: 600)
+        model.handle(.down)
+        XCTAssertEqual(model.screen, .credits, "The arrows leave it be")
+        model.handle(.back)
+        XCTAssertEqual(model.screen, .title)
+        model.activate(.credits)
+        model.handle(.confirm)
+        XCTAssertEqual(model.screen, .title)
     }
 
     func testEveryRequirementStateDraws() throws {

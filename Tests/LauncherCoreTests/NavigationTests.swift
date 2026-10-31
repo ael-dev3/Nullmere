@@ -3,7 +3,7 @@ import XCTest
 
 final class NavigationTests: XCTestCase {
     func testMenuMovesAndWraps() {
-        XCTAssertEqual(MenuItem.allCases, [.play, .news, .settings, .repository, .quit])
+        XCTAssertEqual(MenuItem.allCases, [.play, .news, .settings, .repository, .credits, .quit])
         XCTAssertEqual(MenuItem.play.moved(by: 1), .news)
         XCTAssertEqual(MenuItem.quit.moved(by: 1), .play)
         XCTAssertEqual(MenuItem.play.moved(by: -1), .quit)

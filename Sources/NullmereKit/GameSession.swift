@@ -1760,8 +1760,8 @@ public final class GameSession {
         let moment = VoiceFacts.ballad(state.chronicle[entry], in: state, by: player)
         Task { [weak self] in
             let verse = await voice.compose(moment)
-            guard let self else { return }
-            self.composing.remove(entry)
+            // Let be while it was made: nothing comes of it.
+            guard let self, self.composing.remove(entry) != nil else { return }
             if let verse {
                 withAnimation(.easeOut(duration: 0.6)) { self.balladDrafts[entry] = verse }
             } else {
@@ -1778,9 +1778,10 @@ public final class GameSession {
         return true
     }
 
-    /// Lets a ballad made go unsung.
+    /// Lets a ballad made go unsung, and one still being made with it.
     func letBalladBe(of entry: Int) {
         balladDrafts[entry] = nil
+        composing.remove(entry)
     }
 
     // MARK: Voices

@@ -201,6 +201,10 @@ private struct ScreenStack: View {
                 SettingsPanel(model: model)
                     .padding(.top, 34 * unit * rhythm)
                     .transition(.opacity)
+            case .credits:
+                CreditsPanel(model: model)
+                    .padding(.top, 28 * unit * rhythm)
+                    .transition(.opacity)
             }
         }
     }

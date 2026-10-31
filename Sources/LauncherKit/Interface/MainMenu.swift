@@ -1,7 +1,7 @@
 import LauncherCore
 import SwiftUI
 
-/// Play, News, Settings, Repository and Quit, in a row on the water.
+/// Play, News, Settings, Repository, Credits and Quit, in a row on the water.
 struct MainMenu: View {
     let model: LauncherModel
 
@@ -34,6 +34,7 @@ struct MainMenu: View {
         case .news: return "Shows the latest news"
         case .settings: return "Shows the launcher settings"
         case .repository: return "Opens the source code on GitHub in your browser"
+        case .credits: return "Shows who made Nullmere Online"
         case .quit: return "Quits Nullmere Online"
         }
     }
