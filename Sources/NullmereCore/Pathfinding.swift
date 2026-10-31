@@ -169,10 +169,22 @@ struct WaySearch {
     /// but the goal; nil when there is none, or none found within 6,000
     /// tiles searched.
     mutating func way(on map: WorldMap, from start: Int, to goal: Int, around blocked: [Bool]) -> [Hex]? {
+        let hexes = map.hexes, neighbours = map.neighbours
+        // A goal every way into which is shut, or a start every way out of
+        // which is, has no way to it: known at once, not after searching
+        // all the land that can be reached, as a goal ringed by companies
+        // would have it.
+        func shut(_ tile: Int, but other: Int) -> Bool {
+            for side in 0..<6 {
+                let next = Int(neighbours[tile * 6 + side])
+                if next >= 0, next == other || (!blocked[next] && map[next].terrain.isPassable) { return false }
+            }
+            return true
+        }
+        if shut(goal, but: start) || shut(start, but: goal) { return nil }
         for tile in touched { best[Int(tile)] = 0 }
         touched.removeAll(keepingCapacity: true)
         open.removeAll()
-        let hexes = map.hexes, neighbours = map.neighbours
         let target = hexes[goal]
         best[start] = 1
         touched.append(Int32(start))
