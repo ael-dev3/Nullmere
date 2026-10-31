@@ -55,6 +55,9 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// One of a hold's townsfolk about its work (see `Folk`): a farmhand, a
     /// carter of timber or of stone, a salter, a porter.
     case folk(variant: Int)
+    /// Of the town about a hold (see `Town`): a home, its well, a field, a
+    /// length of lane, a market stall.
+    case town(Town)
 
     public var description: String {
         switch self {
@@ -78,6 +81,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .storehouse: return "storehouse"
         case .yard(let resource): return "\(resource.rawValue) yard"
         case .folk(let variant): return "folk \(variant)"
+        case .town(let piece): return piece.rawValue
         }
     }
 
@@ -119,7 +123,8 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
             return .commander(variant: (variant % count + count) % count)
         case .study(let level): return .study(level: clamp(level, ModelKey.studyLevels))
         case .folk(let variant): return .folk(variant: (variant % Folk.variants + Folk.variants) % Folk.variants)
-        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .standard, .allianceHall, .storehouse, .yard, .signature:
+        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .standard, .allianceHall, .storehouse, .yard, .signature,
+             .town:
             return self
         }
     }
@@ -134,7 +139,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     public var budget: Int {
         switch self {
         case .figure, .signature, .wild, .commander, .folk: return 700
-        case .furnishing, .prop: return 300
+        case .furnishing, .prop, .town: return 300
         case .keep, .keepOf, .allianceHall: return 4500
         case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .standard, .storehouse, .yard: return 3000
         }
@@ -260,6 +265,7 @@ public enum Library {
         keys += Resource.allCases.map { .yard($0) }
         keys += Heritage.allCases.map { .signature($0) }
         keys += (0..<Folk.variants).map { .folk(variant: $0) }
+        keys += Town.allCases.map { .town($0) }
         return keys
     }()
 
@@ -287,6 +293,7 @@ public enum Library {
         case .storehouse: return Stores.storehouse(name: key.canonical.description)
         case .yard(let resource): return Stores.yard(resource, name: key.canonical.description)
         case .folk(let variant): return Folk.build(variant, name: key.canonical.description)
+        case .town(let piece): return Town.build(piece, name: key.canonical.description)
         }
         return Model(name: key.canonical.description, mesh: mesh)
     }

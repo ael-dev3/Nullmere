@@ -80,7 +80,8 @@ final class Portraits {
         var plan = HoldLayout.Plan(hold: hold, heritage: heritage)
         plan.hex = Hex(0, 0)
         plan.rising = nil
-        let pieces = HoldLayout.pieces(plan, relief: Relief(map: land.map))
+        let relief = Relief(map: land.map)
+        let pieces = HoldLayout.pieces(plan, relief: relief) + HoldLayout.town(plan, relief: relief)
         var scene = SceneFrame()
         var order: [ModelKey] = []
         var instances: [ModelKey: [ModelInstance]] = [:]

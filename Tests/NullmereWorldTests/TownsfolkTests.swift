@@ -6,8 +6,9 @@ import XCTest
 
 /// A hold's townsfolk: one for each work standing whole, up to six, each
 /// the folk of its work's kind, going out from the keep's door to the work
-/// and back at a walk their feet hold the ground at, through the gate where
-/// the hold is walled; none about a hold whose ward is broken.
+/// and back at a walk their feet hold the ground at, along the town's lanes
+/// and never through a home, through the gate and round the walls where the
+/// hold is walled; none about a hold whose ward is broken.
 final class TownsfolkTests: XCTestCase {
     private let state = GameState(settings: GameSettings(seedText: "townsfolk", houseCount: 4, radius: 14, keepers: 1))
 
@@ -62,10 +63,44 @@ final class TownsfolkTests: XCTestCase {
         let errands = stage.errands(of: HoldSight(hold: hold, colour: Vec4(1, 0, 0, 1)))
         XCTAssertEqual(errands.count, 2)
         for errand in errands {
-            XCTAssertEqual(errand.path.count, 4)
+            XCTAssertGreaterThanOrEqual(errand.path.count, 4)
+            XCTAssertEqual(flat(errand.path[0], heart), HoldLayout.door, accuracy: 1e-3, "From the keep's door")
             XCTAssertEqual(flat(errand.path[1], gate), 0.12, accuracy: 1e-3, "Within the gate")
             XCTAssertEqual(flat(errand.path[2], gate), 0.12, accuracy: 1e-3, "and out of it")
             XCTAssertLessThan(flat(errand.path[1], heart), flat(errand.path[2], heart))
+            // Round the ring lane outside the walls, a step at a time, then
+            // out along the work's own lane.
+            let ring = errand.path[3...].filter { abs(flat($0, heart) - HoldLayout.ringLane) < 1e-3 }
+            XCTAssertGreaterThanOrEqual(ring.count, 1)
+            for (a, b) in zip(ring, ring.dropFirst()) {
+                XCTAssertLessThan(flat(a, b), 0.27)
+            }
+            XCTAssertGreaterThanOrEqual(flat(try XCTUnwrap(errand.path.last), heart), HoldLayout.ringLane - 1e-3)
+        }
+    }
+
+    func testTheyKeepToTheLanesAndNeverWalkThroughAHome() throws {
+        let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
+        let works: [BuildingKind: Int] = [.granary: 2, .sawpit: 2, .quarry: 1, .saltworks: 1, .infirmary: 1, .forge: 1]
+        for levels in [works, works.merging([.walls: 3]) { $1 }] {
+            let hold = try seat(levels)
+            let homes = stage.pieces(of: hold, progress: nil).compactMap { piece -> (Vec3, Town)? in
+                guard case .town(let town) = piece.key, town != .lane else { return nil }
+                return (piece.position, town)
+            }
+            XCTAssertGreaterThan(homes.count, 10, "A town about the hold")
+            let errands = stage.errands(of: HoldSight(hold: hold, colour: Vec4(1, 0, 0, 1)))
+            XCTAssertEqual(errands.count, WorldStage.townsfolkMost)
+            for errand in errands {
+                for (a, b) in zip(errand.path, errand.path.dropFirst()) {
+                    for step in 0...20 {
+                        let p = a + (b - a) * (Float(step) / 20)
+                        for (at, town) in homes {
+                            XCTAssertGreaterThan(flat(p, at), town.footprint, "\(errand.key) walks round a \(town), not through it")
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -96,7 +131,8 @@ final class TownsfolkTests: XCTestCase {
                 time += 0.05
             }
             XCTAssertEqual(clips, [.march, .idle])
-            XCTAssertEqual(WorldStage.walk(errand, at: 3).position, WorldStage.walk(errand, at: 3 + round).position, "Round and round")
+            XCTAssertEqual(flat(WorldStage.walk(errand, at: 3).position, WorldStage.walk(errand, at: 3 + round).position), 0, accuracy: 1e-4,
+                           "Round and round")
         }
         let none = WorldStage.Errand(key: .folk(of: .granary), path: [Vec3(1, 0, 1)], salt: 1)
         XCTAssertEqual(WorldStage.walk(none, at: 2).clip, .idle)

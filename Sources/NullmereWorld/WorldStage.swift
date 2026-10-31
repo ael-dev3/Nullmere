@@ -396,7 +396,7 @@ public final class WorldStage: @unchecked Sendable {
             plan.levels[finishing.work] = finishing.level > 1 ? finishing.level - 1 : nil
             plan.rising = finishing
         }
-        let made = HoldLayout.pieces(plan, relief: relief)
+        let made = HoldLayout.pieces(plan, relief: relief) + HoldLayout.town(plan, relief: relief)
         laid[hold.id] = (hold, progress, finishing, heritage, made)
         return made
     }
@@ -410,11 +410,11 @@ public final class WorldStage: @unchecked Sendable {
     }
 
     /// Whether a piece of a hold is built the way its House's people build:
-    /// its works and walls; the keep is its people's already, and a
+    /// its works, walls and town; the keep is its people's already, and a
     /// scaffold is a scaffold anywhere.
     public static func isPeoples(_ key: ModelKey) -> Bool {
         switch key {
-        case .work, .study, .walls: return true
+        case .work, .study, .walls, .town: return true
         default: return false
         }
     }
@@ -470,8 +470,10 @@ public final class WorldStage: @unchecked Sendable {
 
     /// Where a hold's townsfolk go: one for each work standing whole, up to
     /// `townsfolkMost`, each between the keep's door and the front of its
-    /// work, the folk of that work's kind; out through the gate where the
-    /// hold is walled.
+    /// work, the folk of that work's kind, along the lanes of the town:
+    /// straight out along the work's own lane, or where the hold is walled
+    /// out through the gate, round the ring lane outside the walls and out
+    /// along the work's lane.
     public func errands(of sight: HoldSight) -> [Errand] {
         let pieces = pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage)
         guard let keep = pieces.first(where: { piece in
@@ -498,10 +500,23 @@ public final class WorldStage: @unchecked Sendable {
             default: continue
             }
             let at = Vec3(piece.position.x, 0, piece.position.z)
-            let stop = at - toward(at, from: walled ? gate : heart) * (HoldLayout.workRadius + 0.05)
-            let path = walled
-                ? [heart + out * 0.42, gate - out * 0.12, gate + out * 0.12, stop]
-                : [heart + toward(at, from: heart) * 0.42, stop]
+            let way = toward(at, from: heart)
+            let reach = ((at.x - heart.x) * (at.x - heart.x) + (at.z - heart.z) * (at.z - heart.z)).squareRoot() - HoldLayout.workRadius - 0.05
+            var path = [heart + way * HoldLayout.door]
+            if walled {
+                path += [gate - out * 0.12, gate + out * 0.12]
+                let from = Float(atan2(Double(out.z), Double(out.x))), to = Float(atan2(Double(way.z), Double(way.x)))
+                let turn = Float(remainder(Double(to - from), 2 * .pi))
+                let steps = Int((abs(turn) / (Float.pi / 12)).rounded(.up))
+                path += (0...steps).map { step in
+                    let angle = Double(from + turn * Float(step) / Float(steps))
+                    return heart + Vec3(Float(cos(angle)), 0, Float(sin(angle))) * HoldLayout.ringLane
+                }
+                path[0] = heart + out * HoldLayout.door
+                if reach > HoldLayout.ringLane + 1e-3 { path.append(heart + way * reach) }
+            } else {
+                path.append(heart + way * reach)
+            }
             errands.append(Errand(key: key, path: path, salt: sight.hold.id &* 31 &+ index))
         }
         return errands

@@ -1168,13 +1168,28 @@ There is no music in the launcher; the game makes its own sound as it plays.
   band of their House's colour: a farmhand with a pitchfork goes out to the
   granary, carters haul logs from the sawpit and stone from the quarry, a
   salter carries a basket from the saltworks and porters go about the
-  rest, out from the keep's door (through the gate, where the hold is
-  walled), a while at their work and back, at a walk their feet hold the
-  ground at. They keep within a hold whose ward is broken, and stay in
-  where motion is reduced. A cart goes on the way between each hold and
+  rest, out from the keep's door along the town's lanes (through the gate
+  and round the walls, where the hold is walled), a while at their work and
+  back, at a walk their feet hold the ground at. They keep within a hold
+  whose ward is broken, and stay in where motion is reduced. A cart goes on the way between each hold and
   the nearest other of its House within seven hexes, where unbroken land
   runs between, from beyond one's walls to beyond the other's and back,
   logs one way and stone the next.
+- **Every hold is a town.** Lanes of trodden earth and set stones run out
+  from the keep's door, one through the gate to the hold's edge and one to
+  each work standing or rising, and a ring lane goes round outside the
+  walls. Between them stand the homes of the hold's folk, their windows
+  lit and their doors in their House's colour: whitewashed cottages under
+  thatch, longhouses with their woodpiles, roundhouses, and tall townhouses
+  of stone and timber under slate, all of them their people's way. A few
+  stand about a bare keep and three more for every level its works rise,
+  up to forty-four, and sixty-four about a seat, in the ward first and then
+  out beyond the works, each facing its lane; a home once standing stays.
+  Every hold has its well, a seat its market of stalls under awnings in
+  its colour, and a granary its strip fields of grain at the hold's edge,
+  one for each level to three. Nothing of the town stands on a lane, on
+  the walls' ground, where a work stands or could, or on the hearts of the
+  hexes about the hold, where companies stand.
 - **The camera** pans, zooms, turns and leans, looking down on the whole
   lake from afar and leaning toward the horizon close in among the models.
   The map's marks (names, bars, ranks, the damage dealt) stand over the

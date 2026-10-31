@@ -121,14 +121,14 @@ final class StageTests: XCTestCase {
         XCTAssertEqual(built.hearths.count, hearths.count, "its hall smokes as the common keep's does")
         XCTAssertEqual(stage.pieces(of: hold, progress: nil, heritage: .moundClans).first?.key, .keepOf(.moundClans, seat: true))
 
-        // Its works and walls are built in its people's way; its keep is
-        // theirs already. A House whose people are unknown builds the
+        // Its works, walls and town are built in its people's way; its keep
+        // is theirs already. A House whose people are unknown builds the
         // common way.
         let clans = WorldStage.peopleFlags(.moundClans)
         for batch in built.batches {
             for instance in batch.instances {
                 switch batch.key {
-                case .work, .walls: XCTAssertEqual(instance.flags, clans, "\(batch.key) is built the Mound Clans' way")
+                case .work, .walls, .town: XCTAssertEqual(instance.flags, clans, "\(batch.key) is built the Mound Clans' way")
                 default: XCTAssertEqual(instance.flags, 0, "\(batch.key) is as it is")
                 }
             }

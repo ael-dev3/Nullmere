@@ -54,7 +54,7 @@ final class PreviewTests: XCTestCase {
         }
         let land = family {
             switch $0 {
-            case .furnishing, .site, .prop, .shrine, .lair, .standard, .yard: return true
+            case .furnishing, .site, .prop, .shrine, .lair, .standard, .yard, .town: return true
             default: return false
             }
         }
@@ -147,7 +147,7 @@ final class PreviewTests: XCTestCase {
         }
         let rising = HoldLayout.Plan.Rising(work: grand ? .building(.moonspire) : .building(.beacon), level: grand ? 4 : 1, progress: 0.4)
         let plan = HoldLayout.Plan(hex: seat, isSeat: true, levels: levels, rising: rising)
-        var pieces = HoldLayout.pieces(plan, relief: relief)
+        var pieces = HoldLayout.pieces(plan, relief: relief) + HoldLayout.town(plan, relief: relief)
         // Companies on land a little way out, facing the hold.
         let companies: [(key: ModelKey, health: Int, led: Int?)] = [
             (.figure(.spear, tier: 5), 100, 0), (.figure(.bow, tier: 3), 80, nil), (.figure(.rider, tier: 4), 100, 4),
