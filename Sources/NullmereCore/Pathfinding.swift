@@ -214,8 +214,9 @@ struct WaySearch {
 
     /// The cheapest way from the tile `start` to the tile `goal`, as the
     /// hexes stepped through after the start, round every tile `blocked`
-    /// but the goal; nil when there is none, or none found within 6,000
-    /// tiles searched.
+    /// but the goal; nil when there is none. However far it is, a way there
+    /// is is found: across the widest lake a march may be a hundred and
+    /// sixty steps, and the search that finds it once is kept by the march.
     mutating func way(on map: WorldMap, from start: Int, to goal: Int, around blocked: [Bool]) -> [Hex]? {
         let hexes = map.hexes, neighbours = map.neighbours, steps = map.steps
         // A goal every way into which is shut, or a start every way out of
@@ -237,7 +238,6 @@ struct WaySearch {
         best[start] = 1
         touched.append(Int32(start))
         open.push(KeyHeap.key(hexes[start].distance(to: target), start))
-        var expanded = 0
 
         while let key = open.pop() {
             let tile = KeyHeap.tile(of: key)
@@ -253,8 +253,6 @@ struct WaySearch {
             let cost = Int(best[tile]) - 1
             // A stale entry: a cheaper way here was already found.
             guard KeyHeap.priority(of: key) == cost + hexes[tile].distance(to: target) else { continue }
-            expanded += 1
-            if expanded > 6_000 { return nil }
             for side in 0..<6 {
                 let next = Int(neighbours[tile * 6 + side])
                 guard next >= 0, next == goal || !blocked[next] else { continue }
