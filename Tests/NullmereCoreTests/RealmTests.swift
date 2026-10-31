@@ -403,7 +403,14 @@ final class FogTests: XCTestCase {
         let view = state.view(for: me)
         XCTAssertEqual(view.settings.seedText, "", "The realm's words stay with the realm")
         XCTAssertEqual(view.houses[me], state.houses[me])
-        XCTAssertEqual(view.units(of: me), state.units(of: me))
+        // Their own companies in full, but for the ways the realm keeps for
+        // their marches, which no view carries.
+        XCTAssertEqual(view.units(of: me), state.units(of: me).map { unit in
+            var unit = unit
+            unit.way = nil
+            return unit
+        })
+        XCTAssertTrue(view.units.allSatisfy { $0.way == nil })
         XCTAssertEqual(view.holds.count, state.holds.count, "Every hold is on the political map")
         let seen = state.visibility(for: me)
         for other in state.houses where other.id != me {

@@ -968,9 +968,14 @@ realm; keepers are told in plain words, never a status code.
   share of the watch's moves, a step at a time, and every host on the
   march walks on and strikes the moment it is there; each steward gives
   its orders at a pace of its own, spread through the watch. Keepers see
-  the steps as they are taken. As the watch turns, whatever the paces left
-  (the watch turning early, a way shut for a while) is walked first, so a
-  march goes as far in a watch as ever; the last pace is the turn's own.
+  the steps as they are taken. A march keeps its way: found as the
+  company sets out and walked pace by pace, it is sought anew only when
+  its next step is shut, by a company come to stand in it, a hold fallen
+  to another House or the wilds, and the company goes round; the realm
+  keeps it, and no keeper's view carries it. As the watch turns,
+  whatever the paces left (the watch turning early, a way shut for a
+  while) is walked first, so a march goes as far in a watch as ever; the
+  last pace is the turn's own.
   A battle goes on through the watch, as a field of battle (below).
 - **Fields of battle.** In a realm, a strike on another House's company
   joins battle there, a field of battle that goes on pace by pace and takes
@@ -1075,17 +1080,18 @@ realm; keepers are told in plain words, never a status code.
 - **How ages end.** In 48 ages of a realm as it stands by default, twelve
   seats on a lake of radius 36, played through by stewards alone, pace by
   pace, under the rules as they now stand, the shores at war in every
-  Sundering, a field of battle five tiles about its heart and each level
-  of a Muster Hall leading eight first musters more, the Moonspire
-  decided 41 and dominion 7; an age ran 151 watches at the median and 215
-  at the longest, and one in seven saw a House fall outright. The seats
-  won alike, within chance (χ² 12.0 on 11 degrees of freedom), and so did
-  the tempers (χ² 0.7 on 3), the ambitious 29%, the cunning 25%, the wary
-  21% and the steadfast 25%, the Moonspire most of all for each: the seven
-  dominions went four to the ambitious, two to the cunning and one to the
-  wary. A realm's armies came to 1,720,000 troops at the median as its age
-  ended, and its greatest battles to 74,500 troops at the median and
-  119,800 at the most, over 100,000 in eight of the ages.
+  Sundering, a field of battle five tiles about its heart, each level of
+  a Muster Hall leading eight first musters more and every march keeping
+  its way, the Moonspire decided 44 and dominion 4; an age ran 153
+  watches at the median and 217 at the longest, and more than a quarter
+  saw a House fall outright. The seats won alike, within chance (χ² 10.0
+  on 11 degrees of freedom), and so did the tempers (χ² 1.5 on 3), the
+  ambitious 21%, the cunning 31%, the wary 21% and the steadfast 27%, the
+  Moonspire most of all for each: the four dominions went two to the
+  cunning and one each to the ambitious and the steadfast. A realm's
+  armies came to 1,870,000 troops at the median as its age ended, and its
+  greatest battles to 79,200 troops at the median and 138,400 at the
+  most, over 100,000 in ten of the ages.
 - **Tribute.** From watch twenty, an ambitious or cunning steward a quarter
   stronger than a neighbour may demand a fifth of its stores. Paid, it keeps
   the peace for twenty watches, unless that neighbour's Moonspire rises;

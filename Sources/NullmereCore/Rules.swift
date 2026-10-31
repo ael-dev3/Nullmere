@@ -177,8 +177,9 @@ extension GameState {
             || (self.unit(at: target) == nil && storehouse(at: target).map { isFoe(house, ofAlliance: $0.alliance) } == true) {
             return try attack(with: unitID, at: target, as: house)
         }
-        // The way found to know there is one is the way it sets out on.
-        let way = unknown ? nil : path(for: unit, to: target)
+        // The way found to know there is one is the way it sets out on; a
+        // way it already keeps there, it keeps.
+        let way = unknown ? nil : keptWay(of: unit, to: target) ?? path(for: unit, to: target)
         guard unknown || way != nil else { throw .noPath }
         units[index].destination = target
         units[index].fortified = false
@@ -189,16 +190,19 @@ extension GameState {
 
     /// Moves a unit along its route as far as its moves allow this watch,
     /// or, at a pace, keeping back so many of them for the paces to come.
-    /// The route is planned once: it steers round every other company, so
-    /// only its end, the destination itself, can be held by another.
+    /// The route is kept from one pace to the next and found anew only when
+    /// its next step is shut: as found, it steers round every other company,
+    /// so only its end, the destination itself, can be held by another.
     /// `planned`, its way to its destination as just found, if it was.
     mutating func march(_ unitID: Int, keeping reserve: Int? = nil, planned: [Hex]? = nil) -> [GameEvent] {
         guard var index = unitIndex(unitID) else { return [] }
         var steps: [Hex] = []
         var events: [GameEvent] = []
-        var route: [Hex] = planned ?? []
+        var route: [Hex] = planned ?? keptWay(of: units[index]) ?? []
         while let destination = units[index].destination, units[index].movesLeft > max(reserve ?? 0, 0) {
             let unit = units[index]
+            // A step shut since the way was found: the way is found anew.
+            if let next = route.first, next != destination, isShut(next, for: unit) { route = [] }
             if route.isEmpty {
                 // No way there: into ground still unknown to its House, it
                 // goes as near as it can; known ground unreachable ends it,
@@ -244,6 +248,9 @@ extension GameState {
             }
             index = unitIndex(unitID)!
         }
+        // What is left of its way, kept for the paces to come: a way that
+        // ends where it is bound, not a way only toward it.
+        units[index].way = units[index].destination != nil && route.last == units[index].destination ? route : nil
         if !steps.isEmpty {
             events.insert(.moved(unit: unitID, path: steps), at: 0)
         }

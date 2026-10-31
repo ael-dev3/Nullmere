@@ -65,6 +65,10 @@ extension GameState {
                 events += march(unit.id)
             }
         }
+        // A company that has stopped keeps no way.
+        for index in units.indices where units[index].way != nil && units[index].destination == nil {
+            units[index].way = nil
+        }
         events += advanceRallies(marching: !isPaced)
         events += workTheLand()
         raiseShrines()

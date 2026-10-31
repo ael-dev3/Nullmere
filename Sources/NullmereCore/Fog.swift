@@ -27,6 +27,12 @@ extension GameState {
         // A company in sight shows where it stands and how many it is, not
         // where it is bound, nor what it is about or carries, nor whether it
         // drills.
+        // The way a company keeps is the realm's: found on the whole map, it
+        // would tell what bends it, so no view carries one, the keeper's own
+        // companies' included.
+        for index in view.units.indices {
+            view.units[index].way = nil
+        }
         for index in view.units.indices where view.units[index].owner != house {
             view.units[index].destination = nil
             view.units[index].errand = nil

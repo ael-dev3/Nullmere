@@ -170,6 +170,10 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
     /// Where it drills, for as long as it stands there: one of its House's
     /// holds with a Muster Hall.
     public var drillAt: Hex?
+    /// The way it has yet to go to its destination, as last found: the
+    /// hexes it steps through, in order. Kept by the realm alone; no
+    /// keeper's view carries it.
+    public internal(set) var way: [Hex]?
 
     /// Veterancy: none, then Blooded, Hardened and Sworn as battles are
     /// survived. Each rank adds a tenth to attack and defence.
@@ -222,10 +226,34 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
         self.load = nil
         self.drilled = nil
         self.drillAt = nil
+        self.way = nil
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, kind, owner, position, health, movesLeft, destination, fortified, acted, experience, tier, leader, errand, load, drilled, drillAt
+        case id, kind, owner, position, health, movesLeft, destination, fortified, acted, experience, tier, leader, errand, load, drilled, drillAt, way
+    }
+
+    // A way is written as a march's is: its first hex and a digit for each
+    // step after.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(kind, forKey: .kind)
+        try container.encode(owner, forKey: .owner)
+        try container.encode(position, forKey: .position)
+        try container.encode(health, forKey: .health)
+        try container.encode(movesLeft, forKey: .movesLeft)
+        try container.encodeIfPresent(destination, forKey: .destination)
+        try container.encode(fortified, forKey: .fortified)
+        try container.encode(acted, forKey: .acted)
+        try container.encode(experience, forKey: .experience)
+        try container.encode(tier, forKey: .tier)
+        try container.encodeIfPresent(leader, forKey: .leader)
+        try container.encodeIfPresent(errand, forKey: .errand)
+        try container.encodeIfPresent(load, forKey: .load)
+        try container.encodeIfPresent(drilled, forKey: .drilled)
+        try container.encodeIfPresent(drillAt, forKey: .drillAt)
+        try container.encodeIfPresent(way.flatMap(March.way(of:)), forKey: .way)
     }
 
     /// Games saved before veterancy have no experience recorded; it starts at
@@ -248,5 +276,13 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
         load = try container.decodeIfPresent(Stock.self, forKey: .load)
         drilled = try container.decodeIfPresent(Int.self, forKey: .drilled)
         drillAt = try container.decodeIfPresent(Hex.self, forKey: .drillAt)
+        if let way = try container.decodeIfPresent(String.self, forKey: .way) {
+            guard let route = March.route(fromWay: way) else {
+                throw DecodingError.dataCorruptedError(forKey: .way, in: container, debugDescription: "Unreadable way")
+            }
+            self.way = route
+        } else {
+            way = nil
+        }
     }
 }

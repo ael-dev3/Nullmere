@@ -125,7 +125,7 @@ extension GameState {
         var ways: [Int: [Hex]] = [:]
         for unit in units {
             guard let destination = unit.destination else { continue }
-            ways[unit.id] = routes.path(for: unit, to: destination) ?? []
+            ways[unit.id] = keptWay(of: unit, to: destination) ?? routes.path(for: unit, to: destination) ?? []
         }
         return ways
     }
