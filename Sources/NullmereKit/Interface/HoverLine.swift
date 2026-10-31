@@ -10,6 +10,10 @@ enum HoverInfo {
         let tile = state.map[index]
         var parts = [tile.terrain.title]
         if let feature = tile.feature { parts.append(feature.title) }
+        // A bottle afloat here, or washed up and waiting to be found.
+        if let bottle = state.bottlesOnTheLake.first(where: { $0.position == hex && $0.foundBy == nil }) {
+            parts.append(bottle.ashore ? "a bottle washed up" : "a bottle afloat")
+        }
         // A hold of an age before: drowned here, or, searched, remembered.
         if let drowned = state.drowned(at: hex) {
             parts.append(tile.feature == .drownedRuin ? "the drowned hold of \(drowned.title)" : "where \(drowned.title) stood")

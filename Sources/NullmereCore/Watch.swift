@@ -51,6 +51,7 @@ extension GameState {
         if isPaced { pacing = Pacing() }
         turnOmens()
         events += turnTide()
+        events += driftBottles()
         forgetOldGifts()
         // An envoy unanswered is an envoy refused.
         let unanswered = envoys.filter { watch - $0.arrived >= Envoy.patience }

@@ -119,6 +119,17 @@ extension GameState {
         view.fields = fields?.filter { field in field.side(of: house) != nil || (map.index(of: field.at).map { seen[$0] } ?? false) }
         // The marches they may know of, worked out on what they see.
         view.marches = marches(seenBy: house, in: view, ways: ways)
+        // Bottles where they see them; the words only in their own and in
+        // those they found.
+        view.bottles = bottles.map { all in
+            all.compactMap { bottle in
+                let theirs = bottle.from == house || bottle.foundBy == house
+                guard theirs || (map.index(of: bottle.position).map { seen[$0] } ?? false) else { return nil }
+                var shown = bottle
+                if !theirs { shown.words = "" }
+                return shown
+            }
+        }
         // The holds of the ages before, where they have seen the ground.
         view.drowned = drowned.map { all in
             all.filter { hold in map.index(of: hold.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
@@ -238,6 +249,10 @@ extension GameState {
                 return word.alliance == nil || word.alliance == alliance(of: house)?.id
             case .sung:
                 return true
+            case .bottleCast(_, let from, let at):
+                return from == house || visible(at)
+            case .bottleFound(let bottle, let by):
+                return by == house || bottle.from == house
             case .promoted(_, let owner, _):
                 return owner == house
             case .ruinSearched(let at, let by, _):

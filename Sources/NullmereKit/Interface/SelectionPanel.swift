@@ -102,6 +102,13 @@ struct OwnHoldDetails: View {
     let session: GameSession
     let hold: Hold
 
+    /// The works and the companies a hold musters, each folded to a line
+    /// until asked for; the keeper's choice kept for every hold.
+    @AppStorage(OwnHoldDetails.worksKey) private var worksOpen = false
+    @AppStorage(OwnHoldDetails.companiesKey) private var companiesOpen = false
+    static let worksKey = "hold.works.open"
+    static let companiesKey = "hold.companies.open"
+
     /// When a hold was raised: with the age, or in which watch since.
     static func raised(_ hold: Hold) -> String {
         hold.foundedWatch <= 1 ? "raised as the age opened" : "raised in the \(SeatBriefing.ordinal(hold.foundedWatch)) watch"
@@ -162,9 +169,11 @@ struct OwnHoldDetails: View {
             }
 
             Rule()
-            Caps("Works", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7))
-            ForEach(BuildingKind.allCases, id: \.self) { kind in
-                if !kind.requiresSeat || hold.isSeat {
+            // Open on a work chosen in the city view, or a charge's Show me.
+            FoldedList(title: "Works", count: OwnHoldDetails.works(of: hold).count,
+                       summary: OwnHoldDetails.worksSummary(of: hold, in: state, for: session.player),
+                       open: $worksOpen, held: session.workInFocus != nil || session.beckon?.pointsAtWork == true) {
+                ForEach(OwnHoldDetails.works(of: hold), id: \.self) { kind in
                     BuildingRow(session: session, hold: hold, kind: kind, stock: stock)
                         .padding(.horizontal, 4)
                         .background(RoundedRectangle(cornerRadius: 4).fill(session.workInFocus == kind ? Palette.line(0.08) : .clear))
@@ -173,13 +182,20 @@ struct OwnHoldDetails: View {
             }
 
             Rule()
-            Caps("Companies", size: 9, weight: .medium).foregroundStyle(Palette.text(0.7))
-            ForEach(UnitKind.allCases, id: \.self) { kind in
-                TrainingRow(session: session, hold: hold, kind: kind, stock: stock)
+            FoldedList(title: "Companies", count: UnitKind.allCases.count,
+                       summary: OwnHoldDetails.companiesSummary(of: hold, in: state, for: session.player),
+                       open: $companiesOpen, held: session.beckon?.pointsAtTraining == true) {
+                ForEach(UnitKind.allCases, id: \.self) { kind in
+                    TrainingRow(session: session, hold: hold, kind: kind, stock: stock)
+                }
             }
 
             Rule()
             BarterRow(session: session)
+            // A hold on the shore sets words on the water, folded until asked for.
+            if state.castingWater(beside: hold) != nil {
+                BottleComposer(session: session, hold: hold)
+            }
         }
         .padding(16)
     }
@@ -647,10 +663,12 @@ struct UnitPanel: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             if mine {
-                Text(verbatim: hint(for: unit))
-                    .font(.nm(10.5))
-                    .foregroundStyle(Palette.text(0.55))
-                    .fixedSize(horizontal: false, vertical: true)
+                if let hint = hint(for: unit) {
+                    Text(verbatim: hint)
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.55))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 // Its orders wrap rather than run off the panel.
                 FlowLayout(spacing: 4) {
                     if unit.kind == .founder {
@@ -789,10 +807,14 @@ struct UnitPanel: View {
         return now + " · \(left) more battle\(left == 1 ? "" : "s") to rise"
     }
 
-    private func hint(for unit: Unit) -> String {
+    /// Where it marches, and while the first steps are taught, how to order
+    /// it; the Guide keeps the how after.
+    private func hint(for unit: Unit) -> String? {
+        let teaching = session.firstSteps != nil
         if let march = UnitPanel.march(of: unit, in: session.state, viewer: session.player) {
-            return march + " Right-click elsewhere to change course."
+            return march + (teaching ? " Right-click elsewhere to change course." : "")
         }
+        guard teaching else { return nil }
         switch unit.kind {
         case .founder: return "Right-click to march. Found a hold on open land three tiles from any other."
         case .lantern: return "Right-click to march into the dark and reveal it. Lanterns see far, and scout another House's hold from two tiles."

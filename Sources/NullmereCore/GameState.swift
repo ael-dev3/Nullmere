@@ -94,6 +94,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The holds of the age before, drowned where they stood in this one;
     /// absent in a realm's first age, and in worlds made apart from a realm.
     var drowned: [DrownedHold]?
+    /// Bottles on the lake: afloat, washed up, or found and kept; absent
+    /// before the first is set on the water.
+    var bottles: [Bottle]?
     /// The rallies gathering or on the march; absent in saves from before them.
     var rallies: [Rally]?
     /// How far the watch has been walked, in a realm, whose watch passes

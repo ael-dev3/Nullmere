@@ -74,6 +74,8 @@ extension GameState {
             return try foundAlliance(named: name, by: house)
         case let .sing(ballad, entry):
             return try sing(ballad, of: entry, as: house)
+        case let .castBottle(words, holdID, signed):
+            return try castBottle(words, from: holdID, signed: signed, as: house)
         case let .say(words, toAlliance):
             return try say(words, toAlliance: toAlliance, as: house)
         case let .learnTalent(commanderID, talent):

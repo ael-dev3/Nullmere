@@ -196,6 +196,18 @@ public final class GameSession {
         case banner
         /// A company's Drill.
         case drill
+
+        /// Whether it points into a hold's works.
+        var pointsAtWork: Bool {
+            if case .work = self { return true }
+            return false
+        }
+
+        /// Whether it points into a hold's companies.
+        var pointsAtTraining: Bool {
+            if case .train = self { return true }
+            return false
+        }
     }
 
     public var beckon: Beckon?
@@ -1277,6 +1289,7 @@ public final class GameSession {
         case .callRally: return .horn
         case .say: return .parley
         case .sing: return .lore
+        case .castBottle: return .order
         case .learnTalent: return .lore
         case .forgetTalents: return .stand
         case .wear: return .order
@@ -1401,6 +1414,7 @@ public final class GameSession {
         case .chargeDone(let house, _, _) where house == player: return .honour
         case .said(let word) where word.from != player: return .parley
         case .sung(let ballad) where ballad.house != player: return .lore
+        case .bottleFound(_, let by) where by == player: return .lore
         case .fieldJoined(_, _, let first, let second) where first == player || second == player: return .horn
         case .fieldEnded(let field):
             guard let side = field.side(of: player) else { return nil }

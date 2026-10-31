@@ -1064,7 +1064,24 @@ final class PressTests: XCTestCase {
         state.holds[seat].training = nil
         let (session, link) = session(state)
         session.selection = .hold(state.holds[seat].id)
+        [OwnHoldDetails.worksKey, OwnHoldDetails.companiesKey].forEach { UserDefaults.standard.removeObject(forKey: $0) }
+        defer { [OwnHoldDetails.worksKey, OwnHoldDetails.companiesKey].forEach { UserDefaults.standard.removeObject(forKey: $0) } }
         draw(SelectionPanel(session: session), height: 1400)
+        // The works and the companies open folded to a line each, until asked for.
+        XCTAssertFalse(PressableButtons.press("Build I"), "Folded: \(shown)")
+        // Each folded to what matters now: what the stores would raise or train.
+        let hold = state.holds[seat], works = OwnHoldDetails.works(of: hold).count
+        let summary = OwnHoldDetails.worksSummary(of: hold, in: session.state, for: session.player)
+        XCTAssertTrue(summary.contains(" of \(works) raised · ") && summary.hasSuffix(" may rise now"), summary)
+        XCTAssertTrue(OwnHoldDetails.companiesSummary(of: hold, in: session.state, for: session.player).hasSuffix(" may train now"))
+        var poor = session.state
+        poor.houses[session.player].stock = .zero
+        XCTAssertTrue(OwnHoldDetails.worksSummary(of: hold, in: poor, for: session.player).hasSuffix(" · none within your stores"))
+        XCTAssertTrue(OwnHoldDetails.companiesSummary(of: hold, in: poor, for: session.player).hasSuffix(" · none within your stores"))
+        XCTAssertTrue(PressableButtons.press("All \(works) works"), "Among \(shown)")
+        XCTAssertTrue(PressableButtons.press("All \(UnitKind.allCases.count) companies"), "Among \(shown)")
+        draw(SelectionPanel(session: session), height: 1400)
+        XCTAssertTrue(PressableButtons.actions.keys.contains("Fold works"))
         XCTAssertTrue(PressableButtons.press("Build I"), "Among \(shown)")
         XCTAssertTrue(link.sent.contains { if case .build = $0 { return true } else { return false } })
         XCTAssertTrue(PressableButtons.press("Train"))

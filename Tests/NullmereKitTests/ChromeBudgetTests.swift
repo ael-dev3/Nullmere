@@ -1,6 +1,7 @@
 import AppKit
 import LauncherCore
 @testable import LauncherKit
+import NullmereRealm
 import SwiftUI
 import XCTest
 @testable import NullmereCore

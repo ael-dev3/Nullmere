@@ -283,6 +283,9 @@ extension GameState {
         for relation in relations where !houseIDs.contains(relation.first) || !houseIDs.contains(relation.second) || relation.first == relation.second {
             found.append("A standing between \(relation.first) and \(relation.second)")
         }
+        for bottle in bottlesOnTheLake where map[bottle.position] == nil {
+            found.append("Bottle \(bottle.id) lies outside the world at \(bottle.position)")
+        }
         for hold in drownedHolds where map[hold.position] == nil {
             found.append("The drowned hold of \(hold.name) lies outside the world at \(hold.position)")
         }

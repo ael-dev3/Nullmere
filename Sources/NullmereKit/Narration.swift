@@ -162,7 +162,7 @@ enum Narration {
              .allianceDisbanded, .helpGiven, .rallyCalled, .rallyJoined, .rallySetOut, .rallyStruck, .rallyDispersed, .sentToReinforce,
              .happeningBegun, .happeningMark, .happeningEnded, .sunderingBegun, .sunderingEnded, .fieldJoined, .fieldEnded,
              .fordOpened, .fordClosed, .carriedAshore, .recalled,
-             .deedDone, .chargeDone, .said, .sung:
+             .deedDone, .chargeDone, .said, .sung, .bottleCast, .bottleFound:
             // The deeper systems' words are the rules' own.
             return state.tidings(of: event, for: viewer).map { Line(text: $0.text, tone: Narration.tone($0.tone)) }
         }

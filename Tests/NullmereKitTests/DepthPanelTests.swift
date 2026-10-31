@@ -279,7 +279,11 @@ final class DepthPanelTests: XCTestCase {
         ChargeGuide.show(.raiseMusterHall, in: session)
         XCTAssertNil(session.panel, "The seat's works, with nothing over them")
         XCTAssertEqual(session.beckon, .work(.musterHall), "its Build button ringed")
+        UserDefaults.standard.removeObject(forKey: OwnHoldDetails.worksKey)
         draw(SelectionPanel(session: session), width: 330, height: 900)
+        // The works, folded until asked for, are open on the work it points at.
+        XCTAssertTrue(shown.contains { $0.hasPrefix("Build ") }, "Among \(shown)")
+        XCTAssertFalse(shown.contains { $0.hasPrefix("All ") && $0.hasSuffix(" works") }, "Held open")
         // Each charge rings what keeps it, where a control does.
         let player = session.player
         XCTAssertEqual(ChargeGuide.beckon(for: .raiseGranary, in: session.state, player: player), .work(.granary))
@@ -347,6 +351,34 @@ final class DepthPanelTests: XCTestCase {
         let (later, _) = self.session(searched)
         later.selection = .tile(hold.position)
         draw(SelectionPanel(session: later), width: 330, height: 600)
+    }
+
+    /// A bottle set on the water from a shore hold's record, folded until
+    /// asked for; named under the pointer and marked on the map.
+    func testABottleIsSetOnTheWaterFromAShoreHold() throws {
+        var state = world("a bottle cast")
+        let me = state.player
+        state.houses[me].stock = Stock(grain: 300, timber: 100, stone: 100, moonsalt: 10)
+        let shore = try XCTUnwrap(state.map.hexes.first { hex in
+            state.map[hex]?.terrain.isSettleable == true && state.hold(at: hex) == nil && state.unit(at: hex) == nil
+                && state.map.neighbors(of: hex).contains { [.still, .shallows].contains(state.map[$0]?.terrain) }
+        })
+        let hold = Hold(id: state.takeID(), name: "Saltwatch", owner: me, position: shore, isSeat: false, foundedWatch: 1)
+        state.holds.append(hold)
+        state.reveal(around: shore, range: 2, for: me)
+        let (session, link) = session(state)
+        draw(BottleComposer(session: session, hold: hold), width: 330, height: 200)
+        XCTAssertTrue(PressableButtons.press("A bottle…"), "Among \(PressableButtons.actions.keys.sorted())")
+        draw(BottleComposer(session: session, hold: hold), width: 330, height: 200)
+        XCTAssertTrue(session.perform(.castBottle(words: "The ford is false", from: hold.id, signed: false)))
+        XCTAssertEqual(link.sent.last, .castBottle(words: "The ford is false", from: hold.id, signed: false))
+        let bottle = try XCTUnwrap(session.state.bottlesOnTheLake.last)
+        XCTAssertEqual(HoverInfo.line(for: bottle.position, in: session.state, explored: true, territory: session.state.territory())?
+            .contains("a bottle afloat"), true)
+        session.selection = .hold(hold.id)
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        draw(WorldMarks(session: session), width: 900, height: 700)
+        XCTAssertEqual(GameSession.cues(for: .castBottle(words: "x", from: hold.id, signed: true), events: [], in: session.state, player: me), [.order])
     }
 
     func testAHoldsRecordSaysWhenItWasRaised() {

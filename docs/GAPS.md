@@ -109,7 +109,7 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 - [x] Vistas: each of the keeper's holds drawn whole by the world's renderer at the head of its panel, its keep in its people's way, its walls and works as they stand
 - [x] The interface's pictures painted: every portrait and hold vista laid on in strokes that keep to the forms (a Kuwahara filter, a pixel's reach for a portrait, two for a vista), inked along its edges, on the weave of a canvas with its corners in shadow; tested on Linux, applied as each is drawn
 - [ ] Painted illustration for the interface at RoK's richness
-- [ ] The world first (direction of October 31): the interface minimal, contextual and uncluttered, panels collapsed until wanted. Done so far: the top bar three islands rather than a band across the map; every panel on one rail (the top bar's Houses, Chronicle and Guide moved there); the small map of the lake hidden until the rail's Map shows it; notices on the map for nine seconds, three at most, then gone (VoiceOver says each, the Chronicle keeps the story); the charge a line, More for how and the reward; counsel only when no charge speaks; envoys one at a time, the rest a line each; the keys shown only during the first steps; the map's darkened edges halved. CI photographs the plain view (nothing chosen, no panel) and prints each game screen at the foot of a log of its own, to judge what the interface leaves of the world. Still to do: a hold's and a company's panels opening as a summary with their lists folded, the panels themselves narrower, and the opening view showing more known land than mist
+- [ ] The world first (direction of October 31): the interface minimal, contextual and uncluttered, panels collapsed until wanted. Done so far: the top bar three islands rather than a band across the map; every panel on one rail (the top bar's Houses, Chronicle and Guide moved there); the small map of the lake hidden until the rail's Map shows it; notices on the map for nine seconds, three at most, then gone (VoiceOver says each, the Chronicle keeps the story); the charge a line, More for how and the reward; counsel only when no charge speaks; envoys one at a time, the rest a line each; the keys shown only during the first steps, and a company's how-to with them; a hold's record opening on what matters, its works and companies each folded to a line (how many are raised, how many the stores would raise or train now) until asked for, and opened on a work chosen in the city or a charge's Show me; the map's darkened edges halved. CI photographs the plain view (nothing chosen, no panel) and prints each game screen at the foot of a log of its own, to judge what the interface leaves of the world. Still to do: the panels themselves narrower, and the opening view showing more known land than mist
 
 ## Warpkeep parity
 
@@ -203,11 +203,12 @@ designed, ticked when it is real, tested and shown in CI.
   wrote and no other keeper's Mac made. A keeper's ballads count toward
   their renown as the age ends. CI asks its runner's own model for one
   and holds it to the voices' rules.
-- [ ] **Bottles on the lake.** Words sealed in a bottle and set on the
-  water drift on the lake's currents, watch by watch, to whatever shore
-  they wash up on, read by whoever finds them: messages anonymous or
-  signed, offers, warnings and lies, a way to speak to strangers no chat
-  has.
+- [x] **Bottles on the lake.** Words sealed in a bottle and set on the
+  water from a hold on the shore drift on the lake's current, watch by
+  watch, to whatever shore they wash up on, read by whoever finds them:
+  messages anonymous or signed, offers, warnings and lies, a way to speak
+  to strangers no chat has. Afloat, others see a glint, never the words;
+  forty watches afloat, a bottle sinks.
 - [x] **Drowned ages.** What an age leaves is the next age's lake: the
   holds of the age before, the greatest first, lie drowned where they
   stood (in the shallows or on the shore of the new lake) as named ruins:

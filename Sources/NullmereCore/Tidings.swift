@@ -417,6 +417,16 @@ extension GameState {
         case .deedDone(let house, let deed):
             guard house == viewer else { return nil }
             return Tidings("A deed of your House, \(deed.title): it has \(deed.deed).", .good)
+        case .bottleCast(_, let from, _):
+            guard from == viewer else { return nil }
+            return Tidings("Your bottle is on the water; the current will carry it where it will.", .neutral)
+        case .bottleFound(let bottle, let by):
+            if by == viewer {
+                let whose = bottle.signed && houses.indices.contains(bottle.from) ? ", sealed by \(houses[bottle.from].title)" : ", unsigned"
+                return Tidings("A bottle washed up by your hold or company\(whose): “\(bottle.words)”", .neutral)
+            }
+            guard bottle.from == viewer, houses.indices.contains(by) else { return nil }
+            return Tidings("A bottle of yours washed up and was found by \(houses[by].title).", .neutral)
         case .sung(let ballad):
             guard houses.indices.contains(ballad.house), chronicle.indices.contains(ballad.entry) else { return nil }
             let who = ballad.house == viewer ? "Your House sings" : "\(houses[ballad.house].title) sings"

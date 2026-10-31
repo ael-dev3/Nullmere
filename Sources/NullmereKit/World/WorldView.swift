@@ -209,6 +209,15 @@ struct WorldMarks: View {
                 }
             }
 
+            // Bottles on the lake where the keeper sees them: a pale glint
+            // afloat, a brighter one washed up and waiting to be found.
+            for bottle in state.bottlesOnTheLake where bottle.foundBy == nil {
+                let point = session.viewPoint(of: bottle.position, in: size)
+                let r = max(2.0, scale * 0.09) * (bottle.ashore ? 1.3 : 1)
+                context.fill(Path(ellipseIn: CGRect(x: point.x - r, y: point.y - r, width: r * 2, height: r * 2)),
+                             with: .color(Palette.glow.opacity(bottle.ashore ? 0.95 : 0.6)))
+            }
+
             // Where the selected company could march this watch: a faint
             // wash with an edge, and a red ring on what it could strike.
             if !session.reach.isEmpty || !session.strikeTargets.isEmpty {

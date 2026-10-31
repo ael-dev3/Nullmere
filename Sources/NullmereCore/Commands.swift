@@ -77,6 +77,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// A ballad of a Chronicle entry, made on the keeper's Mac, sung to
     /// the realm for its songbook.
     case sing(ballad: String, of: Int)
+    /// Words sealed in a bottle and set on the water from a hold on the
+    /// shore, signed or not.
+    case castBottle(words: String, from: Int, signed: Bool)
     /// A commander learns the next rank of a talent, for a talent point.
     case learnTalent(commander: Int, talent: Talent)
     /// A commander forgets every talent it has learned, its points given
@@ -210,6 +213,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case notABallad
     case sungAlready
     case sangThisWatch
+    case noWaterBeside
+    case castThisWatch
     /// A House sworn to an alliance already.
     case inAnAlliance
     /// A House sworn to no alliance.
@@ -404,6 +409,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .notABallad: return "A ballad is two to six short lines of plain words."
         case .sungAlready: return "Your House has sung of that already."
         case .sangThisWatch: return "Your House has sung this watch; sing again at the next."
+        case .noWaterBeside: return "No water lies beside this hold to set a bottle on."
+        case .castThisWatch: return "Your House has set a bottle on the water this watch; another at the next."
         case .inAnAlliance: return "That House is sworn to an alliance already."
         case .notInAlliance: return "Your House is sworn to no alliance."
         case .notAllianceLeader: return "Only the alliance's leader can do that."
@@ -676,6 +683,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case said(Word)
     /// A ballad sung to the realm, kept in its songbook.
     case sung(Ballad)
+    /// A bottle set on the water.
+    case bottleCast(bottle: Int, from: Int, at: Hex)
+    /// A bottle washed up and found, with the words in it.
+    case bottleFound(bottle: Bottle, by: Int)
 }
 
 /// One exchange of blows.

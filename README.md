@@ -884,6 +884,17 @@ realm; keepers are told in plain words, never a status code.
   the age ends each ballad, five at the most, adds two renown to the
   keeper's name. CI hears one from its runner's own model, held to the
   voices' rules.
+- **Bottles on the lake.** From a hold on the shore a keeper may seal a
+  few words in a bottle (ten grain, one a watch for their House) and set
+  it on the water, signed or not; the hold's record keeps the bottle
+  folded until it is asked for. The lake's current carries each round
+  its deep heart, a hex a watch, until it washes up on a shore, and the
+  first company or hold of any House beside it finds it and reads it:
+  an offer, a warning or a lie, to whoever it reaches. Afloat, every
+  House that sees the water sees a glint and nothing more; only the one
+  who set it and the one who found it read its words, and an unsigned
+  bottle's finder is not told whose it was. A bottle forty watches afloat
+  sinks.
 - **The Frontier.** Kingdom against kingdom across realms: the Frontier is
   a realm of its own, a database of its own with its own steward, where
   the kingdoms of the realms that border it meet, a season of twenty-four
