@@ -169,7 +169,87 @@ enum Holds {
                 $0.box(min: Vec3(-0.26, 0.03, -0.17), max: Vec3(0.26, 0.4, -0.08), color: style.dark)
             }
         }
+        dress(&b, seat: seat, style: style, half: half, towerHeight: towerHeight, hallFront: hallFront, roofHeight: roofHeight)
         return Model(name: name, mesh: b.mesh)
+    }
+
+    /// The keep's dressing: courses of dressed stone girdling the tower,
+    /// corbels under its parapet and slits for its bows; dormers lit in its
+    /// roof; at a seat, the House's banner hung down the tower's face; and
+    /// before the hall, steps up to its door, posts framing it, a lantern
+    /// either side and the hall's stores in barrels and crates.
+    static func dress(_ b: inout MeshBuilder, seat: Bool, style: KeepStyle, half: Float, towerHeight: Float, hallFront: Float,
+                      roofHeight: Float) {
+        let back = -half - 0.05, front = half - 0.05
+        b.with(surface: style.wallGrain) { b in
+            for level in [towerHeight * 0.36, towerHeight * 0.7] {
+                b.box(min: Vec3(-half - 0.008, level, back - 0.008), max: Vec3(half + 0.008, level + 0.016, front + 0.008), color: style.trim)
+            }
+            // Three corbels to a face under the parapet.
+            let y = towerHeight - 0.045
+            for index in 0..<3 {
+                let t = (Float(index) - 1) * half * 0.62
+                b.box(center: Vec3(t, y, front + 0.012), size: Vec3(0.026, 0.03, 0.024), color: style.trim)
+                b.box(center: Vec3(t, y, back - 0.012), size: Vec3(0.026, 0.03, 0.024), color: style.trim)
+                b.box(center: Vec3(half + 0.012, y, -0.05 + t), size: Vec3(0.024, 0.03, 0.026), color: style.trim)
+                b.box(center: Vec3(-half - 0.012, y, -0.05 + t), size: Vec3(0.024, 0.03, 0.026), color: style.trim)
+            }
+        }
+        // Slits for its bows, on the back and the sides between the courses.
+        let slit = towerHeight * 0.53
+        b.box(center: Vec3(0, slit, back - 0.004), size: Vec3(0.012, 0.07, 0.01), color: Palette.timberDark)
+        for x in [half + 0.004, -half - 0.004] {
+            b.box(center: Vec3(x, slit, -0.05), size: Vec3(0.01, 0.07, 0.012), color: Palette.timberDark)
+        }
+        // Dormers lit in the roof, front and back.
+        let roofBase = towerHeight + 0.04
+        for side in [Float(1), -1] {
+            let at = Vec3(0, roofBase + roofHeight * 0.3, -0.05 + side * half * 0.36)
+            b.place(.translation(at) * .rotationY(side > 0 ? 0 : .pi)) {
+                $0.with(surface: style.wallGrain) {
+                    $0.box(min: Vec3(-0.026, -0.02, -0.03), max: Vec3(0.026, 0.035, 0.012), color: style.wall)
+                }
+                $0.with(surface: style.roofGrain) {
+                    $0.place(.translation(Vec3(0, 0, -0.009)) * .rotationY(.pi / 2)) {
+                        $0.gableRoof(width: 0.042, depth: 0.056, base: 0.035, height: 0.028, color: style.roof, overhang: 0.006)
+                    }
+                }
+                $0.window(Vec3(0, 0.008, 0.013), width: 0.022, height: 0.026, facing: 0)
+            }
+        }
+        // A seat's banner, hung down the tower's face above the hall roof.
+        if seat {
+            let top = Vec3(0, towerHeight - 0.08, front + 0.006), drop = towerHeight - 0.08 - 0.44
+            b.with(material: .cloth, sway: 0.35) {
+                $0.swayRange = (0, drop)
+                $0.place(.translation(top) * .rotationZ(.pi)) {
+                    $0.sheet([Vec3(-0.045, 0, 0), Vec3(0.045, 0, 0), Vec3(0.045, drop, 0), Vec3(0, drop + 0.03, 0), Vec3(-0.045, drop, 0)],
+                             normal: Vec3(0, 0, 1), thickness: 0.004, color: Palette.house)
+                }
+            }
+            b.beam(from: top + Vec3(-0.055, 0.004, 0.004), to: top + Vec3(0.055, 0.004, 0.004), width: 0.01, depth: 0.012, color: Palette.timberDark)
+        }
+        // Steps up to the hall's door, posts framing its front, a lantern either side.
+        b.with(surface: style.wallGrain) {
+            $0.box(min: Vec3(-0.06, 0.0, hallFront), max: Vec3(0.06, 0.045, hallFront + 0.025), color: style.trim)
+            $0.box(min: Vec3(-0.045, 0.0, hallFront + 0.025), max: Vec3(0.045, 0.025, hallFront + 0.045), color: style.trim)
+        }
+        for x in [Float(-0.2), -0.055, 0.055, 0.2] {
+            b.box(center: Vec3(x, 0.14, hallFront + 0.004), size: Vec3(0.014, 0.22, 0.012), color: Palette.timberDark)
+        }
+        for x in [Float(-0.075), 0.075] {
+            b.beam(from: Vec3(x, 0.17, hallFront + 0.005), to: Vec3(x, 0.17, hallFront + 0.03), width: 0.006, color: Palette.iron)
+            b.with(material: .glow) {
+                $0.box(center: Vec3(x, 0.152, hallFront + 0.03), size: Vec3(0.014, 0.022, 0.014), color: Palette.candle)
+            }
+        }
+        // The hall's stores beside it.
+        for (index, at) in [Vec3(-0.25, 0.03, 0.17), Vec3(-0.25, 0.03, 0.23), Vec3(0.27, 0.03, 0.2)].enumerated() {
+            b.place(.translation(at)) {
+                $0.lathe([(0.022, 0), (0.026, 0.024), (0.022, 0.048)], sides: 6, color: index == 2 ? Palette.timberPale : Palette.timber)
+            }
+        }
+        b.box(center: Vec3(0.24, 0.05, 0.25), size: Vec3(0.04, 0.04, 0.04), turn: 0.3, color: Palette.timberGrey)
     }
 
     /// The top of the keep's hall chimney.

@@ -59,6 +59,18 @@ extension MeshBuilder {
             $0.with(material: roofMaterial) {
                 $0.gableRoof(width: width, depth: depth, base: height, height: depth * pitch, color: roof, overhang: 0.022)
             }
+            // Its frame: posts at the corners, boards along the eaves and a
+            // beam along the ridge, dark against walls and roof.
+            let post = Palette.timberDark, w = width / 2, d = depth / 2
+            for x in [-w, w] {
+                for z in [-d, d] {
+                    $0.box(center: Vec3(x, height / 2 - 0.02, z), size: Vec3(0.014, height + 0.04, 0.014), color: post)
+                }
+            }
+            for z in [-d - 0.02, d + 0.02] {
+                $0.box(center: Vec3(0, height + 0.004, z), size: Vec3(width + 0.044, 0.01, 0.008), color: post)
+            }
+            $0.box(center: Vec3(0, height + depth * pitch + 0.004, 0), size: Vec3(width + 0.05, 0.012, 0.014), color: post)
         }
     }
 
