@@ -977,19 +977,23 @@ final class PressTests: XCTestCase {
 
     /// Send a gift opens the gifts there are to send in a popover beside
     /// the button, and the button puts it away again.
-    func testTheGiftsOpenBesideTheirButton() throws {
-        let (session, _, house) = keepersHouse("gifts beside their button")
+    /// The gifts open beneath the row's actions, in the row itself: no
+    /// window of their own, which VoiceOver couldn't name; a gift sent
+    /// goes to the House, and the gifts fold away again.
+    func testTheGiftsOpenInTheirRow() throws {
+        let (session, link, house) = keepersHouse("gifts in their row")
         let window = window(hosting: HouseRow(session: session, house: house, draft: OfferDraft(for: house))
             .frame(width: 340).padding(20).background(Color.black), width: 380, height: 460)
         defer { window.close() }
         spin(until: "the row's gift button") { PressableButtons.actions["Send a gift"] != nil }
+        func gift() -> String? { PressableButtons.actions.keys.sorted().first { $0.hasPrefix("Send ") && $0 != "Send a gift" } }
+        XCTAssertNil(gift(), "Folded until asked for")
         let before = windowsShowing
         XCTAssertTrue(PressableButtons.press("Send a gift"))
-        spin(until: "the gifts' popover") { windowShown(since: before, over: window) != nil }
-        weak let popover = windowShown(since: before, over: window)
-        XCTAssertNotNil(popover, "The popover's window")
-        XCTAssertTrue(PressableButtons.press("Send a gift"), "Pressed again")
-        spin(until: "the popover put away") { popover?.isVisible != true }
+        spin(until: "the gifts in the row") { gift() != nil }
+        XCTAssertNil(windowShown(since: before, over: window), "No window of their own")
+        XCTAssertTrue(PressableButtons.press(try XCTUnwrap(gift())))
+        XCTAssertTrue(link.sent.contains { if case .gift(let to, _, _) = $0, to == house.id { return true } else { return false } }, "Sent to the House")
     }
 
     /// Page Down pages the open panel most of a height on, in its window;

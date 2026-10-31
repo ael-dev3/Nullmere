@@ -631,7 +631,7 @@ struct HouseRow: View {
             Caps("Gifts to \(house.title)", size: 8.5).foregroundStyle(Palette.text(0.55))
             FlowLayout(spacing: 8, lineSpacing: 4) {
                 ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
-                    QuietButton(title: "Send \(choice.amount) \(choice.resource.title.lowercased())", size: 8.5, pressable: false) {
+                    QuietButton(title: "Send \(choice.amount) \(choice.resource.title.lowercased())", size: 8.5) {
                         choosingGift = false
                         send(choice)
                     }
