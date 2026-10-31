@@ -1018,6 +1018,26 @@ public final class GameSession {
         glide(to: seat.position)
     }
 
+    /// The map's size as last drawn, for setting the view to take in what
+    /// it should; a laptop's until the map is first drawn.
+    @ObservationIgnored var viewSize = CGSize(width: 1280, height: 800)
+
+    /// The view set back to take in the whole House: every hold of its in
+    /// sight, north up, at the tilt the view began with.
+    public func resetView() {
+        let layout = HexLayout(size: 1)
+        let points = state.holds(of: player).map { layout.center(of: $0.position) }
+        guard let minX = points.map(\.x).min(), let maxX = points.map(\.x).max(),
+              let minY = points.map(\.y).min(), let maxY = points.map(\.y).max() else {
+            glide(to: camera.centreHex, tilt: Camera.defaultTilt, heading: 0)
+            return
+        }
+        let middle = layout.hex(atX: (minX + maxX) / 2, y: (minY + maxY) / 2)
+        // Room for the land about the holds, and for the interface at the edges.
+        let spread = max(maxX - minX, (maxY - minY) * viewSize.width / max(viewSize.height, 1)) + 10
+        glide(to: middle, scale: Double(viewSize.width) / spread, tilt: Camera.defaultTilt, heading: 0)
+    }
+
     /// Chooses the keeper's next company, or the one before, whatever it is
     /// doing: marching, fortified or spent, as well as awaiting orders, so
     /// none is ever out of the keyboard's reach.
@@ -1083,12 +1103,13 @@ public final class GameSession {
     /// below full motion. The camera reaches the map as a plain value, so
     /// it is moved step by step here rather than by SwiftUI. A pan or a
     /// zoom by the keeper meanwhile has the last word.
-    func glide(to hex: Hex, scale: Double? = nil, tilt: Double? = nil, reducesMotion: Bool? = nil) {
+    func glide(to hex: Hex, scale: Double? = nil, tilt: Double? = nil, heading: Double? = nil, reducesMotion: Bool? = nil) {
         glideTask?.cancel()
         var target = camera
         target.focus(on: hex)
         if let scale { target.scale = min(max(scale, Camera.minimumScale), Camera.maximumScale) }
         if let tilt { target.tilt = min(max(tilt, Camera.minimumTilt), Camera.maximumTilt) }
+        if let heading { target.heading = heading }
         guard !(reducesMotion ?? (motion != .full)) else {
             camera = target
             return

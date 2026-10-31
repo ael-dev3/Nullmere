@@ -1,4 +1,5 @@
 import NullmereRealm
+import NullmereWorld
 import SwiftUI
 import XCTest
 @testable import NullmereCore
@@ -54,6 +55,17 @@ final class GameMenuTests: XCTestCase {
         XCTAssertEqual(session.selection, .hold(try XCTUnwrap(session.state.seat(of: session.player)).id))
         GameMenu.nextCompany.perform(in: app)
         if case .unit = session.selection {} else { XCTFail("A company waiting for orders is chosen: \(session.selection)") }
+        // Reset View takes in the whole House, north up, at the opening tilt.
+        XCTAssertEqual(GameMenu.resetView.shortcut, KeyboardShortcut("0", modifiers: .command))
+        session.camera.heading = 1.2
+        session.camera.tilt = 0.3
+        session.camera.focus(on: Hex(0, 0))
+        GameMenu.resetView.perform(in: app)
+        for _ in 0..<100 where session.camera.heading != 0 { RunLoop.main.run(until: Date().addingTimeInterval(0.02)) }
+        XCTAssertEqual(session.camera.heading, 0)
+        XCTAssertEqual(session.camera.tilt, Camera.defaultTilt, accuracy: 1e-9)
+        let seat = try XCTUnwrap(session.state.seat(of: session.player)).position
+        XCTAssertLessThanOrEqual(session.camera.centreHex.distance(to: seat), 2, "A House of one hold: its seat in the middle")
         let watch = session.state.watch
         GameMenu.ready.perform(in: app)
         XCTAssertGreaterThan(session.state.watch, watch, "Alone in the realm, ready turns the watch")

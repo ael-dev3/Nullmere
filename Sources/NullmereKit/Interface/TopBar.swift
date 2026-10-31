@@ -81,6 +81,7 @@ extension View {
         padding(.horizontal, 12)
             .padding(.vertical, 7)
             .background(Palette.panel, in: RoundedRectangle(cornerRadius: 4))
+            .chrome("bar")
     }
 }
 

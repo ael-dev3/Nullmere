@@ -1224,6 +1224,7 @@ world, so there is nothing to save.
 | F / B | Fortify / found a hold with the selected Founders (B asks, B again founds) |
 | M | March the selected company to the middle of the view; to strike there, M shows the odds and M again strikes: play without a pointer |
 | Arrows or WASD, + − | Pan, zoom |
+| ⌘0, or Reset under the small map | Reset View: the whole House in sight, north up; the small map's other buttons zoom and turn |
 | Page Up / Page Down | Scroll the open panel, or the chosen hold's |
 | 1 / 2 / ? or ⌘? | Houses / Chronicle / Guide |
 | 3 / 4 / 5 / 6 / 7 | Archive / Commanders / Alliance / the Realm / Words |

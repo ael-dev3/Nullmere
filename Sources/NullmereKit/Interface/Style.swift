@@ -277,6 +277,49 @@ struct PanelBackground: ViewModifier {
                     .strokeBorder(Palette.line(0.12), lineWidth: 1)
             )
             .clipShape(RoundedRectangle(cornerRadius: 3))
+            .chrome("panel")
+    }
+}
+
+/// What of the window the interface takes, piece by piece: each piece
+/// notes where it lies as it is laid out, while a test listens, so the
+/// world's share of the screen can be held to a budget.
+@MainActor
+enum ChromeLedger {
+    static var isListening = false {
+        didSet { frames = [:] }
+    }
+    /// Where each kind of piece lies, in the window's points.
+    private(set) static var frames: [String: [CGRect]] = [:]
+
+    static func note(_ name: String, _ frame: CGRect) {
+        guard isListening, frame.width > 0, frame.height > 0, frames[name]?.contains(frame) != true else { return }
+        frames[name, default: []].append(frame)
+    }
+
+    /// The share of a window of `size` the pieces cover, sampled every
+    /// four points.
+    static func covered(of size: CGSize) -> Double {
+        let pieces = frames.values.flatMap { $0 }
+        var covered = 0, all = 0
+        for y in stride(from: 2.0, to: size.height, by: 4) {
+            for x in stride(from: 2.0, to: size.width, by: 4) {
+                all += 1
+                if pieces.contains(where: { $0.contains(CGPoint(x: x, y: y)) }) { covered += 1 }
+            }
+        }
+        return all == 0 ? 0 : Double(covered) / Double(all)
+    }
+}
+
+extension View {
+    /// Notes where this piece of the interface lies, for the budget the
+    /// world's share of the screen is held to.
+    func chrome(_ name: String) -> some View {
+        background(GeometryReader { proxy in
+            let _ = ChromeLedger.note(name, proxy.frame(in: .global))
+            Color.clear
+        })
     }
 }
 

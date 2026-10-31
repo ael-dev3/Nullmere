@@ -7,7 +7,7 @@ import SwiftUI
 @MainActor
 enum GameMenu: CaseIterable {
     case leaveWorld
-    case ready, stayReady, nextCompany, goToSeat, viewCity
+    case ready, stayReady, nextCompany, goToSeat, viewCity, resetView
     case houses, chronicle, guide
     case archive, commanders, alliance, realm, words
 
@@ -19,6 +19,7 @@ enum GameMenu: CaseIterable {
         case .nextCompany: return "Next Company"
         case .goToSeat: return "Go to Seat"
         case .viewCity: return "View the Seat Close"
+        case .resetView: return "Reset View"
         case .houses: return "Houses"
         case .chronicle: return "Chronicle"
         case .guide: return "Guide"
@@ -36,6 +37,7 @@ enum GameMenu: CaseIterable {
         case .ready: return KeyboardShortcut(.return, modifiers: .command)
         case .stayReady: return KeyboardShortcut(.return, modifiers: [.command, .shift])
         case .guide: return KeyboardShortcut("/", modifiers: [.command, .shift])
+        case .resetView: return KeyboardShortcut("0", modifiers: .command)
         case .nextCompany, .goToSeat, .viewCity, .houses, .chronicle, .archive, .commanders, .alliance, .realm, .words: return nil
         }
     }
@@ -59,6 +61,7 @@ enum GameMenu: CaseIterable {
         case .nextCompany: session.selectNextReadyUnit()
         case .goToSeat: session.focusOnSeat()
         case .viewCity: session.viewCity()
+        case .resetView: session.resetView()
         case .houses: toggle(.houses, in: session)
         case .chronicle: toggle(.chronicle, in: session)
         case .guide: toggle(.guide, in: session)
@@ -93,6 +96,7 @@ public struct GameCommands: Commands {
             item(.nextCompany)
             item(.goToSeat)
             item(.viewCity)
+            item(.resetView)
             Divider()
             // The launcher makes no sound: these wait for the realm's face.
             Toggle("Sound", isOn: Binding(get: { app.isSoundOn }, set: { app.isSoundOn = $0 }))

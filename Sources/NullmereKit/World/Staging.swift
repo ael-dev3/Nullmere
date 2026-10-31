@@ -69,6 +69,7 @@ extension GameSession {
     /// The models a frame draws at `time` on the map's clock; for a view of
     /// `size`, only the holds, towns and companies it can show.
     func sceneFrame(at time: Double, now: Date = Date(), in size: CGSize? = nil) -> SceneFrame {
+        if let size, size.width > 0, size.height > 0 { viewSize = size }
         // Laid out afresh with each new map, as the land's relief is.
         if stage == nil {
             stage = WorldStage(map: state.map, relief: relief)

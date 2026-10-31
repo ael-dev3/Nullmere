@@ -757,6 +757,19 @@ final class DepthPanelTests: XCTestCase {
         MiniMap.look(at: CGPoint(x: -500, y: -500), in: session)
         XCTAssertEqual(session.camera.centreHex, far, "off the lake, the view stays")
         XCTAssertTrue(MiniMap.spoken(session).hasPrefix("1 hold of yours"))
+        // Its camera buttons: nearer, further, turned, and set back to the whole House.
+        PressableButtons.isListening = true
+        draw(CameraButtons(session: session), width: 200, height: 30)
+        let scale = session.camera.scale
+        XCTAssertTrue(PressableButtons.press("+"), "Among \(PressableButtons.actions.keys.sorted())")
+        XCTAssertGreaterThan(session.camera.scale, scale)
+        XCTAssertTrue(PressableButtons.press("−"))
+        XCTAssertEqual(session.camera.scale, scale, accuracy: 1e-6)
+        XCTAssertTrue(PressableButtons.press("⟳"))
+        XCTAssertEqual(session.camera.heading, .pi / 6, accuracy: 1e-9)
+        XCTAssertTrue(PressableButtons.press("⟲"))
+        XCTAssertEqual(session.camera.heading, 0, accuracy: 1e-9)
+        XCTAssertTrue(PressableButtons.press("Reset"))
     }
 
     // MARK: The map

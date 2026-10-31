@@ -104,6 +104,7 @@ struct PlayView: View {
                 // The omen under the bar, in the flow, so nothing sits beneath it.
                 if let omen = session.state.currentOmen {
                     OmenBand(omen: omen, watch: session.state.watch)
+                        .chrome("band")
                         .padding(.top, 8)
                         .allowsHitTesting(false)
                         .transition(.opacity)
@@ -111,6 +112,7 @@ struct PlayView: View {
                 // The moon's ford, only about the full.
                 if let line = MoonBand.line(watch: session.state.watch, open: session.state.ford != nil) {
                     MoonBand(line: line)
+                        .chrome("band")
                         .padding(.top, 8)
                         .allowsHitTesting(false)
                         .transition(.opacity)
@@ -160,14 +162,20 @@ struct PlayView: View {
                         }
                         Spacer(minLength: 0)
                         EnvoyCards(session: session)
+                            .chrome("envoys")
                         // With a panel open, its keys and its close button
                         // serve, and the panel keeps the column's height.
                         if session.panel == nil {
                             if mapShown {
                                 MiniMap(session: session)
+                                    .chrome("map")
+                                    .transition(.opacity)
+                                CameraButtons(session: session)
+                                    .chrome("map")
                                     .transition(.opacity)
                             }
                             PanelRail(session: session)
+                                .chrome("rail")
                                 .transition(.opacity)
                         }
                         // The keys, while the first steps are taught; the

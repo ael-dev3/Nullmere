@@ -122,3 +122,23 @@ extension GameSession {
         return image
     }
 }
+
+/// The camera's buttons, under the small map while it is shown: nearer and
+/// further, turned either way, and the view set back to take in the whole
+/// House. The keys, the trackpad and the mouse do all of it as well.
+struct CameraButtons: View {
+    let session: GameSession
+
+    var body: some View {
+        HStack(spacing: 2) {
+            QuietButton(title: "−", size: 11, name: "Zoom out") { session.camera.zoom(by: 0.8) }
+            QuietButton(title: "+", size: 11, name: "Zoom in") { session.camera.zoom(by: 1.25) }
+            QuietButton(title: "⟲", size: 11, name: "Turn left") { session.camera.turn(by: -.pi / 6) }
+            QuietButton(title: "⟳", size: 11, name: "Turn right") { session.camera.turn(by: .pi / 6) }
+            QuietButton(title: "Reset", size: 8.5, name: "Reset View") { session.resetView() }
+                .help("Take in the whole House, north up (⌘0)")
+        }
+        .padding(.horizontal, 6)
+        .background(Palette.panel, in: RoundedRectangle(cornerRadius: 3))
+    }
+}
