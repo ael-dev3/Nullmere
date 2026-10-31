@@ -21,6 +21,10 @@ enum Land {
         case .driftwood: driftwood(&b)
         case .furrows: furrows(&b)
         case .stoneFace: stoneFace(&b)
+        case .heather: heather(&b, seed: 21)
+        case .fern: fern(&b, seed: 23)
+        case .pebbles: pebbles(&b, seed: 27)
+        case .birch: birch(&b)
         }
         return b.mesh
     }
@@ -66,6 +70,30 @@ enum Land {
             for (index, mass) in masses.enumerated() {
                 $0.rock(center: mass.0, size: mass.1, rings: 3, sides: 6, jitter: 0.15, seed: UInt32(40 + index),
                         color: index % 2 == 0 ? Palette.leaf : Palette.fir)
+            }
+        }
+    }
+
+    /// A birch at the forest's edge: a slim pale trunk banded dark, two
+    /// thin boughs and a light crown that moves in the wind.
+    static func birch(_ b: inout MeshBuilder) {
+        b.lathe([(0.022, -0.05), (0.018, 0.25), (0.01, 0.5)], sides: 5, color: Palette.birchBark)
+        for (index, height) in [Float(0.08), 0.17, 0.29, 0.38].enumerated() {
+            let width = 0.044 - 0.006 * Float(index)
+            b.box(center: Vec3(0, height, 0), size: Vec3(width, 0.012, width), turn: Float(index) * 0.7, color: Palette.barkBlack)
+        }
+        b.with(sway: 0.3) {
+            $0.swayRange = (0.2, 0.5)
+            $0.limb(from: Vec3(0, 0.3, 0), to: Vec3(0.09, 0.44, 0.02), radius: 0.008, topRadius: 0.003, sides: 3, color: Palette.birchBark)
+            $0.limb(from: Vec3(0, 0.36, 0), to: Vec3(-0.07, 0.5, -0.03), radius: 0.007, topRadius: 0.003, sides: 3, color: Palette.birchBark)
+        }
+        b.with(material: .foliage, sway: 0.9) {
+            $0.swayRange = (0.3, 0.7)
+            let masses: [(Vec3, Vec3)] = [(Vec3(0, 0.52, 0), Vec3(0.11, 0.13, 0.1)), (Vec3(0.07, 0.43, 0.03), Vec3(0.08, 0.09, 0.07)),
+                                          (Vec3(-0.06, 0.46, -0.03), Vec3(0.08, 0.09, 0.08))]
+            for (index, mass) in masses.enumerated() {
+                $0.rock(center: mass.0, size: mass.1, rings: 3, sides: 6, jitter: 0.2, seed: UInt32(60 + index),
+                        color: index == 0 ? Palette.birchLeaf : Palette.leaf)
             }
         }
     }
@@ -185,6 +213,53 @@ enum Land {
                     }
                 }
             }
+        }
+    }
+
+    /// Heather: low clumps of dark mauve, each with a few sprigs in bloom.
+    static func heather(_ b: inout MeshBuilder, seed: UInt32) {
+        b.with(material: .foliage, sway: 0.35) {
+            $0.swayRange = (0, 0.06)
+            for clump in 0..<4 {
+                let u = Noise.unit(Int32(clump), 11, seed), v = Noise.unit(Int32(clump), 12, seed)
+                let at = Vec3((u - 0.5) * 0.16, 0.012, (v - 0.5) * 0.16)
+                let size = 0.028 + 0.018 * Noise.unit(Int32(clump), 13, seed)
+                $0.rock(center: at, size: Vec3(size * 1.3, size * 0.7, size * 1.2), rings: 2, sides: 5, jitter: 0.25,
+                        seed: seed &+ UInt32(clump), color: clump % 2 == 0 ? Palette.heather : Palette.heatherDark)
+                for sprig in 0..<3 {
+                    let angle = Float(sprig) * 2.1 + u * 5
+                    let tip = at + MeshBuilder.ring(size * 0.9, size * 1.4, angle)
+                    $0.place(.translation(at) * Mat4.aligningUp(to: tip - at)) {
+                        $0.cone(sides: 3, radius: 0.006, to: (tip - at).length, color: Palette.heatherBloom, twist: angle)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Ferns under the firs: fronds arching out from one crown and down
+    /// again, each in two lengths.
+    static func fern(_ b: inout MeshBuilder, seed: UInt32) {
+        b.with(material: .foliage, sway: 0.6) {
+            $0.swayRange = (0, 0.12)
+            for frond in 0..<7 {
+                let angle = Float(frond) * 2 * .pi / 7 + Noise.unit(Int32(frond), 14, seed) * 0.5
+                let reach = 0.09 + 0.04 * Noise.unit(Int32(frond), 15, seed)
+                let middle = MeshBuilder.ring(reach * 0.5, 0.07, angle), tip = MeshBuilder.ring(reach, 0.035, angle)
+                $0.limb(from: Vec3(0, 0.005, 0), to: middle, radius: 0.012, topRadius: 0.009, sides: 3,
+                        color: frond % 2 == 0 ? Palette.fern : Palette.leaf)
+                $0.limb(from: middle, to: tip, radius: 0.009, topRadius: 0.002, sides: 3, color: Palette.fern)
+            }
+        }
+    }
+
+    /// Pebbles washed up and left: small, smooth, of the lake's two stones.
+    static func pebbles(_ b: inout MeshBuilder, seed: UInt32) {
+        for index in 0..<6 {
+            let u = Noise.unit(Int32(index), 16, seed), v = Noise.unit(Int32(index), 17, seed)
+            let size = 0.012 + 0.012 * Noise.unit(Int32(index), 18, seed)
+            b.rock(center: Vec3((u - 0.5) * 0.18, size * 0.4, (v - 0.5) * 0.18), size: Vec3(size * 1.3, size * 0.8, size), rings: 2,
+                   sides: 5, jitter: 0.15, seed: seed &+ UInt32(index), color: index % 3 == 0 ? Palette.stonePale : Palette.stone)
         }
     }
 

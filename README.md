@@ -1175,7 +1175,8 @@ There is no music in the launcher; the game makes its own sound as it plays.
 - **Every model is original and built from code**
   ([`Sources/NullmereModels`](Sources/NullmereModels)): each kind of company in
   its five tiers, the wilds and six commanders, keeps, walls and every work
-  at every level, the land's firs, crags, reeds, mounds and ruins, and what
+  at every level, the land's firs, birches, heather, ferns, crags, reeds,
+  pebbles, mounds and ruins, and what
   moves through the world. Companies stand in formation, fewer as they are
   worn down; holds lay out their works on the land around the keep.
 - **Portraits from the world itself.** The panels show each commander,

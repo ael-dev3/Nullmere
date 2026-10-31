@@ -100,24 +100,32 @@ public enum Scatter {
         case .strand:
             list += [Recipe(furnishing: .reeds, count: 1...3, scale: 0.8...1.2), Recipe(furnishing: .driftwood, count: 0...2, scale: 0.8...1.3),
                      Recipe(furnishing: .boulder, count: 0...1, scale: 0.6...1.0),
-                     Recipe(furnishing: .deadTree, count: 1...1, scale: 0.8...1.1, chance: 0.15)]
+                     Recipe(furnishing: .deadTree, count: 1...1, scale: 0.8...1.1, chance: 0.15),
+                     Recipe(furnishing: .pebbles, count: 1...2, scale: 0.8...1.2)]
         case .saltFlat:
             list += [Recipe(furnishing: .saltCrystals, count: 2...4, scale: 0.5...0.9),
                      Recipe(furnishing: .deadTree, count: 1...1, scale: 0.8...1.2, chance: 0.2),
-                     Recipe(furnishing: .boulder, count: 0...1, scale: 0.5...0.8)]
+                     Recipe(furnishing: .boulder, count: 0...1, scale: 0.5...0.8),
+                     Recipe(furnishing: .pebbles, count: 1...1, scale: 0.7...1.0, chance: 0.5)]
         case .greyfield:
             list += [Recipe(furnishing: .grass, count: 3...6, scale: 0.8...1.4), Recipe(furnishing: .boulder, count: 0...1, scale: 0.6...1.0),
-                     Recipe(furnishing: .standingStone, count: 1...1, scale: 0.8...1.0, chance: 0.06)]
+                     Recipe(furnishing: .standingStone, count: 1...1, scale: 0.8...1.0, chance: 0.06),
+                     Recipe(furnishing: .heather, count: 1...1, scale: 0.8...1.2, chance: 0.4),
+                     Recipe(furnishing: .birch, count: 1...1, scale: 0.8...1.1, chance: 0.06)]
         case .blackwood:
             list += [Recipe(furnishing: .fir, count: 6...9, scale: 0.8...1.35, closeness: 0.7),
                      Recipe(furnishing: .deadTree, count: 1...1, scale: 0.9...1.2, chance: 0.4),
-                     Recipe(furnishing: .boulder, count: 0...1, scale: 0.6...1.0)]
+                     Recipe(furnishing: .boulder, count: 0...1, scale: 0.6...1.0),
+                     Recipe(furnishing: .birch, count: 1...1, scale: 0.85...1.1, chance: 0.25),
+                     Recipe(furnishing: .fern, count: 1...3, scale: 0.8...1.2, closeness: 0.6)]
         case .barrow:
             list += [Recipe(furnishing: .barrowMound, count: 1...1, scale: 0.8...1.0, chance: 0.6, central: true),
                      Recipe(furnishing: .standingStone, count: 1...2, scale: 0.8...1.2, chance: 0.45),
-                     Recipe(furnishing: .grass, count: 2...3, scale: 0.8...1.2), Recipe(furnishing: .boulder, count: 0...1, scale: 0.6...1.0)]
+                     Recipe(furnishing: .grass, count: 2...3, scale: 0.8...1.2), Recipe(furnishing: .boulder, count: 0...1, scale: 0.6...1.0),
+                     Recipe(furnishing: .heather, count: 1...2, scale: 0.8...1.2)]
         case .spine:
-            list += [Recipe(furnishing: .crag, count: 2...3, scale: 0.9...1.5), Recipe(furnishing: .boulder, count: 1...2, scale: 0.8...1.4)]
+            list += [Recipe(furnishing: .crag, count: 2...3, scale: 0.9...1.5), Recipe(furnishing: .boulder, count: 1...2, scale: 0.8...1.4),
+                     Recipe(furnishing: .heather, count: 1...1, scale: 0.7...1.0, chance: 0.3)]
         }
         return list
     }

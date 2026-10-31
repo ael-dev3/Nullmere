@@ -51,6 +51,7 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 - [x] Each heritage's own architecture: a keep for each people, its walls, roof and crown its own; every work and wall of its holds in its people's slates, stone and timber; and a company of its own at the fifth tier in its people's gear
 - [x] A city view inside the world: C, or Watch ▸ View the Seat Close, takes the view low over the keeper's seat, leaning in, each work named over its roof and chosen there, its row opened in the hold's panel; Back to the lake returns
 - [x] Every hold a town: lanes from the keep's door through the gate and to every work, a ring lane outside the walls; homes of four kinds (cottages, longhouses, roundhouses, townhouses) lit at night with doors in the House's colour, built their people's way, a few about a bare keep and up to 44 (a seat's 64) as its works rise, each facing its lane and never on a lane, a work's ground, the walls' or a company's; a well, a seat's market, a granary's fields; the townsfolk keep to the lanes
+- [x] The land's undergrowth: heather on the greyfields, the barrows and the Spine; ferns and birches in the blackwood, and birches out on the greyfields; pebbles on the strand and the flats; among the firs, grass, reeds, crags and stones, every piece within its hex and clear of hearts, previewed
 - [ ] Hand-modelled detail at RoK's density
 
 ### 3. Animation

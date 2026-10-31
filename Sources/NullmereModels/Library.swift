@@ -173,6 +173,14 @@ public enum Furnishing: String, CaseIterable, Sendable {
     case furrows
     /// A stone seam's cut face.
     case stoneFace
+    /// Low clumps of heather on the greyfields, the barrows and the Spine.
+    case heather
+    /// Ferns under the firs.
+    case fern
+    /// Pebbles along the strand and on the flats.
+    case pebbles
+    /// A pale birch at the forest's edge and out on the greyfields.
+    case birch
 }
 
 /// What moves through the world, apart from companies.
