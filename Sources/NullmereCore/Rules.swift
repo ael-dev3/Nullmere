@@ -755,9 +755,15 @@ extension GameState {
     public func trainingCost(of kind: UnitKind, tier: Int = 1, for house: Int) -> Stock {
         let discount = bonus(.trainingCost, for: house)
         guard kind == .founder else { return GameState.lessened(kind.cost(tier: tier), by: discount) }
-        let mustering = holds.filter { $0.owner == house && $0.training?.kind == .founder }.count
-        let marching = units.filter { $0.owner == house && $0.kind == .founder }.count
-        let extra = max(0, holds(of: house).count - 1) + mustering + marching
+        // Its holds, those mustering Founders and its Founders on the march
+        // counted where they stand, not copied out to be counted.
+        var held = 0, mustering = 0, marching = 0
+        for index in holds.indices where holds[index].owner == house {
+            held += 1
+            if holds[index].training?.kind == .founder { mustering += 1 }
+        }
+        for index in units.indices where units[index].owner == house && units[index].kind == .founder { marching += 1 }
+        let extra = max(0, held - 1) + mustering + marching
         return GameState.lessened(kind.cost.scaled(percent: 100 + 50 * extra), by: discount)
     }
 

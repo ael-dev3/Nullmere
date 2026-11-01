@@ -986,20 +986,47 @@ struct RivalMind {
     func keepAlliesGates(in state: inout GameState) -> [GameEvent] {
         var events: [GameEvent] = []
         // The companies of war of the Houses this one is at war with, found
-        // once: nothing here moves a company or makes or ends a war.
-        let foes = state.units.filter { $0.kind.isMilitary && state.isAtWar(house, $0.owner) }
-        func threatened(_ hold: Hold) -> Bool {
-            foes.contains { foe in
-                foe.position.distance(to: hold.position) <= 3 && state.isAtWar(hold.owner, foe.owner)
+        // once, each by its place and its House alone: nothing here moves a
+        // company or makes or ends a war.
+        var foes: [(position: Hex, owner: Int)] = []
+        for index in state.units.indices where state.units[index].kind.isMilitary && state.isAtWar(house, state.units[index].owner) {
+            foes.append((state.units[index].position, state.units[index].owner))
+        }
+        // Sorted along the map's columns, so a hold looks only at the foes
+        // within three columns of it: none further can be within three
+        // hexes.
+        foes.sort { $0.position.q < $1.position.q }
+        func threatened(_ at: Hex, owner: Int) -> Bool {
+            var low = 0, high = foes.count
+            while low < high {
+                let middle = (low + high) / 2
+                if foes[middle].position.q < at.q - 3 { low = middle + 1 } else { high = middle }
             }
+            for foe in foes[low...] {
+                guard foe.position.q <= at.q + 3 else { break }
+                if foe.position.distance(to: at) <= 3 && state.isAtWar(owner, foe.owner) { return true }
+            }
+            return false
+        }
+        func keptBy(_ holdID: Int) -> Bool {
+            for index in state.units.indices where state.units[index].owner == house {
+                if case .reinforce(let kept)? = state.units[index].errand, kept == holdID { return true }
+            }
+            return false
         }
         for unit in state.units(of: house) {
-            guard case .reinforce(let holdID)? = unit.errand, let hold = state.hold(holdID), !threatened(hold) else { continue }
+            guard case .reinforce(let holdID)? = unit.errand, let hold = state.hold(holdID),
+                  !threatened(hold.position, owner: hold.owner) else { continue }
             events += perform(.halt(unit: unit.id), in: &state)
         }
         guard let sworn = state.alliance(of: house) else { return events }
-        for hold in state.holds.filter({ $0.owner != house && sworn.members.contains($0.owner) }).sorted(by: { $0.id < $1.id }) {
-            guard threatened(hold), !state.units.contains(where: { $0.owner == house && $0.errand == .reinforce(hold: hold.id) }) else { continue }
+        // The allies' holds by their id, place and House, not copied whole.
+        var allied: [(id: Int, position: Hex, owner: Int)] = []
+        for index in state.holds.indices where state.holds[index].owner != house && sworn.members.contains(state.holds[index].owner) {
+            allied.append((state.holds[index].id, state.holds[index].position, state.holds[index].owner))
+        }
+        for hold in allied.sorted(by: { $0.id < $1.id }) {
+            guard threatened(hold.position, owner: hold.owner), !keptBy(hold.id) else { continue }
             let free = state.units(of: house).filter { $0.kind.isMilitary && $0.errand == nil }
             guard free.count > state.holds(of: house).count else { break }
             let near = free.filter { state.hold(at: $0.position) == nil && $0.position.distance(to: hold.position) <= 8 }
@@ -1091,11 +1118,16 @@ struct RivalMind {
     private func chooseTraining(for hold: Hold, owners: [Int?], siteKnown: inout Bool?, in state: GameState,
                                 random: inout SeededRandom) -> UnitKind? {
         let me = state.houses[house]
-        let units = state.units(of: house)
-        let lanterns = units.filter { $0.kind == .lantern }.count
-        let founders = units.filter { $0.kind == .founder }.count
-        let military = units.filter { $0.kind.isMilitary }.count
-        let engines = units.filter { $0.kind == .mangonel }.count
+        // Its companies counted by kind where they stand, in one pass, not
+        // copied out and sifted four times.
+        var lanterns = 0, founders = 0, military = 0, engines = 0
+        for index in state.units.indices where state.units[index].owner == house {
+            let kind = state.units[index].kind
+            if kind == .lantern { lanterns += 1 }
+            if kind == .founder { founders += 1 }
+            if kind.isMilitary { military += 1 }
+            if kind == .mangonel { engines += 1 }
+        }
         let holds = state.holds(of: house).count
         let atWar = state.isAtWarWithAny(house)
         let netGrain = state.income(of: house, territory: owners).grain - state.upkeep(of: house)
@@ -1699,10 +1731,15 @@ struct RivalMind {
     }
 
     private func enemyMilitary(near hex: Hex, within distance: Int, in state: GameState) -> Bool {
-        state.units.contains { other in
-            other.owner != house && other.kind.isMilitary && state.isAtWar(house, other.owner)
-                && other.position.distance(to: hex) <= distance
+        // Each company looked at where it stands, those far along the map's
+        // columns passed over at a glance: not each copied out to be asked.
+        for index in state.units.indices {
+            let position = state.units[index].position
+            guard abs(position.q - hex.q) <= distance, position.distance(to: hex) <= distance else { continue }
+            let owner = state.units[index].owner
+            if owner != house, state.units[index].kind.isMilitary, state.isAtWar(house, owner) { return true }
         }
+        return false
     }
 }
 
