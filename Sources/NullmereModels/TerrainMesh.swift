@@ -31,7 +31,9 @@ public struct TerrainMesh: Sendable {
         case .stream: return Vec3(0.09, 0.10, 0.10)
         case .shoal: return Vec3(0.44, 0.45, 0.47)
         case .strand: return Vec3(0.47, 0.46, 0.43)
-        case .saltFlat: return Vec3(0.84, 0.87, 0.90)
+        // Salt pale under the moon, a shade paler than a ford's shingle:
+        // the palest land, but not white as snow.
+        case .saltFlat: return Vec3(0.60, 0.63, 0.67)
         case .greyfield: return Vec3(0.33, 0.36, 0.30)
         case .blackwood: return Vec3(0.13, 0.16, 0.13)
         case .barrow: return Vec3(0.34, 0.33, 0.27)

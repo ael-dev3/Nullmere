@@ -339,8 +339,14 @@ final class ReliefTests: XCTestCase {
         XCTAssertGreaterThan(high.y, 1.8, "the Spine's heights")
         let salt = terrain.mesh.vertices.filter { $0.part == Terrain.saltFlat.code }
         if !salt.isEmpty {
-            XCTAssertGreaterThan(salt.map { $0.color.x }.reduce(0, +) / Float(salt.count), 0.6, "salt is white")
+            XCTAssertGreaterThan(salt.map { $0.color.x }.reduce(0, +) / Float(salt.count), 0.5, "salt is pale")
         }
+        // Pale, but not white as snow: paler than any other land, the
+        // fords' shingle too.
+        for terrain in Terrain.allCases where terrain != .saltFlat {
+            XCTAssertGreaterThan(TerrainMesh.colour(.saltFlat).x, TerrainMesh.colour(terrain).x, "\(terrain)")
+        }
+        XCTAssertLessThan(TerrainMesh.colour(.saltFlat).x, 0.7, "not white as snow")
     }
 }
 
