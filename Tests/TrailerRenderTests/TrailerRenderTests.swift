@@ -104,6 +104,7 @@ final class Projector: @unchecked Sendable {
     private let lake: LakeRenderer
     private let lakeTarget: any MTLTexture
     private let width = Trailer.width, height = Trailer.height
+    private let vignette = Pixels.vignette(width: Trailer.width, height: Trailer.height)
 
     init(device: any MTLDevice, trailer: Trailer) throws {
         self.trailer = trailer
@@ -140,6 +141,7 @@ final class Projector: @unchecked Sendable {
         if shot.look == .title {
             title(on: &pixels, showing: trailer.title(at: time))
         }
+        Pixels.vignette(&pixels, keeping: vignette)
         Pixels.darken(&pixels, to: trailer.brightness(at: time))
         return pixels
     }

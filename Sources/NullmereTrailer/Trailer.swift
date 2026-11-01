@@ -131,7 +131,7 @@ public struct Trailer {
         }
         // Rain off the lake over a hold on the shore.
         add("the rain", 7, .world, weather: .rain) { u in
-            Trailer.aimed(relief, x: shore.x, y: shore.y, scale: Trailer.mix(62, 74, u), tilt: 0.96, heading: toLake + .pi + Trailer.mix(-0.2, 0.2, u))
+            Trailer.aimed(relief, x: shore.x, y: shore.y, scale: Trailer.mix(88, 102, u), tilt: 0.98, heading: toLake + .pi + Trailer.mix(-0.2, 0.2, u))
         }
         // Battle in the dark.
         add("the battle", 16, .world, action: .battle, dissolve: 0.6) { u in
@@ -279,6 +279,41 @@ public enum Pixels {
                 for index in 0..<count {
                     let mixed: UInt32 = UInt32(a[index]) * keep + UInt32(b[index]) * w + 128
                     a[index] = UInt8(truncatingIfNeeded: mixed >> 8)
+                }
+            }
+        }
+    }
+
+    /// How much of each pixel a picture keeps under its vignette, out of
+    /// 256: all of it about the middle, a little less toward the edges and
+    /// a quarter less in the corners, as a lens darkens them.
+    public static func vignette(width: Int, height: Int) -> [UInt16] {
+        var keep = [UInt16](repeating: 256, count: width * height)
+        let cx = Double(width) / 2, cy = Double(height) / 2
+        for y in 0..<height {
+            for x in 0..<width {
+                let dx = (Double(x) + 0.5 - cx) / cx, dy = (Double(y) + 0.5 - cy) / cy
+                let r = min((dx * dx + dy * dy).squareRoot() / 2.0.squareRoot(), 1)
+                let u = min(max((r - 0.45) / 0.55, 0), 1)
+                keep[y * width + x] = UInt16((256 * (1 - 0.26 * u * u * (3 - 2 * u))).rounded())
+            }
+        }
+        return keep
+    }
+
+    /// A picture under a vignette (see `vignette(width:height:)`): its
+    /// colours dimmed by it, its alpha left.
+    public static func vignette(_ pixels: inout [UInt8], keeping keep: [UInt16]) {
+        let count = min(pixels.count / 4, keep.count)
+        pixels.withUnsafeMutableBufferPointer { p in
+            keep.withUnsafeBufferPointer { k in
+                for index in 0..<count {
+                    let factor = UInt32(k[index])
+                    for channel in 0..<3 {
+                        let at = index * 4 + channel
+                        let dimmed: UInt32 = UInt32(p[at]) * factor
+                        p[at] = UInt8(truncatingIfNeeded: dimmed >> 8)
+                    }
                 }
             }
         }

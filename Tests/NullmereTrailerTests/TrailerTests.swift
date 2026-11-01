@@ -138,6 +138,19 @@ final class TrailerTests: XCTestCase {
         a = from
         Pixels.dissolve(&a, into: into, weight: 0.5)
         XCTAssertEqual(a, [128, 100, 100, 255], "Halfway")
+        // The vignette: the middle kept whole, the corners a quarter darker,
+        // the alpha never touched.
+        let keep = Pixels.vignette(width: 64, height: 36)
+        XCTAssertEqual(keep[18 * 64 + 32], 256)
+        XCTAssertEqual(Double(keep[0]), 256 * 0.74, accuracy: 3)
+        XCTAssertEqual(keep[0], keep[35 * 64 + 63], "Its corners alike")
+        XCTAssertLessThan(keep[18 * 64], keep[18 * 64 + 16], "Darker toward its edges")
+        var lit = [UInt8](repeating: 200, count: 64 * 36 * 4)
+        Pixels.vignette(&lit, keeping: keep)
+        XCTAssertEqual(Array(lit[(18 * 64 + 32) * 4..<(18 * 64 + 33) * 4]), [200, 200, 200, 200])
+        let corner = UInt8((200 * Int(keep[0])) >> 8)
+        XCTAssertEqual(Array(lit[0..<4]), [corner, corner, corner, 200])
+        XCTAssertLessThan(corner, 152)
         var b = from
         Pixels.darken(&b, to: 1)
         XCTAssertEqual(b, from, "As it is")
