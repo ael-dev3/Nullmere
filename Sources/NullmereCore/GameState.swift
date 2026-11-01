@@ -421,13 +421,23 @@ public struct GameState: Codable, Equatable, Sendable {
         // The map held here, for the walk about each hold to read it
         // without taking the whole state with it.
         let map = map
+        // Every steward of a watch asks for it, and between their turns the
+        // holds seldom change: what the holds that last asked claimed is
+        // kept with the map's ground, and given again to the same holds.
+        var claimants: [Claims.Claimant] = []
+        claimants.reserveCapacity(holds.count)
+        for index in holds.indices {
+            claimants.append(Claims.Claimant(id: holds[index].id, position: holds[index].position, founded: holds[index].foundedWatch,
+                                             reach: holds[index].territoryRadius))
+        }
+        if let kept = map.claims.owners(for: claimants) { return kept }
         var owners = [Int?](repeating: nil, count: map.count)
         // The holds in the order they were founded, by index, none copied;
         // what each claims is the same in whatever order its hexes come.
-        let order = holds.indices.sorted { (holds[$0].foundedWatch, holds[$0].id) < (holds[$1].foundedWatch, holds[$1].id) }
+        let order = claimants.indices.sorted { (claimants[$0].founded, claimants[$0].id) < (claimants[$1].founded, claimants[$1].id) }
         for index in order {
-            let id = holds[index].id, at = holds[index].position, home = map.index(of: at)
-            map.forEachIndex(within: holds[index].territoryRadius, of: at) { tile in
+            let id = claimants[index].id, at = claimants[index].position, home = map.index(of: at)
+            map.forEachIndex(within: claimants[index].reach, of: at) { tile in
                 guard owners[tile] == nil else { return }
                 switch map[tile].terrain {
                 case .still, .shallows, .ford, .stream, .shoal: return
@@ -437,6 +447,7 @@ public struct GameState: Codable, Equatable, Sendable {
                 owners[tile] = id
             }
         }
+        map.claims.keep(owners, for: claimants)
         return owners
     }
 

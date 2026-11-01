@@ -51,6 +51,10 @@ public struct WorldMap: Codable, Equatable, Sendable {
     /// while the ground is as it is: shared by the map's copies, and let go
     /// of by any copy whose ground changes.
     private(set) var lie = LieOfTheLand()
+    /// Each tile's hold as the holds that last asked claim it, kept while
+    /// the ground is as it is and they stand as they stood: shared by the
+    /// map's copies, and let go of by any copy whose ground changes.
+    private(set) var claims = Claims()
 
     private enum CodingKeys: String, CodingKey {
         case radius
@@ -245,6 +249,8 @@ public struct WorldMap: Codable, Equatable, Sendable {
 
     mutating func set(index: Int, _ tile: Tile) {
         tiles[index] = tile
+        // Claims its other copies still keep are theirs, of their ground.
+        if isKnownUniquelyReferenced(&claims) { claims.clear() } else { claims = Claims() }
         let step = WorldMap.step(onto: tile.terrain)
         if steps[index] != step {
             // A lie its other copies still keep is theirs, of their ground.

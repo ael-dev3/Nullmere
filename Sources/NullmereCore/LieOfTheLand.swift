@@ -85,3 +85,39 @@ final class LieOfTheLand: @unchecked Sendable {
         return cost
     }
 }
+
+/// What the holds claim of a map's land: each tile's hold, kept for the
+/// holds that last asked, by what decides it (each hold's id, where it
+/// stands, when it was founded and how far it reaches), and given again
+/// only to holds the same in all of it, in the same order.
+final class Claims: @unchecked Sendable {
+    struct Claimant: Equatable {
+        let id: Int
+        let position: Hex
+        let founded: Int
+        let reach: Int
+    }
+
+    private let lock = NSLock()
+    private var kept: (claimants: [Claimant], owners: [Int?])?
+
+    func owners(for claimants: [Claimant]) -> [Int?]? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let kept, kept.claimants == claimants else { return nil }
+        return kept.owners
+    }
+
+    func keep(_ owners: [Int?], for claimants: [Claimant]) {
+        lock.lock()
+        defer { lock.unlock() }
+        kept = (claimants, owners)
+    }
+
+    /// Lets go of what was kept, as the ground has changed.
+    func clear() {
+        lock.lock()
+        defer { lock.unlock() }
+        kept = nil
+    }
+}
