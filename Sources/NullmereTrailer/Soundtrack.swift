@@ -34,9 +34,9 @@ public struct Soundtrack: Sendable {
         at(0, .music(.peace))
         at(5.5, .cue(.watch, pan: 0, gain: 0.7))
         // Among the holds and their folk.
-        let descent = start(of: "the descent"), seat = start(of: "the seat"), town = start(of: "the town")
+        let shore = start(of: "the shore"), seat = start(of: "the seat"), town = start(of: "the town")
         let rising = start(of: "the rising")
-        at(descent + 5, .town(0.3, pan: 0))
+        at(shore + 5, .town(0.3, pan: 0))
         at(seat, .town(0.6, pan: -0.2))
         at(town, .town(0.9, pan: 0.2))
         at(town + 3, .cue(.coin, pan: -0.4, gain: 0.5))

@@ -1984,13 +1984,17 @@ for its syntax, names and types.
 
 ### The trailer
 
-The trailer is a minute and fifty seconds of the game's own world at
-night, with no interface and nothing of the rules: the lake of the title
-screen under the moon; down out of the night to a seat on the shore and
-about it, its Moonspire crowned; along a great hold's lanes; another
-House's Moonspire rising, its crane at work; a host on the march; rain off
-the lake; a battle in the dark; the moon eaten over the still water, and
-the field after under it; the whole lake from on high; and the title. Every frame is drawn by the game's own
+The trailer is a minute and fifty-two seconds of the game's own world at
+night, with no interface and nothing of the rules, every camera low and
+slow near the water and the holds: the lake of the title screen under the
+moon; low over the black water in to a hold on the shore; about a seat,
+its Moonspire crowned; past a great hold, low over its roofs; another
+House's Moonspire rising, its crane at work; alongside a host on the
+march; rain off the lake; in among the lines of a battle in the dark; the
+moon eaten over the still water, and the field after under it; out over
+the water to the moon's image on it; and the title. Nothing the game lays
+over its world for its keepers is drawn: no lanes, no skill's ring, no
+fireflies or dust hanging over the troops. Every frame is drawn by the game's own
 renderers (the world's, and the launcher's lake), and its score is the
 game's own synthesiser, the drums of war under the march and every blow
 of the battle heard as the picture throws it. On a Mac:
@@ -2000,7 +2004,7 @@ scripts/render-trailer.sh                                  # build/trailer/nullm
 NULLMERE_TRAILER_MODE=stills scripts/render-trailer.sh     # a still from each shot
 ```
 
-It is H.264 and AAC, 1920 by 1080 at thirty frames a second. The shots,
+It is H.264 and AAC, 1920 by 1080 at sixty frames a second. The shots,
 what moves in them and the score are `Sources/NullmereTrailer` (tested on
 Linux too); the drawing and the writing, `Tests/TrailerRenderTests`. The
 Trailer workflow renders it whenever they change and publishes it, with a

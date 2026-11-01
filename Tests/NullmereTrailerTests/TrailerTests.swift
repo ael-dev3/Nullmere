@@ -23,7 +23,8 @@ final class TrailerTests: XCTestCase {
             XCTAssertEqual(shot.start, before.end, accuracy: 1e-9, "\(shot.name) follows \(before.name)")
             XCTAssertLessThan(shot.dissolve, shot.length)
         }
-        XCTAssertEqual(trailer.frameCount, Int((trailer.duration * 30).rounded()))
+        XCTAssertEqual(Trailer.framesPerSecond, 60)
+        XCTAssertEqual(trailer.frameCount, Int((trailer.duration * 60).rounded()))
         XCTAssertEqual(trailer.brightness(at: 0), 0, "Up from black")
         XCTAssertEqual(trailer.brightness(at: trailer.duration / 2), 1)
         XCTAssertEqual(trailer.brightness(at: trailer.duration), 0, "Down to black")

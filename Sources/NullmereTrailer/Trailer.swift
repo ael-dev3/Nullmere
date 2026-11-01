@@ -52,7 +52,7 @@ public struct Trailer {
     public static let height = 1080
     public static let viewSize = CGSize(width: 960, height: 540)
     public static let pixelsPerPoint = 2.0
-    public static let framesPerSecond = 30
+    public static let framesPerSecond = 60
 
     public let world: TrailerWorld
     public let shots: [Shot]
@@ -99,47 +99,51 @@ public struct Trailer {
                               dissolve: shots.isEmpty ? 0 : dissolve, camera: camera))
             clock += length
         }
+        // Every camera low and slow, near the water and the holds: at most a
+        // few times a keep's height over the ground, leaning toward the
+        // horizon but never past it (a tilt of 1.2 and the view's half
+        // height, 0.3, stay below it), easing from one framing to the next.
+        // Out from the shore hold over the water, toward the lake's heart;
+        // and the heading that looks toward the moon, its image on the water.
+        let out = (x: (lake.x - shore.x) / max(hypot(lake.x - shore.x, lake.y - shore.y), 1e-6),
+                   y: (lake.y - shore.y) / max(hypot(lake.x - shore.x, lake.y - shore.y), 1e-6))
+        let toMoon = atan2(-Double(Sky.moon.x), -Double(Sky.moon.z))
         // The still: the lake of the title screen, the moon on the water.
-        add("the still", 9, .lake)
-        // Down out of the night to the seat on the shore.
-        add("the descent", 10, .world, dissolve: 2) { u in
-            let e = Trailer.ease(u)
-            return Trailer.aimed(relief, x: Trailer.mix(lake.x, seat.x, e), y: Trailer.mix(lake.y, seat.y, e), scale: Trailer.mix(10, 46, e * e),
-                          tilt: Trailer.mix(0.42, 0.86, e), heading: Trailer.mix(-0.6, 0.35, e))
+        add("the still", 8, .lake)
+        // Low over the black water, coming in to a hold on the shore, the
+        // seats' lights beyond it.
+        add("the shore", 11, .world, dissolve: 2) { u in
+            Trailer.move(relief, u, (shore.x + out.x * 3.1, shore.y + out.y * 3.1, 115, 1.2, toLake + .pi - 0.18),
+                 (shore.x + out.x * 0.4, shore.y + out.y * 0.4, 138, 1.17, toLake + .pi + 0.02))
         }
-        // About the seat, its Moonspire crowned and turning.
+        // About the seat, its Moonspire crowned, close and turning slowly.
         add("the seat", 11, .world) { u in
-            Trailer.aimed(relief, x: seat.x, y: seat.y, scale: Trailer.mix(92, 118, u), tilt: Trailer.mix(0.98, 1.06, u), heading: Trailer.mix(0.35, 1.75, Trailer.ease(u)))
+            Trailer.move(relief, u, (seat.x, seat.y, 175, 1.12, 0.4), (seat.x, seat.y, 195, 1.12, 1.45))
         }
-        // Along the lanes of a great hold, its folk about their work.
+        // Gliding past a great hold, low over its roofs and its folk.
         add("the town", 9, .world) { u in
-            let h = 2.4
-            let side = (x: cos(h), y: -sin(h))
-            return Trailer.aimed(relief, x: town.x + side.x * Trailer.mix(-0.9, 0.9, u), y: town.y + side.y * Trailer.mix(-0.9, 0.9, u), scale: 150,
-                          tilt: 1.04, heading: h)
+            Trailer.move(relief, u, (town.x - 0.7, town.y - 0.8, 200, 1.14, 0.9), (town.x + 0.7, town.y + 0.8, 200, 1.14, 1.3))
         }
         // Another House's Moonspire rising, its crane at work.
         add("the rising", 7, .world) { u in
-            Trailer.aimed(relief, x: rising.x, y: rising.y, scale: Trailer.mix(104, 126, u), tilt: 1.0, heading: Trailer.mix(-2.2, -1.5, u))
+            Trailer.move(relief, u, (rising.x, rising.y, 200, 1.08, -1.95), (rising.x, rising.y, 215, 1.08, -1.6))
         }
-        // A host on the march along the way between two holds.
+        // Alongside a host on the march, at its own pace.
         add("the march", 12, .world, action: .march) { u in
             let middle = march.middle(at: u * 12)
             let h = march.sideHeading
-            return Trailer.aimed(relief, x: Double(middle.x), y: Double(middle.z), scale: Trailer.mix(132, 116, u), tilt: Trailer.mix(1.08, 1.0, u),
-                          heading: h + Trailer.mix(-0.3, 0.2, u))
+            return Trailer.aimed(relief, x: Double(middle.x), y: Double(middle.z), scale: Trailer.mix(175, 185, u), tilt: 1.18,
+                                 heading: h + Trailer.mix(-0.15, 0.15, Trailer.ease(u)))
         }
-        // Rain off the lake over a hold on the shore.
+        // Rain off the lake over the hold on the shore.
         add("the rain", 7, .world, weather: .rain) { u in
-            Trailer.aimed(relief, x: shore.x, y: shore.y, scale: Trailer.mix(88, 102, u), tilt: 0.98, heading: toLake + .pi + Trailer.mix(-0.2, 0.2, u))
+            Trailer.move(relief, u, (shore.x, shore.y, 150, 1.16, toLake + 0.05), (shore.x, shore.y, 165, 1.16, toLake + 0.35))
         }
-        // Battle in the dark.
+        // Battle in the dark, from the edge of the field in among the lines.
         add("the battle", 16, .world, action: .battle, dissolve: 0.6) { u in
             let c = battle.centre
             let h = battle.sideHeading
-            let push = Trailer.ease(min(u / 0.55, 1))
-            return Trailer.aimed(relief, x: Double(c.x), y: Double(c.z), scale: Trailer.mix(62, 146, push), tilt: Trailer.mix(0.92, 1.12, push),
-                          heading: h + Trailer.mix(-0.5, 0.35, Trailer.ease(u)))
+            return Trailer.move(relief, min(u / 0.6, 1), (Double(c.x), Double(c.z), 140, 1.18, h - 0.6), (Double(c.x), Double(c.z), 210, 1.12, h - 0.1))
         }
         // The moon eaten over the still water, the world's shadow coming
         // over it until it hangs a dull ember among the stars.
@@ -147,16 +151,13 @@ public struct Trailer {
         // The field after, under the eaten moon.
         add("the field after", 6, .world, action: .aftermath, weather: .eclipse) { u in
             let c = battle.centre
-            return Trailer.aimed(relief, x: Double(c.x), y: Double(c.z), scale: Trailer.mix(128, 52, Trailer.ease(u)), tilt: Trailer.mix(1.05, 0.82, u),
-                          heading: battle.sideHeading + 0.35 + 0.2 * u)
+            return Trailer.move(relief, u, (Double(c.x), Double(c.z), 185, 1.12, battle.sideHeading + 0.4), (Double(c.x), Double(c.z), 200, 1.12, battle.sideHeading + 0.7))
         }
-        // The whole lake from on high, the holds about the black water.
-        add("the lake", 7, .world, dissolve: 1.5) { u in
-            let e = Trailer.ease(u)
-            return Trailer.aimed(relief, x: Trailer.mix(seat.x * 0.6, lake.x, e), y: Trailer.mix(seat.y * 0.6, lake.y, e), scale: Trailer.mix(30, 9.6, e),
-                          tilt: Trailer.mix(0.8, 0.36, e), heading: Trailer.mix(0.6, 1.1, u))
+        // Out from the shore over the black water to the moon's image on it.
+        add("the lake", 9, .world, dissolve: 1.5) { u in
+            Trailer.move(relief, u, (shore.x + out.x * 2.6, shore.y + out.y * 2.6, 95, 1.2, toLake + 0.3),
+                 (shore.x + out.x * 9, shore.y + out.y * 9, 70, 1.05, toMoon))
         }
-        // The title.
         add("the title", 10, .title, dissolve: 2)
         return shots
     }
@@ -168,6 +169,15 @@ public struct Trailer {
         let height = Double(max(relief.height(atX: Float(x), z: Float(y)), Relief.waterline))
         let back = height * tan(tilt)
         return Camera(centerX: x - sin(heading) * back, centerY: y - cos(heading) * back, scale: scale, tilt: tilt, heading: heading)
+    }
+
+    /// A camera easing from one framing to another as `u` goes from 0 to 1,
+    /// each aimed at the ground beneath it.
+    static func move(_ relief: Relief, _ u: Double, _ from: (x: Double, y: Double, scale: Double, tilt: Double, heading: Double),
+                     _ to: (x: Double, y: Double, scale: Double, tilt: Double, heading: Double)) -> Camera {
+        let e = Trailer.ease(u)
+        return Trailer.aimed(relief, x: Trailer.mix(from.x, to.x, e), y: Trailer.mix(from.y, to.y, e), scale: Trailer.mix(from.scale, to.scale, e),
+                             tilt: Trailer.mix(from.tilt, to.tilt, e), heading: Trailer.mix(from.heading, to.heading, e))
     }
 
     static func ease(_ u: Double) -> Double { u * u * (3 - 2 * u) }

@@ -2,7 +2,7 @@
 # Renders the trailer on this Mac: every frame drawn by the game's own
 # renderers on its GPU (the world's, and the launcher's lake for the
 # opening and the title), and written with the game's own score to an MP4,
-# H.264 and AAC, 1920 by 1080 at thirty frames a second; a still from each
+# H.264 and AAC, 1920 by 1080 at sixty frames a second; a still from each
 # shot beside it, and the score as a WAV.
 #
 #   scripts/render-trailer.sh [folder]                         # the film (build/trailer)

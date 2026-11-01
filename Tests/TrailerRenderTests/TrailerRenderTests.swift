@@ -14,7 +14,7 @@ import XCTest
 
 /// The trailer drawn by the game's own renderers, frame by frame, the
 /// title over the lake of the title screen, and written with its score to
-/// an H.264 film of 1920 by 1080 at thirty frames a second: run by
+/// an H.264 film of 1920 by 1080 at sixty frames a second: run by
 /// scripts/render-trailer.sh, which names the folder it goes to, and
 /// skipped otherwise. With NULLMERE_TRAILER_MODE=stills it draws only a
 /// still from the middle of each shot, to look at.
@@ -268,9 +268,9 @@ enum Film {
             AVVideoWidthKey: width,
             AVVideoHeightKey: height,
             AVVideoCompressionPropertiesKey: [
-                AVVideoAverageBitRateKey: 16_000_000,
+                AVVideoAverageBitRateKey: 20_000_000,
                 AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
-                AVVideoMaxKeyFrameIntervalKey: 60,
+                AVVideoMaxKeyFrameIntervalKey: 2 * Trailer.framesPerSecond,
                 AVVideoExpectedSourceFrameRateKey: Trailer.framesPerSecond,
             ] as [String: Any],
             AVVideoColorPropertiesKey: [
