@@ -481,9 +481,49 @@ enum Works {
             if level >= 5 {
                 $0.box(center: Vec3(0, 0.162, 0.22), size: Vec3(0.024, 0.042, 0.032), color: Palette.stonePale)
             }
+            if level <= 2 { lodgeShed(&$0) }
         }
         let swings = [Machinery.Swing(part: jib, axis: Vec3(0, 1, 0), angle: 0.5)]
         return model(name, b, rig: rig, machinery: Machinery(wheels: wheels, swings: swings, parts: rig.count))
+    }
+
+    /// A first lodge's shed drawn near: dressed stones stacked on a pallet
+    /// under its roof, a tub of mortar with a trowel left in it, the
+    /// masons' level, an A of timber with its plumb line, leaning on a
+    /// post, and templates cut to a moulding standing by another.
+    static func lodgeShed(_ b: inout MeshBuilder) {
+        b.box(center: Vec3(-0.1, 0.005, -0.14), size: Vec3(0.11, 0.01, 0.07), color: Palette.timberGrey)
+        b.with(surface: .stone) {
+            for (index, at) in [Vec3(-0.125, 0.025, -0.157), Vec3(-0.075, 0.025, -0.157), Vec3(-0.125, 0.025, -0.122),
+                                Vec3(-0.075, 0.025, -0.122), Vec3(-0.1, 0.055, -0.14)].enumerated() {
+                $0.box(center: at, size: Vec3(0.045, 0.03, 0.03), turn: Float(index) * 0.05, color: Palette.stonePale.mix(Palette.stoneWhite, 0.5))
+            }
+        }
+        b.place(.translation(Vec3(-0.01, 0, -0.12))) {
+            $0.lathe([(0.02, 0), (0.026, 0.022)], sides: 7, color: Palette.timber)
+            $0.lathe([(0.0, 0.018), (0.024, 0.019)], sides: 7, color: Palette.ash)
+            $0.with(material: .metal) {
+                $0.box(center: Vec3(0.006, 0.026, 0.004), size: Vec3(0.016, 0.014, 0.002), turn: 0.6, color: Palette.steel)
+            }
+            $0.beam(from: Vec3(0.006, 0.033, 0.004), to: Vec3(0.012, 0.05, 0.01), width: 0.004, color: Palette.timberPale)
+        }
+        // The level: an A of timber, its plumb line hung from the apex.
+        b.place(.translation(Vec3(0.055, 0, -0.07)) * .rotationY(-0.6) * .rotationX(-0.25)) { b in
+            for x in [Float(-0.03), 0.03] {
+                b.beam(from: Vec3(x, 0, 0), to: Vec3(0, 0.1, 0), width: 0.005, depth: 0.004, color: Palette.timberPale)
+            }
+            b.beam(from: Vec3(-0.017, 0.042, 0), to: Vec3(0.017, 0.042, 0), width: 0.004, depth: 0.004, color: Palette.timberPale)
+            b.limb(from: Vec3(0, 0.1, 0), to: Vec3(0, 0.05, 0), radius: 0.0008, sides: 3, color: Palette.linen)
+            b.with(material: .metal) {
+                $0.place(.translation(Vec3(0, 0.044, 0))) { $0.cone(sides: 4, radius: 0.004, from: 0.006, to: 0, color: Palette.iron) }
+            }
+        }
+        // Templates of thin board, cut to a moulding, by the western post.
+        for (index, x) in [Float(-0.19), -0.172].enumerated() {
+            let z = -0.088 + Float(index) * 0.004
+            b.sheet([Vec3(x, 0, z), Vec3(x + 0.04, 0, z), Vec3(x + 0.04, 0.05, z), Vec3(x + 0.028, 0.064, z), Vec3(x + 0.01, 0.072, z),
+                     Vec3(x, 0.07, z)], normal: Vec3(0, 0, 1), thickness: 0.003, color: index == 0 ? Palette.timberPale : Palette.linen)
+        }
     }
 
     static func model(_ name: String, _ b: MeshBuilder, rig: Rig = Rig(), machinery: Machinery? = nil) -> Model {
@@ -1305,8 +1345,67 @@ enum Works {
                 near.beam(from: foot, to: top, width: 0.006, depth: 0.003, color: Palette.timberPale)
                 near.box(center: foot + (top - foot) * 0.72, size: Vec3(0.018, 0.004, 0.005), color: Palette.timber)
             }
+            if level <= 2 { musterYard(&near) }
         }
         return model(name, b)
+    }
+
+    /// A first Muster Hall's yard drawn near: a ring for sparring, a rope
+    /// round six stakes; the drill's drum on its stand with its sticks
+    /// laid across it; helms left on a bench by the door; and a barrel of
+    /// water with a ladle hung on it.
+    static func musterYard(_ b: inout MeshBuilder) {
+        let ring = Vec3(-0.21, 0, 0.05)
+        let stakes = (0..<6).map { ring + MeshBuilder.ring(0.06, 0, Float($0) * .pi / 3 + 0.3) }
+        for (index, stake) in stakes.enumerated() {
+            b.limb(from: stake, to: stake + Vec3(0, 0.055, 0), radius: 0.004, sides: 3, color: Palette.timberDark)
+            let next = stakes[(index + 1) % stakes.count]
+            b.limb(from: stake + Vec3(0, 0.045, 0), to: next + Vec3(0, 0.045, 0), radius: 0.0015, sides: 3, color: Palette.linen)
+        }
+        b.with(surface: .earth) {
+            $0.place(.translation(ring)) {
+                $0.lathe([(0.055, 0), (0.055, 0.003)], sides: 8, color: Palette.yard.mix(Palette.straw, 0.3))
+            }
+        }
+        // The drum, its hoops in the House's colour, its sticks across it.
+        b.place(.translation(Vec3(0.25, 0, 0.06))) { b in
+            for angle in [Float(0), 2.1, 4.2] {
+                b.limb(from: MeshBuilder.ring(0.026, 0, angle), to: MeshBuilder.ring(0.012, 0.045, angle), radius: 0.003, sides: 3,
+                       color: Palette.timberDark)
+            }
+            b.lathe([(0.026, 0.045), (0.029, 0.062), (0.026, 0.08)], sides: 8, color: Palette.leather)
+            b.with(material: .house) {
+                for y in [Float(0.047), 0.078] {
+                    $0.lathe([(0.0275, y - 0.003), (0.0275, y + 0.003)], sides: 8, color: Palette.house)
+                }
+            }
+            b.lathe([(0.025, 0.08), (0.0, 0.081)], sides: 8, color: Palette.canvas)
+            for turn in [Float(0.4), -0.5] {
+                b.place(.rotationY(turn)) {
+                    $0.limb(from: Vec3(-0.03, 0.084, 0), to: Vec3(0.03, 0.084, 0.004), radius: 0.0025, sides: 4, color: Palette.timberPale)
+                }
+            }
+        }
+        // Helms left on a bench against the hall, right of its door.
+        b.box(center: Vec3(0.125, 0.04, 0.012), size: Vec3(0.1, 0.008, 0.025), color: Palette.timberPale)
+        for x in [Float(0.085), 0.165] {
+            b.box(center: Vec3(x, 0.018, 0.012), size: Vec3(0.008, 0.036, 0.02), color: Palette.timber)
+        }
+        b.with(material: .metal) {
+            for x in [Float(0.105), 0.145] {
+                $0.sphere(center: Vec3(x, 0.044, 0.012), radius: 0.013, rings: 2, sides: 6, color: Palette.mail, squash: 1.1)
+                $0.box(center: Vec3(x, 0.05, 0.026), size: Vec3(0.003, 0.014, 0.003), color: Palette.iron)
+            }
+        }
+        // Water for the drill, a ladle hung on its rim.
+        Stores.barrel(&b, at: Vec3(0.255, 0, -0.07), turn: 0.4)
+        b.place(.translation(Vec3(0.255, 0, -0.07))) {
+            $0.lathe([(0.0, 0.066), (0.024, 0.067)], sides: 7, color: Vec3(0.12, 0.16, 0.2))
+            $0.limb(from: Vec3(0, 0.075, 0.024), to: Vec3(-0.004, 0.04, 0.034), radius: 0.002, sides: 3, color: Palette.timberPale)
+            $0.place(.translation(Vec3(-0.004, 0.036, 0.036))) {
+                $0.lathe([(0.0, 0.0), (0.008, 0.002), (0.009, 0.008)], sides: 5, color: Palette.timberPale)
+            }
+        }
     }
 
     // MARK: Infirmary
