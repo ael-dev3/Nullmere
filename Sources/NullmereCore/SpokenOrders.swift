@@ -3,7 +3,10 @@ import Foundation
 /// Orders in a keeper's own words. Their Mac's model reads what they write
 /// into the plain lines of the realm's order book, given a briefing of what
 /// their House has and knows; each line is read here against the keeper's
-/// own view into the order the realm would take, or why it wouldn't.
+/// own view into the order the realm would take, or why it wouldn't. The
+/// book has lines for the House's companies and holds, and for its dealings
+/// with the other Houses: envoys of peace, of a pact or demanding tribute,
+/// gifts, offers of trade and war.
 /// Nothing is given until the keeper has seen the orders and gives them:
 /// the model only reads, and the realm judges every order as it always
 /// does. Without the model, the order book's lines may be written as they
@@ -30,7 +33,9 @@ public enum SpokenOrders {
 
     /// The forms of the order book's lines.
     public static let forms = ["MARCH <company> TO <place>", "STRIKE <place> WITH <company>", "FORTIFY <company>", "HALT <company>",
-                               "DRILL <company>", "BUILD <work> AT <hold>", "TRAIN <kind> AT <hold>"]
+                               "DRILL <company>", "BUILD <work> AT <hold>", "TRAIN <kind> AT <hold>",
+                               "OFFER PEACE TO <house>", "OFFER A PACT TO <house>", "DEMAND TRIBUTE FROM <house>", "DECLARE WAR ON <house>",
+                               "GIVE <amount> <store> TO <house>", "TRADE <amount> <store> FOR <amount> <store> WITH <house>"]
     /// The most lines read at once.
     public static let most = 6
     /// The most companies and places the briefing names, the nearest the
@@ -76,6 +81,11 @@ public enum SpokenOrders {
         lines.append("Places you know: " + others.map(\.name).joined(separator: ", "))
         lines.append("Works: " + BuildingKind.allCases.map(\.title).joined(separator: ", "))
         lines.append("Kinds of company: " + UnitKind.allCases.map(\.title).joined(separator: ", "))
+        // The other Houses standing, each with the House's stance toward it.
+        let houses = state.livingHouses.filter { $0.id != player }
+            .map { "\($0.title) (\(state.stance(player, $0.id).standing))" }
+        lines.append("Houses: " + houses.joined(separator: ", "))
+        lines.append("Stores: " + Resource.allCases.map(\.title).joined(separator: ", "))
         return lines.joined(separator: "\n")
     }
 
@@ -151,9 +161,64 @@ public enum SpokenOrders {
                 return refused(text, "No company goes by the name \(what).")
             }
             return given(.train(hold: hold.id, kind: kind), "\(hold.name) musters a company of \(kind.title).")
+        case "OFFER", "DEMAND", "DECLARE":
+            // An envoy to another House, or war on it.
+            let said = rest.joined(separator: " ")
+            let leads: [(verb: String, lead: String, proposal: Proposal?)] = [
+                ("OFFER", "PEACE TO ", .peace), ("OFFER", "A PACT TO ", .pact), ("OFFER", "PACT TO ", .pact),
+                ("DEMAND", "TRIBUTE FROM ", .tribute), ("DECLARE", "WAR ON ", nil),
+            ]
+            guard let form = leads.first(where: { $0.verb == verb && said.uppercased().hasPrefix($0.lead) }) else { return nil }
+            let name = String(said.dropFirst(form.lead.count))
+            guard let other = house(name, in: state, player: player) else { return refused(text, "No House goes by the name \(name).") }
+            let title = state.houses[other].title
+            switch form.proposal {
+            case nil: return given(.declareWar(on: other), "War on \(title).")
+            case .tribute?: return given(.propose(.tribute, to: other), "An envoy to \(title), demanding tribute.")
+            case .pact?: return given(.propose(.pact, to: other), "An envoy to \(title), offering a pact.")
+            case let proposal?: return given(.propose(proposal, to: other), "An envoy to \(title), offering peace.")
+            }
+        case "GIVE":
+            guard let (what, to) = split("TO") else { return nil }
+            guard let (amount, store) = stores(what) else { return nil }
+            guard let resource = resource(store) else { return refused(text, "No store goes by the name \(store).") }
+            guard let other = house(to, in: state, player: player) else { return refused(text, "No House goes by the name \(to).") }
+            return given(.gift(to: other, resource: resource, amount: amount),
+                         "\(GameState.counted(amount)) \(resource.title.lowercased()) sent to \(state.houses[other].title).")
+        case "TRADE":
+            guard let (terms, with) = split("WITH") else { return nil }
+            let words = terms.split(separator: " ").map(String.init)
+            guard let at = words.firstIndex(where: { $0.uppercased() == "FOR" }),
+                  let (giving, given1) = stores(words[..<at].joined(separator: " ")),
+                  let (taking, taken1) = stores(words[(at + 1)...].joined(separator: " ")) else { return nil }
+            guard let give = resource(given1) else { return refused(text, "No store goes by the name \(given1).") }
+            guard let take = resource(taken1) else { return refused(text, "No store goes by the name \(taken1).") }
+            guard let other = house(with, in: state, player: player) else { return refused(text, "No House goes by the name \(with).") }
+            return given(.offerTrade(Trade(give: give, giving, for: take, taking), to: other, words: nil),
+                         "\(GameState.counted(giving)) \(give.title.lowercased()) offered to \(state.houses[other].title) "
+                            + "for \(GameState.counted(taking)) \(take.title.lowercased()).")
         default:
             return nil
         }
+    }
+
+    /// An amount of a store as a line gives it: "50 timber", "1,000 grain".
+    static func stores(_ words: String) -> (amount: Int, store: String)? {
+        let words = words.split(separator: " ").map(String.init)
+        guard words.count >= 2, let amount = Int(words[0].filter { $0 != "," }), amount > 0 else { return nil }
+        return (amount, words.dropFirst().joined(separator: " "))
+    }
+
+    /// The store a line names.
+    static func resource(_ name: String) -> Resource? {
+        Resource.allCases.first { plain($0.title) == plain(name) }
+    }
+
+    /// Another House a line names, by its title or its name alone; one
+    /// standing before one fallen.
+    static func house(_ name: String, in state: GameState, player: Int) -> Int? {
+        state.houses.filter { $0.id != player && [plain($0.title), plain($0.name)].contains(plain(name)) }
+            .min { ($0.isEliminated ? 1 : 0, $0.id) < ($1.isEliminated ? 1 : 0, $1.id) }?.id
     }
 
     /// The company a line names: C and its number in the briefing, the

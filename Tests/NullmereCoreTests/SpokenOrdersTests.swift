@@ -102,6 +102,56 @@ final class SpokenOrdersTests: XCTestCase {
         XCTAssertEqual(SpokenOrders.read(many, in: state, player: me).count, SpokenOrders.most)
     }
 
+    /// The House's dealings with the others: envoys of peace, of a pact or
+    /// demanding tribute, war, gifts and offers of trade, each House named
+    /// by its title or its name alone.
+    func testTheHousesDealingsAreReadIntoOrders() throws {
+        let state = world()
+        let me = state.player
+        let other = try XCTUnwrap(state.livingHouses.first { $0.id != me })
+        let name = other.name
+        let lines = SpokenOrders.read("""
+        OFFER PEACE TO \(other.title)
+        OFFER A PACT TO \(name)
+        DEMAND TRIBUTE FROM \(other.title)
+        DECLARE WAR ON \(other.title)
+        GIVE 20 timber TO \(other.title)
+        TRADE 1,000 timber FOR 20 grain WITH \(name)
+        """, in: state, player: me)
+        XCTAssertEqual(lines.map(\.command), [
+            .propose(.peace, to: other.id), .propose(.pact, to: other.id), .propose(.tribute, to: other.id), .declareWar(on: other.id),
+            .gift(to: other.id, resource: .timber, amount: 20), .offerTrade(Trade(give: .timber, 1_000, for: .grain, 20), to: other.id, words: nil),
+        ])
+        XCTAssertEqual(lines.map(\.told), [
+            "An envoy to \(other.title), offering peace.", "An envoy to \(other.title), offering a pact.",
+            "An envoy to \(other.title), demanding tribute.", "War on \(other.title).", "20 timber sent to \(other.title).",
+            "1,000 timber offered to \(other.title) for 20 grain.",
+        ])
+        for line in lines { XCTAssertEqual(line.why, line.command.flatMap { state.refusal(of: $0, as: me) }?.description) }
+
+        // A House, or a store, the realm doesn't know; a line short of its parts.
+        let wrong = SpokenOrders.read("""
+        OFFER PEACE TO House Nobody
+        GIVE 20 gold TO \(other.title)
+        TRADE 10 timber FOR 5 pearls WITH \(other.title)
+        TRADE 10 silk FOR 5 grain WITH \(other.title)
+        GIVE timber TO \(other.title)
+        OFFER CAKE TO \(other.title)
+        TRADE 10 timber WITH \(other.title)
+        """, in: state, player: me)
+        XCTAssertEqual(wrong.map(\.why), ["No House goes by the name House Nobody.", "No store goes by the name gold.",
+                                          "No store goes by the name pearls.", "No store goes by the name silk."])
+        XCTAssertTrue(wrong.allSatisfy { $0.command == nil })
+        XCTAssertNil(SpokenOrders.house(state.houses[me].title, in: state, player: me), "Not the House's own")
+
+        // The briefing names the other Houses standing, as the House stands
+        // with each, and the stores.
+        let briefing = SpokenOrders.briefing(for: state, player: me)
+        XCTAssertTrue(briefing.contains("\(other.title) (\(state.stance(me, other.id).standing))"), briefing)
+        XCTAssertFalse(briefing.contains("\(state.houses[me].title) ("))
+        XCTAssertTrue(briefing.contains("Stores: Grain, Timber, Stone, Moonsalt"))
+    }
+
     func testWhatCantBeReadIsSaidSo() throws {
         var state = world()
         let me = state.player

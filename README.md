@@ -568,8 +568,12 @@ as the realm will, and takes the realm's word as final.
   model, as the House's clerk, reads it into at most six lines of the
   order book (MARCH C1 TO a place, STRIKE a place WITH C2, FORTIFY,
   HALT or DRILL a company, BUILD a work AT a hold, TRAIN a kind AT a
-  hold), given a briefing of the House's companies, numbered C1 and on,
-  its holds, the places it knows, the works and the kinds of company.
+  hold; and with the other Houses, OFFER PEACE or A PACT TO a House,
+  DEMAND TRIBUTE FROM one, DECLARE WAR ON one, GIVE an amount of a store
+  TO one, TRADE an amount of a store FOR another WITH one), given a
+  briefing of the House's companies, numbered C1 and on, its holds, the
+  places it knows, the works, the kinds of company, the other Houses
+  standing and how it stands with each, and the stores.
   Each line is read against the keeper's own view into the order the
   realm would take, or said not to be one, and shown with what it would
   do or why it can't be given; those that can are given together only
