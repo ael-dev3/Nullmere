@@ -166,6 +166,24 @@ public struct WorldMap: Codable, Equatable, Sendable {
         return rowStarts[r + radius] + hex.q - qMin
     }
 
+    /// Each tile within `range` of a hex, by its index, in the order
+    /// `Hex.forEach(within:)` walks them, those off the map left out. The
+    /// tiles are kept row by row, so each row of the disc is a run of
+    /// indices side by side: found by its ends, not hex by hex.
+    func forEachIndex(within range: Int, of centre: Hex, _ body: (Int) -> Void) {
+        let range = max(range, 0)
+        for dr in -range...range {
+            let r = centre.r + dr
+            guard r >= -radius, r <= radius else { continue }
+            let first = max(-radius, -r - radius)
+            let low = max(centre.q + max(-range, -dr - range), first)
+            let high = min(centre.q + min(range, range - dr), min(radius, radius - r))
+            guard low <= high else { continue }
+            let base = rowStarts[r + radius] - first
+            for q in low...high { body(base + q) }
+        }
+    }
+
     /// The hex at a tile index.
     public func hex(at index: Int) -> Hex {
         precondition(tiles.indices.contains(index), "index out of range")

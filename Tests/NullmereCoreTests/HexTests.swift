@@ -44,6 +44,23 @@ final class HexTests: XCTestCase {
         XCTAssertEqual(map.hexes, map.hexes.sorted(), "Index order is row order")
     }
 
+    /// A disc's tiles walked as runs along the map's rows are the tiles
+    /// walked hex by hex, in the same order, those off the map left out:
+    /// near the middle, across the edges and wholly off the map.
+    func testADiscsTilesWalkedRowByRowAreItsHexesInOrder() {
+        let map = WorldMap(radius: 9, fill: Tile(terrain: .greyfield))
+        var random = SeededRandom(seed: 41)
+        let centres = (0..<300).map { _ in Hex(random.int(in: -13...13), random.int(in: -13...13)) } + [Hex(0, 0), Hex(9, -9), Hex(-9, 0)]
+        for centre in centres {
+            for range in [-1, 0, 1, 2, 3, 5, 12] {
+                var byHex: [Int] = [], byRow: [Int] = []
+                centre.forEach(within: range) { hex in if let tile = map.index(of: hex) { byHex.append(tile) } }
+                map.forEachIndex(within: range, of: centre) { byRow.append($0) }
+                XCTAssertEqual(byRow, byHex, "\(range) about \(centre)")
+            }
+        }
+    }
+
     func testRandomnessIsDeterministicAndUnbiasedInRange() {
         var a = SeededRandom(seed: 42)
         var b = SeededRandom(seed: 42)
