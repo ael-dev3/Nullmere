@@ -123,6 +123,31 @@ final class WorldPartsTests: XCTestCase {
         XCTAssertEqual(kept, state.view(for: ama.identity))
     }
 
+    /// A publication works out its keepers' views side by side, and they
+    /// are the views it would have worked out one after another; one the
+    /// realm doesn't know has none.
+    func testViewsWorkedOutSideBySideAreTheViewsOneAfterAnother() async throws {
+        var realm = RealmState(name: "P", seed: "side by side", seats: 6, radius: 20, watchLength: 60, now: 0)
+        for (index, name) in ["Ama", "Bel", "Cai"].enumerated() { _ = try realm.arrive("id-\(name)", name: name, now: Double(index) * 3_600) }
+        for _ in 0..<5 {
+            for pace in 1..<GameState.pacesPerWatch { _ = realm.world.walk(to: pace) }
+            _ = realm.world.endWatch()
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        let parts = try realm.parts(using: encoder)
+        let ways = realm.world.ways()
+        let keepers = realm.keepers.map(\.id) + ["id-nobody"]
+        var alone: [String: [String: String]] = [:]
+        for keeper in keepers {
+            guard let view = realm.view(for: keeper, ways: ways) else { continue }
+            alone[keeper] = try view.parts(using: encoder, sharing: (realm.world, parts))
+        }
+        let together = try await RealmSteward.views(of: keepers, in: realm, ways: ways, sharing: parts)
+        XCTAssertEqual(together, alone)
+        XCTAssertEqual(Set(together.keys), Set(realm.keepers.map(\.id)), "None for one the realm doesn't know")
+    }
+
     func testWhatIsntTheWorldsIsClearedAway() async throws {
         let db = FakeSpacetime()
         let realm = RealmState(name: "N", seed: "left over", seats: 4, watchLength: 600, now: 0)

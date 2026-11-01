@@ -512,18 +512,20 @@ public actor RealmSteward {
         var ways: [Int: [Hex]]?
         // The world's parts, which the views take their shared lists from.
         let parts = worldChanged ? try state.parts(using: encoder) : keptParts
+        // Each keeper's view to be shown, in parts, worked out side by side.
+        let showing = state.keepers.filter { $0.isOnline && !(unchanged && published[$0.id] != nil) }.map(\.id)
+        if !showing.isEmpty { ways = state.world.ways() }
+        let worked = try await RealmSteward.views(of: showing, in: state, ways: ways, sharing: parts)
         for keeper in state.keepers where keeper.isOnline {
             var batches = Array((recentlyHeard[keeper.id] ?? []).filter { now - $0.at <= RealmSteward.heardKept }
                 .suffix(RealmSteward.heardBatches))
             lately[keeper.id] = batches
             if unchanged, published[keeper.id] != nil { continue }
-            if ways == nil { ways = state.world.ways() }
-            guard let view = state.view(for: keeper.id, ways: ways) else { continue }
-            viewsWorkedOut += 1
             // Their view in parts: only those that changed are sent, with
             // the names of all it has now and the version each was written
             // at, so their Mac takes up the new and lets the gone go.
-            let viewParts = try view.parts(using: encoder, sharing: (state.world, parts))
+            guard let viewParts = worked[keeper.id] else { continue }
+            viewsWorkedOut += 1
             let was = published[keeper.id] ?? [:]
             let changed = viewParts.filter { was[$0.key] != $0.value }.sorted { $0.key < $1.key }
             let others = pendingActs.filter { $0.by != keeper.id }.flatMap(\.events)
@@ -576,6 +578,28 @@ public actor RealmSteward {
         }
         settle(attempt)
         worldChanged = false
+    }
+
+    /// The views of these keepers, in parts, worked out side by side: each
+    /// from the same world and only its own, so the order they are worked
+    /// out in changes nothing. A keeper with no House to see from has none.
+    static func views(of keepers: [String], in state: RealmState, ways: [Int: [Hex]]?,
+                      sharing parts: [String: String]) async throws -> [String: [String: String]] {
+        try await withThrowingTaskGroup(of: (String, [String: String]?).self) { group in
+            for keeper in keepers {
+                group.addTask {
+                    let encoder = JSONEncoder()
+                    encoder.outputFormatting = .sortedKeys
+                    guard let view = state.view(for: keeper, ways: ways) else { return (keeper, nil) }
+                    return (keeper, try view.parts(using: encoder, sharing: (state.world, parts)))
+                }
+            }
+            var worked: [String: [String: String]] = [:]
+            for try await (keeper, viewParts) in group {
+                if let viewParts { worked[keeper] = viewParts }
+            }
+            return worked
+        }
     }
 
     /// A publication, as sent: what it settles once it is known to be kept.
