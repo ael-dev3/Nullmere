@@ -1343,19 +1343,25 @@ struct RivalMind {
         let gates = state.holds(of: house).map(\.position)
         // An engine meets no one: soft in the field, it keeps to its siege.
         // The companies near looked at where they stand, not copied out to
-        // be sifted.
+        // be sifted, those far along the map's columns passed over at a
+        // glance; through a list held for the look rather than read through
+        // the realm handed in to be changed, and let go before it is.
         var skirmish: (key: (Int, Int), position: Hex)?
-        for index in state.units.indices where unit.kind != .mangonel {
-            let position = state.units[index].position, owner = state.units[index].owner
-            let distance = position.distance(to: unit.position)
-            guard distance <= 3, owner != house, state.units[index].kind.isMilitary, state.isAtWar(house, owner) else { continue }
-            if let siege, position.distance(to: siege.target) > unit.position.distance(to: siege.target),
-               !gates.contains(where: { $0.distance(to: position) <= 3 }) {
-                continue
+        if unit.kind != .mangonel {
+            let units = state.units
+            for index in units.indices {
+                let position = units[index].position
+                guard abs(position.q - unit.position.q) <= 3 else { continue }
+                let distance = position.distance(to: unit.position), owner = units[index].owner
+                guard distance <= 3, owner != house, units[index].kind.isMilitary, state.isAtWar(house, owner) else { continue }
+                if let siege, position.distance(to: siege.target) > unit.position.distance(to: siege.target),
+                   !gates.contains(where: { $0.distance(to: position) <= 3 }) {
+                    continue
+                }
+                guard let tile = state.map.index(of: position), visible[tile] else { continue }
+                let key = (distance, units[index].id)
+                if skirmish.map({ key < $0.key }) ?? true { skirmish = (key, position) }
             }
-            guard let tile = state.map.index(of: position), visible[tile] else { continue }
-            let key = (distance, state.units[index].id)
-            if skirmish.map({ key < $0.key }) ?? true { skirmish = (key, position) }
         }
         if let skirmish {
             return perform(.move(unit: unit.id, to: skirmish.position), in: &state)
