@@ -39,6 +39,28 @@ final class TrailerTests: XCTestCase {
         XCTAssertNil(trailer.shot(at: battle.start + battle.dissolve + 0.01).from)
     }
 
+    func testItsRainFallsInStreaksAndNeverBlotsTheLens() throws {
+        let trailer = TrailerTests.trailer
+        let rain = try XCTUnwrap(trailer.shots.first { $0.weather == .rain })
+        let time = rain.start + rain.length / 2
+        let camera = trailer.camera(of: rain, at: time)
+        let eye = Trailer.eye(of: camera)
+        let motes = trailer.scene(of: rain, at: time).motes
+        XCTAssertGreaterThan(motes.count, 400, "Rain enough to see")
+        XCTAssertEqual(motes.count % Trailer.streak, 0, "Each drop a streak")
+        for index in stride(from: 0, to: motes.count, by: Trailer.streak) {
+            let head = motes[index].place, tail = motes[index + Trailer.streak - 1].place
+            XCTAssertEqual(head.x, tail.x)
+            XCTAssertEqual(head.z, tail.z)
+            XCTAssertEqual(tail.y - head.y, 0.06, accuracy: 1e-4, "Drawn out down its fall")
+            XCTAssertGreaterThan((Vec3(head.x, head.y, head.z) - eye).length, Trailer.nearestDrop, "Never near enough the lens to blot it")
+        }
+        // The eye where the camera's distance puts it: high over the ground,
+        // a few keeps' height, not more.
+        XCTAssertGreaterThan(eye.y, camera.focus.y + 0.5)
+        XCTAssertLessThan(eye.y, camera.focus.y + 4)
+    }
+
     func testTheMoonIsEatenInItsOwnShotAndWholeInEveryOther() throws {
         let trailer = TrailerTests.trailer
         let eclipse = try XCTUnwrap(trailer.shots.first { $0.look == .eclipse })

@@ -171,6 +171,33 @@ public struct Trailer {
         return Camera(centerX: x - sin(heading) * back, centerY: y - cos(heading) * back, scale: scale, tilt: tilt, heading: heading)
     }
 
+    /// Rain as the film shows it, the camera so near the ground: each of
+    /// the weather's motes drawn out into a thin streak down its fall, as
+    /// rain is seen at night, and none so near the lens that it would swell
+    /// into a blot.
+    static func streaks(_ drops: [Mote], eye: Vec3) -> [Mote] {
+        drops.flatMap { drop -> [Mote] in
+            let at = Vec3(drop.place.x, drop.place.y, drop.place.z)
+            guard (at - eye).length > Trailer.nearestDrop else { return [] }
+            let light = Vec3(drop.colour.x, drop.colour.y, drop.colour.z)
+            return (0..<Trailer.streak).map { step in
+                Mote(at: at + Vec3(0, Float(step) * 0.012, 0), size: drop.place.w * 0.5, light: light * (1 - Float(step) * 0.14),
+                     cover: drop.colour.w * 0.5)
+            }
+        }
+    }
+
+    /// How near the lens rain is drawn, and how many motes draw a streak,
+    /// close enough to run together at the film's size.
+    static let nearestDrop: Float = 1.6
+    static let streak = 6
+
+    /// Where a camera's eye is, in the world.
+    static func eye(of camera: Camera) -> Vec3 {
+        let d = Float(camera.distance(in: Trailer.viewSize)), t = Float(camera.tilt), h = Float(camera.heading)
+        return camera.focus + Vec3(sin(t) * sin(h), cos(t), sin(t) * cos(h)) * d
+    }
+
     /// A camera easing from one framing to another as `u` goes from 0 to 1,
     /// each aimed at the ground beneath it.
     static func move(_ relief: Relief, _ u: Double, _ from: (x: Double, y: Double, scale: Double, tilt: Double, heading: Double),
@@ -275,7 +302,8 @@ public struct Trailer {
         (frame.motes, frame.lights) = happenings.effects(at: t, leaving: Trailer.leftOut)
         frame.weather = shot.weather
         let extent = Float(min(max(600 / max(camera.scale, 1), 3), 14))
-        frame.motes += shot.weather.motes(around: camera.focus, extent: extent, time: t)
+        let weather = shot.weather.motes(around: camera.focus, extent: extent, time: t)
+        frame.motes += shot.weather == .rain ? Trailer.streaks(weather, eye: Trailer.eye(of: camera)) : weather
         return frame
     }
 }
