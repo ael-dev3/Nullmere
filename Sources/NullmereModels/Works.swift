@@ -1116,7 +1116,7 @@ enum Works {
         var machinery: Machinery?
         switch level {
         case 1:
-            b.saltHeap(at: Vec3(0.0, 0, -0.08), radius: 0.07, height: 0.08)
+            b.saltHeap(at: Vec3(-0.03, 0, -0.09), radius: 0.06, height: 0.075)
             b.beam(from: Vec3(0.15, 0, -0.12), to: Vec3(0.1, 0.2, -0.05), width: 0.012, color: Palette.timberPale)
             b.box(center: Vec3(0.1, 0.2, -0.05), size: Vec3(0.08, 0.012, 0.02), color: Palette.timberPale)
         default:
@@ -1173,7 +1173,7 @@ enum Works {
                 near.beam(from: pan + Vec3(-0.03, 0.02, -0.022), to: pan + Vec3(0.022, 0.02, -0.019), width: 0.006, depth: 0.008,
                           color: Palette.timberPale)
             }
-            let heap = level == 1 ? (at: Vec3(0, 0, -0.08), radius: Float(0.07), height: Float(0.08))
+            let heap = level == 1 ? (at: Vec3(-0.03, 0, -0.09), radius: Float(0.06), height: Float(0.075))
                 : (at: Vec3(0, 0, 0.04), radius: Float(0.06), height: Float(0.07))
             let foot = heap.at + Vec3(-0.354 * heap.radius, 0.6 * heap.height, 0.354 * heap.radius)
             near.limb(from: foot, to: foot + Vec3(-0.035, 0.075, 0.035), radius: 0.004, color: Palette.timber)
@@ -1189,6 +1189,7 @@ enum Works {
                 near.place(.translation(Vec3(0.062, 0.04, -0.05))) {
                     $0.lathe([(0.011, 0), (0.014, 0.024)], sides: 6, color: Palette.timberDark)
                 }
+                saltYard(&near)
             } else {
                 for (x, size) in [(Float(0.0125), Vec3(0.01, 0.055, 0.008)), (0.0675, Vec3(0.01, 0.055, 0.008))] {
                     near.box(center: Vec3(x, 0.035, -0.071), size: size, color: Palette.stonePale)
@@ -1203,6 +1204,38 @@ enum Works {
             }
         }
         return model(name, b, rig: rig, machinery: machinery)
+    }
+
+    /// A first saltworks drawn nearer still: the brine well under its
+    /// sweep's bucket, a trough on trestles from the well to a pan, a board
+    /// laid between the pans to walk on, and cakes of salt drying on a
+    /// board in the sun.
+    static func saltYard(_ b: inout MeshBuilder) {
+        b.with(surface: .stone) {
+            $0.place(.translation(Vec3(0.062, 0, -0.05))) {
+                $0.lathe([(0.034, 0), (0.034, 0.022), (0.026, 0.024), (0.026, 0.006)], sides: 8, color: Palette.stonePale)
+            }
+        }
+        b.place(.translation(Vec3(0.062, 0, -0.05))) {
+            $0.lathe([(0.026, 0.012), (0.0, 0.013)], sides: 8, color: Vec3(0.1, 0.13, 0.16))
+        }
+        let from = Vec3(0.075, 0.03, -0.022), to = Vec3(0.085, 0.022, 0.045)
+        b.beam(from: from, to: to, width: 0.014, depth: 0.008, color: Palette.timberPale)
+        for t in [Float(0.25), 0.8] {
+            let at = from + (to - from) * t
+            b.limb(from: Vec3(at.x - 0.008, 0, at.z), to: Vec3(at.x, at.y - 0.004, at.z), radius: 0.002, sides: 3, color: Palette.timber)
+            b.limb(from: Vec3(at.x + 0.008, 0, at.z), to: Vec3(at.x, at.y - 0.004, at.z), radius: 0.002, sides: 3, color: Palette.timber)
+        }
+        b.box(center: Vec3(0, 0.012, 0.1), size: Vec3(0.02, 0.006, 0.15), color: Palette.timberGrey)
+        b.place(.translation(Vec3(0.2, 0, 0.05)) * .rotationY(0.5)) {
+            $0.box(center: Vec3(0, 0.006, 0), size: Vec3(0.09, 0.008, 0.05), color: Palette.timberPale)
+            $0.with(material: .crystal) {
+                for index in 0..<4 {
+                    $0.box(center: Vec3(Float(index % 2) * 0.04 - 0.02, 0.019, Float(index / 2) * 0.024 - 0.012),
+                           size: Vec3(0.032, 0.018, 0.018), color: Palette.saltCrust)
+                }
+            }
+        }
     }
 
     /// The top of a saltworks' furnace chimney, from its second level.
