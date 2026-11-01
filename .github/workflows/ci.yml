@@ -3,7 +3,8 @@ name: CI
 # A run for each pull request update, and each push to main or a working
 # branch: the app built, tested and bundled on macOS; a realm raised on
 # SpacetimeDB; and the launcher's screens photographed. Changes that only
-# touch documentation or the lake's browser preview don't start a run.
+# touch documentation or the lake's browser preview don't start a run, nor
+# those to the trailer's own files alone (the Trailer workflow's).
 on:
   pull_request:
     paths:
@@ -20,6 +21,11 @@ on:
       - UITests/**
       - Makefile
       - .github/workflows/ci.yml
+      # The trailer's own files: the Trailer workflow renders and tests them.
+      - "!Sources/NullmereTrailer/**"
+      - "!Tests/NullmereTrailerTests/**"
+      - "!Tests/TrailerRenderTests/**"
+      - "!scripts/render-trailer.sh"
   push:
     branches: [main, "claude/**"]
     paths:
@@ -36,6 +42,11 @@ on:
       - UITests/**
       - Makefile
       - .github/workflows/ci.yml
+      # The trailer's own files: the Trailer workflow renders and tests them.
+      - "!Sources/NullmereTrailer/**"
+      - "!Tests/NullmereTrailerTests/**"
+      - "!Tests/TrailerRenderTests/**"
+      - "!scripts/render-trailer.sh"
   workflow_dispatch:
 
 permissions:

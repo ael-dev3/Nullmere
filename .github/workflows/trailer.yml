@@ -42,7 +42,13 @@ jobs:
       - name: Render the trailer
         env:
           NULLMERE_TRAILER_MODE: ${{ github.event.inputs.mode || 'film' }}
-        run: scripts/render-trailer.sh build/trailer
+        run: |
+          scripts/render-trailer.sh build/trailer
+          # The trailer's sources build clean, as CI holds the rest.
+          if grep -E "^/.*/Sources/NullmereTrailer/.*: warning:" build/trailer/render.log; then
+            echo "::error::The trailer's sources have warnings"
+            exit 1
+          fi
 
       # A still from each shot, small, in the log, for looking at.
       - name: Stills
