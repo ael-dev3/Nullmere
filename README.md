@@ -840,11 +840,14 @@ realm; keepers are told in plain words, never a status code.
   and rises from level I to XXX with what its company lives through; its
   four skills come at levels I, V, X and XX: three always strengthen the
   company it leads, and one fires in battle once its fury has risen through
-  enough battles, in its archetype's own look in the world: a ward of pale
-  light closing over a warden's company, fire thrown out from a vanguard's,
-  shafts of light falling about an outrider's, a ring of gold round a
-  gleaner's, the ground breaking in a ring under a wallbreaker's, each with
-  its light on the ground. A commander takes up a company of war at or beside one of
+  enough battles, in its archetype's own look in the world and as wide as
+  the company's ground: its sigil laid about the company in the skill's own
+  light, two rings and the spokes between them swelling out and turning as
+  they fade; then a ward of pale light closing over a warden's company
+  under a shaft of it, fire thrown out from a vanguard's with its embers
+  flying, shafts of light falling about an outrider's, a ring of gold round
+  a gleaner's under a shaft of gold, the ground breaking in a ring under a
+  wallbreaker's, each with its light on the ground. A commander takes up a company of war at or beside one of
   its House's holds; if the company falls, it is carried home wounded for
   four watches.
 - **Talents.** A commander gains a talent point at each level past the

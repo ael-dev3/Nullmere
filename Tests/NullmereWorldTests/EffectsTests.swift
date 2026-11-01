@@ -152,10 +152,33 @@ final class EffectsTests: XCTestCase {
             XCTAssertTrue(fired(look, at: 12.5).motes.isEmpty, "\(look) is gone")
         }
         XCTAssertNotEqual(Set(FuryLook.allCases.map(\.glow.x)).count, 1, "Each its own light")
-        // A ward is a dome of cold light over the company.
-        let ward = positions(fired(.ward, at: 10.6).motes)
-        XCTAssertTrue(ward.allSatisfy { abs(($0 - origin).length - 0.62) < 0.2 }, "On the dome")
-        XCTAssertTrue(fired(.ward, at: 10.6).motes.allSatisfy { $0.colour.z > $0.colour.x })
+        func across(_ p: Vec3) -> Float { Vec3(p.x - origin.x, 0, p.z - origin.z).length }
+        // Each lays its sigil on the ground about its company, two rings and
+        // the spokes between, in its own light, and fades by the end.
+        for look in FuryLook.allCases {
+            let ground = fired(look, at: 10.5).motes.filter { abs($0.place.y - origin.y - Effects.sigilLift) < 1e-4 }
+            XCTAssertGreaterThan(ground.count, 60, "\(look)'s sigil")
+            let reach = positions(ground).map(across)
+            XCTAssertLessThanOrEqual(reach.max() ?? 9, Happenings.sigilReach + 1e-3, "\(look)'s sigil about its company")
+            XCTAssertGreaterThanOrEqual(reach.min() ?? 0, Happenings.sigilReach * Effects.sigilInner - 1e-3, "\(look)'s, not over it")
+            XCTAssertGreaterThan(reach.filter { $0 > Happenings.sigilReach - 0.01 }.count, ground.count / 3, "\(look)'s outer ring")
+            let light = ground.reduce(Vec3.zero) { $0 + Vec3($1.colour.x, $1.colour.y, $1.colour.z) }
+            let hue = look.glow / max(look.glow.x, max(look.glow.y, look.glow.z))
+            XCTAssertEqual((light / max(light.x, max(light.y, light.z)) - hue).length, 0, accuracy: 1e-3, "\(look)'s own light")
+            XCTAssertGreaterThan(fired(look, at: 10.3).motes.count, 200, "\(look) as wide as its company")
+        }
+        XCTAssertLessThan(fired(.ring, at: 10.02).motes.filter { abs($0.place.y - origin.y - Effects.sigilLift) < 1e-4 }.map {
+            across(Vec3($0.place.x, $0.place.y, $0.place.z))
+        }.max() ?? 0, Happenings.sigilReach * 0.85, "Swelling out as it comes")
+        // A ward is a dome of cold light over the company, under a shaft of it.
+        let ward = fired(.ward, at: 10.6).motes
+        let dome = positions(ward).filter { $0.y > origin.y + 0.1 && across($0) > 0.3 }
+        XCTAssertGreaterThan(dome.count, 40)
+        XCTAssertTrue(dome.allSatisfy { abs(($0 - origin).length - 0.85) < 0.2 }, "On the dome")
+        XCTAssertTrue(ward.allSatisfy { $0.colour.z > $0.colour.x })
+        for look in [FuryLook.ward, .ring] {
+            XCTAssertTrue(positions(fired(look, at: 10.5).motes).contains { $0.y > origin.y + 1.5 && across($0) < 0.15 }, "\(look)'s shaft of light")
+        }
         // Fire is thrown out, warm.
         XCTAssertTrue(fired(.blaze, at: 10.3).motes.contains { $0.colour.x > 1 && $0.colour.x > $0.colour.z * 3 })
         // Light falls: lower as it goes.

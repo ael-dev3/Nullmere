@@ -46,6 +46,13 @@ public enum Effect: String, CaseIterable, Sendable {
     /// A hold scouted: the Lanterns' cold light circling it slowly, low
     /// over its walls, then gone.
     case sighting
+    /// A commander's skill marked on the ground about the company: two
+    /// rings and six spokes between them in the skill's own light,
+    /// swelling out as they come and turning as they fade together.
+    case sigil
+    /// A shaft of a skill's light rising over the company into the sky,
+    /// thinning as it climbs.
+    case pillar
 
     /// How long each mote lives, in seconds.
     public var lifetime: Float {
@@ -63,6 +70,8 @@ public enum Effect: String, CaseIterable, Sendable {
         case .volley: return 0.7
         case .quake: return 1.1
         case .sighting: return 1.8
+        case .sigil: return 2.2
+        case .pillar: return 1.5
         }
     }
 }
@@ -78,14 +87,17 @@ public struct Burst: Equatable, Sendable {
     public var seed: UInt32
     /// How large and how far it throws: 1 as a company's blow.
     public var scale: Float
+    /// The hue of a skill's sigil or shaft of light, its brightest part 1.
+    public var tint: Vec3
 
-    public init(_ effect: Effect, at origin: Vec3, start: Float, count: Int, seed: UInt32, scale: Float = 1) {
+    public init(_ effect: Effect, at origin: Vec3, start: Float, count: Int, seed: UInt32, scale: Float = 1, tint: Vec3 = Vec3(1, 1, 1)) {
         self.effect = effect
         self.origin = origin
         self.start = start
         self.count = count
         self.seed = seed
         self.scale = scale
+        self.tint = tint
     }
 
     /// Whether any of it is still to be seen at `time`.
@@ -130,7 +142,7 @@ public enum Effects {
         for burst in bursts where burst.isAlive(at: time) {
             for index in 0..<burst.count {
                 if let mote = mote(burst.effect, index: UInt32(index), seed: burst.seed, origin: burst.origin,
-                                   age: time - burst.start, scale: burst.scale) {
+                                   age: time - burst.start, scale: burst.scale, tint: burst.tint) {
                     motes.append(mote)
                 }
             }
@@ -157,9 +169,11 @@ public enum Effects {
 
     /// One mote of an effect, `age` seconds after it was thrown, or nil if
     /// it is not yet, or no longer, to be seen.
-    static func mote(_ effect: Effect, index: UInt32, seed: UInt32, origin: Vec3, age: Float, scale: Float) -> Mote? {
-        // Each mote lives a little more or less than its kind.
-        let life = effect.lifetime * (0.65 + 0.7 * unit(seed &+ index, 3))
+    static func mote(_ effect: Effect, index: UInt32, seed: UInt32, origin: Vec3, age: Float, scale: Float,
+                     tint: Vec3 = Vec3(1, 1, 1)) -> Mote? {
+        // Each mote lives a little more or less than its kind; a sigil's
+        // fade together.
+        let life = effect == .sigil ? effect.lifetime : effect.lifetime * (0.65 + 0.7 * unit(seed &+ index, 3))
         guard age >= 0, age < life else { return nil }
         let t = age / life
         let a = unit(seed &+ index, 5), b = unit(seed &+ index, 7), c = unit(seed &+ index, 11)
@@ -261,8 +275,33 @@ public enum Effects {
             let show = Float(sin(Double(t) * .pi)) * (0.6 + 0.4 * c)
             return Mote(at: origin + path + Vec3(0, (0.22 + 0.12 * b) * scale + bob, 0), size: 0.02 * scale,
                         light: Vec3(0.9, 1.25, 1.9) * show, cover: 0)
+        case .sigil:
+            // Half on the outer ring, a quarter on the inner turning the
+            // other way, a quarter on the spokes between.
+            let swell = min(t / 0.12, 1)
+            let spin = age * 0.4
+            let radius: Float, turn: Float
+            switch index % 4 {
+            case 0, 1: (radius, turn) = (1, a * 2 * .pi + spin)
+            case 2: (radius, turn) = (Effects.sigilInner, a * 2 * .pi - spin)
+            default: (radius, turn) = (Effects.sigilInner + (1 - Effects.sigilInner) * b, Float(Int(a * 6)) * .pi / 3 + .pi / 6 + spin)
+            }
+            let way = Vec3(Float(cos(Double(turn))), 0, Float(sin(Double(turn))))
+            let shimmer = 0.75 + 0.25 * Float(sin(Double(age * 9 + a * 20)))
+            return Mote(at: origin + way * (radius * scale * (0.7 + 0.3 * swell)) + Vec3(0, Effects.sigilLift, 0), size: 0.03 * scale,
+                        light: tint * (1.5 * swell * (1 - t) * shimmer), cover: 0)
+        case .pillar:
+            let up = (b + age * 0.7).truncatingRemainder(dividingBy: 1)
+            let show = Float(sin(Double(t) * .pi)) * (1 - up)
+            return Mote(at: origin + around * (0.13 * scale * (1 - 0.6 * up) * c) + Vec3(0, 2.4 * scale * up, 0), size: 0.028 * scale,
+                        light: tint * (1.8 * show), cover: 0)
         }
     }
+
+    /// Where a sigil's inner ring lies, as a share of its outer.
+    public static let sigilInner: Float = 0.62
+    /// How high over the ground a sigil is laid.
+    public static let sigilLift: Float = 0.04
 
     /// A steady number from 0 up to 1 for a seed and a salt.
     static func unit(_ seed: UInt32, _ salt: UInt32) -> Float {
@@ -385,6 +424,8 @@ public struct Happenings: Equatable, Sendable {
     public static let fallen: Float = 0.85
     /// How long a commander's fury lights the ground.
     public static let furyGlow: Float = 0.9
+    /// How far out a skill's sigil reaches about its company.
+    public static let sigilReach: Float = 1.15
     /// How long a scouted hold is lit by its Lanterns' light.
     public static let sightingGlow: Float = 1.6
 
@@ -454,28 +495,37 @@ public struct Happenings: Equatable, Sendable {
             emitters.append(Emitter(.fireflies, at: spot.at, rate: 0.6, spread: 0.3, seed: spot.seed, strength: 1))
         }
         for fury in furies {
-            // Each archetype's skill its own: a ring of gold, a ward of
-            // light, fire thrown out, light falling, the ground breaking;
-            // and its light a moment on the ground.
+            // Each archetype's skill its own, as wide as its company: its
+            // sigil laid on the ground about it in its light; then a ring
+            // of gold under a shaft of light, a ward of light under one,
+            // fire thrown out and its embers flying, light falling, the
+            // ground breaking; and its light a moment on the ground.
+            let glow = fury.look.glow, hue = glow / max(glow.x, max(glow.y, glow.z))
+            bursts.append(Burst(.sigil, at: fury.at, start: fury.start, count: 120, seed: fury.seed &+ 11, scale: Happenings.sigilReach,
+                                tint: hue))
             switch fury.look {
             case .ring:
-                bursts.append(Burst(.fury, at: fury.at + Vec3(0, 0.05, 0), start: fury.start, count: 28, seed: fury.seed, scale: 1.2))
-                bursts.append(Burst(.flash, at: fury.at + Vec3(0, 0.45, 0), start: fury.start, count: 1, seed: fury.seed &+ 3, scale: 1.6))
+                bursts.append(Burst(.fury, at: fury.at + Vec3(0, 0.05, 0), start: fury.start, count: 64, seed: fury.seed, scale: 1.7))
+                bursts.append(Burst(.pillar, at: fury.at, start: fury.start, count: 56, seed: fury.seed &+ 13, tint: hue))
+                bursts.append(Burst(.flash, at: fury.at + Vec3(0, 0.45, 0), start: fury.start, count: 1, seed: fury.seed &+ 3, scale: 2.6))
             case .ward:
-                bursts.append(Burst(.ward, at: fury.at, start: fury.start, count: 40, seed: fury.seed, scale: 1.1))
+                bursts.append(Burst(.ward, at: fury.at, start: fury.start, count: 96, seed: fury.seed, scale: 1.5))
+                bursts.append(Burst(.pillar, at: fury.at, start: fury.start, count: 56, seed: fury.seed &+ 13, tint: hue))
             case .blaze:
-                bursts.append(Burst(.blaze, at: fury.at + Vec3(0, 0.05, 0), start: fury.start, count: 36, seed: fury.seed, scale: 1.2))
-                bursts.append(Burst(.flash, at: fury.at + Vec3(0, 0.3, 0), start: fury.start, count: 1, seed: fury.seed &+ 3, scale: 1.4))
+                bursts.append(Burst(.blaze, at: fury.at + Vec3(0, 0.05, 0), start: fury.start, count: 96, seed: fury.seed, scale: 1.8))
+                bursts.append(Burst(.embers, at: fury.at + Vec3(0, 0.1, 0), start: fury.start, count: 48, seed: fury.seed &+ 5, scale: 1.6))
+                bursts.append(Burst(.flash, at: fury.at + Vec3(0, 0.3, 0), start: fury.start, count: 1, seed: fury.seed &+ 3, scale: 2.4))
             case .volley:
-                bursts.append(Burst(.volley, at: fury.at, start: fury.start, count: 30, seed: fury.seed, scale: 1.1))
+                bursts.append(Burst(.volley, at: fury.at, start: fury.start, count: 96, seed: fury.seed, scale: 1.6))
             case .quake:
-                bursts.append(Burst(.quake, at: fury.at, start: fury.start, count: 34, seed: fury.seed, scale: 1.2))
-                bursts.append(Burst(.splinters, at: fury.at, start: fury.start, count: 14, seed: fury.seed &+ 5, scale: 1.2))
+                bursts.append(Burst(.quake, at: fury.at, start: fury.start, count: 80, seed: fury.seed, scale: 1.8))
+                bursts.append(Burst(.splinters, at: fury.at, start: fury.start, count: 40, seed: fury.seed &+ 5, scale: 1.6))
+                bursts.append(Burst(.dust, at: fury.at, start: fury.start, count: 30, seed: fury.seed &+ 7, scale: 2))
             }
             let age = time - fury.start
             if age >= 0, age < Happenings.furyGlow {
                 let fade = 1 - age / Happenings.furyGlow
-                lights.append(PointLight(at: fury.at + Vec3(0, 0.6, 0), reach: 2.8, colour: fury.look.glow * fade))
+                lights.append(PointLight(at: fury.at + Vec3(0, 0.6, 0), reach: 4.2, colour: fury.look.glow * fade))
             }
         }
         for sighting in sightings {
