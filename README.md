@@ -358,7 +358,8 @@ as the realm will, and takes the realm's word as final.
   no war, demand or pact and never bends the knee, though it takes a House
   offering fealty as a vassal. Peace offered to end a war it takes as a
   steward would; a pact offered it never swears, for a pact would lend the
-  keeper's sight to another. While any keeper whose House stands is away,
+  keeper's sight to another. It keeps the keeper's standing orders, if
+  they gave any. While any keeper whose House stands is away,
   a watch lasts at least a third of its time, however ready those there
   are.
 - **Fair seats.** Seats are spread evenly round the lake, none hemmed in
@@ -590,6 +591,20 @@ as the realm will, and takes the realm's word as final.
   its words, who sealed it and in which age; the ruin's record keeps them
   after. A first age has none to find; stewards seal none, nor does a
   House while the realm's steward bars it from the Words.
+- **Standing orders.** On the same orders card a keeper may write what
+  their House should do while they are away ("while I'm gone, muster only
+  bows, keep everyone home and pay no tribute"), read into the order
+  book's WHILE AWAY lines: MUSTER a kind of company of war, RAISE a work
+  FIRST, KEEP HOME, MAKE PEACE or MAKE NO PEACE, PAY TRIBUTE or PAY NO
+  TRIBUTE, and AS YOU SEE FIT to clear them. Given, the realm keeps them
+  and the caretaker that keeps the House follows them: it musters only
+  that kind wherever it would muster for war (none where a hold can't),
+  raises that work first wherever it can, keeps every company on the
+  House's own land, striking only companies of war in reach and digging
+  in, makes peace with any House that offers it and sues for it in every
+  war, or with none, and pays tribute demanded or refuses it. They stand
+  until the keeper changes them or clears them at the card's foot, where
+  they are told; no other House knows them.
 - **The server.** SpacetimeDB is the realm's authority of record: it knows
   each keeper by their identity, keeps the world, and lets no one but the
   steward write it. The steward runs the same Swift rules core the clients

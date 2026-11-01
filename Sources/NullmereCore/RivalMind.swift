@@ -117,6 +117,8 @@ struct RivalMind {
         events += state.armCommanders(for: house)
         let garrisons = assignGarrisons(in: state)
         let visible = state.visibility(for: house)
+        // A keeper's standing orders keeping every company on its own land.
+        let home = caretaking && state.standingOrders(of: house).home == true ? owners : nil
         // Its companies' orders don't change whom it is at war with.
         let atWar = state.livingHouses.contains { state.isAtWar(house, $0.id) }
         // The Heartstone is sought at war too, the Frontier's prize.
@@ -124,7 +126,7 @@ struct RivalMind {
         events += breakTheCrown(garrisons: garrisons, in: &state)
         for unit in state.units(of: house).sorted(by: { $0.id < $1.id }) {
             guard state.unit(unit.id) != nil else { continue }
-            events += command(unit.id, garrisonFor: garrisons[unit.id], seeing: visible, atWar: atWar, in: &state)
+            events += command(unit.id, garrisonFor: garrisons[unit.id], seeing: visible, atWar: atWar, home: home, in: &state)
         }
         events += drill(owners: owners, in: &state)
         return events
@@ -575,20 +577,33 @@ struct RivalMind {
     /// knee for its keeper.
     private func keepThePeace(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
         var events: [GameEvent] = []
+        // The keeper's standing orders on peace and tribute, where they gave any.
+        let standing = state.standingOrders(of: house)
         for envoy in state.envoys where envoy.to == house {
             let accept: Bool
             switch envoy.proposal {
             case .trade: accept = envoy.trade.map { acceptsTrade($0, from: envoy.from, in: state) } ?? false
             case .pact: accept = false
+            case .peace where standing.peace != nil: accept = standing.peace == true
+            case .tribute where standing.tribute != nil: accept = standing.tribute == true
             default: accept = accepts(envoy.proposal, from: envoy.from, in: state)
             }
             events += perform(.answer(envoy: envoy.id, accept: accept), in: &state)
         }
         let mine = max(1, state.strength(of: house))
         for other in state.livingHouses where state.isAtWar(house, other.id) {
-            guard let relation = state.relation(house, other.id), state.watch - relation.since >= 4 else { continue }
-            if mine * 10 < max(1, state.strength(of: other.id)) * 9, random.chance(40) {
+            guard let relation = state.relation(house, other.id) else { continue }
+            switch standing.peace {
+            case false?:
+                continue
+            case true?:
+                // Sued for in every war, whoever is the stronger.
                 events += perform(.propose(.peace, to: other.id), in: &state)
+            case nil:
+                guard state.watch - relation.since >= 4 else { continue }
+                if mine * 10 < max(1, state.strength(of: other.id)) * 9, random.chance(40) {
+                    events += perform(.propose(.peace, to: other.id), in: &state)
+                }
             }
         }
         return events
@@ -663,7 +678,7 @@ struct RivalMind {
             events += perform(.heal(hold: holdID), in: &state)
         }
         guard let hold = state.hold(holdID) else { return events }
-        if hold.project == nil, let kind = chooseBuilding(for: hold, owners: owners, in: state) {
+        if hold.project == nil, let kind = standingWork(at: hold, in: state) ?? chooseBuilding(for: hold, owners: owners, in: state) {
             events += perform(.build(hold: holdID, kind: kind), in: &state)
         }
         if let hold = state.hold(holdID), hold.training == nil,
@@ -672,6 +687,14 @@ struct RivalMind {
             events += perform(.train(hold: holdID, kind: kind, tier: tier > 1 ? tier : nil), in: &state)
         }
         return events
+    }
+
+    /// The work a keeper's standing orders have their caretaker raise
+    /// first, where the hold can raise it now.
+    private func standingWork(at hold: Hold, in state: GameState) -> BuildingKind? {
+        guard caretaking, let kind = state.standingOrders(of: house).raise,
+              state.refusal(of: .build(hold: hold.id, kind: kind), as: house) == nil else { return nil }
+        return kind
     }
 
     private func chooseBuilding(for hold: Hold, owners: [Int?], in state: GameState) -> BuildingKind? {
@@ -1093,6 +1116,11 @@ struct RivalMind {
            random.chance(60) {
             choice = own
         }
+        // A keeper's standing orders: the one kind of company of war their
+        // caretaker musters, and none where the hold can't muster it.
+        if caretaking, choice?.isMilitary == true, let told = state.standingOrders(of: house).muster {
+            return state.refusal(of: .train(hold: hold.id, kind: told), as: house) == nil ? told : nil
+        }
         guard var kind = choice, hold.level(.musterHall) >= kind.requiredMuster else { return nil }
         // Riders, bows or engines it can't pay for: spears, rather than nothing.
         if !me.stock.covers(state.trainingCost(of: kind, for: house)), [.rider, .bow, .mangonel].contains(kind) { kind = .spear }
@@ -1139,7 +1167,10 @@ struct RivalMind {
         return result
     }
 
-    private func command(_ unitID: Int, garrisonFor post: Hex?, seeing visible: [Bool], atWar: Bool, in state: inout GameState) -> [GameEvent] {
+    /// `home`, the land's territory where a keeper's standing orders keep
+    /// every company on its House's own land.
+    private func command(_ unitID: Int, garrisonFor post: Hex?, seeing visible: [Bool], atWar: Bool, home: [Int?]? = nil,
+                         in state: inout GameState) -> [GameEvent] {
         guard let unit = state.unit(unitID) else { return [] }
         switch unit.kind {
         case .lantern:
@@ -1172,8 +1203,31 @@ struct RivalMind {
                 }
                 return perform(.move(unit: unitID, to: post), in: &state)
             }
+            if let home { return keepHome(unit, territory: home, in: &state) }
             return campaign(with: unit, seeing: visible, atWar: atWar, in: &state)
         }
+    }
+
+    /// A company a keeper's standing orders keep home: it strikes a company
+    /// of war in its reach, digs in on its House's own land, and from
+    /// anywhere else makes for the nearest open ground of it.
+    private func keepHome(_ unit: Unit, territory owners: [Int?], in state: inout GameState) -> [GameEvent] {
+        if let target = foeInReach(of: unit, companiesOfWarOnly: true, in: state) {
+            return perform(.attack(unit: unit.id, target: target), in: &state)
+        }
+        let mine = Set(state.holds(of: house).map(\.id))
+        if let index = state.map.index(of: unit.position), let owner = owners[index], mine.contains(owner) {
+            return unit.fortified ? [] : perform(.fortify(unit: unit.id), in: &state)
+        }
+        var nearest: Hex?
+        for (index, owner) in owners.enumerated() {
+            guard let owner, mine.contains(owner) else { continue }
+            let hex = state.map.hex(at: index)
+            guard state.map[index].terrain.isPassable, !state.isOccupied(hex) else { continue }
+            if nearest.map({ (hex.distance(to: unit.position), hex) < ($0.distance(to: unit.position), $0) }) ?? true { nearest = hex }
+        }
+        guard let nearest else { return [] }
+        return perform(.move(unit: unit.id, to: nearest), in: &state)
     }
 
     private func foeInReach(of unit: Unit, companiesOfWarOnly: Bool = false, in state: GameState) -> Hex? {

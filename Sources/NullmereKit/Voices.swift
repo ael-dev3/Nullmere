@@ -101,7 +101,8 @@ public struct OnDeviceVoice: Voice {
     what they would have done; you write it as lines of the House's order book, in exactly the forms \
     given, one order to a line, at most six lines. Name each company by its handle alone, C1, C2 and \
     so on, as the briefing numbers them, and every place, hold, House, work, store and kind of company \
-    exactly as the briefing names it. Write only the lines: no numbering, no quotation marks, no words of your \
+    exactly as the briefing names it. What the keeper would have done while they are away goes in the \
+    WHILE AWAY lines. Write only the lines: no numbering, no quotation marks, no words of your \
     own. If the keeper asks for nothing the forms can order, reply NONE.
     """
 

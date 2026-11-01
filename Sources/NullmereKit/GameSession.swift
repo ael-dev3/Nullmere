@@ -1367,6 +1367,8 @@ public final class GameSession {
         case .sing: return .lore
         case .castBottle: return .order
         case .sealLetter: return .lore
+        case .stand: return .order
+        case .standDown: return .stand
         case .proposeEdict: return .horn
         case .voteEdict: return .order
         case .learnTalent: return .lore

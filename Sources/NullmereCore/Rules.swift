@@ -78,6 +78,10 @@ extension GameState {
             return try castBottle(words, from: holdID, signed: signed, as: house)
         case let .sealLetter(words, holdID):
             return try sealLetter(words, in: holdID, as: house)
+        case .stand(let order):
+            return try stand(order, as: house)
+        case .standDown:
+            return try standDown(as: house)
         case let .reportWord(wordID):
             return try report(wordID, as: house)
         case let .proposeEdict(kind):

@@ -312,6 +312,18 @@ designed, ticked when it is real, tested and shown in CI.
   it and in which age. Counsel, warnings, boasts and false trails: the
   realm's past speaks to its present in its own keepers' words. A first
   age finds none, and stewards seal none.
+- [x] **Standing orders in your own words.** A persistent world goes on
+  while its players sleep, and in Rise of Kingdoms an absent player's
+  troops stand idle and their city waits to be farmed. Here a keeper tells
+  their House, in their own words, what to do while they are away ("muster
+  only bows, keep everyone home, make no peace, pay no tribute"); their
+  Mac's model reads it into the order book's standing lines, and the
+  realm's caretaker, which keeps the House once its keeper has been away
+  two watches, follows them: the one kind of company of war it musters,
+  the work it raises first, every company kept on the House's own land,
+  peace with any House that offers it or none, tribute paid or refused.
+  The House is played as its keeper would have it, by the server, while
+  the keeper's Mac is shut. No other House knows them; stewards have none.
 
 ## The order of the work
 

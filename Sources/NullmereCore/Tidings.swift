@@ -514,6 +514,9 @@ extension GameState {
             let name = hold(holdID)?.name ?? "your hold"
             return Tidings("Your letter is sealed under the stones of \(name), for whoever searches them when the water has risen over this age.",
                            .neutral)
+        case .standingOrdersGiven(let house):
+            guard house == viewer else { return nil }
+            return Tidings(standingOrders(of: house).said, .neutral)
         case .letterFound(let letter, let by):
             let age = letter.age.map { "the \(ordinal($0)) age" } ?? "an age before"
             if by == viewer {

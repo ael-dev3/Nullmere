@@ -152,6 +152,42 @@ final class SpokenOrdersTests: XCTestCase {
         XCTAssertTrue(briefing.contains("Stores: Grain, Timber, Stone, Moonsalt"))
     }
 
+    /// Standing orders, for the caretaker that keeps the House while its
+    /// keeper is away, read from the book's WHILE AWAY lines.
+    func testStandingOrdersAreReadFromTheBook() throws {
+        var state = world()
+        let me = state.player
+        let lines = SpokenOrders.read("""
+        WHILE AWAY MUSTER Bows
+        WHILE AWAY RAISE the Walls FIRST
+        WHILE AWAY KEEP HOME
+        WHILE AWAY MAKE NO PEACE
+        WHILE AWAY PAY TRIBUTE.
+        WHILE AWAY AS YOU SEE FIT
+        """, in: state, player: me)
+        XCTAssertEqual(lines.map(\.command), [.stand(.muster(.bow)), .stand(.raise(.walls)), .stand(.home), .stand(.peace(false)),
+                                             .stand(.tribute(true)), .standDown])
+        XCTAssertEqual(lines[0].told, "While you are away, your caretaker musters only \(UnitKind.bow.title).")
+        XCTAssertEqual(lines[2].told, "While you are away, your caretaker keeps every company on your land.")
+        XCTAssertEqual(lines[5].told, "While you are away, your caretaker keeps your House as it sees fit.")
+        XCTAssertEqual(lines[5].why, RuleError.noStandingOrders.description, "None given yet to clear")
+        XCTAssertTrue(lines.prefix(5).allSatisfy { $0.why == nil })
+        for line in lines.prefix(5) { _ = try state.perform(try XCTUnwrap(line.command), as: me) }
+        XCTAssertNil(SpokenOrders.read("WHILE AWAY AS YOU SEE FIT", in: state, player: me).first?.why, "Now there are some to clear")
+
+        // What the book doesn't know, said so; a line of no form passed over.
+        let wrong = SpokenOrders.read("""
+        WHILE AWAY MUSTER Dragons
+        WHILE AWAY RAISE a Tower
+        WHILE AWAY MUSTER Lanterns
+        WHILE AWAY DANCE
+        WHILE ASLEEP KEEP HOME
+        """, in: state, player: me)
+        XCTAssertEqual(wrong.map(\.why), ["No company goes by the name Dragons.", "No work goes by the name a Tower.",
+                                          RuleError.notACompanyOfWar.description])
+        XCTAssertTrue(SpokenOrders.briefing(for: state, player: me).contains("WHILE AWAY KEEP HOME"))
+    }
+
     func testWhatCantBeReadIsSaidSo() throws {
         var state = world()
         let me = state.player

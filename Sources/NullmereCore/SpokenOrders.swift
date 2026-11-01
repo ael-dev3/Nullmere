@@ -6,7 +6,8 @@ import Foundation
 /// own view into the order the realm would take, or why it wouldn't. The
 /// book has lines for the House's companies and holds, and for its dealings
 /// with the other Houses: envoys of peace, of a pact or demanding tribute,
-/// gifts, offers of trade and war.
+/// gifts, offers of trade and war; and standing orders for the caretaker
+/// that keeps the House while its keeper is away.
 /// Nothing is given until the keeper has seen the orders and gives them:
 /// the model only reads, and the realm judges every order as it always
 /// does. Without the model, the order book's lines may be written as they
@@ -35,7 +36,10 @@ public enum SpokenOrders {
     public static let forms = ["MARCH <company> TO <place>", "STRIKE <place> WITH <company>", "FORTIFY <company>", "HALT <company>",
                                "DRILL <company>", "BUILD <work> AT <hold>", "TRAIN <kind> AT <hold>",
                                "OFFER PEACE TO <house>", "OFFER A PACT TO <house>", "DEMAND TRIBUTE FROM <house>", "DECLARE WAR ON <house>",
-                               "GIVE <amount> <store> TO <house>", "TRADE <amount> <store> FOR <amount> <store> WITH <house>"]
+                               "GIVE <amount> <store> TO <house>", "TRADE <amount> <store> FOR <amount> <store> WITH <house>",
+                               "WHILE AWAY MUSTER <kind>", "WHILE AWAY RAISE <work> FIRST", "WHILE AWAY KEEP HOME",
+                               "WHILE AWAY MAKE PEACE", "WHILE AWAY MAKE NO PEACE", "WHILE AWAY PAY TRIBUTE", "WHILE AWAY PAY NO TRIBUTE",
+                               "WHILE AWAY AS YOU SEE FIT"]
     /// The most lines read at once.
     public static let most = 6
     /// The most companies and places the briefing names, the nearest the
@@ -152,14 +156,10 @@ public enum SpokenOrders {
                 return refused(text, "Your House holds no hold by the name \(at).")
             }
             if verb == "BUILD" {
-                guard let kind = BuildingKind.allCases.first(where: { plain($0.title) == plain(what) }) else {
-                    return refused(text, "No work goes by the name \(what).")
-                }
+                guard let kind = work(what) else { return refused(text, "No work goes by the name \(what).") }
                 return given(.build(hold: hold.id, kind: kind), "\(hold.name) raises its \(kind.title).")
             }
-            guard let kind = UnitKind.allCases.first(where: { [plain($0.title), String(plain($0.title).dropLast())].contains(plain(what)) }) else {
-                return refused(text, "No company goes by the name \(what).")
-            }
+            guard let kind = Self.kind(what) else { return refused(text, "No company goes by the name \(what).") }
             return given(.train(hold: hold.id, kind: kind), "\(hold.name) musters a company of \(kind.title).")
         case "OFFER", "DEMAND", "DECLARE":
             // An envoy to another House, or war on it.
@@ -197,9 +197,51 @@ public enum SpokenOrders {
             return given(.offerTrade(Trade(give: give, giving, for: take, taking), to: other, words: nil),
                          "\(GameState.counted(giving)) \(give.title.lowercased()) offered to \(state.houses[other].title) "
                             + "for \(GameState.counted(taking)) \(take.title.lowercased()).")
+        case "WHILE":
+            // A standing order, for the caretaker that keeps the House while
+            // its keeper is away.
+            guard rest.count >= 2, rest[0].uppercased() == "AWAY" else { return nil }
+            let said = rest.dropFirst().joined(separator: " ")
+            let asked = plain(said).uppercased()
+            func standing(_ order: StandingOrder) -> Line {
+                var told = StandingOrders(house: player)
+                told.take(order)
+                return given(.stand(order), told.said)
+            }
+            if asked.hasPrefix("MUSTER ") {
+                let what = String(said.dropFirst("MUSTER ".count))
+                guard let kind = Self.kind(what) else { return refused(text, "No company goes by the name \(what).") }
+                return standing(.muster(kind))
+            }
+            if asked.hasPrefix("RAISE ") {
+                var what = String(said.dropFirst("RAISE ".count)).trimmingCharacters(in: CharacterSet(charactersIn: " .,;:!"))
+                if what.uppercased().hasSuffix(" FIRST") { what = String(what.dropLast(" FIRST".count)) }
+                guard let kind = work(what) else { return refused(text, "No work goes by the name \(what).") }
+                return standing(.raise(kind))
+            }
+            switch asked {
+            case "KEEP HOME", "KEEP EVERY COMPANY HOME": return standing(.home)
+            case "MAKE PEACE": return standing(.peace(true))
+            case "MAKE NO PEACE": return standing(.peace(false))
+            case "PAY TRIBUTE": return standing(.tribute(true))
+            case "PAY NO TRIBUTE": return standing(.tribute(false))
+            case "AS YOU SEE FIT": return given(.standDown, StandingOrders(house: player).said)
+            default: return nil
+            }
         default:
             return nil
         }
+    }
+
+    /// The kind of company a line names, by its title or one less its last
+    /// letter: "Spears" or "Spear".
+    static func kind(_ name: String) -> UnitKind? {
+        UnitKind.allCases.first { [plain($0.title), String(plain($0.title).dropLast())].contains(plain(name)) }
+    }
+
+    /// The work a line names.
+    static func work(_ name: String) -> BuildingKind? {
+        BuildingKind.allCases.first { plain($0.title) == plain(name) }
     }
 
     /// An amount of a store as a line gives it: "50 timber", "1,000 grain".

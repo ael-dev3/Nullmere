@@ -5,7 +5,8 @@ import SwiftUI
 /// for: a line to write them on; the orders this Mac's model reads from
 /// them, each with what it would do or why it can't be given; and those
 /// that can, given together. Without the model, the order book's own lines
-/// are read as they are written.
+/// are read as they are written. Below them, the standing orders the
+/// House's caretaker keeps while its keeper is away, if they gave any.
 struct OrdersCard: View {
     let session: GameSession
     @State private var words: String
@@ -74,6 +75,18 @@ struct OrdersCard: View {
                                 name: "Give the orders read", why: givable == 0 ? "None of these orders can be given." : nil) {
                         session.giveOrders()
                     }
+                }
+            }
+            let standing = session.state.standingOrders(of: session.player)
+            if !standing.isEmpty {
+                Rule(opacity: 0.4)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(verbatim: standing.said)
+                        .font(.nm(10))
+                        .foregroundStyle(Palette.text(0.6))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 8)
+                    QuietButton(title: "Clear", size: 8.5, name: "Clear the standing orders") { session.perform(.standDown) }
                 }
             }
         }

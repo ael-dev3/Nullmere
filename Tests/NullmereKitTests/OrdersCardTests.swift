@@ -155,6 +155,38 @@ final class OrdersCardTests: XCTestCase {
         XCTAssertEqual(session.panel, .guide, "The panel open stays open")
     }
 
+    /// Standing orders read from the keeper's words and given, shown at the
+    /// foot of the card until they are cleared there.
+    func testStandingOrdersAreGivenAndClearedFromTheCard() async throws {
+        let state = world()
+        let me = state.player
+        let clerk = Clerk(answer: "WHILE AWAY MUSTER Bows\nWHILE AWAY KEEP HOME")
+        let session = GameSession(state: state, store: LocalStore(directory: dir), voice: clerk)
+        session.dismissSeatBriefing()
+        session.toggleOrders()
+        draw(OrdersCard(session: session))
+        XCTAssertFalse(PressableButtons.press("Clear"), "No standing orders yet: \(shown)")
+        session.readOrders("While I'm away, muster only archers and keep everyone home.")
+        try await waitForReading(in: session)
+        let lines = try XCTUnwrap(session.ordersInWords?.lines)
+        XCTAssertEqual(lines.map(\.command), [.stand(.muster(.bow)), .stand(.home)])
+        XCTAssertTrue(lines.allSatisfy { $0.why == nil })
+        XCTAssertEqual(session.giveOrders(), 2)
+        let standing = session.state.standingOrders(of: me)
+        XCTAssertEqual(standing.muster, .bow)
+        XCTAssertEqual(standing.home, true)
+
+        // At the foot of the card, until cleared there.
+        session.toggleOrders()
+        draw(OrdersCard(session: session))
+        XCTAssertTrue(PressableButtons.press("Clear"), "Among \(shown)")
+        XCTAssertTrue(session.state.standingOrders(of: me).isEmpty)
+        draw(OrdersCard(session: session))
+        XCTAssertFalse(PressableButtons.press("Clear"), "None left to clear")
+        XCTAssertEqual(GameSession.cues(for: .stand(.home), events: [], in: session.state, player: me), [.order])
+        XCTAssertEqual(GameSession.cues(for: .standDown, events: [], in: session.state, player: me), [.stand])
+    }
+
     /// No orders once the age has ended, nor from a House that has fallen.
     func testNoOrdersAfterTheAgeNorFromAFallenHouse() {
         var ended = world()

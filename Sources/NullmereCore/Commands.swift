@@ -83,6 +83,10 @@ public enum Command: Codable, Equatable, Sendable {
     case castBottle(words: String, from: Int, signed: Bool)
     /// Seals a letter under the stones of a hold, for the age to come.
     case sealLetter(words: String, hold: Int)
+    /// A standing order for the caretaker that keeps the House while its
+    /// keeper is away; and every standing order cleared.
+    case stand(StandingOrder)
+    case standDown
     /// A line of another keeper's reported to the realm's steward.
     case reportWord(word: Int)
     /// An edict put to the realm, for every House to vote on.
@@ -251,6 +255,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case noWaterBeside
     case castThisWatch
     case letterSealed
+    case notACompanyOfWar
+    case noStandingOrders
     /// A line the House never heard, or one taken away.
     case unknownWord
     /// A House's own line, reported.
@@ -504,6 +510,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .noWaterBeside: return "No water lies beside this hold to set a bottle on."
         case .castThisWatch: return "Your House has set a bottle on the water this watch; another at the next."
         case .letterSealed: return "Your House has sealed its letter to the age to come; one an age."
+        case .notACompanyOfWar: return "Only a company of war is mustered by a standing order."
+        case .noStandingOrders: return "Your House has given no standing orders."
         case .unknownWord: return "No such line is in the Words."
         case .ownWord: return "That line is your own."
         case .reportedAlready: return "You have reported that line already."
@@ -862,6 +870,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case letterSealed(hold: Int, by: Int)
     /// A letter of the age before found in a drowned hold, with its words.
     case letterFound(letter: Letter, by: Int)
+    /// A keeper's standing orders given, changed or cleared.
+    case standingOrdersGiven(house: Int)
     /// A line reported to the realm's steward.
     case wordReported(word: Int, by: Int)
     /// A line taken away by the realm's steward.

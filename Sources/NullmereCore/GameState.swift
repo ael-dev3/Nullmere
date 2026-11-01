@@ -117,6 +117,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// there are none.
     var letters: [Letter]?
     var oldLetters: [Letter]?
+    /// What keepers have told the caretakers of their Houses to do while
+    /// they are away; absent while none has.
+    var standing: [StandingOrders]?
     /// What every keeper knows of the land from the first watch: its
     /// streams and regions, and the crests the lake gave its Houses. Absent
     /// in a world without streams, and in saves from before them.
