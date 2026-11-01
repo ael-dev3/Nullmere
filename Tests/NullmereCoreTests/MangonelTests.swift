@@ -6,7 +6,7 @@ import XCTest
 /// from a Muster Hall of IV, in five tiers, that hurls stones from two
 /// tiles away, three times as hard as any other company on walls and
 /// wards, soft in the field and riders' prey, taking no hold itself.
-/// Stewards muster none.
+/// Stewards at war muster a few.
 final class MangonelTests: XCTestCase {
     func testAMangonelIsAnEngineOfSiege() {
         let kind = UnitKind.mangonel
@@ -112,11 +112,13 @@ final class MangonelTests: XCTestCase {
         XCTAssertGreaterThan(state.capacity(of: engine, for: .stone), state.capacity(of: spear, for: .stone))
     }
 
-    /// Stewards muster no Mangonels, so a world of stewards goes as it
-    /// always did.
-    func testStewardsMusterNone() {
+    /// A steward musters an engine only from a hall of IV, so a world of
+    /// stewards goes as it always did until its halls stand so high.
+    func testStewardsMusterEnginesOnlyFromAHallOfIV() {
         var state = GameState(settings: GameSettings(seedText: "no engines", houseCount: 5, radius: 18))
         for _ in 0..<60 { _ = state.endWatch() }
-        XCTAssertFalse(state.units.contains { $0.kind == .mangonel })
+        let high = Set(state.holds.filter { $0.level(.musterHall) >= UnitKind.mangonel.requiredMuster }.map(\.owner))
+        XCTAssertTrue(state.units.filter { $0.kind == .mangonel }.allSatisfy { high.contains($0.owner) })
+        XCTAssertFalse(state.units.contains { $0.kind == .mangonel }, "None in the first sixty watches, before any hall is so high")
     }
 }

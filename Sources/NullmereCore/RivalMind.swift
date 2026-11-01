@@ -1045,6 +1045,7 @@ struct RivalMind {
         let lanterns = units.filter { $0.kind == .lantern }.count
         let founders = units.filter { $0.kind == .founder }.count
         let military = units.filter { $0.kind.isMilitary }.count
+        let engines = units.filter { $0.kind == .mangonel }.count
         let holds = state.holds(of: house).count
         let atWar = state.livingHouses.contains { state.isAtWar(house, $0.id) }
         let netGrain = state.income(of: house, territory: owners).grain - state.upkeep(of: house)
@@ -1070,9 +1071,14 @@ struct RivalMind {
             choice = .founder
         } else if military < wantedArmy, netGrain > 1 || atWar {
             let muster = hold.level(.musterHall)
+            // At war, engines to break walls with: Mangonels, a sixth of
+            // the army and three at the most.
+            if atWar, muster >= UnitKind.mangonel.requiredMuster, engines < min(RivalMind.mostEngines, 1 + military / 6),
+               random.chance(30) {
+                choice = .mangonel
             // Riders, fast and the hardest-hitting, the more so at war,
             // when holds must be taken.
-            if muster >= 3, random.chance(atWar ? 50 : 35) {
+            } else if muster >= 3, random.chance(atWar ? 50 : 35) {
                 choice = .rider
             } else if muster >= 2, random.chance(35) {
                 choice = .bow
@@ -1083,12 +1089,13 @@ struct RivalMind {
         // A House that can muster its own company, at the fifth tier, reaches
         // for it more often than not.
         let own = state.heritage(of: house).signature
-        if choice?.isMilitary == true, state.highestTier(of: own, at: hold, for: house) == Unit.highestTier, random.chance(60) {
+        if choice?.isMilitary == true, choice != .mangonel, state.highestTier(of: own, at: hold, for: house) == Unit.highestTier,
+           random.chance(60) {
             choice = own
         }
         guard var kind = choice, hold.level(.musterHall) >= kind.requiredMuster else { return nil }
-        // Riders or bows it can't pay for: spears, rather than nothing.
-        if !me.stock.covers(state.trainingCost(of: kind, for: house)), kind == .rider || kind == .bow { kind = .spear }
+        // Riders, bows or engines it can't pay for: spears, rather than nothing.
+        if !me.stock.covers(state.trainingCost(of: kind, for: house)), [.rider, .bow, .mangonel].contains(kind) { kind = .spear }
         guard me.stock.covers(state.trainingCost(of: kind, for: house)) else { return nil }
         return kind
     }
@@ -1231,7 +1238,8 @@ struct RivalMind {
         // this House's own gates, never one that would lead it off.
         let siege = siegePlan(in: state)
         let gates = state.holds(of: house).map(\.position)
-        let skirmish = state.units(within: 3, of: unit.position)
+        // An engine meets no one: soft in the field, it keeps to its siege.
+        let skirmish = unit.kind == .mangonel ? nil : state.units(within: 3, of: unit.position)
             .filter { $0.owner != house && $0.kind.isMilitary && state.isAtWar(house, $0.owner) }
             .filter { foe in
                 guard let siege else { return true }
@@ -1252,6 +1260,17 @@ struct RivalMind {
         }
         if let siege {
             let near = unit.position.distance(to: siege.target) <= RivalMind.siegeReach
+            // An engine never goes in: it stands off at its reach, on open
+            // ground, and hurls its stones at the walls from there.
+            if unit.kind == .mangonel, siege.ready || near {
+                if unit.position.distance(to: siege.target) <= unit.kind.range {
+                    return unit.movesLeft > 0 ? perform(.attack(unit: unit.id, target: siege.target), in: &state) : []
+                }
+                if let stand = standoff(for: unit, from: siege.target, in: state) {
+                    return perform(.move(unit: unit.id, to: stand), in: &state)
+                }
+                return unit.fortified ? [] : perform(.fortify(unit: unit.id), in: &state)
+            }
             if siege.ready || (near && unit.position.distance(to: siege.target) <= unit.kind.range + 1) {
                 return perform(.move(unit: unit.id, to: siege.target), in: &state)
             }
@@ -1284,6 +1303,19 @@ struct RivalMind {
 
     /// How close to a besieged hold the army gathers before it goes in.
     static let siegeReach = 4
+    /// The most Mangonels a steward musters.
+    static let mostEngines = 3
+
+    /// Where an engine stands to hurl its stones at a hold: open ground at
+    /// its reach from the hold, the nearest the engine; its own ground, if
+    /// it stands at its reach already.
+    func standoff(for unit: Unit, from target: Hex, in state: GameState) -> Hex? {
+        let range = unit.kind.range
+        return target.spiral(range).filter { hex in
+            guard hex.distance(to: target) == range, let tile = state.map[hex], tile.terrain.isPassable, !tile.terrain.isWater else { return false }
+            return hex == unit.position || !state.isOccupied(hex)
+        }.min { ($0.distance(to: unit.position), $0) < ($1.distance(to: unit.position), $1) }
+    }
     /// How far a steward's company goes to a battle its House fights.
     static let battleCall = 6
     /// How far from its own holds a steward's company goes hunting, or

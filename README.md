@@ -495,8 +495,10 @@ as the realm will, and takes the realm's word as final.
   Riders fall on it half again as hard as on anything else. Drawn in five
   tiers, from a rough frame to a great gilt engine behind a mantlet in the
   House's colours, its arm flying up to the stop bar as it strikes, the
-  stone arcing high to the mark and landing as a ram's blow. Stewards
-  muster none.
+  stone arcing high to the mark and landing as a ram's blow. Stewards at
+  war muster them too, from a hall of IV, a sixth of their army and three
+  at the most: at a siege their engines never go in, but stand off at
+  their reach on open ground and break the walls from there.
 - **The Ring.** Rise of Kingdoms' arena of commanders: at the foot of the
   Commanders screen a keeper stands a line of up to three of their
   commanders, each weighing 40, ten for each of its levels, four for each
