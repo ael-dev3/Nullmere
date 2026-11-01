@@ -459,10 +459,18 @@ struct RivalMind {
         // other House's, gathered once: nothing said here moves a hold.
         let explored = state.houses[house].explored
         let ownHolds = state.holds(of: house).map(\.position)
-        var holdsOf: [Int: [Hex]] = [:]
-        for hold in state.holds { holdsOf[hold.owner, default: []].append(hold.position) }
+        // By owner in a list, each House's room made at once, its holds
+        // read where they stand rather than copied.
+        var counts = [Int](repeating: 0, count: state.houses.count)
+        for index in state.holds.indices { counts[state.holds[index].owner] += 1 }
+        var holdsOf = counts.map { count -> [Hex] in
+            var positions: [Hex] = []
+            positions.reserveCapacity(count)
+            return positions
+        }
+        for index in state.holds.indices { holdsOf[state.holds[index].owner].append(state.holds[index].position) }
         func knowsHold(of other: Int, within distance: Int) -> Bool {
-            (holdsOf[other] ?? []).contains { theirs in
+            holdsOf[other].contains { theirs in
                 guard let index = state.map.index(of: theirs), explored[index] else { return false }
                 return ownHolds.contains { $0.distance(to: theirs) <= distance }
             }
@@ -1683,23 +1691,27 @@ struct RivalMind {
         func near(_ hex: Hex, within beyond: Int) -> Bool {
             anchors.contains { $0.distance(to: hex) <= reach + beyond }
         }
+        // The holds and companies read where they stand, not copied.
         var ruledOut = [Bool](repeating: false, count: map.count)
-        for hold in state.holds where near(hold.position, within: 3) {
-            for hex in hold.position.spiral(3) { if let index = map.index(of: hex) { ruledOut[index] = true } }
+        for index in state.holds.indices where near(state.holds[index].position, within: 3) {
+            map.forEachIndex(within: 3, of: state.holds[index].position) { ruledOut[$0] = true }
         }
-        for other in state.units where other.owner != house && near(other.position, within: 0) {
-            if let index = map.index(of: other.position) { ruledOut[index] = true }
+        for index in state.units.indices where state.units[index].owner != house && near(state.units[index].position, within: 0) {
+            if let tile = map.index(of: state.units[index].position) { ruledOut[tile] = true }
         }
         for wild in state.wildsStanding where near(wild.position, within: 0) {
             if let index = map.index(of: wild.position) { ruledOut[index] = true }
         }
-        let holdOwners = Dictionary(state.holds.map { ($0.id, $0.owner) }, uniquingKeysWith: { first, _ in first })
+        // Its own holds by id: land a hold of any other House holds, or of
+        // none known, is not to be weighed.
+        var mine = Set<Int>()
+        for index in state.holds.indices where state.holds[index].owner == house { mine.insert(state.holds[index].id) }
         var best: (score: Int, hex: Hex)?
         for anchor in anchors {
             for hex in anchor.spiral(reach) {
                 guard let index = map.index(of: hex), explored[index] else { continue }
                 guard map[index].terrain.isSettleable, !ruledOut[index] else { continue }
-                if owners[index].map({ holdOwners[$0] != house }) ?? false { continue }
+                if owners[index].map({ !mine.contains($0) }) ?? false { continue }
                 let score = siteScore(hex, in: state) * 3 - hex.distance(to: origin)
                 if best == nil || (score, hex) > (best!.score, best!.hex) {
                     best = (score, hex)
