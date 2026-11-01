@@ -855,7 +855,58 @@ enum Works {
                 }
             }
         }
+        b.fine { sawpitNear(&$0, level: level) }
         return model(name, b, rig: rig, machinery: machinery)
+    }
+
+    /// The sawpit drawn nearer still: at every level a grindstone on its
+    /// frame over a trough, its crank turned, for the saws and axes; at its
+    /// first two, the bark and chips of the logs strewn about the trestle,
+    /// sawn boards leaning by the shelter and a bow saw hung on its post.
+    static func sawpitNear(_ b: inout MeshBuilder, level: Int) {
+        b.place(.translation(Vec3(0.245, 0, -0.03)) * .rotationY(0.4)) { b in
+            for x in [Float(-0.03), 0.03] {
+                for z in [Float(-0.035), 0.035] {
+                    b.limb(from: Vec3(x, 0, z), to: Vec3(x, 0.05, z * 0.6), radius: 0.004, sides: 3, color: Palette.timberDark)
+                }
+                b.beam(from: Vec3(x, 0.05, -0.03), to: Vec3(x, 0.05, 0.03), width: 0.007, color: Palette.timber)
+            }
+            b.box(center: Vec3(0, 0.03, 0), size: Vec3(0.05, 0.016, 0.05), color: Palette.timberGrey)
+            b.with(surface: .stone) {
+                $0.place(.translation(Vec3(0, 0.058, 0)) * .rotationZ(.pi / 2)) {
+                    $0.lathe([(0.034, -0.008), (0.034, 0.008)], sides: 8, color: Palette.stonePale)
+                }
+            }
+            b.with(material: .metal) {
+                $0.beam(from: Vec3(-0.042, 0.058, 0), to: Vec3(0.045, 0.058, 0), width: 0.004, color: Palette.iron)
+                $0.beam(from: Vec3(0.045, 0.058, 0), to: Vec3(0.045, 0.04, 0.012), width: 0.004, color: Palette.iron)
+            }
+            b.beam(from: Vec3(0.045, 0.04, 0.012), to: Vec3(0.06, 0.04, 0.012), width: 0.005, color: Palette.timberPale)
+        }
+        guard level <= 2 else { return }
+        for (index, at) in [Vec3(-0.07, 0.002, 0.11), Vec3(0.09, 0.002, 0.1), Vec3(0.12, 0.002, -0.02), Vec3(-0.15, 0.002, 0.06)]
+            .enumerated() {
+            b.box(center: at, size: Vec3(0.04, 0.004, 0.012), turn: Float(index) * 1.3 + 0.4,
+                  color: index % 2 == 0 ? Palette.bark : Palette.timberPale)
+        }
+        // Boards leaning by the shelter's western post.
+        let post = level == 1 ? Vec3(-0.14, 0, -0.12) : Vec3(-0.16, 0, -0.1)
+        for index in 0..<3 {
+            let shift = Float(index) * 0.022
+            b.place(.translation(post + Vec3(-0.05 - shift, 0, 0.02 + shift * 0.3)) * .rotationZ(-0.26 - shift)) {
+                $0.box(center: Vec3(0, 0.085, 0), size: Vec3(0.018, 0.17, 0.006), color: index == 1 ? Palette.timberGrey : Palette.timberPale)
+            }
+        }
+        // A bow saw hung on the eastern post.
+        let hook = (level == 1 ? Vec3(0.14, 0, -0.12) : Vec3(0.16, 0, -0.1)) + Vec3(0, 0.15, 0.014)
+        b.beam(from: hook + Vec3(-0.035, 0, 0), to: hook + Vec3(0.035, 0, 0), width: 0.004, color: Palette.timber)
+        for x in [Float(-0.03), 0.03] {
+            b.beam(from: hook + Vec3(x, 0.022, 0), to: hook + Vec3(x * 1.1, -0.05, 0), width: 0.004, color: Palette.timber)
+        }
+        b.with(material: .metal) {
+            $0.beam(from: hook + Vec3(-0.033, -0.046, 0), to: hook + Vec3(0.033, -0.046, 0), width: 0.002, depth: 0.006, color: Palette.steel)
+        }
+        b.limb(from: hook + Vec3(-0.03, 0.02, 0), to: hook + Vec3(0.03, 0.02, 0), radius: 0.0012, sides: 3, color: Palette.linen)
     }
 
     // MARK: Quarry
@@ -968,7 +1019,47 @@ enum Works {
                 $0.tube([(0.017, 0.026), (0.022, 0.031), (0.017, 0.036), (0.012, 0.031), (0.017, 0.026)], sides: 8, color: Palette.linen)
             }
         }
+        b.fine { quarryNear(&$0) }
         return model(name, b, rig: rig, machinery: machinery)
+    }
+
+    /// The quarry drawn nearer still, at every level: a raw block split
+    /// along a line of iron wedges in its kerf, the maul that drove them
+    /// leaning on it; a barrow of rubble wheeled from the outcrop's flank;
+    /// and the chips of the dressing swept into a heap.
+    static func quarryNear(_ b: inout MeshBuilder) {
+        b.place(.translation(Vec3(0.235, 0, 0.055)) * .rotationY(0.3)) { b in
+            b.with(surface: .stone) {
+                $0.box(center: Vec3(0, 0.026, 0), size: Vec3(0.1, 0.052, 0.055), color: Palette.stonePale.mix(Palette.stone, 0.4))
+                $0.box(center: Vec3(0, 0.0525, 0), size: Vec3(0.094, 0.002, 0.004), color: Palette.stoneDark)
+            }
+            b.with(material: .metal) {
+                for index in 0..<4 {
+                    $0.box(center: Vec3((Float(index) - 1.5) * 0.022, 0.058, 0), size: Vec3(0.006, 0.014, 0.008), color: Palette.iron)
+                }
+                $0.box(center: Vec3(0.032, 0.068, 0.034), size: Vec3(0.03, 0.015, 0.015), turn: 0.3, color: Palette.iron)
+            }
+            b.beam(from: Vec3(0.07, 0, 0.045), to: Vec3(0.034, 0.064, 0.034), width: 0.006, color: Palette.timberPale)
+        }
+        // The barrow, its wheel toward the outcrop, rubble heaped in it.
+        b.place(.translation(Vec3(-0.25, 0, 0.03)) * .rotationY(-0.35)) { b in
+            b.place(.translation(Vec3(0, 0.03, 0)) * .scale(Vec3(0.75, 1, 1.15))) {
+                $0.lathe([(0.026, 0), (0.038, 0.028)], sides: 4, color: Palette.timber, twist: .pi / 4)
+            }
+            b.wheel(center: Vec3(0, 0.022, -0.058), radius: 0.022, width: 0.008, spokes: 2, color: Palette.timberDark)
+            for side in [Float(-1), 1] {
+                b.beam(from: Vec3(side * 0.02, 0.022, -0.058), to: Vec3(side * 0.026, 0.038, 0.09), width: 0.006, color: Palette.timberDark)
+                b.beam(from: Vec3(side * 0.02, 0.03, 0.03), to: Vec3(side * 0.022, 0, 0.04), width: 0.006, color: Palette.timberDark)
+            }
+            for (index, at) in [Vec3(-0.008, 0.06, -0.006), Vec3(0.01, 0.058, 0.012), Vec3(0.004, 0.068, 0.004)].enumerated() {
+                b.rock(center: at, size: Vec3(0.014, 0.01, 0.012), rings: 2, sides: 5, jitter: 0.25, seed: UInt32(51 + index),
+                       color: Palette.rock)
+            }
+        }
+        // The chips of the dressing, swept into a heap.
+        b.place(.translation(Vec3(0.135, 0, 0.065))) {
+            $0.lathe([(0.04, 0), (0.026, 0.014), (0, 0.022)], sides: 7, color: Palette.stone)
+        }
     }
 
     // MARK: Saltworks
@@ -1632,9 +1723,36 @@ enum Works {
                     $0.tube([(0.035, 0.0), (0.065, 0.07)], sides: 6, color: Palette.iron)
                 }
             }
-            // A ladder up its front to the platform, near.
+            // A ladder up its front to the platform, near; and nearer, the
+            // fire's brushwood bound in faggots and stacked by its foot, a
+            // hauling rope down from the platform to a basket of them, jars
+            // of oil for the kindling and a horn hung to cry the alarm.
             b.fine {
                 $0.ladder(from: Vec3(0, 0, 0.115), to: Vec3(0, top - 0.015, 0.06), width: 0.045, rungs: 9, color: Palette.timberPale)
+                for (index, at) in [Vec3(-0.15, 0.016, -0.03), Vec3(-0.15, 0.016, 0.01), Vec3(-0.15, 0.016, 0.05), Vec3(-0.15, 0.045, -0.01),
+                                    Vec3(-0.15, 0.045, 0.03)].enumerated() {
+                    $0.place(.translation(at) * .rotationZ(.pi / 2) * .rotationY(Float(index))) {
+                        $0.lathe([(0.016, -0.04), (0.018, 0), (0.016, 0.04)], sides: 5, color: Palette.straw.mix(Palette.bark, 0.35))
+                        $0.lathe([(0.0185, -0.004), (0.0185, 0.004)], sides: 5, color: Palette.timberDark)
+                    }
+                }
+                $0.limb(from: Vec3(0.07, top - 0.01, 0.07), to: Vec3(0.13, 0.05, 0.13), radius: 0.0016, sides: 3, color: Palette.linen)
+                $0.place(.translation(Vec3(0.13, 0, 0.13))) {
+                    $0.lathe([(0.016, 0), (0.024, 0.04)], sides: 7, color: Palette.straw)
+                    $0.lathe([(0.0, 0.035), (0.02, 0.042), (0.0, 0.05)], sides: 5, color: Palette.straw.mix(Palette.bark, 0.35))
+                }
+                for (index, at) in [Vec3(0.13, 0, -0.1), Vec3(0.155, 0, -0.065)].enumerated() {
+                    $0.place(.translation(at) * .rotationY(Float(index))) {
+                        $0.lathe([(0.01, 0), (0.018, 0.02), (0.013, 0.04), (0.006, 0.048), (0.008, 0.054)], sides: 6, color: Palette.madder)
+                    }
+                }
+                $0.with(material: .metal) {
+                    $0.beam(from: Vec3(-0.075, 0.2, -0.075), to: Vec3(-0.095, 0.2, -0.095), width: 0.004, color: Palette.iron)
+                }
+                $0.place(.translation(Vec3(-0.1, 0.175, -0.1)) * .rotationZ(0.5)) {
+                    $0.lathe([(0.004, -0.03), (0.007, 0.0), (0.016, 0.03)], sides: 6, color: Palette.bone)
+                }
+                $0.limb(from: Vec3(-0.095, 0.2, -0.095), to: Vec3(-0.105, 0.17, -0.1), radius: 0.0015, sides: 3, color: Palette.leather)
             }
         case 2:
             top = 0.66
