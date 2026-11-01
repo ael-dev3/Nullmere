@@ -144,6 +144,13 @@ extension GameSession {
         // The alliances' standards, each in its leader's colour.
         let flags = state.standardsStanding.filter { isExplored($0.position) }
         let standards = stage.standards(flags.map { ($0.position, allianceColour($0.alliance, else: $0.raisedBy, houses)) })
+        // The war camps of rallies gathering at holds in sight, in their
+        // callers' colours.
+        let camps = stage.rallyCamps(state.ralliesStanding.compactMap { rally in
+            guard !rally.marching, let muster = state.hold(rally.muster), isVisible(muster.position),
+                  let target = state.target(of: rally), state.houses.indices.contains(rally.caller) else { return nil }
+            return (muster: muster.position, target: target.position, colour: WorldStage.colour(houses, sigil: state.houses[rally.caller].sigil))
+        })
         let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position) + found.map(\.position) + flags.map(\.position))
         let furniture = stage.furnish(occupied: standing,
                                       holds: Set(sights.map(\.hold.position) + hallSights.map(\.hex) + storehouseSights.map(\.hex)))
@@ -154,14 +161,14 @@ extension GameSession {
         let veiled = state.veils == nil ? [] : shown.filter { state.isVeiled($0.hold.owner) && isVisible($0.hold.position) }
         let flights = WorldStage.flights(arrows: full ? arrows(at: now) : [],
                                          birdsOver: full ? Vec3(lake.x, Relief.waterline, lake.z) : nil,
-                                         hearths: full ? (hearths + lairHearths + hallHearths + yards.hearths).filter { isVisible($0.hex) } : [],
+                                         hearths: full ? (hearths + lairHearths + hallHearths + yards.hearths + camps.hearths).filter { isVisible($0.hex) } : [],
                                          mists: veiled.flatMap { WorldStage.mist(about: $0.hold.position, height: Float(groundHeight(of: $0.hold.position))) },
                                          time: t,
                                          into: &frame)
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
         frame.fixedRegions = stage.furnitureRegions
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + companies + flights
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
                                                      time: time)

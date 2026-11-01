@@ -320,6 +320,29 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(stage.standards([]).isEmpty)
     }
 
+    /// A rally gathering pitches its war camp just past its muster's walls,
+    /// on the side of its march, its banner in its caller's colour and its
+    /// fire smoking.
+    func testRallyCampsStandPastTheirMustersTowardTheirTargets() throws {
+        let stage = stage()
+        let hexes = Array(Self.state.map.hexes.filter { Self.state.map[$0]?.terrain.isPassable == true }.prefix(3))
+        let red = Vec4(0.8, 0.1, 0.1, 1)
+        let (batches, hearths) = stage.rallyCamps([(muster: hexes[0], target: hexes[2], colour: red)])
+        XCTAssertEqual(batches.map(\.key), [.rallyCamp])
+        let camp = try XCTUnwrap(batches.first?.instances.first)
+        XCTAssertEqual(camp.colour, red)
+        XCTAssertEqual(camp.hex, SIMD2(Int32(hexes[0].q), Int32(hexes[0].r)))
+        let muster = Relief.centre(of: hexes[0]), target = Relief.centre(of: hexes[2])
+        let at = Vec3(camp.model.c3.x - muster.x, 0, camp.model.c3.z - muster.z)
+        let way = Vec3(target.x - muster.x, 0, target.z - muster.z)
+        XCTAssertEqual(at.length, WorldStage.rallyCampReach, accuracy: 1e-3, "Just past the walls")
+        XCTAssertGreaterThan((at.x * way.x + at.z * way.z) / (at.length * way.length), 0.999, "On the side of its march")
+        let facing = Vec3(camp.model.c2.x, 0, camp.model.c2.z)
+        XCTAssertGreaterThan((facing.x * way.x + facing.z * way.z) / (facing.length * way.length), 0.99, "Turned toward it")
+        XCTAssertEqual(hearths.map(\.hex), [hexes[0]], "Its fire smokes")
+        XCTAssertTrue(stage.rallyCamps([]).batches.isEmpty)
+    }
+
     func testHallsStandInTheirAlliancesColoursRisingInTheirScaffolds() throws {
         let stage = stage()
         let hexes = Array(Self.state.map.hexes.filter { hex in

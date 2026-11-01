@@ -774,6 +774,9 @@ full screen at launch as chosen.
   (peace, its caller out of the alliance, its muster lost), whose muster is
   empty when it should set out, or whose host can't come to its hold within
   eight watches comes to nothing.
+  While it gathers, its war camp stands just past the muster's walls on the
+  side of its march, for every House that sees the hold: a tall war pole
+  flying the caller's banner, a war drum on its trestle and a fire.
 - **Keeping an ally's gates.** A company of war sent to an ally's hold
   stands at its gates; while it stands there, a company of a House at war
   with its own that strikes the hold is struck back from where it stands.

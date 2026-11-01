@@ -1027,3 +1027,96 @@ enum Land {
         b.box(center: Vec3(0.3, 0.2, 0.3), size: Vec3(0.08, 0.012, 0.02), turn: 0.4, color: Palette.timberPale)
     }
 }
+
+extension Land {
+    /// Where a rally camp's fire burns, in its own frame.
+    static let rallyFire = Vec3(0.24, 0.135, 0.2)
+
+    /// A rally's war camp, raised by the muster's gate while its host
+    /// gathers: a tall war pole flying a long swallow-tailed banner in the
+    /// caller's colour over a shorter pennon, a great war drum on its
+    /// trestle with its beaters across it, a horn on a post, a rack of
+    /// spears and shields, and a fire in a ring of stones.
+    static func rallyCamp(name: String) -> Model {
+        var b = MeshBuilder()
+        // Trodden ground, the camp's floor.
+        b.lathe([(0.46, -0.05), (0.46, 0.0), (0.4, 0.012), (0.0, 0.014)], sides: 9, color: Palette.earth)
+        // The war pole, its finial and crossbar, and its banners.
+        b.limb(from: Vec3(0, 0.0, 0), to: Vec3(0, 1.45, 0), radius: 0.02, topRadius: 0.013, color: Palette.timberDark)
+        b.beam(from: Vec3(-0.02, 1.36, 0), to: Vec3(0.4, 1.36, 0), width: 0.016, color: Palette.timber)
+        b.with(material: .metal) {
+            $0.place(.translation(Vec3(0, 1.45, 0))) { $0.cone(sides: 4, radius: 0.026, to: 0.1, color: Palette.gold, twist: .pi / 4) }
+        }
+        b.flag(at: Vec3(0.01, 1.35, 0), width: 0.38, height: 0.62, tail: true)
+        b.flag(at: Vec3(0, 0.98, 0), width: 0.22, height: 0.12, turn: .pi / 2)
+        for angle in [Float(0.5), 2.6, 4.7] {
+            let foot = MeshBuilder.ring(0.12, 0, angle)
+            b.limb(from: foot, to: Vec3(0, 0.3, 0), radius: 0.008, color: Palette.timberDark)
+        }
+        // The war drum on its trestle, skin up, beaters across it.
+        let drum = Vec3(-0.26, 0, 0.12)
+        for x in [Float(-0.07), 0.07] {
+            b.limb(from: drum + Vec3(x, 0, -0.06), to: drum + Vec3(x * 0.6, 0.16, 0), radius: 0.008, color: Palette.timberDark)
+            b.limb(from: drum + Vec3(x, 0, 0.06), to: drum + Vec3(x * 0.6, 0.16, 0), radius: 0.008, color: Palette.timberDark)
+        }
+        b.place(.translation(drum + Vec3(0, 0.16, 0))) {
+            $0.lathe([(0.0, 0.0), (0.1, 0.0), (0.115, 0.06), (0.1, 0.12), (0.0, 0.12)], sides: 10, color: Palette.leatherDark)
+            $0.with(material: .house) { $0.lathe([(0.117, 0.05), (0.118, 0.07)], sides: 10, color: Palette.house) }
+            $0.lathe([(0.0, 0.121), (0.098, 0.121)], sides: 10, color: Palette.linen)
+        }
+        for z in [Float(-0.03), 0.03] {
+            b.limb(from: drum + Vec3(-0.12, 0.29, z), to: drum + Vec3(0.1, 0.3, z * 2), radius: 0.006, color: Palette.timber)
+        }
+        // The fire in its ring of stones.
+        let fire = rallyFire
+        for index in 0..<7 {
+            b.rock(center: Vec3(fire.x, 0.01, fire.z) + MeshBuilder.ring(0.07, 0, Float(index) / 7 * 2 * .pi),
+                   size: Vec3(0.03, 0.025, 0.03), rings: 2, sides: 4, jitter: 0.2, seed: UInt32(index + 300), color: Palette.stoneDark)
+        }
+        b.with(material: .glow) {
+            $0.place(.translation(Vec3(fire.x, 0.0, fire.z))) {
+                $0.lathe([(0.05, 0), (0.055, 0.04), (0.0, 0.13)], sides: 6, color: Palette.fire)
+            }
+        }
+        b.fine { rallyCampNear(&$0) }
+        return Model(name: name, mesh: b.mesh)
+    }
+
+    /// A rally camp drawn near: a horn on its post, a rack of spears with
+    /// shields in the caller's colour against it, logs by the fire and
+    /// guy ropes on the war pole.
+    static func rallyCampNear(_ b: inout MeshBuilder) {
+        for angle in [Float(1.2), 3.4, 5.4] {
+            let peg = MeshBuilder.ring(0.42, 0, angle)
+            b.limb(from: Vec3(0, 1.05, 0), to: peg + Vec3(0, 0.03, 0), radius: 0.0025, sides: 3, color: Palette.linen.mix(Palette.leather, 0.5))
+            b.limb(from: peg - Vec3(0, 0.01, 0), to: peg + Vec3(0, 0.04, 0), radius: 0.005, sides: 3, color: Palette.timberDark)
+        }
+        // The horn on its post.
+        let post = Vec3(0.1, 0, -0.3)
+        b.limb(from: post, to: post + Vec3(0, 0.28, 0), radius: 0.012, color: Palette.timberDark)
+        b.place(.translation(post + Vec3(0.02, 0.26, 0)) * .rotationZ(-1.2)) {
+            $0.tube([(0.012, 0), (0.018, 0.06), (0.03, 0.12), (0.042, 0.15)], sides: 6, color: Palette.linen.mix(Palette.leather, 0.3))
+        }
+        // The rack of spears, shields against it.
+        let rack = Vec3(-0.22, 0, -0.22)
+        b.beam(from: rack + Vec3(-0.12, 0.2, 0), to: rack + Vec3(0.12, 0.2, 0), width: 0.012, color: Palette.timber)
+        for x in [Float(-0.12), 0.12] { b.limb(from: rack + Vec3(x, 0, 0), to: rack + Vec3(x, 0.22, 0), radius: 0.008, color: Palette.timberDark) }
+        for x in stride(from: Float(-0.09), through: 0.09, by: 0.045) {
+            b.limb(from: rack + Vec3(x, 0, 0.03), to: rack + Vec3(x, 0.5, -0.02), radius: 0.004, sides: 3, color: Palette.timberDark)
+            b.with(material: .metal) {
+                $0.place(.translation(rack + Vec3(x, 0.5, -0.02))) { $0.cone(sides: 4, radius: 0.009, to: 0.04, color: Palette.iron) }
+            }
+        }
+        for x in [Float(-0.07), 0.07] {
+            b.place(.translation(rack + Vec3(x, 0.07, 0.05)) * .rotationX(-1.3)) {
+                $0.with(material: .house) { $0.lathe([(0.055, -0.005), (0.055, 0.004), (0.0, 0.01)], sides: 8, color: Palette.house) }
+                $0.with(material: .metal) { $0.cone(sides: 5, radius: 0.013, from: 0.008, to: 0.02, color: Palette.iron) }
+            }
+        }
+        // Logs stacked by the fire.
+        for (index, z) in [Float(-0.03), 0.0, 0.03].enumerated() {
+            let y = index == 1 ? Float(0.035) : 0.012
+            b.limb(from: rallyFire + Vec3(0.12, y - 0.135, z), to: rallyFire + Vec3(0.26, y - 0.135, z), radius: 0.013, sides: 5, color: Palette.timber)
+        }
+    }
+}

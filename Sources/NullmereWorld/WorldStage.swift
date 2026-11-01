@@ -338,6 +338,30 @@ public final class WorldStage: @unchecked Sendable {
         })
     }
 
+    /// How far from its muster's heart a rally camp stands: past the walls,
+    /// toward the march.
+    public static let rallyCampReach: Float = 0.62
+
+    /// The war camps of rallies gathering at holds the keeper sees, each
+    /// just past its muster's walls on the side of its target, its banner
+    /// in its caller's colour; and where their fires smoke.
+    public func rallyCamps(_ camps: [(muster: Hex, target: Hex, colour: Vec4)]) -> (batches: [ModelBatch], hearths: [Hearth]) {
+        var hearths: [Hearth] = []
+        let batches = WorldStage.batches(camps.map { camp in
+            let from = Relief.centre(of: camp.muster), to = Relief.centre(of: camp.target)
+            var way = Vec3(to.x - from.x, 0, to.z - from.z)
+            if way.length < 0.001 { way = Vec3(0, 0, 1) }
+            way = way * (1 / way.length)
+            let x = from.x + way.x * WorldStage.rallyCampReach, z = from.z + way.z * WorldStage.rallyCampReach
+            let at = Vec3(x, ground(atX: x, z: z) - Scatter.sink, z)
+            let transform = Mat4.translation(at) * .rotationY(Float(atan2(Double(way.x), Double(way.z))))
+            hearths += Library.smoke(of: .rallyCamp).map { Hearth(point: transform.transformPoint($0), hex: camp.muster) }
+            return (.rallyCamp, ModelInstance(model: transform, colour: camp.colour, phase: WorldStage.phase(of: camp.muster, salt: 41),
+                                              hex: SIMD2(Int32(camp.muster.q), Int32(camp.muster.r))))
+        })
+        return (batches, hearths)
+    }
+
     /// The alliances' halls the keeper has found, each in its alliance's
     /// colour, one rising drawn up as far as it has come within its
     /// scaffold; and where the whole ones' louvres smoke.

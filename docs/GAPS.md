@@ -86,7 +86,7 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 - [x] Commanders: heroes with skills, experience and levels, who lead companies
 - [x] Gathering: stores in the land, worked by companies sent to them
 - [x] Alliances of many Houses, with help and words of their own
-- [x] Rallies: several Houses' companies joined against one target
+- [x] Rallies: several Houses' companies joined against one target; while one gathers, its war camp stands in the world past its muster's walls, toward its march, in its caller's colour
 - [x] Marches across the map that take time to arrive
 - [x] Events: realm-wide happenings with their own goals and rewards
 - [x] Progress: a keeper's renown and rewards that carry across ages
