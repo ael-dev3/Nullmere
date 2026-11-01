@@ -1713,9 +1713,15 @@ the keeper's realm last lay on, made as it plays.
   a block half dressed, and at its fifth shear legs on its top terrace; a
   sawpit of those levels its saw-house's front braced and half-timbered,
   its sawdust heaped by the door, and at its fifth a hoist beam out of the
-  gable with its rope and hook; and a beacon at its third, courses round
-  its tower, slits lit up it, corbels under its lantern and the fire's wood
-  stacked at its foot.
+  gable with its rope and hook; a beacon at its third, courses round its
+  tower, slits lit up it, corbels under its lantern and the fire's wood
+  stacked at its foot; and a forge at every level its chimney coursed and
+  sooted, tongs and a hammer on its hearth's lip and tongs against the
+  anvil's stump, horseshoes hung on a post, its barrel hooped and its
+  charcoal heaped, then tools hung by the smithy door and bar iron stood by
+  it, the bellows' boards and nozzle and a blade cooling on the trough, and
+  a helm and a shield on the stand of mail (762 to 1,310 triangles, where
+  it was 462 to 802).
 - **Only what the view reaches is drawn.** The land's furniture is kept
   on the GPU in square regions eight hexes on a side, each with the bounds
   of all it holds; each frame finds the regions inside the camera's view

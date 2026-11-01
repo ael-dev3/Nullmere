@@ -1187,6 +1187,93 @@ enum Works {
             b.limb(from: flue + Vec3(0.035, -0.08, 0), to: flue + Vec3(0.035, 0.1, 0), radius: 0.005, color: Palette.timberDark)
             b.flag(at: flue + Vec3(0.035, 0.095, 0), width: 0.1, height: 0.07, tail: true)
         }
+        // Near, the smith's gear: the chimney coursed and its flue sooted,
+        // tongs and a hammer on the hearth's lip and tongs against the
+        // anvil's stump, horseshoes hung on a post, the barrel hooped and
+        // charcoal heaped; from the second, tools hung by the smithy door
+        // and bar iron stood by it; from the third, the bellows' boards and
+        // nozzle and a blade cooling on the trough; from the fourth, a helm
+        // and a shield on the stand of mail.
+        b.fine {
+            let low = flue - Vec3(0.034, 0, 0.034), high = flue + Vec3(0.034, 0, 0.034)
+            var courses: [Float] = [0.25, flue.y - 0.014]
+            if flue.y >= 0.42 { courses.insert(flue.y - 0.09, at: 1) }
+            for y in courses {
+                $0.box(min: Vec3(low.x, y, low.z), max: Vec3(high.x, y + 0.014 + (y == courses.last ? 0.004 : 0), high.z),
+                       color: Palette.stonePale)
+            }
+            $0.box(center: flue + Vec3(0, 0.0048, 0), size: Vec3(0.042, 0.0016, 0.042), color: Palette.barkBlack)
+            $0.with(material: .metal) {
+                for (a, c) in [(Vec3(-0.195, 0.072, -0.004), Vec3(-0.115, 0.072, -0.014)),
+                               (Vec3(-0.195, 0.072, -0.015), Vec3(-0.115, 0.072, -0.005))] {
+                    $0.beam(from: a, to: c, width: 0.004, depth: 0.003, color: Palette.iron)
+                }
+                $0.box(center: Vec3(-0.1, 0.077, -0.009), size: Vec3(0.012, 0.01, 0.022), color: Palette.iron)
+                for x in [Float(0.066), 0.074] {
+                    $0.beam(from: Vec3(x + 0.006, 0, 0.118), to: Vec3(x, 0.052, 0.093), width: 0.004, depth: 0.003, color: Palette.iron)
+                }
+                for y in [Float(0.1), 0.068] {
+                    for x in [Float(-0.028), -0.012] {
+                        $0.box(center: Vec3(x, y, 0.07), size: Vec3(0.004, 0.02, 0.003), color: Palette.iron)
+                    }
+                    $0.box(center: Vec3(-0.02, y - 0.009, 0.07), size: Vec3(0.02, 0.004, 0.003), color: Palette.iron)
+                }
+                for y in [Float(0.0), 0.044] {
+                    $0.place(.translation(Vec3(0.16, 0, -0.04))) {
+                        $0.tube([(0.0285, y), (0.0305, y + 0.004), (0.0305, y + 0.01), (0.0285, y + 0.014)], sides: 7, color: Palette.iron)
+                    }
+                }
+            }
+            $0.beam(from: Vec3(-0.1, 0.073, -0.008), to: Vec3(-0.066, 0.073, -0.003), width: 0.005, color: Palette.timber)
+            $0.rock(center: Vec3(-0.245, 0, 0.12), size: Vec3(0.034, 0.028, 0.03), rings: 2, sides: 6, jitter: 0.3, seed: 43,
+                    color: Palette.barkBlack)
+            for (index, at) in [Vec3(-0.212, 0.004, 0.098), Vec3(-0.222, 0.004, 0.158), Vec3(-0.272, 0.004, 0.156)].enumerated() {
+                $0.rock(center: at, size: Vec3(0.008, 0.006, 0.007), rings: 2, sides: 4, jitter: 0.3, seed: UInt32(44 + index),
+                        color: Palette.barkBlack)
+            }
+            if level >= 2 {
+                $0.box(min: Vec3(0.026, 0.035, -0.11), max: Vec3(0.07, 0.1, -0.106), color: Palette.timberPale)
+                $0.with(material: .metal) {
+                    for x in [Float(0.034), 0.042] {
+                        $0.box(center: Vec3(x, 0.07, -0.104), size: Vec3(0.003, 0.05, 0.003), color: Palette.iron)
+                    }
+                    $0.box(center: Vec3(0.058, 0.088, -0.103), size: Vec3(0.018, 0.009, 0.007), color: Palette.iron)
+                    for index in 0..<4 {
+                        let x = 0.138 + Float(index) * 0.011
+                        $0.beam(from: Vec3(x, 0, -0.086), to: Vec3(x + 0.002, 0.1, -0.107), width: 0.005, depth: 0.004, color: Palette.iron)
+                    }
+                }
+                $0.beam(from: Vec3(0.058, 0.084, -0.103), to: Vec3(0.058, 0.05, -0.103), width: 0.004, color: Palette.timber)
+            }
+            if stone {
+                $0.place(.translation(Vec3(-0.24, 0.03, -0.05)) * .rotationZ(0.3)) {
+                    for y in [Float(-0.017), 0.017] {
+                        $0.box(center: Vec3(0, y, 0), size: Vec3(0.056, 0.005, 0.064), color: Palette.timberPale)
+                    }
+                    $0.limb(from: Vec3(-0.02, 0.02, 0), to: Vec3(-0.05, 0.07, 0), radius: 0.004, color: Palette.timber)
+                    $0.with(material: .metal) {
+                        $0.place(.translation(Vec3(0.026, 0, 0)) * .rotationZ(-.pi / 2)) {
+                            $0.cone(sides: 4, radius: 0.008, to: 0.03, color: Palette.iron)
+                        }
+                    }
+                }
+                $0.with(material: .metal) {
+                    $0.box(center: Vec3(-0.13, 0.038, 0.055), size: Vec3(0.08, 0.003, 0.008), turn: 0.15, color: Palette.steel)
+                }
+                $0.box(center: Vec3(-0.085, 0.038, 0.06), size: Vec3(0.022, 0.005, 0.007), turn: 0.15, color: Palette.leatherDark)
+            }
+            if level >= 4 {
+                $0.with(material: .metal) {
+                    $0.sphere(center: Vec3(0.25, 0.16, 0.15), radius: 0.017, rings: 3, sides: 6, color: Palette.steel, squash: 1.1)
+                }
+                $0.place(.translation(Vec3(0.215, 0.045, 0.15)) * .rotationZ(.pi / 2 + 0.2)) {
+                    $0.lathe([(0.036, -0.003), (0.036, 0.003)], sides: 8, color: Palette.timber)
+                    $0.with(material: .metal) {
+                        $0.sphere(center: Vec3(0, 0.004, 0), radius: 0.008, rings: 2, sides: 5, color: Palette.iron, squash: 0.6)
+                    }
+                }
+            }
+        }
         return model(name, b, rig: rig, machinery: Machinery(wheels: wheels, swings: swings, flames: [coals], parts: rig.count))
     }
 
