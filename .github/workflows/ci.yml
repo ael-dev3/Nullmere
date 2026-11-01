@@ -542,12 +542,16 @@ jobs:
       # The macOS job skips these, with no server to play through; here they
       # must run, every one: a skip would pass for a play-through.
       - name: Play through SpacetimeDB
+        # A play-through takes two or three minutes. One that stops
+        # answering fails here in its own time, its output written line by
+        # line so the log shows the test it stopped in, not at the job's limit.
+        timeout-minutes: 15
         env:
           NULLMERE_STDB: http://127.0.0.1:3000/nullmere
           NULLMERE_STDB_FRONTIER: http://127.0.0.1:3000/frontier-west,http://127.0.0.1:3000/frontier-east,http://127.0.0.1:3000/frontier
           NULLMERE_STDB_FRONTIER_PLAY: http://127.0.0.1:3000/play-west,http://127.0.0.1:3000/play-east,http://127.0.0.1:3000/play-frontier
         run: |
-          swift test --skip-build --filter SpacetimeIntegrationTests 2>&1 | tee realm-integration.log
+          stdbuf -oL -eL swift test --skip-build --filter SpacetimeIntegrationTests 2>&1 | tee realm-integration.log
           total="$(grep "Executed .* tests" realm-integration.log | tail -n 1)"
           echo "$total" | grep -Eq "Executed [1-9][0-9]* tests?, with 0 failures" || {
             echo "::error::The play-through through SpacetimeDB didn't run whole: $total"
@@ -572,5 +576,7 @@ jobs:
           # Failures first, so the skipped tests' lines never crowd them out.
           grep -hE "error: |failed \(" realm-test.log realm-integration.log 2>/dev/null | awk '!seen[$0]++' | head -20 || true
           grep -hE "error|failed|skipped|Executed|REALM " realm-test.log realm-integration.log 2>/dev/null | tail -20 || true
+          # Where the play-through was when it ended, whole or not.
+          grep -hE "Test Case .*(started|passed|failed)" realm-integration.log 2>/dev/null | tail -6 || true
           tail -n 30 realm-state/spacetime-local.log 2>/dev/null || true
           tail -n 10 realm-state/standalone.log 2>/dev/null || true
