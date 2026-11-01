@@ -1355,7 +1355,14 @@ realm; keepers are told in plain words, never a status code.
   company sets out and walked pace by pace, it is sought anew only when
   its next step is shut, by a company come to stand in it, a hold fallen
   to another House or the wilds, and the company goes round; the realm
-  keeps it, and no keeper's view carries it. As the watch turns,
+  keeps it, and no keeper's view carries it. On a lake wider than the
+  realm proper's, a march of twenty-four hexes or more, as the crow
+  flies, is guided by the lie of the land: how dear each tile lies from
+  its goal over the ground alone, worked out once for each goal and kept
+  while the ground stays as it is. It goes round the companies within
+  eight tiles of where it sets out, and meets those farther along as it
+  comes to them, going round them then; a goal shut in by companies has
+  no way to it, as for any march. As the watch turns,
   whatever the paces left (the watch turning early, a way shut for a
   while) is walked first, so a march goes as far in a watch as ever; the
   last pace is the turn's own.

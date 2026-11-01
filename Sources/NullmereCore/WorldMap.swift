@@ -47,6 +47,10 @@ public struct WorldMap: Codable, Equatable, Sendable {
     /// What stepping onto each tile costs a company, 0 where none may: kept
     /// as the tiles change, for the search for ways.
     private(set) var steps: [UInt8]
+    /// The lie of the land toward the goals far marches have sought, kept
+    /// while the ground is as it is: shared by the map's copies, and let go
+    /// of by any copy whose ground changes.
+    private(set) var lie = LieOfTheLand()
 
     private enum CodingKeys: String, CodingKey {
         case radius
@@ -223,7 +227,12 @@ public struct WorldMap: Codable, Equatable, Sendable {
 
     mutating func set(index: Int, _ tile: Tile) {
         tiles[index] = tile
-        steps[index] = WorldMap.step(onto: tile.terrain)
+        let step = WorldMap.step(onto: tile.terrain)
+        if steps[index] != step {
+            // A lie its other copies still keep is theirs, of their ground.
+            if isKnownUniquelyReferenced(&lie) { lie.clear() } else { lie = LieOfTheLand() }
+        }
+        steps[index] = step
     }
 
     public mutating func set(_ hex: Hex, _ tile: Tile) {

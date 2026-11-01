@@ -35,9 +35,32 @@ extension GameState {
         for storehouse in storehousesStanding where !isOf(storehouse.alliance, unit.owner) {
             room.block(storehouse.position, on: map, but: goal)
         }
-        let way = room.search.way(on: map, from: start, to: goal, around: room.blocked)
+        let way = if let guide = map.guide(from: start, to: goal) {
+            room.search.way(on: map, from: start, to: goal, around: room.blocked, guide: guide)
+        } else {
+            room.search.way(on: map, from: start, to: goal, around: room.blocked)
+        }
         SearchRoom.give(back: &room)
         return way
+    }
+}
+
+extension WorldMap {
+    /// How far a march goes, as the crow flies, for its way to be guided by
+    /// the lie of the land.
+    static let guidedFrom = 24
+
+    /// The lie of the land toward a goal, for a march's search to be guided
+    /// by: a far march's, in a lake wider than twelve seats' own, where far
+    /// marches go round a lake too wide to search all the land before it.
+    /// Its ways are as cheap as the plain search's, but where ways are as
+    /// cheap as one another it may take another of them; so a lake of
+    /// twelve seats goes as it always went. It turns on the map and the
+    /// march alone, never on what is kept, so the realm and every keeper's
+    /// copy take the same way.
+    func guide(from start: Int, to goal: Int) -> [UInt16]? {
+        guard radius > RealmState.defaultRadius, hexes[start].distance(to: hexes[goal]) >= WorldMap.guidedFrom else { return nil }
+        return lie.toward(goal, on: self)
     }
 }
 
@@ -195,7 +218,11 @@ struct Routes {
               let goal = map.index(of: target),
               map.steps[goal] != 0
         else { return nil }
-        return search.way(on: map, from: start, to: goal, around: blocked(for: unit.owner))
+        let blocked = blocked(for: unit.owner)
+        if let guide = map.guide(from: start, to: goal) {
+            return search.way(on: map, from: start, to: goal, around: blocked, guide: guide)
+        }
+        return search.way(on: map, from: start, to: goal, around: blocked)
     }
 }
 
@@ -224,9 +251,24 @@ struct WaySearch {
         marks = [UInt32](repeating: 0, count: count)
     }
 
+    /// How many tiles the last search reached: for tests.
+    var reached: Int { touched.count }
+
     /// The most tiles looked over about a goal before the search goes on
     /// without knowing whether it is shut in.
     static let pocket = 128
+
+    /// A goal every way into which is shut, or a start every way out of
+    /// which is, has no way to it: known at once, not after searching all
+    /// the land that can be reached, as a goal ringed by companies would
+    /// have it.
+    private static func shut(_ tile: Int, but other: Int, neighbours: [Int32], steps: [UInt8], blocked: [Bool]) -> Bool {
+        for side in 0..<6 {
+            let next = Int(neighbours[tile * 6 + side])
+            if next >= 0, next == other || (!blocked[next] && steps[next] != 0) { return false }
+        }
+        return true
+    }
 
     /// Whether the goal is shut in, with the start outside: the tiles a
     /// way could come to it through, fewer than `pocket` of them, close
@@ -269,19 +311,9 @@ struct WaySearch {
     /// sixty steps, and the search that finds it once is kept by the march.
     mutating func way(on map: WorldMap, from start: Int, to goal: Int, around blocked: [Bool]) -> [Hex]? {
         let hexes = map.hexes, neighbours = map.neighbours, steps = map.steps
-        // A goal every way into which is shut, or a start every way out of
-        // which is, has no way to it: known at once, not after searching
-        // all the land that can be reached, as a goal ringed by companies
-        // would have it.
-        func shut(_ tile: Int, but other: Int) -> Bool {
-            for side in 0..<6 {
-                let next = Int(neighbours[tile * 6 + side])
-                if next >= 0, next == other || (!blocked[next] && steps[next] != 0) { return false }
-            }
-            return true
-        }
-        if shut(goal, but: start) || shut(start, but: goal) { return nil }
-        if pocketed(goal, apartFrom: start, neighbours: neighbours, steps: steps, blocked: blocked) { return nil }
+        if WaySearch.shut(goal, but: start, neighbours: neighbours, steps: steps, blocked: blocked)
+            || WaySearch.shut(start, but: goal, neighbours: neighbours, steps: steps, blocked: blocked)
+            || pocketed(goal, apartFrom: start, neighbours: neighbours, steps: steps, blocked: blocked) { return nil }
         for tile in touched { best[Int(tile)] = 0 }
         touched.removeAll(keepingCapacity: true)
         open.removeAll()
@@ -321,6 +353,89 @@ struct WaySearch {
         }
         return nil
     }
+
+    /// How far from its start a far march goes round what stands in its way
+    /// as it sets out: what stands farther along it meets as it comes to
+    /// it, and finds its way round then, as any march finds its way anew
+    /// when its next step is shut.
+    static let seen = 8
+
+    /// A far march's way, guided by the lie of the land toward the goal
+    /// rather than by the distance as the crow flies: round what stands in
+    /// its way within `seen` tiles of its start, and otherwise the cheapest
+    /// the ground gives. Going round every company of a crowded lake as far
+    /// as its goal, a search had to look over every tile within what the
+    /// crowd added to the way; and the companies of a far march's way will
+    /// have moved by the time it comes there. Of tiles equally promising,
+    /// the one furthest along is taken first, then the lower index, so it
+    /// follows one way rather than every way as cheap. A goal shut in by
+    /// companies, beside it or in a pocket about it, has no way, as for any
+    /// march.
+    mutating func way(on map: WorldMap, from start: Int, to goal: Int, around blocked: [Bool], guide: [UInt16]) -> [Hex]? {
+        let hexes = map.hexes, neighbours = map.neighbours, steps = map.steps
+        let origin = hexes[start]
+        // How dear the goal lies from the start; from a start on ground no
+        // way runs over, a company on a ford as it closes, from the land it
+        // steps off onto. None at all: no way over the ground.
+        var lead = Int(guide[start])
+        if guide[start] == LieOfTheLand.unreached {
+            lead = Int.max
+            for side in 0..<6 {
+                let next = Int(neighbours[start * 6 + side])
+                guard next >= 0, steps[next] != 0, guide[next] != LieOfTheLand.unreached else { continue }
+                lead = min(lead, Int(steps[next]) + Int(guide[next]))
+            }
+            guard lead != Int.max else { return nil }
+        }
+        if WaySearch.shut(goal, but: start, neighbours: neighbours, steps: steps, blocked: blocked)
+            || WaySearch.shut(start, but: goal, neighbours: neighbours, steps: steps, blocked: blocked)
+            || pocketed(goal, apartFrom: start, neighbours: neighbours, steps: steps, blocked: blocked) { return nil }
+        for tile in touched { best[Int(tile)] = 0 }
+        touched.removeAll(keepingCapacity: true)
+        open.removeAll()
+        best[start] = 1
+        touched.append(Int32(start))
+        open.push(WaySearch.guided(lead, 0, start))
+
+        while let key = open.pop() {
+            let tile = WaySearch.tile(ofGuided: key)
+            if tile == goal {
+                var route: [Hex] = []
+                var cursor = goal
+                while cursor != start {
+                    route.append(hexes[cursor])
+                    cursor = Int(cameFrom[cursor])
+                }
+                return route.reversed()
+            }
+            let cost = Int(best[tile]) - 1
+            // A stale entry: a cheaper way here was already found.
+            guard WaySearch.cost(ofGuided: key) == cost else { continue }
+            for side in 0..<6 {
+                let next = Int(neighbours[tile * 6 + side])
+                guard next >= 0, next == goal || !blocked[next] || hexes[next].distance(to: origin) > WaySearch.seen else { continue }
+                let step = Int(steps[next]), left = guide[next]
+                guard step != 0, left != LieOfTheLand.unreached else { continue }
+                let total = cost + step
+                let known = Int(best[next])
+                if known == 0 || total + 1 < known {
+                    if known == 0 { touched.append(Int32(next)) }
+                    best[next] = Int32(total + 1)
+                    cameFrom[next] = Int32(tile)
+                    open.push(WaySearch.guided(total + Int(left), total, next))
+                }
+            }
+        }
+        return nil
+    }
+
+    /// A guided search's key: its priority, then the furthest along, then
+    /// the lower tile, smallest first.
+    static func guided(_ priority: Int, _ cost: Int, _ tile: Int) -> Int {
+        priority << 42 | (0x3FFFFF - cost) << 20 | tile
+    }
+    static func cost(ofGuided key: Int) -> Int { 0x3FFFFF - (key >> 20 & 0x3FFFFF) }
+    static func tile(ofGuided key: Int) -> Int { key & 0xFFFFF }
 }
 
 /// A binary heap of a search's open tiles, smallest key first, each key a
