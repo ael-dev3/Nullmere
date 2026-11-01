@@ -910,6 +910,41 @@ public final class WorldStage: @unchecked Sendable {
         return WorldStage.batches(placed)
     }
 
+    /// How far a field's banners stand from its heart.
+    public static let fieldBannerSpread: Float = 0.3
+
+    /// How far a side's banner leans from upright with its share of the
+    /// troops still standing in the field: upright at even or better, more
+    /// the fewer it has, and laid flat when it has none.
+    public static func bannerLean(share: Float) -> Float {
+        if share <= 0 { return 1.45 }
+        return min(max(0.5 - share, 0), 0.5) * 1.6
+    }
+
+    /// Each field of battle in sight with both its sides' war banners
+    /// planted at its heart, a little apart along the line between them,
+    /// each in its side's foremost House's colour and leaning as its side
+    /// gives ground, stirring.
+    public func fieldBanners(_ fields: [(at: Hex, colours: [Vec4], shares: [Float])], time: Float) -> [ModelBatch] {
+        var placed: [(ModelKey, ModelInstance)] = []
+        for field in fields where field.colours.count == 2 && field.shares.count == 2 {
+            let centre = Relief.centre(of: field.at)
+            let across = WorldStage.phase(of: field.at, salt: 47) * 2 * .pi
+            let hex = SIMD2(Int32(field.at.q), Int32(field.at.r))
+            for side in 0..<2 {
+                let sign: Float = side == 0 ? -1 : 1
+                let x = centre.x + sign * WorldStage.fieldBannerSpread * Float(sin(Double(across)))
+                let z = centre.z + sign * WorldStage.fieldBannerSpread * Float(cos(Double(across)))
+                let stir = field.shares[side] > 0 ? 0.04 * Float(sin(Double(time * 1.3 + Float(side) * 2))) : 0
+                let lean = WorldStage.bannerLean(share: field.shares[side]) + stir
+                let model = Mat4.translation(Vec3(x, ground(atX: x, z: z), z)) * .rotationY(across + (side == 0 ? 0 : .pi))
+                    * .rotationX(-lean)
+                placed.append((.hostBanner, ModelInstance(model: model, colour: field.colours[side], phase: Float(side) * 0.5, hex: hex)))
+            }
+        }
+        return WorldStage.batches(placed)
+    }
+
     // MARK: What flies
 
     /// The veil of the Still about a hold: six banks of low mist ringing

@@ -532,6 +532,9 @@ full screen at launch as chosen.
   panel says the battle it is in and how its sides stand. In an age of
   eight stewards, a hundred and seventy fields are fought in ninety
   watches, the greatest of eleven companies.
+  At its heart stand both sides' war banners, each in its foremost
+  House's colour: upright while its side holds even or better, leaning
+  the more ground it gives, and laid flat when it is broken.
 - **Battle.** Attackers lean into their blows, the struck shake, Bows'
   shots cross the gap, and the fallen fade where they stood.
 - **Conquest.** Taking a hold carries off its share of the loser's stores;

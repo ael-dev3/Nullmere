@@ -165,6 +165,20 @@ extension GameSession {
             }) else { return nil }
             return (lead: lead, colour: WorldStage.colour(houses, sigil: state.houses[rally.caller].sigil))
         })
+        // Each field of battle in sight with both sides' banners at its
+        // heart, leaning as each gives ground.
+        let fieldBanners = stage.fieldBanners(state.fieldsOfBattle.filter { isVisible($0.at) }.map { field in
+            let troops = (0..<2).map { side in
+                Float(field.fighters.filter { $0.side == side && $0.standing }.reduce(0) { $0 + max($1.troops - $1.lost, 0) })
+            }
+            let total = max(troops.reduce(0, +), 1)
+            let colours = (0..<2).map { side -> Vec4 in
+                let house = field.sides.indices.contains(side) ? field.sides[side].first : nil
+                return house.flatMap { state.houses.indices.contains($0) ? WorldStage.colour(houses, sigil: state.houses[$0].sigil) : nil }
+                    ?? Vec4(0.6, 0.6, 0.6, 1)
+            }
+            return (at: field.at, colours: colours, shares: troops.map { $0 / total })
+        }, time: t)
         let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position) + found.map(\.position) + flags.map(\.position))
         let furniture = stage.furnish(occupied: standing,
                                       holds: Set(sights.map(\.hold.position) + hallSights.map(\.hex) + storehouseSights.map(\.hex)))
@@ -182,7 +196,7 @@ extension GameSession {
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
         frame.fixedRegions = stage.furnitureRegions
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + help + companies + flights
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + help + fieldBanners + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
                                                      time: time)

@@ -420,6 +420,27 @@ final class StageTests: XCTestCase {
         XCTAssertNotEqual(later.first?.model.c3.x, lights.first?.model.c3.x, "Turning")
     }
 
+    /// A field of battle has both sides' banners at its heart, apart, each
+    /// in its side's colour; the side giving ground leans, the broken
+    /// side's lies flat, and the side holding stands.
+    func testFieldBannersLeanAsTheirSideGivesGround() throws {
+        let stage = stage()
+        let hex = try XCTUnwrap(Self.state.map.hexes.first { Self.state.map[$0]?.terrain.isPassable == true })
+        let red = Vec4(1, 0, 0, 1), blue = Vec4(0, 0, 1, 1)
+        let banners = stage.fieldBanners([(at: hex, colours: [red, blue], shares: [0.8, 0.2])], time: 0).flatMap(\.instances)
+        XCTAssertEqual(banners.map(\.colour), [red, blue])
+        let centre = Relief.centre(of: hex)
+        for banner in banners {
+            XCTAssertEqual(Vec3(banner.model.c3.x - centre.x, 0, banner.model.c3.z - centre.z).length, WorldStage.fieldBannerSpread,
+                           accuracy: 1e-3)
+        }
+        func upright(_ banner: ModelInstance) -> Float { banner.model.c1.y }
+        XCTAssertGreaterThan(upright(banners[0]), upright(banners[1]), "The side giving ground leans further")
+        XCTAssertEqual(WorldStage.bannerLean(share: 0.5), 0, "Even: upright")
+        XCTAssertEqual(WorldStage.bannerLean(share: 0), 1.45, "Broken: laid down")
+        XCTAssertTrue(stage.fieldBanners([], time: 0).isEmpty)
+    }
+
     func testHallsStandInTheirAlliancesColoursRisingInTheirScaffolds() throws {
         let stage = stage()
         let hexes = Array(Self.state.map.hexes.filter { hex in
