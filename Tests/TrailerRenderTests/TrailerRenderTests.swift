@@ -146,8 +146,8 @@ final class Projector: @unchecked Sendable {
 
     private func picture(of shot: Trailer.Shot, at time: Double) -> [UInt8] {
         switch shot.look {
-        case .lake, .title:
-            return lakePicture(at: time)
+        case .lake, .title, .eclipse:
+            return lakePicture(at: time, eaten: trailer.eaten(of: shot, at: time))
         case .world:
             let camera = trailer.camera(of: shot, at: time)
             let scene = trailer.scene(of: shot, at: time)
@@ -161,10 +161,11 @@ final class Projector: @unchecked Sendable {
     }
 
     /// The lake of the title screen: the moon over the still water, the
-    /// stars, a falling star now and then.
-    private func lakePicture(at time: Double) -> [UInt8] {
+    /// stars, a falling star now and then; the moon eaten as far as asked.
+    private func lakePicture(at time: Double, eaten: Double) -> [UInt8] {
         let uniforms = LakeUniforms(sizeAndPixels: SIMD4(Float(Trailer.viewSize.width), Float(Trailer.viewSize.height), Float(width), Float(height)),
-                                    params: SIMD4(Float(time + 30), 1, Float(LakeComposition.horizon), 0))
+                                    params: SIMD4(Float(time + 30), 1, Float(LakeComposition.horizon), 0),
+                                    eclipse: SIMD4(Float(eaten), 0, 0, 0))
         _ = lake.measureFrame(uniforms, into: lakeTarget)
         var bytes = [UInt8](repeating: 0, count: width * height * 4)
         bytes.withUnsafeMutableBytes { raw in

@@ -38,6 +38,23 @@ final class TrailerTests: XCTestCase {
         XCTAssertNil(trailer.shot(at: battle.start + battle.dissolve + 0.01).from)
     }
 
+    func testTheMoonIsEatenInItsOwnShotAndWholeInEveryOther() throws {
+        let trailer = TrailerTests.trailer
+        let eclipse = try XCTUnwrap(trailer.shots.first { $0.look == .eclipse })
+        XCTAssertEqual(trailer.eaten(of: eclipse, at: eclipse.start), 0, "Whole as it begins")
+        XCTAssertGreaterThan(trailer.eaten(of: eclipse, at: eclipse.start + eclipse.length / 2), 0.3)
+        XCTAssertEqual(trailer.eaten(of: eclipse, at: eclipse.end), 1, "Wholly dark as it ends")
+        XCTAssertEqual(trailer.eaten(of: eclipse, at: eclipse.end + 1), 1, "And so while it dissolves away")
+        // The field after it lies under the eaten moon, and the moon is
+        // whole again over the title.
+        let after = try XCTUnwrap(trailer.shots.first { $0.start == eclipse.end })
+        XCTAssertEqual(after.action, .aftermath)
+        XCTAssertEqual(after.weather, .eclipse)
+        for shot in trailer.shots where shot.look != .eclipse {
+            XCTAssertEqual(trailer.eaten(of: shot, at: shot.start + shot.length / 2), 0, shot.name)
+        }
+    }
+
     func testItsWorldIsGrownKnownAndCrowned() throws {
         let world = TrailerTests.trailer.world
         let state = world.state

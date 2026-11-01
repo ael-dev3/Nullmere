@@ -8,7 +8,8 @@ import NullmereSound
 /// peace; the towns as the camera comes among them; the drums of war
 /// under the march, a horn as it sets out and the hooves of its riders;
 /// the din of the battle and every blow, volley, fall and skill in it, as
-/// the picture throws them; a deep toll as the moon is eaten; the lake's
+/// the picture throws them; a deep toll as the moon is eaten and another
+/// as it goes wholly dark; the lake's
 /// title theme over the lake from on high and the title, two stately
 /// chords as it rises, and all of it fading with the picture.
 public struct Soundtrack: Sendable {
@@ -65,12 +66,13 @@ public struct Soundtrack: Sendable {
         if trailer.battle.blaze != nil {
             at(battle + 2.5, .cue(.batter, pan: 0.5, gain: 0.6))
         }
-        // The moon eaten over the field.
-        let eaten = start(of: "the eaten moon")
+        // The moon eaten over the still water, the field after under it.
+        let eaten = start(of: "the moon eaten")
         at(eaten, .din(0.15, pan: 0))
         at(eaten, .music(.eclipse))
         at(eaten + 0.4, .cue(.toll, pan: 0, gain: 0.85))
         at(eaten + 4, .din(0, pan: 0))
+        at(eaten + 4.6, .cue(.toll, pan: 0, gain: 0.6))
         // The lake from on high, and the title.
         let lake = start(of: "the lake")
         at(lake, .music(.title(.round)))

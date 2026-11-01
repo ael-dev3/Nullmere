@@ -6,8 +6,8 @@ import NullmereWorld
 /// The trailer, shot by shot: the still black lake under the moon, the
 /// seats on its shores and their towns at night, the Moonspire crowned and
 /// another rising, a host on the march, rain off the water, a battle in
-/// the dark, the moon eaten over the field, the whole lake from on high,
-/// and the title. No interface and nothing of the rules: only the world as
+/// the dark, the moon eaten over the still water and the field after under
+/// it, the whole lake from on high, and the title. No interface and nothing of the rules: only the world as
 /// the game draws it, through moving cameras, and its score.
 public struct Trailer {
     /// What a shot shows.
@@ -16,6 +16,8 @@ public struct Trailer {
         case lake
         /// The lake of the title screen, the title rising over it.
         case title
+        /// The lake of the title screen, its moon eaten as the shot goes.
+        case eclipse
         /// The world, through the shot's camera.
         case world
     }
@@ -25,7 +27,7 @@ public struct Trailer {
         case none
         case march
         case battle
-        /// The field after: the fallen, the smoke, the moon eaten.
+        /// The field after: the fallen, the smoke, under the eaten moon.
         case aftermath
     }
 
@@ -139,8 +141,11 @@ public struct Trailer {
             return Trailer.aimed(relief, x: Double(c.x), y: Double(c.z), scale: Trailer.mix(62, 146, push), tilt: Trailer.mix(0.92, 1.12, push),
                           heading: h + Trailer.mix(-0.5, 0.35, Trailer.ease(u)))
         }
-        // The field after, the moon eaten.
-        add("the eaten moon", 6, .world, action: .aftermath, weather: .eclipse) { u in
+        // The moon eaten over the still water, the world's shadow coming
+        // over it until it hangs a dull ember among the stars.
+        add("the moon eaten", 6, .eclipse, dissolve: 1)
+        // The field after, under the eaten moon.
+        add("the field after", 6, .world, action: .aftermath, weather: .eclipse) { u in
             let c = battle.centre
             return Trailer.aimed(relief, x: Double(c.x), y: Double(c.z), scale: Trailer.mix(128, 52, Trailer.ease(u)), tilt: Trailer.mix(1.05, 0.82, u),
                           heading: battle.sideHeading + 0.35 + 0.2 * u)
@@ -183,6 +188,15 @@ public struct Trailer {
         let opening = min(max(time / 3, 0), 1)
         let closing = min(max((duration - time) / 2.5, 0), 1)
         return opening * opening * (3 - 2 * opening) * closing * closing * (3 - 2 * closing)
+    }
+
+    /// How far the moon is eaten in a shot at a moment: 0 whole, rising to
+    /// 1 through the first three quarters of the eclipse's shot and held
+    /// there as it dissolves away; whole in every other shot.
+    public func eaten(of shot: Shot, at time: Double) -> Double {
+        guard shot.look == .eclipse else { return 0 }
+        let u = min(max((time - shot.start - 0.4) / (shot.length * 0.7), 0), 1)
+        return u * u * (3 - 2 * u)
     }
 
     /// How much of the title shows at a moment.

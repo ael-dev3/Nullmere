@@ -1984,13 +1984,13 @@ for its syntax, names and types.
 
 ### The trailer
 
-The trailer is a minute and three quarters of the game's own world at
+The trailer is a minute and fifty seconds of the game's own world at
 night, with no interface and nothing of the rules: the lake of the title
 screen under the moon; down out of the night to a seat on the shore and
 about it, its Moonspire crowned; along a great hold's lanes; another
 House's Moonspire rising, its crane at work; a host on the march; rain off
-the lake; a battle in the dark; the moon eaten over the field; the whole
-lake from on high; and the title. Every frame is drawn by the game's own
+the lake; a battle in the dark; the moon eaten over the still water, and
+the field after under it; the whole lake from on high; and the title. Every frame is drawn by the game's own
 renderers (the world's, and the launcher's lake), and its score is the
 game's own synthesiser, the drums of war under the march and every blow
 of the battle heard as the picture throws it. On a Mac:
