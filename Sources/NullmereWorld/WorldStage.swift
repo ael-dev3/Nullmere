@@ -32,6 +32,10 @@ public struct CompanyPose: Equatable, Sendable {
     public var muster: Int
     /// The clip it is leaving, as it eases into this one, if it is.
     public var blend: Blend?
+    /// Its commander's leading talent tree (0 steel, 1 ward, 2 road) and
+    /// the ranks it holds in all; -1 and 0 when it has learned none.
+    public var talentTree: Int = -1
+    public var talentRanks: Int = 0
 
     /// A clip being left: where it was, and how much of it still shows.
     public struct Blend: Equatable, Sendable {
@@ -854,10 +858,27 @@ public final class WorldStage: @unchecked Sendable {
                 stand(company.key, place, index)
             }
             if let commander = company.commander, !places.isEmpty {
-                stand(.commander(variant: commander), Formation.commander(company.key, health: company.health, muster: company.muster), places.count)
+                let head = Formation.commander(company.key, health: company.health, muster: company.muster)
+                stand(.commander(variant: commander), head, places.count)
+                // On the march, its leading talents' sigil glows on the
+                // ground beneath it, wider the more ranks it holds, breathing.
+                if company.clip == .march, company.talentTree >= 0 {
+                    let at = company.position + turn.transformDirection(head * company.spread)
+                    let breath = 1 + 0.06 * Float(sin(Double(company.clipTime * 2.4)))
+                    let size = WorldStage.sigilScale(ranks: company.talentRanks) * breath
+                    placed.append((.talentSigil(tree: company.talentTree),
+                                   ModelInstance(model: .translation(Vec3(at.x, ground(atX: at.x, z: at.z), at.z)) * turn * .scale(Vec3(size, 1, size)),
+                                                 opacity: company.opacity, phase: Float(company.unit % 17) * 0.31, hex: hex, flags: flags)))
+                }
             }
         }
         return WorldStage.batches(placed)
+    }
+
+    /// How wide a commander's talent sigil spreads: from a third of a tile
+    /// for a first rank to over half a tile with every rank learned.
+    public static func sigilScale(ranks: Int) -> Float {
+        0.32 + 0.016 * Float(min(max(ranks, 1), 30))
     }
 
     // MARK: What flies

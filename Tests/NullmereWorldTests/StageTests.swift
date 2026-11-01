@@ -363,6 +363,36 @@ final class StageTests: XCTestCase {
         XCTAssertLessThanOrEqual(Library.model(.hostBanner).mesh.triangleCount, ModelKey.hostBanner.budget)
     }
 
+    /// A commander's leading talents glow on the ground beneath it as its
+    /// company marches, in its tree's own sigil, wider the more ranks it
+    /// holds; at rest, or untaught, there is none.
+    func testTalentSigilsGlowUnderMarchingCommanders() throws {
+        let stage = stage()
+        let hex = try XCTUnwrap(Self.state.map.hexes.first { Self.state.map[$0]?.terrain.isPassable == true })
+        func company(_ clip: Clip, tree: Int, ranks: Int) -> CompanyPose {
+            var pose = CompanyPose(unit: 3, key: .figure(.spear, tier: 2), sigil: 0, health: 10, hex: hex,
+                                   position: Vec3(Relief.centre(of: hex).x, 0, Relief.centre(of: hex).z), heading: 0.3, clip: clip, isOwn: true, commander: 1)
+            pose.talentTree = tree
+            pose.talentRanks = ranks
+            return pose
+        }
+        var frame = SceneFrame()
+        func sigils(_ pose: CompanyPose) -> [ModelInstance] {
+            stage.companies([pose], houses: [Vec4(1, 0, 0, 1)], into: &frame).filter {
+                if case .talentSigil = $0.key { return true } else { return false }
+            }.flatMap(\.instances)
+        }
+        let few = sigils(company(.march, tree: 1, ranks: 2)), many = sigils(company(.march, tree: 1, ranks: 20))
+        XCTAssertEqual(few.count, 1)
+        XCTAssertGreaterThan(Vec3(many[0].model.c0.x, many[0].model.c0.y, many[0].model.c0.z).length,
+                             Vec3(few[0].model.c0.x, few[0].model.c0.y, few[0].model.c0.z).length, "Wider with more ranks")
+        XCTAssertEqual(stage.companies([company(.march, tree: 0, ranks: 3)], houses: [Vec4(1, 0, 0, 1)], into: &frame)
+            .contains { $0.key == .talentSigil(tree: 0) }, true, "Each tree its own sigil")
+        XCTAssertTrue(sigils(company(.idle, tree: 1, ranks: 5)).isEmpty, "Only on the march")
+        XCTAssertTrue(sigils(company(.march, tree: -1, ranks: 0)).isEmpty, "None untaught")
+        XCTAssertLessThan(WorldStage.sigilScale(ranks: 1), WorldStage.sigilScale(ranks: 15))
+    }
+
     func testHallsStandInTheirAlliancesColoursRisingInTheirScaffolds() throws {
         let stage = stage()
         let hexes = Array(Self.state.map.hexes.filter { hex in

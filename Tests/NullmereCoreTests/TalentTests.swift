@@ -26,6 +26,18 @@ final class TalentTests: XCTestCase {
         state.refusal(of: command, as: house)
     }
 
+    /// The tree a commander has learned most in leads it, and is what its
+    /// company shows on the march; ties go to the tree written first.
+    func testACommandersLeadingTreeIsTheOneItLearnedMostIn() {
+        var commander = Commander(id: 1, name: "Ves", archetype: Archetype.allCases[0], owner: 0)
+        XCTAssertNil(commander.leadingTree, "Untaught")
+        commander.talents = [.keenEdge, .thickHide]
+        XCTAssertEqual(commander.leadingTree?.tree, .steel, "A tie goes to the first")
+        commander.talents = [.keenEdge, .thickHide, .thickHide, .keenEyes]
+        XCTAssertEqual(commander.leadingTree?.tree, .ward)
+        XCTAssertEqual(commander.leadingTree?.ranks, 4)
+    }
+
     func testThreeTreesOfFiveEachOpenedByTheOneBefore() {
         XCTAssertEqual(TalentTree.allCases.map(\.title), ["Steel", "Ward", "Road"])
         XCTAssertEqual(Talent.allCases.count, 15)

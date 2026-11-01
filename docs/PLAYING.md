@@ -571,6 +571,9 @@ full screen at launch as chosen.
   grown one way. A commander's talents are forgotten all at once for 20
   moonsalt, every point given back. Stewards spend their commanders'
   points as they come, along the trees their archetype grows first.
+  On the march, a commander's leading tree glows on the ground beneath
+  it: steel's crossed blades in ember, ward's rings and shield in pale
+  blue, road's chevrons in green, wider the more ranks it holds.
 - **Gear.** A company of the wilds struck down may leave a piece of gear,
   the more likely the higher its level (a quarter at level I, four in five
   at X): Saltwights a Salt Glaive, Blackwood Reavers a Reaver's Axe (both

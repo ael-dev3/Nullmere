@@ -91,7 +91,7 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 - [x] Events: realm-wide happenings with their own goals and rewards
 - [x] Progress: a keeper's renown and rewards that carry across ages
 - [x] VIP: a keeper's favour with the lake, won each watch they keep in the realm and more for every watch kept unbroken, raising their House by levels I to X (more gathered, works, studies and musters sooner) and bringing a favour chest every tenth watch kept unbroken; carried across ages, shown on the Realm screen
-- [x] Talent trees for commanders: three trees of five, a point a level, learned a rank at a time, forgotten for moonsalt
+- [x] Talent trees for commanders: three trees of five, a point a level, learned a rank at a time, forgotten for moonsalt; seen in the world, the leading tree's sigil glowing beneath a commander on the march, wider with its ranks
 - [x] Equipment: gear left by the wilds in four qualities, worn in three slots, kept in an armoury, broken up for moonsalt
 - [x] Holy sites: shrines held by standing on them, each giving its gift to the holder's whole alliance, contested by foes beside them
 - [x] Hospitals and healing: an Infirmary at every hold whose beds keep the House's fallen companies of war, healed for half their muster's cost and rising whole as the watch turns, lost with a hold taken

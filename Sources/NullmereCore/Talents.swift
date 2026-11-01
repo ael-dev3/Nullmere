@@ -136,6 +136,18 @@ extension Commander {
     }
 
     /// Talent points it has yet to spend.
+    /// The tree it has learned most in, and how many ranks it holds in all;
+    /// nil before it learns any. Ties go to the tree written first.
+    public var leadingTree: (tree: TalentTree, ranks: Int)? {
+        let learned = talents ?? []
+        guard !learned.isEmpty else { return nil }
+        let tree = TalentTree.allCases.max { a, b in
+            let ca = learned.filter { $0.tree == a }.count, cb = learned.filter { $0.tree == b }.count
+            return ca < cb || (ca == cb && TalentTree.allCases.firstIndex(of: a)! > TalentTree.allCases.firstIndex(of: b)!)
+        }!
+        return (tree, learned.count)
+    }
+
     public var pointsLeft: Int { max(0, talentPoints - (talents?.count ?? 0)) }
 
     /// Why it can't learn the next rank of a talent, if it can't.

@@ -1137,3 +1137,47 @@ extension Land {
         return Model(name: name, mesh: b.mesh)
     }
 }
+
+extension Land {
+    /// The sigil of a commander's leading talent tree, a thin ring of
+    /// light laid on the ground: steel's crossed blades in ember, ward's
+    /// nested rings and shield in pale blue, road's chevrons pointing the
+    /// march in green-silver. Glowing, never lit; its forward along z.
+    static func talentSigil(_ tree: Int, name: String) -> Model {
+        var b = MeshBuilder()
+        let colour: Vec3
+        switch tree {
+        case 0: colour = Vec3(0.95, 0.42, 0.18)
+        case 1: colour = Vec3(0.45, 0.68, 1.0)
+        default: colour = Vec3(0.55, 0.9, 0.62)
+        }
+        let y: Float = 0.006
+        b.with(material: .glow) {
+            // The outer ring.
+            $0.tube([(0.5, y), (0.5, y + 0.004)], sides: 24, color: colour)
+            $0.lathe([(0.46, y), (0.5, y)], sides: 24, color: colour)
+            switch tree {
+            case 0:
+                for angle: Float in [0.6, -0.6, Float.pi - 0.6, Float.pi + 0.6] {
+                    let tip = Vec3(Float(sin(Double(angle))) * 0.42, y, Float(cos(Double(angle))) * 0.42)
+                    $0.beam(from: Vec3(0, y, 0), to: tip, width: 0.03, depth: 0.004, color: colour)
+                }
+                for index in 0..<8 {
+                    let a = Float(index) / 8 * 2 * .pi
+                    $0.box(center: Vec3(Float(sin(Double(a))) * 0.48, y, Float(cos(Double(a))) * 0.48), size: Vec3(0.05, 0.004, 0.05), color: colour)
+                }
+            case 1:
+                $0.lathe([(0.3, y), (0.33, y)], sides: 20, color: colour)
+                $0.lathe([(0.14, y), (0.17, y)], sides: 16, color: colour)
+                $0.sheet([Vec3(-0.1, y, 0.08), Vec3(0.1, y, 0.08), Vec3(0.1, y, -0.04), Vec3(0, y, -0.14), Vec3(-0.1, y, -0.04)],
+                         normal: Vec3(0, 1, 0), thickness: 0.003, color: colour)
+            default:
+                for z in [Float(-0.24), -0.04, 0.16] {
+                    $0.beam(from: Vec3(-0.22, y, z), to: Vec3(0, y, z + 0.18), width: 0.035, depth: 0.004, color: colour)
+                    $0.beam(from: Vec3(0.22, y, z), to: Vec3(0, y, z + 0.18), width: 0.035, depth: 0.004, color: colour)
+                }
+            }
+        }
+        return Model(name: name, mesh: b.mesh)
+    }
+}
