@@ -1,4 +1,5 @@
 import AppKit
+import NullmereSound
 
 /// The trackpad's taps, where the Mac has a trackpad that gives them and a
 /// finger is on it: a light one as an order is given, a firmer one as the

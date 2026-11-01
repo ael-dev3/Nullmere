@@ -8,6 +8,7 @@ import NullmereRealm
 import XCTest
 @testable import NullmereKit
 import NullmereModels
+import NullmereSound
 import NullmereWorld
 
 final class WorldShaderTests: XCTestCase {

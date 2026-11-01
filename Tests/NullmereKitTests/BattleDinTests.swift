@@ -1,82 +1,12 @@
-import AVFoundation
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
 
-/// The din of a field of battle in sight: voices, the tramp of feet and
-/// steel on steel, as loud as the troops fighting there and as near as the
-/// view stands, heard from where the field is across the view; nothing
-/// where no field is in sight, and it eases in and out, never clipping.
+/// The din of a field of battle in sight: as loud as the troops fighting
+/// there and as near as the view stands, heard from where the field is
+/// across the view; nothing where no field is in sight. How the din itself
+/// sounds is measured in NullmereSoundTests.
 final class BattleDinTests: XCTestCase {
-    static let rate: Float = 48_000
-
-    /// Both channels of `seconds` of sound.
-    private func render(_ synth: Synth, seconds: Float) -> (left: [Float], right: [Float]) {
-        let frames = Int(seconds * Self.rate), chunk = 512
-        var left: [Float] = [], right: [Float] = []
-        let list = AudioBufferList.allocate(maximumBuffers: 2)
-        defer { free(list.unsafeMutablePointer) }
-        let l = UnsafeMutablePointer<Float>.allocate(capacity: chunk), r = UnsafeMutablePointer<Float>.allocate(capacity: chunk)
-        defer { l.deallocate(); r.deallocate() }
-        list[0] = AudioBuffer(mNumberChannels: 1, mDataByteSize: UInt32(chunk * 4), mData: l)
-        list[1] = AudioBuffer(mNumberChannels: 1, mDataByteSize: UInt32(chunk * 4), mData: r)
-        var done = 0
-        while done < frames {
-            let n = min(chunk, frames - done)
-            synth.render(frames: n, into: list)
-            left.append(contentsOf: UnsafeBufferPointer(start: l, count: n))
-            right.append(contentsOf: UnsafeBufferPointer(start: r, count: n))
-            done += n
-        }
-        return (left, right)
-    }
-
-    private func settled() -> Synth {
-        let synth = Synth()
-        synth.prepare(sampleRate: Self.rate)
-        synth.settle()
-        return synth
-    }
-
-    private func rms(_ x: ArraySlice<Float>) -> Float {
-        (x.reduce(0) { $0 + $1 * $1 } / Float(max(x.count, 1))).squareRoot()
-    }
-
-    func testABattleIsHeardFromWhereItIsAboveTheNightAndNeverClips() {
-        // The night alone, over the same seconds as the din is heard and
-        // after it is gone: from two to four, and from six to eight.
-        let rate = Int(Self.rate)
-        let held = (2 * rate)..<(4 * rate), after = (6 * rate)..<(8 * rate)
-        let quiet = render(settled(), seconds: 8)
-        let bed = (left: rms(quiet.left[held]), right: rms(quiet.right[held]))
-        let bedAfter = rms(quiet.left[after])
-        // How much of a channel is the din's, past the night's.
-        func din(_ heard: Float, over night: Float) -> Float { max(heard * heard - night * night, 0) }
-
-        let loud = settled()
-        loud.setDin(level: 1, pan: 0.8)
-        let battle = render(loud, seconds: 4)
-        let left = rms(battle.left[held]), right = rms(battle.right[held])
-        print("SOUND din \(String(format: "%.1f", 20 * log10(max(left, right)))) dBFS rms beside a bed of \(String(format: "%.1f", 20 * log10(bed.right)))")
-        XCTAssertGreaterThan(right, bed.right * 2, "A great battle close by is heard well above the night")
-        XCTAssertGreaterThan(din(right, over: bed.right), 4 * din(left, over: bed.left), "from the right, where it is")
-        XCTAssertLessThan(max(battle.left.map(abs).max() ?? 0, battle.right.map(abs).max() ?? 0), 0.95, "and never clips")
-        XCTAssertEqual(loud.dinHeard.level, 1, accuracy: 0.05)
-
-        // A smaller fight farther off is fainter, and heard from the left.
-        let faint = settled()
-        faint.setDin(level: 0.35, pan: -1)
-        let far = render(faint, seconds: 4)
-        let farLeft = rms(far.left[held]), farRight = rms(far.right[held])
-        XCTAssertLessThan(din(farLeft, over: bed.left), din(right, over: bed.right) / 2, "Fainter for fewer, farther off")
-        XCTAssertGreaterThan(din(farLeft, over: bed.left), 4 * din(farRight, over: bed.right), "from the left")
-        // And the din eases out when none is in sight.
-        loud.setDin(level: 0, pan: 0)
-        let gone = render(loud, seconds: 4)
-        XCTAssertLessThan(rms(gone.left[(2 * rate)...]), bedAfter * 1.2, "Gone again with the battle")
-        XCTAssertEqual(loud.dinHeard.level, 0, accuracy: 0.01)
-    }
-
     @MainActor
     func testTheSessionHearsTheFieldsInSightAsLoudAsTheTroopsFightingThere() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

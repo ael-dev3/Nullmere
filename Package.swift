@@ -32,6 +32,11 @@ var targets: [Target] = [
     // gathered. Pure Swift, so tested on Linux too.
     .target(name: "NullmereWorld", dependencies: ["NullmereCore", "NullmereModels"]),
     .testTarget(name: "NullmereWorldTests", dependencies: ["NullmereWorld", "NullmereModels", "NullmereCore"]),
+    // The game's sound, apart from the Mac's audio engine: the synthesiser,
+    // its instruments, its hall and the score written as it plays. Pure
+    // Swift, so every sound is rendered and measured on Linux too.
+    .target(name: "NullmereSound", dependencies: ["NullmereCore"]),
+    .testTarget(name: "NullmereSoundTests", dependencies: ["NullmereSound", "NullmereCore"]),
     // SpacetimeDB in memory, and credentials kept in memory, for tests of
     // the realm across the network: the realm's and the app's.
     .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm", "NullmereCore"], path: "Tests/NullmereTestSupport"),
@@ -49,11 +54,11 @@ targets += [
     // The SwiftUI/AppKit/Metal launcher interface.
     .target(name: "LauncherKit", dependencies: ["LauncherCore"]),
     // The world's interface: the front door, the Metal world, the panels.
-    .target(name: "NullmereKit", dependencies: ["NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "LauncherCore", "LauncherKit"]),
+    .target(name: "NullmereKit", dependencies: ["NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "LauncherCore", "LauncherKit"]),
     // The "Nullmere Online" app: the launcher, and through Play, the realm.
     .executableTarget(name: "NullmereLauncher", dependencies: ["LauncherCore", "LauncherKit", "NullmereKit"]),
     .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore", "NullmereTestSupport"]),
-    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
+    .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
 ]
 #endif
 

@@ -285,12 +285,13 @@ full screen at launch as chosen.
 
 Over the launcher, the night's drone and wind play beneath a title theme
 for the lake the keeper's realm last lay on (the Nullmere before any),
-written as it plays as the realm's score is, each lake in a mode of its
-own: the Nullmere in D dorian, slow and open; the Twin Waters in A minor,
-each note answered a fifth above a breath later; the Sickle in E
-phrygian, its half step down to the home note sharp; the Drowned Isles
-in F lydian, with long silences; and the Frontier's Marches in G
-mixolydian, bright and martial, quicker than any. Crossing to the realm, the score turns
+written as it plays as the realm's score is, each lake in a mode and a
+voice of its own: the Nullmere in D dorian on the harp, slow and open;
+the Twin Waters in A minor on glass bells, each note answered on the harp
+a fifth above a breath later; the Sickle in E phrygian, its half step
+down to the home note sharp; the Drowned Isles in F lydian on glass
+bells, with long silences; and the Frontier's Marches in G mixolydian,
+bright and martial, quicker than any, the harp rolling its chords. Crossing to the realm, the score turns
 to its own, at peace or at war. The realm's Settings also hold its sound
 (on or off, the effects, the night, the music and its score's volume)
 and counsel; ⇧⌘M and ⇧⌘U turn sound and music off or on once the realm
@@ -1499,10 +1500,22 @@ realm; keepers are told in plain words, never a status code.
   on-device model. They only speak; the rules decide everything.
 
 - **Sound and music.** A cold drone and the night wind over the water, a
-  low bell as each watch turns, and quiet cues, all synthesised as they
-  play. Beneath them an original score is written as it plays: slow chords
-  in D minor drifting under a sparse line of bell-like notes, joined at war
-  by a distant drum and darker chords. ⇧⌘M turns all sound off, ⇧⌘U the
+  low bell as each watch turns, and quiet cues, all made as they play,
+  nothing recorded or sampled. Beneath them an original score is written
+  as it plays, by instruments modelled on how real ones make their sound:
+  a body of strings bows slow chords in D minor over a bass of their own,
+  three players to each note a few cents apart, each with a slow vibrato
+  of their own, the three through a low-pass that stands for their
+  instruments' bodies; above them a harp (Karplus and Strong's plucked
+  string, kept in tune to a fraction of a sample) wanders the minor
+  pentatonic, each note ringing bright and mellowing as it dies, the low
+  strings longest, and as the chord changes it may roll the new one softly
+  up; at war the chords darken and two skin drums keep a slow march, each
+  blow's pitch falling back as the skin eases. The score and the cues ring
+  in a hall of their own: a breath of silence, a wash of early echoes, then
+  a dark, wide tail some two and a half seconds long, its highs dying
+  first; the night's drone and wind stay out of doors. CI keeps each theme
+  and every cue as a sound file to listen to, the `sounds` artifact. ⇧⌘M turns all sound off, ⇧⌘U the
   music alone, and Settings (⌘,) sets each part's volume. Each kind of
   company sounds its own: Riders' hooves, a loosed bowstring, the clash
   of a blow struck in close, heard as well when the blow falls on yours.
@@ -1585,7 +1598,8 @@ world, so there is nothing to save.
 A full moon hangs over a great black lake. The water below gives it back
 whole, still as black glass. Pale, thin type rests above the far shore. The mood is
 vast, quiet and monumental, after the grand, minimal look of the Dune films.
-There is no music in the launcher; the game makes its own sound as it plays.
+Over it the night's drone and wind play beneath the title theme of the lake
+the keeper's realm last lay on, made as it plays.
 
 - **The moon** is a large, cold full moon at the top of the sky, the same
   view as the app icon. Its halo swells and settles very slowly, and thin
@@ -1778,9 +1792,10 @@ Sources/
   NullmereModels/     The world's shapes: the land's relief and mesh, and every model in it built from solids in code, with the rigs that move them. Pure Swift
   NullmereWorld/      The world as the GPU draws it, apart from the GPU: the camera, the shaders' source, the frame's data. Pure Swift
   NullmereRealm/      The client's line to the realm over SpacetimeDB or in-process, the steward, keeper identity. Foundation only
-  NullmereKit/        The world's interface: front door, Metal world, panels, sound
+  NullmereSound/      The game's sound apart from the Mac's audio engine: the synthesiser, its instruments, its hall and the score. Pure Swift
+  NullmereKit/        The world's interface: front door, Metal world, panels, the audio engine
   NullmereSteward/    The steward's command-line entry point
-Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereModelsTests, NullmereWorldTests, NullmereRealmTests, NullmereKitTests, and NullmereTestSupport (a SpacetimeDB in memory)
+Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereModelsTests, NullmereWorldTests, NullmereSoundTests, NullmereRealmTests, NullmereKitTests, and NullmereTestSupport (a SpacetimeDB in memory)
 realm-server/         The SpacetimeDB module (Rust): keepers, requests, answers, the world
 Dockerfile.steward    The steward in a container, as raise-realm.sh runs it
 news/                 news.json, the launcher's news feed

@@ -4,6 +4,7 @@ import LauncherCore
 import NullmereCore
 import NullmereModels
 import NullmereRealm
+import NullmereSound
 import NullmereWorld
 import Observation
 import SwiftUI
