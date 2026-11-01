@@ -477,6 +477,21 @@ public actor RealmSteward {
     /// back is shown it as they arrive. Nothing is taken as published until
     /// the server has it.
     private func publish(now: Double = Date().timeIntervalSince1970) async throws {
+        // Whether the world changed is taken as the publication begins: a
+        // change made while it waits on its views or on the server (an
+        // order of whoever runs the realm) is the next one's to send, not
+        // cleared with this one. One that fails sends it all again.
+        let changed = worldChanged
+        worldChanged = false
+        do {
+            try await publish(now: now, worldChanged: changed)
+        } catch {
+            if changed { worldChanged = true }
+            throw error
+        }
+    }
+
+    private func publish(now: Double, worldChanged: Bool) async throws {
         // A publication that failed may have been kept all the same, its
         // answer lost on the way back: what SpacetimeDB holds is read
         // again first, so this publication's version, and the version of
@@ -577,7 +592,6 @@ public actor RealmSteward {
             throw error
         }
         settle(attempt)
-        worldChanged = false
     }
 
     /// The views of these keepers, in parts, worked out side by side: each
