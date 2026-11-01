@@ -459,6 +459,24 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(stage.borderStones([]).isEmpty)
     }
 
+    /// A hold's House crest hangs beside its gate, facing out: its board
+    /// in the field's tincture and its charge on it in the charge's.
+    func testCrestsHangBesideTheGatesInTheirTinctures() throws {
+        let stage = stage()
+        let hold = try XCTUnwrap(Self.state.holds.first)
+        let crest = Crest(field: .blue, charge: .key, tincture: .gold)
+        let batches = stage.crestBoards([(hex: hold.position, crest: crest)])
+        let board = try XCTUnwrap(batches.first { $0.key == ModelKey.crestBoard }?.instances.first)
+        let charge = try XCTUnwrap(batches.first { $0.key == ModelKey.crestCharge(5) }?.instances.first)
+        XCTAssertEqual(board.colour, WorldStage.colour(of: .blue))
+        XCTAssertEqual(charge.colour, WorldStage.colour(of: .gold))
+        XCTAssertEqual(board.model, charge.model, "The charge on the shield")
+        let front = HoldLayout.frontAngle(of: hold.position)
+        let facing = Vec3(board.model.c2.x, 0, board.model.c2.z)
+        XCTAssertGreaterThan(facing.x * Float(cos(Double(front))) + facing.z * Float(sin(Double(front))), 0.99, "Facing out")
+        XCTAssertTrue(stage.crestBoards([]).isEmpty)
+    }
+
     func testHallsStandInTheirAlliancesColoursRisingInTheirScaffolds() throws {
         let stage = stage()
         let hexes = Array(Self.state.map.hexes.filter { hex in

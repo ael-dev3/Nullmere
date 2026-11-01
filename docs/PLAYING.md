@@ -686,6 +686,8 @@ full screen at launch as chosen.
   the Realm screen, choosing its field, charge and tincture on a shield
   drawn as they choose, and every House hears of it and the chronicle
   keeps it. Each House's line among the Houses bears its crest.
+  Every hold hangs its House's crest beside its gate: the shield on a
+  post and crossbar, its charge in relief.
 - **Gifts.** Send stores to any House you aren't at war with. Stewards
   remember gifts for twenty watches: a war seems older to them, and enough
   goodwill wins a pact, unless you once made war on them or a pact between

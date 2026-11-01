@@ -969,6 +969,44 @@ public final class WorldStage: @unchecked Sendable {
     public static let routSpread: Float = 1.45
     public static let routPace: Float = 1.6
 
+    /// Each tincture's colour, as the interface paints it.
+    public static func colour(of tincture: Crest.Tincture) -> Vec4 {
+        switch tincture {
+        case .silver: return Vec4(0.80, 0.82, 0.85, 1)
+        case .gold: return Vec4(0.84, 0.66, 0.25, 1)
+        case .black: return Vec4(0.10, 0.10, 0.12, 1)
+        case .blue: return Vec4(0.20, 0.37, 0.67, 1)
+        case .red: return Vec4(0.66, 0.20, 0.18, 1)
+        case .green: return Vec4(0.19, 0.49, 0.31, 1)
+        case .purple: return Vec4(0.42, 0.26, 0.62, 1)
+        }
+    }
+
+    /// How far out from a hold's heart its crest hangs, and how far to the
+    /// side of its gate.
+    public static let crestReach: Float = 0.56
+    public static let crestAside: Float = 0.2
+
+    /// Each hold's House crest hung on a board beside its gate, facing out:
+    /// the shield in its field tincture, its charge laid on it in its own.
+    public func crestBoards(_ boards: [(hex: Hex, crest: Crest)]) -> [ModelBatch] {
+        var placed: [(ModelKey, ModelInstance)] = []
+        for board in boards {
+            let centre = Relief.centre(of: board.hex)
+            let front = HoldLayout.frontAngle(of: board.hex)
+            let out = Vec3(Float(cos(Double(front))), 0, Float(sin(Double(front))))
+            let side = Vec3(-out.z, 0, out.x)
+            let x = centre.x + out.x * WorldStage.crestReach + side.x * WorldStage.crestAside
+            let z = centre.z + out.z * WorldStage.crestReach + side.z * WorldStage.crestAside
+            let model = Mat4.translation(Vec3(x, ground(atX: x, z: z) - Scatter.sink, z)) * .rotationY(Float(atan2(Double(out.x), Double(out.z))))
+            let hex = SIMD2(Int32(board.hex.q), Int32(board.hex.r))
+            let charge = Crest.Charge.allCases.firstIndex(of: board.crest.charge) ?? 0
+            placed.append((.crestBoard, ModelInstance(model: model, colour: WorldStage.colour(of: board.crest.field), hex: hex)))
+            placed.append((.crestCharge(charge), ModelInstance(model: model, colour: WorldStage.colour(of: board.crest.tincture), hex: hex)))
+        }
+        return WorldStage.batches(placed)
+    }
+
     // MARK: What flies
 
     /// The veil of the Still about a hold: six banks of low mist ringing

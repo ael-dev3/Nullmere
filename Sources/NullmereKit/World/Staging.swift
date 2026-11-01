@@ -99,6 +99,8 @@ extension GameSession {
         // The help allies have given the holds' works and musters, circling
         // over their keeps.
         let help = stage.helpLights(shown, time: t)
+        // Each hold's House crest hung by its gate.
+        let crests = stage.crestBoards(shown.map { (hex: $0.hold.position, crest: state.crest(of: $0.hold.owner)) })
         // Their townsfolk about their works, in sight and in full motion,
         // the rest of their folk out about the lanes as the view comes close, and
         // carts on the ways between them.
@@ -202,7 +204,7 @@ extension GameSession {
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
         frame.fixedRegions = stage.furnitureRegions
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + help + fieldBanners + borders + companies + flights
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + help + crests + fieldBanners + borders + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
                                                      time: time)

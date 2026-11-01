@@ -63,6 +63,12 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// A boundary stone where an alliance's land ends, its cap banded in
     /// the alliance's colour, its face toward the land beyond.
     case borderStone
+    /// A House's crest hung at a hold's gate: a post and crossbar with the
+    /// shield hanging, its field in the House's field tincture.
+    case crestBoard
+    /// A crest's charge laid on the shield's face, in its tincture: one of
+    /// ten, in `Crest.Charge`'s order.
+    case crestCharge(Int)
     /// An alliance's hall, its roof, cone and banners in the alliance's
     /// colour.
     case allianceHall
@@ -103,6 +109,8 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .talentSigil(let tree): return "talent sigil \(tree)"
         case .helpLight: return "help light"
         case .borderStone: return "border stone"
+        case .crestBoard: return "crest board"
+        case .crestCharge(let charge): return "crest charge \(charge)"
         case .allianceHall: return "alliance hall"
         case .storehouse: return "storehouse"
         case .yard(let resource): return "\(resource.rawValue) yard"
@@ -150,7 +158,8 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .study(let level): return .study(level: clamp(level, ModelKey.studyLevels))
         case .folk(let variant): return .folk(variant: (variant % Folk.variants + Folk.variants) % Folk.variants)
         case .talentSigil(let tree): return .talentSigil(tree: min(max(tree, 0), 2))
-        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .helpLight, .borderStone, .allianceHall, .storehouse,
+        case .crestCharge(let charge): return .crestCharge(min(max(charge, 0), 9))
+        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .helpLight, .borderStone, .crestBoard, .allianceHall, .storehouse,
              .yard, .signature, .town:
             return self
         }
@@ -169,7 +178,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .furnishing, .prop, .town: return 300
         case .keep, .keepOf, .allianceHall: return 4500
         case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .gatehold, .standard, .rallyCamp, .storehouse, .yard: return 3000
-        case .hostBanner, .talentSigil, .helpLight, .borderStone: return 300
+        case .hostBanner, .talentSigil, .helpLight, .borderStone, .crestBoard, .crestCharge: return 300
         }
     }
 }
@@ -318,6 +327,8 @@ public enum Library {
         keys += (0...2).map { .talentSigil(tree: $0) }
         keys.append(.helpLight)
         keys.append(.borderStone)
+        keys.append(.crestBoard)
+        keys += (0..<10).map { .crestCharge($0) }
         keys.append(.allianceHall)
         keys.append(.storehouse)
         keys += Resource.allCases.map { .yard($0) }
@@ -353,6 +364,8 @@ public enum Library {
         case .talentSigil(let tree): return Land.talentSigil(tree, name: key.canonical.description)
         case .helpLight: return Land.helpLight(name: key.canonical.description)
         case .borderStone: return Land.borderStone(name: key.canonical.description)
+        case .crestBoard: return Land.crestBoard(name: key.canonical.description)
+        case .crestCharge(let charge): return Land.crestCharge(charge, name: key.canonical.description)
         case .allianceHall: return Halls.hall(name: key.canonical.description)
         case .storehouse: return Stores.storehouse(name: key.canonical.description)
         case .yard(let resource): return Stores.yard(resource, name: key.canonical.description)

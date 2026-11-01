@@ -1212,3 +1212,96 @@ extension Land {
         return Model(name: name, mesh: b.mesh)
     }
 }
+
+extension Land {
+    /// Where a crest's shield hangs on its board, its face toward +z.
+    static let crestFace = Vec3(0, 0.42, 0.014)
+
+    /// A House's crest at a hold's gate: a post with a crossbar and the
+    /// shield hanging from it on two chains, square-shouldered and coming
+    /// to a point, its field in the House's field tincture.
+    static func crestBoard(name: String) -> Model {
+        var b = MeshBuilder()
+        b.limb(from: Vec3(-0.14, 0, -0.02), to: Vec3(-0.14, 0.62, -0.02), radius: 0.012, color: Palette.timberDark)
+        b.beam(from: Vec3(-0.15, 0.58, -0.02), to: Vec3(0.06, 0.58, -0.02), width: 0.014, color: Palette.timber)
+        for x in [Float(-0.05), 0.05] {
+            b.limb(from: Vec3(x, 0.58, -0.01), to: Vec3(x, 0.52, 0.005), radius: 0.003, sides: 3, color: Palette.iron)
+        }
+        let c = crestFace
+        b.with(material: .house) {
+            $0.sheet([Vec3(c.x - 0.08, c.y + 0.1, c.z), Vec3(c.x + 0.08, c.y + 0.1, c.z), Vec3(c.x + 0.08, c.y - 0.02, c.z),
+                      Vec3(c.x + 0.05, c.y - 0.08, c.z), Vec3(c.x, c.y - 0.11, c.z), Vec3(c.x - 0.05, c.y - 0.08, c.z),
+                      Vec3(c.x - 0.08, c.y - 0.02, c.z)], normal: Vec3(0, 0, 1), thickness: 0.012, color: Palette.house)
+        }
+        // The shield's rim, iron.
+        b.with(material: .metal) {
+            for (a, z) in [(Vec3(-0.08, 0.1, 0), Vec3(0.08, 0.1, 0)), (Vec3(0.08, 0.1, 0), Vec3(0.08, -0.02, 0)),
+                           (Vec3(-0.08, 0.1, 0), Vec3(-0.08, -0.02, 0)), (Vec3(0.08, -0.02, 0), Vec3(0, -0.11, 0)),
+                           (Vec3(-0.08, -0.02, 0), Vec3(0, -0.11, 0))] {
+                $0.beam(from: c + a + Vec3(0, 0, 0.002), to: c + z + Vec3(0, 0, 0.002), width: 0.008, depth: 0.004, color: Palette.iron)
+            }
+        }
+        return Model(name: name, mesh: b.mesh)
+    }
+
+    /// A crest's charge, laid in relief on its shield's face, in the
+    /// House's charge tincture: moon, tower, heron, star, oar, key, wave,
+    /// flame, antler, bell.
+    static func crestCharge(_ charge: Int, name: String) -> Model {
+        var b = MeshBuilder()
+        let c = crestFace + Vec3(0, 0.0, 0.01)
+        let n = Vec3(0, 0, 1)
+        func line(_ a: Vec3, _ z: Vec3, _ w: Float = 0.012) {
+            b.beam(from: c + a, to: c + z, width: w, depth: 0.004, color: Palette.house)
+        }
+        func plate(_ points: [Vec3]) { b.sheet(points.map { c + $0 }, normal: n, thickness: 0.004, color: Palette.house) }
+        b.material = .house
+        switch charge {
+        case 0: // a crescent moon
+            for index in 0..<6 {
+                let a0 = Float(index) / 6 * 3.6 - 1.8, a1 = Float(index + 1) / 6 * 3.6 - 1.8
+                line(Vec3(Float(sin(Double(a0))) * 0.045, Float(cos(Double(a0))) * 0.045, 0),
+                     Vec3(Float(sin(Double(a1))) * 0.045, Float(cos(Double(a1))) * 0.045, 0), 0.016)
+            }
+        case 1: // a tower
+            plate([Vec3(-0.03, -0.06, 0), Vec3(0.03, -0.06, 0), Vec3(0.03, 0.04, 0), Vec3(-0.03, 0.04, 0)])
+            for x in [Float(-0.025), 0, 0.025] { plate([Vec3(x - 0.008, 0.04, 0), Vec3(x + 0.008, 0.04, 0), Vec3(x + 0.008, 0.06, 0), Vec3(x - 0.008, 0.06, 0)]) }
+        case 2: // a heron
+            line(Vec3(0, -0.06, 0), Vec3(0, -0.01, 0), 0.006)
+            plate([Vec3(-0.03, -0.01, 0), Vec3(0.03, -0.02, 0), Vec3(0.01, 0.02, 0)])
+            line(Vec3(0.01, 0.02, 0), Vec3(0.0, 0.06, 0), 0.006)
+            line(Vec3(0.0, 0.06, 0), Vec3(0.04, 0.05, 0), 0.006)
+        case 3: // a star
+            for index in 0..<3 {
+                let a = Float(index) * .pi / 3
+                line(Vec3(Float(sin(Double(a))) * 0.055, Float(cos(Double(a))) * 0.055, 0),
+                     Vec3(-Float(sin(Double(a))) * 0.055, -Float(cos(Double(a))) * 0.055, 0), 0.014)
+            }
+        case 4: // an oar
+            line(Vec3(-0.04, 0.06, 0), Vec3(0.02, -0.03, 0), 0.008)
+            plate([Vec3(0.01, -0.02, 0), Vec3(0.04, -0.03, 0), Vec3(0.045, -0.07, 0), Vec3(0.025, -0.07, 0)])
+        case 5: // a key
+            line(Vec3(-0.03, 0.04, 0), Vec3(-0.01, 0.06, 0)); line(Vec3(-0.01, 0.06, 0), Vec3(0.01, 0.04, 0))
+            line(Vec3(0.01, 0.04, 0), Vec3(-0.01, 0.02, 0)); line(Vec3(-0.01, 0.02, 0), Vec3(-0.03, 0.04, 0))
+            line(Vec3(-0.01, 0.02, 0), Vec3(-0.01, -0.06, 0), 0.01)
+            line(Vec3(-0.01, -0.06, 0), Vec3(0.02, -0.06, 0), 0.01); line(Vec3(-0.01, -0.04, 0), Vec3(0.015, -0.04, 0), 0.01)
+        case 6: // waves
+            for y in [Float(-0.03), 0.02] {
+                for index in 0..<4 {
+                    let x0 = -0.06 + Float(index) * 0.03
+                    line(Vec3(x0, y, 0), Vec3(x0 + 0.015, y + 0.015, 0), 0.01)
+                    line(Vec3(x0 + 0.015, y + 0.015, 0), Vec3(x0 + 0.03, y, 0), 0.01)
+                }
+            }
+        case 7: // a flame
+            plate([Vec3(0, -0.06, 0), Vec3(0.035, -0.03, 0), Vec3(0.02, 0.02, 0), Vec3(0.005, 0.065, 0), Vec3(-0.02, 0.02, 0), Vec3(-0.035, -0.03, 0)])
+        case 8: // an antler
+            line(Vec3(0, -0.06, 0), Vec3(0, 0.06, 0), 0.01)
+            for (y, side) in [(Float(-0.02), Float(-1)), (0.01, 1), (0.04, -1)] { line(Vec3(0, y, 0), Vec3(side * 0.04, y + 0.03, 0), 0.008) }
+        default: // a bell
+            plate([Vec3(-0.012, 0.05, 0), Vec3(0.012, 0.05, 0), Vec3(0.03, 0.0, 0), Vec3(0.045, -0.045, 0), Vec3(-0.045, -0.045, 0), Vec3(-0.03, 0.0, 0)])
+            line(Vec3(0, 0.05, 0), Vec3(0, 0.065, 0), 0.01)
+        }
+        return Model(name: name, mesh: b.mesh)
+    }
+}
