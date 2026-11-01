@@ -7,7 +7,8 @@ final class CreditsTests: XCTestCase {
     func testTheCreditsNameTheGameItsMakersAndItsLicences() {
         XCTAssertEqual(Credits.lines.first, Credits.Line(.title, "Nullmere Online"))
         let text = Credits.lines.map(\.text)
-        XCTAssertTrue(text.contains("Apache License 2.0") || text.contains { $0.contains("Apache License 2.0") })
+        XCTAssertTrue(text.contains { $0.contains("GNU Affero General Public License, version 3 only") })
+        XCTAssertFalse(text.contains { $0.contains("Apache") }, "The code is no longer under the Apache License")
         XCTAssertTrue(text.contains { $0.contains("CC0 1.0") })
         XCTAssertEqual(Set(text).count, text.count, "No line twice")
         XCTAssertEqual(MenuItem.credits.title, "Credits")

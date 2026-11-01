@@ -72,7 +72,7 @@ Each finding below has an ID, what was wrong, and its status: **fixed**
 | C10 | The fallbacks drawn without Metal differ from the Metal scenes (shore, stars, unexplored ground) | fixed: the lake without Metal draws the shader's own mesas and bank (LakeShore), its tinted stars, mist and vignette; the map without Metal its mist, the stars in the still water and the moon's layered halo |
 | C11 | Colours copied by hand between launcher and game; README describes moving water; the icon shows a broken reflection | fixed: the game's ink and glow are the launcher's; the README describes still water; the icon is redrawn by `Tools/icon/make-icon.py` as the launcher's still lake, the moon given back whole |
 | C12 | The shaders' hash functions are Dave Hoskins' "Hash without Sine" (MIT), copied uncredited; the project wants original work only | fixed: both shaders use a hash written for Nullmere, tested even and free of lattices in float32; the far shore's noise offsets were refitted so the scene keeps its mesas |
-| C13 | `realm-server/Cargo.toml` says MIT; the project is Apache-2.0 | fixed |
+| C13 | `realm-server/Cargo.toml` says MIT, not the project's licence (Apache-2.0 then, AGPL-3.0-only since 1 November 2026) | fixed |
 
 ## E: docs and scripts against behaviour
 

@@ -32,7 +32,8 @@ final class CompactTests: XCTestCase {
             XCTAssertLessThan(article.text.count, 600, "\(article.heading) is a few sentences")
         }
         let whole = Compact.spoken
-        for promise in ["keychain", "on-device model", "Words", "report", "forget", "read them again", "public domain"] {
+        for promise in ["keychain", "on-device model", "Words", "report", "forget", "read them again", "public domain",
+                        "GNU Affero General Public License", "repository"] {
             XCTAssertTrue(whole.contains(promise), "The compact speaks of \(promise)")
         }
         // Each edition after the first says what changed.

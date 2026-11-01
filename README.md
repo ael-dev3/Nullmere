@@ -2060,7 +2060,9 @@ licensing, and says where the build went another way.
 
 ## Licence
 
-- Code is licensed under the [Apache License 2.0](LICENSE).
+- Code is licensed under the [GNU Affero General Public License, version 3
+  only](LICENSE) (AGPL-3.0-only). Whoever runs a modified realm or client for
+  others over a network must offer them its source.
 - Original art and documentation, including the app icon, are dedicated to
   the public domain under [CC0 1.0](LICENSE-CC0-1.0).
 - The names Nullmere Online and Nullmere, and nullmere.online, identify the

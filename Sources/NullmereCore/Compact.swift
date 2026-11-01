@@ -11,7 +11,7 @@ public enum Compact {
 
     /// The compact's edition: raised whenever its words change in
     /// substance, so that every keeper is asked to read it again.
-    public static let edition = 2
+    public static let edition = 3
 
     /// What changed in each edition after the first, told to a keeper who
     /// accepted an earlier one.
@@ -19,6 +19,8 @@ public enum Compact {
         2: "The realm now keeps the letters keepers seal for the age to come, telling every House their words when they are found, "
             + "and the standing orders keepers give their caretakers; orders written in your own words are read by your Mac's model, "
             + "and only the orders you give leave it.",
+        3: "The game's code is now under the GNU Affero General Public License, version 3 only, in place of the Apache License, "
+            + "and stays open to all in its repository.",
     ]
 
     public static let articles: [Article] = [
@@ -33,7 +35,7 @@ public enum Compact {
         Article(heading: "Keeping the peace of the realm",
                 text: "Write to other keepers as you would be written to: no threats, no hatred, no one's private details, nothing for sale. Any keeper may report a line to the realm's steward, who may take it away and bar a House from the Words for a time. Hold one House, under one identity, and play it yourself."),
         Article(heading: "The realm may change",
-                text: "Nullmere Online is free and still being made. Its stewards may change its rules, end or begin its ages, or let it rest, for a time or for good; nothing in it is property, and nothing is bought or sold. It is offered as it is, with no promise that it works. Its code is under the Apache License 2.0, and its art and sounds are in the public domain."),
+                text: "Nullmere Online is free and still being made. Its stewards may change its rules, end or begin its ages, or let it rest, for a time or for good; nothing in it is property, and nothing is bought or sold. It is offered as it is, with no promise that it works. Its code is under the GNU Affero General Public License, version 3 only, and open to all in its repository; its art and sounds are in the public domain."),
         Article(heading: "Leaving",
                 text: "Leave whenever you like. Ask the realm's steward, through the game's repository, to forget you: your name and identity leave the realm's roll, and a steward keeps your House until its age ends. When these words change, the front door asks you to read them again before you enter."),
     ]
