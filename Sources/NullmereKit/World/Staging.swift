@@ -97,8 +97,9 @@ extension GameSession {
         let shown = sights.filter { inView($0.hold.position, within: GameSession.holdReach) }
         let (holds, hearths) = stage.holds(shown, time: t, into: &frame)
         // Their townsfolk about their works, in sight and in full motion,
-        // and carts on the ways between them.
-        let townsfolk = full ? stage.townsfolk(shown.filter { isVisible($0.hold.position) }, time: t, into: &frame)
+        // the rest of their folk out about the lanes as the view comes close, and
+        // carts on the ways between them.
+        let townsfolk = full ? stage.townsfolk(shown.filter { isVisible($0.hold.position) }, time: t, crowds: frame.fine, into: &frame)
             + stage.traffic(ways, time: t, into: &frame) : []
         // The alliances' halls the keeper knows of, each in its leader's
         // colour, one rising easing up a watch's height as the watch turns.

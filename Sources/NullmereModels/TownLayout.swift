@@ -224,18 +224,10 @@ extension HoldLayout {
         let centre = Relief.centre(of: plan.hex)
         let heart = Vec3(centre.x, 0, centre.z)
         let angles = laneAngles(of: plan.hex)
-        let walled = (plan.levels[.building(.walls)] ?? 0) > 0 || plan.rising?.work == .building(.walls)
+        let walled = isWalled(plan)
         func way(_ angle: Float) -> Vec3 { Vec3(Float(cos(Double(angle))), 0, Float(sin(Double(angle)))) }
-        // How far out each lane runs: the gate's to the edge, a work's to its foot.
-        var ends: [Int: Float] = [0: reach - 0.08]
-        for (_, slot) in assign(plan, relief: relief) {
-            let offset = slot.position - heart
-            let turn = Float(atan2(Double(offset.z), Double(offset.x))) - angles[0]
-            let index = (Int((turn / (2 * .pi / Float(lanes))).rounded()) % lanes + lanes) % lanes
-            ends[index] = max(ends[index] ?? 0, offset.length - workRadius + 0.04)
-        }
         var lines: [[Vec3]] = []
-        for (index, end) in ends.sorted(by: { $0.key < $1.key }) {
+        for (index, end) in laneEnds(plan, relief: relief).sorted(by: { $0.key < $1.key }) {
             // Within the walls only the way to the gate; the rest from the ring lane.
             let start = walled && index != 0 ? ringLane : door
             guard end > start + 0.05 else { continue }
@@ -266,5 +258,114 @@ extension HoldLayout {
             }
         }
         return pieces
+    }
+
+    /// Whether the hold's walls stand, or are rising.
+    static func isWalled(_ plan: Plan) -> Bool {
+        (plan.levels[.building(.walls)] ?? 0) > 0 || plan.rising?.work == .building(.walls)
+    }
+
+    /// How far out each lane laid runs, by its place from the gate's: the
+    /// gate's to the hold's edge, a work's to its foot.
+    static func laneEnds(_ plan: Plan, relief: Relief) -> [Int: Float] {
+        let centre = Relief.centre(of: plan.hex)
+        let heart = Vec3(centre.x, 0, centre.z)
+        let front = frontAngle(of: plan.hex)
+        var ends: [Int: Float] = [0: reach - 0.08]
+        for (_, slot) in assign(plan, relief: relief) {
+            let offset = slot.position - heart
+            let turn = Float(atan2(Double(offset.z), Double(offset.x))) - front
+            let index = (Int((turn / (2 * .pi / Float(lanes))).rounded()) % lanes + lanes) % lanes
+            ends[index] = max(ends[index] ?? 0, offset.length - workRadius + 0.04)
+        }
+        return ends
+    }
+
+    // MARK: The strolls
+
+    /// The most of a hold's folk out and about its lanes; a seat's.
+    public static let strollsMost = 10
+    public static let seatStrollsMost = 16
+    /// One of the town's folk is out for every so many of its homes.
+    public static let homesPerStroll = 3
+    /// How far to one side of a lane's line its folk keep, the one way or
+    /// the other, so those going out and those coming back pass.
+    public static let keepSide: Float = 0.03
+    /// How far out along the way to the gate the market by the keep's door
+    /// runs, where folk set out from.
+    public static let marketReach: Float = 0.12
+
+    /// The ways the town's folk walk out and about its lanes, on the ground
+    /// plane: one for every three of its homes, to the most a hold or a
+    /// seat has, each there and back along the lanes, keeping to one side
+    /// of them. One in four goes from the market by the keep's door out
+    /// along the way to the gate, through it where the hold is walled, as
+    /// far as their errand takes them short of the ground beyond where
+    /// companies stand; the rest go to the feet of the works in turn, from
+    /// the keep's door, or where the hold is walled from along the ring lane
+    /// outside its walls, round it.
+    public static func strolls(_ plan: Plan, relief: Relief) -> [[Vec3]] {
+        let centre = Relief.centre(of: plan.hex)
+        let heart = Vec3(centre.x, 0, centre.z)
+        let angles = laneAngles(of: plan.hex)
+        let walled = isWalled(plan)
+        let ends = laneEnds(plan, relief: relief)
+        let homes = lots(plan, relief: relief).filter { Town.homes.contains($0.piece) }.count
+        let count = min(homes / homesPerStroll, plan.isSeat ? seatStrollsMost : strollsMost)
+        func way(_ angle: Float) -> Vec3 { Vec3(Float(cos(Double(angle))), 0, Float(sin(Double(angle)))) }
+        let gate = way(angles[0])
+        // Out through the gate as far as short of the heart of the hex
+        // before it, where a company may stand, and of any work on the way.
+        var farthest = ends[0] ?? reach
+        for hex in plan.hex.neighbors {
+            let c = Relief.centre(of: hex)
+            let offset = Vec3(c.x, 0, c.z) - heart, along = offset.dot(gate)
+            if along > 0, (offset - gate * along).length < heartClear { farthest = min(farthest, along - heartClear - 0.05) }
+        }
+        for (_, slot) in assign(plan, relief: relief) {
+            let offset = Vec3(slot.position.x, 0, slot.position.z) - heart, along = offset.dot(gate)
+            if along > 0, (offset - gate * along).length < workRadius { farthest = min(farthest, along - workRadius - 0.05) }
+        }
+        let nearest = walled ? ringLane : door + 0.3
+        let works = ends.keys.filter { $0 != 0 }.sorted()
+        var strolls: [[Vec3]] = []
+        // How many are out on each lane: those on the same lane keep to its
+        // sides in turn.
+        var out: [Int: Int] = [:]
+        for k in 0..<count {
+            let roll = { (salt: UInt32) in
+                Noise.unit(Int32(truncatingIfNeeded: plan.hex.q) &* 13 &+ Int32(k), Int32(truncatingIfNeeded: plan.hex.r), salt)
+            }
+            var path: [Vec3]
+            let lane = k % 4 == 0 || works.isEmpty ? 0 : works[(k - k / 4 - 1) % works.count]
+            if lane == 0 {
+                path = [heart + gate * (door + marketReach * roll(0x5702)), heart + gate * (nearest + max(farthest - nearest, 0) * roll(0x5701))]
+            } else {
+                let end = ends[lane] ?? ringLane, toward = way(angles[lane])
+                if walled {
+                    // From a way along the ring, the one way round or the other.
+                    let turn = (Float.pi / 6 + Float.pi / 2 * roll(0x5703)) * (k % 2 == 0 ? 1 : -1)
+                    let steps = Int((abs(turn) / (Float.pi / 12)).rounded(.up))
+                    path = (0...steps).map { heart + way(angles[lane] - turn + turn * Float($0) / Float(steps)) * ringLane }
+                    if end > ringLane + 1e-3 { path.append(heart + toward * end) }
+                } else {
+                    path = [heart + toward * door, heart + toward * end]
+                }
+            }
+            strolls.append(keeping((out[lane] ?? 0) % 2 == 0 ? keepSide : -keepSide, to: path))
+            out[lane, default: 0] += 1
+        }
+        return strolls
+    }
+
+    /// A way kept to one side of its lanes: each point of it moved `side`
+    /// across the way's course there.
+    static func keeping(_ side: Float, to path: [Vec3]) -> [Vec3] {
+        path.indices.map { index in
+            let a = path[max(index - 1, 0)], b = path[min(index + 1, path.count - 1)]
+            let run = Vec3(b.x - a.x, 0, b.z - a.z), length = run.length
+            guard length > 1e-5 else { return path[index] }
+            return path[index] + Vec3(-run.z, 0, run.x) * (side / length)
+        }
     }
 }

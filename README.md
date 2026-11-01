@@ -1749,7 +1749,14 @@ the keeper's realm last lay on, made as it plays.
   salter carries a basket from the saltworks and porters go about the
   rest, out from the keep's door along the town's lanes (through the gate
   and round the walls, where the hold is walled), a while at their work and
-  back, at a walk their feet hold the ground at. They keep within a hold
+  back, at a walk their feet hold the ground at. As the view comes down
+  close the rest of a town's folk are out too, one for every three of its
+  homes, up to ten, a seat's sixteen: householders in madder red,
+  water-carriers with a pail from the well, elders on their sticks and
+  children in weld yellow, out from the market by the keep's door through
+  the gate and back, or to the feet of the works, round the ring lane
+  outside the walls, each keeping to one side of the lane so those going
+  out pass those coming back. They keep within a hold
   whose ward is broken, and stay in where motion is reduced. A cart goes on the way between each hold and
   the nearest other of its House within seven hexes, where unbroken land
   runs between, from beyond one's walls to beyond the other's and back,

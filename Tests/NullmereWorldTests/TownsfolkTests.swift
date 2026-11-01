@@ -138,6 +138,66 @@ final class TownsfolkTests: XCTestCase {
         XCTAssertEqual(WorldStage.walk(none, at: 2).clip, .idle)
     }
 
+    /// The town's folk out and about its lanes: drawn only as the view
+    /// comes close, householders, water-carriers, elders and children,
+    /// there and back at the pace their feet hold the ground at; laid out
+    /// again as the town grows, not as a work rises; and they too keep
+    /// within a burning hold.
+    func testTheTownsFolkWalkOutAsTheViewComesClose() throws {
+        let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
+        let hold = try seat([.walls: 2, .granary: 3, .sawpit: 2, .quarry: 2, .saltworks: 1, .infirmary: 1, .forge: 1, .beacon: 1])
+        let sight = HoldSight(hold: hold, colour: Vec4(0.2, 0.4, 0.8, 1))
+        let strolls = stage.strolls(of: sight)
+        XCTAssertGreaterThanOrEqual(strolls.count, 8, "A grown seat's lanes are busy")
+        XCTAssertLessThanOrEqual(strolls.count, HoldLayout.seatStrollsMost)
+        let homes: Set<ModelKey> = [.folk(ofHome: 0), .folk(ofHome: 0.5), .folk(ofHome: 0.7), .folk(ofHome: 0.9)]
+        XCTAssertEqual(homes.count, 4, "Four kinds of folk at home")
+        XCTAssertTrue(Set(strolls.map(\.key)).isSubset(of: homes))
+        XCTAssertTrue(Set(strolls.map(\.key)).isDisjoint(with: [.folk(of: .granary), .folk(of: .sawpit), .folk(of: .quarry), .folk(of: .saltworks),
+                                                                .folk(of: .forge)]), "None of the works' folk")
+        let heart = heart(of: hold)
+        for errand in strolls {
+            XCTAssertLessThanOrEqual(flat(errand.path[0], heart), HoldLayout.ringLane + HoldLayout.keepSide + 1e-3, "From about the keep")
+            let speed = try XCTUnwrap(errand.key.marchSpeed)
+            var time: Float = 0
+            while time < 2 * errand.length / speed + 2 * WorldStage.townsfolkPause {
+                let now = WorldStage.walk(errand, at: time), next = WorldStage.walk(errand, at: time + 0.05)
+                if now.clip == .idle {
+                    XCTAssertTrue(flat(now.position, errand.path[0]) < 1e-3 || flat(now.position, errand.path.last!) < 1e-3, "At an end")
+                } else if next.clip == .march {
+                    XCTAssertLessThanOrEqual(flat(now.position, next.position), speed * 0.05 + 1e-3, "At a walk")
+                }
+                time += 0.25
+            }
+        }
+        // The same when asked again, and as a work rises.
+        XCTAssertEqual(stage.strolls(of: sight), strolls)
+        var rising = hold
+        rising.project = Hold.Project(kind: .musterHall, targetLevel: 1, watchesLeft: 2)
+        let first = stage.strolls(of: HoldSight(hold: rising, colour: sight.colour, progress: 0.2))
+        XCTAssertEqual(stage.strolls(of: HoldSight(hold: rising, colour: sight.colour, progress: 0.7)), first, "Not laid anew as it rises")
+        // A town that grows has more of its folk about, a bare keep's few.
+        let bare = stage.strolls(of: HoldSight(hold: try seat([:]), colour: sight.colour))
+        XCTAssertLessThan(bare.count, strolls.count)
+
+        // Only as the view comes close.
+        var frame = SceneFrame()
+        let works = stage.errands(of: sight).count
+        func folk(_ batches: [ModelBatch]) -> Int { batches.reduce(0) { $0 + $1.instances.count } }
+        XCTAssertEqual(folk(stage.townsfolk([sight], time: 12, into: &frame)), works, "From afar, the works' folk alone")
+        let close = stage.townsfolk([sight], time: 12, crowds: true, into: &frame)
+        XCTAssertEqual(folk(close), works + strolls.count)
+        for instance in close.flatMap(\.instances) {
+            let at = Vec3(instance.model.c3.x, instance.model.c3.y, instance.model.c3.z)
+            XCTAssertEqual(at.y, stage.ground(atX: at.x, z: at.z), accuracy: 1e-4, "On the ground")
+            XCTAssertEqual(instance.colour, sight.colour, "In their House's colour")
+        }
+        var burning = hold
+        burning.ward = burning.maximumWard / 2 - 1
+        XCTAssertTrue(stage.townsfolk([HoldSight(hold: burning, colour: sight.colour)], time: 12, crowds: true, into: &frame).isEmpty,
+                      "They keep within")
+    }
+
     func testCartsGoBetweenAHousesHoldsOnTheirWay() throws {
         let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
         let hexes = [Hex(2, -6), Hex(3, -6), Hex(4, -6), Hex(5, -6)]

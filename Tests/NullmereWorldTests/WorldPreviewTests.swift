@@ -51,7 +51,7 @@ final class WorldPreviewTests: XCTestCase {
         var frame = SceneFrame()
         let sights = state.holds.map { HoldSight(hold: $0, colour: WorldStage.colour(houses, sigil: state.houses[$0.owner].sigil)) }
         let (holds, hearths) = stage.holds(sights, time: 20, into: &frame)
-        let townsfolk = stage.townsfolk(sights, time: 20, into: &frame)
+        let townsfolk = stage.townsfolk(sights, time: 20, crowds: true, into: &frame)
         let visible = state.visibility(for: state.player)
         let poses = state.units.filter { $0.owner == state.player || (state.map.index(of: $0.position).map { visible[$0] } ?? false) }
             .enumerated().map { index, unit -> CompanyPose in

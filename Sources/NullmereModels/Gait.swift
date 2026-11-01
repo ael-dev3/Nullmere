@@ -16,6 +16,8 @@ struct Gait: Sendable {
         case wild
         /// A great club in the right hand, dragged.
         case club
+        /// Nothing in either: the arms swing free.
+        case free
     }
 
     var hands: Hands
@@ -87,6 +89,9 @@ struct Gait: Sendable {
             p.turn(Limb.armR, x: 0.1, z: -0.15)
             p.turn(Limb.armL, x: -0.1, z: 0.15)
             p.turn(Limb.forearmL, x: -0.4)
+        case .free:
+            p.turn(Limb.forearmL, x: -0.15)
+            p.turn(Limb.forearmR, x: -0.15)
         }
         if shield {
             p.turn(Limb.armL, x: -0.3, z: 0.05)
@@ -109,7 +114,7 @@ struct Gait: Sendable {
         case .lantern:
             p.turn(Limb.heldL, x: -p.pitch(through: [Limb.hips, Limb.torso, Limb.armL, Limb.forearmL]))
             p.turn(Limb.extra, x: -p.pitch(through: [Limb.root, Limb.hips, Limb.torso, Limb.armL, Limb.forearmL, Limb.heldL]))
-        case .cart, .wild, .club:
+        case .cart, .wild, .club, .free:
             break
         }
     }
@@ -160,6 +165,7 @@ struct Gait: Sendable {
         case .cart: swing = 0
         case .wild: swing = 0.5
         case .club: swing = 0.25
+        case .free: swing = 0.32
         }
         p.turn(Limb.armL, x: (shield ? 0.1 : swing) * s)
         p.turn(Limb.armR, x: -swing * s)
@@ -175,7 +181,7 @@ struct Gait: Sendable {
             p.turn(Limb.torso, z: 0.06 * s)
         case .lantern:
             p.turn(Limb.extra, x: 0.18 * Motion.wave(u, cycles: 2))
-        case .spear, .bow:
+        case .spear, .bow, .free:
             break
         }
         level(&p)
@@ -187,7 +193,7 @@ struct Gait: Sendable {
         case .spear: thrust(&p, u)
         case .bow: loose(&p, u)
         case .lantern: raise(&p, u)
-        case .cart: swing(&p, u, high: true)
+        case .cart, .free: swing(&p, u, high: true)
         case .wild: rake(&p, u)
         case .club: slam(&p, u)
         }

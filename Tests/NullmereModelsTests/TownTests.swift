@@ -224,6 +224,107 @@ final class TownTests: XCTestCase {
                        "No ring without walls")
     }
 
+    /// The town's folk out and about its lanes: one for every three homes,
+    /// to the most a hold or a seat has, each there and back along the
+    /// lanes laid, to one side of them: from the market out through the
+    /// gate short of the ground where companies stand beyond it, or to the
+    /// works' feet, round the ring lane outside the walls. Never through
+    /// anything of the town, a work or the walls but at the gate, and the
+    /// same each time.
+    func testTheTownsFolkWalkItsLanes() throws {
+        var walked = 0, ringed = 0, gated = 0
+        for state in TownTests.worlds {
+            let relief = Relief(map: state.map)
+            for hold in state.holds {
+                for walled in [false, true] {
+                    var plan = grand(hold.position, seat: hold.isSeat)
+                    if !walled { plan.levels[.building(.walls)] = nil }
+                    let heart = heart(plan.hex)
+                    let angles = HoldLayout.laneAngles(of: plan.hex)
+                    let lots = HoldLayout.lots(plan, relief: relief)
+                    let homes = lots.filter { Town.homes.contains($0.piece) }
+                    let works = HoldLayout.pieces(plan, relief: relief).filter { piece in
+                        switch piece.key {
+                        case .work, .study: return true
+                        default: return false
+                        }
+                    }
+                    let lanes = HoldLayout.town(plan, relief: relief).filter { $0.key == .town(.lane) }.map {
+                        ($0.transform.transformPoint(Vec3(-0.5, 0, 0)), $0.transform.transformPoint(Vec3(0.5, 0, 0)))
+                    }
+                    let strolls = HoldLayout.strolls(plan, relief: relief)
+                    XCTAssertEqual(HoldLayout.strolls(plan, relief: relief), strolls, "The same each time")
+                    XCTAssertEqual(strolls.count, min(homes.count / HoldLayout.homesPerStroll,
+                                                      plan.isSeat ? HoldLayout.seatStrollsMost : HoldLayout.strollsMost))
+                    walked += strolls.count
+                    let front = angles[0]
+                    let gate = Vec3(Float(cos(Double(front))), 0, Float(sin(Double(front))))
+                    let before = plan.hex.neighbors.map { self.heart($0) }.min { flat($0, heart + gate * 2) < flat($1, heart + gate * 2) }!
+                    for path in strolls {
+                        XCTAssertLessThanOrEqual(flat(path[0], heart), HoldLayout.ringLane + HoldLayout.keepSide + 1e-3, "From about the keep")
+                        if path.count == 2, (path[1] - heart).normalized.dot(gate) > 0.99 {
+                            gated += 1
+                            XCTAssertEqual(flat(path[0], heart), HoldLayout.door + HoldLayout.marketReach / 2,
+                                           accuracy: HoldLayout.marketReach / 2 + HoldLayout.keepSide + 1e-3, "From the market by the keep's door")
+                            XCTAssertGreaterThan(flat(path[1], before), HoldLayout.heartClear, "Short of where a company stands")
+                            XCTAssertGreaterThan(flat(path[1], heart), walled ? HoldLayout.ringLane : HoldLayout.door, "Out along the way")
+                        }
+                        if path.count > 3 { ringed += 1 }
+                        for (a, b) in zip(path, path.dropFirst()) {
+                            for step in 0...24 {
+                                let p = a + (b - a) * (Float(step) / 24)
+                                let onLane = lanes.contains { lane in
+                                    let run = Vec3(lane.1.x - lane.0.x, 0, lane.1.z - lane.0.z), off = Vec3(p.x - lane.0.x, 0, p.z - lane.0.z)
+                                    let t = max(0, min(1, off.dot(run) / run.dot(run)))
+                                    return (off - run * t).length <= HoldLayout.laneHalfWidth
+                                }
+                                XCTAssertTrue(onLane, "Along the lanes laid")
+                                for lot in lots {
+                                    XCTAssertGreaterThan(flat(p, lot.position), lot.piece.footprint, "Round a \(lot.piece), not through it")
+                                }
+                                for work in works {
+                                    XCTAssertGreaterThan(flat(p, work.position), HoldLayout.workRadius - 0.06, "Round \(work.key)")
+                                }
+                                // Through the walls only at the gate.
+                                let r = flat(p, heart)
+                                if walled, r > HoldLayout.wardEdge, r < Holds.wallRadius + 0.06 {
+                                    XCTAssertLessThan((p - heart - gate * (p - heart).dot(gate)).length, HoldLayout.keepSide + 1e-3, "Through the gate")
+                                }
+                            }
+                        }
+                    }
+                    // Those out to the same lane's end keep to its sides in turn.
+                    var sides: [Int: [Float]] = [:]
+                    for path in strolls {
+                        let last = try XCTUnwrap(path.last) - heart
+                        let lane = try XCTUnwrap(angles.indices.max { a, b in
+                            last.dot(Vec3(Float(cos(Double(angles[a]))), 0, Float(sin(Double(angles[a]))))) <
+                                last.dot(Vec3(Float(cos(Double(angles[b]))), 0, Float(sin(Double(angles[b])))))
+                        })
+                        let way = Vec3(Float(cos(Double(angles[lane]))), 0, Float(sin(Double(angles[lane]))))
+                        let side = way.x * last.z - way.z * last.x
+                        guard abs(abs(side) - HoldLayout.keepSide) < 2e-3 else { continue }
+                        sides[lane, default: []].append(side)
+                    }
+                    for (_, lane) in sides {
+                        XCTAssertLessThanOrEqual(abs(lane.filter { $0 > 0 }.count - lane.filter { $0 < 0 }.count), 1, "To the one side and the other")
+                    }
+                }
+            }
+        }
+        XCTAssertGreaterThan(walked, 300, "Folk out about the holds")
+        XCTAssertGreaterThan(ringed, 60, "Round the walls to the works")
+        XCTAssertGreaterThan(gated, 100, "Out through the gate")
+        // A bare keep's few homes keep one of their folk out on the way to the gate.
+        let relief = Relief(map: TownTests.worlds[0].map)
+        let bare = try XCTUnwrap(TownTests.worlds[0].holds.lazy.map { HoldLayout.Plan(hex: $0.position, isSeat: false) }.first { plan in
+            HoldLayout.lots(plan, relief: relief).filter { Town.homes.contains($0.piece) }.count >= HoldLayout.homesPerStroll
+        })
+        let few = HoldLayout.strolls(bare, relief: relief)
+        XCTAssertEqual(few.count, 1)
+        XCTAssertEqual(few.first?.count, 2)
+    }
+
     func testTheSameHoldGivesTheSameTownAndEachPeopleBuildsItTheirWay() throws {
         let state = TownTests.worlds[2]
         let relief = Relief(map: state.map)

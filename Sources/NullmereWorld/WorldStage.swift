@@ -213,6 +213,8 @@ public final class WorldStage: @unchecked Sendable {
         return false
     }
     private var laid: [Int: (hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising?, heritage: Heritage?, pieces: [Piece])] = [:]
+    /// The folk of each hold's homes out walking, by the town they walk.
+    private var strolled: [Int: (plan: HoldLayout.Plan, ways: [Errand])] = [:]
     /// The land's height where figures have stood, by the 64th of a unit:
     /// worked out once, not each frame.
     private var grounds: [SIMD2<Int32>: Float] = [:]
@@ -439,14 +441,21 @@ public final class WorldStage: @unchecked Sendable {
         if let kept = laid[hold.id], kept.hold == hold, kept.progress == progress, kept.finishing == finishing, kept.heritage == heritage {
             return kept.pieces
         }
+        let plan = WorldStage.plan(of: hold, progress: progress, finishing: finishing, heritage: heritage)
+        let made = HoldLayout.pieces(plan, relief: relief) + HoldLayout.town(plan, relief: relief)
+        laid[hold.id] = (hold, progress, finishing, heritage, made)
+        return made
+    }
+
+    /// How a hold is laid out: as the rules keep it, or with the work
+    /// `finishing` still rising as the watch's turn eases it up.
+    static func plan(of hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising?, heritage: Heritage?) -> HoldLayout.Plan {
         var plan = HoldLayout.Plan(hold: hold, progress: progress, heritage: heritage)
         if let finishing, plan.rising == nil {
             plan.levels[finishing.work] = finishing.level > 1 ? finishing.level - 1 : nil
             plan.rising = finishing
         }
-        let made = HoldLayout.pieces(plan, relief: relief) + HoldLayout.town(plan, relief: relief)
-        laid[hold.id] = (hold, progress, finishing, heritage, made)
-        return made
+        return plan
     }
 
     /// The flags that mark a hold's works as its House's people build them:
@@ -607,15 +616,33 @@ public final class WorldStage: @unchecked Sendable {
         return (first, outward, .idle)
     }
 
-    /// The townsfolk who keep the holds' works, as a frame at `time` sees
-    /// them, each on the land under it, posed as it walks or stands. None
-    /// about a hold whose ward is broken below half: they keep within.
-    public func townsfolk(_ sights: [HoldSight], time: Float, into frame: inout SceneFrame) -> [ModelBatch] {
+    /// A hold's townsfolk out and about its lanes (see
+    /// `HoldLayout.strolls`), there and back: each a householder, a
+    /// water-carrier, an elder or a child, by a roll of its own. Laid out
+    /// again only as the town changes, not as a work rises.
+    public func strolls(of sight: HoldSight) -> [Errand] {
+        var plan = WorldStage.plan(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage)
+        plan.rising?.progress = 0
+        if let kept = strolled[sight.hold.id], kept.plan == plan { return kept.ways }
+        let ways = HoldLayout.strolls(plan, relief: relief).enumerated().map { index, path in
+            Errand(key: .folk(ofHome: Noise.unit(Int32(truncatingIfNeeded: sight.hold.id), Int32(index), 0xF01C)), path: path,
+                   salt: sight.hold.id &* 53 &+ 7 &+ index)
+        }
+        strolled[sight.hold.id] = (plan, ways)
+        return ways
+    }
+
+    /// The townsfolk who keep the holds' works and, with `crowds`, as the
+    /// view comes down close, the rest of their folk out about the lanes, as
+    /// a frame at `time` sees them: each on the land under it, posed as it
+    /// walks or stands. None about a hold whose ward is broken below half:
+    /// they keep within.
+    public func townsfolk(_ sights: [HoldSight], time: Float, crowds: Bool = false, into frame: inout SceneFrame) -> [ModelBatch] {
         var placed: [(ModelKey, ModelInstance)] = []
         var shared: [PoseKey: UInt32] = [:]
         for sight in sights where sight.hold.ward * 2 >= sight.hold.maximumWard {
             let hex = SIMD2(Int32(sight.hold.position.q), Int32(sight.hold.position.r))
-            for errand in errands(of: sight) {
+            for errand in errands(of: sight) + (crowds ? strolls(of: sight) : []) {
                 let (at, heading, clip) = WorldStage.walk(errand, at: time)
                 let start = WorldStage.pose(errand.key, clip, at: time + Float(errand.salt % 13) * 0.29, shared: &shared, into: &frame)
                 placed.append((errand.key, ModelInstance(model: .translation(Vec3(at.x, ground(atX: at.x, z: at.z), at.z)) * .rotationY(heading),

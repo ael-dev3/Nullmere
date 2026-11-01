@@ -5,16 +5,23 @@ import NullmereCore
 /// with a band of their House's colour at the waist: a farmhand with a
 /// pitchfork from the granary, carters hauling timber from the sawpit and
 /// stone from the quarry, a salter with a basket from the saltworks, and a
-/// porter with a sack on their back about the rest. Drawn by the dozen,
-/// built as lean as the companies' figures.
+/// porter with a sack on their back about the rest. And the rest of a
+/// town's folk out about its lanes: a householder empty-handed, a
+/// water-carrier with a pail from the well, an elder on a stick, and a
+/// child. Drawn by the dozen, built as lean as the companies' figures.
 enum Folk {
-    /// The townsfolk there are, by their work.
-    static let variants = 5
+    /// The townsfolk there are: the works' folk, then the homes'.
+    static let variants = 9
     static let farmhand = 0, timberCarter = 1, stoneCarter = 2, salter = 3, porter = 4
+    static let householder = 5, waterCarrier = 6, elder = 7, child = 8
 
     /// A little smaller than a soldier, and an unhurried walk.
     static let size: Float = 0.27
     static let stride: Float = 0.32
+    /// An elder a little bent and shorter in the stride; a child small,
+    /// and quick in it.
+    static let elderSize: Float = 0.26, elderStride: Float = 0.24
+    static let childSize: Float = 0.19, childStride: Float = 0.45
 
     static func build(_ variant: Int, name: String) -> Model {
         switch variant {
@@ -22,6 +29,10 @@ enum Folk {
         case timberCarter: return carter(name, stone: false)
         case stoneCarter: return carter(name, stone: true)
         case salter: return salterModel(name)
+        case householder: return householderModel(name)
+        case waterCarrier: return waterCarrierModel(name)
+        case elder: return elderModel(name)
+        case child: return childModel(name)
         default: return porterModel(name)
         }
     }
@@ -30,12 +41,15 @@ enum Folk {
     static func gait(_ variant: Int) -> Gait {
         switch variant {
         case timberCarter, stoneCarter: return Gait(hands: .cart, size: size, stride: stride, parts: Limb.count + 2)
-        case salter: return Gait(hands: .lantern, size: size, stride: stride)
+        case salter, waterCarrier: return Gait(hands: .lantern, size: size, stride: stride)
+        case householder: return Gait(hands: .free, size: size, stride: stride)
+        case elder: return Gait(hands: .spear, size: elderSize, stoop: 0.2, stride: elderStride)
+        case child: return Gait(hands: .free, size: childSize, stride: childStride)
         default: return Gait(hands: .spear, size: size, stride: stride)
         }
     }
 
-    private static func frame() -> Frame {
+    private static func frame(size: Float = size) -> Frame {
         var f = Frame()
         f.size = size
         f.girth = 0.95
@@ -171,6 +185,95 @@ enum Folk {
             band(&b, f)
         }
     }
+
+    // MARK: The town's folk
+
+    /// A tunic dyed with madder, a hood thrown back on the shoulders, and
+    /// nothing in the hands: out on some errand of the household's own.
+    static func householderModel(_ name: String) -> Model {
+        let f = frame()
+        var o = Outfit()
+        o.tunic = Palette.madder
+        o.sleeves = Palette.linen
+        o.skirt = (Palette.madder, .plain, 0.22)
+        o.belt = nil
+        return Figures.model(name, f, gait(householder)) { b in
+            Person.body(&b, f, o)
+            b.with(part: Limb.torso) {
+                $0.rock(center: Vec3(0, f.shoulder + 0.01, -0.075), size: Vec3(0.1, 0.055, 0.05), rings: 2, sides: 5, jitter: 0.08,
+                        seed: 11, color: Palette.weld)
+            }
+            band(&b, f)
+        }
+    }
+
+    /// A kerchief and an apron over the wool, and a pail filled at the well
+    /// hanging by its bail from the left hand.
+    static func waterCarrierModel(_ name: String) -> Model {
+        var f = frame()
+        let hook = Vec3(f.shoulderX, f.grip - 0.02, 0.05)
+        f.extraPivot = hook
+        var o = Outfit()
+        o.tunic = Palette.seaWool
+        o.sleeves = Palette.wool
+        o.skirt = (Palette.wool, .plain, 0.2)
+        o.head = .cap(Palette.linen)
+        return Figures.model(name, f, gait(waterCarrier)) { b in
+            Person.body(&b, f, o)
+            b.with(part: Limb.hips) {
+                $0.box(center: Vec3(0, f.waist - 0.11, 0.09), size: Vec3(0.17, 0.22, 0.012), color: Palette.linen)
+            }
+            b.with(part: Limb.extra) {
+                // The bail, then the pail's staves, bound with iron.
+                $0.beam(from: hook, to: hook - Vec3(0, 0.07, 0), width: 0.01, color: Palette.iron)
+                $0.place(.translation(hook - Vec3(0, 0.21, 0))) {
+                    $0.lathe([(0.058, 0), (0.072, 0.14)], sides: 7, color: Palette.timberPale)
+                    $0.with(material: .metal) {
+                        $0.lathe([(0.061, 0.025), (0.063, 0.04)], sides: 7, color: Palette.iron)
+                        $0.lathe([(0.069, 0.11), (0.071, 0.125)], sides: 7, color: Palette.iron)
+                    }
+                }
+            }
+            band(&b, f)
+        }
+    }
+
+    /// A long robe of dark wool, a hood over grey hair, and a crooked stick
+    /// to lean on as they go.
+    static func elderModel(_ name: String) -> Model {
+        let f = frame(size: elderSize)
+        var o = Outfit()
+        o.tunic = Palette.woolDark
+        o.sleeves = Palette.woolDark
+        o.skirt = (Palette.woolDark, .plain, 0.1)
+        o.head = .hood(Palette.wool, .plain)
+        o.hair = Palette.ash
+        return Figures.model(name, f, gait(elder)) { b in
+            Person.body(&b, f, o)
+            let x = f.handR.x
+            b.with(part: Limb.heldR) {
+                $0.limb(from: Vec3(x, 0.02, 0.03), to: Vec3(x, f.grip + 0.02, 0), radius: 0.017, sides: 4, color: Palette.bark)
+                $0.limb(from: Vec3(x, f.grip + 0.02, 0), to: Vec3(x, f.grip + 0.06, 0.035), radius: 0.016, sides: 4, color: Palette.bark)
+            }
+            band(&b, f)
+        }
+    }
+
+    /// A child of the house in a smock dyed with weld, bare-headed and
+    /// empty-handed, at their heels.
+    static func childModel(_ name: String) -> Model {
+        var f = frame(size: childSize)
+        f.headRadius = 0.092
+        var o = Outfit()
+        o.tunic = Palette.weld
+        o.sleeves = Palette.weld
+        o.skirt = (Palette.weld, .plain, 0.3)
+        o.belt = nil
+        return Figures.model(name, f, gait(child)) { b in
+            Person.body(&b, f, o)
+            band(&b, f)
+        }
+    }
 }
 
 extension ModelKey {
@@ -185,5 +288,11 @@ extension ModelKey {
         case .saltworks: return .folk(variant: Folk.salter)
         default: return .folk(variant: Folk.porter)
         }
+    }
+
+    /// One of a town's folk out about its lanes, chosen by a roll from 0 to
+    /// 1: most often a householder, then a water-carrier, an elder, a child.
+    public static func folk(ofHome roll: Float) -> ModelKey {
+        .folk(variant: roll < 0.4 ? Folk.householder : roll < 0.65 ? Folk.waterCarrier : roll < 0.85 ? Folk.elder : Folk.child)
     }
 }
