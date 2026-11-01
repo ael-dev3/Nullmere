@@ -881,6 +881,35 @@ public final class WorldStage: @unchecked Sendable {
         0.32 + 0.016 * Float(min(max(ranks, 1), 30))
     }
 
+    /// How high over a hold's heart its allies' help lights circle, and how
+    /// wide.
+    public static let helpHeight: Float = 1.15
+    public static let helpRadius: Float = 0.28
+
+    /// The help a hold's allies have given its work being raised, its
+    /// muster and its House's study, as lights circling over its keep, one
+    /// for each ally that helped, turning slowly. A House sees only its own
+    /// holds' and its allies' help: the realm tells no one else of it.
+    public func helpLights(_ sights: [HoldSight], time: Float) -> [ModelBatch] {
+        var placed: [(ModelKey, ModelInstance)] = []
+        for sight in sights {
+            let helpers = Set((sight.hold.project?.helpers ?? []) + (sight.hold.training?.helpers ?? []))
+            guard !helpers.isEmpty else { continue }
+            let centre = Relief.centre(of: sight.hold.position)
+            let y = ground(atX: centre.x, z: centre.z) + WorldStage.helpHeight
+            let hex = SIMD2(Int32(sight.hold.position.q), Int32(sight.hold.position.r))
+            for (index, _) in helpers.sorted().enumerated() {
+                let angle = time * 0.5 + Float(index) / Float(helpers.count) * 2 * .pi
+                let bob = 0.03 * Float(sin(Double(time * 1.7 + Float(index))))
+                let at = Vec3(centre.x + WorldStage.helpRadius * Float(sin(Double(angle))), y + bob,
+                              centre.z + WorldStage.helpRadius * Float(cos(Double(angle))))
+                placed.append((.helpLight, ModelInstance(model: .translation(at) * .rotationY(angle), colour: sight.colour,
+                                                         phase: Float(index) * 0.7, hex: hex)))
+            }
+        }
+        return WorldStage.batches(placed)
+    }
+
     // MARK: What flies
 
     /// The veil of the Still about a hold: six banks of low mist ringing

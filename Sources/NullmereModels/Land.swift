@@ -1181,3 +1181,18 @@ extension Land {
         return Model(name: name, mesh: b.mesh)
     }
 }
+
+extension Land {
+    /// One ally's help over a hold: a small lantern of light, a glowing
+    /// lozenge in a thin ring of gold.
+    static func helpLight(name: String) -> Model {
+        var b = MeshBuilder()
+        b.with(material: .glow) {
+            $0.lathe([(0.0, -0.05), (0.03, 0.0), (0.0, 0.05)], sides: 6, color: Vec3(1.0, 0.86, 0.55))
+        }
+        b.with(material: .metal) {
+            $0.tube([(0.042, -0.004), (0.042, 0.004)], sides: 10, color: Palette.gold)
+        }
+        return Model(name: name, mesh: b.mesh)
+    }
+}

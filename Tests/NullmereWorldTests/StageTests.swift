@@ -393,6 +393,33 @@ final class StageTests: XCTestCase {
         XCTAssertLessThan(WorldStage.sigilScale(ranks: 1), WorldStage.sigilScale(ranks: 15))
     }
 
+    /// Each ally that helped a hold's work or muster is a light circling
+    /// over its keep, each once however much it helped; a hold unhelped
+    /// has none.
+    func testHelpCirclesOverTheHoldHelped() throws {
+        let stage = stage()
+        var hold = try XCTUnwrap(Self.state.holds.first)
+        hold.project = nil
+        hold.training = nil
+        XCTAssertTrue(stage.helpLights([HoldSight(hold: hold, colour: Vec4(1, 1, 1, 1))], time: 0).isEmpty)
+        var raised = hold
+        var project = Hold.Project(kind: .granary, targetLevel: 2, watchesLeft: 3)
+        project.helpers = [2, 4]
+        raised.project = project
+        var training = Hold.Training(kind: .spear, watchesLeft: 2)
+        training.helpers = [4, 5]
+        raised.training = training
+        let lights = stage.helpLights([HoldSight(hold: raised, colour: Vec4(1, 1, 1, 1))], time: 2).flatMap(\.instances)
+        XCTAssertEqual(lights.count, 3, "Each ally once")
+        let centre = Relief.centre(of: raised.position)
+        for light in lights {
+            let off = Vec3(light.model.c3.x - centre.x, 0, light.model.c3.z - centre.z)
+            XCTAssertEqual(off.length, WorldStage.helpRadius, accuracy: 1e-3, "Circling the keep")
+        }
+        let later = stage.helpLights([HoldSight(hold: raised, colour: Vec4(1, 1, 1, 1))], time: 3).flatMap(\.instances)
+        XCTAssertNotEqual(later.first?.model.c3.x, lights.first?.model.c3.x, "Turning")
+    }
+
     func testHallsStandInTheirAlliancesColoursRisingInTheirScaffolds() throws {
         let stage = stage()
         let hexes = Array(Self.state.map.hexes.filter { hex in

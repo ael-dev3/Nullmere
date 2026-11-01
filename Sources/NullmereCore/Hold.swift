@@ -10,6 +10,13 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
         public var watchesLeft: Int
         /// The allied Houses that have helped it, if any.
         public var helpers: [Int]? = nil
+
+        public init(kind: BuildingKind, targetLevel: Int, watchesLeft: Int, helpers: [Int]? = nil) {
+            self.kind = kind
+            self.targetLevel = targetLevel
+            self.watchesLeft = watchesLeft
+            self.helpers = helpers
+        }
     }
 
     public struct Training: Codable, Equatable, Sendable {

@@ -96,6 +96,9 @@ extension GameSession {
         }
         let shown = sights.filter { inView($0.hold.position, within: GameSession.holdReach) }
         let (holds, hearths) = stage.holds(shown, time: t, into: &frame)
+        // The help allies have given the holds' works and musters, circling
+        // over their keeps.
+        let help = stage.helpLights(shown, time: t)
         // Their townsfolk about their works, in sight and in full motion,
         // the rest of their folk out about the lanes as the view comes close, and
         // carts on the ways between them.
@@ -179,7 +182,7 @@ extension GameSession {
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
         frame.fixedRegions = stage.furnitureRegions
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + companies + flights
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + help + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
                                                      time: time)

@@ -57,6 +57,9 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// the ground beneath it as its company marches: 0 steel, 1 ward,
     /// 2 road.
     case talentSigil(tree: Int)
+    /// One ally's help given to a hold's work or muster: a small lantern
+    /// of light circling over its keep, one for each that helped.
+    case helpLight
     /// An alliance's hall, its roof, cone and banners in the alliance's
     /// colour.
     case allianceHall
@@ -95,6 +98,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .rallyCamp: return "rally camp"
         case .hostBanner: return "host banner"
         case .talentSigil(let tree): return "talent sigil \(tree)"
+        case .helpLight: return "help light"
         case .allianceHall: return "alliance hall"
         case .storehouse: return "storehouse"
         case .yard(let resource): return "\(resource.rawValue) yard"
@@ -142,7 +146,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .study(let level): return .study(level: clamp(level, ModelKey.studyLevels))
         case .folk(let variant): return .folk(variant: (variant % Folk.variants + Folk.variants) % Folk.variants)
         case .talentSigil(let tree): return .talentSigil(tree: min(max(tree, 0), 2))
-        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .allianceHall, .storehouse,
+        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .helpLight, .allianceHall, .storehouse,
              .yard, .signature, .town:
             return self
         }
@@ -161,7 +165,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .furnishing, .prop, .town: return 300
         case .keep, .keepOf, .allianceHall: return 4500
         case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .gatehold, .standard, .rallyCamp, .storehouse, .yard: return 3000
-        case .hostBanner, .talentSigil: return 300
+        case .hostBanner, .talentSigil, .helpLight: return 300
         }
     }
 }
@@ -308,6 +312,7 @@ public enum Library {
         keys.append(.rallyCamp)
         keys.append(.hostBanner)
         keys += (0...2).map { .talentSigil(tree: $0) }
+        keys.append(.helpLight)
         keys.append(.allianceHall)
         keys.append(.storehouse)
         keys += Resource.allCases.map { .yard($0) }
@@ -341,6 +346,7 @@ public enum Library {
         case .rallyCamp: return Land.rallyCamp(name: key.canonical.description)
         case .hostBanner: return Land.hostBanner(name: key.canonical.description)
         case .talentSigil(let tree): return Land.talentSigil(tree, name: key.canonical.description)
+        case .helpLight: return Land.helpLight(name: key.canonical.description)
         case .allianceHall: return Halls.hall(name: key.canonical.description)
         case .storehouse: return Stores.storehouse(name: key.canonical.description)
         case .yard(let resource): return Stores.yard(resource, name: key.canonical.description)

@@ -764,6 +764,8 @@ full screen at launch as chosen.
   sworn takes up the banner; an alliance with none left is no more.
   Stewards raise banners, ask, invite and answer from the fifteenth watch,
   each by its temper.
+  Each ally that has helped a hold's work or muster is a small light
+  circling over its keep, for its own House and its allies to see.
 - **Rallies.** A House of an alliance calls a rally at one of its holds with
   a Muster Hall, against a hold it has found of a House at war with it; it
   gathers for one to four watches, and the muster takes two companies and
