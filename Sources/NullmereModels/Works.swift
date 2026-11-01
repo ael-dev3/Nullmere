@@ -1906,8 +1906,25 @@ enum Works {
                 }
             }
             b.banner(at: Vec3(0.09, top + 0.05, -0.05), height: 0.24, width: 0.11, drop: 0.07, tail: true)
-            // A torch burning in its bracket by the door, near.
+            // A torch burning in its bracket by the door, near; and nearer,
+            // the fire's brushwood bound in faggots against the tower's foot,
+            // a barrel of water by the door and buckets hung beside it.
             b.fine {
+                for (index, at) in [Vec3(-0.12, 0.016, 0.05), Vec3(-0.135, 0.016, 0.0), Vec3(-0.125, 0.045, 0.025)].enumerated() {
+                    $0.place(.translation(at) * .rotationY(0.5 + Float(index) * 0.2) * .rotationZ(.pi / 2)) {
+                        $0.lathe([(0.016, -0.04), (0.018, 0), (0.016, 0.04)], sides: 5, color: Palette.straw.mix(Palette.bark, 0.35))
+                        $0.lathe([(0.0185, -0.004), (0.0185, 0.004)], sides: 5, color: Palette.timberDark)
+                    }
+                }
+                Stores.barrel(&$0, at: Vec3(0.085, 0, 0.115), turn: 0.3)
+                for x in [Float(-0.045), -0.07] {
+                    $0.with(material: .metal) {
+                        $0.beam(from: Vec3(x, 0.09, 0.108), to: Vec3(x, 0.09, 0.12), width: 0.003, color: Palette.iron)
+                    }
+                    $0.place(.translation(Vec3(x, 0.06, 0.124))) {
+                        $0.lathe([(0.009, 0), (0.012, 0.024)], sides: 6, color: Palette.leather)
+                    }
+                }
                 $0.with(material: .metal) {
                     $0.beam(from: Vec3(0.045, 0.1, 0.107), to: Vec3(0.045, 0.1, 0.13), width: 0.004, color: Palette.iron)
                 }
