@@ -844,6 +844,53 @@ enum Works {
                 b.log(from: Vec3(-0.19, 0.03 + Float(index % 2) * 0.01, z), to: Vec3(0.1, 0.03, z), radius: 0.025)
             }
             b.planks(at: Vec3(0.12, 0, 0.15), length: 0.16, layers: 4, turn: 0.3)
+            // Near: the shed's posts tied at the eaves and braced at their
+            // heads, a lantern hung over the saw; before it a sawhorse, a
+            // board half sawn on it and the handsaw left in the cut; and by
+            // the logs the beetle and wedges that split them.
+            b.fine {
+                for z in [Float(-0.1), 0.12] {
+                    $0.beam(from: Vec3(-0.17, 0.212, z), to: Vec3(0.17, 0.212, z), width: 0.012, color: Palette.timberDark)
+                    for x in [Float(-0.16), 0.16] {
+                        $0.beam(from: Vec3(x, 0.15, z), to: Vec3(x * 0.7, 0.207, z), width: 0.008, color: Palette.timberDark)
+                    }
+                }
+                $0.limb(from: Vec3(-0.08, 0.206, 0.12), to: Vec3(-0.08, 0.178, 0.12), radius: 0.0015, sides: 3, color: Palette.iron)
+                $0.with(material: .glow) {
+                    $0.place(.translation(Vec3(-0.08, 0.152, 0.12))) {
+                        $0.lathe([(0.0, 0.0), (0.011, 0.011), (0.0, 0.026)], sides: 5, color: Palette.candle)
+                    }
+                }
+                $0.place(.translation(Vec3(-0.07, 0, 0.215)) * .rotationY(0.15)) { horse in
+                    for x in [Float(-0.045), 0.045] {
+                        for z in [Float(-0.022), 0.022] {
+                            horse.limb(from: Vec3(x, 0, z), to: Vec3(x, 0.056, -z * 0.3), radius: 0.003, sides: 3, color: Palette.timber)
+                        }
+                    }
+                    horse.beam(from: Vec3(-0.06, 0.058, 0), to: Vec3(0.06, 0.058, 0), width: 0.008, color: Palette.timber)
+                    horse.box(center: Vec3(0, 0.065, 0), size: Vec3(0.15, 0.005, 0.032), color: Palette.timberPale)
+                    horse.with(material: .metal) {
+                        $0.place(.translation(Vec3(0.022, 0.08, 0)) * .rotationZ(0.35)) {
+                            $0.box(center: .zero, size: Vec3(0.046, 0.022, 0.0015), color: Palette.steel)
+                        }
+                    }
+                    horse.place(.translation(Vec3(0.047, 0.094, 0)) * .rotationZ(0.35)) {
+                        $0.box(center: .zero, size: Vec3(0.014, 0.012, 0.005), color: Palette.timberDark)
+                    }
+                }
+                $0.place(.translation(Vec3(0.165, 0, -0.18)) * .rotationY(-0.5)) { beetle in
+                    beetle.place(.translation(Vec3(0, 0.016, 0)) * .rotationZ(.pi / 2)) {
+                        $0.lathe([(0.016, -0.022), (0.016, 0.022)], sides: 6, color: Palette.timberGrey)
+                    }
+                    beetle.beam(from: Vec3(0, 0.016, 0.012), to: Vec3(0, 0.008, 0.09), width: 0.005, color: Palette.timberPale)
+                    beetle.with(material: .metal) {
+                        for (index, x) in [Float(0.036), 0.052].enumerated() {
+                            $0.box(center: Vec3(x, 0.004, 0.03 + Float(index) * 0.02), size: Vec3(0.008, 0.008, 0.022),
+                                   turn: Float(index) * 0.7, color: Palette.iron)
+                        }
+                    }
+                }
+            }
         default:
             // A saw-house, its saw driven by a great treadwheel at its side.
             let radius: Float = 0.1 + 0.015 * Float(level - 3)
