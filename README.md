@@ -1738,7 +1738,14 @@ the keeper's realm last lay on, made as it plays.
   its furnace's mouth framed in stone and its chimney coursed, capped and
   sooted, its pans' crust standing proud enough that the yard's odds and
   ends are never set down in the brine (544 to 1,104 triangles, where it
-  was 402 to 976).
+  was 402 to 976). A granary has a bushel of grain heaped by it and its
+  cat sitting watch for rats, a broom by the door from the second level
+  and from the third a steelyard on its tripod, a sack hung from its beam
+  against the weight (780 to 1,392 triangles, where it was 652 to 1,210);
+  and a wayhouse saddles on a rail by its door, the post's bags against
+  its wall with a spare wheel leaning by them, a bucket at its trough and
+  a milestone by the road, and from the third its post-birds down from
+  the cote, pecking (796 to 1,344 triangles, where it was 592 to 1,050).
 - **Only what the view reaches is drawn.** The land's furniture is kept
   on the GPU in square regions eight hexes on a side, each with the bounds
   of all it holds; each frame finds the regions inside the camera's view

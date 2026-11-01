@@ -299,6 +299,39 @@ enum Works {
             }
         }
         b.banner(at: Vec3(-0.17, height + 0.06, -0.11), height: 0.12, width: 0.05, drop: 0.07)
+        // Near, the post-house's ways: saddles on a rail by the door, the
+        // post's bags against the wall and a spare wheel leaning by them, a
+        // bucket at the trough and a milestone by the road; from the
+        // third, the post-birds down from their cote, pecking.
+        b.fine { near in
+            for x in [Float(-0.025), 0.035] {
+                near.limb(from: Vec3(x, 0, -0.02), to: Vec3(x, 0.05, -0.02), radius: 0.004, color: Palette.timberDark)
+            }
+            near.beam(from: Vec3(-0.03, 0.05, -0.02), to: Vec3(0.04, 0.05, -0.02), width: 0.006, color: Palette.timber)
+            for x in [Float(-0.008), 0.018] {
+                near.box(center: Vec3(x, 0.056, -0.02), size: Vec3(0.02, 0.012, 0.03), color: Palette.leatherDark)
+                near.box(center: Vec3(x, 0.046, -0.004), size: Vec3(0.018, 0.016, 0.003), color: Palette.leather)
+            }
+            for (index, at) in [Vec3(-0.1, 0, -0.022), Vec3(-0.118, 0, -0.012)].enumerated() {
+                near.sack(at: at, size: 0.014, seed: UInt32(60 + index), color: Palette.leather)
+            }
+            near.place(.translation(Vec3(-0.168, 0.033, -0.028)) * .rotationX(-0.22) * .rotationY(.pi / 2)) {
+                $0.wheel(center: .zero, radius: 0.032, width: 0.008, spokes: 3, color: Palette.timber, rim: Palette.timberDark)
+            }
+            near.place(.translation(Vec3(0.15, 0, 0.125))) {
+                $0.lathe([(0.011, 0), (0.014, 0.022)], sides: 6, color: Palette.timberDark)
+            }
+            near.box(center: Vec3(0.24, 0.0175, 0.17), size: Vec3(0.022, 0.035, 0.014), color: Palette.stonePale)
+            near.limb(from: Vec3(0.24, 0.035, 0.163), to: Vec3(0.24, 0.035, 0.177), radius: 0.011, sides: 6, color: Palette.stonePale)
+            if stone {
+                for (index, at) in [Vec3(-0.15, 0, 0.1), Vec3(-0.128, 0, 0.128), Vec3(-0.162, 0, 0.138)].enumerated() {
+                    let facing = Float(index) * 2.1 + 0.4
+                    let ahead = Vec3(Float(cos(Double(facing))), 0, -Float(sin(Double(facing))))
+                    near.sphere(center: at + Vec3(0, 0.006, 0), radius: 0.006, rings: 3, sides: 5, color: Palette.stoneWhite, squash: 0.8)
+                    near.sphere(center: at + ahead * 0.006 + Vec3(0, 0.0105, 0), radius: 0.0038, rings: 2, sides: 5, color: Palette.stoneWhite)
+                }
+            }
+        }
         return model(name, b)
     }
 
@@ -625,6 +658,58 @@ enum Works {
             b.limb(from: Vec3(0.27, 0.3, -0.08), to: Vec3(0.27, 0.18, -0.08), radius: 0.003, sides: 3, color: Palette.linen)
             b.sack(at: Vec3(0.27, 0.12, -0.08), size: 0.03, seed: 9)
             b.banner(at: Vec3(0, 0.38, -0.08), height: 0.22, width: 0.14, drop: 0.09)
+            b.door(Vec3(0, 0.08, 0.022), width: 0.07, height: 0.13, facing: 0)
+        }
+        // Near, the granary's keeping: a bushel of grain heaped at every
+        // level and its cat watching for rats; from the second a broom
+        // by the door; from the third a steelyard on its tripod weighing a
+        // sack against its weight.
+        let near: (bushel: Vec3, cat: Vec3, broom: Vec3?, steelyard: Vec3?)
+        switch level {
+        case 1: near = (Vec3(-0.12, 0, 0.16), Vec3(-0.05, 0, 0.19), nil, nil)
+        case 2: near = (Vec3(0.09, 0, 0.13), Vec3(-0.03, 0, 0.11), Vec3(0.052, 0, 0.09), nil)
+        case 3: near = (Vec3(-0.1, 0, 0.15), Vec3(-0.05, 0, 0.1), Vec3(0.0, 0, 0.09), Vec3(0.07, 0, 0.21))
+        case 4: near = (Vec3(0.09, 0, 0.1), Vec3(0.0, 0, 0.06), Vec3(0.05, 0, 0.045), Vec3(-0.06, 0, 0.17))
+        default: near = (Vec3(0.09, 0, 0.07), Vec3(0.0, 0, 0.045), nil, Vec3(-0.08, 0, 0.07))
+        }
+        b.fine { fine in
+            fine.place(.translation(near.bushel)) {
+                $0.lathe([(0.013, 0), (0.017, 0.026)], sides: 7, color: Palette.straw)
+                $0.lathe([(0.016, 0.024), (0, 0.036)], sides: 7, color: Palette.grain)
+            }
+            // The cat, sitting, its tail curled round its feet.
+            let fur = Palette.fur.mix(Palette.madder, 0.35)
+            fine.sphere(center: near.cat + Vec3(0, 0.011, 0), radius: 0.01, rings: 3, sides: 6, color: fur, squash: 1.25)
+            fine.sphere(center: near.cat + Vec3(0, 0.028, 0.004), radius: 0.0075, rings: 3, sides: 6, color: fur)
+            for x in [Float(-0.004), 0.004] {
+                fine.place(.translation(near.cat + Vec3(x, 0.033, 0.003))) {
+                    $0.cone(sides: 3, radius: 0.0028, to: 0.007, color: fur)
+                }
+            }
+            fine.limb(from: near.cat + Vec3(-0.008, 0.002, -0.004), to: near.cat + Vec3(-0.004, 0.002, 0.012), radius: 0.0022,
+                      color: fur)
+            if let broom = near.broom {
+                fine.limb(from: broom + Vec3(0, 0.018, 0), to: broom + Vec3(-0.002, 0.11, -0.012), radius: 0.0025, color: Palette.timberPale)
+                fine.place(.translation(broom)) {
+                    $0.lathe([(0.012, 0), (0.004, 0.022)], sides: 5, color: Palette.straw)
+                }
+            }
+            if let foot = near.steelyard {
+                let apex = foot + Vec3(0, 0.13, 0)
+                // Its legs spread about the sack, which hangs between two.
+                for index in 0..<3 {
+                    let angle = Float(index) * 2 * .pi / 3
+                    fine.limb(from: foot + MeshBuilder.ring(0.032, 0, angle), to: apex, radius: 0.0035, color: Palette.timber)
+                }
+                fine.with(material: .metal) {
+                    $0.limb(from: apex, to: apex - Vec3(0, 0.024, 0), radius: 0.0015, sides: 3, color: Palette.iron)
+                    $0.beam(from: apex + Vec3(-0.03, -0.026, 0), to: apex + Vec3(0.042, -0.026, 0), width: 0.003, color: Palette.iron)
+                    $0.box(center: apex + Vec3(0.036, -0.036, 0), size: Vec3(0.01, 0.014, 0.01), color: Palette.iron)
+                }
+                fine.limb(from: apex + Vec3(-0.026, -0.026, 0), to: apex + Vec3(-0.026, -0.06, 0), radius: 0.0015, sides: 3,
+                          color: Palette.linen)
+                fine.sack(at: apex + Vec3(-0.026, -0.098, 0), size: 0.022, seed: 11)
+            }
         }
         return model(name, b)
     }
