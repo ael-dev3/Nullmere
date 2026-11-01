@@ -1669,6 +1669,44 @@ enum Works {
         Vec3(-0.15, wardHeight(level) + 0.13, -0.135)
     }
 
+    /// An infirmary's yard drawn near: until the walk's lanterns hang, a
+    /// lantern by the door; and at the first, before a chimney carries the
+    /// kettles' fire indoors, the healers' hearth in the open, a ring of
+    /// stones round its embers, a kettle on a tripod over it and a log to
+    /// sit by it.
+    static func infirmaryHearth(_ b: inout MeshBuilder, level: Int) {
+        if level <= 3 {
+            b.beam(from: Vec3(0.108, 0.13, -0.018), to: Vec3(0.108, 0.13, 0.004), width: 0.004, color: Palette.iron)
+            b.with(material: .glow) {
+                $0.place(.translation(Vec3(0.108, 0.1, 0.002))) {
+                    $0.lathe([(0.0, 0.0), (0.009, 0.009), (0.0, 0.021)], sides: 5, color: Palette.candle)
+                }
+            }
+        }
+        guard level == 1 else { return }
+        let fire = Vec3(0.16, 0, 0.16)
+        for index in 0..<7 {
+            let at = fire + MeshBuilder.ring(0.034, 0.006, Float(index) * 2 * .pi / 7)
+            b.rock(center: at, size: Vec3(0.011, 0.008, 0.01), rings: 2, sides: 4, jitter: 0.25, seed: UInt32(91 + index), color: Palette.stoneDark)
+        }
+        b.with(material: .glow) {
+            $0.place(.translation(fire)) {
+                $0.lathe([(0.0, 0.002), (0.024, 0.004), (0.0, 0.014)], sides: 6, color: Palette.fire)
+            }
+        }
+        for index in 0..<3 {
+            let foot = fire + MeshBuilder.ring(0.05, 0, Float(index) * 2 * .pi / 3 + 0.4)
+            b.limb(from: foot, to: fire + Vec3(0, 0.1, 0), radius: 0.0028, sides: 3, color: Palette.timberDark)
+        }
+        b.limb(from: fire + Vec3(0, 0.1, 0), to: fire + Vec3(0, 0.068, 0), radius: 0.0012, sides: 3, color: Palette.iron)
+        b.with(material: .metal) {
+            $0.place(.translation(fire + Vec3(0, 0.038, 0))) {
+                $0.lathe([(0.008, 0), (0.016, 0.01), (0.015, 0.024), (0.009, 0.03)], sides: 7, color: Palette.iron)
+            }
+        }
+        b.log(from: Vec3(0.09, 0.016, 0.225), to: Vec3(0.2, 0.016, 0.245), radius: 0.016)
+    }
+
     /// A long, low ward where the fallen lie, lamplit, with its herb garden
     /// before it: thatch and timber at first, then a footing of stone and a
     /// chimney for the kettles, linen drying on a line; from the third, a
@@ -1783,6 +1821,7 @@ enum Works {
                 }
             }
         }
+        b.fine { infirmaryHearth(&$0, level: level) }
         // Near, the healers' work: a litter leaning by the door, on which
         // the fallen were carried home, and a basket of herbs cut from the
         // garden; from the second level bundles of herbs hung to dry and a
