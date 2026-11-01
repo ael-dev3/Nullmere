@@ -36,15 +36,22 @@ extension GameState {
     /// hold whose keepsake it bears.
     public var drownedWalking: [Wild] { wildsStanding.filter { $0.keepsake != nil } }
 
+    /// Whether the moon is eaten now: every keeper's view knows it, though
+    /// it sees only the Drowned in its sight.
+    public var isMoonEaten: Bool { eclipse != nil }
+
     /// As the watch turns: at an eclipse, the Drowned rise from the drowned
     /// age's greatest holds, on their ground or the nearest open ground
-    /// within two tiles; and those an eclipse raised sink again once they
-    /// have walked their watches.
+    /// within two tiles; and once they have walked their watches the moon
+    /// comes back, those still walking sinking again, though all were laid
+    /// to rest.
     mutating func turnTheEclipse() -> [GameEvent] {
         var events: [GameEvent] = []
-        if let walking = wilds, walking.contains(where: { $0.keepsake != nil && watch - $0.raised >= GameState.eclipseLasts }) {
-            let sinking = walking.filter { $0.keepsake != nil && watch - $0.raised >= GameState.eclipseLasts }
-            wilds = walking.filter { wild in !sinking.contains { $0.id == wild.id } }
+        let back = eclipse.map { watch - $0 >= GameState.eclipseLasts } ?? false
+        let sinking = wildsStanding.filter { $0.keepsake != nil && watch - $0.raised >= GameState.eclipseLasts }
+        if !sinking.isEmpty { wilds = wilds?.filter { wild in !sinking.contains { $0.id == wild.id } } }
+        if back || !sinking.isEmpty {
+            eclipse = nil
             events.append(.eclipseEnded(sank: sinking.count))
         }
         guard GameState.isEclipse(at: watch), !drownedHolds.isEmpty else { return events }
@@ -61,6 +68,7 @@ extension GameState {
             risen += 1
         }
         guard risen > 0 else { return events }
+        eclipse = watch
         record(.happening, [], "The moon is eaten. From the drowned holds of the age before, \(risen == 1 ? "a company" : "\(risen) companies") "
                + "of the Drowned rise, each bearing a keepsake of its hold, until the moon comes back.")
         return events + [.eclipse(risen: risen)]

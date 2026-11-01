@@ -151,7 +151,9 @@ final class FrontierAppTests: XCTestCase {
         let session = GameSession(state: state, store: LocalStore(directory: FileManager.default.temporaryDirectory
             .appendingPathComponent("eclipse-\(UUID().uuidString)")))
         XCTAssertNotEqual(session.sceneFrame(at: 1).weather, .eclipse)
+        // The moon eaten, though none of the Drowned is in the keeper's sight.
         state.wilds = [drowned]
+        state.eclipse = state.watch
         let eaten = GameSession(state: state, store: LocalStore(directory: FileManager.default.temporaryDirectory
             .appendingPathComponent("eclipse-\(UUID().uuidString)")))
         XCTAssertEqual(eaten.sceneFrame(at: 1).weather, .eclipse)

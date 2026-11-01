@@ -56,6 +56,11 @@ final class EclipseTests: XCTestCase {
             XCTAssertLessThanOrEqual(wild.position.distance(to: hold.position), 2, "Risen where its hold stood")
         }
         XCTAssertTrue(state.chronicle.last?.text.hasPrefix("The moon is eaten.") == true)
+        // Every keeper knows the moon is eaten, though it sees only the
+        // Drowned in its sight.
+        XCTAssertEqual(state.eclipse, GameState.firstEclipse)
+        for house in state.houses.indices { XCTAssertTrue(state.view(for: house).isMoonEaten, "House \(house)") }
+        XCTAssertTrue(state.houses.indices.contains { state.view(for: $0).drownedWalking.count < walking.count }, "Some see fewer of them")
         XCTAssertEqual(state.tidings(of: events[0], for: me)?.tone, .bad)
         XCTAssertTrue(state.tidings(of: events[0], for: me)?.text.contains("6 companies of the Drowned") == true)
         for house in state.houses.indices { XCTAssertEqual(state.events(events, heardBy: house), events, "Every House sees the moon eaten") }
@@ -67,6 +72,7 @@ final class EclipseTests: XCTestCase {
         // Kept with the world.
         let kept = try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(state))
         XCTAssertEqual(kept.drownedWalking, state.drownedWalking)
+        XCTAssertEqual(kept.eclipse, state.eclipse)
 
         // They walk their watches, then sink.
         state.watch += GameState.eclipseLasts - 1
@@ -75,6 +81,7 @@ final class EclipseTests: XCTestCase {
         let ended = state.turnTheEclipse()
         XCTAssertEqual(ended, [.eclipseEnded(sank: GameState.eclipseRisen)])
         XCTAssertTrue(state.drownedWalking.isEmpty)
+        XCTAssertFalse(state.isMoonEaten)
         XCTAssertEqual(state.tidings(of: ended[0], for: me)?.text, "The moon comes back, and 6 of the Drowned sink again.")
         XCTAssertEqual(state.tidings(of: GameEvent.eclipseEnded(sank: 0), for: me)?.text, "The moon comes back.")
         XCTAssertEqual(state.tidings(of: GameEvent.eclipseEnded(sank: 1), for: me)?.text, "The moon comes back, and the last of the Drowned sinks again.")
@@ -107,6 +114,22 @@ final class EclipseTests: XCTestCase {
                        "\(state.houses[me].title) lays the drowned of \(try XCTUnwrap(drowned.keepsake)) to rest, and takes up its keepsake.")
     }
 
+    /// Though every one of the Drowned was laid to rest, the moon comes
+    /// back in its time.
+    func testTheMoonComesBackThoughAllWereLaidToRest() throws {
+        var state = try drownedWorld("all laid to rest")
+        state.watch = GameState.firstEclipse
+        XCTAssertEqual(state.turnTheEclipse(), [.eclipse(risen: GameState.eclipseRisen)])
+        state.wilds = state.wildsStanding.filter { $0.keepsake == nil }
+        state.watch += 1
+        XCTAssertEqual(state.turnTheEclipse(), [])
+        XCTAssertTrue(state.isMoonEaten, "Still eaten, with none walking")
+        state.watch = GameState.firstEclipse + GameState.eclipseLasts
+        XCTAssertEqual(state.turnTheEclipse(), [.eclipseEnded(sank: 0)])
+        XCTAssertFalse(state.isMoonEaten)
+        XCTAssertEqual(state.turnTheEclipse(), [], "Back once")
+    }
+
     /// A first age has nothing drowned beneath it: no eclipse raises
     /// anything, so a world of stewards goes through its sixtieth watch as
     /// it always did.
@@ -119,5 +142,6 @@ final class EclipseTests: XCTestCase {
         for _ in 0..<GameState.firstEclipse { _ = stewards.endWatch() }
         XCTAssertTrue(stewards.wildsStanding.allSatisfy { $0.keepsake == nil })
         XCTAssertFalse(stewards.chronicle.contains { $0.text.hasPrefix("The moon is eaten") })
+        XCTAssertNil(stewards.eclipse)
     }
 }

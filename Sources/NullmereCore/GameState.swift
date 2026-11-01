@@ -109,6 +109,9 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The riddles the lake has set keepers' Houses, one each at most;
     /// absent before the first half moon with a keeper and a past to ask of.
     public internal(set) var riddles: [Riddle]?
+    /// The watch the moon was last eaten, while the Drowned of that eclipse
+    /// walk; absent otherwise, and so in every first age.
+    public internal(set) var eclipse: Int?
     /// What every keeper knows of the land from the first watch: its
     /// streams and regions, and the crests the lake gave its Houses. Absent
     /// in a world without streams, and in saves from before them.
