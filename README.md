@@ -1798,7 +1798,18 @@ the keeper's realm last lay on, made as it plays.
   hide banner and antlers over the other, a horned skull over its gate
   and wood by the fire (859, from 495); an alliance's standard guy ropes,
   its banner bound to its crossbar, shields in the alliance's colour
-  against its cairn and spears crossed behind it (468, from 230).
+  against its cairn and spears crossed behind it (468, from 230). And
+  the land's sites where companies gather: the grain field a scarecrow
+  between its rows, a handcart of sheaves with a jug by it, a scythe
+  against a stook and crows come for the grain; the stand of firs the
+  stubs of the branches lopped from its felled trunk and their greenery
+  heaped, chips about its stumps, a sawhorse with a log in it and a saw
+  in its cut over the sawdust, and a maul by the pile; the outcrop the
+  chisel's marks down its cut faces, wedges along a split with the hammer
+  that drove them, a pick, rubble, a bucket, and a rope and a bar on its
+  sledge; and the moonsalt pans baskets of salt, a wheelbarrow, a shovel
+  standing in a heap, sacks and a pusher laid across a pan (531 to 1,132
+  triangles, from 285 to 800).
 - **Only what the view reaches is drawn.** The land's furniture is kept
   on the GPU in square regions eight hexes on a side, each with the bounds
   of all it holds; each frame finds the regions inside the camera's view

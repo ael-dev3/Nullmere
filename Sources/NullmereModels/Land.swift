@@ -752,7 +752,195 @@ enum Land {
         case .stone: outcrop(&b)
         case .moonsalt: moonsaltPan(&b)
         }
+        b.fine { near in
+            switch resource {
+            case .grain: grainNear(&near)
+            case .timber: timberNear(&near)
+            case .stone: outcropNear(&near)
+            case .moonsalt: saltPanNear(&near)
+            }
+        }
         return Model(name: name, mesh: b.mesh)
+    }
+
+    /// A grain field drawn near: a scarecrow between its rows, a handcart of
+    /// sheaves at its edge with a jug by it, a scythe against a stook, and
+    /// crows come for the grain.
+    static func grainNear(_ b: inout MeshBuilder) {
+        // The scarecrow, a sack for its head and a hat on that.
+        let post = Vec3(0.1, 0, 0)
+        b.limb(from: post, to: post + Vec3(0, 0.3, 0), radius: 0.006, color: Palette.timberDark)
+        b.limb(from: post + Vec3(-0.07, 0.245, 0), to: post + Vec3(0.07, 0.245, 0), radius: 0.005, color: Palette.timberDark)
+        b.box(center: post + Vec3(0, 0.21, 0), size: Vec3(0.06, 0.075, 0.028), color: Palette.woolDark)
+        for side in [Float(-1), 1] {
+            b.limb(from: post + Vec3(side * 0.028, 0.243, 0), to: post + Vec3(side * 0.062, 0.238, 0), radius: 0.011, sides: 5,
+                   color: Palette.woolDark)
+            b.place(.translation(post + Vec3(side * 0.062, 0.238, 0)) * .rotationZ(-side * .pi / 2)) {
+                $0.cone(sides: 4, radius: 0.009, to: 0.02, color: Palette.straw)
+            }
+        }
+        b.sphere(center: post + Vec3(0, 0.272, 0), radius: 0.02, rings: 3, sides: 6, color: Palette.linen)
+        b.place(.translation(post + Vec3(0, 0.286, 0))) {
+            $0.lathe([(0.034, 0), (0.034, 0.004), (0.016, 0.006), (0.014, 0.03), (0.0, 0.032)], sides: 7, color: Palette.leatherDark)
+        }
+        // The handcart, turned along the field's edge, its handles west.
+        b.place(.translation(Vec3(-0.05, 0, 0.51)) * .rotationY(.pi / 2)) {
+            $0.box(min: Vec3(-0.06, 0.055, -0.07), max: Vec3(0.06, 0.085, 0.07), color: Palette.timberPale)
+            for x in [Float(-0.075), 0.075] {
+                $0.wheel(center: Vec3(x, 0.045, 0), radius: 0.045, width: 0.012, spokes: 3, color: Palette.timber, rim: Palette.timberDark)
+                $0.limb(from: Vec3(x * 0.6, 0.075, -0.07), to: Vec3(x * 0.6, 0.04, -0.17), radius: 0.005, color: Palette.timberDark)
+            }
+            $0.limb(from: Vec3(0, 0.06, 0.065), to: Vec3(0, 0, 0.07), radius: 0.005, color: Palette.timberDark)
+            for (index, x) in [Float(-0.035), 0.0, 0.035].enumerated() {
+                let y: Float = index == 1 ? 0.125 : 0.1
+                $0.beam(from: Vec3(x, y, -0.06), to: Vec3(x, y, 0.06), width: 0.034, depth: 0.03, color: Palette.straw)
+            }
+        }
+        b.place(.translation(Vec3(0.08, 0, 0.53))) {
+            $0.lathe([(0.0, 0.0), (0.018, 0.002), (0.022, 0.025), (0.012, 0.045), (0.008, 0.055), (0.01, 0.06), (0.0, 0.059)], sides: 7,
+                     color: Palette.earth.mix(Palette.madder, 0.3))
+        }
+        // A scythe against a stook, its blade by the stubble.
+        b.limb(from: Vec3(0.36, 0.01, 0.56), to: Vec3(0.43, 0.24, 0.5), radius: 0.004, color: Palette.timber)
+        for t in [Float(0.35), 0.7] {
+            let at = Vec3(0.36, 0.01, 0.56) + (Vec3(0.43, 0.24, 0.5) - Vec3(0.36, 0.01, 0.56)) * t
+            b.limb(from: at, to: at + Vec3(0.0, 0.006, 0.025), radius: 0.003, sides: 3, color: Palette.timber)
+        }
+        b.with(material: .metal) {
+            $0.sheet([Vec3(0.36, 0.014, 0.56), Vec3(0.3, 0.012, 0.552), Vec3(0.26, 0.008, 0.535), Vec3(0.31, 0.018, 0.559)],
+                     normal: Vec3(0.05, 1, 0.2), thickness: 0.002, color: Palette.steel)
+        }
+        // Crows come for the grain.
+        Lairs.raven(&b, at: Vec3(-0.3, 0.09, -0.165), facing: 0.8, seed: 281)
+        Lairs.raven(&b, at: Vec3(0.33, 0.004, 0.47), facing: 2.6, seed: 282)
+    }
+
+    /// A stand of firs drawn near: the stubs of branches lopped from its
+    /// felled trunk and their greenery heaped, chips about its stumps, a
+    /// sawhorse with a log in it and a saw in its cut, sawdust under it,
+    /// and a maul by the log pile.
+    static func timberNear(_ b: inout MeshBuilder) {
+        let from = Vec3(-0.05, 0.03, 0.12), to = Vec3(0.38, 0.03, 0.42)
+        for (index, t) in [Float(0.2), 0.42, 0.6, 0.8].enumerated() {
+            let flank: Float = index % 2 == 0 ? 1 : -1
+            let at = from + (to - from) * t
+            let out = (to - from).normalized.cross(.up) * (0.028 * flank) + Vec3(0, 0.012, 0)
+            b.limb(from: at, to: at + out * 1.6, radius: 0.007, topRadius: 0.006, sides: 4, color: Palette.bark)
+        }
+        for (index, angle) in [Float(0.2), 1.4, 2.5, 3.5, 4.6].enumerated() {
+            let at = Vec3(0.15, 0.008, -0.11) + MeshBuilder.ring(0.012 * Float(index % 3), 0, angle)
+            b.limb(from: at, to: at + MeshBuilder.ring(0.07, 0.03, angle), radius: 0.014, topRadius: 0.002, sides: 4,
+                   color: index % 2 == 0 ? Palette.fir : Palette.firDark)
+        }
+        for (stump, at) in [Vec3(-0.08, 0, -0.08), Vec3(0.18, 0, 0.0), Vec3(-0.22, 0, 0.22)].enumerated() {
+            for chip in 0..<6 {
+                let angle = Float(chip) * 1.05 + Float(stump) * 0.7
+                let centre = at + MeshBuilder.ring(0.055 + 0.015 * Noise.unit(Int32(chip), Int32(stump), 293), 0.003, angle)
+                let a = MeshBuilder.ring(0.008, 0, angle + 0.4), c = MeshBuilder.ring(0.006, 0, angle + 2.1)
+                b.face([centre + a, centre + c, centre - a, centre - c], outward: .up, color: Palette.timberPale)
+            }
+        }
+        // The sawhorse and its log, the saw standing in its cut.
+        let horse = Vec3(0.0, 0, 0.47)
+        for x in [Float(-0.05), 0.05] {
+            for z in [Float(-0.04), 0.04] {
+                b.limb(from: horse + Vec3(x, 0, z), to: horse + Vec3(x, 0.09, -z * 0.75), radius: 0.005, sides: 3, color: Palette.timber)
+            }
+        }
+        b.log(from: horse + Vec3(-0.12, 0.085, 0), to: horse + Vec3(0.13, 0.085, 0.005), radius: 0.022)
+        b.with(material: .metal) {
+            $0.sheet([horse + Vec3(0.08, 0.075, -0.06), horse + Vec3(0.08, 0.075, 0.06), horse + Vec3(0.08, 0.1, 0.06),
+                      horse + Vec3(0.08, 0.1, -0.06)], normal: Vec3(1, 0, 0), thickness: 0.002, color: Palette.steel)
+        }
+        for z in [Float(-0.075), 0.075] {
+            b.limb(from: horse + Vec3(0.08, 0.075, z), to: horse + Vec3(0.08, 0.125, z), radius: 0.005, sides: 4, color: Palette.timberDark)
+        }
+        b.place(.translation(horse)) { $0.lathe([(0.055, 0.0), (0.0, 0.012)], sides: 7, color: Palette.timberPale) }
+        // A maul by the log pile.
+        b.limb(from: Vec3(-0.38, 0.012, 0.24), to: Vec3(-0.29, 0.012, 0.245), radius: 0.005, color: Palette.timber)
+        b.with(material: .metal) {
+            $0.box(center: Vec3(-0.39, 0.016, 0.24), size: Vec3(0.02, 0.026, 0.04), color: Palette.iron)
+        }
+    }
+
+    /// An outcrop drawn near: the marks of the chisel down its cut faces,
+    /// wedges driven along a split in its lowest step with the hammer that
+    /// drove them, a pick, rubble at its foot, a bucket, and a rope coiled
+    /// and a bar on the sledge.
+    static func outcropNear(_ b: inout MeshBuilder) {
+        for step in 0..<3 {
+            let front = -0.02 - Float(step) * 0.05 + 0.0012, top = Float(step) * 0.07 + 0.06
+            let left = -0.28 + Float(step) * 0.04, right = 0.2 - Float(step) * 0.04
+            for index in 0..<5 {
+                let x = left + (right - left) * (Float(index) + 0.5) / 5 + 0.01 * (Noise.unit(Int32(index), Int32(step), 301) - 0.5)
+                b.quad(Vec3(x - 0.0015, top - 0.075, front), Vec3(x + 0.0015, top - 0.075, front), Vec3(x + 0.0015, top - 0.005, front),
+                       Vec3(x - 0.0015, top - 0.005, front), color: Palette.stone)
+            }
+        }
+        // The split along the lowest step's top, its wedges and their hammer.
+        b.quad(Vec3(-0.24, 0.0602, -0.052), Vec3(-0.24, 0.0602, -0.048), Vec3(0.16, 0.0602, -0.048), Vec3(0.16, 0.0602, -0.052),
+               color: Palette.barkBlack)
+        b.with(material: .metal) {
+            for x in [Float(-0.16), -0.06, 0.04, 0.12] {
+                $0.box(center: Vec3(x, 0.068, -0.05), size: Vec3(0.012, 0.018, 0.008), color: Palette.iron)
+            }
+            $0.box(center: Vec3(-0.3, 0.012, 0.0), size: Vec3(0.045, 0.024, 0.026), color: Palette.iron)
+            $0.place(.translation(Vec3(0.24, 0.0, 0.06)) * .rotationZ(0.5)) {
+                $0.box(center: Vec3(0, 0.15, 0), size: Vec3(0.09, 0.012, 0.012), color: Palette.iron)
+            }
+        }
+        b.limb(from: Vec3(-0.3, 0.012, 0.0), to: Vec3(-0.27, 0.11, -0.06), radius: 0.005, color: Palette.timber)
+        b.place(.translation(Vec3(0.24, 0.0, 0.06)) * .rotationZ(0.5)) {
+            $0.limb(from: .zero, to: Vec3(0, 0.15, 0), radius: 0.005, color: Palette.timber)
+        }
+        // Rubble at the face's foot, a bucket by it.
+        for (index, at) in [Vec3(-0.22, 0.01, 0.03), Vec3(-0.12, 0.01, 0.05), Vec3(0.05, 0.01, 0.04), Vec3(0.12, 0.01, 0.06)].enumerated() {
+            b.rock(center: at, size: Vec3(0.022, 0.012, 0.018), rings: 2, sides: 5, jitter: 0.25, seed: UInt32(index + 305),
+                   color: index % 2 == 0 ? Palette.stonePale : Palette.stone)
+        }
+        b.place(.translation(Vec3(0.02, 0, 0.12))) {
+            $0.lathe([(0.0, 0.0), (0.02, 0.0), (0.024, 0.04), (0.0, 0.041)], sides: 7, color: Palette.timberPale)
+            $0.with(material: .metal) { $0.tube([(0.025, 0.032), (0.025, 0.037)], sides: 7, color: Palette.iron) }
+        }
+        // A rope coiled on the sledge and a bar laid by it.
+        b.place(.translation(Vec3(0.38, 0, 0.32)) * .rotationY(0.6)) {
+            $0.place(.translation(Vec3(0.01, 0.034, 0.01))) {
+                $0.tube([(0.024, -0.007), (0.03, 0.0), (0.024, 0.007)], sides: 9, color: Palette.straw)
+            }
+            $0.with(material: .metal) {
+                $0.limb(from: Vec3(-0.035, 0.03, -0.05), to: Vec3(0.03, 0.03, -0.045), radius: 0.004, color: Palette.iron)
+            }
+        }
+    }
+
+    /// The moonsalt pans drawn near: baskets of salt, a wheelbarrow, a
+    /// shovel standing in a heap, sacks filled from it, and a pusher laid
+    /// across a pan.
+    static func saltPanNear(_ b: inout MeshBuilder) {
+        for (index, x) in [Float(0.04), 0.1].enumerated() {
+            b.place(.translation(Vec3(x, 0.004, 0.37 + 0.03 * Float(index)))) {
+                $0.lathe([(0.0, 0.0), (0.022, 0.003), (0.027, 0.035)], sides: 7, color: Palette.straw)
+                $0.with(material: .crystal) { $0.cone(sides: 6, radius: 0.024, from: 0.03, to: 0.05, color: Palette.moonsalt) }
+            }
+        }
+        b.place(.translation(Vec3(-0.25, 0.004, 0.37))) {
+            $0.lathe([(0.03, 0.03), (0.05, 0.07), (0.0, 0.07)], sides: 4, color: Palette.timber, twist: .pi / 4)
+            $0.with(material: .crystal) { $0.cone(sides: 6, radius: 0.04, from: 0.065, to: 0.085, color: Palette.moonsalt) }
+            $0.wheel(center: Vec3(0, 0.025, 0.07), radius: 0.025, width: 0.01, spokes: 2, color: Palette.timberDark)
+            for x in [Float(-0.022), 0.022] {
+                $0.limb(from: Vec3(x, 0.05, 0.06), to: Vec3(x, 0.06, -0.11), radius: 0.004, color: Palette.timberDark)
+                $0.limb(from: Vec3(x, 0.035, -0.02), to: Vec3(x, 0, -0.03), radius: 0.004, color: Palette.timberDark)
+            }
+        }
+        b.limb(from: Vec3(0.2, 0.03, 0.32), to: Vec3(0.24, 0.2, 0.36), radius: 0.004, color: Palette.timber)
+        b.with(material: .metal) {
+            $0.sheet([Vec3(0.185, 0.0, 0.31), Vec3(0.215, 0.0, 0.33), Vec3(0.21, 0.045, 0.335), Vec3(0.19, 0.045, 0.32)],
+                     normal: Vec3(0.6, 0.2, -0.7), thickness: 0.003, color: Palette.iron)
+        }
+        b.tiedSack(at: Vec3(0.3, 0.004, 0.4), size: 0.9)
+        b.tiedSack(at: Vec3(0.33, 0.004, 0.35), size: 0.8)
+        b.beam(from: Vec3(0.0, 0.035, 0.12), to: Vec3(0.11, 0.035, 0.12), width: 0.018, depth: 0.012, color: Palette.timberPale)
+        b.limb(from: Vec3(0.055, 0.04, 0.12), to: Vec3(0.12, 0.08, 0.22), radius: 0.004, color: Palette.timber)
     }
 
     static func grainField(_ b: inout MeshBuilder) {
