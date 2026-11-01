@@ -5,9 +5,10 @@ import NullmereModels
 /// The weather over the lake: what the realm's omen brings, seen in the
 /// world. A lean watch comes with cold rain; Rising Mist lies in banks on
 /// every shore; a still night is clearer than most; a moonsalt bloom
-/// brightens the moon. Otherwise the night is as ever.
+/// brightens the moon; while the moon is eaten and the drowned age walks,
+/// its light all but goes. Otherwise the night is as ever.
 public enum Weather: String, CaseIterable, Sendable {
-    case clear, rain, mist, still, bloom
+    case clear, rain, mist, still, bloom, eclipse
 
     /// The weather an omen brings.
     public static func of(_ omen: OmenKind?) -> Weather {
@@ -26,6 +27,7 @@ public enum Weather: String, CaseIterable, Sendable {
         case .mist: return 2.6
         case .rain: return 1.6
         case .still: return 0.85
+        case .eclipse: return 1.3
         case .clear, .bloom: return 1
         }
     }
@@ -37,6 +39,7 @@ public enum Weather: String, CaseIterable, Sendable {
         case .mist: return 0.75
         case .still: return 1.08
         case .bloom: return 1.06
+        case .eclipse: return 0.22
         case .clear: return 1
         }
     }
@@ -82,7 +85,7 @@ public enum Weather: String, CaseIterable, Sendable {
                 let size = 0.7 + 0.8 * Weather.hash(seed, 6.6)
                 return Mote(at: Vec3(x, y, z), size: size, light: Vec3(0.0045, 0.005, 0.0065), cover: 0.22)
             }
-        case .clear, .still, .bloom:
+        case .clear, .still, .bloom, .eclipse:
             return []
         }
     }

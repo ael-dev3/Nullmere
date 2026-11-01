@@ -548,6 +548,18 @@ as the realm will, and takes the realm's word as final.
   its teller pays the House it belied up to 30 moonsalt. A true whisper is
   never traced. A House may whisper once in five watches, and the realm
   forgets a whisper after twenty-four. Stewards whisper nothing.
+- **The Eclipse.** In an age with an age drowned beneath it, the moon is
+  eaten at the full of the sixtieth watch, and of every ninetieth after,
+  and the drowned age walks: from its greatest holds, six at most, rise
+  companies of the Drowned, each bearing a keepsake of its hold, of a
+  level as the works the hold had, on its ground or the nearest open
+  ground within two tiles. For five watches they walk the shore as the
+  wilds do, every House's foe, while the moon's light all but goes from
+  the world; struck down, each gives up its keepsake, six moonsalt for
+  each of its levels with what the Drowned carry, and the Chronicle names
+  the hold. Then the moon comes back and those still walking sink again.
+  They are not of the far country's wilds, which rise in their turn. A
+  first age has nothing drowned beneath it, and no eclipse.
 - **The server.** SpacetimeDB is the realm's authority of record: it knows
   each keeper by their identity, keeps the world, and lets no one but the
   steward write it. The steward runs the same Swift rules core the clients

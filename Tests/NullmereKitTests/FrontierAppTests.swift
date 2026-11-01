@@ -137,4 +137,23 @@ final class FrontierAppTests: XCTestCase {
         XCTAssertTrue(HoverInfo.named(gate).hasPrefix("the South-East Gate of the Crown, held by the wilds, \(gate.might) of \(gate.might) standing"))
         XCTAssertTrue(HoverInfo.named(lair).hasSuffix("only a rally's host breaks it"))
     }
+
+    /// One of the Drowned an eclipse raised is named under the pointer
+    /// with the keepsake it bears; and while they walk, the moon's light
+    /// all but goes from the world.
+    @MainActor
+    func testTheEclipseIsToldAndSeen() throws {
+        let drowned = Wild(id: 7, kind: .drowned, level: 3, position: Hex(2, 2), raised: 60, keepsake: "Dunmere")
+        XCTAssertEqual(HoverInfo.named(drowned), "The Drowned, level III, bearing a keepsake of Dunmere")
+        XCTAssertEqual(HoverInfo.named(Wild(id: 8, kind: .drowned, level: 3, position: Hex(2, 2), raised: 60)), "The Drowned, level III")
+        XCTAssertEqual(GameSession.cue(forDepth: .eclipse(risen: 3), in: nil, player: 0), .dread)
+        var state = GameState(settings: GameSettings(seedText: "an eaten moon in the app", houseCount: 4, radius: 18, keepers: 1))
+        let session = GameSession(state: state, store: LocalStore(directory: FileManager.default.temporaryDirectory
+            .appendingPathComponent("eclipse-\(UUID().uuidString)")))
+        XCTAssertNotEqual(session.sceneFrame(at: 1).weather, .eclipse)
+        state.wilds = [drowned]
+        let eaten = GameSession(state: state, store: LocalStore(directory: FileManager.default.temporaryDirectory
+            .appendingPathComponent("eclipse-\(UUID().uuidString)")))
+        XCTAssertEqual(eaten.sceneFrame(at: 1).weather, .eclipse)
+    }
 }

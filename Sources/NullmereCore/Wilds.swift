@@ -78,14 +78,18 @@ public struct Wild: Codable, Equatable, Identifiable, Sendable {
     public internal(set) var health: Int
     /// The watch it rose.
     public let raised: Int
+    /// The drowned hold whose keepsake it bears, for one of the Drowned an
+    /// eclipse raised.
+    public let keepsake: String?
 
-    public init(id: Int, kind: WildKind, level: Int, position: Hex, raised: Int) {
+    public init(id: Int, kind: WildKind, level: Int, position: Hex, raised: Int, keepsake: String? = nil) {
         self.id = id
         self.kind = kind
         self.level = min(max(level, 1), Wild.highestLevel)
         self.position = position
         self.health = 100
         self.raised = raised
+        self.keepsake = keepsake
     }
 
     public static let highestLevel = 10
@@ -159,10 +163,12 @@ extension GameState {
         for index in wilds!.indices where wilds![index].health < 100 {
             wilds![index].health = min(100, wilds![index].health + GameState.wildsMending)
         }
-        guard wilds!.count < wildsWanted else { return }
+        // The Drowned of an eclipse are not of the far country's wilds.
+        let far = { (wilds: [Wild]) in wilds.filter { $0.keepsake == nil }.count }
+        guard far(wilds!) < wildsWanted else { return }
         var random = random()
         var raised = 0
-        for _ in 0..<12 where raised < 2 && wilds!.count < wildsWanted {
+        for _ in 0..<12 where raised < 2 && far(wilds!) < wildsWanted {
             let hex = map.hex(at: random.int(below: map.count))
             guard let tile = map[hex], tile.terrain.isPassable, !tile.terrain.isWater, tile.feature == nil,
                   !isOccupied(hex), site(at: hex) == nil, shrine(at: hex) == nil else { continue }
@@ -224,9 +230,11 @@ extension GameState {
         var spoils = Stock.zero
         if wildFell {
             wilds!.remove(at: wildIndex)
-            spoils = wild.spoils
+            spoils = wild.spoils + (wild.keepsake == nil ? .zero : GameState.keepsake * wild.level)
             store(spoils, for: attacker.owner)
-            if wild.level >= GameState.notedWilds {
+            if let keepsake = wild.keepsake {
+                record(.hunt, [attacker.owner], "\(houses[attacker.owner].title) lays the drowned of \(keepsake) to rest, and takes up its keepsake.")
+            } else if wild.level >= GameState.notedWilds {
                 record(.hunt, [attacker.owner], "\(houses[attacker.owner].title) strikes down a company of \(wild.kind.title) of the \(ordinal(wild.level)) level in the far country.")
             }
         }

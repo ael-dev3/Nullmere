@@ -278,5 +278,8 @@ final class WeatherTests: XCTestCase {
         XCTAssertTrue(Weather.clear.motes(around: focus, extent: 5, time: 1).isEmpty)
         XCTAssertTrue(Weather.still.motes(around: focus, extent: 5, time: 1).isEmpty)
         XCTAssertTrue(Weather.allCases.allSatisfy { $0.hazeFactor > 0 && $0.moonFactor > 0 })
+        // The moon eaten: its light all but gone, nothing falling or drifting.
+        XCTAssertTrue(Weather.eclipse.motes(around: focus, extent: 5, time: 1).isEmpty)
+        XCTAssertLessThan(Weather.eclipse.moonFactor, Weather.allCases.filter { $0 != .eclipse }.map(\.moonFactor).min()!)
     }
 }

@@ -310,6 +310,9 @@ extension GameState {
             case .edictProposed, .edictVoted, .edictPassed, .edictFailed, .edictLapsed, .edictBroken:
                 // The realm's law is every House's to know.
                 return true
+            case .eclipse, .eclipseEnded:
+                // The moon eaten, and come back, every House sees.
+                return true
             case .promoted(_, let owner, _):
                 return owner == house
             case .ruinSearched(let at, let by, _):

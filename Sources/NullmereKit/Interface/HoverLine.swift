@@ -93,7 +93,8 @@ enum HoverInfo {
     /// A company of the wilds as the map names it: "Barrowkin, level III".
     static func named(_ wild: Wild) -> String {
         let title = wild.kind.title
-        return title.prefix(1).uppercased() + title.dropFirst() + ", level \(Narration.roman(wild.level))"
+        let named = title.prefix(1).uppercased() + title.dropFirst() + ", level \(Narration.roman(wild.level))"
+        return wild.keepsake.map { named + ", bearing a keepsake of \($0)" } ?? named
     }
 
     /// A holy site as the map names it: who holds it, and what it gives.

@@ -733,6 +733,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// A keeper's House answers its riddle, rightly or not, and the name
     /// that was taken out.
     case riddleAnswered(house: Int, right: Bool, answer: String)
+    /// The moon is eaten: so many of the Drowned rise from the drowned age's holds.
+    case eclipse(risen: Int)
+    /// The moon comes back, and so many of the Drowned still walking sink again.
+    case eclipseEnded(sank: Int)
     /// An alliance's leader sets it to pursue a study.
     case allianceStudyChosen(alliance: Int, study: AllianceStudy)
     /// A House gives stores toward a grade of its alliance's study.

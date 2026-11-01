@@ -277,6 +277,16 @@ designed, ticked when it is real, tested and shown in CI.
   keeper's own Mac's model sets it in the Still's voice, never given the
   name, its blank held to by the voices' check. A persistent realm's
   history made into play, age after age. Stewards are set none.
+- [x] **The Eclipse.** A persistent world's past that walks again. In an
+  age with an age drowned beneath it, the moon is eaten at the full of
+  the sixtieth watch and of every ninetieth after: from the drowned age's
+  greatest holds rise companies of the Drowned, each bearing a keepsake of
+  the hold the keepers of that age raised, as strong as its works were,
+  for five watches every House's foe while the moon's light all but goes
+  from the world; laid to rest, each gives moonsalt and the Chronicle
+  names its hold, and those left sink again as the moon comes back. What
+  keepers built in one age comes back to be fought for in the next. A
+  first age has none.
 
 ## The order of the work
 

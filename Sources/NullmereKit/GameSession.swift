@@ -1508,6 +1508,7 @@ public final class GameSession {
         case .whisperUnmasked(_, let teller, _, _) where teller == player: return .dread
         case .whisperUnmasked(_, _, let belied, _) where belied == player: return .coin
         case .riddleSet(let house) where house == player: return .lore
+        case .eclipse: return .dread
         case .riddleAnswered(let house, let right, _) where house == player: return right ? .triumph : .refusal
         case .edictBroken(_, _, _, let against, _) where against == player: return .horn
         case .fieldJoined(_, _, let first, let second) where first == player || second == player: return .horn

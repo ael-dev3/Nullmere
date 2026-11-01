@@ -532,6 +532,12 @@ extension GameState {
         case .edictVoted(_, let house, let aye):
             guard house == viewer else { return nil }
             return Tidings("Your House votes \(aye ? "aye" : "nay").", .neutral)
+        case .eclipse(let risen):
+            return Tidings("The moon is eaten, and the drowned age walks: \(risen == 1 ? "a company" : "\(risen) companies") of the Drowned "
+                           + "rise from its holds, each bearing a keepsake for whoever lays it to rest, for \(GameState.eclipseLasts) watches.", .bad)
+        case .eclipseEnded(let sank):
+            let sinking = sank == 1 ? "the last of the Drowned sinks" : "\(sank) of the Drowned sink"
+            return Tidings("The moon comes back" + (sank == 0 ? "." : ", and \(sinking) again."), .neutral)
         case .edictPassed(let edict):
             return Tidings("The realm passes \(edict.kind.title): for \(GameState.edictLasts) watches \(edict.kind.law).", .good)
         case .edictFailed(let edict):
