@@ -275,7 +275,7 @@ final class EconomyTests: XCTestCase {
         XCTAssertThrowsError(try state.perform(.barter(give: .grain, take: .grain, amount: 10), as: 0))
     }
 
-    /// As the Guide and the README tell it: three to one between grain,
+    /// As the Guide and docs/PLAYING.md tell it: three to one between grain,
     /// timber and stone; moonsalt, worth three of any of them, costs nine
     /// and fetches one.
     func testBarterIsThreeToOneButMoonsaltCostsNineAndFetchesOne() {

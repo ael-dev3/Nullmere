@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Opens Nullmere Online from a debug build, presses Play, and enters a realm
 # across the network: a SpacetimeDB server with the realm module published
-# and the steward running beside it (see "Raising the realm" in the README).
+# and the steward running beside it (see "Raising the realm" in docs/REALM.md).
 # The app must reach the realm, arrive as a keeper and render the world with
 # Metal. Saves a screenshot of the keeper's first watch, with the card that
 # briefs a keeper taking up their House.
