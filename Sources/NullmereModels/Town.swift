@@ -79,6 +79,41 @@ public enum Town: String, CaseIterable, Sendable {
         door(&b, Vec3(-0.03, 0.026, 0.057), width: 0.028, height: 0.052)
         b.window(Vec3(0.037, 0.038, 0.056), width: 0.026, height: 0.022, facing: 0)
         b.box(center: Vec3(0.055, 0.12, -0.02), size: Vec3(0.024, 0.08, 0.024), color: Palette.stone)
+        // Near: its window shuttered over a box of flowers, a step at its
+        // door, a pot on its chimney and its firewood against the gable.
+        b.fine {
+            shutters(&$0, Vec3(0.037, 0.038, 0.058), apart: 0.019, height: 0.024)
+            flowerBox(&$0, Vec3(0.037, 0.024, 0.062), width: 0.03)
+            $0.box(center: Vec3(-0.03, 0.004, 0.065), size: Vec3(0.036, 0.008, 0.016), color: Palette.stonePale)
+            chimneyPot(&$0, Vec3(0.055, 0.16, -0.02))
+            for (y, z) in [(Float(0.008), Float(-0.02)), (0.008, 0.0), (0.008, 0.02), (0.024, -0.01), (0.024, 0.01)] {
+                $0.log(from: Vec3(0.094, y, z - 0.002), to: Vec3(0.118, y, z + 0.002), radius: 0.008)
+            }
+        }
+    }
+
+    /// Shutters thrown back either side of a window, `apart` from its middle.
+    private static func shutters(_ b: inout MeshBuilder, _ center: Vec3, apart: Float, height: Float) {
+        for side in [Float(-1), 1] {
+            b.box(center: center + Vec3(side * apart, 0, 0), size: Vec3(0.01, height, 0.003), color: Palette.timber)
+        }
+    }
+
+    /// A box of flowers under a window.
+    private static func flowerBox(_ b: inout MeshBuilder, _ center: Vec3, width: Float) {
+        b.box(center: center, size: Vec3(width, 0.008, 0.01), color: Palette.timberDark)
+        for (index, color) in [Palette.madder, Palette.weld, Palette.heatherBloom].enumerated() {
+            b.place(.translation(center + Vec3((Float(index) - 1) * width * 0.3, 0.004, 0))) {
+                $0.cone(sides: 3, radius: 0.005, to: 0.008, color: color, twist: Float(index))
+            }
+        }
+    }
+
+    /// A pot of fired clay on a chimney's top.
+    private static func chimneyPot(_ b: inout MeshBuilder, _ top: Vec3) {
+        b.place(.translation(top)) {
+            $0.lathe([(0.007, 0), (0.0055, 0.014)], sides: 5, color: Palette.madder.mix(Palette.earth, 0.4))
+        }
     }
 
     static func longhouse(_ b: inout MeshBuilder) {
@@ -92,6 +127,20 @@ public enum Town: String, CaseIterable, Sendable {
         for (index, y) in [Float(0.012), 0.012, 0.03].enumerated() {
             let z = index == 2 ? Float(0) : (index == 0 ? -0.014 : 0.014)
             b.limb(from: Vec3(-0.128, y, z - 0.03), to: Vec3(-0.128, y, z + 0.03), radius: 0.009, sides: 4, color: Palette.bark)
+        }
+        // Near: its windows shuttered, a step at its door, a barrel by it
+        // and a hood over the smoke hole in its ridge.
+        b.fine {
+            for x in [Float(-0.035), -0.085] {
+                shutters(&$0, Vec3(x, 0.034, 0.048), apart: 0.015, height: 0.018)
+            }
+            $0.box(center: Vec3(0.05, 0.004, 0.054), size: Vec3(0.034, 0.008, 0.014), color: Palette.stonePale)
+            $0.place(.translation(Vec3(0.098, 0, 0.068))) {
+                $0.lathe([(0.012, 0), (0.015, 0.016), (0.012, 0.032)], sides: 6, color: Palette.timber)
+            }
+            $0.place(.translation(Vec3(0.02, 0.124, 0))) {
+                $0.gableRoof(width: 0.03, depth: 0.026, base: 0, height: 0.014, color: Palette.thatch, overhang: 0.004)
+            }
         }
     }
 
@@ -115,6 +164,22 @@ public enum Town: String, CaseIterable, Sendable {
             b.window(Vec3(x, 0.112, 0.07), width: 0.022, height: 0.03, facing: 0)
         }
         b.box(center: Vec3(-0.05, 0.2, -0.03), size: Vec3(0.024, 0.07, 0.024), color: Palette.stoneDark)
+        // Near: its sign hung out over the lane in the House's colour, boxes
+        // of flowers under its upper windows, a step at its door and a pot
+        // on its chimney.
+        b.fine {
+            $0.with(material: .metal) {
+                $0.beam(from: Vec3(0.05, 0.1, 0.068), to: Vec3(0.05, 0.1, 0.1), width: 0.003, color: Palette.iron)
+            }
+            $0.with(material: .house) {
+                $0.box(center: Vec3(0.05, 0.085, 0.09), size: Vec3(0.003, 0.02, 0.022), color: Palette.house)
+            }
+            for x in [Float(-0.047), 0.047] {
+                flowerBox(&$0, Vec3(x, 0.093, 0.075), width: 0.024)
+            }
+            $0.box(center: Vec3(-0.025, 0.004, 0.064), size: Vec3(0.038, 0.008, 0.016), color: Palette.stonePale)
+            chimneyPot(&$0, Vec3(-0.05, 0.235, -0.03))
+        }
     }
 
     static func roundhouse(_ b: inout MeshBuilder) {
@@ -122,6 +187,19 @@ public enum Town: String, CaseIterable, Sendable {
         b.cone(sides: 8, radius: 0.076, from: 0.055, to: 0.145, color: Palette.thatch)
         door(&b, Vec3(0, 0.024, 0.06), width: 0.028, height: 0.048)
         b.window(onRound: 0.06, y: 0.032, angle: 0.4, width: 0.016, height: 0.014)
+        // Near: posts and a lintel framing its door, firewood against its
+        // wall and a cap over the smoke hole at its peak.
+        b.fine {
+            for x in [Float(-0.019), 0.019] {
+                $0.limb(from: Vec3(x, 0, 0.066), to: Vec3(x, 0.05, 0.066), radius: 0.003, sides: 4, color: Palette.timberDark)
+            }
+            $0.box(center: Vec3(0, 0.052, 0.066), size: Vec3(0.046, 0.006, 0.008), color: Palette.timberDark)
+            for (y, angle) in [(Float(0.008), Float(-2.3)), (0.008, -2.6), (0.022, -2.45)] {
+                let at = MeshBuilder.ring(0.068, y, angle), along = MeshBuilder.ring(0.02, 0, angle + .pi / 2)
+                $0.log(from: at - along, to: at + along, radius: 0.007)
+            }
+            $0.lathe([(0.014, 0.136), (0.014, 0.15), (0.0, 0.158)], sides: 6, color: Palette.thatch.mix(Palette.bark, 0.3))
+        }
     }
 
     static func well(_ b: inout MeshBuilder) {
