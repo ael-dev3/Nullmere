@@ -1809,7 +1809,13 @@ the keeper's realm last lay on, made as it plays.
   that drove them, a pick, rubble, a bucket, and a rope and a bar on its
   sledge; and the moonsalt pans baskets of salt, a wheelbarrow, a shovel
   standing in a heap, sacks and a pusher laid across a pan (531 to 1,132
-  triangles, from 285 to 800).
+  triangles, from 285 to 800). An alliance's hall has a crenellated
+  parapet round its platform, open where its steps come up between the
+  braziers; iron bands and a ring on its great door and lanterns under
+  its porch; a rack of spears in its court with shields in the
+  alliance's colour against its foot, the alliance's barrels, crates and
+  a sack stacked across from it, and a well behind; and a door, slits
+  and a string course on its tower (2,530 triangles, from 1,190).
 - **Only what the view reaches is drawn.** The land's furniture is kept
   on the GPU in square regions eight hexes on a side, each with the bounds
   of all it holds; each frame finds the regions inside the camera's view
