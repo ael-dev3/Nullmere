@@ -2010,21 +2010,37 @@ enum Works {
     /// The great work, a white tower of moonsalt and stone raised in five
     /// stages: its foundations, then a drum, a tapering stage with a
     /// gallery, a slender upper stage ribbed in moonsalt, and its spire
-    /// crowned with a great crystal that turns, lit from within.
+    /// crowned with a great crystal that turns, lit from within. Until it
+    /// is crowned a crane works from the top of the stage last raised.
     static func moonspire(_ level: Int, _ name: String) -> Model {
         var b = MeshBuilder()
         b.lathe([(0.31, -0.14), (0.31, 0.04), (0.28, 0.06)], sides: 10, color: Palette.stonePale)
         var rig = Rig()
         var machinery: Machinery?
         if level == 1 {
-            // Foundations: a ring of white blocks set out, more waiting.
-            for index in 0..<10 {
-                let angle = Float(index) * .pi / 5
-                b.box(center: MeshBuilder.ring(0.22, 0.1, angle), size: Vec3(0.07, 0.08, 0.05), turn: angle + .pi / 2,
-                      color: Palette.stoneWhite)
+            // Foundations: the drum's first courses of white blocks laid
+            // round, open at its door, each course shorter than the one
+            // below as the masons work their way round; more blocks waiting.
+            for (course, laid) in [18, 12, 6].enumerated() {
+                for slot in 1...laid {
+                    let angle = -Float.pi / 2 + (Float(slot) + 0.5 + 0.5 * Float(course % 2)) * .pi / 10
+                    b.box(center: MeshBuilder.ring(0.222, 0.0775 + 0.035 * Float(course), angle), size: Vec3(0.068, 0.034, 0.05),
+                          turn: angle + .pi / 2, color: course == 1 ? Palette.stonePale : Palette.stoneWhite)
+                }
             }
-            b.blocks(at: Vec3(0.02, 0.06, 0.02), count: 6, seed: 11)
-            b.saltHeap(at: Vec3(-0.08, 0.06, -0.06), radius: 0.06, height: 0.07)
+            b.blocks(at: Vec3(0.09, 0.06, -0.02), count: 6, seed: 11)
+            b.saltHeap(at: Vec3(-0.11, 0.06, 0.03), radius: 0.05, height: 0.06)
+            b.fine {
+                // A banker where a block is dressed, a mallet laid on it,
+                // and a coil of rope at the crane's foot.
+                $0.box(center: Vec3(-0.08, 0.085, -0.12), size: Vec3(0.06, 0.05, 0.035), color: Palette.timberDark)
+                $0.box(center: Vec3(-0.08, 0.124, -0.12), size: Vec3(0.04, 0.028, 0.028), color: Palette.stoneWhite)
+                $0.limb(from: Vec3(-0.055, 0.112, -0.1), to: Vec3(-0.035, 0.112, -0.085), radius: 0.0025, sides: 3, color: Palette.timber)
+                $0.box(center: Vec3(-0.058, 0.114, -0.102), size: Vec3(0.014, 0.012, 0.012), turn: 0.65, color: Palette.timberDark)
+                $0.place(.translation(Vec3(0.065, 0.06, -0.125))) {
+                    $0.lathe([(0.012, 0), (0.026, 0), (0.026, 0.012), (0.012, 0.012)], sides: 8, color: Palette.linen)
+                }
+            }
         } else {
             // The drum, buttressed and crowned with a parapet.
             b.lathe([(0.23, 0.04), (0.21, 0.4), (0.235, 0.42), (0.235, 0.45)], sides: 10, color: Palette.stoneWhite)
@@ -2044,6 +2060,9 @@ enum Works {
             for angle in [Float(-0.4), -2.74, 0.9, 2.24] {
                 b.window(onRound: 0.215, y: 0.28, angle: angle, width: 0.025, height: 0.06, color: Palette.moonGlow)
             }
+            b.fine {
+                spireNear(&$0, roundels: level < 4)
+            }
         }
         if level >= 3 {
             b.lathe([(0.17, 0.44), (0.14, 0.82), (0.175, 0.84), (0.175, 0.87)], sides: 10, color: Palette.stoneWhite)
@@ -2056,6 +2075,11 @@ enum Works {
                 }
             }
             b.window(MeshBuilder.ring(0.152, 0.65, .pi / 2 * -1), width: 0.03, height: 0.07, facing: 0, color: Palette.moonGlow)
+            // Near, the gallery's balustrade round the drum's top.
+            b.fine {
+                $0.merlonRing(radius: 0.228, base: 0.45, count: 20, size: Vec3(0.008, 0.03, 0.008), color: Palette.stonePale)
+                $0.lathe([(0.222, 0.48), (0.234, 0.48), (0.234, 0.488), (0.222, 0.488)], sides: 20, color: Palette.stonePale)
+            }
         }
         if level >= 4 {
             b.lathe([(0.12, 0.86), (0.09, 1.28), (0.115, 1.3), (0.115, 1.33)], sides: 8, color: Palette.stoneWhite)
@@ -2068,6 +2092,17 @@ enum Works {
             }
             b.window(MeshBuilder.ring(0.1, 1.08, -.pi / 2), width: 0.025, height: 0.06, facing: 0, color: Palette.moonGlow)
             wonder(&b)
+        }
+        if level <= 4 {
+            // Until the spire is crowned the work goes on from the top of
+            // the stage last raised.
+            let (foot, height, reach, wheel): (Vec3, Float, Float, Float) = switch level {
+            case 1: (Vec3(0, 0.06, -0.04), 0.32, 0.17, 0.05)
+            case 2: (Vec3(0, 0.45, 0), 0.3, 0.295, 0.05)
+            case 3: (Vec3(0, 0.87, 0), 0.26, 0.26, 0.045)
+            default: (Vec3(0, 1.33, 0), 0.24, 0.2, 0.035)
+            }
+            machinery = spireCrane(&b, rig: &rig, at: foot, height: height, reach: reach, wheel: wheel)
         }
         if level >= 5 {
             b.cone(sides: 8, radius: 0.1, from: 1.32, to: 1.62, color: Palette.stoneWhite)
@@ -2148,10 +2183,72 @@ enum Works {
                          normal: out, color: Palette.house)
             }
         }
-        b.fine {
-            $0.merlonRing(radius: 0.228, base: 0.45, count: 20, size: Vec3(0.008, 0.03, 0.008), color: Palette.stonePale)
-            $0.lathe([(0.222, 0.48), (0.234, 0.48), (0.234, 0.488), (0.222, 0.488)], sides: 20, color: Palette.stonePale)
+    }
+
+    /// The Moonspire's carved work near, once its drum stands: an arch of
+    /// voussoirs about its door, its keystone and a step before it, a
+    /// brazier burning at either hand, a spout under the parapet between
+    /// each pair of buttresses, and, until banners hang there, a moon
+    /// carved in moonsalt on the drum.
+    static func spireNear(_ b: inout MeshBuilder, roundels: Bool) {
+        for index in 0...6 {
+            let angle = Float(index) * .pi / 6
+            let at = Vec3(0.037 * Float(cos(Double(angle))), 0.16 + 0.037 * Float(sin(Double(angle))), 0.232)
+            b.box(center: at, size: Vec3(0.016, 0.014, 0.014), turn: 0, color: Palette.stonePale)
         }
+        b.box(center: Vec3(0, 0.2, 0.234), size: Vec3(0.016, 0.02, 0.016), color: Palette.stoneWhite)
+        for x in [Float(-0.037), 0.037] {
+            b.box(center: Vec3(x, 0.105, 0.232), size: Vec3(0.014, 0.11, 0.014), color: Palette.stonePale)
+        }
+        b.box(center: Vec3(0, 0.067, 0.252), size: Vec3(0.1, 0.014, 0.04), color: Palette.stonePale)
+        for x in [Float(-0.075), 0.075] {
+            b.place(.translation(Vec3(x, 0.06, 0.262))) {
+                $0.prism(sides: 4, radius: 0.005, to: 0.07, color: Palette.iron)
+                $0.lathe([(0.004, 0.068), (0.016, 0.078), (0.018, 0.088), (0.012, 0.088)], sides: 6, color: Palette.iron)
+                $0.with(material: .glow) {
+                    $0.cone(sides: 4, radius: 0.012, from: 0.086, to: 0.122, color: Palette.fire, twist: 0.3)
+                }
+            }
+        }
+        for index in 0..<5 {
+            let angle = Float(index) * 2 * .pi / 5 + .pi / 5
+            let out = MeshBuilder.ring(1, 0, angle)
+            b.beam(from: out * 0.205 + Vec3(0, 0.425, 0), to: out * 0.262 + Vec3(0, 0.418, 0), width: 0.012, depth: 0.012,
+                   color: Palette.stonePale)
+            guard roundels else { continue }
+            b.with(material: .crystal) {
+                $0.place(.translation(out * 0.214 + Vec3(0, 0.33, 0)) * Mat4.aligningUp(to: out)) {
+                    $0.lathe([(0.022, 0), (0.022, 0.004), (0.014, 0.008)], sides: 8, color: Palette.moonsalt)
+                }
+            }
+        }
+    }
+
+    /// The crane the Moonspire's masons work from on the stage they last
+    /// raised, until its spire is crowned: a mast and a jib slewing a white
+    /// block round over the stage's edge and back, wound up by a treadwheel
+    /// at its foot.
+    static func spireCrane(_ b: inout MeshBuilder, rig: inout Rig, at foot: Vec3, height: Float, reach: Float, wheel radius: Float)
+        -> Machinery {
+        let crane = rig.add("crane", pivot: foot)
+        let tip = foot + Vec3(0, height * 0.8, reach), drop = height * 0.55
+        b.with(part: crane) {
+            $0.limb(from: foot, to: foot + Vec3(0, height, 0), radius: 0.011, color: Palette.timberDark)
+            $0.beam(from: foot + Vec3(0, height * 0.55, -0.03), to: tip, width: 0.012, color: Palette.timber)
+            $0.limb(from: foot + Vec3(0, height, 0), to: tip, radius: 0.0025, sides: 3, color: Palette.linen)
+            $0.limb(from: tip, to: tip - Vec3(0, drop, 0), radius: 0.0025, sides: 3, color: Palette.linen)
+            $0.box(center: tip - Vec3(0, drop + 0.017, 0), size: Vec3(0.045, 0.034, 0.04), color: Palette.stoneWhite)
+        }
+        let hub = foot + Vec3(0, radius + 0.006, -(radius + 0.02))
+        let treadwheel = rig.add("treadwheel", pivot: hub)
+        b.with(part: treadwheel) {
+            $0.wheel(center: hub, radius: radius, width: 0.03, spokes: 3, color: Palette.timber, rim: Palette.timberDark)
+        }
+        for x in [Float(-0.022), 0.022] {
+            b.limb(from: foot + Vec3(x, 0, -(radius + 0.02)), to: hub + Vec3(x, 0, 0), radius: 0.004, color: Palette.timberDark)
+        }
+        return Machinery(wheels: [.init(part: treadwheel, axis: Vec3(1, 0, 0), turns: 1)],
+                         swings: [.init(part: crane, axis: Vec3(0, 1, 0), angle: 0.9)], parts: rig.count)
     }
 
     // MARK: Study

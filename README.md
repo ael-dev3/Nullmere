@@ -1715,8 +1715,17 @@ the keeper's realm last lay on, made as it plays.
   white columns about its drum under a ring of stone, a string course,
   the House's banners hung between its buttresses and a balustrade round
   its top; at its fifth, moonsalt grown out of its plinth and a halo of
-  shards turning below its crown the other way (2,212 triangles, where it
-  was 780). A Muster Hall of the fourth level and the fifth has
+  shards turning below its crown the other way. Until its spire is
+  crowned a treadwheel crane works from the top of the stage last
+  raised, slewing a white block out over its edge and back: at its
+  foundations the drum's first courses are laid round, open at its door
+  and each shorter than the one below, with a banker where a block is
+  dressed and a coil of rope by the crane; once its drum stands, an arch
+  of voussoirs frames its door with a keystone and a step before it,
+  braziers burn at either hand, spouts jut under its parapet, moons are
+  carved in moonsalt between its buttresses until banners hang there,
+  and from its third stage a balustrade runs round its gallery (808 to
+  2,528 triangles, where it was 270 to 2,212, and 780 before that). A Muster Hall of the fourth level and the fifth has
   buttresses along its front, shields in the House's colours under its
   eaves, and more pells armed in its yard; a quarry of those levels a
   ladder up its cut terraces, the rubble of its face, a mason's bench with
@@ -1781,8 +1790,9 @@ the keeper's realm last lay on, made as it plays.
   drying; and a beacon a ladder up its first tower and a torch by its
   second's door, the fire's wood stacked at the foot of both, and at the
   first its brushwood bound in faggots, a rope to a basket of them, jars
-  of oil and a horn to cry the alarm (910 and 526 triangles, the first
-  from 274). The holy sites have their floors
+  of oil and a horn to cry the alarm, at the second its faggots against
+  the tower's foot, a barrel of water by its door and leather buckets
+  hung beside it (910 and 802 triangles, from 274 and 526). The holy sites have their floors
   flagged and worn, here a flag lifted long ago and grass come up where it
   lay, their poles set in sockets of stone and grass at their stones' feet;
   the Moonwell a coping with lamps burning on it, an arch over it crowned
