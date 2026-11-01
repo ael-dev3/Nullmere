@@ -90,7 +90,8 @@ final class OrdersCardTests: XCTestCase {
         try await waitForReading(in: session)
         let asked = await clerk.asked
         XCTAssertEqual(asked.map { $0.words }, [words])
-        XCTAssertEqual(asked.first?.briefing, SpokenOrders.briefing(for: state, player: me))
+        // The briefing of the keeper's own view: only the places it knows.
+        XCTAssertEqual(asked.first?.briefing, SpokenOrders.briefing(for: session.state, player: me))
         let lines = try XCTUnwrap(session.ordersInWords?.lines)
         XCTAssertEqual(lines.map(\.command), [.fortify(unit: first.id), .build(hold: seat.id, kind: .granary), nil])
         XCTAssertNil(lines[0].why, "A fresh company may dig in")
