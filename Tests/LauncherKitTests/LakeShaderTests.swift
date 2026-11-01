@@ -6,8 +6,8 @@ import XCTest
 final class LakeShaderTests: XCTestCase {
     func testUniformLayoutMatchesTheShaderStruct() {
         // Two float4 fields in Metal: 32 bytes, 16-byte aligned.
-        XCTAssertEqual(MemoryLayout<LakeUniforms>.size, 32)
-        XCTAssertEqual(MemoryLayout<LakeUniforms>.stride, 32)
+        XCTAssertEqual(MemoryLayout<LakeUniforms>.size, 48)
+        XCTAssertEqual(MemoryLayout<LakeUniforms>.stride, 48)
         XCTAssertEqual(MemoryLayout<LakeUniforms>.alignment, 16)
     }
 

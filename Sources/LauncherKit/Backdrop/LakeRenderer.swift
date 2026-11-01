@@ -8,6 +8,9 @@ struct LakeUniforms {
     /// Scene time, activity (see `ResolvedMotion.activity`), horizon height,
     /// and how far the moon's image is veiled (see `ReflectionVeil.shown`).
     var params: SIMD4<Float>
+    /// How far the moon is eaten (x): 0 whole, 1 wholly in the world's
+    /// shadow, its face a dull ember. The rest unused.
+    var eclipse: SIMD4<Float> = .zero
 }
 
 /// Encodes the lake scene: one full-screen triangle per frame.

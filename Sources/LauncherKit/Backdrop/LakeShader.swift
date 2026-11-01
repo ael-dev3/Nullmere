@@ -226,16 +226,21 @@ enum LakeShader {
     // Everything above the waterline: gradient, Milky Way, stars, moon, shore.
     // `activity` is 1 at full motion and smaller when motion is reduced;
     // `moonlight` scales the moon, its halo and the haze it lights (1 in the
-    // sky; less in its image on the water while a panel veils it).
-    float3 nm_sky(float2 p, float aspect, float pt, float horizon, float time, float activity, float moonlight) {
+    // sky; less in its image on the water while a panel veils it). `eaten`
+    // is how far the moon is eaten: 0 whole, 1 wholly in the world's shadow.
+    float3 nm_sky(float2 p, float aspect, float pt, float horizon, float time, float activity, float moonlight, float eaten) {
         float3 c = nm_skyGradient(p.y, horizon);
         float2 m = float2(aspect * NM_MOON_X, NM_MOON_Y);
         float dm = length(p - m);
         // The moon's light swells and settles very slowly.
         float breath = 0.5 + 0.5 * sin(NM_TAU * fract(time / 9.0));
+        // The world's shadow comes over the moon from its lower left, and as
+        // it does its light fails, until the stars stand close about it.
+        float2 umbra = m + normalize(float2(-0.8, -0.55)) * (1.0 - eaten) * NM_MOON_R * 2.6;
+        float lit = 1.0 - 0.94 * smoothstep(0.0, 1.0, eaten);
 
         float altitude = smoothstep(horizon + 0.004, horizon + 0.20, p.y);
-        float glare = smoothstep(NM_MOON_R * 1.3, NM_MOON_R * 6.5, dm);
+        float glare = mix(smoothstep(NM_MOON_R * 1.3, NM_MOON_R * 6.5, dm), 1.0, smoothstep(0.55, 1.0, eaten));
         float visible = altitude * glare;
 
         // A faint galactic band rising across the left of the sky.
@@ -265,7 +270,7 @@ enum LakeShader {
         // Thin haze drifting past the moon catches its light.
         if (dm < 0.45 && moonlight > 0.0) {
             float haze = smoothstep(0.50, 0.82, nm_fbm(float2(p.x * 2.3, p.y * 7.5 + 2.0) - nm_drift(time, 0.012)));
-            c += float3(0.55, 0.64, 0.80) * 0.11 * haze * exp(-dm * 9.0) * (0.92 + 0.16 * breath) * moonlight;
+            c += float3(0.55, 0.64, 0.80) * 0.11 * haze * exp(-dm * 9.0) * (0.92 + 0.16 * breath) * moonlight * lit;
         }
 
         // Moon: a cold full disc with soft limb darkening, maria and a wide
@@ -274,7 +279,7 @@ enum LakeShader {
         if (moonlight > 0.0) {
             float3 glowTint = float3(0.58, 0.68, 0.86);
             float glow = 0.050 * exp(-rim * 2.2) + 0.080 * exp(-rim * 7.5) + 0.15 * exp(-rim * 24.0) + 0.26 * exp(-rim * 90.0);
-            c += glowTint * glow * (0.93 + 0.14 * breath) * moonlight;
+            c += glowTint * glow * (0.93 + 0.14 * breath) * moonlight * lit;
         }
         float disc = (1.0 - smoothstep(NM_MOON_R - pt, NM_MOON_R + pt, dm)) * moonlight;
         if (disc > 0.0) {
@@ -287,6 +292,11 @@ enum LakeShader {
             float3 moon = float3(0.93, 0.95, 0.98) * (0.80 + 0.20 * limb) * (1.0 - 0.15 * maria) * (0.93 + 0.12 * grain);
             moon += float3(0.06) * crater;
             moon *= 0.985 + 0.02 * breath;
+            // Where the shadow lies on it, an ember: the dull red of the
+            // light the world bends round its edge, darker toward its heart.
+            float shade = 1.0 - smoothstep(NM_MOON_R * 1.22, NM_MOON_R * 1.46, length(p - umbra));
+            float3 ember = float3(0.20, 0.055, 0.035) * (0.55 + 0.45 * limb) * (1.0 - 0.3 * maria);
+            moon = mix(moon, ember, shade);
             c = mix(c, moon, disc);
         }
 
@@ -311,7 +321,7 @@ enum LakeShader {
     // `veil` (0...1) dims the moon's image while a panel lies over it, to a
     // fifth of itself, a ghost under the panel's words rather than gone;
     // the stars on the water stay.
-    float3 nm_scene(float2 uv, float2 sizePt, float2 px, float time, float activity, float horizon, float veil) {
+    float3 nm_scene(float2 uv, float2 sizePt, float2 px, float time, float activity, float horizon, float veil, float eaten) {
         float aspect = sizePt.x / sizePt.y;
         float pt = 1.0 / sizePt.y;
         float2 p = float2(uv.x * aspect, uv.y);
@@ -319,7 +329,7 @@ enum LakeShader {
         float3 c;
 
         if (p.y >= horizon) {
-            c = nm_sky(p, aspect, pt, horizon, time, activity, 1.0);
+            c = nm_sky(p, aspect, pt, horizon, time, activity, 1.0, eaten);
         } else {
             // Water: dead, deep and still, black glass from shore to shore. It
             // gives back the sky exactly: the moon whole, its rim as clean as
@@ -333,7 +343,7 @@ enum LakeShader {
             // further toward the near water, its image lay there a grey coin.
             float reflectance = mix(0.94, 0.74, sqrt(depth));
             float moonlight = 1.0 - NM_VEIL_DEPTH * veil;
-            c = nm_sky(r, aspect, pt, horizon, time, activity, moonlight) * reflectance;
+            c = nm_sky(r, aspect, pt, horizon, time, activity, moonlight, eaten) * reflectance;
             c += float3(0.0015, 0.0022, 0.0035);
         }
 
@@ -360,6 +370,7 @@ enum LakeShader {
     struct LakeUniforms {
         float4 sizeAndPixels; // view size in points (xy), drawable size in pixels (zw)
         float4 params;        // scene time, activity, horizon, veil
+        float4 eclipse;       // how far the moon is eaten (x)
     };
 
     struct LakeVertexOut {
@@ -379,7 +390,7 @@ enum LakeShader {
     fragment float4 nm_lake_fragment(LakeVertexOut in [[stage_in]],
                                      constant LakeUniforms& u [[buffer(0)]]) {
         float3 color = nm_scene(in.uv, u.sizeAndPixels.xy, in.position.xy,
-                                u.params.x, u.params.y, u.params.z, u.params.w);
+                                u.params.x, u.params.y, u.params.z, u.params.w, u.eclipse.x);
         return float4(color, 1.0);
     }
     """#
