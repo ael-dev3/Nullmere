@@ -112,6 +112,7 @@ struct RivalMind {
             events += forgeGear(in: &state)
             events += keepStorehouse(in: &state)
         }
+        if !caretaking { events += ransomCaptives(in: &state) }
         events += appointCommanders(in: &state)
         events += state.growTalents(for: house)
         events += state.armCommanders(for: house)
@@ -1035,13 +1036,27 @@ struct RivalMind {
         return []
     }
 
+    /// A steward ransoms its commanders a keeper's House holds prisoner,
+    /// when it has the moonsalt twice over. A caretaker leaves the keeper's
+    /// moonsalt to the keeper.
+    func ransomCaptives(in state: inout GameState) -> [GameEvent] {
+        var events: [GameEvent] = []
+        for commander in state.commanders(of: house) where commander.captive != nil {
+            let price = GameState.ransom(for: commander)
+            guard state.houses[house].stock.moonsalt >= price.moonsalt * 2 else { continue }
+            events += perform(.ransom(commander: commander.id), in: &state)
+        }
+        return events
+    }
+
     /// Each commander free and whole to the head of a company of war at or
     /// beside one of its holds: a warden to a garrison, the others to a
     /// company outside the walls; of those, the strongest.
     func appointCommanders(in state: inout GameState) -> [GameEvent] {
         var events: [GameEvent] = []
         let holds = state.holds(of: house).map(\.position)
-        for commander in state.commanders(of: house) where !commander.isWounded(at: state.watch) && state.company(ledBy: commander.id) == nil {
+        for commander in state.commanders(of: house)
+        where commander.captive == nil && !commander.isWounded(at: state.watch) && state.company(ledBy: commander.id) == nil {
             let candidates = state.units(of: house).filter { unit in
                 unit.kind.isMilitary && unit.leader == nil && holds.contains { $0.distance(to: unit.position) <= 1 }
             }

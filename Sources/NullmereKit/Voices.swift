@@ -38,6 +38,9 @@ public struct VoiceMoment: Sendable, Equatable {
         /// The riddle of the realm's past the lake sets a keeper's House at
         /// the half moon.
         case riddle
+        /// A commander held prisoner, telling their captors a true thing of
+        /// their own House.
+        case prisoner
     }
 
     public let kind: Kind
@@ -75,6 +78,9 @@ public struct VoiceMoment: Sendable, Equatable {
             task = "Speak as the still black lake itself, setting a riddle of the realm's past at the half moon: ask whose House did "
                 + "what is told, keeping every name and number as given and the blank ——— where the name was taken out. "
                 + "One or two sentences, at most 40 words."
+        case .prisoner:
+            task = "Speak as the captured commander, questioned by their captors and telling them, against their will, the one thing "
+                + "about their own House that is told here, keeping every name and number as given. One or two sentences, at most 40 words."
         }
         return task + "\n\nWhat is known:\n" + facts.map { "- \($0)" }.joined(separator: "\n")
     }
@@ -226,6 +232,12 @@ enum VoiceFacts {
     /// taken out, and when. The name itself the model is never given.
     static func riddle(_ riddle: Riddle) -> VoiceMoment {
         VoiceMoment(kind: .riddle, facts: [riddle.line, "It is the half moon."])
+    }
+
+    /// A prisoner questioned: who they are, whose, and the true thing they tell.
+    static func prisoner(_ prisoner: Commander, told word: String, in state: GameState) -> VoiceMoment {
+        let house = state.houses.indices.contains(prisoner.owner) ? state.houses[prisoner.owner].title : "a fallen House"
+        return VoiceMoment(kind: .prisoner, facts: ["\(prisoner.name), \(prisoner.archetype.named) of \(house), is held prisoner.", word])
     }
 
     /// A dream, for the Still to tell: what it showed, plainly, and when.

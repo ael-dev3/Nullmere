@@ -162,6 +162,9 @@ public final class GameSession {
         case dream(Int)
         /// A riddle of the lake, by the watch it was set.
         case riddle(Int)
+        /// What a prisoner told: their commander's id a hundred times over,
+        /// and how many times they had been questioned.
+        case prisoner(Int)
 
         var key: String {
             switch self {
@@ -169,6 +172,7 @@ public final class GameSession {
             case .chronicle(let index): return "chronicle-\(index)"
             case .dream(let watch): return "dream-\(watch)"
             case .riddle(let watch): return "riddle-\(watch)"
+            case .prisoner(let told): return "prisoner-\(told)"
             }
         }
 
@@ -180,6 +184,7 @@ public final class GameSession {
             case "chronicle": self = .chronicle(number)
             case "dream": self = .dream(number)
             case "riddle": self = .riddle(number)
+            case "prisoner": self = .prisoner(number)
             default: return nil
             }
         }
@@ -379,6 +384,12 @@ public final class GameSession {
     /// The orders sent and not yet answered, in order: what came of each is
     /// told as the realm decided it, when its answer comes.
     private var answersAwaited: [Awaited] = []
+
+    /// Whether an order sent waits on the realm's answer: what it brings
+    /// is shown as the realm decided it, not as this copy guessed.
+    func awaitsRealm(_ command: Command) -> Bool {
+        answersAwaited.contains { $0.command == command }
+    }
     /// The Dock's count of watches turned while the keeper was elsewhere.
     private(set) var attention = Attention()
     /// Whether the keeper is looking, and how the Dock is told; tests
@@ -837,7 +848,7 @@ public final class GameSession {
              .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired, .hunted,
              .gearFound, .carriedToInfirmary, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted, .standardStruck, .standardTorn,
              .hallStruck, .hallTorn, .storehouseStruck, .storehouseTorn, .fieldJoined, .fieldEnded,
-             .bout, .whisperTried, .whisperUnmasked, .riddleAnswered, .letterFound:
+             .bout, .whisperTried, .whisperUnmasked, .riddleAnswered, .letterFound, .commanderTaken, .prisonerQuestioned:
             return true
         default:
             return false
@@ -1366,6 +1377,9 @@ public final class GameSession {
         case .say: return .parley
         case .sing: return .lore
         case .castBottle: return .order
+        case .question: return .lore
+        case .ransom: return .coin
+        case .release: return .stand
         case .sealLetter: return .lore
         case .stand: return .order
         case .standDown: return .stand
@@ -1505,6 +1519,9 @@ public final class GameSession {
         case .sung(let ballad) where ballad.house != player: return .lore
         case .bottleFound(_, let by) where by == player: return .lore
         case .letterFound: return .lore
+        case .commanderTaken(_, _, let by) where by == player: return .triumph
+        case .commanderTaken(_, let house, _) where house == player: return .dread
+        case .prisonerQuestioned: return .lore
         case .edictProposed(let edict) where edict.proposer != player: return .parley
         case .edictPassed: return .honour
         case .titleBestowed(let title, let house, _) where house == player: return title.isBoon ? .honour : .dread
@@ -1962,6 +1979,14 @@ public final class GameSession {
         for dream in state.dreams(of: player) where !asked.contains(.dream(dream.watch)) {
             asked.insert(.dream(dream.watch))
             voiceQueue.append((.dream(dream.watch), VoiceFacts.dream(dream, in: state)))
+        }
+        // What a prisoner told when questioned, in their own voice.
+        for prisoner in state.prisoners(heldBy: player) where !awaitsRealm(.question(commander: prisoner.id)) {
+            guard let captive = prisoner.captive, let word = captive.told?.last else { continue }
+            let key = Spoken.prisoner(prisoner.id * 100 + captive.questioned)
+            guard !asked.contains(key) else { continue }
+            asked.insert(key)
+            voiceQueue.append((key, VoiceFacts.prisoner(prisoner, told: word, in: state)))
         }
         // The lake's riddle, set in the Still's voice.
         if let riddle = state.riddle(of: player), riddle.answered == nil, !asked.contains(.riddle(riddle.set)) {

@@ -87,6 +87,10 @@ public enum Command: Codable, Equatable, Sendable {
     /// keeper is away; and every standing order cleared.
     case stand(StandingOrder)
     case standDown
+    /// A prisoner questioned, ransomed by their House, or let go by their captor.
+    case question(commander: Int)
+    case ransom(commander: Int)
+    case release(commander: Int)
     /// A line of another keeper's reported to the realm's steward.
     case reportWord(word: Int)
     /// An edict put to the realm, for every House to vote on.
@@ -257,6 +261,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case letterSealed
     case notACompanyOfWar
     case noStandingOrders
+    case notYourPrisoner
+    case questionedThisWatch
+    case notAPrisoner
+    case commanderCaptive
     /// A line the House never heard, or one taken away.
     case unknownWord
     /// A House's own line, reported.
@@ -512,6 +520,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .letterSealed: return "Your House has sealed its letter to the age to come; one an age."
         case .notACompanyOfWar: return "Only a company of war is mustered by a standing order."
         case .noStandingOrders: return "Your House has given no standing orders."
+        case .notYourPrisoner: return "Your House holds no such prisoner."
+        case .questionedThisWatch: return "You have questioned that prisoner this watch; again at the next."
+        case .notAPrisoner: return "That commander of yours is no one's prisoner."
+        case .commanderCaptive: return "That commander is held prisoner."
         case .unknownWord: return "No such line is in the Words."
         case .ownWord: return "That line is your own."
         case .reportedAlready: return "You have reported that line already."
@@ -872,6 +884,12 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case letterFound(letter: Letter, by: Int)
     /// A keeper's standing orders given, changed or cleared.
     case standingOrdersGiven(house: Int)
+    /// A fallen company's commander taken prisoner by a keeper's House.
+    case commanderTaken(commander: Int, house: Int, by: Int)
+    /// A prisoner questioned, and the true thing they told.
+    case prisonerQuestioned(commander: Int, by: Int, word: String)
+    /// A prisoner free again: ransomed, let go, or slipped away.
+    case prisonerFreed(commander: Int, house: Int, by: Int, why: Freed)
     /// A line reported to the realm's steward.
     case wordReported(word: Int, by: Int)
     /// A line taken away by the realm's steward.

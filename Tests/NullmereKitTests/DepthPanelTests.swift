@@ -386,6 +386,39 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(GameSession.cues(for: .castBottle(words: "x", from: hold.id, signed: true), events: [], in: session.state, player: me), [.order])
     }
 
+    /// Prisoners in Commanders: one the keeper's House holds, questioned and
+    /// let go from its row; one of its own another House holds, ransomed.
+    func testPrisonersAreQuestionedLetGoAndRansomedInCommanders() throws {
+        var state = world("prisoners in the panel")
+        let me = state.player
+        state.houses[me].stock = Stock(grain: 300, timber: 100, stone: 100, moonsalt: 200)
+        let steward = try XCTUnwrap(state.houses.first { !$0.isPlayer }?.id)
+        let theirs = try XCTUnwrap(state.commanders(of: steward).first)
+        let mine = try XCTUnwrap(state.commanders(of: me).first)
+        let held = try XCTUnwrap(state.commanderIndex(theirs.id)), taken = try XCTUnwrap(state.commanderIndex(mine.id))
+        state.commanders![held].captive = Captivity(by: me, since: state.watch, questioned: 0, lastQuestioned: nil, told: nil)
+        state.commanders![taken].captive = Captivity(by: steward, since: state.watch, questioned: 0, lastQuestioned: nil, told: nil)
+        XCTAssertEqual(CommandersPanel.standing(of: try XCTUnwrap(state.commandersBoard(for: me).line(mine.id)), in: state),
+                       "Held prisoner by \(state.houses[steward].title)")
+        let (session, link) = session(state)
+        draw(CommandersPanel(session: session))
+        XCTAssertTrue(PressableButtons.press("Question"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .question(commander: theirs.id))
+        XCTAssertTrue(session.awaitsRealm(.question(commander: theirs.id)), "Their words are the realm's to tell")
+        let price = GameState.ransom(for: mine)
+        XCTAssertTrue(PressableButtons.press("Ransom, \(price)"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .ransom(commander: mine.id))
+        draw(CommandersPanel(session: session))
+        XCTAssertFalse(PressableButtons.press("Question"), "Once a watch")
+        XCTAssertTrue(PressableButtons.press("Let go"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .release(commander: theirs.id))
+        let captivity = Captivity(by: me, since: 10, questioned: 0, lastQuestioned: nil, told: nil)
+        XCTAssertEqual(PrisonersSection.held(captivity, at: 10 + GameState.captivityLasts - 1), "Slips away as the watch turns")
+        XCTAssertEqual(PrisonersSection.held(captivity, at: 12), "Slips away in \(GameState.captivityLasts - 2) watches")
+        XCTAssertEqual(GameSession.cues(for: .question(commander: theirs.id), events: [], in: session.state, player: me), [.lore])
+        XCTAssertTrue(GameSession.isRealmsToTell(.prisonerQuestioned(commander: theirs.id, by: me, word: "A true thing.")))
+    }
+
     /// A letter to the age to come sealed from a hold's record, folded until
     /// asked for; the hold that keeps it says so and no other offers one;
     /// in the age after, the pointer and its drowned ruin's record tell of it.
@@ -1338,7 +1371,7 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertNotNil(board.nextBegins)
         XCTAssertEqual(CommandersPanel.standing(of: CommanderLine(commander: Commander(id: 9, name: "Ysra", archetype: .warden, owner: me),
                                                                   level: 1, progress: 0, span: 50, skills: [], leads: nil,
-                                                                  woundedFor: 1, furyReady: false)),
+                                                                  woundedFor: 1, heldBy: nil, furyReady: false)),
                        "Wounded: whole again next watch")
     }
 

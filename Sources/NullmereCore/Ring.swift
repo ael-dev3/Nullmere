@@ -109,7 +109,9 @@ extension GameState {
 
     /// What a House's line weighs, before chance: its commanders still its own.
     public func ringWeight(ofLine house: Int) -> Int {
-        (ringLine(of: house) ?? []).compactMap { commander($0) }.filter { $0.owner == house }.reduce(0) { $0 + ringWeight(of: $1) }
+        // A commander held prisoner stands for no one.
+        (ringLine(of: house) ?? []).compactMap { commander($0) }.filter { $0.owner == house && $0.captive == nil }
+            .reduce(0) { $0 + ringWeight(of: $1) }
     }
 
     private func isKeeper(_ house: Int) -> Bool {
@@ -122,6 +124,7 @@ extension GameState {
         guard isKeeper(house) else { return .notAKeeper }
         guard (1...GameState.ringLine).contains(line.count), Set(line).count == line.count else { return .invalidAmount }
         guard line.allSatisfy({ commander($0)?.owner == house }) else { return .notYours }
+        guard line.allSatisfy({ commander($0)?.captive == nil }) else { return .commanderCaptive }
         return nil
     }
 

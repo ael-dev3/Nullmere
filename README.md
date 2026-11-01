@@ -605,6 +605,19 @@ as the realm will, and takes the realm's word as final.
   war, or with none, and pays tribute demanded or refuses it. They stand
   until the keeper changes them or clears them at the card's foot, where
   they are told; no other House knows them.
+- **Prisoners.** A commander whose company a keeper's company fells is
+  taken prisoner rather than carried home. In Commanders (4) the captor
+  may Question them once a watch: each time they tell one true thing of
+  their House, the next in turn (its companies of war and troops, its
+  greatest company and where it stands, its stores, the hold it means to
+  take, its seat's walls and ward), worked out by the realm and given in
+  the prisoner's voice by the captor's Mac's model, the plain words
+  beneath. The prisoner's House may Ransom them for ten moonsalt a level,
+  twenty at the least, paid into the captor's stores; the captor may Let
+  them go; after twenty watches they slip away, and at once if their
+  captor falls. Freed, they come home to mend for four watches. While
+  held they lead no company and stand in no Ring. Stewards ransom theirs
+  when they have the moonsalt twice over; only keepers take prisoners.
 - **The server.** SpacetimeDB is the realm's authority of record: it knows
   each keeper by their identity, keeps the world, and lets no one but the
   steward write it. The steward runs the same Swift rules core the clients

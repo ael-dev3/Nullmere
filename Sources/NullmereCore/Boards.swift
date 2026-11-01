@@ -123,6 +123,8 @@ public struct CommanderLine: Equatable, Sendable, Identifiable {
     public let leads: Unit?
     /// Watches before it is whole again, if it is wounded.
     public let woundedFor: Int?
+    /// The House that holds it prisoner, while one does.
+    public let heldBy: Int?
     /// Its active skill fires in its company's next battle.
     public let furyReady: Bool
 }
@@ -139,7 +141,8 @@ public struct CommandersBoard: Equatable, Sendable {
 
 extension GameState {
     /// A House's commanders: the free ones first, then those at the head
-    /// of a company, then the wounded; each in the order it came.
+    /// of a company, then the wounded, then those held prisoner; each in
+    /// the order it came.
     public func commandersBoard(for house: Int) -> CommandersBoard {
         let lines = commanders(of: house).map { commander -> CommanderLine in
             let level = commander.level
@@ -150,9 +153,9 @@ extension GameState {
                 commander: commander, level: level, progress: commander.experience - floor,
                 span: level < Commander.highestLevel ? Commander.experience(forLevel: level + 1) - floor : nil,
                 skills: commander.archetype.skills.map { SkillLine(skill: $0, isKnown: $0.unlock <= level) },
-                leads: leads, woundedFor: wounded, furyReady: leads.flatMap { furyReady(of: $0) } != nil)
+                leads: leads, woundedFor: wounded, heldBy: commander.captive?.by, furyReady: leads.flatMap { furyReady(of: $0) } != nil)
         }
-        func rank(_ line: CommanderLine) -> Int { line.woundedFor != nil ? 2 : line.leads != nil ? 1 : 0 }
+        func rank(_ line: CommanderLine) -> Int { line.heldBy != nil ? 3 : line.woundedFor != nil ? 2 : line.leads != nil ? 1 : 0 }
         let ordered = lines.enumerated().sorted { (rank($0.element), $0.offset) < (rank($1.element), $1.offset) }.map(\.element)
         return CommandersBoard(lines: ordered, limit: GameState.rosterLimit)
     }

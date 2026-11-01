@@ -32,6 +32,12 @@ struct CommandersPanel: View {
                         Rule(opacity: 0.18)
                         CommanderRow(session: session, line: line, chosen: chosen)
                     }
+                    // The commanders of other Houses this House holds prisoner.
+                    let prisoners = session.state.prisoners(heldBy: session.player)
+                    if !prisoners.isEmpty {
+                        Rule(opacity: 0.18)
+                        PrisonersSection(session: session, prisoners: prisoners)
+                    }
                     Rule(opacity: 0.18)
                     ArmouryView(session: session, commanders: board.lines.map(\.commander))
                     Rule(opacity: 0.18)
@@ -57,8 +63,13 @@ struct CommandersPanel: View {
         unit.kind.hasTiers ? "\(unit.kind.title) \(Narration.roman(unit.tier))" : unit.kind.title
     }
 
-    /// Where a commander stands: at the head of a company, mending, or free.
-    static func standing(of line: CommanderLine) -> String {
+    /// Where a commander stands: held prisoner, at the head of a company,
+    /// mending, or free.
+    static func standing(of line: CommanderLine, in state: GameState? = nil) -> String {
+        if let captor = line.heldBy {
+            let by = state.flatMap { $0.houses.indices.contains(captor) ? $0.houses[captor].title : nil } ?? "another House"
+            return "Held prisoner by \(by)"
+        }
         if let wounded = line.woundedFor {
             return wounded == 1 ? "Wounded: whole again next watch" : "Wounded: whole again in \(wounded) watches"
         }
@@ -99,11 +110,19 @@ private struct CommanderRow: View {
                 .accessibilityAddTraits(.isStaticText)
             }
             HStack(alignment: .firstTextBaseline) {
-                Text(verbatim: CommandersPanel.standing(of: line))
+                Text(verbatim: CommandersPanel.standing(of: line, in: session.state))
                     .font(.nm(10.5))
-                    .foregroundStyle(line.woundedFor != nil ? Palette.bad : Palette.text(0.7))
+                    .foregroundStyle(line.woundedFor != nil || line.heldBy != nil ? Palette.bad : Palette.text(0.7))
                 Spacer()
-                if line.leads != nil {
+                if line.heldBy != nil {
+                    // Held prisoner: its House may ransom it.
+                    let price = GameState.ransom(for: commander)
+                    let refusal = session.state.ransomRefusal(commander.id, as: session.player)
+                    QuietButton(title: "Ransom, \(price)", size: 8.5, enabled: refusal == nil, name: "Ransom \(commander.name) for \(price)",
+                                why: refusal?.description) {
+                        session.perform(.ransom(commander: commander.id))
+                    }
+                } else if line.leads != nil {
                     QuietButton(title: "Call back", size: 8.5, name: "Call \(commander.name) back") {
                         session.perform(.unassign(commander: commander.id))
                     }
@@ -402,6 +421,75 @@ private struct TalentRow: View {
                             why: line.refusal?.description) {
                     session.perform(.learnTalent(commander: commander.id, talent: talent))
                 }
+            }
+        }
+    }
+}
+
+/// The commanders of other Houses held prisoner: how long they have been
+/// held, the last true thing each told, and whether they may be questioned
+/// again this watch or let go.
+struct PrisonersSection: View {
+    let session: GameSession
+    let prisoners: [Commander]
+
+    /// How long a prisoner has been held, and how long until they slip away.
+    static func held(_ captive: Captivity, at watch: Int) -> String {
+        let left = max(0, captive.since + GameState.captivityLasts - watch)
+        return left == 1 ? "Slips away as the watch turns" : "Slips away in \(left) watches"
+    }
+
+    var body: some View {
+        let state = session.state
+        VStack(alignment: .leading, spacing: 10) {
+            Caps("Prisoners", size: 8.5, weight: .medium)
+                .foregroundStyle(Palette.text(0.6))
+            ForEach(prisoners, id: \.id) { prisoner in
+                let house = state.houses.indices.contains(prisoner.owner) ? state.houses[prisoner.owner].title : "a House since gone"
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Caps(prisoner.name, size: 9.5, weight: .medium).foregroundStyle(Palette.ink)
+                        Text(verbatim: "of \(house), level \(prisoner.level)")
+                            .font(.nm(10.5))
+                            .foregroundStyle(Palette.text(0.65))
+                        Spacer()
+                    }
+                    if let captive = prisoner.captive {
+                        Text(verbatim: PrisonersSection.held(captive, at: state.watch))
+                            .font(.nm(10))
+                            .foregroundStyle(Palette.text(0.55))
+                        if session.awaitsRealm(.question(commander: prisoner.id)) {
+                            // What this copy would guess from what it sees is no true thing.
+                            Text(verbatim: "Questioned; their words are on the way.")
+                                .font(.nm(10.5, weight: .light))
+                                .foregroundStyle(Palette.text(0.6))
+                        } else if let last = captive.told?.last {
+                            // In the prisoner's voice, where this Mac's model gave it one; the true thing plainly beneath.
+                            if let voiced = session.spoken[.prisoner(prisoner.id * 100 + captive.questioned)] {
+                                Text(verbatim: voiced)
+                                    .font(.nm(10.5, weight: .light))
+                                    .foregroundStyle(Palette.glowWords)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Text(verbatim: last)
+                                .font(.nm(10.5))
+                                .foregroundStyle(Palette.text(0.8))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    HStack(spacing: 8) {
+                        Spacer()
+                        let refusal = state.questionRefusal(prisoner.id, as: session.player)
+                        QuietButton(title: "Question", size: 8.5, enabled: refusal == nil, name: "Question \(prisoner.name)",
+                                    why: refusal?.description) {
+                            session.perform(.question(commander: prisoner.id))
+                        }
+                        QuietButton(title: "Let go", size: 8.5, name: "Let \(prisoner.name) go home") {
+                            session.perform(.release(commander: prisoner.id))
+                        }
+                    }
+                }
+                .accessibilityElement(children: .contain)
             }
         }
     }

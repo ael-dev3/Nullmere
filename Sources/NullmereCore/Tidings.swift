@@ -514,6 +514,29 @@ extension GameState {
             let name = hold(holdID)?.name ?? "your hold"
             return Tidings("Your letter is sealed under the stones of \(name), for whoever searches them when the water has risen over this age.",
                            .neutral)
+        case .commanderTaken(let id, let owner, let by):
+            let name = commander(id)?.name ?? "A commander"
+            if by == viewer {
+                return Tidings("Your company takes \(name) of \(houses[owner].title) prisoner. Question them once a watch; their House may ransom them.",
+                               .good)
+            }
+            guard owner == viewer else { return nil }
+            return Tidings("\(name) is taken prisoner by \(houses[by].title). Ransom them for \(commander(id).map(GameState.ransom(for:)) ?? Stock()), "
+                           + "or they slip away in \(GameState.captivityLasts) watches.", .bad)
+        case .prisonerQuestioned(let id, let by, let word):
+            guard by == viewer else { return nil }
+            return Tidings("\(commander(id)?.name ?? "Your prisoner") tells you: \(word)", .neutral)
+        case .prisonerFreed(let id, let owner, let by, let why):
+            let name = commander(id)?.name ?? "A commander"
+            switch (why, owner == viewer, by == viewer) {
+            case (.ransomed, true, _): return Tidings("\(name) is ransomed and comes home to mend.", .neutral)
+            case (.ransomed, _, true): return Tidings("\(houses[owner].title) ransoms \(name); the ransom is in your stores.", .good)
+            case (.released, true, _): return Tidings("\(houses[by].title) lets \(name) go; they come home to mend.", .good)
+            case (.released, _, true): return Tidings("You let \(name) go home.", .neutral)
+            case (.escaped, true, _): return Tidings("\(name) slips away from \(houses[by].title) and comes home to mend.", .good)
+            case (.escaped, _, true): return Tidings("\(name) of \(houses[owner].title) slips away from you.", .bad)
+            default: return nil
+            }
         case .standingOrdersGiven(let house):
             guard house == viewer else { return nil }
             return Tidings(standingOrders(of: house).said, .neutral)

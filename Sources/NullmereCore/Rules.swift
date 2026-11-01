@@ -82,6 +82,12 @@ extension GameState {
             return try stand(order, as: house)
         case .standDown:
             return try standDown(as: house)
+        case .question(let commander):
+            return try question(commander, as: house)
+        case .ransom(let commander):
+            return try ransom(commander, as: house)
+        case .release(let commander):
+            return try release(commander, as: house)
         case let .reportWord(wordID):
             return try report(wordID, as: house)
         case let .proposeEdict(kind):
@@ -457,8 +463,8 @@ extension GameState {
 
         var events: [GameEvent] = []
         let attackerTroops = troops(of: attacker), defenderTroops = troops(of: defender)
-        let defenderFell = applyDamage(dealt, to: defenderID, events: &events)
-        let attackerFell = taken > 0 && applyDamage(taken, to: attackerID, events: &events)
+        let defenderFell = applyDamage(dealt, to: defenderID, by: attacker.owner, events: &events)
+        let attackerFell = taken > 0 && applyDamage(taken, to: attackerID, by: defender.owner, events: &events)
         // The troops each side lost, as many as stand no more.
         let slain = defenderTroops - (unit(defenderID).map(troops(of:)) ?? 0)
         let lost = attackerTroops - (unit(attackerID).map(troops(of:)) ?? 0)
@@ -541,14 +547,15 @@ extension GameState {
         return [.promoted(unit: unitID, owner: units[index].owner, rank: units[index].rank)]
     }
 
-    /// Returns whether the unit fell.
-    mutating func applyDamage(_ damage: Int, to unitID: Int, events: inout [GameEvent]) -> Bool {
+    /// Returns whether the unit fell. `striker`, the House whose blow it
+    /// was, takes its commander prisoner where it is a keeper's.
+    mutating func applyDamage(_ damage: Int, to unitID: Int, by striker: Int? = nil, events: inout [GameEvent]) -> Bool {
         guard let index = unitIndex(unitID) else { return false }
         units[index].health -= damage
         guard units[index].health <= 0 else { return false }
         let unit = units.remove(at: index)
         events.append(.unitLost(unit: unit.id, kind: unit.kind, owner: unit.owner, at: unit.position))
-        events += woundCommander(of: unit)
+        events += takePrisoner(of: unit, by: striker) ?? woundCommander(of: unit)
         events += carryToInfirmary(unit)
         return true
     }

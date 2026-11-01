@@ -56,6 +56,11 @@ public enum VoiceCheck {
         if let dream = state.dreams(of: state.player).last {
             moments.append(("dream of the Still", VoiceFacts.dream(dream, in: state)))
         }
+        // A commander of another House held prisoner, telling the first
+        // true thing they know of it.
+        if let prisoner = state.commanders(of: other).first, let word = state.knowledge(of: other).first {
+            moments.append(("prisoner questioned", VoiceFacts.prisoner(prisoner, told: word, in: state)))
+        }
         // The riddle the lake set it at the last half moon.
         if let riddle = state.riddle(of: state.player) {
             moments.append(("riddle of the lake", VoiceFacts.riddle(riddle)))

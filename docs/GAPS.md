@@ -324,6 +324,19 @@ designed, ticked when it is real, tested and shown in CI.
   peace with any House that offers it or none, tribute paid or refused.
   The House is played as its keeper would have it, by the server, while
   the keeper's Mac is shut. No other House knows them; stewards have none.
+- [x] **Prisoners who talk.** In Rise of Kingdoms a beaten commander only
+  goes home to heal. Here a commander whose company a keeper's company
+  fells is taken prisoner, and becomes a source of true intelligence and
+  a bargaining piece between keepers. Questioned once a watch, the
+  prisoner tells the captor, each time the next, one true thing of their
+  own House that the captor's eyes could not see: its army, its greatest
+  company and where it stands, its stores, the hold it means to take, its
+  seat's walls. The realm works out the truth; the captor's Mac's model
+  gives it in the prisoner's voice, the plain truth beneath. The
+  prisoner's House may ransom them for moonsalt by their level, the
+  captor may let them go, and after twenty watches they slip away.
+  Stewards ransom theirs when they can spare it twice over; only keepers
+  take prisoners, so a world of stewards goes as it always did.
 
 ## The order of the work
 

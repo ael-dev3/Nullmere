@@ -197,6 +197,8 @@ public struct Commander: Codable, Equatable, Identifiable, Sendable {
     /// The talents it has learned, a rank an entry, in the order learned;
     /// absent in saves from before talents.
     public internal(set) var talents: [Talent]?
+    /// Held prisoner by another House, while it is.
+    public internal(set) var captive: Captivity?
 
     public init(id: Int, name: String, archetype: Archetype, owner: Int) {
         self.id = id
@@ -380,6 +382,7 @@ extension GameState {
     /// Why a House can't give a company a commander, if it can't.
     public func assignRefusal(of commanderID: Int, to unitID: Int, as house: Int) -> RuleError? {
         guard let commander = commander(commanderID), commander.owner == house else { return .unknownCommander }
+        if commander.captive != nil { return .commanderCaptive }
         if commander.isWounded(at: watch) { return .commanderWounded((commander.woundedUntil ?? watch) - watch) }
         if company(ledBy: commanderID) != nil { return .commanderLeads }
         guard let unit = unit(unitID) else { return .unknownUnit }

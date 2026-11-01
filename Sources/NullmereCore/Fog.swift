@@ -89,7 +89,13 @@ extension GameState {
         // Its own commanders, and of others only those at the head of a
         // company in sight, or standing in the Ring, where every line is seen.
         let leading = Set(view.units.compactMap(\.leader)).union(ring?.entries.flatMap(\.line) ?? [])
-        view.commanders = commanders?.filter { $0.owner == house || leading.contains($0.id) }
+        view.commanders = commanders?.filter { $0.owner == house || leading.contains($0.id) || $0.captive?.by == house }.map { commander in
+            // What a prisoner told is their captor's alone to know.
+            guard commander.captive?.told != nil, commander.captive?.by != house else { return commander }
+            var kept = commander
+            kept.captive?.told = nil
+            return kept
+        }
         // Its own gear; of others, what those commanders wear.
         view.armoury = armoury?.filter { $0.owner == house || $0.wornBy.map(leading.contains) == true }
         // What is in a House's satchel is its own to know.
@@ -323,6 +329,10 @@ extension GameState {
                 // A letter of the age before, found, the whole realm hears.
                 return true
             case .standingOrdersGiven(let by):
+                return by == house
+            case .commanderTaken(_, let owner, let by), .prisonerFreed(_, let owner, let by, _):
+                return owner == house || by == house
+            case .prisonerQuestioned(_, let by, _):
                 return by == house
             case .wordReported(_, let by):
                 return by == house
