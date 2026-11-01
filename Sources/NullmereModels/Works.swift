@@ -92,6 +92,15 @@ extension MeshBuilder {
                     b.box(center: Vec3(x + (x > 0 ? 0.002 : -0.002), height + rise * 0.38, 0), size: Vec3(0.006, 0.022, 0.026),
                           color: Palette.timberDark)
                 }
+                // The rafters' ends out under the eaves.
+                let rafters = max(Int((width / 0.06).rounded()), 2)
+                for index in 0...rafters {
+                    let x = -w + width * Float(index) / Float(rafters)
+                    for side in [Float(1), -1] {
+                        b.limb(from: Vec3(x, height - 0.006, side * (d - 0.004)), to: Vec3(x, height + 0.006, side * (d + 0.02)),
+                               radius: 0.006, color: post)
+                    }
+                }
             }
         }
     }
