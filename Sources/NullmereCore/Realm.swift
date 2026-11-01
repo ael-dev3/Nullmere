@@ -396,6 +396,9 @@ public struct RealmState: Codable, Equatable, Sendable {
         if let house = keeper.house, world.houses.indices.contains(house) {
             world.houses[house].isPlayer = false
             world.houses[house].name = unusedHouseName()
+            // Their letter and standing orders go with them.
+            world.withdrawLetter(of: house)
+            world.withdrawStandingOrders(of: house)
             world.record(.seating, [house], "\(world.houses[house].title) passes to the stewards, its keeper gone from the realm for good.")
         }
         return keeper
@@ -462,6 +465,8 @@ public struct RealmState: Codable, Equatable, Sendable {
         guard let index = away.min(by: { keepers[$0].awaySince ?? 0 < keepers[$1].awaySince ?? 0 }),
               let house = keepers[index].house else { return false }
         world.houses[house].isPlayer = false
+        world.withdrawLetter(of: house)
+        world.withdrawStandingOrders(of: house)
         keepers[index].house = nil
         let span = keepers[index].hasPlayed == true ? "a week" : "an hour"
         world.record(.seating, [house], "\(world.houses[house].title) has stood \(span) without its keeper; the stewards keep it for another.")

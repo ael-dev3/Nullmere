@@ -162,9 +162,14 @@ public final class GameSession {
         case dream(Int)
         /// A riddle of the lake, by the watch it was set.
         case riddle(Int)
-        /// What a prisoner told: their commander's id a hundred times over,
-        /// and how many times they had been questioned.
+        /// What a prisoner told: by `prisonerKey(of:)`, their commander, the
+        /// watch they were taken and how many times they had been questioned.
         case prisoner(Int)
+
+        /// The key of what a prisoner told last, in this captivity of theirs.
+        static func prisonerKey(of prisoner: Commander) -> Spoken? {
+            prisoner.captive.map { .prisoner((prisoner.id * 10_000 + $0.since) * 100 + $0.questioned) }
+        }
 
         var key: String {
             switch self {
@@ -617,8 +622,17 @@ public final class GameSession {
         do {
             let before = positions()
             // Carried out here at once, as the realm will; its word follows.
+            // What turns wholly on what this copy can't see, what a prisoner
+            // tells, is the realm's alone to work out: sent, not carried out
+            // here, its world brings what came of it.
             let decided = Self.decidedByRealm(command, in: state)
-            let events = try state.perform(command, as: player)
+            let events: [GameEvent]
+            if case .question(let prisoner) = command {
+                if let refusal = state.questionRefusal(prisoner, as: player) { throw refusal }
+                events = []
+            } else {
+                events = try state.perform(command, as: player)
+            }
             answersAwaited.append(Awaited(command: command, from: before, decided: decided))
             link.send(command)
             // An order given: what Show me pointed at has done its work.
@@ -1982,9 +1996,7 @@ public final class GameSession {
         }
         // What a prisoner told when questioned, in their own voice.
         for prisoner in state.prisoners(heldBy: player) where !awaitsRealm(.question(commander: prisoner.id)) {
-            guard let captive = prisoner.captive, let word = captive.told?.last else { continue }
-            let key = Spoken.prisoner(prisoner.id * 100 + captive.questioned)
-            guard !asked.contains(key) else { continue }
+            guard let word = prisoner.captive?.told?.last, let key = Spoken.prisonerKey(of: prisoner), !asked.contains(key) else { continue }
             asked.insert(key)
             voiceQueue.append((key, VoiceFacts.prisoner(prisoner, told: word, in: state)))
         }

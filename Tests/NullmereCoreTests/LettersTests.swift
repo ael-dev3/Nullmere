@@ -42,6 +42,7 @@ final class LettersTests: XCTestCase {
         // No other House knows of it, nor hears it sealed.
         XCTAssertEqual(state.view(for: me).lettersSealed, [letter])
         XCTAssertEqual(state.view(for: steward).lettersSealed, [])
+        XCTAssertNil(state.view(for: steward).letters, "Not even that some House has sealed one")
         XCTAssertEqual(state.events(events, heardBy: steward), [])
         var poor = state
         poor.letters = nil
@@ -110,6 +111,34 @@ final class LettersTests: XCTestCase {
         next.houses[other].explored[try XCTUnwrap(next.map.index(of: lies))] = true
         XCTAssertEqual(next.view(for: other).lettersOfOld.first { $0.id == letter.id }?.words, found.words, "Found, its words are every House's")
         XCTAssertEqual(next.problems(), [])
+
+        // Found on a Mac's own copy, which keeps no letter's words until the
+        // realm tells them: said so, not told as blank words.
+        var guessed = found
+        guessed.words = ""
+        XCTAssertEqual(guessed.told(in: next), "A letter of the first age, sealed by \(before.houses[me].title), "
+                       + "found by \(next.houses[finder].title); its words are on the way.")
+        var copy = next
+        copy.oldLetters = copy.oldLetters?.map { var unfound = $0; unfound.foundBy = nil; unfound.found = nil; unfound.words = ""; return unfound }
+        _ = copy.findLetters(at: lies, by: finder)
+        XCTAssertTrue(copy.chronicle.last?.text.hasSuffix("sealed by \(before.houses[me].title).") == true, "No blank words told")
+    }
+
+    /// A keeper who gives up their seat, or is forgotten, takes the letter
+    /// they sealed with them.
+    func testAKeeperGoneTakesTheirLetter() throws {
+        var realm = RealmState(name: "The Nullmere", seed: "a letter withdrawn", seats: 4, radius: 18, watchLength: 60, now: 0)
+        let house = try XCTUnwrap(realm.arrive("id-ama", name: "Ama", now: 0).house)
+        realm.world.houses[house].stock.moonsalt = 100
+        let seat = try XCTUnwrap(realm.world.seat(of: house))
+        _ = try realm.world.perform(.sealLetter(words: "Remember the ford.", hold: seat.id), as: house)
+        _ = try realm.world.perform(.stand(.home), as: house)
+        XCTAssertNotNil(realm.world.letter(sealedBy: house))
+        XCTAssertNotNil(realm.forget(keeperNamed: "Ama"))
+        XCTAssertNil(realm.world.letter(sealedBy: house), "Gone with them")
+        XCTAssertNil(realm.world.letters)
+        XCTAssertTrue(realm.world.standingOrders(of: house).isEmpty, "Their standing orders too")
+        XCTAssertNil(realm.world.standing, "A steward's House keeps none")
     }
 
     /// With nothing sealed, an age drowns as it always did, and a world of

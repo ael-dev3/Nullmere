@@ -521,7 +521,10 @@ public actor RealmSteward {
         // Nothing changed since the last publication kept (a heartbeat, a
         // "here" answered): every view as published stands, and none is
         // worked out and written again only to be found the same.
-        let unchanged = !worldChanged && pendingEvents.isEmpty && pendingActs.isEmpty
+        // What waits to be heard, taken now: what an order of whoever runs
+        // the realm adds while this publication waits is the next one's.
+        let acts = pendingActs, told = pendingEvents
+        let unchanged = !worldChanged && told.isEmpty && acts.isEmpty
         // The way each company on the march goes, found once for every
         // keeper who sees a stretch of it.
         var ways: [Int: [Hex]]?
@@ -543,8 +546,8 @@ public actor RealmSteward {
             viewsWorkedOut += 1
             let was = published[keeper.id] ?? [:]
             let changed = viewParts.filter { was[$0.key] != $0.value }.sorted { $0.key < $1.key }
-            let others = pendingActs.filter { $0.by != keeper.id }.flatMap(\.events)
-            let events = keeper.house.map { state.world.events(others + pendingEvents, heardBy: $0) } ?? []
+            let others = acts.filter { $0.by != keeper.id }.flatMap(\.events)
+            let events = keeper.house.map { state.world.events(others + told, heardBy: $0) } ?? []
             guard !changed.isEmpty || Set(was.keys) != Set(viewParts.keys) || !events.isEmpty else { continue }
             if !events.isEmpty { batches.append((now, HeardBatch(version: version + 1, events: events))) }
             batches = Array(batches.suffix(RealmSteward.heardBatches))
@@ -567,7 +570,7 @@ public actor RealmSteward {
         let changed = parts.filter { keptParts[$0.key] != $0.value }.sorted { $0.key < $1.key }
         let gone = keptParts.keys.filter { parts[$0] == nil }.sorted()
         let attempt = Attempt(version: version + 1, at: now, status: status, shown: shown, shownAt: shownAt, parts: parts, heard: lately,
-                              events: pendingEvents.count, acts: pendingActs.count, answers: answers.map(\.nonce))
+                              events: told.count, acts: acts.count, answers: answers.map(\.nonce))
         do {
             try await transport.call("publish", [
                 .integer(version + 1),

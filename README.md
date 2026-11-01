@@ -601,10 +601,13 @@ as the realm will, and takes the realm's word as final.
   that kind wherever it would muster for war (none where a hold can't),
   raises that work first wherever it can, keeps every company on the
   House's own land, striking only companies of war in reach and digging
-  in, makes peace with any House that offers it and sues for it in every
+  in (one out at the land's work sees it through at peace and is called
+  home with its load at war), makes peace with any House that offers it and sues for it in every
   war, or with none, and pays tribute demanded or refuses it. They stand
   until the keeper changes them or clears them at the card's foot, where
-  they are told; no other House knows them.
+  they are told; no other House knows them. A keeper whose House passes
+  from them, their seat given up or they forgotten, takes their standing
+  orders and their sealed letter with them.
 - **Prisoners.** A commander whose company a keeper's company fells is
   taken prisoner rather than carried home. In Commanders (4) the captor
   may Question them once a watch: each time they tell one true thing of

@@ -1218,15 +1218,22 @@ struct RivalMind {
                 }
                 return perform(.move(unit: unitID, to: post), in: &state)
             }
-            if let home { return keepHome(unit, territory: home, in: &state) }
+            if let home { return keepHome(unit, territory: home, atWar: atWar, in: &state) }
             return campaign(with: unit, seeing: visible, atWar: atWar, in: &state)
         }
     }
 
     /// A company a keeper's standing orders keep home: it strikes a company
     /// of war in its reach, digs in on its House's own land, and from
-    /// anywhere else makes for the nearest open ground of it.
-    private func keepHome(_ unit: Unit, territory owners: [Int?], in state: inout GameState) -> [GameEvent] {
+    /// anywhere else makes for the nearest open ground of it. Out at the
+    /// land's work it is called home with what it carries at war, and sees
+    /// its errand through at peace, as one bringing its load home always
+    /// does.
+    private func keepHome(_ unit: Unit, territory owners: [Int?], atWar: Bool, in state: inout GameState) -> [GameEvent] {
+        if let errand = unit.errand {
+            if case .gather = errand, atWar { return perform(.recall(unit: unit.id), in: &state) }
+            return []
+        }
         if let target = foeInReach(of: unit, companiesOfWarOnly: true, in: state) {
             return perform(.attack(unit: unit.id, target: target), in: &state)
         }

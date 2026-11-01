@@ -135,6 +135,34 @@ final class StandingOrdersTests: XCTestCase {
         XCTAssertTrue(unit.fortified, "and dug in there")
     }
 
+    /// Kept home, a company out at the land's work sees its errand through
+    /// at peace, and at war is called home with what it carries; one
+    /// bringing its load home always goes on.
+    func testKeptHomeACompanyAtTheLandsWorkSeesItThroughOrIsCalledHome() throws {
+        var (state, me, _, steward) = try keeperWorld("standing home gatherers")
+        state.units.removeAll { $0.owner == me && $0.kind.isMilitary }
+        let home = try XCTUnwrap(state.seat(of: me)).position
+        let owners = state.territory()
+        let out = try XCTUnwrap(state.map.hexes.filter { hex in
+            state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && !state.isOccupied(hex)
+                && state.territoryOwner(of: hex, in: owners) == nil && hex.distance(to: home) >= 5
+        }.min { ($0.distance(to: home), $0) < ($1.distance(to: home), $1) })
+        let company = state.put(.spear, of: me, at: out)
+        let index = try XCTUnwrap(state.unitIndex(company))
+        state.units[index].errand = .gather(site: 1)
+        state.units[index].load = Stock(grain: 30)
+        _ = try state.perform(.stand(.home), as: me)
+        var peace = state
+        _ = peace.stewardTurn(for: me, caretaking: true)
+        XCTAssertEqual(peace.unit(company)?.errand, .gather(site: 1), "At peace it sees its errand through")
+        XCTAssertEqual(peace.unit(company)?.load, Stock(grain: 30), "Its load kept")
+        var homeward = state
+        homeward.units[index].errand = .homeward
+        _ = try homeward.declareWar(by: steward, on: me)
+        _ = homeward.stewardTurn(for: me, caretaking: true)
+        XCTAssertEqual(homeward.unit(company)?.errand, .homeward, "Bringing its load home, it goes on")
+    }
+
     func testTheCaretakerMakesPeaceAndPaysTributeAsItIsTold() throws {
         var (state, me, _, steward) = try keeperWorld("standing peace")
         // A war one watch old: a steward in the keeper's place would not yet end it.

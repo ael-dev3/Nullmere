@@ -465,7 +465,7 @@ struct PrisonersSection: View {
                                 .foregroundStyle(Palette.text(0.6))
                         } else if let last = captive.told?.last {
                             // In the prisoner's voice, where this Mac's model gave it one; the true thing plainly beneath.
-                            if let voiced = session.spoken[.prisoner(prisoner.id * 100 + captive.questioned)] {
+                            if let key = GameSession.Spoken.prisonerKey(of: prisoner), let voiced = session.spoken[key] {
                                 Text(verbatim: voiced)
                                     .font(.nm(10.5, weight: .light))
                                     .foregroundStyle(Palette.glowWords)
@@ -480,8 +480,9 @@ struct PrisonersSection: View {
                     HStack(spacing: 8) {
                         Spacer()
                         let refusal = state.questionRefusal(prisoner.id, as: session.player)
-                        QuietButton(title: "Question", size: 8.5, enabled: refusal == nil, name: "Question \(prisoner.name)",
-                                    why: refusal?.description) {
+                        let asking = session.awaitsRealm(.question(commander: prisoner.id))
+                        QuietButton(title: "Question", size: 8.5, enabled: refusal == nil && !asking, name: "Question \(prisoner.name)",
+                                    why: asking ? "Their words are on the way." : refusal?.description) {
                             session.perform(.question(commander: prisoner.id))
                         }
                         QuietButton(title: "Let go", size: 8.5, name: "Let \(prisoner.name) go home") {

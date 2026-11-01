@@ -81,6 +81,15 @@ extension GameState {
         return [.letterSealed(hold: holdID, by: house)]
     }
 
+    /// A House's keeper gone from its seat takes the letter they sealed
+    /// this age with them.
+    mutating func withdrawLetter(of house: Int) {
+        letters = letters.flatMap { all in
+            let kept = all.filter { $0.house != house }
+            return kept.isEmpty ? nil : kept
+        }
+    }
+
     /// As a new age begins: the letters the age before sealed go down with
     /// their holds where the water laid them, or with the nearest it did.
     mutating func sinkLetters(of before: GameState, age: Int) {
@@ -110,8 +119,9 @@ extension GameState {
             all[index].found = watch
             let letter = all[index]
             let age = letter.age.map { "the \(ordinal($0)) age" } ?? "an age before"
+            let words = letter.words.isEmpty ? "." : ": “\(letter.words)”"
             record(.discovery, [house], "Among the drowned stones of \(letter.hold), \(houses[house].title) finds a letter of \(age), "
-                   + "sealed by \(letter.from): “\(letter.words)”")
+                   + "sealed by \(letter.from)\(words)")
             events.append(.letterFound(letter: letter, by: house))
         }
         oldLetters = all
@@ -128,6 +138,9 @@ extension Letter {
             return "A letter of \(age), sealed by \(from), lies within, unread, for whoever searches the ruin."
         }
         let by = state.houses.indices.contains(finder) ? state.houses[finder].title : "a House since gone"
+        // Found on this Mac's copy, whose letters keep no words until found:
+        // the realm's word brings them.
+        guard !words.isEmpty else { return "A letter of \(age), sealed by \(from), found by \(by); its words are on the way." }
         return "A letter of \(age), sealed by \(from), found by \(by): “\(words)”"
     }
 }

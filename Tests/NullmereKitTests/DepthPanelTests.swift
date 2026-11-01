@@ -405,6 +405,8 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(PressableButtons.press("Question"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .question(commander: theirs.id))
         XCTAssertTrue(session.awaitsRealm(.question(commander: theirs.id)), "Their words are the realm's to tell")
+        XCTAssertEqual(session.state.commander(theirs.id)?.captive?.questioned, 0, "Not guessed at from this copy's view")
+        XCTAssertNil(session.state.commander(theirs.id)?.captive?.told)
         let price = GameState.ransom(for: mine)
         XCTAssertTrue(PressableButtons.press("Ransom, \(price)"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .ransom(commander: mine.id))
@@ -413,6 +415,12 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(PressableButtons.press("Let go"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .release(commander: theirs.id))
         let captivity = Captivity(by: me, since: 10, questioned: 0, lastQuestioned: nil, told: nil)
+        // What a prisoner told is voiced once a captivity: taken again, they speak anew.
+        var once = theirs, again = theirs
+        once.captive = Captivity(by: me, since: 10, questioned: 1, lastQuestioned: 10, told: ["A true thing."])
+        again.captive = Captivity(by: me, since: 40, questioned: 1, lastQuestioned: 40, told: ["Another."])
+        XCTAssertNotEqual(GameSession.Spoken.prisonerKey(of: once), GameSession.Spoken.prisonerKey(of: again))
+        XCTAssertNil(GameSession.Spoken.prisonerKey(of: mine), "None for one held by no one")
         XCTAssertEqual(PrisonersSection.held(captivity, at: 10 + GameState.captivityLasts - 1), "Slips away as the watch turns")
         XCTAssertEqual(PrisonersSection.held(captivity, at: 12), "Slips away in \(GameState.captivityLasts - 2) watches")
         XCTAssertEqual(GameSession.cues(for: .question(commander: theirs.id), events: [], in: session.state, player: me), [.lore])

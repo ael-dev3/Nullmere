@@ -168,19 +168,23 @@ extension GameState {
         }
         // A House's own letter to the age to come; of those of the age
         // before, the ones on ground it has seen, their words only once found.
-        view.letters = letters.map { all in all.filter { $0.house == house } }
+        view.letters = letters.flatMap { all in
+            let own = all.filter { $0.house == house }
+            return own.isEmpty ? nil : own
+        }
         // A House's own standing orders; no other's.
         view.standing = standing.flatMap { all in
             let own = all.filter { $0.house == house }
             return own.isEmpty ? nil : own
         }
-        view.oldLetters = oldLetters.map { all in
-            all.filter { letter in letter.at.flatMap(map.index(of:)).map { explored.indices.contains($0) && explored[$0] } ?? false }
+        view.oldLetters = oldLetters.flatMap { all in
+            let seen = all.filter { letter in letter.at.flatMap(map.index(of:)).map { explored.indices.contains($0) && explored[$0] } ?? false }
                 .map { letter in
                     var shown = letter
                     if letter.foundBy == nil { shown.words = "" }
                     return shown
                 }
+            return seen.isEmpty ? nil : seen
         }
         return view
     }

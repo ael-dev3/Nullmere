@@ -112,6 +112,12 @@ extension GameState {
         return [.standingOrdersGiven(house: house)]
     }
 
+    /// A House's keeper gone from its seat takes their standing orders with
+    /// them: a steward keeps the House as it sees fit.
+    mutating func withdrawStandingOrders(of house: Int) {
+        keep(StandingOrders(house: house))
+    }
+
     private mutating func keep(_ orders: StandingOrders) {
         let all = (standing ?? []).filter { $0.house != orders.house } + (orders.isEmpty ? [] : [orders])
         standing = all.isEmpty ? nil : all.sorted { $0.house < $1.house }
