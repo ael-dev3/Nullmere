@@ -192,7 +192,22 @@ public final class Synth: @unchecked Sendable {
         return notes.count
     }
 
+    /// How long a cue sounds before the last of it has died below hearing,
+    /// in seconds: for tests.
+    func lasting(_ cue: SoundCue) -> Float {
+        let made = notes(of: cue, after: 0, at: .middle)
+        return made.map(\.end).max() ?? 0
+    }
+
     public func trigger(_ cue: SoundCue, after delay: Float = 0, at place: SoundPlace = .middle) {
+        let made = notes(of: cue, after: delay, at: place)
+        lock.lock()
+        if pending.count < 12 { pending.append(contentsOf: made) }
+        lock.unlock()
+    }
+
+    /// The notes a cue sounds, each in its place and its band.
+    private func notes(of cue: SoundCue, after delay: Float, at place: SoundPlace) -> [Note] {
         var note: Note
         var more: [Note] = []
         switch cue {
@@ -474,9 +489,7 @@ public final class Synth: @unchecked Sendable {
             (more[index].left, more[index].right) = (place.left, place.right)
             more[index].colour(bands.rest ?? bands.first, sampleRate: sampleRate)
         }
-        lock.lock()
-        if pending.count < 12 { pending.append(note); pending.append(contentsOf: more) }
-        lock.unlock()
+        return [note] + more
     }
 
     private func random() -> Float {

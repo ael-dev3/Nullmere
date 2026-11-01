@@ -53,16 +53,16 @@ final class KeptSoundsTests: XCTestCase {
             synth.prepare(sampleRate: rate)
             synth.settle()
             synth.setMusic(on: true, mood: mood)
-            try wave(rendered(synth, seconds: 20, rate: rate), rate: rate).write(to: folder.appendingPathComponent("score-\(name).wav"))
+            try wave(rendered(synth, seconds: 10, rate: rate), rate: rate).write(to: folder.appendingPathComponent("score-\(name).wav"))
         }
-        // Every cue in turn over the night, a second and a half apart.
+        // Every cue in turn over the night, a second apart.
         let synth = Synth()
         synth.prepare(sampleRate: rate)
         synth.settle()
         var cues: (left: [Float], right: [Float]) = ([], [])
         for cue in SoundCue.all {
             synth.trigger(cue)
-            let heard = rendered(synth, seconds: 1.5, rate: rate)
+            let heard = rendered(synth, seconds: 1, rate: rate)
             cues.left += heard.left
             cues.right += heard.right
         }

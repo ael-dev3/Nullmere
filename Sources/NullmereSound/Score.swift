@@ -186,17 +186,44 @@ public struct Score {
         if random() < 0.25 { bellClock += 6 }
     }
 
-    /// One sample of music in each ear, before the master level.
-    mutating func sample(dt: Float) -> (left: Float, right: Float) {
-        level += (target - level) * dt / 3
-        guard level > 0.0005 else { return (0, 0) }
-
+    /// The score's own clock, moved on by `dt`: the chords changing, the
+    /// line's next note sounding, and at war the drums' march struck. Every
+    /// sample is drawn from it, and tests may run it alone.
+    private mutating func advance(dt: Float) {
         chordClock += dt
         if chordClock >= chordLength {
             chordClock = 0
             nextChord()
         }
         crossfade = min(1, crossfade + dt / 4)
+        bellClock -= dt
+        if bellClock <= 0 { nextBell() }
+        if mood == .war {
+            drumClock += dt
+            if drumClock >= Score.step {
+                drumClock -= Score.step
+                let strength = Score.march[drumStep]
+                if strength > 0 {
+                    if drumStep % 4 == 0 { lowDrum.strike(strength) } else { highDrum.strike(strength) }
+                    drumStrokes += 1
+                }
+                drumStep = (drumStep + 1) % Score.march.count
+            }
+        }
+    }
+
+    /// For tests: the score as written over `seconds`, sample by sample at
+    /// its rate, as it would be played but not sounded.
+    mutating func compose(seconds: Float) {
+        let dt = 1 / sampleRate
+        for _ in 0..<Int(seconds * sampleRate) { advance(dt: dt) }
+    }
+
+    /// One sample of music in each ear, before the master level.
+    mutating func sample(dt: Float) -> (left: Float, right: Float) {
+        level += (target - level) * dt / 3
+        guard level > 0.0005 else { return (0, 0) }
+        advance(dt: dt)
 
         // The strings. The chord fading out sounds just as it did while it
         // was the chord, so the change is a crossfade and never a step.
@@ -218,26 +245,12 @@ public struct Score {
         right *= breath
 
         // The harp and the bells.
-        bellClock -= dt
-        if bellClock <= 0 { nextBell() }
         let plucked = harp.sample(dt: dt)
         let rung = bells.sample(dt: dt)
         left += plucked.left * Score.plucking + rung.left * Score.ringing
         right += plucked.right * Score.plucking + rung.right * Score.ringing
 
         // At war, the drums' slow march; what was struck rings out after.
-        if mood == .war {
-            drumClock += dt
-            if drumClock >= Score.step {
-                drumClock -= Score.step
-                let strength = Score.march[drumStep]
-                if strength > 0 {
-                    if drumStep % 4 == 0 { lowDrum.strike(strength) } else { highDrum.strike(strength) }
-                    drumStrokes += 1
-                }
-                drumStep = (drumStep + 1) % Score.march.count
-            }
-        }
         if lowDrum.isSounding || highDrum.isSounding {
             let drums = (lowDrum.sample(dt: dt) + highDrum.sample(dt: dt) * 0.8) * Score.drumming
             left += drums

@@ -7,6 +7,15 @@ import NullmereCore
 /// each theme's line, the answers in the other voice, the drums' march at
 /// war, and the same music at any rate made again.
 final class ScoreTests: XCTestCase {
+    /// The score as written over `seconds`, not sounded: its chords, notes
+    /// and drum strokes as they would be played.
+    private func written(_ mood: Score.Mood, seconds: Float) -> Score {
+        var score = Score()
+        score.mood = mood
+        score.compose(seconds: seconds)
+        return score
+    }
+
     private func play(_ mood: Score.Mood, seconds: Float, rate: Float = 48_000) -> (Score, left: [Float], right: [Float]) {
         var score = Score(sampleRate: rate)
         score.mood = mood
@@ -21,38 +30,61 @@ final class ScoreTests: XCTestCase {
         return (score, left, right)
     }
 
-    /// At peace the harp sings the line, over the strings' chords, now and
-    /// then rolling a chord as it changes; no bell and no drum.
+    /// At peace the harp sings the line in D minor pentatonic, wandering
+    /// it, over the strings' chords as they change, now and then rolling a
+    /// chord as it changes; no bell and no drum.
     func testAtPeaceTheHarpSingsOverTheStrings() {
-        let (score, left, right) = play(.peace, seconds: 60)
-        XCTAssertGreaterThan(score.playedNotes.count, 5)
+        let score = written(.peace, seconds: 90)
+        XCTAssertGreaterThanOrEqual(score.playedNotes.count, 8)
+        XCTAssertTrue(score.playedNotes.allSatisfy(Score.melody.contains), "Every note in D minor pentatonic")
+        XCTAssertGreaterThan(Set(score.playedNotes).count, 3, "The melody wanders")
+        XCTAssertGreaterThanOrEqual(score.chordChanges, 5)
         XCTAssertEqual(score.harpPlucks - score.playedNotes.count, score.rolledNotes, "Every note the line's or a chord's rolled")
         XCTAssertGreaterThan(score.rolledNotes, 0, "A chord rolled now and then")
         XCTAssertEqual(score.bellsStruck, 0)
         XCTAssertEqual(score.drumStrokes, 0)
+        // As it sounds: across both ears, and well under full.
+        let (_, left, right) = play(.peace, seconds: 12)
         XCTAssertNotEqual(left, right, "Heard across both ears")
         XCTAssertFalse(left.contains { $0.isNaN || $0.isInfinite })
         XCTAssertLessThan(left.map(abs).max() ?? 1, 0.3)
     }
 
-    /// Over the Drowned Isles glass bells sing it; over the Twin Waters too,
-    /// each note answered on the harp a fifth above.
-    func testTheLakesSingInTheirOwnVoices() {
-        let isles = play(.title(.isles), seconds: 60).0
-        XCTAssertEqual(isles.bellsStruck, isles.playedNotes.count)
-        XCTAssertEqual(isles.harpPlucks, isles.rolledNotes, "The harp only rolls the chords")
-        let twin = play(.title(.twin), seconds: 60).0
-        XCTAssertEqual(twin.bellsStruck, twin.playedNotes.count)
-        XCTAssertEqual(twin.harpPlucks - twin.rolledNotes, twin.playedNotes.count, "Every note answered on the harp")
-        let marches = play(.title(.marches), seconds: 60).0
-        XCTAssertEqual(marches.bellsStruck, 0, "The Marches' harp alone")
+    /// Over the launcher each lake's title theme in its own mode and voice:
+    /// every note from its own melody, the chords moving, no drum; the
+    /// Drowned Isles and the Twin Waters sung by glass bells, the Twin
+    /// Waters' each answered on the harp a fifth above, the rest on the harp.
+    func testEachLakeSingsItsOwnTitleTheme() {
+        for lake in Lake.allCases {
+            let score = written(.title(lake), seconds: 90)
+            let theme = Theme.of(.title(lake))
+            XCTAssertGreaterThanOrEqual(score.playedNotes.count, 4, "\(lake)")
+            XCTAssertTrue(score.playedNotes.allSatisfy(theme.melody.contains), "\(lake) keeps its mode")
+            XCTAssertGreaterThanOrEqual(score.chordChanges, 3, "\(lake)")
+            XCTAssertEqual(score.drumStrokes, 0, "No drum over the launcher")
+            switch lake {
+            case .isles:
+                XCTAssertEqual(score.bellsStruck, score.playedNotes.count)
+                XCTAssertEqual(score.harpPlucks, score.rolledNotes, "The harp only rolls the chords")
+            case .twin:
+                XCTAssertEqual(score.bellsStruck, score.playedNotes.count)
+                XCTAssertEqual(score.harpPlucks - score.rolledNotes, score.playedNotes.count, "Every note answered on the harp")
+            default:
+                XCTAssertEqual(score.bellsStruck, 0, "\(lake)'s harp alone")
+            }
+        }
+        XCTAssertEqual(Set(Lake.allCases.map { Theme.of(.title($0)).melody }).count, Lake.allCases.count, "Each lake its own")
+        XCTAssertEqual(Theme.of(.title(.twin)).echo, 7)
+        XCTAssertNil(Theme.of(.peace).echo)
+        XCTAssertEqual(Theme.of(.peace).melody, Score.melody, "The realm's peace as it was")
+        XCTAssertEqual(Theme.of(.war).chords, Score.warChords)
     }
 
     /// While the drowned age walks the score turns strange: glass bells far
     /// apart, each answered on the harp a tritone above, no chord rolled
     /// and no drum, every note from the scale of tones and half tones.
     func testTheEatenMoonHasItsOwnStrangeMusic() {
-        let (score, _, _) = play(.eclipse, seconds: 60)
+        let score = written(.eclipse, seconds: 60)
         let theme = Theme.of(.eclipse)
         XCTAssertGreaterThan(score.playedNotes.count, 3)
         XCTAssertTrue(score.playedNotes.allSatisfy(theme.melody.contains))
@@ -69,9 +101,11 @@ final class ScoreTests: XCTestCase {
     /// At war two drums keep the march: four strokes a bar of eight steps,
     /// each step three tenths of a second.
     func testAtWarTheDrumsKeepTheMarch() {
-        let (score, left, _) = play(.war, seconds: 24.1)
-        XCTAssertEqual(score.drumStrokes, 40)
+        XCTAssertEqual(written(.war, seconds: 24.1).drumStrokes, 40)
         XCTAssertEqual(Score.march.filter { $0 > 0 }.count, 4)
+        let (score, left, _) = play(.war, seconds: 6.1)
+        XCTAssertEqual(score.drumStrokes, written(.war, seconds: 6.1).drumStrokes, "Sounded as written")
+        XCTAssertEqual(score.drumStrokes, 10)
         XCTAssertLessThan(left.map(abs).max() ?? 1, 0.4)
     }
 
@@ -93,6 +127,6 @@ final class ScoreTests: XCTestCase {
     func testItIsSilentUntilWantedAndTheSameEachTime() {
         var quiet = Score()
         XCTAssertEqual((0..<4_800).map { _ in quiet.sample(dt: 1 / 48_000).left }.map(abs).max(), 0)
-        XCTAssertEqual(play(.title(.crescent), seconds: 15).left, play(.title(.crescent), seconds: 15).left)
+        XCTAssertEqual(play(.title(.crescent), seconds: 6).left, play(.title(.crescent), seconds: 6).left)
     }
 }
