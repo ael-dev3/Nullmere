@@ -1721,7 +1721,14 @@ the keeper's realm last lay on, made as it plays.
   charcoal heaped, then tools hung by the smithy door and bar iron stood by
   it, the bellows' boards and nozzle and a blade cooling on the trough, and
   a helm and a shield on the stand of mail (762 to 1,310 triangles, where
-  it was 462 to 802).
+  it was 462 to 802). A Masons' Lodge's jib slews its stone round and back
+  on its mast and, from the fourth level, its great treadwheel turns in a
+  braced frame; near, a mallet and a chisel lie on its banker with the
+  chips at its foot, a rough block is split with wedges at its first
+  levels, a square, dividers and a template lie on its tracing floor and
+  templates stand against its hall from the third, and at the fifth its
+  arch has capitals and a keystone standing proud (508 to 1,034 triangles,
+  where it was 356 to 778).
 - **Only what the view reaches is drawn.** The land's furniture is kept
   on the GPU in square regions eight hexes on a side, each with the bounds
   of all it holds; each frame finds the regions inside the camera's view

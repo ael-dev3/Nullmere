@@ -307,10 +307,12 @@ enum Works {
     /// to lift them; from the second level, walls on two sides and more
     /// blocks; from the third, a hall of white stone with a pale tracing
     /// floor before it, where a work is drawn out full size before a stone
-    /// is laid; then a great treadwheel; at the fifth, a carved arch on the
-    /// yard and a moonsalt finial on the ridge.
+    /// is laid; then a great treadwheel, turning in its frame; at the fifth,
+    /// a carved arch on the yard and a moonsalt finial on the ridge. The
+    /// jib slews its stone round and back.
     static func lodge(_ level: Int, _ name: String) -> Model {
         var b = MeshBuilder()
+        var rig = Rig()
         b.pad(radius: 0.31)
         let height = wardHeight(level) + 0.02
         if level >= 3 {
@@ -345,15 +347,37 @@ enum Works {
         b.box(center: Vec3(0.12, 0.075, 0.04), size: Vec3(0.045, 0.03, 0.035), color: Palette.stonePale)
         // Blocks stacked, more at each level.
         b.blocks(at: Vec3(0.16, 0, -0.16), count: min(3 + level, 8), seed: seed(of: name))
-        // The jib to lift them.
+        // The jib to lift them, slewing its stone round on its mast.
         let top = 0.22 + 0.015 * Float(level)
-        b.limb(from: Vec3(0.24, 0, 0.12), to: Vec3(0.24, top, 0.12), radius: 0.009, color: Palette.timberDark)
-        b.beam(from: Vec3(0.24, top - 0.01, 0.12), to: Vec3(0.12, top - 0.04, 0.12), width: 0.01, color: Palette.timberDark)
-        b.limb(from: Vec3(0.13, top - 0.04, 0.12), to: Vec3(0.13, 0.07, 0.12), radius: 0.002, color: Palette.canvas)
-        b.box(center: Vec3(0.13, 0.05, 0.12), size: Vec3(0.04, 0.03, 0.03), color: Palette.stonePale)
+        let mast = Vec3(0.24, 0, 0.12)
+        b.limb(from: mast, to: Vec3(0.24, top, 0.12), radius: 0.009, color: Palette.timberDark)
+        let jib = rig.add("jib", pivot: mast)
+        b.with(part: jib) {
+            $0.beam(from: Vec3(0.24, top - 0.01, 0.12), to: Vec3(0.12, top - 0.04, 0.12), width: 0.01, color: Palette.timberDark)
+            $0.limb(from: Vec3(0.13, top - 0.04, 0.12), to: Vec3(0.13, 0.07, 0.12), radius: 0.002, color: Palette.canvas)
+            $0.box(center: Vec3(0.13, 0.05, 0.12), size: Vec3(0.04, 0.03, 0.03), color: Palette.stonePale)
+            $0.fine {
+                $0.with(material: .metal) {
+                    $0.box(center: Vec3(0.13, 0.068, 0.12), size: Vec3(0.01, 0.008, 0.012), color: Palette.iron)
+                }
+            }
+        }
+        var wheels: [Machinery.Wheel] = []
         if level >= 4 {
-            // The great treadwheel that winds the heavier stones.
-            b.wheel(center: Vec3(-0.24, 0.075, 0.12), radius: 0.07, width: 0.035, spokes: 6, color: Palette.timber, rim: Palette.timberDark)
+            // The great treadwheel that winds the heavier stones, turning
+            // on its axle between two posts.
+            let hub = Vec3(-0.24, 0.075, 0.12)
+            let wheel = rig.add("treadwheel", pivot: hub)
+            b.with(part: wheel) {
+                $0.wheel(center: hub, radius: 0.07, width: 0.035, spokes: 6, color: Palette.timber, rim: Palette.timberDark)
+                $0.limb(from: hub - Vec3(0.04, 0, 0), to: hub + Vec3(0.04, 0, 0), radius: 0.005, color: Palette.timberDark)
+            }
+            for x in [Float(-0.275), -0.205] {
+                b.limb(from: Vec3(x, 0, 0.12), to: Vec3(x, 0.085, 0.12), radius: 0.006, color: Palette.timberDark)
+                b.limb(from: Vec3(x, 0, 0.075), to: Vec3(x, 0.06, 0.12), radius: 0.004, color: Palette.timber)
+                b.limb(from: Vec3(x, 0, 0.165), to: Vec3(x, 0.06, 0.12), radius: 0.004, color: Palette.timber)
+            }
+            wheels.append(.init(part: wheel, axis: Vec3(1, 0, 0), turns: 1))
         }
         if level >= 5 {
             // A carved arch on the yard, the lodge's masterwork, and a
@@ -362,6 +386,7 @@ enum Works {
                 b.place(.translation(Vec3(x, 0, 0.22))) {
                     $0.prism(sides: 6, radius: 0.016, to: 0.15, color: Palette.stoneWhite)
                 }
+                b.box(center: Vec3(x, 0.141, 0.22), size: Vec3(0.042, 0.014, 0.036), color: Palette.stonePale)
             }
             b.beam(from: Vec3(-0.065, 0.16, 0.22), to: Vec3(0.065, 0.16, 0.22), width: 0.03, depth: 0.025, color: Palette.stoneWhite)
             b.with(material: .crystal) {
@@ -370,7 +395,52 @@ enum Works {
                 }
             }
         }
-        return model(name, b)
+        // Near, the masons' tools: a mallet and a chisel on the banker and
+        // its chips at its foot; at the first levels a rough block being
+        // split with wedges; from the third, a square, dividers and a
+        // template on the tracing floor and templates against the hall;
+        // at the fifth, the arch's keystone standing proud.
+        b.fine {
+            $0.box(center: Vec3(0.151, 0.068, 0.028), size: Vec3(0.016, 0.014, 0.014), color: Palette.timberPale)
+            $0.beam(from: Vec3(0.151, 0.065, 0.035), to: Vec3(0.153, 0.065, 0.062), width: 0.004, color: Palette.timber)
+            $0.with(material: .metal) {
+                $0.beam(from: Vec3(0.088, 0.062, 0.022), to: Vec3(0.091, 0.062, 0.056), width: 0.004, depth: 0.003, color: Palette.iron)
+            }
+            for (index, at) in [Vec3(0.07, 0.003, 0.075), Vec3(0.104, 0.003, 0.082), Vec3(0.168, 0.003, 0.074),
+                                Vec3(0.088, 0.003, 0.0)].enumerated() {
+                $0.rock(center: at, size: Vec3(0.008, 0.005, 0.007), rings: 2, sides: 4, jitter: 0.3, seed: UInt32(51 + index),
+                        color: Palette.stonePale)
+            }
+            if level <= 2 {
+                $0.rock(center: Vec3(-0.1, 0.022, 0.06), size: Vec3(0.032, 0.026, 0.026), rings: 2, sides: 6, jitter: 0.15, seed: 57,
+                        color: Palette.rock)
+                $0.with(material: .metal) {
+                    for x in [Float(-0.115), -0.1, -0.085] {
+                        $0.box(center: Vec3(x, 0.05, 0.06), size: Vec3(0.006, 0.012, 0.012), color: Palette.iron)
+                    }
+                    $0.box(center: Vec3(-0.05, 0.012, 0.085), size: Vec3(0.02, 0.014, 0.014), turn: 0.3, color: Palette.iron)
+                }
+                $0.beam(from: Vec3(-0.045, 0.012, 0.09), to: Vec3(-0.02, 0.006, 0.13), width: 0.005, color: Palette.timber)
+            }
+            if level >= 3 {
+                $0.with(material: .metal) {
+                    $0.beam(from: Vec3(-0.06, 0.0095, 0.03), to: Vec3(-0.02, 0.0095, 0.03), width: 0.005, depth: 0.002, color: Palette.iron)
+                    $0.beam(from: Vec3(-0.06, 0.0095, 0.03), to: Vec3(-0.06, 0.0095, 0.058), width: 0.005, depth: 0.002, color: Palette.iron)
+                    for end in [Vec3(-0.185, 0.0095, 0.095), Vec3(-0.155, 0.0095, 0.098)] {
+                        $0.beam(from: Vec3(-0.17, 0.0095, 0.055), to: end, width: 0.003, depth: 0.002, color: Palette.iron)
+                    }
+                }
+                $0.box(center: Vec3(-0.135, 0.0098, 0.02), size: Vec3(0.05, 0.0024, 0.014), turn: 0.4, color: Palette.timberPale)
+                for (x, lean) in [(Float(0.02), Float(0.075)), (0.036, 0.065)] {
+                    $0.beam(from: Vec3(x, 0, -0.044), to: Vec3(x + 0.003, lean, -0.058), width: 0.016, depth: 0.003, color: Palette.timberPale)
+                }
+            }
+            if level >= 5 {
+                $0.box(center: Vec3(0, 0.162, 0.22), size: Vec3(0.024, 0.042, 0.032), color: Palette.stonePale)
+            }
+        }
+        let swings = [Machinery.Swing(part: jib, axis: Vec3(0, 1, 0), angle: 0.5)]
+        return model(name, b, rig: rig, machinery: Machinery(wheels: wheels, swings: swings, parts: rig.count))
     }
 
     static func model(_ name: String, _ b: MeshBuilder, rig: Rig = Rig(), machinery: Machinery? = nil) -> Model {
