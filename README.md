@@ -1777,6 +1777,28 @@ the keeper's realm last lay on, made as it plays.
   and the Heartstone braziers burning at its quarters, swords offered
   point down about its plinth, shields of fallen Houses laid against it
   and runes glowing in it (924 to 1,584 triangles, from 232 to 340).
+  The lairs of the wilds have theirs: the Saltwights' hollow a great
+  beast's bones where it slid in head first, the pale husks the wights
+  crawl out of, moonsalt grown on its floor, skulls by its cold heart and
+  the arms of those who came for them crusted white; the Reavers'
+  stockade a beast on a spit over its fire, bedrolls about it, a rack of
+  spears, the holds' plunder heaped between the tents, a war drum, a
+  chopping block and its axe, skulls on the stakes by the gate and the
+  gate's posts and lintel under a horned skull; the Barrowkin's hall
+  urns, a shield and a sword at its door, a skull in its passage, a rune
+  glowing on its lintel, a dead tree on its mound with a raven in it and
+  another on the lintel, headstones and a cairn; the Spine Hunters'
+  eyrie its deck's planks and rails, a stag's antlers on its windbreak, a
+  bow, a quiver, furs, a horn, a basket on a rope over the edge and a hide
+  stretched on its frame; and the drowned chapel its pews drowned in
+  rows, its altar sunk at their head, its bell fallen in the shallows, a
+  font, steps going down into the water, lilies and its yard's graves
+  (764 to 1,558 triangles, from 294 to 584). A gate of the Crown has slits
+  in its towers, fires in their tops, a ladder up one and the hunters'
+  hide banner and antlers over the other, a horned skull over its gate
+  and wood by the fire (859, from 495); an alliance's standard guy ropes,
+  its banner bound to its crossbar, shields in the alliance's colour
+  against its cairn and spears crossed behind it (468, from 230).
 - **Only what the view reaches is drawn.** The land's furniture is kept
   on the GPU in square regions eight hexes on a side, each with the bounds
   of all it holds; each frame finds the regions inside the camera's view

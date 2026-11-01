@@ -584,12 +584,8 @@ enum Land {
                     $0.with(material: .glow) { $0.cone(sides: 4, radius: 0.006, from: 0.04, to: 0.063, color: Palette.candle) }
                 }
             }
-            for (at, size) in [(Vec3(-0.17, 0.012, 0.135), Float(1)), (Vec3(-0.13, 0.012, 0.185), 0.85)] {
-                b.place(.translation(at) * .scale(Vec3(size, size, size))) {
-                    $0.lathe([(0.0, 0.0), (0.022, 0.004), (0.027, 0.02), (0.021, 0.036), (0.008, 0.044), (0.011, 0.05), (0.0, 0.052)], sides: 6,
-                             color: Palette.canvas)
-                }
-            }
+            b.tiedSack(at: Vec3(-0.17, 0.012, 0.135), size: 1)
+            b.tiedSack(at: Vec3(-0.13, 0.012, 0.185), size: 0.85)
             b.with(material: .crystal) {
                 $0.place(.translation(Vec3(-0.095, 0.012, 0.19))) { $0.cone(sides: 6, radius: 0.026, to: 0.022, color: Palette.saltCrust) }
             }
@@ -697,6 +693,7 @@ enum Land {
         }
         // The banner, hanging from the crossbar, in the alliance's colour.
         b.flag(at: Vec3(0.01, 0.91, 0), width: 0.3, height: 0.42, tail: true)
+        b.fine { standardNear(&$0) }
         // Braziers at its foot, burning.
         for x in [Float(-0.14), 0.14] {
             b.limb(from: Vec3(x, 0.0, 0.16), to: Vec3(x, 0.12, 0.16), radius: 0.008, color: Palette.iron)
@@ -708,6 +705,43 @@ enum Land {
             }
         }
         return Model(name: name, mesh: b.mesh)
+    }
+
+    /// A standard drawn near: guy ropes from its pole to pegs, its banner
+    /// bound to its crossbar, shields in the alliance's colour against its
+    /// cairn, two spears crossed behind its pole and its braziers on three
+    /// legs each.
+    static func standardNear(_ b: inout MeshBuilder) {
+        for angle in [Float(1.6), 3.3, 4.9] {
+            let peg = MeshBuilder.ring(0.44, 0, angle)
+            b.limb(from: Vec3(0, 0.72, 0), to: peg + Vec3(0, 0.03, 0), radius: 0.002, sides: 3, color: Palette.linen.mix(Palette.leather, 0.5))
+            b.limb(from: peg - Vec3(0, 0.01, 0), to: peg + MeshBuilder.ring(0.01, 0.04, angle), radius: 0.004, sides: 3,
+                   color: Palette.timberDark)
+        }
+        for x in [Float(0.06), 0.16, 0.26] {
+            b.place(.translation(Vec3(x, 0.92, 0)) * .rotationZ(.pi / 2)) {
+                $0.tube([(0.012, -0.004), (0.012, 0.004)], sides: 4, color: Palette.leatherDark)
+            }
+        }
+        for angle in [Float(0.82), 2.92, 5.01] {
+            b.place(.translation(MeshBuilder.ring(0.235, 0.045, angle)) * .rotationY(angle) * .rotationZ(-1.15)) {
+                $0.with(material: .house) { $0.lathe([(0.045, -0.005), (0.045, 0.003), (0.0, 0.008)], sides: 8, color: Palette.house) }
+                $0.with(material: .metal) { $0.cone(sides: 5, radius: 0.011, from: 0.007, to: 0.018, color: Palette.iron) }
+            }
+        }
+        for (foot, top) in [(MeshBuilder.ring(0.3, 0, 1.25), Vec3(-0.06, 0.5, -0.02)), (MeshBuilder.ring(0.3, 0, 1.9), Vec3(0.06, 0.5, -0.02))] {
+            b.limb(from: foot, to: top, radius: 0.005, color: Palette.timberDark)
+            b.with(material: .metal) {
+                $0.place(.translation(top) * Mat4.aligningUp(to: top - foot)) { $0.cone(sides: 4, radius: 0.011, to: 0.045, color: Palette.iron) }
+            }
+        }
+        for x in [Float(-0.14), 0.14] {
+            for leg in 0..<3 {
+                let angle = Float(leg) * 2 * .pi / 3 + 0.3
+                b.limb(from: Vec3(x, 0.1, 0.16) + MeshBuilder.ring(0.012, 0, angle), to: Vec3(x, 0, 0.16) + MeshBuilder.ring(0.045, 0, angle),
+                       radius: 0.004, sides: 3, color: Palette.iron)
+            }
+        }
     }
 
     static func site(_ resource: Resource, name: String) -> Model {

@@ -151,6 +151,14 @@ extension MeshBuilder {
              seed: seed, color: color)
     }
 
+    /// A sack tied at its neck, sat up, `size` times one a hand high.
+    mutating func tiedSack(at: Vec3, size: Float, color: Vec3 = Palette.canvas) {
+        place(.translation(at) * .scale(Vec3(size, size, size))) {
+            $0.lathe([(0.0, 0.0), (0.022, 0.004), (0.027, 0.02), (0.021, 0.036), (0.008, 0.044), (0.011, 0.05), (0.0, 0.052)], sides: 6,
+                     color: color)
+        }
+    }
+
     /// A pole with the House's banner.
     mutating func banner(at foot: Vec3, height: Float, width: Float, drop: Float, turn: Float = .pi / 2, tail: Bool = false) {
         limb(from: foot, to: foot + Vec3(0, height, 0), radius: 0.009, color: Palette.timberDark)

@@ -54,7 +54,7 @@ final class PreviewTests: XCTestCase {
         }
         let land = family {
             switch $0 {
-            case .furnishing, .site, .prop, .shrine, .lair, .standard, .yard, .town: return true
+            case .furnishing, .site, .prop, .shrine, .lair, .gatehold, .standard, .yard, .town: return true
             default: return false
             }
         }
