@@ -1249,6 +1249,28 @@ enum Works {
             }
             b.cone(sides: 6, radius: 0.13, from: top + 0.195, to: top + 0.32, color: Palette.slate)
             b.banner(at: Vec3(0, top + 0.31, 0), height: 0.2, width: 0.16, drop: 0.1)
+            // Courses round the tower and slits lit up it, the fire's wood
+            // stacked at its foot; and near, corbels under its lantern.
+            func girth(_ y: Float) -> Float { 0.12 - 0.02 * (y - 0.12) / (top - 0.12) }
+            for y in [Float(0.36), 0.64] {
+                let r = girth(y)
+                b.lathe([(r, y), (r + 0.01, y + 0.005), (r + 0.01, y + 0.02), (r, y + 0.025)], sides: 8, color: Palette.stonePale)
+            }
+            for (angle, y) in [(Float(2.0), Float(0.28)), (-1.2, 0.48), (0.6, 0.76), (3.4, 0.62)] {
+                b.window(onRound: girth(y), y: y, angle: angle, width: 0.016, height: 0.04)
+            }
+            for index in 0..<3 {
+                let y = 0.025 + Float(index) * 0.04, shift = Float(index % 2) * 0.012
+                b.log(from: Vec3(-0.215 + shift, y, 0.05), to: Vec3(-0.215 + shift, y, 0.19), radius: 0.02)
+                b.log(from: Vec3(-0.17 - shift, y, 0.05), to: Vec3(-0.17 - shift, y, 0.19), radius: 0.02)
+            }
+            b.fine {
+                for index in 0..<8 {
+                    let angle = Float(index) * .pi / 4 + .pi / 8
+                    $0.box(center: MeshBuilder.ring(0.108, top - 0.012, angle), size: Vec3(0.022, 0.024, 0.02), turn: angle + .pi / 2,
+                           color: Palette.stonePale)
+                }
+            }
         }
         // The fire, leaping.
         let flameFoot = Vec3(0, top + (level == 1 ? 0.03 : level == 2 ? 0.1 : 0.04), 0)
