@@ -99,8 +99,14 @@ extension GameSession {
         // The help allies have given the holds' works and musters, circling
         // over their keeps.
         let help = stage.helpLights(shown, time: t)
-        // Each hold's House crest hung by its gate.
-        let crests = stage.crestBoards(shown.map { (hex: $0.hold.position, crest: state.crest(of: $0.hold.owner)) })
+        // Each hold's House crest hung by its gate: fine work, staged only
+        // with the camera near, each House's crest found once.
+        var crestOf: [Int: Crest] = [:]
+        let crests = frame.fine ? stage.crestBoards(shown.map { sight in
+            let owner = sight.hold.owner
+            if crestOf[owner] == nil { crestOf[owner] = state.crest(of: owner) }
+            return (hex: sight.hold.position, crest: crestOf[owner]!)
+        }) : []
         // Their townsfolk about their works, in sight and in full motion,
         // the rest of their folk out about the lanes as the view comes close, and
         // carts on the ways between them.
