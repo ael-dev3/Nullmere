@@ -74,8 +74,15 @@ final class TownSoundTests: XCTestCase {
         camera.scale = Camera.maximumScale
         session.camera = camera
         let close = try XCTUnwrap(session.townSound())
-        XCTAssertGreaterThan(close.level, 0.3, "The seat close by")
+        XCTAssertEqual(close.level, 0.3, accuracy: 0.01, "The seat close by, nothing raised in it yet")
         XCTAssertEqual(close.pan, 0, accuracy: 0.3, "in the middle of the view")
+        // A town that has raised more is busier, and heard the louder.
+        var raised = state
+        let built = try XCTUnwrap(raised.holds.firstIndex { $0.id == seat.id })
+        raised.holds[built].levels[.granary] = 10
+        let busier = GameSession(state: raised, store: LocalStore(directory: dir.appendingPathComponent("busier")))
+        busier.camera = camera
+        XCTAssertGreaterThan(try XCTUnwrap(busier.townSound()).level, close.level + 0.3)
         // The view a little to the left of the seat: the seat to its right.
         camera.centerX -= 0.3 * 600 / camera.scale
         session.camera = camera
