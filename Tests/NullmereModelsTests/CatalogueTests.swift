@@ -235,6 +235,8 @@ final class CatalogueTests: XCTestCase {
             let detail = mesh.indices[fine...].map { mesh.vertices[Int($0)] }
             XCTAssertTrue(detail.contains { $0.material == .house }, "\(key)'s shutters")
             XCTAssertTrue(detail.contains { $0.material == .glow }, "\(key)'s hall windows")
+            // Nearest, a bell in its cote, iron on the door and a gilt ball on the peak.
+            XCTAssertTrue(detail.contains { $0.material == .metal }, "\(key)'s bell and ironwork")
         }
         let fir = Library.model(.furnishing(.fir)).mesh
         XCTAssertNil(fir.fineFrom)

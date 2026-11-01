@@ -1694,7 +1694,10 @@ the keeper's realm last lay on, made as it plays.
   the models show fine work that is left off from afar, where it is too
   small to see: a keep's quoins, framed windows with shutters in its House's
   colour, roof ribs, a half-timbered hall with a capped chimney, a log pile
-  and a handcart (a seat's keep is 2,728 triangles, where it was 778); the
+  and a handcart, and nearest the hall's gable plastered between bargeboards
+  under the House's arms and a bell-cote, flowers under its windows, a bench
+  and potted shrubs by its steps, spouts at the tower's corners and ivy up
+  its flank (a seat's keep is 3,768 triangles, where it was 778); the
   walls' arrow loops, string courses, wall-walks, tower slits and finials,
   and iron bands on the gate; on every hall and round house of the works,
   courses across the roofs, boards and vents in the gables, hoops and

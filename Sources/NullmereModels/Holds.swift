@@ -167,7 +167,10 @@ enum Holds {
             }
         }
         dress(&b, seat: seat, style: style, half: half, towerHeight: towerHeight, hallFront: hallFront, roofHeight: roofHeight)
-        b.fine { detail(&$0, seat: seat, style: style, half: half, towerHeight: towerHeight, hallFront: hallFront, roofHeight: roofHeight) }
+        b.fine {
+            detail(&$0, seat: seat, style: style, half: half, towerHeight: towerHeight, hallFront: hallFront, roofHeight: roofHeight)
+            keepNear(&$0, seat: seat, style: style, half: half, towerHeight: towerHeight, hallFront: hallFront, roofHeight: roofHeight)
+        }
         return Model(name: name, mesh: b.mesh)
     }
 
@@ -372,6 +375,192 @@ enum Holds {
                 $0.box(min: Vec3(side * 0.032 - 0.004, 0.062, -0.05), max: Vec3(side * 0.032 + 0.004, 0.085, 0.05), color: Palette.timber)
                 $0.beam(from: Vec3(side * 0.024, 0.056, 0.05), to: Vec3(side * 0.024, 0.012, 0.1), width: 0.008, color: Palette.timber)
                 $0.wheel(center: Vec3(side * 0.044, 0.04, 0), radius: 0.038, width: 0.008, color: Palette.timberDark)
+            }
+        }
+    }
+
+    /// The keep drawn nearest: the hall's front gable plastered between
+    /// bargeboards, the House's arms on it and a bell-cote over it; iron
+    /// on its door under a lintel, its front windows shuttered over boxes
+    /// of flowers, a bench under one and potted shrubs by the steps; the
+    /// tower's foot battered, spouts at its parapet's corners and a gilt
+    /// ball on its peak; ivy climbing it; and at a seat, its round towers'
+    /// cones ribbed and tipped, each with a door to the yard.
+    static func keepNear(_ b: inout MeshBuilder, seat: Bool, style: KeepStyle, half: Float, towerHeight: Float, hallFront: Float,
+                         roofHeight: Float) {
+        let middle: Float = -0.05
+        // The front gable: plaster within, bargeboards up its rakes, a tie
+        // beam across its foot, the House's arms on it.
+        let gable = hallFront + 0.025, eave: Float = 0.25, ridge: Float = 0.38, reach: Float = 0.225
+        b.with(surface: style.wallGrain) {
+            $0.sheet([Vec3(-0.205, eave, gable + 0.002), Vec3(0.205, eave, gable + 0.002), Vec3(0, 0.3685, gable + 0.002)],
+                     normal: Vec3(0, 0, 1), thickness: 0.002, color: style.trim)
+        }
+        for side in [Float(-1), 1] {
+            b.beam(from: Vec3(side * (reach + 0.004), eave - 0.003, gable + 0.005), to: Vec3(0, ridge + 0.006, gable + 0.005), width: 0.008,
+                   depth: 0.02, color: Palette.timberDark)
+        }
+        b.beam(from: Vec3(-0.2, eave + 0.004, gable + 0.004), to: Vec3(0.2, eave + 0.004, gable + 0.004), width: 0.006, depth: 0.012,
+               color: Palette.timberDark)
+        let arms = Vec3(0, 0.302, gable + 0.006)
+        b.with(material: .house) {
+            $0.sheet([Vec3(-0.025, 0.026, 0), Vec3(0.025, 0.026, 0), Vec3(0.025, 0.004, 0), Vec3(0.018, -0.014, 0), Vec3(0, -0.03, 0),
+                      Vec3(-0.018, -0.014, 0), Vec3(-0.025, 0.004, 0)].map { arms + $0 }, normal: Vec3(0, 0, 1), thickness: 0.003,
+                     color: Palette.house)
+            $0.sheet([Vec3(-0.007, -0.022, 0), Vec3(0.007, -0.022, 0), Vec3(0.007, 0.026, 0), Vec3(-0.007, 0.026, 0)]
+                .map { arms + $0 + Vec3(0, 0, 0.0025) }, normal: Vec3(0, 0, 1), thickness: 0.001, color: Palette.houseDark)
+        }
+        // A bell-cote on the ridge over the gable, its bell hung in it.
+        let cote = Vec3(0, ridge, hallFront - 0.005)
+        for x in [Float(-0.017), 0.017] {
+            b.limb(from: cote + Vec3(x, -0.014, 0), to: cote + Vec3(x, 0.056, 0), radius: 0.004, color: Palette.timberDark)
+        }
+        b.limb(from: cote + Vec3(-0.02, 0.045, 0), to: cote + Vec3(0.02, 0.045, 0), radius: 0.003, color: Palette.timberDark)
+        b.with(material: .house) {
+            $0.place(.translation(cote + Vec3(0, 0.055, 0))) {
+                $0.gableRoof(width: 0.046, depth: 0.03, base: 0, height: 0.022, color: Palette.house, overhang: 0.005)
+            }
+        }
+        b.with(material: .metal) {
+            $0.place(.translation(cote)) {
+                $0.lathe([(0.0125, 0.003), (0.0115, 0.009), (0.0075, 0.025), (0.005, 0.034), (0, 0.036)], sides: 6, color: Palette.bronze)
+                $0.limb(from: Vec3(0, 0.034, 0), to: Vec3(0, 0.045, 0), radius: 0.0015, sides: 3, color: Palette.iron)
+            }
+        }
+        // The door's iron and the lintel over it.
+        b.with(material: .metal) {
+            for y in [Float(0.06), 0.14] {
+                $0.box(center: Vec3(0, y, hallFront + 0.0115), size: Vec3(0.06, 0.006, 0.003), color: Palette.iron)
+            }
+            $0.place(.translation(Vec3(0.018, 0.1, hallFront + 0.013)) * .rotationX(.pi / 2)) {
+                $0.tube([(0.006, -0.0015), (0.006, 0.0015)], sides: 6, color: Palette.iron)
+            }
+        }
+        b.with(surface: style.wallGrain) {
+            $0.box(center: Vec3(0, 0.172, hallFront + 0.004), size: Vec3(0.09, 0.014, 0.012), color: style.dark)
+        }
+        // The hall's front windows shuttered in the House's colour, a box
+        // of flowers under each.
+        let blooms = [Palette.madder, Palette.weld, Palette.heatherBloom, Palette.linen]
+        for x in [Float(-0.12), 0.12] {
+            b.with(material: .house) {
+                for side in [Float(-1), 1] {
+                    $0.box(center: Vec3(x + side * 0.022, 0.15, hallFront + 0.003), size: Vec3(0.014, 0.05, 0.004), color: Palette.house)
+                }
+            }
+            b.box(center: Vec3(x, 0.118, hallFront + 0.011), size: Vec3(0.042, 0.014, 0.018), color: Palette.timber)
+            b.box(center: Vec3(x, 0.127, hallFront + 0.009), size: Vec3(0.038, 0.006, 0.012), color: Palette.leaf)
+            for (index, color) in blooms.enumerated() {
+                let along = (Float(index) - 1.5) * 0.01
+                b.place(.translation(Vec3(x + along, 0.128, hallFront + 0.012 + 0.003 * Float(index % 2)))) {
+                    $0.cone(sides: 3, radius: 0.0055, to: 0.009, color: color, twist: Float(index))
+                }
+            }
+        }
+        // A bench under the west window, and a shrub potted either side of the steps.
+        b.box(center: Vec3(-0.135, 0.075, hallFront + 0.018), size: Vec3(0.07, 0.008, 0.026), color: Palette.timberPale)
+        for x in [Float(-0.163), -0.107] {
+            b.box(center: Vec3(x, 0.058, hallFront + 0.018), size: Vec3(0.008, 0.028, 0.022), color: Palette.timber)
+        }
+        for x in [Float(-0.075), 0.075] {
+            b.place(.translation(Vec3(x, 0.045, hallFront + 0.03))) {
+                $0.lathe([(0.011, 0), (0.015, 0.022), (0.013, 0.024)], sides: 6, color: Palette.madder)
+                $0.sphere(center: Vec3(0, 0.036, 0), radius: 0.017, rings: 3, sides: 5, color: Palette.leaf)
+            }
+        }
+        // The tower's foot battered out over the plinth.
+        b.with(surface: style.wallGrain) {
+            $0.place(.translation(Vec3(0, 0, middle))) {
+                let root2 = Float(2).squareRoot()
+                $0.lathe([((half + 0.022) * root2, 0.04), ((half + 0.002) * root2, 0.1)], sides: 4, color: style.dark, twist: .pi / 4)
+            }
+        }
+        // Spouts at the parapet's corners, a head at each one's mouth.
+        let parapet = half + 0.025
+        for (x, z) in [(Float(-1), Float(-1)), (1, -1), (1, 1), (-1, 1)] {
+            let corner = Vec3(x * parapet, towerHeight + 0.008, middle + z * parapet), out = Vec3(x, 0, z).normalized
+            let turn = Float(atan2(Double(x), Double(z)))
+            b.with(surface: style.wallGrain) {
+                $0.beam(from: corner - out * 0.01, to: corner + out * 0.03, width: 0.012, depth: 0.012, color: style.dark)
+                $0.box(center: corner + out * 0.036 + Vec3(0, 0.002, 0), size: Vec3(0.017, 0.017, 0.017), turn: turn, color: style.dark)
+            }
+        }
+        // A gilt ball where the tower's roof comes to its point.
+        if style.crown != .crystals {
+            b.with(material: .metal) {
+                $0.sphere(center: Vec3(0, towerHeight + 0.04 + roofHeight + 0.006, middle), radius: 0.013, rings: 3, sides: 6,
+                          color: Palette.gold)
+            }
+        }
+        if seat {
+            for x in [Float(-0.26), 0.26] {
+                b.place(.translation(Vec3(x, 0.03, -0.08))) {
+                    // Ribs down its cone and a ball at its tip.
+                    $0.with(material: .house) {
+                        for index in 0..<8 {
+                            $0.limb(from: MeshBuilder.ring(0.1, 0.69, Float(index) * .pi / 4), to: Vec3(0, 0.98, 0), radius: 0.005,
+                                    sides: 3, color: Palette.houseDark)
+                        }
+                    }
+                    $0.with(material: .metal) {
+                        $0.sphere(center: Vec3(0, 0.985, 0), radius: 0.011, rings: 3, sides: 6, color: Palette.gold)
+                    }
+                    // A door to the yard, on its outer front, a step before it and a lintel over it.
+                    let angle: Float = x < 0 ? -0.75 * .pi : -0.25 * .pi
+                    $0.door(MeshBuilder.ring(0.091, 0.04, angle), width: 0.036, height: 0.075, facing: angle + .pi / 2)
+                    $0.with(surface: style.wallGrain) {
+                        $0.box(center: MeshBuilder.ring(0.104, 0.005, angle), size: Vec3(0.046, 0.01, 0.026), turn: angle + .pi / 2,
+                               color: style.trim)
+                        $0.box(center: MeshBuilder.ring(0.092, 0.084, angle), size: Vec3(0.046, 0.011, 0.014), turn: angle + .pi / 2,
+                               color: style.trim)
+                    }
+                }
+            }
+        }
+        // Ivy up the middle of the tower's east face, or at a seat up the
+        // east round tower beside the keep.
+        let seed = seat ? UInt32(17) : 23
+        if seat {
+            let tower = Vec3(0.26, 0.03, -0.08)
+            ivy(&b, leaves: 96, width: 1.7, height: 0.5, seed: seed) { u, v in
+                let angle = -0.5 * Float.pi - 0.3 + u
+                let out = MeshBuilder.ring(1, 0, angle)
+                return (tower + MeshBuilder.ring(0.0915, v, angle), out)
+            }
+        } else {
+            ivy(&b, leaves: 96, width: 0.2, height: 0.45, seed: seed) { u, v in
+                (Vec3(half + 0.002, 0.045 + v, middle - 0.01 + u), Vec3(1, 0, 0))
+            }
+        }
+    }
+
+    /// Ivy grown up a wall from its foot: leaves strewn over a tongue of
+    /// growth `width` across at its foot and `height` high, thinning and
+    /// narrowing as it climbs, with stems wandering up through it. `spot`
+    /// puts a leaf `u` across and `v` up the wall, and says which way the
+    /// wall looks there.
+    static func ivy(_ b: inout MeshBuilder, leaves: Int, width: Float, height: Float, seed: UInt32,
+                    spot: (Float, Float) -> (at: Vec3, out: Vec3)) {
+        let greens = [Palette.fern, Palette.leaf, Palette.birchLeaf * 0.75, Palette.fern * 1.3]
+        for index in 0..<leaves {
+            let i = Int32(index)
+            let v = height * Noise.unit(i, 1, seed).squareRoot() * Noise.unit(i, 5, seed).squareRoot()
+            let across = width / 2 * (1 - 0.75 * v / height)
+            let (at, out) = spot((Noise.unit(i, 2, seed) * 2 - 1) * across, v)
+            let size = 0.009 + 0.007 * Noise.unit(i, 3, seed), spin = Noise.unit(i, 4, seed) * .pi
+            let side = Vec3.up.cross(out).normalized, up = out.cross(side)
+            let a = (side * Float(cos(Double(spin))) + up * Float(sin(Double(spin)))) * size
+            let d = (up * Float(cos(Double(spin))) - side * Float(sin(Double(spin)))) * size
+            b.face([at - a, at - d, at + a, at + d], outward: out, color: greens[index % greens.count])
+        }
+        for stem in 0..<2 {
+            var last = spot(0, 0).at
+            for step in 1...4 {
+                let v = height * 0.8 * Float(step) / 4
+                let wander = (Noise.unit(Int32(step), Int32(stem), seed &+ 9) * 2 - 1) * width / 2 * (1 - 0.75 * v / height)
+                let (at, out) = spot(wander, v)
+                b.limb(from: last - out * 0.001, to: at - out * 0.001, radius: 0.002, sides: 3, color: Palette.bark)
+                last = at
             }
         }
     }
