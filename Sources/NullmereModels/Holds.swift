@@ -698,6 +698,26 @@ enum Holds {
                 let at = a.mix(c, (Float(index) + 0.5) / Float(count + 1)) + face
                 b.box(center: at + Vec3(0, h * 0.55, 0), size: Vec3(0.012, 0.055, 0.012), turn: turn, color: Palette.timberDark)
             }
+            if level <= 3 {
+                // Putlog holes the masons' scaffolds left, in two rows.
+                let side = along.normalized * 0.005, up = Vec3(0, 0.005, 0)
+                for (row, y) in [Float(0.3), 0.66].enumerated() {
+                    for index in stride(from: row, to: count + 1, by: 2) {
+                        let at = a.mix(c, (Float(index) + 0.3) / Float(count + 1)) + face + Vec3(0, h * y, 0)
+                        b.face([at - side - up, at + side - up, at + side + up, at - side + up], outward: out, color: Palette.barkBlack)
+                    }
+                }
+            }
+            if level == 2 {
+                // A string course along the low wall's face, and stones
+                // patched in it, paler than the rest.
+                b.beam(from: a + Vec3(0, h * 0.5, 0) + face, to: c + Vec3(0, h * 0.5, 0) + face, width: 0.01, depth: 0.008,
+                       color: Palette.stonePale)
+                for t in [Float(0.22), 0.71] {
+                    let at = a.mix(c, t) + face + Vec3(0, h * (0.2 + 0.5 * t), 0)
+                    b.box(center: at, size: Vec3(0.032, 0.018, 0.006), turn: turn, color: Palette.stonePale.mix(Palette.stone, 0.4))
+                }
+            }
             if level >= 3 {
                 b.beam(from: a + Vec3(0, h * 0.82, 0) + face, to: c + Vec3(0, h * 0.82, 0) + face, width: 0.012, depth: 0.012,
                        color: Palette.stonePale)
@@ -705,6 +725,17 @@ enum Holds {
                 let walk = out * -(thick / 2 + 0.012)
                 b.beam(from: a + Vec3(0, h - 0.012, 0) + walk, to: c + Vec3(0, h - 0.012, 0) + walk, width: 0.024, depth: 0.008,
                        color: Palette.timber)
+            }
+        }
+        if (2...3).contains(level) {
+            // Ivy up the stone either side of the gate's flanks.
+            for (index, run) in [runs[0], runs[3]].enumerated() {
+                let (a, c) = run
+                let middle = (a + c) * 0.5, out = Vec3(middle.x, 0, middle.z).normalized
+                let base = a.mix(c, index == 0 ? 0.38 : 0.62) + out * (thick / 2 + 0.003), along = (c - a).normalized
+                ivy(&b, leaves: 48, width: 0.16, height: h * 0.9, seed: UInt32(31 + index)) { u, v in
+                    (base + along * u + Vec3(0, v, 0), out)
+                }
             }
         }
         if level >= 4 {
