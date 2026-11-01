@@ -729,11 +729,42 @@ enum Works {
             }
             b.log(from: at + Vec3(-0.15, 0.135, 0), to: at + Vec3(0.15, 0.135, 0), radius: 0.03)
         }
+        // Near, at the first levels: the pit-saw standing through the log,
+        // its tiller above and its box in the pit, wedges in the kerf behind
+        // it and its sawdust heaped by the pit.
+        func pitSaw(_ b: inout MeshBuilder, at: Vec3) {
+            b.fine {
+                $0.with(material: .metal) {
+                    $0.beam(from: at + Vec3(0.04, 0.008, 0), to: at + Vec3(0.04, 0.27, 0), width: 0.014, depth: 0.002, color: Palette.steel)
+                    for x in [Float(0.062), 0.078] {
+                        $0.box(center: at + Vec3(x, 0.167, 0), size: Vec3(0.007, 0.01, 0.006), color: Palette.iron)
+                    }
+                }
+                $0.beam(from: at + Vec3(0.04, 0.27, -0.026), to: at + Vec3(0.04, 0.27, 0.026), width: 0.006, color: Palette.timberPale)
+                $0.box(center: at + Vec3(0.04, 0.014, 0), size: Vec3(0.008, 0.012, 0.03), color: Palette.timberPale)
+                $0.sphere(center: at + Vec3(0.03, 0.0, 0.07), radius: 0.03, rings: 2, sides: 6, color: Palette.straw, squash: 0.35)
+            }
+        }
+        // And at every level a chopping block, an axe bitten into it.
+        func block(_ b: inout MeshBuilder, at: Vec3) {
+            b.fine {
+                $0.place(.translation(at)) {
+                    $0.lathe([(0.026, 0), (0.026, 0.044)], sides: 7, color: Palette.timber)
+                    $0.lathe([(0.025, 0.044), (0.025, 0.046)], sides: 7, color: Palette.timberPale)
+                    $0.beam(from: Vec3(0.004, 0.05, 0.002), to: Vec3(0.042, 0.088, 0.02), width: 0.005, color: Palette.timberPale)
+                    $0.with(material: .metal) {
+                        $0.box(center: Vec3(0.0, 0.05, 0.0), size: Vec3(0.018, 0.012, 0.004), turn: -0.45, color: Palette.iron)
+                    }
+                }
+            }
+        }
         var rig = Rig()
         var machinery: Machinery?
+        block(&b, at: level <= 2 ? Vec3(-0.2, 0, 0.17) : Vec3(0.2, 0, -0.17))
         switch level {
         case 1:
             trestle(&b, at: Vec3(0, 0, 0.04))
+            pitSaw(&b, at: Vec3(0, 0, 0.04))
             // A lean-to of planks against the weather.
             for x in [Float(-0.14), 0.14] {
                 b.limb(from: Vec3(x, 0, -0.12), to: Vec3(x, 0.2, -0.12), radius: 0.012, color: Palette.timber)
@@ -744,6 +775,7 @@ enum Works {
             b.planks(at: Vec3(-0.08, 0, -0.2), length: 0.24, layers: 3)
         case 2:
             trestle(&b, at: Vec3(0, 0, 0.02))
+            pitSaw(&b, at: Vec3(0, 0, 0.02))
             for x in [Float(-0.16), 0.16] {
                 for z in [Float(-0.1), 0.12] {
                     b.limb(from: Vec3(x, -0.02, z), to: Vec3(x, 0.22, z), radius: 0.013, color: Palette.timber)
@@ -880,17 +912,12 @@ enum Works {
             machinery = Machinery(wheels: [.init(part: wheel, axis: Vec3(1, 0, 0), turns: 1)],
                                   swings: [.init(part: crane, axis: Vec3(0, 1, 0), angle: 0.9)], parts: rig.count)
             if level >= 4 {
-                // A mason's shed; a ladder up the cut terraces, the rubble
-                // of the face at their foot, and near, a mason's bench
-                // with a block half dressed on it.
+                // A mason's shed; a ladder up the cut terraces, and near,
+                // a mason's bench with a block half dressed on it.
                 b.hall(at: Vec3(-0.15, 0, 0.14), width: 0.12, depth: 0.1, height: 0.11, wall: Palette.stonePale, roof: Palette.slate,
                        turn: 0.5)
                 b.ladder(from: Vec3(-0.12, 0, 0.0), to: Vec3(-0.12, 0.17, -0.11), width: 0.035, rungs: 5, color: Palette.timber)
                 b.fine {
-                    for (index, at) in [Vec3(0.06, 0.01, 0.01), Vec3(-0.05, 0.01, 0.02), Vec3(0.12, 0.01, -0.02)].enumerated() {
-                        $0.rock(center: at, size: Vec3(0.025, 0.016, 0.02), rings: 2, sides: 5, jitter: 0.25, seed: UInt32(31 + index),
-                                color: Palette.rock)
-                    }
                     $0.place(.translation(Vec3(0.2, 0, 0.17)) * .rotationY(-0.3)) {
                         for x in [Float(-0.04), 0.04] {
                             $0.box(min: Vec3(x - 0.007, 0, -0.025), max: Vec3(x + 0.007, 0.05, 0.025), color: Palette.timberDark)
@@ -911,6 +938,26 @@ enum Works {
                     b.limb(from: foot, to: top, radius: 0.007, color: Palette.timber)
                 }
                 b.limb(from: top, to: top - Vec3(0, 0.12, 0), radius: 0.002, sides: 3, color: Palette.linen)
+            }
+        }
+        // Near, at every level: the rubble of the face at its foot, a pick
+        // leaning on the rock, an iron bar laid before the blocks and a
+        // coil of rope on the sledge.
+        b.fine { near in
+            for (index, at) in [Vec3(0.06, 0.01, 0.01), Vec3(-0.05, 0.01, 0.02), Vec3(0.12, 0.01, -0.02)].enumerated() {
+                near.rock(center: at, size: Vec3(0.025, 0.016, 0.02), rings: 2, sides: 5, jitter: 0.25, seed: UInt32(31 + index),
+                          color: Palette.rock)
+            }
+            let head = Vec3(-0.15, 0.075, -0.02)
+            near.beam(from: Vec3(-0.16, 0, 0.022), to: head, width: 0.005, color: Palette.timberPale)
+            near.with(material: .metal) {
+                for side in [Float(-1), 1] {
+                    $0.beam(from: head, to: head + Vec3(side * 0.022, -0.008, 0.002), width: 0.005, depth: 0.004, color: Palette.iron)
+                }
+                $0.beam(from: Vec3(0.03, 0.003, 0.186), to: Vec3(0.1, 0.003, 0.18), width: 0.005, color: Palette.iron)
+            }
+            near.place(.translation(Vec3(-0.19, 0, 0.13))) {
+                $0.tube([(0.017, 0.026), (0.022, 0.031), (0.017, 0.036), (0.012, 0.031), (0.017, 0.026)], sides: 8, color: Palette.linen)
             }
         }
         return model(name, b, rig: rig, machinery: machinery)
@@ -1125,6 +1172,39 @@ enum Works {
             for index in 0..<4 {
                 let x = Float(index) * 0.035 - 0.052
                 $0.limb(from: Vec3(x, 0, -0.012), to: Vec3(x + 0.01, 0.22, 0.01), radius: 0.005, sides: 3, color: Palette.timberDark)
+            }
+        }
+        // Near, at every level: the spears' iron heads, two shields in the
+        // House's colours leaning on their rack, the pell armed with a
+        // crossbar and a sack of straw, and wooden swords against it.
+        b.fine { near in
+            near.place(.translation(Vec3(-0.08, 0, 0.17))) {
+                for index in 0..<4 {
+                    let x = Float(index) * 0.035 - 0.052
+                    let foot = Vec3(x, 0, -0.012), top = Vec3(x + 0.01, 0.22, 0.01)
+                    $0.with(material: .metal) {
+                        $0.place(.translation(top) * Mat4.aligningUp(to: top - foot)) {
+                            $0.cone(sides: 4, radius: 0.0065, to: 0.024, color: Palette.iron)
+                        }
+                    }
+                }
+                for x in [Float(-0.035), 0.03] {
+                    $0.place(.translation(Vec3(x, 0.034, 0.024)) * .rotationX(.pi / 2 - 0.25)) {
+                        $0.with(material: .house) {
+                            $0.lathe([(0.03, -0.003), (0.03, 0.003)], sides: 8, color: Palette.house)
+                        }
+                        $0.with(material: .metal) {
+                            $0.lathe([(0.008, 0.003), (0.0, 0.008)], sides: 5, color: Palette.iron)
+                        }
+                    }
+                }
+            }
+            near.beam(from: Vec3(0.08, 0.12, 0.15), to: Vec3(0.18, 0.12, 0.15), width: 0.01, color: Palette.timber)
+            near.sack(at: Vec3(0.13, 0.07, 0.15), size: 0.035, seed: 5, color: Palette.straw)
+            for (index, foot) in [Vec3(0.158, 0, 0.185), Vec3(0.17, 0, 0.176)].enumerated() {
+                let top = Vec3(0.146 + Float(index) * 0.01, 0.075, 0.164)
+                near.beam(from: foot, to: top, width: 0.006, depth: 0.003, color: Palette.timberPale)
+                near.box(center: foot + (top - foot) * 0.72, size: Vec3(0.018, 0.004, 0.005), color: Palette.timber)
             }
         }
         return model(name, b)
@@ -1544,6 +1624,10 @@ enum Works {
                     $0.tube([(0.035, 0.0), (0.065, 0.07)], sides: 6, color: Palette.iron)
                 }
             }
+            // A ladder up its front to the platform, near.
+            b.fine {
+                $0.ladder(from: Vec3(0, 0, 0.115), to: Vec3(0, top - 0.015, 0.06), width: 0.045, rungs: 9, color: Palette.timberPale)
+            }
         case 2:
             top = 0.66
             b.lathe([(0.12, -0.08), (0.1, top), (0.125, top + 0.02), (0.125, top + 0.05)], sides: 8, color: Palette.stone)
@@ -1555,6 +1639,18 @@ enum Works {
                 }
             }
             b.banner(at: Vec3(0.09, top + 0.05, -0.05), height: 0.24, width: 0.11, drop: 0.07, tail: true)
+            // A torch burning in its bracket by the door, near.
+            b.fine {
+                $0.with(material: .metal) {
+                    $0.beam(from: Vec3(0.045, 0.1, 0.107), to: Vec3(0.045, 0.1, 0.13), width: 0.004, color: Palette.iron)
+                }
+                $0.limb(from: Vec3(0.045, 0.085, 0.13), to: Vec3(0.045, 0.12, 0.13), radius: 0.004, color: Palette.timberDark)
+                $0.with(material: .glow) {
+                    $0.place(.translation(Vec3(0.045, 0.12, 0.13))) {
+                        $0.cone(sides: 4, radius: 0.007, to: 0.02, color: Palette.fire)
+                    }
+                }
+            }
         default:
             // A tall tower with a lantern of moonsalt pillars round a great fire.
             top = 0.9
@@ -1600,6 +1696,16 @@ enum Works {
                     let angle = Float(index) * .pi / 4 + .pi / 8
                     $0.box(center: MeshBuilder.ring(0.108, top - 0.012, angle), size: Vec3(0.022, 0.024, 0.02), turn: angle + .pi / 2,
                            color: Palette.stonePale)
+                }
+            }
+        }
+        if level <= 2 {
+            // The fire's wood stacked at its foot, near.
+            b.fine {
+                for index in 0..<2 {
+                    let y = 0.02 + Float(index) * 0.036, shift = Float(index % 2) * 0.012
+                    $0.log(from: Vec3(-0.172 + shift, y, 0.07), to: Vec3(-0.172 + shift, y, 0.17), radius: 0.018)
+                    $0.log(from: Vec3(-0.136 - shift, y, 0.07), to: Vec3(-0.136 - shift, y, 0.17), radius: 0.018)
                 }
             }
         }

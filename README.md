@@ -1751,7 +1751,17 @@ the keeper's realm last lay on, made as it plays.
   second level bundles of herbs hung to dry under its eaves and a bench
   for those mending; from the third a table of the healers' jars and a
   bucket on the well's rim (730 to 1,666 triangles, where it was 666 to
-  1,278).
+  1,278). The works plainest at their first levels have their gear too: a
+  sawpit's pit-saw standing through its log, its tiller above and wedges
+  in the kerf, and at every level a chopping block with an axe bitten into
+  it (444 to 842 triangles, from 284); a quarry's rubble, a pick leaning on
+  its rock, an iron bar and a coil of rope on its sledge at every level
+  (407 to 981, from 265); a Muster Hall's spears given their iron heads,
+  shields in the House's colours leaning on their rack, its pell armed with
+  a crossbar and a sack of straw and wooden swords against it (586 to
+  1,012, from 440); and a beacon a ladder up its first tower and a torch by
+  its second's door, the fire's wood stacked at the foot of both (498 and
+  526 triangles, the first from 274).
 - **Only what the view reaches is drawn.** The land's furniture is kept
   on the GPU in square regions eight hexes on a side, each with the bounds
   of all it holds; each frame finds the regions inside the camera's view
