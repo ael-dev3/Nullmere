@@ -289,6 +289,7 @@ enum Film {
             AVEncoderBitRateKey: 256_000,
         ])
         audio.expectsMediaDataInRealTime = false
+        writer.shouldOptimizeForNetworkUse = true
         writer.add(video)
         writer.add(audio)
         guard writer.startWriting() else { throw Failure.writer("\(writer.error.map { "\($0)" } ?? "could not start")") }
@@ -312,81 +313,88 @@ enum Film {
             let underlying = (error?.userInfo[NSUnderlyingErrorKey] as? NSError).map { " (underlying: \($0))" } ?? ""
             return "writer status \(writer.status.rawValue)" + (error.map { ", \($0)\(underlying)" } ?? "")
         }
-        func waitUntilReady(_ input: AVAssetWriterInput) -> Bool {
-            let started = Date()
-            while !input.isReadyForMoreMediaData {
-                if writer.status == .failed || Date().timeIntervalSince(started) > 5 { return false }
-                Thread.sleep(forTimeInterval: 0.002)
+        // A tenth of a second of the score.
+        func appendSound() throws {
+            let count = min(chunk, samples - cursor)
+            var interleaved = [Int16](repeating: 0, count: count * 2)
+            for index in 0..<count {
+                interleaved[2 * index] = Int16((min(max(left[cursor + index], -1), 1) * 32_767).rounded())
+                interleaved[2 * index + 1] = Int16((min(max(right[cursor + index], -1), 1) * 32_767).rounded())
             }
-            return true
+            var block: CMBlockBuffer?
+            let length = count * 4
+            CMBlockBufferCreateWithMemoryBlock(allocator: kCFAllocatorDefault, memoryBlock: nil, blockLength: length,
+                                               blockAllocator: kCFAllocatorDefault, customBlockSource: nil, offsetToData: 0,
+                                               dataLength: length, flags: 0, blockBufferOut: &block)
+            guard let block else { throw Failure.buffer }
+            interleaved.withUnsafeBytes { raw in
+                if let base = raw.baseAddress {
+                    CMBlockBufferReplaceDataBytes(with: base, blockBuffer: block, offsetIntoDestination: 0, dataLength: length)
+                }
+            }
+            var sample: CMSampleBuffer?
+            CMAudioSampleBufferCreateReadyWithPacketDescriptions(allocator: kCFAllocatorDefault, dataBuffer: block, formatDescription: format,
+                                                                 sampleCount: count,
+                                                                 presentationTimeStamp: CMTime(value: CMTimeValue(cursor),
+                                                                                               timescale: CMTimeScale(Soundtrack.sampleRate)),
+                                                                 packetDescriptions: nil, sampleBufferOut: &sample)
+            guard let sample, audio.append(sample) else { throw Failure.writer("sound at \(cursor): \(state())") }
+            cursor += count
         }
-        func appendSound(until end: Int) throws {
-            while cursor < min(end, samples) {
-                // Not ready: held back until the picture catches up.
-                guard waitUntilReady(audio) else {
-                    if writer.status == .failed { throw Failure.writer("sound at \(cursor): \(state())") }
-                    return
-                }
-                let count = min(chunk, samples - cursor)
-                var interleaved = [Int16](repeating: 0, count: count * 2)
-                for index in 0..<count {
-                    interleaved[2 * index] = Int16((min(max(left[cursor + index], -1), 1) * 32_767).rounded())
-                    interleaved[2 * index + 1] = Int16((min(max(right[cursor + index], -1), 1) * 32_767).rounded())
-                }
-                var block: CMBlockBuffer?
-                let length = count * 4
-                CMBlockBufferCreateWithMemoryBlock(allocator: kCFAllocatorDefault, memoryBlock: nil, blockLength: length,
-                                                   blockAllocator: kCFAllocatorDefault, customBlockSource: nil, offsetToData: 0,
-                                                   dataLength: length, flags: 0, blockBufferOut: &block)
-                guard let block else { throw Failure.buffer }
-                interleaved.withUnsafeBytes { raw in
-                    if let base = raw.baseAddress {
-                        CMBlockBufferReplaceDataBytes(with: base, blockBuffer: block, offsetIntoDestination: 0, dataLength: length)
+        // A frame of the picture.
+        func appendPicture(_ frame: Int) throws {
+            let pixels = picture(frame)
+            guard let pool = adaptor.pixelBufferPool else { throw Failure.writer("picture at \(frame): no pool, \(state())") }
+            var buffer: CVPixelBuffer?
+            CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &buffer)
+            guard let buffer else { throw Failure.buffer }
+            CVPixelBufferLockBaseAddress(buffer, [])
+            if let base = CVPixelBufferGetBaseAddress(buffer) {
+                let rowBytes = CVPixelBufferGetBytesPerRow(buffer)
+                pixels.withUnsafeBytes { raw in
+                    guard let source = raw.baseAddress else { return }
+                    for row in 0..<height {
+                        memcpy(base + row * rowBytes, source + row * width * 4, width * 4)
                     }
                 }
-                var sample: CMSampleBuffer?
-                CMAudioSampleBufferCreateReadyWithPacketDescriptions(allocator: kCFAllocatorDefault, dataBuffer: block, formatDescription: format,
-                                                                     sampleCount: count,
-                                                                     presentationTimeStamp: CMTime(value: CMTimeValue(cursor),
-                                                                                                   timescale: CMTimeScale(Soundtrack.sampleRate)),
-                                                                     packetDescriptions: nil, sampleBufferOut: &sample)
-                guard let sample, audio.append(sample) else { throw Failure.writer("sound at \(cursor): \(state())") }
-                cursor += count
             }
+            CVPixelBufferUnlockBaseAddress(buffer, [])
+            let time = CMTime(value: CMTimeValue(frame), timescale: CMTimeScale(Trailer.framesPerSecond))
+            guard adaptor.append(buffer, withPresentationTime: time) else { throw Failure.writer("picture at \(frame): \(state())") }
         }
 
-        for frame in 0..<count {
-            // Each frame's command buffers, textures and samples let go as it
-            // is written, not held to the end.
-            try autoreleasepool {
-                // The sound a little ahead of the picture, so the two interleave.
-                try appendSound(until: (frame + 1) * Soundtrack.sampleRate / Trailer.framesPerSecond + chunk)
-                let pixels = picture(frame)
-                guard waitUntilReady(video), let pool = adaptor.pixelBufferPool else {
-                    throw Failure.writer("picture at \(frame): not ready, \(state())")
-                }
-                var buffer: CVPixelBuffer?
-                CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &buffer)
-                guard let buffer else { throw Failure.buffer }
-                CVPixelBufferLockBaseAddress(buffer, [])
-                if let base = CVPixelBufferGetBaseAddress(buffer) {
-                    let rowBytes = CVPixelBufferGetBytesPerRow(buffer)
-                    pixels.withUnsafeBytes { raw in
-                        guard let source = raw.baseAddress else { return }
-                        for row in 0..<height {
-                            memcpy(base + row * rowBytes, source + row * width * 4, width * 4)
-                        }
-                    }
-                }
-                CVPixelBufferUnlockBaseAddress(buffer, [])
-                let time = CMTime(value: CMTimeValue(frame), timescale: CMTimeScale(Trailer.framesPerSecond))
-                guard adaptor.append(buffer, withPresentationTime: time) else { throw Failure.writer("picture at \(frame): \(state())") }
+        // Whichever the writer is ready for, picture or sound: it keeps the
+        // two interleaved itself, holding one back until the other catches
+        // up, so neither is pushed ahead of it. Each is finished as soon as
+        // its last is in, so the writer never waits on it for more.
+        var frame = 0
+        var moved = Date()
+        while frame < count || cursor < samples {
+            var wrote = false
+            if cursor < samples, audio.isReadyForMoreMediaData {
+                try appendSound()
+                if cursor >= samples { audio.markAsFinished() }
+                wrote = true
             }
-            if frame % 300 == 0 { print("TRAILER frame \(frame) of \(count) at \(Int(Date().timeIntervalSince(began))) s") }
+            if frame < count, video.isReadyForMoreMediaData {
+                // Each frame's command buffers, textures and samples let go
+                // as it is written, not held to the end.
+                try autoreleasepool { try appendPicture(frame) }
+                if frame % 300 == 0 { print("TRAILER frame \(frame) of \(count) at \(Int(Date().timeIntervalSince(began))) s") }
+                frame += 1
+                if frame == count { video.markAsFinished() }
+                wrote = true
+            }
+            if wrote {
+                moved = Date()
+            } else {
+                if writer.status == .failed { throw Failure.writer("picture \(frame), sound \(cursor): \(state())") }
+                if Date().timeIntervalSince(moved) > 60 {
+                    throw Failure.writer("stalled at picture \(frame), sound \(cursor) of \(samples): \(state())")
+                }
+                Thread.sleep(forTimeInterval: 0.002)
+            }
         }
-        try appendSound(until: samples)
-        video.markAsFinished()
-        audio.markAsFinished()
         let done = DispatchSemaphore(value: 0)
         writer.finishWriting { done.signal() }
         done.wait()
