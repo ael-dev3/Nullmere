@@ -1069,7 +1069,43 @@ enum Works {
             }
         }
         b.fine { quarryNear(&$0) }
+        if level <= 2 { quarryShelter(&b) }
         return model(name, b, rig: rig, machinery: machinery)
+    }
+
+    /// The quarrymen's shelter beside the outcrop until the crane stands
+    /// there: a lean-to of slate on four posts against a back of planks;
+    /// near, a grindstone on its frame to sharpen the picks, a pick and a
+    /// shovel hung on the planks, and a barrel of water at its side to
+    /// wet the stone.
+    static func quarryShelter(_ b: inout MeshBuilder) {
+        for (x, z, height) in [(Float(0.152), Float(-0.183), Float(0.138)), (0.238, -0.183, 0.138), (0.152, -0.117, 0.108),
+                               (0.238, -0.117, 0.108)] {
+            b.limb(from: Vec3(x, 0, z), to: Vec3(x, height, z), radius: 0.005, color: Palette.timberDark)
+        }
+        b.box(min: Vec3(0.152, 0, -0.188), max: Vec3(0.238, 0.132, -0.181), color: Palette.timber)
+        b.beam(from: Vec3(0.195, 0.143, -0.195), to: Vec3(0.195, 0.106, -0.104), width: 0.112, depth: 0.008, color: Palette.slate)
+        b.fine {
+            Stores.barrel(&$0, at: Vec3(0.265, 0, -0.09), turn: 0.3)
+            $0.place(.translation(Vec3(0.265, 0.071, -0.09))) {
+                $0.lathe([(0.0, 0), (0.022, 0)], sides: 7, color: Palette.seaWool)
+            }
+            // The grindstone, its trough under it.
+            $0.box(center: Vec3(0.172, 0.012, -0.15), size: Vec3(0.03, 0.024, 0.05), color: Palette.timberDark)
+            $0.wheel(center: Vec3(0.172, 0.048, -0.15), radius: 0.026, width: 0.012, spokes: 1, color: Palette.stone, rim: Palette.stonePale)
+            for z in [Float(-0.168), -0.132] {
+                $0.limb(from: Vec3(0.172, 0.02, z), to: Vec3(0.172, 0.05, z), radius: 0.003, color: Palette.timberDark)
+            }
+            $0.with(material: .metal) {
+                $0.limb(from: Vec3(0.172, 0.048, -0.172), to: Vec3(0.172, 0.048, -0.128), radius: 0.0025, sides: 3, color: Palette.iron)
+                $0.beam(from: Vec3(0.172, 0.048, -0.128), to: Vec3(0.172, 0.068, -0.122), width: 0.003, color: Palette.iron)
+                // The pick and the shovel's blade on the planks.
+                $0.beam(from: Vec3(0.17, 0.105, -0.178), to: Vec3(0.2, 0.098, -0.178), width: 0.004, depth: 0.003, color: Palette.iron)
+                $0.box(center: Vec3(0.222, 0.045, -0.178), size: Vec3(0.022, 0.026, 0.003), color: Palette.iron)
+            }
+            $0.beam(from: Vec3(0.185, 0.06, -0.178), to: Vec3(0.185, 0.104, -0.178), width: 0.004, depth: 0.003, color: Palette.timberPale)
+            $0.beam(from: Vec3(0.222, 0.058, -0.178), to: Vec3(0.222, 0.122, -0.178), width: 0.004, depth: 0.003, color: Palette.timberPale)
+        }
     }
 
     /// The quarry drawn nearer still, at every level: a raw block split
