@@ -426,7 +426,7 @@ final class DepthPanelTests: XCTestCase {
         next.reveal(around: lies, range: 1, for: viewer)
         let view = next.view(for: viewer)
         XCTAssertEqual(HoverInfo.line(for: lies, in: view, explored: true, territory: view.territory())?.contains("a letter sealed within"), true)
-        let (later, _) = session(next)
+        let (later, _) = self.session(next)
         later.selection = .tile(lies)
         draw(SelectionPanel(session: later), width: 330, height: 900)
     }
