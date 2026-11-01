@@ -1514,8 +1514,15 @@ realm; keepers are told in plain words, never a status code.
   blow's pitch falling back as the skin eases. The score and the cues ring
   in a hall of their own: a breath of silence, a wash of early echoes, then
   a dark, wide tail some two and a half seconds long, its highs dying
-  first; the night's drone and wind stay out of doors. CI keeps each theme
-  and every cue as a sound file to listen to, the `sounds` artifact. ⇧⌘M turns all sound off, ⇧⌘U the
+  first; the night's drone and wind stay out of doors. Each cue's noise is
+  coloured by what makes it: a page turned rustles high and soft, hooves
+  and skins thud low, grit and dust sit about the middle, steel rings
+  bright and salt hisses brighter. As the view comes down close to a hold,
+  its town is heard beneath the night, about as loud: two murmurs of talk
+  rising and falling syllable by syllable, their vowels changing as they
+  go, and now and then a hammer's blow, the louder the more the hold has
+  raised, from where it lies across the view. CI keeps each theme and every
+  cue as a sound file to listen to, the `sounds` artifact. ⇧⌘M turns all sound off, ⇧⌘U the
   music alone, and Settings (⌘,) sets each part's volume. Each kind of
   company sounds its own: Riders' hooves, a loosed bowstring, the clash
   of a blow struck in close, heard as well when the blow falls on yours.

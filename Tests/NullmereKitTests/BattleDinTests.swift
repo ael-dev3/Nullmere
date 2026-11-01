@@ -1,3 +1,4 @@
+import NullmereWorld
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
@@ -50,5 +51,45 @@ final class BattleDinTests: XCTestCase {
         session.motion = .still
         session.hearBattles()
         XCTAssertEqual(heard.last?.0, 0)
+    }
+}
+
+/// The towns near the view: heard only as the view comes down close, the
+/// closer the louder, from where they lie across it; told to the sound as
+/// they change, and still under the stillest motion.
+final class TownSoundTests: XCTestCase {
+    @MainActor
+    func testTheSessionHearsTheTownsNearTheView() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let state = GameState(settings: GameSettings(seedText: "towns", keepers: 1))
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        let seat = try XCTUnwrap(state.seat(of: state.player))
+        var camera = session.camera
+        camera.focus(on: seat.position)
+        camera.heading = 0
+        camera.scale = Camera.minimumScale
+        session.camera = camera
+        XCTAssertNil(session.townSound(), "Well back, no town is heard")
+        camera.scale = Camera.maximumScale
+        session.camera = camera
+        let close = try XCTUnwrap(session.townSound())
+        XCTAssertGreaterThan(close.level, 0.3, "The seat close by")
+        XCTAssertEqual(close.pan, 0, accuracy: 0.3, "in the middle of the view")
+        // The view a little to the left of the seat: the seat to its right.
+        camera.centerX -= 0.3 * 600 / camera.scale
+        session.camera = camera
+        XCTAssertGreaterThan(try XCTUnwrap(session.townSound()).pan, 0, "to the right of the view")
+
+        var heard: [(Float, Float)] = []
+        session.onTown = { heard.append(($0, $1)) }
+        session.hearTowns()
+        XCTAssertEqual(heard.count, 1)
+        session.hearTowns()
+        XCTAssertEqual(heard.count, 1, "Told as they change, not every frame")
+        session.motion = .still
+        session.hearTowns()
+        XCTAssertEqual(heard.last?.0, 0, "Still under the stillest motion")
+        Ambience(enabled: false).setTown(level: 0.5, pan: 0)
     }
 }

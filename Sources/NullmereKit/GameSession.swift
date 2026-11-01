@@ -281,6 +281,10 @@ public final class GameSession {
     /// changes: how loud, and where across the view.
     public var onDin: ((Float, Float) -> Void)?
     @ObservationIgnored var dinTold: (level: Float, pan: Float) = (0, 0)
+    /// The towns near the view, told to the sound as they change: how near,
+    /// and where across the view.
+    public var onTown: ((Float, Float) -> Void)?
+    @ObservationIgnored var townTold: (level: Float, pan: Float) = (0, 0)
     /// Called with the advisor's counsel as each new charge comes.
     public var onCounsel: ((String) -> Void)?
     /// The charge last counselled: the one the keeper had as the session
@@ -1711,6 +1715,38 @@ public final class GameSession {
         guard abs(level - dinTold.level) > 0.02 || abs(pan - dinTold.pan) > 0.05 || (level == 0 && dinTold.level != 0) else { return }
         dinTold = (level, pan)
         onDin?(level, pan)
+    }
+
+    /// The towns near the view, as they are heard: only as the view comes
+    /// down close, the closer the louder, each the louder the more its hold
+    /// has raised, and from where it lies across the view; the holds the fog
+    /// hides are not heard, nor those well off the view's middle.
+    func townSound() -> (level: Float, pan: Float)? {
+        let near = Float(min(max((camera.scale - 60) / 90, 0), 1))
+        guard near > 0 else { return nil }
+        var total: Float = 0, panned: Float = 0
+        for hold in state.holds where isVisible(hold.position) {
+            let heard = camera.hearing(of: hold.position)
+            // The hearing's floor is for cues far off; a town so far is silent.
+            let nearby = (heard.gain - 0.3) / 0.7
+            guard nearby > 0.01 else { continue }
+            let busy = min(Float(hold.levels.values.reduce(0, +)) / 20, 1)
+            let loud = (0.3 + 0.7 * busy) * nearby * near
+            total += loud
+            panned += loud * heard.pan
+        }
+        guard total > 0.001 else { return nil }
+        return (min(total, 1), min(max(panned / total, -1), 1))
+    }
+
+    /// Tells the sound the towns near the view when they have changed
+    /// enough to hear; still under Reduce Motion's stillest, as the din is.
+    func hearTowns() {
+        let towns = motion == .still ? nil : townSound()
+        let level = towns?.level ?? 0, pan = towns?.pan ?? 0
+        guard abs(level - townTold.level) > 0.02 || abs(pan - townTold.pan) > 0.05 || (level == 0 && townTold.level != 0) else { return }
+        townTold = (level, pan)
+        onTown?(level, pan)
     }
 
     /// Sounds a cue, from where in the world it happened.

@@ -90,6 +90,13 @@ public final class Ambience {
         synth.setDin(level: level, pan: pan)
     }
 
+    /// The towns near the view: how near, from nothing (0) to a busy seat
+    /// close by (1), and where across the view, from the left (-1) to the
+    /// right (1).
+    public func setTown(level: Float, pan: Float) {
+        synth.setTown(level: level, pan: pan)
+    }
+
     /// The score: on or off, and at peace or at war.
     public var isMusicOn = true {
         didSet { applyMusic() }

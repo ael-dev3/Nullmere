@@ -354,6 +354,39 @@ struct Lowpass {
     }
 }
 
+/// A band-pass, the same state-variable filter's band, as loud at its
+/// centre as what it is given: the band a cue's noise is heard in, paper's
+/// or grit's or a skin's. White noise loses most of itself to a narrow
+/// band, so half that loss, in decibels, is made up, and the noise
+/// sounds as loud at any sample rate.
+struct Bandpass {
+    private var a1: Float = 1, a2: Float = 0, a3: Float = 0
+    private var k: Float = 1, makeup: Float = 1
+    private var ic1: Float = 0, ic2: Float = 0
+
+    init() {}
+
+    init(centre: Float, width: Float, sampleRate: Float) {
+        let g = tan(.pi * min(centre, sampleRate * 0.45) / sampleRate)
+        k = 1 / width
+        a1 = 1 / (1 + g * (g + k))
+        a2 = g * a1
+        a3 = g * a2
+        let bandwidth = max(centre / width, 1)
+        makeup = pow(24_000 / bandwidth, 0.25) * (sampleRate / 48_000).squareRoot()
+    }
+
+    @inline(__always)
+    mutating func process(_ x: Float) -> Float {
+        let v3 = x - ic2
+        let v1 = a1 * ic1 + a2 * v3
+        let v2 = ic2 + a2 * ic1 + a3 * v3
+        ic1 = 2 * v1 - ic1
+        ic2 = 2 * v2 - ic2
+        return v1 * k * makeup
+    }
+}
+
 /// A note of a body of strings bowed: three players a few cents apart,
 /// each a sawtooth (as a bowed string's wave is, the bow catching and
 /// letting go) kept from aliasing by polyBLEP, each with a slow vibrato of

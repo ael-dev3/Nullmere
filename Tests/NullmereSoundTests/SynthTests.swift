@@ -133,6 +133,27 @@ final class SynthTests: XCTestCase {
         XCTAssertFalse(burst.contains { $0.isNaN || $0.isInfinite })
     }
 
+    /// Each cue's noise sounds in its material's band: a page's rustle
+    /// high, a hoof's thud low, salt through a glass far brighter than a
+    /// ram on a gate; and as loud at any sample rate.
+    func testEachCuesNoiseSoundsInItsMaterialsBand() {
+        func alone(_ cue: SoundCue, rate: Float = 48_000) -> [Float] {
+            let synth = settled(rate: rate)
+            synth.setVolumes(effects: 1, ambience: 0, music: 1)
+            synth.trigger(cue)
+            return rendered(synth, seconds: 0.3, rate: rate).left
+        }
+        func crossings(_ x: [Float]) -> Float {
+            Float(zip(x, x.dropFirst()).filter { ($0 < 0) != ($1 < 0) }.count) / Float(x.count)
+        }
+        XCTAssertGreaterThan(crossings(alone(.leaf)), crossings(alone(.ride)) * 4)
+        XCTAssertGreaterThan(crossings(alone(.sift)), crossings(alone(.batter)) * 3)
+        XCTAssertEqual(decibels(rms(alone(.leaf, rate: 96_000)) / rms(alone(.leaf))), 0, accuracy: 1.5)
+        XCTAssertEqual(decibels(rms(alone(.ride, rate: 44_100)) / rms(alone(.ride))), 0, accuracy: 1.5)
+        XCTAssertNil(Synth.bands(of: .watch).first, "A bell has no noise to colour")
+        XCTAssertNotNil(Synth.bands(of: .loose).rest, "The arrow's hiss its own")
+    }
+
     /// A cue in the middle is heard alike in both ears; at an edge, in the
     /// nearer one, never gone from the other; far off, quieter.
     func testACueIsHeardFromWhereItHappened() {
@@ -209,6 +230,39 @@ final class SynthTests: XCTestCase {
         let gone = rendered(loud, seconds: 4)
         XCTAssertLessThan(rms(gone.left[(2 * rate)...]), bedAfter * 1.2, "Gone again with the battle")
         XCTAssertEqual(loud.dinHeard.level, 0, accuracy: 0.01)
+    }
+
+    /// The towns near the view are heard talking and at work, about as
+    /// loud as the night beneath them, from where they lie across the view,
+    /// talk rising and falling and now and then a hammer's blow; gone again
+    /// once the view draws back. The night sounds as it did beneath them.
+    func testTheTownsNearTheViewAreHeardFromWhereTheyLie() {
+        let quiet = rendered(settled(), seconds: 6)
+        let near = settled()
+        near.setTown(level: 1, pan: -0.8)
+        let heard = rendered(near, seconds: 6)
+        let held = (3 * 48_000)..<(6 * 48_000)
+        // The night the same beneath, so what differs is the towns'.
+        let left = zip(heard.left[held], quiet.left[held]).map { $0 - $1 }
+        let right = zip(heard.right[held], quiet.right[held]).map { $0 - $1 }
+        let night = rms(quiet.left[held])
+        print("SOUND town \(String(format: "%.1f", decibels(rms(left)))) dBFS rms beside a night of \(String(format: "%.1f", decibels(night)))")
+        XCTAssertGreaterThan(rms(left), night * 0.4, "Heard over the night")
+        XCTAssertLessThan(rms(left), night * 2, "and no louder than about it")
+        XCTAssertGreaterThan(rms(left), rms(right) * 1.5, "from the left, where it lies")
+        // Talk rises and falls: its loudness in tenths of a second varies.
+        let tenths = stride(from: 0, to: left.count - 4_800, by: 4_800).map { rms(left[$0..<($0 + 4_800)]) }
+        XCTAssertGreaterThan((tenths.max() ?? 0) / max(tenths.min() ?? 1, 1e-9), 1.5)
+        XCTAssertEqual(near.townHeard.level, 1, accuracy: 0.05)
+        near.setTown(level: 0, pan: 0)
+        _ = rendered(near, seconds: 5)
+        XCTAssertEqual(near.townHeard.level, 0, accuracy: 0.01)
+
+        var town = Town(sampleRate: 48_000)
+        let sound = (0..<(48_000 * 10)).map { _ in town.sample(dt: 1 / 48_000) }
+        XCTAssertGreaterThanOrEqual(town.blows, 2, "Work goes on")
+        XCTAssertFalse(sound.contains { $0.isNaN || $0.isInfinite })
+        XCTAssertLessThan(sound.map(abs).max() ?? 1, 1)
     }
 
     /// Riders' hooves fall one after another, each landing once the one

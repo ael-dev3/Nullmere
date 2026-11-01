@@ -2,8 +2,8 @@ import Foundation
 import NullmereCore
 
 /// The synthesiser behind the Mac's `Ambience`: the night's drone and
-/// wind, the din of battles in sight, every cue, and the score, the score
-/// and the cues heard in a hall of their own. It renders on the audio
+/// wind, the din of battles in sight, the towns near the view, every cue,
+/// and the score, the score and the cues heard in a hall of their own. It renders on the audio
 /// thread; the main thread only queues cues, under a lock.
 public final class Synth: @unchecked Sendable {
     private struct Partial {
@@ -28,6 +28,15 @@ public final class Synth: @unchecked Sendable {
         /// Its age when it has died below hearing, worked out as it is
         /// asked for (see `length`), not on the audio thread.
         var end: Float = 40
+        /// The band its noise is heard in, its material's; white if none.
+        var coloured = false
+        var band = Bandpass()
+
+        mutating func colour(_ band: (centre: Float, width: Float)?, sampleRate: Float) {
+            guard let band else { return }
+            coloured = true
+            self.band = Bandpass(centre: band.centre, width: band.width, sampleRate: sampleRate)
+        }
 
         /// How long after it begins the note has died below hearing: each
         /// partial rings until its decay brings it under a ten-thousandth,
@@ -81,6 +90,12 @@ public final class Synth: @unchecked Sendable {
     private var tramp: Float = 0
     private var clashes: [(phase: Float, frequency: Float, amplitude: Float, age: Float)] = Array(repeating: (0, 0, 0, 1), count: 4)
     private var nextClash: Float = 0
+    /// The towns near the view as heard, easing toward what they were last
+    /// told, and what they sound.
+    private var town: (level: Float, pan: Float) = (0, 0)
+    private var townTarget: (level: Float, pan: Float) = (0, 0)
+    private var pendingTown: (level: Float, pan: Float)?
+    private var towns = Town(sampleRate: 48_000)
 
     /// The drone's partials.
     private static let droneFrequencies: [Float] = [55, 82.41, 110, 164.81]
@@ -110,6 +125,18 @@ public final class Synth: @unchecked Sendable {
         lock.lock(); pendingDin = (min(max(level, 0), 1), min(max(pan, -1), 1)); lock.unlock()
     }
 
+    /// How near the towns in the view are (0 none, 1 a busy seat close by)
+    /// and where across the view, from the left (-1) to the right (1).
+    public func setTown(level: Float, pan: Float) {
+        lock.lock(); pendingTown = (min(max(level, 0), 1), min(max(pan, -1), 1)); lock.unlock()
+    }
+
+    /// The towns as they are heard, for tests.
+    var townHeard: (level: Float, pan: Float) {
+        lock.lock(); defer { lock.unlock() }
+        return town
+    }
+
     /// The din as it is heard, for tests.
     var dinHeard: (level: Float, pan: Float) {
         lock.lock(); defer { lock.unlock() }
@@ -119,6 +146,7 @@ public final class Synth: @unchecked Sendable {
     public func prepare(sampleRate: Float) {
         self.sampleRate = sampleRate
         if hall.sampleRate != sampleRate { hall = Hall(sampleRate: sampleRate) }
+        if towns.sampleRate != sampleRate { towns = Town(sampleRate: sampleRate) }
         score.prepare(sampleRate: sampleRate)
     }
 
@@ -438,10 +466,13 @@ public final class Synth: @unchecked Sendable {
         note.delay += delay
         note.end = note.delay + note.length
         (note.left, note.right) = (place.left, place.right)
+        let bands = Synth.bands(of: cue)
+        note.colour(bands.first, sampleRate: sampleRate)
         for index in more.indices {
             more[index].delay += delay
             more[index].end = more[index].delay + more[index].length
             (more[index].left, more[index].right) = (place.left, place.right)
+            more[index].colour(bands.rest ?? bands.first, sampleRate: sampleRate)
         }
         lock.lock()
         if pending.count < 12 { pending.append(note); pending.append(contentsOf: more) }
@@ -473,6 +504,10 @@ public final class Synth: @unchecked Sendable {
         if let next = pendingDin {
             dinTarget = next
             pendingDin = nil
+        }
+        if let next = pendingTown {
+            townTarget = next
+            pendingTown = nil
         }
         let volume = volumes
         lock.unlock()
@@ -532,7 +567,9 @@ public final class Synth: @unchecked Sendable {
                     cue += sin(partial.phase) * partial.amplitude * attack * exp(-sounding * partial.decay)
                 }
                 if notes[n].noise > 0 {
-                    cue += random() * notes[n].noise * exp(-age * notes[n].noiseDecay)
+                    var hiss = random()
+                    if notes[n].coloured { hiss = notes[n].band.process(hiss) }
+                    cue += hiss * notes[n].noise * exp(-age * notes[n].noiseDecay)
                 }
                 cueLeft += cue * notes[n].left
                 cueRight += cue * notes[n].right
@@ -569,6 +606,18 @@ public final class Synth: @unchecked Sendable {
             let dinLeft = battle * cos(dinAngle) * 1.414 * heard.ambience * level
             let dinRight = battle * sin(dinAngle) * 1.414 * heard.ambience * level
 
+            // The towns near the view: as near as the view comes, from where
+            // they lie across it, out of doors as the din is.
+            town.level += (townTarget.level - town.level) * min(dt * 1.5, 1)
+            town.pan += (townTarget.pan - town.pan) * min(dt * 1.5, 1)
+            var townLeft: Float = 0, townRight: Float = 0
+            if town.level > 0.0005 {
+                let heardTown = towns.sample(dt: dt) * Self.townGain * town.level * heard.ambience * level
+                let townAngle = (0.75 * town.pan + 1) * .pi / 4
+                townLeft = heardTown * cos(townAngle) * 1.414
+                townRight = heardTown * sin(townAngle) * 1.414
+            }
+
             cueLeft *= heard.effects
             cueRight *= heard.effects
             drone *= heard.ambience
@@ -588,11 +637,49 @@ public final class Synth: @unchecked Sendable {
             if hallQuiet < hall.seconds * 3 {
                 (hallLeft, hallRight) = hall.process(left: sentLeft, right: sentRight)
             }
-            left[frame] = Self.softened(drone * level + musicLeft + hallLeft + heardLeft + windLeft * air + dinLeft)
-            right[frame] = Self.softened(drone * level + musicRight + hallRight + heardRight + windRight * air + dinRight)
+            left[frame] = Self.softened(drone * level + musicLeft + hallLeft + heardLeft + windLeft * air + dinLeft + townLeft)
+            right[frame] = Self.softened(drone * level + musicRight + hallRight + heardRight + windRight * air + dinRight + townRight)
         }
         notes.removeAll { $0.age > $0.end }
     }
+
+    /// The band each cue's noise is heard in, its first sound's and the
+    /// rest's, as centre (hertz) and width (the centre over the band's
+    /// breadth): a page high and soft, grit and dust about the middle,
+    /// hooves, skins and earth low, steel ringing bright and salt hissing
+    /// brighter. A cue with no noise, or none named, is as it was.
+    static func bands(of cue: SoundCue) -> (first: (centre: Float, width: Float)?, rest: (centre: Float, width: Float)?) {
+        switch cue {
+        case .select: return ((3_200, 0.9), nil)
+        case .order: return ((2_200, 0.8), nil)
+        case .dread: return ((220, 0.7), nil)
+        case .toll: return ((500, 0.8), nil)
+        case .clash: return ((3_400, 1.4), nil)
+        // The string's click, then the shaft's hiss through the air.
+        case .loose: return ((2_600, 1), (6_000, 1.6))
+        case .ride: return ((380, 0.8), nil)
+        case .dig: return ((1_400, 0.7), nil)
+        case .coin: return ((6_800, 1.2), nil)
+        case .parley: return ((1_100, 0.6), nil)
+        case .stand: return ((420, 0.8), nil)
+        case .complete: return ((1_100, 0.9), nil)
+        case .muster: return ((800, 0.6), nil)
+        // The timber's crack, then the dust settling.
+        case .batter: return ((650, 0.8), (300, 0.6))
+        case .horn: return ((600, 0.7), nil)
+        case .herald: return ((450, 0.8), nil)
+        case .tend: return ((1_000, 0.6), nil)
+        case .sift: return ((6_400, 1.3), nil)
+        case .anvil: return ((3_800, 1.2), nil)
+        case .leaf: return ((4_800, 0.7), nil)
+        case .fold: return ((3_000, 0.7), nil)
+        case .deny: return ((850, 0.9), nil)
+        case .watch, .rise, .envoy, .triumph, .accord, .refusal, .lore, .banner, .honour: return (nil, nil)
+        }
+    }
+
+    /// How loud a town is, close by: about as loud as the night beneath it.
+    static let townGain: Float = 0.15
 
     /// How much of the score, and of the cues, the hall is given.
     static let musicSend: Float = 0.45
