@@ -22,6 +22,9 @@ struct AwayReport: Equatable {
     let news: [String]
     /// How many more of those the Chronicle holds than are told here.
     let more: Int
+    /// That a caretaker kept the House by the keeper's standing orders,
+    /// where it kept it and they had given any.
+    let standing: String?
 
     static let lines = 8
 
@@ -46,6 +49,9 @@ struct AwayReport: Equatable {
         }
         news = told.sorted().map { chronicle[$0].text }
         more = theirs.count + lakes.count + (omen == nil ? 0 : 1) - told.count
+        let orders = world.standingOrders(of: player)
+        standing = watches >= RealmState.caretakerAfter && !orders.isEmpty
+            ? "A caretaker kept your House by your standing orders, which still stand." : nil
     }
 
     /// The Chronicle's share of the rest, when there is more than is told.

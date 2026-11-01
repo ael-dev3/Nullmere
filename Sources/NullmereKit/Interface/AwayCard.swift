@@ -37,6 +37,12 @@ struct AwayCard: View {
                     }
                 }
             }
+            if let standing = report.standing {
+                Text(verbatim: standing)
+                    .font(.nm(11))
+                    .foregroundStyle(Palette.text(0.75))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if report.news.isEmpty {
                 Text(verbatim: "Your House stood quiet; nothing touched it.")
                     .font(.nm(12, weight: .light))

@@ -26,6 +26,19 @@ final class AwayReportTests: XCTestCase {
         return world
     }
 
+    /// A keeper back after a caretaker kept their House is told it kept
+    /// their standing orders, if they gave any; not after a watch alone.
+    func testAReturningKeeperIsToldTheCaretakerKeptTheirStandingOrders() throws {
+        var state = GameState(settings: GameSettings(seedText: "away with orders", houseCount: 4, radius: 16, keepers: 1))
+        let me = state.player
+        let seen = LastSeen(watch: state.watch, stock: state.houses[me].stock, holds: state.holds(of: me).count, house: me)
+        XCTAssertNil(AwayReport(since: seen, now: later(state, by: 3), player: me)?.standing, "No standing orders given")
+        _ = try state.perform(.stand(.home), as: me)
+        let kept = try XCTUnwrap(AwayReport(since: seen, now: later(state, by: 3), player: me))
+        XCTAssertEqual(kept.standing, "A caretaker kept your House by your standing orders, which still stand.")
+        XCTAssertNil(AwayReport(since: seen, now: later(state, by: 1), player: me)?.standing, "A watch away: no caretaker yet")
+    }
+
     func testAReturningKeeperHearsWhatPassedWhileAway() throws {
         let store = LocalStore(directory: dir)
         let state = GameState(settings: GameSettings(seedText: "away a while", houseCount: 4, radius: 16, keepers: 1))
