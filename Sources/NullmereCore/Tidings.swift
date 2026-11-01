@@ -537,6 +537,31 @@ extension GameState {
             case (.escaped, _, true): return Tidings("\(name) of \(houses[owner].title) slips away from you.", .bad)
             default: return nil
             }
+        case .oathSworn(let oath):
+            let swearer = houses[oath.by].title
+            if oath.by == viewer { return Tidings("Your House is sworn: \(terms(of: oath)). The realm will hold it to its word.", .neutral) }
+            if oath.to == viewer { return Tidings("\(swearer) swears an oath to you: \(terms(of: oath)).", .good) }
+            return Tidings("\(swearer) swears an oath to \(houses[oath.to].title): \(terms(of: oath)).", .neutral)
+        case .oathRenounced(let oath):
+            let swearer = houses[oath.by].title
+            if oath.by == viewer {
+                return Tidings("You renounce your oath to \(houses[oath.to].title); it binds your House until watch \(lastWatch(of: oath)).", .neutral)
+            }
+            if oath.to == viewer { return Tidings("\(swearer) renounces its oath to you; it binds until watch \(lastWatch(of: oath)).", .bad) }
+            return Tidings("\(swearer) renounces its oath to \(houses[oath.to].title).", .neutral)
+        case .oathEnded(let oath, let why):
+            let swearer = houses[oath.by].title, sworn = houses[oath.to].title
+            switch (why, oath.by == viewer, oath.to == viewer) {
+            case (.kept, true, _): return Tidings("Your House has kept its oath to \(sworn).", .good)
+            case (.kept, _, true): return Tidings("\(swearer) has kept its oath to you.", .neutral)
+            case (.renounced, true, _): return Tidings("Your renounced oath to \(sworn) binds your House no more.", .neutral)
+            case (.renounced, _, true): return Tidings("\(swearer)'s renounced oath to you binds it no more.", .bad)
+            case (.broken, true, _):
+                return Tidings("Your House could not send what it swore to \(sworn): the oath is broken, and the realm remembers.", .bad)
+            case (.broken, _, true): return Tidings("\(swearer) has broken its oath to you, sending nothing it swore to send.", .bad)
+            case (.broken, false, false): return Tidings("\(swearer) breaks its oath to \(sworn).", .neutral)
+            default: return nil
+            }
         case .standingOrdersGiven(let house):
             guard house == viewer else { return nil }
             return Tidings(standingOrders(of: house).said, .neutral)

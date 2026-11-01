@@ -88,6 +88,10 @@ extension GameState {
             return try ransom(commander, as: house)
         case .release(let commander):
             return try release(commander, as: house)
+        case let .swear(term, other, watches):
+            return try swear(term, to: other, watches: watches, as: house)
+        case .renounce(let oath):
+            return try renounce(oath, as: house)
         case let .reportWord(wordID):
             return try report(wordID, as: house)
         case let .proposeEdict(kind):
@@ -802,6 +806,8 @@ extension GameState {
         try requireRival(target, of: house)
         let previous = stance(house, target)
         guard previous != .war else { throw .alreadyStance(.war) }
+        // A House sworn to peace with another keeps its word.
+        guard !isSwornToPeace(house, with: target) else { throw .swornToPeace(target) }
         // No House makes war on one sworn to its own alliance.
         guard !areAllied(house, target) else { throw .allyInAlliance(target) }
         // A vassal can't turn on its liege; a liege that turns on its

@@ -1412,6 +1412,8 @@ public final class GameSession {
         case .sealLetter: return .lore
         case .stand: return .order
         case .standDown: return .stand
+        case .swear: return .banner
+        case .renounce: return .refusal
         case .proposeEdict: return .horn
         case .voteEdict: return .order
         case .learnTalent: return .lore
@@ -1551,6 +1553,10 @@ public final class GameSession {
         case .commanderTaken(_, _, let by) where by == player: return .triumph
         case .commanderTaken(_, let house, _) where house == player: return .dread
         case .prisonerQuestioned: return .lore
+        case .oathSworn(let oath) where oath.to == player: return .banner
+        case .oathRenounced(let oath) where oath.to == player: return .refusal
+        case .oathEnded(let oath, .broken) where oath.by == player || oath.to == player: return .dread
+        case .oathEnded(let oath, .kept) where oath.by == player: return .accord
         case .edictProposed(let edict) where edict.proposer != player: return .parley
         case .edictPassed: return .honour
         case .titleBestowed(let title, let house, _) where house == player: return title.isBoon ? .honour : .dread

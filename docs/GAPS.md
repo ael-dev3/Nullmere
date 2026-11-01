@@ -341,6 +341,20 @@ designed, ticked when it is real, tested and shown in CI.
   captor may let them go, and after twenty watches they slip away.
   Stewards ransom theirs when they can spare it twice over; only keepers
   take prisoners, so a world of stewards goes as it always did.
+- [x] **Oaths the realm keeps.** In Rise of Kingdoms a non-aggression
+  pact or a promise of resources is only words in a chat, kept by
+  nothing but reputation and broken at a whim. Here a keeper swears an
+  oath in their own words, which their Mac's model reads into the realm's
+  terms, and the server holds their House to it: sworn to peace with a
+  House, its declaration of war on that House is refused until the oath
+  ends; sworn to send goods each watch, the realm sends them at each
+  watch's turn. An oath binds one to sixty watches and the whole realm is
+  told; renounced, it binds three watches more, told to all, so none is
+  broken by surprise; an oath whose goods can't be sent is broken, and
+  the realm remembers it as a pact betrayed. A promise between players
+  becomes a binding contract of the world. A steward sent goods by oath
+  leaves the sender in peace while they come; only keepers swear, so a
+  world of stewards goes as it always did.
 
 ## The order of the work
 

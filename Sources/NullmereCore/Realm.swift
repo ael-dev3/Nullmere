@@ -399,6 +399,7 @@ public struct RealmState: Codable, Equatable, Sendable {
             // Their letter and standing orders go with them.
             world.withdrawLetter(of: house)
             world.withdrawStandingOrders(of: house)
+            world.withdrawOaths(of: house)
             world.record(.seating, [house], "\(world.houses[house].title) passes to the stewards, its keeper gone from the realm for good.")
         }
         return keeper
@@ -467,6 +468,7 @@ public struct RealmState: Codable, Equatable, Sendable {
         world.houses[house].isPlayer = false
         world.withdrawLetter(of: house)
         world.withdrawStandingOrders(of: house)
+        world.withdrawOaths(of: house)
         keepers[index].house = nil
         let span = keepers[index].hasPlayed == true ? "a week" : "an hour"
         world.record(.seating, [house], "\(world.houses[house].title) has stood \(span) without its keeper; the stewards keep it for another.")

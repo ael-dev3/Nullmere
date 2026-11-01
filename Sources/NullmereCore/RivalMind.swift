@@ -621,6 +621,8 @@ struct RivalMind {
 
     private func inTruce(with other: Int, in state: GameState) -> Bool {
         guard let relation = state.relation(house, other), relation.stance != .war else { return false }
+        // A House that sends this one goods by oath is left in peace while it does.
+        if state.sendsByOath(other, to: house) { return true }
         return relation.aggressor != nil && state.watch - relation.since < RivalMind.truce
     }
 

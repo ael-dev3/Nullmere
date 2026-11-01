@@ -6,8 +6,9 @@ import Foundation
 /// own view into the order the realm would take, or why it wouldn't. The
 /// book has lines for the House's companies and holds, and for its dealings
 /// with the other Houses: envoys of peace, of a pact or demanding tribute,
-/// gifts, offers of trade and war; and standing orders for the caretaker
-/// that keeps the House while its keeper is away.
+/// gifts, offers of trade and war, and oaths the realm holds the House to;
+/// and standing orders for the caretaker that keeps the House while its
+/// keeper is away.
 /// Nothing is given until the keeper has seen the orders and gives them:
 /// the model only reads, and the realm judges every order as it always
 /// does. Without the model, the order book's lines may be written as they
@@ -37,6 +38,9 @@ public enum SpokenOrders {
                                "DRILL <company>", "BUILD <work> AT <hold>", "TRAIN <kind> AT <hold>",
                                "OFFER PEACE TO <house>", "OFFER A PACT TO <house>", "DEMAND TRIBUTE FROM <house>", "DECLARE WAR ON <house>",
                                "GIVE <amount> <store> TO <house>", "TRADE <amount> <store> FOR <amount> <store> WITH <house>",
+                               "SWEAR PEACE WITH <house> FOR <watches> WATCHES",
+                               "SWEAR TO SEND <amount> <store> TO <house> EACH WATCH FOR <watches> WATCHES",
+                               "RENOUNCE THE OATH TO <house>",
                                "WHILE AWAY MUSTER <kind>", "WHILE AWAY RAISE <work> FIRST", "WHILE AWAY KEEP HOME",
                                "WHILE AWAY MAKE PEACE", "WHILE AWAY MAKE NO PEACE", "WHILE AWAY PAY TRIBUTE", "WHILE AWAY PAY NO TRIBUTE",
                                "WHILE AWAY AS YOU SEE FIT"]
@@ -90,6 +94,10 @@ public enum SpokenOrders {
             .map { "\($0.title) (\(state.stance(player, $0.id).standing))" }
         lines.append("Houses: " + houses.joined(separator: ", "))
         lines.append("Stores: " + Resource.allCases.map(\.title).joined(separator: ", "))
+        let sworn = state.oaths(by: player)
+        if !sworn.isEmpty {
+            lines.append("Your House's oaths: " + sworn.map { state.terms(of: $0) }.joined(separator: "; "))
+        }
         return lines.joined(separator: "\n")
     }
 
@@ -197,6 +205,43 @@ public enum SpokenOrders {
             return given(.offerTrade(Trade(give: give, giving, for: take, taking), to: other, words: nil),
                          "\(GameState.counted(giving)) \(give.title.lowercased()) offered to \(state.houses[other].title) "
                             + "for \(GameState.counted(taking)) \(take.title.lowercased()).")
+        case "SWEAR":
+            // An oath, which the realm will hold the House to, read word by word.
+            let upper = rest.map { $0.uppercased() }
+            func span(after at: Int) -> Int? {
+                upper.indices.contains(at + 1) ? Int(upper[at + 1]) : nil
+            }
+            if upper.count >= 5, upper[0] == "PEACE", upper[1] == "WITH", let forAt = upper.lastIndex(of: "FOR"), forAt > 2 {
+                let name = rest[2..<forAt].joined(separator: " ")
+                guard let other = house(name, in: state, player: player) else { return refused(text, "No House goes by the name \(name).") }
+                guard let watches = span(after: forAt) else { return nil }
+                return given(.swear(.peace, to: other, watches: watches),
+                             "Your House swears peace with \(state.houses[other].title) for \(watches) watches; the realm will hold it to its word.")
+            }
+            if upper.count >= 10, upper[0] == "TO", upper[1] == "SEND", let toAt = upper[3...].firstIndex(of: "TO"),
+               let eachAt = upper.lastIndex(of: "EACH"), toAt + 1 < eachAt, eachAt + 2 < upper.count,
+               upper[eachAt + 1].hasPrefix("WATCH"), upper[eachAt + 2] == "FOR" {
+                guard let (amount, store) = stores(rest[2..<toAt].joined(separator: " ")) else { return nil }
+                let name = rest[(toAt + 1)..<eachAt].joined(separator: " ")
+                guard let resource = resource(store) else { return refused(text, "No store goes by the name \(store).") }
+                guard let other = house(name, in: state, player: player) else { return refused(text, "No House goes by the name \(name).") }
+                guard let watches = span(after: eachAt + 2) else { return nil }
+                return given(.swear(.send(resource, amount), to: other, watches: watches),
+                             "Your House swears to send \(GameState.counted(amount)) \(resource.title.lowercased()) to \(state.houses[other].title) "
+                                + "each watch for \(watches) watches.")
+            }
+            return nil
+        case "RENOUNCE":
+            let said = rest.joined(separator: " ")
+            let leads = ["THE OATH TO ", "OUR OATH TO ", "THE OATHS TO ", "OATH TO "]
+            guard let lead = leads.first(where: { said.uppercased().hasPrefix($0) }) else { return nil }
+            let name = String(said.dropFirst(lead.count))
+            guard let other = house(name, in: state, player: player) else { return refused(text, "No House goes by the name \(name).") }
+            guard let oath = state.oaths(by: player).first(where: { $0.to == other && $0.renounced == nil }) else {
+                return refused(text, "Your House is sworn to no oath to \(state.houses[other].title) it has not renounced.")
+            }
+            return given(.renounce(oath: oath.id),
+                         "Your House renounces its oath to \(state.houses[other].title): \(state.terms(of: oath)); it binds three watches more.")
         case "WHILE":
             // A standing order, for the caretaker that keeps the House while
             // its keeper is away.

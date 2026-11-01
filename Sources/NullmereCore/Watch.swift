@@ -80,6 +80,7 @@ extension GameState {
         events += keepTitles()
         events += keepVeils()
         events += keepPrisoners()
+        events += keepOaths()
         events += keepStandards()
         events += keepHalls()
         events += keepAllianceStores()

@@ -338,6 +338,11 @@ extension GameState {
                 return owner == house || by == house
             case .prisonerQuestioned(_, let by, _):
                 return by == house
+            case .oathSworn, .oathRenounced:
+                // An oath is sworn, and renounced, before the whole realm.
+                return true
+            case .oathEnded(let oath, let why):
+                return why == .broken || oath.by == house || oath.to == house
             case .wordReported(_, let by):
                 return by == house
             case .wordRemoved:

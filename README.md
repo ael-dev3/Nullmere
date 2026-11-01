@@ -572,10 +572,12 @@ as the realm will, and takes the realm's word as final.
   HALT or DRILL a company, BUILD a work AT a hold, TRAIN a kind AT a
   hold; and with the other Houses, OFFER PEACE or A PACT TO a House,
   DEMAND TRIBUTE FROM one, DECLARE WAR ON one, GIVE an amount of a store
-  TO one, TRADE an amount of a store FOR another WITH one), given a
-  briefing of the House's companies, numbered C1 and on, its holds, the
-  places it knows, the works, the kinds of company, the other Houses
-  standing and how it stands with each, and the stores.
+  TO one, TRADE an amount of a store FOR another WITH one, and the oaths
+  below: SWEAR PEACE WITH one, SWEAR TO SEND goods TO one, RENOUNCE THE
+  OATH TO one), given a briefing of the House's companies, numbered C1
+  and on, its holds, the places it knows, the works, the kinds of
+  company, the other Houses standing and how it stands with each, its
+  oaths, and the stores.
   Each line is read against the keeper's own view into the order the
   realm would take, or said not to be one, and shown with what it would
   do or why it can't be given; those that can are given together only
@@ -622,6 +624,23 @@ as the realm will, and takes the realm's word as final.
   captor falls. Freed, they come home to mend for four watches. While
   held they lead no company and stand in no Ring. Stewards ransom theirs
   when they have the moonsalt twice over; only keepers take prisoners.
+- **Oaths.** On the orders card a keeper may swear their House to
+  another, in their own words ("swear we'll leave House Venn in peace for
+  ten watches", "promise House Venn thirty grain every watch for five"),
+  read into the order book's SWEAR PEACE WITH a House FOR so many WATCHES
+  and SWEAR TO SEND an amount of a store TO a House EACH WATCH FOR so many
+  WATCHES. The realm then holds the House to it: sworn to peace, its
+  declaration of war on that House is refused until the oath ends; sworn
+  to send goods, they are sent at each watch's turn. An oath binds one to
+  sixty watches, six at most at once, and the whole realm is told of it;
+  the House sworn to reads it on its line in Houses (1), with the keeper's
+  own oaths. Renounced, from that line or with RENOUNCE THE OATH TO a
+  House, it binds three watches more, told to all, so none is broken by
+  surprise; an oath whose goods the House cannot send is broken, and
+  remembered between the two as a pact betrayed is. A steward sent goods
+  by oath leaves the House that sends them in peace while it does. A
+  keeper gone from their House takes their oaths with them; only keepers
+  swear.
 - **The server.** SpacetimeDB is the realm's authority of record: it knows
   each keeper by their identity, keeps the world, and lets no one but the
   steward write it. The steward runs the same Swift rules core the clients

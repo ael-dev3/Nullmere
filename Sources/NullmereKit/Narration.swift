@@ -166,7 +166,7 @@ enum Narration {
              .happeningBegun, .happeningMark, .happeningEnded, .sunderingBegun, .sunderingEnded, .fieldJoined, .fieldEnded,
              .fordOpened, .fordClosed, .carriedAshore, .recalled,
              .deedDone, .chargeDone, .said, .sung, .bottleCast, .bottleFound, .letterSealed, .letterFound, .standingOrdersGiven,
-             .commanderTaken, .prisonerQuestioned, .prisonerFreed,
+             .commanderTaken, .prisonerQuestioned, .prisonerFreed, .oathSworn, .oathRenounced, .oathEnded,
              .edictProposed, .edictVoted, .edictPassed, .edictFailed, .edictLapsed, .edictBroken,
              .wordReported, .wordRemoved, .barredFromWords:
             // The deeper systems' words are the rules' own.

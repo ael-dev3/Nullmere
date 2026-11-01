@@ -513,7 +513,16 @@ struct HouseRow: View {
                 .accessibilityElement(children: .combine)
                 // In a row when they fit, wrapping onto the next when not,
                 // far enough apart that one is never pressed for another.
-                FlowLayout(spacing: 8, lineSpacing: 6) { actions(stance: stance) }
+                FlowLayout(spacing: 8, lineSpacing: 6) {
+                    actions(stance: stance)
+                    // Each oath of the House's to this one, renounced with notice.
+                    ForEach(HouseRow.renounceable(by: player, to: house.id, in: state)) { oath in
+                        ConfirmButton(title: "Renounce the oath of \(HouseRow.sworn(oath))", confirm: "Renounce your oath to \(house.title)?") {
+                            session.perform(.renounce(oath: oath.id))
+                        }
+                        .help("It binds three watches more, and the whole realm is told.")
+                    }
+                }
                 if choosingGift, stance != .war {
                     gifts
                 }
@@ -661,6 +670,30 @@ struct HouseRow: View {
         draft.propose(proposal, through: session)
     }
 
+    /// The oaths between the keeper's House and another, as its line tells
+    /// them: the keeper's own, and the other's to them.
+    static func oathLines(between player: Int, and other: Int, in state: GameState) -> [String] {
+        state.oathsInForce.compactMap { oath in
+            let held = "\(sworn(oath)) until watch \(state.lastWatch(of: oath))\(oath.renounced == nil ? "" : ", renounced")"
+            if oath.by == player, oath.to == other { return "Your oath: \(held)." }
+            if oath.by == other, oath.to == player { return "Their oath to you: \(held)." }
+            return nil
+        }
+    }
+
+    /// What an oath swears, without whom to: "peace", "30 grain each watch".
+    static func sworn(_ oath: Oath) -> String {
+        switch oath.term {
+        case .peace: return "peace"
+        case let .send(resource, amount): return "\(GameState.counted(amount)) \(resource.title.lowercased()) each watch"
+        }
+    }
+
+    /// The keeper's oaths to another House it may still renounce.
+    static func renounceable(by player: Int, to other: Int, in state: GameState) -> [Oath] {
+        state.oaths(by: player).filter { $0.to == other && $0.renounced == nil }
+    }
+
     /// Who gives a House its orders: a steward, or a keeper here or away.
     static func keeping(_ house: House, present: [String]?) -> String {
         guard house.isPlayer else { return "A steward gives its orders." }
@@ -691,6 +724,7 @@ struct HouseRow: View {
                 parts.append("Pacts broken between you: \(relation.betrayals).")
             }
         }
+        parts += HouseRow.oathLines(between: session.player, and: house.id, in: state)
         if spire > 0 {
             parts.append("Its Moonspire stands at stage \(spire) of \(BuildingKind.moonspire.maxLevel).")
         }

@@ -2363,6 +2363,54 @@ final class DepthPanelTests: XCTestCase {
         session.selection = .unit(state.units[index].id)
         draw(SelectionPanel(session: session), width: 330, height: 600)
     }
+
+    /// The oaths between the keeper's House and another are told on the
+    /// other's line in the Houses' list, the keeper's own and the other's
+    /// to them; each of the keeper's is renounced from there, and told as
+    /// renounced; and the realm's word of oaths is heard.
+    func testAnOathIsToldOnItsHousesLineAndRenouncedThere() throws {
+        var state = world("oaths told")
+        let me = state.player
+        let others = state.livingHouses.map(\.id).filter { $0 != me }
+        let other = try XCTUnwrap(others.first), third = try XCTUnwrap(others.last)
+        state.houses[me].stock.grain = 500
+        let sworn = state.watch
+        _ = try state.perform(.swear(.peace, to: other, watches: 10), as: me)
+        _ = try state.perform(.swear(.send(.grain, 30), to: other, watches: 5), as: me)
+        XCTAssertEqual(HouseRow.oathLines(between: me, and: other, in: state),
+                       ["Your oath: peace until watch \(sworn + 10).", "Your oath: 30 grain each watch until watch \(sworn + 5)."])
+        XCTAssertEqual(HouseRow.oathLines(between: other, and: me, in: state),
+                       ["Their oath to you: peace until watch \(sworn + 10).", "Their oath to you: 30 grain each watch until watch \(sworn + 5)."])
+        XCTAssertEqual(HouseRow.oathLines(between: me, and: third, in: state), [], "None between them")
+
+        let (session, link) = session(state)
+        let house = session.state.houses[other]
+        draw(HouseRow(session: session, house: house, draft: OfferDraft(for: house)))
+        XCTAssertTrue(shown.contains("Renounce the oath of 30 grain each watch"), "Among \(shown)")
+        XCTAssertTrue(PressableButtons.press("Renounce the oath of peace"), "Among \(shown)")
+        let peace = try XCTUnwrap(session.state.oathsInForce.first { $0.term == .peace })
+        XCTAssertEqual(link.sent.last, .renounce(oath: peace.id))
+        XCTAssertEqual(peace.renounced, session.state.watch)
+        XCTAssertEqual(HouseRow.oathLines(between: me, and: other, in: session.state).first,
+                       "Your oath: peace until watch \(session.state.watch + GameState.oathNotice), renounced.")
+        // Renounced, it is renounced no more.
+        PressableButtons.forget("Renounce the oath of peace")
+        draw(HouseRow(session: session, house: house, draft: OfferDraft(for: house)))
+        XCTAssertFalse(shown.contains("Renounce the oath of peace"), "Renounced once")
+        XCTAssertEqual(HouseRow.renounceable(by: me, to: other, in: session.state).map(\.term), [.send(.grain, 30)])
+
+        // Heard: an oath sworn or renounced, and one sworn to the keeper's
+        // House, renounced, broken or kept.
+        XCTAssertEqual(GameSession.cues(for: .swear(.peace, to: third, watches: 4), events: [], in: session.state, player: me), [.banner])
+        XCTAssertEqual(GameSession.cues(for: .renounce(oath: peace.id), events: [], in: session.state, player: me), [.refusal])
+        XCTAssertEqual(GameSession.cue(forDepth: .oathSworn(peace), in: session.state, player: other), .banner)
+        XCTAssertEqual(GameSession.cue(forDepth: .oathRenounced(peace), in: session.state, player: other), .refusal)
+        XCTAssertEqual(GameSession.cue(forDepth: .oathEnded(peace, why: .broken), in: session.state, player: me), .dread)
+        XCTAssertEqual(GameSession.cue(forDepth: .oathEnded(peace, why: .kept), in: session.state, player: me), .accord)
+        XCTAssertNil(GameSession.cue(forDepth: .oathSworn(peace), in: session.state, player: third))
+        // And told in the rules' own words.
+        XCTAssertEqual(Narration.line(for: .oathSworn(peace), in: session.state, viewer: other)?.tone, .good)
+    }
 }
 
 /// A line to a realm that only listens: what was sent, in order.

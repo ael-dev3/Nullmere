@@ -91,6 +91,10 @@ public enum Command: Codable, Equatable, Sendable {
     case question(commander: Int)
     case ransom(commander: Int)
     case release(commander: Int)
+    /// An oath sworn to another House, for so many watches; and one
+    /// renounced, with notice.
+    case swear(OathTerm, to: Int, watches: Int)
+    case renounce(oath: Int)
     /// A line of another keeper's reported to the realm's steward.
     case reportWord(word: Int)
     /// An edict put to the realm, for every House to vote on.
@@ -265,6 +269,10 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case questionedThisWatch
     case notAPrisoner
     case commanderCaptive
+    /// Sworn to peace with a House, by an oath in force.
+    case swornToPeace(Int)
+    case oathsHeld
+    case notYourOath
     /// A line the House never heard, or one taken away.
     case unknownWord
     /// A House's own line, reported.
@@ -524,6 +532,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .questionedThisWatch: return "You have questioned that prisoner this watch; again at the next."
         case .notAPrisoner: return "That commander of yours is no one's prisoner."
         case .commanderCaptive: return "That commander is held prisoner."
+        case .swornToPeace: return "Your House is sworn to peace with that House; renounce the oath first, and wait out its notice."
+        case .oathsHeld: return "Your House holds itself to six oaths already."
+        case .notYourOath: return "That oath is not your House's to renounce."
         case .unknownWord: return "No such line is in the Words."
         case .ownWord: return "That line is your own."
         case .reportedAlready: return "You have reported that line already."
@@ -890,6 +901,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case prisonerQuestioned(commander: Int, by: Int, word: String)
     /// A prisoner free again: ransomed, let go, or slipped away.
     case prisonerFreed(commander: Int, house: Int, by: Int, why: Freed)
+    /// An oath sworn, renounced with notice, or come to its end.
+    case oathSworn(Oath)
+    case oathRenounced(Oath)
+    case oathEnded(Oath, why: OathEnd)
     /// A line reported to the realm's steward.
     case wordReported(word: Int, by: Int)
     /// A line taken away by the realm's steward.
