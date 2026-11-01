@@ -578,5 +578,7 @@ jobs:
           grep -hE "error|failed|skipped|Executed|REALM " realm-test.log realm-integration.log 2>/dev/null | tail -20 || true
           # Where the play-through was when it ended, whole or not.
           grep -hE "Test Case .*(started|passed|failed)" realm-integration.log 2>/dev/null | tail -6 || true
+          # The Frontier play-through's last steps, and its watchdog's word if it stalled.
+          grep -h "^PLAY " realm-integration.log 2>/dev/null | tail -8 || true
           tail -n 30 realm-state/spacetime-local.log 2>/dev/null || true
           tail -n 10 realm-state/standalone.log 2>/dev/null || true

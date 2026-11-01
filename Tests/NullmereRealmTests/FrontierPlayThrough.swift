@@ -31,8 +31,34 @@ enum FrontierPlayThrough {
     /// twenty-four passes in under a minute.
     static let watch = 1.5
 
+    /// The step the play-through waits on, and since when: kept apart from
+    /// the main actor, so a watchdog can tell it though the main actor is
+    /// held.
+    final class Progress: @unchecked Sendable {
+        private let lock = NSLock()
+        private var step = "the stewards' first watches"
+        private var since = Date()
+
+        func reached(_ what: String) {
+            lock.lock()
+            step = what
+            since = Date()
+            lock.unlock()
+        }
+
+        var told: String {
+            lock.lock()
+            defer { lock.unlock() }
+            return "\(step), for \(Int(Date().timeIntervalSince(since))) s"
+        }
+    }
+
+    static let progress = Progress()
+
     @MainActor
     static func until(_ what: String, timeout: Double = 60, _ condition: () async -> Bool) async throws {
+        progress.reached(what)
+        print("PLAY waiting for \(what)")
         let deadline = Date().addingTimeInterval(timeout)
         while await !condition() {
             if Date() > deadline { throw SpacetimeError("Timed out waiting for \(what)") }
@@ -56,6 +82,18 @@ enum FrontierPlayThrough {
         await frontier.border(db.east, at: db.eastAddress)
         let running = [home, away, frontier].map { steward in Task { await steward.run() } }
         defer { running.forEach { $0.cancel() } }
+        // Should the play-through stall, every minute it says on what, from
+        // off the main actor.
+        let watchdog = Task.detached {
+            var minutes = 0
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 60_000_000_000)
+                guard !Task.isCancelled else { return }
+                minutes += 1
+                print("PLAY still at it after \(minutes) min, waiting for \(FrontierPlayThrough.progress.told)")
+            }
+        }
+        defer { watchdog.cancel() }
 
         // Each keeper's client at home, as the app's is.
         let ilsenKey = MemoryStore(), orlaKey = MemoryStore()
