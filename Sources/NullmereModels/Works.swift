@@ -166,8 +166,10 @@ extension MeshBuilder {
                 $0.beam(from: a + Vec3(0, 0.008, 0), to: c + Vec3(0, 0.008, 0), width: rim, depth: 0.04, color: Palette.stonePale)
             }
             $0.box(min: Vec3(-h, -0.02, -h), max: Vec3(h, 0.006, h), color: Palette.loam)
+            // The crust stands a little proud of a work's pad, so a yard's
+            // odds and ends are never set down in the brine.
             $0.with(material: .crystal) {
-                $0.box(min: Vec3(-h * 0.92 * crust, 0.004, -h * 0.92 * crust), max: Vec3(h * 0.92 * crust, 0.012, h * 0.92 * crust),
+                $0.box(min: Vec3(-h * 0.92 * crust, 0.008, -h * 0.92 * crust), max: Vec3(h * 0.92 * crust, 0.016, h * 0.92 * crust),
                        color: Palette.saltCrust)
             }
         }
@@ -888,6 +890,47 @@ enum Works {
                 b.banner(at: Vec3(0.12, 0.2, -0.14), height: 0.16, width: 0.11, drop: 0.07, tail: true)
             }
         }
+        // Near, the salters' gear: a rake laid in a pan or two, a shovel
+        // standing in the heap and baskets of salt by it; at the first
+        // level a bucket on the brine sweep's rope; from the second the
+        // furnace's mouth framed in stone and its chimney coursed, capped
+        // and sooted.
+        b.fine { near in
+            for index in level == 1 ? [0] : [0, 3] {
+                let pan = pans[index]
+                near.beam(from: pan + Vec3(0.012, 0.036, 0.085), to: pan + Vec3(-0.004, 0.02, -0.02), width: 0.004, color: Palette.timberPale)
+                near.beam(from: pan + Vec3(-0.03, 0.02, -0.022), to: pan + Vec3(0.022, 0.02, -0.019), width: 0.006, depth: 0.008,
+                          color: Palette.timberPale)
+            }
+            let heap = level == 1 ? (at: Vec3(0, 0, -0.08), radius: Float(0.07), height: Float(0.08))
+                : (at: Vec3(0, 0, 0.04), radius: Float(0.06), height: Float(0.07))
+            let foot = heap.at + Vec3(-0.354 * heap.radius, 0.6 * heap.height, 0.354 * heap.radius)
+            near.limb(from: foot, to: foot + Vec3(-0.035, 0.075, 0.035), radius: 0.004, color: Palette.timber)
+            near.box(center: foot + Vec3(-0.035, 0.077, 0.035), size: Vec3(0.018, 0.004, 0.005), turn: .pi / 4, color: Palette.timber)
+            for at in level == 1 ? [Vec3(-0.11, 0, -0.07), Vec3(-0.122, 0, -0.03)] : [Vec3(-0.075, 0, 0.065)] {
+                near.place(.translation(at)) {
+                    $0.lathe([(0.013, 0), (0.017, 0.026)], sides: 7, color: Palette.straw)
+                    $0.lathe([(0.016, 0.024), (0, 0.036)], sides: 7, color: Palette.saltCrust)
+                }
+            }
+            if level == 1 {
+                near.limb(from: Vec3(0.062, 0.195, -0.05), to: Vec3(0.062, 0.064, -0.05), radius: 0.0015, sides: 3, color: Palette.linen)
+                near.place(.translation(Vec3(0.062, 0.04, -0.05))) {
+                    $0.lathe([(0.011, 0), (0.014, 0.024)], sides: 6, color: Palette.timberDark)
+                }
+            } else {
+                for (x, size) in [(Float(0.0125), Vec3(0.01, 0.055, 0.008)), (0.0675, Vec3(0.01, 0.055, 0.008))] {
+                    near.box(center: Vec3(x, 0.035, -0.071), size: size, color: Palette.stonePale)
+                }
+                near.box(center: Vec3(0.04, 0.0625, -0.071), size: Vec3(0.065, 0.01, 0.008), color: Palette.stonePale)
+                let flue = saltChimney(level)
+                for (y, wide) in [(flue.y - 0.08, Float(0.029)), (flue.y - 0.012, 0.03)] {
+                    near.box(min: Vec3(flue.x - wide, y, flue.z - wide), max: Vec3(flue.x + wide, y + 0.016, flue.z + wide),
+                             color: Palette.stonePale)
+                }
+                near.box(center: flue + Vec3(0, 0.0048, 0), size: Vec3(0.036, 0.0016, 0.036), color: Palette.barkBlack)
+            }
+        }
         return model(name, b, rig: rig, machinery: machinery)
     }
 
@@ -1593,8 +1636,9 @@ enum Works {
     // MARK: Study
 
     /// Where a House's scholars study the lake's lore: a scriptorium, then
-    /// a domed library, a tower with an armillary on its roof, an
-    /// observatory with a glass, and a great observatory between two wings.
+    /// a domed library with a lantern on its crown, a tower with an
+    /// armillary on its roof, an observatory with a glass, and a great
+    /// observatory between two wings. A sundial stands in every court.
     static func study(level: Int, name: String) -> Model {
         var b = MeshBuilder()
         b.pad(radius: 0.31, color: Palette.stoneDark)
@@ -1613,9 +1657,14 @@ enum Works {
             b.hall(at: Vec3(-0.06, 0, -0.04), width: 0.3, depth: 0.19, height: 0.18, wall: Palette.stone, roof: Palette.slate,
                    footing: Palette.stoneDark)
             dome(&b, at: Vec3(0.14, 0, -0.04), radius: 0.095, wall: 0.2, color: Palette.slate)
+            b.place(.translation(Vec3(0.14, 0.29, -0.04))) {
+                $0.lathe([(0.022, 0), (0.022, 0.035), (0.028, 0.04), (0, 0.075)], sides: 6, color: Palette.stonePale)
+            }
+            b.window(Vec3(0.14, 0.307, -0.017), width: 0.012, height: 0.02, facing: 0)
             for x in [Float(-0.16), -0.06, 0.04] {
                 b.window(Vec3(x, 0.11, 0.057), width: 0.03, height: 0.06, facing: 0)
             }
+            b.door(Vec3(-0.01, 0.05, 0.057), width: 0.04, height: 0.09, facing: 0)
         default:
             // A library hall, and a tower with an armillary turning on its roof.
             let tower: Float = level == 3 ? 0.5 : 0.62
@@ -1624,11 +1673,22 @@ enum Works {
             for x in [Float(-0.02), 0.08, 0.18] {
                 b.window(Vec3(x, 0.11, 0.032), width: 0.03, height: 0.06, facing: 0)
             }
+            b.door(Vec3(0.03, 0.05, 0.032), width: 0.036, height: 0.09, facing: 0)
             let towerAt = Vec3(-0.16, 0, 0.0)
             b.place(.translation(towerAt)) {
                 $0.lathe([(0.11, -0.06), (0.1, tower), (0.12, tower + 0.02), (0.12, tower + 0.04)], sides: 8, color: Palette.stonePale)
                 $0.window(Vec3(0, tower * 0.55, 0.1), width: 0.03, height: 0.06, facing: 0)
                 $0.window(Vec3(0, tower * 0.8, 0.098), width: 0.03, height: 0.06, facing: 0)
+                $0.door(Vec3(0, 0.05, 0.108), width: 0.042, height: 0.09, facing: 0)
+            }
+            // Courses round the tower, near.
+            b.fine {
+                for y in [tower * 0.36, tower * 0.68] {
+                    let r = 0.11 - 0.01 * (y + 0.06) / (tower + 0.06)
+                    $0.place(.translation(towerAt)) {
+                        $0.lathe([(r, y), (r + 0.008, y + 0.004), (r + 0.008, y + 0.016), (r, y + 0.02)], sides: 8, color: Palette.stone)
+                    }
+                }
             }
             if level == 3 {
                 let centre = towerAt + Vec3(0, tower + 0.16, 0)
@@ -1657,6 +1717,65 @@ enum Works {
                     swings.append(.init(part: sphere, axis: Vec3(0, 1, 0), angle: 1.4))
                 }
                 machinery = Machinery(swings: swings, parts: rig.count)
+            }
+        }
+        // Near, the court's furniture: a sundial on its plinth, its gnomon
+        // to the north; by the scriptorium's door a lectern with a book open
+        // on it; by the library a bench of books; before the tower's door a
+        // chest with scrolls laid on it, and a bench by the hall.
+        b.fine { near in
+            let dial = level == 1 ? Vec3(-0.16, 0, 0.17) : level == 2 ? Vec3(0.19, 0, 0.17) : Vec3(0.24, 0, 0.13)
+            near.box(min: dial + Vec3(-0.018, 0, -0.018), max: dial + Vec3(0.018, 0.055, 0.018), color: Palette.stonePale)
+            near.box(min: dial + Vec3(-0.024, 0.055, -0.024), max: dial + Vec3(0.024, 0.062, 0.024), color: Palette.stone)
+            near.with(material: .metal) {
+                $0.place(.translation(dial + Vec3(0, 0.062, 0))) {
+                    $0.lathe([(0.02, 0), (0.02, 0.003)], sides: 10, color: Palette.bronze)
+                }
+                $0.sheet([dial + Vec3(0, 0.065, 0.012), dial + Vec3(0, 0.065, -0.016), dial + Vec3(0, 0.088, -0.016)],
+                         normal: Vec3(1, 0, 0), thickness: 0.003, color: Palette.bronze)
+            }
+            func books(at: Vec3, count: Int, turn: Float) {
+                let covers = [Palette.madder, Palette.seaWool, Palette.leather, Palette.weld]
+                for index in 0..<count {
+                    near.box(center: at + Vec3(0, 0.005 + Float(index) * 0.009, 0), size: Vec3(0.026, 0.008, 0.019),
+                             turn: turn + Float(index) * 0.35, color: covers[index % covers.count])
+                }
+            }
+            func bench(at: Vec3, length: Float) {
+                near.box(center: at + Vec3(0, 0.024, 0), size: Vec3(length, 0.006, 0.02), color: Palette.stonePale)
+                for x in [-length / 2 + 0.008, length / 2 - 0.008] {
+                    near.box(center: at + Vec3(x, 0.0105, 0), size: Vec3(0.008, 0.021, 0.016), color: Palette.stone)
+                }
+            }
+            switch level {
+            case 1:
+                let lectern = Vec3(0.11, 0, 0.13)
+                near.box(center: lectern + Vec3(0, 0.003, 0), size: Vec3(0.03, 0.006, 0.026), color: Palette.timberDark)
+                near.limb(from: lectern, to: lectern + Vec3(0, 0.066, 0), radius: 0.005, color: Palette.timberDark)
+                near.place(.translation(lectern + Vec3(0, 0.072, 0)) * .rotationX(0.45)) {
+                    $0.box(center: .zero, size: Vec3(0.042, 0.005, 0.032), color: Palette.timber)
+                    $0.box(center: Vec3(0, 0.004, 0), size: Vec3(0.036, 0.004, 0.026), color: Palette.madder)
+                    for x in [Float(-0.0085), 0.0085] {
+                        $0.box(center: Vec3(x, 0.0065, 0), size: Vec3(0.016, 0.002, 0.024), color: Palette.linen)
+                    }
+                }
+            case 2:
+                bench(at: Vec3(-0.15, 0, 0.13), length: 0.09)
+                books(at: Vec3(-0.17, 0.027, 0.13), count: 3, turn: 0.1)
+            default:
+                bench(at: Vec3(0.13, 0, 0.055), length: 0.08)
+                books(at: Vec3(0.15, 0.027, 0.055), count: 2, turn: -0.2)
+                let chest = Vec3(-0.07, 0, 0.09)
+                near.box(center: chest + Vec3(0, 0.014, 0), size: Vec3(0.042, 0.028, 0.026), color: Palette.timber)
+                near.with(material: .metal) {
+                    for x in [Float(-0.012), 0.012] {
+                        $0.box(center: chest + Vec3(x, 0.014, 0), size: Vec3(0.004, 0.03, 0.028), color: Palette.iron)
+                    }
+                }
+                for (index, z) in [Float(-0.006), 0.006].enumerated() {
+                    near.limb(from: chest + Vec3(-0.018, 0.034 + Float(index) * 0.002, z), to: chest + Vec3(0.018, 0.034, z), radius: 0.005,
+                              sides: 5, color: Palette.linen)
+                }
             }
         }
         return model(name, b, rig: rig, machinery: machinery)

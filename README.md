@@ -1728,7 +1728,17 @@ the keeper's realm last lay on, made as it plays.
   levels, a square, dividers and a template lie on its tracing floor and
   templates stand against its hall from the third, and at the fifth its
   arch has capitals and a keystone standing proud (508 to 1,034 triangles,
-  where it was 356 to 778).
+  where it was 356 to 778). A Study has a sundial in its court at every
+  level, a lectern with a book open on it by the scriptorium's door, a
+  lantern on the library's dome and doors where its library and its hall
+  had none, courses round its tower, a chest of scrolls at the tower's foot
+  and benches with books on them (674 to 1,274 triangles, where it was
+  488 to 952); and a saltworks a rake laid in its pans, a shovel standing
+  in its heap and baskets of salt by it, a bucket on its brine sweep's rope,
+  its furnace's mouth framed in stone and its chimney coursed, capped and
+  sooted, its pans' crust standing proud enough that the yard's odds and
+  ends are never set down in the brine (544 to 1,104 triangles, where it
+  was 402 to 976).
 - **Only what the view reaches is drawn.** The land's furniture is kept
   on the GPU in square regions eight hexes on a side, each with the bounds
   of all it holds; each frame finds the regions inside the camera's view
