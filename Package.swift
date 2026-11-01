@@ -66,11 +66,15 @@ targets += [
     .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
 ]
 // The trailer drawn by the game's own renderers and written to a film,
-// built only when scripts/render-trailer.sh asks for it.
+// built only when scripts/render-trailer.sh asks for it: then the trailer's
+// are the only tests built, over an optimised build of the game, and its
+// drawing is left unoptimised, as Swift 6.3.3's optimiser crashes on it.
 if Context.environment["NULLMERE_TRAILER"] != nil {
+    targets.removeAll { $0.type == .test && $0.name != "NullmereTrailerTests" }
     targets.append(.testTarget(name: "TrailerRenderTests",
                                dependencies: ["NullmereTrailer", "NullmereKit", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereSound",
-                                              "LauncherCore", "LauncherKit"]))
+                                              "LauncherCore", "LauncherKit"],
+                               swiftSettings: [.unsafeFlags(["-Onone"])]))
 }
 #endif
 
