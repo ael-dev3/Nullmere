@@ -362,6 +362,17 @@ public final class WorldStage: @unchecked Sendable {
         return (batches, hearths)
     }
 
+    /// The war banners of rally hosts on the march, each borne among the
+    /// troops of its company nearest the target, in its caller's colour.
+    public func hostBanners(_ hosts: [(lead: CompanyPose, colour: Vec4)]) -> [ModelBatch] {
+        WorldStage.batches(hosts.map { host in
+            let at = host.lead.position
+            return (.hostBanner, ModelInstance(model: .translation(at) * .rotationY(host.lead.heading), colour: host.colour,
+                                               phase: WorldStage.phase(of: host.lead.hex, salt: 43),
+                                               hex: SIMD2(Int32(host.lead.hex.q), Int32(host.lead.hex.r))))
+        })
+    }
+
     /// The alliances' halls the keeper has found, each in its alliance's
     /// colour, one rising drawn up as far as it has come within its
     /// scaffold; and where the whole ones' louvres smoke.

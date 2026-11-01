@@ -343,6 +343,26 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(stage.rallyCamps([]).batches.isEmpty)
     }
 
+    /// A rally host on the march goes under its caller's banner, borne
+    /// among its leading company, turned as it marches.
+    func testHostBannersRideAmongTheirLeadingCompanies() throws {
+        let stage = stage()
+        let hex = try XCTUnwrap(Self.state.map.hexes.first { Self.state.map[$0]?.terrain.isPassable == true })
+        let lead = CompanyPose(unit: 7, key: .figure(.spear, tier: 2), sigil: 1, health: 10, hex: hex,
+                               position: Vec3(1.5, 0.2, -2), heading: 0.8, isOwn: false)
+        let gold = Vec4(0.8, 0.7, 0.2, 1)
+        let batches = stage.hostBanners([(lead: lead, colour: gold)])
+        XCTAssertEqual(batches.map { $0.key }, [ModelKey.hostBanner])
+        let banner = try XCTUnwrap(batches.first?.instances.first)
+        XCTAssertEqual(banner.colour, gold)
+        XCTAssertEqual(banner.model.c3.x, 1.5, accuracy: 1e-5)
+        XCTAssertEqual(banner.model.c3.y, 0.2, accuracy: 1e-5)
+        XCTAssertEqual(banner.model.c3.z, -2, accuracy: 1e-5)
+        XCTAssertEqual(banner.model.c2.x, sin(0.8), accuracy: 1e-4, "Turned as it marches")
+        XCTAssertTrue(stage.hostBanners([]).isEmpty)
+        XCTAssertLessThanOrEqual(Library.model(.hostBanner).mesh.triangleCount, ModelKey.hostBanner.budget)
+    }
+
     func testHallsStandInTheirAlliancesColoursRisingInTheirScaffolds() throws {
         let stage = stage()
         let hexes = Array(Self.state.map.hexes.filter { hex in

@@ -151,6 +151,17 @@ extension GameSession {
                   let target = state.target(of: rally), state.houses.indices.contains(rally.caller) else { return nil }
             return (muster: muster.position, target: target.position, colour: WorldStage.colour(houses, sigil: state.houses[rally.caller].sigil))
         })
+        // Each rally host on the march under its caller's banner, borne at
+        // its head: among the company nearest its target.
+        let banners = stage.hostBanners(state.ralliesStanding.compactMap { rally in
+            guard rally.marching, let target = state.target(of: rally), state.houses.indices.contains(rally.caller) else { return nil }
+            let goal = Relief.centre(of: target.position)
+            let marching = poses.filter { rally.companies.contains($0.unit) && inView($0.hex, within: GameSession.companyReach) }
+            guard let lead = marching.min(by: {
+                ($0.position - Vec3(goal.x, $0.position.y, goal.z)).length < ($1.position - Vec3(goal.x, $1.position.y, goal.z)).length
+            }) else { return nil }
+            return (lead: lead, colour: WorldStage.colour(houses, sigil: state.houses[rally.caller].sigil))
+        })
         let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position) + found.map(\.position) + flags.map(\.position))
         let furniture = stage.furnish(occupied: standing,
                                       holds: Set(sights.map(\.hold.position) + hallSights.map(\.hex) + storehouseSights.map(\.hex)))
@@ -168,7 +179,7 @@ extension GameSession {
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
         frame.fixedRegions = stage.furnitureRegions
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + companies + flights
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
                                                      time: time)

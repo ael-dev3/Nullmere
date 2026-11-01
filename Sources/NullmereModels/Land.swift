@@ -1120,3 +1120,20 @@ extension Land {
         }
     }
 }
+
+extension Land {
+    /// A rally host's war banner: a tall staff rising from among the troops
+    /// at the host's head, a gilt finial over a long swallow-tailed banner
+    /// in the caller's colour and two streamers under it.
+    static func hostBanner(name: String) -> Model {
+        var b = MeshBuilder()
+        b.limb(from: Vec3(0, 0.0, 0), to: Vec3(0, 1.25, 0), radius: 0.012, topRadius: 0.009, color: Palette.timberDark)
+        b.beam(from: Vec3(-0.01, 1.17, 0), to: Vec3(0.3, 1.17, 0), width: 0.012, color: Palette.timber)
+        b.with(material: .metal) {
+            $0.place(.translation(Vec3(0, 1.25, 0))) { $0.cone(sides: 4, radius: 0.02, to: 0.08, color: Palette.gold, twist: .pi / 4) }
+        }
+        b.flag(at: Vec3(0.005, 1.16, 0), width: 0.3, height: 0.5, tail: true)
+        b.flag(at: Vec3(0, 0.62, 0), width: 0.16, height: 0.05, turn: .pi / 2)
+        return Model(name: name, mesh: b.mesh)
+    }
+}
