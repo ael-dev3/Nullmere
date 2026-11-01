@@ -61,6 +61,18 @@ final class HexTests: XCTestCase {
         }
     }
 
+    func testAStepAlongALineIsTheLinesOwnHex() {
+        var random = SeededRandom(seed: 43)
+        for _ in 0..<400 {
+            let a = Hex(random.int(in: -40...40), random.int(in: -40...40)), b = Hex(random.int(in: -40...40), random.int(in: -40...40))
+            let line = a.line(to: b)
+            for step in [-1, 0, 1, 2, 3, line.count - 1, line.count, line.count + 5] {
+                XCTAssertEqual(a.step(step, alongLineTo: b), line[min(max(step, 0), line.count - 1)], "\(step) from \(a) to \(b)")
+            }
+        }
+        XCTAssertEqual(Hex(2, -1).step(3, alongLineTo: Hex(2, -1)), Hex(2, -1))
+    }
+
     func testRandomnessIsDeterministicAndUnbiasedInRange() {
         var a = SeededRandom(seed: 42)
         var b = SeededRandom(seed: 42)

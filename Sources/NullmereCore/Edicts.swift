@@ -113,7 +113,13 @@ extension GameState {
     }
 
     /// The edicts holding the realm now.
-    public var edictsInForce: [Edict] { edictsOfTheRealm.filter(isInForce) }
+    public var edictsInForce: [Edict] {
+        // Looked at in a loop: `isInForce` handed to `filter` as a closure
+        // took a copy of the whole realm with it, at every ask.
+        var found: [Edict] = []
+        for edict in edictsOfTheRealm where isInForce(edict) { found.append(edict) }
+        return found
+    }
 
     /// The watches an edict in force still holds, counting this one.
     public func watchesLeft(of edict: Edict) -> Int {

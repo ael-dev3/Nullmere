@@ -88,14 +88,25 @@ public struct Hex: Hashable, Codable, Sendable, Comparable, CustomStringConverti
         guard steps > 0 else { return [self] }
         var result: [Hex] = []
         result.reserveCapacity(steps + 1)
-        for step in 0...steps {
-            let t = Double(step) / Double(steps)
-            // A tiny nudge keeps points on a hex edge from rounding both ways.
-            let q = Double(q) + (Double(other.q - q)) * t + 1e-6
-            let r = Double(r) + (Double(other.r - r)) * t + 1e-6
-            result.append(HexLayout.round(q: q, r: r))
-        }
+        for step in 0...steps { result.append(point(step, of: steps, toward: other)) }
         return result
+    }
+
+    /// The hex `step` hexes along the line to `other`, as `line(to:)` has
+    /// it, found without the rest of the line; its last if the line is
+    /// shorter.
+    public func step(_ step: Int, alongLineTo other: Hex) -> Hex {
+        let steps = distance(to: other)
+        guard steps > 0 else { return self }
+        return point(min(max(step, 0), steps), of: steps, toward: other)
+    }
+
+    private func point(_ step: Int, of steps: Int, toward other: Hex) -> Hex {
+        let t = Double(step) / Double(steps)
+        // A tiny nudge keeps points on a hex edge from rounding both ways.
+        let q = Double(q) + (Double(other.q - q)) * t + 1e-6
+        let r = Double(r) + (Double(other.r - r)) * t + 1e-6
+        return HexLayout.round(q: q, r: r)
     }
 
     public static func + (lhs: Hex, rhs: Hex) -> Hex { Hex(lhs.q + rhs.q, lhs.r + rhs.r) }

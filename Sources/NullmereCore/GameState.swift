@@ -353,20 +353,6 @@ public struct GameState: Codable, Equatable, Sendable {
         return nil
     }
 
-    /// The companies within `range` of a hex, in the order of `units`.
-    func units(within range: Int, of hex: Hex) -> [Unit] {
-        var found: [Unit] = []
-        for index in units.indices where units[index].position.distance(to: hex) <= range { found.append(units[index]) }
-        return found
-    }
-
-    /// The holds within `range` of a hex, in the order of `holds`.
-    func holds(within range: Int, of hex: Hex) -> [Hold] {
-        var found: [Hold] = []
-        for index in holds.indices where holds[index].position.distance(to: hex) <= range { found.append(holds[index]) }
-        return found
-    }
-
     public var livingHouses: [House] {
         houses.filter { !$0.isEliminated }
     }

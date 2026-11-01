@@ -640,15 +640,15 @@ struct RivalMind {
     func spireThreats(in state: GameState) -> [Int] {
         // By index, the seats alone weighed: asked for each company's
         // siege, and a holds' list copied whole for it each time.
-        var rising: [(stage: Int, owner: Int)] = []
+        // Each one's tie-break drawn once, not at each comparison, where
+        // the closure asking it copied the whole realm.
+        var rising: [(key: (stage: Int, tie: UInt64), owner: Int)] = []
         for index in state.holds.indices where state.holds[index].isSeat && state.holds[index].owner != house {
             let stage = state.holds[index].level(.moonspire), owner = state.holds[index].owner
             guard stage >= 3, state.houses[owner].liege == nil else { continue }
-            rising.append((stage, owner))
+            rising.append(((stage, tieBreak(owner, in: state)), owner))
         }
-        return rising
-            .sorted { ($0.stage, tieBreak($0.owner, in: state)) > ($1.stage, tieBreak($1.owner, in: state)) }
-            .map(\.owner)
+        return rising.sorted { $0.key > $1.key }.map(\.owner)
     }
 
     // MARK: Barter
@@ -1176,19 +1176,28 @@ struct RivalMind {
     /// companies not away on an errand.
     private func assignGarrisons(in state: GameState) -> [Int: Hex] {
         var result: [Int: Hex] = [:]
-        // None busy at the Crown's gates.
+        // None busy at the Crown's gates. Each company and hold by its id
+        // and place alone, not copied whole: asked for every siege plan.
         let gates = state.gatesStanding
-        var free = state.units(of: house).filter { $0.kind.isMilitary && $0.errand == nil && !atTheCrown($0, gates) }
-        for hold in state.holds(of: house).sorted(by: { ($0.isSeat ? 0 : 1, $0.id) < ($1.isSeat ? 0 : 1, $1.id) }) {
-            if let standing = free.firstIndex(where: { $0.position == hold.position }) {
-                result[free[standing].id] = hold.position
+        var free: [(id: Int, position: Hex)] = []
+        for index in state.units.indices where state.units[index].owner == house && state.units[index].kind.isMilitary
+            && state.units[index].errand == nil && (gates.isEmpty || !atTheCrown(state.units[index], gates)) {
+            free.append((state.units[index].id, state.units[index].position))
+        }
+        var posts: [(order: (seat: Int, id: Int), position: Hex)] = []
+        for index in state.holds.indices where state.holds[index].owner == house {
+            posts.append(((state.holds[index].isSeat ? 0 : 1, state.holds[index].id), state.holds[index].position))
+        }
+        for post in posts.sorted(by: { $0.order < $1.order }) {
+            if let standing = free.firstIndex(where: { $0.position == post.position }) {
+                result[free[standing].id] = post.position
                 free.remove(at: standing)
                 continue
             }
             guard let nearest = free.indices.min(by: { a, b in
-                (free[a].position.distance(to: hold.position), free[a].id) < (free[b].position.distance(to: hold.position), free[b].id)
-            }), free[nearest].position.distance(to: hold.position) <= 8 else { continue }
-            result[free[nearest].id] = hold.position
+                (free[a].position.distance(to: post.position), free[a].id) < (free[b].position.distance(to: post.position), free[b].id)
+            }), free[nearest].position.distance(to: post.position) <= 8 else { continue }
+            result[free[nearest].id] = post.position
             free.remove(at: nearest)
         }
         return result
@@ -1269,23 +1278,29 @@ struct RivalMind {
         let range = unit.kind.range
         // What stands within its reach, found in one pass over the companies
         // and one over the holds, not one for every hex: the first on a hex,
-        // as `unit(at:)` and `hold(at:)` find it.
-        var standing: [Hex: Unit] = [:], holding: [Hex: Hold] = [:]
-        for other in state.units(within: range, of: unit.position) where standing[other.position] == nil {
-            standing[other.position] = other
+        // as `unit(at:)` and `hold(at:)` find it, looked at where it stands
+        // and kept by its owner and kind alone, not copied out whole.
+        var standing: [Hex: (owner: Int, military: Bool)] = [:], holding: [Hex: Int] = [:]
+        let at = unit.position
+        for index in state.units.indices {
+            let position = state.units[index].position
+            guard abs(position.q - at.q) <= range, position.distance(to: at) <= range, standing[position] == nil else { continue }
+            standing[position] = (state.units[index].owner, state.units[index].kind.isMilitary)
         }
-        for hold in state.holds(within: range, of: unit.position) where holding[hold.position] == nil {
-            holding[hold.position] = hold
+        for index in state.holds.indices {
+            let position = state.holds[index].position
+            guard abs(position.q - at.q) <= range, position.distance(to: at) <= range, holding[position] == nil else { continue }
+            holding[position] = state.holds[index].owner
         }
         // A steward keeps the realm's edicts: what a strike would break them on, it leaves.
         let lawful = state.edictsInForce.isEmpty
         return unit.position.spiral(range).dropFirst().first { hex in
             // A hold under its House's veil, and whoever keeps it, is let be.
-            if let hold = holding[hex], state.isVeiled(hold.owner) { return false }
+            if let owner = holding[hex], state.isVeiled(owner) { return false }
             if let other = standing[hex], other.owner != house, state.isAtWar(house, other.owner) {
-                return (other.kind.isMilitary || !companiesOfWarOnly) && (lawful || state.edictsBroken(striking: hex, from: unit).isEmpty)
+                return (other.military || !companiesOfWarOnly) && (lawful || state.edictsBroken(striking: hex, from: unit).isEmpty)
             }
-            if let hold = holding[hex], hold.owner != house, state.isAtWar(house, hold.owner) {
+            if let owner = holding[hex], owner != house, state.isAtWar(house, owner) {
                 return !companiesOfWarOnly && (lawful || state.edictsBroken(striking: hex, from: unit).isEmpty)
             }
             return false
@@ -1327,15 +1342,21 @@ struct RivalMind {
         let siege = siegePlan(in: state)
         let gates = state.holds(of: house).map(\.position)
         // An engine meets no one: soft in the field, it keeps to its siege.
-        let skirmish = unit.kind == .mangonel ? nil : state.units(within: 3, of: unit.position)
-            .filter { $0.owner != house && $0.kind.isMilitary && state.isAtWar(house, $0.owner) }
-            .filter { foe in
-                guard let siege else { return true }
-                return foe.position.distance(to: siege.target) <= unit.position.distance(to: siege.target)
-                    || gates.contains { $0.distance(to: foe.position) <= 3 }
+        // The companies near looked at where they stand, not copied out to
+        // be sifted.
+        var skirmish: (key: (Int, Int), position: Hex)?
+        for index in state.units.indices where unit.kind != .mangonel {
+            let position = state.units[index].position, owner = state.units[index].owner
+            let distance = position.distance(to: unit.position)
+            guard distance <= 3, owner != house, state.units[index].kind.isMilitary, state.isAtWar(house, owner) else { continue }
+            if let siege, position.distance(to: siege.target) > unit.position.distance(to: siege.target),
+               !gates.contains(where: { $0.distance(to: position) <= 3 }) {
+                continue
             }
-            .filter { state.map.index(of: $0.position).map { visible[$0] } ?? false }
-            .min { ($0.position.distance(to: unit.position), $0.id) < ($1.position.distance(to: unit.position), $1.id) }
+            guard let tile = state.map.index(of: position), visible[tile] else { continue }
+            let key = (distance, state.units[index].id)
+            if skirmish.map({ key < $0.key }) ?? true { skirmish = (key, position) }
+        }
         if let skirmish {
             return perform(.move(unit: unit.id, to: skirmish.position), in: &state)
         }
@@ -1504,11 +1525,13 @@ struct RivalMind {
             // whose fall shakes all the rest.
             let mine = state.strength(of: house)
             // Each House's holds counted, and its strength weighed, once for
-            // the plan, not at every comparison of its holds.
-            var held: [Int: Int] = [:], strong: [Int: Int] = [:]
-            for index in state.holds.indices { held[state.holds[index].owner, default: 0] += 1 }
+            // the plan, not at every comparison of its holds; each hold's
+            // cost reckoned once.
+            var held = [Int](repeating: 0, count: state.houses.count)
+            var strong = [Int?](repeating: nil, count: state.houses.count)
+            for index in state.holds.indices { held[state.holds[index].owner] += 1 }
             func cost(_ hold: Hold) -> Int {
-                var cost = hold.position.distance(to: seat.position) + 4 * (held[hold.owner] ?? 0)
+                var cost = hold.position.distance(to: seat.position) + 4 * held[hold.owner]
                 if hold.isSeat {
                     let theirs = strong[hold.owner] ?? state.strength(of: hold.owner)
                     strong[hold.owner] = theirs
@@ -1516,24 +1539,38 @@ struct RivalMind {
                 }
                 return cost
             }
-            target = enemyHolds.min { (cost($0), tieBreak($0.id, in: state)) < (cost($1), tieBreak($1.id, in: state)) }
+            var best: (key: (Int, UInt64), index: Int)?
+            for index in enemyHolds.indices {
+                let key = (cost(enemyHolds[index]), tieBreak(enemyHolds[index].id, in: state))
+                if best.map({ key < $0.key }) ?? true { best = (key, index) }
+            }
+            target = best.map { enemyHolds[$0.index] }
         }
         guard let target else { return nil }
 
         // Gather a few tiles short of it, on the way from home.
-        let line = target.position.line(to: seat.position)
-        let ideal = line[min(3, line.count - 1)]
+        let ideal = target.position.step(3, alongLineTo: seat.position)
         let muster = ideal.spiral(2).first { hex in
             guard let tile = state.map[hex], tile.terrain.isPassable else { return false }
             return state.hold(at: hex) == nil
         } ?? ideal
 
+        // The army and the defenders counted where they stand, not copied
+        // out to be counted.
         let garrisons = Set(assignGarrisons(in: state).keys)
-        let army = state.units(of: house).filter { $0.kind.isMilitary && !garrisons.contains($0.id) }
-        let gathered = army.filter { $0.position.distance(to: target.position) <= RivalMind.siegeReach + 1 }.count
-        let defenders = state.units(within: 2, of: target.position).filter { $0.owner == target.owner && $0.kind.isMilitary }.count
+        var army = 0, gathered = 0, defenders = 0
+        for index in state.units.indices {
+            let owner = state.units[index].owner
+            if owner == house, state.units[index].kind.isMilitary, !garrisons.contains(state.units[index].id) {
+                army += 1
+                if state.units[index].position.distance(to: target.position) <= RivalMind.siegeReach + 1 { gathered += 1 }
+            } else if owner == target.owner, state.units[index].kind.isMilitary,
+                      state.units[index].position.distance(to: target.position) <= 2 {
+                defenders += 1
+            }
+        }
         let needed = max(3, defenders + 2)
-        let ready = target.ward == 0 || gathered >= needed || (gathered >= 2 && gathered == army.count && army.count >= defenders + 2)
+        let ready = target.ward == 0 || gathered >= needed || (gathered >= 2 && gathered == army && army >= defenders + 2)
         return Siege(target: target.position, muster: muster, ready: ready)
     }
 
