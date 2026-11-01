@@ -890,6 +890,25 @@ enum Holds {
             b.box(min: Vec3(0.44, level, -0.5), max: Vec3(0.56, level + 0.02, 0.5), color: Palette.timberGrey)
         }
         b.ladder(from: Vec3(-0.3, 0, 0.62), to: Vec3(-0.3, 0.7, 0.53), width: 0.12, rungs: 4, color: Palette.timber)
+        // Near: rope lashed round every joint of post and ledger, rails along
+        // the boards, a second ladder up the side and a hoist's beam out
+        // from a corner post, its rope hanging to the ground.
+        b.fine {
+            for post in posts {
+                for level in [Float(0.34), 0.68, 1.0] {
+                    $0.place(.translation(post + Vec3(0, level - 0.02, 0))) {
+                        $0.tube([(pole * 1.3, 0), (pole * 1.3, 0.04)], sides: 4, color: Palette.canvas, twist: .pi / 4)
+                    }
+                }
+            }
+            for level in [Float(0.34), 0.68] {
+                $0.limb(from: Vec3(-0.5, level + 0.16, 0.53), to: Vec3(0.5, level + 0.16, 0.53), radius: pole * 0.6, color: Palette.timber)
+                $0.limb(from: Vec3(0.535, level + 0.16, -0.5), to: Vec3(0.535, level + 0.16, 0.5), radius: pole * 0.6, color: Palette.timber)
+            }
+            $0.ladder(from: Vec3(0.62, 0, -0.25), to: Vec3(0.53, 0.36, -0.25), width: 0.12, rungs: 3, color: Palette.timber)
+            $0.limb(from: Vec3(0.5, 0.98, 0.5), to: Vec3(0.68, 1.03, 0.68), radius: pole * 0.8, color: Palette.timberDark)
+            $0.limb(from: Vec3(0.66, 1.02, 0.66), to: Vec3(0.66, 0.12, 0.66), radius: 0.004, sides: 3, color: Palette.linen)
+        }
         return b.mesh
     }
 }
