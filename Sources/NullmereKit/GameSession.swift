@@ -829,14 +829,15 @@ public final class GameSession {
     /// taken, a House fallen, an age won, the fallen carried to an Infirmary
     /// or lost with it), what turns on what the copy can't see (what
     /// Lanterns saw of a hold, a whisper's truth and teller, a riddle's
-    /// answer), and an answer. Told when the realm answers.
+    /// answer, a drowned letter's words), and an answer. Told when the
+    /// realm answers.
     static func isRealmsToTell(_ event: GameEvent) -> Bool {
         switch event {
         case .battle, .unitLost, .holdStruck, .holdCaptured, .seatMoved, .promoted, .ruinSearched, .holdFounded,
              .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired, .hunted,
              .gearFound, .carriedToInfirmary, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted, .standardStruck, .standardTorn,
              .hallStruck, .hallTorn, .storehouseStruck, .storehouseTorn, .fieldJoined, .fieldEnded,
-             .bout, .whisperTried, .whisperUnmasked, .riddleAnswered:
+             .bout, .whisperTried, .whisperUnmasked, .riddleAnswered, .letterFound:
             return true
         default:
             return false
@@ -1365,6 +1366,7 @@ public final class GameSession {
         case .say: return .parley
         case .sing: return .lore
         case .castBottle: return .order
+        case .sealLetter: return .lore
         case .proposeEdict: return .horn
         case .voteEdict: return .order
         case .learnTalent: return .lore
@@ -1500,6 +1502,7 @@ public final class GameSession {
         case .said(let word) where word.from != player: return .parley
         case .sung(let ballad) where ballad.house != player: return .lore
         case .bottleFound(_, let by) where by == player: return .lore
+        case .letterFound: return .lore
         case .edictProposed(let edict) where edict.proposer != player: return .parley
         case .edictPassed: return .honour
         case .titleBestowed(let title, let house, _) where house == player: return title.isBoon ? .honour : .dread

@@ -81,6 +81,8 @@ public enum Command: Codable, Equatable, Sendable {
     /// Words sealed in a bottle and set on the water from a hold on the
     /// shore, signed or not.
     case castBottle(words: String, from: Int, signed: Bool)
+    /// Seals a letter under the stones of a hold, for the age to come.
+    case sealLetter(words: String, hold: Int)
     /// A line of another keeper's reported to the realm's steward.
     case reportWord(word: Int)
     /// An edict put to the realm, for every House to vote on.
@@ -248,6 +250,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case sangThisWatch
     case noWaterBeside
     case castThisWatch
+    case letterSealed
     /// A line the House never heard, or one taken away.
     case unknownWord
     /// A House's own line, reported.
@@ -500,6 +503,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .sangThisWatch: return "Your House has sung this watch; sing again at the next."
         case .noWaterBeside: return "No water lies beside this hold to set a bottle on."
         case .castThisWatch: return "Your House has set a bottle on the water this watch; another at the next."
+        case .letterSealed: return "Your House has sealed its letter to the age to come; one an age."
         case .unknownWord: return "No such line is in the Words."
         case .ownWord: return "That line is your own."
         case .reportedAlready: return "You have reported that line already."
@@ -854,6 +858,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case bottleCast(bottle: Int, from: Int, at: Hex)
     /// A bottle washed up and found, with the words in it.
     case bottleFound(bottle: Bottle, by: Int)
+    /// A letter sealed in a hold for the age to come.
+    case letterSealed(hold: Int, by: Int)
+    /// A letter of the age before found in a drowned hold, with its words.
+    case letterFound(letter: Letter, by: Int)
     /// A line reported to the realm's steward.
     case wordReported(word: Int, by: Int)
     /// A line taken away by the realm's steward.

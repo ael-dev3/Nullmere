@@ -24,6 +24,9 @@ enum HoverInfo {
         if let drowned = state.drowned(at: hex) {
             parts.append(tile.feature == .drownedRuin ? "the drowned hold of \(drowned.title)" : "where \(drowned.title) stood")
         }
+        if !state.lettersUnfound(at: hex).isEmpty {
+            parts.append("a letter sealed within")
+        }
         if let hold = state.hold(at: hex) {
             parts.append(hold.name)
             if state.isVeiled(hold.owner), let veil = state.veil(of: hold.owner) {

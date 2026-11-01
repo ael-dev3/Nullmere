@@ -76,6 +76,8 @@ extension GameState {
             return try sing(ballad, of: entry, as: house)
         case let .castBottle(words, holdID, signed):
             return try castBottle(words, from: holdID, signed: signed, as: house)
+        case let .sealLetter(words, holdID):
+            return try sealLetter(words, in: holdID, as: house)
         case let .reportWord(wordID):
             return try report(wordID, as: house)
         case let .proposeEdict(kind):
@@ -291,6 +293,7 @@ extension GameState {
             }
             if map[next]?.feature == .drownedRuin {
                 events.append(searchRuin(at: next, by: unit.owner))
+                events += findLetters(at: next, by: unit.owner)
             }
             index = unitIndex(unitID)!
         }

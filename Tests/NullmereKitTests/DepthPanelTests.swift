@@ -386,6 +386,51 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(GameSession.cues(for: .castBottle(words: "x", from: hold.id, signed: true), events: [], in: session.state, player: me), [.order])
     }
 
+    /// A letter to the age to come sealed from a hold's record, folded until
+    /// asked for; the hold that keeps it says so and no other offers one;
+    /// in the age after, the pointer and its drowned ruin's record tell of it.
+    func testALetterIsSealedForTheAgeToComeFromAHold() throws {
+        var state = world("a letter sealed")
+        let me = state.player
+        state.houses[me].stock = Stock(grain: 300, timber: 100, stone: 100, moonsalt: 40)
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let (session, link) = session(state)
+        draw(LetterComposer(session: session, hold: seat), width: 330, height: 200)
+        XCTAssertTrue(PressableButtons.press("A letter to the age to come…"), "Among \(shown)")
+        // Open: nothing written, nothing sealed; words written, sealed.
+        PressableButtons.forget("Seal")
+        draw(LetterComposer(session: session, hold: seat, open: true), width: 330, height: 260)
+        XCTAssertFalse(PressableButtons.press("Seal"), "Nothing written, nothing to seal")
+        draw(LetterComposer(session: session, hold: seat, open: true, draft: "Remember the ford"), width: 330, height: 260)
+        XCTAssertTrue(PressableButtons.press("Seal"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .sealLetter(words: "Remember the ford", hold: seat.id))
+        let letter = try XCTUnwrap(session.state.letter(sealedBy: me))
+        XCTAssertEqual(LetterComposer.kept(letter), "Your letter to the age to come lies under these stones: “Remember the ford”")
+        // Sealed: one an age, so no hold offers another.
+        PressableButtons.forget("A letter to the age to come…")
+        draw(LetterComposer(session: session, hold: seat), width: 330, height: 200)
+        XCTAssertFalse(PressableButtons.press("A letter to the age to come…"), "One an age")
+        session.selection = .hold(seat.id)
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        XCTAssertEqual(GameSession.cues(for: .sealLetter(words: "x", hold: seat.id), events: [], in: session.state, player: me), [.lore])
+        XCTAssertFalse(GameSession.isRealmsToTell(.letterSealed(hold: seat.id, by: me)), "Its own letter it knows")
+        XCTAssertTrue(GameSession.isRealmsToTell(.letterFound(letter: letter, by: me)), "A drowned letter's words are the realm's to tell")
+
+        // In the age after: the letter lies with its drowned hold.
+        var before = state
+        _ = try before.perform(.sealLetter(words: "Remember the ford", hold: seat.id), as: me)
+        var next = RealmState.world(seed: "a letter sealed", age: 2, seats: 6, radius: 20)
+        next.drown(before, age: 2)
+        let lies = try XCTUnwrap(next.lettersOfOld.first?.at)
+        let viewer = next.player
+        next.reveal(around: lies, range: 1, for: viewer)
+        let view = next.view(for: viewer)
+        XCTAssertEqual(HoverInfo.line(for: lies, in: view, explored: true, territory: view.territory())?.contains("a letter sealed within"), true)
+        let (later, _) = session(next)
+        later.selection = .tile(lies)
+        draw(SelectionPanel(session: later), width: 330, height: 900)
+    }
+
     /// The realm's law at the head of the Houses: an edict put, voted on,
     /// and those holding the realm; the rail marks a vote awaiting.
     func testTheRealmsLawIsPutAndVotedOnFromTheHouses() throws {

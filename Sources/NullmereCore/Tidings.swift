@@ -509,6 +509,20 @@ extension GameState {
         case .bottleCast(_, let from, _):
             guard from == viewer else { return nil }
             return Tidings("Your bottle is on the water; the current will carry it where it will.", .neutral)
+        case .letterSealed(let holdID, let by):
+            guard by == viewer else { return nil }
+            let name = hold(holdID)?.name ?? "your hold"
+            return Tidings("Your letter is sealed under the stones of \(name), for whoever searches them when the water has risen over this age.",
+                           .neutral)
+        case .letterFound(let letter, let by):
+            let age = letter.age.map { "the \(ordinal($0)) age" } ?? "an age before"
+            if by == viewer {
+                return Tidings("Among the drowned stones of \(letter.hold) your company finds a letter of \(age), sealed by \(letter.from): "
+                               + "“\(letter.words)”", .good)
+            }
+            guard houses.indices.contains(by) else { return nil }
+            return Tidings("\(houses[by].title) finds a letter of \(age) among the drowned stones of \(letter.hold): “\(letter.words)”",
+                           .neutral)
         case .bottleFound(let bottle, let by):
             if by == viewer {
                 let whose = bottle.signed && houses.indices.contains(bottle.from) ? ", sealed by \(houses[bottle.from].title)" : ", unsigned"

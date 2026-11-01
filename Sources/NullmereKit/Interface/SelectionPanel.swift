@@ -200,6 +200,8 @@ struct OwnHoldDetails: View {
             if state.castingWater(beside: hold) != nil {
                 BottleComposer(session: session, hold: hold)
             }
+            // A letter to the age to come, sealed under the hold's stones.
+            LetterComposer(session: session, hold: hold)
         }
         .padding(16)
     }
@@ -1148,6 +1150,13 @@ struct TilePanel: View {
                 // A hold of an age before, drowned here.
                 if let drowned = state.drowned(at: hex) {
                     Text(verbatim: drowned.told(searched: tile.feature != .drownedRuin))
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.glowWords)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                // Letters of the age before that lie here, unread or found.
+                ForEach(state.lettersOfOld.filter { $0.at == hex }, id: \.id) { letter in
+                    Text(verbatim: letter.told(in: state))
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.glowWords)
                         .fixedSize(horizontal: false, vertical: true)

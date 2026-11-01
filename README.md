@@ -579,6 +579,17 @@ as the realm will, and takes the realm's word as final.
   do or why it can't be given; those that can are given together only
   when the keeper gives them, and the realm judges each as it does any
   order. Without the model, the order book's lines are read as written.
+- **Letters to the age to come.** On a hold's record, A letter to the age
+  to come… opens a line: once an age, for 20 moonsalt, a keeper seals a
+  few words under that hold's stones, and the hold's record keeps them;
+  no other House knows. When the age ends, the hold is laid among the
+  first of the drowned, or, where it can't lie drowned, the letter goes
+  down with the nearest hold that does; in the next age the pointer says
+  "a letter sealed within" over that ruin on ground the House has seen.
+  The first company to search the ruin finds it, and every House hears
+  its words, who sealed it and in which age; the ruin's record keeps them
+  after. A first age has none to find; stewards seal none, nor does a
+  House while the realm's steward bars it from the Words.
 - **The server.** SpacetimeDB is the realm's authority of record: it knows
   each keeper by their identity, keeps the world, and lets no one but the
   steward write it. The steward runs the same Swift rules core the clients

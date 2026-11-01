@@ -11,19 +11,22 @@ public enum Compact {
 
     /// The compact's edition: raised whenever its words change in
     /// substance, so that every keeper is asked to read it again.
-    public static let edition = 1
+    public static let edition = 2
 
     /// What changed in each edition after the first, told to a keeper who
     /// accepted an earlier one.
-    public static let changes: [Int: String] = [:]
+    public static let changes: [Int: String] = [
+        2: "The realm now keeps the letters keepers seal for the age to come, and tells every House their words when they are found; "
+            + "orders written in your own words are read by your Mac's model, and only the orders you give leave it.",
+    ]
 
     public static let articles: [Article] = [
         Article(heading: "Who you are here",
                 text: "The realm knows you by a random key your Mac makes and keeps in its keychain, and by the name you choose. It asks for no address, no account and no password, and learns nothing of your Mac or where you are. Should you make words to carry yourself to another Mac, it keeps only a digest of a digest of them."),
         Article(heading: "What the realm keeps",
-                text: "Your name; your House's orders and what came of them, which the realm's other keepers see as the rules let them; when you are there and when you are away; and the renown, favour, titles and deeds you win, from age to age. The Words you write, the ballads you sing, the bottles you cast and the edicts you put are kept for the realm's keepers to read, the oldest let go as new ones come."),
+                text: "Your name; your House's orders and what came of them, which the realm's other keepers see as the rules let them; when you are there and when you are away; and the renown, favour, titles and deeds you win, from age to age. The Words you write, the ballads you sing, the bottles you cast and the edicts you put are kept for the realm's keepers to read, the oldest let go as new ones come; a letter you seal for the age to come is kept until the age after ends, and every House reads it once it is found."),
         Article(heading: "What stays on your Mac",
-                text: "The voices of the lake and the ballads offered you are made by your Mac's own on-device model: what it is asked and what it says leave your Mac only when you sing a ballad to the realm. Your settings stay on your Mac. The launcher reads the game's news from its repository and sends nothing of yours."),
+                text: "The voices of the lake and the ballads offered you are made by your Mac's own on-device model, which also reads the orders you write in your own words: what it is asked and what it says leave your Mac only when you sing a ballad to the realm or give the orders it read. Your settings stay on your Mac. The launcher reads the game's news from its repository and sends nothing of yours."),
         Article(heading: "Keeping the peace of the realm",
                 text: "Write to other keepers as you would be written to: no threats, no hatred, no one's private details, nothing for sale. Any keeper may report a line to the realm's steward, who may take it away and bar a House from the Words for a time. Hold one House, under one identity, and play it yourself."),
         Article(heading: "The realm may change",

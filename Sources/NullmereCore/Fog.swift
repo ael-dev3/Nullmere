@@ -160,6 +160,17 @@ extension GameState {
         view.drowned = drowned.map { all in
             all.filter { hold in map.index(of: hold.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
         }
+        // A House's own letter to the age to come; of those of the age
+        // before, the ones on ground it has seen, their words only once found.
+        view.letters = letters.map { all in all.filter { $0.house == house } }
+        view.oldLetters = oldLetters.map { all in
+            all.filter { letter in letter.at.flatMap(map.index(of:)).map { explored.indices.contains($0) && explored[$0] } ?? false }
+                .map { letter in
+                    var shown = letter
+                    if letter.foundBy == nil { shown.words = "" }
+                    return shown
+                }
+        }
         return view
     }
 }
@@ -301,6 +312,11 @@ extension GameState {
                 return from == house || visible(at)
             case .bottleFound(let bottle, let by):
                 return by == house || bottle.from == house
+            case .letterSealed(_, let by):
+                return by == house
+            case .letterFound:
+                // A letter of the age before, found, the whole realm hears.
+                return true
             case .wordReported(_, let by):
                 return by == house
             case .wordRemoved:

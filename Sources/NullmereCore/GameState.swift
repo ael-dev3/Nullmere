@@ -112,6 +112,11 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The watch the moon was last eaten, while the Drowned of that eclipse
     /// walk; absent otherwise, and so in every first age.
     public internal(set) var eclipse: Int?
+    /// The letters keepers have sealed this age for the age to come, and
+    /// those of the age before lying drowned with their holds; absent while
+    /// there are none.
+    var letters: [Letter]?
+    var oldLetters: [Letter]?
     /// What every keeper knows of the land from the first watch: its
     /// streams and regions, and the crests the lake gave its Houses. Absent
     /// in a world without streams, and in saves from before them.

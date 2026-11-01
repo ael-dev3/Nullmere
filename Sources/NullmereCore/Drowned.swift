@@ -76,9 +76,11 @@ extension GameState {
     /// Chronicle opens with them.
     mutating func drown(_ before: GameState, age: Int) {
         let seats = holds.map(\.position)
+        // A hold with a letter under its stones goes down among the first.
+        let lettered = Set(before.lettersSealed.map(\.holdID))
         let greatest = before.holds.sorted { a, b in
             let (left, right) = (a.levels.values.reduce(0, +), b.levels.values.reduce(0, +))
-            return (a.isSeat ? 1 : 0, left, -a.id) > (b.isSeat ? 1 : 0, right, -b.id)
+            return (lettered.contains(a.id) ? 1 : 0, a.isSeat ? 1 : 0, left, -a.id) > (lettered.contains(b.id) ? 1 : 0, b.isSeat ? 1 : 0, right, -b.id)
         }
         var laid: [DrownedHold] = []
         for hold in greatest where laid.count < GameState.drownedAtMost {
@@ -96,6 +98,7 @@ extension GameState {
         let named = laid.prefix(2).map(\.name).joined(separator: " and ")
         record(.beginning, [], "The water has risen over the \(ordinal(age - 1)) age: \(laid.count) of its holds lie drowned about the lake, "
             + "\(named) among them.")
+        sinkLetters(of: before, age: age)
     }
 
     /// The Moonspire the age before raised highest, laid broken where it

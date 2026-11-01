@@ -302,6 +302,16 @@ designed, ticked when it is real, tested and shown in CI.
   always does. Command by speech of mind, with the model only reading.
   Opened by O, or from the Watch menu; without the model, the order
   book's own lines may be written as they are.
+- [x] **Letters to the age to come.** A persistent world's keepers write
+  to those who come after them. Once an age, for twenty moonsalt, a keeper
+  seals a letter under the stones of a hold of theirs, and no other House
+  knows of it. As the age ends the letter goes down with its hold, which
+  the water lays among the first of the drowned, or with the nearest hold
+  that lies drowned; in the next age the first company to search that
+  ruin finds it, and the Chronicle tells every House its words, who sealed
+  it and in which age. Counsel, warnings, boasts and false trails: the
+  realm's past speaks to its present in its own keepers' words. A first
+  age finds none, and stewards seal none.
 
 ## The order of the work
 
