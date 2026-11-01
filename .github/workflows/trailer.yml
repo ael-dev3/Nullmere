@@ -1,0 +1,84 @@
+name: Trailer
+
+# The trailer, rendered on a Mac by the game's own renderers and written
+# with its score to an MP4 (scripts/render-trailer.sh): on demand, and
+# whenever the trailer's own files change on main or a working branch.
+# The film and its stills are kept as an artifact, and the film is
+# published as the asset of the "trailer" pre-release, at
+# https://github.com/<owner>/<repo>/releases/download/trailer/nullmere-trailer.mp4
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - Sources/NullmereTrailer/**
+      - Tests/TrailerRenderTests/**
+      - scripts/render-trailer.sh
+      - .github/workflows/trailer.yml
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "film: the whole trailer; stills: a frame from each shot"
+        required: false
+        default: film
+
+permissions:
+  contents: write
+
+concurrency:
+  group: trailer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trailer:
+    name: Render the trailer
+    runs-on: macos-26
+    timeout-minutes: 75
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Render the trailer
+        env:
+          NULLMERE_TRAILER_MODE: ${{ github.event.inputs.mode || 'film' }}
+        run: scripts/render-trailer.sh build/trailer
+
+      # A still from each shot, small, in the log, for looking at.
+      - name: Stills
+        if: always()
+        run: |
+          for still in build/trailer/stills/*.jpg; do
+            [ -f "$still" ] || continue
+            case "$still" in *-small.jpg) continue ;; esac
+            small="${still%.jpg}-small.jpg"
+            sips -s format jpeg -s formatOptions 45 -Z 640 "$still" --out "$small" >/dev/null
+            echo "::group::Still $(basename "$still"), base64 JPEG"
+            base64 -i "$small" | fold -w 120
+            echo "::endgroup::"
+          done
+          grep -h "^TRAILER" build/trailer/render.log 2>/dev/null || true
+
+      - name: Keep the trailer
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nullmere-trailer
+          path: |
+            build/trailer/nullmere-trailer.mp4
+            build/trailer/stills/*.jpg
+          if-no-files-found: warn
+
+      - name: Publish the trailer
+        if: ${{ (github.event.inputs.mode || 'film') == 'film' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view trailer >/dev/null 2>&1; then
+            gh release create trailer --prerelease --target "$GITHUB_SHA" --title "Nullmere Online: the trailer" \
+              --notes "The trailer, drawn by the game's own renderers and scored by its own synthesiser: scripts/render-trailer.sh."
+          fi
+          gh release upload trailer build/trailer/nullmere-trailer.mp4 --clobber
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/trailer/nullmere-trailer.mp4"
+          echo "TRAILER-URL $url"
+          echo "The trailer: $url" >> "$GITHUB_STEP_SUMMARY"

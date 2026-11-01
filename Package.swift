@@ -37,6 +37,11 @@ var targets: [Target] = [
     // Swift, so every sound is rendered and measured on Linux too.
     .target(name: "NullmereSound", dependencies: ["NullmereCore"]),
     .testTarget(name: "NullmereSoundTests", dependencies: ["NullmereSound", "NullmereCore"]),
+    // The trailer, apart from the GPU: its world, its shots and what moves
+    // in them, and its score. Pure Swift, so every shot is staged and the
+    // score rendered on Linux too; the Mac draws and encodes it.
+    .target(name: "NullmereTrailer", dependencies: ["NullmereCore", "NullmereModels", "NullmereWorld", "NullmereSound"]),
+    .testTarget(name: "NullmereTrailerTests", dependencies: ["NullmereTrailer", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereSound"]),
     // SpacetimeDB in memory, and credentials kept in memory, for tests of
     // the realm across the network: the realm's and the app's.
     .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm", "NullmereCore"], path: "Tests/NullmereTestSupport"),
@@ -60,6 +65,13 @@ targets += [
     .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore", "NullmereTestSupport"]),
     .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
 ]
+// The trailer drawn by the game's own renderers and written to a film,
+// built only when scripts/render-trailer.sh asks for it.
+if Context.environment["NULLMERE_TRAILER"] != nil {
+    targets.append(.testTarget(name: "TrailerRenderTests",
+                               dependencies: ["NullmereTrailer", "NullmereKit", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereSound",
+                                              "LauncherCore", "LauncherKit"]))
+}
 #endif
 
 let package = Package(
