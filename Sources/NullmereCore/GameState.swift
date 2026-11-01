@@ -581,13 +581,21 @@ public struct GameState: Codable, Equatable, Sendable {
     /// sight; a tile seen from two places is told twice.
     func see(for house: Int, _ seen: (Int) -> Void) {
         // Its watchers' companies and holds found in one pass over each,
-        // not a pass for every ally.
-        let watchers = Set(watchers(for: house))
-        for index in units.indices where watchers.contains(units[index].owner) {
-            map.forEachIndex(within: sight(of: units[index]), of: units[index].position, seen)
+        // not a pass for every ally, and each watcher's own sight reckoned
+        // once, not for every company and hold of it.
+        var sights = [(unit: Int, hold: Int)?](repeating: nil, count: houses.count)
+        for watcher in watchers(for: house) {
+            sights[watcher] = (bonus(.sight, for: watcher), bonus(.holdSight, for: watcher))
         }
-        for index in holds.indices where watchers.contains(holds[index].owner) {
-            map.forEachIndex(within: sight(of: holds[index]), of: holds[index].position, seen)
+        for index in units.indices {
+            let owner = units[index].owner
+            guard sights.indices.contains(owner), let sight = sights[owner] else { continue }
+            map.forEachIndex(within: self.sight(of: units[index], house: sight.unit), of: units[index].position, seen)
+        }
+        for index in holds.indices {
+            let owner = holds[index].owner
+            guard sights.indices.contains(owner), let sight = sights[owner] else { continue }
+            map.forEachIndex(within: self.sight(of: holds[index], house: sight.hold), of: holds[index].position, seen)
         }
     }
 
@@ -606,22 +614,32 @@ public struct GameState: Codable, Equatable, Sendable {
     /// House's own sight found once, and lent to its allies from there,
     /// only the tiles in sight touched.
     mutating func refreshSight() {
-        var own = [[Int]](repeating: [], count: houses.count)
-        for index in units.indices where own.indices.contains(units[index].owner) {
-            let owner = units[index].owner
-            map.forEachIndex(within: sight(of: units[index]), of: units[index].position) { own[owner].append($0) }
-        }
-        for index in holds.indices where own.indices.contains(holds[index].owner) {
-            let owner = holds[index].owner
-            map.forEachIndex(within: sight(of: holds[index]), of: holds[index].position) { own[owner].append($0) }
-        }
+        let (own, lent) = sightToLend()
         for index in houses.indices where !houses[index].isEliminated {
             var explored = houses[index].explored
-            for watcher in watchers(for: houses[index].id) {
+            for watcher in lent[index] {
                 for tile in own[watcher] { explored[tile] = true }
             }
             houses[index].explored = explored
         }
+    }
+
+    /// What each House sees now by its own companies and holds, a tile
+    /// seen from two places told twice, and whose sight each standing House
+    /// sees with: reckoned without a change to the state, so not on a copy
+    /// of it for every company.
+    private func sightToLend() -> (own: [[Int]], lent: [[Int]]) {
+        let sights = houses.indices.map { (unit: bonus(.sight, for: $0), hold: bonus(.holdSight, for: $0)) }
+        var own = [[Int]](repeating: [], count: houses.count)
+        for index in units.indices where own.indices.contains(units[index].owner) {
+            let owner = units[index].owner
+            map.forEachIndex(within: sight(of: units[index], house: sights[owner].unit), of: units[index].position) { own[owner].append($0) }
+        }
+        for index in holds.indices where own.indices.contains(holds[index].owner) {
+            let owner = holds[index].owner
+            map.forEachIndex(within: sight(of: holds[index], house: sights[owner].hold), of: holds[index].position) { own[owner].append($0) }
+        }
+        return (own, houses.map { $0.isEliminated ? [] : watchers(for: $0.id) })
     }
 
     // MARK: Bookkeeping
