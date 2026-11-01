@@ -1730,7 +1730,7 @@ the keeper's realm last lay on, made as it plays.
   chips at its foot, a rough block is split with wedges at its first
   levels, a square, dividers and a template lie on its tracing floor and
   templates stand against its hall from the third, and at the fifth its
-  arch has capitals and a keystone standing proud (508 to 1,034 triangles,
+  arch has capitals and a keystone standing proud (704 to 1,034 triangles,
   where it was 356 to 778). A Study has a sundial in its court at every
   level, a lectern with a book open on it by the scriptorium's door, a
   lantern on the library's dome and doors where its library and its hall
@@ -1740,7 +1740,7 @@ the keeper's realm last lay on, made as it plays.
   in its heap and baskets of salt by it, a bucket on its brine sweep's rope,
   its furnace's mouth framed in stone and its chimney coursed, capped and
   sooted, its pans' crust standing proud enough that the yard's odds and
-  ends are never set down in the brine (544 to 1,104 triangles, where it
+  ends are never set down in the brine (738 to 1,104 triangles, where it
   was 402 to 976). A granary has a bushel of grain heaped by it and its
   cat sitting watch for rats, a broom by the door from the second level
   and from the third a steelyard on its tripod, a sack hung from its beam
@@ -1757,14 +1757,25 @@ the keeper's realm last lay on, made as it plays.
   1,278). The works plainest at their first levels have their gear too: a
   sawpit's pit-saw standing through its log, its tiller above and wedges
   in the kerf, and at every level a chopping block with an axe bitten into
-  it (444 to 842 triangles, from 284); a quarry's rubble, a pick leaning on
-  its rock, an iron bar and a coil of rope on its sledge at every level
-  (407 to 981, from 265); a Muster Hall's spears given their iron heads,
-  shields in the House's colours leaning on their rack, its pell armed with
-  a crossbar and a sack of straw and wooden swords against it (586 to
-  1,012, from 440); and a beacon a ladder up its first tower and a torch by
-  its second's door, the fire's wood stacked at the foot of both (498 and
-  526 triangles, the first from 274). The holy sites have their floors
+  it and a grindstone on its frame, and at its first two the bark of its
+  logs strewn about, boards leaning by its shelter and a bow saw hung on
+  its post (646 to 918 triangles, from 284); a quarry's rubble, a pick
+  leaning on its rock, an iron bar and a coil of rope on its sledge, a
+  block split along a line of wedges with the maul against it, a barrow
+  of rubble and its chips heaped, at every level (639 to 1,201, from
+  265); a Muster Hall's spears given their iron heads, shields in the
+  House's colours leaning on their rack, its pell armed with a crossbar
+  and a sack of straw and wooden swords against it, and at its first two
+  a ring for sparring, the drill's drum on its stand, helms on a bench and
+  a barrel of water (814 to 1,044, from 440); a first Masons' Lodge's
+  dressed stones stacked under its shed, a tub of mortar with its trowel,
+  the masons' level and templates; a first saltworks' brine well under
+  its sweep, a trough to its pans, a board between them and cakes of salt
+  drying; and a beacon a ladder up its first tower and a torch by its
+  second's door, the fire's wood stacked at the foot of both, and at the
+  first its brushwood bound in faggots, a rope to a basket of them, jars
+  of oil and a horn to cry the alarm (910 and 526 triangles, the first
+  from 274). The holy sites have their floors
   flagged and worn, here a flag lifted long ago and grass come up where it
   lay, their poles set in sockets of stone and grass at their stones' feet;
   the Moonwell a coping with lamps burning on it, an arch over it crowned
