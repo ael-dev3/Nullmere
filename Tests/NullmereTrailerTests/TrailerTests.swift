@@ -53,6 +53,8 @@ final class TrailerTests: XCTestCase {
             XCTAssertEqual(head.x, tail.x)
             XCTAssertEqual(head.z, tail.z)
             XCTAssertEqual(tail.y - head.y, 0.06, accuracy: 1e-4, "Drawn out down its fall")
+            let next = motes[index + 1].place
+            XCTAssertLessThan(next.y - head.y, head.w, "Its motes run together into one line, not beads")
             XCTAssertGreaterThan((Vec3(head.x, head.y, head.z) - eye).length, Trailer.nearestDrop, "Never near enough the lens to blot it")
         }
         // The eye where the camera's distance puts it: high over the ground,

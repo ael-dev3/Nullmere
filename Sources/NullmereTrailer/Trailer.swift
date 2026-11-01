@@ -181,16 +181,23 @@ public struct Trailer {
             guard (at - eye).length > Trailer.nearestDrop else { return [] }
             let light = Vec3(drop.colour.x, drop.colour.y, drop.colour.z)
             return (0..<Trailer.streak).map { step in
-                Mote(at: at + Vec3(0, Float(step) * 0.012, 0), size: drop.place.w * 0.5, light: light * (1 - Float(step) * 0.14),
-                     cover: drop.colour.w * 0.5)
+                let along = Float(step) / Float(Trailer.streak - 1)
+                return Mote(at: at + Vec3(0, along * Trailer.streakLength, 0), size: drop.place.w * 0.5,
+                            light: light * (1 - 0.7 * along) * Trailer.overlap, cover: drop.colour.w * 0.5 * Trailer.overlap)
             }
         }
     }
 
-    /// How near the lens rain is drawn, and how many motes draw a streak,
-    /// close enough to run together at the film's size.
+    /// How near the lens rain is drawn.
     static let nearestDrop: Float = 1.6
-    static let streak = 6
+    /// How many motes draw a streak, and how long it is: each mote a third
+    /// of its width below the last, so that they run together into one
+    /// line however near, not a string of beads.
+    static let streak = 18
+    static let streakLength: Float = 0.06
+    /// Each point of a streak lies under three or so of its motes, so each
+    /// gives a third of what one alone would.
+    static let overlap: Float = 0.3
 
     /// Where a camera's eye is, in the world.
     static func eye(of camera: Camera) -> Vec3 {
