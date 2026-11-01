@@ -110,6 +110,26 @@ final class TrailerTests: XCTestCase {
         XCTAssertEqual(after.filter { $0.clip == .idle }.count, 13)
     }
 
+    func testPicturesDissolveAndDarken() {
+        let from: [UInt8] = [0, 100, 200, 255], into: [UInt8] = [255, 100, 0, 255]
+        var a = from
+        Pixels.dissolve(&a, into: into, weight: 0)
+        XCTAssertEqual(a, from, "Nothing of the next yet")
+        a = from
+        Pixels.dissolve(&a, into: into, weight: 1)
+        XCTAssertEqual(a, into, "All of the next")
+        a = from
+        Pixels.dissolve(&a, into: into, weight: 0.5)
+        XCTAssertEqual(a, [128, 100, 100, 255], "Halfway")
+        var b = from
+        Pixels.darken(&b, to: 1)
+        XCTAssertEqual(b, from, "As it is")
+        Pixels.darken(&b, to: 0.5)
+        XCTAssertEqual(b, [0, 50, 100, 127])
+        Pixels.darken(&b, to: 0)
+        XCTAssertEqual(b, [0, 0, 0, 0], "Black")
+    }
+
     func testTheScoreIsHeardFromTheFirstMomentAndFollowsThePicture() throws {
         let trailer = TrailerTests.trailer
         let soundtrack = Soundtrack(trailer: trailer)

@@ -1982,6 +1982,31 @@ build/models/samples.json models.png "light=night"`. Away from a Mac,
 `Tools/msl-check/check.sh <shader.metal>` parses Metal source with clang
 for its syntax, names and types.
 
+### The trailer
+
+The trailer is a minute and three quarters of the game's own world at
+night, with no interface and nothing of the rules: the lake of the title
+screen under the moon; down out of the night to a seat on the shore and
+about it, its Moonspire crowned; along a great hold's lanes; another
+House's Moonspire rising, its crane at work; a host on the march; rain off
+the lake; a battle in the dark; the moon eaten over the field; the whole
+lake from on high; and the title. Every frame is drawn by the game's own
+renderers (the world's, and the launcher's lake), and its score is the
+game's own synthesiser, the drums of war under the march and every blow
+of the battle heard as the picture throws it. On a Mac:
+
+```sh
+scripts/render-trailer.sh                                  # build/trailer/nullmere-trailer.mp4
+NULLMERE_TRAILER_MODE=stills scripts/render-trailer.sh     # a still from each shot
+```
+
+It is H.264 and AAC, 1920 by 1080 at thirty frames a second. The shots,
+what moves in them and the score are `Sources/NullmereTrailer` (tested on
+Linux too); the drawing and the writing, `Tests/TrailerRenderTests`. The
+Trailer workflow renders it whenever they change and publishes it as the
+asset of the `trailer` pre-release:
+https://github.com/ael-dev3/Nullmere/releases/download/trailer/nullmere-trailer.mp4
+
 ## Layout
 
 ```
@@ -1995,9 +2020,10 @@ Sources/
   NullmereWorld/      The world as the GPU draws it, apart from the GPU: the camera, the shaders' source, the frame's data. Pure Swift
   NullmereRealm/      The client's line to the realm over SpacetimeDB or in-process, the steward, keeper identity. Foundation only
   NullmereSound/      The game's sound apart from the Mac's audio engine: the synthesiser, its instruments, its hall and the score. Pure Swift
+  NullmereTrailer/    The trailer apart from the GPU: its world, its shots and what moves in them, and its score. Pure Swift
   NullmereKit/        The world's interface: front door, Metal world, panels, the audio engine
   NullmereSteward/    The steward's command-line entry point
-Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereModelsTests, NullmereWorldTests, NullmereSoundTests, NullmereRealmTests, NullmereKitTests, and NullmereTestSupport (a SpacetimeDB in memory)
+Tests/                LauncherCoreTests, LauncherKitTests, NullmereCoreTests, NullmereModelsTests, NullmereWorldTests, NullmereSoundTests, NullmereRealmTests, NullmereKitTests, NullmereTrailerTests, TrailerRenderTests (the trailer drawn and written to a film, run by scripts/render-trailer.sh), and NullmereTestSupport (a SpacetimeDB in memory)
 realm-server/         The SpacetimeDB module (Rust): keepers, requests, answers, the world
 Dockerfile.steward    The steward in a container, as raise-realm.sh runs it
 news/                 news.json, the launcher's news feed

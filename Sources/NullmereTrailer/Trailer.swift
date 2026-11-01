@@ -88,6 +88,7 @@ public struct Trailer {
         // The shore hold looks out over the water: its heading puts the
         // lake's heart beyond it.
         let toLake = atan2(shore.x - lake.x, shore.y - lake.y)
+        let relief = world.relief
         var shots: [Shot] = []
         var clock = 0.0
         func add(_ name: String, _ length: Double, _ look: Look, action: Action = .none, weather: Weather = .clear, dissolve: Double = 1.2,
@@ -101,57 +102,67 @@ public struct Trailer {
         // Down out of the night to the seat on the shore.
         add("the descent", 10, .world, dissolve: 2) { u in
             let e = Trailer.ease(u)
-            return Camera(centerX: Trailer.mix(lake.x, seat.x, e), centerY: Trailer.mix(lake.y, seat.y, e), scale: Trailer.mix(10, 46, e * e),
+            return Trailer.aimed(relief, x: Trailer.mix(lake.x, seat.x, e), y: Trailer.mix(lake.y, seat.y, e), scale: Trailer.mix(10, 46, e * e),
                           tilt: Trailer.mix(0.42, 0.86, e), heading: Trailer.mix(-0.6, 0.35, e))
         }
         // About the seat, its Moonspire crowned and turning.
         add("the seat", 11, .world) { u in
-            Camera(centerX: seat.x, centerY: seat.y, scale: Trailer.mix(92, 118, u), tilt: Trailer.mix(0.98, 1.06, u), heading: Trailer.mix(0.35, 1.75, Trailer.ease(u)))
+            Trailer.aimed(relief, x: seat.x, y: seat.y, scale: Trailer.mix(92, 118, u), tilt: Trailer.mix(0.98, 1.06, u), heading: Trailer.mix(0.35, 1.75, Trailer.ease(u)))
         }
         // Along the lanes of a great hold, its folk about their work.
         add("the town", 9, .world) { u in
             let h = 2.4
             let side = (x: cos(h), y: -sin(h))
-            return Camera(centerX: town.x + side.x * Trailer.mix(-0.9, 0.9, u), centerY: town.y + side.y * Trailer.mix(-0.9, 0.9, u), scale: 150,
+            return Trailer.aimed(relief, x: town.x + side.x * Trailer.mix(-0.9, 0.9, u), y: town.y + side.y * Trailer.mix(-0.9, 0.9, u), scale: 150,
                           tilt: 1.04, heading: h)
         }
         // Another House's Moonspire rising, its crane at work.
         add("the rising", 7, .world) { u in
-            Camera(centerX: rising.x, centerY: rising.y, scale: Trailer.mix(104, 126, u), tilt: 1.0, heading: Trailer.mix(-2.2, -1.5, u))
+            Trailer.aimed(relief, x: rising.x, y: rising.y, scale: Trailer.mix(104, 126, u), tilt: 1.0, heading: Trailer.mix(-2.2, -1.5, u))
         }
         // A host on the march along the way between two holds.
         add("the march", 12, .world, action: .march) { u in
-            let head = march.head(at: u * 12)
+            let middle = march.middle(at: u * 12)
             let h = march.sideHeading
-            return Camera(centerX: Double(head.x), centerY: Double(head.z), scale: Trailer.mix(118, 96, u), tilt: Trailer.mix(1.02, 0.96, u), heading: h + Trailer.mix(-0.25, 0.15, u))
+            return Trailer.aimed(relief, x: Double(middle.x), y: Double(middle.z), scale: Trailer.mix(132, 116, u), tilt: Trailer.mix(1.08, 1.0, u),
+                          heading: h + Trailer.mix(-0.3, 0.2, u))
         }
         // Rain off the lake over a hold on the shore.
         add("the rain", 7, .world, weather: .rain) { u in
-            Camera(centerX: shore.x, centerY: shore.y, scale: Trailer.mix(62, 74, u), tilt: 0.96, heading: toLake + .pi + Trailer.mix(-0.2, 0.2, u))
+            Trailer.aimed(relief, x: shore.x, y: shore.y, scale: Trailer.mix(62, 74, u), tilt: 0.96, heading: toLake + .pi + Trailer.mix(-0.2, 0.2, u))
         }
         // Battle in the dark.
         add("the battle", 16, .world, action: .battle, dissolve: 0.6) { u in
             let c = battle.centre
             let h = battle.sideHeading
             let push = Trailer.ease(min(u / 0.55, 1))
-            return Camera(centerX: Double(c.x), centerY: Double(c.z), scale: Trailer.mix(58, 128, push), tilt: Trailer.mix(0.9, 1.06, push),
+            return Trailer.aimed(relief, x: Double(c.x), y: Double(c.z), scale: Trailer.mix(62, 146, push), tilt: Trailer.mix(0.92, 1.12, push),
                           heading: h + Trailer.mix(-0.5, 0.35, Trailer.ease(u)))
         }
         // The field after, the moon eaten.
         add("the eaten moon", 6, .world, action: .aftermath, weather: .eclipse) { u in
             let c = battle.centre
-            return Camera(centerX: Double(c.x), centerY: Double(c.z), scale: Trailer.mix(128, 52, Trailer.ease(u)), tilt: Trailer.mix(1.05, 0.82, u),
+            return Trailer.aimed(relief, x: Double(c.x), y: Double(c.z), scale: Trailer.mix(128, 52, Trailer.ease(u)), tilt: Trailer.mix(1.05, 0.82, u),
                           heading: battle.sideHeading + 0.35 + 0.2 * u)
         }
         // The whole lake from on high, the holds about the black water.
         add("the lake", 7, .world, dissolve: 1.5) { u in
             let e = Trailer.ease(u)
-            return Camera(centerX: Trailer.mix(seat.x * 0.6, lake.x, e), centerY: Trailer.mix(seat.y * 0.6, lake.y, e), scale: Trailer.mix(30, 9.6, e),
+            return Trailer.aimed(relief, x: Trailer.mix(seat.x * 0.6, lake.x, e), y: Trailer.mix(seat.y * 0.6, lake.y, e), scale: Trailer.mix(30, 9.6, e),
                           tilt: Trailer.mix(0.8, 0.36, e), heading: Trailer.mix(0.6, 1.1, u))
         }
         // The title.
         add("the title", 10, .title, dissolve: 2)
         return shots
+    }
+
+    /// A camera whose view's middle falls on the ground at a point of the
+    /// map, as high as the land stands there, rather than on the water's
+    /// face beneath it.
+    static func aimed(_ relief: Relief, x: Double, y: Double, scale: Double, tilt: Double, heading: Double) -> Camera {
+        let height = Double(max(relief.height(atX: Float(x), z: Float(y)), Relief.waterline))
+        let back = height * tan(tilt)
+        return Camera(centerX: x - sin(heading) * back, centerY: y - cos(heading) * back, scale: scale, tilt: tilt, heading: heading)
     }
 
     static func ease(_ u: Double) -> Double { u * u * (3 - 2 * u) }
@@ -237,5 +248,37 @@ public struct Trailer {
         let extent = Float(min(max(600 / max(camera.scale, 1), 3), 14))
         frame.motes += shot.weather.motes(around: camera.focus, extent: extent, time: t)
         return frame
+    }
+}
+
+/// A frame's pixels as the film takes them: four bytes each, blue, green,
+/// red and alpha, row by row from the top.
+public enum Pixels {
+    /// One picture dissolving into another: `weight` of `into`, the rest of
+    /// `from`, written over `from`.
+    public static func dissolve(_ from: inout [UInt8], into: [UInt8], weight: Double) {
+        let w = UInt32(min(max(weight, 0), 1) * 256)
+        let count = min(from.count, into.count)
+        from.withUnsafeMutableBufferPointer { a in
+            into.withUnsafeBufferPointer { b in
+                let keep = 256 - w
+                for index in 0..<count {
+                    let mixed: UInt32 = UInt32(a[index]) * keep + UInt32(b[index]) * w + 128
+                    a[index] = UInt8(truncatingIfNeeded: mixed >> 8)
+                }
+            }
+        }
+    }
+
+    /// A picture darkened toward black: `brightness` 1 leaves it as it is.
+    public static func darken(_ pixels: inout [UInt8], to brightness: Double) {
+        guard brightness < 1 else { return }
+        let b = UInt32(min(max(brightness, 0), 1) * 256)
+        pixels.withUnsafeMutableBufferPointer { p in
+            for index in p.indices {
+                let dimmed: UInt32 = UInt32(p[index]) * b
+                p[index] = UInt8(truncatingIfNeeded: dimmed >> 8)
+            }
+        }
     }
 }

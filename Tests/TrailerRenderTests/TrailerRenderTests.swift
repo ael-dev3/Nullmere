@@ -19,7 +19,6 @@ import XCTest
 /// skipped otherwise. With NULLMERE_TRAILER_MODE=stills it draws only a
 /// still from the middle of each shot, to look at.
 final class TrailerRenderTests: XCTestCase {
-    @_optimize(none)
     func testRenderTheTrailer() throws {
         let environment = ProcessInfo.processInfo.environment
         guard let out = environment["NULLMERE_TRAILER"] else { throw XCTSkip("The trailer is rendered by scripts/render-trailer.sh") }
@@ -108,8 +107,10 @@ final class Projector: @unchecked Sendable {
         world.meshSource = { Library.model($0).mesh }
         let state = trailer.world.state
         try world.setLand(trailer.world.terrain, for: state.map)
-        // All of it seen: no mist anywhere.
-        try world.updateTiles(TileTexture.bytes(for: state, viewer: state.player, visible: Array(repeating: true, count: state.map.count)),
+        // All of it seen, so no mist anywhere, and no House's land washed or
+        // bounded: the land as it lies, not as the game marks it.
+        try world.updateTiles(TileTexture.bytes(for: state, viewer: state.player, visible: Array(repeating: true, count: state.map.count),
+                                                owners: Array(repeating: nil, count: state.map.count)),
                               side: TileTexture.side(for: state.map))
         target = try world.makeTarget(width: Trailer.width, height: Trailer.height)
         lake = try LakeRenderer(device: device, library: device.makeLibrary(source: LakeShader.source, options: nil), pixelFormat: .bgra8Unorm)
@@ -127,21 +128,14 @@ final class Projector: @unchecked Sendable {
         let (shot, from, weight) = trailer.shot(at: time)
         var pixels = picture(of: shot, at: time)
         if let from, weight < 1 {
-            let before = picture(of: from, at: time)
-            let w = Float(weight)
-            for index in pixels.indices {
-                pixels[index] = UInt8(min(Float(before[index]) * (1 - w) + Float(pixels[index]) * w + 0.5, 255))
-            }
+            var before = picture(of: from, at: time)
+            Pixels.dissolve(&before, into: pixels, weight: weight)
+            pixels = before
         }
         if shot.look == .title {
             title(on: &pixels, showing: trailer.title(at: time))
         }
-        let brightness = Float(trailer.brightness(at: time))
-        if brightness < 1 {
-            for index in pixels.indices {
-                pixels[index] = UInt8(Float(pixels[index]) * brightness)
-            }
-        }
+        Pixels.darken(&pixels, to: trailer.brightness(at: time))
         return pixels
     }
 
@@ -177,8 +171,7 @@ final class Projector: @unchecked Sendable {
 
     /// The title as the launcher sets it over the lake: NULLMERE ONLINE,
     /// wide and thin above the far shore, in the launcher's pale type and
-    /// glow. Not optimised: Swift 6.3.3's optimiser crashes on it.
-    @_optimize(none)
+    /// glow.
     private func title(on pixels: inout [UInt8], showing opacity: Double) {
         guard opacity > 0 else { return }
         let scale = CGFloat(Trailer.pixelsPerPoint)

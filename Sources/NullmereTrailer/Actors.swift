@@ -91,6 +91,12 @@ public struct March: Sendable {
         return Vec3(p.x, 0, p.z)
     }
 
+    /// Where the middle of the column is, seconds into its shot.
+    public func middle(at elapsed: Double) -> Vec3 {
+        let p = run.point(at: opening + March.pace * Float(elapsed) - March.spacing * Float(column.count - 1) / 2)
+        return Vec3(p.x, 0, p.z)
+    }
+
     /// The camera's heading to watch the column pass across the view.
     public var sideHeading: Double {
         let along = run.point(at: run.length / 2).along

@@ -9,15 +9,16 @@
 #   NULLMERE_TRAILER_MODE=stills scripts/render-trailer.sh     # a still from each shot only
 #
 # The shots, what moves in them and the score are Sources/NullmereTrailer;
-# the drawing and the writing, Tests/TrailerRenderTests. Built optimised,
-# so a minute and a half of film takes minutes, not hours.
+# the drawing and the writing, Tests/TrailerRenderTests. Built for
+# debugging, as the tests are: Swift 6.3.3's optimiser crashes on the
+# drawing, and a minute and three quarters of film still takes minutes.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT="${1:-build/trailer}"
 mkdir -p "$OUT"
 OUT="$(cd "$OUT" && pwd)"
 export NULLMERE_TRAILER="$OUT"
-swift test -c release -Xswiftc -enable-testing --filter 'TrailerRenderTests|NullmereTrailerTests' 2>&1 | tee "$OUT/render.log"
+swift test --filter 'TrailerRenderTests|NullmereTrailerTests' 2>&1 | tee "$OUT/render.log"
 if grep -q "skipped" "$OUT/render.log" && ! grep -q "TRAILER stills drawn" "$OUT/render.log"; then
     echo "error: the trailer was not drawn: no Metal device?" >&2
     exit 1
