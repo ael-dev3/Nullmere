@@ -627,9 +627,35 @@ enum Works {
             b.planks(at: Vec3(0.13, 0, 0.14), length: 0.15, layers: level, turn: 0.4)
             if level >= 4 {
                 b.planks(at: Vec3(-0.16, 0, -0.17), length: 0.12, layers: 3, turn: 1.4)
+                // Near: the saw-house's frame braced across its front either
+                // side of the door, and the sawdust heaped by it.
+                b.fine {
+                    let front: Float = 0.064, left = -0.07 - houseWidth / 2 + 0.015, right = -0.07 + houseWidth / 2 - 0.015
+                    for (foot, head) in [(Vec3(left, 0.02, front), Vec3(-0.115, storeys - 0.02, front)),
+                                         (Vec3(right, 0.02, front), Vec3(-0.025, storeys - 0.02, front))] {
+                        $0.beam(from: foot, to: head, width: 0.012, depth: 0.008, color: Palette.timberDark)
+                    }
+                    for x in [left, right] {
+                        $0.beam(from: Vec3(x, 0.0, front), to: Vec3(x, storeys, front), width: 0.014, depth: 0.008, color: Palette.timberDark)
+                    }
+                    $0.beam(from: Vec3(left, storeys * 0.55, front), to: Vec3(-0.11, storeys * 0.55, front), width: 0.01, depth: 0.008,
+                            color: Palette.timberDark)
+                    $0.beam(from: Vec3(-0.03, storeys * 0.55, front), to: Vec3(right, storeys * 0.55, front), width: 0.01, depth: 0.008,
+                            color: Palette.timberDark)
+                    $0.sphere(center: Vec3(0.075, 0.0, 0.075), radius: 0.035, rings: 2, sides: 6, color: Palette.straw, squash: 0.4)
+                }
             }
             if level >= 5 {
                 b.banner(at: Vec3(-0.07, storeys + 0.1, -0.04), height: 0.2, width: 0.13, drop: 0.08)
+                // A hoist beam out of the gable over the door, its rope and hook.
+                b.beam(from: Vec3(-0.07, storeys + 0.05, -0.02), to: Vec3(-0.07, storeys + 0.05, 0.12), width: 0.018, color: Palette.timberDark)
+                b.fine {
+                    $0.limb(from: Vec3(-0.07, storeys + 0.04, 0.115), to: Vec3(-0.07, storeys - 0.08, 0.115), radius: 0.002, sides: 3,
+                            color: Palette.linen)
+                    $0.with(material: .metal) {
+                        $0.box(center: Vec3(-0.07, storeys - 0.085, 0.115), size: Vec3(0.012, 0.016, 0.006), color: Palette.iron)
+                    }
+                }
             }
         }
         return model(name, b, rig: rig, machinery: machinery)

@@ -1710,7 +1710,10 @@ the keeper's realm last lay on, made as it plays.
   buttresses along its front, shields in the House's colours under its
   eaves, and more pells armed in its yard; a quarry of those levels a
   ladder up its cut terraces, the rubble of its face, a mason's bench with
-  a block half dressed, and at its fifth shear legs on its top terrace.
+  a block half dressed, and at its fifth shear legs on its top terrace; a
+  sawpit of those levels its saw-house's front braced and half-timbered,
+  its sawdust heaped by the door, and at its fifth a hoist beam out of the
+  gable with its rope and hook.
 - **Only what the view reaches is drawn.** The land's furniture is kept
   on the GPU in square regions eight hexes on a side, each with the bounds
   of all it holds; each frame finds the regions inside the camera's view
