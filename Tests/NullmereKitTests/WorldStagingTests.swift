@@ -127,6 +127,17 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertEqual(misty.sceneFrame(at: 2).weather, .mist)
     }
 
+    /// Frames timed over passes keep each frame's steadiest time: a slow
+    /// moment in one pass is not counted, a frame slow in every pass is.
+    func testEachFramesSteadiestTimeIsKept() {
+        let passes: [[Double]] = [[1, 5, 2, 7], [4, 1, 2, 7], [1, 1, 9, 7]]
+        XCTAssertEqual(StagingTimes.steadiest(passes), [1, 1, 2, 7])
+        XCTAssertEqual(StagingTimes.percentile([1, 1, 2, 7], 0.5), 2)
+        XCTAssertEqual(StagingTimes.percentile([1, 1, 2, 7], 0.95), 7, "The frame slow in every pass")
+        XCTAssertEqual(StagingTimes.percentile([], 0.5), 0)
+        XCTAssertEqual(StagingTimes.slowest([1, 5, 2, 7, 3]), "frame 4 7.00, frame 2 5.00, frame 5 3.00, frame 3 2.00")
+    }
+
     /// Staging a frame of a full realm, every hold known, takes a small
     /// share of a frame on the main thread once the land is laid out.
     func testStagingAFrameKeepsWithinItsShare() throws {
@@ -136,12 +147,13 @@ final class WorldStagingTests: XCTestCase {
         let started = ThreadClock.milliseconds()
         let first = session.sceneFrame(at: 0)
         let laying = ThreadClock.milliseconds() - started
-        // The same second of frames staged twice, the steadier pass kept: a
-        // model first made as a frame shows it, or the shared Mac busy with
-        // something else for a moment, slows one pass; the stage's own work
-        // slows both.
-        var passes: [(p50: Double, p95: Double, slowest: [String])] = []
-        for _ in 0..<2 {
+        // The same second of frames staged three times, each frame's
+        // steadiest staging kept: a model first made as a frame shows it,
+        // or the shared Mac busy with something else for a moment, slows a
+        // frame in one pass, at whichever frame it falls; the stage's own
+        // work slows the frame in every pass.
+        var passes: [[Double]] = []
+        for _ in 0..<3 {
             var times: [Double] = []
             for index in 1...60 {
                 let start = ThreadClock.milliseconds()
@@ -149,15 +161,13 @@ final class WorldStagingTests: XCTestCase {
                 times.append(ThreadClock.milliseconds() - start)
                 XCTAssertEqual(frame.fixedVersion, first.fixedVersion, "the land laid out once")
             }
-            let slowest = times.enumerated().sorted { $0.element > $1.element }.prefix(4)
-                .map { "frame \($0.offset + 1) \(String(format: "%.2f", $0.element))" }
-            times.sort()
-            passes.append((times[times.count / 2], times[Int(Double(times.count) * 0.95)], slowest))
+            passes.append(times)
         }
-        let p50 = passes.map(\.p50).min()!, p95 = passes.map(\.p95).min()!
+        let steadiest = StagingTimes.steadiest(passes)
+        let p50 = StagingTimes.percentile(steadiest, 0.5), p95 = StagingTimes.percentile(steadiest, 0.95)
         for (index, pass) in passes.enumerated() {
-            print("PERF staging pass \(index + 1): p50 \(String(format: "%.2f", pass.p50)) ms, p95 \(String(format: "%.2f", pass.p95)) ms; "
-                  + "slowest \(pass.slowest.joined(separator: ", "))")
+            print("PERF staging pass \(index + 1): p50 \(String(format: "%.2f", StagingTimes.percentile(pass, 0.5))) ms, "
+                  + "p95 \(String(format: "%.2f", StagingTimes.percentile(pass, 0.95))) ms; slowest \(StagingTimes.slowest(pass))")
         }
         print("PERF staging a frame of \(first.instanceCount) models, \(first.palette.count) poses: the land laid out in "
               + "\(String(format: "%.1f", laying)) ms, then p50 \(String(format: "%.2f", p50)) ms, p95 \(String(format: "%.2f", p95)) ms")
@@ -201,14 +211,18 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertLessThan(count(viewed) * 4, count(whole), "Most of a wide realm's holds out of view, and not staged")
         let seatHex = SIMD2(Int32(seat.q), Int32(seat.r))
         XCTAssertTrue(viewed.batches.contains { $0.instances.contains { $0.hex == seatHex } }, "The seat in view, staged")
-        var times: [Double] = []
-        for index in 1...30 {
-            let start = ThreadClock.milliseconds()
-            _ = session.sceneFrame(at: 1 + Double(index) / 60, in: size)
-            times.append(ThreadClock.milliseconds() - start)
+        // Thirty frames staged three times, each frame's steadiest kept.
+        var passes: [[Double]] = []
+        for _ in 0..<3 {
+            var times: [Double] = []
+            for index in 1...30 {
+                let start = ThreadClock.milliseconds()
+                _ = session.sceneFrame(at: 1 + Double(index) / 60, in: size)
+                times.append(ThreadClock.milliseconds() - start)
+            }
+            passes.append(times)
         }
-        times.sort()
-        return (count(viewed), count(whole), times[times.count / 2])
+        return (count(viewed), count(whole), StagingTimes.percentile(StagingTimes.steadiest(passes), 0.5))
     }
 
     func testAWorkRisesAsTheWatchesPassAndFinishesItsLastStretch() throws {
