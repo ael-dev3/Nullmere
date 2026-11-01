@@ -7,7 +7,7 @@ import NullmereSound
 /// shot. The drone and the wind from the first moment and the score at
 /// peace; the towns as the camera comes among them; the drums of war
 /// under the march, a horn as it sets out and the hooves of its riders;
-/// the din of the battle and every blow, volley, fall and skill in it, as
+/// the din of the battle and every blow, volley, fall and horn in it, as
 /// the picture throws them; a deep toll as the moon is eaten and another
 /// as it goes wholly dark; the lake's
 /// title theme over the lake from on high and the title, two stately
@@ -60,7 +60,7 @@ public struct Soundtrack: Sendable {
             case .clash(let across): at(battle + beat.time, .cue(.clash, pan: across, gain: 0.75))
             case .loose: at(battle + beat.time, .cue(.loose, pan: 0, gain: 0.55))
             case .fall: at(battle + beat.time, .cue(.dread, pan: 0, gain: 0.6))
-            case .fury: at(battle + beat.time, .cue(.horn, pan: 0, gain: 0.7))
+            case .horn: at(battle + beat.time, .cue(.horn, pan: 0, gain: 0.7))
             }
         }
         if trailer.battle.blaze != nil {

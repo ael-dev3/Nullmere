@@ -81,6 +81,22 @@ final class EffectsTests: XCTestCase {
         XCTAssertLessThanOrEqual(Effects.motes(bursts: [], emitters: many, at: 50).count, Effects.most)
     }
 
+    func testKindsOfMoteCanBeLeftOut() {
+        var happenings = Happenings()
+        happenings.strikes = [Happenings.Strike(from: Vec3(0, 0, 0), at: Vec3(1.7, 0, 0), start: 10, ranged: false, seed: 1)]
+        happenings.fireflies = [Happenings.Spot(at: Vec3(-9, 0.1, -9), seed: 9)]
+        let landing = 10 + Happenings.landing + 0.05
+        let all = happenings.effects(at: landing)
+        XCTAssertEqual(happenings.effects(at: landing, leaving: []).motes, all.motes, "Nothing left out, all of it")
+        // The blow's flash and dust and the fireflies left out: only its sparks.
+        let sparks = happenings.effects(at: landing, leaving: [.flash, .dust, .fireflies])
+        XCTAssertFalse(sparks.motes.isEmpty)
+        XCTAssertLessThan(sparks.motes.count, all.motes.count)
+        XCTAssertTrue(sparks.motes.allSatisfy { $0.colour.w == 0 && $0.colour.x > 1 }, "Steel's sparks, nothing else")
+        XCTAssertEqual(sparks.lights.count, all.lights.count, "The blow still lights the ground")
+        XCTAssertTrue(happenings.effects(at: landing, leaving: Set(Effect.allCases)).motes.isEmpty)
+    }
+
     func testWhatHappensInSightThrowsUpMotesAndLight() {
         var happenings = Happenings()
         happenings.strikes = [Happenings.Strike(from: Vec3(0, 0, 0), at: Vec3(1.7, 0, 0), start: 10, ranged: false, seed: 1),

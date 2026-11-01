@@ -120,8 +120,9 @@ public struct March: Sendable {
 
 /// A battle in the dark: two Houses' lines met on open ground between their
 /// seats, blows traded along the front, volleys from the bows behind,
-/// commanders' skills bursting, companies falling, and a hold of the far
-/// side burning beyond.
+/// commanders' horns sounding, companies falling, and a hold of the far
+/// side burning beyond. Nothing laid over it that the game marks a battle
+/// with: no skill's ring or sigil, heard only as its horn.
 public struct Battle: Sendable {
     public struct Company: Sendable {
         let kind: UnitKind
@@ -145,8 +146,8 @@ public struct Battle: Sendable {
     let heritages: [Heritage]
     /// The far side's hold burning beyond the field, if one stands near.
     let blaze: Vec3?
-    /// Commanders' skills: when, from which company, and how they look.
-    let furies: [(time: Double, company: Int, look: FuryLook)]
+    /// When the commanders sound their horns, seconds into it.
+    let horns: [Double]
     /// How long its blows are thrown, in seconds.
     public static let length = 16.0
 
@@ -195,7 +196,7 @@ public struct Battle: Sendable {
         // The far side's hold nearest the field, if it is near enough to be seen burning.
         let theirs = world.state.holds(of: far.owner).filter { $0.position.distance(to: field) <= 6 }
         blaze = theirs.min { ($0.position.distance(to: field), $0.id) < ($1.position.distance(to: field), $1.id) }.map { world.ground($0.position) }
-        furies = [(3.6, 2, .blaze), (8.6, 7, .quake), (11.8, 0, .volley), (13.6, 12, .ward)]
+        horns = [3.6, 8.6, 11.8, 13.6]
     }
 
     /// The camera's heading to look across the fronts from behind the first side.
@@ -266,10 +267,6 @@ public struct Battle: Sendable {
                 }
             }
         }
-        for fury in furies where elapsed >= fury.time && elapsed - fury.time < 3 {
-            happenings.furies.append(Happenings.Fury(at: ground(companies[fury.company].place, in: world), start: Float(fury.time),
-                                                     look: fury.look, seed: UInt32(700 + fury.company)))
-        }
         if let blaze { happenings.blazes.append(Happenings.Spot(at: blaze, strength: 0.9, seed: 77)) }
     }
 
@@ -292,7 +289,7 @@ public struct Battle: Sendable {
     }
 
     /// The moments the battle sounds: each blow as it lands, each volley
-    /// loosed, each company falling and each skill fired, seconds into it.
+    /// loosed, each company falling and each horn sounded, seconds into it.
     public var beats: [(time: Double, sound: Beat)] {
         var beats: [(time: Double, sound: Beat)] = []
         for (index, company) in companies.enumerated() {
@@ -301,7 +298,7 @@ public struct Battle: Sendable {
             }
             if let falls = company.falls { beats.append((time: falls, sound: .fall)) }
         }
-        for fury in furies { beats.append((time: fury.time, sound: .fury)) }
+        for horn in horns { beats.append((time: horn, sound: .horn)) }
         return beats.sorted { $0.time < $1.time }
     }
 
@@ -309,6 +306,6 @@ public struct Battle: Sendable {
         case clash(across: Float)
         case loose
         case fall
-        case fury
+        case horn
     }
 }

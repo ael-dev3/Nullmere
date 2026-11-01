@@ -430,7 +430,11 @@ public struct Happenings: Equatable, Sendable {
     public static let sightingGlow: Float = 1.6
 
     /// The frame's motes and its own lights at `time`.
-    public func effects(at time: Float) -> (motes: [Mote], lights: [PointLight]) {
+    /// What happens in sight as motes and light at a moment, leaving out
+    /// the kinds of mote asked (a film shot of the world leaves out what
+    /// would read as a mark laid over it, as a skill's ring or a blow's
+    /// flash can).
+    public func effects(at time: Float, leaving omitted: Set<Effect> = []) -> (motes: [Mote], lights: [PointLight]) {
         var bursts: [Burst] = []
         var emitters: [Emitter] = []
         var lights: [PointLight] = []
@@ -537,7 +541,9 @@ public struct Happenings: Equatable, Sendable {
                 lights.append(PointLight(at: sighting.at + Vec3(0, 0.5, 0), reach: 2.2, colour: Vec3(0.55, 0.8, 1.4) * swell))
             }
         }
-        return (Effects.motes(bursts: bursts, emitters: emitters, at: time), lights)
+        guard !omitted.isEmpty else { return (Effects.motes(bursts: bursts, emitters: emitters, at: time), lights) }
+        return (Effects.motes(bursts: bursts.filter { !omitted.contains($0.effect) }, emitters: emitters.filter { !omitted.contains($0.effect) },
+                              at: time), lights)
     }
 }
 

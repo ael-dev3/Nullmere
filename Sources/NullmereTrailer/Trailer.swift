@@ -213,10 +213,17 @@ public struct Trailer {
 
     // MARK: The scene
 
+    /// The kinds of mote a shot leaves out: whatever would read as a mark
+    /// laid over the picture rather than a thing in the world, as the game
+    /// marks it for its keepers: a skill's ring, sigil and shafts, a blow's
+    /// flash, the dust of feet and blows hanging in the air, the fireflies.
+    public static let leftOut: Set<Effect> = [.flash, .dust, .fireflies, .fury, .sigil, .pillar, .ward, .blaze, .volley, .quake,
+                                              .sighting]
+
     /// The models a world shot draws at a moment: the holds and their
     /// towns, the land's furniture and sites, the hearths' smoke and the
-    /// birds over the water, the night's fireflies, the weather, and the
-    /// shot's own host or battle.
+    /// birds over the water, the weather, and the shot's own host or
+    /// battle; nothing the game lays over its world for its keepers.
     public func scene(of shot: Shot, at time: Double) -> SceneFrame {
         let world = self.world
         let camera = self.camera(of: shot, at: time)
@@ -249,15 +256,13 @@ public struct Trailer {
         let lake = Relief.centre(of: Hex(0, 0))
         let flights = WorldStage.flights(arrows: arrows, birdsOver: Vec3(lake.x, Relief.waterline, lake.z), hearths: hearths + lairs.hearths,
                                          time: t, into: &frame)
-        // The night's fireflies about the middle of the view.
-        happenings.fireflies += world.stage.fireflySpots(near: camera.focus).enumerated().map { index, at in
-            Happenings.Spot(at: at, strength: 1, seed: UInt32(index + 1))
-        }
         frame.fixed = world.furniture
         frame.fixedVersion = world.stage.furnitureVersion
         frame.fixedRegions = world.stage.furnitureRegions
-        frame.batches = holds + folk + sites + lairs.batches + companies + flights
-        (frame.motes, frame.lights) = happenings.effects(at: t)
+        // The towns without their lanes, which from above read as lines laid
+        // over the land, a ring round each walled hold.
+        frame.batches = (holds + folk + sites + lairs.batches + companies + flights).filter { $0.key != .town(.lane) }
+        (frame.motes, frame.lights) = happenings.effects(at: t, leaving: Trailer.leftOut)
         frame.weather = shot.weather
         let extent = Float(min(max(600 / max(camera.scale, 1), 3), 14))
         frame.motes += shot.weather.motes(around: camera.focus, extent: extent, time: t)

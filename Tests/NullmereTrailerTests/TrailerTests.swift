@@ -78,6 +78,11 @@ final class TrailerTests: XCTestCase {
                 let scene = trailer.scene(of: shot, at: time)
                 XCTAssertGreaterThan(scene.instanceCount, 100, "\(shot.name) at \(u): the world in view")
                 XCTAssertEqual(scene.weather, shot.weather)
+                // Nothing laid over the world: no lanes ringing the holds.
+                XCTAssertFalse((scene.fixed + scene.batches).contains { $0.key == .town(.lane) }, "\(shot.name) at \(u): no lanes")
+                if shot.weather == .clear && shot.action != .battle && shot.action != .aftermath {
+                    XCTAssertTrue(scene.motes.isEmpty, "\(shot.name) at \(u): nothing hanging in the air, no fireflies, no dust")
+                }
             }
         }
         // The march: its companies on the march, and their dust.
@@ -88,7 +93,7 @@ final class TrailerTests: XCTestCase {
         XCTAssertEqual(poses.count, 7)
         XCTAssertTrue(poses.allSatisfy { $0.clip == .march })
         XCTAssertEqual(poses.compactMap(\.commander).count, 2, "Two commanders ride at their companies' heads")
-        XCTAssertFalse(trailer.scene(of: march, at: march.start + 4).motes.isEmpty, "The dust of the march")
+        XCTAssertTrue(trailer.scene(of: march, at: march.start + 4).motes.isEmpty, "No dust or fireflies hanging over the column")
         // It moves on: its head further along a moment later.
         let early = trailer.march.head(at: 1), late = trailer.march.head(at: 6)
         XCTAssertGreaterThan(Vec3(late.x - early.x, 0, late.z - early.z).length, 2)
@@ -114,9 +119,13 @@ final class TrailerTests: XCTestCase {
         XCTAssertEqual(clips, [.idle, .attack, .death], "Standing, striking and falling")
         XCTAssertGreaterThan(arrowsSeen, 50, "Volleys in flight")
         XCTAssertGreaterThan(strikes, 50)
-        XCTAssertGreaterThan(furies, 0, "Commanders' skills")
+        XCTAssertEqual(furies, 0, "No skill's ring or sigil laid over the field")
         let beats = trailer.battle.beats
         XCTAssertEqual(beats.filter { $0.sound == .fall }.count, 3)
+        XCTAssertEqual(beats.filter { $0.sound == .horn }.count, 4, "The commanders' horns, heard")
+        // What the battle throws up is steel's sparks, its fire and its
+        // smoke: never a blow's flash or a skill's ring.
+        XCTAssertTrue(Trailer.leftOut.isSuperset(of: [.flash, .fury, .sigil, .pillar, .fireflies, .dust]))
         XCTAssertGreaterThan(beats.filter { if case .clash = $0.sound { return true } else { return false } }.count, 20)
         XCTAssertEqual(beats.map(\.time), beats.map(\.time).sorted())
         // After it, the fallen lie still and the rest stand.
