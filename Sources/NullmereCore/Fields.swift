@@ -331,6 +331,13 @@ extension GameState {
         return events
     }
 
+    /// Whether a company is drawing off from a field of battle it fought
+    /// in: out of the field, not fallen, and on the march.
+    public func isDrawingOff(_ unit: Int) -> Bool {
+        guard let company = self.unit(unit), company.destination != nil else { return false }
+        return fieldsOfBattle.contains { field in field.fighters.contains { $0.unit == unit && !$0.standing && !$0.fell } }
+    }
+
     /// Those fallen, gone from its span, on the march or of a House fallen
     /// are no longer in a field.
     private mutating func settle(_ index: Int) {

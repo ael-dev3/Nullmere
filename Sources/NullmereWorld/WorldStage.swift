@@ -964,6 +964,11 @@ public final class WorldStage: @unchecked Sendable {
         })
     }
 
+    /// A company drawing off from a field goes in broken order, its ranks
+    /// spread wide, and in haste, its stride quicker.
+    public static let routSpread: Float = 1.45
+    public static let routPace: Float = 1.6
+
     // MARK: What flies
 
     /// The veil of the Still about a hold: six banks of low mist ringing

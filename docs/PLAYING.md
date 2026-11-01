@@ -535,6 +535,8 @@ full screen at launch as chosen.
   At its heart stand both sides' war banners, each in its foremost
   House's colour: upright while its side holds even or better, leaning
   the more ground it gives, and laid flat when it is broken.
+  A company that draws off from a field goes in broken order, its ranks
+  spread wide, at a hurried stride.
 - **Battle.** Attackers lean into their blows, the struck shake, Bows'
   shots cross the gap, and the fallen fade where they stood.
 - **Conquest.** Taking a hold carries off its share of the loser's stores;

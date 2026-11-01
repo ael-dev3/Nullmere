@@ -384,7 +384,12 @@ final class FieldTests: XCTestCase {
 
         // A company that drew off and healed, struck again, counts its healed as come.
         let index = try XCTUnwrap(state.fieldsOfBattle.first?.fighters.firstIndex { $0.unit == spear })
+        XCTAssertFalse(state.isDrawingOff(spear), "Still in the field")
         state.fields![0].fighters[index].standing = false
+        XCTAssertFalse(state.isDrawingOff(spear), "Out of it, but not on the march")
+        var marching = state
+        marching.units[try XCTUnwrap(marching.unitIndex(spear))].destination = ground + south + south + south
+        XCTAssertTrue(marching.isDrawingOff(spear), "Out of it and marching: drawing off")
         let was = state.fields![0].fighters[index]
         state.units[try XCTUnwrap(state.unitIndex(spear))].health = 100
         let healed = UnitKind.spear.troops(tier: 1) - (was.troops - was.lost)

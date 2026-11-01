@@ -313,6 +313,11 @@ extension GameSession {
                 heading = point.heading
                 clip = .march
                 clipTime = Float(now.timeIntervalSince(march.start)) * GameSession.marchStrides
+                if state.isDrawingOff(unit.id) {
+                    // Drawing off from a field: broken order, in haste.
+                    spread = WorldStage.routSpread
+                    clipTime *= WorldStage.routPace
+                }
             } else if case .gather(let site) = unit.errand, state.site(at: unit.position)?.id == site {
                 // Working the site: reaping, felling, cutting, raking.
                 clip = .gather
