@@ -9,7 +9,7 @@ final class CreditsTests: XCTestCase {
         let text = Credits.lines.map(\.text)
         XCTAssertTrue(text.contains { $0.contains("GNU Affero General Public License, version 3 only") })
         XCTAssertFalse(text.contains { $0.contains("Apache") }, "The code is no longer under the Apache License")
-        XCTAssertTrue(text.contains { $0.contains("CC0 1.0") })
+        XCTAssertFalse(text.contains { $0.contains("CC0") || $0.contains("public domain") }, "One licence for all of it")
         XCTAssertEqual(Set(text).count, text.count, "No line twice")
         XCTAssertEqual(MenuItem.credits.title, "Credits")
     }

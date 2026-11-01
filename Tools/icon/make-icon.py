@@ -12,7 +12,7 @@ lake's shader works them (LakeShore), its stars cold and now and then warm,
 and the water a black mirror, giving the moon and the stars back whole, as
 far below the horizon as they stand above it. Everything is drawn here;
 nothing is copied. Needs Pillow and NumPy. The art is original and
-dedicated to the public domain (CC0), like the rest of Nullmere's art.
+under the GNU AGPL v3 only, like the rest of Nullmere.
 """
 import os
 import numpy as np

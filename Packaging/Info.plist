@@ -37,7 +37,7 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Nullmere Online contributors. Code: AGPL-3.0-only. Original art: CC0-1.0.</string>
+	<string>Nullmere Online contributors. AGPL-3.0-only.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

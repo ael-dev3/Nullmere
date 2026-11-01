@@ -18,7 +18,8 @@
 > - **Metal is here.** The launcher's lake and the world map are both drawn
 >   with Metal.
 > - **The code is AGPL-3.0-only.** It was under Apache-2.0, as planned,
->   until 1 November 2026. Original art and docs stay under CC0.
+>   until 1 November 2026; the original art and docs, first dedicated to
+>   CC0, are under AGPL-3.0-only with it.
 >
 > The open decisions at the end were settled that way.
 

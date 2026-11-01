@@ -33,8 +33,7 @@ public enum Credits {
         Line(.heading, "Made with"),
         Line(.entry, "Swift, SwiftUI and Metal"),
         Line(.heading, "Licence"),
-        Line(.entry, "The code under the GNU Affero General Public License, version 3 only"),
-        Line(.entry, "The art and the words dedicated to the public domain under CC0 1.0"),
+        Line(.entry, "The code, the art and the words under the GNU Affero General Public License, version 3 only"),
         Line(.heading, "And"),
         Line(.entry, "Every keeper who has kept a House on the lake"),
     ]

@@ -27,6 +27,7 @@ It is a native Mac app for Apple silicon: SwiftUI and AppKit, every frame
 drawn with Metal, every model, sound and note of music made in code for this
 game alone. Envoys, a chronicler and a clerk who reads orders written in
 plain words speak through Apple's on-device model, on each keeper's own Mac.
+Website: [nullmere.online](https://nullmere.online).
 
 ## The trailer
 
@@ -94,10 +95,9 @@ is still missing.
 
 ## License
 
-- The code is licensed under the [GNU Affero General Public License,
-  version 3 only](LICENSE) (AGPL-3.0-only). Whoever runs a modified realm or
-  client for others over a network must offer them its source.
-- Original art, sound and documentation, the app icon included, are
-  dedicated to the public domain under [CC0 1.0](LICENSE-CC0-1.0).
+- Nullmere Online, its code, art, sound and documentation alike, is licensed
+  under the [GNU Affero General Public License, version 3 only](LICENSE)
+  (AGPL-3.0-only). Whoever runs a modified realm or client for others over a
+  network must offer them its source.
 - The names Nullmere Online and Nullmere identify the official project.
   Neither licence grants rights to them.
