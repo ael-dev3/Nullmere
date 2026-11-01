@@ -2095,6 +2095,21 @@ enum Works {
 
     // MARK: Beacon
 
+    /// A beacon's alarm bell: two posts and a beam, the bell hung from it
+    /// and its rope down to a cleat on a post.
+    static func beaconBell(_ b: inout MeshBuilder, at: Vec3) {
+        for z in [Float(-0.026), 0.026] {
+            b.limb(from: at + Vec3(0, 0, z), to: at + Vec3(0, 0.1, z), radius: 0.004, sides: 4, color: Palette.timberDark)
+        }
+        b.beam(from: at + Vec3(0, 0.1, -0.034), to: at + Vec3(0, 0.1, 0.034), width: 0.008, color: Palette.timberDark)
+        b.with(material: .metal) {
+            $0.place(.translation(at + Vec3(0, 0.058, 0))) {
+                $0.lathe([(0.017, 0), (0.013, 0.012), (0.009, 0.034), (0.0, 0.038)], sides: 7, color: Palette.bronze)
+            }
+        }
+        b.limb(from: at + Vec3(0.004, 0.06, 0), to: at + Vec3(0.004, 0.035, 0.022), radius: 0.0012, sides: 3, color: Palette.linen)
+    }
+
     static func beacon(_ level: Int, _ name: String) -> Model {
         var b = MeshBuilder()
         b.pad(radius: 0.2, color: Palette.stoneDark)
@@ -2233,7 +2248,36 @@ enum Works {
                     $0.box(center: MeshBuilder.ring(0.108, top - 0.012, angle), size: Vec3(0.022, 0.024, 0.02), turn: angle + .pi / 2,
                            color: Palette.stonePale)
                 }
+                // A rail round the lantern's gallery, and an iron brazier on
+                // its legs by the door, its coals alight.
+                for index in 0..<8 {
+                    let angle = Float(index) * .pi / 4
+                    $0.limb(from: MeshBuilder.ring(0.13, top + 0.03, angle), to: MeshBuilder.ring(0.13, top + 0.075, angle), radius: 0.003,
+                            sides: 3, color: Palette.iron)
+                }
+                $0.place(.translation(Vec3(0, top + 0.072, 0))) {
+                    $0.tube([(0.128, 0), (0.128, 0.006)], sides: 8, color: Palette.iron)
+                }
+                let brazier = Vec3(0.058, 0, 0.168)
+                for index in 0..<3 {
+                    let foot = MeshBuilder.ring(0.018, 0, Float(index) * 2.1)
+                    $0.limb(from: brazier + foot, to: brazier + Vec3(0, 0.05, 0), radius: 0.0025, sides: 3, color: Palette.iron)
+                }
+                $0.with(material: .metal) {
+                    $0.place(.translation(brazier + Vec3(0, 0.05, 0))) {
+                        $0.tube([(0.008, 0), (0.02, 0.018)], sides: 6, color: Palette.iron)
+                    }
+                }
+                $0.with(material: .glow) {
+                    $0.place(.translation(brazier + Vec3(0, 0.062, 0))) {
+                        $0.lathe([(0.0, 0.0), (0.016, 0.002), (0.0, 0.01)], sides: 6, color: Palette.fire)
+                    }
+                }
             }
+        }
+        if level >= 2 {
+            // The alarm bell in its frame at the tower's side, its rope down.
+            b.fine { beaconBell(&$0, at: Vec3(level == 2 ? 0.16 : 0.178, 0, -0.01)) }
         }
         if level <= 2 {
             // The fire's wood stacked at its foot, near.
