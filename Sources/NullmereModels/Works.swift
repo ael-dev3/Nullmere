@@ -1822,6 +1822,51 @@ enum Works {
         Vec3(-0.13, forgeChimneyHeight(level), -0.12)
     }
 
+    /// A forge's yard drawn near: a hitching rail for the horses brought to
+    /// be shod, shoes hung on it, and a barrow of charcoal for the hearth;
+    /// at the first level, before the smithy stands there, a swage block on
+    /// its stump and bar iron stacked by it.
+    static func forgeYard(_ b: inout MeshBuilder, level: Int) {
+        for x in [Float(0.07), 0.19] {
+            b.limb(from: Vec3(x, 0, 0.205), to: Vec3(x, 0.078, 0.205), radius: 0.006, color: Palette.timberDark)
+        }
+        b.beam(from: Vec3(0.06, 0.072, 0.205), to: Vec3(0.2, 0.072, 0.205), width: 0.009, color: Palette.timber)
+        b.with(material: .metal) {
+            for (index, x) in [Float(0.1), 0.118, 0.155].enumerated() {
+                $0.place(.translation(Vec3(x, 0.058, 0.211)) * .rotationZ(Float(index) * 0.2 - 0.2)) {
+                    $0.box(center: Vec3(-0.006, 0, 0), size: Vec3(0.003, 0.018, 0.003), color: Palette.iron)
+                    $0.box(center: Vec3(0.006, 0, 0), size: Vec3(0.003, 0.018, 0.003), color: Palette.iron)
+                    $0.box(center: Vec3(0, -0.009, 0), size: Vec3(0.015, 0.003, 0.003), color: Palette.iron)
+                }
+            }
+        }
+        b.place(.translation(Vec3(-0.1, 0, 0.205)) * .rotationY(0.35)) { barrow in
+            barrow.box(min: Vec3(-0.035, 0.022, -0.026), max: Vec3(0.04, 0.05, 0.026), color: Palette.timberPale)
+            barrow.wheel(center: Vec3(0.052, 0.018, 0), radius: 0.018, width: 0.006, spokes: 3, color: Palette.timber, rim: Palette.timberDark)
+            for z in [Float(-0.02), 0.02] {
+                barrow.limb(from: Vec3(0.045, 0.03, z * 0.6), to: Vec3(-0.085, 0.04, z), radius: 0.003, sides: 3, color: Palette.timberDark)
+                barrow.limb(from: Vec3(-0.025, 0.022, z), to: Vec3(-0.03, 0, z), radius: 0.003, sides: 3, color: Palette.timberDark)
+            }
+            for (index, at) in [Vec3(-0.012, 0.054, -0.008), Vec3(0.014, 0.056, 0.007), Vec3(0.002, 0.06, 0.0)].enumerated() {
+                barrow.rock(center: at, size: Vec3(0.016, 0.01, 0.013), rings: 2, sides: 5, jitter: 0.3, seed: UInt32(88 + index),
+                            color: Palette.barkBlack)
+            }
+        }
+        guard level == 1 else { return }
+        let stump = Vec3(0.13, 0, -0.18)
+        b.place(.translation(stump)) {
+            $0.lathe([(0.024, 0), (0.024, 0.04)], sides: 7, color: Palette.timberDark)
+            $0.lathe([(0.023, 0.04), (0.0, 0.041)], sides: 7, color: Palette.timberPale)
+        }
+        b.with(material: .metal) {
+            $0.box(center: stump + Vec3(0, 0.052, 0), size: Vec3(0.03, 0.022, 0.03), color: Palette.iron)
+            for index in 0..<4 {
+                $0.box(center: Vec3(0.2, 0.004 + Float(index / 2) * 0.008, -0.13 + Float(index % 2) * 0.012), size: Vec3(0.007, 0.007, 0.1),
+                       turn: 0.1, color: index % 2 == 0 ? Palette.iron : Palette.mail)
+            }
+        }
+    }
+
     /// Where a House's smiths work its makings into gear: an open hearth
     /// under a lean-to with its anvil and a trip hammer beating on it, the
     /// hearth's coals glowing; then a timber smithy behind it and a rack of
@@ -1935,6 +1980,7 @@ enum Works {
             b.limb(from: flue + Vec3(0.035, -0.08, 0), to: flue + Vec3(0.035, 0.1, 0), radius: 0.005, color: Palette.timberDark)
             b.flag(at: flue + Vec3(0.035, 0.095, 0), width: 0.1, height: 0.07, tail: true)
         }
+        b.fine { forgeYard(&$0, level: level) }
         // Near, the smith's gear: the chimney coursed and its flue sooted,
         // tongs and a hammer on the hearth's lip and tongs against the
         // anvil's stump, horseshoes hung on a post, the barrel hooped and
