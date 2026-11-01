@@ -98,10 +98,23 @@ extension GameState {
         guard isExplored(hex, by: house) else { return .unexplored }
         guard tile.terrain.isPassable, !tile.terrain.isWater else { return .impassable(tile.terrain) }
         guard !isOccupied(hex), site(at: hex) == nil, shrine(at: hex) == nil, standard(at: hex) == nil else { return .standardGround }
-        let own = holds.filter { sworn.members.contains($0.owner) }.map(\.position) + standards(of: sworn.id).map(\.position)
-            + (hall(of: sworn.id).map { [$0.position] } ?? [])
-        guard own.contains(where: { $0.distance(to: hex) <= Standard.tether }) else { return .standardTooFar }
-        guard holds.allSatisfy({ sworn.members.contains($0.owner) || $0.position.distance(to: hex) > Standard.fromOthers }),
+        // The alliance's own ground near, and no other's: its holds looked
+        // at in place, none copied, for every hex a steward weighs.
+        var tethered = false, foreign = false
+        for index in holds.indices {
+            let distance = holds[index].position.distance(to: hex)
+            if sworn.members.contains(holds[index].owner) {
+                if distance <= Standard.tether { tethered = true }
+            } else if distance <= Standard.fromOthers {
+                foreign = true
+            }
+        }
+        if !tethered {
+            tethered = standards(of: sworn.id).contains { $0.position.distance(to: hex) <= Standard.tether }
+                || hall(of: sworn.id).map { $0.position.distance(to: hex) <= Standard.tether } == true
+        }
+        guard tethered else { return .standardTooFar }
+        guard !foreign,
               standardsStanding.allSatisfy({ $0.alliance == sworn.id || $0.position.distance(to: hex) > 2 * Standard.reach }),
               hallsStanding.allSatisfy({ $0.alliance == sworn.id || $0.position.distance(to: hex) > AllianceHall.reach + Standard.reach }) else {
             return .foreignTerritory

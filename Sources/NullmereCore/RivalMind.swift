@@ -493,13 +493,16 @@ struct RivalMind {
         // Each other House weighed in an order of no one's seat number: the
         // first a House sets on is no likelier to be one numbered low.
         // Each House's place in the order found once, not at every comparison.
-        let order = state.livingHouses.map { (key: tieBreak($0.id, in: state), house: $0) }.sorted { $0.key < $1.key }.map(\.house)
-        for other in order where other.id != house {
+        // By id, the Houses standing not copied for it, and each one's liege
+        // as the turn began.
+        let order = state.livingIDs.map { (key: tieBreak($0, in: state), id: $0) }.sorted { $0.key < $1.key }.map(\.id)
+        let lieges = state.houses.map(\.liege)
+        for other in order where other != house {
             // Its own alliance's Houses are no one to war on or make demands of.
-            guard let relation = state.relation(house, other.id), !state.areAllied(house, other.id) else { continue }
-            let theirs = max(1, strengths[other.id])
+            guard let relation = state.relation(house, other), !state.areAllied(house, other) else { continue }
+            let theirs = max(1, strengths[other])
             let lasted = state.watch - relation.since
-            let neighbours = knowsHold(of: other.id, within: 14)
+            let neighbours = knowsHold(of: other, within: 14)
 
             switch relation.stance {
             case .war:
@@ -507,31 +510,31 @@ struct RivalMind {
                 let weary = lasted >= 20 && me.temperament != .ambitious && mine * 2 < theirs * 3
                 // A House whose siege is going well fights on.
                 let winning = plannedSiege().map { plan in
-                    state.hold(at: plan.target).map { $0.owner == other.id && $0.ward * 2 < $0.maximumWard } ?? false
+                    state.hold(at: plan.target).map { $0.owner == other && $0.ward * 2 < $0.maximumWard } ?? false
                 } ?? false
                 // Broken, and against a far stronger House: bend the knee
                 // rather than fall.
                 let broken = state.watch >= 70 && state.holds(of: house).count <= 3 && mine * 5 < theirs * 2 && me.liege == nil
-                    && state.houses[other.id].liege == nil
+                    && state.houses[other].liege == nil
                 if lasted >= 4, broken, random.chance(50) {
-                    events += perform(.propose(.fealty, to: other.id), in: &state)
+                    events += perform(.propose(.fealty, to: other), in: &state)
                 } else if lasted >= 4, losing || (weary && !winning), random.chance(40) {
-                    events += perform(.propose(.peace, to: other.id), in: &state)
+                    events += perform(.propose(.peace, to: other), in: &state)
                 }
             case .peace:
                 // The ambitious and the cunning, far the stronger, ask a
                 // neighbour for tribute, and march only if refused.
                 let greedy = (me.temperament == .ambitious || me.temperament == .cunning) && state.watch >= 20
-                    && mine * 100 > theirs * 125 && !state.paidTributeLately(house, other.id)
-                    && me.liege != other.id && other.liege != house
-                guard !declared, neighbours, !inTruce(with: other.id, in: state) else { break }
+                    && mine * 100 > theirs * 125 && !state.paidTributeLately(house, other)
+                    && me.liege != other && lieges[other] != house
+                guard !declared, neighbours, !inTruce(with: other, in: state) else { break }
                 if greedy, random.chance(enemies == 0 ? 10 : 5) {
-                    events += perform(.propose(.tribute, to: other.id), in: &state)
+                    events += perform(.propose(.tribute, to: other), in: &state)
                     declared = true
                     break
                 }
                 guard enemies == 0 else { break }
-                let grudge = relation.aggressor == other.id
+                let grudge = relation.aggressor == other
                 var wantsWar: Bool
                 switch me.temperament {
                 case .ambitious: wantsWar = state.watch >= 12 && mine * 10 > theirs * 12 && random.chance(30)
@@ -546,23 +549,23 @@ struct RivalMind {
                     wantsWar = true
                 }
                 // Tribute paid buys the peace for a while.
-                if wantsWar, state.paidTributeLately(house, other.id) { wantsWar = false }
+                if wantsWar, state.paidTributeLately(house, other) { wantsWar = false }
                 // Even set on war, the greedy may ask for tribute first.
                 let demanding = wantsWar && greedy && random.chance(45)
                 if demanding {
-                    events += perform(.propose(.tribute, to: other.id), in: &state)
+                    events += perform(.propose(.tribute, to: other), in: &state)
                     declared = true
                 } else if wantsWar {
-                    events += perform(.declareWar(on: other.id), in: &state)
+                    events += perform(.declareWar(on: other), in: &state)
                     declared = true
                 } else if me.temperament != .ambitious, state.watch >= 8, !grudge, relation.betrayals == 0, random.chance(8) {
-                    events += perform(.propose(.pact, to: other.id), in: &state)
+                    events += perform(.propose(.pact, to: other), in: &state)
                 }
             case .pact:
-                let sworn = me.liege == other.id || state.houses[other.id].liege == house
+                let sworn = me.liege == other || state.houses[other].liege == house
                 if !sworn, me.temperament == .cunning, !declared, enemies == 0, state.watch >= 25,
                    mine * 10 > theirs * 18, neighbours, random.chance(10) {
-                    events += perform(.declareWar(on: other.id), in: &state)
+                    events += perform(.declareWar(on: other), in: &state)
                     declared = true
                 }
             }
@@ -1543,36 +1546,40 @@ struct RivalMind {
         for other in state.units { if let index = map.index(of: other.position) { occupied[index] = true } }
         for wild in state.wildsStanding { if let index = map.index(of: wild.position) { occupied[index] = true } }
         for lair in state.lairsStanding { if let index = map.index(of: lair.position) { occupied[index] = true } }
-        // Known ruins first, then the nearest edge of the unknown.
+        // Known ruins first, then the nearest edge of the unknown: tile by
+        // tile through the map's neighbours, in the order of the directions.
+        let neighbours = map.neighbours
         var seen = [Bool](repeating: false, count: map.count)
         seen[start] = true
-        var queue = [unit.position]
+        var queue = [start]
         queue.reserveCapacity(2_600)
         var head = 0
-        var frontier: Hex?
+        var frontier: Int?
         while head < queue.count, head < 2_500 {
-            let hex = queue[head]
+            let tile = queue[head]
             head += 1
-            let tile = map.index(of: hex)!
-            if hex != unit.position, !occupied[tile] {
+            if tile != start, !occupied[tile] {
                 if map[tile].feature == .drownedRuin {
-                    frontier = hex
+                    frontier = tile
                     break
                 }
-                if frontier == nil, Hex.directions.contains(where: { step in map.index(of: hex + step).map { !explored[$0] } ?? false }) {
-                    frontier = hex
+                if frontier == nil, (0..<6).contains(where: { side in
+                    let next = Int(neighbours[tile * 6 + side])
+                    return next >= 0 && !explored[next]
+                }) {
+                    frontier = tile
                 }
             }
-            for step in Hex.directions {
-                let next = hex + step
-                guard let index = map.index(of: next), !seen[index], map[index].terrain.isPassable else { continue }
-                seen[index] = true
+            for side in 0..<6 {
+                let next = Int(neighbours[tile * 6 + side])
+                guard next >= 0, !seen[next], map[next].terrain.isPassable else { continue }
+                seen[next] = true
                 queue.append(next)
             }
             if frontier != nil, head > 400 { break }
         }
         if let frontier {
-            return perform(.move(unit: unit.id, to: frontier), in: &state)
+            return perform(.move(unit: unit.id, to: map.hexes[frontier]), in: &state)
         }
         return unit.fortified ? [] : perform(.fortify(unit: unit.id), in: &state)
     }
