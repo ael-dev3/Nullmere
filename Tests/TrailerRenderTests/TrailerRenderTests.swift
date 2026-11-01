@@ -36,11 +36,15 @@ final class TrailerRenderTests: XCTestCase {
         if let battle = trailer.shots.first(where: { $0.action == .battle }) {
             stills.append((name: "the battle, close", time: battle.start + battle.length * 0.85))
         }
+        var drawn: [[UInt8]] = []
         for still in stills {
             let frame = projector.frame(at: still.time)
-            try Projector.jpeg(frame, width: Trailer.width, height: Trailer.height,
-                            to: directory.appendingPathComponent("stills/\(still.name.replacingOccurrences(of: " ", with: "-")).jpg"))
+            let name = still.name.lowercased().filter { $0.isLetter || $0.isNumber || $0 == " " }.replacingOccurrences(of: " ", with: "-")
+            try Projector.jpeg(frame, width: Trailer.width, height: Trailer.height, to: directory.appendingPathComponent("stills/\(name).jpg"))
+            drawn.append(frame)
         }
+        // And all of them on one sheet, published beside the film.
+        try Projector.sheet(drawn, to: directory.appendingPathComponent("nullmere-trailer-stills.jpg"))
         print("TRAILER stills drawn in \(Int(Date().timeIntervalSince(began))) s")
         guard environment["NULLMERE_TRAILER_MODE"] != "stills" else { return }
 
@@ -51,7 +55,8 @@ final class TrailerRenderTests: XCTestCase {
         print("TRAILER score rendered in \(Int(Date().timeIntervalSince(began))) s")
         let film = directory.appendingPathComponent("nullmere-trailer.mp4")
         let step = 1 / Double(Trailer.framesPerSecond)
-        try Film.write(to: film, frames: trailer.frameCount, picture: { projector.frame(at: Double($0) * step) }, left: left, right: right)
+        try Film.write(to: film, frames: trailer.frameCount, picture: { projector.frame(at: Double($0) * step) }, left: left, right: right,
+                       began: began)
         let size = (try FileManager.default.attributesOfItem(atPath: film.path)[.size] as? Int) ?? 0
         print("TRAILER film written in \(Int(Date().timeIntervalSince(began))) s: \(film.lastPathComponent), \(size / 1_000_000) MB, "
               + "\(String(format: "%.1f", trailer.duration)) s")
@@ -207,13 +212,38 @@ final class Projector: @unchecked Sendable {
 
     /// A frame written as a JPEG, for looking at.
     static func jpeg(_ pixels: [UInt8], width: Int, height: Int, to url: URL) throws {
+        try write(image(pixels, width: width, height: height), to: url)
+    }
+
+    /// Frames side by side on one sheet, three across, each a third of its
+    /// size.
+    static func sheet(_ frames: [[UInt8]], to url: URL) throws {
+        let across = 3, width = Trailer.width / across, height = Trailer.height / across
+        let rows = (frames.count + across - 1) / across
+        guard let context = CGContext(data: nil, width: width * across, height: height * rows, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
+        else { throw WorldRenderer.Failure.noTexture }
+        context.interpolationQuality = .high
+        for (index, frame) in frames.enumerated() {
+            guard let image = image(frame, width: Trailer.width, height: Trailer.height) else { continue }
+            let x = index % across, y = rows - 1 - index / across
+            context.draw(image, in: CGRect(x: x * width, y: y * height, width: width, height: height))
+        }
+        try write(context.makeImage(), to: url)
+    }
+
+    private static func image(_ pixels: [UInt8], width: Int, height: Int) -> CGImage? {
         var pixels = pixels
-        let image: CGImage? = pixels.withUnsafeMutableBytes { raw in
+        return pixels.withUnsafeMutableBytes { raw in
             guard let base = raw.baseAddress else { return nil }
             return CGContext(data: base, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
                              space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
                              bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)?.makeImage()
         }
+    }
+
+    private static func write(_ image: CGImage?, to url: URL) throws {
         guard let image, let destination = CGImageDestinationCreateWithURL(url as CFURL, "public.jpeg" as CFString, 1, nil) else {
             throw WorldRenderer.Failure.noTexture
         }
@@ -226,7 +256,7 @@ final class Projector: @unchecked Sendable {
 enum Film {
     enum Failure: Error { case writer(String), buffer }
 
-    static func write(to url: URL, frames count: Int, picture: (Int) -> [UInt8], left: [Float], right: [Float]) throws {
+    static func write(to url: URL, frames count: Int, picture: (Int) -> [UInt8], left: [Float], right: [Float], began: Date) throws {
         try? FileManager.default.removeItem(at: url)
         let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
         let width = Trailer.width, height = Trailer.height
@@ -276,6 +306,12 @@ enum Film {
         let chunk = Soundtrack.sampleRate / 10
         var cursor = 0
 
+        // How the writer stands, for when it stops.
+        func state() -> String {
+            let error = writer.error as NSError?
+            let underlying = (error?.userInfo[NSUnderlyingErrorKey] as? NSError).map { " (underlying: \($0))" } ?? ""
+            return "writer status \(writer.status.rawValue)" + (error.map { ", \($0)\(underlying)" } ?? "")
+        }
         func waitUntilReady(_ input: AVAssetWriterInput) -> Bool {
             let started = Date()
             while !input.isReadyForMoreMediaData {
@@ -286,7 +322,11 @@ enum Film {
         }
         func appendSound(until end: Int) throws {
             while cursor < min(end, samples) {
-                guard waitUntilReady(audio) else { return }
+                // Not ready: held back until the picture catches up.
+                guard waitUntilReady(audio) else {
+                    if writer.status == .failed { throw Failure.writer("sound at \(cursor): \(state())") }
+                    return
+                }
                 let count = min(chunk, samples - cursor)
                 var interleaved = [Int16](repeating: 0, count: count * 2)
                 for index in 0..<count {
@@ -310,33 +350,39 @@ enum Film {
                                                                      presentationTimeStamp: CMTime(value: CMTimeValue(cursor),
                                                                                                    timescale: CMTimeScale(Soundtrack.sampleRate)),
                                                                      packetDescriptions: nil, sampleBufferOut: &sample)
-                guard let sample, audio.append(sample) else { throw Failure.writer("sound at \(cursor): \(writer.error.map { "\($0)" } ?? "")") }
+                guard let sample, audio.append(sample) else { throw Failure.writer("sound at \(cursor): \(state())") }
                 cursor += count
             }
         }
 
         for frame in 0..<count {
-            // The sound a little ahead of the picture, so the two interleave.
-            try appendSound(until: (frame + 1) * Soundtrack.sampleRate / Trailer.framesPerSecond + chunk)
-            let pixels = picture(frame)
-            guard waitUntilReady(video), let pool = adaptor.pixelBufferPool else { throw Failure.writer("picture at \(frame): not ready") }
-            var buffer: CVPixelBuffer?
-            CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &buffer)
-            guard let buffer else { throw Failure.buffer }
-            CVPixelBufferLockBaseAddress(buffer, [])
-            if let base = CVPixelBufferGetBaseAddress(buffer) {
-                let rowBytes = CVPixelBufferGetBytesPerRow(buffer)
-                pixels.withUnsafeBytes { raw in
-                    guard let source = raw.baseAddress else { return }
-                    for row in 0..<height {
-                        memcpy(base + row * rowBytes, source + row * width * 4, width * 4)
+            // Each frame's command buffers, textures and samples let go as it
+            // is written, not held to the end.
+            try autoreleasepool {
+                // The sound a little ahead of the picture, so the two interleave.
+                try appendSound(until: (frame + 1) * Soundtrack.sampleRate / Trailer.framesPerSecond + chunk)
+                let pixels = picture(frame)
+                guard waitUntilReady(video), let pool = adaptor.pixelBufferPool else {
+                    throw Failure.writer("picture at \(frame): not ready, \(state())")
+                }
+                var buffer: CVPixelBuffer?
+                CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &buffer)
+                guard let buffer else { throw Failure.buffer }
+                CVPixelBufferLockBaseAddress(buffer, [])
+                if let base = CVPixelBufferGetBaseAddress(buffer) {
+                    let rowBytes = CVPixelBufferGetBytesPerRow(buffer)
+                    pixels.withUnsafeBytes { raw in
+                        guard let source = raw.baseAddress else { return }
+                        for row in 0..<height {
+                            memcpy(base + row * rowBytes, source + row * width * 4, width * 4)
+                        }
                     }
                 }
+                CVPixelBufferUnlockBaseAddress(buffer, [])
+                let time = CMTime(value: CMTimeValue(frame), timescale: CMTimeScale(Trailer.framesPerSecond))
+                guard adaptor.append(buffer, withPresentationTime: time) else { throw Failure.writer("picture at \(frame): \(state())") }
             }
-            CVPixelBufferUnlockBaseAddress(buffer, [])
-            guard adaptor.append(buffer, withPresentationTime: CMTime(value: CMTimeValue(frame), timescale: CMTimeScale(Trailer.framesPerSecond)))
-            else { throw Failure.writer("picture at \(frame): \(writer.error.map { "\($0)" } ?? "")") }
-            if frame % 300 == 0 { print("TRAILER frame \(frame) of \(count)") }
+            if frame % 300 == 0 { print("TRAILER frame \(frame) of \(count) at \(Int(Date().timeIntervalSince(began))) s") }
         }
         try appendSound(until: samples)
         video.markAsFinished()
@@ -344,6 +390,6 @@ enum Film {
         let done = DispatchSemaphore(value: 0)
         writer.finishWriting { done.signal() }
         done.wait()
-        guard writer.status == .completed else { throw Failure.writer("finishing: \(writer.error.map { "\($0)" } ?? "\(writer.status.rawValue)")") }
+        guard writer.status == .completed else { throw Failure.writer("finishing: \(state())") }
     }
 }

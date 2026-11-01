@@ -3,14 +3,15 @@ name: Trailer
 # The trailer, rendered on a Mac by the game's own renderers and written
 # with its score to an MP4 (scripts/render-trailer.sh): on demand, and
 # whenever the trailer's own files change on main or a working branch.
-# The film and its stills are kept as an artifact, and the film is
-# published as the asset of the "trailer" pre-release, at
+# The film and its stills are kept as an artifact, and the film and a
+# sheet of its stills are published as the "trailer" pre-release's assets:
 # https://github.com/<owner>/<repo>/releases/download/trailer/nullmere-trailer.mp4
 on:
   push:
     branches: [main, "claude/**"]
     paths:
       - Sources/NullmereTrailer/**
+      - Tests/NullmereTrailerTests/**
       - Tests/TrailerRenderTests/**
       - scripts/render-trailer.sh
       - .github/workflows/trailer.yml
@@ -40,6 +41,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Render the trailer
+        id: render
         env:
           NULLMERE_TRAILER_MODE: ${{ github.event.inputs.mode || 'film' }}
         run: |
@@ -50,21 +52,6 @@ jobs:
             exit 1
           fi
 
-      # A still from each shot, small, in the log, for looking at.
-      - name: Stills
-        if: always()
-        run: |
-          for still in build/trailer/stills/*.jpg; do
-            [ -f "$still" ] || continue
-            case "$still" in *-small.jpg) continue ;; esac
-            small="${still%.jpg}-small.jpg"
-            sips -s format jpeg -s formatOptions 45 -Z 640 "$still" --out "$small" >/dev/null
-            echo "::group::Still $(basename "$still"), base64 JPEG"
-            base64 -i "$small" | fold -w 120
-            echo "::endgroup::"
-          done
-          grep -h "^TRAILER" build/trailer/render.log 2>/dev/null || true
-
       - name: Keep the trailer
         if: always()
         uses: actions/upload-artifact@v6
@@ -72,19 +59,42 @@ jobs:
           name: nullmere-trailer
           path: |
             build/trailer/nullmere-trailer.mp4
+            build/trailer/nullmere-trailer-stills.jpg
             build/trailer/stills/*.jpg
           if-no-files-found: warn
 
+      # The film and a sheet of stills from it, as the "trailer" pre-release's
+      # assets: the sheet whenever the stills were drawn, the film only once
+      # it is whole.
       - name: Publish the trailer
-        if: ${{ (github.event.inputs.mode || 'film') == 'film' }}
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
+          FILM: ${{ steps.render.outcome == 'success' && (github.event.inputs.mode || 'film') == 'film' }}
         run: |
+          assets=()
+          if [ -s build/trailer/nullmere-trailer-stills.jpg ]; then assets+=(build/trailer/nullmere-trailer-stills.jpg); fi
+          if [ "$FILM" = true ] && [ -s build/trailer/nullmere-trailer.mp4 ]; then assets+=(build/trailer/nullmere-trailer.mp4); fi
+          if [ ${#assets[@]} -eq 0 ]; then echo "Nothing to publish"; exit 0; fi
           if ! gh release view trailer >/dev/null 2>&1; then
             gh release create trailer --prerelease --target "$GITHUB_SHA" --title "Nullmere Online: the trailer" \
-              --notes "The trailer, drawn by the game's own renderers and scored by its own synthesiser: scripts/render-trailer.sh."
+              --notes "The trailer, drawn by the game's own renderers and scored by its own synthesiser (scripts/render-trailer.sh), and a sheet of stills from it."
           fi
-          gh release upload trailer build/trailer/nullmere-trailer.mp4 --clobber
-          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/trailer/nullmere-trailer.mp4"
-          echo "TRAILER-URL $url"
-          echo "The trailer: $url" >> "$GITHUB_STEP_SUMMARY"
+          gh release upload trailer "${assets[@]}" --clobber
+          for asset in "${assets[@]}"; do
+            url="https://github.com/${GITHUB_REPOSITORY}/releases/download/trailer/$(basename "$asset")"
+            echo "TRAILER-URL $url"
+            echo "- $url" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      # Last, so the end of the log tells how the render went.
+      - name: How the render went
+        if: always()
+        run: |
+          grep -h "^TRAILER" build/trailer/render.log 2>/dev/null || true
+          if [ "${{ steps.render.outcome }}" != success ]; then
+            echo "The render's errors:"
+            grep -E "error|failed|Fatal|signal|Exited" build/trailer/render.log 2>/dev/null | tail -30 || true
+            echo "The end of the render's log:"
+            tail -25 build/trailer/render.log 2>/dev/null || true
+          fi

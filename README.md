@@ -2003,9 +2003,10 @@ NULLMERE_TRAILER_MODE=stills scripts/render-trailer.sh     # a still from each s
 It is H.264 and AAC, 1920 by 1080 at thirty frames a second. The shots,
 what moves in them and the score are `Sources/NullmereTrailer` (tested on
 Linux too); the drawing and the writing, `Tests/TrailerRenderTests`. The
-Trailer workflow renders it whenever they change and publishes it as the
-asset of the `trailer` pre-release:
+Trailer workflow renders it whenever they change and publishes it, with a
+sheet of stills from it, as the assets of the `trailer` pre-release:
 https://github.com/ael-dev3/Nullmere/releases/download/trailer/nullmere-trailer.mp4
+(the stills: `nullmere-trailer-stills.jpg` beside it).
 
 ## Layout
 
