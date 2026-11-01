@@ -1264,12 +1264,12 @@ realm; keepers are told in plain words, never a status code.
   panel), taking on troops as each watch turns while it stays: half its
   first muster for each of the hall's levels, for twelve grain a first
   muster's worth at the first tier, dearer by tier as mustering is. It may
-  lead its first muster once, eight times more for each level of its
+  lead its first muster once, sixteen times more for each level of its
   House's best Muster Hall, and once more for every three levels of the
   commander at its head: Spears of the fifth tier, with a Muster Hall V
-  and a commander of the thirtieth level, lead 122,400. No hall drills
+  and a commander of the thirtieth level, lead 218,400. No hall drills
   troops its House's grain can't feed: none while its grain income would
-  not cover what its companies eat, each a quarter as much again for every
+  not cover what its companies eat, each an eighth as much again for every
   first muster drilled into it. Every troop counts, each the less the more
   there are: a company fights others the harder as the square root of its
   muster over its first (nine times its first muster, three times as
@@ -1498,19 +1498,28 @@ realm; keepers are told in plain words, never a status code.
   seats on a lake of radius 36, played through by stewards alone, pace by
   pace, under the rules as they now stand, the shores at war in every
   Sundering, a field of battle five tiles about its heart, each level of
-  a Muster Hall leading eight first musters more, every march keeping its
+  a Muster Hall leading sixteen first musters more and the troops drilled
+  into a company eating an eighth as much again, every march keeping its
   way and the streams crossed at a shoal every third step, the Moonspire
-  decided 91 and dominion 5; an age ran 162 watches at the median and 257
+  decided 93 and dominion 3; an age ran 168 watches at the median and 348
   at the longest, and one in seven saw a House fall outright. The seats
-  won alike, within chance (χ² 15.5 on 11 degrees of freedom), and so did
-  the tempers (χ² 2.1 on 3), the ambitious 19%, the cunning 27%, the wary
-  26% and the steadfast 28%, the Moonspire most of all for each: the five
-  dominions went three to the cunning and two to the ambitious. With a
-  shoal every fourth step, as the streams first ran, they held off so many
-  wars that the steadfast, the first to build, won 40% (χ² 12.2). A
-  realm's armies came to 1,980,000 troops at the median as its age ended,
-  and its greatest battles to 89,500 troops at the median and 163,800 at
-  the most, over 100,000 in 26 of the ages.
+  won alike, within chance (χ² 7.5 on 11 degrees of freedom), and so did
+  the tempers (χ² 3.6 on 3), the ambitious 22%, the cunning 23%, the wary
+  22% and the steadfast 33%, the Moonspire most of all for each: the three
+  dominions went one each to the steadfast, the ambitious and the
+  cunning. In 96 ages more the steadfast won 28% and the wary 19%, and
+  over all 192 the tempers won within chance (χ² 4.9 on 3) and so did the
+  seats (χ² 11.6). With a shoal every fourth step, as the streams first
+  ran, they held off so many wars that the steadfast, the first to build,
+  won 40% (χ² 12.2). A realm's armies came to 3,190,000 troops at the
+  median as its age ended, and its greatest battles to 144,300 troops at
+  the median and 387,600 at the most, over 100,000 in 81 of the ages and
+  over 200,000 in 13 (134,000 at the median over all 192, over 100,000 in
+  162 of them). When each level of a Muster Hall led eight first musters
+  more and drilled troops ate a quarter as much again, the armies came to
+  1,980,000, the greatest battles to 89,500 and 163,800, over 100,000 in
+  26 of the 96, and the ages ran 162 watches at the median and 257 at the
+  longest, the Moonspire deciding 91 and dominion 5.
 - **Tribute.** From watch twenty, an ambitious or cunning steward a quarter
   stronger than a neighbour may demand a fifth of its stores. Paid, it keeps
   the peace for twenty watches, unless that neighbour's Moonspire rises;

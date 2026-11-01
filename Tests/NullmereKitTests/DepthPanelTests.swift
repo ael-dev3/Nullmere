@@ -2077,22 +2077,22 @@ final class DepthPanelTests: XCTestCase {
         state.units.append(NullmereCore.Unit(id: id, kind: .spear, owner: me, position: seat.position, tier: 1))
         let (session, link) = session(state)
         let unit = try XCTUnwrap(session.state.unit(id))
-        XCTAssertEqual(UnitPanel.drillLine(unit, in: session.state), "It may lead 20,400, drilled at or beside one of your holds with a Muster Hall.")
+        XCTAssertEqual(UnitPanel.drillLine(unit, in: session.state), "It may lead 39,600, drilled at or beside one of your holds with a Muster Hall.")
         session.selection = .unit(id)
         draw(SelectionPanel(session: session), width: 330, height: 700)
         XCTAssertTrue(PressableButtons.press("Drill"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .drill(unit: id))
         let drilling = try XCTUnwrap(session.state.unit(id))
         XCTAssertTrue(session.state.isDrilling(drilling))
-        XCTAssertEqual(UnitPanel.drillLine(drilling, in: session.state), "Drilling: 1,200 more as the watch turns, for 12 grain; it may lead 20,400.")
+        XCTAssertEqual(UnitPanel.drillLine(drilling, in: session.state), "Drilling: 1,200 more as the watch turns, for 12 grain; it may lead 39,600.")
         draw(SelectionPanel(session: session), width: 330, height: 700)
         XCTAssertFalse(PressableButtons.press("Drilling"), "Drilling already")
         XCTAssertNil(PressableButtons.actions["Drill"])
         // Drilled whole, it says so.
         var whole = drilling
-        whole.drilled = 19_200
-        XCTAssertTrue(UnitPanel.drillLine(whole, in: session.state)?.hasPrefix("It musters as many as it may lead, 20,400") == true)
-        XCTAssertEqual(UnitPanel.troopsLine(whole, in: session.state), "20,400 of 20,400 troops standing")
+        whole.drilled = 38_400
+        XCTAssertTrue(UnitPanel.drillLine(whole, in: session.state)?.hasPrefix("It musters as many as it may lead, 39,600") == true)
+        XCTAssertEqual(UnitPanel.troopsLine(whole, in: session.state), "39,600 of 39,600 troops standing")
         XCTAssertNil(UnitPanel.drillLine(NullmereCore.Unit(id: 0, kind: .lantern, owner: me, position: seat.position), in: session.state))
         // Told once drilled whole; its panel shows it growing till then.
         let told = Narration.line(for: .drilled(unit: id, owner: me, troops: 1_200, whole: true), in: session.state, viewer: me)
