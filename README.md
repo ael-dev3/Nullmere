@@ -1699,11 +1699,18 @@ the keeper's realm last lay on, made as it plays.
   and potted shrubs by its steps, spouts at the tower's corners and ivy up
   its flank (a seat's keep is 3,768 triangles, where it was 778); the
   walls' arrow loops, string courses, wall-walks, tower slits and finials,
-  and iron bands on the gate; on every hall and round house of the works,
-  courses across the roofs, boards and vents in the gables, hoops and
-  finials; and in every work's yard but the Moonspire's, its odds and ends,
-  barrels, crates, sacks, a bucket, a bench and stacks of logs, set down
-  where nothing of the work stands and clear of the way to its door. The
+  and iron bands on the gate, and on the low stone walls the putlog holes
+  their scaffolds left, patched stones and ivy up the gate's flanks; the
+  scaffold round a rising work lashed at every joint, railed, laddered and
+  with a hoist; the town's homes shuttered, with flowers under their
+  windows, steps at their doors, pots on their chimneys and firewood
+  stacked, a townhouse's sign hung out over the lane in its House's
+  colour; on every hall and round house of the works, courses across the
+  roofs, boards and vents in the gables, the rafters' ends under the
+  eaves, hoops and finials; and in every work's yard but the Moonspire's,
+  its odds and ends, barrels, crates, sacks, a bucket, a bench and
+  stacks of logs, set down where nothing of the work stands and clear of
+  the way to its door. The
   Moonspire rises past its third stage as the age's wonder: a colonnade of
   white columns about its drum under a ring of stone, a string course,
   the House's banners hung between its buttresses and a balustrade round
