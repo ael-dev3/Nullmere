@@ -119,7 +119,9 @@ struct RivalMind {
         let visible = state.visibility(for: house)
         // Its companies' orders don't change whom it is at war with.
         let atWar = state.livingHouses.contains { state.isAtWar(house, $0.id) }
-        if !atWar { events += seekHolySite(garrisons: garrisons, in: &state) }
+        // The Heartstone is sought at war too, the Frontier's prize.
+        if !atWar || state.heartstone != nil { events += seekHolySite(garrisons: garrisons, in: &state) }
+        events += breakTheCrown(garrisons: garrisons, in: &state)
         for unit in state.units(of: house).sorted(by: { $0.id < $1.id }) {
             guard state.unit(unit.id) != nil else { continue }
             events += command(unit.id, garrisonFor: garrisons[unit.id], seeing: visible, atWar: atWar, in: &state)
@@ -360,21 +362,76 @@ struct RivalMind {
         let holds = state.holds(of: house).map(\.position)
         let side = Set([house] + (state.alliance(of: house)?.members ?? []))
         let mine = state.units(of: house)
+        // No way into the Crown's heart while every gate stands.
+        let crowned = state.gatesStanding.count == Lair.gateQuarters.count
         let wanted = state.holySites.filter { shrine in
-            !(shrine.holder.map(side.contains) ?? false)
+            !(shrine.holder.map(side.contains) ?? false) && !(crowned && shrine.kind == .heartstone)
                 && holds.contains { $0.distance(to: shrine.position) <= RivalMind.holySiteReach }
                 && !mine.contains { $0.position == shrine.position || $0.destination == shrine.position }
                 && state.unit(at: shrine.position) == nil
         }
         guard !wanted.isEmpty else { return [] }
+        let gates = state.gatesStanding
         let idle = mine.filter { unit in
             unit.kind.isMilitary && unit.errand == nil && unit.destination == nil && garrisons[unit.id] == nil && unit.movesLeft > 0
+                && !atTheCrown(unit, gates)
         }
         let choice = idle.flatMap { unit in wanted.map { (unit: unit, shrine: $0) } }.min { a, b in
             (a.unit.position.distance(to: a.shrine.position), a.unit.id) < (b.unit.position.distance(to: b.shrine.position), b.unit.id)
         }
         guard let choice else { return [] }
         return perform(.move(unit: choice.unit.id, to: choice.shrine.position), in: &state)
+    }
+
+    /// How far from its holds a steward goes to break a gate of the Crown.
+    static let crownReach = 12
+    /// The least health a steward's company strikes a gate from beside it
+    /// with, taking its blow back.
+    static let gateHealth = 50
+
+    /// Whether a company is busy at the Crown: at a gate it can strike, or
+    /// bound before one, and fit to take the gate's blow back if it must
+    /// stand beside it.
+    private func atTheCrown(_ unit: Unit, _ gates: [Lair]) -> Bool {
+        guard unit.kind.range > 1 || unit.health >= RivalMind.gateHealth else { return false }
+        return gates.contains { gate in
+            unit.position.distance(to: gate.position) <= unit.kind.range || unit.destination.map { $0.distance(to: gate.position) <= 1 } == true
+        }
+    }
+
+    /// On the Marches, a steward sends one company of war it doesn't need
+    /// to stand before a gate of the Crown near its holds, the most broken
+    /// first, then the nearest, with none of its own there or bound there
+    /// already; there, it strikes it as it campaigns. Only the Marches have
+    /// a Crown.
+    private func breakTheCrown(garrisons: [Int: Hex], in state: inout GameState) -> [GameEvent] {
+        let gates = state.gatesStanding
+        guard !gates.isEmpty else { return [] }
+        let holds = state.holds(of: house).map(\.position)
+        let mine = state.units(of: house).filter(\.kind.isMilitary)
+        let near = gates.filter { gate in
+            holds.contains { $0.distance(to: gate.position) <= RivalMind.crownReach }
+                && !mine.contains { unit in
+                    unit.position.distance(to: gate.position) <= unit.kind.range || unit.destination.map { $0.distance(to: gate.position) <= 1 } == true
+                }
+        }
+        let idle = mine.filter {
+            $0.errand == nil && $0.destination == nil && garrisons[$0.id] == nil && $0.movesLeft > 0 && $0.health >= RivalMind.gateHealth
+                && !atTheCrown($0, gates)
+        }
+        // Before the gate, outside the Crown, on open ground.
+        let choices = idle.flatMap { unit in
+            near.compactMap { gate -> (unit: Unit, at: Hex, standing: Int)? in
+                gate.position.neighbors
+                    .filter { $0.length > gate.position.length && state.map[$0]?.terrain.isPassable == true && !state.isOccupied($0) }
+                    .min { ($0.distance(to: unit.position), $0) < ($1.distance(to: unit.position), $1) }
+                    .map { (unit, $0, gate.strength) }
+            }
+        }
+        guard let choice = choices.min(by: { a, b in
+            (a.standing, a.unit.position.distance(to: a.at), a.unit.id) < (b.standing, b.unit.position.distance(to: b.at), b.unit.id)
+        }) else { return [] }
+        return perform(.move(unit: choice.unit.id, to: choice.at), in: &state)
     }
 
     private func perform(_ command: Command, in state: inout GameState) -> [GameEvent] {
@@ -1057,7 +1114,9 @@ struct RivalMind {
     /// companies not away on an errand.
     private func assignGarrisons(in state: GameState) -> [Int: Hex] {
         var result: [Int: Hex] = [:]
-        var free = state.units(of: house).filter { $0.kind.isMilitary && $0.errand == nil }
+        // None busy at the Crown's gates.
+        let gates = state.gatesStanding
+        var free = state.units(of: house).filter { $0.kind.isMilitary && $0.errand == nil && !atTheCrown($0, gates) }
         for hold in state.holds(of: house).sorted(by: { ($0.isSeat ? 0 : 1, $0.id) < ($1.isSeat ? 0 : 1, $1.id) }) {
             if let standing = free.firstIndex(where: { $0.position == hold.position }) {
                 result[free[standing].id] = hold.position
@@ -1149,6 +1208,15 @@ struct RivalMind {
                 || state.hall(at: hex).map { state.isFoe(house, of: $0) } == true) && state.unit(at: hex) == nil
         }) {
             return perform(.attack(unit: unit.id, target: flag), in: &state)
+        }
+        // A gate of the Crown in its reach, it strikes, from beside it only
+        // while it can take the gate's blow back; bound before one, it goes on.
+        if unit.movesLeft > 0, unit.kind.range > 1 || unit.health >= RivalMind.gateHealth,
+           let gate = state.gatesStanding.first(where: { unit.position.distance(to: $0.position) <= unit.kind.range }) {
+            return perform(.attack(unit: unit.id, target: gate.position), in: &state)
+        }
+        if let bound = unit.destination, state.gatesStanding.contains(where: { $0.position.distance(to: bound) <= 1 }) {
+            return []
         }
         // On a holy site its side doesn't hold yet, it stands until the
         // watch turns; bound for one, it goes on.

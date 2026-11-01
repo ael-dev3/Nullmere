@@ -187,8 +187,9 @@ extension GameState {
     /// open land far from every hold, holy site and other lair: the later
     /// in the age, the higher. Drawn apart from the world's other draws.
     mutating func raiseLairs() {
+        // A gate of the Crown, struck, stays struck.
         if var standing = lairs {
-            for index in standing.indices where standing[index].strength < standing[index].might {
+            for index in standing.indices where standing[index].gate == nil && standing[index].strength < standing[index].might {
                 standing[index].strength = min(standing[index].might, standing[index].strength + standing[index].might / 20)
             }
             lairs = standing

@@ -223,6 +223,30 @@ final class CrownTests: XCTestCase {
         XCTAssertNil(home.frontier)
     }
 
+    /// Stewards strike the Crown's gates from their reach and send a
+    /// company before one near their holds; and, a gate broken, seek the
+    /// Heartstone. While every gate stands, none is sent for it.
+    func testStewardsBreakTheCrownsGatesAndSeekTheHeartstone() throws {
+        var state = GameState(settings: GameSettings(seedText: "stewards at the Crown", houseCount: 4, radius: 18, lake: .marches))
+        var struck: Int?, broken: Int?, held: Int?
+        for _ in 0..<80 where held == nil {
+            let events = state.endWatch()
+            if state.gatesStanding.count == Lair.gateQuarters.count {
+                XCTAssertFalse(state.units.contains { $0.destination == .origin }, "No way to the Heartstone while every gate stands")
+            }
+            for case .lairAssaulted(let assault) in events where assault.gate != nil {
+                struck = struck ?? state.watch
+                if assault.broken { broken = broken ?? state.watch }
+            }
+            if state.heartstone?.holder != nil { held = state.watch }
+        }
+        print("CROWN stewards struck a gate at watch \(struck ?? -1), broke one at \(broken ?? -1), held the Heartstone at \(held ?? -1)")
+        XCTAssertNotNil(struck, "Stewards strike the Crown's gates")
+        XCTAssertNotNil(broken, "and break one")
+        XCTAssertNotNil(held, "and take the Heartstone")
+        XCTAssertEqual(state.problems(), [])
+    }
+
     /// Only the Marches wear a Crown: a world on any other lake has no gate
     /// and no Heartstone, so it goes as it always did.
     func testOnlyTheMarchesWearACrown() {

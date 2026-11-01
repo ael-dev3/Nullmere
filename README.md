@@ -1123,9 +1123,13 @@ realm; keepers are told in plain words, never a status code.
   zone: Spine Hunters of the second level, known to every House from
   afar. Any company of war may strike a gate, from beside it (taking its
   blow back) or with arrows from its reach, or a rally's host together;
-  broken, it lies open to all for the season, its spoils, gear and items
-  the breaker's. The Heartstone is a holy site held as any other, by a
+  struck, it stays struck, never mending as a lair does, and broken, it
+  lies open to all for the season, its spoils, gear and items the
+  breaker's. The Heartstone is a holy site held as any other, by a
   company of war standing on it as the watch turns with no foe beside it.
+  The stewards send a company of war before the gate near their holds
+  that stands the most broken, which strikes it while it can take its blow
+  back, and seek the Heartstone once a gate is broken, at war or not.
   While a season is open there, a keeper presses Cross
   to the Frontier on the Realm screen: their realm takes the order, lists
   them as crossing with a levy of their House's strongest companies of

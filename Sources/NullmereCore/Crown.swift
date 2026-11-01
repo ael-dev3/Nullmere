@@ -3,9 +3,9 @@
 /// two, and the Heartstone in its heart. The wilds hold the gates from the
 /// season's first watch, so the Marches open zone by zone: the shores
 /// first, the heart once a gate is broken. Unlike a lair, a gate stands
-/// against any company alone, or a rally's host; broken, it lies open to
-/// all for the season, and counts for the kingdom of the House that broke
-/// it. The Heartstone is a holy site like any other, held by a company of
+/// against any company alone, or a rally's host, and, struck, it stays
+/// struck, never mending as a lair does; broken, it lies open to all for
+/// the season, and counts for the kingdom of the House that broke it. The Heartstone is a holy site like any other, held by a company of
 /// war standing on it as the watch turns: each watch it is held, its
 /// holder's kingdom scores. Rise of Kingdoms' Lost Kingdom opens by its
 /// passes about the Ziggurat; the Marches by the Crown's gates about the
