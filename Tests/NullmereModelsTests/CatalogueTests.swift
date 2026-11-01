@@ -408,7 +408,7 @@ final class CatalogueTests: XCTestCase {
             case .figure, .signature, .wild, .commander, .folk:
                 XCTAssertNotNil(model.motion, "\(key)")
                 XCTAssertGreaterThanOrEqual(model.rig.count, 17, "\(key) has a body's parts")
-            case .furnishing, .scaffold, .site, .keep, .keepOf, .walls, .prop(.arrow), .prop(.stone), .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .talentSigil, .helpLight, .allianceHall,
+            case .furnishing, .scaffold, .site, .keep, .keepOf, .walls, .prop(.arrow), .prop(.stone), .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .talentSigil, .helpLight, .borderStone, .allianceHall,
                  .yard(.grain), .town:
                 XCTAssertNil(model.motion, "\(key) stands still")
             case .prop:

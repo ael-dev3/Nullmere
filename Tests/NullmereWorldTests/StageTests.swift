@@ -441,6 +441,24 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(stage.fieldBanners([], time: 0).isEmpty)
     }
 
+    /// A border stone stands toward the side of its hex where its
+    /// alliance's land ends, facing out, in the alliance's colour.
+    func testBorderStonesStandAtTheEdgeFacingOut() throws {
+        let stage = stage()
+        let hex = try XCTUnwrap(Self.state.map.hexes.first { Self.state.map[$0]?.terrain.isPassable == true })
+        let teal = Vec4(0, 0.6, 0.6, 1)
+        let stones = stage.borderStones([(hex: hex, outward: Hex.directions[0], colour: teal)]).flatMap(\.instances)
+        XCTAssertEqual(stones.count, 1)
+        XCTAssertEqual(stones[0].colour, teal)
+        let centre = Relief.centre(of: hex)
+        let beyond = Relief.centre(of: Hex(hex.q + Hex.directions[0].q, hex.r + Hex.directions[0].r))
+        let at = Vec3(stones[0].model.c3.x - centre.x, 0, stones[0].model.c3.z - centre.z)
+        let way = Vec3(beyond.x - centre.x, 0, beyond.z - centre.z)
+        XCTAssertEqual(at.length, WorldStage.borderInset, accuracy: 1e-3)
+        XCTAssertGreaterThan((at.x * way.x + at.z * way.z) / (at.length * way.length), 0.999, "Toward the land beyond")
+        XCTAssertTrue(stage.borderStones([]).isEmpty)
+    }
+
     func testHallsStandInTheirAlliancesColoursRisingInTheirScaffolds() throws {
         let stage = stage()
         let hexes = Array(Self.state.map.hexes.filter { hex in

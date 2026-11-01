@@ -824,6 +824,8 @@ full screen at launch as chosen.
   leader's colour, a tall swallow-tailed banner over a cairn with braziers
   burning; its ground, and the land about it, are named on hover; a
   ground's panel raises one, and the Alliance screen counts them.
+  Boundary stones mark where it ends, one at each side of its land that
+  meets land not its own, each capped in the alliance's colour.
 - **Alliance studies.** An alliance studies together. Its leader chooses
   one of six studies to pursue from the Alliance screen (Fieldcraft,
   Masons' Compact, Drill Yards, Oath of Steel, Shield Oath and Shared

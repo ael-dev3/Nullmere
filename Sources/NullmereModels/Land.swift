@@ -1196,3 +1196,19 @@ extension Land {
         return Model(name: name, mesh: b.mesh)
     }
 }
+
+extension Land {
+    /// A boundary stone where an alliance's land ends: a squared stone,
+    /// weathered, its cap banded in the alliance's colour and a notch cut
+    /// in its face toward the land beyond.
+    static func borderStone(name: String) -> Model {
+        var b = MeshBuilder()
+        b.lathe([(0.05, -0.04), (0.05, 0.0), (0.042, 0.16), (0.032, 0.2), (0.0, 0.215)], sides: 4, color: Palette.stonePale)
+        b.with(material: .house) {
+            $0.lathe([(0.044, 0.14), (0.04, 0.17)], sides: 4, color: Palette.house)
+        }
+        b.box(center: Vec3(0, 0.1, 0.047), size: Vec3(0.03, 0.03, 0.008), color: Palette.stoneDark)
+        b.rock(center: Vec3(0.05, 0.0, -0.03), size: Vec3(0.03, 0.02, 0.025), rings: 2, sides: 4, jitter: 0.25, seed: 410, color: Palette.stone)
+        return Model(name: name, mesh: b.mesh)
+    }
+}

@@ -85,6 +85,27 @@ extension GameState {
         return nearest?.alliance
     }
 
+    /// Where each alliance's land ends: every hex of it beside one that is
+    /// not its land, with the way out, once for each such side, in a
+    /// steady order.
+    public func allianceBorders() -> [(hex: Hex, outward: Hex, alliance: Int)] {
+        var sources: [Hex: Int] = [:]
+        for standard in standards ?? [] { sources[standard.position] = Standard.reach }
+        for hall in halls ?? [] where hall.isWhole { sources[hall.position] = max(sources[hall.position] ?? 0, AllianceHall.reach) }
+        var seen = Set<Hex>()
+        var borders: [(hex: Hex, outward: Hex, alliance: Int)] = []
+        for (source, reach) in sources.sorted(by: { ($0.key.q, $0.key.r) < ($1.key.q, $1.key.r) }) {
+            for hex in source.spiral(reach) where seen.insert(hex).inserted && map[hex] != nil {
+                guard let alliance = allianceLand(at: hex) else { continue }
+                for direction in Hex.directions {
+                    let out = Hex(hex.q + direction.q, hex.r + direction.r)
+                    if allianceLand(at: out) != alliance { borders.append((hex, direction, alliance)) }
+                }
+            }
+        }
+        return borders
+    }
+
     /// Whether a company stands on its own alliance's land.
     func isOnOwnLand(_ unit: Unit) -> Bool {
         guard let land = allianceLand(at: unit.position) else { return false }

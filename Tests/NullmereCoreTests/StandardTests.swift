@@ -59,6 +59,24 @@ final class StandardTests: XCTestCase {
         XCTAssertEqual(stage.state.problems(), [])
     }
 
+    /// An alliance's land ends where its standards' reach does: every hex
+    /// of it beside one not its own is a border there, and nothing within.
+    func testAnAlliancesBordersRingItsLand() throws {
+        var stage = try staged()
+        let spot = try ground(near: stage.seat.position, in: stage.state)
+        _ = try stage.state.perform(.raiseStandard(at: spot), as: stage.me)
+        let alliance = try XCTUnwrap(stage.state.alliance(of: stage.me)).id
+        let borders = stage.state.allianceBorders()
+        XCTAssertFalse(borders.isEmpty)
+        for border in borders {
+            XCTAssertEqual(border.alliance, alliance)
+            XCTAssertEqual(stage.state.allianceLand(at: border.hex), alliance)
+            XCTAssertNotEqual(stage.state.allianceLand(at: Hex(border.hex.q + border.outward.q, border.hex.r + border.outward.r)), alliance)
+        }
+        XCTAssertFalse(borders.contains { $0.hex == spot }, "Nothing at its heart")
+        XCTAssertEqual(Set(borders.map(\.hex)), Set(spot.ring(Standard.reach)), "Its land's rim")
+    }
+
     func testAStandardIsRaisedOnlyWhereItMay() throws {
         var stage = try staged("standards refused")
         let me = stage.me

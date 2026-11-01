@@ -945,6 +945,25 @@ public final class WorldStage: @unchecked Sendable {
         return WorldStage.batches(placed)
     }
 
+    /// How far toward a side of its hex a border stone stands.
+    public static let borderInset: Float = 0.38
+
+    /// Boundary stones where alliances' land ends, one at each side of a
+    /// hex of it beside land not its own, turned to face out, in the
+    /// alliance's colour.
+    public func borderStones(_ borders: [(hex: Hex, outward: Hex, colour: Vec4)]) -> [ModelBatch] {
+        WorldStage.batches(borders.map { border in
+            let centre = Relief.centre(of: border.hex)
+            let beyond = Relief.centre(of: Hex(border.hex.q + border.outward.q, border.hex.r + border.outward.r))
+            var way = Vec3(beyond.x - centre.x, 0, beyond.z - centre.z)
+            way = way * (1 / max(way.length, 0.0001))
+            let x = centre.x + way.x * WorldStage.borderInset, z = centre.z + way.z * WorldStage.borderInset
+            let model = Mat4.translation(Vec3(x, ground(atX: x, z: z) - Scatter.sink, z)) * .rotationY(Float(atan2(Double(way.x), Double(way.z))))
+            return (.borderStone, ModelInstance(model: model, colour: border.colour, phase: WorldStage.phase(of: border.hex, salt: 53),
+                                                hex: SIMD2(Int32(border.hex.q), Int32(border.hex.r))))
+        })
+    }
+
     // MARK: What flies
 
     /// The veil of the Still about a hold: six banks of low mist ringing

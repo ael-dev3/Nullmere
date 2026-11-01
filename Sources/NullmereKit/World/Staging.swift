@@ -179,6 +179,12 @@ extension GameSession {
             }
             return (at: field.at, colours: colours, shares: troops.map { $0 / total })
         }, time: t)
+        // Boundary stones round each alliance's land, where it meets land
+        // not its own, on ground the keeper knows.
+        let borders = stage.borderStones(state.allianceBorders().filter { isExplored($0.hex) }.map { border in
+            (hex: border.hex, outward: border.outward,
+             colour: allianceColour(border.alliance, else: state.alliance(border.alliance)?.leader ?? -1, houses))
+        })
         let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position) + found.map(\.position) + flags.map(\.position))
         let furniture = stage.furnish(occupied: standing,
                                       holds: Set(sights.map(\.hold.position) + hallSights.map(\.hex) + storehouseSights.map(\.hex)))
@@ -196,7 +202,7 @@ extension GameSession {
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
         frame.fixedRegions = stage.furnitureRegions
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + help + fieldBanners + companies + flights
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + help + fieldBanners + borders + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
                                                      time: time)
