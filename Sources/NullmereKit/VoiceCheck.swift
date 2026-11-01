@@ -5,7 +5,9 @@ import NullmereCore
 /// of chronicle entry a long age brings, is spoken, a ballad is made of
 /// the latest deed of arms, and every line checked: spoken at all, short,
 /// grave (no exclamations), no numbers but the facts', and no talk of
-/// games or players; a ballad, besides, a ballad the realm would keep.
+/// games or players; a ballad, besides, a ballad the realm would keep. The
+/// clerk, too, is asked to read a keeper's plain words into orders, and
+/// must read at least one.
 /// scripts/check-voices.sh asks it of Apple's on-device model through the
 /// app, as a keeper's Mac runs it; its tests ask it of stand-ins.
 public enum VoiceCheck {
@@ -26,14 +28,19 @@ public enum VoiceCheck {
     /// The verdict a report ends with when every line kept the rules.
     public static let passed = "Every line within the rules."
 
-    /// The moments to speak: an envoy with each kind of offer, and the latest
-    /// of each kind of chronicle entry sixty watches of a lake bring.
-    static func moments() -> [(name: String, moment: VoiceMoment)] {
+    /// The age the voices speak of: sixty watches of a lake.
+    static func age() -> GameState {
         var state = GameState(settings: GameSettings(seedText: "voices", houseCount: 6, radius: 22, keepers: 1))
         for _ in 0..<60 where state.outcome == nil {
             _ = state.stewardTurn(for: state.player)
             _ = state.endWatch()
         }
+        return state
+    }
+
+    /// The moments to speak: an envoy with each kind of offer, and the latest
+    /// of each kind of chronicle entry sixty watches of a lake bring.
+    static func moments(in state: GameState = age()) -> [(name: String, moment: VoiceMoment)] {
         var moments: [(name: String, moment: VoiceMoment)] = []
         let other = state.livingHouses.first { $0.id != state.player }?.id ?? 1
         for (index, proposal) in Proposal.allCases.enumerated() {
@@ -86,10 +93,28 @@ public enum VoiceCheck {
         return problems
     }
 
+    /// What the clerk is asked to read: a keeper's plain words for their
+    /// first company of war and their seat, with the briefing; nil for a
+    /// House with neither.
+    static func orders(in state: GameState) -> (words: String, briefing: String)? {
+        let companies = SpokenOrders.companies(in: state, player: state.player)
+        guard let first = companies.firstIndex(where: { $0.kind.isMilitary }), let seat = state.seat(of: state.player) else { return nil }
+        return ("Have C\(first + 1) dig in where it stands, and raise a Granary at \(seat.name).",
+                SpokenOrders.briefing(for: state, player: state.player))
+    }
+
+    /// What the clerk's reading broke: nothing, if it read the words into
+    /// at least one order of the book's forms.
+    static func problems(ofOrders answer: String?, in state: GameState) -> [String] {
+        guard let answer else { return ["silent"] }
+        return SpokenOrders.read(answer, in: state, player: state.player).contains { $0.command != nil } ? [] : ["reads no order"]
+    }
+
     /// Every moment spoken by `voice`, and each line held to the rules.
     /// `source` says whose words they are, at the report's head.
     public static func run(_ voice: any Voice, source: String) async -> Report {
-        let moments = moments()
+        let state = age()
+        let moments = moments(in: state)
         var lines = ["Nullmere Online's voices, spoken by \(source).", ""]
         var failures: [String] = []
         for (name, moment) in moments {
@@ -100,6 +125,13 @@ public enum VoiceCheck {
             let told = line?.replacingOccurrences(of: "\n", with: " / ")
             lines.append("\(name) (\(String(format: "%.1f", seconds)) s): \(told ?? "(silent)")")
             failures += problems(of: line, for: moment).map { "\(name): \($0)" }
+        }
+        if let asked = orders(in: state) {
+            let started = Date()
+            let answer = await voice.read(orders: asked.words, briefing: asked.briefing)
+            let seconds = Date().timeIntervalSince(started)
+            lines.append("orders read (\(String(format: "%.1f", seconds)) s): \(answer?.replacingOccurrences(of: "\n", with: " / ") ?? "(silent)")")
+            failures += problems(ofOrders: answer, in: state).map { "orders read: \($0)" }
         }
         lines += ["", failures.isEmpty ? passed : "Out of bounds:"] + failures
         return Report(text: lines.joined(separator: "\n"), failures: failures, moments: moments.count)

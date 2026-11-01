@@ -7,7 +7,7 @@ import SwiftUI
 @MainActor
 enum GameMenu: CaseIterable {
     case leaveWorld
-    case ready, stayReady, nextCompany, goToSeat, viewCity, resetView
+    case ready, stayReady, nextCompany, orders, goToSeat, viewCity, resetView
     case houses, chronicle, guide
     case archive, commanders, alliance, realm, words
 
@@ -17,6 +17,7 @@ enum GameMenu: CaseIterable {
         case .ready: return "Ready"
         case .stayReady: return "Stay Ready Until Needed"
         case .nextCompany: return "Next Company"
+        case .orders: return "Orders in Your Own Words"
         case .goToSeat: return "Go to Seat"
         case .viewCity: return "View the Seat Close"
         case .resetView: return "Reset View"
@@ -38,7 +39,7 @@ enum GameMenu: CaseIterable {
         case .stayReady: return KeyboardShortcut(.return, modifiers: [.command, .shift])
         case .guide: return KeyboardShortcut("/", modifiers: [.command, .shift])
         case .resetView: return KeyboardShortcut("0", modifiers: .command)
-        case .nextCompany, .goToSeat, .viewCity, .houses, .chronicle, .archive, .commanders, .alliance, .realm, .words: return nil
+        case .nextCompany, .orders, .goToSeat, .viewCity, .houses, .chronicle, .archive, .commanders, .alliance, .realm, .words: return nil
         }
     }
 
@@ -47,7 +48,7 @@ enum GameMenu: CaseIterable {
         switch self {
         case .ready: return session.state.outcome == nil
         // A fallen House has no companies, no seat, and nothing to wait on.
-        case .stayReady, .nextCompany, .goToSeat, .viewCity: return session.state.outcome == nil && !session.playerHouse.isEliminated
+        case .stayReady, .nextCompany, .orders, .goToSeat, .viewCity: return session.state.outcome == nil && !session.playerHouse.isEliminated
         default: return true
         }
     }
@@ -59,6 +60,7 @@ enum GameMenu: CaseIterable {
         case .ready: session.endWatch()
         case .stayReady: session.endWatchesUntilNeeded()
         case .nextCompany: session.selectNextReadyUnit()
+        case .orders: session.toggleOrders()
         case .goToSeat: session.focusOnSeat()
         case .viewCity: session.viewCity()
         case .resetView: session.resetView()
@@ -94,6 +96,7 @@ public struct GameCommands: Commands {
             item(.ready)
             item(.stayReady)
             item(.nextCompany)
+            item(.orders)
             item(.goToSeat)
             item(.viewCity)
             item(.resetView)

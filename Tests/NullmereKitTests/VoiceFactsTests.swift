@@ -176,6 +176,30 @@ final class OnDeviceVoiceTests: XCTestCase {
         XCTAssertNil(single)
     }
 
+    /// The clerk is the on-device model asked with its own rules, given
+    /// the briefing and the keeper's words; it reads nothing when the model
+    /// isn't ready or fails, and any other voice reads none.
+    func testTheClerkAsksTheModelWithTheBriefingAndTheWords() async {
+        let asked = Asked()
+        let clerk = OnDeviceVoice(isReady: { true }) { instructions, prompt in
+            asked.record(instructions, prompt)
+            return "FORTIFY C1"
+        }
+        let answer = await clerk.read(orders: "  Dig in.  ", briefing: "Your companies:\nC1: Spears I of Vael, 1,000 troops")
+        XCTAssertEqual(answer, "FORTIFY C1")
+        XCTAssertEqual(asked.instructions, OnDeviceVoice.clerk)
+        XCTAssertEqual(asked.prompt, "Your companies:\nC1: Spears I of Vael, 1,000 troops\n\nThe keeper says:\nDig in.")
+        let unready = await OnDeviceVoice(isReady: { false }) { _, _ in "FORTIFY C1" }.read(orders: "Dig in.", briefing: "")
+        XCTAssertNil(unready)
+        let failing = await OnDeviceVoice(isReady: { true }) { _, _ in throw CancellationError() }.read(orders: "Dig in.", briefing: "")
+        XCTAssertNil(failing)
+        struct Mute: Voice {
+            func speak(_ moment: VoiceMoment) async -> String? { nil }
+        }
+        let mute = await Mute().read(orders: "Dig in.", briefing: "")
+        XCTAssertNil(mute)
+    }
+
     func testTheLiveVoiceAnswersWhetherTheModelIsReady() async {
         // On CI's Mac there is no Apple Intelligence: the live voice says
         // so, and stays silent rather than failing.

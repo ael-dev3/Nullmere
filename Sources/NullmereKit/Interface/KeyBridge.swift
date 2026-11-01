@@ -39,6 +39,8 @@ enum GameKey: Equatable {
     case alliance
     case realm
     case words
+    /// The card for orders in the keeper's own words, opened or put away.
+    case orders
 }
 
 extension GameSession {
@@ -85,7 +87,9 @@ extension GameSession {
             click(camera.centreHex)
             sayChosen()
         case .escape:
-            if panel != nil {
+            if ordersInWords != nil {
+                toggleOrders()
+            } else if panel != nil {
                 panel = nil
             } else if selection != Selection.none {
                 selection = Selection.none
@@ -146,6 +150,8 @@ extension GameSession {
             panel = panel == .realm ? nil : .realm
         case .words:
             panel = panel == .words ? nil : .words
+        case .orders:
+            toggleOrders()
         }
         // A question asked by a key lapses at any other key.
         if key != .found { foundingAsked = nil }
@@ -300,6 +306,7 @@ final class KeyBridgeView: NSView {
         case "5": return .alliance
         case "6": return .realm
         case "7": return .words
+        case "o": return .orders
         case "?", "/": return .guide
         default: return nil
         }

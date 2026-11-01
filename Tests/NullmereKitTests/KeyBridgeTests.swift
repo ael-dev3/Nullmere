@@ -27,7 +27,7 @@ final class KeyBridgeTests: XCTestCase {
             ("]", .anyUnit(forward: true)), ("[", .anyUnit(forward: false)), (" ", .chooseAtCentre),
             ("w", .pan(dx: 0, dy: 90)), ("s", .pan(dx: 0, dy: -90)), ("a", .pan(dx: 90, dy: 0)), ("d", .pan(dx: -90, dy: 0)),
             ("1", .houses), ("2", .chronicle), ("?", .guide), ("/", .guide),
-            ("3", .archive), ("4", .commanders), ("5", .alliance), ("6", .realm), ("7", .words),
+            ("3", .archive), ("4", .commanders), ("5", .alliance), ("6", .realm), ("7", .words), ("o", .orders), ("O", .orders),
             ("q", .turn(-.pi / 6)), ("e", .turn(.pi / 6)), ("r", .lean(-0.12)), ("t", .lean(0.12)),
         ]
         for (characters, meaning) in letters {

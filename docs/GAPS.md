@@ -287,6 +287,18 @@ designed, ticked when it is real, tested and shown in CI.
   names its hold, and those left sink again as the moon comes back. What
   keepers built in one age comes back to be fought for in the next. A
   first age has none.
+- [x] **Orders in your own words.** A keeper writes what they would have
+  done as they would say it ("dig in the spears at the ford, raise a
+  granary at home"), and their Mac's on-device model, as the House's
+  clerk, reads it into lines of the order book against a briefing of
+  what the House has and knows: its companies numbered, its holds, the
+  places it may name, the works and the kinds of company. Each line is
+  read back against the keeper's own view into the order the realm would
+  take, shown with what it would do or why it can't be given, and nothing
+  is given until the keeper gives them; the realm then judges each as it
+  always does. Command by speech of mind, with the model only reading.
+  Opened by O, or from the Watch menu; without the model, the order
+  book's own lines may be written as they are.
 
 ## The order of the work
 

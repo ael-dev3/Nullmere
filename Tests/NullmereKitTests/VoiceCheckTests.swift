@@ -18,6 +18,10 @@ final class VoiceCheckTests: XCTestCase {
         func compose(_ moment: VoiceMoment) async -> String? {
             "The moon lay still upon the water,\nand the shore remembered."
         }
+
+        func read(orders words: String, briefing: String) async -> String? {
+            "1. FORTIFY C1\nAnd nothing more."
+        }
     }
 
     /// Never answers, as a model that isn't ready.
@@ -25,7 +29,7 @@ final class VoiceCheckTests: XCTestCase {
         func speak(_ moment: VoiceMoment) async -> String? { nil }
     }
 
-    func testAVoiceWithinTheRulesPasses() async {
+    func testAVoiceWithinTheRulesPasses() async throws {
         let report = await VoiceCheck.run(Steady(), source: "a stand-in")
         XCTAssertEqual(report.failures, [])
         XCTAssertGreaterThanOrEqual(report.moments, Proposal.allCases.count + 2, "Envoys and chronicle entries enough to hear")
@@ -43,6 +47,13 @@ final class VoiceCheckTests: XCTestCase {
         for proposal in Proposal.allCases {
             XCTAssertTrue(report.text.contains("envoy offering \(proposal.title.lowercased())"), "An envoy offering \(proposal.title)")
         }
+        // The clerk asked to read the keeper's words, its answer on one line.
+        XCTAssertEqual(told.filter { $0.hasPrefix("orders read (") && $0.hasSuffix("s): 1. FORTIFY C1 / And nothing more.") }.count, 1, report.text)
+        let age = VoiceCheck.age()
+        let (words, briefing) = try XCTUnwrap(VoiceCheck.orders(in: age))
+        XCTAssertTrue(words.hasPrefix("Have C"), words)
+        XCTAssertTrue(words.hasSuffix("and raise a Granary at \(try XCTUnwrap(age.seat(of: age.player)).name)."), words)
+        XCTAssertEqual(briefing, SpokenOrders.briefing(for: age, player: age.player))
     }
 
     func testEachWayOfBreakingTheRulesIsNamed() {
@@ -59,11 +70,18 @@ final class VoiceCheckTests: XCTestCase {
         let ballad = VoiceMoment(kind: .ballad, facts: ["A battle at the Grey Ford."])
         XCTAssertEqual(VoiceCheck.problems(of: "The ford ran red,\nand the moon looked on.", for: ballad), [])
         XCTAssertEqual(VoiceCheck.problems(of: "The ford ran red.", for: ballad), ["no ballad the realm would keep"], "One line is no ballad")
+        // The clerk must read the words into at least one order.
+        let state = GameState(settings: GameSettings(seedText: "a clerk checked", houseCount: 4, radius: 16, keepers: 1))
+        XCTAssertEqual(VoiceCheck.problems(ofOrders: "FORTIFY C1", in: state), [])
+        XCTAssertEqual(VoiceCheck.problems(ofOrders: nil, in: state), ["silent"])
+        XCTAssertEqual(VoiceCheck.problems(ofOrders: "The spears will dig in, my lord.", in: state), ["reads no order"])
+        XCTAssertEqual(VoiceCheck.problems(ofOrders: "FORTIFY C99", in: state), ["reads no order"], "A company the House hasn't")
     }
 
     func testAVoiceThatBreaksTheRulesFailsWithEachBreachNamed() async {
         let report = await VoiceCheck.run(Silent(), source: "silence")
-        XCTAssertEqual(report.failures.count, report.moments, "Every moment silent")
+        XCTAssertEqual(report.failures.count, report.moments + 1, "Every moment silent, and the clerk")
+        XCTAssertEqual(report.failures.last, "orders read: silent")
         XCTAssertTrue(report.failures.allSatisfy { $0.hasSuffix(": silent") }, "\(report.failures)")
         XCTAssertTrue(report.text.contains("\nOut of bounds:\n"), report.text)
         XCTAssertFalse(report.text.hasSuffix(VoiceCheck.passed))

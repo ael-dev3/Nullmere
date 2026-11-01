@@ -219,13 +219,23 @@ struct PlayView: View {
             }
 
             // Between the selection panel on the left and the hints on the
-            // right, so it never lies over either.
-            HoverLine(session: session)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .padding(.leading, 362)
-                .padding(.trailing, 240)
-                .padding(.bottom, 18)
-                .allowsHitTesting(false)
+            // right, so it never lies over either; while orders are written
+            // in the keeper's own words, their card in its place.
+            if session.ordersInWords != nil {
+                OrdersCard(session: session)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .padding(.leading, 362)
+                    .padding(.trailing, 240)
+                    .padding(.bottom, 18)
+                    .transition(.opacity)
+            } else {
+                HoverLine(session: session)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .padding(.leading, 362)
+                    .padding(.trailing, 240)
+                    .padding(.bottom, 18)
+                    .allowsHitTesting(false)
+            }
 
             if let briefing = session.seatBriefing, session.state.outcome == nil {
                 SeatBriefingCard(briefing: briefing, colour: Palette.house(session.playerHouse)) { session.dismissSeatBriefing() }

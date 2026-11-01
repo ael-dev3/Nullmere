@@ -192,6 +192,8 @@ public final class GameSession {
     public private(set) var balladDrafts: [Int: String] = [:]
     /// The Chronicle entries whose ballads the model is making now.
     public private(set) var composing: Set<Int> = []
+    /// The card for orders in the keeper's own words, while it is open.
+    private(set) var ordersInWords: OrdersInWords?
 
     /// The keeper's line to the realm.
     private let link: any RealmLink
@@ -1866,6 +1868,77 @@ public final class GameSession {
     func letBalladBe(of entry: Int) {
         balladDrafts[entry] = nil
         composing.remove(entry)
+    }
+
+    // MARK: Orders in the keeper's own words
+
+    /// Orders in the keeper's own words, while their card is open: the
+    /// lines read from the words last written, and whether they are being
+    /// read now.
+    struct OrdersInWords: Equatable {
+        var lines: [SpokenOrders.Line] = []
+        var reading = false
+        /// Which reading this is: words read again outdo a reading still
+        /// under way.
+        var serial = 0
+        /// Whether the words last read made no orders.
+        var unread = false
+    }
+
+    /// Whether this Mac's model reads the keeper's words; without it, the
+    /// order book's lines are read as they are written.
+    var readsOrders: Bool { voice != nil }
+
+    /// Opens the card for orders in the keeper's own words, or puts it
+    /// away: it opens only while the age goes on and the House stands.
+    func toggleOrders() {
+        guard ordersInWords != nil || (state.outcome == nil && !playerHouse.isEliminated) else { return }
+        withAnimation(.easeOut(duration: 0.2)) { ordersInWords = ordersInWords == nil ? OrdersInWords() : nil }
+    }
+
+    /// Reads the keeper's words into the order book's lines: by this Mac's
+    /// model, given the briefing of what the House has and knows; or as
+    /// they are written, where there is no model or it gives no answer.
+    /// They are read against the world as the briefing told it, so the
+    /// companies' numbers hold.
+    func readOrders(_ words: String) {
+        let words = words.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard var orders = ordersInWords, !words.isEmpty else { return }
+        orders.serial += 1
+        orders.reading = true
+        ordersInWords = orders
+        let serial = orders.serial
+        let seen = state
+        let briefing = SpokenOrders.briefing(for: seen, player: player)
+        let voice = voice
+        let player = player
+        Task { [weak self] in
+            let answer = await voice?.read(orders: words, briefing: briefing)
+            let lines = SpokenOrders.read(answer ?? words, in: seen, player: player)
+            guard let self, self.ordersInWords?.serial == serial else { return }
+            withAnimation(.easeOut(duration: 0.3)) {
+                self.ordersInWords?.lines = lines
+                self.ordersInWords?.reading = false
+                self.ordersInWords?.unread = lines.isEmpty
+            }
+        }
+    }
+
+    /// Gives the orders read that the realm would take, one after another,
+    /// each judged as it is given as any order is; then the card is put
+    /// away. How many were given.
+    @discardableResult
+    func giveOrders() -> Int {
+        guard let orders = ordersInWords, !orders.reading else { return 0 }
+        var given = 0
+        for line in orders.lines {
+            guard let command = line.command, line.why == nil else { continue }
+            if perform(command) { given += 1 }
+        }
+        guard given > 0 else { return 0 }
+        withAnimation(.easeOut(duration: 0.2)) { ordersInWords = nil }
+        sayDone(given == 1 ? "1 order given" : "\(given) orders given")
+        return given
     }
 
     // MARK: Voices

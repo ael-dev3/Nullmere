@@ -55,6 +55,11 @@ final class GameMenuTests: XCTestCase {
         XCTAssertEqual(session.selection, .hold(try XCTUnwrap(session.state.seat(of: session.player)).id))
         GameMenu.nextCompany.perform(in: app)
         if case .unit = session.selection {} else { XCTFail("A company waiting for orders is chosen: \(session.selection)") }
+        // Orders in the keeper's own words: their card, and put away again.
+        GameMenu.orders.perform(in: app)
+        XCTAssertNotNil(session.ordersInWords)
+        GameMenu.orders.perform(in: app)
+        XCTAssertNil(session.ordersInWords)
         // Reset View takes in the whole House, north up, at the opening tilt.
         XCTAssertEqual(GameMenu.resetView.shortcut, KeyboardShortcut("0", modifiers: .command))
         session.camera.heading = 1.2

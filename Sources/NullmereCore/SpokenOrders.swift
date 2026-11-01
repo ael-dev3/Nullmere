@@ -1,0 +1,173 @@
+import Foundation
+
+/// Orders in a keeper's own words. Their Mac's model reads what they write
+/// into the plain lines of the realm's order book, given a briefing of what
+/// their House has and knows; each line is read here against the keeper's
+/// own view into the order the realm would take, or why it wouldn't.
+/// Nothing is given until the keeper has seen the orders and gives them:
+/// the model only reads, and the realm judges every order as it always
+/// does. Without the model, the order book's lines may be written as they
+/// are.
+public enum SpokenOrders {
+    /// One line of the order book, read.
+    public struct Line: Equatable, Sendable {
+        /// The line as it was written.
+        public let text: String
+        /// The order it makes, if the realm would take it.
+        public let command: Command?
+        /// What it orders, in the realm's words.
+        public let told: String
+        /// Why it can't be given, if it can't.
+        public let why: String?
+
+        public init(text: String, command: Command?, told: String, why: String?) {
+            self.text = text
+            self.command = command
+            self.told = told
+            self.why = why
+        }
+    }
+
+    /// The forms of the order book's lines.
+    public static let forms = ["MARCH <company> TO <place>", "STRIKE <place> WITH <company>", "FORTIFY <company>", "HALT <company>",
+                               "DRILL <company>", "BUILD <work> AT <hold>", "TRAIN <kind> AT <hold>"]
+    /// The most lines read at once.
+    public static let most = 6
+    /// The most companies and places the briefing names, the nearest the
+    /// seat first, so it stays within what the model reads at once.
+    public static let briefedCompanies = 40
+    public static let briefedPlaces = 80
+
+    /// The House's companies, in the order the briefing numbers them.
+    public static func companies(in state: GameState, player: Int) -> [Unit] {
+        state.units(of: player).sorted { $0.id < $1.id }
+    }
+
+    /// A company as the briefing and the orders name it.
+    public static func named(_ unit: Unit, in state: GameState) -> String {
+        "\(unit.kind.title) \(BuildingKind.numeral(unit.tier)) \(state.placeName(of: unit.position))"
+    }
+
+    /// The places a keeper may name: the holds their House knows, the holy
+    /// sites, the lairs and the Crown's gates, and the shores' regions.
+    public static func places(in state: GameState) -> [(name: String, at: Hex)] {
+        var places: [(name: String, at: Hex)] = state.holds.map { ($0.name, $0.position) }
+        places += state.holySites.map { ($0.title, $0.position) }
+        places += state.lairsStanding.map { ($0.gate == nil ? $0.title : "\($0.title) of the Crown", $0.position) }
+        places += (state.atlas?.regions ?? []).map { ($0.name, $0.heart) }
+        return places
+    }
+
+    /// What the model is told: the order book's forms, and what the House
+    /// has and knows, its companies numbered C1, C2 and on.
+    public static func briefing(for state: GameState, player: Int) -> String {
+        var lines = ["The order book's lines, one order to a line:"] + forms
+        lines.append("Your companies:")
+        for (index, unit) in companies(in: state, player: player).prefix(briefedCompanies).enumerated() {
+            lines.append("C\(index + 1): \(named(unit, in: state)), \(GameState.counted(state.troops(of: unit))) troops")
+        }
+        let holds = state.holds(of: player)
+        lines.append("Your holds: " + holds.map(\.name).joined(separator: ", "))
+        // Each name once, the nearest the seat first.
+        let home = state.seat(of: player)?.position ?? .origin
+        var named = Set(holds.map(\.name))
+        let others = places(in: state).sorted { ($0.at.distance(to: home), $0.name) < ($1.at.distance(to: home), $1.name) }
+            .filter { named.insert($0.name).inserted }.prefix(briefedPlaces)
+        lines.append("Places you know: " + others.map(\.name).joined(separator: ", "))
+        lines.append("Works: " + BuildingKind.allCases.map(\.title).joined(separator: ", "))
+        lines.append("Kinds of company: " + UnitKind.allCases.map(\.title).joined(separator: ", "))
+        return lines.joined(separator: "\n")
+    }
+
+    /// A name as it is matched: in small letters, without "the" before it.
+    static func plain(_ name: String) -> String {
+        var name = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        for article in ["the ", "a ", "an "] where name.hasPrefix(article) { name.removeFirst(article.count) }
+        return name.trimmingCharacters(in: CharacterSet(charactersIn: " .,;:!"))
+    }
+
+    /// The model's answer read line by line, at most `most` orders; a line
+    /// of none of the forms is passed over, as is "NONE".
+    public static func read(_ answer: String, in state: GameState, player: Int) -> [Line] {
+        let written = answer.split(whereSeparator: \.isNewline).map(unmarked).filter { !$0.isEmpty && plain($0) != "none" }
+        return written.prefix(most).compactMap { read(line: $0, in: state, player: player) }
+    }
+
+    /// A line without what a model likes to set about it: "1." or "-"
+    /// before it, quotes, backticks or stars around it.
+    static func unmarked(_ line: Substring) -> String {
+        let marks = CharacterSet(charactersIn: "\"“”'‘’`*_").union(.whitespaces)
+        var line = line.trimmingCharacters(in: marks)
+        if let space = line.firstIndex(of: " "), line[..<space].allSatisfy({ $0.isNumber || ".)-•*".contains($0) }) {
+            line = line[space...].trimmingCharacters(in: marks)
+        }
+        return line
+    }
+
+    /// One line of the order book read, if it is of one of its forms.
+    static func read(line text: String, in state: GameState, player: Int) -> Line? {
+        let words = text.split(separator: " ").map(String.init)
+        guard let verb = words.first?.uppercased() else { return nil }
+        let rest = Array(words.dropFirst())
+        func split(_ word: String) -> (String, String)? {
+            guard let at = rest.firstIndex(where: { $0.uppercased() == word }), at > 0, at < rest.count - 1 else { return nil }
+            return (rest[..<at].joined(separator: " "), rest[(at + 1)...].joined(separator: " "))
+        }
+        func refused(_ told: String, _ why: String) -> Line { Line(text: text, command: nil, told: told, why: why) }
+        func given(_ command: Command, _ told: String) -> Line {
+            Line(text: text, command: command, told: told, why: state.refusal(of: command, as: player)?.description)
+        }
+        switch verb {
+        case "MARCH", "STRIKE":
+            guard let (first, second) = split(verb == "MARCH" ? "TO" : "WITH") else { return nil }
+            let (handle, target) = verb == "MARCH" ? (first, second) : (second, first)
+            guard let unit = company(handle, in: state, player: player) else { return refused(text, "Your House has no company \(handle).") }
+            guard let place = place(target, near: unit.position, in: state) else {
+                return refused("\(named(unit, in: state)) to \(target)", "Your House knows no place by the name \(target).")
+            }
+            return verb == "MARCH"
+                ? given(.move(unit: unit.id, to: place.at), "Your \(named(unit, in: state)) march to \(place.name).")
+                : given(.attack(unit: unit.id, target: place.at), "Your \(named(unit, in: state)) strike \(place.name).")
+        case "FORTIFY", "HALT", "DRILL":
+            let handle = rest.joined(separator: " ")
+            guard let unit = company(handle, in: state, player: player) else { return refused(text, "Your House has no company \(handle).") }
+            switch verb {
+            case "FORTIFY": return given(.fortify(unit: unit.id), "Your \(named(unit, in: state)) dig in.")
+            case "HALT": return given(.halt(unit: unit.id), "Your \(named(unit, in: state)) halt.")
+            default: return given(.drill(unit: unit.id), "Your \(named(unit, in: state)) drill.")
+            }
+        case "BUILD", "TRAIN":
+            guard let (what, at) = split("AT") else { return nil }
+            guard let hold = state.holds(of: player).first(where: { plain($0.name) == plain(at) }) else {
+                return refused(text, "Your House holds no hold by the name \(at).")
+            }
+            if verb == "BUILD" {
+                guard let kind = BuildingKind.allCases.first(where: { plain($0.title) == plain(what) }) else {
+                    return refused(text, "No work goes by the name \(what).")
+                }
+                return given(.build(hold: hold.id, kind: kind), "\(hold.name) raises its \(kind.title).")
+            }
+            guard let kind = UnitKind.allCases.first(where: { [plain($0.title), String(plain($0.title).dropLast())].contains(plain(what)) }) else {
+                return refused(text, "No company goes by the name \(what).")
+            }
+            return given(.train(hold: hold.id, kind: kind), "\(hold.name) musters a company of \(kind.title).")
+        default:
+            return nil
+        }
+    }
+
+    /// The company a line names: C and its number in the briefing, the
+    /// last word of what names it.
+    static func company(_ handle: String, in state: GameState, player: Int) -> Unit? {
+        let handle = plain(handle).split(separator: " ").last.map { $0.uppercased() } ?? ""
+        guard handle.hasPrefix("C"), let number = Int(handle.dropFirst()) else { return nil }
+        let all = companies(in: state, player: player)
+        return all.indices.contains(number - 1) ? all[number - 1] : nil
+    }
+
+    /// The place a line names, the nearest of that name if several go by it.
+    static func place(_ name: String, near hex: Hex, in state: GameState) -> (name: String, at: Hex)? {
+        places(in: state).filter { plain($0.name) == plain(name) }
+            .min { ($0.at.distance(to: hex), $0.at) < ($1.at.distance(to: hex), $1.at) }
+    }
+}

@@ -5,16 +5,22 @@ import os
 
 /// Something that can put a moment of the game into a character's words.
 /// Voices only speak: what they say never changes the game, but for a
-/// ballad the keeper chooses to sing to the realm.
+/// ballad the keeper chooses to sing to the realm, and orders the keeper
+/// reads and chooses to give.
 public protocol Voice: Sendable {
     func speak(_ moment: VoiceMoment) async -> String?
     /// A few lines of verse for a moment, one to a line; nil from a voice
     /// that makes none.
     func compose(_ moment: VoiceMoment) async -> String?
+    /// A keeper's own words written as lines of the order book, given the
+    /// briefing of what their House has and knows; nil from a voice that
+    /// reads none.
+    func read(orders words: String, briefing: String) async -> String?
 }
 
 extension Voice {
     public func compose(_ moment: VoiceMoment) async -> String? { nil }
+    public func read(orders words: String, briefing: String) async -> String? { nil }
 }
 
 /// A moment worth a few spoken words, with everything the speaker may know.
@@ -88,6 +94,17 @@ public struct OnDeviceVoice: Voice {
     with the spoken words alone, without quotation marks or a speaker's name.
     """
 
+    /// What the House's clerk is told: to write the keeper's words as the
+    /// order book's lines, and nothing else.
+    static let clerk = """
+    You are the clerk of a great House in Nullmere Online. Its keeper tells you in their own words \
+    what they would have done; you write it as lines of the House's order book, in exactly the forms \
+    given, one order to a line, at most six lines. Name each company by its handle alone, C1, C2 and \
+    so on, as the briefing numbers them, and every place, hold, work and kind of company exactly as \
+    the briefing names it. Write only the lines: no numbering, no quotation marks, no words of your \
+    own. If the keeper asks for nothing the forms can order, reply NONE.
+    """
+
     /// Whether the model can be asked now, and the asking itself: Apple's
     /// on-device model, or for tests a stand-in.
     let isReady: @Sendable () -> Bool
@@ -115,10 +132,13 @@ public struct OnDeviceVoice: Voice {
         return "not ready (\(availability))"
     }
 
-    /// One line from Apple's on-device model, in a fresh session.
+    /// One answer from Apple's on-device model, in a fresh session: the
+    /// clerk reads closely, where the voices speak freely.
     private static func askTheModel(instructions: String, prompt: String) async throws -> String {
         let session = LanguageModelSession(instructions: instructions)
-        let response = try await session.respond(to: prompt, options: GenerationOptions(temperature: 0.8, maximumResponseTokens: 160))
+        let options = instructions == clerk ? GenerationOptions(temperature: 0.1, maximumResponseTokens: 200)
+            : GenerationOptions(temperature: 0.8, maximumResponseTokens: 160)
+        let response = try await session.respond(to: prompt, options: options)
         return response.content
     }
 
@@ -140,6 +160,21 @@ public struct OnDeviceVoice: Voice {
             OnDeviceVoice.logger.notice("A ballad stayed unmade: \(String(describing: error), privacy: .public)")
             return nil
         }
+    }
+
+    public func read(orders words: String, briefing: String) async -> String? {
+        guard isReady() else { return nil }
+        do {
+            return try await respond(OnDeviceVoice.clerk, Self.orders(words, briefing: briefing))
+        } catch {
+            OnDeviceVoice.logger.notice("Orders went unread: \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
+    /// What the clerk is asked: the briefing, then the keeper's words.
+    static func orders(_ words: String, briefing: String) -> String {
+        briefing + "\n\nThe keeper says:\n" + words.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// A ballad's lines as the realm would keep them, from what the model

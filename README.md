@@ -560,6 +560,19 @@ as the realm will, and takes the realm's word as final.
   the hold. Then the moon comes back and those still walking sink again.
   They are not of the far country's wilds, which rise in their turn. A
   first age has nothing drowned beneath it, and no eclipse.
+- **Orders in your own words.** O, or Orders in Your Own Words in the
+  Watch menu, opens a line at the foot of the world: the keeper writes
+  what they would have done in plain words, and their Mac's on-device
+  model, as the House's clerk, reads it into at most six lines of the
+  order book (MARCH C1 TO a place, STRIKE a place WITH C2, FORTIFY,
+  HALT or DRILL a company, BUILD a work AT a hold, TRAIN a kind AT a
+  hold), given a briefing of the House's companies, numbered C1 and on,
+  its holds, the places it knows, the works and the kinds of company.
+  Each line is read against the keeper's own view into the order the
+  realm would take, or said not to be one, and shown with what it would
+  do or why it can't be given; those that can are given together only
+  when the keeper gives them, and the realm judges each as it does any
+  order. Without the model, the order book's lines are read as written.
 - **The server.** SpacetimeDB is the realm's authority of record: it knows
   each keeper by their identity, keeps the world, and lets no one but the
   steward write it. The steward runs the same Swift rules core the clients
