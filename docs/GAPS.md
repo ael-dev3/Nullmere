@@ -7,9 +7,8 @@ placeholder, stubbed or simulated scores under ten. The rules hold
 throughout: one shared realm and nothing played alone, the launcher titled
 exactly Nullmere Online, and every asset original. This list is kept
 current as the work goes; each line says what is there now, not what is
-planned, and what CI has shown of it.
-The rules of every system are in [PLAYING.md](PLAYING.md); this list says what
-is there and what is still missing.
+planned, and what CI has shown of it. The rules of every system are in
+[PLAYING.md](PLAYING.md).
 
 ## Where it stands
 

@@ -1,5 +1,7 @@
 # Design
 
+How Nullmere Online looks, and the direction it keeps.
+
 - [The launcher](#the-launcher)
 - [The world in three dimensions](#the-world-in-three-dimensions)
 - [Direction](#direction)
@@ -55,6 +57,7 @@ the keeper's realm last lay on, made as it plays.
   lake laid over it as a mirror of the stars and the moon. What the keeper
   has never seen lies under mist; what they saw once and see no longer,
   greyed as memory.
+
 ### Every model, built from code
 
 Every model is original and built from code
