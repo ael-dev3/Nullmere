@@ -89,7 +89,7 @@ final class WorldRenderer {
             return found
         }
         func pipeline(_ label: String, _ vertex: String, _ fragment: String, blends: Bool,
-                      premultiplied: Bool = false) throws -> any MTLRenderPipelineState {
+                      premultiplied: Bool = false, coverage: Bool = false) throws -> any MTLRenderPipelineState {
             let descriptor = MTLRenderPipelineDescriptor()
             descriptor.label = label
             descriptor.vertexFunction = try function(vertex)
@@ -97,6 +97,10 @@ final class WorldRenderer {
             descriptor.colorAttachments[0].pixelFormat = pixelFormat
             descriptor.depthAttachmentPixelFormat = WorldRenderer.depthFormat
             descriptor.rasterSampleCount = WorldRenderer.sampleCount
+            // A fading model's alpha says how many of a pixel's four samples
+            // it covers, so smoke, mist and the fallen thin smoothly rather
+            // than in a pattern of whole pixels left out.
+            descriptor.isAlphaToCoverageEnabled = coverage
             if blends {
                 descriptor.colorAttachments[0].isBlendingEnabled = true
                 // Motes give light and hide what lies behind them by
@@ -110,7 +114,7 @@ final class WorldRenderer {
         }
         landPipeline = try pipeline("Nullmere land", WorldShaders.landVertex, WorldShaders.landFragment, blends: false)
         waterPipeline = try pipeline("Nullmere water", WorldShaders.waterVertex, WorldShaders.waterFragment, blends: true)
-        modelPipeline = try pipeline("Nullmere models", WorldShaders.modelVertex, WorldShaders.modelFragment, blends: false)
+        modelPipeline = try pipeline("Nullmere models", WorldShaders.modelVertex, WorldShaders.modelFragment, blends: false, coverage: true)
         motePipeline = try pipeline("Nullmere motes", WorldShaders.moteVertex, WorldShaders.moteFragment, blends: true, premultiplied: true)
         guard let commandQueue = device.makeCommandQueue() else { throw Failure.noCommandQueue }
         commandQueue.label = "Nullmere world"

@@ -368,7 +368,8 @@ public enum WorldShaders {
         return offset * sway;
     }
 
-    // An ordered pattern for fading by leaving pixels out.
+    // An ordered pattern for fading by leaving pixels out, as the browser's
+    // preview fades a model; the game covers fewer of a pixel's samples.
     float nm_bayer(float2 pixel) {
         float2 p = floor(pixel - 4.0 * floor(pixel / 4.0));
         float index = p.x + p.y * 4.0;
@@ -651,9 +652,6 @@ public enum WorldShaders {
         if (in.localY > in.params.x) {
             discard_fragment();
         }
-        if (in.params.y < 0.999 && in.params.y <= nm_bayer(in.position.xy)) {
-            discard_fragment();
-        }
         float time = frame.eye.w + in.params.z;
         float3 n = normalize(in.normal);
         float3 toEye = normalize(frame.eye.xyz - in.world);
@@ -688,7 +686,8 @@ public enum WorldShaders {
             lit = nm_remembered(lit);
         }
         lit = nm_haze(lit, distance(in.world, frame.eye.xyz), frame.haze.x, frame.haze.y);
-        return float4(nm_encode(lit * frame.haze.z), 1.0);
+        // Fading, it covers as many of the pixel's samples as it is opaque.
+        return float4(nm_encode(lit * frame.haze.z), in.params.y < 0.999 ? saturate(in.params.y) : 1.0);
     }
 
     // MARK: Motes
