@@ -897,6 +897,22 @@ enum Works {
                 $0.box(min: Vec3(-0.17, 0, -0.08), max: Vec3(0.17, 0.014, 0.1), color: Palette.timberGrey)
             }
             b.planks(at: Vec3(-0.08, 0, -0.2), length: 0.24, layers: 3)
+            // Near: logs waiting on their chocks, the beetle and wedges that
+            // split them, and a lantern on the lean-to's western post.
+            b.fine {
+                for (index, z) in [Float(0.17), 0.215].enumerated() {
+                    $0.box(center: Vec3(0.13, 0.008, z), size: Vec3(0.014, 0.016, 0.03), color: Palette.timberDark)
+                    $0.log(from: Vec3(0.06 + Float(index) * 0.01, 0.03, z), to: Vec3(0.2, 0.028, z), radius: 0.022)
+                }
+                $0.log(from: Vec3(0.075, 0.068, 0.192), to: Vec3(0.19, 0.066, 0.192), radius: 0.02)
+                sawpitBeetle(&$0, at: Vec3(-0.04, 0, 0.2), turn: 0.4)
+                $0.beam(from: Vec3(-0.14, 0.165, -0.114), to: Vec3(-0.14, 0.165, -0.085), width: 0.004, color: Palette.iron)
+                $0.with(material: .glow) {
+                    $0.place(.translation(Vec3(-0.14, 0.138, -0.087))) {
+                        $0.lathe([(0.0, 0.0), (0.009, 0.009), (0.0, 0.021)], sides: 5, color: Palette.candle)
+                    }
+                }
+            }
         case 2:
             trestle(&b, at: Vec3(0, 0, 0.02))
             pitSaw(&b, at: Vec3(0, 0, 0.02))
@@ -945,18 +961,7 @@ enum Works {
                         $0.box(center: .zero, size: Vec3(0.014, 0.012, 0.005), color: Palette.timberDark)
                     }
                 }
-                $0.place(.translation(Vec3(0.165, 0, -0.18)) * .rotationY(-0.5)) { beetle in
-                    beetle.place(.translation(Vec3(0, 0.016, 0)) * .rotationZ(.pi / 2)) {
-                        $0.lathe([(0.016, -0.022), (0.016, 0.022)], sides: 6, color: Palette.timberGrey)
-                    }
-                    beetle.beam(from: Vec3(0, 0.016, 0.012), to: Vec3(0, 0.008, 0.09), width: 0.005, color: Palette.timberPale)
-                    beetle.with(material: .metal) {
-                        for (index, x) in [Float(0.036), 0.052].enumerated() {
-                            $0.box(center: Vec3(x, 0.004, 0.03 + Float(index) * 0.02), size: Vec3(0.008, 0.008, 0.022),
-                                   turn: Float(index) * 0.7, color: Palette.iron)
-                        }
-                    }
-                }
+                sawpitBeetle(&$0, at: Vec3(0.165, 0, -0.18), turn: -0.5)
             }
         default:
             // A saw-house, its saw driven by a great treadwheel at its side.
@@ -1020,6 +1025,23 @@ enum Works {
         }
         b.fine { sawpitNear(&$0, level: level) }
         return model(name, b, rig: rig, machinery: machinery)
+    }
+
+    /// A beetle, the great mallet that splits the logs, laid down with its
+    /// iron wedges by it.
+    static func sawpitBeetle(_ b: inout MeshBuilder, at: Vec3, turn: Float) {
+        b.place(.translation(at) * .rotationY(turn)) { beetle in
+            beetle.place(.translation(Vec3(0, 0.016, 0)) * .rotationZ(.pi / 2)) {
+                $0.lathe([(0.016, -0.022), (0.016, 0.022)], sides: 6, color: Palette.timberGrey)
+            }
+            beetle.beam(from: Vec3(0, 0.016, 0.012), to: Vec3(0, 0.008, 0.09), width: 0.005, color: Palette.timberPale)
+            beetle.with(material: .metal) {
+                for (index, x) in [Float(0.036), 0.052].enumerated() {
+                    $0.box(center: Vec3(x, 0.004, 0.03 + Float(index) * 0.02), size: Vec3(0.008, 0.008, 0.022),
+                           turn: Float(index) * 0.7, color: Palette.iron)
+                }
+            }
+        }
     }
 
     /// The sawpit drawn nearer still: at every level a grindstone on its
