@@ -823,6 +823,29 @@ enum Works {
                           color: Palette.stonePale)
                 b.window(Vec3(0.21, 0.26, -0.07), width: 0.022, height: 0.045, facing: 0)
                 b.box(min: Vec3(-0.18, -0.03, 0.2), max: Vec3(0.14, 0.05, 0.225), color: Palette.stoneDark)
+                // Buttresses along the hall's front between its windows and
+                // door, and shields in the House's colours under its eaves.
+                for x in [Float(-0.09), 0.09, 0.17] {
+                    b.box(min: Vec3(x - 0.012, -0.03, -0.006), max: Vec3(x + 0.012, 0.16, 0.012), color: Palette.stoneDark)
+                }
+                b.fine {
+                    for x in [Float(-0.065), 0.0, 0.08, 0.145] {
+                        $0.place(.translation(Vec3(x, 0.165, 0.0)) * .rotationX(.pi / 2)) {
+                            $0.with(material: .house) {
+                                $0.lathe([(0.016, -0.004), (0.016, 0.004)], sides: 8, color: Palette.house)
+                            }
+                            $0.with(material: .metal) {
+                                $0.lathe([(0.006, 0.004), (0.0, 0.009)], sides: 4, color: Palette.iron)
+                            }
+                        }
+                    }
+                    // Two more pells, armed with a crossbar, a sack of straw on each.
+                    for (x, z) in [(Float(0.03), Float(0.09)), (-0.2, 0.06)] {
+                        $0.limb(from: Vec3(x, -0.02, z), to: Vec3(x, 0.17, z), radius: 0.012, color: Palette.timberDark)
+                        $0.beam(from: Vec3(x - 0.05, 0.12, z), to: Vec3(x + 0.05, 0.12, z), width: 0.01, color: Palette.timber)
+                        $0.sack(at: Vec3(x, 0.07, z), size: 0.035, seed: UInt32(truncatingIfNeeded: Int(x * 100) + 7), color: Palette.straw)
+                    }
+                }
             }
             if level >= 5 {
                 // The great tower raised higher, crowned in the House's colour,
@@ -1250,6 +1273,7 @@ enum Works {
                 }
             }
             b.window(MeshBuilder.ring(0.1, 1.08, -.pi / 2), width: 0.025, height: 0.06, facing: 0, color: Palette.moonGlow)
+            wonder(&b)
         }
         if level >= 5 {
             b.cone(sides: 8, radius: 0.1, from: 1.32, to: 1.62, color: Palette.stoneWhite)
@@ -1271,9 +1295,69 @@ enum Works {
             b.with(part: crown, material: .glow) {
                 $0.sphere(center: Vec3(0, 1.76, 0), radius: 0.03, rings: 2, sides: 4, color: Palette.moonGlow)
             }
-            machinery = Machinery(wheels: [.init(part: crown, axis: Vec3(0, 1, 0), turns: 1)], parts: rig.count)
+            // A halo of moonsalt shards about the spire below the crown,
+            // turning the other way; and moonsalt grown out of the plinth
+            // at the buttresses' feet.
+            let halo = rig.add("halo", pivot: Vec3(0, 1.48, 0))
+            b.with(part: halo, material: .crystal) {
+                for index in 0..<8 {
+                    let angle = Float(index) * .pi / 4
+                    $0.place(.translation(MeshBuilder.ring(0.16, 1.48 + (index % 2 == 0 ? 0.02 : -0.02), angle))) {
+                        $0.lathe([(0, -0.045), (0.013, 0), (0, 0.055)], sides: 4, color: Palette.moonsalt)
+                    }
+                }
+            }
+            b.with(material: .crystal) {
+                for index in 0..<5 {
+                    let angle = Float(index) * 2 * .pi / 5
+                    for (shard, lean) in [(0, Float(0.35)), (1, -0.2), (2, 0.05)] {
+                        let at = MeshBuilder.ring(0.284, 0.04, angle + Float(shard - 1) * 0.07)
+                        let out = MeshBuilder.ring(1, 0, angle + lean)
+                        $0.place(.translation(at) * Mat4.aligningUp(to: Vec3(out.x * 0.12, 1, out.z * 0.12))) {
+                            $0.prism(sides: 4, radius: 0.014, from: 0, to: 0.06 + 0.025 * Float(shard), color: Palette.moonsalt)
+                            $0.cone(sides: 4, radius: 0.014, from: 0.06 + 0.025 * Float(shard), to: 0.09 + 0.025 * Float(shard),
+                                    color: Palette.moonsalt)
+                        }
+                    }
+                }
+            }
+            machinery = Machinery(wheels: [.init(part: crown, axis: Vec3(0, 1, 0), turns: 1), .init(part: halo, axis: Vec3(0, 1, 0), turns: -1)],
+                                  parts: rig.count)
         }
         return model(name, b, rig: rig, machinery: machinery)
+    }
+
+    /// Where the Moonspire's colonnade stands about its drum.
+    static let colonnade: Float = 0.265
+
+    /// The Moonspire's dress once it rises past its third stage, a wonder
+    /// of the age: a colonnade about the drum's foot under a ring of stone,
+    /// a string course round the drum, the House's banners hung between
+    /// its buttresses, and a balustrade round the drum's top.
+    static func wonder(_ b: inout MeshBuilder) {
+        for index in 0..<10 {
+            let angle = Float(index) * .pi / 5 + .pi / 10
+            let foot = MeshBuilder.ring(colonnade, 0.06, angle)
+            b.box(center: foot + Vec3(0, 0.012, 0), size: Vec3(0.03, 0.024, 0.03), turn: angle, color: Palette.stonePale)
+            b.place(.translation(foot)) { $0.prism(sides: 6, radius: 0.011, from: 0.024, to: 0.25, color: Palette.stoneWhite) }
+            b.box(center: foot + Vec3(0, 0.259, 0), size: Vec3(0.032, 0.018, 0.032), turn: angle, color: Palette.stonePale)
+        }
+        b.lathe([(0.248, 0.268), (0.282, 0.268), (0.282, 0.292), (0.248, 0.292)], sides: 20, color: Palette.stonePale)
+        b.lathe([(0.218, 0.19), (0.229, 0.196), (0.229, 0.21), (0.217, 0.216)], sides: 10, color: Palette.stonePale)
+        b.with(material: .house) {
+            for index in 0..<5 {
+                let angle = Float(index) * 2 * .pi / 5 + .pi / 5
+                let out = MeshBuilder.ring(1, 0, angle), across = Vec3(-out.z, 0, out.x)
+                let middle = out * 0.222
+                $0.sheet([middle + across * 0.026 + Vec3(0, 0.405, 0), middle - across * 0.026 + Vec3(0, 0.405, 0),
+                          middle - across * 0.026 + Vec3(0, 0.312, 0), middle + Vec3(0, 0.296, 0), middle + across * 0.026 + Vec3(0, 0.312, 0)],
+                         normal: out, color: Palette.house)
+            }
+        }
+        b.fine {
+            $0.merlonRing(radius: 0.228, base: 0.45, count: 20, size: Vec3(0.008, 0.03, 0.008), color: Palette.stonePale)
+            $0.lathe([(0.222, 0.48), (0.234, 0.48), (0.234, 0.488), (0.222, 0.488)], sides: 20, color: Palette.stonePale)
+        }
     }
 
     // MARK: Study

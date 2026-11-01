@@ -1700,7 +1700,15 @@ the keeper's realm last lay on, made as it plays.
   courses across the roofs, boards and vents in the gables, hoops and
   finials; and in every work's yard but the Moonspire's, its odds and ends,
   barrels, crates, sacks, a bucket, a bench and stacks of logs, set down
-  where nothing of the work stands and clear of the way to its door.
+  where nothing of the work stands and clear of the way to its door. The
+  Moonspire rises past its third stage as the age's wonder: a colonnade of
+  white columns about its drum under a ring of stone, a string course,
+  the House's banners hung between its buttresses and a balustrade round
+  its top; at its fifth, moonsalt grown out of its plinth and a halo of
+  shards turning below its crown the other way (2,212 triangles, where it
+  was 780). A Muster Hall of the fourth level and the fifth has
+  buttresses along its front, shields in the House's colours under its
+  eaves, and more pells armed in its yard.
 - **Only what the view reaches is drawn.** The land's furniture is kept
   on the GPU in square regions eight hexes on a side, each with the bounds
   of all it holds; each frame finds the regions inside the camera's view
