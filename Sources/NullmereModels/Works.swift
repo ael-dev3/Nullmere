@@ -1257,6 +1257,52 @@ enum Works {
                 }
             }
         }
+        // Near, the healers' work: a litter leaning by the door, on which
+        // the fallen were carried home, and a basket of herbs cut from the
+        // garden; from the second level bundles of herbs hung to dry and a
+        // bench for those mending; from the third a table of the healers'
+        // jars and a bucket on the well's rim.
+        b.fine { near in
+            for x in [Float(-0.02), 0.02] {
+                near.limb(from: Vec3(x, 0, 0.012), to: Vec3(x, 0.11, -0.014), radius: 0.003, color: Palette.timber)
+            }
+            near.beam(from: Vec3(0, 0.015, 0.009), to: Vec3(0, 0.09, -0.009), width: 0.036, depth: 0.003, color: Palette.canvas)
+            near.place(.translation(Vec3(-0.008, 0, 0.075))) {
+                $0.lathe([(0.012, 0), (0.016, 0.022)], sides: 7, color: Palette.straw)
+                $0.lathe([(0.015, 0.02), (0, 0.032)], sides: 7, color: Palette.leaf)
+            }
+            if level >= 2 {
+                let hang: (y: Float, z: Float) = level >= 4 ? (height * 0.75, 0.012) : (height - 0.008, -0.01)
+                let herbs = [Palette.moss, Palette.heatherBloom, Palette.leaf, Palette.fern, Palette.weld]
+                for (index, x) in [Float(-0.2), -0.11, -0.098, -0.025, 0.12].enumerated() {
+                    near.limb(from: Vec3(x, hang.y, hang.z), to: Vec3(x, hang.y - 0.012, hang.z), radius: 0.001, sides: 3,
+                              color: Palette.linen)
+                    near.place(.translation(Vec3(x, hang.y - 0.012, hang.z))) {
+                        $0.lathe([(0.0055, 0), (0.002, -0.022)], sides: 5, color: herbs[index])
+                    }
+                }
+                near.box(center: Vec3(-0.14, 0.024, 0.02), size: Vec3(0.08, 0.006, 0.018), color: Palette.timberPale)
+                for x in [Float(-0.172), -0.108] {
+                    near.box(center: Vec3(x, 0.0105, 0.02), size: Vec3(0.006, 0.021, 0.014), color: Palette.timber)
+                }
+            }
+            if stone {
+                let table = Vec3(0.2, 0, 0.03)
+                near.box(center: table + Vec3(0, 0.04, 0), size: Vec3(0.052, 0.005, 0.03), color: Palette.timberPale)
+                for (x, z) in [(Float(-0.021), Float(-0.011)), (0.021, -0.011), (-0.021, 0.011), (0.021, 0.011)] {
+                    near.limb(from: table + Vec3(x, 0, z), to: table + Vec3(x, 0.038, z), radius: 0.0025, color: Palette.timber)
+                }
+                for (index, x) in [Float(-0.014), 0.0, 0.015].enumerated() {
+                    let jar = [Palette.weld, Palette.madder, Palette.seaWool][index]
+                    near.place(.translation(table + Vec3(x, 0.0425, Float(index % 2) * 0.006 - 0.003))) {
+                        $0.lathe([(0.004, 0), (0.0055, 0.008), (0.003, 0.014), (0.003, 0.017)], sides: 6, color: jar)
+                    }
+                }
+                near.place(.translation(Vec3(0.13, 0.05, 0.262))) {
+                    $0.lathe([(0.009, 0), (0.012, 0.018)], sides: 6, color: Palette.timberDark)
+                }
+            }
+        }
         return model(name, b)
     }
 

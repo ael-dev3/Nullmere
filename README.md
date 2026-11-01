@@ -1746,6 +1746,12 @@ the keeper's realm last lay on, made as it plays.
   its wall with a spare wheel leaning by them, a bucket at its trough and
   a milestone by the road, and from the third its post-birds down from
   the cote, pecking (796 to 1,344 triangles, where it was 592 to 1,050).
+  An Infirmary has the litter on which the fallen were carried home
+  leaning by its door and a basket of herbs cut from its garden; from the
+  second level bundles of herbs hung to dry under its eaves and a bench
+  for those mending; from the third a table of the healers' jars and a
+  bucket on the well's rim (730 to 1,666 triangles, where it was 666 to
+  1,278).
 - **Only what the view reaches is drawn.** The land's furniture is kept
   on the GPU in square regions eight hexes on a side, each with the bounds
   of all it holds; each frame finds the regions inside the camera's view
