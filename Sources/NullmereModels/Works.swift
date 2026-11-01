@@ -1368,8 +1368,42 @@ enum Works {
     /// A first saltworks drawn nearer still: the brine well under its
     /// sweep's bucket, a trough on trestles from the well to a pan, a board
     /// laid between the pans to walk on, and cakes of salt drying on a
-    /// board in the sun.
+    /// board in the sun; the sweep's fork and the stone that weighs its
+    /// pole down, wattle hurdles behind the heap against the wind off the
+    /// water, and a handcart of sacks waiting to go.
     static func saltYard(_ b: inout MeshBuilder) {
+        // The sweep's pole rests in a fork at the post's head, a stone lashed
+        // to its far end to lift the full bucket.
+        for z in [Float(-0.058), -0.042] {
+            b.beam(from: Vec3(0.1, 0.188, z), to: Vec3(0.1, 0.212, z), width: 0.005, color: Palette.timberPale)
+        }
+        b.with(surface: .stone) {
+            $0.rock(center: Vec3(0.147, 0.178, -0.05), size: Vec3(0.017, 0.015, 0.016), rings: 2, sides: 5, jitter: 0.2, seed: 73,
+                    color: Palette.rock)
+        }
+        b.limb(from: Vec3(0.142, 0.205, -0.05), to: Vec3(0.145, 0.188, -0.05), radius: 0.0015, sides: 3, color: Palette.linen)
+        // Hurdles of wattle on their stakes behind the heap.
+        for index in 0..<3 {
+            let x = -0.215 + Float(index) * 0.072
+            b.box(center: Vec3(x, 0.034, -0.205 + Float(index) * 0.006), size: Vec3(0.068, 0.056, 0.006), turn: -0.08,
+                  color: index == 1 ? Palette.reed : Palette.thatch)
+            for side in [Float(-0.03), 0.03] {
+                b.limb(from: Vec3(x + side, 0, -0.205 + Float(index) * 0.006), to: Vec3(x + side, 0.072, -0.205 + Float(index) * 0.006),
+                       radius: 0.0025, sides: 3, color: Palette.timberDark)
+            }
+        }
+        // The handcart, its handles to the gate, two sacks of salt in it.
+        b.place(.translation(Vec3(0.12, 0, -0.2)) * .rotationY(0.15)) { cart in
+            cart.box(min: Vec3(-0.045, 0.03, -0.024), max: Vec3(0.035, 0.046, 0.024), color: Palette.timberPale)
+            for z in [Float(-0.03), 0.03] {
+                cart.wheel(center: Vec3(0.0, 0.026, z), radius: 0.026, width: 0.006, spokes: 3, color: Palette.timber, rim: Palette.timberDark)
+                cart.limb(from: Vec3(-0.04, 0.042, z * 0.7), to: Vec3(-0.095, 0.02, z * 0.7), radius: 0.003, sides: 3, color: Palette.timberDark)
+            }
+            cart.limb(from: Vec3(0.03, 0.03, 0), to: Vec3(0.032, 0, 0), radius: 0.003, sides: 3, color: Palette.timberDark)
+            for (index, x) in [Float(-0.018), 0.012].enumerated() {
+                cart.sack(at: Vec3(x, 0.046, Float(index) * 0.006 - 0.003), size: 0.017, seed: UInt32(index + 74), color: Palette.linen)
+            }
+        }
         b.with(surface: .stone) {
             $0.place(.translation(Vec3(0.062, 0, -0.05))) {
                 $0.lathe([(0.034, 0), (0.034, 0.022), (0.026, 0.024), (0.026, 0.006)], sides: 8, color: Palette.stonePale)
