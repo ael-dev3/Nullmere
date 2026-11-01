@@ -121,7 +121,7 @@ struct RivalMind {
         // A keeper's standing orders keeping every company on its own land.
         let home = caretaking && state.standingOrders(of: house).home == true ? owners : nil
         // Its companies' orders don't change whom it is at war with.
-        let atWar = state.livingHouses.contains { state.isAtWar(house, $0.id) }
+        let atWar = state.isAtWarWithAny(house)
         // The Heartstone is sought at war too, the Frontier's prize.
         if !atWar || state.heartstone != nil { events += seekHolySite(garrisons: garrisons, in: &state) }
         events += breakTheCrown(garrisons: garrisons, in: &state)
@@ -145,7 +145,7 @@ struct RivalMind {
         guard !caretaking, state.houses[house].stock.grain >= RivalMind.drillReserve,
               state.income(of: house, territory: owners).grain - state.upkeep(of: house) > 2 else { return [] }
         let builder = state.houses[house].temperament == .steadfast || state.houses[house].temperament == .wary
-        let atWar = state.livingHouses.contains { state.isAtWar(house, $0.id) }
+        let atWar = state.isAtWarWithAny(house)
         if builder, !atWar, (state.seat(of: house)?.level(.moonspire) ?? 0) > 0 { return [] }
         var events: [GameEvent] = []
         for unit in state.units(of: house).sorted(by: { $0.id < $1.id })
@@ -451,8 +451,8 @@ struct RivalMind {
         var strengths = state.houses.map { $0.isEliminated ? 0 : all[$0.id] }
         if known != nil { strengths[house] = state.strength(of: house) }
         let mine = max(1, strengths[house])
-        let strongestOther = state.livingHouses.filter { $0.id != house }.map { strengths[$0.id] }.max() ?? 0
-        let enemies = state.livingHouses.filter { state.isAtWar(house, $0.id) }.count
+        let strongestOther = state.livingIDs.filter { $0 != house }.map { strengths[$0] }.max() ?? 0
+        let enemies = state.livingIDs.filter { state.isAtWar(house, $0) }.count
         var events: [GameEvent] = []
         var declared = false
         // Whose holds it knows near its own, found from its holds and each
@@ -635,9 +635,16 @@ struct RivalMind {
     /// Every other House whose Moonspire has reached its third stage, the
     /// highest first: never a vassal's, which can't rise while it serves.
     func spireThreats(in state: GameState) -> [Int] {
-        state.holds
-            .filter { $0.owner != house && $0.isSeat && $0.level(.moonspire) >= 3 && state.houses[$0.owner].liege == nil }
-            .sorted { ($0.level(.moonspire), tieBreak($0.owner, in: state)) > ($1.level(.moonspire), tieBreak($1.owner, in: state)) }
+        // By index, the seats alone weighed: asked for each company's
+        // siege, and a holds' list copied whole for it each time.
+        var rising: [(stage: Int, owner: Int)] = []
+        for index in state.holds.indices where state.holds[index].isSeat && state.holds[index].owner != house {
+            let stage = state.holds[index].level(.moonspire), owner = state.holds[index].owner
+            guard stage >= 3, state.houses[owner].liege == nil else { continue }
+            rising.append((stage, owner))
+        }
+        return rising
+            .sorted { ($0.stage, tieBreak($0.owner, in: state)) > ($1.stage, tieBreak($1.owner, in: state)) }
             .map(\.owner)
     }
 
@@ -703,7 +710,7 @@ struct RivalMind {
     private func chooseBuilding(for hold: Hold, owners: [Int?], in state: GameState) -> BuildingKind? {
         let me = state.houses[house]
         let stock = me.stock
-        let atWar = state.livingHouses.contains { state.isAtWar(house, $0.id) }
+        let atWar = state.isAtWarWithAny(house)
         let threatened = atWar && enemyMilitary(near: hold.position, within: 5, in: state)
         var wishes: [BuildingKind] = []
 
@@ -739,7 +746,7 @@ struct RivalMind {
             case .ambitious, .cunning: spireFrom = 34
             }
             let renown = state.renown(of: house)
-            let foremost = state.livingHouses.allSatisfy { $0.id == house || state.renown(of: $0.id) <= renown }
+            let foremost = state.livingIDs.allSatisfy { $0 == house || state.renown(of: $0) <= renown }
             let able = state.holds(of: house).count >= 4 || foremost
             if state.watch >= spireFrom, !threatened, me.liege == nil, able || hold.level(.moonspire) > 0 { wishes.append(.moonspire) }
             if me.temperament == .ambitious, hold.level(.musterHall) < 3 { wishes.append(.musterHall) }
@@ -919,7 +926,7 @@ struct RivalMind {
     /// knows near a hold of its with a Muster Hall, the lowest first, if it
     /// has companies enough to spare to hope to break it.
     private func rallyOnALair(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
-        guard !state.livingHouses.contains(where: { state.isAtWar(house, $0.id) }) else { return [] }
+        guard !state.isAtWarWithAny(house) else { return [] }
         let free = state.units(of: house).filter { $0.kind.isMilitary && $0.errand == nil }.count
         let spare = free - state.holds(of: house).count
         guard spare >= 3 else { return [] }
@@ -1087,7 +1094,7 @@ struct RivalMind {
         let military = units.filter { $0.kind.isMilitary }.count
         let engines = units.filter { $0.kind == .mangonel }.count
         let holds = state.holds(of: house).count
-        let atWar = state.livingHouses.contains { state.isAtWar(house, $0.id) }
+        let atWar = state.isAtWarWithAny(house)
         let netGrain = state.income(of: house, territory: owners).grain - state.upkeep(of: house)
 
         let wantedHolds: Int

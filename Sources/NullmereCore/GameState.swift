@@ -371,6 +371,20 @@ public struct GameState: Codable, Equatable, Sendable {
         houses.filter { !$0.isEliminated }
     }
 
+    /// The ids of the Houses still standing, in order: what most who ask
+    /// for the Houses standing want, without each House copied.
+    public var livingIDs: [Int] {
+        var ids: [Int] = []
+        for index in houses.indices where !houses[index].isEliminated { ids.append(houses[index].id) }
+        return ids
+    }
+
+    /// Whether a House is at war with any House still standing.
+    public func isAtWarWithAny(_ house: Int) -> Bool {
+        for index in houses.indices where !houses[index].isEliminated && isAtWar(house, houses[index].id) { return true }
+        return false
+    }
+
     // MARK: Diplomacy
 
     public func relation(_ a: Int, _ b: Int) -> Relation? {
