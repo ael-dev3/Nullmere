@@ -1,7 +1,7 @@
 /// The makings of gear, which a House's Forge works into it. The wilds
 /// leave them as they fall, a lair broken leaves more, and a company
 /// bringing in what it gathered at the land's sites brings some with it.
-public enum Making: String, CaseIterable, Codable, Sendable {
+public enum Making: String, CaseIterable, Codable, Sendable, PlainCases {
     case hide, iron, heartwood, moonglass
 
     public var title: String {
@@ -53,7 +53,7 @@ public struct MakingStack: Codable, Equatable, Sendable {
 
 /// The sets a Forge makes gear in: each of a set's pieces a commander
 /// wears with another of it gives the company it leads more besides.
-public enum GearSet: String, CaseIterable, Codable, Sendable {
+public enum GearSet: String, CaseIterable, Codable, Sendable, PlainCases {
     /// For holding a line and a wall.
     case warden
     /// For the charge and the breach.

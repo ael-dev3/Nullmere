@@ -165,6 +165,6 @@ extension GameState {
 }
 
 /// How a prisoner came to be free.
-public enum Freed: String, Codable, Equatable, Sendable {
+public enum Freed: String, Codable, Equatable, Sendable, PlainCases {
     case ransomed, released, escaped
 }

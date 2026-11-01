@@ -45,7 +45,7 @@ public enum Bonus: Hashable, Sendable {
 }
 
 /// The four branches of a House's studies.
-public enum Branch: String, CaseIterable, Codable, Sendable {
+public enum Branch: String, CaseIterable, Codable, Sendable, PlainCases {
     /// The land and its stores.
     case husbandry
     /// Companies and their tiers.
@@ -78,7 +78,7 @@ public enum Branch: String, CaseIterable, Codable, Sendable {
 /// A study a House can pursue at its Archive. Each has a branch, a circle
 /// (the Archive level it needs), grades, studies it builds on, and the
 /// rule it changes.
-public enum Study: String, CaseIterable, Codable, Sendable {
+public enum Study: String, CaseIterable, Codable, Sendable, PlainCases {
     // Husbandry
     case furrowLore, woodcraft, stonecutting, saltRaking, deepCellars, gleaning, ladenCarts
     // Arms

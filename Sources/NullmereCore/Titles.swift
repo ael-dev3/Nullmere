@@ -6,7 +6,7 @@
 /// was last named; and every one lapses when the Spire passes from the
 /// House that named it. Stewards name none, so a world of stewards goes as
 /// it always did.
-public enum Title: String, CaseIterable, Codable, Sendable {
+public enum Title: String, CaseIterable, Codable, Sendable, PlainCases {
     /// More gathered at the land's sites.
     case granaryWarden
     /// Every work raised sooner.

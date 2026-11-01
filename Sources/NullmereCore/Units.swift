@@ -1,5 +1,5 @@
 /// Who a House can send out from its holds.
-public enum UnitKind: String, CaseIterable, Codable, Sendable {
+public enum UnitKind: String, CaseIterable, Codable, Sendable, PlainCases {
     /// A scout carrying light into the dark country.
     case lantern
     case spear

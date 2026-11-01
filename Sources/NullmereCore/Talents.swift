@@ -1,5 +1,5 @@
 /// A tree of a commander's talents: what it grows into as it rises.
-public enum TalentTree: String, CaseIterable, Codable, Sendable {
+public enum TalentTree: String, CaseIterable, Codable, Sendable, PlainCases {
     /// The blow: attack, the hunt, the ram.
     case steel
     /// The guard: defence, healing, the walls.
@@ -21,7 +21,7 @@ public enum TalentTree: String, CaseIterable, Codable, Sendable {
 
 /// A commander's talent: learned a rank at a time, a point a rank, each
 /// rank giving its edge again to the company it leads.
-public enum Talent: String, CaseIterable, Codable, Sendable {
+public enum Talent: String, CaseIterable, Codable, Sendable, PlainCases {
     // Steel
     case keenEdge, huntersMark, rammingDrill, bloodedSteel, battleRage
     // Ward

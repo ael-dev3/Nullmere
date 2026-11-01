@@ -165,7 +165,7 @@ public struct Hold: Codable, Equatable, Identifiable, Sendable {
 }
 
 /// How a rival House tends to play.
-public enum Temperament: String, CaseIterable, Codable, Sendable {
+public enum Temperament: String, CaseIterable, Codable, Sendable, PlainCases {
     /// Expands fast and strikes when stronger.
     case ambitious
     /// Builds, fortifies and reaches for the Moonspire.

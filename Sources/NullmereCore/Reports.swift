@@ -4,7 +4,7 @@ import Foundation
 /// blows each side dealt, who fell, and how it came out for their House.
 public struct BattleReport: Equatable, Sendable, Identifiable {
     /// How a battle came out for the House the report is for.
-    public enum Outcome: String, Equatable, Sendable {
+    public enum Outcome: String, Equatable, Sendable, PlainCases {
         /// The foe fell, or the hold's ward broke, and the House's company stood.
         case won
         /// The House's company fell.

@@ -1,7 +1,7 @@
 /// One line of the lake's history. The chronicle keeps what mattered:
 /// foundings, wars, pacts and their breaking, sieges, falls, great works.
 public struct ChronicleEntry: Codable, Equatable, Sendable {
-    public enum Kind: String, Codable, Sendable {
+    public enum Kind: String, Codable, Sendable, PlainCases {
         case beginning
         case founding
         case war
@@ -57,7 +57,7 @@ public struct ChronicleEntry: Codable, Equatable, Sendable {
 
 /// How a game ends.
 public struct Outcome: Codable, Equatable, Sendable {
-    public enum Kind: String, Codable, Sendable {
+    public enum Kind: String, Codable, Sendable, PlainCases {
         /// Every other House has fallen.
         case dominion
         /// The Moonspire stands complete.

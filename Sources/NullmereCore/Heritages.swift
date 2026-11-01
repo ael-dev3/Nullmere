@@ -3,7 +3,7 @@
 /// age begins the realm deals every seat one, evenly round the lake; a
 /// keeper may take up another, the first time freely and after that for
 /// moonsalt.
-public enum Heritage: String, CaseIterable, Codable, Sendable {
+public enum Heritage: String, CaseIterable, Codable, Sendable, PlainCases {
     /// Of the salt flats: moonsalt, and wards that mend.
     case saltborn
     /// Of the reeds and the shallows: bows, and far sight.

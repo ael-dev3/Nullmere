@@ -1,7 +1,7 @@
 import Foundation
 
 /// Where two Houses stand with each other.
-public enum Stance: String, Codable, CaseIterable, Sendable {
+public enum Stance: String, Codable, CaseIterable, Sendable, PlainCases {
     case war
     /// No fighting; armies keep to themselves.
     case peace
@@ -107,7 +107,7 @@ public struct Relation: Codable, Equatable, Sendable {
 }
 
 /// What one House can offer another.
-public enum Proposal: String, Codable, CaseIterable, Sendable {
+public enum Proposal: String, Codable, CaseIterable, Sendable, PlainCases {
     case peace
     case pact
     /// A beaten House offers to become the other's vassal: a pact it can't

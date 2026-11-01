@@ -1,5 +1,5 @@
 /// What a commander is: the kind of company it leads best.
-public enum Archetype: String, CaseIterable, Codable, Sendable {
+public enum Archetype: String, CaseIterable, Codable, Sendable, PlainCases {
     /// Holds the line, and the walls.
     case warden
     /// Strikes first and hardest.
@@ -48,7 +48,7 @@ public enum Edge: Hashable, Sendable {
 /// A commander's skill. Three are always with it from their level on; one,
 /// its active skill, fires in battle once its fury has risen through enough
 /// battles, then rises again.
-public enum Skill: String, CaseIterable, Codable, Sendable {
+public enum Skill: String, CaseIterable, Codable, Sendable, PlainCases {
     // Warden
     case shieldwall, holdFast, stonePatience, lastGate
     // Vanguard

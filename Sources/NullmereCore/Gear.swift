@@ -1,5 +1,5 @@
 /// Where a commander wears a piece of gear: one of each.
-public enum GearSlot: String, CaseIterable, Codable, Sendable {
+public enum GearSlot: String, CaseIterable, Codable, Sendable, PlainCases {
     case weapon, armour, charm
 
     public var title: String {
@@ -41,7 +41,7 @@ public enum GearQuality: Int, CaseIterable, Codable, Comparable, Sendable {
 
 /// A kind of gear: each kind of the wilds leaves its own, and a House's
 /// Forge makes three sets of its own.
-public enum GearKind: String, CaseIterable, Codable, Sendable {
+public enum GearKind: String, CaseIterable, Codable, Sendable, PlainCases {
     /// Left by Saltwights: a blade of salt-hardened bone.
     case saltGlaive
     /// Left by Blackwood Reavers: an axe for doors and walls.

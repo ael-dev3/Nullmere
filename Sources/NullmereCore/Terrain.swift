@@ -1,6 +1,6 @@
 /// The ground of the basin around the Nullmere, from the dead water outward
 /// to the mountains that wall it in.
-public enum Terrain: String, CaseIterable, Codable, Sendable {
+public enum Terrain: String, CaseIterable, Codable, Sendable, PlainCases {
     /// The open lake: black, deep and perfectly still. Nothing crosses it.
     case still
     /// Dead shallows near the shore. Wadeable, slowly; nothing grows or lives here.
@@ -111,7 +111,7 @@ public enum Terrain: String, CaseIterable, Codable, Sendable {
 }
 
 /// Something notable on a tile.
-public enum Feature: String, CaseIterable, Codable, Sendable {
+public enum Feature: String, CaseIterable, Codable, Sendable, PlainCases {
     /// A thick bed of moonsalt.
     case moonsaltBed
     /// Ancient trees, vast and dense.

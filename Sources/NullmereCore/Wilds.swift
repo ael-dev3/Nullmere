@@ -2,7 +2,7 @@
 /// from every hold. They never march and take no hold; they stand where
 /// they rose until some House strikes them down, and what falls with them
 /// is stores for that House and lessons for its commander.
-public enum WildKind: String, CaseIterable, Codable, Sendable {
+public enum WildKind: String, CaseIterable, Codable, Sendable, PlainCases {
     /// Pale husks that crawl out of the salt flats.
     case saltwights
     /// Outlaw bands of the blackwood.

@@ -40,7 +40,7 @@ public struct Oath: Codable, Equatable, Identifiable, Sendable {
 }
 
 /// How an oath came to an end.
-public enum OathEnd: String, Codable, Equatable, Sendable {
+public enum OathEnd: String, Codable, Equatable, Sendable, PlainCases {
     /// Kept to its last watch.
     case kept
     /// Renounced, and its notice run out.

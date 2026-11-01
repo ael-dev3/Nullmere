@@ -2,7 +2,7 @@ import Foundation
 
 /// The shape of the black water. Each age of the realm lies on a lake of
 /// its own shape, in turn.
-public enum Lake: String, Codable, CaseIterable, Sendable {
+public enum Lake: String, Codable, CaseIterable, Sendable, PlainCases {
     /// One round lake: the Nullmere as the first age knew it.
     case round
     /// Two lakes side by side, with a neck of land between.

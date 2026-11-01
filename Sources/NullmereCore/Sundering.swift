@@ -1,5 +1,5 @@
 /// The lake's two shores, which stand as kingdoms in a Sundering.
-public enum Shore: String, Codable, CaseIterable, Sendable {
+public enum Shore: String, Codable, CaseIterable, Sendable, PlainCases {
     case eastern, western
 
     public var title: String {

@@ -5,7 +5,7 @@
 /// Houses' good faith: a House that breaks it is named in the Chronicle and
 /// pays a fine to the House it wronged, once a watch for each edict it
 /// breaks, and loses renown as the age ends.
-public enum EdictKind: String, Codable, CaseIterable, Sendable {
+public enum EdictKind: String, Codable, CaseIterable, Sendable, PlainCases {
     /// No House strikes another's hold about the full moon.
     case moonPeace
     /// No House strikes another's companies out at the land's work.

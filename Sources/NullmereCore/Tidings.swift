@@ -2,7 +2,7 @@
 /// words: a line, and whether it is good news, bad or neither. Nil when the
 /// event is nothing to them.
 public struct Tidings: Equatable, Sendable {
-    public enum Tone: String, Equatable, Sendable {
+    public enum Tone: String, Equatable, Sendable, PlainCases {
         case good, bad, neutral
     }
 

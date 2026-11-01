@@ -1,5 +1,5 @@
 /// The kind of a holy site of the lake, and what it gives the side that holds it.
-public enum ShrineKind: String, CaseIterable, Codable, Sendable {
+public enum ShrineKind: String, CaseIterable, Codable, Sendable, PlainCases {
     /// A well that holds the moon: the blows of its holders' companies fall harder.
     case moonwell
     /// A stone that never stirs in the wind: its holders' companies stand firmer.

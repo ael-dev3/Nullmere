@@ -2,7 +2,7 @@
 /// hasten what a hold has under way, caches of stores, ward stones that
 /// make a hold's ward whole, and draughts that mend its companies. They
 /// come from lairs broken, happenings' marks and the charges kept.
-public enum ItemKind: String, CaseIterable, Codable, Sendable {
+public enum ItemKind: String, CaseIterable, Codable, Sendable, PlainCases {
     /// What a hold has under way, its work and its muster, comes a watch
     /// nearer; or the House's study, if it names no hold.
     case hourglass

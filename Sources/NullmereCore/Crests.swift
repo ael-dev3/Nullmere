@@ -3,14 +3,14 @@
 /// one the lake gave it, the same for the same realm.
 public struct Crest: Codable, Equatable, Hashable, Sendable {
     /// The colours a crest is painted in.
-    public enum Tincture: String, Codable, CaseIterable, Sendable {
+    public enum Tincture: String, Codable, CaseIterable, Sendable, PlainCases {
         case silver, gold, black, blue, red, green, purple
 
         public var title: String { rawValue }
     }
 
     /// What a shield bears.
-    public enum Charge: String, Codable, CaseIterable, Sendable {
+    public enum Charge: String, Codable, CaseIterable, Sendable, PlainCases {
         case moon, tower, heron, star, oar, key, wave, flame, antler, bell
 
         public var title: String { rawValue }

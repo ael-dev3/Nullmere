@@ -1,7 +1,7 @@
 import Foundation
 
 /// What a happening of the realm sets every House striving at.
-public enum HappeningKind: String, Codable, CaseIterable, Sendable {
+public enum HappeningKind: String, Codable, CaseIterable, Sendable, PlainCases {
     /// Companies of the wilds struck down, the greater the more.
     case longHunt
     /// Stores brought home from the sites of the land.

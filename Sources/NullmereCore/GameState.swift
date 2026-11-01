@@ -649,6 +649,16 @@ public struct GameState: Codable, Equatable, Sendable {
     }
 
     func unitIndex(_ id: Int) -> Int? {
+        // Companies are kept in the order they were raised, each id above
+        // the one before, so one is found by halving the list; one not
+        // found so is looked for in each, should any be out of that order.
+        var low = 0, high = units.count
+        while low < high {
+            let middle = (low + high) / 2
+            let found = units[middle].id
+            if found == id { return middle }
+            if found < id { low = middle + 1 } else { high = middle }
+        }
         for index in units.indices where units[index].id == id { return index }
         return nil
     }

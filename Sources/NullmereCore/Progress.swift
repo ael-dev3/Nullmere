@@ -3,7 +3,7 @@ import Foundation
 /// A deed a House may do once in an age, for the honour of it. A keeper
 /// keeps the deeds of every age they held a House in, and nothing else of
 /// it: each age every House begins alike.
-public enum Deed: String, Codable, CaseIterable, Sendable {
+public enum Deed: String, Codable, CaseIterable, Sendable, PlainCases {
     case founder
     case wildbane
     case greatHunter

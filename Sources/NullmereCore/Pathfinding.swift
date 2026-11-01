@@ -12,28 +12,28 @@ extension GameState {
               map.steps[goal] != 0
         else { return nil }
 
+        // What stands in the way marked straight into the room, which stays
+        // a plain value here: tens of thousands of marks a watch in a wide
+        // realm, each a few steps.
         var room = SearchRoom.take(count: map.count)
-        func block(_ hex: Hex) {
-            if let index = map.index(of: hex), index != goal { room.block(index) }
-        }
         for index in units.indices where units[index].id != unit.id {
-            block(units[index].position)
+            room.block(units[index].position, on: map, but: goal)
         }
         for index in holds.indices where holds[index].owner != unit.owner {
-            block(holds[index].position)
+            room.block(holds[index].position, on: map, but: goal)
         }
         for wild in wildsStanding {
-            block(wild.position)
+            room.block(wild.position, on: map, but: goal)
         }
         for lair in lairsStanding {
-            block(lair.position)
+            room.block(lair.position, on: map, but: goal)
         }
         // Only its alliance's companies pass through a hall, or a storehouse.
         for hall in hallsStanding where !isOfHall(unit.owner, hall) {
-            block(hall.position)
+            room.block(hall.position, on: map, but: goal)
         }
         for storehouse in storehousesStanding where !isOf(storehouse.alliance, unit.owner) {
-            block(storehouse.position)
+            room.block(storehouse.position, on: map, but: goal)
         }
         let way = room.search.way(on: map, from: start, to: goal, around: room.blocked)
         SearchRoom.give(back: &room)
@@ -59,6 +59,12 @@ struct SearchRoom {
         guard !blocked[index] else { return }
         blocked[index] = true
         marked.append(index)
+    }
+
+    /// The tile of a hex marked as in the way, unless it is the goal.
+    @inline(__always)
+    mutating func block(_ hex: Hex, on map: WorldMap, but goal: Int) {
+        if let index = map.index(of: hex), index != goal { block(index) }
     }
 
     private static let shelf = Shelf()
@@ -206,10 +212,54 @@ struct WaySearch {
     /// The tiles the last search reached.
     private var touched: [Int32] = []
     private var open = KeyHeap()
+    /// Each tile's mark from the last look about the goal, and that look's
+    /// own: a mark is the look's when it is `stamp`.
+    private var marks: [UInt32]
+    private var stamp: UInt32 = 0
+    private var around: [Int32] = []
 
     init(count: Int) {
         best = [Int32](repeating: 0, count: count)
         cameFrom = [Int32](repeating: 0, count: count)
+        marks = [UInt32](repeating: 0, count: count)
+    }
+
+    /// The most tiles looked over about a goal before the search goes on
+    /// without knowing whether it is shut in.
+    static let pocket = 128
+
+    /// Whether the goal is shut in, with the start outside: the tiles a
+    /// way could come to it through, fewer than `pocket` of them, close
+    /// round it and never reach the start. A hold ringed two deep by
+    /// companies has no way into it, known after a few tiles rather than
+    /// after all the land a search could reach; of any other goal, the
+    /// search finds what it would have.
+    private mutating func pocketed(_ goal: Int, apartFrom start: Int, neighbours: [Int32], steps: [UInt8], blocked: [Bool]) -> Bool {
+        stamp &+= 1
+        if stamp == 0 {
+            marks = [UInt32](repeating: 0, count: marks.count)
+            stamp = 1
+        }
+        around.removeAll(keepingCapacity: true)
+        around.append(Int32(goal))
+        marks[goal] = stamp
+        var head = 0
+        while head < around.count {
+            guard around.count <= WaySearch.pocket else { return false }
+            let tile = Int(around[head])
+            head += 1
+            for side in 0..<6 {
+                let next = Int(neighbours[tile * 6 + side])
+                guard next >= 0, marks[next] != stamp else { continue }
+                // A way from the start steps onto any tile not blocked, and
+                // off the start itself.
+                if next == start { return false }
+                guard !blocked[next], steps[next] != 0 else { continue }
+                marks[next] = stamp
+                around.append(Int32(next))
+            }
+        }
+        return true
     }
 
     /// The cheapest way from the tile `start` to the tile `goal`, as the
@@ -231,6 +281,7 @@ struct WaySearch {
             return true
         }
         if shut(goal, but: start) || shut(start, but: goal) { return nil }
+        if pocketed(goal, apartFrom: start, neighbours: neighbours, steps: steps, blocked: blocked) { return nil }
         for tile in touched { best[Int(tile)] = 0 }
         touched.removeAll(keepingCapacity: true)
         open.removeAll()
