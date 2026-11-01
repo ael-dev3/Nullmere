@@ -490,7 +490,10 @@ enum Works {
             if level >= 5 {
                 $0.box(center: Vec3(0, 0.162, 0.22), size: Vec3(0.024, 0.042, 0.032), color: Palette.stonePale)
             }
-            if level <= 2 { lodgeShed(&$0) }
+            if level <= 2 {
+                lodgeShed(&$0)
+                lodgeYard(&$0, level: level)
+            }
         }
         let swings = [Machinery.Swing(part: jib, axis: Vec3(0, 1, 0), angle: 0.5)]
         return model(name, b, rig: rig, machinery: Machinery(wheels: wheels, swings: swings, parts: rig.count))
@@ -532,6 +535,70 @@ enum Works {
             let z = -0.088 + Float(index) * 0.004
             b.sheet([Vec3(x, 0, z), Vec3(x + 0.04, 0, z), Vec3(x + 0.04, 0.05, z), Vec3(x + 0.028, 0.064, z), Vec3(x + 0.01, 0.072, z),
                      Vec3(x, 0.07, z)], normal: Vec3(0, 0, 1), thickness: 0.003, color: index == 0 ? Palette.timberPale : Palette.linen)
+        }
+    }
+
+    /// A first lodge's yard drawn near: a rough block on its sledge, the
+    /// hauling rope run out before it; a lantern on a bracket from the
+    /// shed's western post; a bucket and its dipper by the banker, to wet
+    /// the stone; and at the second level the masons' tools hung on a
+    /// batten along the shed's back wall, and scaffold poles leaning by it,
+    /// ready for the work to come.
+    static func lodgeYard(_ b: inout MeshBuilder, level: Int) {
+        b.place(.translation(Vec3(-0.13, 0, 0.18)) * .rotationY(0.25)) { sledge in
+            for z in [Float(-0.028), 0.028] {
+                sledge.box(min: Vec3(-0.06, 0, z - 0.006), max: Vec3(0.055, 0.012, z + 0.006), color: Palette.timberDark)
+                sledge.beam(from: Vec3(0.055, 0.006, z), to: Vec3(0.07, 0.018, z), width: 0.012, depth: 0.012, color: Palette.timberDark)
+            }
+            for x in [Float(-0.045), 0.0, 0.045] {
+                sledge.box(min: Vec3(x - 0.008, 0.012, -0.04), max: Vec3(x + 0.008, 0.02, 0.04), color: Palette.timber)
+            }
+            sledge.with(surface: .stone) {
+                $0.rock(center: Vec3(-0.004, 0.047, 0), size: Vec3(0.042, 0.027, 0.032), rings: 2, sides: 6, jitter: 0.12, seed: 61,
+                        color: Palette.stonePale)
+            }
+            sledge.limb(from: Vec3(0.068, 0.016, -0.028), to: Vec3(0.11, 0.004, 0.0), radius: 0.0022, sides: 3, color: Palette.canvas)
+            sledge.limb(from: Vec3(0.068, 0.016, 0.028), to: Vec3(0.11, 0.004, 0.0), radius: 0.0022, sides: 3, color: Palette.canvas)
+            sledge.limb(from: Vec3(0.11, 0.004, 0.0), to: Vec3(0.16, 0.003, 0.03), radius: 0.0025, sides: 3, color: Palette.canvas)
+        }
+        let post = Vec3(-0.2, 0, -0.06)
+        b.beam(from: post + Vec3(0.005, 0.118, 0.004), to: post + Vec3(0.005, 0.118, 0.034), width: 0.004, color: Palette.iron)
+        b.limb(from: post + Vec3(0.005, 0.117, 0.032), to: post + Vec3(0.005, 0.1, 0.032), radius: 0.0012, sides: 3, color: Palette.iron)
+        b.with(material: .glow) {
+            $0.place(.translation(post + Vec3(0.005, 0.077, 0.032))) {
+                $0.lathe([(0.0, 0.0), (0.01, 0.01), (0.0, 0.023)], sides: 5, color: Palette.candle)
+            }
+        }
+        b.place(.translation(Vec3(0.05, 0, 0.145))) {
+            $0.lathe([(0.016, 0), (0.019, 0.03)], sides: 7, color: Palette.timber)
+            $0.lathe([(0.0, 0.026), (0.018, 0.027)], sides: 7, color: Palette.slate.mix(Palette.moonGlow, 0.15))
+            $0.limb(from: Vec3(0.004, 0.03, 0), to: Vec3(0.026, 0.05, 0.006), radius: 0.0018, sides: 3, color: Palette.timberPale)
+        }
+        guard level == 2 else { return }
+        // The batten on the back wall, and what hangs on it: a mallet, two
+        // chisels, a square and a frame saw.
+        let wall: Float = -0.193
+        b.box(min: Vec3(-0.17, 0.088, wall), max: Vec3(-0.01, 0.096, wall + 0.006), color: Palette.timberDark)
+        b.box(center: Vec3(-0.15, 0.07, wall + 0.012), size: Vec3(0.018, 0.016, 0.016), color: Palette.timberPale)
+        b.beam(from: Vec3(-0.15, 0.078, wall + 0.012), to: Vec3(-0.15, 0.092, wall + 0.008), width: 0.004, color: Palette.timber)
+        b.with(material: .metal) {
+            for x in [Float(-0.122), -0.108] {
+                $0.beam(from: Vec3(x, 0.088, wall + 0.008), to: Vec3(x, 0.056, wall + 0.008), width: 0.003, depth: 0.002, color: Palette.iron)
+            }
+            $0.beam(from: Vec3(-0.088, 0.087, wall + 0.008), to: Vec3(-0.088, 0.047, wall + 0.008), width: 0.004, depth: 0.0015,
+                    color: Palette.iron)
+            $0.beam(from: Vec3(-0.088, 0.049, wall + 0.008), to: Vec3(-0.064, 0.049, wall + 0.008), width: 0.004, depth: 0.0015,
+                    color: Palette.iron)
+            $0.box(center: Vec3(-0.035, 0.066, wall + 0.008), size: Vec3(0.04, 0.0025, 0.0015), color: Palette.steel)
+        }
+        for x in [Float(-0.056), -0.014] {
+            b.beam(from: Vec3(x, 0.088, wall + 0.009), to: Vec3(x, 0.06, wall + 0.009), width: 0.003, color: Palette.timber)
+        }
+        b.beam(from: Vec3(-0.056, 0.086, wall + 0.009), to: Vec3(-0.014, 0.086, wall + 0.009), width: 0.003, color: Palette.timber)
+        // Scaffold poles leaning by the shed's eastern back post.
+        for (index, foot) in [Vec3(0.07, 0, -0.235), Vec3(0.082, 0, -0.228), Vec3(0.094, 0, -0.236)].enumerated() {
+            b.limb(from: foot, to: Vec3(0.052 + Float(index) * 0.004, 0.2 - Float(index) * 0.012, -0.21), radius: 0.0045, sides: 4,
+                   color: index == 1 ? Palette.timberGrey : Palette.timberPale)
         }
     }
 
