@@ -17,7 +17,7 @@ OUT="${1:-build/trailer}"
 mkdir -p "$OUT"
 OUT="$(cd "$OUT" && pwd)"
 export NULLMERE_TRAILER="$OUT"
-swift test -c release -Xswiftc -enable-testing --filter TrailerRenderTests 2>&1 | tee "$OUT/render.log"
+swift test -c release -Xswiftc -enable-testing --filter 'TrailerRenderTests|NullmereTrailerTests' 2>&1 | tee "$OUT/render.log"
 if grep -q "skipped" "$OUT/render.log" && ! grep -q "TRAILER stills drawn" "$OUT/render.log"; then
     echo "error: the trailer was not drawn: no Metal device?" >&2
     exit 1

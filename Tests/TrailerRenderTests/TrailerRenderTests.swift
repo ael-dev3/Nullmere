@@ -19,6 +19,7 @@ import XCTest
 /// skipped otherwise. With NULLMERE_TRAILER_MODE=stills it draws only a
 /// still from the middle of each shot, to look at.
 final class TrailerRenderTests: XCTestCase {
+    @_optimize(none)
     func testRenderTheTrailer() throws {
         let environment = ProcessInfo.processInfo.environment
         guard let out = environment["NULLMERE_TRAILER"] else { throw XCTSkip("The trailer is rendered by scripts/render-trailer.sh") }
@@ -50,8 +51,8 @@ final class TrailerRenderTests: XCTestCase {
         try Soundtrack.wav(left: left, right: right).write(to: directory.appendingPathComponent("nullmere-trailer.wav"))
         print("TRAILER score rendered in \(Int(Date().timeIntervalSince(began))) s")
         let film = directory.appendingPathComponent("nullmere-trailer.mp4")
-        try Film.write(to: film, frames: trailer.frameCount, picture: { projector.frame(at: Double($0) / Double(Trailer.framesPerSecond)) },
-                       left: left, right: right)
+        let step = 1 / Double(Trailer.framesPerSecond)
+        try Film.write(to: film, frames: trailer.frameCount, picture: { projector.frame(at: Double($0) * step) }, left: left, right: right)
         let size = (try FileManager.default.attributesOfItem(atPath: film.path)[.size] as? Int) ?? 0
         print("TRAILER film written in \(Int(Date().timeIntervalSince(began))) s: \(film.lastPathComponent), \(size / 1_000_000) MB, "
               + "\(String(format: "%.1f", trailer.duration)) s")
@@ -176,21 +177,24 @@ final class Projector: @unchecked Sendable {
 
     /// The title as the launcher sets it over the lake: NULLMERE ONLINE,
     /// wide and thin above the far shore, in the launcher's pale type and
-    /// glow.
+    /// glow. Not optimised: Swift 6.3.3's optimiser crashes on it.
+    @_optimize(none)
     private func title(on pixels: inout [UInt8], showing opacity: Double) {
         guard opacity > 0 else { return }
-        let scale = Trailer.pixelsPerPoint
-        let unit = LakeComposition.unit(width: Trailer.viewSize.width, height: Trailer.viewSize.height)
-        let size = 60 * unit * scale
-        let tracking = 0.32
+        let scale = CGFloat(Trailer.pixelsPerPoint)
+        let unit = CGFloat(LakeComposition.unit(width: Double(Trailer.viewSize.width), height: Double(Trailer.viewSize.height)))
+        let size: CGFloat = 60 * unit * scale
+        let tracking: CGFloat = 0.32
         let font = NSFont.systemFont(ofSize: size, weight: .thin)
-        let ink = NSColor(srgbRed: 0.894, green: 0.918, blue: 0.949, alpha: opacity)
+        let ink = NSColor(srgbRed: 0.894, green: 0.918, blue: 0.949, alpha: CGFloat(opacity))
         let text = NSAttributedString(string: "NULLMERE ONLINE", attributes: [.font: font, .kern: size * tracking, .foregroundColor: ink])
         let line = CTLineCreateWithAttributedString(text)
-        let lineWidth = CTLineGetTypographicBounds(line, nil, nil, nil) - size * tracking
+        let lineWidth = CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil)) - size * tracking
         // Resting at the foot of the band above the far shore, as the launcher sets it.
-        let band = (LakeComposition.waterline(forHeight: Trailer.viewSize.height) - 46 * unit) * scale
-        let baseline = Double(height) - band - Double(font.descender)
+        let waterline = CGFloat(LakeComposition.waterline(forHeight: Double(Trailer.viewSize.height)))
+        let band: CGFloat = (waterline - 46 * unit) * scale
+        let baseline: CGFloat = CGFloat(height) - band - font.descender
+        let x: CGFloat = (CGFloat(width) - lineWidth) * 0.5
         pixels.withUnsafeMutableBytes { raw in
             guard let base = raw.baseAddress,
                   let context = CGContext(data: base, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
@@ -198,10 +202,9 @@ final class Projector: @unchecked Sendable {
                                           bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
             else { return }
             let glow = NSColor(srgbRed: 0.588, green: 0.706, blue: 0.882, alpha: 1)
-            let x = (Double(width) - lineWidth) / 2
-            for (blur, strength) in [(26 * unit * scale, 0.42), (3 * unit * scale, 0.28)] {
+            for (blur, strength) in [(26 * unit * scale, CGFloat(0.42)), (3 * unit * scale, CGFloat(0.28))] {
                 context.saveGState()
-                context.setShadow(offset: .zero, blur: CGFloat(blur), color: glow.withAlphaComponent(CGFloat(strength * opacity)).cgColor)
+                context.setShadow(offset: .zero, blur: blur, color: glow.withAlphaComponent(strength * CGFloat(opacity)).cgColor)
                 context.textPosition = CGPoint(x: x, y: baseline)
                 CTLineDraw(line, context)
                 context.restoreGState()

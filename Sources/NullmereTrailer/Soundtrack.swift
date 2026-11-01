@@ -80,7 +80,8 @@ public struct Soundtrack: Sendable {
     }
 
     /// Its samples, left and right, from its first moment to `end` (all of
-    /// it, if none is given), the loudest at -1 dBFS.
+    /// it, if none is given): brought up half as loud again and its peaks
+    /// rounded off, a trailer's loudness, never past -1.4 dBFS.
     public func render(until end: Double? = nil) -> (left: [Float], right: [Float]) {
         let total = Int((min(end ?? duration, duration) * Double(Soundtrack.sampleRate)).rounded())
         var left = [Float](repeating: 0, count: total), right = [Float](repeating: 0, count: total)
@@ -112,14 +113,17 @@ public struct Soundtrack: Sendable {
             }
             cursor += frames
         }
-        // Its loudest moment at -1 dBFS, and the last moments faded to nothing.
+        // Its loudest moment brought to full scale and the whole half as
+        // loud again, the peaks rounded off softly under -1.4 dBFS; the last
+        // moments faded to nothing.
         let peak = max(left.map(abs).max() ?? 0, right.map(abs).max() ?? 0)
-        let gain = peak > 0 ? 0.891 / peak : 1
+        let gain = peak > 0 ? 1.5 / peak : 1
+        let ceiling: Float = 0.92
         let tail = min(Soundtrack.sampleRate * 2, total)
         for index in 0..<total {
             let fade = index >= total - tail ? Float(total - index) / Float(tail) : 1
-            left[index] *= gain * fade
-            right[index] *= gain * fade
+            left[index] = ceiling * tanh(left[index] * gain / ceiling) * fade
+            right[index] = ceiling * tanh(right[index] * gain / ceiling) * fade
         }
         return (left, right)
     }
