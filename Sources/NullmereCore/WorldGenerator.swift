@@ -372,7 +372,7 @@ public struct WorldGenerator: Sendable {
     }
 
     /// Streams from the Spine down to the lake, in the gaps between the
-    /// seats, each crossed at shoals every few steps: no seat's country
+    /// seats, each crossed at a shoal every third step: no seat's country
     /// cut, no feature drowned, and no land a company could walk to before
     /// shut off after. With the heart of each region of the shores between
     /// them. Worked out with randomness of their own, never the world's.
@@ -502,8 +502,10 @@ public struct WorldGenerator: Sendable {
                 carved[index] = true
                 map[index] = Tile(terrain: .stream, relief: map[index].relief)
             }
-            // A shoal every few steps, and at least one.
-            let shoals = max(1, course.count / 4)
+            // A shoal every third step, and at least one: fewer, and the
+            // streams held off every war so long that the builders of
+            // Moonspires won two ages in five.
+            let shoals = max(1, course.count / 3)
             for n in 0..<shoals {
                 let index = course[(n + 1) * course.count / (shoals + 1)]
                 map[index] = Tile(terrain: .shoal, relief: map[index].relief)

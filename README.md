@@ -723,7 +723,7 @@ realm; keepers are told in plain words, never a status code.
   down to the lake in the gaps between the seats, one for every two seats
   (three at the fewest, twelve at the most), each with its name. No company
   wades a stream and nothing is raised on it; it is crossed at its shoals,
-  a shoal every few steps, waded at two moves, where a company stands a
+  a shoal every third step, waded at two moves, where a company stands a
   quarter less firm and stepping stones show the way. No land a company
   could walk to without the streams is shut off by them, and no seat's
   country is cut. Between the streams lie the regions of the shores, each
@@ -1422,21 +1422,23 @@ realm; keepers are told in plain words, never a status code.
   can never turn on its liege, nor win, nor raise its Moonspire while it
   serves: the works on its tower stop when it bends the knee. A liege who
   turns on a vassal frees it, and a liege's fall frees all its vassals.
-- **How ages end.** In 48 ages of a realm as it stands by default, twelve
+- **How ages end.** In 96 ages of a realm as it stands by default, twelve
   seats on a lake of radius 36, played through by stewards alone, pace by
   pace, under the rules as they now stand, the shores at war in every
   Sundering, a field of battle five tiles about its heart, each level of
-  a Muster Hall leading eight first musters more and every march keeping
-  its way, the Moonspire decided 44 and dominion 4; an age ran 153
-  watches at the median and 217 at the longest, and more than a quarter
-  saw a House fall outright. The seats won alike, within chance (χ² 10.0
-  on 11 degrees of freedom), and so did the tempers (χ² 1.5 on 3), the
-  ambitious 21%, the cunning 31%, the wary 21% and the steadfast 27%, the
-  Moonspire most of all for each: the four dominions went two to the
-  cunning and one each to the ambitious and the steadfast. A realm's
-  armies came to 1,870,000 troops at the median as its age ended, and its
-  greatest battles to 79,200 troops at the median and 138,400 at the
-  most, over 100,000 in ten of the ages.
+  a Muster Hall leading eight first musters more, every march keeping its
+  way and the streams crossed at a shoal every third step, the Moonspire
+  decided 91 and dominion 5; an age ran 162 watches at the median and 257
+  at the longest, and one in seven saw a House fall outright. The seats
+  won alike, within chance (χ² 15.5 on 11 degrees of freedom), and so did
+  the tempers (χ² 2.1 on 3), the ambitious 19%, the cunning 27%, the wary
+  26% and the steadfast 28%, the Moonspire most of all for each: the five
+  dominions went three to the cunning and two to the ambitious. With a
+  shoal every fourth step, as the streams first ran, they held off so many
+  wars that the steadfast, the first to build, won 40% (χ² 12.2). A
+  realm's armies came to 1,980,000 troops at the median as its age ended,
+  and its greatest battles to 89,500 troops at the median and 163,800 at
+  the most, over 100,000 in 26 of the ages.
 - **Tribute.** From watch twenty, an ambitious or cunning steward a quarter
   stronger than a neighbour may demand a fifth of its stores. Paid, it keeps
   the peace for twenty watches, unless that neighbour's Moonspire rises;
