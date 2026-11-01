@@ -12,38 +12,37 @@ extension GameState {
               map.steps[goal] != 0
         else { return nil }
 
-        // What stands in the way marked straight into the room, which stays
-        // a plain value here: tens of thousands of marks a watch in a wide
-        // realm, each a few steps.
+        // What stands in the way kept in the room from one search to the
+        // next, and brought up to the realm as it stands: in a wide realm
+        // the thousands of companies stood where they were for all but a
+        // few, and marking every one of them anew for every march was the
+        // most of what a search cost.
         var room = SearchRoom.take(count: map.count)
-        for index in units.indices where units[index].id != unit.id {
-            room.block(units[index].position, on: map, but: goal)
-        }
-        for index in holds.indices where holds[index].owner != unit.owner {
-            room.block(holds[index].position, on: map, but: goal)
-        }
-        for wild in wildsStanding {
-            room.block(wild.position, on: map, but: goal)
-        }
-        for lair in lairsStanding {
-            room.block(lair.position, on: map, but: goal)
-        }
-        // Only its alliance's companies pass through a hall, or a storehouse.
-        for hall in hallsStanding where !isOfHall(unit.owner, hall) {
-            room.block(hall.position, on: map, but: goal)
-        }
-        for storehouse in storehousesStanding where !isOf(storehouse.alliance, unit.owner) {
-            room.block(storehouse.position, on: map, but: goal)
-        }
+        room.ready(for: unit, toward: goal, in: self)
         let way = if let guide = map.guide(from: start, to: goal) {
             room.search.way(on: map, from: start, to: goal, around: room.blocked, guide: guide)
         } else {
             room.search.way(on: map, from: start, to: goal, around: room.blocked)
         }
+        room.settle()
         SearchRoom.give(back: &room)
         return way
     }
 }
+
+/// What a search goes round: a company, a hold, a company of the wilds, a
+/// lair, a hall or a storehouse, each by its id and where it stands.
+protocol InTheWay {
+    var id: Int { get }
+    var position: Hex { get }
+}
+
+extension Unit: InTheWay {}
+extension Hold: InTheWay {}
+extension Wild: InTheWay {}
+extension Lair: InTheWay {}
+extension AllianceHall: InTheWay {}
+extension Storehouse: InTheWay {}
 
 extension WorldMap {
     /// How far a march goes, as the crow flies, for its way to be guided by
@@ -66,41 +65,155 @@ extension WorldMap {
 
 /// Room for a search for a way, kept from one search to the next, as the
 /// tens of thousands of tiles of a wide lake are too many to lay out anew
-/// for every march: the search's own, and what stands in its way, every
-/// tile clear again once the room is given back.
+/// for every march: the search's own, and what stands in its way, as it
+/// stood at the last search, for the next to change only what has moved.
+/// A map's tiles are numbered by its radius alone, so a room serves any
+/// map of its size.
 struct SearchRoom {
     var search: WaySearch
+    /// Each tile something stands in the way on, but those lifted for the
+    /// search under way.
     private(set) var blocked: [Bool]
-    private var marked: [Int] = []
+    /// How many things stand in the way on each tile.
+    private var standing: [UInt16]
+    /// What stood in the way when the room was last brought up to a realm,
+    /// kind by kind.
+    private var companies: [Mark] = []
+    private var holds: [Mark] = []
+    private var wilds: [Mark] = []
+    private var lairs: [Mark] = []
+    private var halls: [Mark] = []
+    private var storehouses: [Mark] = []
+    private var spare: [Mark] = []
+    /// The tiles lifted for the search under way, and its goal.
+    private var lifted: [Int] = []
+    private var goal = -1
+
+    /// A thing in the way as it was marked: its id, where it stood and that
+    /// hex's tile, or -1 off the map.
+    struct Mark {
+        var id: Int
+        var position: Hex
+        var tile: Int32
+    }
 
     init(count: Int) {
         search = WaySearch(count: count)
         blocked = [Bool](repeating: false, count: count)
+        standing = [UInt16](repeating: 0, count: count)
     }
 
-    mutating func block(_ index: Int) {
-        guard !blocked[index] else { return }
-        blocked[index] = true
-        marked.append(index)
+    /// Readies the room for a company's search toward a goal: brought up to
+    /// what stands in the way in the realm, then the company itself, its
+    /// House's holds and its alliance's halls and storehouses lifted from
+    /// it, and the goal left clear, as a march stops at what it goes for.
+    mutating func ready(for unit: Unit, toward goal: Int, in state: GameState) {
+        let map = state.map
+        SearchRoom.bring(&companies, to: state.units, on: map, standing: &standing, blocked: &blocked, spare: &spare)
+        SearchRoom.bring(&holds, to: state.holds, on: map, standing: &standing, blocked: &blocked, spare: &spare)
+        SearchRoom.bring(&wilds, to: state.wildsStanding, on: map, standing: &standing, blocked: &blocked, spare: &spare)
+        SearchRoom.bring(&lairs, to: state.lairsStanding, on: map, standing: &standing, blocked: &blocked, spare: &spare)
+        SearchRoom.bring(&halls, to: state.hallsStanding, on: map, standing: &standing, blocked: &blocked, spare: &spare)
+        SearchRoom.bring(&storehouses, to: state.storehousesStanding, on: map, standing: &standing, blocked: &blocked, spare: &spare)
+        if let index = state.unitIndex(unit.id) { lift(state.units[index].position, on: map) }
+        for index in state.holds.indices where state.holds[index].owner == unit.owner { lift(state.holds[index].position, on: map) }
+        // Only its alliance's companies pass through a hall, or a storehouse.
+        for hall in state.hallsStanding where state.isOfHall(unit.owner, hall) { lift(hall.position, on: map) }
+        for storehouse in state.storehousesStanding where state.isOf(storehouse.alliance, unit.owner) { lift(storehouse.position, on: map) }
+        self.goal = goal
+        blocked[goal] = false
     }
 
-    /// The tile of a hex marked as in the way, unless it is the goal.
-    @inline(__always)
-    mutating func block(_ hex: Hex, on map: WorldMap, but goal: Int) {
-        if let index = map.index(of: hex), index != goal { block(index) }
+    /// Puts back what was lifted for the search just made.
+    mutating func settle() {
+        for tile in lifted {
+            standing[tile] += 1
+            blocked[tile] = true
+        }
+        lifted.removeAll(keepingCapacity: true)
+        if goal >= 0 { blocked[goal] = standing[goal] > 0 }
+        goal = -1
+    }
+
+    private mutating func lift(_ hex: Hex, on map: WorldMap) {
+        guard let tile = map.index(of: hex) else { return }
+        lifted.append(tile)
+        standing[tile] -= 1
+        if standing[tile] == 0 { blocked[tile] = false }
+    }
+
+    /// Brings one kind of what stands in the way up to date, walking what
+    /// stands now beside what was marked, both kept in the order they came
+    /// in: a thing still where it stood costs a look, one moved is taken off
+    /// its old tile and put on its new, one gone taken off, one come put on.
+    /// However they came to be ordered, each thing marked is taken off or
+    /// kept once and each standing now put on or kept once.
+    private static func bring<Thing: InTheWay>(_ marks: inout [Mark], to things: [Thing], on map: WorldMap,
+                                               standing: inout [UInt16], blocked: inout [Bool], spare: inout [Mark]) {
+        func tile(_ hex: Hex) -> Int32 { map.index(of: hex).map { Int32($0) } ?? -1 }
+        func put(_ tile: Int32) {
+            guard tile >= 0 else { return }
+            standing[Int(tile)] += 1
+            blocked[Int(tile)] = true
+        }
+        func take(_ tile: Int32) {
+            guard tile >= 0 else { return }
+            standing[Int(tile)] -= 1
+            if standing[Int(tile)] == 0 { blocked[Int(tile)] = false }
+        }
+        // As a rule the same things, a few moved: looked over in place.
+        if marks.count == things.count {
+            var index = 0
+            while index < things.count, marks[index].id == things[index].id {
+                let position = things[index].position
+                if marks[index].position != position {
+                    take(marks[index].tile)
+                    marks[index] = Mark(id: marks[index].id, position: position, tile: tile(position))
+                    put(marks[index].tile)
+                }
+                index += 1
+            }
+            if index == things.count { return }
+        }
+        spare.removeAll(keepingCapacity: true)
+        var old = 0
+        for index in things.indices {
+            let id = things[index].id, position = things[index].position
+            while old < marks.count, marks[old].id < id {
+                take(marks[old].tile)
+                old += 1
+            }
+            if old < marks.count, marks[old].id == id {
+                var mark = marks[old]
+                old += 1
+                if mark.position != position {
+                    take(mark.tile)
+                    mark = Mark(id: id, position: position, tile: tile(position))
+                    put(mark.tile)
+                }
+                spare.append(mark)
+            } else {
+                let mark = Mark(id: id, position: position, tile: tile(position))
+                put(mark.tile)
+                spare.append(mark)
+            }
+        }
+        while old < marks.count {
+            take(marks[old].tile)
+            old += 1
+        }
+        swap(&marks, &spare)
     }
 
     private static let shelf = Shelf()
 
-    /// A room for a map of so many tiles, every tile clear.
+    /// A room for a map of so many tiles.
     static func take(count: Int) -> SearchRoom {
         shelf.take(count: count)
     }
 
-    /// A room done with, cleared and put back for the next search.
+    /// A room done with, put back for the next search.
     static func give(back room: inout SearchRoom) {
-        for index in room.marked { room.blocked[index] = false }
-        room.marked.removeAll(keepingCapacity: true)
         shelf.put(room)
     }
 
