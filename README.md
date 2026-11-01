@@ -1511,7 +1511,11 @@ realm; keepers are told in plain words, never a status code.
   pentatonic, each note ringing bright and mellowing as it dies, the low
   strings longest, and as the chord changes it may roll the new one softly
   up; at war the chords darken and two skin drums keep a slow march, each
-  blow's pitch falling back as the skin eases. The score and the cues ring
+  blow's pitch falling back as the skin eases. While the moon is eaten and
+  the drowned age walks, the score turns strange: chords of stacked minor
+  thirds and tritones, low and slow, and a line from the scale of tones
+  and half tones that never settles, on glass bells far apart, each
+  answered on the harp a tritone above. The score and the cues ring
   in a hall of their own: a breath of silence, a wash of early echoes, then
   a dark, wide tail some two and a half seconds long, its highs dying
   first; the night's drone and wind stay out of doors. Each cue's noise is

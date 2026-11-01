@@ -106,15 +106,21 @@ public final class Ambience {
         didSet { if isAtWar != oldValue { applyMusic() } }
     }
 
+    /// The moon is eaten and the drowned age walks: the score turns strange.
+    public var isEclipse = false {
+        didSet { if isEclipse != oldValue { applyMusic() } }
+    }
+
     /// The lake whose title theme plays, over the launcher; nil in the realm.
     public var titleLake: Lake? {
         didSet { if titleLake != oldValue { applyMusic() } }
     }
 
-    /// What the score plays now: the title theme over the launcher, war or
-    /// peace in the realm.
+    /// What the score plays now: the title theme over the launcher; in the
+    /// realm, the eaten moon's while the drowned age walks, else war or
+    /// peace.
     var mood: Score.Mood {
-        titleLake.map { .title($0) } ?? (isAtWar ? .war : .peace)
+        titleLake.map { .title($0) } ?? (isEclipse ? .eclipse : isAtWar ? .war : .peace)
     }
 
     private func applyMusic() {

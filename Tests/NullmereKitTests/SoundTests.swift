@@ -48,6 +48,21 @@ final class SoundTests: XCTestCase {
         XCTAssertEqual(left[0], 7, "Nothing written to one ear alone")
     }
 
+    /// The session tells the sound when the moon is eaten and the drowned
+    /// age walks, as soon as it is listened for, and when it is given back.
+    @MainActor
+    func testTheSessionTellsWhenTheMoonIsEaten() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var state = GameState(settings: GameSettings(seedText: "the moon eaten", keepers: 1))
+        state.eclipse = state.watch
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        var told: [Bool] = []
+        session.onEclipseChanged = { told.append($0) }
+        XCTAssertEqual(told, [true], "Told as it is listened for")
+        XCTAssertTrue(session.isEclipse)
+    }
+
     /// The ambience plays the title theme while a lake is named for it, war
     /// or not, and the realm's own score once none is; the lake a realm
     /// tells of is kept as the one it last lay on.
@@ -60,6 +75,13 @@ final class SoundTests: XCTestCase {
         ambience.titleLake = .isles
         XCTAssertEqual(ambience.mood, .title(.isles), "The title theme over the launcher")
         ambience.titleLake = nil
+        XCTAssertEqual(ambience.mood, .war)
+        ambience.isEclipse = true
+        XCTAssertEqual(ambience.mood, .eclipse, "The eaten moon's music over war's")
+        ambience.titleLake = .round
+        XCTAssertEqual(ambience.mood, .title(.round), "and the title theme over all")
+        ambience.titleLake = nil
+        ambience.isEclipse = false
         XCTAssertEqual(ambience.mood, .war)
 
         let kept = UserDefaults.standard.object(forKey: GameApp.lakeKey)

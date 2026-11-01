@@ -15,6 +15,8 @@ public struct Score {
     public enum Mood: Equatable, Sendable {
         case peace
         case war
+        /// The moon eaten, and the drowned age walking.
+        case eclipse
         /// The title theme of a lake, over the launcher.
         case title(Lake)
     }
@@ -248,8 +250,8 @@ public struct Score {
 /// What a mood plays: its chords and how long each lasts, its melody's
 /// notes and the silence between them, the voice that sings them, whether
 /// each note is answered, how bright the strings sound, and how often the
-/// harp rolls a new chord. The realm's peace and war, and a title theme for
-/// each lake, each lake in a mode of its own.
+/// harp rolls a new chord. The realm's peace and war, the eaten moon, and a
+/// title theme for each lake, each lake in a mode of its own.
 struct Theme {
     enum Voice {
         case harp, bells
@@ -279,6 +281,15 @@ struct Theme {
     /// War: darker strings, the harp plucked harder and duller, seldom rolled.
     static let war = Theme(chords: Score.warChords, melody: Score.melody, chordLength: 7, chordSpread: 6, bellGap: 2.5,
                            corner: 900, brightness: 0.3, roll: 0.25)
+
+    /// The eaten moon, while the drowned age walks: chords of stacked minor
+    /// thirds and tritones, low and slow; a line from the scale of tones
+    /// and half tones that never settles, on glass bells far apart, each
+    /// answered on the harp a tritone above; the strings dark, and no
+    /// chord rolled.
+    static let eclipse = Theme(chords: [[38, 44, 50, 53], [37, 43, 49, 52], [40, 46, 49, 55], [36, 42, 48, 51]],
+                               melody: [62, 64, 65, 67, 68, 70, 71, 73, 74], chordLength: 15, chordSpread: 8, bellGap: 6, echo: 6,
+                               voice: .bells, corner: 850, roll: 0)
 
     /// The Nullmere, the first lake: D dorian, the minor brightened by its
     /// sixth, slow and open.
@@ -312,6 +323,7 @@ struct Theme {
         switch mood {
         case .peace: return .peace
         case .war: return .war
+        case .eclipse: return .eclipse
         case .title(.round): return .round
         case .title(.twin): return .twin
         case .title(.crescent): return .crescent

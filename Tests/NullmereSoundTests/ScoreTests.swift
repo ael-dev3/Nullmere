@@ -48,6 +48,24 @@ final class ScoreTests: XCTestCase {
         XCTAssertEqual(marches.bellsStruck, 0, "The Marches' harp alone")
     }
 
+    /// While the drowned age walks the score turns strange: glass bells far
+    /// apart, each answered on the harp a tritone above, no chord rolled
+    /// and no drum, every note from the scale of tones and half tones.
+    func testTheEatenMoonHasItsOwnStrangeMusic() {
+        let (score, _, _) = play(.eclipse, seconds: 60)
+        let theme = Theme.of(.eclipse)
+        XCTAssertGreaterThan(score.playedNotes.count, 3)
+        XCTAssertTrue(score.playedNotes.allSatisfy(theme.melody.contains))
+        XCTAssertEqual(score.bellsStruck, score.playedNotes.count)
+        XCTAssertEqual(score.harpPlucks, score.playedNotes.count, "Each answered on the harp, no chord rolled")
+        XCTAssertEqual(score.rolledNotes, 0)
+        XCTAssertEqual(score.drumStrokes, 0)
+        XCTAssertEqual(theme.echo, 6, "A tritone above")
+        // The scale of tones and half tones: steps of one and two by turns.
+        let steps = zip(theme.melody, theme.melody.dropFirst()).map { $1 - $0 }
+        XCTAssertTrue(steps.allSatisfy { $0 == 1 || $0 == 2 })
+    }
+
     /// At war two drums keep the march: four strokes a bar of eight steps,
     /// each step three tenths of a second.
     func testAtWarTheDrumsKeepTheMarch() {

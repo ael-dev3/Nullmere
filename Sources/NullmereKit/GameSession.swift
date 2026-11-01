@@ -295,6 +295,12 @@ public final class GameSession {
         didSet { onWarChanged?(isAtWar) }
     }
     public private(set) var isAtWar = false
+    /// Called when the moon is eaten and the drowned age walks, and when it
+    /// is given back.
+    public var onEclipseChanged: ((Bool) -> Void)? {
+        didSet { onEclipseChanged?(isEclipse) }
+    }
+    public private(set) var isEclipse = false
 
     /// A commander's skill the player saw fire: a ring of gold, briefly,
     /// round the company it fired for.
@@ -1300,6 +1306,10 @@ public final class GameSession {
         if atWar != isAtWar {
             isAtWar = atWar
             onWarChanged?(atWar)
+        }
+        if state.isMoonEaten != isEclipse {
+            isEclipse = state.isMoonEaten
+            onEclipseChanged?(isEclipse)
         }
         if ground?.map != state.map {
             ground = TileTexture.Ground(map: state.map)

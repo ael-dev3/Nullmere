@@ -830,6 +830,7 @@ public final class GameApp {
         advisor.isSoundOn = isSoundOn
         ambience.isMusicOn = isMusicOn
         session.onWarChanged = { [weak self] atWar in self?.ambience.isAtWar = atWar }
+        session.onEclipseChanged = { [weak self] eaten in self?.ambience.isEclipse = eaten }
         ambience.start()
         phase = .playing(session)
     }

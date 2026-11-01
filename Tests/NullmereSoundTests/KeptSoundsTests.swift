@@ -47,7 +47,7 @@ final class KeptSoundsTests: XCTestCase {
         let folder = URL(fileURLWithPath: path).appendingPathComponent("sounds")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let rate: Float = 44_100
-        let moods: [(String, Score.Mood)] = [("peace", .peace), ("war", .war)] + Lake.allCases.map { ("title-\($0)", .title($0)) }
+        let moods: [(String, Score.Mood)] = [("peace", .peace), ("war", .war), ("eclipse", .eclipse)] + Lake.allCases.map { ("title-\($0)", .title($0)) }
         for (name, mood) in moods {
             let synth = Synth()
             synth.prepare(sampleRate: rate)
