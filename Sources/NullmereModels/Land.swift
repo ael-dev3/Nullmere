@@ -381,13 +381,15 @@ enum Land {
                 $0.lathe([(0.075, 0.0), (0.085, 0.2), (0.065, 0.48), (0.03, 0.6), (0.0, 0.62)], sides: 5, color: Palette.slate, twist: 0.2)
             }
             b.material = .crystal
-            for (y, radius, turn) in [(Float(0.18), Float(0.084), Float(0.2)), (0.32, 0.076, 1.9), (0.46, 0.066, 3.6)] {
+            // Each vein set in the middle of a face, a little proud of it.
+            for (y, radius, turn) in [(Float(0.18), Float(0.071), Float(6.155)), (0.32, 0.0648, 2.385), (0.46, 0.0567, 3.641)] {
                 b.place(.translation(Vec3(0, 0.08 + y, 0)) * .rotationY(turn)) {
-                    $0.box(center: Vec3(radius, 0, 0), size: Vec3(0.014, 0.07, 0.03), color: Palette.moonGlow)
+                    $0.box(center: Vec3(radius, 0, 0), size: Vec3(0.012, 0.07, 0.03), color: Palette.moonGlow)
                 }
             }
             b.material = .plain
         }
+        b.fine { holyDetail(&$0, kind: kind) }
         // The pole, and its pennant in the holder's colour.
         b.box(center: Vec3(0.2, 0.22, -0.2), size: Vec3(0.012, 0.44, 0.012), color: Palette.timberDark)
         b.material = .cloth
@@ -397,6 +399,283 @@ enum Land {
         b.material = .plain
         b.sway = 0
         return Model(name: name, mesh: b.mesh)
+    }
+
+    /// A holy site's work drawn near: its floor's flags, worn, a few lifted
+    /// long ago; the socket its pole stands in; grass at its stones' feet;
+    /// and about its heart what its keepers raised and its pilgrims left.
+    static func holyDetail(_ b: inout MeshBuilder, kind: ShrineKind) {
+        // The floor falls from 0.02 at its heart to 0.012 at its edge.
+        func floor(_ radius: Float) -> Float { 0.02 - 0.008 * radius / 0.3 }
+        let inner: Float
+        switch kind {
+        case .moonwell: inner = 0.135
+        case .stillStone: inner = 0.19
+        case .saltAltar: inner = 0.13
+        case .brokenSpire: inner = 0.135
+        case .heartstone: inner = 0.175
+        }
+        let middle = (inner + 0.292) / 2
+        let courses: [(from: Float, to: Float, count: Int)] = [(inner, middle - 0.004, 9), (middle + 0.004, 0.292, 13)]
+        for (course, ring) in courses.enumerated() {
+            let step = 2 * Float.pi / Float(ring.count)
+            for index in 0..<ring.count {
+                let a0 = Float(index) * step + Float(course) * 0.31 + 0.1, a1 = a0 + step - 0.035
+                let wear = Noise.unit(Int32(index), Int32(course + 60), 19)
+                if wear < 0.1 {
+                    // A flag lifted long ago, and grass come up where it lay
+                    // if nothing has fallen there since.
+                    if kind != .brokenSpire && kind != .heartstone {
+                        let at = MeshBuilder.ring((ring.from + ring.to) / 2, floor(ring.to) + 0.01, (a0 + a1) / 2)
+                        Land.grass(&b, at: at, tufts: 1, spread: 0.01, seed: UInt32(index + 40 * course))
+                    }
+                    continue
+                }
+                let lift = 0.003 + 0.002 * wear
+                let (top0, top1) = (floor(ring.from) + lift, floor(ring.to) + lift)
+                let (foot0, foot1) = (floor(ring.from) - 0.002, floor(ring.to) - 0.002)
+                let colour = wear < 0.4 ? Palette.stonePale
+                    : wear < 0.75 ? Palette.stonePale.mix(Palette.stoneWhite, 0.35) : Palette.stonePale.mix(Palette.stone, 0.25)
+                let p = { (radius: Float, y: Float, angle: Float) in MeshBuilder.ring(radius, y, angle) }
+                b.quad(p(ring.from, top0, a0), p(ring.to, top1, a0), p(ring.to, top1, a1), p(ring.from, top0, a1), color: colour)
+                b.quad(p(ring.to, foot1, a0), p(ring.to, foot1, a1), p(ring.to, top1, a1), p(ring.to, top1, a0), color: colour)
+                b.quad(p(ring.from, foot0, a1), p(ring.from, foot0, a0), p(ring.from, top0, a0), p(ring.from, top0, a1), color: colour)
+                b.quad(p(ring.from, foot0, a0), p(ring.to, foot1, a0), p(ring.to, top1, a0), p(ring.from, top0, a0), color: colour)
+                b.quad(p(ring.to, foot1, a1), p(ring.from, foot0, a1), p(ring.from, top0, a1), p(ring.to, top1, a1), color: colour)
+            }
+        }
+        // The pole's socket of stone, and grass at every other stone's foot.
+        b.place(.translation(Vec3(0.2, floor(0.283), -0.2))) {
+            $0.lathe([(0.024, -0.004), (0.024, 0.022), (0.014, 0.03)], sides: 6, color: Palette.stoneDark)
+        }
+        for index in stride(from: 0, to: 7, by: 2) {
+            let angle = Float(index) / 7 * 2 * .pi + 0.3
+            Land.grass(&b, at: MeshBuilder.ring(0.42, 0.012, angle + 0.12), tufts: 2, spread: 0.025, seed: UInt32(index + 7))
+        }
+        switch kind {
+        case .moonwell:
+            // Its coping, a lamp burning on every third stone; an arch over
+            // it crowned with the crescent, a silver bowl hung from it on a
+            // chain to draw the moon's water; stones to kneel on before it.
+            for index in 0..<9 {
+                let angle = Float(index) / 9 * 2 * .pi + 0.17
+                b.box(center: MeshBuilder.ring(0.12, 0.081, angle), size: Vec3(0.028, 0.012, 0.076), turn: angle,
+                      color: index % 2 == 0 ? Palette.stonePale : Palette.stone)
+                guard index % 3 == 1 else { continue }
+                b.place(.translation(MeshBuilder.ring(0.12, 0.087, angle))) {
+                    $0.lathe([(0.0, 0.0), (0.011, 0.003), (0.013, 0.012)], sides: 5, color: Palette.earth)
+                    $0.with(material: .glow) { $0.cone(sides: 4, radius: 0.005, from: 0.01, to: 0.028, color: Palette.candle) }
+                }
+            }
+            for x in [Float(-0.165), 0.165] {
+                b.box(min: Vec3(x - 0.016, 0, -0.018), max: Vec3(x + 0.016, 0.3, 0.018), color: Palette.stonePale)
+            }
+            b.box(min: Vec3(-0.195, 0.3, -0.024), max: Vec3(0.195, 0.334, 0.024), color: Palette.stone)
+            b.with(material: .crystal) {
+                for index in 0..<6 {
+                    let t = (Float(index) + 0.5) / 6
+                    let angle = Float.pi * (1.1 + 0.8 * t)
+                    let at = Vec3(Float(cos(Double(angle))), Float(sin(Double(angle))), 0) * 0.05 + Vec3(0, 0.39, 0)
+                    $0.place(.translation(at) * .rotationZ(angle)) {
+                        $0.box(center: .zero, size: Vec3(0.008 + 0.008 * Float(sin(Double(t) * .pi)), 0.03, 0.012), color: Palette.moonGlow)
+                    }
+                }
+                $0.lathe([(0.027, 0.18), (0.0, 0.181)], sides: 7, color: Palette.moonGlow)
+            }
+            b.with(material: .metal) {
+                $0.limb(from: Vec3(0, 0.3, 0), to: Vec3(0, 0.183, 0), radius: 0.0025, color: Palette.iron)
+                $0.tube([(0.0, 0.16), (0.022, 0.165), (0.03, 0.185)], sides: 7, color: Palette.steel)
+            }
+            for (index, angle) in [Float(4.25), 4.71, 5.17].enumerated() {
+                b.rock(center: MeshBuilder.ring(0.205, floor(0.205) + 0.006, angle), size: Vec3(0.034, 0.012, 0.026), rings: 2, sides: 6,
+                       jitter: 0.12, seed: UInt32(index + 130), color: Palette.stone)
+            }
+        case .stillStone:
+            // Pilgrims' ribbons tied about the ring's stones, stirring in
+            // the wind about the stone that never stirs; a kerb about it,
+            // and cairns of flat stones its pilgrims have left.
+            let wind = Vec3(0.94, 0, 0.34).normalized
+            let colours = [Palette.madder, Palette.weld, Palette.seaWool, Palette.linen]
+            for index in 0..<7 {
+                let angle = Float(index) / 7 * 2 * .pi + 0.3
+                let lean: Float = index % 2 == 0 ? 0.05 : -0.04
+                b.place(.translation(MeshBuilder.ring(0.36, 0, angle)) * .rotationY(angle) * .rotationZ(lean)) {
+                    $0.tube([(0.054, 0.15), (0.054, 0.168)], sides: 4, color: Palette.leatherDark, twist: 0.3)
+                }
+                // The cord's corner most downwind, where its ribbons are knotted.
+                let corner = (0..<4).map { angle + 0.3 + Float($0) * .pi / 2 }
+                    .max { MeshBuilder.ring(1, 0, $0).dot(wind) < MeshBuilder.ring(1, 0, $1).dot(wind) } ?? angle
+                let knot = MeshBuilder.ring(0.36 - 0.159 * lean, 0.159, angle) + MeshBuilder.ring(0.054, 0, corner)
+                let side = wind.cross(.up).normalized
+                for strand in 0..<2 {
+                    let long = 0.08 + 0.03 * Float(strand) + 0.02 * Noise.unit(Int32(index), Int32(strand), 77)
+                    // Built measuring down from the knot, so the wind stirs
+                    // its tail and never the knot; not cloth, which would
+                    // take the holder's colour.
+                    b.place(.translation(knot + side * (0.007 * Float(strand * 2 - 1))) * .scale(Vec3(1, -1, 1))) {
+                        $0.with(sway: 0.9) {
+                            $0.swayRange = (0, long)
+                            let across = wind * 0.016
+                            let tail = wind * (0.03 + 0.03 * Float(strand)) + side * (0.012 * Float(strand * 2 - 1)) + Vec3(0, long, 0)
+                            $0.sheet([.zero, across, tail + across, tail], normal: side, thickness: 0.002,
+                                     color: colours[(index + strand * 2) % colours.count])
+                        }
+                    }
+                }
+            }
+            for index in 0..<10 {
+                let angle = Float(index) / 10 * 2 * .pi + 0.2
+                b.rock(center: MeshBuilder.ring(0.162, floor(0.162) + 0.004, angle), size: Vec3(0.026, 0.014, 0.022), rings: 2, sides: 4,
+                       jitter: 0.2, seed: UInt32(index + 170), color: index % 2 == 0 ? Palette.stoneDark : Palette.stone)
+            }
+            for (index, angle) in [Float(0.2), 2.2, 3.7, 5.2].enumerated() {
+                let at = MeshBuilder.ring(0.225, floor(0.225), angle)
+                for (layer, size) in [Float(0.028), 0.022, 0.016].enumerated() {
+                    b.rock(center: at + Vec3(0.004 * Float(layer), 0.008 + 0.018 * Float(layer), 0), size: Vec3(size, size * 0.4, size * 0.85),
+                           rings: 2, sides: 5, jitter: 0.15, seed: UInt32(index * 3 + layer + 150),
+                           color: layer % 2 == 0 ? Palette.slate : Palette.stone)
+                }
+            }
+        case .saltAltar:
+            // The altar on a step, its top slab overhanging, a crescent cut
+            // in its face; bowls of salt and a salt-knife on it, candles
+            // either side, sacks of moonsalt brought to it, and moonsalt
+            // grown up from the floor behind it.
+            b.box(center: Vec3(0, 0.0175, 0.01), size: Vec3(0.3, 0.035, 0.22), color: Palette.stone)
+            b.box(center: Vec3(0, 0.012, 0.135), size: Vec3(0.2, 0.024, 0.03), color: Palette.stone)
+            b.box(center: Vec3(0, 0.106, 0), size: Vec3(0.23, 0.014, 0.155), color: Palette.stonePale.mix(Palette.stoneWhite, 0.3))
+            b.box(center: Vec3(0, 0.06, 0.067), size: Vec3(0.15, 0.05, 0.004), color: Palette.stone)
+            b.with(material: .crystal) {
+                for index in 0..<4 {
+                    let t = (Float(index) + 0.5) / 4
+                    let angle = Float.pi * (1.15 + 0.7 * t)
+                    let at = Vec3(Float(cos(Double(angle))), Float(sin(Double(angle))), 0) * 0.016 + Vec3(0, 0.07, 0.07)
+                    $0.place(.translation(at) * .rotationZ(angle)) {
+                        $0.box(center: .zero, size: Vec3(0.005, 0.012, 0.003), color: Palette.moonGlow)
+                    }
+                }
+            }
+            for x in [Float(-0.08), 0.08] {
+                b.place(.translation(Vec3(x, 0.113, 0.045))) {
+                    $0.with(material: .metal) { $0.lathe([(0.0, 0.0), (0.016, 0.004), (0.022, 0.016)], sides: 7, color: Palette.bronze) }
+                    $0.with(material: .crystal) { $0.cone(sides: 6, radius: 0.019, from: 0.012, to: 0.03, color: Palette.saltCrust) }
+                }
+            }
+            b.with(material: .metal) {
+                $0.sheet([Vec3(-0.005, 0.1135, 0.058), Vec3(0.04, 0.1135, 0.06), Vec3(0.04, 0.1135, 0.064), Vec3(-0.005, 0.1135, 0.067)],
+                         normal: .up, thickness: 0.002, color: Palette.steel)
+            }
+            b.limb(from: Vec3(-0.006, 0.117, 0.0625), to: Vec3(-0.035, 0.117, 0.0625), radius: 0.004, color: Palette.timberDark)
+            for x in [Float(-0.19), 0.19] {
+                let foot = Vec3(x, floor(0.19), 0.03)
+                b.with(material: .metal) {
+                    $0.limb(from: foot, to: foot + Vec3(0, 0.22, 0), radius: 0.005, color: Palette.iron)
+                    for leg in 0..<3 {
+                        let angle = Float(leg) * 2 * .pi / 3 + 0.4
+                        $0.limb(from: foot + Vec3(0, 0.05, 0), to: foot + MeshBuilder.ring(0.032, 0, angle), radius: 0.003, sides: 3,
+                                color: Palette.iron)
+                    }
+                    $0.place(.translation(foot + Vec3(0, 0.215, 0))) {
+                        $0.lathe([(0.0, 0.0), (0.02, 0.005), (0.022, 0.012)], sides: 6, color: Palette.iron)
+                    }
+                }
+                b.place(.translation(foot + Vec3(0, 0.222, 0))) {
+                    $0.prism(sides: 5, radius: 0.008, from: 0, to: 0.04, color: Palette.linen)
+                    $0.with(material: .glow) { $0.cone(sides: 4, radius: 0.006, from: 0.04, to: 0.063, color: Palette.candle) }
+                }
+            }
+            for (at, size) in [(Vec3(-0.17, 0.012, 0.135), Float(1)), (Vec3(-0.13, 0.012, 0.185), 0.85)] {
+                b.place(.translation(at) * .scale(Vec3(size, size, size))) {
+                    $0.lathe([(0.0, 0.0), (0.022, 0.004), (0.027, 0.02), (0.021, 0.036), (0.008, 0.044), (0.011, 0.05), (0.0, 0.052)], sides: 6,
+                             color: Palette.canvas)
+                }
+            }
+            b.with(material: .crystal) {
+                $0.place(.translation(Vec3(-0.095, 0.012, 0.19))) { $0.cone(sides: 6, radius: 0.026, to: 0.022, color: Palette.saltCrust) }
+            }
+            Land.crystals(&b, at: Vec3(0.02, 0.015, -0.19), count: 4, height: 0.07, seed: 143)
+        case .brokenSpire:
+            // Carved bands about the shaft, moonsalt glinting in its seams;
+            // its head, snapped off and fallen out between two stones of the
+            // ring, the moonsalt it was crowned with lying in the grass; rubble.
+            b.place(.rotationZ(0.12) * .rotationX(-0.06)) {
+                for (y, radius) in [(Float(0.2), Float(0.109)), (0.44, 0.0935)] {
+                    $0.tube([(radius, y - 0.012), (radius + 0.008, y - 0.006), (radius + 0.008, y + 0.006), (radius, y + 0.012)],
+                            sides: 7, color: Palette.stone, twist: 0.15)
+                }
+                $0.with(material: .crystal) {
+                    for (y, radius, turn) in [(Float(0.3), Float(0.097), Float(0.6)), (0.53, 0.0824, 2.4), (0.12, 0.1076, 4.4)] {
+                        $0.place(.translation(Vec3(0, y, 0)) * .rotationY(turn)) {
+                            $0.box(center: Vec3(radius, 0, 0), size: Vec3(0.016, 0.05, 0.022), color: Palette.moonGlow)
+                        }
+                    }
+                }
+            }
+            let fall: Float = 2.544
+            b.place(.translation(MeshBuilder.ring(0.17, 0.06, fall)) * Mat4.aligningUp(to: MeshBuilder.ring(1, -0.06, fall))) {
+                $0.lathe([(0.068, 0.0), (0.064, 0.1), (0.055, 0.2), (0.04, 0.28), (0.0, 0.31)], sides: 7, color: Palette.stonePale, twist: 0.4)
+                $0.with(material: .crystal) {
+                    $0.cone(sides: 6, radius: 0.022, from: 0.27, to: 0.36, color: Palette.moonsalt)
+                }
+            }
+            for (index, at) in [Vec3(0.25, 0.012, -0.05), Vec3(-0.05, 0.012, 0.22), Vec3(0.16, 0.012, 0.18), Vec3(-0.26, 0.012, -0.02),
+                                Vec3(0.02, 0.012, 0.25)].enumerated() {
+                let size = 0.018 + 0.01 * Noise.unit(Int32(index), 5, 88)
+                b.rock(center: at, size: Vec3(size * 1.2, size * 0.8, size), rings: 2, sides: 5, jitter: 0.2, seed: UInt32(index + 180),
+                       color: index % 2 == 0 ? Palette.stonePale : Palette.stone)
+            }
+        case .heartstone:
+            // Braziers burning at its four quarters; swords offered point
+            // down in the ground about its plinth and shields of fallen
+            // Houses laid against it; runes cut in the plinth, glowing.
+            for index in 0..<4 {
+                let angle = Float(index) * .pi / 2
+                let at = MeshBuilder.ring(0.235, floor(0.235), angle)
+                b.with(material: .metal) {
+                    for leg in 0..<3 {
+                        let out = MeshBuilder.ring(0.03, 0, angle + Float(leg) * 2 * .pi / 3 + 0.5)
+                        $0.limb(from: at + out, to: at + Vec3(0, 0.125, 0) + out * 0.4, radius: 0.004, sides: 3, color: Palette.iron)
+                    }
+                    $0.place(.translation(at + Vec3(0, 0.12, 0))) {
+                        $0.lathe([(0.0, 0.0), (0.03, 0.012), (0.036, 0.03)], sides: 6, color: Palette.iron)
+                    }
+                }
+                b.with(material: .glow) {
+                    $0.place(.translation(at + Vec3(0, 0.12, 0))) {
+                        $0.lathe([(0.03, 0.02), (0.033, 0.04), (0.0, 0.09)], sides: 5, color: Palette.fire)
+                    }
+                }
+            }
+            for index in 0..<8 {
+                let angle = Float(index) * .pi / 4 + .pi / 8
+                let tilt = 0.14 * (Noise.unit(Int32(index), 3, 91) - 0.5)
+                b.place(.translation(MeshBuilder.ring(0.205, floor(0.205), angle)) * .rotationY(angle) * .rotationZ(tilt)) {
+                    $0.with(material: .metal) {
+                        $0.sheet([Vec3(0, 0, -0.002), Vec3(0, 0, 0.002), Vec3(0, 0.09, 0.007), Vec3(0, 0.09, -0.007)], normal: Vec3(1, 0, 0),
+                                 thickness: 0.002, color: Palette.steel)
+                        $0.box(center: Vec3(0, 0.093, 0), size: Vec3(0.008, 0.007, 0.04), color: Palette.iron)
+                        $0.box(center: Vec3(0, 0.134, 0), size: Vec3(0.01, 0.01, 0.01), color: Palette.bronze)
+                    }
+                    $0.limb(from: Vec3(0, 0.096, 0), to: Vec3(0, 0.13, 0), radius: 0.004, color: Palette.leatherDark)
+                }
+            }
+            let shields = [Palette.madder, Palette.seaWool, Palette.weld, Palette.woolDark]
+            for (index, angle) in [Float(0.75), 1.25, 1.75, 0.25].map({ $0 * .pi }).enumerated() {
+                b.place(.translation(MeshBuilder.ring(0.19, 0.038, angle)) * .rotationY(angle) * .rotationZ(-1.05)) {
+                    $0.lathe([(0.04, -0.005), (0.04, 0.003), (0.0, 0.007)], sides: 8, color: shields[index])
+                    $0.with(material: .metal) { $0.cone(sides: 5, radius: 0.01, from: 0.006, to: 0.016, color: Palette.iron) }
+                }
+            }
+            b.with(material: .crystal) {
+                for index in 0..<8 {
+                    let angle = (Float(index) + 0.5) * .pi / 4
+                    $0.place(.translation(MeshBuilder.ring(0.1212, 0.0625, angle)) * .rotationY(angle)) {
+                        $0.box(center: .zero, size: Vec3(0.003, 0.02, 0.005), color: Palette.moonGlow)
+                        $0.box(center: Vec3(0, index % 2 == 0 ? 0.004 : -0.003, 0.005), size: Vec3(0.003, 0.004, 0.008), color: Palette.moonGlow)
+                    }
+                }
+            }
+        }
     }
 
     /// An alliance's standard: a tall pole on a cairn, a crossbar and a long

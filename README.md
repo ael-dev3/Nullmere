@@ -1761,7 +1761,22 @@ the keeper's realm last lay on, made as it plays.
   a crossbar and a sack of straw and wooden swords against it (586 to
   1,012, from 440); and a beacon a ladder up its first tower and a torch by
   its second's door, the fire's wood stacked at the foot of both (498 and
-  526 triangles, the first from 274).
+  526 triangles, the first from 274). The holy sites have their floors
+  flagged and worn, here a flag lifted long ago and grass come up where it
+  lay, their poles set in sockets of stone and grass at their stones' feet;
+  the Moonwell a coping with lamps burning on it, an arch over it crowned
+  with the crescent, a silver bowl hung from it on a chain and stones to
+  kneel on before it; the Still Stone its ring tied with pilgrims'
+  ribbons that stir in the wind about the stone that never does, a kerb
+  about it and cairns of flat stones its pilgrims left; the Salt Altar a
+  step under it and a slab over it, a crescent cut in its face, bowls of
+  salt and a salt-knife on it, candles either side, sacks of moonsalt
+  brought to it and moonsalt grown up behind it; the Broken Spire carved
+  bands about its shaft and moonsalt in its seams, its head fallen out
+  between two stones of the ring with its crown of moonsalt in the grass;
+  and the Heartstone braziers burning at its quarters, swords offered
+  point down about its plinth, shields of fallen Houses laid against it
+  and runes glowing in it (924 to 1,584 triangles, from 232 to 340).
 - **Only what the view reaches is drawn.** The land's furniture is kept
   on the GPU in square regions eight hexes on a side, each with the bounds
   of all it holds; each frame finds the regions inside the camera's view
