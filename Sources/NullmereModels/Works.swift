@@ -2437,6 +2437,32 @@ enum Works {
 
     // MARK: Study
 
+    /// A study's physic garden: two raised beds of boards filled with dark
+    /// earth, herbs in rows in each, swaying in the night wind, and a
+    /// watering can between them.
+    static func studyGarden(_ b: inout MeshBuilder, at: Vec3, turn: Float) {
+        b.place(.translation(at) * .rotationY(turn)) { garden in
+            for (bed, z) in [Float(-0.032), 0.032].enumerated() {
+                garden.box(min: Vec3(-0.06, 0, z - 0.022), max: Vec3(0.06, 0.016, z + 0.022), color: Palette.timberGrey)
+                garden.box(min: Vec3(-0.056, 0.016, z - 0.018), max: Vec3(0.056, 0.018, z + 0.018), color: Palette.loam)
+                garden.with(material: .foliage) {
+                    for index in 0..<5 {
+                        let x = -0.044 + Float(index) * 0.022
+                        let colour = [Palette.leaf, Palette.fern, Palette.heatherBloom, Palette.moss][(index + bed) % 4]
+                        $0.sphere(center: Vec3(x, 0.026, z + (index % 2 == 0 ? -0.006 : 0.006)), radius: 0.011, rings: 2, sides: 5,
+                                  color: colour, squash: 0.8)
+                    }
+                }
+            }
+            garden.with(material: .metal) {
+                $0.place(.translation(Vec3(0.075, 0, 0))) {
+                    $0.lathe([(0.009, 0), (0.009, 0.018), (0.006, 0.02)], sides: 6, color: Palette.iron)
+                }
+                $0.beam(from: Vec3(0.083, 0.012, 0), to: Vec3(0.098, 0.024, 0), width: 0.003, color: Palette.iron)
+            }
+        }
+    }
+
     /// Where a House's scholars study the lake's lore: a scriptorium, then
     /// a domed library with a lantern on its crown, a tower with an
     /// armillary on its roof, an observatory with a glass, and a great
@@ -2549,9 +2575,23 @@ enum Works {
                     near.box(center: at + Vec3(x, 0.0105, 0), size: Vec3(0.008, 0.021, 0.016), color: Palette.stone)
                 }
             }
+            // At the first two levels, the scholars' physic garden: herbs in
+            // raised beds of boards.
+            if level <= 2 {
+                studyGarden(&near, at: level == 1 ? Vec3(0.215, 0, -0.1) : Vec3(0.0, 0, 0.2), turn: level == 1 ? .pi / 2 : 0)
+            }
             switch level {
             case 1:
                 let lectern = Vec3(0.11, 0, 0.13)
+                // A candle burning by the open book, for the night's reading.
+                near.place(.translation(lectern + Vec3(0.017, 0.081, -0.008))) {
+                    $0.lathe([(0.0035, 0), (0.0035, 0.014)], sides: 5, color: Palette.linen)
+                }
+                near.with(material: .glow) {
+                    $0.place(.translation(lectern + Vec3(0.017, 0.095, -0.008))) {
+                        $0.lathe([(0.0, 0.0), (0.003, 0.003), (0.0, 0.01)], sides: 4, color: Palette.candle)
+                    }
+                }
                 near.box(center: lectern + Vec3(0, 0.003, 0), size: Vec3(0.03, 0.006, 0.026), color: Palette.timberDark)
                 near.limb(from: lectern, to: lectern + Vec3(0, 0.066, 0), radius: 0.005, color: Palette.timberDark)
                 near.place(.translation(lectern + Vec3(0, 0.072, 0)) * .rotationX(0.45)) {
@@ -2564,6 +2604,13 @@ enum Works {
             case 2:
                 bench(at: Vec3(-0.15, 0, 0.13), length: 0.09)
                 books(at: Vec3(-0.17, 0.027, 0.13), count: 3, turn: 0.1)
+                // A lantern on its bracket by the library's door.
+                near.beam(from: Vec3(0.022, 0.12, 0.058), to: Vec3(0.022, 0.12, 0.08), width: 0.004, color: Palette.iron)
+                near.with(material: .glow) {
+                    $0.place(.translation(Vec3(0.022, 0.092, 0.078))) {
+                        $0.lathe([(0.0, 0.0), (0.009, 0.009), (0.0, 0.021)], sides: 5, color: Palette.candle)
+                    }
+                }
             default:
                 bench(at: Vec3(0.13, 0, 0.055), length: 0.08)
                 books(at: Vec3(0.15, 0.027, 0.055), count: 2, turn: -0.2)
