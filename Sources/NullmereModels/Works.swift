@@ -697,12 +697,37 @@ enum Works {
             machinery = Machinery(wheels: [.init(part: wheel, axis: Vec3(1, 0, 0), turns: 1)],
                                   swings: [.init(part: crane, axis: Vec3(0, 1, 0), angle: 0.9)], parts: rig.count)
             if level >= 4 {
-                // A mason's shed.
+                // A mason's shed; a ladder up the cut terraces, the rubble
+                // of the face at their foot, and near, a mason's bench
+                // with a block half dressed on it.
                 b.hall(at: Vec3(-0.15, 0, 0.14), width: 0.12, depth: 0.1, height: 0.11, wall: Palette.stonePale, roof: Palette.slate,
                        turn: 0.5)
+                b.ladder(from: Vec3(-0.12, 0, 0.0), to: Vec3(-0.12, 0.17, -0.11), width: 0.035, rungs: 5, color: Palette.timber)
+                b.fine {
+                    for (index, at) in [Vec3(0.06, 0.01, 0.01), Vec3(-0.05, 0.01, 0.02), Vec3(0.12, 0.01, -0.02)].enumerated() {
+                        $0.rock(center: at, size: Vec3(0.025, 0.016, 0.02), rings: 2, sides: 5, jitter: 0.25, seed: UInt32(31 + index),
+                                color: Palette.rock)
+                    }
+                    $0.place(.translation(Vec3(0.2, 0, 0.17)) * .rotationY(-0.3)) {
+                        for x in [Float(-0.04), 0.04] {
+                            $0.box(min: Vec3(x - 0.007, 0, -0.025), max: Vec3(x + 0.007, 0.05, 0.025), color: Palette.timberDark)
+                        }
+                        $0.box(min: Vec3(-0.055, 0.05, -0.03), max: Vec3(0.055, 0.062, 0.03), color: Palette.timber)
+                        $0.box(center: Vec3(-0.01, 0.083, 0), size: Vec3(0.045, 0.04, 0.04), turn: 0.2, color: Palette.stonePale)
+                        $0.with(material: .metal) {
+                            $0.beam(from: Vec3(0.025, 0.066, -0.015), to: Vec3(0.045, 0.066, 0.01), width: 0.006, color: Palette.iron)
+                        }
+                    }
+                }
             }
             if level >= 5 {
                 b.window(Vec3(-0.125, 0.07, 0.185), width: 0.025, height: 0.035, facing: 0.5)
+                // Shear legs on the top terrace, lifting the next block.
+                let top = Vec3(-0.06, 0.34, -0.15)
+                for foot in [Vec3(-0.13, 0.1, -0.1), Vec3(0.01, 0.1, -0.1), Vec3(-0.06, 0.12, -0.24)] {
+                    b.limb(from: foot, to: top, radius: 0.007, color: Palette.timber)
+                }
+                b.limb(from: top, to: top - Vec3(0, 0.12, 0), radius: 0.002, sides: 3, color: Palette.linen)
             }
         }
         return model(name, b, rig: rig, machinery: machinery)

@@ -1708,7 +1708,9 @@ the keeper's realm last lay on, made as it plays.
   shards turning below its crown the other way (2,212 triangles, where it
   was 780). A Muster Hall of the fourth level and the fifth has
   buttresses along its front, shields in the House's colours under its
-  eaves, and more pells armed in its yard.
+  eaves, and more pells armed in its yard; a quarry of those levels a
+  ladder up its cut terraces, the rubble of its face, a mason's bench with
+  a block half dressed, and at its fifth shear legs on its top terrace.
 - **Only what the view reaches is drawn.** The land's furniture is kept
   on the GPU in square regions eight hexes on a side, each with the bounds
   of all it holds; each frame finds the regions inside the camera's view
