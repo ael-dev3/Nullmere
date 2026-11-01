@@ -223,10 +223,16 @@ extension GameState {
 
     /// Whether an enemy company of war stands at a hold's gates.
     func isBesieged(_ hold: Hold) -> Bool {
-        units.contains { unit in
-            unit.kind.isMilitary && unit.owner != hold.owner && isAtWar(unit.owner, hold.owner)
-                && unit.position.distance(to: hold.position) == 1
+        let gates = hold.position
+        for index in units.indices {
+            // Where it stands first, passing over those far along the map's
+            // columns at a glance: asked of every company for every hold.
+            let position = units[index].position
+            guard abs(position.q - gates.q) <= 1, position.distance(to: gates) == 1 else { continue }
+            let owner = units[index].owner
+            if units[index].kind.isMilitary && owner != hold.owner && isAtWar(owner, hold.owner) { return true }
         }
+        return false
     }
 
     /// Share of all holds, in percent, and the least number of holds, that

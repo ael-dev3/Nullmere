@@ -116,8 +116,8 @@ extension GameState {
     /// What the studies of a House's alliance give a figure of it.
     func allianceLoreBonus(_ bonus: Bonus, for house: Int) -> Int {
         guard let alliances, !alliances.isEmpty else { return 0 }
-        for alliance in alliances where alliance.lore != nil && alliance.members.contains(house) {
-            return alliance.lore!.bonus(bonus)
+        for index in alliances.indices where alliances[index].lore != nil && alliances[index].members.contains(house) {
+            return alliances[index].lore!.bonus(bonus)
         }
         return 0
     }

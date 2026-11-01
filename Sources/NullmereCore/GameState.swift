@@ -505,7 +505,10 @@ public struct GameState: Codable, Equatable, Sendable {
 
     /// Grain a House's units eat each watch.
     public func upkeep(of house: Int) -> Int {
-        units(of: house).reduce(0) { $0 + upkeep(of: $1) }
+        // Summed where its companies stand, not over a copy of them.
+        var total = 0
+        for index in units.indices where units[index].owner == house { total += upkeep(of: units[index]) }
+        return total
     }
 
     /// Every House's strength, by its id, as `strength(of:)` weighs each,
@@ -513,14 +516,19 @@ public struct GameState: Codable, Equatable, Sendable {
     public func strengths() -> [Int] {
         var weighed = [[UnitKind: (attack: Int, defense: Int)]](repeating: [:], count: houses.count)
         var army = [Int](repeating: 0, count: houses.count)
-        for unit in units where army.indices.contains(unit.owner) {
-            let bonuses = weighed[unit.owner][unit.kind]
-                ?? (bonus(.attack(unit.kind), for: unit.owner), bonus(.defense(unit.kind), for: unit.owner))
-            weighed[unit.owner][unit.kind] = bonuses
-            army[unit.owner] += strength(of: unit, house: bonuses)
+        for index in units.indices where army.indices.contains(units[index].owner) {
+            let owner = units[index].owner, kind = units[index].kind
+            let bonuses: (attack: Int, defense: Int)
+            if let found = weighed[owner][kind] {
+                bonuses = found
+            } else {
+                bonuses = (bonus(.attack(kind), for: owner), bonus(.defense(kind), for: owner))
+                weighed[owner][kind] = bonuses
+            }
+            army[owner] += strength(of: units[index], house: bonuses)
         }
-        for hold in holds where army.indices.contains(hold.owner) {
-            army[hold.owner] += hold.ward / 2
+        for index in holds.indices where army.indices.contains(holds[index].owner) {
+            army[holds[index].owner] += holds[index].ward / 2
         }
         return houses.indices.map { house in
             if let reputed, reputed.indices.contains(house) { return reputed[house] }
@@ -546,11 +554,14 @@ public struct GameState: Codable, Equatable, Sendable {
 
     /// Renown, for ranking the Houses.
     public func renown(of house: Int) -> Int {
-        let built = holds(of: house).reduce(0) { total, hold in
-            total + hold.levels.values.reduce(0, +)
+        var held = 0, built = 0, spire = 0, companies = 0
+        for index in holds.indices where holds[index].owner == house {
+            held += 1
+            built += holds[index].levels.values.reduce(0, +)
+            spire = max(spire, holds[index].level(.moonspire))
         }
-        let spire = holds(of: house).map { $0.level(.moonspire) }.max() ?? 0
-        return holds(of: house).count * 10 + built * 2 + units(of: house).count + spire * 15
+        for index in units.indices where units[index].owner == house { companies += 1 }
+        return held * 10 + built * 2 + companies + spire * 15
     }
 
     // MARK: Sight

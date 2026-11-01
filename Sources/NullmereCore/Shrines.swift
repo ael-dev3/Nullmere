@@ -123,9 +123,9 @@ extension GameState {
         // asks who holds it, and the House's alliance is found once.
         var total = 0
         var sworn: [Int]?
-        for shrine in shrines {
-            guard let holder = shrine.holder else { continue }
-            let gift = shrine.kind.bonus(bonus)
+        for index in shrines.indices {
+            guard let holder = shrines[index].holder else { continue }
+            let gift = shrines[index].kind.bonus(bonus)
             guard gift != 0 else { continue }
             if holder != house {
                 if sworn == nil { sworn = alliance(of: house)?.members ?? [] }
