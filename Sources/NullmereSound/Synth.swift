@@ -104,6 +104,7 @@ public final class Synth: @unchecked Sendable {
     private var pendingDrilling: Float?
     private var pendingGrinding: Float?
     private var pendingReading: Float?
+    private var pendingForging: Float?
     private var towns = Town(sampleRate: 48_000)
 
     /// The drone's partials.
@@ -183,6 +184,11 @@ public final class Synth: @unchecked Sendable {
     /// How much of the towns heard is an archive, 0 to 1.
     public func setReading(_ share: Float) {
         lock.lock(); pendingReading = min(max(share, 0), 1); lock.unlock()
+    }
+
+    /// How much of the town heard is a forge at work, 0 to 1.
+    public func setForging(_ share: Float) {
+        lock.lock(); pendingForging = min(max(share, 0), 1); lock.unlock()
     }
 
     /// The towns as they are heard, for tests.
@@ -611,6 +617,10 @@ public final class Synth: @unchecked Sendable {
         if let next = pendingReading {
             towns.reading = next
             pendingReading = nil
+        }
+        if let next = pendingForging {
+            towns.forging = next
+            pendingForging = nil
         }
         let volume = volumes
         lock.unlock()

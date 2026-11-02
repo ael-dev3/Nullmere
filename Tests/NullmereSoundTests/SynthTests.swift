@@ -358,7 +358,18 @@ final class SynthTests: XCTestCase {
         synth.setDrilling(1)
         synth.setGrinding(1)
         synth.setReading(1)
+        synth.setForging(1)
         _ = rendered(synth, seconds: 0.05)
+
+        // A forge: the hammer's rhythm on the anvil, and none where no forge is.
+        var cold = Town(sampleRate: 48_000)
+        XCTAssertEqual((0..<4_800).map { _ in cold.forge(dt: 1 / 48_000) }.map(abs).max(), 0)
+        var smithy = Town(sampleRate: 48_000)
+        smithy.forging = 1
+        let ringing = (0..<(48_000 * 3)).map { _ in smithy.forge(dt: 1 / 48_000) }
+        XCTAssertGreaterThanOrEqual(smithy.strikes, 6)
+        XCTAssertGreaterThan(ringing.map(abs).max() ?? 0, 0.2)
+        XCTAssertFalse(ringing.contains { $0.isNaN || $0.isInfinite })
 
         // An archive: pages turning and quills, and none where no archive is.
         var unread = Town(sampleRate: 48_000)

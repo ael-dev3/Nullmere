@@ -95,6 +95,18 @@ struct Town {
     private var nextLeaf: Float = 0.8
     /// How many pages have turned, for tests.
     private(set) var pages = 0
+    /// How much of the town heard is a forge, 0 to 1: the smith's hammer
+    /// in its rhythm, two light taps on the anvil's face and a full blow
+    /// ringing, and the bellows breathing under it.
+    var forging: Float = 0
+    private var anvilRing = [Resonator(), Resonator(), Resonator()]
+    private var breath = Bandpass()
+    private var breathSet = false
+    private var nextStrike: Float = 0.3
+    private var blowInBar = 0
+    private var bellowsPhase: Float = 0
+    /// How many times the hammer has fallen, for tests.
+    private(set) var strikes = 0
 
     init(sampleRate: Float) {
         self.sampleRate = sampleRate
@@ -136,7 +148,7 @@ struct Town {
         }
         click *= 1 - min(dt * 400, 1)
         let work = blow.0.next() + blow.1.next() + noise.next() * click * 0.3
-        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12 + quarry(dt: dt) * 0.1 + rake(dt: dt) * 0.1 + drill(dt: dt) * 0.12 + grind(dt: dt) * 0.1 + read(dt: dt) * 0.08
+        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12 + quarry(dt: dt) * 0.1 + rake(dt: dt) * 0.1 + drill(dt: dt) * 0.12 + grind(dt: dt) * 0.1 + read(dt: dt) * 0.08 + forge(dt: dt) * 0.08
     }
 
     /// The pit-saw's rasp: strokes a little over one a second, the down
@@ -295,5 +307,36 @@ struct Town {
         turnLeft = max(turnLeft - dt, 0)
         let scratch: Float = noise.next() > 0.7 ? 0.15 : 0
         return leaf.process(noise.next()) * (rush + scratch) * reading
+    }
+
+    /// The forge: the smith's rhythm, tap, tap, blow, each a ring of the
+    /// anvil's three modes (the blow louder and longer), a pause at the
+    /// bar's end to turn the iron; and the bellows' slow breath of air.
+    @inline(__always)
+    mutating func forge(dt: Float) -> Float {
+        guard forging > 0.001 else { return 0 }
+        if !breathSet {
+            breath = Bandpass(centre: 420, width: 1.2, sampleRate: sampleRate)
+            breathSet = true
+        }
+        nextStrike -= dt
+        if nextStrike <= 0 {
+            let full = blowInBar == 2
+            let loud: Float = full ? 1 : 0.35
+            let note: Float = 1_480 + 60 * noise.next()
+            for (index, ratio) in [Float(1), 2.76, 5.4].enumerated() {
+                anvilRing[index] = Resonator(frequency: note * ratio, amplitude: loud / Float(index + 1),
+                                             decay: (full ? 9 : 22) * Float(index + 1), sampleRate: sampleRate)
+            }
+            blowInBar = (blowInBar + 1) % 4
+            nextStrike = blowInBar == 3 ? 0.9 + 0.3 * (1 + noise.next()) : 0.22
+            if blowInBar == 3 { blowInBar = 0 }
+            strikes += 1
+        }
+        bellowsPhase += dt / 2.6
+        if bellowsPhase >= 1 { bellowsPhase -= 1 }
+        let heave = max(Float(sin(Double(bellowsPhase) * 2 * .pi)), 0)
+        let ring = anvilRing[0].next() + anvilRing[1].next() + anvilRing[2].next()
+        return (ring + breath.process(noise.next()) * heave * 0.3) * forging
     }
 }

@@ -187,6 +187,15 @@ final class TownSoundTests: XCTestCase {
         archive.hearTowns()
         XCTAssertGreaterThan(leaves.last ?? 0, 0.5)
         Ambience(enabled: false).setReading(0.5)
+        var smithied = studied
+        smithied.holds[built].levels[.forge] = 1
+        let smithy = GameSession(state: smithied, store: LocalStore(directory: dir.appendingPathComponent("forge")))
+        smithy.camera = near
+        var rings: [Float] = []
+        smithy.onForging = { rings.append($0) }
+        smithy.hearTowns()
+        XCTAssertGreaterThan(rings.last ?? 0, 0.5)
+        Ambience(enabled: false).setForging(0.5)
         sawing.motion = .still
         sawing.hearTowns()
         XCTAssertEqual(shares.last, 0, "Still under the stillest motion")

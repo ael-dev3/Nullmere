@@ -142,6 +142,11 @@ public final class Ambience {
         synth.setReading(share)
     }
 
+    /// How much of the towns heard are forges at work.
+    public func setForging(_ share: Float) {
+        synth.setForging(share)
+    }
+
     /// The score: on or off, and at peace or at war.
     public var isMusicOn = true {
         didSet { applyMusic() }
