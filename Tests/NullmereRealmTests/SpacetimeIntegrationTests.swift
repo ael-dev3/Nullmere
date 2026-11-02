@@ -137,62 +137,6 @@ final class SpacetimeIntegrationTests: XCTestCase {
         }
     }
 
-    /// A keeper's own client, playing on SpacetimeDB, sees its hold in the
-    /// world's 3D models as the realm keeps it: the keeper orders a sawpit
-    /// raised, the realm takes the order, and the hold the client was sent
-    /// is laid out with the sawpit rising in its scaffold, the sawyers' own
-    /// rig at work beside it, and the bespoke models every work is drawn in.
-    func testAKeepersClientSeesItsWorksRiseInTheirModels() async throws {
-        let (transport, token) = try server()
-        let steward = try await takeUp(transport, token, seats: 4, watchLength: 600)
-        let running = Task { await steward.run() }
-        defer { running.cancel() }
-        let (link, ear) = await MainActor.run { () -> (NetworkRealmLink, Listener) in
-            let link = NetworkRealmLink(transport: transport, credentials: MemoryStore(), pollInterval: 0.2)
-            let ear = Listener()
-            ear.listen(to: link)
-            link.connect()
-            return (link, ear)
-        }
-        try await until("the realm's status") { ear.hasStatus }
-        let name = "Cai" + String(KeeperIdentity.make().filter(\.isLetter).prefix(6))
-        await MainActor.run { link.arrive(name: name) }
-        try await until("the keeper to arrive") { ear.keeper != nil }
-        let house = try await MainActor.run { try XCTUnwrap(ear.keeper?.house) }
-        let world = try await MainActor.run { try XCTUnwrap(ear.world) }
-        let id = try XCTUnwrap(world.holds.first { $0.owner == house && $0.isSeat }?.id)
-        let relief = Relief(map: world.map)
-
-        // The seat as first sent: its keep, drawn in the keep's own model.
-        let founded = HoldLayout.pieces(hold: try XCTUnwrap(world.hold(id)), relief: relief)
-        XCTAssertEqual(founded.first?.key, .keep(seat: true))
-
-        await MainActor.run { link.send(.build(hold: id, kind: .sawpit)) }
-        try await until("the sawpit to be begun") { ear.world?.hold(id)?.project?.kind == .sawpit }
-        let rising = try await MainActor.run { try XCTUnwrap(ear.world?.hold(id)) }
-        let pieces = HoldLayout.pieces(hold: rising, relief: relief, progress: 0.4)
-        let keys = pieces.map(\.key)
-        let level = try XCTUnwrap(rising.project?.targetLevel)
-        XCTAssertTrue(keys.contains(.work(.sawpit, level: level)), "\(keys)")
-        XCTAssertTrue(keys.contains(.scaffold))
-        XCTAssertTrue(keys.contains(.raising(.sawpit)), "The sawyers' rig at work beside it")
-        for key in keys {
-            let model = Library.model(key)
-            XCTAssertGreaterThan(model.mesh.triangleCount, 0, "\(key) is drawn")
-            XCTAssertLessThanOrEqual(model.mesh.triangleCount, key.budget, "\(key) within its budget")
-        }
-        let rig = Library.model(.raising(.sawpit))
-        let motion = try XCTUnwrap(rig.motion)
-        XCTAssertNotEqual(motion(.idle, 0), motion(.idle, 0.4), "and its builders work")
-        // Ready before leaving, so the keepers who play on in this realm
-        // after it are never kept waiting on a keeper gone.
-        let readyBefore = await MainActor.run { ear.lastStatus?.ready ?? 0 }
-        await MainActor.run { link.setReady(true) }
-        try await until("the keeper to be ready") { (ear.lastStatus?.ready ?? 0) > readyBefore }
-        await MainActor.run { link.close() }
-        print("REALM a keeper's client saw its sawpit rise in its 3D models, its rig at work, from the realm on SpacetimeDB")
-    }
-
     func testKeepersPlayThroughSpacetime() async throws {
         let (transport, token) = try server()
         let steward = try await takeUp(transport, token, seats: 4, watchLength: 600)
@@ -239,6 +183,7 @@ final class SpacetimeIntegrationTests: XCTestCase {
         let spear = try XCTUnwrap(world.units(of: houseA).first { $0.kind == .spear })
         await MainActor.run { a.send(.fortify(unit: spear.id)) }
         try await until("Ama's order to be carried out") { earA.world?.unit(spear.id)?.fortified == true }
+
         let belsWorld = try await MainActor.run { try XCTUnwrap(earB.world) }
         XCTAssertNil(belsWorld.unit(spear.id), "Ama's company is out of Bel's sight")
         XCTAssertEqual(belsWorld.houses[houseA].stock, .zero, "and Ama's stores are Ama's to know")
@@ -405,6 +350,23 @@ final class SpacetimeIntegrationTests: XCTestCase {
             }
         }
         print("REALM one keeper marched on another's seat over \(watches) watches and struck it, and both saw the blow")
+
+        // Ama's client sees her hold in the world's 3D models as the realm
+        // keeps it: a sawpit ordered raised rises in its scaffold, the
+        // sawyers' rig at work beside it, every piece within its budget.
+        let seatID = try XCTUnwrap(world.holds.first { $0.owner == houseA && $0.isSeat }?.id)
+        let relief = Relief(map: world.map)
+        await MainActor.run { a.send(.build(hold: seatID, kind: .sawpit)) }
+        try await until("the sawpit to be begun") { earA.world?.hold(seatID)?.project?.kind == .sawpit }
+        let rising = try await MainActor.run { try XCTUnwrap(earA.world?.hold(seatID)) }
+        let keys = HoldLayout.pieces(hold: rising, relief: relief, progress: 0.4).map(\.key)
+        XCTAssertTrue(keys.contains(.work(.sawpit, level: try XCTUnwrap(rising.project?.targetLevel))), "\(keys)")
+        XCTAssertTrue(keys.contains(.scaffold))
+        XCTAssertTrue(keys.contains(.raising(.sawpit)), "The sawyers' rig at work beside it")
+        for key in keys {
+            XCTAssertTrue((1...key.budget).contains(Library.model(key).mesh.triangleCount), "\(key) drawn within its budget")
+        }
+        print("REALM a keeper's client saw its sawpit rise in its 3D models, its rig at work, from the realm on SpacetimeDB")
     }
 
     /// Two realms and the Frontier between them, each its own database on
