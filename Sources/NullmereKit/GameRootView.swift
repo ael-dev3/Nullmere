@@ -140,7 +140,9 @@ struct PlayView: View {
                         Spacer(minLength: 0)
                         // The briefing says it first; then the first steps,
                         // and counsel once they're done.
-                        if session.seatBriefing == nil {
+                        // With something chosen, its panel alone: the
+                        // standing cards give way so the world shows.
+                        if session.seatBriefing == nil, session.selection == .none || session.firstSteps != nil {
                             if let steps = session.firstSteps {
                                 FirstStepsCard(steps: steps) { session.dismissFirstSteps() }
                                     .transition(.opacity)
