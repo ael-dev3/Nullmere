@@ -2413,16 +2413,7 @@ final class DepthPanelTests: XCTestCase {
     }
 }
 
-/// A line to a realm that only listens: what was sent, in order.
-private final class DepthLink: RealmLink {
-    var onEvent: ((RealmEvent) -> Void)?
-    private(set) var sent: [Command] = []
-    func connect() {}
-    func arrive(name: String?) {}
-    func send(_ command: Command) { sent.append(command) }
-    func setReady(_ ready: Bool) {}
-    func leave() {}
-
+extension DepthPanelTests {
     // MARK: Ferries of the Still
 
     /// Two shore holds of the keeper's apart across the lake, a company at
@@ -2463,4 +2454,15 @@ private final class DepthLink: RealmLink {
         draw(FerryLine(session: session, unit: unit, landings: []), height: 120)
         XCTAssertFalse(shown.contains("To Farmere"), "On the water, no landing to choose")
     }
+}
+
+/// A line to a realm that only listens: what was sent, in order.
+private final class DepthLink: RealmLink {
+    var onEvent: ((RealmEvent) -> Void)?
+    private(set) var sent: [Command] = []
+    func connect() {}
+    func arrive(name: String?) {}
+    func send(_ command: Command) { sent.append(command) }
+    func setReady(_ ready: Bool) {}
+    func leave() {}
 }
