@@ -114,6 +114,16 @@ final class TownSoundTests: XCTestCase {
         sawing.hearTowns()
         sawing.hearTowns()
         XCTAssertEqual(shares.count, 1)
+        XCTAssertEqual(try XCTUnwrap(sawing.townSounds()).chiselling, 0, "No lodge, no chisel")
+        var cut = sawn
+        cut.holds[built].levels[.lodge] = 2
+        let lodge = GameSession(state: cut, store: LocalStore(directory: dir.appendingPathComponent("lodge")))
+        lodge.camera = near
+        var taps: [Float] = []
+        lodge.onChiselling = { taps.append($0) }
+        lodge.hearTowns()
+        XCTAssertGreaterThan(taps.last ?? 0, 0.5)
+        Ambience(enabled: false).setChiselling(0.5)
         sawing.motion = .still
         sawing.hearTowns()
         XCTAssertEqual(shares.last, 0, "Still under the stillest motion")

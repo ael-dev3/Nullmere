@@ -282,7 +282,19 @@ final class SynthTests: XCTestCase {
         XCTAssertFalse(rasp.contains { $0.isNaN || $0.isInfinite })
         let synth = settled()
         synth.setSawing(2)
+        synth.setChiselling(1)
         _ = rendered(synth, seconds: 0.1)
+
+        // Masons at work: a chisel's taps, several a second, and none where
+        // no lodge is.
+        var uncut = Town(sampleRate: 48_000)
+        XCTAssertEqual((0..<4_800).map { _ in uncut.chisel(dt: 1 / 48_000) }.map(abs).max(), 0)
+        var cut = Town(sampleRate: 48_000)
+        cut.chiselling = 1
+        let taps = (0..<(48_000 * 2)).map { _ in cut.chisel(dt: 1 / 48_000) }
+        XCTAssertGreaterThanOrEqual(cut.taps, 4, "Several taps in two seconds")
+        XCTAssertGreaterThan(taps.map(abs).max() ?? 0, 0.05)
+        XCTAssertFalse(taps.contains { $0.isNaN || $0.isInfinite })
     }
 
     /// Riders' hooves fall one after another, each landing once the one

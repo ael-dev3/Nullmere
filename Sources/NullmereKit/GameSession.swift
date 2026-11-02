@@ -287,6 +287,9 @@ public final class GameSession {
     /// How much of the towns heard is sawpits at work, when that changes.
     public var onSawing: ((Float) -> Void)?
     private var sawingTold: Float = 0
+    /// How much of the towns heard is masons at work, when that changes.
+    public var onChiselling: ((Float) -> Void)?
+    private var chisellingTold: Float = 0
     @ObservationIgnored var townTold: (level: Float, pan: Float) = (0, 0)
     /// Called with the advisor's counsel as each new charge comes.
     public var onCounsel: ((String) -> Void)?
@@ -1751,10 +1754,10 @@ public final class GameSession {
 
     /// The towns near the view as `townSound` hears them, and how much of
     /// what is heard comes from holds with a sawpit at work.
-    func townSounds() -> (level: Float, pan: Float, sawing: Float)? {
+    func townSounds() -> (level: Float, pan: Float, sawing: Float, chiselling: Float)? {
         let near = Float(min(max((camera.scale - 60) / 90, 0), 1))
         guard near > 0 else { return nil }
-        var total: Float = 0, panned: Float = 0, sawn: Float = 0
+        var total: Float = 0, panned: Float = 0, sawn: Float = 0, cut: Float = 0
         for hold in state.holds where isVisible(hold.position) {
             let heard = camera.hearing(of: hold.position)
             // The hearing's floor is for cues far off; a town so far is silent.
@@ -1765,9 +1768,10 @@ public final class GameSession {
             total += loud
             panned += loud * heard.pan
             if (hold.levels[.sawpit] ?? 0) > 0 { sawn += loud }
+            if (hold.levels[.lodge] ?? 0) > 0 { cut += loud }
         }
         guard total > 0.001 else { return nil }
-        return (min(total, 1), min(max(panned / total, -1), 1), min(sawn / total, 1))
+        return (min(total, 1), min(max(panned / total, -1), 1), min(sawn / total, 1), min(cut / total, 1))
     }
 
     /// Tells the sound the towns near the view when they have changed
@@ -1779,6 +1783,11 @@ public final class GameSession {
         if abs(sawing - sawingTold) > 0.05 || (sawing == 0 && sawingTold != 0) {
             sawingTold = sawing
             onSawing?(sawing)
+        }
+        let chiselling = towns?.chiselling ?? 0
+        if abs(chiselling - chisellingTold) > 0.05 || (chiselling == 0 && chisellingTold != 0) {
+            chisellingTold = chiselling
+            onChiselling?(chiselling)
         }
         guard abs(level - townTold.level) > 0.02 || abs(pan - townTold.pan) > 0.05 || (level == 0 && townTold.level != 0) else { return }
         townTold = (level, pan)

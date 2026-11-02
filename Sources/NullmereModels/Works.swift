@@ -236,7 +236,7 @@ enum Works {
         case .archive: return study(level: level, name: name)
         case .forge: return forge(level, name)
         case .wayhouse: return wayhouse(level, name)
-        case .lodge: return lodge(level, name)
+        case .lodge: return Lodge.model(level: level, name: name)
         }
     }
 

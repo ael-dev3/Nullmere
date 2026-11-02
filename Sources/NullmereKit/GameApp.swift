@@ -827,6 +827,7 @@ public final class GameApp {
         session.onDin = { [weak self] level, pan in self?.ambience.setDin(level: level, pan: pan) }
         session.onTown = { [weak self] level, pan in self?.ambience.setTown(level: level, pan: pan) }
         session.onSawing = { [weak self] share in self?.ambience.setSawing(share) }
+        session.onChiselling = { [weak self] share in self?.ambience.setChiselling(share) }
         session.onCounsel = { [weak self] words in self?.advisor.counsel(words) }
         advisor.isSoundOn = isSoundOn
         ambience.isMusicOn = isMusicOn

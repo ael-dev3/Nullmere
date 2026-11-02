@@ -102,6 +102,11 @@ public final class Ambience {
         synth.setSawing(share)
     }
 
+    /// How much of the towns heard is masons at work, 0 to 1.
+    public func setChiselling(_ share: Float) {
+        synth.setChiselling(share)
+    }
+
     /// The score: on or off, and at peace or at war.
     public var isMusicOn = true {
         didSet { applyMusic() }

@@ -32,6 +32,13 @@ struct Town {
     private var stroke: Float = 0
     private var rasp = Bandpass()
     private var raspSet = false
+    /// How much of the town heard is masons at work, 0 to 1: a chisel's
+    /// taps under the mallet, quick and uneven, ringing on stone.
+    var chiselling: Float = 0
+    private var tap = Resonator()
+    private var nextTap: Float = 0.2
+    /// How many taps have fallen, for tests.
+    private(set) var taps = 0
 
     init(sampleRate: Float) {
         self.sampleRate = sampleRate
@@ -73,7 +80,7 @@ struct Town {
         }
         click *= 1 - min(dt * 400, 1)
         let work = blow.0.next() + blow.1.next() + noise.next() * click * 0.3
-        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1
+        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1
     }
 
     /// The pit-saw's rasp: strokes a little over one a second, the down
@@ -91,5 +98,20 @@ struct Town {
         let bite: Float = stroke < 0.5 ? 1 : 0.55
         let swell = Float(sin(Double(phase) * .pi)) * bite
         return rasp.process(noise.next()) * swell * sawing
+    }
+
+    /// The masons' chisels: taps a fifth to a half of a second apart,
+    /// each a bright ring on stone that dies in a few hundredths.
+    @inline(__always)
+    mutating func chisel(dt: Float) -> Float {
+        guard chiselling > 0.001 else { return 0 }
+        nextTap -= dt
+        if nextTap <= 0 {
+            let strength = 0.5 + 0.25 * (1 + noise.next())
+            tap = Resonator(frequency: 3_100 + 500 * noise.next(), amplitude: strength, decay: 70, sampleRate: sampleRate)
+            nextTap = 0.2 + 0.15 * (1 + noise.next())
+            taps += 1
+        }
+        return tap.next() * chiselling
     }
 }

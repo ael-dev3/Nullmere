@@ -15,6 +15,9 @@ import NullmereCore
 ///
 /// Each part is laid only while the whole keeps under its budget.
 enum Estate {
+    /// Families modelled whole at each level, with no shared estate.
+    static let bespoke: Set<BuildingKind> = [.walls, .lodge]
+
     /// The most triangles a work may come to with its estate.
     static let ceiling = 2950
 
@@ -50,7 +53,7 @@ enum Estate {
     /// allows: the work's own fine work kept fine, the estate's too.
     static func dress(_ model: Model, _ kind: BuildingKind, level: Int) -> Model {
         // The walls ring the whole hold: their estate is their own towers.
-        guard kind != .walls else { return model }
+        guard !Estate.bespoke.contains(kind) else { return model }
         var mesh = model.mesh
         let style = Estate.style(kind)
         for stage in 1...max(1, min(level, 5)) {
