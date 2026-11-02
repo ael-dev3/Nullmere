@@ -201,6 +201,8 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The Moonford's hexes while the tide lays it bare about a full moon;
     /// absent while the water lies over it.
     public internal(set) var ford: [Hex]?
+    /// The Drowned Crown while the ford lies bare.
+    public internal(set) var crown: DrownedCrown?
     /// A world whose shores never sunder: the Frontier's, whose kingdoms
     /// are the realms its keepers come from, not its shores. Absent
     /// elsewhere.

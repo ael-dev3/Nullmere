@@ -480,6 +480,20 @@ extension GameState {
         case .fordClosed(let carried):
             return Tidings("The moon wanes and the water comes back over the ford"
                            + (carried == 0 ? "." : "; the lake carries \(carried) compan\(carried == 1 ? "y" : "ies") ashore."), .neutral)
+        case .crownSurfaced:
+            return Tidings("The Drowned Crown lies at the heart of the ford. A company of war that stands on it takes it up; "
+                           + "each watch it is borne, its side has a mark, and the side with most when the water comes back is given moonsalt.", .neutral)
+        case .crownTaken(let id, let house):
+            let kind = unit(id)?.kind.title ?? "company"
+            if house == viewer { return Tidings("Your \(kind) take up the Drowned Crown: hold it, and every watch is a mark.", .good) }
+            if crownSide(of: house) == crownSide(of: viewer) { return Tidings("\(houses[house].title)'s \(kind) take up the Drowned Crown for your side.", .good) }
+            return Tidings("\(houses[house].title)'s \(kind) take up the Drowned Crown.", .neutral)
+        case .crownFell:
+            return Tidings("The Drowned Crown's bearer is struck down; it lies on the ford where they fell.", .neutral)
+        case .crownSank(let side, let winners):
+            guard let side else { return Tidings("The water comes back and the Drowned Crown sinks, borne by none.", .neutral) }
+            if winners.contains(viewer) { return Tidings("The Drowned Crown sinks; your side bore it longest, and the lake gives your House \(GameState.crownPrize.moonsalt) moonsalt.", .good) }
+            return Tidings("The Drowned Crown sinks; \(crownSideName(side)) bore it longest.", .neutral)
         case .carriedAshore(let id, let owner, _, _):
             guard owner == viewer else { return nil }
             let kind = unit(id)?.kind.title ?? "company"

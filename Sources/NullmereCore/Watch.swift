@@ -51,6 +51,7 @@ extension GameState {
         if isPaced { pacing = Pacing() }
         turnOmens()
         events += turnTide()
+        events += contestCrown()
         events += dream()
         events += driftBottles()
         events += landCrossings()
@@ -78,6 +79,7 @@ extension GameState {
         events += workTheLand()
         raiseShrines()
         events += holdShrines()
+        events += takeUpCrown()
         events += keepTitles()
         events += keepVeils()
         events += keepPrisoners()

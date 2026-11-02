@@ -133,6 +133,14 @@ struct PlayView: View {
                         .allowsHitTesting(false)
                         .transition(.opacity)
                 }
+                // The Drowned Crown, only while it lies on the ford.
+                if let line = MoonBand.crownLine(in: session.state, for: session.player) {
+                    MoonBand(line: line)
+                        .chrome("band")
+                        .padding(.top, 4)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
                 HStack(alignment: .top, spacing: 0) {
                     VStack(alignment: .leading, spacing: 12) {
                         NoticeFeed(session: session)

@@ -1544,6 +1544,10 @@ public final class GameSession {
         case .happeningMark(let house, _, _, _) where house == player: return .honour
         case .happeningEnded(_, let leaders): return leaders.contains(player) ? .triumph : .herald
         case .sunderingBegun: return .herald
+        case .crownSurfaced: return .herald
+        case .crownTaken(_, let house) where allied(house): return .horn
+        case .crownTaken: return .dread
+        case .crownSank(_, let winners): return winners.contains(player) ? .triumph : .herald
         case .sunderingEnded(let winner, _, _, _): return winner != nil && state?.sundering?.shore(of: player) == winner ? .triumph : .herald
         case .deedDone(let house, _) where house == player: return .honour
         case .chargeDone(let house, _, _) where house == player: return .honour

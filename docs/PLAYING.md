@@ -944,6 +944,15 @@ full screen at launch as chosen.
   comes back over it, and the lake carries whoever still stands on it to
   the nearest shore, a fifth of its strength the poorer. A band under the
   top bar says when it opens and when the water returns, and only then.
+- **The Drowned Crown.** While the Moonford lies bare, the crown of the
+  drowned age rests at its heart, lit for every House to see. A company of
+  war standing on it takes it up and bears it wherever it goes, and its
+  side (its alliance, or its House alone) has a mark for the watch it is
+  taken and each watch after that it is borne. Strike the bearer down and
+  the crown falls where it stood, for whoever comes next. When the water
+  comes back, the side with the most marks is given 20 moonsalt for each of
+  its Houses. A band under the bar says who bears it and who leads, only
+  while it lies on the ford.
 - **Edicts of the realm.** Laws a realm makes for itself. A keeper's House
   of two holds or more may put one of four to the realm (a hundred grain
   and ten moonsalt, once in twenty watches): the Moon's Peace (no House

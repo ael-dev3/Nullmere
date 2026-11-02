@@ -1342,4 +1342,46 @@ extension Land {
         }
         return Model(name: name, mesh: b.mesh)
     }
+
+    /// The Drowned Crown: a broad band of tarnished gold, green with the
+    /// lake's weed, seven tines rising from it each set with a stone of
+    /// moonsalt lit from within, a circlet of pearls at its brow and the
+    /// weed trailing from its rim.
+    static func drownedCrown(name: String) -> Model {
+        var b = MeshBuilder()
+        let gold = Palette.gold.mix(Palette.bronze, 0.35)
+        let verdigris = Palette.bronze.mix(Vec3(0.24, 0.45, 0.38), 0.6)
+        let weed = Vec3(0.13, 0.24, 0.17)
+        // The band, a little flared, and its rolled lip.
+        b.lathe([(0.15, 0.0), (0.155, 0.02), (0.15, 0.05), (0.158, 0.08), (0.162, 0.09)], sides: 18, color: gold)
+        b.place(.translation(Vec3(0, 0.005, 0))) {
+            $0.lathe([(0.152, 0.0), (0.165, 0.01), (0.152, 0.02)], sides: 18, color: verdigris)
+        }
+        // Seven tines, each a leaf of gold rising to a point.
+        for index in 0..<7 {
+            let angle = Float(index) / 7 * 2 * .pi
+            let out = Vec3(Float(sin(Double(angle))), 0, Float(cos(Double(angle))))
+            let foot = out * 0.155 + Vec3(0, 0.085, 0)
+            let tip = out * 0.17 + Vec3(0, 0.2, 0)
+            let side = Vec3(out.z, 0, -out.x) * 0.03
+            b.sheet([foot - side, foot + side, tip], normal: out, thickness: 0.012, color: index % 2 == 0 ? gold : verdigris)
+            // Its stone of moonsalt, lit from within.
+            b.with(material: .glow) {
+                $0.sphere(center: out * 0.165 + Vec3(0, 0.13, 0), radius: 0.018, rings: 3, sides: 6, color: Palette.moonsalt)
+            }
+        }
+        // A circlet of pearls at the brow.
+        for index in 0..<14 {
+            let angle = (Float(index) + 0.5) / 14 * 2 * .pi
+            b.sphere(center: Vec3(0.163 * Float(sin(Double(angle))), 0.045, 0.163 * Float(cos(Double(angle)))),
+                     radius: 0.009, rings: 2, sides: 5, color: Palette.stoneWhite)
+        }
+        // The lake's weed trailing from its rim.
+        for index in 0..<5 {
+            let angle = Float(index) * 1.31
+            let out = Vec3(Float(sin(Double(angle))), 0, Float(cos(Double(angle))))
+            b.limb(from: out * 0.16 + Vec3(0, 0.02, 0), to: out * 0.2 + Vec3(0, -0.09, 0), radius: 0.006, color: weed)
+        }
+        return Model(name: name, mesh: b.mesh)
+    }
 }

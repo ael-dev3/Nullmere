@@ -221,7 +221,10 @@ extension GameSession {
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
         frame.fixedRegions = stage.furnitureRegions
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + help + crests + fieldBanners + borders + barges + companies + flights
+        let crown = state.crown.map { crown in
+            stage.drownedCrown(at: crown.bearer.flatMap(state.unit)?.position ?? crown.hex, borne: crown.bearer != nil, time: time)
+        } ?? []
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + help + crests + fieldBanners + borders + barges + crown + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
                                                      time: time)

@@ -291,7 +291,7 @@ extension GameState {
                 return caller == house || defender == house || areAllied(caller, house)
             case .sentToReinforce(_, let owner, let holdID):
                 return owner == house || hold(holdID)?.owner == house
-            case .happeningBegun, .happeningEnded, .heritageTaken, .crestTaken, .sunderingBegun, .sunderingEnded, .fordOpened, .fordClosed,
+            case .happeningBegun, .happeningEnded, .heritageTaken, .crestTaken, .sunderingBegun, .sunderingEnded, .fordOpened, .fordClosed, .crownSurfaced, .crownTaken, .crownFell, .crownSank,
                  .titleBestowed, .titlesLapsed, .prophesied, .staked, .prophecyJudged, .veilDrawn, .veilLifted:
                 return true
             case .workPlaced(let holdID, _, _):

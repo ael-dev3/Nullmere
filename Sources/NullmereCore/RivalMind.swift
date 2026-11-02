@@ -125,6 +125,7 @@ struct RivalMind {
         // The Heartstone is sought at war too, the Frontier's prize.
         if !atWar || state.heartstone != nil { events += seekHolySite(garrisons: garrisons, in: &state) }
         events += breakTheCrown(garrisons: garrisons, in: &state)
+        if home == nil { events += seekDrownedCrown(garrisons: garrisons, in: &state) }
         for unit in state.units(of: house).sorted(by: { $0.id < $1.id }) {
             guard state.unit(unit.id) != nil else { continue }
             events += command(unit.id, garrisonFor: garrisons[unit.id], seeing: visible, atWar: atWar, home: home, in: &state)
@@ -384,6 +385,28 @@ struct RivalMind {
         }
         guard let choice else { return [] }
         return perform(.move(unit: choice.unit.id, to: choice.shrine.position), in: &state)
+    }
+
+    /// How far from its holds a steward goes for the Drowned Crown.
+    static let drownedCrownReach = 10
+
+    /// While the Drowned Crown lies on the ford unborne by its side, a
+    /// steward with holds near sends its nearest idle company of war for
+    /// it, one at a time; at war or at peace, for the crown is fought over.
+    private func seekDrownedCrown(garrisons: [Int: Hex], in state: inout GameState) -> [GameEvent] {
+        guard let crown = state.crown else { return [] }
+        if let bearer = crown.bearer.flatMap(state.unit), state.crownSide(of: bearer.owner) == state.crownSide(of: house) { return [] }
+        let mine = state.units(of: house)
+        guard !mine.contains(where: { $0.destination == crown.hex }),
+              state.holds(of: house).contains(where: { $0.position.distance(to: crown.hex) <= RivalMind.drownedCrownReach }) else { return [] }
+        let gates = state.gatesStanding
+        let idle = mine.filter { unit in
+            unit.kind.isMilitary && unit.errand == nil && unit.destination == nil && garrisons[unit.id] == nil && unit.movesLeft > 0
+                && !atTheCrown(unit, gates) && unit.position != crown.hex
+        }
+        guard let choice = idle.min(by: { ($0.position.distance(to: crown.hex), $0.id) < ($1.position.distance(to: crown.hex), $1.id) })
+        else { return [] }
+        return perform(.move(unit: choice.id, to: crown.hex), in: &state)
     }
 
     /// How far from its holds a steward goes to break a gate of the Crown.
@@ -1373,6 +1396,13 @@ struct RivalMind {
         if let shrine = state.shrine(at: unit.position) ?? unit.destination.flatMap({ state.shrine(at: $0) }),
            !(shrine.holder.map { $0 == house || state.areAllied($0, house) } ?? false) {
             return []
+        }
+        // Bearing the Drowned Crown, it holds where it stands; bound for it
+        // while its side bears it not, it goes on.
+        if let crown = state.crown {
+            if crown.bearer == unit.id { return [] }
+            let ours = crown.bearer.flatMap(state.unit).map { state.crownSide(of: $0.owner) == state.crownSide(of: house) } ?? false
+            if unit.destination == crown.hex, !ours { return [] }
         }
         // At peace, a company on an errand sees it through.
         if unit.errand != nil, !atWar { return [] }

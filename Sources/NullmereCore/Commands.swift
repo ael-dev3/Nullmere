@@ -830,6 +830,14 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// The moon wanes and the water comes back over the Moonford, carrying
     /// so many companies ashore.
     case fordClosed(carried: Int)
+    /// The Drowned Crown lies at the ford's heart.
+    case crownSurfaced(at: Hex)
+    /// A company takes up the crown.
+    case crownTaken(unit: Int, house: Int)
+    /// Its bearer struck down, the crown lies where it fell.
+    case crownFell(at: Hex)
+    /// The crown sinks with the ford, given to the side that bore it longest.
+    case crownSank(side: Int?, houses: [Int])
     /// The tide carries a company from the Moonford to the nearest shore.
     case carriedAshore(unit: Int, owner: Int, from: Hex, to: Hex)
     /// A Sundering ends: the kingdom that prevailed, if one did, each

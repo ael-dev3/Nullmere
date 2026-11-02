@@ -2459,6 +2459,41 @@ extension DepthPanelTests {
     }
 }
 
+extension DepthPanelTests {
+    // MARK: The Drowned Crown
+
+    /// The band tells the keeper who bears the crown and who leads, and is
+    /// gone once it sinks; its cues sound for the keeper's side.
+    func testTheCrownsBandSaysWhoBearsItAndWhoLeads() throws {
+        var state = world("pressed crown")
+        state.watch = Sundering.first - 1
+        _ = state.endWatch()
+        let crown = try XCTUnwrap(state.crown)
+        let me = state.player
+        XCTAssertEqual(MoonBand.crownLine(in: state, for: me), "The Drowned Crown lies on the ford for whoever takes it up.")
+        state.units.removeAll { $0.position == crown.hex }
+        let company = Unit(id: state.takeID(), kind: .rider, owner: me, position: crown.hex, tier: 1)
+        state.units.append(company)
+        let taken = state.takeUpCrown()
+        XCTAssertEqual(MoonBand.crownLine(in: state, for: me), "The Drowned Crown is borne by your side; your side leads with 1 watch.")
+        let other = try XCTUnwrap(state.houses.indices.first { $0 != me && state.crownSide(of: $0) != state.crownSide(of: me) })
+        XCTAssertEqual(MoonBand.crownLine(in: state, for: other),
+                       "The Drowned Crown is borne by \(state.houses[me].name); \(state.houses[me].name) leads with 1 watch.")
+        draw(MoonBand(line: try XCTUnwrap(MoonBand.crownLine(in: state, for: me))), width: 700, height: 40)
+
+        let (session, _) = session(state)
+        XCTAssertEqual(GameSession.cue(forDepth: taken[0], in: session.state, player: me), .horn)
+        XCTAssertEqual(GameSession.cue(forDepth: taken[0], in: session.state, player: other), .dread)
+        XCTAssertEqual(GameSession.cue(forDepth: .crownSurfaced(at: crown.hex), in: session.state, player: me), .herald)
+        XCTAssertEqual(GameSession.cue(forDepth: .crownSank(side: -1 - me, houses: [me]), in: session.state, player: me), .triumph)
+        XCTAssertNotNil(Narration.line(for: taken[0], in: session.state, viewer: me))
+
+        state.ford = nil
+        _ = state.contestCrown()
+        XCTAssertNil(MoonBand.crownLine(in: state, for: me), "Gone with the ford")
+    }
+}
+
 /// A line to a realm that only listens: what was sent, in order.
 private final class DepthLink: RealmLink {
     var onEvent: ((RealmEvent) -> Void)?

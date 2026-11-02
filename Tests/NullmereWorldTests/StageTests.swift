@@ -498,6 +498,21 @@ final class StageTests: XCTestCase {
         XCTAssertGreaterThan((forward.x * way.x + forward.z * way.z) / (forward.length * way.length), 0.99, "Heading for the far shore")
     }
 
+    /// The Drowned Crown turns just above the ground where it lies, and
+    /// rides high over the company that bears it.
+    func testTheDrownedCrownLiesLowAndIsBorneHigh() throws {
+        let stage = stage()
+        let hex = try XCTUnwrap(Self.state.map.hexes.first { Self.state.map[$0]?.terrain.isWater == false })
+        let centre = Relief.centre(of: hex)
+        let ground = stage.ground(atX: centre.x, z: centre.z)
+        let lying = try XCTUnwrap(stage.drownedCrown(at: hex, borne: false, time: 0).flatMap(\.instances).first)
+        let borne = try XCTUnwrap(stage.drownedCrown(at: hex, borne: true, time: 0).flatMap(\.instances).first)
+        XCTAssertEqual(lying.model.c3.y, ground + WorldStage.crownLying, accuracy: 1e-4)
+        XCTAssertEqual(borne.model.c3.y, ground + WorldStage.crownBorne, accuracy: 1e-4)
+        XCTAssertEqual(lying.flags & ModelInstance.alwaysShown, ModelInstance.alwaysShown, "Lit by the moon for every House")
+        XCTAssertEqual(stage.drownedCrown(at: hex, borne: false, time: 0).first?.key, .drownedCrown)
+    }
+
     func testHallsStandInTheirAlliancesColoursRisingInTheirScaffolds() throws {
         let stage = stage()
         let hexes = Array(Self.state.map.hexes.filter { hex in

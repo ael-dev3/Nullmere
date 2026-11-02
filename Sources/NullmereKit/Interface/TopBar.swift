@@ -387,6 +387,27 @@ struct MoonBand: View {
             : "The moon waxes: the Moonford lies bare across the lake in \(coming) watches."
     }
 
+    /// The Drowned Crown while it lies on the ford: who bears it, if any
+    /// does, and which side leads, the keeper's own side named as theirs.
+    static func crownLine(in state: GameState, for player: Int) -> String? {
+        guard let crown = state.crown else { return nil }
+        let mine = state.crownSide(of: player)
+        func name(_ side: Int) -> String { side == mine ? "your side" : state.crownSideName(side) }
+        var line: String
+        if let bearer = crown.bearer.flatMap(state.unit) {
+            let side = state.crownSide(of: bearer.owner)
+            line = side == mine ? "The Drowned Crown is borne by your side" : "The Drowned Crown is borne by \(state.crownSideName(side))"
+        } else {
+            line = "The Drowned Crown lies on the ford for whoever takes it up"
+        }
+        if let leader = state.crownLeader() {
+            line += "; \(name(leader.side)) leads with \(leader.marks) watch\(leader.marks == 1 ? "" : "es")"
+            let own = crown.marks[mine] ?? 0
+            if leader.side != mine, own > 0 { line += ", yours \(own)" }
+        }
+        return line + "."
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             Circle().strokeBorder(Palette.glow, lineWidth: 1).frame(width: 7, height: 7)

@@ -1029,6 +1029,23 @@ public final class WorldStage: @unchecked Sendable {
         })
     }
 
+    /// How high the Drowned Crown floats above the ground where it lies,
+    /// and above its bearer.
+    public static let crownLying: Float = 0.12
+    public static let crownBorne: Float = 0.62
+
+    /// The Drowned Crown: turning slowly just above the ford where it lies,
+    /// or high over the company that bears it, bobbing as it goes.
+    public func drownedCrown(at hex: Hex, borne: Bool, time: Float) -> [ModelBatch] {
+        let centre = Relief.centre(of: hex)
+        let rise = borne ? WorldStage.crownBorne : WorldStage.crownLying
+        let bob = (borne ? 0.04 : 0.015) * Float(sin(Double(time * 1.3)))
+        let at = Vec3(centre.x, ground(atX: centre.x, z: centre.z) + rise + bob, centre.z)
+        let model = Mat4.translation(at) * .rotationY(time * 0.4) * .scale(Vec3(repeating: borne ? 0.8 : 1))
+        return WorldStage.batches([(.drownedCrown, ModelInstance(model: model, hex: SIMD2(Int32(hex.q), Int32(hex.r)),
+                                                                   flags: ModelInstance.alwaysShown))])
+    }
+
     // MARK: What flies
 
     /// The veil of the Still about a hold: six banks of low mist ringing
