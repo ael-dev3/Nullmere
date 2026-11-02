@@ -235,128 +235,12 @@ enum Works {
         case .moonspire: return Moonspire.model(level: level, name: name)
         case .archive: return Archive.model(level: level, name: name)
         case .forge: return Forge.model(level: level, name: name)
-        case .wayhouse: return wayhouse(level, name)
+        case .wayhouse: return Wayhouse.model(level: level, name: name)
         case .lodge: return Lodge.model(level: level, name: name)
         }
     }
 
-    // MARK: The Wayhouse
-
-    /// A post-house where the House's roads begin: a timber hall with its
-    /// stable under a lean-to, a signpost and a trough by the road; from
-    /// the second level a second bay and a rick of hay; from the third, a
-    /// hall of pale stone and a dovecote for the post-birds; then a gate
-    /// over the road with its lantern lit; at the fifth, a waymark pillar
-    /// crowned with a moonsalt lamp that burns through the night.
-    static func wayhouse(_ level: Int, _ name: String) -> Model {
-        var b = MeshBuilder()
-        b.pad(radius: 0.31)
-        let height = wardHeight(level)
-        let stone = level >= 3
-        b.hall(at: Vec3(-0.07, 0, -0.11), width: 0.24, depth: 0.14, height: height,
-               wall: stone ? Palette.stonePale : Palette.timber, roof: level == 1 ? Palette.thatch : Palette.slate,
-               pitch: 0.65, footing: level >= 2 ? Palette.stone : nil)
-        b.door(Vec3(-0.06, 0.05, -0.039), width: 0.05, height: 0.09, facing: 0)
-        b.window(Vec3(-0.15, height * 0.62, -0.039), width: 0.024, height: 0.034, facing: 0)
-        // The stable under its lean-to: a bay, two from the second level,
-        // a horse's head over each half-door.
-        for bay in 0..<(level >= 2 ? 2 : 1) {
-            let x = 0.1 + Float(bay) * 0.09
-            for post in [Float(-0.042), 0.042] {
-                b.limb(from: Vec3(x + post, 0, -0.04), to: Vec3(x + post, 0.1, -0.04), radius: 0.006, color: Palette.timberDark)
-            }
-            b.box(min: Vec3(x - 0.05, 0.1, -0.18), max: Vec3(x + 0.05, 0.112, -0.035), color: level == 1 ? Palette.thatch : Palette.slate)
-            b.box(min: Vec3(x - 0.042, 0, -0.17), max: Vec3(x + 0.042, 0.1, -0.16), color: Palette.timberDark)
-            b.box(min: Vec3(x - 0.036, 0, -0.045), max: Vec3(x + 0.036, 0.045, -0.04), color: Palette.timber)
-            b.place(.translation(Vec3(x, 0.06, -0.06))) {
-                $0.limb(from: Vec3(0, 0, 0), to: Vec3(0, 0.02, 0.035), radius: 0.011, topRadius: 0.008,
-                        color: bay == 0 ? Palette.horseBay : Palette.horseGrey)
-            }
-        }
-        // The signpost by the road, and the trough for the post-horses.
-        b.limb(from: Vec3(0.2, 0, 0.12), to: Vec3(0.2, 0.16, 0.12), radius: 0.006, color: Palette.timberDark)
-        for (y, turn) in [(Float(0.14), Float(0.5)), (0.115, -0.7)] {
-            b.box(center: Vec3(0.2, y, 0.12), size: Vec3(0.075, 0.016, 0.006), turn: turn, color: Palette.timberPale)
-        }
-        b.box(min: Vec3(0.05, 0, 0.08), max: Vec3(0.14, 0.03, 0.11), color: Palette.timberDark)
-        b.box(min: Vec3(0.056, 0.02, 0.086), max: Vec3(0.134, 0.028, 0.104), color: Palette.slate)
-        if level >= 2 {
-            // A rick of hay for the horses.
-            b.place(.translation(Vec3(0.25, 0, 0.0))) {
-                $0.lathe([(0.04, 0), (0.044, 0.04), (0.03, 0.075), (0.0, 0.095)], sides: 7, color: Palette.straw)
-            }
-        }
-        if stone {
-            // The dovecote for the post-birds, round, its holes in rows.
-            b.roundHouse(at: Vec3(-0.21, 0, 0.06), radius: 0.045, height: 0.17, wall: Palette.stonePale, roof: Palette.slate)
-            b.place(.translation(Vec3(-0.21, 0, 0.06))) {
-                for row in 0..<2 {
-                    for angle in [Float(0.3), 1.2, 2.1] {
-                        $0.window(onRound: 0.046, y: 0.11 + Float(row) * 0.03, angle: angle, width: 0.012, height: 0.012,
-                                  color: Palette.timberDark)
-                    }
-                }
-            }
-        }
-        if level >= 4 {
-            // The gate over the road, a lantern lit beneath its beam.
-            for x in [Float(0.02), 0.16] {
-                b.limb(from: Vec3(x, 0, 0.24), to: Vec3(x, 0.17, 0.24), radius: 0.009, color: stone ? Palette.stone : Palette.timberDark)
-            }
-            b.beam(from: Vec3(0.005, 0.17, 0.24), to: Vec3(0.175, 0.17, 0.24), width: 0.016, color: Palette.timberDark)
-            b.limb(from: Vec3(0.09, 0.17, 0.24), to: Vec3(0.09, 0.14, 0.24), radius: 0.002, color: Palette.iron)
-            b.with(material: .glow) {
-                $0.box(center: Vec3(0.09, 0.128, 0.24), size: Vec3(0.016, 0.022, 0.016), color: Palette.candle)
-            }
-        }
-        if level >= 5 {
-            // The waymark: a pillar of pale stone, a moonsalt lamp on it.
-            b.place(.translation(Vec3(-0.17, 0, 0.19))) {
-                $0.prism(sides: 4, radius: 0.022, topRadius: 0.016, to: 0.24, color: Palette.stoneWhite)
-            }
-            b.with(material: .crystal) {
-                $0.place(.translation(Vec3(-0.17, 0.24, 0.19))) {
-                    $0.lathe([(0.0, 0.0), (0.02, 0.03), (0.0, 0.07)], sides: 6, color: Palette.moonsalt)
-                }
-            }
-        }
-        b.banner(at: Vec3(-0.17, height + 0.06, -0.11), height: 0.12, width: 0.05, drop: 0.07)
-        // Near, the post-house's ways: saddles on a rail by the door, the
-        // post's bags against the wall and a spare wheel leaning by them, a
-        // bucket at the trough and a milestone by the road; from the
-        // third, the post-birds down from their cote, pecking.
-        b.fine { near in
-            for x in [Float(-0.025), 0.035] {
-                near.limb(from: Vec3(x, 0, -0.02), to: Vec3(x, 0.05, -0.02), radius: 0.004, color: Palette.timberDark)
-            }
-            near.beam(from: Vec3(-0.03, 0.05, -0.02), to: Vec3(0.04, 0.05, -0.02), width: 0.006, color: Palette.timber)
-            for x in [Float(-0.008), 0.018] {
-                near.box(center: Vec3(x, 0.056, -0.02), size: Vec3(0.02, 0.012, 0.03), color: Palette.leatherDark)
-                near.box(center: Vec3(x, 0.046, -0.004), size: Vec3(0.018, 0.016, 0.003), color: Palette.leather)
-            }
-            for (index, at) in [Vec3(-0.1, 0, -0.022), Vec3(-0.118, 0, -0.012)].enumerated() {
-                near.sack(at: at, size: 0.014, seed: UInt32(60 + index), color: Palette.leather)
-            }
-            near.place(.translation(Vec3(-0.168, 0.033, -0.028)) * .rotationX(-0.22) * .rotationY(.pi / 2)) {
-                $0.wheel(center: .zero, radius: 0.032, width: 0.008, spokes: 3, color: Palette.timber, rim: Palette.timberDark)
-            }
-            near.place(.translation(Vec3(0.15, 0, 0.125))) {
-                $0.lathe([(0.011, 0), (0.014, 0.022)], sides: 6, color: Palette.timberDark)
-            }
-            near.box(center: Vec3(0.24, 0.0175, 0.17), size: Vec3(0.022, 0.035, 0.014), color: Palette.stonePale)
-            near.limb(from: Vec3(0.24, 0.035, 0.163), to: Vec3(0.24, 0.035, 0.177), radius: 0.011, sides: 6, color: Palette.stonePale)
-            if stone {
-                for (index, at) in [Vec3(-0.15, 0, 0.1), Vec3(-0.128, 0, 0.128), Vec3(-0.162, 0, 0.138)].enumerated() {
-                    let facing = Float(index) * 2.1 + 0.4
-                    let ahead = Vec3(Float(cos(Double(facing))), 0, -Float(sin(Double(facing))))
-                    near.sphere(center: at + Vec3(0, 0.006, 0), radius: 0.006, rings: 3, sides: 5, color: Palette.stoneWhite, squash: 0.8)
-                    near.sphere(center: at + ahead * 0.006 + Vec3(0, 0.0105, 0), radius: 0.0038, rings: 2, sides: 5, color: Palette.stoneWhite)
-                }
-            }
-        }
-        return model(name, b)
-    }
-
+    // MARK: Shared
 
     static func model(_ name: String, _ b: MeshBuilder, rig: Rig = Rig(), machinery: Machinery? = nil) -> Model {
         var b = b
@@ -733,10 +617,6 @@ enum Works {
 
     // MARK: Infirmary
 
-    /// How high an Infirmary's ward stands at a level.
-    static func wardHeight(_ level: Int) -> Float {
-        level >= 4 ? 0.16 : (level >= 2 ? 0.14 : 0.12)
-    }
     // MARK: Forge
 
     /// How high a Forge's chimney stands at a level.

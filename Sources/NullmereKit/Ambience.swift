@@ -147,6 +147,11 @@ public final class Ambience {
         synth.setForging(share)
     }
 
+    /// How much of the towns heard are wayhouses at work.
+    public func setPosting(_ share: Float) {
+        synth.setPosting(share)
+    }
+
     /// The score: on or off, and at peace or at war.
     public var isMusicOn = true {
         didSet { applyMusic() }

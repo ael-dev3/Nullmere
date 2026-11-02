@@ -836,6 +836,7 @@ public final class GameApp {
         session.onGrinding = { [weak self] share in self?.ambience.setGrinding(share) }
         session.onReading = { [weak self] share in self?.ambience.setReading(share) }
         session.onForging = { [weak self] share in self?.ambience.setForging(share) }
+        session.onPosting = { [weak self] share in self?.ambience.setPosting(share) }
         session.onCounsel = { [weak self] words in self?.advisor.counsel(words) }
         advisor.isSoundOn = isSoundOn
         ambience.isMusicOn = isMusicOn

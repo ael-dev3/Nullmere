@@ -196,6 +196,15 @@ final class TownSoundTests: XCTestCase {
         smithy.hearTowns()
         XCTAssertGreaterThan(rings.last ?? 0, 0.5)
         Ambience(enabled: false).setForging(0.5)
+        var posted = smithied
+        posted.holds[built].levels[.wayhouse] = 1
+        let wayhouse = GameSession(state: posted, store: LocalStore(directory: dir.appendingPathComponent("wayhouse")))
+        wayhouse.camera = near
+        var hooves: [Float] = []
+        wayhouse.onPosting = { hooves.append($0) }
+        wayhouse.hearTowns()
+        XCTAssertGreaterThan(hooves.last ?? 0, 0.5)
+        Ambience(enabled: false).setPosting(0.5)
         sawing.motion = .still
         sawing.hearTowns()
         XCTAssertEqual(shares.last, 0, "Still under the stillest motion")

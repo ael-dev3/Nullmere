@@ -107,6 +107,17 @@ struct Town {
     private var bellowsPhase: Float = 0
     /// How many times the hammer has fallen, for tests.
     private(set) var strikes = 0
+    /// How much of the town heard is a wayhouse, 0 to 1: a post-horse led
+    /// across its yard, hooves on the cobbles in their four-beat walk, and
+    /// the little bells on its harness.
+    var posting: Float = 0
+    private var hoof = Resonator()
+    private var harness = [Resonator(), Resonator()]
+    private var nextHoof: Float = 0.5
+    private var hoofInWalk = 0
+    private var walkLeft = 0
+    /// How many hoof-falls have sounded, for tests.
+    private(set) var hoofFalls = 0
 
     init(sampleRate: Float) {
         self.sampleRate = sampleRate
@@ -148,7 +159,7 @@ struct Town {
         }
         click *= 1 - min(dt * 400, 1)
         let work = blow.0.next() + blow.1.next() + noise.next() * click * 0.3
-        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12 + quarry(dt: dt) * 0.1 + rake(dt: dt) * 0.1 + drill(dt: dt) * 0.12 + grind(dt: dt) * 0.1 + read(dt: dt) * 0.08 + forge(dt: dt) * 0.08
+        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12 + quarry(dt: dt) * 0.1 + rake(dt: dt) * 0.1 + drill(dt: dt) * 0.12 + grind(dt: dt) * 0.1 + read(dt: dt) * 0.08 + forge(dt: dt) * 0.08 + post(dt: dt) * 0.1
     }
 
     /// The pit-saw's rasp: strokes a little over one a second, the down
@@ -338,5 +349,31 @@ struct Town {
         let heave = max(Float(sin(Double(bellowsPhase) * 2 * .pi)), 0)
         let ring = anvilRing[0].next() + anvilRing[1].next() + anvilRing[2].next()
         return (ring + breath.process(noise.next()) * heave * 0.3) * forging
+    }
+
+    /// The wayhouse: now and then a horse led across the yard, a walk of
+    /// eight hoof-falls in the four-beat rhythm, each a short dull knock on
+    /// stone, a jingle of harness bells with every other step; then quiet.
+    @inline(__always)
+    mutating func post(dt: Float) -> Float {
+        guard posting > 0.001 else { return 0 }
+        nextHoof -= dt
+        if nextHoof <= 0 {
+            if walkLeft == 0 { walkLeft = 8 }
+            let near = hoofInWalk % 2 == 0
+            hoof = Resonator(frequency: 190 + 40 * noise.next(), amplitude: near ? 0.9 : 0.6, decay: 70, sampleRate: sampleRate)
+            if near {
+                for (index, pitch) in [Float(3_100), 4_270].enumerated() {
+                    harness[index] = Resonator(frequency: pitch + 80 * noise.next(), amplitude: 0.12, decay: 14, sampleRate: sampleRate)
+                }
+            }
+            hoofInWalk = (hoofInWalk + 1) % 4
+            walkLeft -= 1
+            hoofFalls += 1
+            nextHoof = walkLeft == 0 ? 3 + 1.5 * (1 + noise.next()) : (hoofInWalk % 2 == 0 ? 0.2 : 0.14)
+        }
+        let fall = hoof.next()
+        let knock = fall + 0.15 * noise.next() * min(abs(fall), 1)
+        return (knock + harness[0].next() + harness[1].next()) * posting
     }
 }

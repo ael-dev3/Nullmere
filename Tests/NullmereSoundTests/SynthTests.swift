@@ -359,7 +359,18 @@ final class SynthTests: XCTestCase {
         synth.setGrinding(1)
         synth.setReading(1)
         synth.setForging(1)
+        synth.setPosting(1)
         _ = rendered(synth, seconds: 0.05)
+
+        // A wayhouse: a horse led across the yard, and none where no wayhouse is.
+        var empty = Town(sampleRate: 48_000)
+        XCTAssertEqual((0..<4_800).map { _ in empty.post(dt: 1 / 48_000) }.map(abs).max(), 0)
+        var yard = Town(sampleRate: 48_000)
+        yard.posting = 1
+        let walking = (0..<(48_000 * 3)).map { _ in yard.post(dt: 1 / 48_000) }
+        XCTAssertGreaterThanOrEqual(yard.hoofFalls, 8)
+        XCTAssertGreaterThan(walking.map(abs).max() ?? 0, 0.2)
+        XCTAssertFalse(walking.contains { $0.isNaN || $0.isInfinite })
 
         // A forge: the hammer's rhythm on the anvil, and none where no forge is.
         var cold = Town(sampleRate: 48_000)
