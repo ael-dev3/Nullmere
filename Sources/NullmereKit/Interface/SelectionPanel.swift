@@ -202,6 +202,10 @@ struct OwnHoldDetails: View {
             }
             // A letter to the age to come, sealed under the hold's stones.
             LetterComposer(session: session, hold: hold)
+            // A ripple-stone against the next Still Hour, from a hold on the shore.
+            if state.isShore(hold.position) || hold.position.spiral(1).contains(where: state.isShore) {
+                RippleRow(session: session, hold: hold)
+            }
         }
         .padding(16)
     }
@@ -1382,6 +1386,36 @@ struct FerryLine: View {
                                 name: "Ferry them across the lake to \(hold.name)", why: refusal?.description) {
                         session.perform(.ferry(unit: unit.id, to: hold.id))
                     }
+                }
+            }
+        }
+    }
+}
+
+/// A ripple-stone cast from a hold on the shore: at the next Still Hour the
+/// lake mirrors none of the House's companies; one a Still Hour.
+struct RippleRow: View {
+    @ObservedObject var session: GameSession
+    let hold: Hold
+
+    static func line(_ state: GameState, house: Int) -> String {
+        let next = GameState.nextStillHour(from: state.watch + 1) - state.watch
+        if state.hasRippled(house) { return "Your stone stirs the water: the next Still Hour, in \(next) watches, mirrors none of yours." }
+        return "The lake lies still in \(next) watches and shows all on its shore. A stone, \(GameState.rippleCost), hides yours."
+    }
+
+    var body: some View {
+        let refusal = session.state.rippleRefusal(from: hold.id, as: session.player)
+        HStack(alignment: .firstTextBaseline) {
+            Text(verbatim: RippleRow.line(session.state, house: session.player))
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.65))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            if !session.state.hasRippled(session.player) {
+                QuietButton(title: "Cast a stone", size: 8.5, enabled: refusal == nil, name: "Cast a ripple-stone from \(hold.name)",
+                            why: refusal?.description) {
+                    session.perform(.castRipple(hold: hold.id))
                 }
             }
         }

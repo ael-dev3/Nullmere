@@ -226,7 +226,13 @@ extension GameSession {
             stage.drownedCrown(at: crown.bearer.flatMap(state.unit)?.position ?? crown.hex, borne: crown.bearer != nil, time: t)
         } ?? []
         let campBatches = stage.animate(camps.batches, time: t, into: &frame)
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + campBatches + banners + help + crests + fieldBanners + borders + barges + crown + companies + flights
+        // What the lake mirrored at its Still Hour, faint, of companies the
+        // keeper does not otherwise see.
+        let mirror = stage.animate(stage.mirrored((state.stillHour?.glimpses ?? []).compactMap { glimpse in
+            guard glimpse.owner != state.player, !isVisible(glimpse.at), state.houses.indices.contains(glimpse.owner) else { return nil }
+            return (kind: glimpse.kind, hex: glimpse.at, colour: WorldStage.colour(houses, sigil: state.houses[glimpse.owner].sigil))
+        }), time: t, into: &frame)
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
                                                      time: time)

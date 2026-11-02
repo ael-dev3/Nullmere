@@ -753,3 +753,18 @@ final class AnimatedLandTests: XCTestCase {
         XCTAssertEqual(still, stage.lairs([(.reavers, hexes[0])]).batches)
     }
 }
+
+/// The lake's mirror at the Still Hour: each glimpse a faint company in
+/// its House's colour, shown whatever the keeper knows of its hex.
+final class MirrorTests: XCTestCase {
+    func testTheStillWaterShowsFaintCompanies() {
+        let map = GameState(settings: GameSettings(seedText: "mirror", houseCount: 2, radius: 16)).map
+        let stage = WorldStage(map: map, relief: Relief(map: map))
+        let red = Vec4(1, 0, 0, 1)
+        let batches = stage.mirrored([(.spear, Hex(1, 0), red), (.spear, Hex(2, 0), red), (.bow, Hex(0, 1), red)])
+        XCTAssertEqual(batches.count, 2, "By kind")
+        XCTAssertEqual(batches.flatMap(\.instances).count, 3)
+        XCTAssertTrue(batches.flatMap(\.instances).allSatisfy { $0.params.y < 0.5 && $0.flags & ModelInstance.alwaysShown != 0 })
+        XCTAssertTrue(stage.mirrored([]).isEmpty)
+    }
+}

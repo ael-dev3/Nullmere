@@ -102,6 +102,7 @@ extension GameState {
         events += turnTheRing()
         keepWhispers()
         events += setRiddles()
+        events += layTheLakeStill()
         events += checkForEnd()
         takeSnapshot()
         return events

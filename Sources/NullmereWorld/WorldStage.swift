@@ -332,6 +332,20 @@ public final class WorldStage: @unchecked Sendable {
 
     /// The alliances' standards the keeper has found, each in its
     /// alliance's colour.
+    /// The companies the lake mirrored at its Still Hour that the keeper
+    /// cannot otherwise see: each drawn faint where it stood, in its House's
+    /// colour, a reflection more than a company.
+    public func mirrored(_ glimpses: [(kind: UnitKind, hex: Hex, colour: Vec4)]) -> [ModelBatch] {
+        WorldStage.batches(glimpses.map { glimpse in
+            let centre = Relief.centre(of: glimpse.hex)
+            let at = Vec3(centre.x, ground(atX: centre.x, z: centre.z), centre.z)
+            return (.figure(glimpse.kind, tier: 1),
+                    ModelInstance(model: .translation(at) * .rotationY(WorldStage.phase(of: glimpse.hex, salt: 61) * .pi * 2), colour: glimpse.colour,
+                                  opacity: 0.35, phase: WorldStage.phase(of: glimpse.hex, salt: 67),
+                                  hex: SIMD2(Int32(glimpse.hex.q), Int32(glimpse.hex.r)), flags: ModelInstance.alwaysShown))
+        })
+    }
+
     public func standards(_ standards: [(hex: Hex, colour: Vec4)]) -> [ModelBatch] {
         WorldStage.batches(standards.map { standard in
             let centre = Relief.centre(of: standard.hex)

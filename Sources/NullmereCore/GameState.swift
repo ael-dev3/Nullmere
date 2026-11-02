@@ -109,6 +109,11 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The riddles the lake has set keepers' Houses, one each at most;
     /// absent before the first half moon with a keeper and a past to ask of.
     public internal(set) var riddles: [Riddle]?
+    /// What the lake showed at its last Still Hour, while it is shown.
+    public internal(set) var stillHour: StillHour?
+    /// The Houses whose ripple-stones stir the water against the next
+    /// Still Hour.
+    public internal(set) var ripples: [Int]?
     /// The watch the moon was last eaten, while the Drowned of that eclipse
     /// walk; absent otherwise, and so in every first age.
     public internal(set) var eclipse: Int?

@@ -160,6 +160,9 @@ public enum Command: Codable, Equatable, Sendable {
     case whisper(Whisper.Claim)
     /// A keeper answers their House's riddle with one of its names.
     case answerRiddle(String)
+    /// A ripple-stone cast from a hold on the shore, so the House's
+    /// companies are not mirrored at the next Still Hour.
+    case castRipple(hold: Int)
     /// An alliance's leader sets it to pursue a study together.
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
@@ -427,6 +430,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case whisperedLately(until: Int)
     /// A riddle answered a second time.
     case answeredAlready
+    case notOnTheShore
+    case alreadyRippled
     /// An alliance study learned to its last grade.
     case allianceStudyMastered
     /// The study the alliance pursues already.
@@ -629,6 +634,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .challengesSpent: return "Your House has made its three challenges in the Ring this watch; it may challenge again next watch."
         case .whisperedLately(let until): return "Your House let a whisper loose lately; it may whisper again at watch \(until)."
         case .answeredAlready: return "Your House has answered this riddle; the lake sets another at the next half moon."
+        case .notOnTheShore: return "A ripple-stone is cast only from a hold on the lake's shore."
+        case .alreadyRippled: return "Your stone already stirs the water against the next Still Hour."
         case .allianceStudyMastered: return "Your alliance has learned that study to its last grade."
         case .alreadyPursued: return "Your alliance pursues that study already."
         case .noAllianceStudy: return "Your alliance pursues no study: its leader chooses one in the Alliance screen."
@@ -788,6 +795,11 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case whisperUnmasked(id: Int, teller: Int, belied: Int, paid: Int)
     /// At the half moon the lake sets a keeper's House a riddle.
     case riddleSet(house: Int)
+    /// The lake lay still and showed so many companies on its shore, of
+    /// these Houses.
+    case stillHour(glimpses: Int, houses: [Int])
+    /// A House cast a ripple-stone from a hold.
+    case rippleCast(house: Int, hold: Int)
     /// A keeper's House answers its riddle, rightly or not, and the name
     /// that was taken out.
     case riddleAnswered(house: Int, right: Bool, answer: String)

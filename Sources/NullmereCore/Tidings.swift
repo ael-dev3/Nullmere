@@ -294,6 +294,15 @@ extension GameState {
                     : Tidings("The landing at \(to) is held; your \(unit(unitID)?.kind.title ?? "company") are poled back to where they set out.", .bad)
             }
             return landed ? Tidings("A barge of \(houses[house].title) lands a company at \(to).", .neutral) : nil
+        case .stillHour(let glimpses, let shown):
+            guard glimpses > 0 else { return nil }
+            if shown.contains(viewer) {
+                return Tidings("The lake lies still as glass: every House sees your companies on its shore, and \(glimpses) in all.", .bad)
+            }
+            return Tidings("The lake lies still as glass: \(glimpses) companies stand mirrored on its shore for all to see.", .neutral)
+        case .rippleCast(let house, let holdID):
+            guard house == viewer else { return nil }
+            return Tidings("A ripple-stone cast from \(hold(holdID)?.name ?? "your hold"): at the next Still Hour your companies are not mirrored.", .good)
         case .riddleSet(let house):
             guard house == viewer, let riddle = riddle(of: house) else { return nil }
             return Tidings("The lake asks your House a riddle of its past, on the Realm (6): \(riddle.line)", .neutral)

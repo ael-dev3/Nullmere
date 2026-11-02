@@ -904,7 +904,7 @@ public final class GameSession {
              .houseFell, .gameEnded, .proposalAnswered, .tradeAnswered, .commanderRose, .commanderWounded, .skillFired, .hunted,
              .gearFound, .carriedToInfirmary, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted, .standardStruck, .standardTorn,
              .hallStruck, .hallTorn, .storehouseStruck, .storehouseTorn, .fieldJoined, .fieldEnded,
-             .bout, .whisperTried, .whisperUnmasked, .riddleAnswered, .letterFound, .commanderTaken, .prisonerQuestioned:
+             .bout, .whisperTried, .whisperUnmasked, .riddleAnswered, .stillHour, .letterFound, .commanderTaken, .prisonerQuestioned:
             return true
         default:
             return false
@@ -1466,6 +1466,7 @@ public final class GameSession {
         case .challenge: return .clash
         case .whisper: return .parley
         case .answerRiddle: return .lore
+        case .castRipple: return .lore
         case .pursueAllianceStudy: return .lore
         case .giveToAlliance: return .coin
         case .raiseAllianceHall, .raiseStorehouse, .raiseYard: return .rise
@@ -1603,6 +1604,7 @@ public final class GameSession {
         case .whisperUnmasked(_, let teller, _, _) where teller == player: return .dread
         case .whisperUnmasked(_, _, let belied, _) where belied == player: return .coin
         case .riddleSet(let house) where house == player: return .lore
+        case .stillHour(let glimpses, let shown) where glimpses > 0 && shown.contains(player): return .dread
         case .eclipse: return .dread
         case .riddleAnswered(let house, let right, _) where house == player: return right ? .triumph : .refusal
         case .edictBroken(_, _, _, let against, _) where against == player: return .horn

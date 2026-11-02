@@ -111,6 +111,25 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(CommandersPanel.named(company), "\(company.kind.title) I")
     }
 
+    /// A ripple-stone cast from a hold on the shore against the Still Hour.
+    func testARippleStoneIsCastFromAHoldOnTheShore() throws {
+        var state = world("pressed ripple")
+        let me = state.player
+        let seatIndex = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+        let shore = try XCTUnwrap(state.map.hexes.first { state.isShore($0) && state.hold(at: $0) == nil })
+        state.holds[seatIndex].position = shore
+        state.houses[me].stock.moonsalt = 30
+        let seat = state.holds[seatIndex]
+        XCTAssertTrue(RippleRow.line(state, house: me).contains("hides yours"))
+        let (session, link) = session(state)
+        draw(RippleRow(session: session, hold: seat))
+        XCTAssertTrue(PressableButtons.press("Cast a stone"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .castRipple(hold: seat.id))
+        XCTAssertTrue(session.state.hasRippled(me))
+        XCTAssertTrue(RippleRow.line(session.state, house: me).contains("mirrors none of yours"))
+        XCTAssertEqual(GameSession.cues(for: .castRipple(hold: seat.id), events: [], in: session.state, player: me), [.lore])
+    }
+
     /// A second commander sent to ride with a company that has a leader.
     func testASecondCommanderRidesWithALedCompany() throws {
         var state = world("pressed pairing")

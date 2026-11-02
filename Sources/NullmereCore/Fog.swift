@@ -316,6 +316,10 @@ extension GameState {
                 return trier == house
             case .riddleSet(let asked), .riddleAnswered(let asked, _, _):
                 return asked == house
+            case .stillHour:
+                return true
+            case .rippleCast(let caster, _):
+                return caster == house
             case .dreamt(let dream):
                 return dream.house == house
             case .carriedAshore(_, let owner, _, let to):

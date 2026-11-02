@@ -98,6 +98,7 @@ struct RivalMind {
             events += keepAlliesGates(in: &state)
             if RivalMind.massing { events += musterToTheGates(in: &state) }
         }
+        events += stirTheWater(in: &state, random: &random)
         events += balanceStores(in: &state)
         // The land's territory, found once: no work or muster begun changes
         // it; nor whether a site for a new hold is known, found the first
@@ -1110,6 +1111,26 @@ struct RivalMind {
             }
         }
         return events
+    }
+
+    /// On the watch before the Still Hour, a House at war with companies
+    /// of war on the shore casts a ripple-stone from a hold on the shore,
+    /// if it can spare the moonsalt: the wary and the cunning always, the
+    /// others now and then.
+    func stirTheWater(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
+        guard GameState.isStillHour(at: state.watch + 1), !state.hasRippled(house), state.isAtWarWithAny(house) else { return [] }
+        guard state.units(of: house).contains(where: { $0.kind.isMilitary && state.isShore($0.position) }) else { return [] }
+        guard state.houses[house].stock.moonsalt >= GameState.rippleCost.moonsalt * 3 else { return [] }
+        let chance: Int
+        switch state.houses[house].temperament {
+        case .wary, .cunning: chance = 100
+        case .steadfast: chance = 40
+        case .ambitious: chance = 20
+        }
+        guard random.chance(chance),
+              let hold = state.holds(of: house).sorted(by: { $0.id < $1.id }).first(where: { state.rippleRefusal(from: $0.id, as: house) == nil })
+        else { return [] }
+        return perform(.castRipple(hold: hold.id), in: &state)
     }
 
     /// The Archive a steward wants at its seat as the age goes on.

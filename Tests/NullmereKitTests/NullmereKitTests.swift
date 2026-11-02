@@ -506,6 +506,7 @@ final class GuideTests: XCTestCase {
         // The rules said as they stand.
         let all = Guide.sections.flatMap(\.lines).joined(separator: " ")
         XCTAssertTrue(all.contains("From the tenth watch, a happening comes round every thirty, for ten watches"), all)
+        XCTAssertTrue(all.contains("comes the Still Hour: the lake lies still as glass and every House sees every company of war standing on its shore"), all)
         XCTAssertEqual([Happening.first, Happening.every, Happening.lasts], [10, 30, 10])
         XCTAssertEqual(Happening.marks, [10, 25, 50])
         XCTAssertEqual(GameState.rosterLimit, 5, "up to five commanders")
