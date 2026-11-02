@@ -1395,7 +1395,7 @@ struct FerryLine: View {
 /// A ripple-stone cast from a hold on the shore: at the next Still Hour the
 /// lake mirrors none of the House's companies; one a Still Hour.
 struct RippleRow: View {
-    @ObservedObject var session: GameSession
+    let session: GameSession
     let hold: Hold
 
     static func line(_ state: GameState, house: Int) -> String {
