@@ -281,6 +281,19 @@ extension GameState {
             let name = hold(holdID)?.name ?? "its seat"
             if house == viewer { return Tidings("Your seat, \(name), is raised anew \(placeName(of: to)), its works, walls and ward as they stood.", .good) }
             return Tidings("\(houses[house].title) raises its seat, \(name), anew \(placeName(of: to)).", .neutral)
+        case .setOnTheWater(let unitID, let house, let fromID, let toID):
+            let from = hold(fromID)?.name ?? "the shore", to = hold(toID)?.name ?? "the far shore"
+            if house == viewer {
+                return Tidings("Your \(unit(unitID)?.kind.title ?? "company") board a barge at \(from) and are poled out over the still water for \(to).", .neutral)
+            }
+            return Tidings("A barge of \(houses[house].title) puts out from \(from) over the still water.", .neutral)
+        case .ferried(let unitID, let house, let toID, let landed):
+            let to = hold(toID)?.name ?? "the far shore"
+            if house == viewer {
+                return landed ? Tidings("Your \(unit(unitID)?.kind.title ?? "company") land at \(to), across the lake.", .good)
+                    : Tidings("The landing at \(to) is held; your \(unit(unitID)?.kind.title ?? "company") are poled back to where they set out.", .bad)
+            }
+            return landed ? Tidings("A barge of \(houses[house].title) lands a company at \(to).", .neutral) : nil
         case .riddleSet(let house):
             guard house == viewer, let riddle = riddle(of: house) else { return nil }
             return Tidings("The lake asks your House a riddle of its past, on the Realm (6): \(riddle.line)", .neutral)

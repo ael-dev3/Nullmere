@@ -147,6 +147,9 @@ public enum Command: Codable, Equatable, Sendable {
     case drawVeil
     /// A keeper raises their House's seat anew on open ground of its own land.
     case raiseSeat(at: Hex)
+    /// A keeper sets a company, at a shore hold of theirs, on a barge across
+    /// the still water to another of their shore holds.
+    case ferry(unit: Int, to: Int)
     /// A keeper stands a line of their House's commanders in the Ring.
     case standInTheRing([Int])
     /// A keeper's line in the Ring challenges another House's.
@@ -402,6 +405,12 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case veilResting(until: Int)
     /// A seat raised anew before it has rested since it was last.
     case seatRaisedLately(until: Int)
+    /// A company already out on the water.
+    case alreadyOnTheWater
+    /// A company that has struck, moved or worked this watch.
+    case alreadyActed
+    /// A company that stands at none of its House's holds.
+    case notAtAShoreHold
     /// Ground another House's company stands on.
     case occupiedGround
     /// A seat beset: its ward short of whole, or a foe at war near it.
@@ -604,6 +613,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .veiled(let until): return "The veil of the Still lies over that House's holds until watch \(until): none may strike, rally on or scout them."
         case .veiledAlready(let until): return "Your House's veil lies until watch \(until)."
         case .veilResting(let until): return "The mist gathers again: your House may draw its veil anew at watch \(until)."
+        case .alreadyOnTheWater: return "That company is already out on the water."
+        case .alreadyActed: return "That company has done what it can this watch; it may board at the next."
+        case .notAtAShoreHold: return "A barge takes on a company only at a hold of your House by the water."
         case .seatRaisedLately(let until): return "Your seat was raised anew lately; it may be again at watch \(until)."
         case .occupiedGround: return "Another House's company stands there."
         case .seatBeset: return "Your seat is beset: not while its ward is short of whole, or a foe at war stands within three tiles of it."
@@ -747,6 +759,11 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case veilLifted(house: Int, struck: Bool)
     /// A keeper raises their House's seat anew elsewhere on its land.
     case seatRaisedAnew(hold: Int, house: Int, from: Hex, to: Hex)
+    /// A company set on the water at one shore hold for another.
+    case setOnTheWater(unit: Int, house: Int, from: Int, to: Int)
+    /// A barge comes in as the watch turns: landed at the hold it made for,
+    /// or turned back, its landing held.
+    case ferried(unit: Int, house: Int, to: Int, landed: Bool)
     /// A keeper stands a line of their commanders in the Ring.
     case ringLineStood(house: Int, line: [Int])
     /// A bout in the Ring: one House's line challenges another's.

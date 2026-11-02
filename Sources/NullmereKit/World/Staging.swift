@@ -8,6 +8,13 @@ import NullmereWorld
 /// their marches have brought them, striking, struck or falling, and what
 /// flies over them all.
 extension GameSession {
+    /// How far the watch has gone, 0 to 1: by its paces where the realm
+    /// paces it, else half.
+    nonisolated static func watchProgress(_ state: GameState) -> Float {
+        guard let pacing = state.pacing else { return 0.5 }
+        return Float(pacing.walked) / Float(GameState.pacesPerWatch)
+    }
+
     /// A work rising to its new height: from where it stood toward where
     /// the watch has brought it, over a moment.
     struct Rising: Equatable {
@@ -193,6 +200,10 @@ extension GameSession {
             (hex: border.hex, outward: border.outward,
              colour: allianceColour(border.alliance, else: state.alliance(border.alliance)?.leader ?? -1, houses))
         })
+        // Barges on the water, where the watch has brought them.
+        let barges = stage.barges(state.crossingsUnderWay.map { barge in
+            (from: barge.pushOff, to: barge.landing, progress: GameSession.watchProgress(state))
+        }, time: t)
         let standing = Set(poses.filter { $0.unit >= 0 }.map(\.hex) + sites.map(\.position) + found.map(\.position) + flags.map(\.position))
         let furniture = stage.furnish(occupied: standing,
                                       holds: Set(sights.map(\.hold.position) + hallSights.map(\.hex) + storehouseSights.map(\.hex)))
@@ -210,7 +221,7 @@ extension GameSession {
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
         frame.fixedRegions = stage.furnitureRegions
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + help + crests + fieldBanners + borders + companies + flights
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + help + crests + fieldBanners + borders + barges + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
                                                      time: time)
@@ -315,7 +326,13 @@ extension GameSession {
             var clip = Clip.idle
             var clipTime = resting
             var spread: Float = 1
-            if animated, let march = marches[unit.id],
+            if let barge = state.crossing(of: unit.id) {
+                // Aboard a barge on the still water, crowded on its deck.
+                let place = WorldStage.bargePlace(from: barge.pushOff, to: barge.landing, progress: GameSession.watchProgress(state))
+                position = place.at + Vec3(0, 0.03, 0)
+                heading = place.heading
+                spread = 0.3
+            } else if animated, let march = marches[unit.id],
                let point = MarchPath(path: march.path, duration: march.duration).point(after: now.timeIntervalSince(march.start)) {
                 position = Vec3(point.x, max(relief.height(atX: point.x, z: point.z), Relief.waterline), point.z)
                 heading = point.heading

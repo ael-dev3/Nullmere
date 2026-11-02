@@ -1013,6 +1013,13 @@ full screen at launch as chosen.
 
 Mechanics no other game of its kind has, made of what only Nullmere has: a still lake under a moon, an on-device model on every keeper's Mac, and a realm that persists, age after age. [GAPS.md](GAPS.md#beyond-rise-of-kingdoms-what-nobody-has-shipped) says what each adds.
 
+- **Ferries of the Still.** A company standing in one of its House's
+  holds on the shore may be poled across the black lake to another of the
+  House's shore holds, for 25 timber, in one watch instead of the long march
+  about the shore. The barge is out on the water through the watch, seen by
+  any House that sees either shore, and lands at the watch's turn; if the
+  landing hold has fallen or is struck meanwhile, the barge turns back.
+
 - **Dreams of the Still.** At the dark of each moon, the fifteenth watch
   of every thirty, the lake shows each keeper's House one true thing it
   cannot see, in turn: the greatest host on the lake that is not its own,

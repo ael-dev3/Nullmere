@@ -53,6 +53,7 @@ extension GameState {
         events += turnTide()
         events += dream()
         events += driftBottles()
+        events += landCrossings()
         events += turnEdicts()
         forgetOldGifts()
         // An envoy unanswered is an envoy refused.

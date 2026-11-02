@@ -151,6 +151,13 @@ extension GameState {
         view.fields = fields?.filter { field in field.side(of: house) != nil || (map.index(of: field.at).map { seen[$0] } ?? false) }
         // The marches they may know of, worked out on what they see.
         view.marches = marches(seenBy: house, in: view, ways: ways)
+        // Barges on the water: their own, and others' where they see the
+        // water they put out from or make for.
+        view.barges = barges.map { all in
+            all.filter { barge in
+                barge.owner == house || [barge.pushOff, barge.landing].contains { map.index(of: $0).map { seen[$0] } ?? false }
+            }
+        }
         // Bottles where they see them; the words only in their own and in
         // those they found.
         view.bottles = bottles.map { all in
@@ -289,6 +296,10 @@ extension GameState {
                 return true
             case .workPlaced(let holdID, _, _):
                 return hold(holdID)?.owner == house
+            case .setOnTheWater(_, let owner, let fromID, _):
+                return owner == house || (hold(fromID).map { visible($0.position) } ?? false)
+            case .ferried(_, let owner, let toID, _):
+                return owner == house || (hold(toID).map { visible($0.position) } ?? false)
             case .seatRaisedAnew(_, let owner, let from, let to):
                 return owner == house || visible(from) || visible(to)
             case .ringLineStood(let owner, _):

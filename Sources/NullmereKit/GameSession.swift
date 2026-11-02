@@ -1430,6 +1430,7 @@ public final class GameSession {
         case .stake: return .coin
         case .drawVeil: return .stand
         case .raiseSeat: return .rise
+        case .ferry: return .order
         case .standInTheRing: return .muster
         case .challenge: return .clash
         case .whisper: return .parley

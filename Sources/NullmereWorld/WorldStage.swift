@@ -1007,6 +1007,28 @@ public final class WorldStage: @unchecked Sendable {
         return WorldStage.batches(placed)
     }
 
+    /// Where a barge rides on the still water and which way it heads: from
+    /// the water it pushed off from toward the water it makes for, eased in
+    /// and out, as far as the watch has gone.
+    public static func bargePlace(from: Hex, to: Hex, progress: Float) -> (at: Vec3, heading: Float) {
+        let a = Relief.centre(of: from), b = Relief.centre(of: to)
+        let t = min(max(progress, 0), 1), eased = t * t * (3 - 2 * t)
+        let at = Vec3(a.x + (b.x - a.x) * eased, Relief.waterline, a.z + (b.z - a.z) * eased)
+        return (at, Float(atan2(Double(b.x - a.x), Double(b.z - a.z))))
+    }
+
+    /// The barges out on the water, each where the watch has brought it,
+    /// rocking gently, its lantern lit.
+    public func barges(_ barges: [(from: Hex, to: Hex, progress: Float)], time: Float) -> [ModelBatch] {
+        WorldStage.batches(barges.enumerated().map { index, barge in
+            let place = WorldStage.bargePlace(from: barge.from, to: barge.to, progress: barge.progress)
+            let rock = 0.03 * Float(sin(Double(time * 1.1 + Float(index))))
+            let model = Mat4.translation(place.at) * .rotationY(place.heading) * .rotationZ(rock)
+            return (.barge, ModelInstance(model: model, phase: Float(index) * 0.6, hex: SIMD2(Int32(barge.from.q), Int32(barge.from.r)),
+                                          flags: ModelInstance.alwaysShown))
+        })
+    }
+
     // MARK: What flies
 
     /// The veil of the Still about a hold: six banks of low mist ringing

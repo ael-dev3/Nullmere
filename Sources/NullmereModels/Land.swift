@@ -1305,3 +1305,41 @@ extension Land {
         return Model(name: name, mesh: b.mesh)
     }
 }
+
+extension Land {
+    /// A barge of the Still: a broad, flat-bottomed punt of tarred timber,
+    /// its ends raked up, thwarts across it and a low rail; a ferryman at
+    /// its stern leaning on his pole, and a lantern on a crook at its prow.
+    /// Forward along +z; its deck at the waterline.
+    static func barge(name: String) -> Model {
+        var b = MeshBuilder()
+        let tar = Palette.timberDark.mix(Vec3(0.05, 0.05, 0.06), 0.55)
+        // The hull: a flat bottom and sides, the ends raked up.
+        b.box(center: Vec3(0, -0.01, 0), size: Vec3(0.34, 0.03, 0.62), color: tar)
+        for x in [Float(-0.17), 0.17] {
+            b.box(center: Vec3(x, 0.03, 0), size: Vec3(0.02, 0.07, 0.62), color: tar)
+        }
+        for z in [Float(-0.31), 0.31] {
+            let sign: Float = z > 0 ? 1 : -1
+            b.sheet([Vec3(-0.17, -0.02, z), Vec3(0.17, -0.02, z), Vec3(0.17, 0.08, z + sign * 0.07), Vec3(-0.17, 0.08, z + sign * 0.07)],
+                    normal: Vec3(0, -sign * 0.6, sign), thickness: 0.02, color: tar)
+        }
+        // Thwarts and the rail.
+        for z in [Float(-0.18), 0.0, 0.18] { b.beam(from: Vec3(-0.16, 0.05, z), to: Vec3(0.16, 0.05, z), width: 0.025, color: Palette.timber) }
+        for x in [Float(-0.17), 0.17] { b.beam(from: Vec3(x, 0.075, -0.3), to: Vec3(x, 0.075, 0.3), width: 0.012, color: Palette.timber) }
+        // The ferryman at the stern, leaning on his pole.
+        let at = Vec3(0.05, 0.0, -0.25)
+        b.place(.translation(at)) { $0.lathe([(0.05, 0.0), (0.06, 0.1), (0.045, 0.2), (0.02, 0.24), (0.0, 0.25)], sides: 7, color: Palette.leatherDark) }
+        b.place(.translation(at + Vec3(0, 0.29, 0))) { $0.lathe([(0.0, -0.04), (0.035, -0.02), (0.03, 0.02), (0.0, 0.04)], sides: 6, color: Palette.linen.mix(Palette.leather, 0.6)) }
+        b.limb(from: at + Vec3(0.03, 0.2, 0.02), to: at + Vec3(0.2, -0.35, -0.12), radius: 0.008, color: Palette.timber)
+        // The lantern on its crook at the prow.
+        b.limb(from: Vec3(0, 0.05, 0.33), to: Vec3(0, 0.26, 0.36), radius: 0.008, color: Palette.timberDark)
+        b.beam(from: Vec3(0, 0.26, 0.36), to: Vec3(0, 0.26, 0.42), width: 0.008, color: Palette.timberDark)
+        b.with(material: .glow) {
+            $0.place(.translation(Vec3(0, 0.2, 0.42))) {
+                $0.lathe([(0.0, -0.03), (0.022, -0.02), (0.022, 0.02), (0.0, 0.03)], sides: 6, color: Palette.fire)
+            }
+        }
+        return Model(name: name, mesh: b.mesh)
+    }
+}

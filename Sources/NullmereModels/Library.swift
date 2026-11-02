@@ -66,6 +66,9 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// A House's crest hung at a hold's gate: a post and crossbar with the
     /// shield hanging, its field in the House's field tincture.
     case crestBoard
+    /// A barge of the Still: a broad black punt poled across the lake with a
+    /// company aboard, a lantern at its prow; its forward along z.
+    case barge
     /// A crest's charge laid on the shield's face, in its tincture: one of
     /// ten, in `Crest.Charge`'s order.
     case crestCharge(Int)
@@ -110,6 +113,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .helpLight: return "help light"
         case .borderStone: return "border stone"
         case .crestBoard: return "crest board"
+        case .barge: return "barge"
         case .crestCharge(let charge): return "crest charge \(charge)"
         case .allianceHall: return "alliance hall"
         case .storehouse: return "storehouse"
@@ -159,7 +163,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .folk(let variant): return .folk(variant: (variant % Folk.variants + Folk.variants) % Folk.variants)
         case .talentSigil(let tree): return .talentSigil(tree: min(max(tree, 0), 2))
         case .crestCharge(let charge): return .crestCharge(min(max(charge, 0), 9))
-        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .helpLight, .borderStone, .crestBoard, .allianceHall, .storehouse,
+        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .helpLight, .borderStone, .crestBoard, .barge, .allianceHall, .storehouse,
              .yard, .signature, .town:
             return self
         }
@@ -177,7 +181,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .figure, .signature, .wild, .commander, .folk: return 700
         case .furnishing, .prop, .town: return 300
         case .keep, .keepOf, .allianceHall: return 4500
-        case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .gatehold, .standard, .rallyCamp, .storehouse, .yard: return 3000
+        case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .gatehold, .standard, .rallyCamp, .barge, .storehouse, .yard: return 3000
         case .hostBanner, .talentSigil, .helpLight, .borderStone, .crestBoard, .crestCharge: return 300
         }
     }
@@ -328,6 +332,7 @@ public enum Library {
         keys.append(.helpLight)
         keys.append(.borderStone)
         keys.append(.crestBoard)
+        keys.append(.barge)
         keys += (0..<10).map { .crestCharge($0) }
         keys.append(.allianceHall)
         keys.append(.storehouse)
@@ -365,6 +370,7 @@ public enum Library {
         case .helpLight: return Land.helpLight(name: key.canonical.description)
         case .borderStone: return Land.borderStone(name: key.canonical.description)
         case .crestBoard: return Land.crestBoard(name: key.canonical.description)
+        case .barge: return Land.barge(name: key.canonical.description)
         case .crestCharge(let charge): return Land.crestCharge(charge, name: key.canonical.description)
         case .allianceHall: return Halls.hall(name: key.canonical.description)
         case .storehouse: return Stores.storehouse(name: key.canonical.description)

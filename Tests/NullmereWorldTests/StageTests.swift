@@ -477,6 +477,27 @@ final class StageTests: XCTestCase {
         XCTAssertTrue(stage.crestBoards([]).isEmpty)
     }
 
+    /// A barge rides the still water from where it pushed off toward where
+    /// it makes for, as far as the watch has gone, heading there.
+    func testBargesRideTheWaterAsTheWatchGoes() throws {
+        let stage = stage()
+        let water = Self.state.map.hexes.filter { Self.state.map[$0]?.terrain == .still }
+        let from = try XCTUnwrap(water.first), to = try XCTUnwrap(water.last)
+        let a = Relief.centre(of: from), b = Relief.centre(of: to)
+        let start = WorldStage.bargePlace(from: from, to: to, progress: 0)
+        let end = WorldStage.bargePlace(from: from, to: to, progress: 1)
+        let mid = WorldStage.bargePlace(from: from, to: to, progress: 0.5)
+        XCTAssertEqual(start.at.x, a.x, accuracy: 1e-4)
+        XCTAssertEqual(end.at.z, b.z, accuracy: 1e-4)
+        XCTAssertEqual(mid.at.x, (a.x + b.x) / 2, accuracy: 1e-3)
+        XCTAssertEqual(mid.at.y, Relief.waterline, "On the water")
+        let instances = stage.barges([(from: from, to: to, progress: 0.5)], time: 1).flatMap(\.instances)
+        XCTAssertEqual(instances.count, 1)
+        let forward = Vec3(instances[0].model.c2.x, 0, instances[0].model.c2.z)
+        let way = Vec3(b.x - a.x, 0, b.z - a.z)
+        XCTAssertGreaterThan((forward.x * way.x + forward.z * way.z) / (forward.length * way.length), 0.99, "Heading for the far shore")
+    }
+
     func testHallsStandInTheirAlliancesColoursRisingInTheirScaffolds() throws {
         let stage = stage()
         let hexes = Array(Self.state.map.hexes.filter { hex in

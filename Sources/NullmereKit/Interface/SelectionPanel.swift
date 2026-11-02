@@ -729,6 +729,12 @@ struct UnitPanel: View {
                     }
                     ConfirmButton(title: "Disband", confirm: "Disband them?", size: 10) { session.perform(.disband(unit: unit.id)) }
                 }
+                // At a shore hold of the House's: across the lake by barge
+                // to another, offered only where it may be.
+                let landings = state.ferryLandings(for: unit.id, as: session.player)
+                if !landings.isEmpty || state.crossing(of: unit.id) != nil {
+                    FerryLine(session: session, unit: unit, landings: landings)
+                }
                 // How long it works its site, chosen as it was sent, or again.
                 if case .gather? = unit.errand {
                     GatheringLength(session: session, unit: unit)
@@ -1340,6 +1346,42 @@ struct SeatMoveRow: View {
                 QuietButton(title: "Raise the seat here", size: 8.5, enabled: refusal == nil, name: "Raise your seat anew here",
                             why: refusal?.description) {
                     session.perform(.raiseSeat(at: hex))
+                }
+            }
+        }
+    }
+}
+
+
+/// A company at a shore hold: poled across the still water to another of
+/// the House's shore holds, landing as the watch turns.
+struct FerryLine: View {
+    @ObservedObject var session: GameSession
+    let unit: Unit
+    let landings: [Hold]
+
+    var body: some View {
+        let state = session.state
+        VStack(alignment: .leading, spacing: 5) {
+            if let barge = state.crossing(of: unit.id) {
+                Text(verbatim: "On the water for \(state.hold(barge.to)?.name ?? "the far shore"); they land as the watch turns.")
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                HStack {
+                    Text(verbatim: "Across the lake")
+                        .font(.nm(10.5))
+                        .foregroundStyle(Palette.text(0.6))
+                    Spacer()
+                    CostLine(cost: GameState.ferryCost, available: session.playerHouse.stock)
+                }
+                ForEach(landings.prefix(4), id: \.id) { hold in
+                    let refusal = state.ferryRefusal(unit.id, to: hold.id, as: session.player)
+                    QuietButton(title: "To \(hold.name)", size: 8.5, enabled: refusal == nil,
+                                name: "Ferry them across the lake to \(hold.name)", why: refusal?.description) {
+                        session.perform(.ferry(unit: unit.id, to: hold.id))
+                    }
                 }
             }
         }

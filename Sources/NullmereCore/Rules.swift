@@ -133,6 +133,8 @@ extension GameState {
             return try stake(on: id, backs: backs, moonsalt: moonsalt, as: house)
         case .drawVeil:
             return try drawVeil(as: house)
+        case let .ferry(unit, holdID):
+            return try setOnTheWater(unit, to: holdID, as: house)
         case let .raiseSeat(hex):
             return try raiseSeatAnew(at: hex, as: house)
         case let .standInTheRing(line):

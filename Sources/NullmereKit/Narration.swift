@@ -165,7 +165,7 @@ enum Narration {
              .allianceDisbanded, .helpGiven, .rallyCalled, .rallyJoined, .rallySetOut, .rallyStruck, .rallyDispersed, .sentToReinforce,
              .happeningBegun, .happeningMark, .happeningEnded, .sunderingBegun, .sunderingEnded, .fieldJoined, .fieldEnded,
              .fordOpened, .fordClosed, .carriedAshore, .recalled,
-             .deedDone, .chargeDone, .said, .sung, .bottleCast, .bottleFound, .letterSealed, .letterFound, .standingOrdersGiven,
+             .deedDone, .chargeDone, .said, .sung, .bottleCast, .bottleFound, .setOnTheWater, .ferried, .letterSealed, .letterFound, .standingOrdersGiven,
              .commanderTaken, .prisonerQuestioned, .prisonerFreed, .oathSworn, .oathRenounced, .oathEnded,
              .edictProposed, .edictVoted, .edictPassed, .edictFailed, .edictLapsed, .edictBroken,
              .wordReported, .wordRemoved, .barredFromWords:

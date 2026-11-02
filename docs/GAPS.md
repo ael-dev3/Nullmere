@@ -187,6 +187,11 @@ lake under a moon, an on-device model on every keeper's Mac, and a realm that
 persists, age after age. Each is ticked when it is real, tested and shown in
 CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
 
+- [x] **Ferries of the Still.** Companies poled across the lake between a
+  House's own shore holds in one watch, for timber: barges seen on the water
+  by whoever sees either shore, turned back if the landing falls meanwhile.
+  Rules, realm, a contextual line in the selection panel and the barge drawn
+  in 3D with its ferryman and lantern.
 - [x] **The Moonford.** The moon keeps a calendar of thirty watches, and about
   each full moon from the fifty-fifth watch the tide lays bare a ford of
   shingle across the lake for ten watches, where the two kingdoms of a
