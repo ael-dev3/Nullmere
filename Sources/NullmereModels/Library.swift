@@ -402,7 +402,7 @@ public enum Library {
         case .lair(let kind): return Lairs.fire(of: kind).map { [$0] } ?? []
         case .gatehold: return [Lairs.gateFire]
         case .rallyCamp: return [Land.rallyFire]
-        case .work(.infirmary, let level) where level >= 2: return [Works.infirmaryChimney(level)]
+        case .work(.infirmary, let level): return Infirmary.chimney(level).map { [$0] } ?? []
         case .work(.forge, let level): return [Works.forgeChimney(level)]
         case .allianceHall: return [Halls.smoke]
         case .yard(.moonsalt): return [Stores.saltSmoke]

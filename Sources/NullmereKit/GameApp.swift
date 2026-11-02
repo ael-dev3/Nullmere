@@ -833,6 +833,7 @@ public final class GameApp {
         session.onQuarrying = { [weak self] share in self?.ambience.setQuarrying(share) }
         session.onRaking = { [weak self] share in self?.ambience.setRaking(share) }
         session.onDrilling = { [weak self] share in self?.ambience.setDrilling(share) }
+        session.onGrinding = { [weak self] share in self?.ambience.setGrinding(share) }
         session.onCounsel = { [weak self] words in self?.advisor.counsel(words) }
         advisor.isSoundOn = isSoundOn
         ambience.isMusicOn = isMusicOn

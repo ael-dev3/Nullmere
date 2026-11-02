@@ -77,6 +77,15 @@ struct Town {
     private var beatInBar = 0
     /// How many beats the drum has struck, for tests.
     private(set) var beats = 0
+    /// How much of the town heard is an infirmary at work, 0 to 1: a pestle
+    /// grinding herbs in a stone mortar, a soft knock and a turn.
+    var grinding: Float = 0
+    private var knock = Resonator()
+    private var grain = Bandpass()
+    private var grainSet = false
+    private var turn: Float = 0
+    /// How many knocks the pestle has given, for tests.
+    private(set) var knocks = 0
 
     init(sampleRate: Float) {
         self.sampleRate = sampleRate
@@ -118,7 +127,7 @@ struct Town {
         }
         click *= 1 - min(dt * 400, 1)
         let work = blow.0.next() + blow.1.next() + noise.next() * click * 0.3
-        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12 + quarry(dt: dt) * 0.1 + rake(dt: dt) * 0.1 + drill(dt: dt) * 0.12
+        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12 + quarry(dt: dt) * 0.1 + rake(dt: dt) * 0.1 + drill(dt: dt) * 0.12 + grind(dt: dt) * 0.1
     }
 
     /// The pit-saw's rasp: strokes a little over one a second, the down
@@ -236,5 +245,25 @@ struct Town {
             nextBeat = 0.42
         }
         return (beat.0.next() + beat.1.next()) * drilling
+    }
+
+    /// The infirmary: a pestle in a stone mortar, a knock then a grinding
+    /// turn, a little faster than once a second.
+    @inline(__always)
+    mutating func grind(dt: Float) -> Float {
+        guard grinding > 0.001 else { return 0 }
+        if !grainSet {
+            grain = Bandpass(centre: 1_400, width: 1.2, sampleRate: sampleRate)
+            grainSet = true
+        }
+        let before = turn
+        turn += dt * 1.2
+        if turn >= 1 { turn -= 1 }
+        if turn < before {
+            knock = Resonator(frequency: 620, amplitude: 0.6, decay: 60, sampleRate: sampleRate)
+            knocks += 1
+        }
+        let rub = turn > 0.2 && turn < 0.8 ? Float(sin(Double((turn - 0.2) / 0.6) * .pi)) : 0
+        return (knock.next() + grain.process(noise.next()) * rub * 0.6) * grinding
     }
 }

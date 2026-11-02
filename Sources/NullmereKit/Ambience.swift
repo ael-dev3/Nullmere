@@ -132,6 +132,11 @@ public final class Ambience {
         synth.setDrilling(share)
     }
 
+    /// How much of the towns heard is an infirmary at work, 0 to 1.
+    public func setGrinding(_ share: Float) {
+        synth.setGrinding(share)
+    }
+
     /// The score: on or off, and at peace or at war.
     public var isMusicOn = true {
         didSet { applyMusic() }

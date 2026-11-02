@@ -356,7 +356,19 @@ final class SynthTests: XCTestCase {
         XCTAssertGreaterThan(drumming.map(abs).max() ?? 0, 0.1)
         XCTAssertFalse(drumming.contains { $0.isNaN || $0.isInfinite })
         synth.setDrilling(1)
+        synth.setGrinding(1)
         _ = rendered(synth, seconds: 0.05)
+
+        // An infirmary: the pestle's knock and turn, and none where no
+        // infirmary is.
+        var ungrinding = Town(sampleRate: 48_000)
+        XCTAssertEqual((0..<4_800).map { _ in ungrinding.grind(dt: 1 / 48_000) }.map(abs).max(), 0)
+        var pestle = Town(sampleRate: 48_000)
+        pestle.grinding = 1
+        let ground = (0..<(48_000 * 3)).map { _ in pestle.grind(dt: 1 / 48_000) }
+        XCTAssertGreaterThanOrEqual(pestle.knocks, 3)
+        XCTAssertGreaterThan(ground.map(abs).max() ?? 0, 0.05)
+        XCTAssertFalse(ground.contains { $0.isNaN || $0.isInfinite })
     }
 
     /// Riders' hooves fall one after another, each landing once the one
