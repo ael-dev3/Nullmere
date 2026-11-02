@@ -154,7 +154,6 @@ final class SpacetimeIntegrationTests: XCTestCase {
             link.connect()
             return (link, ear)
         }
-        defer { Task { @MainActor in link.close() } }
         try await until("the realm's status") { ear.hasStatus }
         let name = "Cai" + String(KeeperIdentity.make().filter(\.isLetter).prefix(6))
         await MainActor.run { link.arrive(name: name) }
@@ -185,6 +184,12 @@ final class SpacetimeIntegrationTests: XCTestCase {
         let rig = Library.model(.raising(.sawpit))
         let motion = try XCTUnwrap(rig.motion)
         XCTAssertNotEqual(motion(.idle, 0), motion(.idle, 0.4), "and its builders work")
+        // Ready before leaving, so the keepers who play on in this realm
+        // after it are never kept waiting on a keeper gone.
+        let readyBefore = await MainActor.run { ear.lastStatus?.ready ?? 0 }
+        await MainActor.run { link.setReady(true) }
+        try await until("the keeper to be ready") { (ear.lastStatus?.ready ?? 0) > readyBefore }
+        await MainActor.run { link.close() }
         print("REALM a keeper's client saw its sawpit rise in its 3D models, its rig at work, from the realm on SpacetimeDB")
     }
 
