@@ -413,6 +413,8 @@ final class CatalogueTests: XCTestCase {
                 XCTAssertNil(model.motion, "\(key) stands still")
             case .prop:
                 XCTAssertNotNil(model.motion, "\(key)")
+            case .raising:
+                XCTAssertNotNil(model.motion, "\(key) works as its work rises")
             case .work, .study, .storehouse, .yard:
                 break
             }

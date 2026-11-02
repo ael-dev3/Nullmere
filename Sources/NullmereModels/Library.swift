@@ -69,6 +69,8 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// A barge of the Still: a broad black punt poled across the lake with a
     /// company aboard, a lantern at its prow; its forward along z.
     case barge
+    /// The rig a family's builders work beside a work as it rises.
+    case raising(BuildingKind)
     /// The Drowned Crown: a crown of the drowned age, green with the lake,
     /// its stones lit by the moon, at the ford's heart or above its bearer.
     case drownedCrown
@@ -117,6 +119,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .borderStone: return "border stone"
         case .crestBoard: return "crest board"
         case .barge: return "barge"
+        case .raising(let kind): return "raising \(kind.rawValue)"
         case .drownedCrown: return "drowned crown"
         case .crestCharge(let charge): return "crest charge \(charge)"
         case .allianceHall: return "alliance hall"
@@ -167,7 +170,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .folk(let variant): return .folk(variant: (variant % Folk.variants + Folk.variants) % Folk.variants)
         case .talentSigil(let tree): return .talentSigil(tree: min(max(tree, 0), 2))
         case .crestCharge(let charge): return .crestCharge(min(max(charge, 0), 9))
-        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .helpLight, .borderStone, .crestBoard, .barge, .drownedCrown, .allianceHall, .storehouse,
+        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .helpLight, .borderStone, .crestBoard, .barge, .raising, .drownedCrown, .allianceHall, .storehouse,
              .yard, .signature, .town:
             return self
         }
@@ -185,7 +188,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .figure, .signature, .wild, .commander, .folk: return 700
         case .furnishing, .prop, .town: return 300
         case .keep, .keepOf, .allianceHall: return 4500
-        case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .gatehold, .standard, .rallyCamp, .barge, .drownedCrown, .storehouse, .yard: return 3000
+        case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .gatehold, .standard, .rallyCamp, .barge, .raising, .drownedCrown, .storehouse, .yard: return 3000
         case .hostBanner, .talentSigil, .helpLight, .borderStone, .crestBoard, .crestCharge: return 300
         }
     }
@@ -337,6 +340,7 @@ public enum Library {
         keys.append(.borderStone)
         keys.append(.crestBoard)
         keys.append(.barge)
+        keys += Raising.families.map { .raising($0) }
         keys.append(.drownedCrown)
         keys += (0..<10).map { .crestCharge($0) }
         keys.append(.allianceHall)
@@ -376,6 +380,7 @@ public enum Library {
         case .borderStone: return Land.borderStone(name: key.canonical.description)
         case .crestBoard: return Land.crestBoard(name: key.canonical.description)
         case .barge: return Land.barge(name: key.canonical.description)
+        case .raising(let kind): return Raising.model(kind, name: key.canonical.description)
         case .drownedCrown: return Land.drownedCrown(name: key.canonical.description)
         case .crestCharge(let charge): return Land.crestCharge(charge, name: key.canonical.description)
         case .allianceHall: return Halls.hall(name: key.canonical.description)
