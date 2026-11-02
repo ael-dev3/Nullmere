@@ -232,7 +232,7 @@ enum Works {
         case .walls: return WallWork.dress(Holds.walls(level: level, name: name), level: level)
         case .beacon: return Beacon.model(level: level, name: name)
         case .infirmary: return Infirmary.model(level: level, name: name)
-        case .moonspire: return moonspire(level, name)
+        case .moonspire: return Moonspire.model(level: level, name: name)
         case .archive: return Archive.model(level: level, name: name)
         case .forge: return forge(level, name)
         case .wayhouse: return wayhouse(level, name)
