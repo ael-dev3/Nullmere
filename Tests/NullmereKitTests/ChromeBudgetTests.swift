@@ -74,5 +74,19 @@ final class ChromeBudgetTests: XCTestCase {
         XCTAssertGreaterThan(company, 0.65, "A company's record keeps to its corner")
         XCTAssertGreaterThan(seat, 0.5, "Even a seat's long record leaves half the world")
         XCTAssertGreaterThan(panel, 0.5, "A panel leaves half the world")
+
+        // Every panel, each opened alone over the map: none takes more than
+        // half the window, and closing it gives the world back.
+        var shares: [String] = []
+        for each: GameSession.Panel in [.houses, .chronicle, .guide, .archive, .commanders, .alliance, .realm, .words] {
+            session.selection = .none
+            session.panel = each
+            let open = worldShare(app, session)
+            shares.append("\(each) \(share(open))")
+            XCTAssertGreaterThan(open, 0.5, "The \(each) panel leaves half the world")
+        }
+        session.panel = nil
+        print("LAYOUT each panel open alone: " + shares.joined(separator: ", "))
+        XCTAssertGreaterThan(worldShare(app, session), 0.8, "Every panel closed, the world is the screen again")
     }
 }
