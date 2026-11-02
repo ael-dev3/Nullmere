@@ -15,6 +15,9 @@ final class EstateTests: XCTestCase {
             XCTAssertGreaterThan(greatest.triangleCount, first.triangleCount + (kind.maxLevel >= 5 ? 1000 : 300), "\(kind) grows")
             XCTAssertNotNil(greatest.fineFrom, "\(kind) keeps fine work for the near view")
         }
+        for level in 1...2 {
+            XCTAssertGreaterThan(Library.model(.walls(level: level)).mesh.triangleCount, 2200, "The walls' own work at level \(level)")
+        }
         XCTAssertEqual(Estate.dress(Library.model(.work(.walls, level: 2)), .walls, level: 2).mesh.triangleCount,
                        Library.model(.work(.walls, level: 2)).mesh.triangleCount, "The walls' estate is their own towers")
     }

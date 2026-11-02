@@ -229,7 +229,7 @@ enum Works {
         case .quarry: return quarry(level, name)
         case .saltworks: return saltworks(level, name)
         case .musterHall: return musterHall(level, name)
-        case .walls: return Holds.walls(level: level, name: name)
+        case .walls: return WallWork.dress(Holds.walls(level: level, name: name), level: level)
         case .beacon: return beacon(level, name)
         case .infirmary: return infirmary(level, name)
         case .moonspire: return moonspire(level, name)

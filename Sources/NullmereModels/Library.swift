@@ -358,7 +358,7 @@ public enum Library {
         case .commander(let variant): return Figures.commander(variant, name: key.canonical.description)
         case .keep(let seat): return Holds.keep(seat: seat, name: key.canonical.description)
         case .keepOf(let heritage, let seat): return Holds.keep(seat: seat, name: key.canonical.description, style: .of(heritage))
-        case .walls(let level): return Holds.walls(level: level, name: key.canonical.description)
+        case .walls(let level): return Works.build(.walls, level: level, name: key.canonical.description)
         case .work(let kind, let level): return Works.build(kind, level: level, name: key.canonical.description)
         case .study(let level): return Estate.dress(Works.study(level: level, name: key.canonical.description), .archive, level: level)
         case .scaffold: mesh = Holds.scaffold()
