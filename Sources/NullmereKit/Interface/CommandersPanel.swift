@@ -126,6 +126,15 @@ private struct CommanderRow: View {
                     QuietButton(title: "Call back", size: 8.5, name: "Call \(commander.name) back") {
                         session.perform(.unassign(commander: commander.id))
                     }
+                } else if let unit = chosen, unit.leader != nil {
+                    // The company has its leader: this one may ride second,
+                    // adding half its edges, more if the two are of a kind.
+                    let refusal = session.state.secondRefusal(of: commander.id, to: unit.id, as: session.player)
+                    QuietButton(title: "Ride second", size: 8.5, enabled: refusal == nil,
+                                name: "Send \(commander.name) to ride second with the \(CommandersPanel.named(unit))",
+                                why: refusal?.description) {
+                        session.perform(.assignSecond(commander: commander.id, unit: unit.id))
+                    }
                 } else if let unit = chosen {
                     let refusal = session.state.assignRefusal(of: commander.id, to: unit.id, as: session.player)
                     QuietButton(title: "Lead them", size: 8.5, enabled: refusal == nil,

@@ -270,7 +270,7 @@ extension GameState {
 
     /// The company a commander leads, if any.
     public func company(ledBy commander: Int) -> Unit? {
-        units.first { $0.leader == commander }
+        units.first { $0.leader == commander || $0.second == commander }
     }
 
     /// The most commanders a House keeps.
@@ -300,6 +300,7 @@ extension GameState {
             break
         }
         guard let id = unit.leader, let commander = commander(id) else { return house }
+        house += secondEdge(bonus, for: unit, leader: commander)
         switch bonus {
         case .attack(let kind) where kind == unit.kind: return house + edge(.attack, of: commander)
         case .defense(let kind) where kind == unit.kind: return house + edge(.defense, of: commander)
@@ -312,6 +313,27 @@ extension GameState {
         case .load: return house + edge(.load, of: commander)
         default: return house
         }
+    }
+
+    /// What a company's second commander adds: half its edge for the
+    /// figure, and a point more to attack and defence when it is of the
+    /// leader's own kind.
+    func secondEdge(_ bonus: Bonus, for unit: Unit, leader: Commander) -> Int {
+        guard let id = unit.second, let second = commander(id) else { return 0 }
+        let edge: Int
+        switch bonus {
+        case .attack(let kind) where kind == unit.kind: edge = self.edge(.attack, of: second) / 2 + (second.archetype == leader.archetype ? 1 : 0)
+        case .defense(let kind) where kind == unit.kind: edge = self.edge(.defense, of: second) / 2 + (second.archetype == leader.archetype ? 1 : 0)
+        case .moves(let kind) where kind == unit.kind: edge = self.edge(.moves, of: second) / 2
+        case .sight: edge = self.edge(.sight, of: second) / 2
+        case .healing: edge = self.edge(.healing, of: second) / 2
+        case .garrison: edge = self.edge(.garrison, of: second) / 2
+        case .wardDamage: edge = self.edge(.wardDamage, of: second) / 2
+        case .gathering: edge = self.edge(.gathering, of: second) / 2
+        case .load: edge = self.edge(.load, of: second) / 2
+        default: edge = 0
+        }
+        return edge
     }
 
     /// The active skill a company's commander fires in its next battle, if
@@ -399,25 +421,63 @@ extension GameState {
         return [.commanderAssigned(commander: commanderID, unit: unitID)]
     }
 
+    /// Why a commander may not ride second with a company, if it may not:
+    /// as a leader may not be sent, and the company must have a leader and
+    /// no second already.
+    public func secondRefusal(of commanderID: Int, to unitID: Int, as house: Int) -> RuleError? {
+        if let refusal = assignRefusal(of: commanderID, to: unitID, as: house), refusal != .alreadyLed { return refusal }
+        guard let unit = unit(unitID) else { return .unknownUnit }
+        guard unit.leader != nil else { return .needsLeaderFirst }
+        guard unit.second == nil else { return .alreadyPaired }
+        return nil
+    }
+
+    mutating func assignSecond(_ commanderID: Int, to unitID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
+        if let refusal = secondRefusal(of: commanderID, to: unitID, as: house) { throw refusal }
+        units[unitIndex(unitID)!].second = commanderID
+        return [.commanderAssigned(commander: commanderID, unit: unitID)]
+    }
+
     mutating func unassign(_ commanderID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
         guard let commander = commander(commanderID), commander.owner == house else { throw .unknownCommander }
+        if let index = units.firstIndex(where: { $0.second == commanderID }) {
+            units[index].second = nil
+            return [.commanderReleased(commander: commanderID)]
+        }
         guard let index = units.firstIndex(where: { $0.leader == commanderID }) else { throw .notLeading }
-        units[index].leader = nil
+        // The leader released, the second rides on as the company's leader.
+        units[index].leader = units[index].second
+        units[index].second = nil
         return [.commanderReleased(commander: commanderID)]
     }
 
     /// A company has fallen: its commander is carried back to the seat,
     /// wounded.
     mutating func woundCommander(of unit: Unit) -> [GameEvent] {
-        guard let id = unit.leader, let index = commanderIndex(id) else { return [] }
-        commanders![index].woundedUntil = watch + GameState.woundWatches
-        commanders![index].fury = 0
-        return [.commanderWounded(commander: id, house: unit.owner)]
+        var events: [GameEvent] = []
+        for id in [unit.leader, unit.second].compactMap({ $0 }) {
+            guard let index = commanderIndex(id) else { continue }
+            commanders![index].woundedUntil = watch + GameState.woundWatches
+            commanders![index].fury = 0
+            events.append(.commanderWounded(commander: id, house: unit.owner))
+        }
+        return events
     }
 
     /// Experience for a company's commander, with what its House's studies
     /// add; and its rise, if it rises.
     mutating func teach(_ unit: Unit, _ amount: Int) -> [GameEvent] {
+        var events: [GameEvent] = []
+        if let second = unit.second {
+            var riding = unit
+            riding.leader = second
+            riding.second = nil
+            events = teach(riding, amount / 2)
+        }
+        return events + teachLeader(unit, amount)
+    }
+
+    private mutating func teachLeader(_ unit: Unit, _ amount: Int) -> [GameEvent] {
         guard amount > 0, let id = unit.leader, let index = commanderIndex(id) else { return [] }
         let commander = commanders![index]
         let before = commander.level

@@ -38,6 +38,8 @@ public enum Command: Codable, Equatable, Sendable {
     /// A commander takes up a company of war standing at or beside one of
     /// the House's holds.
     case assign(commander: Int, unit: Int)
+    /// A second commander sent to ride with a company's leader.
+    case assignSecond(commander: Int, unit: Int)
     /// A commander leaves its company, wherever it is, and rides home.
     case unassign(commander: Int)
     /// A company of war marches to a site of the land and works it until
@@ -244,6 +246,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case commanderLeads
     /// A company with a commander already.
     case alreadyLed
+    case needsLeaderFirst
+    case alreadyPaired
     /// A kind of company no commander leads.
     case cannotLead(UnitKind)
     /// A company too far from its House's holds to take up a commander.
@@ -520,6 +524,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .commanderWounded(let watches): return "That commander is wounded; whole again in \(watches) watch\(watches == 1 ? "" : "es")."
         case .commanderLeads: return "That commander already leads a company."
         case .alreadyLed: return "That company already has a commander."
+        case .needsLeaderFirst: return "A second commander rides only with a company that has a leader."
+        case .alreadyPaired: return "That company already has a second commander."
         case .cannotLead(let kind): return "\(kind.title) take no commander."
         case .awayFromHolds: return "A commander takes up a company at or beside one of your holds."
         case .notLeading: return "That commander leads no company."

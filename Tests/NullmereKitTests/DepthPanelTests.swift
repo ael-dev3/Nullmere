@@ -111,6 +111,24 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(CommandersPanel.named(company), "\(company.kind.title) I")
     }
 
+    /// A second commander sent to ride with a company that has a leader.
+    func testASecondCommanderRidesWithALedCompany() throws {
+        var state = world("pressed pairing")
+        let me = state.player
+        var random = SeededRandom(seed: 11)
+        let lead = try XCTUnwrap(state.commanders(of: me).first).id
+        let second = try XCTUnwrap(state.raiseCommander(for: me, using: &random)).id
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let company = try XCTUnwrap(state.units(of: me).first { $0.kind.isMilitary && $0.position.distance(to: seat.position) <= 1 })
+        try state.perform(.assign(commander: lead, unit: company.id), as: me)
+        let (session, link) = session(state)
+        session.selection = .unit(company.id)
+        draw(CommandersPanel(session: session))
+        XCTAssertTrue(PressableButtons.press("Ride second"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .assignSecond(commander: second, unit: company.id))
+        XCTAssertEqual(session.state.unit(company.id)?.second, second)
+    }
+
     func testACommanderLearnsATalentAndForgetsThemAll() throws {
         var state = world("pressed talents")
         let me = state.player

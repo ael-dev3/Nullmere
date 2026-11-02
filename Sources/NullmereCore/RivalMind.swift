@@ -1076,6 +1076,10 @@ struct RivalMind {
     /// when a foe's companies stand near them, so that whole armies meet.
     nonisolated(unsafe) static var massing = false
 
+    /// Whether the members of an alliance go for the hold their leader
+    /// goes for, so their armies meet the foe as one front.
+    nonisolated(unsafe) static var fronts = false
+
     /// A hold of its own with a foe's companies near its gates draws the
     /// House's free companies from within a rally's reach to keep them,
     /// as many as its temper gives, nearest first; gates no longer
@@ -1172,10 +1176,23 @@ struct RivalMind {
             func fits(_ unit: Unit) -> Int {
                 (commander.archetype == .warden) == holds.contains(unit.position) ? 1 : 0
             }
-            guard let best = candidates.max(by: { a, b in
+            if let best = candidates.max(by: { a, b in
                 (fits(a), state.strength(of: a), -a.id) < (fits(b), state.strength(of: b), -b.id)
+            }) {
+                events += perform(.assign(commander: commander.id, unit: best.id), in: &state)
+                continue
+            }
+            // No company left to lead: ride second with the strongest led
+            // company beside a hold, one whose leader is of its own kind
+            // first.
+            let led = state.units(of: house).filter { unit in
+                unit.leader != nil && unit.second == nil && holds.contains { $0.distance(to: unit.position) <= 1 }
+            }
+            func kin(_ unit: Unit) -> Int { state.commander(unit.leader ?? -1)?.archetype == commander.archetype ? 1 : 0 }
+            guard let pair = led.max(by: { a, b in
+                (kin(a), state.strength(of: a), -a.id) < (kin(b), state.strength(of: b), -b.id)
             }) else { continue }
-            events += perform(.assign(commander: commander.id, unit: best.id), in: &state)
+            events += perform(.assignSecond(commander: commander.id, unit: pair.id), in: &state)
         }
         return events
     }
@@ -1632,8 +1649,18 @@ struct RivalMind {
             enemyHolds.append(state.holds[index])
         }
         let target: Hold?
+        // An alliance's front: a member goes for the hold its leader goes
+        // for, when it is at war with that hold's House and knows it, so
+        // the allies' armies meet the foe together on one field.
+        let front: Hold? = {
+            guard RivalMind.fronts, let sworn = state.alliance(of: house), sworn.leader != house else { return nil }
+            guard let aim = RivalMind(house: sworn.leader).siegePlan(in: state)?.target else { return nil }
+            return enemyHolds.first { $0.position == aim }
+        }()
         if let rising = spireThreats(in: state).first(where: { state.isAtWar(house, $0) }), let spire = state.seat(of: rising) {
             target = spire
+        } else if let front {
+            target = front
         } else {
             // Go for the weakest House within reach, to finish it, then
             // its nearest hold; and once far the stronger, for its seat,

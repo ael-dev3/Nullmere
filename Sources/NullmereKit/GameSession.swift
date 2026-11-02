@@ -1427,7 +1427,7 @@ public final class GameSession {
         case .propose, .proposeWithWords: return .parley
         case .halt, .disband: return .stand
         case .study, .help: return .rise
-        case .assign, .gather, .joinRally, .reinforce, .recall, .recallAll: return .order
+        case .assign, .assignSecond, .gather, .joinRally, .reinforce, .recall, .recallAll: return .order
         case .unassign, .leaveAlliance: return .stand
         case .foundAlliance: return .banner
         case .inviteToAlliance, .askToJoin: return .envoy

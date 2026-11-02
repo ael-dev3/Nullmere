@@ -66,6 +66,8 @@ extension GameState {
             return try beginStudy(study, as: house)
         case let .assign(commanderID, unitID):
             return try assign(commanderID, to: unitID, as: house)
+        case let .assignSecond(commanderID, unitID):
+            return try assignSecond(commanderID, to: unitID, as: house)
         case let .unassign(commanderID):
             return try unassign(commanderID, as: house)
         case let .gather(unitID, siteID, watches):

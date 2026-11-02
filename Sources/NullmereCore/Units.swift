@@ -177,6 +177,10 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
     public var tier: Int
     /// The commander leading it, if one does.
     public var leader: Int?
+    /// A second commander riding with its leader, if one does: half its
+    /// edges added to the company's, a point more when the two are of one
+    /// kind (RoK's secondary commander).
+    public var second: Int?
     /// What it has been sent to do beyond a march, if anything.
     public var errand: Errand?
     /// What it carries home from the land's sites, if anything.
@@ -242,6 +246,7 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
         self.tier = min(max(tier, 1), kind.highestTier)
         self.leader = nil
         self.errand = nil
+        self.second = nil
         self.load = nil
         self.drilled = nil
         self.drillAt = nil
@@ -249,7 +254,7 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, kind, owner, position, health, movesLeft, destination, fortified, acted, experience, tier, leader, errand, load, drilled, drillAt, way
+        case id, kind, owner, position, health, movesLeft, destination, fortified, acted, experience, tier, leader, second, errand, load, drilled, drillAt, way
     }
 
     // A way is written as a march's is: its first hex and a digit for each
@@ -268,6 +273,7 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
         try container.encode(experience, forKey: .experience)
         try container.encode(tier, forKey: .tier)
         try container.encodeIfPresent(leader, forKey: .leader)
+        try container.encodeIfPresent(second, forKey: .second)
         try container.encodeIfPresent(errand, forKey: .errand)
         try container.encodeIfPresent(load, forKey: .load)
         try container.encodeIfPresent(drilled, forKey: .drilled)
@@ -291,6 +297,7 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
         experience = try container.decodeIfPresent(Int.self, forKey: .experience) ?? 0
         tier = try container.decodeIfPresent(Int.self, forKey: .tier) ?? 1
         leader = try container.decodeIfPresent(Int.self, forKey: .leader)
+        second = try container.decodeIfPresent(Int.self, forKey: .second)
         errand = try container.decodeIfPresent(Errand.self, forKey: .errand)
         load = try container.decodeIfPresent(Stock.self, forKey: .load)
         drilled = try container.decodeIfPresent(Int.self, forKey: .drilled)
