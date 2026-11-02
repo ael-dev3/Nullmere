@@ -1726,10 +1726,9 @@ public final class GameSession {
             let loud = min(Float(troops) / 12_000, 1) * heard.gain
             total += loud
             panned += loud * heard.pan
-            if (hold.levels[.sawpit] ?? 0) > 0 { sawn += loud }
         }
         guard total > 0.001 else { return nil }
-        return (min(total, 1), min(max(panned / total, -1), 1), min(sawn / total, 1))
+        return (min(total, 1), min(max(panned / total, -1), 1))
     }
 
     /// Tells the sound the din, when it has changed enough to hear; still,
@@ -1765,9 +1764,10 @@ public final class GameSession {
             let loud = (0.3 + 0.7 * busy) * nearby * near
             total += loud
             panned += loud * heard.pan
+            if (hold.levels[.sawpit] ?? 0) > 0 { sawn += loud }
         }
         guard total > 0.001 else { return nil }
-        return (min(total, 1), min(max(panned / total, -1), 1))
+        return (min(total, 1), min(max(panned / total, -1), 1), min(sawn / total, 1))
     }
 
     /// Tells the sound the towns near the view when they have changed
