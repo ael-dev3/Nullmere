@@ -1105,6 +1105,22 @@ public final class WorldStage: @unchecked Sendable {
     // MARK: Helpers
 
     /// Instances gathered by their model's key, in a steady order.
+    /// Batches of the land's pieces set working: each instance of a model
+    /// with a rig posed at its own moment of its idle clip, its fires
+    /// leaping and its holy motes turning; still models left as they are.
+    public func animate(_ batches: [ModelBatch], time: Float, into frame: inout SceneFrame) -> [ModelBatch] {
+        var poses: [PoseKey: UInt32] = [:]
+        return batches.map { batch in
+            guard Library.model(batch.key).rig.count > 1 else { return batch }
+            var batch = batch
+            for index in batch.instances.indices {
+                batch.instances[index].palette = WorldStage.pose(batch.key, .idle, at: time + batch.instances[index].params.z,
+                                                                 shared: &poses, into: &frame)
+            }
+            return batch
+        }
+    }
+
     static func batches(_ placed: [(ModelKey, ModelInstance)]) -> [ModelBatch] {
         var order: [ModelKey] = []
         var byKey: [ModelKey: [ModelInstance]] = [:]

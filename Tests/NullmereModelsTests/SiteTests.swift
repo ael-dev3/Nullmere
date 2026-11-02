@@ -25,4 +25,18 @@ final class SiteTests: XCTestCase {
             XCTAssertGreaterThan(triangles, 1_400, "\(key)")
         }
     }
+
+    /// The holy sites, the rally camp and the alliance standard are alive:
+    /// each holy heart turns its motes, the camp's fire leaps and its drum
+    /// is beaten, the standard's braziers burn; and none is plain.
+    func testHolySitesCampAndStandardMove() throws {
+        let keys: [(ModelKey, Int)] = ShrineKind.allCases.map { (.shrine($0), 1_400) } + [(.rallyCamp, 1_200), (.standard, 850)]
+        for (key, least) in keys {
+            let model = Library.model(key)
+            XCTAssertGreaterThan(model.mesh.triangleCount, least, "\(key)")
+            XCTAssertLessThanOrEqual(model.mesh.triangleCount, key.budget, "\(key)")
+            let motion = try XCTUnwrap(model.motion, "\(key) moves")
+            XCTAssertNotEqual(motion(.idle, 0), motion(.idle, 0.4), "\(key) moves")
+        }
+    }
 }

@@ -326,11 +326,40 @@ enum Land {
     /// moonsalt), and a pennant on a pole in its holder's colour.
     static func shrine(_ kind: ShrineKind, name: String) -> Model {
         var b = MeshBuilder()
+        var rig = Rig()
+        var wheels: [Machinery.Wheel] = []
+        var flames: [UInt16] = []
+        // Lintels laid across the ring's stones, pair by pair, the gap at
+        // its east left open for the way in.
+        for index in 0..<6 where index != 2 {
+            let a = MeshBuilder.ring(0.36, 0.285, Float(index) / 7 * 2 * .pi + 0.3)
+            let c = MeshBuilder.ring(0.36, 0.285, Float(index + 1) / 7 * 2 * .pi + 0.3)
+            b.beam(from: a, to: c, width: 0.045, depth: 0.04, color: index % 2 == 0 ? Palette.stone : Palette.stoneDark)
+        }
+        // The way in: two lines of lesser stones outside the ring's gap, and
+        // a brazier burning at either side of the gap.
+        let gap = (Float(2.5) / 7 * 2 * .pi) + 0.3
+        for step in 1...3 {
+            for side in [Float(-1), 1] {
+                let at = MeshBuilder.ring(0.36 + Float(step) * 0.07, 0, gap + side * 0.12)
+                b.place(.translation(at)) {
+                    $0.lathe([(0.025, -0.02), (0.022, 0.07 - Float(step) * 0.01), (0.0, 0.085 - Float(step) * 0.01)], sides: 5,
+                             color: Palette.stoneDark, twist: 0.4)
+                }
+            }
+        }
+        for side in [Float(-1), 1] {
+            let at = MeshBuilder.ring(0.43, 0, gap + side * 0.25)
+            b.place(.translation(at)) {
+                $0.lathe([(0.025, 0), (0.014, 0.08), (0.03, 0.1), (0.034, 0.115)], sides: 7, color: Palette.bronze)
+            }
+            flames.append(Beacon.flame(&b, &rig, at: at + Vec3(0, 0.115, 0), size: 0.03))
+        }
         // The ring.
         for index in 0..<7 {
             let angle = Float(index) / 7 * 2 * .pi + 0.3
             b.place(.translation(MeshBuilder.ring(0.36, 0, angle)) * .rotationY(angle) * .rotationZ(index % 2 == 0 ? 0.05 : -0.04)) {
-                $0.lathe([(0.05, -0.06), (0.05, 0.17), (0.035, 0.27), (0.0, 0.29)], sides: 4,
+                $0.lathe([(0.05, -0.06), (0.05, 0.17), (0.035, 0.27), (0.0, 0.29)], sides: 6,
                          color: index % 3 == 0 ? Palette.stone : Palette.stoneDark, twist: 0.3)
             }
         }
@@ -343,10 +372,15 @@ enum Land {
             b.material = .crystal
             b.lathe([(0.105, 0.05), (0.0, 0.052)], sides: 9, color: Palette.moonGlow)
             b.material = .plain
+            // Motes of moonlight circling slowly over the water.
+            wheels.append(motes(&b, &rig, at: Vec3(0, 0.14, 0), radius: 0.08, count: 5, color: Palette.moonGlow))
         case .stillStone:
             b.place(.rotationY(0.4)) {
                 $0.lathe([(0.11, 0.0), (0.12, 0.12), (0.08, 0.3), (0.0, 0.33)], sides: 5, color: Palette.slate, twist: 0.1)
             }
+            // Its stillness: a ring of black water-drops held in the air
+            // about it, turning so slowly it seems to stand.
+            wheels.append(motes(&b, &rig, at: Vec3(0, 0.2, 0), radius: 0.17, count: 7, color: Palette.slate))
         case .saltAltar:
             b.box(center: Vec3(0, 0.05, 0), size: Vec3(0.2, 0.1, 0.13), color: Palette.stonePale)
             b.material = .crystal
@@ -354,6 +388,8 @@ enum Land {
                 b.place(.translation(Vec3(x, 0, z))) { $0.cone(sides: 5, radius: 0.025, from: 0.1, to: 0.1 + h, color: Palette.moonsalt) }
             }
             b.material = .plain
+            // A crown of salt crystals turning over the altar.
+            wheels.append(motes(&b, &rig, at: Vec3(0, 0.3, 0), radius: 0.06, count: 6, color: Palette.moonsalt))
         case .brokenSpire:
             // The last age's Moonspire: a tall tapering shaft of pale stone,
             // snapped and leaning, its fallen courses about its foot and
@@ -372,6 +408,8 @@ enum Land {
                 b.place(.translation(Vec3(x, 0, z))) { $0.cone(sides: 5, radius: 0.02, from: 0.0, to: h, color: Palette.moonsalt) }
             }
             b.material = .plain
+            // The shards of its crown, still turning where it broke.
+            wheels.append(motes(&b, &rig, at: Vec3(0.09, 0.78, 0), radius: 0.1, count: 4, color: Palette.stonePale))
         case .heartstone:
             // The stone in the Crown's heart: a tall dark menhir on a
             // stepped plinth, taller than any stone of the ring, veined
@@ -388,6 +426,8 @@ enum Land {
                 }
             }
             b.material = .plain
+            // Its halo: moonsalt motes circling its crown.
+            wheels.append(motes(&b, &rig, at: Vec3(0, 0.6, 0), radius: 0.12, count: 8, color: Palette.moonGlow))
         }
         b.fine { holyDetail(&$0, kind: kind) }
         // The pole, and its pennant in the holder's colour.
@@ -398,7 +438,23 @@ enum Land {
         b.quad(Vec3(0.206, 0.43, -0.2), Vec3(0.34, 0.43, -0.2), Vec3(0.34, 0.39, -0.2), Vec3(0.206, 0.35, -0.2), color: Palette.house)
         b.material = .plain
         b.sway = 0
-        return Model(name: name, mesh: b.mesh)
+        let machinery = Machinery(wheels: wheels, flames: flames, parts: rig.count)
+        return Model(name: name, mesh: b.mesh, rig: rig) { clip, time in machinery.joints(clip, time) }
+    }
+
+    /// Motes held in the air in a ring about a holy site's heart, turning
+    /// as one; returns their turning.
+    static func motes(_ b: inout MeshBuilder, _ rig: inout Rig, at: Vec3, radius: Float, count: Int, color: Vec3) -> Machinery.Wheel {
+        let part = rig.add("holy motes", pivot: at)
+        b.with(part: part, material: .crystal) {
+            for index in 0..<count {
+                let angle = Float(index) / Float(count) * 2 * .pi
+                $0.place(.translation(at + MeshBuilder.ring(radius, 0.02 * Float(index % 2), angle))) {
+                    $0.lathe([(0.0, -0.014), (0.01, 0.0), (0.0, 0.016)], sides: 5, color: color)
+                }
+            }
+        }
+        return .init(part: part, axis: Vec3(0, 1, 0), turns: 1)
     }
 
     /// A holy site's work drawn near: its floor's flags, worn, a few lifted
@@ -678,6 +734,33 @@ enum Land {
     /// swallow-tailed banner in the alliance's colour, braziers at its foot.
     static func standard(name: String) -> Model {
         var b = MeshBuilder()
+        var rig = Rig()
+        var flames: [UInt16] = []
+        // A stepped plinth of dressed stone under the cairn, the alliance's
+        // shield carved on its face, and a guard post either side of the way.
+        b.lathe([(0.3, -0.06), (0.3, 0.0), (0.26, 0.005), (0.26, 0.03), (0.22, 0.035)], sides: 10, color: Palette.stonePale)
+        b.place(.translation(Vec3(0, 0.02, 0.27))) {
+            $0.with(material: .house) {
+                $0.lathe([(0.04, -0.003), (0.04, 0.003)], sides: 8, color: Palette.house)
+            }
+        }
+        // Lesser banners of the alliance's Houses set in a ring about it.
+        for index in 0..<6 {
+            let angle = Float(index) / 6 * 2 * .pi + 0.5
+            let foot = MeshBuilder.ring(0.4, 0, angle)
+            b.rock(center: foot + Vec3(0, 0.015, 0), size: Vec3(0.03, 0.025, 0.03), rings: 2, sides: 5, jitter: 0.2, seed: UInt32(140 + index),
+                   color: Palette.stoneDark)
+            b.limb(from: foot, to: foot + Vec3(0, 0.42, 0), radius: 0.006, color: Palette.timberDark)
+            b.flag(at: foot + Vec3(0, 0.41, 0), width: 0.1, height: 0.14, turn: -angle, tail: index % 2 == 0)
+        }
+        for x in [Float(-0.26), 0.26] {
+            b.box(center: Vec3(x, 0.08, 0.2), size: Vec3(0.05, 0.16, 0.05), color: Palette.stone)
+            b.place(.translation(Vec3(x, 0.16, 0.2))) { $0.cone(sides: 4, radius: 0.04, to: 0.05, color: Palette.slate) }
+            b.limb(from: Vec3(x + 0.04, 0, 0.24), to: Vec3(x + 0.03, 0.3, 0.24), radius: 0.004, color: Palette.timber)
+            b.with(material: .metal) {
+                $0.place(.translation(Vec3(x + 0.03, 0.3, 0.24))) { $0.cone(sides: 4, radius: 0.008, to: 0.03, color: Palette.iron) }
+            }
+        }
         // The cairn, stones heaped about the pole's foot.
         b.lathe([(0.2, -0.08), (0.2, 0.0), (0.16, 0.06), (0.08, 0.11), (0.0, 0.12)], sides: 7, color: Palette.stoneDark)
         for index in 0..<6 {
@@ -698,13 +781,10 @@ enum Land {
         for x in [Float(-0.14), 0.14] {
             b.limb(from: Vec3(x, 0.0, 0.16), to: Vec3(x, 0.12, 0.16), radius: 0.008, color: Palette.iron)
             b.lathe([(0.0, 0.11), (0.035, 0.12), (0.04, 0.15)], sides: 6, color: Palette.iron)
-            b.with(material: .glow) {
-                $0.place(.translation(Vec3(x, 0.14, 0.16))) {
-                    $0.lathe([(0.03, 0), (0.035, 0.025), (0.0, 0.07)], sides: 5, color: Palette.fire)
-                }
-            }
+            flames.append(Beacon.flame(&b, &rig, at: Vec3(x, 0.14, 0.16), size: 0.035))
         }
-        return Model(name: name, mesh: b.mesh)
+        let machinery = Machinery(flames: flames, parts: rig.count)
+        return Model(name: name, mesh: b.mesh, rig: rig) { clip, time in machinery.joints(clip, time) }
     }
 
     /// A standard drawn near: guy ropes from its pole to pegs, its banner
@@ -1233,6 +1313,39 @@ extension Land {
     /// spears and shields, and a fire in a ring of stones.
     static func rallyCamp(name: String) -> Model {
         var b = MeshBuilder()
+        var rig = Rig()
+        // The host's tents pitched about the camp's edge, each with its pole
+        // and pennon, and horse lines along its back.
+        for (index, angle) in [Float(0.9), 1.6, 2.3, 3.7, 4.4, 5.1].enumerated() {
+            let at = MeshBuilder.ring(0.36, 0, angle)
+            b.place(.translation(at) * .rotationY(-angle)) {
+                $0.cone(sides: 8, radius: 0.09, to: 0.16, color: index % 2 == 0 ? Palette.canvas : Palette.linen)
+                $0.limb(from: Vec3(0, 0.15, 0), to: Vec3(0, 0.24, 0), radius: 0.004, color: Palette.timberDark)
+                $0.with(material: .house) {
+                    $0.box(center: Vec3(0.025, 0.225, 0), size: Vec3(0.045, 0.025, 0.003), color: Palette.house)
+                }
+                $0.box(center: Vec3(0.088, 0.04, 0), size: Vec3(0.004, 0.07, 0.045), color: Palette.barkBlack)
+            }
+        }
+        let line = Vec3(0.0, 0, -0.38)
+        for x in [Float(-0.16), 0.16] {
+            b.limb(from: line + Vec3(x, 0, 0), to: line + Vec3(x, 0.08, 0), radius: 0.005, color: Palette.timberDark)
+        }
+        b.limb(from: line + Vec3(-0.16, 0.075, 0), to: line + Vec3(0.16, 0.075, 0), radius: 0.002, color: Palette.linen)
+        for (index, x) in [Float(-0.09), 0.0, 0.09].enumerated() {
+            Wayhouse.horse(&b, at: line + Vec3(x, 0, 0.04), turn: -.pi / 2,
+                           coat: [Palette.horseBay, Palette.horseGrey, Palette.horseBlack][index])
+        }
+        // A rack of spears and shields by the drum.
+        let rack = Vec3(-0.34, 0, -0.08)
+        b.beam(from: rack + Vec3(0, 0.12, -0.07), to: rack + Vec3(0, 0.12, 0.07), width: 0.006, color: Palette.timberDark)
+        for z in [Float(-0.07), 0.07] {
+            b.limb(from: rack + Vec3(0, 0, z), to: rack + Vec3(0, 0.13, z), radius: 0.004, color: Palette.timberDark)
+        }
+        for index in 0..<5 {
+            let z = -0.05 + Float(index) * 0.025
+            b.limb(from: rack + Vec3(0.02, 0, z), to: rack + Vec3(-0.01, 0.24, z), radius: 0.0025, color: Palette.timber)
+        }
         // Trodden ground, the camp's floor.
         b.lathe([(0.46, -0.05), (0.46, 0.0), (0.4, 0.012), (0.0, 0.014)], sides: 9, color: Palette.earth)
         // The war pole, its finial and crossbar, and its banners.
@@ -1258,8 +1371,12 @@ extension Land {
             $0.with(material: .house) { $0.lathe([(0.117, 0.05), (0.118, 0.07)], sides: 10, color: Palette.house) }
             $0.lathe([(0.0, 0.121), (0.098, 0.121)], sides: 10, color: Palette.linen)
         }
-        for z in [Float(-0.03), 0.03] {
-            b.limb(from: drum + Vec3(-0.12, 0.29, z), to: drum + Vec3(0.1, 0.3, z * 2), radius: 0.006, color: Palette.timber)
+        // The drummer's beaters, rising and falling on the skin.
+        let beat = rig.add("war drum beaters", pivot: drum + Vec3(-0.12, 0.29, 0))
+        b.with(part: beat) {
+            for z in [Float(-0.03), 0.03] {
+                $0.limb(from: drum + Vec3(-0.12, 0.29, z), to: drum + Vec3(0.02, 0.3, z * 2), radius: 0.006, color: Palette.timber)
+            }
         }
         // The fire in its ring of stones.
         let fire = rallyFire
@@ -1267,13 +1384,10 @@ extension Land {
             b.rock(center: Vec3(fire.x, 0.01, fire.z) + MeshBuilder.ring(0.07, 0, Float(index) / 7 * 2 * .pi),
                    size: Vec3(0.03, 0.025, 0.03), rings: 2, sides: 4, jitter: 0.2, seed: UInt32(index + 300), color: Palette.stoneDark)
         }
-        b.with(material: .glow) {
-            $0.place(.translation(Vec3(fire.x, 0.0, fire.z))) {
-                $0.lathe([(0.05, 0), (0.055, 0.04), (0.0, 0.13)], sides: 6, color: Palette.fire)
-            }
-        }
+        let flame = Beacon.flame(&b, &rig, at: Vec3(fire.x, 0.0, fire.z), size: 0.06)
         b.fine { rallyCampNear(&$0) }
-        return Model(name: name, mesh: b.mesh)
+        let machinery = Machinery(swings: [.init(part: beat, axis: Vec3(0, 0, 1), angle: 0.35)], flames: [flame], parts: rig.count)
+        return Model(name: name, mesh: b.mesh, rig: rig) { clip, time in machinery.joints(clip, time) }
     }
 
     /// A rally camp drawn near: a horn on its post, a rack of spears with

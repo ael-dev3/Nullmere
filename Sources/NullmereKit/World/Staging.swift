@@ -142,11 +142,11 @@ extension GameSession {
         // lairs and holds stand.
         let sites = state.sitesInLand.filter { isExplored($0.position) }
         let siteBatches = stage.sites(sites.filter { !$0.isYard }.map { ($0.store, $0.position) })
-            + stage.shrines(state.holySites.filter { isExplored($0.position) }.map { shrine in
+            + stage.animate(stage.shrines(state.holySites.filter { isExplored($0.position) }.map { shrine in
                 (shrine.kind, shrine.position, shrine.holder.flatMap { holder in
                     state.houses.indices.contains(holder) ? WorldStage.colour(houses, sigil: state.houses[holder].sigil) : nil
                 })
-            })
+            }), time: t, into: &frame)
         // The alliances' yards among them, each in its alliance's colour.
         let yardSights: [(store: Resource, hex: Hex, colour: Vec4)] = sites.compactMap { site in
             guard let alliance = site.alliance else { return nil }
@@ -161,7 +161,8 @@ extension GameSession {
         let lairHearths: [Hearth] = lairs.hearths + gates.hearths
         // The alliances' standards, each in its leader's colour.
         let flags = state.standardsStanding.filter { isExplored($0.position) }
-        let standards = stage.standards(flags.map { ($0.position, allianceColour($0.alliance, else: $0.raisedBy, houses)) })
+        let standards = stage.animate(stage.standards(flags.map { ($0.position, allianceColour($0.alliance, else: $0.raisedBy, houses)) }),
+                                      time: t, into: &frame)
         // The war camps of rallies gathering at holds in sight, in their
         // callers' colours.
         let camps = stage.rallyCamps(state.ralliesStanding.compactMap { rally in
@@ -224,7 +225,8 @@ extension GameSession {
         let crown = state.crown.map { crown in
             stage.drownedCrown(at: crown.bearer.flatMap(state.unit)?.position ?? crown.hex, borne: crown.bearer != nil, time: t)
         } ?? []
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + help + crests + fieldBanners + borders + barges + crown + companies + flights
+        let campBatches = stage.animate(camps.batches, time: t, into: &frame)
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + campBatches + banners + help + crests + fieldBanners + borders + barges + crown + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
                                                      time: time)

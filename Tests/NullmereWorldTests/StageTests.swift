@@ -735,3 +735,21 @@ private extension WorldStage {
         return furnish(occupied: [], holds: [])
     }
 }
+
+/// The land's pieces that have a rig are set working on the stage: each
+/// instance given its own pose in the frame's palette; still ones left be.
+final class AnimatedLandTests: XCTestCase {
+    func testHolySitesAndStandardsArePosedOnTheStage() {
+        let map = GameState(settings: GameSettings(seedText: "posed", houseCount: 2, radius: 16)).map
+        let stage = WorldStage(map: map, relief: Relief(map: map))
+        var frame = SceneFrame()
+        let hexes = [Hex(1, 0), Hex(-2, 1)]
+        let shrines = stage.animate(stage.shrines([(.moonwell, hexes[0], nil), (.heartstone, hexes[1], nil)]), time: 1.3, into: &frame)
+        XCTAssertFalse(frame.palette.isEmpty, "The holy sites' parts are posed")
+        XCTAssertTrue(shrines.allSatisfy { $0.instances.allSatisfy { Int($0.palette) < frame.palette.count } })
+        let before = frame.palette.count
+        let still = stage.animate(stage.lairs([(.reavers, hexes[0])]).batches, time: 1.3, into: &frame)
+        XCTAssertEqual(frame.palette.count, before, "A lair stands still")
+        XCTAssertEqual(still, stage.lairs([(.reavers, hexes[0])]).batches)
+    }
+}
