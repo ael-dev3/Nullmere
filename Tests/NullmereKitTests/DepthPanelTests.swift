@@ -2431,6 +2431,9 @@ extension DepthPanelTests {
         let from = Hold(id: state.takeID(), name: "Saltwatch", owner: me, position: first, isSeat: false, foundedWatch: 1)
         let to = Hold(id: state.takeID(), name: "Farmere", owner: me, position: second, isSeat: false, foundedWatch: 1)
         state.holds += [from, to]
+        // Holds of the House are ground it knows, as founding them makes it.
+        state.reveal(around: first, range: 2, for: me)
+        state.reveal(around: second, range: 2, for: me)
         let company = Unit(id: state.takeID(), kind: .spear, owner: me, position: first, tier: 1)
         state.units.append(company)
         return (state, from.id, to.id, company.id)
