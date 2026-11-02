@@ -98,6 +98,7 @@ public final class Synth: @unchecked Sendable {
     private var pendingSawing: Float?
     private var pendingChiselling: Float?
     private var pendingBurning: Float?
+    private var pendingThreshing: Float?
     private var towns = Town(sampleRate: 48_000)
 
     /// The drone's partials.
@@ -147,6 +148,11 @@ public final class Synth: @unchecked Sendable {
     /// How much of the towns heard is a beacon's fire, 0 to 1.
     public func setBurning(_ share: Float) {
         lock.lock(); pendingBurning = min(max(share, 0), 1); lock.unlock()
+    }
+
+    /// How much of the towns heard is a granary's threshing, 0 to 1.
+    public func setThreshing(_ share: Float) {
+        lock.lock(); pendingThreshing = min(max(share, 0), 1); lock.unlock()
     }
 
     /// The towns as they are heard, for tests.
@@ -551,6 +557,10 @@ public final class Synth: @unchecked Sendable {
         if let next = pendingBurning {
             towns.burning = next
             pendingBurning = nil
+        }
+        if let next = pendingThreshing {
+            towns.threshing = next
+            pendingThreshing = nil
         }
         let volume = volumes
         lock.unlock()

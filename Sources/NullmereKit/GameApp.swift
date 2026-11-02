@@ -829,6 +829,7 @@ public final class GameApp {
         session.onSawing = { [weak self] share in self?.ambience.setSawing(share) }
         session.onChiselling = { [weak self] share in self?.ambience.setChiselling(share) }
         session.onBurning = { [weak self] share in self?.ambience.setBurning(share) }
+        session.onThreshing = { [weak self] share in self?.ambience.setThreshing(share) }
         session.onCounsel = { [weak self] words in self?.advisor.counsel(words) }
         advisor.isSoundOn = isSoundOn
         ambience.isMusicOn = isMusicOn

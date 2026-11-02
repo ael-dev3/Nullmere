@@ -47,6 +47,14 @@ struct Town {
     private var crack: Float = 0
     /// How many cracks have sounded, for tests.
     private(set) var cracks = 0
+    /// How much of the town heard is a granary's threshing floor, 0 to 1:
+    /// two flails falling in turn, each a dull thud on the grain.
+    var threshing: Float = 0
+    private var flail = (Resonator(), Resonator())
+    private var nextFlail: Float = 0.3
+    private var flailTurn = false
+    /// How many flails have fallen, for tests.
+    private(set) var flails = 0
 
     init(sampleRate: Float) {
         self.sampleRate = sampleRate
@@ -88,7 +96,7 @@ struct Town {
         }
         click *= 1 - min(dt * 400, 1)
         let work = blow.0.next() + blow.1.next() + noise.next() * click * 0.3
-        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1
+        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12
     }
 
     /// The pit-saw's rasp: strokes a little over one a second, the down
@@ -139,5 +147,22 @@ struct Town {
         }
         crack *= 1 - min(dt * 250, 1)
         return (roar.process(noise.next()) * 0.8 + noise.next() * crack) * burning
+    }
+
+    /// The threshing floor: two flails falling in turn, a little under two
+    /// strokes a second between them, each a low thud with its rustle.
+    @inline(__always)
+    mutating func thresh(dt: Float) -> Float {
+        guard threshing > 0.001 else { return 0 }
+        nextFlail -= dt
+        if nextFlail <= 0 {
+            let pitch: Float = flailTurn ? 140 : 175
+            flail = (Resonator(frequency: pitch, amplitude: 0.9, decay: 18, sampleRate: sampleRate),
+                     Resonator(frequency: pitch * 3.1, amplitude: 0.3, decay: 40, sampleRate: sampleRate))
+            flailTurn.toggle()
+            nextFlail = 0.5 + 0.06 * noise.next()
+            flails += 1
+        }
+        return (flail.0.next() + flail.1.next()) * threshing
     }
 }

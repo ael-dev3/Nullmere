@@ -112,6 +112,11 @@ public final class Ambience {
         synth.setBurning(share)
     }
 
+    /// How much of the towns heard is a granary's threshing, 0 to 1.
+    public func setThreshing(_ share: Float) {
+        synth.setThreshing(share)
+    }
+
     /// The score: on or off, and at peace or at war.
     public var isMusicOn = true {
         didSet { applyMusic() }

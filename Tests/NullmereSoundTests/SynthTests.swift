@@ -306,7 +306,19 @@ final class SynthTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(lit.cracks, 1, "A log splits in it")
         XCTAssertFalse(fire.contains { $0.isNaN || $0.isInfinite })
         synth.setBurning(1)
+        synth.setThreshing(1)
         _ = rendered(synth, seconds: 0.05)
+
+        // The threshing floor: flails falling in turn, and none where no
+        // granary is.
+        var unthreshed = Town(sampleRate: 48_000)
+        XCTAssertEqual((0..<4_800).map { _ in unthreshed.thresh(dt: 1 / 48_000) }.map(abs).max(), 0)
+        var threshed = Town(sampleRate: 48_000)
+        threshed.threshing = 1
+        let blows = (0..<(48_000 * 3)).map { _ in threshed.thresh(dt: 1 / 48_000) }
+        XCTAssertGreaterThanOrEqual(threshed.flails, 5, "Strokes falling in turn")
+        XCTAssertGreaterThan(blows.map(abs).max() ?? 0, 0.1)
+        XCTAssertFalse(blows.contains { $0.isNaN || $0.isInfinite })
     }
 
     /// Riders' hooves fall one after another, each landing once the one

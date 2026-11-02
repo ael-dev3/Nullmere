@@ -224,7 +224,7 @@ enum Works {
     /// The work itself, before its estate.
     static func trade(_ kind: BuildingKind, level: Int, name: String) -> Model {
         switch kind {
-        case .granary: return granary(level, name)
+        case .granary: return Granary.model(level: level, name: name)
         case .sawpit: return sawpit(level, name)
         case .quarry: return quarry(level, name)
         case .saltworks: return saltworks(level, name)
@@ -464,134 +464,6 @@ enum Works {
             }
         }
         return spots
-    }
-
-    // MARK: Granary
-
-    static func granary(_ level: Int, _ name: String) -> Model {
-        var b = MeshBuilder()
-        b.pad(radius: 0.31)
-        switch level {
-        case 1:
-            // A small barn on staddle stones, against rats and the damp.
-            for x in [Float(-0.1), 0.1] {
-                for z in [Float(-0.06), 0.06] {
-                    b.place(.translation(Vec3(x, 0, z))) {
-                        $0.lathe([(0.022, 0), (0.014, 0.05), (0.036, 0.058), (0.036, 0.072)], sides: 5, color: Palette.stone)
-                    }
-                }
-            }
-            b.hall(at: Vec3(0, 0.072, 0), width: 0.27, depth: 0.19, height: 0.13, wall: Palette.timber, roof: Palette.thatch, pitch: 0.75)
-            b.door(Vec3(0, 0.13, 0.096), width: 0.05, height: 0.08, facing: 0)
-            b.beam(from: Vec3(0, 0, 0.2), to: Vec3(0, 0.08, 0.1), width: 0.05, depth: 0.012, color: Palette.timberPale)
-            b.sack(at: Vec3(0.17, 0, 0.14), size: 0.035, seed: 1)
-            b.sack(at: Vec3(0.21, 0, 0.09), size: 0.03, seed: 2)
-        case 2:
-            b.hall(at: Vec3(0, 0, -0.03), width: 0.34, depth: 0.21, height: 0.17, wall: Palette.timber, roof: Palette.thatch,
-                   pitch: 0.75, footing: Palette.stoneDark)
-            b.place(.translation(Vec3(0, 0, -0.17))) {
-                $0.box(min: Vec3(-0.12, -0.02, -0.05), max: Vec3(0.12, 0.1, 0.04), color: Palette.timberGrey)
-                $0.place(.rotationX(0.35)) {
-                    $0.box(min: Vec3(-0.13, 0.1, -0.06), max: Vec3(0.13, 0.115, 0.05), color: Palette.thatch)
-                }
-            }
-            b.door(Vec3(0, 0.08, 0.077), width: 0.07, height: 0.12, facing: 0)
-            // A wattle bin under thatch for the overflow.
-            b.roundHouse(at: Vec3(0.19, 0, 0.15), radius: 0.06, height: 0.13, wall: Palette.timberGrey, roof: Palette.thatch,
-                         roofHeight: 0.09, sides: 7)
-            for (index, at) in [Vec3(-0.06, 0, 0.16), Vec3(-0.11, 0, 0.13), Vec3(-0.17, 0, 0.15)].enumerated() {
-                b.sack(at: at, size: 0.032, seed: UInt32(index))
-            }
-        case 3:
-            b.hall(at: Vec3(-0.05, 0, -0.03), width: 0.3, depth: 0.21, height: 0.19, wall: Palette.stone, roof: Palette.slate,
-                   footing: Palette.stoneDark)
-            b.roundHouse(at: Vec3(0.18, 0, 0.12), radius: 0.07, height: 0.2, wall: Palette.timber, roof: Palette.thatch, roofHeight: 0.11)
-            b.door(Vec3(-0.05, 0.08, 0.077), width: 0.07, height: 0.12, facing: 0)
-            b.window(Vec3(-0.15, 0.13, 0.077), width: 0.03, height: 0.04, facing: 0)
-            for (index, at) in [Vec3(-0.2, 0, 0.14), Vec3(-0.15, 0, 0.17), Vec3(0.02, 0, 0.15)].enumerated() {
-                b.sack(at: at, size: 0.032, seed: UInt32(index + 4))
-            }
-        case 4:
-            b.hall(at: Vec3(0, 0, -0.07), width: 0.36, depth: 0.2, height: 0.2, wall: Palette.stone, roof: Palette.slate,
-                   footing: Palette.stoneDark)
-            for x in [Float(-0.18), 0.18] {
-                b.roundHouse(at: Vec3(x, 0, 0.15), radius: 0.068, height: 0.24, wall: Palette.stonePale, roof: Palette.slate,
-                             roofHeight: 0.12)
-            }
-            b.door(Vec3(0, 0.08, 0.032), width: 0.07, height: 0.13, facing: 0)
-            b.banner(at: Vec3(0.17, 0.2, -0.07), height: 0.2, width: 0.1, drop: 0.07, tail: true)
-            b.sack(at: Vec3(0.0, 0, 0.12), size: 0.035, seed: 7)
-            b.sack(at: Vec3(0.05, 0, 0.16), size: 0.03, seed: 8)
-        default:
-            // A granary hall raised above the rest, its bins roofed in the House's colour.
-            b.hall(at: Vec3(0, 0, -0.08), width: 0.38, depth: 0.2, height: 0.22, wall: Palette.stonePale, roof: Palette.slate,
-                   footing: Palette.stoneDark)
-            b.hall(at: Vec3(0, 0.22, -0.08), width: 0.2, depth: 0.12, height: 0.1, wall: Palette.stonePale, roof: Palette.slate)
-            for (x, z) in [(Float(-0.19), Float(0.15)), (0, 0.19), (0.19, 0.15)] {
-                b.roundHouse(at: Vec3(x, 0, z), radius: 0.07, height: 0.27, wall: Palette.stone, roof: Palette.house,
-                             roofMaterial: .house, roofHeight: 0.14)
-            }
-            for x in [Float(-0.12), 0.12] {
-                b.window(Vec3(x, 0.14, 0.022), width: 0.03, height: 0.05, facing: 0)
-            }
-            b.beam(from: Vec3(0.19, 0.3, -0.08), to: Vec3(0.28, 0.3, -0.08), width: 0.025, color: Palette.timberDark)
-            b.limb(from: Vec3(0.27, 0.3, -0.08), to: Vec3(0.27, 0.18, -0.08), radius: 0.003, sides: 3, color: Palette.linen)
-            b.sack(at: Vec3(0.27, 0.12, -0.08), size: 0.03, seed: 9)
-            b.banner(at: Vec3(0, 0.38, -0.08), height: 0.22, width: 0.14, drop: 0.09)
-            b.door(Vec3(0, 0.08, 0.022), width: 0.07, height: 0.13, facing: 0)
-        }
-        // Near, the granary's keeping: a bushel of grain heaped at every
-        // level and its cat watching for rats; from the second a broom
-        // by the door; from the third a steelyard on its tripod weighing a
-        // sack against its weight.
-        let near: (bushel: Vec3, cat: Vec3, broom: Vec3?, steelyard: Vec3?)
-        switch level {
-        case 1: near = (Vec3(-0.12, 0, 0.16), Vec3(-0.05, 0, 0.19), nil, nil)
-        case 2: near = (Vec3(0.09, 0, 0.13), Vec3(-0.03, 0, 0.11), Vec3(0.052, 0, 0.09), nil)
-        case 3: near = (Vec3(-0.1, 0, 0.15), Vec3(-0.05, 0, 0.1), Vec3(0.0, 0, 0.09), Vec3(0.07, 0, 0.21))
-        case 4: near = (Vec3(0.09, 0, 0.1), Vec3(0.0, 0, 0.06), Vec3(0.05, 0, 0.045), Vec3(-0.06, 0, 0.17))
-        default: near = (Vec3(0.09, 0, 0.07), Vec3(0.0, 0, 0.045), nil, Vec3(-0.08, 0, 0.07))
-        }
-        b.fine { fine in
-            fine.place(.translation(near.bushel)) {
-                $0.lathe([(0.013, 0), (0.017, 0.026)], sides: 7, color: Palette.straw)
-                $0.lathe([(0.016, 0.024), (0, 0.036)], sides: 7, color: Palette.grain)
-            }
-            // The cat, sitting, its tail curled round its feet.
-            let fur = Palette.fur.mix(Palette.madder, 0.35)
-            fine.sphere(center: near.cat + Vec3(0, 0.011, 0), radius: 0.01, rings: 3, sides: 6, color: fur, squash: 1.25)
-            fine.sphere(center: near.cat + Vec3(0, 0.028, 0.004), radius: 0.0075, rings: 3, sides: 6, color: fur)
-            for x in [Float(-0.004), 0.004] {
-                fine.place(.translation(near.cat + Vec3(x, 0.033, 0.003))) {
-                    $0.cone(sides: 3, radius: 0.0028, to: 0.007, color: fur)
-                }
-            }
-            fine.limb(from: near.cat + Vec3(-0.008, 0.002, -0.004), to: near.cat + Vec3(-0.004, 0.002, 0.012), radius: 0.0022,
-                      color: fur)
-            if let broom = near.broom {
-                fine.limb(from: broom + Vec3(0, 0.018, 0), to: broom + Vec3(-0.002, 0.11, -0.012), radius: 0.0025, color: Palette.timberPale)
-                fine.place(.translation(broom)) {
-                    $0.lathe([(0.012, 0), (0.004, 0.022)], sides: 5, color: Palette.straw)
-                }
-            }
-            if let foot = near.steelyard {
-                let apex = foot + Vec3(0, 0.13, 0)
-                // Its legs spread about the sack, which hangs between two.
-                for index in 0..<3 {
-                    let angle = Float(index) * 2 * .pi / 3
-                    fine.limb(from: foot + MeshBuilder.ring(0.032, 0, angle), to: apex, radius: 0.0035, color: Palette.timber)
-                }
-                fine.with(material: .metal) {
-                    $0.limb(from: apex, to: apex - Vec3(0, 0.024, 0), radius: 0.0015, sides: 3, color: Palette.iron)
-                    $0.beam(from: apex + Vec3(-0.03, -0.026, 0), to: apex + Vec3(0.042, -0.026, 0), width: 0.003, color: Palette.iron)
-                    $0.box(center: apex + Vec3(0.036, -0.036, 0), size: Vec3(0.01, 0.014, 0.01), color: Palette.iron)
-                }
-                fine.limb(from: apex + Vec3(-0.026, -0.026, 0), to: apex + Vec3(-0.026, -0.06, 0), radius: 0.0015, sides: 3,
-                          color: Palette.linen)
-                fine.sack(at: apex + Vec3(-0.026, -0.098, 0), size: 0.022, seed: 11)
-            }
-        }
-        return model(name, b)
     }
 
     // MARK: Sawpit
