@@ -127,6 +127,11 @@ public final class Ambience {
         synth.setRaking(share)
     }
 
+    /// How much of the towns heard is a muster hall at drill, 0 to 1.
+    public func setDrilling(_ share: Float) {
+        synth.setDrilling(share)
+    }
+
     /// The score: on or off, and at peace or at war.
     public var isMusicOn = true {
         didSet { applyMusic() }

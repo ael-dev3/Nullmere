@@ -344,6 +344,19 @@ final class SynthTests: XCTestCase {
         XCTAssertGreaterThan(strokeTenths.max() ?? 0, 0.005, "Heard")
         XCTAssertLessThan(strokeTenths.min() ?? 1, (strokeTenths.max() ?? 0) * 0.3, "Stroke by stroke")
         XCTAssertFalse(hiss.contains { $0.isNaN || $0.isInfinite })
+
+        // A muster hall at drill: the drum, two beats and a rest, and none
+        // where no muster hall is.
+        var undrilled = Town(sampleRate: 48_000)
+        XCTAssertEqual((0..<4_800).map { _ in undrilled.drill(dt: 1 / 48_000) }.map(abs).max(), 0)
+        var drilled = Town(sampleRate: 48_000)
+        drilled.drilling = 1
+        let drumming = (0..<(48_000 * 3)).map { _ in drilled.drill(dt: 1 / 48_000) }
+        XCTAssertGreaterThanOrEqual(drilled.beats, 4)
+        XCTAssertGreaterThan(drumming.map(abs).max() ?? 0, 0.1)
+        XCTAssertFalse(drumming.contains { $0.isNaN || $0.isInfinite })
+        synth.setDrilling(1)
+        _ = rendered(synth, seconds: 0.05)
     }
 
     /// Riders' hooves fall one after another, each landing once the one

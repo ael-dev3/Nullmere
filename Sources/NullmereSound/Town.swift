@@ -69,6 +69,14 @@ struct Town {
     private var hiss = Bandpass()
     private var hissSet = false
     private var draw: Float = 0
+    /// How much of the town heard is a muster hall at drill, 0 to 1: the
+    /// drill drum beating the step, two beats and a rest.
+    var drilling: Float = 0
+    private var beat = (Resonator(), Resonator())
+    private var nextBeat: Float = 0.3
+    private var beatInBar = 0
+    /// How many beats the drum has struck, for tests.
+    private(set) var beats = 0
 
     init(sampleRate: Float) {
         self.sampleRate = sampleRate
@@ -110,7 +118,7 @@ struct Town {
         }
         click *= 1 - min(dt * 400, 1)
         let work = blow.0.next() + blow.1.next() + noise.next() * click * 0.3
-        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12 + quarry(dt: dt) * 0.1 + rake(dt: dt) * 0.1
+        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12 + quarry(dt: dt) * 0.1 + rake(dt: dt) * 0.1 + drill(dt: dt) * 0.12
     }
 
     /// The pit-saw's rasp: strokes a little over one a second, the down
@@ -209,5 +217,24 @@ struct Town {
         if draw >= 1 { draw -= 1 }
         let swell = max(0, Float(sin(Double(draw) * 2 * .pi)))
         return hiss.process(noise.next()) * swell * raking
+    }
+
+    /// The drill drum: two beats and a rest, a little under a beat in half a
+    /// second, each a deep skin's boom and its slap.
+    @inline(__always)
+    mutating func drill(dt: Float) -> Float {
+        guard drilling > 0.001 else { return 0 }
+        nextBeat -= dt
+        if nextBeat <= 0 {
+            if beatInBar < 2 {
+                let strong: Float = beatInBar == 0 ? 1 : 0.7
+                beat = (Resonator(frequency: 95, amplitude: strong, decay: 9, sampleRate: sampleRate),
+                        Resonator(frequency: 380, amplitude: strong * 0.25, decay: 50, sampleRate: sampleRate))
+                beats += 1
+            }
+            beatInBar = (beatInBar + 1) % 3
+            nextBeat = 0.42
+        }
+        return (beat.0.next() + beat.1.next()) * drilling
     }
 }

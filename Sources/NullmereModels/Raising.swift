@@ -8,11 +8,13 @@ import NullmereCore
 ///   and lowered again onto the trestle.
 /// - The lodge's: a crane on its treadwheel, the wheel walked round and a
 ///   squared block slewed up to the wall.
+/// - The muster hall's: a roof truss swung up between two shear legs onto
+///   the barracks' walls.
 /// - The beacon's: a gin pole guyed to the ground, its fire basket hauled
 ///   up the pole and let down.
 enum Raising {
     /// The families that have a rig of their own while they rise.
-    static let families: [BuildingKind] = [.sawpit, .lodge, .beacon]
+    static let families: [BuildingKind] = [.sawpit, .lodge, .beacon, .musterHall]
 
     static func model(_ kind: BuildingKind, name: String) -> Model {
         var b = MeshBuilder()
@@ -23,6 +25,8 @@ enum Raising {
             machinery = crane(&b, &rig)
         case .beacon:
             machinery = ginPole(&b, &rig)
+        case .musterHall:
+            machinery = trussLift(&b, &rig)
         default:
             machinery = shearLegs(&b, &rig)
         }
@@ -96,5 +100,25 @@ enum Raising {
             }
         }
         return Machinery(swings: [Machinery.Swing(part: load, axis: Vec3(0, 0, 1), angle: 0.3)], parts: rig.count)
+    }
+
+    /// Shear legs at each end of a span, a roof truss hanging between them,
+    /// swung up onto the walls and let down to be pinned.
+    static func trussLift(_ b: inout MeshBuilder, _ rig: inout Rig) -> Machinery {
+        for x in [Float(-0.1), 0.1] {
+            for z in [Float(-0.05), 0.05] {
+                b.limb(from: Vec3(x, 0, z), to: Vec3(x, 0.3, 0), radius: 0.006, color: Palette.timberGrey)
+            }
+        }
+        let truss = rig.add("raised truss", pivot: Vec3(0, 0.29, 0))
+        b.with(part: truss) { b in
+            b.limb(from: Vec3(-0.1, 0.29, 0), to: Vec3(-0.06, 0.2, 0), radius: 0.0018, color: Palette.linen)
+            b.limb(from: Vec3(0.1, 0.29, 0), to: Vec3(0.06, 0.2, 0), radius: 0.0018, color: Palette.linen)
+            b.beam(from: Vec3(-0.08, 0.17, 0), to: Vec3(0.08, 0.17, 0), width: 0.008, color: Palette.timber)
+            b.beam(from: Vec3(-0.08, 0.17, 0), to: Vec3(0, 0.23, 0), width: 0.008, color: Palette.timber)
+            b.beam(from: Vec3(0.08, 0.17, 0), to: Vec3(0, 0.23, 0), width: 0.008, color: Palette.timber)
+            b.beam(from: Vec3(0, 0.17, 0), to: Vec3(0, 0.23, 0), width: 0.006, color: Palette.timberDark)
+        }
+        return Machinery(swings: [Machinery.Swing(part: truss, axis: Vec3(1, 0, 0), angle: 0.3)], parts: rig.count)
     }
 }

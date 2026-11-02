@@ -160,6 +160,15 @@ final class TownSoundTests: XCTestCase {
         saltworks.hearTowns()
         XCTAssertGreaterThan(rakes.last ?? 0, 0.5)
         Ambience(enabled: false).setRaking(0.5)
+        var mustered = salted
+        mustered.holds[built].levels[.musterHall] = 1
+        let muster = GameSession(state: mustered, store: LocalStore(directory: dir.appendingPathComponent("muster")))
+        muster.camera = near
+        var drums: [Float] = []
+        muster.onDrilling = { drums.append($0) }
+        muster.hearTowns()
+        XCTAssertGreaterThan(drums.last ?? 0, 0.5)
+        Ambience(enabled: false).setDrilling(0.5)
         sawing.motion = .still
         sawing.hearTowns()
         XCTAssertEqual(shares.last, 0, "Still under the stillest motion")
