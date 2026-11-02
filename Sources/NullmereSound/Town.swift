@@ -63,6 +63,12 @@ struct Town {
     private var nextPick: Float = 0.4
     /// How many blows the picks have struck, for tests.
     private(set) var picks = 0
+    /// How much of the town heard is a saltworks, 0 to 1: rakes drawn
+    /// through the crust of the pans, a dry hiss stroke after stroke.
+    var raking: Float = 0
+    private var hiss = Bandpass()
+    private var hissSet = false
+    private var draw: Float = 0
 
     init(sampleRate: Float) {
         self.sampleRate = sampleRate
@@ -104,7 +110,7 @@ struct Town {
         }
         click *= 1 - min(dt * 400, 1)
         let work = blow.0.next() + blow.1.next() + noise.next() * click * 0.3
-        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12 + quarry(dt: dt) * 0.1
+        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12 + quarry(dt: dt) * 0.1 + rake(dt: dt) * 0.1
     }
 
     /// The pit-saw's rasp: strokes a little over one a second, the down
@@ -188,5 +194,20 @@ struct Town {
         }
         grit *= 1 - min(dt * 60, 1)
         return (pick.next() + noise.next() * grit * 0.4) * quarrying
+    }
+
+    /// The pans: a rake drawn through salt crust, a long hiss rising and
+    /// falling once every second and a half.
+    @inline(__always)
+    mutating func rake(dt: Float) -> Float {
+        guard raking > 0.001 else { return 0 }
+        if !hissSet {
+            hiss = Bandpass(centre: 5_200, width: 1.6, sampleRate: sampleRate)
+            hissSet = true
+        }
+        draw += dt / 1.5
+        if draw >= 1 { draw -= 1 }
+        let swell = max(0, Float(sin(Double(draw) * 2 * .pi)))
+        return hiss.process(noise.next()) * swell * raking
     }
 }

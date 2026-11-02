@@ -398,7 +398,7 @@ public enum Library {
     public static func smoke(of key: ModelKey) -> [Vec3] {
         switch key.canonical {
         case .keep(let seat), .keepOf(_, let seat): return [Holds.chimney(seat: seat)]
-        case .work(.saltworks, let level) where level >= 2: return [Works.saltChimney(level)]
+        case .work(.saltworks, let level): return Saltworks.chimney(level).map { [$0] } ?? []
         case .lair(let kind): return Lairs.fire(of: kind).map { [$0] } ?? []
         case .gatehold: return [Lairs.gateFire]
         case .rallyCamp: return [Land.rallyFire]

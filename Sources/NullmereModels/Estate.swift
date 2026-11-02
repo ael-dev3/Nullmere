@@ -16,7 +16,7 @@ import NullmereCore
 /// Each part is laid only while the whole keeps under its budget.
 enum Estate {
     /// Families modelled whole at each level, with no shared estate.
-    static let bespoke: Set<BuildingKind> = [.walls, .lodge, .beacon, .granary, .quarry]
+    static let bespoke: Set<BuildingKind> = [.walls, .lodge, .beacon, .granary, .quarry, .saltworks]
 
     /// The most triangles a work may come to with its estate.
     static let ceiling = 2950

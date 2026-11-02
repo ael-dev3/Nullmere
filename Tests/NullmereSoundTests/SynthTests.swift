@@ -330,7 +330,20 @@ final class SynthTests: XCTestCase {
         XCTAssertGreaterThan(hewing.map(abs).max() ?? 0, 0.1)
         XCTAssertFalse(hewing.contains { $0.isNaN || $0.isInfinite })
         synth.setQuarrying(1)
+        synth.setRaking(1)
         _ = rendered(synth, seconds: 0.05)
+
+        // A saltworks: rakes hissing through the crust, stroke by stroke,
+        // and none where no saltworks is.
+        var unraked = Town(sampleRate: 48_000)
+        XCTAssertEqual((0..<4_800).map { _ in unraked.rake(dt: 1 / 48_000) }.map(abs).max(), 0)
+        var raked = Town(sampleRate: 48_000)
+        raked.raking = 1
+        let hiss = (0..<(48_000 * 3)).map { _ in raked.rake(dt: 1 / 48_000) }
+        let strokeTenths = stride(from: 0, to: hiss.count - 4_800, by: 4_800).map { rms(hiss[$0..<($0 + 4_800)]) }
+        XCTAssertGreaterThan(strokeTenths.max() ?? 0, 0.005, "Heard")
+        XCTAssertLessThan(strokeTenths.min() ?? 1, (strokeTenths.max() ?? 0) * 0.3, "Stroke by stroke")
+        XCTAssertFalse(hiss.contains { $0.isNaN || $0.isInfinite })
     }
 
     /// Riders' hooves fall one after another, each landing once the one

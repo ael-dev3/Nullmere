@@ -151,6 +151,15 @@ final class TownSoundTests: XCTestCase {
         quarry.hearTowns()
         XCTAssertGreaterThan(picks.last ?? 0, 0.5)
         Ambience(enabled: false).setQuarrying(0.5)
+        var salted = cutStone
+        salted.holds[built].levels[.saltworks] = 1
+        let saltworks = GameSession(state: salted, store: LocalStore(directory: dir.appendingPathComponent("saltworks")))
+        saltworks.camera = near
+        var rakes: [Float] = []
+        saltworks.onRaking = { rakes.append($0) }
+        saltworks.hearTowns()
+        XCTAssertGreaterThan(rakes.last ?? 0, 0.5)
+        Ambience(enabled: false).setRaking(0.5)
         sawing.motion = .still
         sawing.hearTowns()
         XCTAssertEqual(shares.last, 0, "Still under the stillest motion")

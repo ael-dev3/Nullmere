@@ -122,6 +122,11 @@ public final class Ambience {
         synth.setQuarrying(share)
     }
 
+    /// How much of the towns heard is a saltworks, 0 to 1.
+    public func setRaking(_ share: Float) {
+        synth.setRaking(share)
+    }
+
     /// The score: on or off, and at peace or at war.
     public var isMusicOn = true {
         didSet { applyMusic() }
