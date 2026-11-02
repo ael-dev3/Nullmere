@@ -1356,7 +1356,7 @@ struct SeatMoveRow: View {
 /// A company at a shore hold: poled across the still water to another of
 /// the House's shore holds, landing as the watch turns.
 struct FerryLine: View {
-    @ObservedObject var session: GameSession
+    let session: GameSession
     let unit: Unit
     let landings: [Hold]
 
