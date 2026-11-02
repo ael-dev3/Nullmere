@@ -32,4 +32,24 @@ final class EstateTests: XCTestCase {
         XCTAssertEqual(laid.fineFrom, a.mesh.coarseIndexCount + b.mesh.coarseIndexCount)
         XCTAssertEqual(Estate.layered(a.mesh, Mesh()), a.mesh)
     }
+
+    /// The sawpit works: at its first two levels the pit-saw rocks in its
+    /// cut through the working clip, and its own drying shed and hoist
+    /// stand where other works keep the shared lean-to and annex.
+    func testTheSawpitSawsAndKeepsItsOwnYard() throws {
+        for level in 1...2 {
+            let model = Library.model(.work(.sawpit, level: level))
+            let saw = try XCTUnwrap(model.rig.index(of: "pit-saw"), "level \(level)")
+            let motion = try XCTUnwrap(model.motion)
+            let early = motion(.idle, 0.0), later = motion(.idle, 0.35)
+            XCTAssertNotEqual(early[saw].rotation, later[saw].rotation, "The saw moves at level \(level)")
+        }
+        var shed = MeshBuilder(), lean = MeshBuilder()
+        Estate.dryingShed(&shed, Estate.style(.sawpit))
+        Estate.leanTo(&lean, Estate.style(.sawpit))
+        XCTAssertEqual(Estate.parts(2, .sawpit).count, 1)
+        XCTAssertNotEqual(shed.mesh.triangleCount, lean.mesh.triangleCount, "Its own shed, not the shared lean-to")
+        XCTAssertEqual(Estate.parts(4, .sawpit).count, 2)
+        XCTAssertEqual(Estate.parts(4, .granary).count, 2)
+    }
 }

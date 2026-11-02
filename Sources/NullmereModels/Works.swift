@@ -861,8 +861,8 @@ enum Works {
         // Near, at the first levels: the pit-saw standing through the log,
         // its tiller above and its box in the pit, wedges in the kerf behind
         // it and its sawdust heaped by the pit.
-        func pitSaw(_ b: inout MeshBuilder, at: Vec3) {
-            b.fine {
+        func pitSaw(_ b: inout MeshBuilder, at: Vec3, part: UInt16 = 0) {
+            b.with(part: part) { b in b.fine {
                 $0.with(material: .metal) {
                     $0.beam(from: at + Vec3(0.04, 0.008, 0), to: at + Vec3(0.04, 0.27, 0), width: 0.014, depth: 0.002, color: Palette.steel)
                     for x in [Float(0.062), 0.078] {
@@ -872,7 +872,12 @@ enum Works {
                 $0.beam(from: at + Vec3(0.04, 0.27, -0.026), to: at + Vec3(0.04, 0.27, 0.026), width: 0.006, color: Palette.timberPale)
                 $0.box(center: at + Vec3(0.04, 0.014, 0), size: Vec3(0.008, 0.012, 0.03), color: Palette.timberPale)
                 $0.sphere(center: at + Vec3(0.03, 0.0, 0.07), radius: 0.03, rings: 2, sides: 6, color: Palette.straw, squash: 0.35)
-            }
+            } }
+        }
+        /// The pit-saw rocks in its cut while the sawyers work it.
+        func sawing(_ rig: inout Rig, at: Vec3) -> (UInt16, Machinery.Swing) {
+            let part = rig.add("pit-saw", pivot: at + Vec3(0.04, 0.135, 0))
+            return (part, Machinery.Swing(part: part, axis: Vec3(0, 0, 1), angle: 0.14))
         }
         // And at every level a chopping block, an axe bitten into it.
         func block(_ b: inout MeshBuilder, at: Vec3) {
@@ -893,7 +898,9 @@ enum Works {
         switch level {
         case 1:
             trestle(&b, at: Vec3(0, 0, 0.04))
-            pitSaw(&b, at: Vec3(0, 0, 0.04))
+            let (saw, swing) = sawing(&rig, at: Vec3(0, 0, 0.04))
+            pitSaw(&b, at: Vec3(0, 0, 0.04), part: saw)
+            machinery = Machinery(swings: [swing], parts: rig.count)
             // A lean-to of planks against the weather.
             for x in [Float(-0.14), 0.14] {
                 b.limb(from: Vec3(x, 0, -0.12), to: Vec3(x, 0.2, -0.12), radius: 0.012, color: Palette.timber)
@@ -920,7 +927,9 @@ enum Works {
             }
         case 2:
             trestle(&b, at: Vec3(0, 0, 0.02))
-            pitSaw(&b, at: Vec3(0, 0, 0.02))
+            let (saw, swing) = sawing(&rig, at: Vec3(0, 0, 0.02))
+            pitSaw(&b, at: Vec3(0, 0, 0.02), part: saw)
+            machinery = Machinery(swings: [swing], parts: rig.count)
             for x in [Float(-0.16), 0.16] {
                 for z in [Float(-0.1), 0.12] {
                     b.limb(from: Vec3(x, -0.02, z), to: Vec3(x, 0.22, z), radius: 0.013, color: Palette.timber)

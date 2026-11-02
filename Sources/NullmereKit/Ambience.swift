@@ -97,6 +97,11 @@ public final class Ambience {
         synth.setTown(level: level, pan: pan)
     }
 
+    /// How much of the towns heard is sawpits at work, 0 to 1.
+    public func setSawing(_ share: Float) {
+        synth.setSawing(share)
+    }
+
     /// The score: on or off, and at peace or at war.
     public var isMusicOn = true {
         didSet { applyMusic() }

@@ -95,6 +95,7 @@ public final class Synth: @unchecked Sendable {
     private var town: (level: Float, pan: Float) = (0, 0)
     private var townTarget: (level: Float, pan: Float) = (0, 0)
     private var pendingTown: (level: Float, pan: Float)?
+    private var pendingSawing: Float?
     private var towns = Town(sampleRate: 48_000)
 
     /// The drone's partials.
@@ -129,6 +130,11 @@ public final class Synth: @unchecked Sendable {
     /// and where across the view, from the left (-1) to the right (1).
     public func setTown(level: Float, pan: Float) {
         lock.lock(); pendingTown = (min(max(level, 0), 1), min(max(pan, -1), 1)); lock.unlock()
+    }
+
+    /// How much of the towns heard is sawpits at work, 0 to 1.
+    public func setSawing(_ share: Float) {
+        lock.lock(); pendingSawing = min(max(share, 0), 1); lock.unlock()
     }
 
     /// The towns as they are heard, for tests.
@@ -521,6 +527,10 @@ public final class Synth: @unchecked Sendable {
         if let next = pendingTown {
             townTarget = next
             pendingTown = nil
+        }
+        if let next = pendingSawing {
+            towns.sawing = next
+            pendingSawing = nil
         }
         let volume = volumes
         lock.unlock()

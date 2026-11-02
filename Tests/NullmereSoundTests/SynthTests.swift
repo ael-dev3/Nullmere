@@ -268,6 +268,21 @@ final class SynthTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(town.blows, 2, "Work goes on")
         XCTAssertFalse(sound.contains { $0.isNaN || $0.isInfinite })
         XCTAssertLessThan(sound.map(abs).max() ?? 1, 1)
+
+        // A sawpit at work: the pit-saw's rasp, stroke by stroke, and none
+        // where no sawpit is.
+        var unsawn = Town(sampleRate: 48_000)
+        XCTAssertEqual((0..<4_800).map { _ in unsawn.saw(dt: 1 / 48_000) }.map(abs).max(), 0)
+        var sawn = Town(sampleRate: 48_000)
+        sawn.sawing = 1
+        let rasp = (0..<(48_000 * 2)).map { _ in sawn.saw(dt: 1 / 48_000) }
+        let strokes = stride(from: 0, to: rasp.count - 2_400, by: 2_400).map { rms(rasp[$0..<($0 + 2_400)]) }
+        XCTAssertGreaterThan(strokes.max() ?? 0, 0.01, "Heard")
+        XCTAssertGreaterThan((strokes.max() ?? 0) / max(strokes.min() ?? 1, 1e-9), 3, "Stroke by stroke")
+        XCTAssertFalse(rasp.contains { $0.isNaN || $0.isInfinite })
+        let synth = settled()
+        synth.setSawing(2)
+        _ = rendered(synth, seconds: 0.1)
     }
 
     /// Riders' hooves fall one after another, each landing once the one

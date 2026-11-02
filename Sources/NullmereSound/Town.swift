@@ -26,6 +26,12 @@ struct Town {
     private var nextBlow: Float = 1.5
     /// How many blows have fallen, for tests.
     private(set) var blows = 0
+    /// How much of the town heard is sawpits at work, 0 to 1: a two-man
+    /// pit-saw's rasp, each stroke a swell of grit through the teeth.
+    var sawing: Float = 0
+    private var stroke: Float = 0
+    private var rasp = Bandpass()
+    private var raspSet = false
 
     init(sampleRate: Float) {
         self.sampleRate = sampleRate
@@ -67,6 +73,23 @@ struct Town {
         }
         click *= 1 - min(dt * 400, 1)
         let work = blow.0.next() + blow.1.next() + noise.next() * click * 0.3
-        return voices * 0.5 + work * 0.12
+        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1
+    }
+
+    /// The pit-saw's rasp: strokes a little over one a second, the down
+    /// stroke biting harder than the up.
+    @inline(__always)
+    mutating func saw(dt: Float) -> Float {
+        guard sawing > 0.001 else { return 0 }
+        if !raspSet {
+            rasp = Bandpass(centre: 2_400, width: 1.2, sampleRate: sampleRate)
+            raspSet = true
+        }
+        stroke += dt * 1.15
+        if stroke >= 1 { stroke -= 1 }
+        let phase = stroke < 0.5 ? stroke * 2 : (stroke - 0.5) * 2
+        let bite: Float = stroke < 0.5 ? 1 : 0.55
+        let swell = Float(sin(Double(phase) * .pi)) * bite
+        return rasp.process(noise.next()) * swell * sawing
     }
 }

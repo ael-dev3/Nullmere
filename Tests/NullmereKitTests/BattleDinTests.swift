@@ -98,5 +98,24 @@ final class TownSoundTests: XCTestCase {
         session.hearTowns()
         XCTAssertEqual(heard.last?.0, 0, "Still under the stillest motion")
         Ambience(enabled: false).setTown(level: 0.5, pan: 0)
+        Ambience(enabled: false).setSawing(0.5)
+
+        // A sawpit raised in the seat: the town heard is sawing, told once.
+        XCTAssertEqual(try XCTUnwrap(busier.townSounds()).sawing, 0, "No sawpit, no saw")
+        var sawn = state
+        sawn.holds[built].levels[.sawpit] = 1
+        let sawing = GameSession(state: sawn, store: LocalStore(directory: dir.appendingPathComponent("sawing")))
+        var near = session.camera
+        near.focus(on: seat.position)
+        sawing.camera = near
+        XCTAssertGreaterThan(try XCTUnwrap(sawing.townSounds()).sawing, 0.5)
+        var shares: [Float] = []
+        sawing.onSawing = { shares.append($0) }
+        sawing.hearTowns()
+        sawing.hearTowns()
+        XCTAssertEqual(shares.count, 1)
+        sawing.motion = .still
+        sawing.hearTowns()
+        XCTAssertEqual(shares.last, 0, "Still under the stillest motion")
     }
 }
