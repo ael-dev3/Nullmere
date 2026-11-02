@@ -30,6 +30,7 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 
 ### 1. Live realm, real multiplayer
 - [x] Several keepers' clients, as shipped, play together in CI against a real SpacetimeDB server: they arrive, see each other, trade, ally, speak, march on each other and fight
+- [x] A keeper's client on a real SpacetimeDB server in CI sees its hold in the world's 3D models as the realm keeps it: a sawpit ordered raised rises in its scaffold, the sawyers' rig at work beside it, every piece drawn within its budget (and the same played through the fake server on Linux)
 - [x] A live connection: the realm's updates pushed to the client over SpacetimeDB's WebSocket subscription, the reads once a second kept only as a fallback
 - [x] Words between keepers: a realm channel and an alliance channel
 - [x] One workflow that publishes the realm to maincloud once the maintainer adds the token (the sign-in, and the machine the steward runs on, are the maintainer's)

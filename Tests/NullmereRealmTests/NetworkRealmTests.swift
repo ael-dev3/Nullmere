@@ -1,5 +1,6 @@
 import Foundation
 import NullmereCore
+import NullmereModels
 import XCTest
 @testable import NullmereRealm
 import NullmereTestSupport
@@ -140,6 +141,36 @@ final class NetworkRealmTests: XCTestCase {
         let left = await steward.state.keeper(try XCTUnwrap(firstIdentity))
         XCTAssertNil(left, "The first Mac no longer speaks for Ama")
         await MainActor.run { second.leave() }
+    }
+
+    /// A keeper's client sees its hold in the world's models as the realm
+    /// keeps it: a sawpit ordered over the link rises in its scaffold, the
+    /// sawyers' rig at work beside it, every piece drawn within its budget.
+    func testAKeepersClientSeesItsWorksRiseInTheirModels() async throws {
+        let db = FakeSpacetime()
+        let (_, running, _) = try await steward(db)
+        defer { running.cancel() }
+        let (link, ear) = await MainActor.run { keeper(db) }
+        try await until("the realm's status") { ear.hasStatus }
+        await MainActor.run { link.arrive(name: "Cai") }
+        try await until("the keeper to arrive") { ear.keeper != nil }
+        let house = try await MainActor.run { try XCTUnwrap(ear.keeper?.house) }
+        let world = try await MainActor.run { try XCTUnwrap(ear.world) }
+        let id = try XCTUnwrap(world.holds.first { $0.owner == house && $0.isSeat }?.id)
+        let relief = Relief(map: world.map)
+        XCTAssertEqual(HoldLayout.pieces(hold: try XCTUnwrap(world.hold(id)), relief: relief).map(\.key), [.keep(seat: true)])
+        await MainActor.run { link.send(.build(hold: id, kind: .sawpit)) }
+        try await until("the sawpit to be begun") { ear.world?.hold(id)?.project?.kind == .sawpit }
+        let rising = try await MainActor.run { try XCTUnwrap(ear.world?.hold(id)) }
+        let keys = HoldLayout.pieces(hold: rising, relief: relief, progress: 0.4).map(\.key)
+        XCTAssertTrue(keys.contains(.work(.sawpit, level: 1)), "\(keys)")
+        XCTAssertTrue(keys.contains(.scaffold))
+        XCTAssertTrue(keys.contains(.raising(.sawpit)))
+        for key in keys {
+            let triangles = Library.model(key).mesh.triangleCount
+            XCTAssertTrue((1...key.budget).contains(triangles), "\(key): \(triangles)")
+        }
+        await MainActor.run { link.close() }
     }
 
     func testKeepersMeetThroughTheSteward() async throws {
