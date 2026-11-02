@@ -961,55 +961,210 @@ enum Land {
                 }
             }
         }
-        // Stooks of sheaves at the field's edge.
-        for (index, at) in [Vec3(0.42, 0, 0.5), Vec3(0.25, 0, 0.55), Vec3(-0.38, 0, 0.52)].enumerated() {
-            b.place(.translation(at) * .rotationY(Float(index))) {
-                $0.lathe([(0.05, -0.01), (0.04, 0.08), (0.06, 0.1), (0, 0.15)], sides: 5, color: Palette.straw)
+        // The ears standing thick above the rows, swaying.
+        b.with(material: .foliage, sway: 1) {
+            $0.swayRange = (0.02, 0.14)
+            for index in 0..<40 {
+                let row = index % 8, along = Float(index / 8) / 5
+                let x = -0.5 + along + 0.04 * Noise.unit(Int32(index), 2, 93)
+                let z = Float(row) * 0.11 - 0.385 + 0.03 * (Noise.unit(Int32(index), 3, 93) - 0.5)
+                $0.limb(from: Vec3(x, 0.06, z), to: Vec3(x + 0.006, 0.11, z), radius: 0.003, sides: 3, color: Palette.straw)
+                $0.place(.translation(Vec3(x + 0.006, 0.11, z))) {
+                    $0.lathe([(0.004, 0), (0.007, 0.012), (0.0, 0.028)], sides: 4, color: Palette.grain)
+                }
             }
+        }
+        // Stooks of sheaves on the stubble at the field's edge, in a row.
+        for index in 0..<7 {
+            let at = Vec3(-0.45 + Float(index) * 0.15, 0, 0.52 + 0.02 * Noise.unit(Int32(index), 4, 95))
+            b.place(.translation(at) * .rotationY(Float(index))) {
+                $0.lathe([(0.05, -0.01), (0.04, 0.08), (0.06, 0.1), (0.03, 0.13), (0, 0.15)], sides: 7, color: Palette.straw)
+                $0.lathe([(0.042, 0.075), (0.045, 0.085)], sides: 7, color: Palette.timberPale)
+            }
+        }
+        // A hedge of thorn along its western side, a gate in it, and an
+        // oak spreading over the corner where the reapers rest.
+        for index in 0..<9 {
+            let z = -0.42 + Float(index) * 0.1
+            guard index != 6 else { continue }
+            b.rock(center: Vec3(-0.6, 0.05, z), size: Vec3(0.04, 0.06, 0.055), rings: 3, sides: 6, jitter: 0.35, seed: UInt32(150 + index),
+                   color: index % 2 == 0 ? Palette.leaf : Palette.moss)
+        }
+        for z in [Float(0.15), 0.25] {
+            b.limb(from: Vec3(-0.6, 0, z), to: Vec3(-0.6, 0.08, z), radius: 0.006, color: Palette.timberDark)
+        }
+        for y in [Float(0.025), 0.05, 0.075] {
+            b.beam(from: Vec3(-0.6, y, 0.155), to: Vec3(-0.55, y, 0.24), width: 0.005, color: Palette.timberPale)
+        }
+        b.place(.translation(Vec3(0.55, 0, -0.42)) * .scale(0.75)) { elderTree(&$0) }
+        // A field shelter of poles under thatch where the tools are kept.
+        let shed = Vec3(0.58, 0, 0.18)
+        for x in [Float(-0.05), 0.05] {
+            for z in [Float(-0.05), 0.05] {
+                b.limb(from: shed + Vec3(x, 0, z), to: shed + Vec3(x, 0.1, z), radius: 0.005, color: Palette.timberDark)
+            }
+        }
+        b.place(.translation(shed)) {
+            $0.gableRoof(width: 0.13, depth: 0.13, base: 0.1, height: 0.06, color: Palette.thatch, overhang: 0.008)
         }
     }
 
+    /// A stand of timber at a hex's heart: tall firs in tiers of drooping
+    /// boughs on their spread roots, two birches at its edge and the young
+    /// firs coming up between, ferns and heather under them; the
+    /// woodcutters' work along its front: stumps, a felled trunk, the log
+    /// pile, an axe in a stump, their shelter of poles and bark, a sledge
+    /// for hauling and a charcoal clamp smoking under its turf.
     static func timberStand(_ b: inout MeshBuilder) {
-        for (index, at) in [Vec3(-0.3, 0, -0.25), Vec3(0.05, 0, -0.38), Vec3(0.35, 0, -0.2), Vec3(-0.45, 0, 0.1), Vec3(0.42, 0, 0.18)]
+        let standing: [(Vec3, Float)] = [(Vec3(-0.3, 0, -0.25), 1.25), (Vec3(0.05, 0, -0.4), 1.4), (Vec3(0.35, 0, -0.22), 1.2),
+                                         (Vec3(-0.46, 0, 0.08), 1.1), (Vec3(0.44, 0, 0.16), 1.15),
+                                         (Vec3(0.3, 0, -0.48), 0.95)]
+        for (index, tree) in standing.enumerated() {
+            tallFir(&b, at: tree.0, scale: tree.1, seed: UInt32(500 + index))
+        }
+        for (index, at) in [Vec3(-0.08, 0, -0.26), Vec3(0.2, 0, -0.3), Vec3(-0.36, 0, -0.06)].enumerated() {
+            fir(&b, at: at, scale: 0.45 + 0.1 * Float(index))
+        }
+        for at in [Vec3(0.5, 0, -0.06), Vec3(-0.52, 0, 0.3)] {
+            b.place(.translation(at) * .scale(0.9)) { birch(&$0) }
+        }
+        for (index, at) in [Vec3(-0.2, 0, -0.12), Vec3(0.12, 0, -0.16), Vec3(0.4, 0, 0.0), Vec3(-0.4, 0, -0.38), Vec3(0.2, 0, -0.5)]
             .enumerated() {
-            fir(&b, at: at, scale: 1.1 + 0.15 * Float(index % 3))
+            b.place(.translation(at)) { index % 2 == 0 ? fern(&$0, seed: UInt32(520 + index)) : heather(&$0, seed: UInt32(520 + index)) }
         }
         // Stumps, a felled trunk, a pile of logs and an axe left in a stump.
         for at in [Vec3(-0.08, 0, -0.08), Vec3(0.18, 0, 0.0), Vec3(-0.22, 0, 0.22)] {
             b.place(.translation(at)) {
-                $0.lathe([(0.04, -0.04), (0.035, 0.04)], sides: 5, color: Palette.bark, colors: [Palette.bark, Palette.timberPale])
+                $0.lathe([(0.05, -0.04), (0.042, 0.0), (0.036, 0.04)], sides: 7, color: Palette.bark, colors: [Palette.bark, Palette.bark, Palette.timberPale])
+            }
+            for root in 0..<3 {
+                let angle = Float(root) * 2.1 + at.x * 9
+                b.limb(from: at + Vec3(0, 0.01, 0), to: at + MeshBuilder.ring(0.075, -0.01, angle), radius: 0.012, topRadius: 0.004,
+                       sides: 4, color: Palette.bark)
             }
         }
         b.log(from: Vec3(-0.05, 0.03, 0.12), to: Vec3(0.38, 0.03, 0.42), radius: 0.03)
-        for index in 0..<5 {
-            let layer = Float(index / 3), slot = Float(index % 3)
+        for index in 0..<8 {
+            let layer = Float(index < 4 ? 0 : (index < 7 ? 1 : 2)), slot = Float(index < 4 ? index : (index < 7 ? index - 4 : 0))
             let y = 0.025 + layer * 0.042
-            let z = 0.3 + slot * 0.05 + layer * 0.025
+            let z = 0.28 + slot * 0.05 + layer * 0.025
             b.log(from: Vec3(-0.45, y, z), to: Vec3(-0.15, y, z), radius: 0.024)
+        }
+        for z in [Float(0.26), 0.45] {
+            b.limb(from: Vec3(-0.47, 0, z), to: Vec3(-0.47, 0.1, z), radius: 0.008, color: Palette.timberDark)
         }
         b.beam(from: Vec3(0.18, 0.04, 0.0), to: Vec3(0.24, 0.13, 0.05), width: 0.012, color: Palette.timberPale)
         b.with(material: .metal) {
             $0.box(center: Vec3(0.185, 0.045, 0.004), size: Vec3(0.012, 0.03, 0.05), turn: 0.6, color: Palette.iron)
         }
+        // The woodcutters' shelter: poles leant to a ridge, roofed in bark.
+        let hut = Vec3(0.3, 0, 0.12)
+        for x in [Float(-0.06), 0.06] {
+            for z in [Float(-0.05), 0.05] {
+                b.limb(from: hut + Vec3(x, 0, z), to: hut + Vec3(x * 0.9, 0.12, 0), radius: 0.005, color: Palette.timberDark)
+            }
+        }
+        b.place(.translation(hut)) {
+            $0.gableRoof(width: 0.15, depth: 0.11, base: 0.0, height: 0.12, color: Palette.bark, overhang: 0.006)
+        }
+        // A sledge for hauling, a log chained on it.
+        b.place(.translation(Vec3(0.1, 0, 0.32)) * .rotationY(0.5)) {
+            for z in [Float(-0.03), 0.03] {
+                $0.box(min: Vec3(-0.08, 0, z - 0.005), max: Vec3(0.08, 0.012, z + 0.005), color: Palette.timberDark)
+            }
+            $0.box(min: Vec3(-0.06, 0.012, -0.035), max: Vec3(0.06, 0.02, 0.035), color: Palette.timber)
+            $0.log(from: Vec3(-0.07, 0.04, 0), to: Vec3(0.07, 0.04, 0), radius: 0.02)
+        }
+        // A charcoal clamp under its turf, smoke seeping from its crown.
+        b.place(.translation(Vec3(-0.36, 0, -0.34))) {
+            $0.lathe([(0.1, 0), (0.09, 0.04), (0.05, 0.08), (0.0, 0.095)], sides: 9, color: Palette.loam)
+            $0.lathe([(0.012, 0.09), (0.0, 0.1)], sides: 5, color: Palette.barkBlack)
+        }
     }
 
+    /// A tall fir of the stand: a trunk flaring at its roots, five tiers of
+    /// boughs drooping at their tips, each tier twisted from the last.
+    static func tallFir(_ b: inout MeshBuilder, at: Vec3, scale: Float, seed: UInt32) {
+        let lean = (Noise.unit(Int32(seed), 3, 41) - 0.5) * 0.06
+        b.place(.translation(at) * .scale(scale) * .rotationZ(lean)) {
+            $0.lathe([(0.05, -0.04), (0.034, 0.02), (0.026, 0.3), (0.012, 0.56)], sides: 6, color: Palette.bark)
+            for root in 0..<4 {
+                let angle = Float(root) * .pi / 2 + Float(seed % 7) * 0.3
+                $0.limb(from: Vec3(0, 0.02, 0), to: MeshBuilder.ring(0.07, -0.01, angle), radius: 0.014, topRadius: 0.004, sides: 3,
+                        color: Palette.bark)
+            }
+            $0.with(material: .foliage, sway: 1) {
+                $0.swayRange = (0.1, 0.62)
+                for tier in 0..<4 {
+                    let base = 0.1 + Float(tier) * 0.11
+                    let radius = 0.18 - Float(tier) * 0.035
+                    $0.lathe([(radius * 0.85, base - 0.02), (radius, base), (radius * 0.55, base + 0.07), (0, base + 0.15)], sides: 6,
+                             color: tier % 2 == 0 ? Palette.firDark : Palette.fir, twist: Float(tier) * 0.4)
+                }
+            }
+        }
+    }
+
+    /// A stone outcrop at a hex's heart: a ridge of grey rock in three
+    /// masses, its strata lying in bands, the quarrymen's faces cut back in
+    /// steps into the greatest; blocks squared and stacked on the floor
+    /// before it, a sledge to drag them, a sheerlegs over the cut, the
+    /// quarrymen's lean-to, scree and boulders tumbled about its flanks
+    /// with heather rooted between.
     static func outcrop(_ b: inout MeshBuilder) {
-        b.rock(center: Vec3(0, 0.1, -0.2), size: Vec3(0.42, 0.26, 0.24), rings: 4, sides: 8, jitter: 0.2, seed: 101, color: Palette.rock)
-        b.rock(center: Vec3(0.35, 0.05, 0.05), size: Vec3(0.16, 0.12, 0.14), rings: 3, sides: 6, jitter: 0.25, seed: 102,
+        b.rock(center: Vec3(0, 0.12, -0.24), size: Vec3(0.44, 0.3, 0.24), rings: 8, sides: 16, jitter: 0.18, seed: 101, color: Palette.rock)
+        b.rock(center: Vec3(-0.38, 0.08, -0.12), size: Vec3(0.18, 0.18, 0.2), rings: 6, sides: 12, jitter: 0.22, seed: 103,
                color: Palette.stoneDark)
+        b.rock(center: Vec3(0.36, 0.06, -0.02), size: Vec3(0.17, 0.13, 0.16), rings: 6, sides: 12, jitter: 0.25, seed: 102,
+               color: Palette.stoneDark)
+        // Strata in bands along the ridge's face.
+        for band in 0..<4 {
+            let y = 0.08 + Float(band) * 0.055
+            b.box(center: Vec3(-0.02, y, -0.24 + 0.2 - Float(band) * 0.025), size: Vec3(0.56 - Float(band) * 0.1, 0.012, 0.03),
+                  color: band % 2 == 0 ? Palette.stone : Palette.slate)
+        }
         // Faces cut back in steps.
         for step in 0..<3 {
             let y = Float(step) * 0.07
             b.box(min: Vec3(-0.28 + Float(step) * 0.04, -0.04, -0.08 - Float(step) * 0.05),
                   max: Vec3(0.2 - Float(step) * 0.04, y + 0.06, -0.02 - Float(step) * 0.05), color: Palette.stonePale)
         }
-        b.blocks(at: Vec3(-0.15, 0, 0.2), count: 6, seed: 17)
-        b.blocks(at: Vec3(0.15, 0, 0.28), count: 4, seed: 18)
+        b.blocks(at: Vec3(-0.15, 0, 0.2), count: 8, seed: 17)
+        b.blocks(at: Vec3(0.15, 0, 0.28), count: 6, seed: 18)
+        b.blocks(at: Vec3(-0.34, 0, 0.3), count: 4, seed: 19)
         b.place(.translation(Vec3(0.38, 0, 0.32)) * .rotationY(0.6)) {
             for x in [Float(-0.035), 0.035] {
                 $0.box(min: Vec3(x - 0.008, 0, -0.07), max: Vec3(x + 0.008, 0.016, 0.07), color: Palette.timberDark)
             }
             $0.box(min: Vec3(-0.05, 0.016, -0.06), max: Vec3(0.05, 0.026, 0.06), color: Palette.timber)
+            $0.box(center: Vec3(0, 0.05, 0), size: Vec3(0.06, 0.045, 0.05), color: Palette.stonePale)
+        }
+        // Sheerlegs over the cut, a block slung from them.
+        let head = Vec3(-0.04, 0.34, -0.02)
+        for (x, z) in [(Float(-0.14), Float(0.06)), (0.06, 0.06), (-0.04, -0.12)] {
+            b.limb(from: Vec3(x, 0, z), to: head, radius: 0.007, color: Palette.timberGrey)
+        }
+        b.limb(from: head, to: head + Vec3(0, -0.18, 0), radius: 0.002, color: Palette.linen)
+        b.box(center: head + Vec3(0, -0.2, 0), size: Vec3(0.05, 0.035, 0.035), color: Palette.stonePale)
+        // The quarrymen's lean-to against the eastern mass.
+        let lean = Vec3(0.3, 0, 0.14)
+        for x in [Float(-0.06), 0.06] {
+            b.limb(from: lean + Vec3(x, 0, 0.05), to: lean + Vec3(x, 0.1, 0.05), radius: 0.005, color: Palette.timberDark)
+        }
+        b.quad(lean + Vec3(-0.08, 0.1, 0.07), lean + Vec3(0.08, 0.1, 0.07), lean + Vec3(0.08, 0.14, -0.06), lean + Vec3(-0.08, 0.14, -0.06),
+               color: Palette.slate)
+        b.quad(lean + Vec3(-0.08, 0.135, -0.06), lean + Vec3(0.08, 0.135, -0.06), lean + Vec3(0.08, 0.095, 0.07),
+               lean + Vec3(-0.08, 0.095, 0.07), color: Palette.timberDark)
+        // Scree and boulders tumbled about its flanks, heather between.
+        for index in 0..<26 {
+            let angle = Float.pi * (0.85 + 1.3 * Float(index) / 25)
+            let at = Vec3(0, 0, -0.18) + MeshBuilder.ring(0.4 + 0.06 * Noise.unit(Int32(index), 5, 107), 0, angle)
+            let size = 0.02 + 0.03 * Noise.unit(Int32(index), 9, 107)
+            b.rock(center: at + Vec3(0, size * 0.4, 0), size: Vec3(size, size * 0.7, size), rings: 3, sides: 7, jitter: 0.3,
+                   seed: UInt32(110 + index), color: index % 3 == 0 ? Palette.stonePale : Palette.rock)
+        }
+        for (index, at) in [Vec3(-0.46, 0, 0.08), Vec3(0.48, 0, 0.14), Vec3(-0.2, 0, -0.5), Vec3(0.24, 0, -0.46)].enumerated() {
+            b.place(.translation(at)) { heather(&$0, seed: UInt32(130 + index)) }
         }
     }
 
@@ -1025,6 +1180,45 @@ enum Land {
         b.saltHeap(at: Vec3(-0.08, 0, 0.34), radius: 0.06, height: 0.07)
         b.beam(from: Vec3(0.42, 0.0, 0.36), to: Vec3(0.3, 0.2, 0.3), width: 0.012, color: Palette.timberPale)
         b.box(center: Vec3(0.3, 0.2, 0.3), size: Vec3(0.08, 0.012, 0.02), turn: 0.4, color: Palette.timberPale)
+        // Walkways of planks between the pans, the rakers' hut of driftwood
+        // and its barrow, rakes leant against it, and sluice boards holding
+        // back the brine at the shore's edge.
+        for z in [Float(-0.03), 0.27] {
+            for index in 0..<6 {
+                b.box(center: Vec3(-0.4 + Float(index) * 0.15, 0.01, z), size: Vec3(0.13, 0.008, 0.035), turn: 0.03 * Float(index % 2),
+                      color: index % 2 == 0 ? Palette.timberPale : Palette.timberGrey)
+            }
+        }
+        let hut = Vec3(-0.4, 0, -0.3)
+        b.box(min: hut + Vec3(-0.07, 0, -0.05), max: hut + Vec3(0.07, 0.08, 0.05), color: Palette.timberGrey)
+        b.place(.translation(hut)) {
+            $0.gableRoof(width: 0.16, depth: 0.12, base: 0.08, height: 0.05, color: Palette.reed, overhang: 0.01)
+        }
+        b.box(center: hut + Vec3(0.02, 0.035, 0.051), size: Vec3(0.03, 0.06, 0.003), color: Palette.timberDark)
+        for (index, x) in [Float(-0.05), -0.035].enumerated() {
+            b.limb(from: hut + Vec3(x, 0, 0.07), to: hut + Vec3(x + 0.01, 0.13, 0.052), radius: 0.003, color: Palette.timberPale)
+            b.box(center: hut + Vec3(x, 0.006, 0.075), size: Vec3(0.04, 0.008, 0.006), turn: Float(index) * 0.2, color: Palette.timberDark)
+        }
+        b.place(.translation(Vec3(-0.22, 0, 0.36)) * .rotationY(0.8)) {
+            $0.box(min: Vec3(-0.03, 0.02, -0.022), max: Vec3(0.035, 0.05, 0.022), color: Palette.timberGrey)
+            $0.wheel(center: Vec3(0.045, 0.018, 0), radius: 0.018, width: 0.006, spokes: 3, color: Palette.timber, rim: Palette.timberDark)
+            for z in [Float(-0.018), 0.018] {
+                $0.beam(from: Vec3(0.04, 0.03, z), to: Vec3(-0.08, 0.04, z), width: 0.004, color: Palette.timberDark)
+            }
+            $0.saltHeap(at: Vec3(0, 0.05, 0), radius: 0.025, height: 0.02)
+        }
+        for index in 0..<5 {
+            let x = -0.45 + Float(index) * 0.22
+            b.limb(from: Vec3(x, -0.02, -0.43), to: Vec3(x, 0.05, -0.43), radius: 0.008, color: Palette.timberDark)
+            if index < 4 {
+                b.box(center: Vec3(x + 0.11, 0.025, -0.43), size: Vec3(0.21, 0.04, 0.008), color: Palette.timberGrey)
+            }
+        }
+        crystals(&b, at: Vec3(0.44, 0, -0.34), count: 6, height: 0.1, seed: 25)
+        crystals(&b, at: Vec3(-0.1, 0, -0.33), count: 4, height: 0.08, seed: 26)
+        for index in 0..<5 {
+            Land.reeds(&b, at: Vec3(-0.5 + Float(index) * 0.25, 0, -0.5), count: 5, height: 0.1, seed: UInt32(160 + index))
+        }
     }
 }
 
