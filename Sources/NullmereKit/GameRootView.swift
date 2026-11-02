@@ -107,6 +107,17 @@ struct PlayView: View {
         motion == .full ? .move(edge: .trailing).combined(with: .opacity) : .opacity
     }
 
+    /// Whether the counsel and charge cards stand in the left column:
+    /// with nothing chosen, the seat, or while the first steps are taught.
+    static func standingCardsShown(_ session: GameSession) -> Bool {
+        if session.firstSteps != nil { return true }
+        switch session.selection {
+        case .none: return true
+        case .hold(let id): return id == session.state.seat(of: session.player)?.id
+        case .unit, .tile: return false
+        }
+    }
+
     var body: some View {
         ZStack {
             WorldView(session: session)
@@ -148,9 +159,11 @@ struct PlayView: View {
                         Spacer(minLength: 0)
                         // The briefing says it first; then the first steps,
                         // and counsel once they're done.
-                        // With something chosen, its panel alone: the
-                        // standing cards give way so the world shows.
-                        if session.seatBriefing == nil, session.selection == .none || session.firstSteps != nil {
+                        // With a company, ground or another hold chosen, its
+                        // panel alone: the standing cards give way so the
+                        // world shows. The seat, chosen as play begins, keeps
+                        // them, for they speak of it.
+                        if session.seatBriefing == nil, GameRootView.standingCardsShown(session) {
                             if let steps = session.firstSteps {
                                 FirstStepsCard(steps: steps) { session.dismissFirstSteps() }
                                     .transition(.opacity)

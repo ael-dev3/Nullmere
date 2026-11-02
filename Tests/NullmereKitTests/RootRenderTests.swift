@@ -134,6 +134,22 @@ final class RootRenderTests: XCTestCase {
         moonlit.dismissSeatBriefing()
         XCTAssertNotNil(MoonBand.line(watch: moonlit.state.watch, open: moonlit.state.ford != nil))
         try draw(PlayView(app: app, session: moonlit))
+        // The Drowned Crown on the ford: its band under the moon's.
+        _ = full.contestCrown()
+        let crowned = GameSession(state: full, store: LocalStore(directory: dir.appendingPathComponent("crowned")))
+        crowned.dismissSeatBriefing()
+        XCTAssertNotNil(MoonBand.crownLine(in: crowned.state, for: crowned.player))
+        try draw(PlayView(app: app, session: crowned))
+        // The standing cards give way to a company chosen, and keep to the seat.
+        crowned.dismissFirstSteps()
+        crowned.focusOnSeat()
+        XCTAssertTrue(GameRootView.standingCardsShown(crowned))
+        if let company = crowned.state.units(of: crowned.player).first {
+            crowned.selection = .unit(company.id)
+            XCTAssertFalse(GameRootView.standingCardsShown(crowned))
+        }
+        crowned.selection = .none
+        XCTAssertTrue(GameRootView.standingCardsShown(crowned))
 
         state.omen = nil
         state.outcome = Outcome(winner: (state.player + 1) % state.houses.count, kind: .ascendancy, watch: state.watch)
