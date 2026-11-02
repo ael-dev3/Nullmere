@@ -9,12 +9,12 @@ final class RaisingTests: XCTestCase {
         let relief = Relief(map: GameState(settings: GameSettings(seedText: "raising", keepers: 1)).map)
         let seat = Hex(0, 0)
         for kind in Raising.families {
-            let rising = HoldLayout.Plan(hex: seat, isSeat: true, levels: [.building(kind): 1],
-                                         rising: HoldLayout.Plan.Rising(work: .building(kind), level: 2, progress: 0.4))
+            let rising = HoldLayout.Plan(hex: seat, isSeat: true, levels: [HoldLayout.Work(kind): 1],
+                                         rising: HoldLayout.Plan.Rising(work: HoldLayout.Work(kind), level: 2, progress: 0.4))
             let keys = HoldLayout.pieces(rising, relief: relief).map(\.key)
             XCTAssertTrue(keys.contains(.raising(kind)), "\(kind) rises with its rig")
             XCTAssertTrue(keys.contains(.scaffold))
-            let whole = HoldLayout.Plan(hex: seat, isSeat: true, levels: [.building(kind): 2])
+            let whole = HoldLayout.Plan(hex: seat, isSeat: true, levels: [HoldLayout.Work(kind): 2])
             XCTAssertFalse(HoldLayout.pieces(whole, relief: relief).map(\.key).contains(.raising(kind)), "\(kind) whole, its rig gone")
 
             let model = Library.model(.raising(kind))

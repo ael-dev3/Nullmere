@@ -14,7 +14,7 @@ import NullmereCore
 ///   up the pole and let down.
 enum Raising {
     /// The families that have a rig of their own while they rise.
-    static let families: [BuildingKind] = [.sawpit, .lodge, .beacon, .musterHall]
+    static let families: [BuildingKind] = [.sawpit, .lodge, .beacon, .musterHall, .archive]
 
     static func model(_ kind: BuildingKind, name: String) -> Model {
         var b = MeshBuilder()
@@ -23,6 +23,11 @@ enum Raising {
         switch kind {
         case .lodge:
             machinery = crane(&b, &rig)
+        case .archive:
+            machinery = crane(&b, &rig)
+            // The scholars' archive rises in dressed stone: a ladder up the
+            // scaffold beside the crane for the masons who set it.
+            b.ladder(from: Vec3(-0.1, 0, 0.04), to: Vec3(-0.09, 0.26, 0.0), width: 0.03, rungs: 8, color: Palette.timberPale)
         case .beacon:
             machinery = ginPole(&b, &rig)
         case .musterHall:

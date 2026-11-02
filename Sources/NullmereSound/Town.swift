@@ -86,6 +86,15 @@ struct Town {
     private var turn: Float = 0
     /// How many knocks the pestle has given, for tests.
     private(set) var knocks = 0
+    /// How much of the town heard is an archive, 0 to 1: pages turned and
+    /// quills scratching, quiet under all the rest.
+    var reading: Float = 0
+    private var leaf = Bandpass()
+    private var leafSet = false
+    private var turnLeft: Float = 0
+    private var nextLeaf: Float = 0.8
+    /// How many pages have turned, for tests.
+    private(set) var pages = 0
 
     init(sampleRate: Float) {
         self.sampleRate = sampleRate
@@ -127,7 +136,7 @@ struct Town {
         }
         click *= 1 - min(dt * 400, 1)
         let work = blow.0.next() + blow.1.next() + noise.next() * click * 0.3
-        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12 + quarry(dt: dt) * 0.1 + rake(dt: dt) * 0.1 + drill(dt: dt) * 0.12 + grind(dt: dt) * 0.1
+        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12 + quarry(dt: dt) * 0.1 + rake(dt: dt) * 0.1 + drill(dt: dt) * 0.12 + grind(dt: dt) * 0.1 + read(dt: dt) * 0.08
     }
 
     /// The pit-saw's rasp: strokes a little over one a second, the down
@@ -265,5 +274,26 @@ struct Town {
         }
         let rub = turn > 0.2 && turn < 0.8 ? Float(sin(Double((turn - 0.2) / 0.6) * .pi)) : 0
         return (knock.next() + grain.process(noise.next()) * rub * 0.6) * grinding
+    }
+
+    /// The archive: now and then a page turned, a soft rush of paper a
+    /// fifth of a second long, and between them the scratch of a quill.
+    @inline(__always)
+    mutating func read(dt: Float) -> Float {
+        guard reading > 0.001 else { return 0 }
+        if !leafSet {
+            leaf = Bandpass(centre: 3_200, width: 1.8, sampleRate: sampleRate)
+            leafSet = true
+        }
+        nextLeaf -= dt
+        if nextLeaf <= 0 {
+            turnLeft = 0.2
+            nextLeaf = 1.6 + 0.8 * (1 + noise.next())
+            pages += 1
+        }
+        let rush: Float = turnLeft > 0 ? Float(sin(Double(turnLeft / 0.2) * .pi)) : 0
+        turnLeft = max(turnLeft - dt, 0)
+        let scratch: Float = noise.next() > 0.7 ? 0.15 : 0
+        return leaf.process(noise.next()) * (rush + scratch) * reading
     }
 }

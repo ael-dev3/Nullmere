@@ -178,6 +178,15 @@ final class TownSoundTests: XCTestCase {
         infirmary.hearTowns()
         XCTAssertGreaterThan(pestles.last ?? 0, 0.5)
         Ambience(enabled: false).setGrinding(0.5)
+        var studied = healed
+        studied.holds[built].levels[.archive] = 1
+        let archive = GameSession(state: studied, store: LocalStore(directory: dir.appendingPathComponent("archive")))
+        archive.camera = near
+        var leaves: [Float] = []
+        archive.onReading = { leaves.append($0) }
+        archive.hearTowns()
+        XCTAssertGreaterThan(leaves.last ?? 0, 0.5)
+        Ambience(enabled: false).setReading(0.5)
         sawing.motion = .still
         sawing.hearTowns()
         XCTAssertEqual(shares.last, 0, "Still under the stillest motion")

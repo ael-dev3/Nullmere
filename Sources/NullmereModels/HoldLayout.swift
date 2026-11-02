@@ -164,7 +164,8 @@ public enum HoldLayout {
                 pieces.append(Piece(key: .scaffold, transform: .translation(at) * facing * .scale(Vec3(scaffoldWidth, tall, scaffoldWidth)),
                                     hex: hex))
                 // The family's own rig beside it, its builders at work.
-                if case .building(let kind) = work, Raising.families.contains(kind) {
+                let family: BuildingKind? = { if case .building(let kind) = work { return kind }; return .archive }()
+                if let kind = family, Raising.families.contains(kind) {
                     pieces.append(Piece(key: .raising(kind), transform: .translation(at) * facing * .translation(Vec3(0.17, 0, 0.17)), hex: hex))
                 }
             } else {

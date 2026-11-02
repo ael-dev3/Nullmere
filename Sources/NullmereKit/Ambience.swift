@@ -137,6 +137,11 @@ public final class Ambience {
         synth.setGrinding(share)
     }
 
+    /// How much of the towns heard is an archive, 0 to 1.
+    public func setReading(_ share: Float) {
+        synth.setReading(share)
+    }
+
     /// The score: on or off, and at peace or at war.
     public var isMusicOn = true {
         didSet { applyMusic() }

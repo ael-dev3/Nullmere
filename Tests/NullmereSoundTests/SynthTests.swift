@@ -357,7 +357,18 @@ final class SynthTests: XCTestCase {
         XCTAssertFalse(drumming.contains { $0.isNaN || $0.isInfinite })
         synth.setDrilling(1)
         synth.setGrinding(1)
+        synth.setReading(1)
         _ = rendered(synth, seconds: 0.05)
+
+        // An archive: pages turning and quills, and none where no archive is.
+        var unread = Town(sampleRate: 48_000)
+        XCTAssertEqual((0..<4_800).map { _ in unread.read(dt: 1 / 48_000) }.map(abs).max(), 0)
+        var archive = Town(sampleRate: 48_000)
+        archive.reading = 1
+        let rustle = (0..<(48_000 * 4)).map { _ in archive.read(dt: 1 / 48_000) }
+        XCTAssertGreaterThanOrEqual(archive.pages, 1)
+        XCTAssertGreaterThan(rms(rustle), 0.001)
+        XCTAssertFalse(rustle.contains { $0.isNaN || $0.isInfinite })
 
         // An infirmary: the pestle's knock and turn, and none where no
         // infirmary is.
