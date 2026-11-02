@@ -96,6 +96,7 @@ struct RivalMind {
             events += callRally(in: &state, random: &random)
             events += sendToRallies(in: &state)
             events += keepAlliesGates(in: &state)
+            if RivalMind.massing { events += musterToTheGates(in: &state) }
         }
         events += balanceStores(in: &state)
         // The land's territory, found once: no work or muster begun changes
@@ -935,7 +936,7 @@ struct RivalMind {
         guard state.watch >= RivalMind.alliancesFrom, let sworn = state.alliance(of: house),
               !state.ralliesStanding.contains(where: { $0.caller == house }) else { return [] }
         guard let plan = siegePlan(in: state), let target = state.hold(at: plan.target),
-              sworn.members.contains(where: { $0 != house && state.isAtWar($0, target.owner) }) else {
+              RivalMind.massing || sworn.members.contains(where: { $0 != house && state.isAtWar($0, target.owner) }) else {
             return rallyOnALair(in: &state, random: &random)
         }
         // While the Moon's Peace holds, no host is called on a hold, nor
@@ -995,9 +996,9 @@ struct RivalMind {
             let spare = free.count - state.holds(of: house).count
             let given: Int
             switch state.houses[house].temperament {
-            case .ambitious, .steadfast: given = 3
-            case .cunning: given = 2
-            case .wary: given = 1
+            case .ambitious, .steadfast: given = RivalMind.massing ? 6 : 3
+            case .cunning: given = RivalMind.massing ? 4 : 2
+            case .wary: given = RivalMind.massing ? 3 : 1
             }
             var left = rally.caller == house ? spare : min(spare, given)
             let near = free.filter { state.hold(at: $0.position) == nil && $0.position.distance(to: muster.position) <= RivalMind.rallyReach }
@@ -1065,6 +1066,44 @@ struct RivalMind {
                 (a.position.distance(to: hold.position), a.id) < (b.position.distance(to: hold.position), b.id)
             }) else { continue }
             events += perform(.reinforce(unit: pick.id, hold: hold.id), in: &state)
+        }
+        return events
+    }
+
+    /// Whether the stewards mass their armies: siege rallies called by any
+    /// House of an alliance at war, allies sending as many as their temper
+    /// gives, and a House's free companies brought to its own holds' gates
+    /// when a foe's companies stand near them, so that whole armies meet.
+    nonisolated(unsafe) static var massing = false
+
+    /// A hold of its own with a foe's companies near its gates draws the
+    /// House's free companies from within a rally's reach to keep them,
+    /// as many as its temper gives, nearest first; gates no longer
+    /// threatened are left, as an ally's are.
+    func musterToTheGates(in state: inout GameState) -> [GameEvent] {
+        var events: [GameEvent] = []
+        let foes = state.units.filter { $0.kind.isMilitary && state.isAtWar(house, $0.owner) }
+        guard !foes.isEmpty else { return events }
+        let mine = state.holds(of: house).filter { hold in foes.contains { $0.position.distance(to: hold.position) <= 3 } }
+        let wanted: Int
+        switch state.houses[house].temperament {
+        case .steadfast, .wary: wanted = 6
+        case .ambitious: wanted = 3
+        case .cunning: wanted = 4
+        }
+        for hold in mine.sorted(by: { $0.id < $1.id }) {
+            var keeping = state.units(of: house).filter {
+                if case .reinforce(let kept)? = $0.errand { return kept == hold.id }
+                return false
+            }.count
+            let free = state.units(of: house).filter { $0.kind.isMilitary && $0.errand == nil && state.hold(at: $0.position) == nil }
+            let near = free.filter { $0.position.distance(to: hold.position) <= RivalMind.rallyReach }
+                .sorted { ($0.position.distance(to: hold.position), $0.id) < ($1.position.distance(to: hold.position), $1.id) }
+            for unit in near where keeping < wanted {
+                let sent = perform(.reinforce(unit: unit.id, hold: hold.id), in: &state)
+                if !sent.isEmpty { keeping += 1 }
+                events += sent
+            }
         }
         return events
     }

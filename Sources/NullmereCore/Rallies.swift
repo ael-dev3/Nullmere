@@ -164,7 +164,7 @@ extension GameState {
         let index = try ownedUnit(unitID, of: house)
         guard units[index].kind.isMilitary else { throw .cannotFight }
         guard let hold = hold(holdID) else { throw .unknownHold }
-        guard areAllied(house, hold.owner) else { throw .notAnAllysHold }
+        guard hold.owner == house || areAllied(house, hold.owner) else { throw .notAnAllysHold }
         let unit = units[index]
         if unit.position.distance(to: hold.position) > 1 {
             guard path(for: unit, to: hold.position) != nil else { throw .noPath }
