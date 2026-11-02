@@ -117,6 +117,11 @@ public final class Ambience {
         synth.setThreshing(share)
     }
 
+    /// How much of the towns heard is a quarry at work, 0 to 1.
+    public func setQuarrying(_ share: Float) {
+        synth.setQuarrying(share)
+    }
+
     /// The score: on or off, and at peace or at war.
     public var isMusicOn = true {
         didSet { applyMusic() }

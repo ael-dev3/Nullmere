@@ -142,6 +142,15 @@ final class TownSoundTests: XCTestCase {
         granary.hearTowns()
         XCTAssertGreaterThan(floors.last ?? 0, 0.5)
         Ambience(enabled: false).setThreshing(0.5)
+        var cutStone = grain
+        cutStone.holds[built].levels[.quarry] = 1
+        let quarry = GameSession(state: cutStone, store: LocalStore(directory: dir.appendingPathComponent("quarry")))
+        quarry.camera = near
+        var picks: [Float] = []
+        quarry.onQuarrying = { picks.append($0) }
+        quarry.hearTowns()
+        XCTAssertGreaterThan(picks.last ?? 0, 0.5)
+        Ambience(enabled: false).setQuarrying(0.5)
         sawing.motion = .still
         sawing.hearTowns()
         XCTAssertEqual(shares.last, 0, "Still under the stillest motion")

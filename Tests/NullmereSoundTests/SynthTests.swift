@@ -319,6 +319,18 @@ final class SynthTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(threshed.flails, 5, "Strokes falling in turn")
         XCTAssertGreaterThan(blows.map(abs).max() ?? 0, 0.1)
         XCTAssertFalse(blows.contains { $0.isNaN || $0.isInfinite })
+
+        // A quarry at work: picks on rock, and none where no quarry is.
+        var unhewn = Town(sampleRate: 48_000)
+        XCTAssertEqual((0..<4_800).map { _ in unhewn.quarry(dt: 1 / 48_000) }.map(abs).max(), 0)
+        var hewn = Town(sampleRate: 48_000)
+        hewn.quarrying = 1
+        let hewing = (0..<(48_000 * 3)).map { _ in hewn.quarry(dt: 1 / 48_000) }
+        XCTAssertGreaterThanOrEqual(hewn.picks, 2)
+        XCTAssertGreaterThan(hewing.map(abs).max() ?? 0, 0.1)
+        XCTAssertFalse(hewing.contains { $0.isNaN || $0.isInfinite })
+        synth.setQuarrying(1)
+        _ = rendered(synth, seconds: 0.05)
     }
 
     /// Riders' hooves fall one after another, each landing once the one

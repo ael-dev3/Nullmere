@@ -55,6 +55,14 @@ struct Town {
     private var flailTurn = false
     /// How many flails have fallen, for tests.
     private(set) var flails = 0
+    /// How much of the town heard is a quarry at work, 0 to 1: picks and
+    /// wedges driven into rock, each blow a dull ring with a scatter of grit.
+    var quarrying: Float = 0
+    private var pick = Resonator()
+    private var grit: Float = 0
+    private var nextPick: Float = 0.4
+    /// How many blows the picks have struck, for tests.
+    private(set) var picks = 0
 
     init(sampleRate: Float) {
         self.sampleRate = sampleRate
@@ -96,7 +104,7 @@ struct Town {
         }
         click *= 1 - min(dt * 400, 1)
         let work = blow.0.next() + blow.1.next() + noise.next() * click * 0.3
-        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12
+        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1 + thresh(dt: dt) * 0.12 + quarry(dt: dt) * 0.1
     }
 
     /// The pit-saw's rasp: strokes a little over one a second, the down
@@ -164,5 +172,21 @@ struct Town {
             flails += 1
         }
         return (flail.0.next() + flail.1.next()) * threshing
+    }
+
+    /// The quarry: picks and wedges on rock, a blow every half to one and a
+    /// half seconds, each a low ring and a spray of grit.
+    @inline(__always)
+    mutating func quarry(dt: Float) -> Float {
+        guard quarrying > 0.001 else { return 0 }
+        nextPick -= dt
+        if nextPick <= 0 {
+            pick = Resonator(frequency: 820 + 140 * noise.next(), amplitude: 0.8, decay: 45, sampleRate: sampleRate)
+            grit = 0.5
+            nextPick = 1 + 0.5 * noise.next()
+            picks += 1
+        }
+        grit *= 1 - min(dt * 60, 1)
+        return (pick.next() + noise.next() * grit * 0.4) * quarrying
     }
 }
