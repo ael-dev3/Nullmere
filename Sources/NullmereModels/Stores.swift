@@ -132,7 +132,64 @@ enum Stores {
         case .stone: machinery = quarry(&b, rig: &rig)
         case .moonsalt: machinery = saltWorks(&b, rig: &rig)
         }
+        haulage(&b, store)
         return Works.model(name, b, rig: rig, machinery: machinery)
+    }
+
+    /// What carries a yard's store to the alliance's storehouse, along the
+    /// yard's near edge: a wain with its horse in the shafts, loaded with
+    /// the yard's own goods, its carter's mounting block and a trough, and
+    /// the yard's tally board on its post.
+    static func haulage(_ b: inout MeshBuilder, _ store: Resource) {
+        let wain = Vec3(0.3, 0, 0.5)
+        b.place(.translation(wain) * .rotationY(0.15)) { cart in
+            cart.box(min: Vec3(-0.08, 0.035, -0.04), max: Vec3(0.08, 0.045, 0.04), color: Palette.timberPale)
+            for z in [Float(-0.043), 0.043] {
+                cart.box(min: Vec3(-0.08, 0.045, z - 0.003), max: Vec3(0.08, 0.07, z + 0.003), color: Palette.timber)
+                for x in [Float(-0.055), 0.055] {
+                    cart.wheel(center: Vec3(x, 0.03, z * 1.12), radius: 0.03, width: 0.006, spokes: 6, color: Palette.timber,
+                               rim: Palette.timberDark)
+                }
+                cart.beam(from: Vec3(0.08, 0.045, z * 0.6), to: Vec3(0.2, 0.05, z * 0.5), width: 0.005, color: Palette.timberDark)
+            }
+            switch store {
+            case .grain:
+                for index in 0..<6 {
+                    cart.tiedSack(at: Vec3(-0.05 + Float(index % 3) * 0.05, 0.045 + Float(index / 3) * 0.03, Float(index % 2) * 0.03 - 0.015),
+                                  size: 0.9)
+                }
+            case .timber:
+                for index in 0..<5 {
+                    let layer = Float(index / 3), z = Float(index % 3 - 1) * 0.024
+                    cart.log(from: Vec3(-0.1, 0.06 + layer * 0.022, z + layer * 0.012), to: Vec3(0.1, 0.06 + layer * 0.022, z + layer * 0.012),
+                             radius: 0.012)
+                }
+            case .stone:
+                for index in 0..<4 {
+                    cart.box(center: Vec3(-0.045 + Float(index % 2) * 0.09, 0.065 + Float(index / 2) * 0.035, 0), size: Vec3(0.07, 0.035, 0.06),
+                             turn: 0.05 * Float(index), color: index % 2 == 0 ? Palette.stonePale : Palette.stone)
+                }
+            case .moonsalt:
+                cart.saltHeap(at: Vec3(0, 0.045, 0), radius: 0.06, height: 0.05)
+                cart.with(material: .crystal) {
+                    $0.place(.translation(Vec3(0.03, 0.08, 0.01))) {
+                        $0.lathe([(0.0, 0.0), (0.01, 0.015), (0.0, 0.035)], sides: 5, color: Palette.moonsalt)
+                    }
+                }
+            }
+            Wayhouse.horse(&cart, at: Vec3(0.24, 0, 0), turn: .pi, coat: store == .stone ? Palette.horseBlack : Palette.horseBay)
+        }
+        b.box(center: wain + Vec3(-0.18, 0.02, 0.02), size: Vec3(0.05, 0.04, 0.04), color: Palette.stone)
+        b.box(min: wain + Vec3(0.12, 0, -0.1), max: wain + Vec3(0.2, 0.025, -0.07), color: Palette.timberDark)
+        b.box(min: wain + Vec3(0.125, 0.018, -0.095), max: wain + Vec3(0.195, 0.023, -0.075), color: Palette.slate)
+        let tally = Vec3(-0.45, 0, 0.5)
+        b.limb(from: tally, to: tally + Vec3(0, 0.16, 0), radius: 0.006, color: Palette.timberDark)
+        b.box(center: tally + Vec3(0, 0.13, 0.006), size: Vec3(0.08, 0.05, 0.006), color: Palette.timberPale)
+        b.fine {
+            for index in 0..<5 {
+                $0.box(center: tally + Vec3(-0.03 + Float(index) * 0.014, 0.13, 0.01), size: Vec3(0.003, 0.03, 0.002), color: Palette.barkBlack)
+            }
+        }
     }
 
     /// A pennant on a pole in the alliance's colour, set where a yard's

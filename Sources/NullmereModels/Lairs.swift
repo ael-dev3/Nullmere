@@ -16,6 +16,7 @@ enum Lairs {
         case .spineHunters: eyrie(&b)
         case .drowned: chapel(&b)
         }
+        outskirts(&b, kind)
         b.fine { near in
             switch kind {
             case .saltwights: hollowNear(&near)
@@ -71,8 +72,126 @@ enum Lairs {
         b.with(material: .metal) {
             $0.place(.translation(Vec3(-0.06, 0.34, 0.31))) { $0.cone(sides: 4, radius: 0.012, to: 0.05, color: Palette.iron) }
         }
+        // The towers' courses of rough stone, a wall running out from each
+        // into the peaks, a stair up its inner side, shields hung over the
+        // gate and a hunters' tent of hides behind it.
+        for side in [Float(-1), 1] {
+            let x = side * 0.3
+            for course in 0..<5 {
+                b.place(.translation(Vec3(x, 0.05 + Float(course) * 0.065, 0)) * .rotationY(side * 0.4)) {
+                    $0.tube([(0.133 - Float(course) * 0.004, 0), (0.134 - Float(course) * 0.004, 0.008)], sides: 7, color: Palette.stoneDark)
+                }
+            }
+            for index in 0..<4 {
+                let along = x + side * (0.14 + Float(index) * 0.07)
+                b.box(center: Vec3(along, 0.09 - Float(index) * 0.012, -0.02), size: Vec3(0.075, 0.18 - Float(index) * 0.025, 0.07),
+                      turn: side * 0.1, color: index % 2 == 0 ? Palette.stone : Palette.rock)
+            }
+            for step in 0..<5 {
+                b.box(center: Vec3(x - side * 0.13, 0.03 + Float(step) * 0.055, -0.12 + Float(step) * 0.02), size: Vec3(0.05, 0.02, 0.04),
+                      color: Palette.stonePale)
+            }
+            for (index, z) in [Float(0.05), -0.05].enumerated() {
+                b.place(.translation(Vec3(x - side * 0.1, 0.28, z)) * .rotationZ(side * .pi / 2)) {
+                    $0.lathe([(0.03, -0.003), (0.03, 0.003)], sides: 8, color: index == 0 ? Palette.madder : Palette.leather)
+                }
+            }
+        }
+        let tent = Vec3(0.0, 0, -0.26)
+        b.place(.translation(tent)) {
+            $0.cone(sides: 7, radius: 0.1, to: 0.18, color: Palette.leather)
+            for index in 0..<4 {
+                $0.limb(from: Vec3(0, 0.15, 0), to: MeshBuilder.ring(0.025, 0.24, Float(index) * 1.6), radius: 0.003, color: Palette.timberDark)
+            }
+        }
+        for index in 0..<10 {
+            let at = Vec3(-0.45 + Float(index) * 0.1, 0, 0.18 + 0.12 * Noise.unit(Int32(index), 1, 61))
+            b.rock(center: at + Vec3(0, 0.015, 0), size: Vec3(0.03, 0.025, 0.03), rings: 3, sides: 6, jitter: 0.3, seed: UInt32(60 + index),
+                   color: Palette.rock)
+        }
         b.fine { gateholdNear(&$0) }
         return Model(name: name, mesh: b.mesh)
+    }
+
+    /// About each lair, the ground its wilds have made their own, in their
+    /// own manner: the saltwights' crystals grown in a ring and their pale
+    /// cairns; the reavers' tents, a beached boat and the loot heaped by
+    /// it; the barrowkin's cairns and crooked headstones; the spine
+    /// hunters' racks of drying hides and their bone totems; the drowned's
+    /// broken columns hung with weed and the water lying in pools.
+    static func outskirts(_ b: inout MeshBuilder, _ kind: WildKind) {
+        let ring = (0..<8).map { MeshBuilder.ring(0.46, 0, Float($0) * .pi / 4 + 0.2) }
+        switch kind {
+        case .saltwights:
+            for (index, at) in ring.enumerated() {
+                Land.crystals(&b, at: at, count: 3 + index % 3, height: 0.08 + 0.02 * Float(index % 3), seed: UInt32(700 + index))
+            }
+            for index in 0..<3 {
+                cairn(&b, at: ring[index * 3 % 8] * 0.8, color: Palette.saltCrust, seed: UInt32(710 + index))
+            }
+        case .reavers:
+            for at in [ring[1], ring[3]] {
+                b.place(.translation(at)) {
+                    $0.cone(sides: 7, radius: 0.08, to: 0.13, color: Palette.canvas.mix(Palette.leather, 0.4))
+                    $0.limb(from: Vec3(0, 0.1, 0), to: Vec3(0, 0.17, 0), radius: 0.003, color: Palette.timberDark)
+                }
+            }
+            b.place(.translation(ring[6]) * .rotationY(0.6)) {
+                $0.lathe([(0.0, -0.12), (0.035, -0.08), (0.045, 0.0), (0.035, 0.08), (0.0, 0.12)], sides: 6, color: Palette.timber)
+                $0.limb(from: Vec3(0, 0, 0), to: Vec3(0, 0.14, 0), radius: 0.004, color: Palette.timberDark)
+            }
+            for index in 0..<4 {
+                b.place(.translation(ring[7] + Vec3(Float(index) * 0.03, 0, 0.02 * Float(index % 2)))) {
+                    $0.lathe([(0.018, 0), (0.022, 0.025), (0.018, 0.045)], sides: 6, color: index % 2 == 0 ? Palette.timber : Palette.bronze)
+                }
+            }
+        case .barrowkin:
+            for index in 0..<4 {
+                cairn(&b, at: ring[index * 2], color: Palette.stone, seed: UInt32(720 + index))
+                cairn(&b, at: ring[index * 2] * 0.82 + Vec3(0.04, 0, 0), color: Palette.stoneDark, seed: UInt32(725 + index))
+            }
+            for index in 0..<8 {
+                headstone(&b, at: ring[index] * (index % 2 == 0 ? 0.68 : 1), turn: Float(index), lean: 0.15 * Float(index % 3 - 1))
+            }
+        case .spineHunters:
+            for at in [ring[1], ring[2], ring[5], ring[6]] {
+                for x in [Float(-0.05), 0.05] {
+                    b.limb(from: at + Vec3(x, 0, 0), to: at + Vec3(x, 0.14, 0), radius: 0.005, color: Palette.timberDark)
+                }
+                b.beam(from: at + Vec3(-0.06, 0.13, 0), to: at + Vec3(0.06, 0.13, 0), width: 0.006, color: Palette.timberDark)
+                b.box(center: at + Vec3(0, 0.08, 0.004), size: Vec3(0.09, 0.08, 0.004), color: Palette.fur)
+            }
+            for at in [ring[0], ring[3], ring[4], ring[7]] {
+                b.limb(from: at, to: at + Vec3(0, 0.2, 0), radius: 0.006, color: Palette.bone)
+                skull(&b, at: at + Vec3(0, 0.21, 0), facing: 0, size: 0.03)
+                horns(&b, at: at + Vec3(0, 0.16, 0), side: Vec3(1, 0, 0), size: 0.04, color: Palette.bone)
+                cairn(&b, at: at + Vec3(0.05, 0, 0.03), color: Palette.bone, seed: UInt32(740 + Int(at.x * 100)))
+            }
+        case .drowned:
+            for (index, at) in ring.enumerated() {
+                b.place(.translation(at * (index % 2 == 0 ? 1 : 0.75))) {
+                    $0.lathe([(0.03, 0), (0.026, 0.06 + 0.04 * Float(index % 3)), (0.024, 0.07 + 0.04 * Float(index % 3))], sides: 8,
+                             color: Palette.stonePale.mix(Palette.moss, 0.3))
+                }
+                b.limb(from: at * (index % 2 == 0 ? 1 : 0.75) + Vec3(0.026, 0.06, 0), to: at * (index % 2 == 0 ? 1 : 0.75) + Vec3(0.03, 0.0, 0.01),
+                       radius: 0.004, sides: 3, color: Palette.moss)
+            }
+            for (index, at) in ring.enumerated() where index % 2 == 1 {
+                b.place(.translation(at)) {
+                    $0.lathe([(0.07, 0.002), (0.0, 0.004)], sides: 9, color: Palette.slate)
+                }
+                Land.reeds(&b, at: at + Vec3(0.06, 0, 0), count: 4, height: 0.08, seed: UInt32(730 + index))
+            }
+        }
+    }
+
+    /// A cairn of piled stones.
+    static func cairn(_ b: inout MeshBuilder, at: Vec3, color: Vec3, seed: UInt32) {
+        for index in 0..<5 {
+            let size = 0.035 - Float(index) * 0.005
+            b.rock(center: at + Vec3(0.008 * Float(index % 2), 0.02 + Float(index) * 0.03, 0), size: Vec3(size, size * 0.7, size), rings: 2,
+                   sides: 6, jitter: 0.25, seed: seed &+ UInt32(index * 13), color: color)
+        }
     }
 
     /// Where smoke rises from a gatehold's fire, in its own frame.

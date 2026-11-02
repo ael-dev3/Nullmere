@@ -14,4 +14,15 @@ final class SiteTests: XCTestCase {
             XCTAssertGreaterThan(triangles, 1_900, "\(resource)")
         }
     }
+
+    /// The yards, the lairs and the gatehold, once the plainest pieces of
+    /// the land, now each near fifteen hundred triangles or more.
+    func testTheYardsLairsAndGateholdAreNoLongerPlain() {
+        let keys: [ModelKey] = Resource.allCases.map { .yard($0) } + WildKind.allCases.map { .lair($0) } + [.gatehold]
+        for key in keys {
+            let triangles = Library.model(key).mesh.triangleCount
+            XCTAssertLessThanOrEqual(triangles, key.budget, "\(key)")
+            XCTAssertGreaterThan(triangles, 1_400, "\(key)")
+        }
+    }
 }
