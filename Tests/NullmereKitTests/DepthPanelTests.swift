@@ -2422,4 +2422,45 @@ private final class DepthLink: RealmLink {
     func send(_ command: Command) { sent.append(command) }
     func setReady(_ ready: Bool) {}
     func leave() {}
+
+    // MARK: Ferries of the Still
+
+    /// Two shore holds of the keeper's apart across the lake, a company at
+    /// the first.
+    private func ferryWorld() throws -> (GameState, from: Int, to: Int, company: Int) {
+        var state = world("pressed ferries")
+        let me = state.player
+        state.houses[me].stock = Stock(grain: 500, timber: 100, stone: 100, moonsalt: 10)
+        let shores = state.map.hexes.filter { hex in
+            state.map[hex]?.terrain.isSettleable == true && state.hold(at: hex) == nil && state.unit(at: hex) == nil
+                && state.map.neighbors(of: hex).contains { [.still, .shallows].contains(state.map[$0]?.terrain) }
+        }
+        let first = try XCTUnwrap(shores.first)
+        let second = try XCTUnwrap(shores.max { $0.distance(to: first) < $1.distance(to: first) })
+        let from = Hold(id: state.takeID(), name: "Saltwatch", owner: me, position: first, isSeat: false, foundedWatch: 1)
+        let to = Hold(id: state.takeID(), name: "Farmere", owner: me, position: second, isSeat: false, foundedWatch: 1)
+        state.holds += [from, to]
+        let company = Unit(id: state.takeID(), kind: .spear, owner: me, position: first, tier: 1)
+        state.units.append(company)
+        return (state, from.id, to.id, company.id)
+    }
+
+    func testTheFerryLineSendsACompanyAcrossTheLake() throws {
+        let (state, _, to, company) = try ferryWorld()
+        let (session, link) = session(state)
+        session.selection = .unit(company)
+        draw(SelectionPanel(session: session))
+        XCTAssertTrue(PressableButtons.press("To Farmere"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .ferry(unit: company, to: to))
+    }
+
+    func testTheFerryLineSaysWhereTheBargeIsBound() throws {
+        var (state, _, to, company) = try ferryWorld()
+        _ = try state.perform(.ferry(unit: company, to: to), as: state.player)
+        let (session, _) = session(state)
+        let unit = try XCTUnwrap(session.state.unit(company))
+        XCTAssertNotNil(session.state.crossing(of: company), "The keeper sees their own barge")
+        draw(FerryLine(session: session, unit: unit, landings: []), height: 120)
+        XCTAssertFalse(shown.contains("To Farmere"), "On the water, no landing to choose")
+    }
 }
