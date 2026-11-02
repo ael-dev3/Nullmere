@@ -218,6 +218,11 @@ extension MeshBuilder {
 /// `HoldLayout.workRadius` of its foot.
 enum Works {
     static func build(_ kind: BuildingKind, level: Int, name: String) -> Model {
+        Estate.dress(trade(kind, level: level, name: name), kind, level: level)
+    }
+
+    /// The work itself, before its estate.
+    static func trade(_ kind: BuildingKind, level: Int, name: String) -> Model {
         switch kind {
         case .granary: return granary(level, name)
         case .sawpit: return sawpit(level, name)
