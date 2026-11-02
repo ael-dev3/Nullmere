@@ -163,7 +163,7 @@ struct PlayView: View {
                         // panel alone: the standing cards give way so the
                         // world shows. The seat, chosen as play begins, keeps
                         // them, for they speak of it.
-                        if session.seatBriefing == nil, GameRootView.standingCardsShown(session) {
+                        if session.seatBriefing == nil, PlayView.standingCardsShown(session) {
                             if let steps = session.firstSteps {
                                 FirstStepsCard(steps: steps) { session.dismissFirstSteps() }
                                     .transition(.opacity)

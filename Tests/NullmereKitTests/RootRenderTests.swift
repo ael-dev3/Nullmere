@@ -143,13 +143,13 @@ final class RootRenderTests: XCTestCase {
         // The standing cards give way to a company chosen, and keep to the seat.
         crowned.dismissFirstSteps()
         crowned.focusOnSeat()
-        XCTAssertTrue(GameRootView.standingCardsShown(crowned))
+        XCTAssertTrue(PlayView.standingCardsShown(crowned))
         if let company = crowned.state.units(of: crowned.player).first {
             crowned.selection = .unit(company.id)
-            XCTAssertFalse(GameRootView.standingCardsShown(crowned))
+            XCTAssertFalse(PlayView.standingCardsShown(crowned))
         }
         crowned.selection = .none
-        XCTAssertTrue(GameRootView.standingCardsShown(crowned))
+        XCTAssertTrue(PlayView.standingCardsShown(crowned))
 
         state.omen = nil
         state.outcome = Outcome(winner: (state.player + 1) % state.houses.count, kind: .ascendancy, watch: state.watch)
