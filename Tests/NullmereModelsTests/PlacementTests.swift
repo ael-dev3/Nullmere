@@ -153,6 +153,14 @@ final class PlacementTests: XCTestCase {
             let at = SIMD2(piece.position.x, piece.position.z)
             let model = Library.model(piece.key)
             XCTAssertTrue((0...1).contains(piece.progress), file: file, line: line)
+            if case .raising = piece.key {
+                // A rig stands within its work's slot, on the side away from
+                // the keep, and names its work's hex.
+                XCTAssertTrue(works.contains { ($0.0 - at).length < HoldLayout.workRadius && $0.1.hex == piece.hex },
+                              "\(piece.key) stands by its work", file: file, line: line)
+                XCTAssertGreaterThan((at - heart).length, Holds.wallRadius + 0.12, "\(piece.key) stands outside the walls", file: file, line: line)
+                continue
+            }
             XCTAssertEqual(piece.hex, layout.hex(atX: Double(at.x), y: Double(at.y)), "\(piece.key) names its hex", file: file, line: line)
             XCTAssertGreaterThan(piece.position.y, ground(piece.position) - 0.4, "\(piece.key) is not buried", file: file, line: line)
             switch piece.key {

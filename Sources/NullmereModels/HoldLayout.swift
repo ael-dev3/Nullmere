@@ -163,10 +163,11 @@ public enum HoldLayout {
                 let tall = max(height * min(progress + 0.12, 1), 0.2)
                 pieces.append(Piece(key: .scaffold, transform: .translation(at) * facing * .scale(Vec3(scaffoldWidth, tall, scaffoldWidth)),
                                     hex: hex))
-                // The family's own rig beside it, its builders at work.
+                // The family's own rig beside it on the side away from the
+                // keep, clear of the walls, its builders at work.
                 let family: BuildingKind? = { if case .building(let kind) = work { return kind }; return .archive }()
                 if let kind = family, Raising.families.contains(kind) {
-                    pieces.append(Piece(key: .raising(kind), transform: .translation(at) * facing * .translation(Vec3(0.17, 0, 0.17)), hex: hex))
+                    pieces.append(Piece(key: .raising(kind), transform: .translation(at) * facing * .translation(Vec3(0.17, 0, -0.14)), hex: hex))
                 }
             } else {
                 pieces.append(Piece(key: key, transform: .translation(at) * facing, hex: hex))

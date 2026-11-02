@@ -24,8 +24,11 @@ final class RaisingTests: XCTestCase {
         }
         XCTAssertEqual(ModelKey.raising(.lodge).description, "raising lodge")
         // A family with no rig of its own rises in the scaffold alone.
-        let granary = HoldLayout.Plan(hex: seat, isSeat: true, levels: [.building(.granary): 1],
-                                      rising: HoldLayout.Plan.Rising(work: .building(.granary), level: 2, progress: 0.4))
-        XCTAssertFalse(HoldLayout.pieces(granary, relief: relief).map(\.key).contains(.raising(.granary)))
+        let forge = HoldLayout.Plan(hex: seat, isSeat: true, levels: [.building(.forge): 1],
+                                    rising: HoldLayout.Plan.Rising(work: .building(.forge), level: 2, progress: 0.4))
+        XCTAssertFalse(HoldLayout.pieces(forge, relief: relief).map(\.key).contains(.raising(.forge)))
+        // Every rig is its family's own.
+        let meshes = Raising.families.map { Library.model(.raising($0)).mesh.triangleCount }
+        XCTAssertEqual(Set(meshes).count, meshes.count, "\(meshes)")
     }
 }
