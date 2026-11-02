@@ -295,6 +295,18 @@ final class SynthTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(cut.taps, 4, "Several taps in two seconds")
         XCTAssertGreaterThan(taps.map(abs).max() ?? 0, 0.05)
         XCTAssertFalse(taps.contains { $0.isNaN || $0.isInfinite })
+
+        // A beacon's fire: its roar heard, now and then a crack.
+        var unlit = Town(sampleRate: 48_000)
+        XCTAssertEqual((0..<4_800).map { _ in unlit.burn(dt: 1 / 48_000) }.map(abs).max(), 0)
+        var lit = Town(sampleRate: 48_000)
+        lit.burning = 1
+        let fire = (0..<(48_000 * 3)).map { _ in lit.burn(dt: 1 / 48_000) }
+        XCTAssertGreaterThan(rms(fire), 0.005, "The roar heard")
+        XCTAssertGreaterThanOrEqual(lit.cracks, 1, "A log splits in it")
+        XCTAssertFalse(fire.contains { $0.isNaN || $0.isInfinite })
+        synth.setBurning(1)
+        _ = rendered(synth, seconds: 0.05)
     }
 
     /// Riders' hooves fall one after another, each landing once the one

@@ -124,6 +124,15 @@ final class TownSoundTests: XCTestCase {
         lodge.hearTowns()
         XCTAssertGreaterThan(taps.last ?? 0, 0.5)
         Ambience(enabled: false).setChiselling(0.5)
+        var fired = cut
+        fired.holds[built].levels[.beacon] = 1
+        let beacon = GameSession(state: fired, store: LocalStore(directory: dir.appendingPathComponent("beacon")))
+        beacon.camera = near
+        var fires: [Float] = []
+        beacon.onBurning = { fires.append($0) }
+        beacon.hearTowns()
+        XCTAssertGreaterThan(fires.last ?? 0, 0.5)
+        Ambience(enabled: false).setBurning(0.5)
         sawing.motion = .still
         sawing.hearTowns()
         XCTAssertEqual(shares.last, 0, "Still under the stillest motion")

@@ -107,6 +107,11 @@ public final class Ambience {
         synth.setChiselling(share)
     }
 
+    /// How much of the towns heard is a beacon's fire, 0 to 1.
+    public func setBurning(_ share: Float) {
+        synth.setBurning(share)
+    }
+
     /// The score: on or off, and at peace or at war.
     public var isMusicOn = true {
         didSet { applyMusic() }

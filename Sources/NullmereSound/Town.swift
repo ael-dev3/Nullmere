@@ -39,6 +39,14 @@ struct Town {
     private var nextTap: Float = 0.2
     /// How many taps have fallen, for tests.
     private(set) var taps = 0
+    /// How much of the town heard is a beacon's fire, 0 to 1: its roar,
+    /// low, and the crackle of wood splitting in it.
+    var burning: Float = 0
+    private var roar = Bandpass()
+    private var roarSet = false
+    private var crack: Float = 0
+    /// How many cracks have sounded, for tests.
+    private(set) var cracks = 0
 
     init(sampleRate: Float) {
         self.sampleRate = sampleRate
@@ -80,7 +88,7 @@ struct Town {
         }
         click *= 1 - min(dt * 400, 1)
         let work = blow.0.next() + blow.1.next() + noise.next() * click * 0.3
-        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1
+        return voices * 0.5 + work * 0.12 + saw(dt: dt) * 0.1 + chisel(dt: dt) * 0.1 + burn(dt: dt) * 0.1
     }
 
     /// The pit-saw's rasp: strokes a little over one a second, the down
@@ -113,5 +121,23 @@ struct Town {
             taps += 1
         }
         return tap.next() * chiselling
+    }
+
+    /// The beacon's fire: a low roar of wind through flame, and now and
+    /// then a crack as a log splits in it.
+    @inline(__always)
+    mutating func burn(dt: Float) -> Float {
+        guard burning > 0.001 else { return 0 }
+        if !roarSet {
+            roar = Bandpass(centre: 260, width: 1.4, sampleRate: sampleRate)
+            roarSet = true
+        }
+        let draw = noise.next()
+        if draw > 0.9994 {
+            crack = 0.6 + 0.4 * draw
+            cracks += 1
+        }
+        crack *= 1 - min(dt * 250, 1)
+        return (roar.process(noise.next()) * 0.8 + noise.next() * crack) * burning
     }
 }
