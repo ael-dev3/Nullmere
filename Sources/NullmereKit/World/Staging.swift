@@ -222,7 +222,7 @@ extension GameSession {
         frame.fixedVersion = stage.furnitureVersion
         frame.fixedRegions = stage.furnitureRegions
         let crown = state.crown.map { crown in
-            stage.drownedCrown(at: crown.bearer.flatMap(state.unit)?.position ?? crown.hex, borne: crown.bearer != nil, time: time)
+            stage.drownedCrown(at: crown.bearer.flatMap(state.unit)?.position ?? crown.hex, borne: crown.bearer != nil, time: t)
         } ?? []
         frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + camps.batches + banners + help + crests + fieldBanners + borders + barges + crown + companies + flights
         if full {
