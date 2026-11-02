@@ -16,7 +16,7 @@ import NullmereCore
 /// Each part is laid only while the whole keeps under its budget.
 enum Estate {
     /// Families modelled whole at each level, with no shared estate.
-    static let bespoke: Set<BuildingKind> = [.walls, .lodge, .beacon, .granary, .quarry, .saltworks, .musterHall, .infirmary, .archive, .moonspire, .forge, .wayhouse]
+    static let bespoke: Set<BuildingKind> = [.walls, .lodge, .beacon, .granary, .quarry, .saltworks, .musterHall, .infirmary, .archive, .moonspire, .forge, .wayhouse, .sawpit]
 
     /// The most triangles a work may come to with its estate.
     static let ceiling = 2950
@@ -88,8 +88,6 @@ enum Estate {
     /// a family's own where it has them, the shared ones otherwise.
     static func parts(_ stage: Int, _ kind: BuildingKind) -> [Part] {
         switch (kind, stage) {
-        case (.sawpit, 2): return [dryingShed]
-        case (.sawpit, 4): return [hoist, banners]
         default: return parts(stage)
         }
     }
@@ -248,47 +246,6 @@ enum Estate {
             b.box(min: Vec3(-0.03, 0.19, 0.258), max: Vec3(0.03, 0.215, 0.282), color: style.mark)
             for x in [Float(-0.075), 0.075] {
                 b.sphere(center: Vec3(x, 0.175, 0.27), radius: 0.012, rings: 2, sides: 6, color: style.trim)
-            }
-        }
-    }
-
-    // MARK: The sawpit's own
-
-    /// An open shed where sawn boards dry: four posts under a slate roof
-    /// and the boards stacked on stickers beneath, air between each course.
-    static func dryingShed(_ b: inout MeshBuilder, _ style: Style) {
-        let at = Vec3(-0.22, 0, 0.0)
-        for (dx, dz) in [(-0.05, -0.08), (0.05, -0.08), (-0.05, 0.08), (0.05, 0.08)] as [(Float, Float)] {
-            b.limb(from: at + Vec3(dx, -0.02, dz), to: at + Vec3(dx, 0.14, dz), radius: 0.007, color: style.trim)
-        }
-        b.place(.translation(at)) {
-            $0.gableRoof(width: 0.13, depth: 0.19, base: 0.14, height: 0.05, color: style.roof, overhang: 0.012)
-        }
-        for course in 0..<5 {
-            let y = 0.012 + Float(course) * 0.022
-            for z in [Float(-0.05), 0.0, 0.05] {
-                b.box(center: at + Vec3(0, y - 0.006, z), size: Vec3(0.09, 0.004, 0.008), color: Palette.timberDark)
-            }
-            b.box(center: at + Vec3(0, y + 0.004, 0), size: Vec3(0.085, 0.01, 0.15), color: course % 2 == 0 ? Palette.timberPale : Palette.timber)
-        }
-    }
-
-    /// A timber hoist: a mast with its jib, a block and tackle, a log slung
-    /// from it, and the windlass that winds it.
-    static func hoist(_ b: inout MeshBuilder, _ style: Style) {
-        let foot = Vec3(0.22, 0.0, 0.05)
-        b.box(center: foot + Vec3(0, 0.01, 0), size: Vec3(0.06, 0.02, 0.06), color: Palette.stone)
-        b.limb(from: foot, to: foot + Vec3(0, 0.3, 0), radius: 0.011, color: style.trim)
-        b.beam(from: foot + Vec3(0, 0.28, 0), to: foot + Vec3(-0.16, 0.26, 0), width: 0.014, color: style.wall)
-        b.beam(from: foot + Vec3(0, 0.16, 0), to: foot + Vec3(-0.1, 0.265, 0), width: 0.008, color: style.trim)
-        let block = foot + Vec3(-0.15, 0.255, 0)
-        b.limb(from: block, to: block + Vec3(0, -0.12, 0), radius: 0.002, color: Palette.linen)
-        b.log(from: block + Vec3(-0.07, -0.13, 0), to: block + Vec3(0.07, -0.13, 0), radius: 0.018)
-        b.fine { b in
-            b.box(center: block + Vec3(0, -0.01, 0), size: Vec3(0.016, 0.022, 0.012), color: Palette.iron)
-            b.wheel(center: foot + Vec3(0, 0.06, 0.035), radius: 0.025, width: 0.01, spokes: 4, color: Palette.timber)
-            for side in [Float(-1), 1] {
-                b.beam(from: foot + Vec3(0, 0, side * 0.06), to: foot + Vec3(0, 0.12, 0), width: 0.007, color: style.trim)
             }
         }
     }
