@@ -343,6 +343,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case talentMastered
     /// A talent opened only by another, learned first.
     case needsTalent(Talent)
+    /// A talent opened only by points spent in its tree.
+    case needsTreePoints(TalentTree, Int)
     /// Talents forgotten by a commander that has learned none.
     case nothingToForget
     /// Gear the House doesn't hold.
@@ -591,6 +593,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .noTalentPoints: return "That commander has no talent point left; it gains one at each level."
         case .talentMastered: return "That talent is learned to its last rank."
         case .needsTalent(let talent): return "Needs \(talent.title) first."
+        case .needsTreePoints(let tree, let points): return "Needs \(points) points spent in \(tree.title) first."
         case .nothingToForget: return "That commander has learned no talents."
         case .unknownGear: return "Your House holds no such gear."
         case .alreadyWorn: return "That commander wears it already."

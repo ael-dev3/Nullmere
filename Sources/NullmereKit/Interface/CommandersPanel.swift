@@ -374,7 +374,17 @@ struct TalentsView: View {
                             .foregroundStyle(Palette.text(0.7))
                             .accessibilityAddTraits(.isHeader)
                         ForEach(tree.lines) { line in
+                            // Each branch named where it grows from the
+                            // root, its talents set in beneath it.
+                            if let branch = line.talent.branch, line.talent.place == 1 || line.talent.place == 3 {
+                                Text(verbatim: branch == 0 ? tree.tree.branches.0 : tree.tree.branches.1)
+                                    .font(.nm(9.5).italic())
+                                    .foregroundStyle(Palette.text(0.5))
+                                    .padding(.leading, 10)
+                                    .accessibilityAddTraits(.isHeader)
+                            }
                             TalentRow(session: session, commander: commander, line: line)
+                                .padding(.leading, line.talent.branch == nil ? 0 : 10)
                         }
                     }
                 }

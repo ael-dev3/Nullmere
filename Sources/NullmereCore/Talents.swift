@@ -15,25 +15,38 @@ public enum TalentTree: String, CaseIterable, Codable, Sendable, PlainCases {
         }
     }
 
-    /// Its five talents, each opened by the one before it.
+    /// Its talents: a root, two branches of two from it, then a deep
+    /// talent from either branch, one opened only by ten points spent in
+    /// the tree, and its crown, by sixteen.
     public var talents: [Talent] { Talent.allCases.filter { $0.tree == self } }
+
+    /// Its two branches, as its screen names them.
+    public var branches: (String, String) {
+        switch self {
+        case .steel: return ("the hunt", "the ram")
+        case .ward: return ("the mending", "the walls")
+        case .road: return ("the field", "the train")
+        }
+    }
 }
 
 /// A commander's talent: learned a rank at a time, a point a rank, each
-/// rank giving its edge again to the company it leads.
+/// rank giving its edge again to the company it leads. The trees hold
+/// sixty ranks between them, and a commander at its highest level has
+/// twenty-nine points: it grows into one tree, or a little of two.
 public enum Talent: String, CaseIterable, Codable, Sendable, PlainCases {
     // Steel
-    case keenEdge, huntersMark, rammingDrill, bloodedSteel, battleRage
+    case keenEdge, huntersMark, quarryCall, rammingDrill, sapperCraft, bloodedSteel, battleRage, moonsteel
     // Ward
-    case thickHide, fieldSurgeon, gatewarden, ironRanks, unbroken
+    case thickHide, fieldSurgeon, poultice, gatewarden, bastion, ironRanks, unbroken, stillWater
     // Road
-    case keenEyes, gleanersHand, deepSaddlebags, longStride, pathfinder
+    case keenEyes, gleanersHand, furrowSense, deepSaddlebags, packTrain, longStride, pathfinder, lakeWalker
 
     public var tree: TalentTree {
         switch self {
-        case .keenEdge, .huntersMark, .rammingDrill, .bloodedSteel, .battleRage: return .steel
-        case .thickHide, .fieldSurgeon, .gatewarden, .ironRanks, .unbroken: return .ward
-        case .keenEyes, .gleanersHand, .deepSaddlebags, .longStride, .pathfinder: return .road
+        case .keenEdge, .huntersMark, .quarryCall, .rammingDrill, .sapperCraft, .bloodedSteel, .battleRage, .moonsteel: return .steel
+        case .thickHide, .fieldSurgeon, .poultice, .gatewarden, .bastion, .ironRanks, .unbroken, .stillWater: return .ward
+        case .keenEyes, .gleanersHand, .furrowSense, .deepSaddlebags, .packTrain, .longStride, .pathfinder, .lakeWalker: return .road
         }
     }
 
@@ -41,32 +54,72 @@ public enum Talent: String, CaseIterable, Codable, Sendable, PlainCases {
         switch self {
         case .keenEdge: return "Keen Edge"
         case .huntersMark: return "Hunter's Mark"
+        case .quarryCall: return "Quarry Call"
         case .rammingDrill: return "Ramming Drill"
+        case .sapperCraft: return "Sapper Craft"
         case .bloodedSteel: return "Blooded Steel"
         case .battleRage: return "Battle Rage"
+        case .moonsteel: return "Moonsteel"
         case .thickHide: return "Thick Hide"
         case .fieldSurgeon: return "Field Surgeon"
+        case .poultice: return "Poultice"
         case .gatewarden: return "Gatewarden"
+        case .bastion: return "Bastion"
         case .ironRanks: return "Iron Ranks"
         case .unbroken: return "Unbroken"
+        case .stillWater: return "Still Water"
         case .keenEyes: return "Keen Eyes"
         case .gleanersHand: return "Gleaner's Hand"
+        case .furrowSense: return "Furrow Sense"
         case .deepSaddlebags: return "Deep Saddlebags"
+        case .packTrain: return "Pack Train"
         case .longStride: return "Long Stride"
         case .pathfinder: return "Pathfinder"
+        case .lakeWalker: return "Lake Walker"
         }
     }
 
     /// Its place in its tree, from the first.
     public var place: Int { tree.talents.firstIndex(of: self) ?? 0 }
 
-    /// The talent before it in its tree, which must be learned first.
-    public var opener: Talent? { place == 0 ? nil : tree.talents[place - 1] }
+    /// The talents that open it: any one of them learned will do.
+    public var openers: [Talent] {
+        let t = tree.talents
+        switch place {
+        case 0: return []
+        case 1, 3: return [t[0]]
+        case 2, 4: return [t[place - 1]]
+        case 5: return [t[1], t[3]]
+        default: return [t[place - 1]]
+        }
+    }
+
+    /// The first talent that opens it, for older callers.
+    public var opener: Talent? { openers.first }
+
+    /// The branch it lies on, 0 or 1; nil for the root and what lies past the branches.
+    public var branch: Int? {
+        switch place {
+        case 1, 2: return 0
+        case 3, 4: return 1
+        default: return nil
+        }
+    }
+
+    /// Points to be spent in its tree before it opens.
+    public var treePointsNeeded: Int {
+        switch place {
+        case 5: return 6
+        case 6: return 10
+        case 7: return 16
+        default: return 0
+        }
+    }
 
     /// Ranks it can be learned to.
     public var ranks: Int {
         switch self {
-        case .battleRage, .unbroken, .keenEyes, .longStride: return 1
+        case .battleRage, .unbroken, .keenEyes, .longStride, .moonsteel, .stillWater, .lakeWalker: return 1
         case .pathfinder: return 2
         default: return 3
         }
@@ -77,19 +130,28 @@ public enum Talent: String, CaseIterable, Codable, Sendable, PlainCases {
         switch self {
         case .keenEdge: return [.attack: 2]
         case .huntersMark: return [.hunting: 5]
+        case .quarryCall: return [.hunting: 4, .attack: 1]
         case .rammingDrill: return [.wardDamage: 5]
+        case .sapperCraft: return [.wardDamage: 4, .attack: 1]
         case .bloodedSteel: return [.attack: 3]
         case .battleRage: return [:]
+        case .moonsteel: return [.attack: 8, .wardDamage: 5]
         case .thickHide: return [.defense: 2]
         case .fieldSurgeon: return [.healing: 2]
+        case .poultice: return [.healing: 2, .defense: 1]
         case .gatewarden: return [.garrison: 5]
+        case .bastion: return [.garrison: 4, .defense: 1]
         case .ironRanks: return [.defense: 3]
         case .unbroken: return [.defense: 6, .attack: 3]
+        case .stillWater: return [.defense: 8, .healing: 4]
         case .keenEyes: return [.sight: 1]
         case .gleanersHand: return [.gathering: 5]
+        case .furrowSense: return [.gathering: 4, .load: 1]
         case .deepSaddlebags: return [.load: 5]
+        case .packTrain: return [.load: 4, .gathering: 1]
         case .longStride: return [.moves: 1]
         case .pathfinder: return [.gathering: 5, .load: 5]
+        case .lakeWalker: return [.moves: 1, .sight: 1, .gathering: 6]
         }
     }
 
@@ -98,19 +160,28 @@ public enum Talent: String, CaseIterable, Codable, Sendable, PlainCases {
         switch self {
         case .keenEdge: return "+2% attack a rank"
         case .huntersMark: return "+5% attack against the wilds a rank"
+        case .quarryCall: return "+4% against the wilds and +1% attack a rank"
         case .rammingDrill: return "+5% to blows on a ward a rank"
+        case .sapperCraft: return "+4% to blows on a ward and +1% attack a rank"
         case .bloodedSteel: return "+3% attack a rank"
         case .battleRage: return "Its skill fires a battle sooner"
+        case .moonsteel: return "+8% attack and +5% to blows on a ward"
         case .thickHide: return "+2% defence a rank"
         case .fieldSurgeon: return "Heals 2 more each watch at rest a rank"
+        case .poultice: return "Heals 2 more at rest and +1% defence a rank"
         case .gatewarden: return "+5% defence within its House's own walls a rank"
+        case .bastion: return "+4% within its own walls and +1% defence a rank"
         case .ironRanks: return "+3% defence a rank"
         case .unbroken: return "+6% defence and +3% attack"
+        case .stillWater: return "+8% defence, and heals 4 more at rest"
         case .keenEyes: return "Sees a tile further"
         case .gleanersHand: return "+5% gathered each watch a rank"
+        case .furrowSense: return "+4% gathered and +1% carried a rank"
         case .deepSaddlebags: return "+5% carried home a rank"
+        case .packTrain: return "+4% carried and +1% gathered a rank"
         case .longStride: return "A move further each watch"
         case .pathfinder: return "+5% gathered and carried a rank"
+        case .lakeWalker: return "A move and a tile of sight further, +6% gathered"
         }
     }
 
@@ -148,12 +219,18 @@ extension Commander {
         return (tree, learned.count)
     }
 
+    /// Points it has spent in a tree.
+    public func spent(in tree: TalentTree) -> Int {
+        (talents ?? []).filter { $0.tree == tree }.count
+    }
+
     public var pointsLeft: Int { max(0, talentPoints - (talents?.count ?? 0)) }
 
     /// Why it can't learn the next rank of a talent, if it can't.
     public func learnRefusal(of talent: Talent) -> RuleError? {
         if rank(of: talent) >= talent.ranks { return .talentMastered }
-        if let opener = talent.opener, rank(of: opener) == 0 { return .needsTalent(opener) }
+        if !talent.openers.isEmpty, talent.openers.allSatisfy({ rank(of: $0) == 0 }) { return .needsTalent(talent.openers[0]) }
+        if spent(in: talent.tree) < talent.treePointsNeeded { return .needsTreePoints(talent.tree, talent.treePointsNeeded) }
         if pointsLeft == 0 { return .noTalentPoints }
         return nil
     }

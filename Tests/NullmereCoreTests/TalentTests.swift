@@ -3,8 +3,8 @@ import XCTest
 @testable import NullmereCore
 
 /// A commander's talents: a point at each level past the first, spent a
-/// rank at a time in three trees of five, each talent opened by the one
-/// before it, each rank giving its edge again to the company it leads;
+/// rank at a time in three trees of eight, a root branching in two to a
+/// deep crown, each rank giving its edge again to the company it leads;
 /// forgotten all at once, for moonsalt, to learn anew.
 final class TalentTests: XCTestCase {
     /// A keeper's House, its commander raised to a level and of an
@@ -38,28 +38,71 @@ final class TalentTests: XCTestCase {
         XCTAssertEqual(commander.leadingTree?.ranks, 4)
     }
 
-    func testThreeTreesOfFiveEachOpenedByTheOneBefore() {
+    func testThreeTreesOfEightEachARootTwoBranchesAndADeepCrown() {
         XCTAssertEqual(TalentTree.allCases.map(\.title), ["Steel", "Ward", "Road"])
-        XCTAssertEqual(Talent.allCases.count, 15)
+        XCTAssertEqual(Talent.allCases.count, 24)
         for tree in TalentTree.allCases {
-            XCTAssertEqual(tree.talents.count, 5)
-            XCTAssertNil(tree.talents[0].opener)
-            for (place, talent) in tree.talents.enumerated() {
+            let t = tree.talents
+            XCTAssertEqual(t.count, 8)
+            XCTAssertEqual(t[0].openers, [], "The root opens itself")
+            XCTAssertEqual(t[1].openers, [t[0]], "Each branch grows from the root")
+            XCTAssertEqual(t[3].openers, [t[0]])
+            XCTAssertEqual(t[2].openers, [t[1]])
+            XCTAssertEqual(t[4].openers, [t[3]])
+            XCTAssertEqual(t[5].openers, [t[1], t[3]], "The deep talent from either branch")
+            XCTAssertEqual(t[6].openers, [t[5]])
+            XCTAssertEqual(t[7].openers, [t[6]])
+            XCTAssertEqual(t.map(\.branch), [nil, 0, 0, 1, 1, nil, nil, nil])
+            XCTAssertEqual(t.map(\.treePointsNeeded), [0, 0, 0, 0, 0, 6, 10, 16])
+            XCTAssertEqual(t[7].ranks, 1, "Its crown a single rank")
+            for (place, talent) in t.enumerated() {
                 XCTAssertEqual(talent.tree, tree)
                 XCTAssertEqual(talent.place, place)
-                if place > 0 { XCTAssertEqual(talent.opener, tree.talents[place - 1]) }
                 XCTAssertTrue((1...3).contains(talent.ranks))
                 XCTAssertFalse(talent.title.isEmpty)
                 XCTAssertFalse(talent.effect.isEmpty)
             }
+            // A crown can be reached with a commander's points: its tree
+            // holds enough ranks before it.
+            XCTAssertGreaterThanOrEqual(t.prefix(7).reduce(0) { $0 + $1.ranks }, t[7].treePointsNeeded)
+            XCTAssertFalse(tree.branches.0.isEmpty || tree.branches.1.isEmpty)
         }
-        XCTAssertEqual(Set(Talent.allCases.map(\.title)).count, 15, "Each its own name")
+        XCTAssertEqual(Set(Talent.allCases.map(\.title)).count, 24, "Each its own name")
         XCTAssertTrue(Talent.allCases.filter { $0 != .battleRage }.allSatisfy { !$0.edges.isEmpty }, "Every rank gives an edge, Battle Rage its fury")
         let ranks = Talent.allCases.reduce(0) { $0 + $1.ranks }
-        XCTAssertGreaterThan(ranks, Commander.highestLevel - 1, "More to learn than a commander's points: a choice to make")
+        XCTAssertEqual(ranks, 57)
+        let trees = TalentTree.allCases.map { $0.talents.reduce(0) { $0 + $1.ranks } }.sorted(by: >)
+        XCTAssertGreaterThan(Commander.highestLevel - 1, trees[0], "At its highest level a commander fills one tree")
+        XCTAssertLessThan(Commander.highestLevel - 1, trees[0] + trees[1], "but never two: a choice to make")
         for archetype in Archetype.allCases {
             XCTAssertEqual(Set(Talent.path(for: archetype)), Set(TalentTree.allCases))
         }
+    }
+
+    func testADeepTalentWaitsOnPointsSpentInItsTreeAndACrownOnSixteen() throws {
+        var (state, me, commander, _) = try world(level: 4)
+        state.commanders![commander - 1].experience = Commander.experience(forLevel: Commander.highestLevel)
+        for _ in 0..<3 { try state.perform(.learnTalent(commander: commander, talent: .keenEdge), as: me) }
+        try state.perform(.learnTalent(commander: commander, talent: .rammingDrill), as: me)
+        XCTAssertEqual(refusal(.learnTalent(commander: commander, talent: .bloodedSteel), in: state, as: me), .needsTreePoints(.steel, 6),
+                       "Its branch learned, but too little of the tree")
+        XCTAssertEqual(RuleError.needsTreePoints(.steel, 6).description, "Needs 6 points spent in Steel first.")
+        // Points in another tree don't open it.
+        for _ in 0..<3 { try state.perform(.learnTalent(commander: commander, talent: .thickHide), as: me) }
+        XCTAssertEqual(refusal(.learnTalent(commander: commander, talent: .bloodedSteel), in: state, as: me), .needsTreePoints(.steel, 6))
+        for _ in 0..<2 { try state.perform(.learnTalent(commander: commander, talent: .rammingDrill), as: me) }
+        try state.perform(.learnTalent(commander: commander, talent: .bloodedSteel), as: me)
+        XCTAssertEqual(refusal(.learnTalent(commander: commander, talent: .battleRage), in: state, as: me), .needsTreePoints(.steel, 10))
+        for _ in 0..<3 { try state.perform(.learnTalent(commander: commander, talent: .sapperCraft), as: me) }
+        try state.perform(.learnTalent(commander: commander, talent: .battleRage), as: me)
+        XCTAssertEqual(refusal(.learnTalent(commander: commander, talent: .moonsteel), in: state, as: me), .needsTreePoints(.steel, 16))
+        for _ in 0..<2 { try state.perform(.learnTalent(commander: commander, talent: .bloodedSteel), as: me) }
+        for _ in 0..<3 { try state.perform(.learnTalent(commander: commander, talent: .huntersMark), as: me) }
+        XCTAssertEqual(state.commander(commander)?.spent(in: .steel), 16)
+        let before = try XCTUnwrap(state.commander(commander)).edge(.attack)
+        try state.perform(.learnTalent(commander: commander, talent: .moonsteel), as: me)
+        XCTAssertEqual(try XCTUnwrap(state.commander(commander)).edge(.attack), before + 8, "Its crown")
+        XCTAssertEqual(state.problems(), [])
     }
 
     func testAPointAtEachLevelSpentARankAtATime() throws {
@@ -96,10 +139,11 @@ final class TalentTests: XCTestCase {
         let board = try XCTUnwrap(state.commander(commander)).talentTrees
         XCTAssertEqual(board.map(\.tree), TalentTree.allCases)
         XCTAssertEqual(board.map(\.spent), [4, 0, 0])
-        XCTAssertEqual(board[0].lines.map(\.rank), [3, 1, 0, 0, 0])
+        XCTAssertEqual(board[0].lines.map(\.rank), [3, 1, 0, 0, 0, 0, 0, 0])
         XCTAssertTrue(board[0].lines[0].isMastered)
         XCTAssertEqual(board[0].lines[2].refusal, .noTalentPoints, "Open, but no point to spend")
-        XCTAssertEqual(board[0].lines[3].refusal, .needsTalent(.rammingDrill), "Shut until the one before is learned")
+        XCTAssertEqual(board[0].lines[3].refusal, .noTalentPoints, "The other branch, open from the root")
+        XCTAssertEqual(board[0].lines[4].refusal, .needsTalent(.rammingDrill), "Shut until the one before is learned")
         XCTAssertEqual(board[1].lines[0].refusal, .noTalentPoints)
         XCTAssertEqual(state.problems(), [])
     }
@@ -110,9 +154,13 @@ final class TalentTests: XCTestCase {
         let before = (attack: state.bonus(.attack(.spear), for: unit), defense: state.bonus(.defense(.spear), for: unit),
                       moves: state.movement(of: unit), sight: state.bonus(.sight, for: unit))
         XCTAssertEqual(try XCTUnwrap(state.commander(commander)).cadence, Skill.fellCharge.cadence)
-        for talent in [Talent.keenEdge, .keenEdge, .keenEdge, .huntersMark, .rammingDrill, .bloodedSteel, .bloodedSteel, .bloodedSteel,
-                       .battleRage, .thickHide, .thickHide, .thickHide, .fieldSurgeon, .gatewarden, .ironRanks, .ironRanks, .ironRanks,
-                       .unbroken, .keenEyes, .gleanersHand, .deepSaddlebags, .longStride] {
+        // Deep into Steel and Ward, each to its tenth point and past, and
+        // Road to its sixth: every point a commander at its highest has.
+        for talent in [Talent.keenEdge, .keenEdge, .keenEdge, .huntersMark, .rammingDrill, .rammingDrill, .rammingDrill,
+                       .bloodedSteel, .bloodedSteel, .bloodedSteel, .battleRage,
+                       .thickHide, .thickHide, .thickHide, .fieldSurgeon, .gatewarden, .gatewarden, .gatewarden,
+                       .ironRanks, .ironRanks, .ironRanks, .unbroken,
+                       .keenEyes, .gleanersHand, .gleanersHand, .gleanersHand, .deepSaddlebags, .deepSaddlebags, .longStride] {
             try state.perform(.learnTalent(commander: commander, talent: talent), as: me)
         }
         let led = try XCTUnwrap(state.unit(spear))
@@ -124,7 +172,7 @@ final class TalentTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(state.commander(commander)).cadence, Skill.fellCharge.cadence - 1, "Battle Rage: a battle sooner")
         state.commanders![commander - 1].fury = Skill.fellCharge.cadence - 2
         XCTAssertEqual(state.furyReady(of: led), .fellCharge, "Ready a battle sooner")
-        XCTAssertEqual(state.commander(commander)?.pointsLeft, 29 - 22)
+        XCTAssertEqual(state.commander(commander)?.pointsLeft, 0)
     }
 
     func testTalentsForgottenForMoonsaltToLearnAnew() throws {
