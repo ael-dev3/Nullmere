@@ -856,7 +856,7 @@ public final class WorldStage: @unchecked Sendable {
             // Each company a little out of step with the next, and each figure with its neighbour.
             let offset = Float(company.unit % 7) * 0.53
             func stand(_ key: ModelKey, _ place: Vec3, _ index: Int) {
-                let at = company.position + turn.transformDirection(place * company.spread)
+                let at = company.position + turn.transformDirection(place * (company.spread * WorldStage.figureScale))
                 let ground = ground(atX: at.x, z: at.z)
                 let lag = company.clip.loops ? offset + Float(index) * 0.137 * company.clip.period : Float(index) * 0.05
                 var blend = company.blend
@@ -864,7 +864,7 @@ public final class WorldStage: @unchecked Sendable {
                     blend?.time += leaving.clip.loops ? offset + Float(index) * 0.137 * leaving.clip.period : Float(index) * 0.05
                 }
                 let start = WorldStage.pose(key, company.clip, at: company.clipTime + lag, blend: blend, shared: &shared, into: &frame)
-                placed.append((key, ModelInstance(model: .translation(Vec3(at.x, ground, at.z)) * turn, colour: colour,
+                placed.append((key, ModelInstance(model: .translation(Vec3(at.x, ground, at.z)) * turn * .scale(WorldStage.figureScale), colour: colour,
                                                   opacity: company.opacity, phase: Float(company.unit % 17) * 0.31,
                                                   emphasis: company.emphasis, hex: hex, palette: start, flags: flags)))
             }
@@ -879,8 +879,8 @@ public final class WorldStage: @unchecked Sendable {
                 // Its stars past the first, in an arc over its head, turning
                 // slowly as one.
                 if company.stars > 1 {
-                    let over = company.position + turn.transformDirection(head * company.spread)
-                    let lift = ground(atX: over.x, z: over.z) + WorldStage.starHeight
+                    let over = company.position + turn.transformDirection(head * (company.spread * WorldStage.figureScale))
+                    let lift = ground(atX: over.x, z: over.z) + WorldStage.starHeight * WorldStage.figureScale
                     let count = company.stars
                     for index in 0..<count {
                         let angle = (Float(index) - Float(count - 1) / 2) * 0.55 + Float(sin(Double(company.clipTime * 0.7))) * 0.15
@@ -892,7 +892,7 @@ public final class WorldStage: @unchecked Sendable {
                 // On the march, its leading talents' sigil glows on the
                 // ground beneath it, wider the more ranks it holds, breathing.
                 if company.clip == .march, company.talentTree >= 0 {
-                    let at = company.position + turn.transformDirection(head * company.spread)
+                    let at = company.position + turn.transformDirection(head * (company.spread * WorldStage.figureScale))
                     let breath = 1 + 0.06 * Float(sin(Double(company.clipTime * 2.4)))
                     let size = WorldStage.sigilScale(ranks: company.talentRanks) * breath
                     placed.append((.talentSigil(tree: company.talentTree),
@@ -906,6 +906,10 @@ public final class WorldStage: @unchecked Sendable {
 
     /// How high over the ground a commander's stars are carried.
     public static let starHeight: Float = 0.42
+    /// How much larger than life a company's figures stand against the
+    /// hexes, and how much wider they spread, as a map of war draws its
+    /// hosts: big enough to read a company's kind and size at a glance.
+    public static let figureScale: Float = 1.6
 
     /// How wide a commander's talent sigil spreads: from a third of a tile
     /// for a first rank to over half a tile with every rank learned.
