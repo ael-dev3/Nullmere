@@ -40,6 +40,11 @@ struct WordsPanel: View {
                         WordLine(state: state, word: word, player: session.player,
                                  report: reportable ? { session.perform(.reportWord(word: word.id)) } : nil)
                     }
+                    // Letters between the keeper and one other, folded to a line.
+                    if !LettersSection.keepers(in: state, besides: session.player).isEmpty {
+                        Rule(opacity: 0.18)
+                        LettersSection(session: session)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -150,5 +155,64 @@ struct WordLine: View {
     static func speaker(_ word: Word, in state: GameState, player: Int) -> String {
         guard word.from != player else { return "You" }
         return state.houses.indices.contains(word.from) ? state.houses[word.from].title : "A keeper gone"
+    }
+}
+
+/// Letters between the keeper and one other keeper, for the two of them
+/// alone: those kept, the latest last, and a line to write one, folded to
+/// a line of the latest until asked for.
+struct LettersSection: View {
+    let session: GameSession
+    @State private var open = false
+    @State private var to: Int?
+    @State private var draft = ""
+
+    /// The other keepers' Houses a letter may go to.
+    static func keepers(in state: GameState, besides player: Int) -> [Int] {
+        state.houses.indices.filter { $0 != player && state.houses[$0].isPlayer && !state.houses[$0].isEliminated }
+    }
+
+    /// A letter as its line reads: to or from whom, and its words.
+    static func line(_ letter: Missive, in state: GameState, player: Int) -> String {
+        let other = letter.from == player ? letter.to : letter.from
+        return "\(letter.from == player ? "To" : "From") \(state.houses[other].title): \(letter.text)"
+    }
+
+    var body: some View {
+        let state = session.state
+        let letters = state.letters(of: session.player)
+        let keepers = LettersSection.keepers(in: state, besides: session.player)
+        let reader = to ?? keepers.first
+        FoldedList(title: "Letters", count: letters.count,
+                   summary: letters.last.map { LettersSection.line($0, in: state, player: session.player) } ?? "To one keeper alone, read by them and you.",
+                   open: $open) {
+            ForEach(letters) { letter in
+                Text(verbatim: LettersSection.line(letter, in: state, player: session.player))
+                    .font(.nm(10.5))
+                    .foregroundStyle(Palette.text(letter.from == session.player ? 0.7 : 0.9))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+            }
+            if let reader {
+                let refusal = state.letterRefusal(to: reader, draft, as: session.player)
+                Picker("Write to", selection: Binding(get: { reader }, set: { to = $0 })) {
+                    ForEach(keepers, id: \.self) { Text(verbatim: state.houses[$0].title).tag($0) }
+                }
+                .labelsHidden()
+                .accessibilityLabel("Write to")
+                HStack {
+                    TextField("A letter for \(state.houses[reader].title)", text: $draft)
+                        .textFieldStyle(.plain)
+                        .font(.nm(11))
+                        .foregroundStyle(Palette.ink)
+                        .overlay(alignment: .bottom) { Rule(opacity: 0.5) }
+                        .accessibilityLabel("A letter for \(state.houses[reader].title)")
+                    QuietButton(title: "Send", size: 8.5, enabled: refusal == nil, name: "Send the letter to \(state.houses[reader].title)",
+                                why: draft.isEmpty ? "Write something to send." : refusal?.description) {
+                        if session.perform(.writeLetter(to: reader, words: draft)) { draft = "" }
+                    }
+                }
+            }
+        }
     }
 }

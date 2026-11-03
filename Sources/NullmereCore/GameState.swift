@@ -118,6 +118,10 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var listeningStones: [ListeningStone]?
     /// The sculptures each House keeps, by House, to raise its commanders' stars.
     public internal(set) var sculptureCounts: [Int: Int]?
+    /// Letters between keepers, kept a while; in a view, the keeper's own.
+    public internal(set) var mail: [Missive]?
+    /// The pedlars lying off keepers' holds; in a view, the keeper's own.
+    public internal(set) var pedlars: [Pedlar]?
     /// What the stones heard as the watch last turned.
     public internal(set) var soundings: [Sounding]?
     /// Where each company in a stone's reach stood when the stones last

@@ -291,6 +291,8 @@ final class SpacetimeIntegrationTests: XCTestCase {
         try await scene.helpEachOther(ama: houseA, bel: houseB)
         print("REALM two allied keepers studied together, one helped the other's work and sent a gift, each from their own client")
         try await scene.breakALair(ama: houseA, bel: houseB)
+        try await scene.writeAndTrade(ama: houseA, bel: houseB)
+        print("REALM two keepers wrote each other letters only they read, and one bought of her pedlar and kept it through the watch")
         print("REALM two allied keepers rallied on a lair from their own clients, broke it, and both were told of it and their shares")
         await MainActor.run { b.send(.leaveAlliance) }
         try await until("Bel gone from the alliance, as both see it") {

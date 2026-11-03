@@ -15,6 +15,9 @@ extension GameState {
         // The realm's words would grow the whole map again; where its
         // rounds begin is all the keeper's copy needs of them.
         view.dealing = dealt
+        // A keeper's letters, and their pedlar, are their own.
+        view.mail = mail.map { _ in letters(of: house) }.flatMap { $0.isEmpty ? nil : $0 }
+        view.pedlars = pedlar(for: house).map { [$0] }
         // A House's sculptures are its own to count.
         view.sculptureCounts = sculptureCounts?[house].map { [house: $0] }
         // A House's listening stones, and what they hear, are its own.
@@ -326,6 +329,10 @@ extension GameState {
                 return true
             case .rippleCast(let caster, _):
                 return caster == house
+            case .letterSent(let letter):
+                return letter.from == house || letter.to == house
+            case .pedlarCame(let owner, _), .pedlarSold(let owner, _), .pedlarLeft(let owner):
+                return owner == house
             case .sculpturesFound(let owner, _), .commanderStarred(_, let owner, _):
                 return owner == house
             case .stoneSunk(_, let owner, _), .stoneHeard(_, let owner, _), .stoneLost(_, let owner):

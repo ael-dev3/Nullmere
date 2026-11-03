@@ -1090,6 +1090,17 @@ public final class WorldStage: @unchecked Sendable {
         })
     }
 
+    /// The pedlar's skiff lying off a hold, rocking a little on the still
+    /// water, its prow toward the shore.
+    public func pedlarSkiff(at hex: Hex, toward shore: Hex, time: Float) -> [ModelBatch] {
+        let centre = Relief.centre(of: hex), land = Relief.centre(of: shore)
+        let heading = atan2(land.x - centre.x, land.z - centre.z)
+        let at = Vec3(centre.x, ground(atX: centre.x, z: centre.z) + 0.005 * Float(sin(Double(time * 0.9))), centre.z)
+        let model = Mat4.translation(at) * .rotationY(heading) * .rotationZ(0.03 * Float(sin(Double(time * 0.7))))
+        return WorldStage.batches([(.pedlarSkiff, ModelInstance(model: model, phase: 0.4, hex: SIMD2(Int32(hex.q), Int32(hex.r)),
+                                                                flags: ModelInstance.alwaysShown))])
+    }
+
     // MARK: What flies
 
     /// The veil of the Still about a hold: six banks of low mist ringing

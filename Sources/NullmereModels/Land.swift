@@ -1848,3 +1848,87 @@ extension Land {
         return Model(name: name, mesh: b.mesh)
     }
 }
+
+extension Land {
+    /// The Pedlar of the Still's skiff: a narrow hull of tarred planks with
+    /// a high carved prow, a patched awning on four poles hung with three
+    /// lanterns, crates, jars, a chest bound in iron and bolts of dyed
+    /// cloth, and the pedlar in his hooded cloak at the stern leaning on
+    /// his pole, which works him slowly along; the lanterns flicker.
+    static func pedlarSkiff(name: String) -> Model {
+        var b = MeshBuilder()
+        let tar = Palette.timberDark.mix(Vec3(0.05, 0.05, 0.06), 0.6)
+        // The hull, narrower than a barge, its sides flaring.
+        b.box(center: Vec3(0, -0.012, 0), size: Vec3(0.22, 0.03, 0.7), color: tar)
+        for x in [Float(-0.11), 0.11] {
+            b.sheet([Vec3(x, -0.02, -0.34), Vec3(x, -0.02, 0.34), Vec3(x * 1.25, 0.07, 0.3), Vec3(x * 1.25, 0.07, -0.3)],
+                    normal: Vec3(x > 0 ? 1 : -1, 0.3, 0), thickness: 0.016, color: tar)
+            b.beam(from: Vec3(x * 1.25, 0.075, -0.3), to: Vec3(x * 1.25, 0.075, 0.3), width: 0.012, color: Palette.timber)
+        }
+        // The stern board, and the high prow rising in a curl.
+        b.sheet([Vec3(-0.14, -0.02, -0.34), Vec3(0.14, -0.02, -0.34), Vec3(0.14, 0.08, -0.37), Vec3(-0.14, 0.08, -0.37)],
+                normal: Vec3(0, 0, -1), thickness: 0.016, color: tar)
+        var prow = Vec3(0, -0.02, 0.34)
+        for step in 0..<6 {
+            let t = Float(step + 1) / 6
+            let next = Vec3(0, -0.02 + 0.24 * t, 0.34 + 0.09 * sin(t * 2.6))
+            b.limb(from: prow, to: next, radius: 0.016 - 0.0015 * Float(step), sides: 5, color: tar)
+            prow = next
+        }
+        b.with(material: .crystal) {
+            $0.sphere(center: prow + Vec3(0, 0.012, -0.01), radius: 0.012, rings: 2, sides: 5, color: Palette.moonGlow)
+        }
+        // The awning on its four poles, patched.
+        for x in [Float(-0.1), 0.1] {
+            for z in [Float(-0.12), 0.2] {
+                b.limb(from: Vec3(x, 0.02, z), to: Vec3(x, 0.24, z), radius: 0.006, sides: 4, color: Palette.timber)
+            }
+        }
+        b.sheet([Vec3(-0.13, 0.24, -0.14), Vec3(0.13, 0.24, -0.14), Vec3(0.13, 0.26, 0.04), Vec3(-0.13, 0.26, 0.04)],
+                normal: Vec3(0, 1, -0.1), thickness: 0.006, color: Palette.linen.mix(Palette.leather, 0.45))
+        b.sheet([Vec3(-0.13, 0.26, 0.04), Vec3(0.13, 0.26, 0.04), Vec3(0.13, 0.24, 0.22), Vec3(-0.13, 0.24, 0.22)],
+                normal: Vec3(0, 1, 0.1), thickness: 0.006, color: Palette.linen.mix(Vec3(0.45, 0.16, 0.18), 0.35))
+        // The wares: crates, a bound chest, jars and bolts of cloth.
+        b.box(center: Vec3(-0.05, 0.05, 0.08), size: Vec3(0.08, 0.06, 0.08), color: Palette.timber)
+        b.box(center: Vec3(0.05, 0.045, 0.12), size: Vec3(0.07, 0.05, 0.06), color: Palette.timber.mix(Palette.timberDark, 0.4))
+        b.box(center: Vec3(0.0, 0.05, -0.04), size: Vec3(0.12, 0.06, 0.07), color: Palette.leatherDark)
+        b.with(material: .metal) {
+            for x in [Float(-0.04), 0.04] { $0.box(center: Vec3(x, 0.05, -0.04), size: Vec3(0.01, 0.064, 0.074), color: Palette.iron) }
+        }
+        for (index, at) in [Vec3(0.06, 0.02, 0.0), Vec3(0.075, 0.02, 0.04), Vec3(-0.07, 0.02, -0.08)].enumerated() {
+            b.place(.translation(at)) {
+                $0.lathe([(0.0, 0.0), (0.02, 0.01), (0.022, 0.04), (0.01, 0.06), (0.012, 0.07)], sides: 6,
+                         color: index == 1 ? Palette.slate : Palette.leather)
+            }
+        }
+        for (index, z) in [Float(0.16), 0.2].enumerated() {
+            b.limb(from: Vec3(-0.08, 0.03 + 0.02 * Float(index), z), to: Vec3(0.08, 0.03 + 0.02 * Float(index), z), radius: 0.014, sides: 6,
+                   color: index == 0 ? Vec3(0.45, 0.16, 0.18) : Palette.moonGlow.mix(Palette.slate, 0.6))
+        }
+        var rig = Rig()
+        // The lanterns under the awning, flickering.
+        var flames: [UInt16] = []
+        for (index, at) in [Vec3(-0.1, 0.19, 0.2), Vec3(0.1, 0.19, 0.2), Vec3(0.0, 0.2, -0.13)].enumerated() {
+            b.limb(from: at + Vec3(0, 0.05, 0), to: at + Vec3(0, 0.025, 0), radius: 0.002, sides: 3, color: Palette.iron)
+            let part = rig.add("pedlar lantern \(index)", pivot: at)
+            b.with(part: part, material: .glow) {
+                $0.lathe([(0.0, -0.022), (0.016, -0.014), (0.016, 0.014), (0.0, 0.022)], sides: 6, color: Palette.fire.mix(Palette.gold, 0.3))
+            }
+            flames.append(part)
+        }
+        // The pedlar at the stern, hooded, his pole working him along.
+        let stern = Vec3(0.0, 0.0, -0.27)
+        let pedlar = rig.add("pedlar", pivot: stern)
+        b.with(part: pedlar) {
+            $0.place(.translation(stern)) {
+                $0.lathe([(0.055, 0.0), (0.06, 0.08), (0.045, 0.17), (0.03, 0.22), (0.0, 0.23)], sides: 8, color: Vec3(0.12, 0.11, 0.14))
+            }
+            $0.place(.translation(stern + Vec3(0, 0.255, 0))) {
+                $0.lathe([(0.0, -0.035), (0.034, -0.015), (0.03, 0.025), (0.012, 0.045), (0.0, 0.05)], sides: 7, color: Vec3(0.1, 0.09, 0.12))
+            }
+            $0.limb(from: stern + Vec3(0.04, 0.24, 0.02), to: stern + Vec3(0.16, -0.32, -0.1), radius: 0.007, color: Palette.timber)
+        }
+        let machinery = Machinery(swings: [.init(part: pedlar, axis: Vec3(1, 0, 0), angle: 0.12)], flames: flames, parts: rig.count)
+        return Model(name: name, mesh: b.mesh, rig: rig) { clip, time in machinery.joints(clip, time) }
+    }
+}

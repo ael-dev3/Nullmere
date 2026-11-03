@@ -303,6 +303,18 @@ extension GameState {
         case .rippleCast(let house, let holdID):
             guard house == viewer else { return nil }
             return Tidings("A ripple-stone cast from \(hold(holdID)?.name ?? "your hold"): at the next Still Hour your companies are not mirrored.", .good)
+        case .letterSent(let letter):
+            guard letter.to == viewer else { return nil }
+            return Tidings("A letter from \(houses[letter.from].title): \u{201C}\(letter.text)\u{201D}", .neutral)
+        case .pedlarCame(let house, let holdID):
+            guard house == viewer else { return nil }
+            return Tidings("The Pedlar of the Still poles in to lie off \(hold(holdID)?.name ?? "your hold") with three wares, for \(Pedlar.stays) watches.", .good)
+        case .pedlarSold(let house, let id):
+            guard house == viewer, let ware = pedlar(for: house)?.wares.first(where: { $0.id == id }) else { return nil }
+            return Tidings("Bought of the pedlar: \(ware.goods.title).", .good)
+        case .pedlarLeft(let house):
+            guard house == viewer else { return nil }
+            return Tidings("The pedlar poles away into the dark.", .neutral)
         case .sculpturesFound(let house, let count):
             guard house == viewer else { return nil }
             return Tidings("\(count) sculpture\(count == 1 ? "" : "s") to your seat, for your commanders' stars: \(sculptures(of: house)) kept.", .good)

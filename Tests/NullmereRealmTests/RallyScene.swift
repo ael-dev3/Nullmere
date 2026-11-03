@@ -313,6 +313,65 @@ extension RallyScene {
     }
 }
 
+extension RallyScene {
+    /// Letters between two keepers, each read by its writer and reader
+    /// alone; and the pedlar lying off Ama's hold, a ware bought of him
+    /// from her client kept through the watches after, Bel never knowing
+    /// of him.
+    func writeAndTrade(ama: Int, bel: Int) async throws {
+        // A letter each way.
+        await MainActor.run { a.send(.writeLetter(to: bel, words: "The ford opens at the full moon")) }
+        try await until("Bel to read Ama's letter") {
+            earB.world?.letters(of: bel).contains { $0.from == ama && $0.text == "The ford opens at the full moon" } == true
+        }
+        await MainActor.run { b.send(.writeLetter(to: ama, words: "Then we cross together")) }
+        try await until("Ama to read Bel's answer") {
+            earA.world?.letters(of: ama).contains { $0.from == bel && $0.text == "Then we cross together" } == true
+        }
+        let told = await MainActor.run {
+            earB.events.contains { event in
+                if case .heard(let events) = event { return events.contains { if case .letterSent(let l) = $0 { return l.from == ama } else { return false } } }
+                return false
+            }
+        }
+        XCTAssertTrue(told, "Bel is told the letter came")
+
+        // The pedlar comes to Ama's hold by the lake.
+        let came = Staged()
+        await steward.reshape { realm in
+            var world = realm.world
+            guard world.holds(of: ama).contains(where: { world.stoneWater(before: $0) != nil }) else { return }
+            world.watch = GameState.pedlarComes(to: ama, from: world.watch + 1)
+            _ = world.turnThePedlars()
+            guard let pedlar = world.pedlar(for: ama),
+                  let ware = pedlar.wares.first(where: { if case .sculptures = $0.goods { return true } else { return false } }) else { return }
+            world.houses[ama].stock.credit(ware.price)
+            realm.world = world
+            came.set(seat: pedlar.hold, lair: ware.id, spoils: ware.price, companies: [])
+        }
+        let ware = came.lair
+        guard ware != 0 else { return XCTFail("The pedlar found no hold of Ama's by the lake") }
+        try await until("Ama to see the pedlar lying off her hold") { earA.world?.pedlar(for: ama) != nil }
+        let bels = await MainActor.run { earB.world?.pedlar(for: ama) }
+        XCTAssertNil(bels, "Bel knows nothing of Ama's pedlar")
+        let before = await MainActor.run { earA.world?.sculptures(of: ama) ?? 0 }
+        await MainActor.run { a.send(.buyFromPedlar(ware: ware)) }
+        try await until("the ware sold, as Ama sees it") {
+            earA.world?.pedlar(for: ama)?.wares.first { $0.id == ware }?.sold == true && (earA.world?.sculptures(of: ama) ?? 0) > before
+        }
+        let bought = await MainActor.run { earA.world?.sculptures(of: ama) ?? 0 }
+        // Kept through the watch's turn: what was bought stays bought.
+        let watch = await MainActor.run { earA.world?.watch ?? 0 }
+        await MainActor.run { a.setReady(true); b.setReady(true) }
+        try await until("the watch to turn") { (earA.world?.watch ?? 0) > watch && (earB.world?.watch ?? 0) > watch }
+        let kept = await MainActor.run { (earA.world?.sculptures(of: ama) ?? 0, earA.world?.pedlar(for: ama)?.wares.first { $0.id == ware }?.sold) }
+        XCTAssertGreaterThanOrEqual(kept.0, bought, "The sculptures bought are kept")
+        XCTAssertNotEqual(kept.1, false, "and the ware stays sold while he lies there")
+        let again = await MainActor.run { earA.world?.refusal(of: .buyFromPedlar(ware: ware), as: ama) }
+        XCTAssertEqual(again, kept.1 == nil ? .noPedlar : .wareSold, "Not to be bought again")
+    }
+}
+
 /// Where the crown was set, and the companies set beside it.
 final class CrownStage: @unchecked Sendable {
     private let lock = NSLock()

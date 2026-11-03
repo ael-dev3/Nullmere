@@ -221,6 +221,11 @@ struct OwnHoldDetails: View {
 
             Rule()
             BarterRow(session: session)
+            // The pedlar, while he lies off this hold.
+            if let pedlar = state.pedlar(for: session.player), pedlar.hold == hold.id {
+                Rule()
+                PedlarCard(session: session, pedlar: pedlar)
+            }
             // A letter to the age to come, sealed under the hold's stones.
             LetterComposer(session: session, hold: hold)
             // What it does on the water, folded to a line until asked for:
@@ -1490,6 +1495,42 @@ struct RippleRow: View {
                 QuietButton(title: "Cast a stone", size: 8.5, enabled: refusal == nil, name: "Cast a ripple-stone from \(hold.name)",
                             why: refusal?.description) {
                     session.perform(.castRipple(hold: hold.id))
+                }
+            }
+        }
+    }
+}
+
+/// The Pedlar of the Still lying off a hold: his three wares, each with
+/// its price and a button to buy it, while it is unsold.
+struct PedlarCard: View {
+    let session: GameSession
+    let pedlar: Pedlar
+
+    var body: some View {
+        let state = session.state
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Caps("The Pedlar of the Still", size: 9, weight: .medium).foregroundStyle(Palette.text(0.75))
+                Spacer()
+                Text(verbatim: "Poles away in \(max(1, pedlar.came + Pedlar.stays - state.watch)) watch\(pedlar.came + Pedlar.stays - state.watch == 1 ? "" : "es")")
+                    .font(.nm(9.5)).foregroundStyle(Palette.text(0.5))
+            }
+            ForEach(pedlar.wares) { ware in
+                let refusal = state.buyRefusal(ware.id, as: session.player)
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(verbatim: ware.goods.title).font(.nm(10.5)).foregroundStyle(Palette.text(ware.sold ? 0.45 : 0.85))
+                        Text(verbatim: ware.sold ? "Sold" : "For \(ware.price)").font(.nm(9.5)).foregroundStyle(Palette.text(0.55))
+                    }
+                    .accessibilityElement(children: .combine)
+                    Spacer()
+                    if !ware.sold {
+                        QuietButton(title: "Buy", size: 8.5, enabled: refusal == nil, name: "Buy \(ware.goods.title) of the pedlar",
+                                    why: refusal?.description) {
+                            session.perform(.buyFromPedlar(ware: ware.id))
+                        }
+                    }
                 }
             }
         }
