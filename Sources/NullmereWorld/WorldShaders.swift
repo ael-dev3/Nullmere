@@ -515,7 +515,10 @@ public enum WorldShaders {
         float2 knows = nm_knowledgeAround(p, radius, tiles);
         lit = mix(nm_remembered(lit), lit, smoothstep(0.0, 1.0, knows.y));
         if (knows.x < 0.999) {
-            lit = mix(nm_mist(p, time), lit, smoothstep(0.0, 1.0, knows.x));
+            // The unknown is drawn as plain ground under the mist; it must
+            // never show through, lit, where the known meets it: the known
+            // ground's own colour fades into the mist over its outer half.
+            lit = mix(nm_mist(p, time), lit, smoothstep(0.55, 1.0, knows.x));
         }
         // Past the map's edge the Spine goes on into the dark.
         float beyond = float(nm_hexDistance(h)) - radius;
