@@ -15,6 +15,8 @@ extension GameState {
         // The realm's words would grow the whole map again; where its
         // rounds begin is all the keeper's copy needs of them.
         view.dealing = dealt
+        // How far a House has gone up the Spine is its own to know.
+        view.expeditions = expeditions?[house].map { [house: $0] }
         // A keeper's letters, and their pedlar, are their own.
         view.mail = mail.map { _ in letters(of: house) }.flatMap { $0.isEmpty ? nil : $0 }
         view.pedlars = pedlar(for: house).map { [$0] }
@@ -331,6 +333,8 @@ extension GameState {
                 return caster == house
             case .letterSent(let letter):
                 return letter.from == house || letter.to == house
+            case .expedition(let result):
+                return result.house == house
             case .pedlarCame(let owner, _), .pedlarSold(let owner, _), .pedlarLeft(let owner):
                 return owner == house
             case .sculpturesFound(let owner, _), .commanderStarred(_, let owner, _):

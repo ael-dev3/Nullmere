@@ -151,6 +151,8 @@ extension GameState {
             return try castRipple(from: holdID, as: house)
         case let .writeLetter(to, words):
             return try write(to: to, words, as: house)
+        case let .venture(commanderID):
+            return try venture(commanderID, as: house)
         case let .buyFromPedlar(ware):
             return try buy(ware, as: house)
         case let .raiseStar(commanderID):

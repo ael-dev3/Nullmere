@@ -1471,6 +1471,7 @@ public final class GameSession {
         case .raiseStar: return .honour
         case .writeLetter: return .parley
         case .buyFromPedlar: return .coin
+        case .venture: return .clash
         case .pursueAllianceStudy: return .lore
         case .giveToAlliance: return .coin
         case .raiseAllianceHall, .raiseStorehouse, .raiseYard: return .rise
@@ -1614,6 +1615,7 @@ public final class GameSession {
         case .sculpturesFound(let house, _) where house == player: return .coin
         case .letterSent(let letter) where letter.to == player: return .parley
         case .pedlarCame(let house, _) where house == player: return .horn
+        case .expedition(let result) where result.house == player: return result.won ? .triumph : .refusal
         case .eclipse: return .dread
         case .riddleAnswered(let house, let right, _) where house == player: return right ? .triumph : .refusal
         case .edictBroken(_, _, _, let against, _) where against == player: return .horn

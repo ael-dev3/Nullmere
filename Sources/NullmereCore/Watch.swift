@@ -105,6 +105,7 @@ extension GameState {
         events += layTheLakeStill()
         events += listenAtTheStones()
         events += turnThePedlars()
+        turnExpeditions()
         events += checkForEnd()
         takeSnapshot()
         return events

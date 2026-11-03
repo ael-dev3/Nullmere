@@ -181,6 +181,7 @@ private struct CommanderRow: View {
                 }
             }
             StarsLine(session: session, commander: commander)
+            ExpeditionLine(session: session, commander: commander)
             TalentsView(session: session, commander: commander)
         }
     }
@@ -349,6 +350,36 @@ private struct ForgeRow: View {
 /// A commander's talents: its three trees, each talent's rank and what a
 /// rank does, a button to learn the next, and one to forget them all and
 /// learn anew. Shown of itself while points wait to be spent.
+/// The House's next stage of the Spine, and the button that sends this
+/// commander at it, weighed as the Ring weighs it.
+struct ExpeditionLine: View {
+    let session: GameSession
+    let commander: Commander
+
+    static func line(_ state: GameState, commander: Commander, house: Int) -> String {
+        guard let stage = ExpeditionStage.stage(state.expeditionStage(of: house) + 1) else { return "Every stage of the Spine is yours" }
+        return "The Spine, \(stage.name) (\(stage.number) of \(ExpeditionStage.count)): its host weighs \(stage.strength), this commander \(state.ringWeight(of: commander))"
+    }
+
+    var body: some View {
+        let state = session.state
+        let refusal = state.expeditionRefusal(commander.id, as: session.player)
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(verbatim: ExpeditionLine.line(state, commander: commander, house: session.player))
+                .font(.nm(10))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            if ExpeditionStage.stage(state.expeditionStage(of: session.player) + 1) != nil {
+                QuietButton(title: "Venture", size: 8.5, enabled: refusal == nil, name: "Send \(commander.name) up the Spine",
+                            why: refusal?.description) {
+                    session.perform(.venture(commander: commander.id))
+                }
+            }
+        }
+    }
+}
+
 /// A commander's stars, as pips, and the sculptures its next would take:
 /// the button sets them when the House keeps enough.
 struct StarsLine: View {

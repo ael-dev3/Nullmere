@@ -312,6 +312,13 @@ extension GameState {
         case .pedlarSold(let house, let id):
             guard house == viewer, let ware = pedlar(for: house)?.wares.first(where: { $0.id == id }) else { return nil }
             return Tidings("Bought of the pedlar: \(ware.goods.title).", .good)
+        case .expedition(let result):
+            guard result.house == viewer, let stage = ExpeditionStage.stage(result.stage) else { return nil }
+            let name = commander(result.commander)?.name ?? "Your commander"
+            if result.won {
+                return Tidings("\(name) takes \(stage.name), stage \(stage.number) of the Spine: \(stage.spoils) to your stores.", .good)
+            }
+            return Tidings("\(name) is thrown back from \(stage.name) and comes home wounded.", .bad)
         case .pedlarLeft(let house):
             guard house == viewer else { return nil }
             return Tidings("The pedlar poles away into the dark.", .neutral)

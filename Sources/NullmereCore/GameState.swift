@@ -122,6 +122,10 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var mail: [Missive]?
     /// The pedlars lying off keepers' holds; in a view, the keeper's own.
     public internal(set) var pedlars: [Pedlar]?
+    /// The stages of the Spine each House has won, by House.
+    public internal(set) var expeditions: [Int: Int]?
+    /// The Houses that have sent an expedition this watch.
+    public internal(set) var ventured: [Int]?
     /// What the stones heard as the watch last turned.
     public internal(set) var soundings: [Sounding]?
     /// Where each company in a stone's reach stood when the stones last

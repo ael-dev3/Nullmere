@@ -172,6 +172,8 @@ public enum Command: Codable, Equatable, Sendable {
     case writeLetter(to: Int, words: String)
     /// A ware bought of the pedlar lying off the House's hold.
     case buyFromPedlar(ware: Int)
+    /// A commander sent at the House's next stage of the Spine.
+    case venture(commander: Int)
     /// An alliance's leader sets it to pursue a study together.
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
@@ -446,6 +448,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case stoneAlreadySunk
     case starsFull
     case noPedlar
+    case expeditionsDone
+    case venturedThisWatch
     case wareSold
     case needsSculptures(Int)
     case tooManyStones(Int)
@@ -655,6 +659,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .notOnTheShore: return "A ripple-stone is cast only from a hold on the lake's shore."
         case .alreadyRippled: return "Your stone already stirs the water against the next Still Hour."
         case .starsFull: return "That commander has all its stars."
+        case .expeditionsDone: return "Your House has taken every stage of the Spine."
+        case .venturedThisWatch: return "Your House has sent an expedition this watch already."
         case .noPedlar: return "No pedlar lies off your holds with that ware."
         case .wareSold: return "The pedlar has sold that already."
         case .needsSculptures(let count): return "Its next star takes \(count) sculptures."
@@ -834,6 +840,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case pedlarSold(house: Int, ware: Int)
     /// The pedlar poles away.
     case pedlarLeft(house: Int)
+    /// A House's commander at a stage of the Spine, and how it went.
+    case expedition(ExpeditionResult)
     /// A commander rises a star.
     case commanderStarred(commander: Int, house: Int, stars: Int)
     /// A House's stone heard so many marches out of its sight.
