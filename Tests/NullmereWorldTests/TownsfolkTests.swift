@@ -24,6 +24,17 @@ final class TownsfolkTests: XCTestCase {
         return Vec3(centre.x, 0, centre.z)
     }
 
+    /// Errands as their hold's plan lays them, before the hold is drawn
+    /// `HoldLayout.grandeur` times larger about its middle.
+    private func planned(_ errands: [WorldStage.Errand], of hold: Hold) -> [WorldStage.Errand] {
+        let middle = heart(of: hold), k = HoldLayout.grandeur
+        return errands.map { errand in
+            var plan = errand
+            plan.path = errand.path.map { Vec3(middle.x + ($0.x - middle.x) / k, $0.y, middle.z + ($0.z - middle.z) / k) }
+            return plan
+        }
+    }
+
     private func flat(_ a: Vec3, _ b: Vec3) -> Float {
         let dx = b.x - a.x, dz = b.z - a.z
         return (dx * dx + dz * dz).squareRoot()
@@ -32,11 +43,23 @@ final class TownsfolkTests: XCTestCase {
     func testEachWholeWorkHasTheFolkOfItsKind() throws {
         let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
         let hold = try seat([.granary: 2, .sawpit: 1, .quarry: 1, .saltworks: 1])
-        let errands = stage.errands(of: HoldSight(hold: hold, colour: Vec4(1, 0, 0, 1)))
+        let errands = planned(stage.errands(of: HoldSight(hold: hold, colour: Vec4(1, 0, 0, 1))), of: hold)
         XCTAssertEqual(errands.map(\.key).sorted { $0.description < $1.description },
                        [ModelKey.folk(of: .granary), .folk(of: .sawpit), .folk(of: .quarry), .folk(of: .saltworks)].sorted { $0.description < $1.description })
         XCTAssertEqual(ModelKey.folk(of: .infirmary), ModelKey.folk(of: .archive), "A porter about every other work")
         let heart = heart(of: hold)
+        // Drawn as large as the companies' figures: the plan carried out
+        // from the hold's middle, every work as much larger.
+        let drawn = stage.errands(of: HoldSight(hold: hold, colour: Vec4(1, 0, 0, 1)))
+        XCTAssertEqual(flat(drawn[0].path[0], heart), 0.42 * HoldLayout.grandeur, accuracy: 1e-3, "The door as far out as the hold is grand")
+        XCTAssertEqual(HoldLayout.grandeur, WorldStage.figureScale, "Works and figures at one scale")
+        var frame = SceneFrame()
+        let laid = stage.pieces(of: hold, progress: nil)
+        let keep = try XCTUnwrap(laid.first { if case .keep = $0.key { return true } else { return false } })
+        let batches = stage.holds([HoldSight(hold: hold, colour: Vec4(1, 0, 0, 1))], time: 0, into: &frame).batches
+        let drawnKeep = try XCTUnwrap(batches.first { $0.key == keep.key }?.instances.first)
+        XCTAssertEqual(Vec3(drawnKeep.model.c0.x, drawnKeep.model.c0.y, drawnKeep.model.c0.z).length,
+                       Vec3(keep.transform.c0.x, keep.transform.c0.y, keep.transform.c0.z).length * HoldLayout.grandeur, accuracy: 1e-4)
         for errand in errands {
             XCTAssertEqual(errand.path.count, 2, "Unwalled, straight there")
             XCTAssertEqual(flat(errand.path[0], heart), 0.42, accuracy: 1e-3, "From the keep's door")
@@ -49,7 +72,7 @@ final class TownsfolkTests: XCTestCase {
         XCTAssertEqual(stage.errands(of: HoldSight(hold: rising, colour: Vec4(1, 0, 0, 1), progress: 0.5)).count, errands.count)
         // Six at most.
         let busy = try seat([.granary: 1, .sawpit: 1, .quarry: 1, .saltworks: 1, .beacon: 1, .musterHall: 1, .infirmary: 1, .forge: 1])
-        XCTAssertEqual(stage.errands(of: HoldSight(hold: busy, colour: Vec4(1, 0, 0, 1))).count, WorldStage.townsfolkMost)
+        XCTAssertEqual(planned(stage.errands(of: HoldSight(hold: busy, colour: Vec4(1, 0, 0, 1))), of: busy).count, WorldStage.townsfolkMost)
         // None about a bare keep.
         XCTAssertEqual(stage.errands(of: HoldSight(hold: try seat([:]), colour: Vec4(1, 0, 0, 1))), [])
     }
@@ -60,7 +83,7 @@ final class TownsfolkTests: XCTestCase {
         let gate = HoldLayout.gate(of: hold.position)
         let heart = heart(of: hold)
         XCTAssertEqual(flat(gate, heart), 0.84 * Float(cos(Double.pi / 6)), accuracy: 1e-3)
-        let errands = stage.errands(of: HoldSight(hold: hold, colour: Vec4(1, 0, 0, 1)))
+        let errands = planned(stage.errands(of: HoldSight(hold: hold, colour: Vec4(1, 0, 0, 1))), of: hold)
         XCTAssertEqual(errands.count, 2)
         for errand in errands {
             XCTAssertGreaterThanOrEqual(errand.path.count, 4)
@@ -89,7 +112,7 @@ final class TownsfolkTests: XCTestCase {
                 return (piece.position, town)
             }
             XCTAssertGreaterThan(homes.count, 10, "A town about the hold")
-            let errands = stage.errands(of: HoldSight(hold: hold, colour: Vec4(1, 0, 0, 1)))
+            let errands = planned(stage.errands(of: HoldSight(hold: hold, colour: Vec4(1, 0, 0, 1))), of: hold)
             XCTAssertEqual(errands.count, WorldStage.townsfolkMost)
             for errand in errands {
                 for (a, b) in zip(errand.path, errand.path.dropFirst()) {
@@ -107,7 +130,7 @@ final class TownsfolkTests: XCTestCase {
     func testTheyWalkOutStandAtTheirWorkAndComeBack() throws {
         let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
         let hold = try seat([.walls: 1, .sawpit: 2, .saltworks: 1])
-        for errand in stage.errands(of: HoldSight(hold: hold, colour: Vec4(1, 0, 0, 1))) {
+        for errand in planned(stage.errands(of: HoldSight(hold: hold, colour: Vec4(1, 0, 0, 1))), of: hold) {
             let speed = try XCTUnwrap(errand.key.marchSpeed)
             let round = 2 * errand.length / speed + 2 * WorldStage.townsfolkPause
             var clips: Set<Clip> = []
@@ -147,7 +170,7 @@ final class TownsfolkTests: XCTestCase {
         let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
         let hold = try seat([.walls: 2, .granary: 3, .sawpit: 2, .quarry: 2, .saltworks: 1, .infirmary: 1, .forge: 1, .beacon: 1])
         let sight = HoldSight(hold: hold, colour: Vec4(0.2, 0.4, 0.8, 1))
-        let strolls = stage.strolls(of: sight)
+        let strolls = planned(stage.strolls(of: sight), of: hold)
         XCTAssertGreaterThanOrEqual(strolls.count, 8, "A grown seat's lanes are busy")
         XCTAssertLessThanOrEqual(strolls.count, HoldLayout.seatStrollsMost)
         let homes: Set<ModelKey> = [.folk(ofHome: 0), .folk(ofHome: 0.5), .folk(ofHome: 0.7), .folk(ofHome: 0.9)]
@@ -171,11 +194,11 @@ final class TownsfolkTests: XCTestCase {
             }
         }
         // The same when asked again, and as a work rises.
-        XCTAssertEqual(stage.strolls(of: sight), strolls)
+        XCTAssertEqual(planned(stage.strolls(of: sight), of: hold), strolls)
         var rising = hold
         rising.project = Hold.Project(kind: .musterHall, targetLevel: 1, watchesLeft: 2)
-        let first = stage.strolls(of: HoldSight(hold: rising, colour: sight.colour, progress: 0.2))
-        XCTAssertEqual(stage.strolls(of: HoldSight(hold: rising, colour: sight.colour, progress: 0.7)), first, "Not laid anew as it rises")
+        let first = planned(stage.strolls(of: HoldSight(hold: rising, colour: sight.colour, progress: 0.2)), of: rising)
+        XCTAssertEqual(planned(stage.strolls(of: HoldSight(hold: rising, colour: sight.colour, progress: 0.7)), of: rising), first, "Not laid anew as it rises")
         // A town that grows has more of its folk about, a bare keep's few.
         let bare = stage.strolls(of: HoldSight(hold: try seat([:]), colour: sight.colour))
         XCTAssertLessThan(bare.count, strolls.count)

@@ -246,7 +246,7 @@ public final class WorldStage: @unchecked Sendable {
         if let furnished {
             changed = furnished.occupied.symmetricDifference(occupied)
             for hold in furnished.holds.symmetricDifference(holds) {
-                changed.formUnion(hold.spiral(2).filter { map[$0] != nil })
+                changed.formUnion(hold.spiral(3).filter { map[$0] != nil })
             }
         } else {
             changed = Set(map.hexes)
@@ -513,6 +513,28 @@ public final class WorldStage: @unchecked Sendable {
         return plan
     }
 
+    /// A point of a hold's plan where the hold is drawn: pushed out from
+    /// its middle by `HoldLayout.grandeur` on the ground plane, its height
+    /// as it was (a path's points lie on the plane; the land is found
+    /// under them as they are walked).
+    static func grand(_ point: Vec3, about middle: (x: Float, z: Float)) -> Vec3 {
+        let k = HoldLayout.grandeur
+        return Vec3(middle.x + (point.x - middle.x) * k, point.y, middle.z + (point.z - middle.z) * k)
+    }
+
+    /// A piece of a hold's plan as the hold is drawn: carried out from its
+    /// middle and made as much larger, set down on the land where it now
+    /// stands.
+    func grand(_ piece: Piece, about middle: (x: Float, z: Float)) -> Piece {
+        let at = piece.position
+        let out = WorldStage.grand(at, about: middle)
+        let rise = relief.height(atX: out.x, z: out.z) - relief.height(atX: at.x, z: at.z)
+        var grand = piece
+        grand.transform = .translation(Vec3(out.x, at.y + rise, out.z)) * .scale(HoldLayout.grandeur) * .translation(Vec3(-at.x, -at.y, -at.z))
+            * piece.transform
+        return grand
+    }
+
     /// The flags that mark a hold's works as its House's people build them:
     /// in the second byte, one more than the people's place among them; the
     /// shader gives their slates, stone and timber that people's colours.
@@ -541,7 +563,9 @@ public final class WorldStage: @unchecked Sendable {
         for sight in sights {
             let phase = WorldStage.phase(of: sight.hold.position, salt: sight.hold.id)
             let people = WorldStage.peopleFlags(sight.heritage)
-            for piece in pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage) {
+            let middle = Relief.centre(of: sight.hold.position)
+            for planned in pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage) {
+                let piece = grand(planned, about: middle)
                 let model = Library.model(piece.key)
                 let palette = model.rig.count > 1
                     ? WorldStage.pose(piece.key, .idle, at: time + phase, shared: &poses, into: &frame) : 0
@@ -629,7 +653,8 @@ public final class WorldStage: @unchecked Sendable {
             } else {
                 path.append(heart + way * reach)
             }
-            errands.append(Errand(key: key, path: path, salt: sight.hold.id &* 31 &+ index))
+            let middle = Relief.centre(of: sight.hold.position)
+            errands.append(Errand(key: key, path: path.map { WorldStage.grand($0, about: middle) }, salt: sight.hold.id &* 31 &+ index))
         }
         return errands
     }
@@ -679,8 +704,10 @@ public final class WorldStage: @unchecked Sendable {
         var plan = WorldStage.plan(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage)
         plan.rising?.progress = 0
         if let kept = strolled[sight.hold.id], kept.plan == plan { return kept.ways }
+        let middle = Relief.centre(of: sight.hold.position)
         let ways = HoldLayout.strolls(plan, relief: relief).enumerated().map { index, path in
-            Errand(key: .folk(ofHome: Noise.unit(Int32(truncatingIfNeeded: sight.hold.id), Int32(index), 0xF01C)), path: path,
+            Errand(key: .folk(ofHome: Noise.unit(Int32(truncatingIfNeeded: sight.hold.id), Int32(index), 0xF01C)),
+                   path: path.map { WorldStage.grand($0, about: middle) },
                    salt: sight.hold.id &* 53 &+ 7 &+ index)
         }
         strolled[sight.hold.id] = (plan, ways)

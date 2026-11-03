@@ -17,6 +17,11 @@ public enum HoldLayout {
     public static let outerRing: Float = 2.05
     /// How far from its heart a hold's pieces can reach.
     public static let reach: Float = outerRing + workRadius
+    /// How much larger than its plan a hold is drawn, works, walls, town
+    /// and lanes together about its middle, to stand with the companies'
+    /// larger-than-life figures (`WorldStage.figureScale`) as a map of war
+    /// draws its cities.
+    public static let grandeur: Float = 1.6
 
     /// Where a hold's walls open, on the ground plane: the middle of the
     /// gate in the flat of the ring that faces its front.

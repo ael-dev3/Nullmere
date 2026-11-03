@@ -28,7 +28,7 @@ public enum Scatter {
         guard let tile = map[hex] else { return [] }
         let centre = Relief.centre(of: hex)
         let heartPoint = (x: centre.x, z: centre.z)
-        let nearHolds = holds.filter { $0.distance(to: hex) <= 2 }.map { Relief.centre(of: $0) }
+        let nearHolds = holds.filter { $0.distance(to: hex) <= 3 }.map { Relief.centre(of: $0) }
         let neighbours = hex.neighbors.map { Relief.centre(of: $0) }
         let layout = HexLayout(size: 1)
         var placed: [(x: Float, z: Float, radius: Float)] = []
@@ -55,7 +55,7 @@ public enum Scatter {
                     func distance(_ p: (x: Float, z: Float)) -> Float { ((x - p.x) * (x - p.x) + (z - p.z) * (z - p.z)).squareRoot() }
                     if clearHeart && distance(heartPoint) < heart + radius { continue }
                     if neighbours.contains(where: { distance($0) < heart + radius }) { continue }
-                    if nearHolds.contains(where: { distance($0) < HoldLayout.reach + radius }) { continue }
+                    if nearHolds.contains(where: { distance($0) < HoldLayout.reach * HoldLayout.grandeur + radius }) { continue }
                     if placed.contains(where: { distance(($0.x, $0.z)) < ($0.radius + radius) * recipe.closeness }) { continue }
                     placed.append((x, z, radius))
                     let y = relief.height(atX: x, z: z) - sink
