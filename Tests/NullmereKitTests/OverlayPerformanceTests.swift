@@ -33,9 +33,13 @@ final class OverlayPerformanceTests: XCTestCase {
         }
         let holds = session.state.holds.filter { session.isExplored($0.position) }.count
         for (name, modelsDrawn) in [("marks", true), ("marks.flat", false)] {
-            _ = renderOnce(modelsDrawn: modelsDrawn)
+            // Warmed three times and timed 25: ImageRenderer's first draws
+            // pay for caches, and a dozen samples on a shared runner let one
+            // stall move the median (runs 511 and 517 timed the same marks at
+            // 1.75 and 5.07 ms).
+            for _ in 0..<3 { _ = renderOnce(modelsDrawn: modelsDrawn) }
             var times: [Double] = []
-            for _ in 0..<12 {
+            for _ in 0..<25 {
                 times.append(renderOnce(modelsDrawn: modelsDrawn))
             }
             times.sort()
