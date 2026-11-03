@@ -1992,6 +1992,7 @@ final class DepthPanelTests: XCTestCase {
             state.map[hex]?.terrain.isPassable == true && state.map[hex]?.terrain.isWater == false && state.unit(at: hex) == nil
                 && state.hold(at: hex) == nil && state.wild(at: hex) == nil && state.site(at: hex) == nil
         })
+        state.lairLadder = [me: 1] // a level-2 lair waits on the first rung's climb
         let lair = Lair(id: state.takeID(), kind: .reavers, level: 2, position: spot, raised: 0)
         state.lairs = [lair]
         state.reveal(around: spot, range: 1, for: me)
