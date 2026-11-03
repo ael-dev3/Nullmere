@@ -1189,6 +1189,14 @@ public final class GameSession {
         glide(to: seat.position)
     }
 
+    /// The view brought low over the Still's deepest water, nothing chosen:
+    /// the lake, its far shore and the moon's road on it.
+    public func focusOnLake() {
+        guard let deep = state.map.deepestWater() else { return }
+        selection = .none
+        glide(to: deep.hex, scale: 26, tilt: Camera.minimumTilt + 0.1)
+    }
+
     /// The map's size as last drawn, for setting the view to take in what
     /// it should; a laptop's until the map is first drawn.
     @ObservationIgnored var viewSize = CGSize(width: 1280, height: 800)

@@ -2,6 +2,7 @@ import Foundation
 import LauncherCore
 import LauncherKit
 import NullmereRealm
+import NullmereWorld
 import XCTest
 @testable import NullmereCore
 @testable import NullmereKit
@@ -109,6 +110,23 @@ final class GameAppEnvironmentTests: XCTestCase {
         let session = try XCTUnwrap(app.session)
         XCTAssertNotNil(session.seatBriefing, "Kept, as asked")
         XCTAssertEqual(session.panel, .guide, "The last panel asked for")
+        app.leaveWorld()
+    }
+
+    func testATestBuildCanBringTheViewLowOverTheStill() async throws {
+        setenv("NULLMERE_KEEPER", "Bel", 1)
+        setenv("NULLMERE_SHOW", "unit,lake", 1)
+        let app = hostedApp("over the still")
+        app.checkModel()
+        try await until("the keeper to step in") { app.session != nil }
+        let session = try XCTUnwrap(app.session)
+        XCTAssertEqual(session.selection, .none, "The lake alone, nothing chosen")
+        let deep = try XCTUnwrap(session.state.map.deepestWater())
+        try await until("the view to settle over the deep") {
+            var over = session.camera
+            over.focus(on: deep.hex)
+            return abs(session.camera.centerX - over.centerX) < 0.5 && abs(session.camera.centerY - over.centerY) < 0.5
+        }
         app.leaveWorld()
     }
 

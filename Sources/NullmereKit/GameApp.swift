@@ -738,6 +738,7 @@ public final class GameApp {
             session?.dismissAwayReport()
         }
         if show.contains("seat") { session?.focusOnSeat() }
+        if show.contains("lake") { session?.focusOnLake() }
         if show.contains("unit") { session?.selectNextReadyUnit() }
         if show.contains("houses") { session?.panel = .houses }
         if show.contains("chronicle") { session?.panel = .chronicle }

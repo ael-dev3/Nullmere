@@ -6,7 +6,7 @@
 # selected and the Houses panel open; of the same realm eight watches on
 # as a keeper sees it most of the time, nothing chosen and no panel open;
 # and forty watches on, a steward having played the keeper's House, with
-# the larger type.
+# the larger type; and the Still from low over its deepest water.
 #
 #   swift build && scripts/smoke-test-game.sh
 #
@@ -71,6 +71,11 @@ WORLD_LOG="$LOG"
 # The same realm as a keeper sees it most of the time: nothing chosen, no
 # panel open, how much of the world the interface leaves in view.
 run build/game-plain.png 8 ""
+WORLD_LOG="$WORLD_LOG
+$LOG"
+# The Still close and low, nothing chosen: the black water, the moon's
+# road on it and the far shore, to judge the lake by.
+run build/game-lakes.png 0 lake
 WORLD_LOG="$WORLD_LOG
 $LOG"
 # The same realm later on, the keeper returning by identity alone, with the
