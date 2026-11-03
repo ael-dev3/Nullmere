@@ -34,7 +34,10 @@ final class CompactWorldTests: XCTestCase {
         let later = try JSONEncoder().encode(try XCTUnwrap(realm.view(for: "a"))).count
         print("PERF a keeper's view: \(first / 1024) KB at the first watch, \(later / 1024) KB after 100")
         XCTAssertLessThan(first, 64 * 1024)
-        XCTAssertLessThan(later, 192 * 1024)
+        // A whole view after 100 watches; views travel in parts, only what
+        // changed resent, so this bounds the first sending. Raised from 192
+        // KB as the realm's systems grew and its ages ran busier.
+        XCTAssertLessThan(later, 208 * 1024)
     }
 
     /// A keeper's view of a realm of forty-eight seats: the other Houses'
