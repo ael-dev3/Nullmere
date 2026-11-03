@@ -128,6 +128,8 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var ventured: [Int]?
     /// Each keeper's House's labours for the watch and vigour of the moon.
     public internal(set) var labourBook: [Int: Labours]?
+    /// False reflections cast against the next Still Hour; in a view, the keeper's own.
+    public internal(set) var reflections: [FalseReflection]?
     /// What the stones heard as the watch last turned.
     public internal(set) var soundings: [Sounding]?
     /// Where each company in a stone's reach stood when the stones last

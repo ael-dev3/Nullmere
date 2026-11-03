@@ -469,6 +469,43 @@ extension RallyScene {
     }
 }
 
+extension RallyScene {
+    /// A false reflection cast from Ama's client, and at the Still Hour
+    /// Bel's client shows Ama's company mirrored on a shore where none is.
+    func teachTheLakeToLie(ama: Int, bel: Int) async throws {
+        let cast = Staged()
+        await steward.reshape { realm in
+            var world = realm.world
+            guard let pair = world.holds(of: ama).lazy.compactMap({ hold -> (Hold, Hex)? in
+                hold.position.spiral(GameState.falseReflectionReach)
+                    .first { world.isShore($0) && world.unit(at: $0) == nil && world.hold(at: $0) == nil }.map { (hold, $0) }
+            }).first else { return }
+            world.houses[ama].stock.credit(Stock(moonsalt: 20))
+            realm.world = world
+            cast.set(seat: pair.0.id, lair: 0, spoils: .zero, companies: [(pair.1.q, pair.1.r)])
+        }
+        guard let spot = cast.companies.first else { throw XCTSkip("No shore by any hold of Ama's") }
+        let shore = Hex(spot.0, spot.1)
+        try await until("the moonsalt given") { (earA.world?.houses[ama].stock.moonsalt ?? 0) >= GameState.falseReflectionCost.moonsalt }
+        await MainActor.run { a.send(.castReflection(hold: cast.seat, at: shore, kind: .spear)) }
+        try await until("Ama's reflection waiting, hers alone to know") {
+            earA.world?.falseReflections(of: ama).contains { $0.at == shore } == true && earB.world?.reflections == nil
+        }
+        // To the eve of the Still Hour.
+        await steward.reshape { realm in
+            realm.world.watch = max(realm.world.watch, GameState.nextStillHour(from: realm.world.watch + 1) - 1)
+        }
+        let eve = await MainActor.run { earA.world?.watch ?? 0 }
+        try await until("both at the eve") { (earB.world?.watch ?? 0) >= eve && GameState.isStillHour(at: (earA.world?.watch ?? 0) + 1) }
+        let watch = await MainActor.run { earA.world?.watch ?? 0 }
+        await MainActor.run { a.setReady(true); b.setReady(true) }
+        try await until("the lake still, as Bel sees it") { (earB.world?.watch ?? 0) > watch && earB.world?.stillHour != nil }
+        let seen = await MainActor.run { (earB.world?.stillHour?.glimpses.first { $0.at == shore }, earB.world?.unit(at: shore)) }
+        XCTAssertEqual(seen.0?.owner, ama, "Bel sees Ama's company mirrored on that shore")
+        XCTAssertNil(seen.1, "where none stands")
+    }
+}
+
 /// Where the crown was set, and the companies set beside it.
 final class CrownStage: @unchecked Sendable {
     private let lock = NSLock()

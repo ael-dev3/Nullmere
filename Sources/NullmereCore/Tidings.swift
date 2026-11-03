@@ -312,6 +312,10 @@ extension GameState {
         case .pedlarSold(let house, let id):
             guard house == viewer, let ware = pedlar(for: house)?.wares.first(where: { $0.id == id }) else { return nil }
             return Tidings("Bought of the pedlar: \(ware.goods.title).", .good)
+        case .reflectionCast(let house, let at):
+            guard house == viewer else { return nil }
+            let next = GameState.nextStillHour(from: watch + 1) - watch
+            return Tidings("A false reflection is cast on the shore \(placeName(of: at)): in \(next) watches the lake will mirror a company of yours there that is not.", .good)
         case .labourDone(let house, let kind):
             guard house == viewer else { return nil }
             return Tidings("A labour of the watch done: \(kind.title.lowercased()). \(Labours.vigourPerLabour) vigour.", .good)

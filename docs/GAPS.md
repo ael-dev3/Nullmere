@@ -266,6 +266,14 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
 - [x] **Oaths the realm keeps.** A keeper swears in their own words to keep
   the peace with a House or send it goods, and the server holds their House
   to it: a promise between players made a binding contract of the world.
+- [x] **False reflections.** The lake can be taught to lie: from a hold by
+  the water a House casts a false reflection on a stretch of shore for
+  moonsalt, three at most to a Still Hour, and at the next Still Hour the
+  lake mirrors a company of its own standing there though none is, a
+  glimpse no other House can tell from the true; only eyes on that shore
+  see it empty, and a company come to stand there is mirrored as it is.
+  The House's secret, in view and tidings; drawn by the lake's mirror as
+  every glimpse is; under By the water.
 - [x] **Listening stones.** The black lake carries sound: a House sinks a
   stone of moonsalt in the water before a hold by the lake (three at most),
   and each watch it hears every company of war of another House that has

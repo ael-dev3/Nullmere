@@ -15,6 +15,8 @@ extension GameState {
         // The realm's words would grow the whole map again; where its
         // rounds begin is all the keeper's copy needs of them.
         view.dealing = dealt
+        // A House's false reflections are its secret.
+        view.reflections = reflections.map { all in all.filter { $0.house == house } }.flatMap { $0.isEmpty ? nil : $0 }
         // A House's labours are its own.
         view.labourBook = labourBook?[house].map { [house: $0] }
         // How far a House has gone up the Spine is its own to know.
@@ -335,6 +337,8 @@ extension GameState {
                 return caster == house
             case .letterSent(let letter):
                 return letter.from == house || letter.to == house
+            case .reflectionCast(let owner, _):
+                return owner == house
             case .labourDone(let owner, _), .chestOpened(let owner, _):
                 return owner == house
             case .expedition(let result):

@@ -174,6 +174,9 @@ public enum Command: Codable, Equatable, Sendable {
     case buyFromPedlar(ware: Int)
     /// A commander sent at the House's next stage of the Spine.
     case venture(commander: Int)
+    /// A false reflection cast from a hold on a stretch of shore, mirrored
+    /// at the next Still Hour as a company of a kind that is not there.
+    case castReflection(hold: Int, at: Hex, kind: UnitKind)
     /// An alliance's leader sets it to pursue a study together.
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
@@ -449,6 +452,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case starsFull
     case noPedlar
     case expeditionsDone
+    case reflectionThere
+    case tooManyReflections(Int)
     case venturedThisWatch
     case wareSold
     case needsSculptures(Int)
@@ -659,6 +664,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .notOnTheShore: return "A ripple-stone is cast only from a hold on the lake's shore."
         case .alreadyRippled: return "Your stone already stirs the water against the next Still Hour."
         case .starsFull: return "That commander has all its stars."
+        case .reflectionThere: return "Your false reflection already waits on that shore."
+        case .tooManyReflections(let most): return "The lake takes \(most) false reflections of a House to a Still Hour, and no more."
         case .expeditionsDone: return "Your House has taken every stage of the Spine."
         case .venturedThisWatch: return "Your House has sent an expedition this watch already."
         case .noPedlar: return "No pedlar lies off your holds with that ware."
@@ -844,6 +851,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case expedition(ExpeditionResult)
     /// A House has done one of its watch's labours.
     case labourDone(house: Int, kind: LabourKind)
+    /// A House casts a false reflection on the shore.
+    case reflectionCast(house: Int, at: Hex)
     /// A House's vigour opens one of the moon's chests, first to third.
     case chestOpened(house: Int, chest: Int)
     /// A commander rises a star.

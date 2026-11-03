@@ -233,7 +233,7 @@ struct OwnHoldDetails: View {
             let bottles = state.castingWater(beside: hold) != nil
             let ripples = state.isShore(hold.position) || hold.position.spiral(1).contains(where: state.isShore)
             let stone = state.stoneWater(before: hold) != nil
-            let rows = [bottles, ripples, stone].filter { $0 }.count
+            let rows = [bottles, ripples, stone, ReflectionRow.shore(near: hold, in: state, for: session.player) != nil].filter { $0 }.count
             if rows > 0 {
                 Rule()
                 FoldedList(title: "By the water", count: rows, summary: OwnHoldDetails.waterSummary(of: hold, in: state, for: session.player),
@@ -242,6 +242,10 @@ struct OwnHoldDetails: View {
                     if bottles { BottleComposer(session: session, hold: hold) }
                     // A ripple-stone against the next Still Hour.
                     if ripples { RippleRow(session: session, hold: hold) }
+                    // A false reflection for the lake to mirror at it.
+                    if ReflectionRow.shore(near: hold, in: state, for: session.player) != nil || !state.falseReflections(of: session.player).isEmpty {
+                        ReflectionRow(session: session, hold: hold)
+                    }
                     // A listening stone in the lake before it, or the means to sink one.
                     if stone { StoneRow(session: session, hold: hold) }
                 }
@@ -1531,6 +1535,48 @@ struct PedlarCard: View {
                             session.perform(.buyFromPedlar(ware: ware.id))
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/// A false reflection cast from a hold on its nearest free shore: at the
+/// next Still Hour the lake mirrors a company of the House's there that
+/// is not.
+struct ReflectionRow: View {
+    let session: GameSession
+    let hold: Hold
+
+    /// The nearest shore within reach where none stands and none is cast.
+    static func shore(near hold: Hold, in state: GameState, for house: Int) -> Hex? {
+        let cast = Set(state.falseReflections(of: house).map(\.at))
+        return hold.position.spiral(GameState.falseReflectionReach)
+            .filter { state.isShore($0) && state.unit(at: $0) == nil && state.hold(at: $0) == nil && !cast.contains($0) }
+            .min { ($0.distance(to: hold.position), $0.q, $0.r) < ($1.distance(to: hold.position), $1.q, $1.r) }
+    }
+
+    static func line(_ state: GameState, house: Int) -> String {
+        let cast = state.falseReflections(of: house).count
+        let next = GameState.nextStillHour(from: state.watch + 1) - state.watch
+        if cast > 0 { return "\(cast) false reflection\(cast == 1 ? "" : "s") wait for the Still Hour, in \(next) watches." }
+        return "For \(GameState.falseReflectionCost), the lake will mirror a company of yours on this shore at the Still Hour, though none is there."
+    }
+
+    var body: some View {
+        let state = session.state
+        let at = ReflectionRow.shore(near: hold, in: state, for: session.player)
+        let refusal = at.map { state.reflectionRefusal(from: hold.id, at: $0, kind: .spear, as: session.player) } ?? .notOnTheShore
+        HStack(alignment: .firstTextBaseline) {
+            Text(verbatim: ReflectionRow.line(state, house: session.player))
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.65))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            if let at {
+                QuietButton(title: "Cast a reflection", size: 8.5, enabled: refusal == nil, name: "Cast a false reflection on the shore by \(hold.name)",
+                            why: refusal?.description) {
+                    session.perform(.castReflection(hold: hold.id, at: at, kind: .spear))
                 }
             }
         }

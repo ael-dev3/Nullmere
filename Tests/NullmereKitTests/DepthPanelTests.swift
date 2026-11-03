@@ -1225,6 +1225,25 @@ final class DepthPanelTests: XCTestCase {
 
     // MARK: Words
 
+    /// A false reflection cast from a hold by the water.
+    func testAFalseReflectionIsCastFromTheWater() throws {
+        var state = world("pressed reflection")
+        let me = state.player
+        let seatIndex = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+        let shore = try XCTUnwrap(state.map.hexes.first { state.isShore($0) && state.hold(at: $0) == nil })
+        state.holds[seatIndex].position = shore
+        state.reveal(around: shore, range: GameState.falseReflectionReach, for: me)
+        state.houses[me].stock.moonsalt = 30
+        let seat = state.holds[seatIndex]
+        let (session, link) = session(state)
+        let at = try XCTUnwrap(ReflectionRow.shore(near: seat, in: session.state, for: me))
+        XCTAssertTrue(ReflectionRow.line(session.state, house: me).contains("though none is there"))
+        draw(ReflectionRow(session: session, hold: seat))
+        XCTAssertTrue(PressableButtons.press("Cast a reflection"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .castReflection(hold: seat.id, at: at, kind: .spear))
+        XCTAssertTrue(ReflectionRow.line(session.state, house: me).hasPrefix("1 false reflection wait"))
+    }
+
     /// The watch's labours in the Realm panel, folded and opened.
     func testTheWatchsLaboursAreShown() throws {
         var state = world("pressed labours")

@@ -297,6 +297,8 @@ final class SpacetimeIntegrationTests: XCTestCase {
         print("REALM two keepers' calendars foretold the same happening, and both saw it begin on its watch")
         try await scene.laboursOfTheWatch(ama: houseA, bel: houseB)
         print("REALM two keepers each raised a work or a muster for their watch's labour, and each was told only of their own")
+        try await scene.teachTheLakeToLie(ama: houseA, bel: houseB)
+        print("REALM one keeper taught the lake to lie, and the other saw her false company mirrored at the Still Hour")
         print("REALM two allied keepers rallied on a lair from their own clients, broke it, and both were told of it and their shares")
         await MainActor.run { b.send(.leaveAlliance) }
         try await until("Bel gone from the alliance, as both see it") {

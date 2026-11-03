@@ -87,6 +87,7 @@ extension GameState {
         for unit in units where unit.kind.isMilitary && !stirred.contains(unit.owner) && isShore(unit.position) {
             glimpses.append(.init(owner: unit.owner, kind: unit.kind, at: unit.position, troops: troops(of: unit)))
         }
+        glimpses += mirrorTheFalse()
         stillHour = StillHour(watch: watch, glimpses: glimpses, rippled: stirred.sorted())
         ripples = nil
         let shownOf = Set(glimpses.map(\.owner)).sorted()
