@@ -672,7 +672,8 @@ final class StageTests: XCTestCase {
         let hearths = [Hearth(point: Vec3(1, 1, 1), hex: Hex(2, -1)), Hearth(point: Vec3(5, 1, 1), hex: Hex(4, -1))]
         let flown = WorldStage.flights(arrows: arrows, birdsOver: Vec3(0, 0, 0), hearths: hearths, time: 1.3, into: &frame)
         XCTAssertEqual(flown.first { $0.key == .prop(.arrow) }?.instances.count, 1, "only arrows in flight")
-        // The veil's mist: six low, wide banks ringing the hold, faint and breathing.
+        // The veil's mist: six low, wide banks ringing the hold, faint and breathing: a
+        // breath on the air, never cotton before a low eye.
         let banks = WorldStage.mist(about: Hex(2, -1), height: 0.3)
         XCTAssertEqual(banks.count, 6)
         XCTAssertTrue(banks.allSatisfy { $0.hex == Hex(2, -1) && abs($0.point.y - 0.34) < 1e-5 })
@@ -682,7 +683,7 @@ final class StageTests: XCTestCase {
         let veiled = WorldStage.flights(arrows: [], birdsOver: nil, hearths: [], mists: banks, time: 2, into: &misty)
         let lying = veiled.first { $0.key == .prop(.puff) }?.instances ?? []
         XCTAssertEqual(lying.count, 6)
-        XCTAssertTrue(lying.allSatisfy { $0.params.y >= 0.2 && $0.params.y <= 0.34 && $0.model.c0.x > 3 && $0.model.c1.y < 1 })
+        XCTAssertTrue(lying.allSatisfy { $0.params.y >= 0.05 && $0.params.y <= 0.1 && $0.model.c0.x > 3 && $0.model.c1.y < 1 })
         // A Mangonel's stone flies as a stone, higher than an arrow over the same ground.
         var stones = SceneFrame()
         let stone = ArrowFlight(from: .zero, to: Vec3(3, 0, 0), progress: 0.5, stone: true)

@@ -1152,10 +1152,11 @@ public final class WorldStage: @unchecked Sendable {
         }
         for (index, mist) in mists.enumerated() {
             // Low banks of the lake's mist, wide and flat, breathing slowly in
-            // and out of sight but never rising.
+            // and out of sight but never rising: a breath over the black
+            // ground, never a bank of cotton before a low eye.
             let pose = pose(.prop(.puff), .idle, at: Float(index % 6) * 0.11, shared: &shared, into: &frame)
             let breath = 0.5 + 0.5 * Float(sin(Double(time * 0.45 + Float(index) * 1.3)))
-            placed.append((.prop(.puff), ModelInstance(model: .translation(mist.point) * .scale(Vec3(3.2, 0.55, 3.2)), opacity: 0.2 + 0.14 * breath,
+            placed.append((.prop(.puff), ModelInstance(model: .translation(mist.point) * .scale(Vec3(3.2, 0.55, 3.2)), opacity: 0.05 + 0.05 * breath,
                                                        hex: SIMD2(Int32(mist.hex.q), Int32(mist.hex.r)), palette: pose)))
         }
         return batches(placed)

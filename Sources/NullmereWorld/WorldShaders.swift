@@ -552,6 +552,17 @@ public enum WorldShaders {
         float fresnel = 0.30 + 0.70 * facing * facing * facing * facing * facing;
         float3 starlit = kDeepWater + (nm_stars(mirrored, time) + nm_moonGlow(mirrored, frame.moon.xyz)) * fresnel;
         float3 moonlit = nm_moonlight(mirrored, frame.moon.xyz) * fresnel;
+        // The moon's road: on the still water's faint swell, a broken glitter
+        // of its light along its bearing from the eye, narrow near the moon's
+        // image and widening toward the shore the eye stands on.
+        float2 toMoon = normalize(frame.moon.xz);
+        float2 along = normalize(look.xz);
+        float across = 1.0 - max(dot(toMoon, along), 0.0);
+        float near = clamp(distance(in.world, frame.eye.xyz) / 40.0, 0.05, 1.0);
+        float road = exp(-across * across / (0.00004 + 0.0009 * (1.0 - near)));
+        float swell = nm_fbm(in.world.xz * float2(9.0, 2.2) + nm_drift(time, 0.03));
+        float glint = smoothstep(0.58, 0.82, swell);
+        moonlit += kMoonColour * road * glint * 0.09 * fresnel;
         // Where it is shallow the shingle shows through, darkened and wet.
         float clear = smoothstep(0.0, 0.14, depth);
 
