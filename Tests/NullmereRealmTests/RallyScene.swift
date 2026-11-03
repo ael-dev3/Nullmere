@@ -493,13 +493,16 @@ extension RallyScene {
         try await until("Ama's reflection waiting, hers alone to know") {
             earA.world?.falseReflections(of: ama).contains { $0.at == shore } == true && earB.world?.reflections == nil
         }
-        // To the eve of the Still Hour.
+        // To the eve of the Still Hour, as the realm sets it.
+        let set = Staged()
         await steward.reshape { realm in
-            realm.world.watch = max(realm.world.watch, GameState.nextStillHour(from: realm.world.watch + 1) - 1)
+            let eve = GameState.nextStillHour(from: realm.world.watch + 1) - 1
+            realm.world.watch = max(realm.world.watch, eve)
+            set.set(seat: realm.world.watch, lair: 0, spoils: .zero, companies: [])
         }
-        let eve = await MainActor.run { earA.world?.watch ?? 0 }
-        try await until("both at the eve") { (earB.world?.watch ?? 0) >= eve && GameState.isStillHour(at: (earA.world?.watch ?? 0) + 1) }
-        let watch = await MainActor.run { earA.world?.watch ?? 0 }
+        let watch = set.seat
+        XCTAssertTrue(GameState.isStillHour(at: watch + 1), "The next watch is the Still Hour")
+        try await until("both at the eve") { earA.world?.watch == watch && earB.world?.watch == watch }
         await MainActor.run { a.setReady(true); b.setReady(true) }
         try await until("the lake still, as Bel sees it") { (earB.world?.watch ?? 0) > watch && earB.world?.stillHour != nil }
         let seen = await MainActor.run { (earB.world?.stillHour?.glimpses.first { $0.at == shore }, earB.world?.unit(at: shore)) }
