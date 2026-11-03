@@ -369,6 +369,7 @@ jobs:
           grep -h "Executed .* tests" build-test.log 2>/dev/null | tail -1 || true
           # The world's share of the screen, measured: that its test ran.
           grep -h "ChromeBudgetTests" build-test.log 2>/dev/null | tail -2 || true
+          grep -h "^LAYOUT" build-test.log 2>/dev/null | cut -c1-600 || true
           # Each pass of a frame's staging timed, its slowest frames named,
           # near the foot for when a staging figure is over its allowance.
           grep -h "PERF staging" build-test.log 2>/dev/null | tail -3 || true

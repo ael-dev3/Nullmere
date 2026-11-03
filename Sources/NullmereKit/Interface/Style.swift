@@ -324,6 +324,28 @@ extension View {
 }
 
 extension View {
+    /// A card or panel held to a height, so the world keeps the screen:
+    /// shown whole when it fits, and scrolled within the height when not.
+    func budgeted(_ maxHeight: CGFloat) -> some View {
+        ViewThatFits(in: .vertical) {
+            self
+            ScrollView(.vertical) { self }
+                .scrollIndicators(.automatic)
+        }
+        .frame(maxHeight: maxHeight, alignment: .top)
+    }
+}
+
+/// How much of the window's height a card or panel may take: the world is
+/// the screen, the interface a little of its edges.
+enum ChromeBudget {
+    /// The share of the window's height one card or panel may stand to.
+    static let cardShare: CGFloat = 0.42
+    /// The share of the window the world keeps, on every screen.
+    static let worldShare: Double = 0.85
+}
+
+extension View {
     func panelBackground() -> some View {
         modifier(PanelBackground())
     }

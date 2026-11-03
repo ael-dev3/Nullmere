@@ -95,6 +95,8 @@ struct PlayView: View {
     @AppStorage(MiniMap.shownKey) private var mapShown = false
     /// The charges put away: counsel may speak in their place.
     @AppStorage("charges.hidden") private var chargesHidden = false
+    /// The window's height, for the share of it a card may take.
+    @State private var windowHeight: CGFloat = 982
 
     /// The display settings' Motion, the launcher's, with the system's
     /// Reduce Motion where it says to follow it.
@@ -163,7 +165,9 @@ struct PlayView: View {
                         // panel alone: the standing cards give way so the
                         // world shows. The seat, chosen as play begins, keeps
                         // them, for they speak of it.
-                        if session.seatBriefing == nil, PlayView.standingCardsShown(session) {
+                        // With a panel open, it alone stands: the column's
+                        // cards give way so only one card covers the world.
+                        if session.seatBriefing == nil, session.panel == nil, PlayView.standingCardsShown(session) {
                             if let steps = session.firstSteps {
                                 FirstStepsCard(steps: steps) { session.dismissFirstSteps() }
                                     .transition(.opacity)
@@ -174,8 +178,11 @@ struct PlayView: View {
                                 CounselCard(session: session)
                             }
                         }
-                        SelectionPanel(session: session)
-                            .transition(.opacity)
+                        if session.panel == nil {
+                            SelectionPanel(session: session)
+                                .budgeted(windowHeight * ChromeBudget.cardShare)
+                                .transition(.opacity)
+                        }
                     }
                     Spacer(minLength: 16)
                     VStack(alignment: .trailing, spacing: 12) {
@@ -277,6 +284,7 @@ struct PlayView: View {
             }
         }
         .background(KeyBridge { key in session.handle(key) })
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { windowHeight = $0 }
         .environment(\.worldMotion, motion)
         .environment(\.worldFrameRate, app.displaySettings.frameRate)
         .environment(\.worldQuality, app.displaySettings.quality)
@@ -300,6 +308,7 @@ extension PlayView {
     /// to VoiceOver, which its cursor enters as it opens.
     private func opened(_ panel: some View, named name: String) -> some View {
         panel
+            .budgeted(windowHeight * ChromeBudget.cardShare)
             .transition(panelTransition)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(name)

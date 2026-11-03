@@ -70,10 +70,10 @@ final class ChromeBudgetTests: XCTestCase {
         func share(_ value: Double) -> String { "\(Int((value * 100).rounded()))%" }
         print("LAYOUT the world's share of a \(Int(size.width))x\(Int(size.height)) window: \(share(plain)) plain, \(share(company)) with a company "
               + "chosen, \(share(seat)) with the seat chosen, \(share(panel)) with the Houses open (pieces: \(pieces))")
-        XCTAssertGreaterThan(plain, 0.8, "Nothing chosen, the world is the screen")
-        XCTAssertGreaterThan(company, 0.65, "A company's record keeps to its corner")
-        XCTAssertGreaterThan(seat, 0.5, "Even a seat's long record leaves half the world")
-        XCTAssertGreaterThan(panel, 0.5, "A panel leaves half the world")
+        XCTAssertGreaterThan(plain, ChromeBudget.worldShare, "Nothing chosen, the world is the screen")
+        XCTAssertGreaterThan(company, ChromeBudget.worldShare, "A company's record keeps to its corner")
+        XCTAssertGreaterThan(seat, ChromeBudget.worldShare, "Even a seat's long record leaves half the world")
+        XCTAssertGreaterThan(panel, ChromeBudget.worldShare, "A panel leaves half the world")
 
         // Every panel, each opened alone over the map: none takes more than
         // half the window, and closing it gives the world back.
@@ -83,10 +83,10 @@ final class ChromeBudgetTests: XCTestCase {
             session.panel = each
             let open = worldShare(app, session)
             shares.append("\(each) \(share(open))")
-            XCTAssertGreaterThan(open, 0.5, "The \(each) panel leaves half the world")
+            XCTAssertGreaterThan(open, ChromeBudget.worldShare, "The \(each) panel leaves half the world")
         }
         session.panel = nil
         print("LAYOUT each panel open alone: " + shares.joined(separator: ", "))
-        XCTAssertGreaterThan(worldShare(app, session), 0.8, "Every panel closed, the world is the screen again")
+        XCTAssertGreaterThan(worldShare(app, session), ChromeBudget.worldShare, "Every panel closed, the world is the screen again")
     }
 }
