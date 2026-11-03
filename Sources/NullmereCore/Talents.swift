@@ -199,7 +199,7 @@ public enum Talent: String, CaseIterable, Codable, Sendable, PlainCases {
 
 extension Commander {
     /// Talent points: one for each level past the first.
-    public var talentPoints: Int { level - 1 }
+    public var talentPoints: Int { level - 1 + (starCount - 1) }
 
     /// The ranks it has learned of a talent.
     public func rank(of talent: Talent) -> Int {

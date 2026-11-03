@@ -67,6 +67,9 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// veined with moonsalt rising from the water, rings of ripple
     /// turning slowly out about it.
     case listeningStone
+    /// One of a commander's stars, carried in an arc over its head when it
+    /// has more than one: a small five-pointed star of moonsalt, lit.
+    case commanderStar
     /// A House's crest hung at a hold's gate: a post and crossbar with the
     /// shield hanging, its field in the House's field tincture.
     case crestBoard
@@ -122,6 +125,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .helpLight: return "help light"
         case .borderStone: return "border stone"
         case .listeningStone: return "listening stone"
+        case .commanderStar: return "commander star"
         case .crestBoard: return "crest board"
         case .barge: return "barge"
         case .raising(let kind): return "raising \(kind.rawValue)"
@@ -175,7 +179,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .folk(let variant): return .folk(variant: (variant % Folk.variants + Folk.variants) % Folk.variants)
         case .talentSigil(let tree): return .talentSigil(tree: min(max(tree, 0), 2))
         case .crestCharge(let charge): return .crestCharge(min(max(charge, 0), 9))
-        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .helpLight, .borderStone, .listeningStone, .crestBoard, .barge, .raising, .drownedCrown, .allianceHall, .storehouse,
+        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .helpLight, .borderStone, .listeningStone, .commanderStar, .crestBoard, .barge, .raising, .drownedCrown, .allianceHall, .storehouse,
              .yard, .signature, .town:
             return self
         }
@@ -196,6 +200,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .gatehold, .standard, .rallyCamp, .barge, .raising, .drownedCrown, .storehouse, .yard: return 3000
         case .hostBanner, .talentSigil, .helpLight, .borderStone, .crestBoard, .crestCharge: return 300
         case .listeningStone: return 900
+        case .commanderStar: return 160
         }
     }
 }
@@ -345,6 +350,7 @@ public enum Library {
         keys.append(.helpLight)
         keys.append(.borderStone)
         keys.append(.listeningStone)
+        keys.append(.commanderStar)
         keys.append(.crestBoard)
         keys.append(.barge)
         keys += Raising.families.map { .raising($0) }
@@ -386,6 +392,7 @@ public enum Library {
         case .helpLight: return Land.helpLight(name: key.canonical.description)
         case .borderStone: return Land.borderStone(name: key.canonical.description)
         case .listeningStone: return Land.listeningStone(name: key.canonical.description)
+        case .commanderStar: return Land.commanderStar(name: key.canonical.description)
         case .crestBoard: return Land.crestBoard(name: key.canonical.description)
         case .barge: return Land.barge(name: key.canonical.description)
         case .raising(let kind): return Raising.model(kind, name: key.canonical.description)

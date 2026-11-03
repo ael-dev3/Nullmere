@@ -303,6 +303,12 @@ extension GameState {
         case .rippleCast(let house, let holdID):
             guard house == viewer else { return nil }
             return Tidings("A ripple-stone cast from \(hold(holdID)?.name ?? "your hold"): at the next Still Hour your companies are not mirrored.", .good)
+        case .sculpturesFound(let house, let count):
+            guard house == viewer else { return nil }
+            return Tidings("\(count) sculpture\(count == 1 ? "" : "s") to your seat, for your commanders' stars: \(sculptures(of: house)) kept.", .good)
+        case .commanderStarred(let id, let house, let stars):
+            guard house == viewer else { return nil }
+            return Tidings("\(commander(id)?.name ?? "A commander") rises to \(stars) stars.", .good)
         case .stoneSunk(_, let house, let holdID):
             guard house == viewer else { return nil }
             return Tidings("A listening stone sinks into the black water before \(hold(holdID)?.name ?? "your hold"): "

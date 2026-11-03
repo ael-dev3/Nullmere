@@ -1825,3 +1825,26 @@ extension Land {
         return Model(name: name, mesh: b.mesh, rig: rig) { clip, time in machinery.joints(clip, time) }
     }
 }
+
+extension Land {
+    /// A commander's star: five points of moonsalt about a lit heart, thin
+    /// enough to read edge on, set in a hair of gold.
+    static func commanderStar(name: String) -> Model {
+        var b = MeshBuilder()
+        var outline: [Vec3] = []
+        for index in 0..<10 {
+            let angle = Float(index) / 10 * 2 * .pi
+            let radius: Float = index % 2 == 0 ? 0.05 : 0.021
+            outline.append(Vec3(radius * sin(angle), radius * cos(angle), 0))
+        }
+        b.with(material: .glow) {
+            $0.sheet(outline, normal: Vec3(0, 0, 1), thickness: 0.008, color: Palette.moonGlow.mix(Palette.gold, 0.35))
+        }
+        b.with(material: .metal) {
+            for index in 0..<10 {
+                $0.beam(from: outline[index], to: outline[(index + 1) % 10], width: 0.004, depth: 0.01, color: Palette.gold)
+            }
+        }
+        return Model(name: name, mesh: b.mesh)
+    }
+}

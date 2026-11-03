@@ -199,6 +199,8 @@ public struct Commander: Codable, Equatable, Identifiable, Sendable {
     public internal(set) var talents: [Talent]?
     /// Held prisoner by another House, while it is.
     public internal(set) var captive: Captivity?
+    /// Its stars, once raised past the first; absent at one.
+    public internal(set) var stars: Int?
 
     public init(id: Int, name: String, archetype: Archetype, owner: Int) {
         self.id = id
@@ -239,6 +241,7 @@ public struct Commander: Codable, Equatable, Identifiable, Sendable {
     public func edge(_ edge: Edge) -> Int {
         let level = self.level
         var total = talentEdge(edge)
+        if edge == .attack || edge == .defense { total += (starCount - 1) * Commander.starEdge }
         for skill in archetype.skills where skill.unlock <= level {
             total += skill.edges[edge] ?? 0
         }

@@ -197,6 +197,10 @@ final class LairTests: XCTestCase {
         XCTAssertEqual(stage.state.houses[ally].stock, before.theirs + theirs)
         // Gear for its caller among the ruins, and the chronicle tells it.
         XCTAssertTrue(events.contains { if case .gearFound(me, _, .reavers) = $0 { return true } else { return false } })
+        // Sculptures for the commanders' stars: to each House of the host,
+        // its caller twice as many.
+        XCTAssertTrue(events.contains(.sculpturesFound(house: me, count: 2 * GameState.sculpturesPerLairLevel * lair.level)))
+        XCTAssertTrue(events.contains(.sculpturesFound(house: ally, count: GameState.sculpturesPerLairLevel * lair.level)))
         // Hourglasses for its caller, one a level; the Reavers' timber in a
         // cache for every House of the host.
         let given = events.filter { if case .itemsGiven = $0 { return true } else { return false } }

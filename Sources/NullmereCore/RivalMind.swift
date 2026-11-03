@@ -117,6 +117,7 @@ struct RivalMind {
         }
         if !caretaking { events += ransomCaptives(in: &state) }
         events += appointCommanders(in: &state)
+        events += state.raiseStars(for: house)
         events += state.growTalents(for: house)
         events += state.armCommanders(for: house)
         let garrisons = assignGarrisons(in: state)

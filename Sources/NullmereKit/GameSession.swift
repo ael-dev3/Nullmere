@@ -1468,6 +1468,7 @@ public final class GameSession {
         case .answerRiddle: return .lore
         case .castRipple: return .lore
         case .sinkStone: return .lore
+        case .raiseStar: return .honour
         case .pursueAllianceStudy: return .lore
         case .giveToAlliance: return .coin
         case .raiseAllianceHall, .raiseStorehouse, .raiseYard: return .rise
@@ -1608,6 +1609,7 @@ public final class GameSession {
         case .stillHour(let glimpses, let shown) where glimpses > 0 && shown.contains(player): return .dread
         case .stoneHeard(_, let house, _) where house == player: return .dread
         case .stoneSunk(_, let house, _) where house == player: return .lore
+        case .sculpturesFound(let house, _) where house == player: return .coin
         case .eclipse: return .dread
         case .riddleAnswered(let house, let right, _) where house == player: return right ? .triumph : .refusal
         case .edictBroken(_, _, _, let against, _) where against == player: return .horn

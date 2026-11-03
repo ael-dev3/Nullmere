@@ -101,6 +101,31 @@ struct RallyScene {
         XCTAssertEqual(told.0?.shares.first { $0.house == ama }?.spoils, spoils.share(3, of: 4), "Ama's share")
         XCTAssertEqual(told.1?.shares.first { $0.house == bel }?.spoils, spoils.share(1, of: 4), "Bel's share")
         XCTAssertNotEqual(spoils.share(1, of: 4), .zero, "A share worth having")
+
+        // Sculptures for both Houses' commanders' stars, twice as many to
+        // the rally's caller; each keeper counts only their own.
+        let level = 1
+        try await until("the sculptures counted, each House its own") {
+            earA.world?.sculptures(of: ama) == 2 * GameState.sculpturesPerLairLevel * level
+                && earB.world?.sculptures(of: bel) == GameState.sculpturesPerLairLevel * level
+        }
+        let peeked = await MainActor.run { (earA.world?.sculptures(of: bel), earB.world?.sculptures(of: ama)) }
+        XCTAssertEqual(peeked.0, 0, "Ama can't count Bel's")
+        XCTAssertEqual(peeked.1, 0, "nor Bel Ama's")
+        // Enough more for a star each, and each raises one from their own client.
+        await steward.reshape { realm in
+            for house in [ama, bel] {
+                _ = realm.world.giveSculptures(Commander.sculpturesToRaise(from: 1)! - realm.world.sculptures(of: house), to: house)
+            }
+        }
+        for (link, ear, house) in [(a, earA, ama), (b, earB, bel)] {
+            try await until("a star's sculptures kept") { ear.world?.sculptures(of: house) == Commander.sculpturesToRaise(from: 1) }
+            let commander = try await MainActor.run { try XCTUnwrap(ear.world?.commanders(of: house).first).id }
+            await MainActor.run { link.send(.raiseStar(commander: commander)) }
+            try await until("the star raised, as its keeper sees it") {
+                ear.world?.commander(commander)?.starCount == 2 && ear.world?.sculptures(of: house) == 0
+            }
+        }
     }
 }
 

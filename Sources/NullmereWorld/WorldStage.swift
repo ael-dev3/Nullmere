@@ -36,6 +36,8 @@ public struct CompanyPose: Equatable, Sendable {
     /// the ranks it holds in all; -1 and 0 when it has learned none.
     public var talentTree: Int = -1
     public var talentRanks: Int = 0
+    /// Its commander's stars; one, the first, is not drawn.
+    public var stars: Int = 1
 
     /// A clip being left: where it was, and how much of it still shows.
     public struct Blend: Equatable, Sendable {
@@ -874,6 +876,19 @@ public final class WorldStage: @unchecked Sendable {
             if let commander = company.commander, !places.isEmpty {
                 let head = Formation.commander(company.key, health: company.health, muster: company.muster)
                 stand(.commander(variant: commander), head, places.count)
+                // Its stars past the first, in an arc over its head, turning
+                // slowly as one.
+                if company.stars > 1 {
+                    let over = company.position + turn.transformDirection(head * company.spread)
+                    let lift = ground(atX: over.x, z: over.z) + WorldStage.starHeight
+                    let count = company.stars
+                    for index in 0..<count {
+                        let angle = (Float(index) - Float(count - 1) / 2) * 0.55 + Float(sin(Double(company.clipTime * 0.7))) * 0.15
+                        let at = Vec3(over.x + 0.09 * sin(angle), lift + 0.03 * cos(angle), over.z + 0.09 * cos(angle))
+                        placed.append((.commanderStar, ModelInstance(model: .translation(at) * .rotationY(angle + company.clipTime * 0.5),
+                                                                     opacity: company.opacity, hex: hex, flags: flags)))
+                    }
+                }
                 // On the march, its leading talents' sigil glows on the
                 // ground beneath it, wider the more ranks it holds, breathing.
                 if company.clip == .march, company.talentTree >= 0 {
@@ -888,6 +903,9 @@ public final class WorldStage: @unchecked Sendable {
         }
         return WorldStage.batches(placed)
     }
+
+    /// How high over the ground a commander's stars are carried.
+    public static let starHeight: Float = 0.42
 
     /// How wide a commander's talent sigil spreads: from a third of a tile
     /// for a first rank to over half a tile with every rank learned.

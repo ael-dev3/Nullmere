@@ -164,7 +164,9 @@ final class RingTests: XCTestCase {
         state.watch = GameState.lunarMonth * 2
         let moonsalt = [fourth, me, rival, third].map { state.houses[$0].stock.moonsalt }
         let events = state.turnTheRing()
-        XCTAssertEqual(events, [.ringHonoured(houses: [fourth, me, rival])])
+        XCTAssertEqual(events, [.ringHonoured(houses: [fourth, me, rival]),
+                                .sculpturesFound(house: fourth, count: 6), .sculpturesFound(house: me, count: 4), .sculpturesFound(house: rival, count: 2)],
+                       "Honoured with moonsalt, and sculptures for their commanders' stars")
         XCTAssertEqual(state.houses[fourth].stock.moonsalt, moonsalt[0] + 30)
         XCTAssertEqual(state.houses[me].stock.moonsalt, moonsalt[1] + 20)
         XCTAssertEqual(state.houses[rival].stock.moonsalt, moonsalt[2] + 10)

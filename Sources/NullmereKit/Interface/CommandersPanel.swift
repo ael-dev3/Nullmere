@@ -180,6 +180,7 @@ private struct CommanderRow: View {
                     }
                 }
             }
+            StarsLine(session: session, commander: commander)
             TalentsView(session: session, commander: commander)
         }
     }
@@ -348,6 +349,37 @@ private struct ForgeRow: View {
 /// A commander's talents: its three trees, each talent's rank and what a
 /// rank does, a button to learn the next, and one to forget them all and
 /// learn anew. Shown of itself while points wait to be spent.
+/// A commander's stars, as pips, and the sculptures its next would take:
+/// the button sets them when the House keeps enough.
+struct StarsLine: View {
+    let session: GameSession
+    let commander: Commander
+
+    static func line(_ commander: Commander, kept: Int) -> String {
+        guard let cost = Commander.sculpturesToRaise(from: commander.starCount) else { return "All \(Commander.mostStars) stars" }
+        return "Next star: \(cost) sculptures, \(kept) kept"
+    }
+
+    var body: some View {
+        let kept = session.state.sculptures(of: session.player)
+        let refusal = session.state.starRefusal(of: commander.id, as: session.player)
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            LevelPips(level: commander.starCount, maximum: Commander.mostStars)
+                .accessibilityLabel("\(commander.starCount) of \(Commander.mostStars) stars")
+            Text(verbatim: StarsLine.line(commander, kept: kept))
+                .font(.nm(10.5))
+                .foregroundStyle(refusal == nil ? Palette.glowWords : Palette.text(0.6))
+            Spacer()
+            if Commander.sculpturesToRaise(from: commander.starCount) != nil, refusal == nil || kept > 0 {
+                QuietButton(title: "Raise a star", size: 8.5, enabled: refusal == nil,
+                            name: "Raise \(commander.name) to \(commander.starCount + 1) stars", why: refusal?.description) {
+                    session.perform(.raiseStar(commander: commander.id))
+                }
+            }
+        }
+    }
+}
+
 struct TalentsView: View {
     let session: GameSession
     let commander: Commander

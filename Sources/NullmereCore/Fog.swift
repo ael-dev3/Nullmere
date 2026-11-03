@@ -15,6 +15,8 @@ extension GameState {
         // The realm's words would grow the whole map again; where its
         // rounds begin is all the keeper's copy needs of them.
         view.dealing = dealt
+        // A House's sculptures are its own to count.
+        view.sculptureCounts = sculptureCounts?[house].map { [house: $0] }
         // A House's listening stones, and what they hear, are its own.
         view.listeningStones = listeningStones.map { all in all.filter { $0.owner == house } }.flatMap { $0.isEmpty ? nil : $0 }
         view.soundings = soundings(heardBy: house).isEmpty ? nil : soundings(heardBy: house)
@@ -324,6 +326,8 @@ extension GameState {
                 return true
             case .rippleCast(let caster, _):
                 return caster == house
+            case .sculpturesFound(let owner, _), .commanderStarred(_, let owner, _):
+                return owner == house
             case .stoneSunk(_, let owner, _), .stoneHeard(_, let owner, _), .stoneLost(_, let owner):
                 return owner == house
             case .dreamt(let dream):

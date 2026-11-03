@@ -400,6 +400,7 @@ extension GameSession {
                                      emphasis: chosen ? 1 : (hovered == unit.position ? 0.5 : 0), isOwn: unit.owner == player,
                                      commander: unit.leader.flatMap(commanderLook), spread: spread, muster: state.musterPercent(of: unit),
                                      blend: animated ? easing(unit.id, into: clip, at: clipTime, now: now) : nil))
+            if let led = unit.leader.flatMap(state.commander) { poses[poses.count - 1].stars = led.starCount }
             if let leading = unit.leader.flatMap(state.commander)?.leadingTree {
                 poses[poses.count - 1].talentTree = TalentTree.allCases.firstIndex(of: leading.tree) ?? -1
                 poses[poses.count - 1].talentRanks = leading.ranks

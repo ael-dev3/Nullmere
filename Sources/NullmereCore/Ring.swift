@@ -100,11 +100,11 @@ extension GameState {
         return line
     }
 
-    /// What a commander weighs in the Ring: its level, its talents and the
+    /// What a commander weighs in the Ring: its level, its stars, its talents and the
     /// gear it wears.
     public func ringWeight(of commander: Commander) -> Int {
         let gear = worn(by: commander.id).reduce(0) { $0 + $1.quality.rawValue * 6 }
-        return 40 + commander.level * 10 + (commander.talents?.count ?? 0) * 4 + gear
+        return 40 + commander.level * 10 + (commander.talents?.count ?? 0) * 4 + (commander.starCount - 1) * 15 + gear
     }
 
     /// What a House's line weighs, before chance: its commanders still its own.
@@ -193,10 +193,14 @@ extension GameState {
         for (place, house) in honoured.enumerated() {
             store(Stock(moonsalt: GameState.ringHonours[place]), for: house)
         }
+        var sculpted: [GameEvent] = []
+        for (place, house) in honoured.enumerated() {
+            sculpted += giveSculptures(GameState.ringSculptures[place], to: house)
+        }
         for index in kept.entries.indices {
             kept.entries[index].standing = GameState.ringStart + (kept.entries[index].standing - GameState.ringStart) / 2
         }
         ring = kept
-        return honoured.isEmpty ? [] : [.ringHonoured(houses: honoured)]
+        return honoured.isEmpty ? [] : [.ringHonoured(houses: honoured)] + sculpted
     }
 }

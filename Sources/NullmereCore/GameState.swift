@@ -116,6 +116,8 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var ripples: [Int]?
     /// The listening stones sunk in the lake; absent while none is.
     public internal(set) var listeningStones: [ListeningStone]?
+    /// The sculptures each House keeps, by House, to raise its commanders' stars.
+    public internal(set) var sculptureCounts: [Int: Int]?
     /// What the stones heard as the watch last turned.
     public internal(set) var soundings: [Sounding]?
     /// Where each company in a stone's reach stood when the stones last

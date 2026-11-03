@@ -120,6 +120,8 @@ final class DepthPanelTests: XCTestCase {
         let shore = try XCTUnwrap(state.map.hexes.first { state.isShore($0) && state.hold(at: $0) == nil })
         state.holds[seatIndex].position = shore
         state.houses[me].stock.moonsalt = 30
+        // The water before it known to the keeper, as a seat's own shore is.
+        state.reveal(around: shore, range: GameState.stoneFromHold, for: me)
         let seat = state.holds[seatIndex]
         XCTAssertTrue(StoneRow.line(state, hold: seat, house: me).contains("hears marches out of sight"))
         XCTAssertTrue(OwnHoldDetails.waterSummary(of: seat, in: state, for: me).contains("a listening stone"))

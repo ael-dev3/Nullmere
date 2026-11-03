@@ -280,6 +280,10 @@ extension GameState {
                 if let unit = unit(strike.unit) { events += teach(unit, target.breakLessons) }
             }
             events += awardGear(from: target.kind, level: target.level * 2, to: rally.caller)
+            for house in sides where (struck[house] ?? 0) > 0 {
+                let count = GameState.sculpturesPerLairLevel * target.level * (house == rally.caller ? 2 : 1)
+                events += giveSculptures(count, to: house)
+            }
             let host = sides.map { houses[$0].title }
             let named = host.count == 1 ? host[0] : host.dropLast().joined(separator: ", ") + " and " + host.last!
             record(.hunt, sides, target.gate == nil ? "A host of \(named) breaks \(target.named) \(placeName(of: target.position))."

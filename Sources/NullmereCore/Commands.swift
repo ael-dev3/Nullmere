@@ -166,6 +166,8 @@ public enum Command: Codable, Equatable, Sendable {
     /// A listening stone sunk in the water before a hold on the shore, to
     /// hear marches out of sight.
     case sinkStone(hold: Int)
+    /// A commander's stars raised by one, for sculptures set at its seat.
+    case raiseStar(commander: Int)
     /// An alliance's leader sets it to pursue a study together.
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
@@ -438,6 +440,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case notOnTheShore
     case alreadyRippled
     case stoneAlreadySunk
+    case starsFull
+    case needsSculptures(Int)
     case tooManyStones(Int)
     /// An alliance study learned to its last grade.
     case allianceStudyMastered
@@ -644,6 +648,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .answeredAlready: return "Your House has answered this riddle; the lake sets another at the next half moon."
         case .notOnTheShore: return "A ripple-stone is cast only from a hold on the lake's shore."
         case .alreadyRippled: return "Your stone already stirs the water against the next Still Hour."
+        case .starsFull: return "That commander has all its stars."
+        case .needsSculptures(let count): return "Its next star takes \(count) sculptures."
         case .stoneAlreadySunk: return "A listening stone already lies in the water before that hold."
         case .tooManyStones(let most): return "Your House keeps \(most) listening stones in the lake, and no more."
         case .allianceStudyMastered: return "Your alliance has learned that study to its last grade."
@@ -810,6 +816,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case stillHour(glimpses: Int, houses: [Int])
     /// A House sinks a listening stone before one of its holds.
     case stoneSunk(stone: Int, house: Int, hold: Int)
+    /// Sculptures come to a House.
+    case sculpturesFound(house: Int, count: Int)
+    /// A commander rises a star.
+    case commanderStarred(commander: Int, house: Int, stars: Int)
     /// A House's stone heard so many marches out of its sight.
     case stoneHeard(stone: Int, house: Int, marches: Int)
     /// A stone lost with the hold it was sunk before.
