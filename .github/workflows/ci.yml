@@ -280,12 +280,12 @@ jobs:
           # by the job after this one, so the tail of that log holds it whole.
           # Small enough, its colour profile dropped, that the tail of that
           # log holds the whole of it.
-          for shot in build/game-plain.png build/game-world.png build/game-later.png build/game-network.png; do
+          for shot in build/game-plain.png build/game-world.png build/game-later.png build/game-network.png build/game-lakes.png; do
             if [ -s "$shot" ]; then
               # The world's own views large enough to judge its light and
               # water by; the others small.
               case "$shot" in
-                build/game-world.png|build/game-later.png) size=1200; quality=60 ;;
+                build/game-world.png|build/game-later.png|build/game-lakes.png) size=1200; quality=60 ;;
                 *) size=400; quality=28 ;;
               esac
               sips -s format jpeg -s formatOptions "$quality" -Z "$size" --deleteColorManagementProperties "$shot" --out "${shot%.png}-review.jpg" >/dev/null
@@ -477,7 +477,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        screen: [game-plain, game-world, game-later, game-network]
+        screen: [game-plain, game-world, game-later, game-network, game-lakes]
     steps:
       - uses: actions/download-artifact@v6
         with:
