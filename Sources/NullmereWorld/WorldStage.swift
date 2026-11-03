@@ -219,6 +219,10 @@ public final class WorldStage: @unchecked Sendable {
         return false
     }
     private var laid: [Int: (hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising?, heritage: Heritage?, pieces: [Piece])] = [:]
+    /// Each hold's pieces as drawn, `HoldLayout.grandeur` times its plan,
+    /// kept with the plan they were drawn from: carried out and set on the
+    /// land once, not each frame.
+    private var drawnPieces: [Int: (plan: [Piece], drawn: [Piece])] = [:]
     /// The folk of each hold's homes out walking, by the town they walk.
     private var strolled: [Int: (plan: HoldLayout.Plan, ways: [Errand])] = [:]
     /// The land's height where figures have stood, by the 64th of a unit:
@@ -502,6 +506,17 @@ public final class WorldStage: @unchecked Sendable {
         return made
     }
 
+    /// A hold's pieces as they are drawn: its plan carried out about its
+    /// middle, again only when the plan is laid out again.
+    func drawn(_ sight: HoldSight) -> [Piece] {
+        let plan = pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage)
+        if let kept = drawnPieces[sight.hold.id], kept.plan == plan { return kept.drawn }
+        let middle = Relief.centre(of: sight.hold.position)
+        let made = plan.map { grand($0, about: middle) }
+        drawnPieces[sight.hold.id] = (plan, made)
+        return made
+    }
+
     /// How a hold is laid out: as the rules keep it, or with the work
     /// `finishing` still rising as the watch's turn eases it up.
     static func plan(of hold: Hold, progress: Float?, finishing: HoldLayout.Plan.Rising?, heritage: Heritage?) -> HoldLayout.Plan {
@@ -563,9 +578,7 @@ public final class WorldStage: @unchecked Sendable {
         for sight in sights {
             let phase = WorldStage.phase(of: sight.hold.position, salt: sight.hold.id)
             let people = WorldStage.peopleFlags(sight.heritage)
-            let middle = Relief.centre(of: sight.hold.position)
-            for planned in pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage) {
-                let piece = grand(planned, about: middle)
+            for piece in drawn(sight) {
                 let model = Library.model(piece.key)
                 let palette = model.rig.count > 1
                     ? WorldStage.pose(piece.key, .idle, at: time + phase, shared: &poses, into: &frame) : 0
