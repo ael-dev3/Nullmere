@@ -130,7 +130,7 @@ public struct Relief: Sendable {
     /// The height of the land at a point of the map.
     public func height(atX x: Float, z: Float) -> Float {
         let t = Relief.triangle(x: x, z: z)
-        let wa = Relief.raise(t.wa, 3), wb = Relief.raise(t.wb, 3), wc = Relief.raise(t.wc, 3)
+        let wa = Relief.raise(t.wa, 2), wb = Relief.raise(t.wb, 2), wc = Relief.raise(t.wc, 2)
         let total = wa + wb + wc
         guard total > 0 else { return 0 }
         // A hex too far from the point to matter adds nothing, and its grain

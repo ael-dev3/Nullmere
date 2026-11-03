@@ -65,9 +65,11 @@ public struct TerrainMesh: Sendable {
                 let index = row * columns + column
                 let height = relief.height(atX: x, z: z)
                 heights[index] = height
-                // The colour keeps each hex's own ground until near its edge.
+                // The colour keeps each hex's own ground toward its heart and
+                // runs into its neighbours' across a broad shore, never a
+                // hex's edge.
                 let t = Relief.triangle(x: x, z: z)
-                let wa = Relief.raise(t.wa, 6), wb = Relief.raise(t.wb, 6), wc = Relief.raise(t.wc, 6)
+                let wa = Relief.raise(t.wa, 3), wb = Relief.raise(t.wb, 3), wc = Relief.raise(t.wc, 3)
                 let total = max(wa + wb + wc, 1e-12)
                 let ta = relief.terrain(of: t.a), tb = relief.terrain(of: t.b), tc = relief.terrain(of: t.c)
                 var colour = (TerrainMesh.colour(ta) * wa + TerrainMesh.colour(tb) * wb + TerrainMesh.colour(tc) * wc) / total
@@ -76,7 +78,7 @@ public struct TerrainMesh: Sendable {
                     colour = colour.mix(TerrainMesh.frost, min((height - TerrainMesh.frostLine) / 0.8, 1))
                 }
                 // A little mottling, so no field is one flat colour.
-                colour *= 0.9 + 0.2 * Noise.value(x * 2.3, z * 2.3, seed: 21)
+                colour *= 0.82 + 0.2 * Noise.value(x * 2.3, z * 2.3, seed: 21) + 0.16 * Noise.value(x * 0.45, z * 0.45, seed: 22)
                 colours[index] = colour
                 grounds[index] = strongest.code
             }

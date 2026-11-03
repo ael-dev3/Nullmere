@@ -296,7 +296,7 @@ public enum WorldShaders {
     float3 nm_mist(float2 p, float time) {
         float drift = nm_fbm(p * 0.18 + nm_drift(time, 0.012));
         float wisp = nm_fbm(p * 0.6 - nm_drift(time + 2600.0, 0.024));
-        return kMist * (0.7 + 0.9 * drift) + float3(0.004, 0.0048, 0.0068) * smoothstep(0.55, 0.85, wisp);
+        return kMist * (0.55 + 0.7 * drift) + float3(0.0016, 0.0019, 0.0028) * smoothstep(0.6, 0.9, wisp);
     }
 
     // The night sky in a direction, but for the moon: the dark, and the
