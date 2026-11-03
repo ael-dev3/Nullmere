@@ -282,7 +282,13 @@ jobs:
           # log holds the whole of it.
           for shot in build/game-plain.png build/game-world.png build/game-later.png build/game-network.png; do
             if [ -s "$shot" ]; then
-              sips -s format jpeg -s formatOptions 28 -Z 400 --deleteColorManagementProperties "$shot" --out "${shot%.png}-review.jpg" >/dev/null
+              # The world's own views large enough to judge its light and
+              # water by; the others small.
+              case "$shot" in
+                build/game-world.png|build/game-later.png) size=1200; quality=60 ;;
+                *) size=400; quality=28 ;;
+              esac
+              sips -s format jpeg -s formatOptions "$quality" -Z "$size" --deleteColorManagementProperties "$shot" --out "${shot%.png}-review.jpg" >/dev/null
             fi
           done
           for shot in build/game-world.png build/game-plain.png build/game-network.png build/game-away.png build/game-briefing.png build/game-lakes.png build/game-omen.png build/game-first-steps.png build/game-later.png build/game-race.png build/game-ending.png; do
