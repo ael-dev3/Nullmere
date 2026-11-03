@@ -341,25 +341,40 @@ extension View {
 }
 
 extension View {
-    /// A card or panel held to a height, so the world keeps the screen:
-    /// shown whole when it fits, and scrolled within the height when not.
-    func budgeted(_ maxHeight: CGFloat) -> some View {
-        ViewThatFits(in: .vertical) {
-            self
-            ScrollView(.vertical) { self }
-                .scrollIndicators(.automatic)
-        }
-        .environment(\.chromeNotedByCard, true)
-        .frame(maxHeight: maxHeight, alignment: .top)
-        .chrome("panel")
+    /// A panel's scrolling body held to the height the play view gives
+    /// panels, so the world keeps the screen.
+    func panelHeight() -> some View {
+        modifier(PanelHeight())
     }
+}
+
+/// The height the play view gives a panel's scrolling body.
+private struct PanelHeight: ViewModifier {
+    @Environment(\.panelMaxHeight) private var maxHeight
+
+    func body(content: Content) -> some View {
+        content.frame(maxHeight: maxHeight)
+    }
+}
+
+extension EnvironmentValues {
+    /// How tall a panel's scrolling body may stand: set by the play view
+    /// from its window, 620 points where none is set.
+    @Entry var panelMaxHeight: CGFloat = 620
 }
 
 /// How much of the window's height a card or panel may take: the world is
 /// the screen, the interface a little of its edges.
 enum ChromeBudget {
-    /// The share of the window's height one card or panel may stand to.
-    static let cardShare: CGFloat = 0.32
+    /// The share of the window's height a panel's body may stand to.
+    static let cardShare: CGFloat = 0.46
+    /// But never less than this, so a small window's panels still serve.
+    static let leastHeight: CGFloat = 360
+
+    /// The height a panel's body may stand to in a window this tall.
+    static func panelHeight(in window: CGFloat) -> CGFloat {
+        max(window * cardShare, leastHeight)
+    }
     /// The share of the window the world keeps, on every screen.
     static let worldShare: Double = 0.85
 }

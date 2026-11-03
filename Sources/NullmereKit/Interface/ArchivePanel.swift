@@ -54,7 +54,7 @@ struct ArchivePanel: View {
         }
         .padding(16)
         .frame(width: PanelWidth.rail)
-        .frame(maxHeight: 620)
+        .panelHeight()
         .panelBackground()
     }
 

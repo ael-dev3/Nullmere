@@ -180,7 +180,6 @@ struct PlayView: View {
                         }
                         if session.panel == nil {
                             SelectionPanel(session: session)
-                                .budgeted(windowHeight * ChromeBudget.cardShare)
                                 .transition(.opacity)
                         }
                     }
@@ -285,6 +284,7 @@ struct PlayView: View {
         }
         .background(KeyBridge { key in session.handle(key) })
         .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { windowHeight = $0 }
+        .environment(\.panelMaxHeight, ChromeBudget.panelHeight(in: windowHeight))
         .environment(\.worldMotion, motion)
         .environment(\.worldFrameRate, app.displaySettings.frameRate)
         .environment(\.worldQuality, app.displaySettings.quality)
@@ -308,7 +308,6 @@ extension PlayView {
     /// to VoiceOver, which its cursor enters as it opens.
     private func opened(_ panel: some View, named name: String) -> some View {
         panel
-            .budgeted(windowHeight * ChromeBudget.cardShare)
             .transition(panelTransition)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(name)

@@ -33,7 +33,7 @@ struct GuidePanel: View {
         }
         .padding(16)
         .frame(width: PanelWidth.reading)
-        .frame(maxHeight: 620)
+        .panelHeight()
         .panelBackground()
     }
 }
