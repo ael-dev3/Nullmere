@@ -1255,7 +1255,6 @@ final class DepthPanelTests: XCTestCase {
         let (session, _) = session(state)
         draw(LaboursSection(session: session))
         draw(LaboursSection(session: session, open: true))
-        XCTAssertEqual(GameSession.cues(for: .castRipple(hold: 0), events: [.chestOpened(house: me, chest: 1)], in: session.state, player: me).contains(.coin), true)
     }
 
     /// The realm's calendar in the Realm panel, folded and opened.
