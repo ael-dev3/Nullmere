@@ -312,14 +312,31 @@ enum ChromeLedger {
     }
 }
 
+extension EnvironmentValues {
+    /// Within a card held to a height, its pieces are noted once, by the
+    /// card's own frame: what scrolls out of sight is not on the screen.
+    @Entry var chromeNotedByCard = false
+}
+
+/// Notes where a piece of the interface lies, unless the card it is in
+/// notes it.
+private struct ChromeNote: ViewModifier {
+    let name: String
+    @Environment(\.chromeNotedByCard) private var notedByCard
+
+    func body(content: Content) -> some View {
+        content.background(GeometryReader { proxy in
+            let _ = notedByCard ? () : ChromeLedger.note(name, proxy.frame(in: .global))
+            Color.clear
+        })
+    }
+}
+
 extension View {
     /// Notes where this piece of the interface lies, for the budget the
     /// world's share of the screen is held to.
     func chrome(_ name: String) -> some View {
-        background(GeometryReader { proxy in
-            let _ = ChromeLedger.note(name, proxy.frame(in: .global))
-            Color.clear
-        })
+        modifier(ChromeNote(name: name))
     }
 }
 
@@ -332,7 +349,9 @@ extension View {
             ScrollView(.vertical) { self }
                 .scrollIndicators(.automatic)
         }
+        .environment(\.chromeNotedByCard, true)
         .frame(maxHeight: maxHeight, alignment: .top)
+        .chrome("panel")
     }
 }
 
