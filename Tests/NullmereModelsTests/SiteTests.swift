@@ -30,7 +30,7 @@ final class SiteTests: XCTestCase {
     /// each holy heart turns its motes, the camp's fire leaps and its drum
     /// is beaten, the standard's braziers burn; and none is plain.
     func testHolySitesCampAndStandardMove() throws {
-        let keys: [(ModelKey, Int)] = ShrineKind.allCases.map { (.shrine($0), 1_400) } + [(.rallyCamp, 1_200), (.standard, 850)]
+        let keys: [(ModelKey, Int)] = ShrineKind.allCases.map { (.shrine($0), 1_400) } + [(.rallyCamp, 1_200), (.standard, 1_400), (.drownedCrown, 1_600)]
         for (key, least) in keys {
             let model = Library.model(key)
             XCTAssertGreaterThan(model.mesh.triangleCount, least, "\(key)")

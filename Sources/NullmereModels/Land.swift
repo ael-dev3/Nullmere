@@ -744,6 +744,29 @@ enum Land {
                 $0.lathe([(0.04, -0.003), (0.04, 0.003)], sides: 8, color: Palette.house)
             }
         }
+        // A stele of dark stone behind the pole, the alliance's oath cut in
+        // panels down its face and its shield above them.
+        b.box(center: Vec3(0, 0.22, -0.2), size: Vec3(0.16, 0.44, 0.05), color: Palette.slate)
+        b.place(.translation(Vec3(0, 0.44, -0.2))) { $0.gableRoof(width: 0.18, depth: 0.07, base: 0.0, height: 0.05, color: Palette.stoneDark) }
+        for row in 0..<5 {
+            b.box(center: Vec3(0, 0.08 + Float(row) * 0.06, -0.174), size: Vec3(0.12, 0.03, 0.004), color: Palette.stoneDark)
+        }
+        b.place(.translation(Vec3(0, 0.39, -0.172)) * .rotationX(.pi / 2)) {
+            $0.with(material: .house) { $0.lathe([(0.035, -0.003), (0.035, 0.003)], sides: 10, color: Palette.house) }
+        }
+        // Torches on posts round the ring's edge, burning.
+        for index in 0..<4 {
+            let angle = Float(index) / 4 * 2 * .pi + 0.9
+            let foot = MeshBuilder.ring(0.33, 0, angle)
+            b.limb(from: foot, to: foot + Vec3(0, 0.2, 0), radius: 0.006, color: Palette.timberDark)
+            b.place(.translation(foot + Vec3(0, 0.2, 0))) { $0.lathe([(0.008, 0), (0.016, 0.03)], sides: 6, color: Palette.iron) }
+            flames.append(Beacon.flame(&b, &rig, at: foot + Vec3(0, 0.23, 0), size: 0.022))
+        }
+        // The war horn on its post, to call the alliance to the standard.
+        b.limb(from: Vec3(0.2, 0, 0.08), to: Vec3(0.2, 0.18, 0.08), radius: 0.007, color: Palette.timberDark)
+        b.place(.translation(Vec3(0.2, 0.19, 0.08)) * .rotationZ(-1.2)) {
+            $0.lathe([(0.004, 0.0), (0.012, 0.08), (0.03, 0.13)], sides: 8, color: Palette.bone)
+        }
         // Lesser banners of the alliance's Houses set in a ring about it.
         for index in 0..<6 {
             let angle = Float(index) / 6 * 2 * .pi + 0.5
@@ -1678,18 +1701,80 @@ extension Land {
                 $0.sphere(center: out * 0.165 + Vec3(0, 0.13, 0), radius: 0.018, rings: 3, sides: 6, color: Palette.moonsalt)
             }
         }
+        // A second circlet of pearls along its lower lip.
+        for index in 0..<18 {
+            let angle = Float(index) / 18 * 2 * .pi
+            b.sphere(center: Vec3(0.166 * Float(sin(Double(angle))), 0.012, 0.166 * Float(cos(Double(angle)))),
+                     radius: 0.008, rings: 3, sides: 5, color: Palette.stoneWhite.mix(Palette.moonGlow, 0.2))
+        }
         // A circlet of pearls at the brow.
         for index in 0..<14 {
             let angle = (Float(index) + 0.5) / 14 * 2 * .pi
             b.sphere(center: Vec3(0.163 * Float(sin(Double(angle))), 0.045, 0.163 * Float(cos(Double(angle)))),
                      radius: 0.009, rings: 2, sides: 5, color: Palette.stoneWhite)
         }
-        // The lake's weed trailing from its rim.
-        for index in 0..<5 {
-            let angle = Float(index) * 1.31
-            let out = Vec3(Float(sin(Double(angle))), 0, Float(cos(Double(angle))))
-            b.limb(from: out * 0.16 + Vec3(0, 0.02, 0), to: out * 0.2 + Vec3(0, -0.09, 0), radius: 0.006, color: weed)
+        // The lake's weed trailing from its rim, in strands that sway.
+        b.with(material: .foliage, sway: 1) {
+            $0.swayRange = (-0.12, 0.03)
+            for index in 0..<9 {
+                let angle = Float(index) * 0.73
+                let out = Vec3(Float(sin(Double(angle))), 0, Float(cos(Double(angle))))
+                var at = out * 0.16 + Vec3(0, 0.02, 0)
+                for step in 0..<3 {
+                    let next = at + out * 0.016 + Vec3(0.006 * Float(step % 2 == 0 ? 1 : -1), -0.04, 0)
+                    $0.limb(from: at, to: next, radius: 0.006 - Float(step) * 0.0015, topRadius: 0.005 - Float(step) * 0.0015, sides: 4,
+                            color: index % 3 == 0 ? weed.mix(Palette.moss, 0.4) : weed)
+                    at = next
+                }
+            }
         }
-        return Model(name: name, mesh: b.mesh)
+        // Filigree along the band: studs between the pearls, and a chased
+        // line of verdigris round its middle.
+        for index in 0..<21 {
+            let angle = Float(index) / 21 * 2 * .pi
+            b.sphere(center: Vec3(0.158 * Float(sin(Double(angle))), 0.068, 0.158 * Float(cos(Double(angle)))),
+                     radius: 0.005, rings: 2, sides: 4, color: index % 3 == 0 ? Palette.moonsalt : gold)
+        }
+        b.place(.translation(Vec3(0, 0.03, 0))) {
+            $0.tube([(0.1565, 0), (0.1575, 0.006)], sides: 18, color: verdigris)
+        }
+        // The rotted velvet of its cap within, and a great stone at its heart.
+        b.lathe([(0.145, 0.02), (0.12, 0.09), (0.06, 0.15), (0.0, 0.17)], sides: 14, color: Palette.madder.mix(Palette.barkBlack, 0.55))
+        b.with(material: .glow) {
+            $0.place(.translation(Vec3(0, 0.17, 0))) {
+                $0.lathe([(0.0, 0.0), (0.03, 0.025), (0.0, 0.07)], sides: 7, color: Palette.moonsalt)
+            }
+        }
+        // Barnacles and shells on its lower rim.
+        for index in 0..<10 {
+            let angle = Float(index) * 2.39
+            b.rock(center: Vec3(0.16 * Float(sin(Double(angle))), 0.008, 0.16 * Float(cos(Double(angle)))), size: Vec3(0.012, 0.008, 0.011),
+                   rings: 2, sides: 5, jitter: 0.3, seed: UInt32(800 + index), color: index % 2 == 0 ? Palette.stonePale : Palette.bone)
+        }
+        // About it, slowly turning, a halo of moonlight; and the lake's water
+        // still dripping from its tines.
+        var rig = Rig()
+        let halo = rig.add("crown halo", pivot: Vec3(0, 0.14, 0))
+        b.with(part: halo, material: .glow) {
+            for index in 0..<12 {
+                let angle = Float(index) / 12 * 2 * .pi
+                $0.place(.translation(Vec3(0.24 * Float(sin(Double(angle))), 0.14 + 0.02 * Float(index % 2), 0.24 * Float(cos(Double(angle)))))) {
+                    $0.lathe([(0.0, -0.01), (0.008, 0.0), (0.0, 0.012)], sides: 5, color: Palette.moonGlow)
+                }
+            }
+        }
+        let drips = rig.add("crown drips", pivot: Vec3(0, 0.0, 0))
+        b.with(part: drips, material: .crystal) {
+            for index in 0..<7 {
+                let angle = Float(index) / 7 * 2 * .pi
+                let out = Vec3(Float(sin(Double(angle))), 0, Float(cos(Double(angle))))
+                $0.place(.translation(out * 0.172 + Vec3(0, 0.08, 0))) {
+                    $0.lathe([(0.0, -0.012), (0.004, -0.004), (0.0, 0.006)], sides: 4, color: Palette.slate.mix(Palette.moonGlow, 0.4))
+                }
+            }
+        }
+        let machinery = Machinery(wheels: [.init(part: halo, axis: Vec3(0, 1, 0), turns: 1)],
+                                  swings: [.init(part: drips, axis: Vec3(1, 0, 0), angle: 0.05)], parts: rig.count)
+        return Model(name: name, mesh: b.mesh, rig: rig) { clip, time in machinery.joints(clip, time) }
     }
 }

@@ -222,9 +222,9 @@ extension GameSession {
         frame.fixed = furniture
         frame.fixedVersion = stage.furnitureVersion
         frame.fixedRegions = stage.furnitureRegions
-        let crown = state.crown.map { crown in
+        let crown = stage.animate(state.crown.map { crown in
             stage.drownedCrown(at: crown.bearer.flatMap(state.unit)?.position ?? crown.hex, borne: crown.bearer != nil, time: t)
-        } ?? []
+        } ?? [], time: t, into: &frame)
         let campBatches = stage.animate(camps.batches, time: t, into: &frame)
         // What the lake mirrored at its Still Hour, faint, of companies the
         // keeper does not otherwise see.
