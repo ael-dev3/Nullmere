@@ -121,10 +121,13 @@ final class GameAppEnvironmentTests: XCTestCase {
         try await until("the keeper to step in") { app.session != nil }
         let session = try XCTUnwrap(app.session)
         XCTAssertEqual(session.selection, .none, "The lake alone, nothing chosen")
-        let deep = try XCTUnwrap(session.state.map.deepestWater())
-        try await until("the view to settle over the deep") {
+        let lake = try XCTUnwrap(session.lakeInSight())
+        if lake != session.state.seat(of: session.player)?.position {
+            XCTAssertEqual(session.state.map[lake]?.terrain, .still, "Open water the keeper has seen")
+        }
+        try await until("the view to settle over the water") {
             var over = session.camera
-            over.focus(on: deep.hex)
+            over.focus(on: lake)
             return abs(session.camera.centerX - over.centerX) < 0.5 && abs(session.camera.centerY - over.centerY) < 0.5
         }
         app.leaveWorld()

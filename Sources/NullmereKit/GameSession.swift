@@ -1189,12 +1189,24 @@ public final class GameSession {
         glide(to: seat.position)
     }
 
-    /// The view brought low over the Still's deepest water, nothing chosen:
-    /// the lake, its far shore and the moon's road on it.
+    /// The view brought low over open water near the keeper's seat, nothing
+    /// chosen: the lake, its far shore and the moon's road on it.
     public func focusOnLake() {
-        guard let deep = state.map.deepestWater() else { return }
+        guard let hex = lakeInSight() else { return }
         selection = .none
-        glide(to: deep.hex, scale: 26, tilt: Camera.minimumTilt + 0.1)
+        glide(to: hex, scale: 26, tilt: Camera.minimumTilt + 0.1)
+    }
+
+    /// The Still hex the keeper has explored that lies nearest its seat
+    /// with the Still all round it; failing that, the nearest Still hex at
+    /// all; failing that (none explored yet), the seat itself.
+    func lakeInSight() -> Hex? {
+        let map = state.map
+        let home = state.seat(of: player)?.position ?? Hex(0, 0)
+        let still = map.hexes.filter { map[$0]?.terrain == .still }
+        let open = still.filter { hex in hex.neighbors.allSatisfy { map[$0]?.terrain == .still } }
+        return (open.isEmpty ? still : open).min { $0.distance(to: home) < $1.distance(to: home) }
+            ?? state.seat(of: player)?.position
     }
 
     /// The map's size as last drawn, for setting the view to take in what

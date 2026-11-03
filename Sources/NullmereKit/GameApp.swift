@@ -738,7 +738,6 @@ public final class GameApp {
             session?.dismissAwayReport()
         }
         if show.contains("seat") { session?.focusOnSeat() }
-        if show.contains("lake") { session?.focusOnLake() }
         if show.contains("unit") { session?.selectNextReadyUnit() }
         if show.contains("houses") { session?.panel = .houses }
         if show.contains("chronicle") { session?.panel = .chronicle }
@@ -748,6 +747,7 @@ public final class GameApp {
         if show.contains("alliance") { session?.panel = .alliance }
         if show.contains("realm") { session?.panel = .realm }
         if show.contains("words") { session?.panel = .words }
+        if show.contains("lake") { session?.focusOnLake() }
         // "watch" makes the keeper ready a little before CI photographs the
         // screen, so the watch's card is on it.
         if show.contains("watch"), let delay = Double(environment["NULLMERE_WATCH_AFTER"] ?? "12.5") {
