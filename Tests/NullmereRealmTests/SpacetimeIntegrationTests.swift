@@ -287,7 +287,10 @@ final class SpacetimeIntegrationTests: XCTestCase {
 
         // Allied, they break a lair of the wilds with a rally, each sending
         // companies from their own client.
-        try await RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60).breakALair(ama: houseA, bel: houseB)
+        let scene = RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60)
+        try await scene.helpEachOther(ama: houseA, bel: houseB)
+        print("REALM two allied keepers studied together, one helped the other's work and sent a gift, each from their own client")
+        try await scene.breakALair(ama: houseA, bel: houseB)
         print("REALM two allied keepers rallied on a lair from their own clients, broke it, and both were told of it and their shares")
         await MainActor.run { b.send(.leaveAlliance) }
         try await until("Bel gone from the alliance, as both see it") {

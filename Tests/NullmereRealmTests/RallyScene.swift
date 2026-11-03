@@ -227,6 +227,67 @@ extension RallyScene {
     }
 }
 
+extension RallyScene {
+    /// What allies do for each other, each from their own client: Ama,
+    /// the alliance's leader, sets it a study, both Houses give stores
+    /// toward it until its first grade is learned for both; Ama raises a
+    /// work, and Bel's help hastens it; Bel sends Ama a gift of timber.
+    /// Each keeper sees what the other did.
+    func helpEachOther(ama: Int, bel: Int) async throws {
+        let alliance = try await MainActor.run { try XCTUnwrap(earA.world?.alliance(of: ama)) }
+        XCTAssertEqual(alliance.leader, ama, "Ama leads it")
+        XCTAssertTrue(alliance.members.contains(bel))
+        let study = AllianceStudy.fieldcraft
+        let cost = study.cost(grade: 1)
+        // Stores enough for each to give half, and to raise a work.
+        await steward.reshape { realm in
+            for house in [ama, bel] { realm.world.houses[house].stock.credit(cost + Stock(grain: 200, timber: 200, stone: 200, moonsalt: 10)) }
+        }
+        try await until("the stores given them") { (earA.world?.houses[ama].stock.grain ?? 0) >= cost.grain }
+
+        // The study, set by Ama and seen by Bel.
+        await MainActor.run { a.send(.pursueAllianceStudy(study)) }
+        try await until("Bel to see the study set") { earB.world?.alliance(of: bel)?.lore?.pursuit == study }
+        let half = Stock(grain: cost.grain / 2, timber: cost.timber / 2, stone: cost.stone / 2, moonsalt: cost.moonsalt / 2)
+        await MainActor.run { a.send(.giveToAlliance(half)) }
+        try await until("Ama's half given, as Bel sees it") { earB.world?.alliance(of: bel)?.lore?.given == half }
+        await MainActor.run { b.send(.giveToAlliance(Stock(grain: cost.grain - half.grain, timber: cost.timber - half.timber, stone: cost.stone - half.stone, moonsalt: cost.moonsalt - half.moonsalt))) }
+        try await until("the first grade learned, as both see it") {
+            earA.world?.alliance(of: ama)?.lore?.grade(of: study) == 1 && earB.world?.alliance(of: bel)?.lore?.grade(of: study) == 1
+        }
+
+        // A work raised by Ama, hastened by Bel's help.
+        let seat = try await MainActor.run { try XCTUnwrap(earA.world?.seat(of: ama)).id }
+        if await MainActor.run(body: { earA.world?.hold(seat)?.project == nil }) {
+            let kind = try await MainActor.run { () -> BuildingKind in
+                let world = try XCTUnwrap(earA.world)
+                return try XCTUnwrap(BuildingKind.allCases.first { world.refusal(of: .build(hold: seat, kind: $0), as: ama) == nil })
+            }
+            await MainActor.run { a.send(.build(hold: seat, kind: kind)) }
+            try await until("Ama's work begun") { earA.world?.hold(seat)?.project != nil }
+        }
+        await MainActor.run { b.send(.help(house: ama)) }
+        try await until("Bel's help on Ama's work, as Ama sees it") {
+            earA.world?.hold(seat)?.project?.helpers?.contains(bel) == true
+        }
+        let heard: @MainActor @Sendable (Listener, (GameEvent) -> Bool) -> Bool = { ear, match in
+            ear.events.contains { event in
+                switch event {
+                case .heard(let events), .answered(let events), .watchTurned(_, let events), .settled(_, let events): return events.contains(where: match)
+                default: return false
+                }
+            }
+        }
+        try await until("Ama told of Bel's help") { heard(earA) { if case .helpGiven(bel, ama, _) = $0 { return true } else { return false } } }
+
+        // A gift of timber from Bel to Ama.
+        await MainActor.run { b.send(.gift(to: ama, resource: .timber, amount: 25)) }
+        try await until("Ama told of Bel's gift") {
+            heard(earA) { if case .gifted(bel, ama, let gift) = $0 { return gift.timber == 25 } else { return false } }
+        }
+    }
+}
+
 /// Where the crown was set, and the companies set beside it.
 final class CrownStage: @unchecked Sendable {
     private let lock = NSLock()

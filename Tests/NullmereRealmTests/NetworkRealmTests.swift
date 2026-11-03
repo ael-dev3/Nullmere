@@ -785,6 +785,7 @@ final class NetworkRallyTests: XCTestCase {
         try await scene.until("both to see the alliance sworn") {
             earA.world?.areAllied(ama, bel) == true && earB.world?.areAllied(ama, bel) == true
         }
+        try await scene.helpEachOther(ama: ama, bel: bel)
         try await scene.breakALair(ama: ama, bel: bel)
     }
 
