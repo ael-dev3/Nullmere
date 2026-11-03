@@ -108,6 +108,25 @@ struct OwnHoldDetails: View {
     @AppStorage(OwnHoldDetails.companiesKey) private var companiesOpen = false
     static let worksKey = "hold.works.open"
     static let companiesKey = "hold.companies.open"
+    /// What a hold by the lake does on the water, folded the same way.
+    @AppStorage(OwnHoldDetails.waterKey) private var waterOpen = false
+    static let waterKey = "hold.water.open"
+
+    /// What a hold does by the water, in a line while it is folded: what
+    /// its stone heard, if it heard anything, or what may be done there.
+    static func waterSummary(of hold: Hold, in state: GameState, for house: Int) -> String {
+        if let stone = state.stones(of: house).first(where: { $0.hold == hold.id }),
+           state.soundings(heardBy: house).contains(where: { $0.stone == stone.id }) {
+            return StoneRow.line(state, hold: hold, house: house)
+        }
+        var can: [String] = []
+        if state.castingWater(beside: hold) != nil { can.append("words on the water") }
+        if state.isShore(hold.position) || hold.position.spiral(1).contains(where: state.isShore) { can.append("a ripple-stone") }
+        if state.stoneWater(before: hold) != nil {
+            can.append(state.stones(of: house).contains { $0.hold == hold.id } ? "its listening stone" : "a listening stone")
+        }
+        return can.joined(separator: ", ").prefix(1).uppercased() + can.joined(separator: ", ").dropFirst() + "."
+    }
 
     /// When a hold was raised: with the age, or in which watch since.
     static func raised(_ hold: Hold) -> String {
@@ -202,19 +221,25 @@ struct OwnHoldDetails: View {
 
             Rule()
             BarterRow(session: session)
-            // A hold on the shore sets words on the water, folded until asked for.
-            if state.castingWater(beside: hold) != nil {
-                BottleComposer(session: session, hold: hold)
-            }
             // A letter to the age to come, sealed under the hold's stones.
             LetterComposer(session: session, hold: hold)
-            // A ripple-stone against the next Still Hour, from a hold on the shore.
-            if state.isShore(hold.position) || hold.position.spiral(1).contains(where: state.isShore) {
-                RippleRow(session: session, hold: hold)
-            }
-            // A listening stone in the lake before it, or the means to sink one.
-            if state.stoneWater(before: hold) != nil {
-                StoneRow(session: session, hold: hold)
+            // What it does on the water, folded to a line until asked for:
+            // what its stone heard, while it heard anything.
+            let bottles = state.castingWater(beside: hold) != nil
+            let ripples = state.isShore(hold.position) || hold.position.spiral(1).contains(where: state.isShore)
+            let stone = state.stoneWater(before: hold) != nil
+            let rows = [bottles, ripples, stone].filter { $0 }.count
+            if rows > 0 {
+                Rule()
+                FoldedList(title: "By the water", count: rows, summary: OwnHoldDetails.waterSummary(of: hold, in: state, for: session.player),
+                           open: $waterOpen) {
+                    // Words set on the water, folded until asked for.
+                    if bottles { BottleComposer(session: session, hold: hold) }
+                    // A ripple-stone against the next Still Hour.
+                    if ripples { RippleRow(session: session, hold: hold) }
+                    // A listening stone in the lake before it, or the means to sink one.
+                    if stone { StoneRow(session: session, hold: hold) }
+                }
             }
         }
         .padding(16)

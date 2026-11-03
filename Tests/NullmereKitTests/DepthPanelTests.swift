@@ -111,6 +111,28 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(CommandersPanel.named(company), "\(company.kind.title) I")
     }
 
+    /// A listening stone sunk in the lake before a hold, and what it heard,
+    /// folded under By the water in the hold's record.
+    func testAListeningStoneIsSunkAndWhatItHeardIsToldFolded() throws {
+        var state = world("pressed stone")
+        let me = state.player
+        let seatIndex = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+        let shore = try XCTUnwrap(state.map.hexes.first { state.isShore($0) && state.hold(at: $0) == nil })
+        state.holds[seatIndex].position = shore
+        state.houses[me].stock.moonsalt = 30
+        let seat = state.holds[seatIndex]
+        XCTAssertTrue(StoneRow.line(state, hold: seat, house: me).contains("hears marches out of sight"))
+        XCTAssertTrue(OwnHoldDetails.waterSummary(of: seat, in: state, for: me).contains("a listening stone"))
+        let (session, link) = session(state)
+        draw(StoneRow(session: session, hold: seat))
+        XCTAssertTrue(PressableButtons.press("Sink a stone"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .sinkStone(hold: seat.id))
+        XCTAssertEqual(session.state.stones(of: me).count, 1)
+        XCTAssertTrue(StoneRow.line(session.state, hold: seat, house: me).contains("begins to listen"))
+        XCTAssertEqual(GameSession.cues(for: .sinkStone(hold: seat.id), events: [], in: session.state, player: me), [.lore])
+        XCTAssertTrue(OwnHoldDetails.waterSummary(of: seat, in: session.state, for: me).contains("its listening stone"))
+    }
+
     /// A ripple-stone cast from a hold on the shore against the Still Hour.
     func testARippleStoneIsCastFromAHoldOnTheShore() throws {
         var state = world("pressed ripple")
