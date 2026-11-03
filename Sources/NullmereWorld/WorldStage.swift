@@ -1120,16 +1120,19 @@ public final class WorldStage: @unchecked Sendable {
 
     /// Instances gathered by their model's key, in a steady order.
     /// Batches of the land's pieces set working: each instance of a model
-    /// with a rig posed at its own moment of its idle clip, its fires
+    /// with a rig posed at one of four moments of its idle clip, its fires
     /// leaping and its holy motes turning; still models left as they are.
     public func animate(_ batches: [ModelBatch], time: Float, into frame: inout SceneFrame) -> [ModelBatch] {
         var poses: [PoseKey: UInt32] = [:]
         return batches.map { batch in
             guard Library.model(batch.key).rig.count > 1 else { return batch }
             var batch = batch
+            // Each instance at one of four moments of its idle clip, by its
+            // phase, so instances share their poses: at most four a model a
+            // frame, however many stand.
             for index in batch.instances.indices {
-                batch.instances[index].palette = WorldStage.pose(batch.key, .idle, at: time + batch.instances[index].params.z,
-                                                                 shared: &poses, into: &frame)
+                let phase = Float(Int(batch.instances[index].params.z) % 4) * 0.7
+                batch.instances[index].palette = WorldStage.pose(batch.key, .idle, at: time + phase, shared: &poses, into: &frame)
             }
             return batch
         }

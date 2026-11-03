@@ -441,13 +441,19 @@ extension GameState {
             if by == viewer { return Tidings("You help \(count) of \(houses[to].title)'s \(works).", .neutral) }
             return nil
         case .rallyCalled(let id, let caller, let targetID):
-            guard let rally = rally(id), let muster = hold(rally.muster), let target = targetName(targetID) else { return nil }
+            guard let rally = rally(id), let muster = hold(rally.muster), let target = targetName(targetID) else {
+                // The rally gone since: told plainly, from who called it.
+                let against = targetName(targetID) ?? "a hold"
+                return Tidings(caller == viewer ? "You called a rally against \(against)." : "\(houses[caller].title) called a rally against \(against).", .neutral)
+            }
             if caller == viewer { return Tidings("You call a rally at \(muster.name) against \(target).", .neutral) }
             let watches = rally.setsOut - watch
             return Tidings("\(houses[caller].title) calls a rally at \(muster.name) against \(target); "
                 + "it sets out in \(watches) watch\(watches == 1 ? "" : "es").", .neutral)
         case .rallyJoined(let id, let unitID, let owner):
-            guard let rally = rally(id), let muster = hold(rally.muster), let unit = unit(unitID) else { return nil }
+            guard let rally = rally(id), let muster = hold(rally.muster), let unit = unit(unitID) else {
+                return Tidings(owner == viewer ? "A company of yours went to a rally." : "\(houses[owner].title) sent a company to a rally.", .neutral)
+            }
             if owner == viewer { return Tidings("Your \(unit.kind.title) march to the rally at \(muster.name).", .neutral) }
             return Tidings("\(houses[owner].title) sends \(unit.kind.title) to the rally at \(muster.name).", .neutral)
         case .rallySetOut(_, let caller, let targetID, let defender, let companies):

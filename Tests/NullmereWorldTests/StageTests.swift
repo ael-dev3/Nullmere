@@ -768,3 +768,17 @@ final class MirrorTests: XCTestCase {
         XCTAssertTrue(stage.mirrored([]).isEmpty)
     }
 }
+
+/// However many holy sites stand, the stage poses each kind at no more than
+/// four moments a frame: their poses shared.
+final class SharedLandPoseTests: XCTestCase {
+    func testManySitesShareFewPoses() {
+        let map = GameState(settings: GameSettings(seedText: "shared poses", houseCount: 2, radius: 16)).map
+        let stage = WorldStage(map: map, relief: Relief(map: map))
+        var frame = SceneFrame()
+        let hexes = (0..<40).map { Hex($0 % 8 - 4, $0 / 8 - 2) }
+        let batches = stage.animate(stage.shrines(hexes.map { (.moonwell, $0, nil) }), time: 2.1, into: &frame)
+        XCTAssertEqual(batches.flatMap(\.instances).count, 40)
+        XCTAssertLessThanOrEqual(Set(batches.flatMap(\.instances).map(\.palette)).count, 4)
+    }
+}
