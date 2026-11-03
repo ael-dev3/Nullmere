@@ -752,9 +752,7 @@ struct UnitPanel: View {
                                     why: refusal?.description) {
                             session.perform(.walkTheMirror(unit: unit.id))
                         }
-                        .help(state.mirrorLanding(from: unit.position, for: unit.id).map {
-                            "Step into the Still for \(MirrorWalk.price) and come out at \($0) as the watch turns; every shore sees the water still there."
-                        } ?? "The Still shows no open ground on the far shore.")
+                        .help(UnitPanel.mirrorHelp(state.mirrorLanding(from: unit.position, for: unit.id)))
                     }
                     QuietButton(title: unit.fortified ? "Fortified" : "Fortify", enabled: !unit.fortified && unit.movesLeft > 0) {
                         session.perform(.fortify(unit: unit.id))
@@ -1591,5 +1589,13 @@ struct ReflectionRow: View {
                 }
             }
         }
+    }
+}
+
+extension UnitPanel {
+    /// What the mirror's button says of where the walk comes out.
+    static func mirrorHelp(_ landing: Hex?) -> String {
+        guard let landing else { return "The Still shows no open ground on the far shore." }
+        return "Step into the Still for \(MirrorWalk.price) and come out at \(landing) as the watch turns; every shore sees the water still there."
     }
 }

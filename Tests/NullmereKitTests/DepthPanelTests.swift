@@ -1277,6 +1277,8 @@ final class DepthPanelTests: XCTestCase {
         draw(SelectionPanel(session: session), width: 330, height: 900)
         XCTAssertTrue(PressableButtons.press("Walk the mirror"))
         XCTAssertEqual(link.sent.last, .walkTheMirror(unit: company.id))
+        XCTAssertEqual(UnitPanel.mirrorHelp(nil), "The Still shows no open ground on the far shore.")
+        XCTAssertTrue(UnitPanel.mirrorHelp(shore).hasPrefix("Step into the Still for \(MirrorWalk.price)"))
     }
 
     /// The Lantern Inn in the Realm panel: keys, chests opened by button.
