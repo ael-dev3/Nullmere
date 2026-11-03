@@ -340,7 +340,7 @@ extension View {
 /// the screen, the interface a little of its edges.
 enum ChromeBudget {
     /// The share of the window's height one card or panel may stand to.
-    static let cardShare: CGFloat = 0.42
+    static let cardShare: CGFloat = 0.32
     /// The share of the window the world keeps, on every screen.
     static let worldShare: Double = 0.85
 }

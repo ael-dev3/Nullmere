@@ -33,7 +33,8 @@ final class ChromeBudgetTests: XCTestCase {
         window.contentView = NSHostingView(rootView: PlayView(app: app, session: session).frame(width: size.width, height: size.height))
         window.orderFrontRegardless()
         defer { window.close() }
-        RunLoop.main.run(until: Date().addingTimeInterval(0.4))
+        // Long enough for a card giving way to have faded wholly.
+        RunLoop.main.run(until: Date().addingTimeInterval(1.0))
         return 1 - ChromeLedger.covered(of: size)
     }
 
