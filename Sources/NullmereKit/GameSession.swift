@@ -1194,12 +1194,14 @@ public final class GameSession {
     public func focusOnLake() {
         guard let hex = lakeInSight() else { return }
         selection = .none
-        glide(to: hex, scale: 26, tilt: Camera.minimumTilt + 0.1)
+        // Low toward the horizon and facing north, where the moon stands,
+        // so its road lies on the water ahead.
+        glide(to: hex, scale: 64, tilt: Camera.maximumTilt, heading: 0)
     }
 
-    /// The Still hex the keeper has explored that lies nearest its seat
-    /// with the Still all round it; failing that, the nearest Still hex at
-    /// all; failing that (none explored yet), the seat itself.
+    /// The Still hex nearest the keeper's seat with the Still all round it
+    /// (the lake lies open to every keeper's copy); failing that, the
+    /// nearest Still hex at all; failing that, the seat itself.
     func lakeInSight() -> Hex? {
         let map = state.map
         let home = state.seat(of: player)?.position ?? Hex(0, 0)

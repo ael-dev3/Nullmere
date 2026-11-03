@@ -8,6 +8,15 @@ extension GameState {
     /// and the realm finds the true way.
     public static let unknownGround = Tile(terrain: .greyfield)
 
+    /// What a keeper's copy holds of a tile they haven't explored. The lake
+    /// itself lies open to every shore, as the lie of the land does under a
+    /// map's fog: its water is the water it is, and the land keeps its
+    /// rise and fall, but what grows or stands on the land is unknown,
+    /// and the ford and the shoals are for the explorer to find.
+    public static func unknown(_ tile: Tile) -> Tile {
+        [.still, .shallows, .stream].contains(tile.terrain) ? Tile(terrain: tile.terrain, relief: tile.relief) : Tile(terrain: .greyfield, relief: tile.relief)
+    }
+
     /// `ways`, the way of every company on the march as `ways()` finds
     /// them, found once for many views; found as needed without.
     public func view(for house: Int, ways: [Int: [Hex]]? = nil) -> GameState {
@@ -38,7 +47,7 @@ extension GameState {
         view.settings.seedText = ""
         let explored = houses.indices.contains(house) ? houses[house].explored : []
         for index in 0..<map.count where !(explored.indices.contains(index) && explored[index]) {
-            view.map.set(index: index, GameState.unknownGround)
+            view.map.set(index: index, GameState.unknown(map[index]))
         }
         let seen = visibility(for: house)
         view.units = units.filter { unit in

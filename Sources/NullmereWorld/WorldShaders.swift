@@ -555,11 +555,12 @@ public enum WorldShaders {
         // Where it is shallow the shingle shows through, darkened and wet.
         float clear = smoothstep(0.0, 0.14, depth);
 
-        int2 h = nm_hexRound(nm_axial(in.world.xz));
-        float2 knowledge = nm_knowledge(h, frame.world.x, tiles);
-        // The moon's image is no memory: it lies whole in all the water the
-        // keeper knows, out of sight or not.
-        float3 colour = mix(nm_remembered(starlit + moonlit * (1.0 - knowledge.x)), starlit, knowledge.y) + moonlit * knowledge.x;
+        // Blended between hexes, so the edge of sight is no row of steps.
+        float2 knowledge = nm_knowledgeAround(in.world.xz, frame.world.x, tiles);
+        // The lake lies open to every shore: its water is never grey with
+        // memory, only a little dimmer out of sight; and the moon's image
+        // lies whole on all of it, seen or not.
+        float3 colour = starlit * mix(0.72, 1.0, knowledge.y) + moonlit;
         colour = nm_haze(colour, distance(in.world, frame.eye.xyz), frame.haze.x, frame.haze.y);
         return float4(nm_encode(colour * frame.haze.z), clear);
     }

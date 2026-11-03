@@ -426,7 +426,9 @@ final class FogTests: XCTestCase {
             XCTAssertEqual(view.strength(of: other.id), state.strength(of: other.id), "A House's strength is common knowledge")
         }
         for index in 0..<state.map.count where !state.houses[me].explored[index] {
-            XCTAssertEqual(view.map[index], GameState.unknownGround, "Unexplored ground is unknown")
+            XCTAssertEqual(view.map[index], GameState.unknown(state.map[index]), "Unexplored ground is unknown, but the lake's water lies open")
+            XCTAssertNil(view.map[index].feature)
+            XCTAssertTrue([.still, .shallows, .stream, .greyfield].contains(view.map[index].terrain))
         }
         XCTAssertLessThan(try JSONEncoder().encode(view).count, try JSONEncoder().encode(state).count)
     }
