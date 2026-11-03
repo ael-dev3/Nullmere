@@ -284,6 +284,11 @@ final class SpacetimeIntegrationTests: XCTestCase {
                 && earA.world?.words(heardBy: houseA).contains { $0.from == houseB && $0.text == "Our banner holds" && $0.alliance == allianceID } == true
         }
         print("REALM two keepers spoke across the realm and within their alliance, and each heard the other")
+
+        // Allied, they break a lair of the wilds with a rally, each sending
+        // companies from their own client.
+        try await RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60).breakALair(ama: houseA, bel: houseB)
+        print("REALM two allied keepers rallied on a lair from their own clients, broke it, and both were told of it and their shares")
         await MainActor.run { b.send(.leaveAlliance) }
         try await until("Bel gone from the alliance, as both see it") {
             earA.world?.areAllied(houseA, houseB) == false && earB.world?.alliance(of: houseB) == nil

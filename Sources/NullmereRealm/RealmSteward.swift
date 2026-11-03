@@ -199,6 +199,13 @@ public actor RealmSteward {
     }
 
     /// A realm this one borders, at its address.
+    /// Sets a scene in the realm held, as a test does to play one out
+    /// between keepers; published with the next round.
+    func reshape(_ change: @Sendable (inout RealmState) -> Void) {
+        change(&state)
+        worldChanged = true
+    }
+
     public func border(_ transport: any SpacetimeTransport, at address: String) {
         borders.append((address, transport))
     }

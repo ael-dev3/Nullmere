@@ -1,5 +1,5 @@
 import Foundation
-import NullmereCore
+@testable import NullmereCore
 import NullmereModels
 import XCTest
 @testable import NullmereRealm
@@ -745,5 +745,46 @@ private final class SteppingClock: @unchecked Sendable {
         defer { lock.unlock() }
         now += step
         return now
+    }
+}
+
+
+/// Keepers of an alliance break a lair of the wilds together, each from
+/// their own client, through the steward.
+final class NetworkRallyTests: XCTestCase {
+    @MainActor
+    private func keeper(_ db: FakeSpacetime) -> (NetworkRealmLink, Listener) {
+        let link = NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 0.05)
+        let listener = Listener()
+        listener.listen(to: link)
+        link.connect()
+        return (link, listener)
+    }
+
+    func testAnAllianceRallyBreaksALairFromTwoClients() async throws {
+        let db = FakeSpacetime()
+        let credentials = try await db.createIdentity()
+        let steward = try await RealmSteward(transport: db, token: credentials.token, name: "The Nullmere", seed: "rally on a lair",
+                                             seats: 4, watchLength: 600, now: 0)
+        let running = Task { await steward.run(clock: { 1 }) }
+        defer { running.cancel() }
+        let (a, earA) = await MainActor.run { keeper(db) }
+        let (b, earB) = await MainActor.run { keeper(db) }
+        await MainActor.run { a.arrive(name: "Ama"); b.arrive(name: "Bel") }
+        let scene = RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 20)
+        try await scene.until("both keepers to arrive") { earA.keeper != nil && earB.keeper != nil }
+        let (ama, bel) = await MainActor.run { (earA.keeper!.house!, earB.keeper!.house!) }
+
+        // An alliance sworn between them, each by their own orders.
+        await MainActor.run { a.send(.foundAlliance(name: "The Long Spear")) }
+        try await scene.until("the alliance founded") { earA.world?.alliance(of: ama) != nil }
+        await MainActor.run { a.send(.inviteToAlliance(house: bel)) }
+        let alliance = try await MainActor.run { try XCTUnwrap(earA.world?.alliance(of: ama)).id }
+        try await scene.until("Bel to hear the invitation") { earB.world?.alliancesStanding.first { $0.id == alliance }?.invited.contains(bel) == true }
+        await MainActor.run { b.send(.answerInvitation(alliance: alliance, accept: true)) }
+        try await scene.until("both to see the alliance sworn") {
+            earA.world?.areAllied(ama, bel) == true && earB.world?.areAllied(ama, bel) == true
+        }
+        try await scene.breakALair(ama: ama, bel: bel)
     }
 }
