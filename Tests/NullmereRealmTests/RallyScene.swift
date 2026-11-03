@@ -407,6 +407,68 @@ extension RallyScene {
     }
 }
 
+extension RallyScene {
+    /// The watch's labours between two keepers: Ama raises a work and Bel
+    /// musters a company, each from their own client, each set to it as a
+    /// labour; as the watch turns both are done, each House told of its own
+    /// labour and never of the other's.
+    func laboursOfTheWatch(ama: Int, bel: Int) async throws {
+        let (seatA, seatB) = try await MainActor.run {
+            (try XCTUnwrap(earA.world?.seat(of: ama)).id, try XCTUnwrap(earB.world?.seat(of: bel)).id)
+        }
+        // A work and a muster each keeper can pay for.
+        await steward.reshape { realm in
+            for house in [ama, bel] { realm.world.houses[house].stock.credit(Stock(grain: 600, timber: 600, stone: 600, moonsalt: 20)) }
+            if let index = realm.world.holdIndex(seatA) { realm.world.holds[index].project = nil }
+            if let index = realm.world.holdIndex(seatB) { realm.world.holds[index].training = nil }
+        }
+        try await until("the stores given") { (earA.world?.houses[ama].stock.timber ?? 0) >= 600 && (earB.world?.houses[bel].stock.timber ?? 0) >= 600 }
+        let work = try await MainActor.run { () -> BuildingKind in
+            let world = try XCTUnwrap(earA.world)
+            return try XCTUnwrap(BuildingKind.allCases.first { world.refusal(of: .build(hold: seatA, kind: $0), as: ama) == nil })
+        }
+        let kind = try await MainActor.run { () -> UnitKind in
+            let world = try XCTUnwrap(earB.world)
+            return try XCTUnwrap(UnitKind.allCases.first { world.refusal(of: .train(hold: seatB, kind: $0), as: bel) == nil })
+        }
+        await MainActor.run { a.send(.build(hold: seatA, kind: work)) }
+        await MainActor.run { b.send(.train(hold: seatB, kind: kind)) }
+        try await until("the work and the muster under way") {
+            earA.world?.hold(seatA)?.project != nil && earB.world?.hold(seatB)?.training != nil
+        }
+        // Set to them as their labours, and both a watch from done.
+        await steward.reshape { realm in
+            realm.world.labourBook = [ama: Labours(watch: realm.world.watch, tasks: [Labour(kind: .raise, done: 0)], vigour: 0, opened: 0),
+                                      bel: Labours(watch: realm.world.watch, tasks: [Labour(kind: .muster, done: 0)], vigour: 0, opened: 0)]
+            if let index = realm.world.holdIndex(seatA) { realm.world.holds[index].project?.watchesLeft = 1 }
+            if let index = realm.world.holdIndex(seatB) { realm.world.holds[index].training?.watchesLeft = 1 }
+        }
+        try await until("each keeper's labour shown, their own alone") {
+            earA.world?.labours(of: ama)?.tasks.first?.kind == .raise && earB.world?.labours(of: bel)?.tasks.first?.kind == .muster
+                && earA.world?.labours(of: bel) == nil && earB.world?.labours(of: ama) == nil
+        }
+        let watch = await MainActor.run { earA.world?.watch ?? 0 }
+        await MainActor.run { a.setReady(true); b.setReady(true) }
+        try await until("the watch to turn") { (earA.world?.watch ?? 0) > watch && (earB.world?.watch ?? 0) > watch }
+        let told: @MainActor @Sendable (Listener, Int, LabourKind) -> Bool = { ear, house, kind in
+            ear.events.contains { event in
+                switch event {
+                case .heard(let events), .watchTurned(_, let events), .answered(let events), .settled(_, let events):
+                    return events.contains(.labourDone(house: house, kind: kind))
+                default: return false
+                }
+            }
+        }
+        try await until("each told of their own labour done") { told(earA, ama, .raise) && told(earB, bel, .muster) }
+        let crossed = await MainActor.run { (told(earA, bel, .muster), told(earB, ama, .raise)) }
+        XCTAssertFalse(crossed.0, "Ama never hears of Bel's labour")
+        XCTAssertFalse(crossed.1, "nor Bel of Ama's")
+        let vigour = await MainActor.run { (earA.world?.labours(of: ama)?.vigour, earB.world?.labours(of: bel)?.vigour) }
+        XCTAssertEqual(vigour.0, Labours.vigourPerLabour)
+        XCTAssertEqual(vigour.1, Labours.vigourPerLabour)
+    }
+}
+
 /// Where the crown was set, and the companies set beside it.
 final class CrownStage: @unchecked Sendable {
     private let lock = NSLock()

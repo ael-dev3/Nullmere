@@ -1225,6 +1225,20 @@ final class DepthPanelTests: XCTestCase {
 
     // MARK: Words
 
+    /// The watch's labours in the Realm panel, folded and opened.
+    func testTheWatchsLaboursAreShown() throws {
+        var state = world("pressed labours")
+        let me = state.player
+        _ = state.turnLabours()
+        let labours = try XCTUnwrap(state.labours(of: me))
+        XCTAssertTrue(LaboursSection.summary(labours).hasPrefix("0 of 3 done this watch"))
+        XCTAssertEqual(LaboursSection.line(Labour(kind: .raise, done: 3)), "Raise works: 1 of 1")
+        let (session, _) = session(state)
+        draw(LaboursSection(session: session))
+        draw(LaboursSection(session: session, open: true))
+        XCTAssertEqual(GameSession.cues(for: .castRipple(hold: 0), events: [.chestOpened(house: me, chest: 1)], in: session.state, player: me).contains(.coin), true)
+    }
+
     /// The realm's calendar in the Realm panel, folded and opened.
     func testTheCalendarShowsWhatIsComing() throws {
         let state = world("pressed calendar")

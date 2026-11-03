@@ -144,6 +144,8 @@ public struct Happening: Codable, Equatable, Sendable {
 extension GameState {
     /// Points to the happening under way for what was done.
     mutating func tally(_ events: [GameEvent]) {
+        // And toward each keeper's labours of the watch.
+        countLabours(events)
         guard var happening, watch < happening.ends else { return }
         var changed = false
         for event in events {

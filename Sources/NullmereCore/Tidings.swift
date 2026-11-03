@@ -312,6 +312,12 @@ extension GameState {
         case .pedlarSold(let house, let id):
             guard house == viewer, let ware = pedlar(for: house)?.wares.first(where: { $0.id == id }) else { return nil }
             return Tidings("Bought of the pedlar: \(ware.goods.title).", .good)
+        case .labourDone(let house, let kind):
+            guard house == viewer else { return nil }
+            return Tidings("A labour of the watch done: \(kind.title.lowercased()). \(Labours.vigourPerLabour) vigour.", .good)
+        case .chestOpened(let house, let chest):
+            guard house == viewer else { return nil }
+            return Tidings("Your vigour opens the moon's \(["first", "second", "third"][min(chest, 3) - 1]) chest: \(Labours.chestStores[min(chest, 3) - 1]).", .good)
         case .expedition(let result):
             guard result.house == viewer, let stage = ExpeditionStage.stage(result.stage) else { return nil }
             let name = commander(result.commander)?.name ?? "Your commander"

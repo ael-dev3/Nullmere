@@ -126,6 +126,8 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var expeditions: [Int: Int]?
     /// The Houses that have sent an expedition this watch.
     public internal(set) var ventured: [Int]?
+    /// Each keeper's House's labours for the watch and vigour of the moon.
+    public internal(set) var labourBook: [Int: Labours]?
     /// What the stones heard as the watch last turned.
     public internal(set) var soundings: [Sounding]?
     /// Where each company in a stone's reach stood when the stones last

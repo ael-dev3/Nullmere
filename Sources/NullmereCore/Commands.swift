@@ -842,6 +842,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case pedlarLeft(house: Int)
     /// A House's commander at a stage of the Spine, and how it went.
     case expedition(ExpeditionResult)
+    /// A House has done one of its watch's labours.
+    case labourDone(house: Int, kind: LabourKind)
+    /// A House's vigour opens one of the moon's chests, first to third.
+    case chestOpened(house: Int, chest: Int)
     /// A commander rises a star.
     case commanderStarred(commander: Int, house: Int, stars: Int)
     /// A House's stone heard so many marches out of its sight.

@@ -93,6 +93,7 @@ extension GameState {
         raiseSites()
         refreshSight()
         tally(Array(events[turning...]))
+        events += turnLabours()
         events += turnHappenings()
         events += turnSundering()
         noteDeeds(Array(events[turning...]))
