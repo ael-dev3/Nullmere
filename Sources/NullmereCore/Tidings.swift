@@ -325,6 +325,12 @@ extension GameState {
         case .chestOpened(let house, let chest):
             guard house == viewer else { return nil }
             return Tidings("Your vigour opens the moon's \(["first", "second", "third"][min(chest, 3) - 1]) chest: \(Labours.chestStores[min(chest, 3) - 1]).", .good)
+        case .mirrorWalkBegun(_, let house, _, let to):
+            if house == viewer { return Tidings("Your company steps into the Still; it comes out at \(to) as the watch turns.", .good) }
+            return Tidings("The water stills at \(to): \(houses[house].title)'s company walks the mirror and comes out there as the watch turns.", .bad)
+        case .mirrorWalked(_, let house, let from, let to):
+            if from == to { return house == viewer ? Tidings("The far shore filled; your company comes back out where it stepped in.", .bad) : nil }
+            return Tidings(house == viewer ? "Your company comes out of the Still at \(to)." : "\(houses[house].title)'s company comes out of the Still at \(to).", house == viewer ? .good : .bad)
         case .innChestOpened(let house, let chest, let draw):
             guard house == viewer else { return nil }
             switch draw {

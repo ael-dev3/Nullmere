@@ -87,6 +87,7 @@ extension GameState {
         events += keepStandards()
         events += keepHalls()
         events += keepAllianceStores()
+        events += turnMirrorWalks()
         raiseWilds()
         events += turnTheEclipse()
         raiseLairs()

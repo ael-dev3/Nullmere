@@ -608,3 +608,62 @@ extension RallyScene {
         XCTAssertEqual(refused, .noInnKey(.silver), "One key, one chest")
     }
 }
+
+extension RallyScene {
+    /// Ama's company on the Still's shore walks the mirror. Bel's client is
+    /// shown the water stilling where it will come out; as the watch turns
+    /// both clients see it on the far shore.
+    func walkTheMirror(ama: Int, bel: Int) async throws {
+        let walk = StagedWalk()
+        await steward.reshape { realm in
+            let world = realm.world
+            guard let shore = world.map.hexes.first(where: { hex in
+                world.isOnTheStill(hex) && world.map[hex]!.terrain.isPassable && world.unit(at: hex) == nil
+                    && world.hold(at: hex) == nil && world.mirrorLanding(from: hex) != nil
+            }) else { return }
+            let id = realm.world.takeID()
+            realm.world.units.append(NullmereCore.Unit(id: id, kind: .spear, owner: ama, position: shore))
+            realm.world.houses[ama].stock.credit(MirrorWalk.price)
+            walk.unit = id
+            walk.at = shore
+        }
+        let unitID = try XCTUnwrap(walk.unit, "A shore to stand on")
+        let shore = try XCTUnwrap(walk.at)
+        try await until("the company on the shore in Ama's client") { earA.world?.unit(unitID)?.position == shore }
+        await MainActor.run { a.send(.walkTheMirror(unit: unitID)) }
+        let begun: @MainActor @Sendable (Listener) -> Hex? = { ear in
+            for event in ear.events {
+                switch event {
+                case .heard(let events), .watchTurned(_, let events), .answered(let events), .settled(_, let events):
+                    for case let .mirrorWalkBegun(unit, _, _, to) in events where unit == unitID { return to }
+                default: continue
+                }
+            }
+            return nil
+        }
+        try await until("both told where the water stills") { begun(earA) != nil && begun(earB) != nil }
+        let landing = try await MainActor.run { try XCTUnwrap(begun(earB)) }
+        let seenByA = await MainActor.run { begun(earA) }
+        XCTAssertEqual(seenByA, landing, "Each shore sees the same water still")
+        let watch = await MainActor.run { earA.world?.watch ?? 0 }
+        await MainActor.run { a.setReady(true); b.setReady(true) }
+        try await until("the watch to turn") { (earA.world?.watch ?? 0) > watch && (earB.world?.watch ?? 0) > watch }
+        try await until("Ama's company out on the far shore") { earA.world?.unit(unitID)?.position == landing }
+        let shown = await MainActor.run { earB.world?.unit(unitID)?.position }
+        if let shown { XCTAssertEqual(shown, landing, "Where Bel sees it, it is where the water stilled") }
+    }
+}
+
+/// Where the mirror's walk was staged, set inside the steward's reshape.
+final class StagedWalk: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: (unit: Int?, at: Hex?) = (nil, nil)
+    var unit: Int? {
+        get { lock.lock(); defer { lock.unlock() }; return values.unit }
+        set { lock.lock(); values.unit = newValue; lock.unlock() }
+    }
+    var at: Hex? {
+        get { lock.lock(); defer { lock.unlock() }; return values.at }
+        set { lock.lock(); values.at = newValue; lock.unlock() }
+    }
+}

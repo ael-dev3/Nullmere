@@ -286,6 +286,21 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   standing stone on a cairn in the water, its ripples turning out about it,
   faster once it has heard; a dread note heard when it hears; wary stewards
   at war sink one.
+- [x] **Walking the Mirror.** The Still is a mirror: a company of war on its
+  shore steps into its own reflection for 15 moonsalt, once a moon, and as
+  the watch turns the realm brings it out on the far shore, its hex
+  reflected through the lake's deepest water, or the nearest open ground
+  within three tiles of it. The water stills where it will come out the
+  moment it steps in, told to every keeper, so the shore to be come upon
+  has the watch to make ready; if that shore fills by the turn, the company
+  comes back out where it stepped in. The lake's geometry is the map of
+  these walks, and a false reflection on a shore can now be read as one.
+  Through the realm's one request table and reducer; a button on a company's
+  panel only while it stands on the shore; played between two clients over
+  the fake realm and over SpacetimeDB in CI. Drawn in 3D: the walking
+  company's image already standing in the stilled water where it will come
+  out, in its House's colour, seen from every shore. Not yet: the stewards
+  using it.
 
 ## The order of the work
 

@@ -353,6 +353,9 @@ extension GameState {
                 return owner == house
             case .reflectionCast(let owner, _):
                 return owner == house
+            case .mirrorWalkBegun, .mirrorWalked:
+                // The water stills for every shore to see.
+                return true
             case .labourDone(let owner, _), .chestOpened(let owner, _), .innChestOpened(let owner, _, _):
                 return owner == house
             case .expedition(let result):

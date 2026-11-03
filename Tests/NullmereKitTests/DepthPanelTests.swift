@@ -1260,6 +1260,25 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(ReflectionRow.line(session.state, house: me).hasPrefix("1 false reflection wait"))
     }
 
+    /// A company of war on the Still's shore is offered the mirror; inland, not.
+    func testACompanyOnTheShoreWalksTheMirrorFromItsPanel() throws {
+        var state = world("pressed mirror")
+        let me = state.player
+        let shore = try XCTUnwrap(state.map.hexes.first { hex in
+            state.isOnTheStill(hex) && state.map[hex]!.terrain.isPassable && state.unit(at: hex) == nil
+                && state.hold(at: hex) == nil && state.mirrorLanding(from: hex) != nil
+        })
+        let company = NullmereCore.Unit(id: state.takeID(), kind: .spear, owner: me, position: shore)
+        state.units.append(company)
+        state.houses[me].stock.credit(MirrorWalk.price)
+        let (session, link) = session(state)
+        session.selection = .unit(company.id)
+        PressableButtons.isListening = true
+        draw(SelectionPanel(session: session), width: 330, height: 900)
+        XCTAssertTrue(PressableButtons.press("Walk the mirror"))
+        XCTAssertEqual(link.sent.last, .walkTheMirror(unit: company.id))
+    }
+
     /// The Lantern Inn in the Realm panel: keys, chests opened by button.
     func testTheInnsChestsAreOpenedFromTheRealmPanel() throws {
         var state = world("pressed inn")

@@ -745,6 +745,17 @@ struct UnitPanel: View {
                             session.perform(.scout(unit: unit.id, hold: target.id))
                         }
                     }
+                    // Only on the Still's shore, and only for a company of war.
+                    if unit.kind.isMilitary, state.isOnTheStill(unit.position) {
+                        let refusal = state.mirrorRefusal(unit.id, as: session.player)
+                        QuietButton(title: "Walk the mirror", enabled: refusal == nil, name: "Walk the mirror with \(unit.kind.title)",
+                                    why: refusal?.description) {
+                            session.perform(.walkTheMirror(unit: unit.id))
+                        }
+                        .help(state.mirrorLanding(from: unit.position, for: unit.id).map {
+                            "Step into the Still for \(MirrorWalk.price) and come out at \($0) as the watch turns; every shore sees the water still there."
+                        } ?? "The Still shows no open ground on the far shore.")
+                    }
                     QuietButton(title: unit.fortified ? "Fortified" : "Fortify", enabled: !unit.fortified && unit.movesLeft > 0) {
                         session.perform(.fortify(unit: unit.id))
                     }

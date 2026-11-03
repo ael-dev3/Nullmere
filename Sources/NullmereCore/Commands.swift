@@ -174,6 +174,8 @@ public enum Command: Codable, Equatable, Sendable {
     case buyFromPedlar(ware: Int)
     /// A chest opened at the Lantern Inn: with a key, or a gold one for moonsalt.
     case openInnChest(InnChest)
+    /// A company of war on the Still's shore steps into its reflection.
+    case walkTheMirror(unit: Int)
     /// A commander sent at the House's next stage of the Spine.
     case venture(commander: Int)
     /// A line of up to three commanders sent at a stage of the Spine: the
@@ -460,6 +462,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case expeditionsDone
     case lineTooLong(Int)
     case noInnKey(InnChest)
+    case notOnTheStill
+    case mirrorWalkedThisMoon
+    case noFarShore
     case reflectionThere
     case tooManyReflections(Int)
     case venturedThisWatch
@@ -677,6 +682,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .tooManyReflections(let most): return "The lake takes \(most) false reflections of a House to a Still Hour, and no more."
         case .lineTooLong(let most): return "A line up the Spine is one to \(most) commanders, each once."
         case .noInnKey(let chest): return "Your House holds no \(chest.named) key; one comes \(chest == .silver ? "each watch" : "every \(InnKeys.goldEvery) watches")."
+        case .notOnTheStill: return "A company walks the mirror from the Still's shore, beside its water."
+        case .mirrorWalkedThisMoon: return "That company has walked the mirror this moon."
+        case .noFarShore: return "The Still shows no open ground on the far shore to come out on."
         case .expeditionsDone: return "Your House has taken every stage of the Spine."
         case .venturedThisWatch: return "Your House has sent an expedition this watch already."
         case .noPedlar: return "No pedlar lies off your holds with that ware."
@@ -870,6 +878,11 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case chestOpened(house: Int, chest: Int)
     /// A House opens a chest at the Lantern Inn, and what it held.
     case innChestOpened(house: Int, chest: InnChest, drew: InnDraw)
+    /// A company steps into the Still; the water stills where it will come out.
+    case mirrorWalkBegun(unit: Int, house: Int, from: Hex, to: Hex)
+    /// It comes out on the far shore as the watch turns (where it stood, if
+    /// the far shore filled).
+    case mirrorWalked(unit: Int, house: Int, from: Hex, to: Hex)
     /// A commander rises a star.
     case commanderStarred(commander: Int, house: Int, stars: Int)
     /// A House's stone heard so many marches out of its sight.

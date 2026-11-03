@@ -236,10 +236,16 @@ extension GameSession {
                                    time: t, into: &frame)
         // What the lake mirrored at its Still Hour, faint, of companies the
         // keeper does not otherwise see.
+        // And where a company walking the mirror will come out: its image
+        // already in the stilled water there, seen from every shore.
+        let walking: [(kind: UnitKind, hex: Hex, colour: Vec4)] = state.mirrorWalksUnderWay.compactMap { walk in
+            guard let unit = state.unit(walk.unit), state.houses.indices.contains(walk.house) else { return nil }
+            return (kind: unit.kind, hex: walk.to, colour: WorldStage.colour(houses, sigil: state.houses[walk.house].sigil))
+        }
         let mirror = stage.animate(stage.mirrored((state.stillHour?.glimpses ?? []).compactMap { glimpse in
             guard glimpse.owner != state.player, !isVisible(glimpse.at), state.houses.indices.contains(glimpse.owner) else { return nil }
             return (kind: glimpse.kind, hex: glimpse.at, colour: WorldStage.colour(houses, sigil: state.houses[glimpse.owner].sigil))
-        }), time: t, into: &frame)
+        } + walking), time: t, into: &frame)
         frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + stones + skiff + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,

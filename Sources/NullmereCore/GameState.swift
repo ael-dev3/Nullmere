@@ -132,6 +132,10 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var labourBook: [Int: Labours]?
     /// Each keeper's House's keys at the Lantern Inn.
     public internal(set) var innBook: [Int: InnKeys]?
+    /// The companies walking the mirror, to come out as the watch turns.
+    public internal(set) var mirrorWalks: [MirrorWalk]?
+    /// The watch each company last walked the mirror.
+    public internal(set) var mirrorWalked: [Int: Int]?
     /// False reflections cast against the next Still Hour; in a view, the keeper's own.
     public internal(set) var reflections: [FalseReflection]?
     /// Each House's rung on the ladder of the lairs: the highest level it has broken.
