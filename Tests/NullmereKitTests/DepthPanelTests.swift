@@ -1225,6 +1225,72 @@ final class DepthPanelTests: XCTestCase {
 
     // MARK: Words
 
+    /// Letters between two keepers, under Letters in the Words.
+    func testALetterIsWrittenToOneKeeperAndShownToBoth() throws {
+        var state = world("pressed letters")
+        let me = state.player
+        let other = (me + 1) % 6
+        state.houses[other].isPlayer = true
+        XCTAssertEqual(LettersSection.keepers(in: state, besides: me), [other])
+        _ = try state.perform(.writeLetter(to: me, words: "Meet at the ford"), as: other)
+        let (session, link) = session(state)
+        let letter = try XCTUnwrap(session.state.letters(of: me).first)
+        XCTAssertEqual(LettersSection.line(letter, in: session.state, player: me), "From \(session.state.houses[other].title): Meet at the ford")
+        draw(WordsPanel(session: session))
+        draw(LettersSection(session: session))
+        draw(LettersSection(session: session, open: true, draft: "I will be there"))
+        XCTAssertTrue(PressableButtons.press("Send"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .writeLetter(to: other, words: "I will be there"))
+        let sent = try XCTUnwrap(session.state.letters(of: me).last)
+        XCTAssertEqual(LettersSection.line(sent, in: session.state, player: me), "To \(session.state.houses[other].title): I will be there")
+        XCTAssertEqual(GameSession.cues(for: .writeLetter(to: other, words: "x"), events: [], in: session.state, player: me), [.parley])
+    }
+
+    /// The Pedlar of the Still lying off the keeper's hold, a ware bought.
+    func testThePedlarsCardSellsAWare() throws {
+        var state = world("pressed pedlar")
+        let me = state.player
+        let seatIndex = try XCTUnwrap(state.holds.firstIndex { $0.owner == me && $0.isSeat })
+        let shore = try XCTUnwrap(state.map.hexes.first { state.isShore($0) && state.hold(at: $0) == nil })
+        state.holds[seatIndex].position = shore
+        state.reveal(around: shore, range: GameState.stoneFromHold, for: me)
+        state.watch = GameState.pedlarComes(to: me, from: state.watch + 1)
+        _ = state.turnThePedlars()
+        let pedlar = try XCTUnwrap(state.pedlar(for: me))
+        let ware = try XCTUnwrap(pedlar.wares.first { if case .sculptures = $0.goods { return true } else { return false } })
+        state.houses[me].stock.credit(ware.price)
+        let (session, link) = session(state)
+        UserDefaults.standard.set(true, forKey: OwnHoldDetails.waterKey)
+        defer { UserDefaults.standard.removeObject(forKey: OwnHoldDetails.waterKey) }
+        draw(OwnHoldDetails(session: session, hold: try XCTUnwrap(session.state.hold(pedlar.hold))), height: 2400)
+        draw(PedlarCard(session: session, pedlar: try XCTUnwrap(session.state.pedlar(for: me))))
+        XCTAssertTrue(PressableButtons.press("Buy"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .buyFromPedlar(ware: ware.id))
+        XCTAssertEqual(session.state.pedlar(for: me)?.wares.first { $0.id == ware.id }?.sold, true)
+        draw(PedlarCard(session: session, pedlar: try XCTUnwrap(session.state.pedlar(for: me))))
+        XCTAssertEqual(GameSession.cues(for: .buyFromPedlar(ware: ware.id), events: [], in: session.state, player: me), [.coin])
+    }
+
+    /// A commander's star raised, and sent up the Spine, from Commanders.
+    func testAStarIsRaisedAndACommanderVentures() throws {
+        var state = world("pressed stars")
+        let me = state.player
+        let commander = try XCTUnwrap(state.commanders(of: me).first)
+        _ = state.giveSculptures(10, to: me)
+        XCTAssertEqual(StarsLine.line(commander, kept: 10), "Next star: 10 sculptures, 10 kept")
+        let (session, link) = session(state)
+        draw(StarsLine(session: session, commander: commander))
+        XCTAssertTrue(PressableButtons.press("Raise a star"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .raiseStar(commander: commander.id))
+        XCTAssertEqual(session.state.commander(commander.id)?.starCount, 2)
+        XCTAssertTrue(ExpeditionLine.line(session.state, commander: try XCTUnwrap(session.state.commander(commander.id)), house: me).contains("the Scree Gate"))
+        draw(ExpeditionLine(session: session, commander: try XCTUnwrap(session.state.commander(commander.id))))
+        XCTAssertTrue(PressableButtons.press("Venture"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .venture(commander: commander.id))
+        XCTAssertTrue(session.state.hasVentured(me))
+        XCTAssertEqual(GameSession.cues(for: .raiseStar(commander: commander.id), events: [], in: session.state, player: me), [.honour])
+    }
+
     func testWordsAreHeardSaidAndShown() throws {
         var state = world("pressed words")
         let me = state.player

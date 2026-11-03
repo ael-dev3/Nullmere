@@ -163,9 +163,16 @@ struct WordLine: View {
 /// a line of the latest until asked for.
 struct LettersSection: View {
     let session: GameSession
-    @State private var open = false
+    @State private var open: Bool
     @State private var to: Int?
-    @State private var draft = ""
+    @State private var draft: String
+
+    /// `open` and `draft` as the keeper left them: folded and empty to begin.
+    init(session: GameSession, open: Bool = false, draft: String = "") {
+        self.session = session
+        _open = State(initialValue: open)
+        _draft = State(initialValue: draft)
+    }
 
     /// The other keepers' Houses a letter may go to.
     static func keepers(in state: GameState, besides player: Int) -> [Int] {
