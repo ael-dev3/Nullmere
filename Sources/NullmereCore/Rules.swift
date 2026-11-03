@@ -153,6 +153,8 @@ extension GameState {
             return try write(to: to, words, as: house)
         case let .castReflection(holdID, hex, kind):
             return try castReflection(from: holdID, at: hex, kind: kind, as: house)
+        case let .ventureLine(line, stage):
+            return try venture(line, stage: stage, as: house)
         case let .venture(commanderID):
             return try venture(commanderID, as: house)
         case let .buyFromPedlar(ware):

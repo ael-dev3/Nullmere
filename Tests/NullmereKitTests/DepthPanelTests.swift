@@ -1225,6 +1225,22 @@ final class DepthPanelTests: XCTestCase {
 
     // MARK: Words
 
+    /// A line of commanders sent up the Spine from Commanders.
+    func testALineIsSentUpTheSpine() throws {
+        var state = world("pressed line")
+        let me = state.player
+        while state.commanders(of: me).count < 3 { _ = state.commanderJoins(me, why: "joins") }
+        let lead = try XCTUnwrap(state.commanders(of: me).first)
+        let line = ExpeditionLine.line(with: lead, in: state, for: me)
+        XCTAssertEqual(line.count, 3)
+        XCTAssertEqual(line.first, lead.id)
+        let (session, link) = session(state)
+        draw(ExpeditionLine(session: session, commander: try XCTUnwrap(session.state.commander(lead.id))))
+        XCTAssertTrue(PressableButtons.press("Send a line"), "Among \(shown)")
+        XCTAssertEqual(link.sent.last, .ventureLine(commanders: line, stage: nil))
+        XCTAssertTrue(session.state.hasVentured(me))
+    }
+
     /// A false reflection cast from a hold by the water.
     func testAFalseReflectionIsCastFromTheWater() throws {
         var state = world("pressed reflection")

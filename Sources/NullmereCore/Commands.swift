@@ -174,6 +174,9 @@ public enum Command: Codable, Equatable, Sendable {
     case buyFromPedlar(ware: Int)
     /// A commander sent at the House's next stage of the Spine.
     case venture(commander: Int)
+    /// A line of up to three commanders sent at a stage of the Spine: the
+    /// next, or one won before, to win it with more stars.
+    case ventureLine(commanders: [Int], stage: Int?)
     /// A false reflection cast from a hold on a stretch of shore, mirrored
     /// at the next Still Hour as a company of a kind that is not there.
     case castReflection(hold: Int, at: Hex, kind: UnitKind)
@@ -453,6 +456,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case starsFull
     case noPedlar
     case expeditionsDone
+    case lineTooLong(Int)
     case reflectionThere
     case tooManyReflections(Int)
     case venturedThisWatch
@@ -668,6 +672,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .lairAboveRung(let most): return "Your hosts must break a lair of each level first: they may march on one of level \(most) at most."
         case .reflectionThere: return "Your false reflection already waits on that shore."
         case .tooManyReflections(let most): return "The lake takes \(most) false reflections of a House to a Still Hour, and no more."
+        case .lineTooLong(let most): return "A line up the Spine is one to \(most) commanders, each once."
         case .expeditionsDone: return "Your House has taken every stage of the Spine."
         case .venturedThisWatch: return "Your House has sent an expedition this watch already."
         case .noPedlar: return "No pedlar lies off your holds with that ware."

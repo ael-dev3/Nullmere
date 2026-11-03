@@ -61,3 +61,37 @@ final class ExpeditionTests: XCTestCase {
         XCTAssertTrue(events.contains(.sculpturesFound(house: me, count: ExpeditionStage.stage(3)!.sculptures)), "\(events)")
     }
 }
+
+extension ExpeditionTests {
+    func testALineWeighsTogetherAndStarsAStageByItsMargin() throws {
+        var state = Scene.world("expedition lines", houses: 3)
+        let me = state.player
+        while state.commanders(of: me).count < 3 { _ = state.commanderJoins(me, why: "joins") }
+        let line = Array(state.commanders(of: me).prefix(3).map(\.id))
+        for id in line { state.commanders![state.commanderIndex(id)!].experience = Commander.experience(forLevel: 10) }
+        XCTAssertEqual(state.refusal(of: .ventureLine(commanders: line + [line[0]], stage: nil), as: me), .lineTooLong(3))
+        XCTAssertEqual(state.refusal(of: .ventureLine(commanders: [], stage: nil), as: me), .lineTooLong(3))
+        XCTAssertEqual(state.refusal(of: .ventureLine(commanders: [line[0]], stage: 2), as: me), .expeditionsDone, "Not past its next stage")
+        XCTAssertEqual(GameState.stars(weight: 150, against: 100), 3)
+        XCTAssertEqual(GameState.stars(weight: 125, against: 100), 2)
+        XCTAssertEqual(GameState.stars(weight: 100, against: 100), 1)
+        XCTAssertNil(GameState.stars(weight: 99, against: 100))
+        let events = try state.perform(.ventureLine(commanders: line, stage: nil), as: me)
+        guard case .expedition(let result) = try XCTUnwrap(events.first) else { return XCTFail() }
+        XCTAssertEqual(result.line, line)
+        XCTAssertEqual(result.weight, line.reduce(0) { $0 + state.ringWeight(of: state.commander($1)!) }, "Weighed together")
+        let stars = try XCTUnwrap(result.stars)
+        XCTAssertEqual(state.expeditionStars(of: me, stage: 1), stars)
+        XCTAssertNil(state.view(for: 1).expeditionBest?[me], "Its House's own")
+        if stars == 3 { XCTAssertTrue(events.contains(.sculpturesFound(house: me, count: GameState.threeStarSculptures))) }
+        XCTAssertTrue(try XCTUnwrap(state.tidings(of: events[0], for: me)).text.contains("line of 3"))
+        // A stage won may be sent at again, for more stars, but its stores come once.
+        state.turnExpeditions()
+        XCTAssertNil(state.refusal(of: .ventureLine(commanders: line, stage: 1), as: me))
+        let grain = state.houses[me].stock.grain
+        _ = try state.perform(.ventureLine(commanders: line, stage: 1), as: me)
+        XCTAssertEqual(state.houses[me].stock.grain, grain, "No stores a second time")
+        XCTAssertEqual(state.expeditionStage(of: me), 1)
+        XCTAssertEqual(state.problems(), [])
+    }
+}

@@ -511,6 +511,42 @@ extension RallyScene {
     }
 }
 
+extension RallyScene {
+    /// Up the Spine from two keepers' clients: Ama sends a line of her
+    /// commanders, Bel one of his, each at their first stage; each sees
+    /// their own stage taken with its stars, and nothing of the other's.
+    func upTheSpine(ama: Int, bel: Int) async throws {
+        await steward.reshape { realm in
+            for house in [ama, bel] {
+                while realm.world.commanders(of: house).count < 2 { _ = realm.world.commanderJoins(house, why: "joins") }
+                for commander in realm.world.commanders(of: house) {
+                    let index = realm.world.commanderIndex(commander.id)!
+                    realm.world.commanders![index].experience = Commander.experience(forLevel: 12)
+                    realm.world.commanders![index].woundedUntil = nil
+                }
+                realm.world.ventured = nil
+            }
+        }
+        try await until("both Houses' commanders risen") {
+            (earA.world?.commanders(of: ama).count ?? 0) >= 2 && (earB.world?.commanders(of: bel).first?.level ?? 0) >= 12
+        }
+        let line = try await MainActor.run { try XCTUnwrap(earA.world).commanders(of: ama).prefix(2).map(\.id) }
+        let single = try await MainActor.run { try XCTUnwrap(earB.world?.commanders(of: bel).first).id }
+        let first = await MainActor.run { (earA.world?.expeditionStage(of: ama) ?? 0, earB.world?.expeditionStage(of: bel) ?? 0) }
+        await MainActor.run { a.send(.ventureLine(commanders: line, stage: nil)) }
+        await MainActor.run { b.send(.venture(commander: single)) }
+        try await until("each House's stage taken, as its keeper sees it") {
+            earA.world?.expeditionStage(of: ama) == first.0 + 1 && earB.world?.expeditionStage(of: bel) == first.1 + 1
+        }
+        let stars = await MainActor.run { (earA.world?.expeditionStars(of: ama, stage: first.0 + 1) ?? 0, earB.world?.expeditionStars(of: bel, stage: first.1 + 1) ?? 0) }
+        XCTAssertTrue((1...3).contains(stars.0), "Ama's line won it with its stars")
+        XCTAssertTrue((1...3).contains(stars.1), "and Bel's commander with his")
+        let peeked = await MainActor.run { (earA.world?.expeditionStage(of: bel), earB.world?.expeditionStage(of: ama)) }
+        XCTAssertEqual(peeked.0, 0, "Ama knows nothing of Bel's way up the Spine")
+        XCTAssertEqual(peeked.1, 0, "nor Bel of Ama's")
+    }
+}
+
 /// Where the crown was set, and the companies set beside it.
 final class CrownStage: @unchecked Sendable {
     private let lock = NSLock()

@@ -328,10 +328,12 @@ extension GameState {
         case .expedition(let result):
             guard result.house == viewer, let stage = ExpeditionStage.stage(result.stage) else { return nil }
             let name = commander(result.commander)?.name ?? "Your commander"
+            let who = (result.line?.count ?? 1) > 1 ? "\(name)'s line of \(result.line!.count)" : name
             if result.won {
-                return Tidings("\(name) takes \(stage.name), stage \(stage.number) of the Spine: \(stage.spoils) to your stores.", .good)
+                let stars = String(repeating: "\u{2605}", count: result.stars ?? 1)
+                return Tidings("\(who) takes \(stage.name), stage \(stage.number) of the Spine, \(stars): \(stage.spoils) to your stores.", .good)
             }
-            return Tidings("\(name) is thrown back from \(stage.name) and comes home wounded.", .bad)
+            return Tidings("\(who) is thrown back from \(stage.name) and comes home wounded.", .bad)
         case .pedlarLeft(let house):
             guard house == viewer else { return nil }
             return Tidings("The pedlar poles away into the dark.", .neutral)

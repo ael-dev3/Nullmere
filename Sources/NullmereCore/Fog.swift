@@ -21,6 +21,7 @@ extension GameState {
         view.labourBook = labourBook?[house].map { [house: $0] }
         // How far a House has gone up the Spine is its own to know.
         view.expeditions = expeditions?[house].map { [house: $0] }
+        view.expeditionBest = expeditionBest?[house].map { [house: $0] }
         // A keeper's letters, and their pedlar, are their own.
         view.mail = mail.map { _ in letters(of: house) }.flatMap { $0.isEmpty ? nil : $0 }
         view.pedlars = pedlar(for: house).map { [$0] }

@@ -356,6 +356,14 @@ struct ExpeditionLine: View {
     let session: GameSession
     let commander: Commander
 
+    /// A line led by a commander: it and the two heaviest others able to go.
+    static func line(with commander: Commander, in state: GameState, for house: Int) -> [Int] {
+        let others = state.commanders(of: house)
+            .filter { $0.id != commander.id && $0.captive == nil && ($0.woundedUntil ?? 0) <= state.watch }
+            .sorted { (state.ringWeight(of: $0), -$0.id) > (state.ringWeight(of: $1), -$1.id) }
+        return [commander.id] + others.prefix(GameState.expeditionLine - 1).map(\.id)
+    }
+
     static func line(_ state: GameState, commander: Commander, house: Int) -> String {
         guard let stage = ExpeditionStage.stage(state.expeditionStage(of: house) + 1) else { return "Every stage of the Spine is yours" }
         return "The Spine, \(stage.name) (\(stage.number) of \(ExpeditionStage.count)): its host weighs \(stage.strength), this commander \(state.ringWeight(of: commander))"
@@ -374,6 +382,14 @@ struct ExpeditionLine: View {
                 QuietButton(title: "Venture", size: 8.5, enabled: refusal == nil, name: "Send \(commander.name) up the Spine",
                             why: refusal?.description) {
                     session.perform(.venture(commander: commander.id))
+                }
+                let line = ExpeditionLine.line(with: commander, in: state, for: session.player)
+                if line.count > 1 {
+                    let lineRefusal = state.expeditionRefusal(line, as: session.player)
+                    QuietButton(title: "Send a line", size: 8.5, enabled: lineRefusal == nil,
+                                name: "Send a line of \(line.count) led by \(commander.name) up the Spine", why: lineRefusal?.description) {
+                        session.perform(.ventureLine(commanders: line, stage: nil))
+                    }
                 }
             }
         }

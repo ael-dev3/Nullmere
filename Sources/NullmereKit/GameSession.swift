@@ -1471,7 +1471,7 @@ public final class GameSession {
         case .raiseStar: return .honour
         case .writeLetter: return .parley
         case .buyFromPedlar: return .coin
-        case .venture: return .clash
+        case .venture, .ventureLine: return .clash
         case .castReflection: return .lore
         case .pursueAllianceStudy: return .lore
         case .giveToAlliance: return .coin

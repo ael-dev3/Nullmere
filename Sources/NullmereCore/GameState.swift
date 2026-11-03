@@ -126,6 +126,8 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var expeditions: [Int: Int]?
     /// The Houses that have sent an expedition this watch.
     public internal(set) var ventured: [Int]?
+    /// The best stars each House has won each stage of the Spine with.
+    public internal(set) var expeditionBest: [Int: [Int: Int]]?
     /// Each keeper's House's labours for the watch and vigour of the moon.
     public internal(set) var labourBook: [Int: Labours]?
     /// False reflections cast against the next Still Hour; in a view, the keeper's own.

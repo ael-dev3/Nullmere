@@ -30,11 +30,16 @@ public struct ExpeditionStage: Equatable, Sendable {
 /// How an expedition went, as its House is told it.
 public struct ExpeditionResult: Codable, Equatable, Sendable {
     public let house: Int
+    /// The first commander of the line sent.
     public let commander: Int
     public let stage: Int
     public let weight: Int
     public let against: Int
     public let won: Bool
+    /// The whole line sent, in its order; absent for a line of one.
+    public var line: [Int]?
+    /// The stars it was won with, one to three; absent when lost.
+    public var stars: Int?
 }
 
 extension GameState {
@@ -48,13 +53,39 @@ extension GameState {
         ventured?.contains(house) == true
     }
 
-    /// Why a House can't send a commander at its next stage now.
-    public func expeditionRefusal(_ commanderID: Int, as house: Int) -> RuleError? {
-        guard let commander = commander(commanderID), commander.owner == house, commander.captive == nil else { return .unknownCommander }
-        if let until = commander.woundedUntil, until > watch { return .commanderWounded(until) }
-        guard ExpeditionStage.stage(expeditionStage(of: house) + 1) != nil else { return .expeditionsDone }
+    /// The most commanders a line sent up the Spine.
+    public static let expeditionLine = 3
+
+    /// The stars a House won a stage with, its best; 0 if not won.
+    public func expeditionStars(of house: Int, stage: Int) -> Int {
+        expeditionBest?[house]?[stage] ?? 0
+    }
+
+    /// The stars a stage is won with, by how far the line outweighs its host.
+    public static func stars(weight: Int, against: Int) -> Int? {
+        guard weight >= against else { return nil }
+        if weight * 10 >= against * 15 { return 3 }
+        if weight * 10 >= against * 12 { return 2 }
+        return 1
+    }
+
+    /// Why a House can't send a line of commanders at a stage of the Spine
+    /// now: its next, or one it has won to win it with more stars.
+    public func expeditionRefusal(_ line: [Int], stage: Int? = nil, as house: Int) -> RuleError? {
+        guard !line.isEmpty, line.count <= GameState.expeditionLine, Set(line).count == line.count else { return .lineTooLong(GameState.expeditionLine) }
+        for id in line {
+            guard let commander = commander(id), commander.owner == house, commander.captive == nil else { return .unknownCommander }
+            if let until = commander.woundedUntil, until > watch { return .commanderWounded(until) }
+        }
+        let number = stage ?? expeditionStage(of: house) + 1
+        guard ExpeditionStage.stage(number) != nil, number <= expeditionStage(of: house) + 1 else { return .expeditionsDone }
         guard !hasVentured(house) else { return .venturedThisWatch }
         return nil
+    }
+
+    /// Why a House can't send one commander at its next stage now.
+    public func expeditionRefusal(_ commanderID: Int, as house: Int) -> RuleError? {
+        expeditionRefusal([commanderID], as: house)
     }
 
     /// The realm's chance on an expedition: a tenth either way, the same
@@ -64,27 +95,50 @@ extension GameState {
     }
 
     mutating func venture(_ commanderID: Int, as house: Int) throws(RuleError) -> [GameEvent] {
-        if let refusal = expeditionRefusal(commanderID, as: house) { throw refusal }
-        let number = expeditionStage(of: house) + 1
+        try venture([commanderID], stage: nil, as: house)
+    }
+
+    /// A line sent at a stage: weighed together against its host; won, the
+    /// stage is the House's with its stars, its stores the first time and
+    /// sculptures the first time it is won with three; lost, every
+    /// commander of it home wounded a watch.
+    mutating func venture(_ line: [Int], stage chosen: Int?, as house: Int) throws(RuleError) -> [GameEvent] {
+        if let refusal = expeditionRefusal(line, stage: chosen, as: house) { throw refusal }
+        let number = chosen ?? expeditionStage(of: house) + 1
         let stage = ExpeditionStage.stage(number)!
-        let weight = ringWeight(of: commander(commanderID)!)
+        let weight = line.reduce(0) { $0 + ringWeight(of: commander($1)!) }
         let against = stage.strength * (100 + GameState.expeditionSwing(house: house, stage: number, watch: watch)) / 100
-        let won = weight >= against
+        let stars = GameState.stars(weight: weight, against: against)
         ventured = (ventured ?? []) + [house]
-        let result = ExpeditionResult(house: house, commander: commanderID, stage: number, weight: weight, against: against, won: won)
+        var result = ExpeditionResult(house: house, commander: line[0], stage: number, weight: weight, against: against, won: stars != nil)
+        result.line = line.count > 1 ? line : nil
+        result.stars = stars
         var events: [GameEvent] = [.expedition(result)]
-        if won {
-            var kept = expeditions ?? [:]
-            kept[house] = number
-            expeditions = kept
-            store(stage.spoils, for: house)
-            events += giveSculptures(stage.sculptures, to: house)
-            record(.hunt, [house], "\(houses[house].title)'s \(commander(commanderID)!.name) takes \(stage.name), stage \(number) of the Spine.")
+        if let stars {
+            let firstWin = number > expeditionStage(of: house)
+            let before = expeditionStars(of: house, stage: number)
+            if firstWin {
+                var kept = expeditions ?? [:]
+                kept[house] = number
+                expeditions = kept
+                store(stage.spoils, for: house)
+                events += giveSculptures(stage.sculptures, to: house)
+                record(.hunt, [house], "\(houses[house].title)'s \(commander(line[0])!.name) takes \(stage.name), stage \(number) of the Spine.")
+            }
+            if stars > before {
+                var best = expeditionBest ?? [:]
+                best[house, default: [:]][number] = stars
+                expeditionBest = best
+                if stars == 3 { events += giveSculptures(GameState.threeStarSculptures, to: house) }
+            }
         } else {
-            commanders![commanderIndex(commanderID)!].woundedUntil = watch + 1
+            for id in line { commanders![commanderIndex(id)!].woundedUntil = watch + 1 }
         }
         return events
     }
+
+    /// Sculptures for a stage first won with three stars.
+    public static let threeStarSculptures = 4
 
     /// As the watch turns, every House may venture again.
     mutating func turnExpeditions() {
