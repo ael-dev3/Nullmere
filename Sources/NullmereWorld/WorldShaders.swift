@@ -559,9 +559,9 @@ public enum WorldShaders {
         float2 along = normalize(look.xz);
         float across = 1.0 - max(dot(toMoon, along), 0.0);
         float near = clamp(distance(in.world, frame.eye.xyz) / 40.0, 0.05, 1.0);
-        float road = exp(-across * across / (0.00004 + 0.0009 * (1.0 - near)));
+        float road = exp(-across * across / (0.00001 + 0.0002 * (1.0 - near)));
         float swell = nm_fbm(in.world.xz * float2(9.0, 2.2) + nm_drift(time, 0.03));
-        float glint = smoothstep(0.58, 0.82, swell);
+        float glint = smoothstep(0.66, 0.86, swell);
         moonlit += kMoonColour * road * glint * 0.09 * fresnel;
         // Where it is shallow the shingle shows through, darkened and wet.
         float clear = smoothstep(0.0, 0.14, depth);

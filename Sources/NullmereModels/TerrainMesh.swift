@@ -44,7 +44,9 @@ public struct TerrainMesh: Sendable {
     /// Frost on the Spine's heights.
     /// Old snow on the Spine's heights, grey under the night: bright
     /// enough to show the ridges, dark enough never to read as cloud.
-    static let frost = Vec3(0.2, 0.21, 0.24)
+    /// A dull hoar on the heights, never snow: bright frost before a low
+    /// eye reads as cloud.
+    static let frost = Vec3(0.07, 0.075, 0.09)
     static let frostLine: Float = 3.1
 
     /// How far past the map's outermost hexes the land is drawn.
