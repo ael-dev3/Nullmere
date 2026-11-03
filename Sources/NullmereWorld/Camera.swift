@@ -23,7 +23,10 @@ public struct Camera: Equatable, Sendable {
     /// Close enough to see a company's every figure.
     public static let maximumScale = 180.0
     public static let minimumTilt = 0.25
-    public static let maximumTilt = 1.0
+    /// Far enough past the horizon, leant all the way, that the sky stands
+    /// over the far shore; the view never leans so far of itself
+    /// (`leaning(at:)` tops out at 0.97).
+    public static let maximumTilt = 1.3
     public static let defaultTilt = 0.72
     /// The height of the view's field, in radians.
     public static let fieldOfView = 0.6

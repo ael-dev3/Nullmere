@@ -289,7 +289,9 @@ public enum WorldShaders {
 
     float3 nm_remembered(float3 c) {
         float grey = dot(c, float3(0.3, 0.5, 0.2));
-        return mix(float3(grey), c, 0.35) * 0.42 + kMist * 0.4;
+        // Remembered ground keeps most of its colour, only darker and
+        // cooler: out of sight, not out of the world.
+        return mix(float3(grey), c, 0.7) * 0.55 + kMist * 0.25;
     }
 
     // The mist over what the keeper has never seen, drifting slowly.
@@ -507,9 +509,13 @@ public enum WorldShaders {
         lit += float3(0.20, 0.22, 0.26) * ring * hovered * 0.6;
         lit += kGlow * (ring * 0.9 + (1.0 - smoothstep(0.0, 0.35, edge.x)) * 0.08) * chosen;
 
-        lit = mix(nm_remembered(lit), lit, smoothstep(0.15, 0.85, in.watched));
-        if (in.known < 0.999) {
-            lit = mix(nm_mist(p, time), lit, smoothstep(0.0, 1.0, in.known));
+        // What the keeper knows of the ground, blended between hexes here
+        // and not from the mesh's corners, so the edge of sight is a soft
+        // falling-off and never a terrace of lit and grey hexes.
+        float2 knows = nm_knowledgeAround(p, radius, tiles);
+        lit = mix(nm_remembered(lit), lit, smoothstep(0.0, 1.0, knows.y));
+        if (knows.x < 0.999) {
+            lit = mix(nm_mist(p, time), lit, smoothstep(0.0, 1.0, knows.x));
         }
         // Past the map's edge the Spine goes on into the dark.
         float beyond = float(nm_hexDistance(h)) - radius;
