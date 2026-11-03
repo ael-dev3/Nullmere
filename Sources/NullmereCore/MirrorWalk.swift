@@ -84,7 +84,7 @@ extension GameState {
         units[index].destination = nil
         units[index].fortified = false
         mirrorWalks = mirrorWalksUnderWay + [MirrorWalk(unit: unitID, house: house, from: from, to: to, watch: watch)]
-        record(.war, [house], "\(houses[house].title)'s \(units[index].kind.title) step into the Still at \(from) and are seen stilling the water at \(to).")
+        record(.war, [house], "\(houses[house].title)'s \(units[index].kind.title) walk the mirror.")
         return [.mirrorWalkBegun(unit: unitID, house: house, from: from, to: to)]
     }
 
