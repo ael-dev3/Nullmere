@@ -118,6 +118,8 @@ extension GameState {
         if let lair = lair(targetID) {
             // A lair is every House's foe: no war is needed to rally on it.
             guard isExplored(lair.position, by: house) else { throw .unknownLair }
+            // A lair no more than a level above the House's rung on the ladder.
+            guard lair.level <= lairRung(of: house) + 1 else { throw .lairAboveRung(lairRung(of: house) + 1) }
         } else {
             guard let target = hold(targetID), isExplored(target.position, by: house) else { throw .unknownHold }
             guard isAtWar(house, target.owner) else { throw .notAtWar(target.owner) }

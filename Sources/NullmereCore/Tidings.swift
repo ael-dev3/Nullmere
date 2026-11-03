@@ -312,6 +312,9 @@ extension GameState {
         case .pedlarSold(let house, let id):
             guard house == viewer, let ware = pedlar(for: house)?.wares.first(where: { $0.id == id }) else { return nil }
             return Tidings("Bought of the pedlar: \(ware.goods.title).", .good)
+        case .lairRungClimbed(let house, let level):
+            guard house == viewer else { return nil }
+            return Tidings("Your House climbs the ladder of the lairs to level \(level): your hosts may march on lairs of level \(level + 1) now, and \(GameState.sculpturesPerRung * level) sculptures come to your seat.", .good)
         case .reflectionCast(let house, let at):
             guard house == viewer else { return nil }
             let next = GameState.nextStillHour(from: watch + 1) - watch

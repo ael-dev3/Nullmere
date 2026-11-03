@@ -130,6 +130,8 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var labourBook: [Int: Labours]?
     /// False reflections cast against the next Still Hour; in a view, the keeper's own.
     public internal(set) var reflections: [FalseReflection]?
+    /// Each House's rung on the ladder of the lairs: the highest level it has broken.
+    public internal(set) var lairLadder: [Int: Int]?
     /// What the stones heard as the watch last turned.
     public internal(set) var soundings: [Sounding]?
     /// Where each company in a stone's reach stood when the stones last

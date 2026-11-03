@@ -379,6 +379,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case lairNeedsRally
     /// A lair the House hasn't found, or no more.
     case unknownLair
+    case lairAboveRung(Int)
     /// Ground the House hasn't seen.
     case unexplored
     /// A standard raised where something stands already.
@@ -664,6 +665,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .notOnTheShore: return "A ripple-stone is cast only from a hold on the lake's shore."
         case .alreadyRippled: return "Your stone already stirs the water against the next Still Hour."
         case .starsFull: return "That commander has all its stars."
+        case .lairAboveRung(let most): return "Your hosts must break a lair of each level first: they may march on one of level \(most) at most."
         case .reflectionThere: return "Your false reflection already waits on that shore."
         case .tooManyReflections(let most): return "The lake takes \(most) false reflections of a House to a Still Hour, and no more."
         case .expeditionsDone: return "Your House has taken every stage of the Spine."
@@ -853,6 +855,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case labourDone(house: Int, kind: LabourKind)
     /// A House casts a false reflection on the shore.
     case reflectionCast(house: Int, at: Hex)
+    /// A House climbs the ladder of the lairs to a level.
+    case lairRungClimbed(house: Int, level: Int)
     /// A House's vigour opens one of the moon's chests, first to third.
     case chestOpened(house: Int, chest: Int)
     /// A commander rises a star.

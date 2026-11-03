@@ -293,7 +293,42 @@ extension GameState {
                                   level: target.level, at: target.position, strikes: strikes, before: before,
                                   strength: broken ? 0 : lairs![lairAt].strength, might: target.might, shares: shares, gate: target.gate)
         events.insert(.lairAssaulted(assault), at: 0)
-        if broken { events += rewardLair(assault) }
+        if broken {
+            events += rewardLair(assault)
+            events += climbTheLadder(assault)
+        }
+        return events
+    }
+}
+
+// MARK: The ladder of the lairs
+
+/// The ladder of the lairs (after Rise of Kingdoms' barbarian forts, each
+/// level opened by breaking the one below): a House's rung is the highest
+/// level of lair its hosts have broken, and its rallies may march on a
+/// lair no more than one level above it. A House of a host that breaks a
+/// lair above its rung climbs to it, and is given sculptures for the climb.
+extension GameState {
+    /// The highest level of lair a House's hosts have broken; 0 before any.
+    public func lairRung(of house: Int) -> Int {
+        lairLadder?[house] ?? 0
+    }
+
+    /// Sculptures for each rung climbed, by the level climbed to.
+    public static let sculpturesPerRung = 3
+
+    /// A host's Houses climb the ladder to a lair it broke above their rungs.
+    mutating func climbTheLadder(_ assault: LairAssault) -> [GameEvent] {
+        guard assault.broken else { return [] }
+        var events: [GameEvent] = []
+        var ladder = lairLadder ?? [:]
+        for share in assault.shares where lairRung(of: share.house) < assault.level {
+            ladder[share.house] = assault.level
+            events.append(.lairRungClimbed(house: share.house, level: assault.level))
+            lairLadder = ladder
+            events += giveSculptures(GameState.sculpturesPerRung * assault.level, to: share.house)
+        }
+        lairLadder = ladder.isEmpty ? nil : ladder
         return events
     }
 }

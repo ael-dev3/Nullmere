@@ -970,7 +970,7 @@ struct RivalMind {
         guard spare >= 3 else { return [] }
         let musters = state.holds(of: house).filter { $0.level(.musterHall) >= 1 }
         let choices = state.lairsStanding
-            .filter { state.isExplored($0.position, by: house) && $0.level <= max(1, spare / 2) }
+            .filter { state.isExplored($0.position, by: house) && $0.level <= max(1, spare / 2) && $0.level <= state.lairRung(of: house) + 1 }
             .flatMap { lair in musters.filter { $0.position.distance(to: lair.position) <= RivalMind.rallyReach }.map { (lair: lair, muster: $0) } }
         guard let choice = choices.min(by: { a, b in
             (a.lair.level, a.muster.position.distance(to: a.lair.position), a.lair.id)

@@ -337,6 +337,8 @@ extension GameState {
                 return caster == house
             case .letterSent(let letter):
                 return letter.from == house || letter.to == house
+            case .lairRungClimbed(let owner, _):
+                return owner == house
             case .reflectionCast(let owner, _):
                 return owner == house
             case .labourDone(let owner, _), .chestOpened(let owner, _):

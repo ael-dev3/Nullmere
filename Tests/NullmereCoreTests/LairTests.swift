@@ -35,6 +35,8 @@ final class LairTests: XCTestCase {
         })
         let lair = Lair(id: state.takeID(), kind: .reavers, level: level, position: spot, raised: state.watch)
         state.lairs = [lair]
+        // Its keeper's and ally's hosts have climbed the ladder to it.
+        if level > 1 { state.lairLadder = [me: level - 1, 1: level - 1] }
         state.reveal(around: spot, range: 2, for: me)
         state.holds[state.holdIndex(seat.id)!].levels[.musterHall] = 1
         // The keeper's seat left clear for the companies gathering there:
@@ -286,5 +288,30 @@ final class LairTests: XCTestCase {
         XCTAssertEqual(rally.target, state.lairsStanding[0].id)
         _ = state.stewardTurn(for: steward)
         XCTAssertFalse(try XCTUnwrap(state.rally(rally.id)).companies.isEmpty, "And sends companies to it")
+    }
+}
+
+extension LairTests {
+    func testTheLadderOpensEachLevelOnlyToHostsThatBrokeTheOneBelow() throws {
+        var stage = try staged("the ladder", level: 2)
+        let me = stage.me
+        XCTAssertEqual(stage.state.lairRung(of: me), 1)
+        stage.state.lairLadder = nil
+        XCTAssertEqual(stage.state.refusal(of: .callRally(from: stage.seat, against: stage.lair, watches: 2), as: me), .lairAboveRung(1),
+                       "A level-two lair is shut to a House that has broken none")
+        XCTAssertEqual(RuleError.lairAboveRung(1).description, "Your hosts must break a lair of each level first: they may march on one of level 1 at most.")
+        stage.state.lairLadder = [me: 1]
+        XCTAssertNil(stage.state.refusal(of: .callRally(from: stage.seat, against: stage.lair, watches: 2), as: me), "Its rung reached, it opens")
+        // A host breaking a lair above a House's rung lifts it there, with sculptures.
+        let assault = LairAssault(rally: 0, caller: me, lair: stage.lair, kind: .reavers, level: 3, at: stage.lairHex, strikes: [], before: 1,
+                                  strength: 0, might: 1, shares: [.init(house: me, spoils: .zero), .init(house: 1, spoils: .zero)])
+        let events = stage.state.climbTheLadder(assault)
+        XCTAssertTrue(events.contains(.lairRungClimbed(house: me, level: 3)))
+        XCTAssertTrue(events.contains(.lairRungClimbed(house: 1, level: 3)))
+        XCTAssertTrue(events.contains(.sculpturesFound(house: me, count: GameState.sculpturesPerRung * 3)))
+        XCTAssertEqual(stage.state.lairRung(of: me), 3)
+        XCTAssertEqual(stage.state.climbTheLadder(assault), [], "No climb to a rung already held")
+        XCTAssertNotNil(stage.state.tidings(of: .lairRungClimbed(house: me, level: 3), for: me))
+        XCTAssertEqual(stage.state.events(events, heardBy: 2).filter { if case .lairRungClimbed = $0 { return true } else { return false } }, [])
     }
 }

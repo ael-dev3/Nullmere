@@ -103,11 +103,13 @@ struct RallyScene {
         XCTAssertNotEqual(spoils.share(1, of: 4), .zero, "A share worth having")
 
         // Sculptures for both Houses' commanders' stars, twice as many to
-        // the rally's caller; each keeper counts only their own.
+        // the rally's caller, and more for both climbing the ladder of the
+        // lairs to its first rung; each keeper counts only their own.
+        try await until("both on the ladder's first rung") { earA.world?.lairRung(of: ama) == 1 && earB.world?.lairRung(of: bel) == 1 }
         let level = 1
         try await until("the sculptures counted, each House its own") {
-            earA.world?.sculptures(of: ama) == 2 * GameState.sculpturesPerLairLevel * level
-                && earB.world?.sculptures(of: bel) == GameState.sculpturesPerLairLevel * level
+            earA.world?.sculptures(of: ama) == 2 * GameState.sculpturesPerLairLevel * level + GameState.sculpturesPerRung * level
+                && earB.world?.sculptures(of: bel) == GameState.sculpturesPerLairLevel * level + GameState.sculpturesPerRung * level
         }
         let peeked = await MainActor.run { (earA.world?.sculptures(of: bel), earB.world?.sculptures(of: ama)) }
         XCTAssertEqual(peeked.0, 0, "Ama can't count Bel's")
