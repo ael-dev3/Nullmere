@@ -146,6 +146,12 @@ struct OwnHoldDetails: View {
                     CostLine(cost: state.income(of: hold), available: Stock(grain: .max, timber: .max, stone: .max, moonsalt: .max))
                 }
                 .accessibilityElement(children: .combine)
+                // Only while it stands under its alliance's standards.
+                if state.isOnAllianceLand(hold), let alliance = state.alliance(of: hold.owner) {
+                    Text(verbatim: "On the land of \(alliance.name): +\(Standard.holdYield)% of all it yields")
+                        .font(.nm(10))
+                        .foregroundStyle(Palette.text(0.6))
+                }
             }
 
             if let project = hold.project {

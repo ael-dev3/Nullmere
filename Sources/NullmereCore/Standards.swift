@@ -47,6 +47,9 @@ public struct Standard: Codable, Equatable, Identifiable, Sendable {
     public static let defence = 10
     public static let mendingOnLand = 5
     public static let gathering = 20
+    /// And what it gives the holds of the alliance's Houses on it: a
+    /// tenth more of all they yield each watch.
+    public static let holdYield = 10
 }
 
 extension GameState {
@@ -104,6 +107,12 @@ extension GameState {
             }
         }
         return borders
+    }
+
+    /// Whether a hold stands on its own House's alliance's land.
+    public func isOnAllianceLand(_ hold: Hold) -> Bool {
+        guard let alliance = alliance(of: hold.owner)?.id, !standardsStanding.isEmpty || wholeHall(for: hold.owner) != nil else { return false }
+        return allianceLand(at: hold.position) == alliance
     }
 
     /// Whether a company stands on its own alliance's land.

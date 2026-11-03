@@ -142,6 +142,24 @@ final class StandardTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(onLand - offLand, Standard.mendingOnLand)
     }
 
+    func testAHoldUnderItsAlliancesStandardYieldsATenthMore() throws {
+        var stage = try staged("standards yield")
+        let me = stage.me
+        let bare = stage.state.income(of: stage.seat)
+        XCTAssertFalse(stage.state.isOnAllianceLand(stage.seat))
+        _ = try stage.state.perform(.raiseStandard(at: try ground(near: stage.seat.position, in: stage.state)), as: me)
+        XCTAssertTrue(stage.state.isOnAllianceLand(stage.seat), "Its seat within the standard's land")
+        let under = stage.state.income(of: try XCTUnwrap(stage.state.hold(stage.seat.id)))
+        for resource in Resource.allCases {
+            XCTAssertEqual(under[resource], bare[resource] * (100 + Standard.holdYield) / 100, "\(resource)")
+        }
+        XCTAssertGreaterThan(under.grain, bare.grain)
+        // A House not of the alliance has nothing of it, even on its land.
+        var left = stage.state
+        _ = try left.perform(.leaveAlliance, as: me)
+        XCTAssertFalse(left.isOnAllianceLand(try XCTUnwrap(left.hold(stage.seat.id))))
+    }
+
     func testAFoeAtWarStrikesAStandardDownAndAHouseGoneTakesItsDown() throws {
         var stage = try staged("standards torn")
         let me = stage.me, foe = 3

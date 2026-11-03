@@ -489,6 +489,10 @@ public struct GameState: Codable, Equatable, Sendable {
         for resource in Resource.allCases where studied[resource] > 0 {
             total[resource] = total[resource] * (100 + studied[resource]) / 100
         }
+        // And a hold on its own alliance's land, under its standards, more.
+        if isOnAllianceLand(hold) {
+            for resource in Resource.allCases { total[resource] = total[resource] * (100 + Standard.holdYield) / 100 }
+        }
         return underOmen(total)
     }
 

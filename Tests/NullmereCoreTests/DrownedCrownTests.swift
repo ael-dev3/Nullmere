@@ -85,7 +85,10 @@ extension DrownedCrownTests {
     func testStewardsContendForTheCrownOverAnAge() {
         var state = GameState(settings: GameSettings(seedText: "contended crown", houseCount: 8, keepers: 1))
         var taken = 0, given = 0
-        while state.watch < Sundering.first + GameState.fordLasts + 2, state.outcome == nil {
+        while state.watch < Sundering.first + GameState.fordLasts + 2 {
+            // How the age ends is not this test's: it plays on to the
+            // water's return whoever has prevailed.
+            state.outcome = nil
             let turn = state.stewardTurn(for: state.player)
             for event in turn + state.endWatch() {
                 if case .crownTaken = event { taken += 1 }
