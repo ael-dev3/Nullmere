@@ -90,7 +90,7 @@ private struct OwnHoldPanel: View {
                 if let work { withAnimation(.easeOut(duration: 0.3)) { reader.scrollTo(work, anchor: .center) } }
             }
         }
-        .panelHeight()
+        .panelHeight(ChromeBudget.recordShare)
         .panelBackground()
     }
 }

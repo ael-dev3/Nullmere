@@ -342,18 +342,20 @@ extension View {
 
 extension View {
     /// A panel's scrolling body held to the height the play view gives
-    /// panels, so the world keeps the screen.
-    func panelHeight() -> some View {
-        modifier(PanelHeight())
+    /// panels, so the world keeps the screen: a share of it, for a record
+    /// that stands beside the map and the rail.
+    func panelHeight(_ share: CGFloat = 1) -> some View {
+        modifier(PanelHeight(share: share))
     }
 }
 
 /// The height the play view gives a panel's scrolling body.
 private struct PanelHeight: ViewModifier {
+    let share: CGFloat
     @Environment(\.panelMaxHeight) private var maxHeight
 
     func body(content: Content) -> some View {
-        content.frame(maxHeight: maxHeight)
+        content.frame(maxHeight: max(maxHeight * share, ChromeBudget.leastHeight))
     }
 }
 
@@ -370,6 +372,8 @@ enum ChromeBudget {
     static let cardShare: CGFloat = 0.46
     /// But never less than this, so a small window's panels still serve.
     static let leastHeight: CGFloat = 360
+    /// A hold's record, beside the map and the rail, stands a little lower.
+    static let recordShare: CGFloat = 0.85
 
     /// The height a panel's body may stand to in a window this tall.
     static func panelHeight(in window: CGFloat) -> CGFloat {
