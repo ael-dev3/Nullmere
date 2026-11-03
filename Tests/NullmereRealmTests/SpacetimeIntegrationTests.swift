@@ -301,6 +301,11 @@ final class SpacetimeIntegrationTests: XCTestCase {
         }
         print("REALM one keeper declared war on another, and both saw it")
 
+        // Each in an alliance of their own, they fight over the Drowned
+        // Crown on the bare ford, each from their own client.
+        try await RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60).contestTheCrown(ama: houseA, bel: houseB)
+        print("REALM two alliances fought over the Drowned Crown from their own clients: taken, struck down, taken again, and given as the water came back")
+
         // Ama marches on Bel's seat, watch by watch as both keepers turn
         // them, and strikes at it.
         let realm: GameState = await steward.state.world
