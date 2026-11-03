@@ -42,8 +42,10 @@ public struct TerrainMesh: Sendable {
     }
 
     /// Frost on the Spine's heights.
-    static let frost = Vec3(0.5, 0.52, 0.57)
-    static let frostLine: Float = 2.7
+    /// Old snow on the Spine's heights, grey under the night: bright
+    /// enough to show the ridges, dark enough never to read as cloud.
+    static let frost = Vec3(0.2, 0.21, 0.24)
+    static let frostLine: Float = 3.1
 
     /// How far past the map's outermost hexes the land is drawn.
     public static let margin: Float = 7
@@ -75,7 +77,9 @@ public struct TerrainMesh: Sendable {
                 var colour = (TerrainMesh.colour(ta) * wa + TerrainMesh.colour(tb) * wb + TerrainMesh.colour(tc) * wc) / total
                 let strongest = wa >= wb && wa >= wc ? ta : (wb >= wc ? tb : tc)
                 if height > TerrainMesh.frostLine {
-                    colour = colour.mix(TerrainMesh.frost, min((height - TerrainMesh.frostLine) / 0.8, 1))
+                    // In drifts, the rock showing through between them.
+                    let drift = 0.45 + 0.55 * Noise.value(x * 1.7, z * 1.7, seed: 23)
+                    colour = colour.mix(TerrainMesh.frost, min((height - TerrainMesh.frostLine) / 1.1, 1) * drift)
                 }
                 // A little mottling, so no field is one flat colour.
                 colour *= 0.82 + 0.2 * Noise.value(x * 2.3, z * 2.3, seed: 21) + 0.16 * Noise.value(x * 0.45, z * 0.45, seed: 22)
