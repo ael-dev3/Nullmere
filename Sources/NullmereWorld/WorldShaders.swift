@@ -462,13 +462,21 @@ public enum WorldShaders {
         float3 lit = float3(0.0);
         if (owner > 0.5 && in.known > 0.5) {
             float3 house = frame.houses[min(int(owner), 127)].rgb;
-            albedo = mix(albedo, house * 0.5, 0.14);
-            int2 across = h + int2(int(edge.y), int(edge.z));
-            float4 other = nm_tileAt(across, radius, tiles);
-            float otherOwner = other.w;
-            if (abs(otherOwner - owner) > 0.5) {
-                float line = 1.0 - smoothstep(pixel * 0.6, pixel * 2.2, edge.x);
-                lit += house * line * 0.35;
+            // The wash is the faintest breath of the House's colour, broken
+            // by the ground's own grain, so the land reads as land.
+            float breath = 0.035 + 0.025 * nm_hash12(floor(p * 7.0));
+            albedo = mix(albedo, house * 0.5, breath);
+            // The neighbour is the hex just outside the nearest edge: a
+            // point pushed out past it, so a line falls only where the
+            // land truly meets another's, never between hexes of one.
+            float2 centre = nm_hexCentre(h);
+            int2 across = nm_hexRound(nm_axial(centre + (p - centre) * 1.45));
+            if (across.x != h.x || across.y != h.y) {
+                float otherOwner = nm_tileAt(across, radius, tiles).w;
+                if (abs(otherOwner - owner) > 0.5) {
+                    float line = 1.0 - smoothstep(pixel * 0.8, pixel * 3.2, edge.x);
+                    lit += house * line * 0.22;
+                }
             }
         }
         lit += nm_light(albedo, n, frame.moon.xyz, frame.moon.w);
