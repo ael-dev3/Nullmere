@@ -157,6 +157,8 @@ extension GameState {
             return try venture(line, stage: stage, as: house)
         case let .venture(commanderID):
             return try venture(commanderID, as: house)
+        case let .openInnChest(chest):
+            return try openInnChest(chest, as: house)
         case let .buyFromPedlar(ware):
             return try buy(ware, as: house)
         case let .raiseStar(commanderID):

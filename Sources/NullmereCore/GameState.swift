@@ -130,6 +130,8 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var expeditionBest: [Int: [Int: Int]]?
     /// Each keeper's House's labours for the watch and vigour of the moon.
     public internal(set) var labourBook: [Int: Labours]?
+    /// Each keeper's House's keys at the Lantern Inn.
+    public internal(set) var innBook: [Int: InnKeys]?
     /// False reflections cast against the next Still Hour; in a view, the keeper's own.
     public internal(set) var reflections: [FalseReflection]?
     /// Each House's rung on the ladder of the lairs: the highest level it has broken.

@@ -1490,7 +1490,7 @@ public final class GameSession {
         case .sinkStone: return .lore
         case .raiseStar: return .honour
         case .writeLetter: return .parley
-        case .buyFromPedlar: return .coin
+        case .buyFromPedlar, .openInnChest: return .coin
         case .venture, .ventureLine: return .clash
         case .castReflection: return .lore
         case .pursueAllianceStudy: return .lore
@@ -1638,6 +1638,7 @@ public final class GameSession {
         case .pedlarCame(let house, _) where house == player: return .horn
         case .expedition(let result) where result.house == player: return result.won ? .triumph : .refusal
         case .chestOpened(let house, _) where house == player: return .coin
+        case .innChestOpened(let house, _, _) where house == player: return .coin
         case .eclipse: return .dread
         case .riddleAnswered(let house, let right, _) where house == player: return right ? .triumph : .refusal
         case .edictBroken(_, _, _, let against, _) where against == player: return .horn

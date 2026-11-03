@@ -172,6 +172,8 @@ public enum Command: Codable, Equatable, Sendable {
     case writeLetter(to: Int, words: String)
     /// A ware bought of the pedlar lying off the House's hold.
     case buyFromPedlar(ware: Int)
+    /// A chest opened at the Lantern Inn: with a key, or a gold one for moonsalt.
+    case openInnChest(InnChest)
     /// A commander sent at the House's next stage of the Spine.
     case venture(commander: Int)
     /// A line of up to three commanders sent at a stage of the Spine: the
@@ -457,6 +459,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case noPedlar
     case expeditionsDone
     case lineTooLong(Int)
+    case noInnKey(InnChest)
     case reflectionThere
     case tooManyReflections(Int)
     case venturedThisWatch
@@ -673,6 +676,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .reflectionThere: return "Your false reflection already waits on that shore."
         case .tooManyReflections(let most): return "The lake takes \(most) false reflections of a House to a Still Hour, and no more."
         case .lineTooLong(let most): return "A line up the Spine is one to \(most) commanders, each once."
+        case .noInnKey(let chest): return "Your House holds no \(chest.named) key; one comes \(chest == .silver ? "each watch" : "every \(InnKeys.goldEvery) watches")."
         case .expeditionsDone: return "Your House has taken every stage of the Spine."
         case .venturedThisWatch: return "Your House has sent an expedition this watch already."
         case .noPedlar: return "No pedlar lies off your holds with that ware."
@@ -864,6 +868,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case lairRungClimbed(house: Int, level: Int)
     /// A House's vigour opens one of the moon's chests, first to third.
     case chestOpened(house: Int, chest: Int)
+    /// A House opens a chest at the Lantern Inn, and what it held.
+    case innChestOpened(house: Int, chest: InnChest, drew: InnDraw)
     /// A commander rises a star.
     case commanderStarred(commander: Int, house: Int, stars: Int)
     /// A House's stone heard so many marches out of its sight.

@@ -19,6 +19,8 @@ extension GameState {
         view.reflections = reflections.map { all in all.filter { $0.house == house } }.flatMap { $0.isEmpty ? nil : $0 }
         // A House's labours are its own.
         view.labourBook = labourBook?[house].map { [house: $0] }
+        // And its keys at the Inn.
+        view.innBook = innBook?[house].map { [house: $0] }
         // How far a House has gone up the Spine is its own to know.
         view.expeditions = expeditions?[house].map { [house: $0] }
         view.expeditionBest = expeditionBest?[house].map { [house: $0] }
@@ -342,7 +344,7 @@ extension GameState {
                 return owner == house
             case .reflectionCast(let owner, _):
                 return owner == house
-            case .labourDone(let owner, _), .chestOpened(let owner, _):
+            case .labourDone(let owner, _), .chestOpened(let owner, _), .innChestOpened(let owner, _, _):
                 return owner == house
             case .expedition(let result):
                 return result.house == house

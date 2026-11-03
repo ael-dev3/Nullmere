@@ -296,6 +296,7 @@ final class SpacetimeIntegrationTests: XCTestCase {
         try await scene.foretellAHappening(ama: houseA, bel: houseB)
         print("REALM two keepers' calendars foretold the same happening, and both saw it begin on its watch")
         try await scene.laboursOfTheWatch(ama: houseA, bel: houseB)
+        try await scene.openTheInnsChests(ama: houseA, bel: houseB)
         print("REALM two keepers each raised a work or a muster for their watch's labour, and each was told only of their own")
         try await scene.teachTheLakeToLie(ama: houseA, bel: houseB)
         print("REALM one keeper taught the lake to lie, and the other saw her false company mirrored at the Still Hour")

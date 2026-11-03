@@ -1260,6 +1260,26 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(ReflectionRow.line(session.state, house: me).hasPrefix("1 false reflection wait"))
     }
 
+    /// The Lantern Inn in the Realm panel: keys, chests opened by button.
+    func testTheInnsChestsAreOpenedFromTheRealmPanel() throws {
+        var state = world("pressed inn")
+        let me = state.player
+        state.turnInn()
+        state.houses[me].stock.moonsalt = 0 // the gold chest's button drawn disabled
+        state.innBook![me]!.gold = 0
+        let keys = state.innKeys(of: me)
+        XCTAssertEqual(InnSection.summary(keys), "1 silver key · \(keys.gold) gold")
+        XCTAssertEqual(InnSection.means(.silver, keys), "With a silver key")
+        XCTAssertEqual(InnSection.means(.gold, InnKeys(silver: 0, gold: 0, sinceCommander: 0, opened: 0)), "For \(InnKeys.goldPrice)")
+        let (session, link) = session(state)
+        draw(InnSection(session: session))
+        PressableButtons.isListening = true
+        draw(InnSection(session: session, open: true))
+        XCTAssertTrue(PressableButtons.press("Open"), "The silver chest's, the gold one's being disabled")
+        XCTAssertEqual(link.sent.last, .openInnChest(.silver))
+        draw(RealmPanel(session: session))
+    }
+
     /// The watch's labours in the Realm panel, folded and opened.
     func testTheWatchsLaboursAreShown() throws {
         var state = world("pressed labours")

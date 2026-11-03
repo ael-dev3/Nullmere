@@ -325,6 +325,16 @@ extension GameState {
         case .chestOpened(let house, let chest):
             guard house == viewer else { return nil }
             return Tidings("Your vigour opens the moon's \(["first", "second", "third"][min(chest, 3) - 1]) chest: \(Labours.chestStores[min(chest, 3) - 1]).", .good)
+        case .innChestOpened(let house, let chest, let draw):
+            guard house == viewer else { return nil }
+            switch draw {
+            case .sculptures(let count):
+                return Tidings("The Inn's \(chest.named) chest holds \(count) sculpture\(count == 1 ? "" : "s").", .good)
+            case .item(let kind, let count):
+                return Tidings("The Inn's \(chest.named) chest holds \(kind.counted(count)).", .good)
+            case .commander(let id):
+                return Tidings("From the Inn's gold chest, \(commander(id)?.name ?? "a commander") comes to your House.", .good)
+            }
         case .expedition(let result):
             guard result.house == viewer, let stage = ExpeditionStage.stage(result.stage) else { return nil }
             let name = commander(result.commander)?.name ?? "Your commander"

@@ -33,6 +33,10 @@ struct RealmPanel: View {
                         Rule(opacity: 0.18)
                         LaboursSection(session: session)
                     }
+                    if session.state.innBook?[session.player] != nil {
+                        Rule(opacity: 0.18)
+                        InnSection(session: session)
+                    }
                     Rule(opacity: 0.18)
                     charge(board)
                     Rule(opacity: 0.18)
@@ -605,6 +609,55 @@ struct LaboursSection: View {
                     .foregroundStyle(Palette.text(0.5))
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+}
+
+/// The Lantern Inn, folded until opened: the House's keys and a button for
+/// each chest, with why it can't be opened when it can't.
+struct InnSection: View {
+    let session: GameSession
+    @State private var open: Bool
+
+    init(session: GameSession, open: Bool = false) {
+        self.session = session
+        _open = State(initialValue: open)
+    }
+
+    static func summary(_ keys: InnKeys) -> String {
+        "\(keys.silver) silver key\(keys.silver == 1 ? "" : "s") · \(keys.gold) gold"
+    }
+
+    /// What a chest is opened with, as its button says.
+    static func means(_ chest: InnChest, _ keys: InnKeys) -> String {
+        switch chest {
+        case .silver: return "With a silver key"
+        case .gold: return keys.gold > 0 ? "With a gold key" : "For \(InnKeys.goldPrice)"
+        }
+    }
+
+    var body: some View {
+        let keys = session.state.innKeys(of: session.player)
+        FoldedList(title: "The Lantern Inn", count: keys.silver + keys.gold, summary: InnSection.summary(keys), open: $open) {
+            ForEach(InnChest.allCases, id: \.self) { chest in
+                let refusal = session.state.innRefusal(chest, as: session.player)
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(verbatim: "A \(chest.named) chest").font(.nm(10.5)).foregroundStyle(Palette.text(0.85))
+                        Text(verbatim: InnSection.means(chest, keys)).font(.nm(9.5)).foregroundStyle(Palette.text(0.55))
+                    }
+                    .accessibilityElement(children: .combine)
+                    Spacer()
+                    QuietButton(title: "Open", size: 8.5, enabled: refusal == nil, name: "Open a \(chest.named) chest at the Inn",
+                                why: refusal?.description) {
+                        session.perform(.openInnChest(chest))
+                    }
+                }
+            }
+            Text(verbatim: "Silver chests hold sculptures and lesser items; gold ones more, the greater items, and now and then a commander, surely by the \(InnKeys.surelyBy)th gold chest.")
+                .font(.nm(9.5))
+                .foregroundStyle(Palette.text(0.5))
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

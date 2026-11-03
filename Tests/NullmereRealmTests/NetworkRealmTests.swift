@@ -790,6 +790,7 @@ final class NetworkRallyTests: XCTestCase {
         try await scene.writeAndTrade(ama: ama, bel: bel)
         try await scene.foretellAHappening(ama: ama, bel: bel)
         try await scene.laboursOfTheWatch(ama: ama, bel: bel)
+        try await scene.openTheInnsChests(ama: ama, bel: bel)
         try await scene.teachTheLakeToLie(ama: ama, bel: bel)
         try await scene.upTheSpine(ama: ama, bel: bel)
     }

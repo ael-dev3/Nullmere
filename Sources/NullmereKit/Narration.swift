@@ -155,7 +155,7 @@ enum Narration {
              .carriedToInfirmary, .healingBegun, .unitHealed, .woundedLost, .holdScouted, .scoutSeen, .lairAssaulted,
              .standardRaised, .standardStruck, .standardTorn, .itemsGiven, .itemUsed, .heritageTaken, .crestTaken, .workPlaced, .dreamt,
              .titleBestowed, .titlesLapsed, .prophesied, .staked, .prophecyJudged, .veilDrawn, .veilLifted, .seatRaisedAnew,
-             .ringLineStood, .bout, .ringHonoured, .whispered, .whisperLet, .whisperTried, .whisperUnmasked, .riddleSet, .riddleAnswered, .stillHour, .rippleCast, .stoneSunk, .stoneHeard, .stoneLost, .sculpturesFound, .commanderStarred, .letterSent, .pedlarCame, .pedlarSold, .pedlarLeft, .expedition, .labourDone, .chestOpened, .reflectionCast, .lairRungClimbed,
+             .ringLineStood, .bout, .ringHonoured, .whispered, .whisperLet, .whisperTried, .whisperUnmasked, .riddleSet, .riddleAnswered, .stillHour, .rippleCast, .stoneSunk, .stoneHeard, .stoneLost, .sculpturesFound, .commanderStarred, .letterSent, .pedlarCame, .pedlarSold, .pedlarLeft, .expedition, .labourDone, .chestOpened, .innChestOpened, .reflectionCast, .lairRungClimbed,
              .eclipse, .eclipseEnded,
              .allianceStudyChosen, .allianceGift, .allianceStudied, .hallRaised, .hallRisen, .hallStruck, .hallTorn,
              .storehouseRaised, .storehouseRisen, .storehouseStruck, .storehouseTorn, .laidUp, .tookBack, .yardRaised, .favourRose, .frontier,

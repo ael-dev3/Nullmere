@@ -569,3 +569,42 @@ final class Staged: @unchecked Sendable {
     var spoils: Stock { lock.lock(); defer { lock.unlock() }; return values.spoils }
     var companies: [(Int, Int)] { lock.lock(); defer { lock.unlock() }; return values.companies }
 }
+
+extension RallyScene {
+    /// At the Lantern Inn: Ama opens a silver chest with the key the watch
+    /// gave her House; Bel a gold chest for moonsalt. The realm draws each,
+    /// each keeper is told of their own chest alone, and neither sees the
+    /// other's keys.
+    func openTheInnsChests(ama: Int, bel: Int) async throws {
+        let price = InnKeys.goldPrice.moonsalt
+        await steward.reshape { realm in
+            realm.world.innBook = [ama: InnKeys(silver: 1, gold: 0, sinceCommander: 0, opened: 0),
+                                   bel: InnKeys(silver: 0, gold: 0, sinceCommander: 0, opened: 0)]
+            realm.world.houses[bel].stock.credit(Stock(moonsalt: price))
+        }
+        try await until("the keys shown, each their own") {
+            earA.world?.innKeys(of: ama).silver == 1 && earB.world?.innBook?[bel] != nil
+                && earA.world?.innBook?[bel] == nil && earB.world?.innBook?[ama] == nil
+        }
+        await MainActor.run {
+            a.send(.openInnChest(.silver))
+            b.send(.openInnChest(.gold))
+        }
+        let opened: @MainActor @Sendable (Listener, Int, InnChest) -> Bool = { ear, house, chest in
+            ear.events.contains { event in
+                switch event {
+                case .heard(let events), .watchTurned(_, let events), .answered(let events), .settled(_, let events):
+                    return events.contains { if case .innChestOpened(house, chest, _) = $0 { return true } else { return false } }
+                default: return false
+                }
+            }
+        }
+        try await until("each told of their own chest") { opened(earA, ama, .silver) && opened(earB, bel, .gold) }
+        let crossed = await MainActor.run { (opened(earA, bel, .gold), opened(earB, ama, .silver)) }
+        XCTAssertFalse(crossed.0, "Ama never hears of Bel's chest")
+        XCTAssertFalse(crossed.1, "nor Bel of Ama's")
+        try await until("the key spent") { earA.world?.innKeys(of: ama).silver == 0 }
+        let refused = await MainActor.run { earA.world?.refusal(of: .openInnChest(.silver), as: ama) }
+        XCTAssertEqual(refused, .noInnKey(.silver), "One key, one chest")
+    }
+}
