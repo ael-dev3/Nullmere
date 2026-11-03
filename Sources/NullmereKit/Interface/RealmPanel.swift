@@ -28,6 +28,8 @@ struct RealmPanel: View {
                 VStack(alignment: .leading, spacing: 12) {
                     happening(board)
                     Rule(opacity: 0.18)
+                    CalendarSection(session: session)
+                    Rule(opacity: 0.18)
                     charge(board)
                     Rule(opacity: 0.18)
                     satchel(state)
@@ -524,6 +526,41 @@ private struct HeritageRow: View {
                 } else {
                     ConfirmButton(title: title, confirm: "\(title)?") { session.perform(command) }
                 }
+            }
+        }
+    }
+}
+
+/// What is coming over the watches ahead, from the realm's calendar,
+/// folded to the next thing due until asked for.
+struct CalendarSection: View {
+    let session: GameSession
+    @State private var open: Bool
+
+    init(session: GameSession, open: Bool = false) {
+        self.session = session
+        _open = State(initialValue: open)
+    }
+
+    /// An entry as its line reads: when, and what.
+    static func line(_ entry: CalendarEntry, now: Int) -> String {
+        let away = entry.watch - now
+        return "\(away == 1 ? "Next watch" : "In \(away) watches"): \(entry.title)"
+    }
+
+    var body: some View {
+        let state = session.state
+        let entries = state.calendar(for: session.player)
+        FoldedList(title: "Coming", count: entries.count,
+                   summary: entries.first.map { CalendarSection.line($0, now: state.watch) } ?? "Nothing the realm foretells.",
+                   open: $open) {
+            ForEach(entries) { entry in
+                HStack(alignment: .firstTextBaseline) {
+                    Text(verbatim: entry.title).font(.nm(10.5)).foregroundStyle(Palette.text(0.8))
+                    Spacer()
+                    Text(verbatim: "Watch \(entry.watch)").font(.nm(9.5).monospacedDigit()).foregroundStyle(Palette.text(0.5))
+                }
+                .accessibilityElement(children: .combine)
             }
         }
     }

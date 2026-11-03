@@ -788,6 +788,7 @@ final class NetworkRallyTests: XCTestCase {
         try await scene.helpEachOther(ama: ama, bel: bel)
         try await scene.breakALair(ama: ama, bel: bel)
         try await scene.writeAndTrade(ama: ama, bel: bel)
+        try await scene.foretellAHappening(ama: ama, bel: bel)
     }
 
     func testTwoAlliancesContestTheDrownedCrownFromTheirClients() async throws {

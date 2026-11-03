@@ -1225,6 +1225,21 @@ final class DepthPanelTests: XCTestCase {
 
     // MARK: Words
 
+    /// The realm's calendar in the Realm panel, folded and opened.
+    func testTheCalendarShowsWhatIsComing() throws {
+        let state = world("pressed calendar")
+        let (session, _) = session(state)
+        let entries = session.state.calendar(for: session.player)
+        XCTAssertFalse(entries.isEmpty)
+        let first = try XCTUnwrap(entries.first)
+        XCTAssertTrue(CalendarSection.line(first, now: session.state.watch).hasSuffix(first.title))
+        XCTAssertEqual(CalendarSection.line(CalendarEntry(watch: session.state.watch + 1, kind: .stillHour), now: session.state.watch),
+                       "Next watch: The Still Hour")
+        draw(CalendarSection(session: session))
+        draw(CalendarSection(session: session, open: true))
+        draw(RealmPanel(session: session))
+    }
+
     /// Letters between two keepers, under Letters in the Words.
     func testALetterIsWrittenToOneKeeperAndShownToBoth() throws {
         var state = world("pressed letters")

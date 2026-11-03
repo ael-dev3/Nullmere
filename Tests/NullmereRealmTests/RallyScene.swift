@@ -372,6 +372,41 @@ extension RallyScene {
     }
 }
 
+extension RallyScene {
+    /// The realm's calendar as two keepers' clients foretell it: the same
+    /// happening on the same watch for both; brought to its eve, the watch
+    /// turns and both see that very happening begin, its end now foretold.
+    func foretellAHappening(ama: Int, bel: Int) async throws {
+        let foretold = try await MainActor.run { () -> (CalendarEntry, CalendarEntry?) in
+            let a = try XCTUnwrap(earA.world).calendar(for: ama, span: Happening.every + 1)
+            let b = try XCTUnwrap(earB.world).calendar(for: bel, span: Happening.every + 1)
+            let first = try XCTUnwrap(a.first { if case .happening = $0.kind { return true } else { return false } })
+            return (first, b.first { $0.watch == first.watch && $0.kind == first.kind })
+        }
+        XCTAssertEqual(foretold.1, foretold.0, "Both keepers foretell the same happening on the same watch")
+        guard case .happening(let kind) = foretold.0.kind else { return XCTFail() }
+        // To its eve, every happening before it over.
+        await steward.reshape { realm in
+            realm.world.watch = max(realm.world.watch, foretold.0.watch - 1)
+            realm.world.happening = nil
+        }
+        try await until("both at the happening's eve") {
+            earA.world?.watch == foretold.0.watch - 1 && earB.world?.watch == foretold.0.watch - 1
+        }
+        await MainActor.run { a.setReady(true); b.setReady(true) }
+        try await until("the happening begun, as both see it") {
+            earA.world?.happening?.kind == kind && earB.world?.happening?.kind == kind
+        }
+        let ends = foretold.0.watch + Happening.lasts
+        let both = await MainActor.run {
+            (earA.world?.calendar(for: ama).contains(CalendarEntry(watch: ends, kind: .happeningEnds(kind))),
+             earB.world?.calendar(for: bel).contains(CalendarEntry(watch: ends, kind: .happeningEnds(kind))))
+        }
+        XCTAssertEqual(both.0, true, "Its end foretold for Ama")
+        XCTAssertEqual(both.1, true, "and for Bel")
+    }
+}
+
 /// Where the crown was set, and the companies set beside it.
 final class CrownStage: @unchecked Sendable {
     private let lock = NSLock()
