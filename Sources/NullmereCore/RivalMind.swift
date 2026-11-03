@@ -100,6 +100,7 @@ struct RivalMind {
         }
         events += stirTheWater(in: &state, random: &random)
         events += sinkAListeningStone(in: &state)
+        events += walkTheMirror(in: &state)
         events += balanceStores(in: &state)
         // The land's territory, found once: no work or muster begun changes
         // it; nor whether a site for a new hold is known, found the first
@@ -1144,6 +1145,27 @@ struct RivalMind {
         let holds = state.holds(of: house).sorted { ($0.isSeat ? 0 : 1, $0.id) < ($1.isSeat ? 0 : 1, $1.id) }
         guard let hold = holds.first(where: { state.stoneRefusal(before: $0.id, as: house) == nil }) else { return [] }
         return perform(.sinkStone(hold: hold.id), in: &state)
+    }
+
+    /// A cunning or ambitious House at war walks the mirror with one
+    /// company that stands on the Still's shore, where the far shore it
+    /// would come out on lies within three tiles of a hold of a House it is
+    /// at war with: the nearest such hold first, one walk a watch at most,
+    /// and moonsalt kept for more than the walk alone.
+    func walkTheMirror(in state: inout GameState) -> [GameEvent] {
+        guard [.cunning, .ambitious].contains(state.houses[house].temperament), state.isAtWarWithAny(house),
+              state.houses[house].stock.moonsalt >= MirrorWalk.price.moonsalt * 2 else { return [] }
+        let foes = state.holds.filter { $0.owner != house && state.isAtWar(house, $0.owner) }
+        guard !foes.isEmpty else { return [] }
+        var best: (unit: Int, reach: Int)?
+        for unit in state.units where unit.owner == house && unit.kind.isMilitary
+            && state.mirrorRefusal(unit.id, as: house) == nil {
+            guard let landing = state.mirrorLanding(from: unit.position, for: unit.id),
+                  let reach = foes.map({ $0.position.distance(to: landing) }).min(), reach <= 3 else { continue }
+            if best == nil || (reach, unit.id) < (best!.reach, best!.unit) { best = (unit.id, reach) }
+        }
+        guard let chosen = best else { return [] }
+        return perform(.walkTheMirror(unit: chosen.unit), in: &state)
     }
 
     /// The Archive a steward wants at its seat as the age goes on.

@@ -299,8 +299,9 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   panel only while it stands on the shore; played between two clients over
   the fake realm and over SpacetimeDB in CI. Drawn in 3D: the walking
   company's image already standing in the stilled water where it will come
-  out, in its House's colour, seen from every shore. Not yet: the stewards
-  using it.
+  out, in its House's colour, seen from every shore. Cunning and ambitious
+  stewards at war walk a company across when the far shore lies within
+  three tiles of a foe's hold.
 
 ## The order of the work
 

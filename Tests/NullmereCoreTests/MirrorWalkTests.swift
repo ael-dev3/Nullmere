@@ -74,4 +74,39 @@ final class MirrorWalkTests: XCTestCase {
         XCTAssertTrue(turned.contains(.mirrorWalked(unit: unit.id, house: me, from: unit.position, to: unit.position)))
         XCTAssertEqual(state.unit(unit.id)?.position, unit.position)
     }
+
+    /// A cunning steward at war walks a company across when the far shore
+    /// lies by a foe's hold; at peace, or wary, it doesn't.
+    func testACunningStewardAtWarWalksTheMirrorTowardAFoe() throws {
+        var (state, _, _) = try staged()
+        let steward = (0..<state.houses.count).first { !state.houses[$0].isPlayer && !state.houses[$0].isEliminated }!
+        let foe = (0..<state.houses.count).first { $0 != steward && !state.houses[$0].isEliminated }!
+        let shore = try XCTUnwrap(state.map.hexes.first { hex in
+            state.isOnTheStill(hex) && state.map[hex]!.terrain.isPassable && state.unit(at: hex) == nil
+                && state.hold(at: hex) == nil && state.mirrorLanding(from: hex) != nil
+                && hex != state.units.last!.position
+        })
+        let company = NullmereCore.Unit(id: state.takeID(), kind: .rider, owner: steward, position: shore)
+        state.units.append(company)
+        state.houses[steward].stock.credit(Stock(moonsalt: 60))
+        let landing = try XCTUnwrap(state.mirrorLanding(from: shore, for: company.id))
+        // A hold of the foe's beside where the company would come out.
+        let index = try XCTUnwrap(state.holds.firstIndex { $0.owner == foe })
+        let near = try XCTUnwrap(landing.spiral(2).first { $0 != landing && state.unit(at: $0) == nil && state.hold(at: $0) == nil
+            && state.map[$0].map { !$0.terrain.isWater && $0.terrain.isPassable } == true })
+        state.holds[index].position = near
+        state.houses[steward].temperament = .wary
+        let mind = RivalMind(house: steward)
+        var wary = state
+        _ = try? wary.perform(.declareWar(on: foe), as: steward)
+        XCTAssertTrue(mind.walkTheMirror(in: &wary).isEmpty, "A wary House keeps to its shore")
+        state.houses[steward].temperament = .cunning
+        var calm = state
+        XCTAssertFalse(calm.isAtWar(steward, foe))
+        XCTAssertTrue(mind.walkTheMirror(in: &calm).isEmpty, "At peace it keeps to its shore")
+        _ = try state.perform(.declareWar(on: foe), as: steward)
+        XCTAssertTrue(state.isAtWar(steward, foe))
+        let events = mind.walkTheMirror(in: &state)
+        XCTAssertEqual(events.first, .mirrorWalkBegun(unit: company.id, house: steward, from: shore, to: landing), "\(events)")
+    }
 }
