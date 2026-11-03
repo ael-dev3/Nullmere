@@ -1778,3 +1778,50 @@ extension Land {
         return Model(name: name, mesh: b.mesh, rig: rig) { clip, time in machinery.joints(clip, time) }
     }
 }
+
+extension Land {
+    /// A listening stone sunk in the black lake: a rough standing stone
+    /// rising from the water on a cairn of smaller stones, veined with
+    /// moonsalt that glows faintly, a ring of salt-white cord about its
+    /// waist, and rings of ripple turning slowly out about it on the water.
+    static func listeningStone(name: String) -> Model {
+        var b = MeshBuilder()
+        // The cairn it stands on, half under the water.
+        for index in 0..<6 {
+            let angle = Float(index) / 6 * 2 * .pi + 0.4
+            let out = Vec3(Float(sin(Double(angle))), 0, Float(cos(Double(angle))))
+            b.rock(center: out * 0.06 + Vec3(0, -0.01, 0), size: Vec3(0.035, 0.02, 0.03), rings: 2, sides: 5, jitter: 0.3,
+                   seed: 900 + UInt32(index), color: index % 2 == 0 ? Palette.stoneDark : Palette.slate)
+        }
+        // The stone itself, leaning a little, its faces rough.
+        b.rock(center: Vec3(0.005, 0.11, 0), size: Vec3(0.034, 0.13, 0.026), rings: 5, sides: 6, jitter: 0.18, seed: 917, color: Palette.slate)
+        // Its veins of moonsalt.
+        b.with(material: .crystal) {
+            for (index, y) in [Float(0.05), 0.1, 0.16].enumerated() {
+                let tilt = Float(index) * 0.7
+                $0.beam(from: Vec3(-0.03 * cos(tilt), y, 0.026), to: Vec3(0.03 * cos(tilt), y + 0.02, 0.022), width: 0.005, depth: 0.004,
+                        color: Palette.moonGlow)
+            }
+        }
+        // The cord bound about its waist.
+        b.tube([(0.038, 0.072), (0.038, 0.08)], sides: 10, color: Palette.stonePale)
+        // A glow at its crown, where it listens.
+        b.with(material: .glow) {
+            $0.lathe([(0.0, 0.225), (0.012, 0.235), (0.0, 0.25)], sides: 6, color: Palette.moonGlow)
+        }
+        // Rings of ripple on the water about it, turning out slowly.
+        var rig = Rig()
+        let rings = rig.add("listening rings", pivot: Vec3(0, 0, 0))
+        b.with(part: rings, material: .glow) {
+            for (radius, segments) in [(Float(0.12), 18), (0.18, 24), (0.25, 30)] {
+                for index in 0..<segments where index % 3 != 2 {
+                    let a0 = Float(index) / Float(segments) * 2 * .pi, a1 = Float(index + 1) / Float(segments) * 2 * .pi
+                    $0.beam(from: Vec3(radius * sin(a0), 0.004, radius * cos(a0)), to: Vec3(radius * sin(a1), 0.004, radius * cos(a1)),
+                            width: 0.006, depth: 0.002, color: Palette.moonGlow.mix(Palette.slate, 0.5))
+                }
+            }
+        }
+        let machinery = Machinery(wheels: [.init(part: rings, axis: Vec3(0, 1, 0), turns: 1)], parts: rig.count)
+        return Model(name: name, mesh: b.mesh, rig: rig) { clip, time in machinery.joints(clip, time) }
+    }
+}

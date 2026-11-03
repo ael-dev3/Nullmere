@@ -149,6 +149,8 @@ extension GameState {
             return try answerRiddle(name, as: house)
         case let .castRipple(holdID):
             return try castRipple(from: holdID, as: house)
+        case let .sinkStone(holdID):
+            return try sinkStone(before: holdID, as: house)
         case let .pursueAllianceStudy(study):
             return try pursue(study, by: house)
         case let .giveToAlliance(stock):

@@ -163,6 +163,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// A ripple-stone cast from a hold on the shore, so the House's
     /// companies are not mirrored at the next Still Hour.
     case castRipple(hold: Int)
+    /// A listening stone sunk in the water before a hold on the shore, to
+    /// hear marches out of sight.
+    case sinkStone(hold: Int)
     /// An alliance's leader sets it to pursue a study together.
     case pursueAllianceStudy(AllianceStudy)
     /// A House gives stores toward its alliance's study.
@@ -434,6 +437,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case answeredAlready
     case notOnTheShore
     case alreadyRippled
+    case stoneAlreadySunk
+    case tooManyStones(Int)
     /// An alliance study learned to its last grade.
     case allianceStudyMastered
     /// The study the alliance pursues already.
@@ -639,6 +644,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .answeredAlready: return "Your House has answered this riddle; the lake sets another at the next half moon."
         case .notOnTheShore: return "A ripple-stone is cast only from a hold on the lake's shore."
         case .alreadyRippled: return "Your stone already stirs the water against the next Still Hour."
+        case .stoneAlreadySunk: return "A listening stone already lies in the water before that hold."
+        case .tooManyStones(let most): return "Your House keeps \(most) listening stones in the lake, and no more."
         case .allianceStudyMastered: return "Your alliance has learned that study to its last grade."
         case .alreadyPursued: return "Your alliance pursues that study already."
         case .noAllianceStudy: return "Your alliance pursues no study: its leader chooses one in the Alliance screen."
@@ -801,6 +808,12 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// The lake lay still and showed so many companies on its shore, of
     /// these Houses.
     case stillHour(glimpses: Int, houses: [Int])
+    /// A House sinks a listening stone before one of its holds.
+    case stoneSunk(stone: Int, house: Int, hold: Int)
+    /// A House's stone heard so many marches out of its sight.
+    case stoneHeard(stone: Int, house: Int, marches: Int)
+    /// A stone lost with the hold it was sunk before.
+    case stoneLost(stone: Int, house: Int)
     /// A House cast a ripple-stone from a hold.
     case rippleCast(house: Int, hold: Int)
     /// A keeper's House answers its riddle, rightly or not, and the name

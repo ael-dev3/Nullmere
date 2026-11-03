@@ -303,6 +303,20 @@ extension GameState {
         case .rippleCast(let house, let holdID):
             guard house == viewer else { return nil }
             return Tidings("A ripple-stone cast from \(hold(holdID)?.name ?? "your hold"): at the next Still Hour your companies are not mirrored.", .good)
+        case .stoneSunk(_, let house, let holdID):
+            guard house == viewer else { return nil }
+            return Tidings("A listening stone sinks into the black water before \(hold(holdID)?.name ?? "your hold"): "
+                + "it hears marches out of sight within \(GameState.stoneReach) tiles of it.", .good)
+        case .stoneHeard(let stone, let house, let marches):
+            guard house == viewer, let sunk = listeningStonesSunk.first(where: { $0.id == stone }) else { return nil }
+            let heard = soundings(heardBy: house).filter { $0.stone == stone }
+            let quarters = Array(Set(heard.map(\.quarter))).sorted().map { Sounding.quarters[$0] }
+            let near = heard.contains(where: \.near)
+            return Tidings("The stone before \(hold(sunk.hold)?.name ?? "your hold") hears \(marches == 1 ? "a march" : "\(marches) marches") "
+                + "out of sight, \(near ? "near" : "far off"), to the \(quarters.joined(separator: " and "))", .bad)
+        case .stoneLost(_, let house):
+            guard house == viewer else { return nil }
+            return Tidings("A listening stone is lost with the hold it was sunk before.", .bad)
         case .riddleSet(let house):
             guard house == viewer, let riddle = riddle(of: house) else { return nil }
             return Tidings("The lake asks your House a riddle of its past, on the Realm (6): \(riddle.line)", .neutral)

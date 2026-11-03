@@ -1020,6 +1020,17 @@ full screen at launch as chosen.
 
 ## What only Nullmere has
 
+### Listening stones
+
+From a hold within five tiles of the lake, sink a listening stone in the
+water for 6 moonsalt; a House keeps three. Each watch a stone hears every
+company of war of another House that has marched within six tiles of it
+while out of your sight. You learn the quarter it was heard from and
+whether near (three tiles or less) or far, never whose it is or where it
+stands. Two stones hearing one march give two bearings to cross. A stone's
+first watch only learns where all stand; after that it hears what moves.
+It is lost with its hold, and no other House knows of it.
+
 Mechanics no other game of its kind has, made of what only Nullmere has: a still lake under a moon, an on-device model on every keeper's Mac, and a realm that persists, age after age. [GAPS.md](GAPS.md#beyond-rise-of-kingdoms-what-nobody-has-shipped) says what each adds.
 
 - **Ferries of the Still.** A company standing in one of its House's

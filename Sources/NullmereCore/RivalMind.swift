@@ -99,6 +99,7 @@ struct RivalMind {
             if RivalMind.massing { events += musterToTheGates(in: &state) }
         }
         events += stirTheWater(in: &state, random: &random)
+        events += sinkAListeningStone(in: &state)
         events += balanceStores(in: &state)
         // The land's territory, found once: no work or muster begun changes
         // it; nor whether a site for a new hold is known, found the first
@@ -1131,6 +1132,17 @@ struct RivalMind {
               let hold = state.holds(of: house).sorted(by: { $0.id < $1.id }).first(where: { state.rippleRefusal(from: $0.id, as: house) == nil })
         else { return [] }
         return perform(.castRipple(hold: hold.id), in: &state)
+    }
+
+    /// A wary House at war, with moonsalt to spare, sinks a listening stone
+    /// before its seat, or another hold by the water, to hear what comes
+    /// at it unseen: one stone, never more, and no chance drawn for it.
+    func sinkAListeningStone(in state: inout GameState) -> [GameEvent] {
+        guard state.houses[house].temperament == .wary, state.isAtWarWithAny(house), state.stones(of: house).isEmpty,
+              state.houses[house].stock.moonsalt >= GameState.stoneCost.moonsalt * 4 else { return [] }
+        let holds = state.holds(of: house).sorted { ($0.isSeat ? 0 : 1, $0.id) < ($1.isSeat ? 0 : 1, $1.id) }
+        guard let hold = holds.first(where: { state.stoneRefusal(before: $0.id, as: house) == nil }) else { return [] }
+        return perform(.sinkStone(hold: hold.id), in: &state)
     }
 
     /// The Archive a steward wants at its seat as the age goes on.

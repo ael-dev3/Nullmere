@@ -103,6 +103,7 @@ extension GameState {
         keepWhispers()
         events += setRiddles()
         events += layTheLakeStill()
+        events += listenAtTheStones()
         events += checkForEnd()
         takeSnapshot()
         return events

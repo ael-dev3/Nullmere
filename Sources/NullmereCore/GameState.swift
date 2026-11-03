@@ -114,6 +114,13 @@ public struct GameState: Codable, Equatable, Sendable {
     /// The Houses whose ripple-stones stir the water against the next
     /// Still Hour.
     public internal(set) var ripples: [Int]?
+    /// The listening stones sunk in the lake; absent while none is.
+    public internal(set) var listeningStones: [ListeningStone]?
+    /// What the stones heard as the watch last turned.
+    public internal(set) var soundings: [Sounding]?
+    /// Where each company in a stone's reach stood when the stones last
+    /// listened, so a stone hears only what has moved since.
+    var listened: [Int: Hex]?
     /// The watch the moon was last eaten, while the Drowned of that eclipse
     /// walk; absent otherwise, and so in every first age.
     public internal(set) var eclipse: Int?

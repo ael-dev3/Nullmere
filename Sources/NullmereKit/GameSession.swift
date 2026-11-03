@@ -1467,6 +1467,7 @@ public final class GameSession {
         case .whisper: return .parley
         case .answerRiddle: return .lore
         case .castRipple: return .lore
+        case .sinkStone: return .lore
         case .pursueAllianceStudy: return .lore
         case .giveToAlliance: return .coin
         case .raiseAllianceHall, .raiseStorehouse, .raiseYard: return .rise
@@ -1605,6 +1606,8 @@ public final class GameSession {
         case .whisperUnmasked(_, _, let belied, _) where belied == player: return .coin
         case .riddleSet(let house) where house == player: return .lore
         case .stillHour(let glimpses, let shown) where glimpses > 0 && shown.contains(player): return .dread
+        case .stoneHeard(_, let house, _) where house == player: return .dread
+        case .stoneSunk(_, let house, _) where house == player: return .lore
         case .eclipse: return .dread
         case .riddleAnswered(let house, let right, _) where house == player: return right ? .triumph : .refusal
         case .edictBroken(_, _, _, let against, _) where against == player: return .horn

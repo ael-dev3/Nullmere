@@ -212,6 +212,10 @@ struct OwnHoldDetails: View {
             if state.isShore(hold.position) || hold.position.spiral(1).contains(where: state.isShore) {
                 RippleRow(session: session, hold: hold)
             }
+            // A listening stone in the lake before it, or the means to sink one.
+            if state.stoneWater(before: hold) != nil {
+                StoneRow(session: session, hold: hold)
+            }
         }
         .padding(16)
     }
@@ -1392,6 +1396,45 @@ struct FerryLine: View {
                                 name: "Ferry them across the lake to \(hold.name)", why: refusal?.description) {
                         session.perform(.ferry(unit: unit.id, to: hold.id))
                     }
+                }
+            }
+        }
+    }
+}
+
+/// A listening stone in the lake before a hold: what it heard as the watch
+/// last turned, or the button that sinks one. Its House's alone to see.
+struct StoneRow: View {
+    let session: GameSession
+    let hold: Hold
+
+    static func line(_ state: GameState, hold: Hold, house: Int) -> String {
+        guard let stone = state.stones(of: house).first(where: { $0.hold == hold.id }) else {
+            return "A listening stone, \(GameState.stoneCost), sunk in the lake here hears marches out of sight within \(GameState.stoneReach) tiles."
+        }
+        let heard = state.soundings(heardBy: house).filter { $0.stone == stone.id }
+        guard !heard.isEmpty else {
+            return stone.listening ? "The stone in the water here heard nothing move last watch." : "The stone in the water here begins to listen."
+        }
+        let quarters = Array(Set(heard.map(\.quarter))).sorted().map { Sounding.quarters[$0] }
+        return "The stone heard \(heard.count == 1 ? "a march" : "\(heard.count) marches") out of sight, "
+            + "\(heard.contains(where: \.near) ? "near" : "far off"), to the \(quarters.joined(separator: " and "))."
+    }
+
+    var body: some View {
+        let state = session.state
+        let sunk = state.stones(of: session.player).contains { $0.hold == hold.id }
+        let refusal = state.stoneRefusal(before: hold.id, as: session.player)
+        HStack(alignment: .firstTextBaseline) {
+            Text(verbatim: StoneRow.line(state, hold: hold, house: session.player))
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.65))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            if !sunk {
+                QuietButton(title: "Sink a stone", size: 8.5, enabled: refusal == nil, name: "Sink a listening stone before \(hold.name)",
+                            why: refusal?.description) {
+                    session.perform(.sinkStone(hold: hold.id))
                 }
             }
         }

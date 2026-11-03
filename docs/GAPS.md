@@ -259,6 +259,17 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
 - [x] **Oaths the realm keeps.** A keeper swears in their own words to keep
   the peace with a House or send it goods, and the server holds their House
   to it: a promise between players made a binding contract of the world.
+- [x] **Listening stones.** The black lake carries sound: a House sinks a
+  stone of moonsalt in the water before a hold by the lake (three at most),
+  and each watch it hears every company of war of another House that has
+  marched within six tiles of it out of the House's sight, only by its
+  quarter and whether near or far, never whose; two stones cross their
+  bearings on a march. A sounding is a bearing with no position, so fog of
+  war becomes something to triangulate. Its House's alone, in view and in
+  tidings; a stone is lost with its hold; drawn in 3D, a moonsalt-veined
+  standing stone on a cairn in the water, its ripples turning out about it,
+  faster once it has heard; a dread note heard when it hears; wary stewards
+  at war sink one.
 
 ## The order of the work
 

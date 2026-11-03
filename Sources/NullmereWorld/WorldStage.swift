@@ -1060,6 +1060,18 @@ public final class WorldStage: @unchecked Sendable {
                                                                    flags: ModelInstance.alwaysShown))])
     }
 
+    /// A House's listening stones, standing in the water where they were
+    /// sunk, their ripples turning out; one that heard a march last watch
+    /// turns them faster.
+    public func listeningStones(_ stones: [(at: Hex, heard: Bool)]) -> [ModelBatch] {
+        WorldStage.batches(stones.enumerated().map { index, stone in
+            let centre = Relief.centre(of: stone.at)
+            let at = Vec3(centre.x, ground(atX: centre.x, z: centre.z), centre.z)
+            return (.listeningStone, ModelInstance(model: .translation(at) * .rotationY(Float(index) * 1.3), phase: stone.heard ? 2.1 : 0.7,
+                                                   hex: SIMD2(Int32(stone.at.q), Int32(stone.at.r)), flags: ModelInstance.alwaysShown))
+        })
+    }
+
     // MARK: What flies
 
     /// The veil of the Still about a hold: six banks of low mist ringing

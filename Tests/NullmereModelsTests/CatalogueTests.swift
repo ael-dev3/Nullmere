@@ -411,8 +411,8 @@ final class CatalogueTests: XCTestCase {
             case .furnishing, .scaffold, .site, .keep, .keepOf, .walls, .prop(.arrow), .prop(.stone), .lair, .gatehold, .hostBanner, .talentSigil, .helpLight, .borderStone, .crestBoard, .crestCharge, .barge, .allianceHall,
                  .yard(.grain), .town:
                 XCTAssertNil(model.motion, "\(key) stands still")
-            case .shrine, .standard, .rallyCamp, .drownedCrown:
-                XCTAssertNotNil(model.motion, "\(key): its motes turn, its fires burn")
+            case .shrine, .standard, .rallyCamp, .drownedCrown, .listeningStone:
+                XCTAssertNotNil(model.motion, "\(key): its motes turn, its fires burn, its ripples spread")
             case .prop:
                 XCTAssertNotNil(model.motion, "\(key)")
             case .raising:
