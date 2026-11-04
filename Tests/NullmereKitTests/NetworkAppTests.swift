@@ -35,13 +35,18 @@ final class NetworkAppTests: XCTestCase {
         return Task { await steward.run(clock: { 1 }) }
     }
 
-    private func app(_ db: FakeSpacetime, identity: MemoryStore, realm: String) -> GameApp {
+    private func app(_ db: FakeSpacetime, identity: MemoryStore, realm: String, accepted: Bool = true) -> GameApp {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         dirs.append(dir)
         let address = GameApp.RealmAddress.network(URL(string: "https://realm.test/\(realm)")!)
         UserDefaults.standard.removeObject(forKey: GameApp.nameKey(for: address))
-        // A Mac whose keeper has never accepted the realm's compact.
-        UserDefaults.standard.removeObject(forKey: GameApp.compactKey)
+        // A Mac whose keeper has accepted the realm's compact, or, for the
+        // compact's own tests, never has.
+        if accepted {
+            UserDefaults.standard.set(Compact.edition, forKey: GameApp.compactKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: GameApp.compactKey)
+        }
         return GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: address, identity: identity,
                        opensAtOnce: false, transport: db, pollInterval: 0.05)
     }
@@ -251,7 +256,7 @@ final class NetworkAppTests: XCTestCase {
         let running = try await steward(db, seats: 4)
         defer { running.cancel() }
         let identity = MemoryStore()
-        let app = app(db, identity: identity, realm: "enters")
+        let app = app(db, identity: identity, realm: "enters", accepted: false)
         app.open()
         guard case .frontDoor = app.phase else { return XCTFail("A ready model opens the front door") }
         draw(FrontDoor(app: app))

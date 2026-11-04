@@ -59,6 +59,9 @@ final class FrontierAppTests: XCTestCase {
         let address = GameApp.RealmAddress.network(homeURL)
         UserDefaults.standard.removeObject(forKey: GameApp.nameKey(for: address))
         let identity = MemoryStore()
+        // A keeper who has accepted the realm's compact.
+        UserDefaults.standard.set(Compact.edition, forKey: GameApp.compactKey)
+        defer { UserDefaults.standard.removeObject(forKey: GameApp.compactKey) }
         let app = GameApp(store: LocalStore(directory: dir), readiness: { .ready }, sound: false, address: address, identity: identity,
                           opensAtOnce: false, transport: home, pollInterval: 0.05)
         app.transports[lostURL] = lost

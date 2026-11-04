@@ -143,6 +143,8 @@ final class WorldRenderTests: XCTestCase {
         var state = WorldRenderTests.world.state
         let me = state.player, foe = (me + 1) % state.houses.count
         _ = try state.declareWar(by: me, on: foe)
+        // Paced, as a realm's world is: there blows join in fields of battle.
+        state.pacing = Pacing()
         let seat = try XCTUnwrap(state.seat(of: me))
         let east = Hex.directions[0], along = Hex.directions[5]
         func open(_ hex: Hex) -> Bool {

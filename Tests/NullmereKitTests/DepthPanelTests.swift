@@ -2163,9 +2163,14 @@ final class DepthPanelTests: XCTestCase {
         let standard = try XCTUnwrap(session.state.standard(at: spot), "Raised at once on the keeper's copy")
         // Named on hover, its land too, and shown in its tile's panel.
         let named = try XCTUnwrap(HoverInfo.line(for: spot, in: session.state, explored: true, territory: session.state.territory()))
-        XCTAssertTrue(named.contains("a standard of The Tall Pole, ward 60 of 60"), named)
-        let about = try XCTUnwrap(spot.ring(1).first { session.state.standard(at: $0) == nil && session.state.hold(at: $0) == nil })
-        let land = try XCTUnwrap(HoverInfo.line(for: about, in: session.state, explored: true, territory: session.state.territory()))
+        XCTAssertTrue(named.contains("a standard of The Tall Pole rising, whole in \(Standard.raising) watches"), named)
+        // Once it stands whole, its land is named the alliance's.
+        var whole = session.state
+        whole.standStandardsWhole()
+        let stood = try XCTUnwrap(HoverInfo.line(for: spot, in: whole, explored: true, territory: whole.territory()))
+        XCTAssertTrue(stood.contains("a standard of The Tall Pole, ward 60 of 60"), stood)
+        let about = try XCTUnwrap(spot.ring(1).first { whole.standard(at: $0) == nil && whole.hold(at: $0) == nil })
+        let land = try XCTUnwrap(HoverInfo.line(for: about, in: whole, explored: true, territory: whole.territory()))
         XCTAssertTrue(land.contains("land of The Tall Pole"), land)
         PressableButtons.isListening = true
         draw(SelectionPanel(session: session), width: 330, height: 900)
