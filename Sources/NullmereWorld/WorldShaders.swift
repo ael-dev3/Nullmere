@@ -610,6 +610,8 @@ public enum WorldShaders {
         float across = dot(d, normalize(float3(0.42, 0.55, 0.72)));
         float along = atan2(d.z, d.x);
         float band = exp(-across * across / 0.018);
+        // Below the far shore, or well off the band, there is nothing to add.
+        if (d.y < -0.02 || band < 0.02) { return float3(0.0); }
         float2 q = float2(along * 3.2, across * 9.0);
         float glow = band * (0.45 + 0.75 * nm_fbm(q * 1.7 + 4.0));
         float lanes = smoothstep(0.42, 0.68, nm_fbm(q * 3.1 + 11.0)) * exp(-across * across / 0.004);
@@ -619,7 +621,7 @@ public enum WorldShaders {
         float3 grid = d * 420.0;
         float3 cell = floor(grid);
         float chance = nm_hash13(cell + 57.0);
-        float dense = 0.97 - 0.10 * band;
+        float dense = 0.985 - 0.10 * band;
         if (chance > dense) {
             float3 spot = cell + 0.5 + (float3(nm_hash13(cell + 2.3), nm_hash13(cell + 5.9), nm_hash13(cell + 8.1)) - 0.5) * 0.6;
             float far = length(grid - normalize(spot) * 420.0);
