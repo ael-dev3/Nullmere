@@ -287,6 +287,19 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   standing stone on a cairn in the water, its ripples turning out about it,
   faster once it has heard; a dread note heard when it hears; wary stewards
   at war sink one.
+- [x] **The Calm of the Still.** The black lake is a commons every House
+  shares and any one can break: each watch that no company of war stands on
+  its shore or its water, or crosses it, the Still lies a degree calmer, to
+  ten, and every keeper's hold on the shore draws a tenth more moonsalt for
+  each degree. One company of war at the water as the watch turns breaks it
+  back to nothing for all at once, and a calm of five or more broken names
+  its breakers to the whole realm. No House owns it and none can keep it
+  alone: peace on the water pays everyone, and war on it is seen. Drawn on
+  the water itself, the moon's road narrowing and lying whole as the calm
+  deepens; told in a band only to a keeper with a hold on the shore, from
+  three watches deep; a dread note to all when it breaks, a clash to its
+  breakers. Ruled in the core and tested there, played between two clients
+  over the fake realm and over SpacetimeDB in CI.
 - [x] **Walking the Mirror.** The Still is a mirror: a company of war on its
   shore steps into its own reflection for 15 moonsalt, once a moon, and as
   the watch turns the realm brings it out on the far shore, its hex

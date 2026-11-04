@@ -103,4 +103,9 @@ extension FrameUniforms {
         haze.y *= weather.hazeFactor
         moon.w *= weather.moonFactor
     }
+
+    /// The frame over a Still of a calm (0 to Calm.deepest): its water stiller.
+    public mutating func calm(_ degrees: Int) {
+        still.x = Float(min(max(degrees, 0), Calm.deepest)) / Float(Calm.deepest)
+    }
 }

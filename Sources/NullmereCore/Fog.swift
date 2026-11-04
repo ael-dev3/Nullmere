@@ -359,6 +359,9 @@ extension GameState {
             case .mirrorWalkBegun, .mirrorWalked:
                 // The water stills for every shore to see.
                 return true
+            case .calmBroken:
+                // The whole lake stirs: every shore sees it.
+                return true
             case .labourDone(let owner, _), .chestOpened(let owner, _), .innChestOpened(let owner, _, _):
                 return owner == house
             case .expedition(let result):

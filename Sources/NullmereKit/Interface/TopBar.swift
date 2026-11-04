@@ -389,6 +389,15 @@ struct MoonBand: View {
 
     /// The Drowned Crown while it lies on the ford: who bears it, if any
     /// does, and which side leads, the keeper's own side named as theirs.
+    /// The Still's calm, said only to a keeper it gives to: a House with a
+    /// hold on the shore, once the calm runs three watches deep.
+    static func calmLine(in state: GameState, for player: Int) -> String? {
+        let calm = state.stillCalm
+        guard calm >= 3, state.holds(of: player).contains(where: state.isOnTheCalmShore) else { return nil }
+        return "The Still lies calm \(calm) watches: your holds on the shore draw \(calm * Calm.moonsaltPerDegree)% more moonsalt, "
+            + "till a company of war comes to the water"
+    }
+
     static func crownLine(in state: GameState, for player: Int) -> String? {
         guard let crown = state.crown else { return nil }
         let mine = state.crownSide(of: player)

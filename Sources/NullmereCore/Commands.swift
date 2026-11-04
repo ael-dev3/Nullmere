@@ -883,6 +883,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     /// It comes out on the far shore as the watch turns (where it stood, if
     /// the far shore filled).
     case mirrorWalked(unit: Int, house: Int, from: Hex, to: Hex)
+    /// The Still's calm broken by these Houses' companies at the water.
+    case calmBroken(houses: [Int], calm: Int)
     /// A commander rises a star.
     case commanderStarred(commander: Int, house: Int, stars: Int)
     /// A House's stone heard so many marches out of its sight.

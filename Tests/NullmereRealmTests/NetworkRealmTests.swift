@@ -793,6 +793,7 @@ final class NetworkRallyTests: XCTestCase {
         try await scene.openTheInnsChests(ama: ama, bel: bel)
         try await scene.walkTheMirror(ama: ama, bel: bel)
         try await scene.heedTheBeacon(ama: ama, bel: bel)
+        try await scene.breakTheCalm(ama: ama, bel: bel)
         try await scene.teachTheLakeToLie(ama: ama, bel: bel)
         try await scene.upTheSpine(ama: ama, bel: bel)
     }

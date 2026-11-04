@@ -136,6 +136,8 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var mirrorWalks: [MirrorWalk]?
     /// The watch each company last walked the mirror.
     public internal(set) var mirrorWalked: [Int: Int]?
+    /// How calm the Still lies, in watches undisturbed (nil: not at all).
+    public internal(set) var calm: Int?
     /// In a keeper's view only: the marches its Beacons warn of. Never kept
     /// in the realm's own world, which knows where every company goes.
     public internal(set) var warnings: [MarchWarning]?
@@ -527,7 +529,9 @@ public struct GameState: Codable, Equatable, Sendable {
         if isOnAllianceLand(hold) {
             for resource in Resource.allCases { total[resource] = total[resource] * (100 + Standard.holdYield) / 100 }
         }
-        return underOmen(total)
+        total = underOmen(total)
+        total.moonsalt += calmMoonsalt(for: hold, from: total.moonsalt)
+        return total
     }
 
     /// A House's income before upkeep.

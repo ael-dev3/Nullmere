@@ -294,7 +294,15 @@ final class WeatherTests: XCTestCase {
         XCTAssertEqual(frame.moon.w, moon * 0.55, accuracy: 1e-6, "The moon dimmed by the rain")
         var misty = frame
         misty.weather(.mist)
-        XCTAssertGreaterThan(misty.haze.y, frame.haze.y, "Mist lies thicker still")
+        XCTAssertGreaterThan(misty.haze.y, frame.haze.y, "Mist lies thicker still")        // The Still's calm, none to its deepest, read by the water.
+        var calm = frame
+        XCTAssertEqual(calm.still.x, 0)
+        calm.calm(5)
+        XCTAssertEqual(calm.still.x, 0.5, accuracy: 1e-6)
+        calm.calm(40)
+        XCTAssertEqual(calm.still.x, 1, "no calmer than the deepest")
+        XCTAssertNotEqual(calm, frame)
+        XCTAssertTrue(WorldShaders.source.contains("frame.still.x"))
     }
 
     func testRainFallsAndMistDriftsAboutTheView() {

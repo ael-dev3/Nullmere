@@ -255,6 +255,7 @@ extension GameSession {
         // The omen's weather: rain or mist about the middle of the view; or,
         // while the drowned age walks, the moon all but gone.
         frame.weather = state.isMoonEaten ? .eclipse : Weather.of(state.currentOmen?.kind)
+        frame.calm = state.stillCalm
         if full {
             let extent = Float(min(max(600 / max(camera.scale, 1), 3), 14))
             frame.motes += frame.weather.motes(around: camera.focus, extent: extent, time: t)

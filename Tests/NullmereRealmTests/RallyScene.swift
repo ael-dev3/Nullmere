@@ -704,3 +704,45 @@ extension RallyScene {
         XCTAssertFalse(belWarned, "Bel is told nothing of Ama's Beacon")
     }
 }
+
+extension RallyScene {
+    /// The Still lies calm six watches; Bel's spears come to the water as
+    /// the watch turns. Both clients are told the calm is broken and by
+    /// whom, and see it gone from the lake; Ama's shore gives no more.
+    func breakTheCalm(ama: Int, bel: Int) async throws {
+        let staged = StagedWalk()
+        await steward.reshape { realm in
+            let world = realm.world
+            guard let shore = world.map.hexes.first(where: { hex in
+                world.isShore(hex) && world.map[hex]!.terrain.isPassable && world.unit(at: hex) == nil && world.hold(at: hex) == nil
+            }) else { return }
+            realm.world.calm = 6
+            let id = realm.world.takeID()
+            realm.world.units.append(NullmereCore.Unit(id: id, kind: .spear, owner: bel, position: shore))
+            staged.unit = id
+            staged.at = shore
+        }
+        _ = try XCTUnwrap(staged.unit, "A shore to stand on")
+        try await until("both see the calm") { earA.world?.stillCalm == 6 && earB.world?.stillCalm == 6 }
+        let broken: @MainActor @Sendable (Listener) -> [Int]? = { ear in
+            for event in ear.events {
+                switch event {
+                case .heard(let events), .watchTurned(_, let events), .answered(let events), .settled(_, let events):
+                    for case let .calmBroken(houses, calm) in events where calm == 6 { return houses }
+                default: continue
+                }
+            }
+            return nil
+        }
+        let watch = await MainActor.run { earA.world?.watch ?? 0 }
+        await MainActor.run { a.setReady(true); b.setReady(true) }
+        try await until("the watch to turn") { (earA.world?.watch ?? 0) > watch && (earB.world?.watch ?? 0) > watch }
+        try await until("both told the calm is broken") { broken(earA) != nil && broken(earB) != nil }
+        let (byA, byB) = await MainActor.run { (broken(earA), broken(earB)) }
+        XCTAssertEqual(byA, byB, "One lake, one telling")
+        XCTAssertTrue(byA?.contains(bel) == true, "Bel's spears named")
+        let calms = await MainActor.run { (earA.world?.stillCalm, earB.world?.stillCalm) }
+        XCTAssertEqual(calms.0, 0)
+        XCTAssertEqual(calms.1, 0)
+    }
+}

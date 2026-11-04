@@ -32,6 +32,8 @@ public struct SceneFrame: Equatable, Sendable {
     public var lights: [PointLight]
     /// The weather over the lake this frame.
     public var weather: Weather = .clear
+    /// How calm the Still lies, 0 to Calm.deepest.
+    public var calm = 0
     /// Whether the camera is near enough for the models' fine work.
     public var fine = true
 

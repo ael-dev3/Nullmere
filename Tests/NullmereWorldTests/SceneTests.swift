@@ -6,7 +6,9 @@ import XCTest
 
 final class SceneTests: XCTestCase {
     func testTheGPUReadsTheFrameAndTheModelsAsTheShadersDeclareThem() {
-        XCTAssertEqual(MemoryLayout<FrameUniforms>.stride, 2432)
+        XCTAssertEqual(MemoryLayout<FrameUniforms>.stride, 2448)
+        XCTAssertEqual(MemoryLayout<FrameUniforms>.offset(of: \FrameUniforms.still), 2432)
+        XCTAssertTrue(WorldShaders.source.contains("float4 still;"))
         XCTAssertEqual(MemoryLayout<FrameUniforms>.offset(of: \FrameUniforms.lights), 2304)
         XCTAssertTrue(WorldShaders.source.contains("float4 houses[128];"))
         XCTAssertLessThan(MemoryLayout<FrameUniforms>.stride, 4096, "Small enough to be sent with each frame")

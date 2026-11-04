@@ -328,6 +328,10 @@ extension GameState {
         case .mirrorWalkBegun(_, let house, _, let to):
             if house == viewer { return Tidings("Your company steps into the Still; it comes out at \(to) as the watch turns.", .good) }
             return Tidings("The water stills at \(to): \(houses[house].title)'s company walks the mirror and comes out there as the watch turns.", .bad)
+        case .calmBroken(let breakers, let calm):
+            let names = breakers.map { houses[$0].title }.joined(separator: " and ")
+            if breakers.contains(viewer) { return Tidings("Your companies at the water break the Still's calm of \(calm) watches; every House knows it was you.", .bad) }
+            return Tidings("\(names) break\(breakers.count == 1 ? "s" : "") the Still's calm of \(calm) watches: the moonsalt of the shore falls back.", .bad)
         case .mirrorWalked(_, let house, let from, let to):
             if from == to { return house == viewer ? Tidings("The far shore filled; your company comes back out where it stepped in.", .bad) : nil }
             return Tidings(house == viewer ? "Your company comes out of the Still at \(to)." : "\(houses[house].title)'s company comes out of the Still at \(to).", house == viewer ? .good : .bad)

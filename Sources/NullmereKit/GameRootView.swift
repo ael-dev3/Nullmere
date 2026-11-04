@@ -145,6 +145,14 @@ struct PlayView: View {
                         .allowsHitTesting(false)
                         .transition(.opacity)
                 }
+                // The Still's calm, only while it gives to the keeper's shore.
+                if let line = MoonBand.calmLine(in: session.state, for: session.player) {
+                    MoonBand(line: line)
+                        .chrome("band")
+                        .padding(.top, 4)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
                 // The Drowned Crown, only while it lies on the ford.
                 if let line = MoonBand.crownLine(in: session.state, for: session.player) {
                     MoonBand(line: line)

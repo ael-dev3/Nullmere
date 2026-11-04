@@ -28,6 +28,8 @@ public struct FrameUniforms: Equatable, Sendable {
     public var houses: InlineArray<128, Vec4>
     /// The world's own lights: four places and reaches, then their four colours.
     public var lights: (Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4)
+    /// The Still's calm, none to deepest (0 to 1), and three kept spare.
+    public var still: Vec4 = .zero
 
     public static let houseSlots = 128
     public static let lightSlots = 4
@@ -69,7 +71,7 @@ public struct FrameUniforms: Equatable, Sendable {
     public static func == (a: FrameUniforms, b: FrameUniforms) -> Bool {
         a.viewProjection == b.viewProjection && a.eye == b.eye && a.moon == b.moon && a.viewport == b.viewport
             && a.world == b.world && a.highlight == b.highlight && a.extent == b.extent && a.haze == b.haze
-            && a.heights == b.heights && a.houseColours == b.houseColours && a.lightValues == b.lightValues
+            && a.heights == b.heights && a.houseColours == b.houseColours && a.lightValues == b.lightValues && a.still == b.still
     }
 
     public var houseColours: [Vec4] {

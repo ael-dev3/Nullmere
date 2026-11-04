@@ -392,6 +392,7 @@ public enum WorldShaders {
         float4 heights;    // the heights grid's corner (x, z), columns, rows
         float4 houses[128]; // each House's colour, by sigil plus one
         float4 lights[8];  // the world's own lights: where and how far, then colour
+        float4 still;      // the Still's calm, 0 to 1; three spare
     };
 
     struct ModelVertex {
@@ -580,9 +581,12 @@ public enum WorldShaders {
         float2 along = normalize(look.xz);
         float across = 1.0 - max(dot(toMoon, along), 0.0);
         float near = clamp(distance(in.world, frame.eye.xyz) / 40.0, 0.05, 1.0);
-        float road = exp(-across * across / (0.00001 + 0.0002 * (1.0 - near)));
-        float swell = nm_fbm(in.world.xz * float2(9.0, 2.2) + nm_drift(time, 0.03));
-        float glint = smoothstep(0.66, 0.86, swell);
+        // The calmer the Still, the narrower and whole the road: at its
+        // deepest calm the moon lies on the water as in a mirror.
+        float calm = clamp(frame.still.x, 0.0, 1.0);
+        float road = exp(-across * across / ((0.00001 + 0.0002 * (1.0 - near)) * (1.0 - 0.6 * calm)));
+        float swell = nm_fbm(in.world.xz * float2(9.0, 2.2) + nm_drift(time, 0.03 * (1.0 - calm)));
+        float glint = mix(smoothstep(0.66, 0.86, swell), 0.75, calm);
         moonlit += kMoonColour * road * glint * 0.09 * fresnel;
         // Where it is shallow the shingle shows through, darkened and wet.
         float clear = smoothstep(0.0, 0.14, depth);

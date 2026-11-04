@@ -330,6 +330,7 @@ final class WorldMetalView: MTKView {
         let staged = scene?(time, bounds.size) ?? SceneFrame()
         frame.light(with: PointLight.strongest(staged.lights, near: camera.focus))
         frame.weather(staged.weather)
+        frame.calm(staged.calm)
         renderer.draw(frame, scene: staged, in: pass, to: drawable)
     }
 

@@ -76,6 +76,7 @@ extension GameState {
             units[index].way = nil
         }
         events += advanceRallies(marching: !isPaced)
+        events += turnCalm()
         events += workTheLand()
         raiseShrines()
         events += holdShrines()
