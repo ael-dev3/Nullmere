@@ -63,6 +63,16 @@ final class WorldRenderer {
     static let depthFormat = MTLPixelFormat.depth32Float
     /// Each pixel sampled four times, so edges against the night are clean.
     static let sampleCount = 4
+
+    /// The passes a debug build leaves out, named in NULLMERE_DEBUG_PASSES
+    /// (land, furniture, models, water, motes), to see which draws what.
+    static let leftOut: Set<String> = {
+        #if DEBUG
+        Set((ProcessInfo.processInfo.environment["NULLMERE_DEBUG_PASSES"] ?? "").split(separator: ",").map(String.init))
+        #else
+        []
+        #endif
+    }()
     /// What lies past the land: the dark.
     static let night = MTLClearColor(red: 0.035, green: 0.04, blue: 0.055, alpha: 1)
 
@@ -232,10 +242,12 @@ final class WorldRenderer {
         encoder.setFragmentTexture(tiles, index: 0)
 
         // The land.
-        encoder.setRenderPipelineState(landPipeline)
-        encoder.setVertexBuffer(land.vertices, offset: 0, index: 0)
-        encoder.drawIndexedPrimitives(type: .triangle, indexCount: land.indexCount, indexType: .uint32,
-                                      indexBuffer: land.indices, indexBufferOffset: 0)
+        if !WorldRenderer.leftOut.contains("land") {
+            encoder.setRenderPipelineState(landPipeline)
+            encoder.setVertexBuffer(land.vertices, offset: 0, index: 0)
+            encoder.drawIndexedPrimitives(type: .triangle, indexCount: land.indexCount, indexType: .uint32,
+                                          indexBuffer: land.indices, indexBufferOffset: 0)
+        }
 
         // What stands on it, kind by kind: what stands still from the
         // buffer kept for it, the rest sent afresh.
@@ -253,12 +265,12 @@ final class WorldRenderer {
                                                  options: .storageModeShared) {
             encoder.setRenderPipelineState(modelPipeline)
             encoder.setVertexBuffer(paletteBuffer, offset: 0, index: 2)
-            if let fixed {
+            if let fixed, !WorldRenderer.leftOut.contains("furniture") {
                 // Only the regions of the land in view.
                 draw(scene.fixed, from: fixed.buffer, fine: scene.fine, runs: scene.fixedRegions?.runs(seenBy: frame.viewProjection),
                      with: encoder)
             }
-            if !instances.isEmpty,
+            if !instances.isEmpty, !WorldRenderer.leftOut.contains("models"),
                let moving = device.makeBuffer(bytes: instances, length: instances.count * MemoryLayout<ModelInstance>.stride,
                                               options: .storageModeShared) {
                 draw(scene.batches, from: moving, fine: scene.fine, with: encoder)
@@ -267,13 +279,15 @@ final class WorldRenderer {
 
         // The still water over all, last, so what stands in the shallows
         // stands in it.
-        encoder.setRenderPipelineState(waterPipeline)
-        encoder.setDepthStencilState(glassy)
-        encoder.setFragmentTexture(land.heights, index: 1)
-        encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+        if !WorldRenderer.leftOut.contains("water") {
+            encoder.setRenderPipelineState(waterPipeline)
+            encoder.setDepthStencilState(glassy)
+            encoder.setFragmentTexture(land.heights, index: 1)
+            encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+        }
 
         // The motes over all: sparks, dust, smoke, embers, fireflies.
-        if !scene.motes.isEmpty,
+        if !scene.motes.isEmpty, !WorldRenderer.leftOut.contains("motes"),
            let motes = device.makeBuffer(bytes: scene.motes, length: scene.motes.count * MemoryLayout<Mote>.stride,
                                          options: .storageModeShared) {
             encoder.setRenderPipelineState(motePipeline)

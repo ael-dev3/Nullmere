@@ -78,6 +78,13 @@ $LOG"
 run build/game-lakes.png 0 lake
 WORLD_LOG="$WORLD_LOG
 $LOG"
+# The same view with one pass of the renderer left out at a time, to tell
+# which draws what (debug builds only).
+if [ "${DEBUG_PASSES:-1}" = 1 ]; then
+    for pass in land furniture models water motes; do
+        NULLMERE_DEBUG_PASSES="$pass" run "build/game-lakes-no-$pass.png" 0 lake
+    done
+fi
 # The same realm later on, the keeper returning by identity alone, with the
 # larger type a reader can choose.
 NULLMERE_TEXT=larger NULLMERE_WATCH_AFTER=3 WAIT=30 run build/game-later.png 40 seat,watch

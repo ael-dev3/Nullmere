@@ -291,7 +291,7 @@ jobs:
               sips -s format jpeg -s formatOptions "$quality" -Z "$size" --deleteColorManagementProperties "$shot" --out "${shot%.png}-review.jpg" >/dev/null
             fi
           done
-          for shot in build/game-world.png build/game-plain.png build/game-network.png build/game-away.png build/game-briefing.png build/game-lakes.png build/game-omen.png build/game-first-steps.png build/game-later.png build/game-race.png build/game-ending.png; do
+          for shot in build/game-world.png build/game-plain.png build/game-network.png build/game-away.png build/game-briefing.png build/game-lakes.png build/game-omen.png build/game-first-steps.png build/game-later.png build/game-race.png build/game-ending.png build/game-lakes-no-land.png build/game-lakes-no-furniture.png build/game-lakes-no-models.png build/game-lakes-no-water.png build/game-lakes-no-motes.png; do
             if [ -s "$shot" ]; then
               small="${shot%.png}-small.jpg"
               sips -s format jpeg -s formatOptions 45 -Z 560 "$shot" --out "$small" >/dev/null
