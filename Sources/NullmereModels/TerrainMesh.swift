@@ -25,8 +25,9 @@ public struct TerrainMesh: Sendable {
         switch terrain {
         case .still: return Vec3(0.06, 0.07, 0.07)
         case .shallows: return Vec3(0.14, 0.15, 0.14)
-        // Wet shingle, a little silvered by the moon.
-        case .ford: return Vec3(0.13, 0.13, 0.125)
+        // Shingle silvered by the moon, under the water: pale where the Still
+        // is black (the moonford's test holds it so).
+        case .ford: return Vec3(0.30, 0.30, 0.29)
         // A stream's dark wet stones, and its shoal's paler shingle.
         case .stream: return Vec3(0.09, 0.10, 0.10)
         case .shoal: return Vec3(0.11, 0.115, 0.12)

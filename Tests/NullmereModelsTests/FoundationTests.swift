@@ -341,9 +341,9 @@ final class ReliefTests: XCTestCase {
         if !salt.isEmpty {
             XCTAssertGreaterThan(salt.map { $0.color.x }.reduce(0, +) / Float(salt.count), 0.15, "salt is pale")
         }
-        // Pale, but not white as snow: paler than any other land, the
-        // fords' shingle too.
-        for terrain in Terrain.allCases where terrain != .saltFlat {
+        // Pale, but not white as snow: paler than any other dry land (the
+        // fords' shingle lies under the water, pale where the Still is black).
+        for terrain in Terrain.allCases where terrain != .saltFlat && terrain != .ford {
             XCTAssertGreaterThan(TerrainMesh.colour(.saltFlat).x, TerrainMesh.colour(terrain).x, "\(terrain)")
         }
         XCTAssertLessThan(TerrainMesh.colour(.saltFlat).x, 0.3, "never so pale that the flats along the Still read as cloud")

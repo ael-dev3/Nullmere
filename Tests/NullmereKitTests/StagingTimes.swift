@@ -24,6 +24,10 @@ enum StagingTimes {
             .map { "frame \($0.offset + 1) \(String(format: "%.2f", $0.element))" }.joined(separator: ", ")
     }
 
+    /// One round of the plain work on CI's runner on a quick day: the
+    /// calibration's 353 ms for six rounds.
+    static let plainPace = 58.8
+
     /// One round of the calibration's plain work (NullmereCoreTests'
     /// CalibrationTests.plainWork, the same code): numbers drawn, sorted,
     /// counted and folded, none of it the game's.

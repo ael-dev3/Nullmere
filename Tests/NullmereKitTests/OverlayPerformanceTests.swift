@@ -32,6 +32,17 @@ final class OverlayPerformanceTests: XCTestCase {
             return elapsed
         }
         let holds = session.state.holds.filter { session.isExplored($0.position) }.count
+        // Plain work timed beside the marks, none of it the game's: how busy
+        // the shared Mac is while they are timed (scripts/perf-check.py
+        // paces the marks' figures by it, and so does the bound here).
+        var beside: [Double] = []
+        func plain() {
+            let start = ThreadClock.milliseconds()
+            XCTAssertNotEqual(StagingTimes.plainWork(seed: UInt64(beside.count)), 0)
+            beside.append(ThreadClock.milliseconds() - start)
+        }
+        plain()
+        var medians: [(String, Double)] = []
         for (name, modelsDrawn) in [("marks", true), ("marks.flat", false)] {
             // Warmed three times and timed 25: ImageRenderer's first draws
             // pay for caches, and a dozen samples on a shared runner let one
@@ -47,7 +58,14 @@ final class OverlayPerformanceTests: XCTestCase {
             print("PERFMETRIC \(name).cpu.p50 \(String(format: "%.3f", median))")
             print("PERF \(name) \(Int(size.width))x\(Int(size.height))@2x, \(holds) holds and \(session.state.units.count) companies, "
                   + "\(session.blows.count) blows, \(session.reach.count) tiles of reach: median \(String(format: "%.2f", median)) ms")
-            XCTAssertLessThan(median, 5, "The marks must leave the frame to the world (\(name))")
+            medians.append((name, median))
+            plain()
+        }
+        let best = beside.min() ?? StagingTimes.plainPace
+        print("PERFMETRIC marks.pace.cpu \(String(format: "%.3f", best))")
+        let pace = min(max(best / StagingTimes.plainPace, 1), 2)
+        for (name, median) in medians {
+            XCTAssertLessThan(median, 5 * pace, "The marks must leave the frame to the world (\(name), at x\(pace) for the Mac's pace)")
         }
     }
 }
