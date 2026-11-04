@@ -432,7 +432,11 @@ public enum WorldShaders {
         char4 packedNormal = char4(v.normalMaterial);
         uchar4 packedColour = uchar4(v.colorSway);
         float2 knowledge = nm_knowledgeAround(p.xz, frame.world.x, tiles);
+    #ifndef NM_NO_FOG
         float known = smoothstep(0.0, 1.0, knowledge.x);
+    #else
+        float known = 1.0;
+    #endif
         // The unknown lies flat under the mist: its shape is not given away.
         p.y = mix(kMistLevel, p.y, known);
         float3 n = normalize(float3(packedNormal.xyz) / 127.0);
@@ -487,7 +491,13 @@ public enum WorldShaders {
             }
         }
     #ifndef NM_NO_LIGHT
-        lit += nm_light(albedo, n, frame.moon.xyz, frame.moon.w);
+        // Ground the keeper half knows is laid flat toward the mist and
+        // turned to face the sky: the moon lit it full on, brighter than any
+        // true slope, and along the edge of what is known it lay in pale
+        // banks over the shore (run 543: gone without the light, kept
+        // without the grain). The moon and the sky light only what is known.
+        float shown = smoothstep(0.35, 1.0, in.known);
+        lit += nm_light(albedo, n, frame.moon.xyz, frame.moon.w) * shown;
         for (int i = 0; i < 4; i++) {
             lit += nm_pointLight(albedo, in.world, n, frame.lights[i], frame.lights[i + 4]);
         }
