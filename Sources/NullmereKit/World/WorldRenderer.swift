@@ -66,6 +66,17 @@ final class WorldRenderer {
 
     /// The passes a debug build leaves out, named in NULLMERE_DEBUG_PASSES
     /// (land, furniture, models, water, motes), to see which draws what.
+    /// The land shader's own parts a debug build leaves out, from the same
+    /// list: haze (the distance haze), fog (what the keeper knows), light
+    /// (the moon and lamps): each named NM_NO_<PART> to the compiler.
+    static var debugOptions: MTLCompileOptions? {
+        let parts = leftOut.intersection(["haze", "fog", "light"])
+        guard !parts.isEmpty else { return nil }
+        let options = MTLCompileOptions()
+        options.preprocessorMacros = Dictionary(uniqueKeysWithValues: parts.map { ("NM_NO_\($0.uppercased())", NSNumber(value: 1)) })
+        return options
+    }
+
     static let leftOut: Set<String> = {
         #if DEBUG
         Set((ProcessInfo.processInfo.environment["NULLMERE_DEBUG_PASSES"] ?? "").split(separator: ",").map(String.init))

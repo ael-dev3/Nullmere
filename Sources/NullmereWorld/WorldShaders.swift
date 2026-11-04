@@ -476,10 +476,14 @@ public enum WorldShaders {
                 }
             }
         }
+    #ifndef NM_NO_LIGHT
         lit += nm_light(albedo, n, frame.moon.xyz, frame.moon.w);
         for (int i = 0; i < 4; i++) {
             lit += nm_pointLight(albedo, in.world, n, frame.lights[i], frame.lights[i + 4]);
         }
+    #else
+        lit += albedo * 0.02;
+    #endif
 
         // A hold's hearths light the country round it.
         for (int i = 0; i < 7; i++) {
@@ -507,6 +511,7 @@ public enum WorldShaders {
         // What the keeper knows of the ground, blended between hexes here
         // and not from the mesh's corners, so the edge of sight is a soft
         // falling-off and never a terrace of lit and grey hexes.
+    #ifndef NM_NO_FOG
         float2 knows = nm_knowledgeAround(p, radius, tiles);
         lit = mix(nm_remembered(lit), lit, smoothstep(0.0, 1.0, knows.y));
         if (knows.x < 0.999) {
@@ -515,10 +520,13 @@ public enum WorldShaders {
             // ground's own colour fades into the mist over its outer half.
             lit = mix(nm_remembered(lit) * 0.18 + kMist * 0.3, lit, smoothstep(0.55, 1.0, knows.x));
         }
+    #endif
         // Past the map's edge the Spine goes on into the dark.
         float beyond = float(nm_hexDistance(h)) - radius;
         lit *= clamp(1.0 - 0.13 * beyond, 0.18, 1.0);
+    #ifndef NM_NO_HAZE
         lit = nm_haze(lit, distance(in.world, frame.eye.xyz), frame.haze.x, frame.haze.y);
+    #endif
         return float4(nm_encode(lit * frame.haze.z), 1.0);
     }
 

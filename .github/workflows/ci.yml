@@ -221,7 +221,7 @@ jobs:
       # forty watches on.
       - name: Open the game
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        run: mkdir -p build && DEBUG_PASSES=1 DEBUG_PASS_LIST="land water" scripts/smoke-test-game.sh 2>&1 | tee build/smoke-game.log
+        run: mkdir -p build && DEBUG_PASSES=1 DEBUG_PASS_LIST="land haze fog light" scripts/smoke-test-game.sh 2>&1 | tee build/smoke-game.log
 
       # A realm raised on the runner, as on maincloud: SpacetimeDB with the
       # realm module published, and the steward beside it. Then the app

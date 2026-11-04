@@ -271,7 +271,7 @@ final class WorldMetalView: MTKView {
         }
         isLoadingRenderer = true
         let pixelFormat = colorPixelFormat
-        device.makeLibrary(source: WorldShaders.source, options: nil) { [weak self] library, error in
+        device.makeLibrary(source: WorldShaders.source, options: WorldRenderer.debugOptions) { [weak self] library, error in
             DispatchQueue.main.async { [weak self] in
                 self?.finishLoading(device: device, library: library, error: error, pixelFormat: pixelFormat)
             }
