@@ -85,6 +85,15 @@ public final class Synth: @unchecked Sendable {
     private var din: (level: Float, pan: Float) = (0, 0)
     private var dinTarget: (level: Float, pan: Float) = (0, 0)
     private var pendingDin: (level: Float, pan: Float)?
+    /// How great a host the din is of, from a skirmish (0) to a battle of
+    /// hundreds of thousands (1): the deep roar of the throng, clash on
+    /// clash, and war horns calling across it.
+    private var host: Float = 0
+    private var hostTarget: Float = 0
+    private var pendingHost: Float?
+    private var roarLow: Float = 0, roarHigh: Float = 0
+    private var nextHorn: Float = 2
+    private var horn: (phase: Float, frequency: Float, age: Float) = (0, 0, 9)
     private var clamourLow: Float = 0
     private var clamourHigh: Float = 0
     private var tramp: Float = 0
@@ -130,6 +139,17 @@ public final class Synth: @unchecked Sendable {
 
     public func setMusic(on: Bool, mood: Score.Mood) {
         lock.lock(); pendingMusic = (on, mood); lock.unlock()
+    }
+
+    /// How great the host in the din is, 0 to 1.
+    public func setHost(_ mass: Float) {
+        lock.lock(); pendingHost = min(max(mass, 0), 1); lock.unlock()
+    }
+
+    /// The host as it is heard, for tests.
+    var hostHeard: Float {
+        lock.lock(); defer { lock.unlock() }
+        return host
     }
 
     public func setDin(level: Float, pan: Float) {
@@ -584,6 +604,10 @@ public final class Synth: @unchecked Sendable {
             dinTarget = next
             pendingDin = nil
         }
+        if let next = pendingHost {
+            hostTarget = next
+            pendingHost = nil
+        }
         if let next = pendingTown {
             townTarget = next
             pendingTown = nil
@@ -647,6 +671,8 @@ public final class Synth: @unchecked Sendable {
         // The din's filters, their corners set in hertz: the clamour's band
         // of voices, and the low tramp of feet.
         let voicesLow = 1 - exp(-tau * 320 * dt), voicesHigh = 1 - exp(-tau * 1_600 * dt), feet = 1 - exp(-tau * 90 * dt)
+        // The roar of a great host: the band below the voices.
+        let roarBottom = 1 - exp(-tau * 45 * dt), roarTop = 1 - exp(-tau * 180 * dt)
         for frame in 0..<frames {
             time += Double(dt)
             level += (goal - level) * dt * rate
@@ -701,6 +727,7 @@ public final class Synth: @unchecked Sendable {
             // The din of battle: as loud as the fighting, from where it is.
             din.level += (dinTarget.level - din.level) * min(dt * 2, 1)
             din.pan += (dinTarget.pan - din.pan) * min(dt * 2, 1)
+            host += (hostTarget - host) * min(dt * 0.8, 1)
             var battle: Float = 0
             if din.level > 0.0005 {
                 let noise = random()
@@ -713,7 +740,7 @@ public final class Synth: @unchecked Sendable {
                 if nextClash <= 0 {
                     let slot = clashes.indices.max { clashes[$0].age < clashes[$1].age } ?? 0
                     clashes[slot] = (0, 1_800 + 1_400 * abs(random()), 0.5 + 0.5 * abs(random()), 0)
-                    nextClash = (0.05 + 0.25 * abs(random())) / max(din.level, 0.2)
+                    nextClash = (0.05 + 0.25 * abs(random())) / max(din.level, 0.2) / (1 + 3 * host)
                 }
                 var ring: Float = 0
                 for c in clashes.indices where clashes[c].age < 0.4 {
@@ -724,6 +751,28 @@ public final class Synth: @unchecked Sendable {
                     ring += (sin(phase) + 0.6 * sin(phase * 2.76)) * clashes[c].amplitude * exp(-clashes[c].age * 28)
                 }
                 battle = (clamour * 0.9 + tramp * step * 6 + ring * 0.05) * 0.2 * din.level
+                if host > 0.001 {
+                    // The throng's roar, swelling and ebbing as the lines surge.
+                    let deep = random()
+                    roarLow += (deep - roarLow) * roarBottom
+                    roarHigh += (deep - roarHigh) * roarTop
+                    let surge = 0.65 + 0.35 * Float(sin(time * 0.37)) * Float(sin(time * 0.11 + 1))
+                    var call: Float = 0
+                    // Now and then a war horn: two partials, swelling, held, dying.
+                    nextHorn -= dt
+                    if nextHorn <= 0 {
+                        horn = (0, abs(random()) > 0.5 ? 110 : 146.8, 0)
+                        nextHorn = 5 + 6 * abs(random())
+                    }
+                    if horn.age < 2.6 {
+                        horn.age += dt
+                        horn.phase += tau * horn.frequency * dt
+                        if horn.phase > tau { horn.phase -= tau }
+                        let shape = min(horn.age / 0.35, 1) * min(max((2.6 - horn.age) / 1.2, 0), 1)
+                        call = (sin(horn.phase) + 0.5 * sin(horn.phase * 2) + 0.3 * sin(horn.phase * 3)) * shape
+                    }
+                    battle += ((roarHigh - roarLow) * 3.2 * surge + call * 0.05) * host * din.level
+                }
             }
             let dinAngle = (din.pan + 1) * .pi / 4
             let dinLeft = battle * cos(dinAngle) * 1.414 * heard.ambience * level

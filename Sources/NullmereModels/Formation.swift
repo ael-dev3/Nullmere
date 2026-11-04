@@ -141,4 +141,43 @@ public enum Formation {
         let back = -Float(rankCount - 1) * ranks.depth
         return (back + (led ? ranks.lead : 0)) / 2
     }
+
+    /// Troops a figure stands for in a field of battle's throng.
+    public static let troopsPerThrongFigure = 500
+    /// The most figures one company shows in a field of battle.
+    public static let throngMost = 48
+
+    /// How many figures a company shows in a field of battle with so many
+    /// troops standing: at least its formation whole, one more for every
+    /// `troopsPerThrongFigure`, up to `throngMost`; none once none stand.
+    public static func throngCount(_ key: ModelKey, troops: Int, muster: Int = 100) -> Int {
+        guard troops > 0 else { return 0 }
+        return min(throngMost, max(strength(key, muster: muster), troops / troopsPerThrongFigure))
+    }
+
+    /// Where a throng's figures stand: rank after rank of eight pressed
+    /// toward the company's front (+z) and filling its hex back to the
+    /// rear, each nudged off the line so the mass reads as men, not a grid;
+    /// every figure within the hex.
+    public static func throng(count: Int, seed: Int) -> [Vec3] {
+        guard count > 0 else { return [] }
+        let file = 8, spacing: Float = 0.105, depth: Float = 0.11
+        let ranks = (count + file - 1) / file
+        let front = min(Float(ranks - 1) * depth / 2 + 0.06, hexInner * 0.8)
+        var offsets: [Vec3] = []
+        for index in 0..<count {
+            let rank = index / file, place = index % file
+            let inRank = min(file, count - rank * file)
+            var x = (Float(place) - Float(inRank - 1) / 2) * spacing + (rank % 2 == 1 ? spacing / 2 : 0)
+            var z = front - Float(rank) * depth
+            // A little out of line, the same each time it is drawn.
+            let h = UInt32(truncatingIfNeeded: seed &* 7_919 &+ index &* 104_729)
+            x += (Float(h % 97) / 97 - 0.5) * spacing * 0.5
+            z += (Float((h / 97) % 89) / 89 - 0.5) * depth * 0.5
+            let reach = (x * x + z * z).squareRoot(), most = hexInner - 0.05
+            if reach > most { x *= most / reach; z *= most / reach }
+            offsets.append(Vec3(x, 0, z))
+        }
+        return offsets
+    }
 }

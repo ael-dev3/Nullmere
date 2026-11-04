@@ -415,6 +415,26 @@ extension GameSession {
                                      commander: unit.leader.flatMap(commanderLook), spread: spread, muster: state.musterPercent(of: unit),
                                      blend: animated ? easing(unit.id, into: clip, at: clipTime, now: now) : nil))
             if let led = unit.leader.flatMap(state.commander) { poses[poses.count - 1].stars = led.starCount }
+            // Standing in a field of battle: its troops' whole throng, its
+            // front ranks at it blow after blow, each a beat from the next.
+            if let field = state.field(of: unit.id), let fighter = field.fighter(unit.id), fighter.standing {
+                let standing = max(fighter.troops - fighter.lost, 0)
+                poses[poses.count - 1].throng = Formation.throngCount(key, troops: standing, muster: state.musterPercent(of: unit))
+                let side = fighter.side
+                if field.troops(of: side) > 0, Float(field.standing(of: side)) / Float(field.troops(of: side)) < WorldStage.routBelow {
+                    // Its side broken: it turns its back on the foe and runs, ranks gone.
+                    poses[poses.count - 1].clip = .march
+                    poses[poses.count - 1].clipTime = Float(time) * GameSession.marchStrides * WorldStage.routPace
+                    poses[poses.count - 1].heading = heading + .pi
+                    poses[poses.count - 1].spread = WorldStage.routSpread
+                    poses[poses.count - 1].blend = nil
+                } else if clip == .idle {
+                    let beat = Clip.attack.period
+                    poses[poses.count - 1].clip = .attack
+                    poses[poses.count - 1].clipTime = Float((time + Double(unit.id % 11) * 0.17).truncatingRemainder(dividingBy: Double(beat)))
+                    poses[poses.count - 1].blend = nil
+                }
+            }
             if let leading = unit.leader.flatMap(state.commander)?.leadingTree {
                 poses[poses.count - 1].talentTree = TalentTree.allCases.firstIndex(of: leading.tree) ?? -1
                 poses[poses.count - 1].talentRanks = leading.ranks
@@ -550,6 +570,17 @@ extension GameSession {
             let standing = field.fighters.filter(\.standing).count
             happenings.battles.append(Happenings.Spot(at: ground(field.at), strength: Float(min(standing, 12)),
                                                       seed: UInt32(truncatingIfNeeded: field.id)))
+            // Where each company meets the foe nearest it: a front of steel.
+            let fighters = field.fighters.filter(\.standing).compactMap { fighter in state.unit(fighter.unit).map { (fighter, $0) } }
+            for (fighter, unit) in fighters where fighter.side == 0 {
+                guard let (foe, foeUnit) = fighters.filter({ $0.0.side != 0 })
+                    .min(by: { $0.1.position.distance(to: unit.position) < $1.1.position.distance(to: unit.position) }),
+                      foeUnit.position.distance(to: unit.position) <= max(unit.kind.range, 1) else { continue }
+                let troops = max(fighter.troops - fighter.lost, 0) + max(foe.troops - foe.lost, 0)
+                happenings.fronts.append(Happenings.Front(from: ground(unit.position), to: ground(foeUnit.position),
+                                                          strength: Float(troops) / 25_000,
+                                                          seed: UInt32(truncatingIfNeeded: unit.id &* 131 &+ foeUnit.id)))
+            }
         }
         completions.removeAll { now.timeIntervalSince($0.at) > 3 }
         for done in completions {

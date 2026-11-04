@@ -815,3 +815,20 @@ final class SharedLandPoseTests: XCTestCase {
         XCTAssertLessThanOrEqual(Set(batches.flatMap(\.instances).map(\.palette)).count, 4)
     }
 }
+
+final class BattleFrontTests: XCTestCase {
+    /// Along a front of a field of battle steel flashes and sparks fly,
+    /// clash on clash, with the glint of it lighting the throngs.
+    func testAFrontFlashesAndSparksAlongItsLength() {
+        var happenings = Happenings()
+        let from = Vec3(0, 0, 0), to = Vec3(1, 0, 0)
+        happenings.fronts = [Happenings.Front(from: from, to: to, strength: 2, seed: 3)]
+        let (motes, lights) = happenings.effects(at: 10)
+        XCTAssertFalse(motes.isEmpty, "the front throws flashes and sparks")
+        XCTAssertEqual(lights.count, 1, "and its glint")
+        let quiet = Happenings().effects(at: 10)
+        XCTAssertTrue(quiet.motes.isEmpty)
+        let later = happenings.effects(at: 10 + Happenings.clashEvery * 3).motes
+        XCTAssertNotEqual(motes, later, "clash after clash")
+    }
+}

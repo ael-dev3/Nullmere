@@ -86,6 +86,11 @@ public final class Ambience {
     /// The din of the fields of battle in sight: how loud, from nothing (0)
     /// to a great battle close by (1), and where across the view, from the
     /// left (-1) to the right (1).
+    /// How great a host the battles in sight are, 0 to 1.
+    public func setHost(_ mass: Float) {
+        synth.setHost(mass)
+    }
+
     public func setDin(level: Float, pan: Float) {
         synth.setDin(level: level, pan: pan)
     }

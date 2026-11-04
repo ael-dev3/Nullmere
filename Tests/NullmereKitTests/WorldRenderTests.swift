@@ -132,6 +132,72 @@ final class WorldRenderTests: XCTestCase {
         try keep([stood, ablaze, figures], as: "world-models")
     }
 
+    /// A great battle close in: two armies of eight drilled companies,
+    /// 400,000 troops, met in one field before the keeper's seat. Each
+    /// company shows its throng; the front flashes and sparks; dust hangs
+    /// over the field. CI keeps the frame as world-battle.
+    @MainActor
+    func testAGreatBattleFillsItsFieldWithItsThrongs() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        var state = WorldRenderTests.world.state
+        let me = state.player, foe = (me + 1) % state.houses.count
+        _ = try state.declareWar(by: me, on: foe)
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let east = Hex.directions[0], along = Hex.directions[5]
+        func open(_ hex: Hex) -> Bool {
+            state.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && state.unit(at: hex) == nil && state.hold(at: hex) == nil
+        }
+        let steps = [0, -1, 1, -2, 2], bows = [0, -1, 1]
+        let ground = try XCTUnwrap(seat.position.spiral(8).first { g in
+            g.distance(to: seat.position) >= 3 && steps.allSatisfy { open(g + along * $0) && open(g + along * $0 + east) }
+                && bows.allSatisfy { open(g + along * $0 - east) && open(g + along * $0 + east * 2) }
+        })
+        func raise(_ kind: UnitKind, of house: Int, at hex: Hex) -> Int {
+            var unit = Unit(id: state.takeID(), kind: kind, owner: house, position: hex, tier: 5)
+            unit.drilled = 25_000 - state.firstMuster(of: unit)
+            state.units.append(unit)
+            return unit.id
+        }
+        var orders: [(Int, Int, Hex)] = []
+        for step in steps {
+            let front = ground + along * step
+            orders.append((me, raise(.spear, of: me, at: front), front + east))
+            orders.append((foe, raise(.spear, of: foe, at: front + east), front))
+        }
+        for step in bows {
+            let front = ground + along * step
+            orders.append((me, raise(.bow, of: me, at: front - east), front + east))
+            orders.append((foe, raise(.bow, of: foe, at: front + east * 2), front))
+        }
+        for (house, unit, target) in orders { _ = try state.perform(.attack(unit: unit, target: target), as: house) }
+        let field = try XCTUnwrap(state.fieldsOfBattle.first)
+        XCTAssertEqual(field.fighters.count, 16)
+        state.houses[me].explored = Array(repeating: true, count: state.map.count)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let session = GameSession(state: state, store: LocalStore(directory: directory))
+        let scene = session.sceneFrame(at: 20)
+        let throngs = session.companyPoses(at: Date(), animated: true, time: 20).filter { $0.throng > 0 }
+        XCTAssertEqual(throngs.count, 16, "every company in the field shows its throng")
+        XCTAssertEqual(throngs.map(\.throng).reduce(0, +), 16 * Formation.throngMost, "the whole host in figures")
+        print("RENDER battle: \(scene.instanceCount) instances, \(scene.motes.count) motes, \(scene.lights.count) lights")
+        XCTAssertGreaterThan(scene.motes.count, 40, "clash and dust over the field")
+        var close = Camera(scale: 95, tilt: 0.9, heading: 0.35)
+        close.focus(on: ground)
+        let bare = try draw(renderer, "bare field", camera: close, tiles: session.tileBytes)
+        let fought = try draw(renderer, "battle", camera: close, tiles: session.tileBytes, scene: scene)
+        var changed = 0
+        for y in stride(from: 0, to: WorldRenderTests.height, by: 2) {
+            for x in stride(from: 0, to: WorldRenderTests.width, by: 2) where abs(fought.luminance(x, y) - bare.luminance(x, y)) > 8 {
+                changed += 1
+            }
+        }
+        print("RENDER battle: \(changed) of \(WorldRenderTests.width * WorldRenderTests.height / 4) sampled pixels changed by the host")
+        XCTAssertGreaterThan(changed, 6_000, "the host fills the field")
+        try keep([fought], as: "world-battle")
+    }
+
     /// Where the view's ray through a pixel meets the world, and what is there.
     func ground(at x: Int, _ y: Int, in drawn: Drawn) -> (hex: Hex, terrain: Terrain?)? {
         let world = WorldRenderTests.world

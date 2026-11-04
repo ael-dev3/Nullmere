@@ -413,6 +413,24 @@ public struct Happenings: Equatable, Sendable {
     public var sightings: [Spot] = []
     /// Fields of battle going on, as strongly as companies stand in them.
     public var battles: [Spot] = []
+    /// Where two throngs meet in a field of battle: steel flashing and
+    /// sparks thrown all along it, the faster the more troops are there.
+    public var fronts: [Front] = []
+    public struct Front: Equatable, Sendable {
+        public var from: Vec3
+        public var to: Vec3
+        /// 1 for a front of two companies' worth; more for greater throngs.
+        public var strength: Float
+        public var seed: UInt32
+        public init(from: Vec3, to: Vec3, strength: Float = 1, seed: UInt32) {
+            self.from = from
+            self.to = to
+            self.strength = strength
+            self.seed = seed
+        }
+    }
+    /// How often each front throws a clash of steel, in seconds.
+    public static let clashEvery: Float = 0.22
 
     public init() {}
 
@@ -477,6 +495,27 @@ public struct Happenings: Equatable, Sendable {
         }
         for work in rising {
             emitters.append(Emitter(.dust, at: work.at, rate: 2, spread: 0.16, seed: work.seed, strength: 0.55))
+        }
+        for front in fronts {
+            // Clash on clash along the front, each at its own place on it
+            // and a little before or behind it; and the glint of steel.
+            let beat = Int(time / Happenings.clashEvery)
+            let along = front.to - front.from
+            let side = Vec3(-along.z, 0, along.x).normalized
+            let clashes = max(1, min(4, Int(front.strength.rounded())))
+            for back in 0...2 {
+                for clash in 0..<clashes {
+                    let n = UInt32(truncatingIfNeeded: beat - back) &* 31 &+ UInt32(clash)
+                    let u = Effects.unit(front.seed &+ n, 1), v = Effects.unit(front.seed &+ n, 2) - 0.5
+                    let at = front.from + along * u + side * (v * 0.18) + Vec3(0, 0.12, 0)
+                    let start = Float(beat - back) * Happenings.clashEvery + Effects.unit(front.seed &+ n, 3) * Happenings.clashEvery
+                    bursts.append(Burst(.flash, at: at, start: start, count: 1, seed: front.seed &+ n))
+                    bursts.append(Burst(.sparks, at: at, start: start, count: 5, seed: front.seed &+ n &+ 5, scale: 0.7))
+                }
+            }
+            let middle = (front.from + front.to) * 0.5 + Vec3(0, 0.25, 0)
+            let glint = 0.6 + 0.4 * Float(sin(Double(time * 17 + Float(front.seed % 89))))
+            lights.append(PointLight(at: middle, reach: 1.4, colour: Vec3(0.55, 0.6, 0.75) * glint * min(front.strength, 2)))
         }
         for battle in battles {
             // The dust a battle throws up over its whole field, the thicker

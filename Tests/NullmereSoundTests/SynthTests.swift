@@ -457,3 +457,29 @@ final class SynthTests: XCTestCase {
         XCTAssertEqual(a.right, b.right)
     }
 }
+
+final class GreatHostSoundTests: XCTestCase {
+    /// A great host's din has a weight a skirmish's has not: the throng's
+    /// roar deep under the clamour, and war horns; it never clips.
+    func testAGreatHostRoarsDeeperThanASkirmish() {
+        func play(host: Float) -> [Float] {
+            let synth = Synth()
+            synth.prepare(sampleRate: 48_000)
+            synth.settle()
+            synth.setDin(level: 1, pan: 0)
+            synth.setHost(host)
+            return Array(rendered(synth, seconds: 8).left[(5 * 48_000)...])
+        }
+        let skirmish = play(host: 0), host = play(host: 1)
+        func rms(_ x: [Float]) -> Float { (x.reduce(0) { $0 + $1 * $1 } / Float(max(x.count, 1))).squareRoot() }
+        // The low band: a simple running mean keeps what lies below ~150 Hz.
+        func low(_ x: [Float]) -> [Float] {
+            var out: [Float] = [], y: Float = 0
+            let a: Float = 1 - exp(-2 * .pi * 150 / 48_000)
+            for v in x { y += (v - y) * a; out.append(y) }
+            return out
+        }
+        XCTAssertGreaterThan(rms(low(host)), rms(low(skirmish)) * 1.5, "the throng's roar, deep under the clamour")
+        XCTAssertLessThan(host.map(abs).max() ?? 0, 0.95, "and never clips")
+    }
+}

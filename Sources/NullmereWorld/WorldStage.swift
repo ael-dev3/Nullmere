@@ -38,6 +38,9 @@ public struct CompanyPose: Equatable, Sendable {
     public var talentRanks: Int = 0
     /// Its commander's stars; one, the first, is not drawn.
     public var stars: Int = 1
+    /// The figures it shows standing in a field of battle, its troops'
+    /// throng (see `Formation.throng`); 0 out of battle.
+    public var throng: Int = 0
 
     /// A clip being left: where it was, and how much of it still shows.
     public struct Blend: Equatable, Sendable {
@@ -926,7 +929,8 @@ public final class WorldStage: @unchecked Sendable {
                                                   emphasis: company.emphasis, hex: hex, palette: start, flags: flags)))
             }
             let led = company.commander != nil
-            let places = Formation.offsets(company.key, health: company.health, led: led, muster: company.muster)
+            let places = company.throng > 0 ? Formation.throng(count: company.throng, seed: company.unit)
+                : Formation.offsets(company.key, health: company.health, led: led, muster: company.muster)
             for (index, place) in places.enumerated() {
                 stand(company.key, place, index)
             }
@@ -1060,6 +1064,9 @@ public final class WorldStage: @unchecked Sendable {
     /// A company drawing off from a field goes in broken order, its ranks
     /// spread wide, and in haste, its stride quicker.
     public static let routSpread: Float = 1.45
+    /// A side in a field of battle breaks and runs once fewer than this
+    /// share of the troops it brought still stand.
+    public static let routBelow: Float = 0.35
     public static let routPace: Float = 1.6
 
     /// Each tincture's colour, as the interface paints it.

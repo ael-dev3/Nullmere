@@ -283,6 +283,9 @@ public final class GameSession {
     /// The din of the fields of battle in sight, told to the sound as it
     /// changes: how loud, and where across the view.
     public var onDin: ((Float, Float) -> Void)?
+    /// How great a host the battles in sight are, 0 to 1, told to the sound as it changes.
+    public var onHost: ((Float) -> Void)?
+    @ObservationIgnored var hostTold: Float = 0
     @ObservationIgnored var dinTold: (level: Float, pan: Float) = (0, 0)
     /// The towns near the view, told to the sound as they change: how near,
     /// and where across the view.
@@ -1830,7 +1833,17 @@ public final class GameSession {
     /// as loud as it gets) and as near as the view stands to it, and where
     /// across the view; nil when none is in sight.
     func battleDin() -> (level: Float, pan: Float)? {
-        var total: Float = 0, panned: Float = 0
+        battleSound().map { ($0.level, $0.pan) }
+    }
+
+    /// The troops at which a battle in sight is as great a host as is heard.
+    static let greatHost = 400_000
+
+    /// The battles in sight as heard: their din, as `battleDin`, and how
+    /// great a host fights there, from a skirmish (0) to a battle of
+    /// `greatHost` troops (1), as near as the view stands to it.
+    func battleSound() -> (level: Float, pan: Float, host: Float)? {
+        var total: Float = 0, panned: Float = 0, host: Float = 0
         for field in state.fieldsOfBattle {
             let seen = field.fighters.contains { fighter in
                 fighter.standing && state.unit(fighter.unit).map { isVisible($0.position) } == true
@@ -1841,15 +1854,22 @@ public final class GameSession {
             let loud = min(Float(troops) / 12_000, 1) * heard.gain
             total += loud
             panned += loud * heard.pan
+            host = max(host, min(Float(troops) / Float(GameSession.greatHost), 1) * heard.gain)
         }
         guard total > 0.001 else { return nil }
-        return (min(total, 1), min(max(panned / total, -1), 1))
+        return (min(total, 1), min(max(panned / total, -1), 1), host)
     }
 
     /// Tells the sound the din, when it has changed enough to hear; still,
     /// as the rest of the world is, under Reduce Motion's stillest.
     func hearBattles() {
-        let din = motion == .still ? nil : battleDin()
+        let sound = motion == .still ? nil : battleSound()
+        let din = sound.map { (level: $0.level, pan: $0.pan) }
+        let host = sound?.host ?? 0
+        if abs(host - hostTold) > 0.02 || (host == 0 && hostTold != 0) {
+            hostTold = host
+            onHost?(host)
+        }
         let level = din?.level ?? 0, pan = din?.pan ?? 0
         guard abs(level - dinTold.level) > 0.02 || abs(pan - dinTold.pan) > 0.05 || (level == 0 && dinTold.level != 0) else { return }
         dinTold = (level, pan)
