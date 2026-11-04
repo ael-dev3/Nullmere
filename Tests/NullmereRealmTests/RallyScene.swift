@@ -896,9 +896,17 @@ extension RallyScene {
         try await until("the first newcomer told their place") { earE.keeper?.placeInLine == 1 }
         await MainActor.run { f.arrive(name: "Fen" + suffix) }
         try await until("the second told theirs") { earF.keeper?.placeInLine == 2 }
-        // A seat falls free.
-        let freed = filled.houses.first!
-        await steward.reshape { realm in realm.world.houses[freed].isPlayer = false }
+        // A seat falls free: one the realm would give, not the House leading
+        // the lake or one near the end of the age.
+        let chosen = StagedHouses()
+        await steward.reshape { realm in
+            for house in filled.houses {
+                realm.world.houses[house].isPlayer = false
+                if realm.openSeats.contains(where: { $0.id == house }) { chosen.add(house); return }
+                realm.world.houses[house].isPlayer = true
+            }
+        }
+        let freed = try XCTUnwrap(chosen.houses.first, "a seat the realm would give")
         // The second, asking first, still waits behind the first.
         let fAsks = await MainActor.run { earF.events.count }
         await MainActor.run { f.arrive(name: nil) }
@@ -911,7 +919,24 @@ extension RallyScene {
         await MainActor.run { f.arrive(name: nil) }
         try await until("the second now first") { earF.lastKeeper?.placeInLine == 1 }
         // The scene undone: the newcomers go, the Houses filled for it freed.
-        await MainActor.run { e.leave(); f.leave() }
+        let gone = await MainActor.run { () -> [String] in
+            e.leave()
+            f.leave()
+            return [earE.lastKeeper?.id, earF.lastKeeper?.id].compactMap { $0 }
+        }
+        // A keeper seated and away holds every watch to a third of its
+        // length: the one seated here is forgotten, as the compact allows,
+        // so the realm goes on at its pace.
+        let forgot = await steward.obey("forget Eda" + suffix)
+        XCTAssertTrue(forgot.hasPrefix("Forgot "), forgot)
+        // Gone as the realm itself counts them, before the watch is asked to
+        // turn: a keeper still online is waited for.
+        let deadline = Date().addingTimeInterval(timeout)
+        while await steward.state.keepers.contains(where: { gone.contains($0.id) && ($0.isOnline || $0.house != nil) }) {
+            if Date() > deadline { throw SpacetimeError("Timed out waiting for the newcomers to leave the realm") }
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        await MainActor.run { e.close(); f.close() }
         await steward.reshape { realm in
             for house in filled.houses where house != freed { realm.world.houses[house].isPlayer = false }
         }

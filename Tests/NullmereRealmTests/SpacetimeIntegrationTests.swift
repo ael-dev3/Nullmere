@@ -329,7 +329,6 @@ final class SpacetimeIntegrationTests: XCTestCase {
         try await scene.teachTheLakeToLie(ama: houseA, bel: houseB)
         print("REALM one keeper taught the lake to lie, and the other saw her false company mirrored at the Still Hour")
         try await scene.upTheSpine(ama: houseA, bel: houseB)
-        try await scene.waitInLine(ama: houseA, bel: houseB) { NetworkRealmLink(transport: transport, credentials: MemoryStore(), pollInterval: 0.2) }
         print("REALM two keepers sent a line and a commander up the Spine from their own clients, each seeing only their own stars")
         print("REALM two allied keepers rallied on a lair from their own clients, broke it, and both were told of it and their shares")
         await MainActor.run { b.send(.leaveAlliance) }
@@ -348,6 +347,8 @@ final class SpacetimeIntegrationTests: XCTestCase {
         // Crown on the bare ford, each from their own client.
         try await RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60).contestTheCrown(ama: houseA, bel: houseB)
         print("REALM two alliances fought over the Drowned Crown from their own clients: taken, struck down, taken again, and given as the water came back")
+        let scene2 = RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60)
+        try await scene2.waitInLine(ama: houseA, bel: houseB) { NetworkRealmLink(transport: transport, credentials: MemoryStore(), pollInterval: 0.2) }
 
         // Ama marches on Bel's seat, watch by watch as both keepers turn
         // them, and strikes at it.
