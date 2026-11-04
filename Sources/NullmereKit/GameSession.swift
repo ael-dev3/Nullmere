@@ -1726,6 +1726,18 @@ public final class GameSession {
         return cues
     }
 
+    /// Where an expedition up the Spine is drawn for a keeper: the Spine hex
+    /// nearest their seat, and the land beside it the line strikes from.
+    static func expeditionField(in state: GameState, for player: Int) -> (from: Hex, at: Hex)? {
+        guard let seat = state.seat(of: player)?.position else { return nil }
+        let ridge = state.map.hexes.filter { state.map[$0]?.terrain == .spine }
+            .min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) }
+        guard let at = ridge else { return nil }
+        let below = state.map.neighbors(of: at).filter { state.map[$0].map { $0.terrain.isPassable && !$0.terrain.isWater } == true }
+            .min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) }
+        return (below ?? at, at)
+    }
+
     /// Where in the world an event happened, if it happened anywhere one
     /// place: a battle where it was fought, a work at its hold, a company
     /// where it fell or ended its march.
@@ -1733,6 +1745,7 @@ public final class GameSession {
         switch event {
         case .battle(let battle): return battle.at
         case .hunted(let hunt): return hunt.at
+        case .expedition(let result): return expeditionField(in: state, for: result.house)?.at
         case .unitLost(_, _, _, let at), .ruinSearched(let at, _, _), .skillFired(_, _, _, let at), .siteWorkedOut(_, _, let at):
             return at
         case .moved(_, let path): return path.last
@@ -1985,6 +1998,23 @@ public final class GameSession {
                 blows.append(Blow(id: blowCounter, at: assault.at, damage: strike.dealt, againstPlayer: false, start: now,
                                   from: strike.from, attacker: strike.unit, defender: nil, fallen: fallen, hurled: strike.kind == .mangonel))
                 if strike.from != assault.at { headings[strike.unit] = CompanyPose.heading(from: strike.from, to: assault.at) }
+            }
+            shown = true
+        }
+        // An expedition fought up the Spine, drawn on the ridge nearest
+        // the seat: each commander of the line strikes the stage's host
+        // from the land below it, and its skill flares as it does.
+        for case .expedition(let result) in events where result.house == player {
+            guard let (from, at) = GameSession.expeditionField(in: state, for: player) else { continue }
+            for (index, id) in (result.line ?? [result.commander]).enumerated() {
+                blowCounter += 1
+                blows.append(Blow(id: blowCounter, at: at, damage: result.won ? result.weight : result.against,
+                                  againstPlayer: !result.won, start: now.addingTimeInterval(Double(index) * 0.35),
+                                  from: from, attacker: id, defender: nil, fallen: []))
+                if let commander = state.commander(id) {
+                    blowCounter += 1
+                    furies.append(Fury(id: blowCounter, at: at, skill: commander.archetype.active, start: now.addingTimeInterval(Double(index) * 0.35)))
+                }
             }
             shown = true
         }

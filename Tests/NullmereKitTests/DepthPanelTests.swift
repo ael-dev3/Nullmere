@@ -1239,6 +1239,19 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(PressableButtons.press("Send a line"), "Among \(shown)")
         XCTAssertEqual(link.sent.last, .ventureLine(commanders: line, stage: nil))
         XCTAssertTrue(session.state.hasVentured(me))
+        // Its fight drawn on the Spine nearest the seat: a blow and a flare
+        // of skill for each commander of the line.
+        let field = try XCTUnwrap(GameSession.expeditionField(in: session.state, for: me))
+        XCTAssertEqual(session.state.map[field.at]?.terrain, .spine)
+        XCTAssertEqual(field.from.distance(to: field.at), 1)
+        var result = ExpeditionResult(house: me, commander: lead.id, stage: 1, weight: 90, against: 60, won: true)
+        result.line = line
+        result.stars = 2
+        let before = session.blows.count
+        session.showBlows([.expedition(result)])
+        XCTAssertEqual(session.blows.count - before, line.count)
+        XCTAssertTrue(session.blows.suffix(line.count).allSatisfy { $0.at == field.at && $0.from == field.from })
+        XCTAssertEqual(GameSession.place(of: .expedition(result), in: session.state), field.at)
     }
 
     /// A false reflection cast from a hold by the water.
