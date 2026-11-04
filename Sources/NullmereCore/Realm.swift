@@ -230,6 +230,8 @@ public struct RealmState: Codable, Equatable, Sendable {
         age = 1
         self.world = world
         keepers = [Keeper(id: id, name: world.houses[world.player].name, house: world.player, isReady: false, isOnline: true, arrival: 0)]
+        // The keeper of a realm raised about their own world accepts its compact in raising it.
+        keepers[0].compact = Compact.edition
         watchBegan = now
     }
 

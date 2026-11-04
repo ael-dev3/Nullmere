@@ -442,6 +442,18 @@ final class RealmAroundAWorldTests: XCTestCase {
         XCTAssertNotNil(realm.setReady("me", true, now: 1))
         XCTAssertEqual(realm.world.watch, 2)
     }
+
+    /// Its keeper, raising the realm about their own world, has accepted its
+    /// compact: their orders are carried out, not refused.
+    func testTheKeeperOfARealmAboutTheirWorldGivesOrders() throws {
+        let world = GameState(settings: GameSettings(seedText: "orders at home", houseCount: 3, radius: 16, keepers: 1))
+        var realm = RealmState(name: "Rehearsal", world: world, keeper: "me", now: 0)
+        XCTAssertEqual(realm.keeper("me")?.compact, Compact.edition)
+        let me = world.player
+        let lantern = try XCTUnwrap(world.units(of: me).first { $0.kind == .lantern })
+        let step = try XCTUnwrap(world.map.neighbors(of: lantern.position).first { world.map[$0]?.terrain.isPassable == true && world.unit(at: $0) == nil })
+        XCTAssertNoThrow(try realm.perform(.move(unit: lantern.id, to: step), by: "me"))
+    }
 }
 
 final class FogTests: XCTestCase {
