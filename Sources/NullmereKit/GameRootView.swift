@@ -113,6 +113,13 @@ struct PlayView: View {
     /// nothing chosen, or while the first steps are taught. With anything
     /// chosen, the seat too, its panel alone stands, so one card at most
     /// covers the world.
+    /// Whether the watch's notices stand in the left column: not while a
+    /// hold, company or ground is chosen and its panel is up.
+    static func noticesShown(_ session: GameSession) -> Bool {
+        if case .none = session.selection { return true }
+        return false
+    }
+
     static func standingCardsShown(_ session: GameSession) -> Bool {
         if session.firstSteps != nil { return true }
         if case .none = session.selection { return true }
@@ -163,8 +170,12 @@ struct PlayView: View {
                 }
                 HStack(alignment: .top, spacing: 0) {
                     VStack(alignment: .leading, spacing: 12) {
-                        NoticeFeed(session: session)
-                            .layoutPriority(-1)
+                        // The watch's notices while nothing is chosen: with a
+                        // panel up, it alone holds the column.
+                        if PlayView.noticesShown(session) {
+                            NoticeFeed(session: session)
+                                .layoutPriority(-1)
+                        }
                         Spacer(minLength: 0)
                         // The briefing says it first; then the first steps,
                         // and counsel once they're done.

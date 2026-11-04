@@ -150,6 +150,11 @@ final class RootRenderTests: XCTestCase {
         }
         crowned.selection = .none
         XCTAssertTrue(PlayView.standingCardsShown(crowned))
+        // The notices too give way to anything chosen.
+        XCTAssertTrue(PlayView.noticesShown(crowned))
+        crowned.focusOnSeat()
+        XCTAssertFalse(PlayView.noticesShown(crowned))
+        crowned.selection = .none
 
         state.omen = nil
         state.outcome = Outcome(winner: (state.player + 1) % state.houses.count, kind: .ascendancy, watch: state.watch)
