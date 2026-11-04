@@ -2065,12 +2065,18 @@ public final class GameSession {
         }
         guard shown else { return }
         Task { [weak self] in
-            try? await Task.sleep(for: .seconds(max(Blow.lingers, ExpeditionFight.lingers) + 0.05))
+            try? await Task.sleep(for: .seconds(Blow.lingers + 0.05))
             guard let self else { return }
             self.blows.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
             self.furies.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
-            self.expeditionFights.removeAll { Date().timeIntervalSince($0.start) >= ExpeditionFight.lingers }
             self.sightings.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
+        }
+        // An expedition's figures stand on the ridge a while longer.
+        if !expeditionFights.isEmpty {
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(ExpeditionFight.lingers + 0.05))
+                self?.expeditionFights.removeAll { Date().timeIntervalSince($0.start) >= ExpeditionFight.lingers }
+            }
         }
     }
 
