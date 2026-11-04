@@ -91,6 +91,11 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// An alliance's hall, its roof, cone and banners in the alliance's
     /// colour.
     case allianceHall
+    /// The Lyceum's hall, a round house of pale stone under a dome, where
+    /// the realm's scholars sit.
+    case lyceumHall
+    /// The orrery that turns over the Lyceum's dome while it sits.
+    case lyceumOrrery
     /// An alliance's storehouse, its roof and banner in the alliance's
     /// colour.
     case storehouse
@@ -137,6 +142,8 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .drownedCrown: return "drowned crown"
         case .crestCharge(let charge): return "crest charge \(charge)"
         case .allianceHall: return "alliance hall"
+        case .lyceumHall: return "lyceum hall"
+        case .lyceumOrrery: return "lyceum orrery"
         case .storehouse: return "storehouse"
         case .yard(let resource): return "\(resource.rawValue) yard"
         case .folk(let variant): return "folk \(variant)"
@@ -184,7 +191,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .folk(let variant): return .folk(variant: (variant % Folk.variants + Folk.variants) % Folk.variants)
         case .talentSigil(let tree): return .talentSigil(tree: min(max(tree, 0), 2))
         case .crestCharge(let charge): return .crestCharge(min(max(charge, 0), 9))
-        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .helpLight, .borderStone, .listeningStone, .commanderStar, .pedlarSkiff, .crestBoard, .barge, .raising, .drownedCrown, .allianceHall, .storehouse,
+        case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .helpLight, .borderStone, .listeningStone, .commanderStar, .pedlarSkiff, .crestBoard, .barge, .raising, .drownedCrown, .allianceHall, .lyceumHall, .lyceumOrrery, .storehouse,
              .yard, .signature, .town:
             return self
         }
@@ -201,10 +208,10 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         switch self {
         case .figure, .signature, .wild, .commander, .folk: return 700
         case .furnishing, .prop, .town: return 300
-        case .keep, .keepOf, .allianceHall: return 4500
+        case .keep, .keepOf, .allianceHall, .lyceumHall: return 4500
         case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .gatehold, .standard, .rallyCamp, .barge, .raising, .drownedCrown, .storehouse, .yard: return 3000
         case .hostBanner, .talentSigil, .helpLight, .borderStone, .crestBoard, .crestCharge: return 300
-        case .listeningStone: return 900
+        case .listeningStone, .lyceumOrrery: return 900
         case .commanderStar: return 160
         case .pedlarSkiff: return 2400
         }
@@ -364,6 +371,8 @@ public enum Library {
         keys.append(.drownedCrown)
         keys += (0..<10).map { .crestCharge($0) }
         keys.append(.allianceHall)
+        keys.append(.lyceumHall)
+        keys.append(.lyceumOrrery)
         keys.append(.storehouse)
         keys += Resource.allCases.map { .yard($0) }
         keys += Heritage.allCases.map { .signature($0) }
@@ -407,6 +416,8 @@ public enum Library {
         case .drownedCrown: return Land.drownedCrown(name: key.canonical.description)
         case .crestCharge(let charge): return Land.crestCharge(charge, name: key.canonical.description)
         case .allianceHall: return Halls.hall(name: key.canonical.description)
+        case .lyceumHall: return LyceumHall.hall(name: key.canonical.description)
+        case .lyceumOrrery: return LyceumHall.orrery(name: key.canonical.description)
         case .storehouse: return Stores.storehouse(name: key.canonical.description)
         case .yard(let resource): return Stores.yard(resource, name: key.canonical.description)
         case .folk(let variant): return Folk.build(variant, name: key.canonical.description)
@@ -428,6 +439,7 @@ public enum Library {
         case .work(.infirmary, let level): return Infirmary.chimney(level).map { [$0] } ?? []
         case .work(.forge, let level): return [Works.forgeChimney(level)]
         case .allianceHall: return [Halls.smoke]
+        case .lyceumHall: return LyceumHall.braziers
         case .yard(.moonsalt): return [Stores.saltSmoke]
         default: return []
         }

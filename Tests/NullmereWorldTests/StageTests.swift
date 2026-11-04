@@ -513,6 +513,29 @@ final class StageTests: XCTestCase {
         XCTAssertEqual(stage.drownedCrown(at: hex, borne: false, time: 0).first?.key, .drownedCrown)
     }
 
+    /// The Lyceum's hall stands dark between sittings; while its scholars
+    /// sit its orrery turns over the dome and five lights circle it.
+    func testTheLyceumStandsDarkAndIsLitWhileItSits() throws {
+        let stage = stage()
+        let hex = try XCTUnwrap(Self.state.map.hexes.first { Self.state.map[$0]?.terrain.isWater == false })
+        let centre = Relief.centre(of: hex)
+        let ground = stage.ground(atX: centre.x, z: centre.z)
+        let dark = stage.lyceum(at: hex, lit: false, time: 1)
+        XCTAssertEqual(dark.map(\.key), [.lyceumHall])
+        XCTAssertEqual(try XCTUnwrap(dark.first?.instances.first).model.c3.y, ground, accuracy: 1e-4)
+        let lit = stage.lyceum(at: hex, lit: true, time: 1)
+        XCTAssertEqual(Set(lit.map(\.key)), [.lyceumHall, .lyceumOrrery, .helpLight])
+        XCTAssertEqual(lit.first { $0.key == .helpLight }?.instances.count, Lyceum.questions)
+        let orrery = { (time: Float) in try XCTUnwrap(stage.lyceum(at: hex, lit: true, time: time).first { $0.key == .lyceumOrrery }?.instances.first).model }
+        XCTAssertEqual(try orrery(1).c3.y, ground + LyceumHall.orreryAt.y, accuracy: 1e-4)
+        XCTAssertNotEqual(try orrery(1).c0.x, try orrery(2).c0.x, accuracy: 1e-3, "it turns")
+        for batch in lit {
+            for instance in batch.instances {
+                XCTAssertEqual(instance.flags & ModelInstance.alwaysShown, ModelInstance.alwaysShown, "every House sees it")
+            }
+        }
+    }
+
     func testHallsStandInTheirAlliancesColoursRisingInTheirScaffolds() throws {
         let stage = stage()
         let hexes = Array(Self.state.map.hexes.filter { hex in

@@ -78,6 +78,21 @@ extension GameState {
         guard let sitting = Lyceum.sitting(at: watch) else { return }
         lyceumSet = lyceumQuestions(sitting: sitting)
         lyceumBook = nil
+        if lyceumHall == nil { lyceumHall = lyceumHallSite() }
+    }
+
+    /// Whether the Lyceum's hall is lit: while its scholars sit.
+    public var lyceumHallLit: Bool { lyceumHall != nil && lyceumNow != nil }
+
+    /// Where the Lyceum's hall is raised: the open land nearest the lake's
+    /// heart, no hold, shrine or lair upon it, on no House's ground.
+    func lyceumHallSite() -> Hex? {
+        let taken = Set(holds.map(\.position) + (shrines ?? []).map(\.position) + (lairs ?? []).map(\.position))
+        let land = territory()
+        return Hex(0, 0).spiral(map.radius).first { hex in
+            guard let tile = map[hex], !tile.terrain.isWater, tile.terrain.isPassable, !taken.contains(hex) else { return false }
+            return territoryOwner(of: hex, in: land) == nil
+        }
     }
 
     /// A House's answers this sitting, by question; nil where unanswered.

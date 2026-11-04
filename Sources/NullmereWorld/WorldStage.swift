@@ -1122,6 +1122,34 @@ public final class WorldStage: @unchecked Sendable {
                                                                    flags: ModelInstance.alwaysShown))])
     }
 
+    /// How the Lyceum's scholars' lights circle its dome while it sits.
+    public static let lyceumLightHeight: Float = 0.62
+    public static let lyceumLightRadius: Float = 0.36
+
+    /// The Lyceum's hall on its open ground. While its scholars sit the
+    /// orrery over its dome turns and their lights circle it, one for each
+    /// of the questions set; between sittings it stands dark and still.
+    public func lyceum(at hex: Hex, lit: Bool, time: Float) -> [ModelBatch] {
+        let centre = Relief.centre(of: hex)
+        let base = Vec3(centre.x, ground(atX: centre.x, z: centre.z), centre.z)
+        let cell = SIMD2(Int32(hex.q), Int32(hex.r))
+        var placed: [(ModelKey, ModelInstance)] = [(.lyceumHall, ModelInstance(model: .translation(base), hex: cell,
+                                                                                flags: ModelInstance.alwaysShown))]
+        guard lit else { return WorldStage.batches(placed) }
+        placed.append((.lyceumOrrery, ModelInstance(model: .translation(base + LyceumHall.orreryAt) * .rotationY(time * 0.6), hex: cell,
+                                                    flags: ModelInstance.alwaysShown)))
+        let lights = Lyceum.questions
+        for index in 0..<lights {
+            let angle = -time * 0.35 + Float(index) / Float(lights) * 2 * .pi
+            let bob = 0.025 * Float(sin(Double(time * 1.4 + Float(index))))
+            let at = base + Vec3(WorldStage.lyceumLightRadius * sin(angle), WorldStage.lyceumLightHeight + bob,
+                                 WorldStage.lyceumLightRadius * cos(angle))
+            placed.append((.helpLight, ModelInstance(model: .translation(at) * .rotationY(angle), colour: Vec4(1.0, 0.82, 0.55, 1),
+                                                     phase: Float(index) * 0.9, hex: cell, flags: ModelInstance.alwaysShown)))
+        }
+        return WorldStage.batches(placed)
+    }
+
     /// A House's listening stones, standing in the water where they were
     /// sunk, their ripples turning out; one that heard a march last watch
     /// turns them faster.

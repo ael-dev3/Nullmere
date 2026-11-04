@@ -302,7 +302,13 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   played between two clients over the fake realm and over a real
   SpacetimeDB 2.13 server (sitTheLyceum): the same questions to both, each
   blind to the other's answers, one judgement told to both and both paid.
-  Still open: a hall of its own in the world, and the stewards sitting it
+  Its hall stands in the world: raised as it first sits on the open land
+  nearest the lake's heart, on no House's ground, a domed round house of
+  pale stone on ten columns with braziers and lecterns at its doors
+  (LyceumHall, in budget); while the scholars sit an orrery of moonsalt
+  rings turns over its dome's eye and five lights circle it, dark and still
+  between (StageTests); both clients see the one hall lit over the real
+  server. Still open: the stewards sitting it.
 - [x] **The Calm of the Still.** The black lake is a commons every House
   shares and any one can break: each watch that no company of war stands on
   its shore or its water, or crosses it, the Still lies a degree calmer, to

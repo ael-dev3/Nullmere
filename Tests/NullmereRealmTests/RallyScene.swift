@@ -966,6 +966,12 @@ extension RallyScene {
         let questions = try await MainActor.run { try XCTUnwrap(earA.world?.lyceumNow) }
         let same = await MainActor.run { earB.world?.lyceumNow }
         XCTAssertEqual(same, questions, "the same questions for both")
+        // Its hall in the world, raised on open ground and lit, the same for both.
+        let halls = await MainActor.run { (earA.world?.lyceumHall, earB.world?.lyceumHall, earA.world?.lyceumHallLit, earB.world?.lyceumHallLit) }
+        XCTAssertNotNil(halls.0, "the Lyceum's hall stands")
+        XCTAssertEqual(halls.0, halls.1, "both see it in one place")
+        XCTAssertEqual(halls.2, true)
+        XCTAssertEqual(halls.3, true)
         let moonsalt = await MainActor.run { (earA.world?.houses[ama].stock.moonsalt ?? 0, earB.world?.houses[bel].stock.moonsalt ?? 0) }
         await MainActor.run {
             for (index, question) in questions.enumerated() {

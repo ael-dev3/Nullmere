@@ -140,6 +140,8 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var hidden: [Int: [Int]]?
     /// The questions of the sitting Lyceum, set as it opens.
     public internal(set) var lyceumSet: [LyceumQuestion]?
+    /// Where the Lyceum's hall stands, raised as it first sits.
+    public internal(set) var lyceumHall: Hex?
     /// Each House's answers at the sitting Lyceum, by question (-1 unanswered).
     public internal(set) var lyceumBook: [Int: [Int]]?
     /// How calm the Still lies, in watches undisturbed (nil: not at all).

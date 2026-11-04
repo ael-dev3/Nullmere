@@ -14,6 +14,26 @@ final class LyceumTests: XCTestCase {
         return (state, me, other)
     }
 
+    func testItsHallIsRaisedOnOpenLandAndLitWhileItSits() throws {
+        var (state, me, other) = sitting()
+        let hall = try XCTUnwrap(state.lyceumHall)
+        let tile = try XCTUnwrap(state.map[hall])
+        XCTAssertFalse(tile.terrain.isWater)
+        XCTAssertTrue(tile.terrain.isPassable)
+        XCTAssertNil(state.hold(at: hall))
+        XCTAssertNil(state.territoryOwner(of: hall), "on no House's ground")
+        XCTAssertTrue(state.lyceumHallLit)
+        XCTAssertEqual(state.view(for: me).lyceumHall, hall)
+        XCTAssertEqual(state.view(for: other).lyceumHall, hall, "every keeper sees it")
+        // It stays where it was raised, dark between sittings.
+        state.watch = Lyceum.every * 3 + Lyceum.sits
+        XCTAssertFalse(state.lyceumHallLit)
+        state.watch = Lyceum.every * 4
+        state.openLyceum()
+        XCTAssertEqual(state.lyceumHall, hall)
+        XCTAssertTrue(state.lyceumHallLit)
+    }
+
     func testTheSameQuestionsForAllDrawnFromTheLore() throws {
         let (state, me, other) = sitting()
         let questions = try XCTUnwrap(state.lyceumNow)

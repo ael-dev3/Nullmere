@@ -225,6 +225,9 @@ extension GameSession {
         let crown = stage.animate(state.crown.map { crown in
             stage.drownedCrown(at: crown.bearer.flatMap(state.unit)?.position ?? crown.hex, borne: crown.bearer != nil, time: t)
         } ?? [], time: t, into: &frame)
+        // The Lyceum's hall, lit while its scholars sit.
+        let lyceum = stage.animate(state.lyceumHall.map { stage.lyceum(at: $0, lit: state.lyceumHallLit, time: t) } ?? [],
+                                   time: t, into: &frame)
         let campBatches = stage.animate(camps.batches, time: t, into: &frame)
         // The pedlar lying off the keeper's hold, while he does.
         let skiff = stage.animate(state.pedlar(for: state.player).map { pedlar in
@@ -246,7 +249,7 @@ extension GameSession {
             guard glimpse.owner != state.player, !isVisible(glimpse.at), state.houses.indices.contains(glimpse.owner) else { return nil }
             return (kind: glimpse.kind, hex: glimpse.at, colour: WorldStage.colour(houses, sigil: state.houses[glimpse.owner].sigil))
         } + walking), time: t, into: &frame)
-        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + stones + skiff + companies + flights
+        frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + lyceum + stones + skiff + companies + flights
         if full {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
                                                      time: time)
