@@ -497,7 +497,10 @@ public enum WorldShaders {
         // banks over the shore (run 543: gone without the light, kept
         // without the grain). The moon and the sky light only what is known.
         float shown = smoothstep(0.35, 1.0, in.known);
-        lit += nm_light(albedo, n, frame.moon.xyz, frame.moon.w) * shown;
+        // The moon low over the far shore lit the slopes facing it into
+        // pale banks against the rest (run 546: kept without the fog, lost
+        // without the light); on the land it falls softer than on models.
+        lit += nm_light(albedo, n, frame.moon.xyz, frame.moon.w * 0.55) * shown;
         for (int i = 0; i < 4; i++) {
             lit += nm_pointLight(albedo, in.world, n, frame.lights[i], frame.lights[i + 4]);
         }
@@ -633,14 +636,15 @@ public enum WorldShaders {
     float3 nm_milkyWay(float3 d) {
         float across = dot(d, normalize(float3(0.86, 0.22, 0.46)));
         float along = atan2(d.z, d.x);
-        float band = exp(-across * across / 0.018);
+        float band = exp(-across * across / 0.007);
         // Below the far shore, or well off the band, there is nothing to add.
         if (d.y < -0.02 || band < 0.02) { return float3(0.0); }
         float2 q = float2(along * 3.2, across * 9.0);
-        float glow = band * (0.45 + 0.75 * nm_fbm(q * 1.7 + 4.0));
+        // Clotted, never an even wash: light only where the noise gathers.
+        float glow = band * smoothstep(0.35, 0.85, nm_fbm(q * 1.7 + 4.0));
         float lanes = smoothstep(0.42, 0.68, nm_fbm(q * 3.1 + 11.0)) * exp(-across * across / 0.004);
         glow *= 1.0 - 0.75 * lanes;
-        float3 colour = float3(0.0050, 0.0054, 0.0068) * glow;
+        float3 colour = float3(0.0022, 0.0024, 0.0031) * glow;
         // Fine stars, many more within the band than without.
         float3 grid = d * 420.0;
         float3 cell = floor(grid);
