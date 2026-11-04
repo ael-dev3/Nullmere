@@ -127,7 +127,8 @@ public enum BuildingKind: String, CaseIterable, Codable, Sendable, PlainCases {
             return "Ward \(Hold.maximumWard(wallLevel: level, isSeat: isSeat)), garrison +\(Hold.garrisonBonus(wallLevel: level))% defence"
         case .beacon:
             let wider = Hold.territoryRadius(isSeat: isSeat, beaconLevel: level) > Hold.territoryRadius(isSeat: isSeat, beaconLevel: level - 1)
-            return "Sight \(Hold.sight(beaconLevel: level))" + (wider ? "; its land reaches a tile further" : "")
+            let warns = ["warns of marches bound here", "and tells whose and what", "and how many, and when"][min(max(level, 1), 3) - 1]
+            return "Sight \(Hold.sight(beaconLevel: level)); \(warns)" + (wider ? "; its land reaches a tile further" : "")
         case .infirmary:
             return "Beds for \(Hold.beds(infirmaryLevel: level)) of the House's fallen companies of war"
         case .archive:

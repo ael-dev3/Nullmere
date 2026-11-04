@@ -136,6 +136,9 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var mirrorWalks: [MirrorWalk]?
     /// The watch each company last walked the mirror.
     public internal(set) var mirrorWalked: [Int: Int]?
+    /// In a keeper's view only: the marches its Beacons warn of. Never kept
+    /// in the realm's own world, which knows where every company goes.
+    public internal(set) var warnings: [MarchWarning]?
     /// False reflections cast against the next Still Hour; in a view, the keeper's own.
     public internal(set) var reflections: [FalseReflection]?
     /// Each House's rung on the ladder of the lairs: the highest level it has broken.

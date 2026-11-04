@@ -28,6 +28,9 @@ extension GameState {
         view.reflections = reflections.map { all in all.filter { $0.house == house } }.flatMap { $0.isEmpty ? nil : $0 }
         // A House's labours are its own.
         view.labourBook = labourBook?[house].map { [house: $0] }
+        // What its Beacons warn of: marches bound for its holds, seen or not.
+        let warned = marchWarnings(for: house)
+        view.warnings = warned.isEmpty ? nil : warned
         // And its keys at the Inn.
         view.innBook = innBook?[house].map { [house: $0] }
         // How far a House has gone up the Spine is its own to know.

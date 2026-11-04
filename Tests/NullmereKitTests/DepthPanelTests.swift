@@ -1294,6 +1294,19 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(UnitPanel.mirrorHelp(shore).hasPrefix("Step into the Still for \(MirrorWalk.price)"))
     }
 
+    /// A Beacon's warning, said as much as its grade tells.
+    func testABeaconsWarningSaysWhatItsGradeTells() throws {
+        let state = world("pressed beacon")
+        let foe = (state.player + 1) % state.houses.count
+        let at = Hex(1, 1)
+        XCTAssertEqual(WorldMarks.warningLine(MarchWarning(hold: 1, from: at, house: nil, kind: nil, troops: nil, watches: nil), in: state), "A march")
+        XCTAssertEqual(WorldMarks.warningLine(MarchWarning(hold: 1, from: at, house: foe, kind: .rider, troops: nil, watches: nil), in: state),
+                       "\(state.houses[foe].title)'s Riders")
+        XCTAssertEqual(WorldMarks.warningLine(MarchWarning(hold: 1, from: at, house: foe, kind: .spear, troops: 4_000, watches: 2), in: state),
+                       "\(state.houses[foe].title)'s Spears · \(GameState.counted(4_000)) · in 2 watches")
+        XCTAssertTrue(WorldMarks.warningLine(MarchWarning(hold: 1, from: at, house: foe, kind: .spear, troops: 10, watches: 1), in: state).hasSuffix("this watch"))
+    }
+
     /// The Lantern Inn in the Realm panel: keys, chests opened by button.
     func testTheInnsChestsAreOpenedFromTheRealmPanel() throws {
         var state = world("pressed inn")

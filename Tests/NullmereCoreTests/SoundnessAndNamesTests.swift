@@ -88,8 +88,8 @@ final class RuleNamesTests: XCTestCase {
                 XCTAssertEqual(line.contains("its land reaches a tile further"), grows, "Level \(level): \(line)")
             }
         }
-        XCTAssertEqual(BuildingKind.beacon.effect(atLevel: 2), "Sight 4; its land reaches a tile further")
-        XCTAssertEqual(BuildingKind.beacon.effect(atLevel: 3), "Sight 5")
+        XCTAssertEqual(BuildingKind.beacon.effect(atLevel: 2), "Sight 4; and tells whose and what; its land reaches a tile further")
+        XCTAssertEqual(BuildingKind.beacon.effect(atLevel: 3), "Sight 5; and how many, and when")
     }
 
     /// The watches a company takes, as the panel shows them, are the

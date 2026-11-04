@@ -667,3 +667,40 @@ final class StagedWalk: @unchecked Sendable {
         set { lock.lock(); values.at = newValue; lock.unlock() }
     }
 }
+
+extension RallyScene {
+    /// Bel's Riders march on Ama's seat, where a third-grade Beacon stands:
+    /// Ama's client is warned whose they are, how many and when they come
+    /// (as Rise of Kingdoms' watchtower, of any House's march, an ally's
+    /// too); Bel's client is told nothing of it.
+    func heedTheBeacon(ama: Int, bel: Int) async throws {
+        let staged = StagedWalk()
+        await steward.reshape { realm in
+            guard let index = realm.world.holds.firstIndex(where: { $0.owner == ama && $0.isSeat }) else { return }
+            realm.world.holds[index].levels[.beacon] = 3
+            let seat = realm.world.holds[index]
+            let world = realm.world
+            let seen = world.visibility(for: ama)
+            let rings = (seat.sight + 1)...MarchWarning.reach(sight: seat.sight, grade: 3)
+            guard let start = rings.lazy.flatMap({ seat.position.ring($0) }).first(where: { hex in
+                world.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && world.unit(at: hex) == nil && world.hold(at: hex) == nil
+                    && !(world.map.index(of: hex).map { seen[$0] } ?? true)
+            }) else { return }
+            let id = realm.world.takeID()
+            var riders = NullmereCore.Unit(id: id, kind: .rider, owner: bel, position: start)
+            riders.destination = seat.position
+            realm.world.units.append(riders)
+            staged.unit = id
+            staged.at = start
+        }
+        let start = try XCTUnwrap(staged.at, "Open ground to march from")
+        try await until("Ama warned of the march") { earA.world?.warnings?.contains { $0.from == start } == true }
+        let warning = try await MainActor.run { try XCTUnwrap(earA.world?.warnings?.first { $0.from == start }) }
+        XCTAssertEqual(warning.house, bel)
+        XCTAssertEqual(warning.kind, .rider)
+        XCTAssertNotNil(warning.troops)
+        XCTAssertNotNil(warning.watches)
+        let belWarned = await MainActor.run { earB.world?.warnings?.contains { $0.from == start } ?? false }
+        XCTAssertFalse(belWarned, "Bel is told nothing of Ama's Beacon")
+    }
+}

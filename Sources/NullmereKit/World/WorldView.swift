@@ -285,6 +285,22 @@ struct WorldMarks: View {
                              with: .color(Palette.glow.opacity(bottle.ashore ? 0.95 : 0.6)))
             }
 
+            // What the Beacons warn of: a dashed line from each march to
+            // the hold it is bound for, and what the Beacon tells of it.
+            for warning in session.state.warnings ?? [] {
+                guard let hold = session.state.hold(warning.hold) else { continue }
+                let from = session.viewPoint(of: warning.from, in: size), to = session.viewPoint(of: hold.position, in: size)
+                var line = Path()
+                line.move(to: from)
+                line.addLine(to: to)
+                context.stroke(line, with: .color(Palette.bad.opacity(0.7)), style: StrokeStyle(lineWidth: 1.2, dash: [6, 4]))
+                let r = scale * 0.3
+                context.stroke(Path(ellipseIn: CGRect(x: from.x - r, y: from.y - r, width: r * 2, height: r * 2)),
+                               with: .color(Palette.bad.opacity(0.85)), lineWidth: 1.2)
+                context.draw(Text(verbatim: WorldMarks.warningLine(warning, in: session.state)).font(.nm(9.5)).foregroundStyle(Palette.bad),
+                             at: CGPoint(x: from.x, y: from.y - r - 8))
+            }
+
             // Where the selected company could march this watch: a faint
             // wash with an edge, and a red ring on what it could strike.
             if !session.reach.isEmpty || !session.strikeTargets.isEmpty {
@@ -880,5 +896,20 @@ extension WorldView {
     /// the interface's own colours, made linear.
     nonisolated static let houseColours: [Vec4] = Palette.houseRGB.map {
         Vec4(Float(pow($0.red, 2.2)), Float(pow($0.green, 2.2)), Float(pow($0.blue, 2.2)), 1)
+    }
+}
+
+extension WorldMarks {
+    /// What a Beacon tells of a march, as its mark says it: as much as its
+    /// grade tells and no more.
+    static func warningLine(_ warning: MarchWarning, in state: GameState) -> String {
+        var words = ["A march"]
+        if let kind = warning.kind {
+            let whose = warning.house.flatMap { state.houses.indices.contains($0) ? state.houses[$0].title : nil }
+            words = [whose.map { "\($0)'s \(kind.title)" } ?? kind.title]
+        }
+        if let troops = warning.troops { words.append(GameState.counted(troops)) }
+        if let watches = warning.watches { words.append(watches <= 1 ? "this watch" : "in \(watches) watches") }
+        return words.joined(separator: " · ")
     }
 }
