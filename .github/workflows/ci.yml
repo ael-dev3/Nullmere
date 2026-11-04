@@ -62,6 +62,9 @@ jobs:
     # macOS 26 and Xcode 26: the launcher needs the Foundation Models
     # framework, and its tests only run on the OS they target.
     runs-on: macos-26
+    # Write only to push the screenshots to the ci-shots branch.
+    permissions:
+      contents: write
     # The tests alone take some eighteen minutes now that the world's
     # models, motes and lights are rendered on the GPU; then the bundle,
     # the release rehearsal and the screenshots of the game and the realm.
@@ -250,6 +253,32 @@ jobs:
           name: screenshots
           path: build/*.png
           if-no-files-found: warn
+
+      # The screenshots, full size, on the ci-shots branch: one folder per
+      # run, so they can be fetched with git alone.
+      - name: Push the screenshots to ci-shots
+        if: always() && github.event_name == 'push'
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN: ${{ github.run_number }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -eu
+          ls build/*.png >/dev/null 2>&1 || exit 0
+          dir=$(mktemp -d)
+          cd "$dir"
+          git init -q
+          git config user.name "ci-shots"
+          git config user.email "ci-shots@users.noreply.github.com"
+          url="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git fetch -q --depth 1 "$url" ci-shots 2>/dev/null; then git checkout -q FETCH_HEAD; else git checkout -q --orphan ci-shots; fi
+          git checkout -q -B ci-shots
+          mkdir -p "$RUN"
+          cp "$GITHUB_WORKSPACE"/build/*.png "$RUN"/
+          echo "$SHA" > "$RUN/COMMIT"
+          git add "$RUN"
+          git commit -q -m "Screenshots of run $RUN ($SHA)"
+          for _ in 1 2 3; do if git push -q -f "$url" ci-shots; then break; fi; sleep 5; done
 
       # The score's themes and every cue, rendered by the tests, to be listened to.
       - name: Keep the sounds
