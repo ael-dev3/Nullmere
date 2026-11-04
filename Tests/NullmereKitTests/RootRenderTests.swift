@@ -140,10 +140,10 @@ final class RootRenderTests: XCTestCase {
         crowned.dismissSeatBriefing()
         XCTAssertNotNil(MoonBand.crownLine(in: crowned.state, for: crowned.player))
         try draw(PlayView(app: app, session: crowned))
-        // The standing cards give way to a company chosen, and keep to the seat.
+        // The standing cards give way to anything chosen, the seat too.
         crowned.dismissFirstSteps()
         crowned.focusOnSeat()
-        XCTAssertTrue(PlayView.standingCardsShown(crowned))
+        XCTAssertFalse(PlayView.standingCardsShown(crowned))
         if let company = crowned.state.units(of: crowned.player).first {
             crowned.selection = .unit(company.id)
             XCTAssertFalse(PlayView.standingCardsShown(crowned))
