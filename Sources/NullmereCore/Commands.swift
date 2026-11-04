@@ -52,6 +52,9 @@ public enum Command: Codable, Equatable, Sendable {
     /// Every company of the House gathering at the land's sites, or
     /// carrying a load, is called home at once.
     case recallAll
+    /// Hide another House from this keeper's hearing, or hear it again:
+    /// its words and its envoys kept from them at the realm.
+    case hideHouse(house: Int, hidden: Bool)
     /// Raise a banner: found an alliance of this name, and lead it.
     case foundAlliance(name: String)
     /// Its leader invites a House into the alliance.

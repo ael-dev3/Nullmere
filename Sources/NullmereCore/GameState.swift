@@ -136,6 +136,8 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var mirrorWalks: [MirrorWalk]?
     /// The watch each company last walked the mirror.
     public internal(set) var mirrorWalked: [Int: Int]?
+    /// The Houses each keeper's House has hidden from its hearing.
+    public internal(set) var hidden: [Int: [Int]]?
     /// How calm the Still lies, in watches undisturbed (nil: not at all).
     public internal(set) var calm: Int?
     /// In a keeper's view only: the marches its Beacons warn of. Never kept

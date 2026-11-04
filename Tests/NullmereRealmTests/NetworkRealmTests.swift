@@ -826,6 +826,7 @@ final class NetworkRallyTests: XCTestCase {
         try await scene.heedTheBeacon(ama: ama, bel: bel)
         try await scene.breakTheCalm(ama: ama, bel: bel)
         try await scene.gatherAndBringItHome(ama: ama, bel: bel)
+        try await scene.hideAHouse(ama: ama, bel: bel)
         try await scene.makeTheWordsSafe(ama: ama, bel: bel)
         try await scene.teachTheLakeToLie(ama: ama, bel: bel)
         try await scene.upTheSpine(ama: ama, bel: bel)

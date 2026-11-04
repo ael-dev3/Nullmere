@@ -180,3 +180,29 @@ final class WordsTests: XCTestCase {
         XCTAssertEqual(older.wordsSaid.map(\.text), ["First"])
     }
 }
+
+/// A House hidden at the realm: its words and envoys kept from the keeper
+/// who hid it, on any Mac, and heard again when the keeper lets it be.
+final class HiddenHouseTests: XCTestCase {
+    func testAHouseHiddenAtTheRealmIsHeardNoMore() throws {
+        var state = GameState(settings: GameSettings(seedText: "hidden", houseCount: 4, radius: 14, keepers: 2))
+        let me = state.player
+        let other = (me + 1) % state.houses.count
+        state.houses[other].isPlayer = true
+        _ = try state.perform(.say(words: "Hear me", toAlliance: false), as: other)
+        XCTAssertEqual(state.view(for: me).words(heardBy: me).map(\.text), ["Hear me"])
+        XCTAssertTrue(try state.perform(.hideHouse(house: other, hidden: true), as: me).isEmpty)
+        XCTAssertFalse(state.hears(other, as: me))
+        XCTAssertTrue(state.hears(me, as: other), "Hiding is one way")
+        XCTAssertTrue(state.view(for: me).words(heardBy: me).isEmpty, "kept from the keeper at the realm")
+        let said = try state.perform(.say(words: "Still here", toAlliance: false), as: other)
+        XCTAssertTrue(state.events(said, heardBy: me).isEmpty, "not heard as it is said")
+        XCTAssertFalse(state.events(said, heardBy: other).isEmpty)
+        XCTAssertNil(state.view(for: other).hidden?[me], "whom a keeper hides is theirs to know")
+        XCTAssertEqual(state.view(for: me).hiddenHouses(of: me), [other])
+        XCTAssertThrowsError(try state.perform(.hideHouse(house: me, hidden: true), as: me))
+        _ = try state.perform(.hideHouse(house: other, hidden: false), as: me)
+        XCTAssertEqual(state.view(for: me).words(heardBy: me).map(\.text), ["Hear me", "Still here"])
+        XCTAssertNil(state.hidden)
+    }
+}

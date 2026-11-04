@@ -92,7 +92,9 @@ extension GameState {
         for index in view.holds.indices where view.holds[index].owner != house {
             view.holds[index].wounded = nil
         }
-        view.envoys = envoys.filter { $0.from == house || $0.to == house }
+        view.envoys = envoys.filter { ($0.from == house || $0.to == house) && hears($0.from, as: house) }
+        // A House's hidden Houses are its own to know.
+        view.hidden = hidden?[house].map { [house: $0] }
         // Gifts too small for the chronicle are known only to the two Houses.
         view.gifts = gifts?.filter { $0.from == house || $0.to == house }
         view.reputed = strengths()
@@ -387,7 +389,7 @@ extension GameState {
             case .happeningMark(let owner, _, _, _), .deedDone(let owner, _), .chargeDone(let owner, _, _):
                 return owner == house
             case .said(let word):
-                return word.alliance == nil || word.alliance == alliance(of: house)?.id
+                return (word.alliance == nil || word.alliance == alliance(of: house)?.id) && hears(word.from, as: house)
             case .sung:
                 return true
             case .bottleCast(_, let from, let at):

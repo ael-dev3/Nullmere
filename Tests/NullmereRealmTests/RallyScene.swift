@@ -845,3 +845,22 @@ extension RallyScene {
         XCTAssertFalse(spoke, "Ama never hears it")
     }
 }
+
+extension RallyScene {
+    /// Ama hides Bel's House at the realm: Bel's next line never reaches
+    /// Ama's client, though Bel's own client has it; let be, Ama hears Bel
+    /// again.
+    func hideAHouse(ama: Int, bel: Int) async throws {
+        await MainActor.run { a.send(.hideHouse(house: bel, hidden: true)) }
+        try await until("the realm keeps Ama's hiding") { earA.world?.hears(bel, as: ama) == false }
+        let line = "Unheard by Ama \(Int.random(in: 1000...9999))"
+        // Bel's bar from the Words may still stand: wait it out.
+        try await until("Bel may speak") { earB.world.map { $0.barredFromWords(bel) == nil } ?? false }
+        await MainActor.run { b.send(.say(words: line, toAlliance: false)) }
+        try await until("Bel's own client has the line") { earB.world?.wordsSaid.contains { $0.text == line } == true }
+        let heard = await MainActor.run { earA.world?.wordsSaid.contains { $0.text == line } ?? false }
+        XCTAssertFalse(heard, "kept from Ama by the realm")
+        await MainActor.run { a.send(.hideHouse(house: bel, hidden: false)) }
+        try await until("Ama hears Bel again") { earA.world?.wordsSaid.contains { $0.text == line } == true }
+    }
+}

@@ -35,7 +35,8 @@ extension GameState {
     /// What a House hears: the realm's words, and its own alliance's.
     public func words(heardBy house: Int) -> [Word] {
         let sworn = alliance(of: house)?.id
-        return wordsSaid.filter { $0.alliance == nil || $0.alliance == sworn }
+        let hidden = hiddenHouses(of: house)
+        return wordsSaid.filter { ($0.alliance == nil || $0.alliance == sworn) && !hidden.contains($0.from) }
     }
 
     /// Why a House can't say something now, if it can't.
@@ -142,5 +143,32 @@ extension GameState {
         let until = watch + watches
         bars = (bars ?? []).filter { $0.house != house && $0.until > watch } + [WordsBar(house: house, until: until)]
         return [.barredFromWords(house: house, until: until)]
+    }
+}
+
+// MARK: Houses hidden
+
+extension GameState {
+    /// The Houses a House has hidden from its keeper's hearing.
+    public func hiddenHouses(of house: Int) -> Set<Int> {
+        Set(hidden?[house] ?? [])
+    }
+
+    /// Whether a House hears another's words and envoys.
+    public func hears(_ other: Int, as house: Int) -> Bool {
+        !hiddenHouses(of: house).contains(other)
+    }
+
+    /// A keeper hides another House, or hears it again; kept at the realm,
+    /// so their words and envoys are kept from the keeper on every Mac.
+    mutating func hide(_ other: Int, hidden: Bool, by house: Int) throws(RuleError) -> [GameEvent] {
+        guard houses.indices.contains(house), houses[house].isPlayer else { throw .notAKeeper }
+        guard houses.indices.contains(other), other != house else { throw .notYours }
+        var set = hiddenHouses(of: house)
+        if hidden { set.insert(other) } else { set.remove(other) }
+        var book = self.hidden ?? [:]
+        book[house] = set.isEmpty ? nil : set.sorted()
+        self.hidden = book.isEmpty ? nil : book
+        return []
     }
 }

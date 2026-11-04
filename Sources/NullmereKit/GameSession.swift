@@ -833,11 +833,16 @@ public final class GameSession {
     public func setMuted(_ muted: Bool, house: House) {
         if muted { mutedHouses.insert(house.name) } else { mutedHouses.remove(house.name) }
         UserDefaults.standard.set(mutedHouses.sorted(), forKey: Self.mutedKey)
+        // Kept at the realm too, so the House is hidden on every Mac.
+        if state.houses.indices.contains(house.id), house.id != player, state.houses[player].isPlayer {
+            _ = perform(.hideHouse(house: house.id, hidden: muted))
+        }
     }
 
     /// Whether a House's keeper's words are hidden from this keeper.
     public func isMuted(_ house: Int) -> Bool {
-        state.houses.indices.contains(house) && mutedHouses.contains(state.houses[house].name)
+        guard state.houses.indices.contains(house) else { return false }
+        return mutedHouses.contains(state.houses[house].name) || !state.hears(house, as: player)
     }
 
     /// The words this keeper hears, but those of the Houses they hide.
