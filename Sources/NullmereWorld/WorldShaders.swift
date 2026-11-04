@@ -24,9 +24,11 @@ public enum WorldShaders {
     public static let modelFragment = "nm_model_fragment"
     public static let moteVertex = "nm_mote_vertex"
     public static let moteFragment = "nm_mote_fragment"
+    public static let skyVertex = "nm_sky_vertex"
+    public static let skyFragment = "nm_sky_fragment"
 
     public static let functions = [landVertex, landFragment, waterVertex, waterFragment, modelVertex, modelFragment,
-                                   moteVertex, moteFragment]
+                                   moteVertex, moteFragment, skyVertex, skyFragment]
 
     public static let source = #"""
     #include <metal_stdlib>
@@ -583,6 +585,37 @@ public enum WorldShaders {
         float3 colour = starlit * mix(0.72, 1.0, knowledge.y) + moonlit;
         colour = nm_haze(colour, distance(in.world, frame.eye.xyz), frame.haze.x, frame.haze.y);
         return float4(nm_encode(colour * frame.haze.z), clear);
+    }
+
+    // MARK: The sky
+
+    struct SkyOut {
+        float4 position [[position]];
+        float2 ndc;
+    };
+
+    // One triangle over the whole view, at the far plane: it is drawn only
+    // where nothing nearer stands, which is the sky over the far shore.
+    vertex SkyOut nm_sky_vertex(uint vid [[vertex_id]]) {
+        float2 corner = float2(float((vid << 1u) & 2u), float(vid & 2u)) * 2.0 - 1.0;
+        SkyOut out;
+        out.position = float4(corner, 1.0, 1.0);
+        out.ndc = corner;
+        return out;
+    }
+
+    fragment float4 nm_sky_fragment(SkyOut in [[stage_in]], constant FrameUniforms &frame [[buffer(0)]]) {
+        float4 near = frame.inverseViewProjection * float4(in.ndc, 0.0, 1.0);
+        float4 far = frame.inverseViewProjection * float4(in.ndc, 1.0, 1.0);
+        float3 d = normalize(far.xyz / far.w - near.xyz / near.w);
+        float time = frame.eye.w;
+        float3 colour = nm_sky(d, frame.moon.xyz, time);
+        // The night's haze lies thick along the horizon and thins upward,
+        // so the far shore stands dark against a lighter band of air.
+        float up = max(d.y, 0.0);
+        float3 horizon = kMist * 1.6 + kMoonColour * 0.004;
+        colour = mix(horizon, colour, smoothstep(0.0, 0.22, up));
+        return float4(nm_encode(colour * frame.haze.z), 1.0);
     }
 
     // MARK: Models

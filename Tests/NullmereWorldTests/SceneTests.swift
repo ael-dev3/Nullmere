@@ -24,7 +24,7 @@ final class SceneTests: XCTestCase {
         XCTAssertEqual(instance.params, Vec4(0.4, 0.5, 2, 1))
         XCTAssertEqual(instance.flags & ModelInstance.alwaysShown, 1)
         XCTAssertTrue(WorldShaders.source.contains("struct ModelInstance"))
-        XCTAssertEqual(Set(WorldShaders.functions).count, 8)
+        XCTAssertEqual(Set(WorldShaders.functions).count, 10)
         for name in WorldShaders.functions {
             XCTAssertTrue(WorldShaders.source.contains(" \(name)("), "\(name) is in the source")
         }

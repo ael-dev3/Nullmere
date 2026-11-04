@@ -82,6 +82,7 @@ final class WorldRenderer {
     private let modelPipeline: any MTLRenderPipelineState
     private let waterPipeline: any MTLRenderPipelineState
     private let motePipeline: any MTLRenderPipelineState
+    private let skyPipeline: any MTLRenderPipelineState
     private let solid: any MTLDepthStencilState
     private let glassy: any MTLDepthStencilState
     private let pixelFormat: MTLPixelFormat
@@ -126,6 +127,7 @@ final class WorldRenderer {
         waterPipeline = try pipeline("Nullmere water", WorldShaders.waterVertex, WorldShaders.waterFragment, blends: true)
         modelPipeline = try pipeline("Nullmere models", WorldShaders.modelVertex, WorldShaders.modelFragment, blends: false, coverage: true)
         motePipeline = try pipeline("Nullmere motes", WorldShaders.moteVertex, WorldShaders.moteFragment, blends: true, premultiplied: true)
+        skyPipeline = try pipeline("Nullmere sky", WorldShaders.skyVertex, WorldShaders.skyFragment, blends: false)
         guard let commandQueue = device.makeCommandQueue() else { throw Failure.noCommandQueue }
         commandQueue.label = "Nullmere world"
         let solidDescriptor = MTLDepthStencilDescriptor()
@@ -275,6 +277,14 @@ final class WorldRenderer {
                                               options: .storageModeShared) {
                 draw(scene.batches, from: moving, fine: scene.fine, with: encoder)
             }
+        }
+
+        // The sky, at the far plane: only where neither land nor any model
+        // stands, over the far shore when the view leans past the horizon.
+        if !WorldRenderer.leftOut.contains("sky") {
+            encoder.setRenderPipelineState(skyPipeline)
+            encoder.setDepthStencilState(glassy)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         }
 
         // The still water over all, last, so what stands in the shallows
