@@ -1504,7 +1504,7 @@ public final class GameSession {
         case .breakUp: return .coin
         case .heal: return .tend
         case .scout: return .ride
-        case .raiseStandard: return .banner
+        case .raiseStandard, .helpStandard: return .banner
         case .useItem(let kind, _): return cue(using: kind)
         case .takeHeritage, .takeCrest, .bestow: return .banner
         case .prophesy: return .lore
@@ -1589,6 +1589,7 @@ public final class GameSession {
         case .standardTorn(_, let alliance, _, _) where state?.alliance(of: player)?.id == alliance: return .dread
         case .hallRaised(_, let id, _, _) where alliance == id: return .rise
         case .hallRisen(_, let id, _) where alliance == id: return .complete
+        case .standardRisen(_, let id, _) where alliance == id: return .complete
         case .hallStruck(_, let id, _, let by, _) where by != player && alliance == id: return .batter
         case .hallTorn(_, _, let by, _) where by == player: return .triumph
         case .hallTorn(_, let id, _, _) where alliance == id: return .dread
@@ -1791,7 +1792,8 @@ public final class GameSession {
             return state.hold(report.hold)?.position
         case .lairAssaulted(let assault):
             return assault.at
-        case .standardRaised(_, _, _, let at), .standardStruck(_, _, _, let at), .standardTorn(_, _, _, let at):
+        case .standardRaised(_, _, _, let at), .standardStruck(_, _, _, let at), .standardTorn(_, _, _, let at),
+             .standardHelped(_, _, let at), .standardRisen(_, _, let at):
             return at
         case .hallRaised(_, _, _, let at), .hallRisen(_, _, let at), .hallStruck(_, _, _, _, let at), .hallTorn(_, _, _, let at):
             return at

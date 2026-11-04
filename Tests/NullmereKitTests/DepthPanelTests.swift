@@ -2191,6 +2191,7 @@ final class DepthPanelTests: XCTestCase {
             (2...3).contains(hex.distance(to: seat.position)) && state.refusal(of: .raiseStandard(at: hex), as: me) == nil
         })
         _ = try state.perform(.raiseStandard(at: flag), as: me)
+        state.standStandardsWhole()
         let spot = try XCTUnwrap(flag.spiral(Standard.reach).first { state.refusal(of: .raiseAllianceHall(at: $0), as: me) == nil })
         let (session, link) = session(state)
         let sworn = try XCTUnwrap(session.state.alliance(of: me))
@@ -2258,6 +2259,7 @@ final class DepthPanelTests: XCTestCase {
             (2...3).contains(hex.distance(to: seat.position)) && state.refusal(of: .raiseStandard(at: hex), as: me) == nil
         })
         _ = try state.perform(.raiseStandard(at: flag), as: me)
+        state.standStandardsWhole()
         let spot = try XCTUnwrap(flag.spiral(Standard.reach).first { state.refusal(of: .raiseStorehouse(at: $0), as: me) == nil })
         let (session, link) = session(state)
         let sworn = try XCTUnwrap(session.state.alliance(of: me))

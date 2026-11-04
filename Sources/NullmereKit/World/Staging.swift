@@ -161,7 +161,7 @@ extension GameSession {
         let lairHearths: [Hearth] = lairs.hearths + gates.hearths
         // The alliances' standards, each in its leader's colour.
         let flags = state.standardsStanding.filter { isExplored($0.position) }
-        let standards = stage.animate(stage.standards(flags.map { ($0.position, allianceColour($0.alliance, else: $0.raisedBy, houses)) }),
+        let standards = stage.animate(stage.standards(flags.map { ($0.position, allianceColour($0.alliance, else: $0.raisedBy, houses), Float($0.progress)) }),
                                       time: t, into: &frame)
         // The war camps of rallies gathering at holds in sight, in their
         // callers' colours.

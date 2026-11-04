@@ -1012,3 +1012,52 @@ extension RallyScene {
         }
     }
 }
+
+extension RallyScene {
+    /// Ama begins a standard of their alliance from her client; Bel, from
+    /// his, lends a hand to it. Both see it rise, a watch sooner for his
+    /// hand, its land no one's until it stands whole, and then the
+    /// alliance's for both.
+    func raiseAStandardTogether(ama: Int, bel: Int) async throws {
+        let staged = StagedWalk()
+        await steward.reshape { realm in
+            for house in [ama, bel] { realm.world.houses[house].stock = realm.world.houses[house].stock + Stock(timber: 300, stone: 300, moonsalt: 20) }
+            let world = realm.world
+            guard let seat = world.holds.first(where: { $0.owner == ama && $0.isSeat }) else { return }
+            staged.at = seat.position.spiral(Standard.tether).first { hex in
+                hex.distance(to: seat.position) >= 2 && world.refusal(of: .raiseStandard(at: hex), as: ama) == nil
+            }
+        }
+        let spot = try XCTUnwrap(staged.at, "Ground for a standard near Ama's seat")
+        await MainActor.run { a.send(.raiseStandard(at: spot)) }
+        try await until("both to see the standard begun") {
+            earA.world?.standard(at: spot)?.isWhole == false && earB.world?.standard(at: spot)?.isWhole == false
+        }
+        let unclaimed = await MainActor.run { (earA.world?.allianceLand(at: spot), earB.world?.allianceLand(at: spot)) }
+        XCTAssertNil(unclaimed.0, "Its land no one's while it rises")
+        XCTAssertNil(unclaimed.1)
+        let id = try await MainActor.run { try XCTUnwrap(earB.world?.standard(at: spot)).id }
+        await MainActor.run { b.send(.helpStandard(standard: id)) }
+        try await until("both to see Bel's hand on it") {
+            earA.world?.standard(id)?.helpers == [bel] && earB.world?.standard(id)?.built == 1
+        }
+        // The watches raise the rest: one fewer for his hand.
+        var turned = 0
+        while await MainActor.run(body: { earA.world?.standard(id)?.isWhole != true }) {
+            turned += 1
+            XCTAssertLessThanOrEqual(turned, Standard.raising - 1, "Bel's hand saved a watch")
+            guard turned < Standard.raising else { break }
+            let watch = await MainActor.run { earA.world?.watch ?? 0 }
+            await MainActor.run { a.setReady(true); b.setReady(true) }
+            try await until("the watch to turn") { (earA.world?.watch ?? 0) > watch && (earB.world?.watch ?? 0) > watch }
+        }
+        try await until("both to see it stand whole") { earA.world?.standard(id)?.isWhole == true && earB.world?.standard(id)?.isWhole == true }
+        let alliance = await MainActor.run { earA.world?.alliance(of: ama)?.id }
+        let land = await MainActor.run { (earA.world?.allianceLand(at: spot), earB.world?.allianceLand(at: spot)) }
+        XCTAssertNotNil(alliance)
+        XCTAssertEqual(land.0, alliance, "the alliance's land, as Ama sees it")
+        XCTAssertEqual(land.1, alliance, "and as Bel does")
+        let borders = await MainActor.run { earB.world?.allianceBorders().isEmpty }
+        XCTAssertEqual(borders, false, "its border drawn")
+    }
+}

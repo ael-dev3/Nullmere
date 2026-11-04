@@ -35,6 +35,7 @@ final class AllianceHallTests: XCTestCase {
             (2...3).contains(hex.distance(to: seat.position)) && state.refusal(of: .raiseStandard(at: hex), as: me) == nil
         })
         _ = try state.perform(.raiseStandard(at: flag), as: me)
+        state.standStandardsWhole()
         let spot = try XCTUnwrap(flag.spiral(Standard.reach).first { state.hallRefusal(at: $0, by: me) == nil })
         return Stage(state: state, me: me, ally: ally, alliance: alliance, seat: seat, flag: flag, spot: spot)
     }
@@ -327,6 +328,7 @@ final class AllianceHallTests: XCTestCase {
             (2...3).contains(hex.distance(to: seat.position)) && state.refusal(of: .raiseStandard(at: hex), as: steward) == nil
         })
         _ = try state.perform(.raiseStandard(at: flag), as: steward)
+        state.standStandardsWhole()
         state.watch = RivalMind.hallsFrom + (4 - (RivalMind.hallsFrom + steward) % 4) % 4
         let events = state.stewardTurn(for: steward)
         let begun = events.compactMap { event -> Hex? in

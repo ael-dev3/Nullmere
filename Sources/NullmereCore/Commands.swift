@@ -129,6 +129,8 @@ public enum Command: Codable, Equatable, Sendable {
     /// alliance's holds, standards or hall: the land about it is the
     /// alliance's.
     case raiseStandard(at: Hex)
+    /// Lend a hand to the alliance's rising standard: a watch sooner.
+    case helpStandard(standard: Int)
     /// A House uses an item from its satchel: a ward stone, or an hourglass
     /// that hastens a hold's work and muster, on one of its holds; caches,
     /// draughts and an hourglass naming no hold, on the House itself.
@@ -402,6 +404,12 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case standardTooFar
     /// An alliance with as many standards as it may keep.
     case standardsEnough
+    /// No standard stands so.
+    case noSuchStandard
+    /// A standard stands whole already.
+    case standardWhole
+    /// A House that raised a standard, or lent a hand already.
+    case standardHelped
     /// An item the House has none of.
     case noItem
     /// An hourglass used where nothing is under way that has a watch to lose.
@@ -659,6 +667,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .standardGround: return "A standard stands only on open land, with nothing on it."
         case .standardTooFar: return "A standard stands within four tiles of your alliance's holds, standards or hall."
         case .standardsEnough: return "Your alliance keeps as many standards as it may: one, and one more for each of its Houses."
+        case .noSuchStandard: return "No standard stands there."
+        case .standardWhole: return "That standard stands whole already."
+        case .standardHelped: return "Your House has given that standard its hand already."
         case .noItem: return "Your House has none of that."
         case .nothingToHasten: return "Nothing under way there has a watch to spare: what has one left is done as the watch turns."
         case .wardWhole: return "That hold's ward is whole."
@@ -813,6 +824,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case standardRaised(standard: Int, alliance: Int, house: Int, at: Hex)
     /// A company strikes a standard's ward.
     case standardStruck(standard: Int, ward: Int, by: Int, at: Hex)
+    /// A House lent a hand to its alliance's rising standard.
+    case standardHelped(standard: Int, by: Int, at: Hex)
+    /// A standard stands whole, its land its alliance's.
+    case standardRisen(standard: Int, alliance: Int, at: Hex)
     /// A standard comes down: torn down by a House, or by none, its House
     /// gone from its alliance.
     case standardTorn(standard: Int, alliance: Int, by: Int?, at: Hex)

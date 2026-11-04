@@ -307,7 +307,7 @@ final class StageTests: XCTestCase {
         let stage = stage()
         let hexes = Array(Self.state.map.hexes.filter { Self.state.map[$0]?.terrain.isPassable == true }.prefix(2))
         let blue = Vec4(0.1, 0.2, 0.9, 1), gold = Vec4(0.8, 0.7, 0.2, 1)
-        let batches = stage.standards([(hexes[0], blue), (hexes[1], gold)])
+        let batches = stage.standards([(hexes[0], blue, 1), (hexes[1], gold, 1)])
         XCTAssertEqual(batches.map(\.key), [.standard])
         let instances = try XCTUnwrap(batches.first).instances
         XCTAssertEqual(instances.map(\.colour), [blue, gold])
@@ -318,6 +318,15 @@ final class StageTests: XCTestCase {
             XCTAssertEqual(instance.hex, SIMD2(Int32(hex.q), Int32(hex.r)))
         }
         XCTAssertTrue(stage.standards([]).isEmpty)
+        // One rising: drawn up its pole as far as it has come, in a scaffold.
+        let rising = stage.standards([(hexes[0], blue, 0.5)])
+        XCTAssertEqual(Set(rising.map(\.key)), [.standard, .scaffold])
+        let half = try XCTUnwrap(rising.first { $0.key == .standard }?.instances.first).params.x
+        let bounds = Library.model(.standard).mesh.bounds
+        XCTAssertEqual(half, bounds.min.y + 0.6 * (bounds.max.y - bounds.min.y), accuracy: 1e-4)
+        let nearly = stage.standards([(hexes[0], blue, 0.9)]).first { $0.key == .standard }?.instances.first
+        XCTAssertLessThan(half, try XCTUnwrap(nearly).params.x)
+        XCTAssertEqual(instances.first?.params.x, WorldStage.whole, "whole ones stand whole")
     }
 
     /// A rally gathering pitches its war camp just past its muster's walls,

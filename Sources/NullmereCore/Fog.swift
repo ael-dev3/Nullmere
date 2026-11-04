@@ -168,8 +168,12 @@ extension GameState {
         view.lairs = lairs?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
         // The holy sites on ground they have explored, and who holds them.
         view.shrines = shrines?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
-        // The alliances' standards and halls on ground they have explored.
-        view.standards = standards?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
+        // The alliances' standards and halls on ground they have explored;
+        // its own alliance's standards wherever they stand, to raise them.
+        let sworn = alliance(of: house)?.id
+        view.standards = standards?.filter { standard in
+            standard.alliance == sworn || map.index(of: standard.position).map { explored.indices.contains($0) && explored[$0] } ?? false
+        }
         view.halls = halls?.filter { map.index(of: $0.position).map { explored.indices.contains($0) && explored[$0] } ?? false }
         // Their storehouses too, and its own alliance's wherever it stands;
         // what is laid up in one is each House's own to know.
@@ -286,6 +290,10 @@ extension GameState {
             case .standardTorn(_, let id, let by, let at):
                 return by == house || alliance(id)?.members.contains(house) == true || visible(at)
             case .standardStruck(let id, _, let by, let at):
+                return by == house || standard(id).flatMap { alliance($0.alliance) }?.members.contains(house) == true || visible(at)
+            case .standardRisen(_, let id, let at):
+                return alliance(id)?.members.contains(house) == true || visible(at)
+            case .standardHelped(let id, let by, let at):
                 return by == house || standard(id).flatMap { alliance($0.alliance) }?.members.contains(house) == true || visible(at)
             case .hallRaised(_, let id, _, let at), .hallRisen(_, let id, let at):
                 return alliance(id)?.members.contains(house) == true || visible(at)

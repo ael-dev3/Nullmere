@@ -99,9 +99,10 @@ extension GameState {
         case .standardRaised(_, let id, let house, let at):
             guard let alliance = alliance(id) else { return nil }
             let place = placeName(of: at)
-            if house == viewer { return Tidings("You raise a standard of \(alliance.name) \(place); the land about it is your alliance's.", .good) }
+            let rising = "it rises over \(Standard.raising) watches, sooner for each House that lends a hand"
+            if house == viewer { return Tidings("You begin a standard of \(alliance.name) \(place): \(rising).", .good) }
             if alliance.members.contains(viewer) {
-                return Tidings("\(houses[house].title) raises a standard of \(alliance.name) \(place).", .good)
+                return Tidings("\(houses[house].title) begins a standard of \(alliance.name) \(place): \(rising).", .good)
             }
             return Tidings("\(houses[house].title) raises a standard of \(alliance.name) \(place).", .neutral)
         case .standardStruck(let id, let ward, let by, let at):
@@ -133,6 +134,17 @@ extension GameState {
                 return Tidings("\(houses[house].title) begins your alliance's hall \(place): it rises over \(AllianceHall.raising) watches.", .good)
             }
             return Tidings("\(houses[house].title) begins a hall of \(name) \(place).", .neutral)
+        case .standardHelped(let id, let by, let at):
+            guard houses.indices.contains(by), let standard = standard(id) else { return nil }
+            let left = Standard.raising - (standard.built ?? Standard.raising)
+            let rest = left > 0 ? " It stands whole in \(left) watch\(left == 1 ? "" : "es")." : ""
+            if by == viewer { return Tidings("You lend a hand to your alliance's standard \(placeName(of: at)).\(rest)", .good) }
+            return Tidings("\(houses[by].title) lends a hand to your alliance's standard \(placeName(of: at)).\(rest)", .good)
+        case .standardRisen(_, let id, let at):
+            guard alliance(id)?.members.contains(viewer) == true else {
+                return Tidings("A standard of \(alliance(id)?.name ?? "a fallen alliance") stands whole \(placeName(of: at)).", .neutral)
+            }
+            return Tidings("Your alliance's standard stands whole \(placeName(of: at)): the land \(Standard.reach) tiles about it is your alliance's.", .good)
         case .hallRisen(_, let id, let at):
             guard alliance(id)?.members.contains(viewer) == true else {
                 return Tidings("The hall of \(alliance(id)?.name ?? "a fallen alliance") stands whole \(placeName(of: at)).", .neutral)

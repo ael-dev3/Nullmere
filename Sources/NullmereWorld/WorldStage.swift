@@ -336,8 +336,6 @@ public final class WorldStage: @unchecked Sendable {
         return (batches, hearths)
     }
 
-    /// The alliances' standards the keeper has found, each in its
-    /// alliance's colour.
     /// The companies the lake mirrored at its Still Hour that the keeper
     /// cannot otherwise see: each drawn faint where it stood, in its House's
     /// colour, a reflection more than a company.
@@ -352,14 +350,33 @@ public final class WorldStage: @unchecked Sendable {
         })
     }
 
-    public func standards(_ standards: [(hex: Hex, colour: Vec4)]) -> [ModelBatch] {
-        WorldStage.batches(standards.map { standard in
+    /// A standard still rising stands within a scaffold this wide.
+    public static let standardScaffold: Float = 0.3
+
+    /// The alliances' standards the keeper knows of, each in its alliance's
+    /// colour; one still rising drawn up its pole as far as it has come
+    /// (`progress`, 0 to 1) within a narrow scaffold, its land not yet its
+    /// alliance's.
+    public func standards(_ standards: [(hex: Hex, colour: Vec4, progress: Float)]) -> [ModelBatch] {
+        let bounds = Library.model(.standard).mesh.bounds
+        var placed: [(ModelKey, ModelInstance)] = []
+        for standard in standards {
             let centre = Relief.centre(of: standard.hex)
             let at = Vec3(centre.x, ground(atX: centre.x, z: centre.z) - Scatter.sink, centre.z)
-            return (.standard, ModelInstance(model: .translation(at) * .rotationY(WorldStage.phase(of: standard.hex, salt: 29) * .pi / 3),
-                                             colour: standard.colour, phase: WorldStage.phase(of: standard.hex, salt: 31),
-                                             hex: SIMD2(Int32(standard.hex.q), Int32(standard.hex.r))))
-        })
+            let cell = SIMD2(Int32(standard.hex.q), Int32(standard.hex.r))
+            let turn = Mat4.translation(at) * .rotationY(WorldStage.phase(of: standard.hex, salt: 29) * .pi / 3)
+            let done = min(max(standard.progress, 0), 1)
+            // Its pole set from the first, the rest drawn up as it rises.
+            let rise = done < 1 ? bounds.min.y + (0.2 + 0.8 * done) * (bounds.max.y - bounds.min.y) : WorldStage.whole
+            placed.append((.standard, ModelInstance(model: turn, colour: standard.colour, rise: rise,
+                                                    phase: WorldStage.phase(of: standard.hex, salt: 31), hex: cell)))
+            if done < 1 {
+                let tall = max(bounds.max.y * min(done + 0.15, 1), 0.12)
+                placed.append((.scaffold, ModelInstance(model: turn * .scale(Vec3(WorldStage.standardScaffold, tall, WorldStage.standardScaffold)),
+                                                        hex: cell)))
+            }
+        }
+        return WorldStage.batches(placed)
     }
 
     /// How far from its muster's heart a rally camp stands: past the walls,

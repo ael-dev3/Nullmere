@@ -42,6 +42,7 @@ final class StandardTests: XCTestCase {
         let spot = try ground(near: stage.seat.position, in: stage.state)
         let before = stage.state.houses[me].stock
         let events = try stage.state.perform(.raiseStandard(at: spot), as: me)
+        stage.state.standStandardsWhole()
         let standard = try XCTUnwrap(stage.state.standard(at: spot))
         XCTAssertEqual(events, [.standardRaised(standard: standard.id, alliance: standard.alliance, house: me, at: spot)])
         XCTAssertEqual(stage.state.houses[me].stock + Standard.cost, before, "For its stores")
@@ -52,7 +53,7 @@ final class StandardTests: XCTestCase {
         XCTAssertNil(stage.state.allianceLand(at: try XCTUnwrap(spot.ring(Standard.reach + 1).first)), "Two tiles each way")
         XCTAssertTrue(stage.state.isOccupied(spot), "Nothing rises on it")
         XCTAssertEqual(stage.state.tidings(of: events[0], for: me)?.text,
-                       "You raise a standard of The Raised Banner \(stage.state.placeName(of: spot)); the land about it is your alliance's.")
+                       "You begin a standard of The Raised Banner \(stage.state.placeName(of: spot)): it rises over \(Standard.raising) watches, sooner for each House that lends a hand.")
         XCTAssertEqual(stage.state.tidings(of: events[0], for: stage.ally)?.tone, .good)
         XCTAssertEqual(stage.state.events(events, heardBy: stage.ally), events, "Its alliance hears it")
         XCTAssertEqual(stage.state.view(for: me).standardsStanding.count, 1)
@@ -65,6 +66,7 @@ final class StandardTests: XCTestCase {
         var stage = try staged()
         let spot = try ground(near: stage.seat.position, in: stage.state)
         _ = try stage.state.perform(.raiseStandard(at: spot), as: stage.me)
+        stage.state.standStandardsWhole()
         let alliance = try XCTUnwrap(stage.state.alliance(of: stage.me)).id
         let borders = stage.state.allianceBorders()
         XCTAssertFalse(borders.isEmpty)
@@ -128,6 +130,7 @@ final class StandardTests: XCTestCase {
         let rate = stage.state.gatheringRate(of: unit, for: .grain)
         XCTAssertFalse(stage.state.isOnOwnLand(unit))
         _ = try stage.state.perform(.raiseStandard(at: spot), as: me)
+        stage.state.standStandardsWhole()
         XCTAssertTrue(stage.state.isOnOwnLand(unit))
         let held = stage.state.strengths(of: attacker, against: unit, at: beside).defense
         XCTAssertGreaterThan(held, bare, "Firmer on its own land")
@@ -148,6 +151,7 @@ final class StandardTests: XCTestCase {
         let bare = stage.state.income(of: stage.seat)
         XCTAssertFalse(stage.state.isOnAllianceLand(stage.seat))
         _ = try stage.state.perform(.raiseStandard(at: try ground(near: stage.seat.position, in: stage.state)), as: me)
+        stage.state.standStandardsWhole()
         XCTAssertTrue(stage.state.isOnAllianceLand(stage.seat), "Its seat within the standard's land")
         let under = stage.state.income(of: try XCTUnwrap(stage.state.hold(stage.seat.id)))
         for resource in Resource.allCases {
@@ -165,6 +169,7 @@ final class StandardTests: XCTestCase {
         let me = stage.me, foe = 3
         let spot = try ground(near: stage.seat.position, in: stage.state)
         _ = try stage.state.perform(.raiseStandard(at: spot), as: me)
+        stage.state.standStandardsWhole()
         let standard = try XCTUnwrap(stage.state.standard(at: spot))
         let beside = try ground(near: spot, within: 1...1, in: stage.state)
         let spear = stage.state.put(.spear, tier: 5, of: foe, at: beside)
@@ -188,6 +193,7 @@ final class StandardTests: XCTestCase {
         var leaving = try staged("standards left")
         let flag = try ground(near: leaving.seat.position, in: leaving.state)
         _ = try leaving.state.perform(.raiseStandard(at: flag), as: leaving.me)
+        leaving.state.standStandardsWhole()
         let raised = try XCTUnwrap(leaving.state.standard(at: flag))
         XCTAssertEqual(leaving.state.keepStandards(), [], "Kept while its House is sworn")
         leaving.state.standards![0].ward = 10
@@ -205,6 +211,7 @@ final class StandardTests: XCTestCase {
         var stage = try staged("standards told")
         let spot = try ground(near: stage.seat.position, in: stage.state)
         _ = try stage.state.perform(.raiseStandard(at: spot), as: stage.me)
+        stage.state.standStandardsWhole()
         let standard = try XCTUnwrap(stage.state.standard(at: spot))
         let alliance = try XCTUnwrap(stage.state.alliance(of: stage.me))
         let foe = 3, outsider = 2
@@ -232,6 +239,7 @@ final class StandardTests: XCTestCase {
         var stage = try staged("unsound ground")
         let spot = try ground(near: stage.seat.position, in: stage.state)
         _ = try stage.state.perform(.raiseStandard(at: spot), as: stage.me)
+        stage.state.standStandardsWhole()
         let raised = try XCTUnwrap(stage.state.standard(at: spot))
         XCTAssertEqual(stage.state.standard(raised.id), raised)
         XCTAssertNil(stage.state.standard(raised.id + 1_000))

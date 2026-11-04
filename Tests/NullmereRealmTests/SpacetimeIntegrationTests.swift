@@ -331,6 +331,8 @@ final class SpacetimeIntegrationTests: XCTestCase {
         try await scene.upTheSpine(ama: houseA, bel: houseB)
         print("REALM two keepers sent a line and a commander up the Spine from their own clients, each seeing only their own stars")
         print("REALM two allied keepers rallied on a lair from their own clients, broke it, and both were told of it and their shares")
+        try await RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60).raiseAStandardTogether(ama: houseA, bel: houseB)
+        print("REALM one keeper began a standard and her ally lent a hand from his own client; both saw it rise a watch sooner and its land become the alliance's")
         await MainActor.run { b.send(.leaveAlliance) }
         try await until("Bel gone from the alliance, as both see it") {
             earA.world?.areAllied(houseA, houseB) == false && earB.world?.alliance(of: houseB) == nil

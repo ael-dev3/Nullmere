@@ -1056,6 +1056,33 @@ struct StandardRow: View {
     }
 }
 
+/// Lending a hand to the keeper's alliance's rising standard: a watch
+/// sooner, for timber and stone, once each House; or why it can't.
+struct StandardHelpRow: View {
+    let session: GameSession
+    let standard: Standard
+
+    var body: some View {
+        let state = session.state
+        let refusal = state.refusal(of: .helpStandard(standard: standard.id), as: session.player)
+        let left = Standard.raising - (standard.built ?? Standard.raising)
+        VStack(alignment: .leading, spacing: 5) {
+            Text(verbatim: "It rises, whole in \(left) watch\(left == 1 ? "" : "es"); its land is the alliance's only once it stands.")
+                .font(.nm(10.5))
+                .foregroundStyle(Palette.text(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                CostLine(cost: Standard.helpCost, available: state.purse(of: session.player))
+                Spacer()
+                QuietButton(title: "Lend a hand", size: 8.5, enabled: refusal == nil, name: "Lend a hand to raise this standard a watch sooner",
+                            why: refusal?.description) {
+                    session.perform(.helpStandard(standard: standard.id))
+                }
+            }
+        }
+    }
+}
+
 /// Beginning the keeper's alliance's hall on its land, for its cost, or
 /// why it can't be begun there: offered to the alliance's leader on the
 /// alliance's land while it has none.
@@ -1278,11 +1305,15 @@ struct TilePanel: View {
                     Caps("A standard of \(state.alliance(standard.alliance)?.name ?? "a fallen alliance")", size: 9.5, weight: .medium)
                         .foregroundStyle(Palette.glowWords)
                     Text(verbatim: "Raised by \(state.houses.indices.contains(standard.raisedBy) ? state.houses[standard.raisedBy].title : "a fallen House"); "
-                         + "its ward \(standard.ward) of \(Standard.maximumWard). The land two tiles about it is the alliance's: its companies "
+                         + (standard.isWhole ? "" : "rising, ") + "its ward \(standard.ward) of \(Standard.maximumWard). The land two tiles about it is the alliance's: its companies "
                          + "there stand a tenth firmer, mend sooner and gather a fifth more.")
                         .font(.nm(10.5))
                         .foregroundStyle(Palette.text(0.6))
                         .fixedSize(horizontal: false, vertical: true)
+                    // Rising: a hand from the keeper's House, if it can give one.
+                    if !standard.isWhole, state.alliance(of: session.player)?.id == standard.alliance {
+                        StandardHelpRow(session: session, standard: standard)
+                    }
                 } else if let sworn = state.alliance(of: session.player) {
                     Rule(opacity: 0.18)
                     StandardRow(session: session, hex: hex)

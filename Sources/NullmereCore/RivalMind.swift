@@ -90,6 +90,7 @@ struct RivalMind {
         if !caretaking {
             events += studyTogether(in: &state)
             events += raiseStandard(in: &state)
+            events += helpStandards(in: &state)
             events += raiseHall(in: &state)
             events += raiseStorehouse(in: &state)
             events += raiseYard(in: &state)
@@ -165,6 +166,13 @@ struct RivalMind {
     static let holySiteReach = 8
     /// The watch from which stewards raise their alliances' standards.
     static let standardsFrom = 25
+
+    private func helpStandards(in state: inout GameState) -> [GameEvent] {
+        // A hand to the alliance's rising standards, with stores to spare.
+        guard let sworn = state.alliance(of: house), state.purse(of: house).covers(Standard.helpCost * 3) else { return [] }
+        guard let rising = state.standards(of: sworn.id).first(where: { state.helpStandardRefusal($0.id, by: house) == nil }) else { return [] }
+        return perform(.helpStandard(standard: rising.id), in: &state)
+    }
 
     /// A House of an alliance with stores to spare raises a standard one
     /// watch in six, where its land would take in the most sites of the

@@ -119,6 +119,10 @@ enum HoverInfo {
     /// An alliance's standard as the map names it, with its ward.
     static func named(_ standard: Standard, in state: GameState) -> String {
         let name = state.alliance(standard.alliance)?.name ?? "a fallen alliance"
+        guard standard.isWhole else {
+            let left = Standard.raising - (standard.built ?? Standard.raising)
+            return "a standard of \(name) rising, whole in \(left) watch\(left == 1 ? "" : "es"): its land not yet the alliance's"
+        }
         return "a standard of \(name), ward \(standard.ward) of \(Standard.maximumWard): the land about it is the alliance's"
     }
 

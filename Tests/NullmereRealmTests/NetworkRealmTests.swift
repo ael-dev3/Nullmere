@@ -823,6 +823,7 @@ final class NetworkRallyTests: XCTestCase {
             earA.world?.areAllied(ama, bel) == true && earB.world?.areAllied(ama, bel) == true
         }
         try await scene.helpEachOther(ama: ama, bel: bel)
+        try await scene.raiseAStandardTogether(ama: ama, bel: bel)
         try await scene.breakALair(ama: ama, bel: bel)
         try await scene.writeAndTrade(ama: ama, bel: bel)
         try await scene.foretellAHappening(ama: ama, bel: bel)

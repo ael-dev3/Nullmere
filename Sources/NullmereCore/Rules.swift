@@ -123,6 +123,8 @@ extension GameState {
             return try scout(holdID, with: unitID, as: house) + liftVeil(of: house) + tryWhispers(scouting: holdID, as: house)
         case let .raiseStandard(hex):
             return try raiseStandard(at: hex, by: house)
+        case let .helpStandard(standard):
+            return try helpStandard(standard, by: house)
         case let .useItem(kind, holdID):
             return try use(kind, on: holdID, as: house)
         case let .takeHeritage(heritage):

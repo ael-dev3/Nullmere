@@ -34,6 +34,7 @@ final class AllianceStoresTests: XCTestCase {
             (2...3).contains(hex.distance(to: seat.position)) && state.refusal(of: .raiseStandard(at: hex), as: me) == nil
         })
         _ = try state.perform(.raiseStandard(at: flag), as: me)
+        state.standStandardsWhole()
         let spot = try XCTUnwrap(flag.spiral(Standard.reach).first { state.storehouseRefusal(at: $0, by: me) == nil })
         return Stage(state: state, me: me, ally: ally, alliance: alliance, seat: seat, flag: flag, spot: spot)
     }
@@ -77,6 +78,7 @@ final class AllianceStoresTests: XCTestCase {
         let before = paying.state.houses[me].stock
         let second = try XCTUnwrap(paying.seat.position.spiral(4).first { paying.state.standardRefusal(at: $0, by: me) == nil })
         _ = try paying.state.perform(.raiseStandard(at: second), as: me)
+        paying.state.standStandardsWhole()
         XCTAssertEqual(paying.state.alliance(alliance)?.stores, Stock(moonsalt: 3), "The coffers' timber and moonsalt went first")
         XCTAssertEqual(before.timber - paying.state.houses[me].stock.timber, Standard.cost.timber - 30)
         XCTAssertEqual(before.stone - paying.state.houses[me].stock.stone, Standard.cost.stone)
@@ -513,6 +515,7 @@ final class AllianceStoresTests: XCTestCase {
             (2...3).contains(hex.distance(to: seat.position)) && state.refusal(of: .raiseStandard(at: hex), as: steward) == nil
         })
         _ = try state.perform(.raiseStandard(at: flag), as: steward)
+        state.standStandardsWhole()
         let sworn = try XCTUnwrap(state.alliance(of: steward)).id
         // A yard first, of the first store it has none of.
         state.watch = RivalMind.yardsFrom + (5 - (RivalMind.yardsFrom + steward) % 5 + 2) % 5
