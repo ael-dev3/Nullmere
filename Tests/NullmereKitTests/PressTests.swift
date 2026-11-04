@@ -1212,6 +1212,7 @@ final class PressTests: XCTestCase {
         let (session, link) = session(state)
         // The panels are on the rail, every one; the bar keeps the House, the
         // stores and Ready.
+        session.railShown = true
         draw(PanelRail(session: session), width: 720, height: 40)
         for (label, panel) in [("Houses", GameSession.Panel.houses), ("Chronicle", .chronicle), ("Guide", .guide)] {
             XCTAssertTrue(PressableButtons.press(label), "Among \(shown)")

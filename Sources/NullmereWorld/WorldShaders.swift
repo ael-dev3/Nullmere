@@ -520,7 +520,7 @@ public enum WorldShaders {
             // The unknown is drawn as plain ground under the mist; it must
             // never show through, lit, where the known meets it: the known
             // ground's own colour fades into the mist over its outer half.
-            lit = mix(nm_mist(p, time), lit, smoothstep(0.55, 1.0, knows.x));
+            lit = mix(nm_remembered(lit) * 0.22 + nm_mist(p, time) * 0.4, lit, smoothstep(0.55, 1.0, knows.x));
         }
         // Past the map's edge the Spine goes on into the dark.
         float beyond = float(nm_hexDistance(h)) - radius;
@@ -604,6 +604,32 @@ public enum WorldShaders {
         return out;
     }
 
+    // The river of the sky: a band of faint light along a great circle,
+    // torn by dark lanes of dust, thick with fine stars.
+    float3 nm_milkyWay(float3 d) {
+        float across = dot(d, normalize(float3(0.42, 0.55, 0.72)));
+        float along = atan2(d.z, d.x);
+        float band = exp(-across * across / 0.018);
+        float2 q = float2(along * 3.2, across * 9.0);
+        float glow = band * (0.45 + 0.75 * nm_fbm(q * 1.7 + 4.0));
+        float lanes = smoothstep(0.42, 0.68, nm_fbm(q * 3.1 + 11.0)) * exp(-across * across / 0.004);
+        glow *= 1.0 - 0.75 * lanes;
+        float3 colour = float3(0.0050, 0.0054, 0.0068) * glow;
+        // Fine stars, many more within the band than without.
+        float3 grid = d * 420.0;
+        float3 cell = floor(grid);
+        float chance = nm_hash13(cell + 57.0);
+        float dense = 0.97 - 0.10 * band;
+        if (chance > dense) {
+            float3 spot = cell + 0.5 + (float3(nm_hash13(cell + 2.3), nm_hash13(cell + 5.9), nm_hash13(cell + 8.1)) - 0.5) * 0.6;
+            float far = length(grid - normalize(spot) * 420.0);
+            float bright = (chance - dense) / (1.0 - dense);
+            colour += mix(float3(0.75, 0.82, 1.0), float3(1.0, 0.9, 0.75), nm_hash13(cell + 9.4))
+                * (1.0 - smoothstep(0.0, 0.35, far)) * (0.10 + 0.5 * bright * bright);
+        }
+        return colour * smoothstep(-0.02, 0.12, d.y);
+    }
+
     fragment float4 nm_sky_fragment(SkyOut in [[stage_in]], constant FrameUniforms &frame [[buffer(0)]]) {
         float4 near = frame.inverseViewProjection * float4(in.ndc, 0.0, 1.0);
         float4 far = frame.inverseViewProjection * float4(in.ndc, 1.0, 1.0);
@@ -613,7 +639,7 @@ public enum WorldShaders {
         // second, finer field of them behind, so the night over the far
         // shore is full.
         float3 colour = nm_stars(d, time) * 2.4 + nm_stars(float3(d.z, d.x, d.y) * 1.0, time + 31.0) * 0.9
-            + nm_moonGlow(d, frame.moon.xyz) + nm_moonlight(d, frame.moon.xyz);
+            + nm_milkyWay(d) + nm_moonGlow(d, frame.moon.xyz) + nm_moonlight(d, frame.moon.xyz);
         // The night's haze lies thick along the horizon and thins upward,
         // so the far shore stands dark against a lighter band of air.
         float up = max(d.y, 0.0);

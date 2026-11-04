@@ -363,6 +363,11 @@ final class DepthPanelTests: XCTestCase {
 
     func testTheRailOpensAndClosesEachPanel() throws {
         let (session, _) = session(world("pressed rail"))
+        // Folded to one button until asked for, so the world has the screen.
+        draw(PanelRail(session: session), width: 720, height: 40)
+        XCTAssertFalse(PressableButtons.actions.keys.contains("Houses"), "Folded: \(shown)")
+        XCTAssertTrue(PressableButtons.press("Panels"), "Among \(shown)")
+        XCTAssertTrue(session.railShown)
         draw(PanelRail(session: session), width: 720, height: 40)
         XCTAssertEqual(PanelRail.panels.map { $0.panel }, [.houses, .chronicle, .archive, .commanders, .alliance, .realm, .words, .guide],
                        "Every panel on the rail, and nowhere else")
@@ -381,6 +386,9 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(PressableButtons.press("Map"))
         XCTAssertFalse(UserDefaults.standard.bool(forKey: MiniMap.shownKey), "and hidden again")
         UserDefaults.standard.removeObject(forKey: MiniMap.shownKey)
+        draw(PanelRail(session: session), width: 720, height: 40)
+        XCTAssertTrue(PressableButtons.press("×"), "Among \(shown)")
+        XCTAssertFalse(session.railShown, "and folded again")
     }
 
     /// A hold of the age before, drowned where it stood: named on its

@@ -302,21 +302,18 @@ struct WorldMarks: View {
             }
 
             // Where the selected company could march this watch: a faint
-            // wash with an edge, and a red ring on what it could strike.
+            // line about it, and a red ring on what it could strike.
             if !session.reach.isEmpty || !session.strikeTargets.isEmpty {
-                // One area, never a wall of tiles: a faint wash, and a line
-                // only along its border, where a hex it can reach meets one
+                // One area, never a wall of tiles: no fill to seam between
+                // hexes, only a faint line along its border, where a hex it can reach meets one
                 // it cannot.
                 let layout = HexLayout(size: 1)
                 let reach = Set(session.reach)
-                var area = Path(), border = Path()
+                var border = Path()
                 for hex in session.reach {
                     let world = layout.corners(of: hex)
                     let corners = world.map { session.viewPoint(worldX: $0.x, worldY: $0.y, onHex: hex, in: size) }
-                    guard let first = corners.first else { continue }
-                    area.move(to: first)
-                    for corner in corners.dropFirst() { area.addLine(to: corner) }
-                    area.closeSubpath()
+                    guard !corners.isEmpty else { continue }
                     let centre = layout.center(of: hex)
                     for index in world.indices {
                         let a = world[index], b = world[(index + 1) % world.count]
@@ -326,7 +323,6 @@ struct WorldMarks: View {
                         border.addLine(to: corners[(index + 1) % corners.count])
                     }
                 }
-                context.fill(area, with: .color(Palette.glow.opacity(0.05)))
                 context.stroke(border, with: .color(Palette.glow.opacity(0.3)), lineWidth: 0.8)
                 for hex in session.strikeTargets {
                     let point = session.viewPoint(of: hex, in: size)

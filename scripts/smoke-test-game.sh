@@ -82,7 +82,7 @@ $LOG"
 # which draws what (debug builds only; DEBUG_PASSES=1 asks for them, as
 # they add five launches to the run).
 if [ "${DEBUG_PASSES:-0}" = 1 ]; then
-    for pass in land furniture models water motes; do
+    for pass in ${DEBUG_PASS_LIST:-land furniture models water motes}; do
         NULLMERE_DEBUG_PASSES="$pass" run "build/game-lakes-no-$pass.png" 0 lake
     done
 fi

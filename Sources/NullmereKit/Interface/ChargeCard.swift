@@ -224,7 +224,27 @@ struct PanelRail: View {
     /// Whether the small map of the lake is shown: not until asked for.
     @AppStorage(MiniMap.shownKey) private var mapShown = false
 
+    /// Whether the rail is unfolded: when the keeper asked, a panel is
+    /// open, or there are words unread or an edict to vote on.
+    static func unfolded(_ session: GameSession) -> Bool {
+        session.railShown || session.panel != nil || session.unreadWords > 0 || session.voteAwaits
+    }
+
     var body: some View {
+        if Self.unfolded(session) {
+            rail
+        } else {
+            QuietButton(title: "Panels", size: 9, name: "Show the panels") {
+                withAnimation(.easeOut(duration: 0.2)) { session.railShown = true }
+            }
+            .help("Panels (1 to 7, ? for the Guide)")
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .background(Palette.panel, in: RoundedRectangle(cornerRadius: 3))
+        }
+    }
+
+    private var rail: some View {
         // Two short rows, not one long one: beside a hold's panel in the
         // narrowest window there is room for no more.
         VStack(alignment: .trailing, spacing: 0) {
@@ -239,6 +259,11 @@ struct PanelRail: View {
                     withAnimation(.easeOut(duration: 0.2)) { mapShown.toggle() }
                 }
                 .help(mapShown ? "Hide the map of the lake" : "Show the map of the lake")
+                if session.panel == nil {
+                    QuietButton(title: "×", size: 9, name: "Fold the panels") {
+                        withAnimation(.easeOut(duration: 0.2)) { session.railShown = false }
+                    }
+                }
             }
         }
         .padding(.horizontal, 6)

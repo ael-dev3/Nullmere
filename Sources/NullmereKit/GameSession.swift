@@ -83,6 +83,9 @@ public final class GameSession {
             }
         }
     }
+    /// Whether the keeper has opened the rail of panels; it is folded to
+    /// one button otherwise, so the world has the screen.
+    public var railShown = false
     /// The panel open over the map; a leaf turned as one opens, laid down
     /// as the last closes.
     public var panel: Panel? {
