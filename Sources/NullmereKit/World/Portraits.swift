@@ -26,11 +26,6 @@ final class Portraits {
     @ObservationIgnored private var failed = false
     @ObservationIgnored private var compiling = false
     @ObservationIgnored private var kept: [String: CGImage] = [:]
-    @ObservationIgnored private var vistaTarget: WorldRenderer.Target?
-
-    /// Pixels across and down a hold's vista.
-    static let vistaWidth = 360, vistaHeight = 150
-
     /// A model's portrait, its House's colour on what wears it; nil until
     /// the stage is built, which asking begins.
     func image(of key: ModelKey, colour: Vec4? = nil) -> CGImage? {
@@ -44,79 +39,6 @@ final class Portraits {
         kept[name] = image
         return image
     }
-
-    /// A hold seen whole under the moon, from before its gate: its keep in
-    /// its people's way, its walls and its works as they stand, in its
-    /// House's colour. The head of its panel; nil until the stage is built.
-    func vista(of hold: Hold, heritage: Heritage?, colour: Vec4) -> CGImage? {
-        let levels = hold.levels.filter { $0.value > 0 }.map { "\($0.key.rawValue) \($0.value)" }.sorted().joined(separator: ",")
-        let name = "vista \(hold.isSeat) \(levels) \(heritage?.rawValue ?? "-") \(colour.x) \(colour.y) \(colour.z)"
-        if let image = kept[name] { return image }
-        guard stage != nil else {
-            warm()
-            return nil
-        }
-        guard let image = drawVista(of: hold, heritage: heritage, colour: colour) else { return nil }
-        kept[name] = image
-        return image
-    }
-
-    /// Where to look from, to see a hold of these bounds whole in a picture
-    /// wider than it is tall: from before it, a little to one side and above.
-    static func vistaFraming(low: Vec3, high: Vec3, aspect: Float) -> (eye: Vec3, target: Vec3) {
-        let target = (low + high) / 2
-        let fov = Float(Camera.fieldOfView)
-        let wide = 2 * atan(tan(fov / 2) * aspect)
-        let across = max(high.x - low.x, high.z - low.z), tall = high.y - low.y
-        let distance = max(across / 2 / tan(wide / 2), tall / 2 / tan(fov / 2)) * 1.05
-        let direction = Vec3(sin(0.45) * cos(0.6), sin(0.6), cos(0.45) * cos(0.6))
-        return (target + direction * distance, target)
-    }
-
-    private func drawVista(of hold: Hold, heritage: Heritage?, colour: Vec4) -> CGImage? {
-        guard let (renderer, _) = stage, let land = renderer.land else { return nil }
-        if vistaTarget == nil { vistaTarget = try? renderer.makeTarget(width: Portraits.vistaWidth, height: Portraits.vistaHeight) }
-        guard let target = vistaTarget else { return nil }
-        // Raised on the stage's own ground, its gate toward the eye.
-        var plan = HoldLayout.Plan(hold: hold, heritage: heritage)
-        plan.hex = Hex(0, 0)
-        plan.rising = nil
-        let relief = Relief(map: land.map)
-        let pieces = HoldLayout.pieces(plan, relief: relief) + HoldLayout.town(plan, relief: relief)
-        var scene = SceneFrame()
-        var order: [ModelKey] = []
-        var instances: [ModelKey: [ModelInstance]] = [:]
-        var low = Vec3(repeating: .greatestFiniteMagnitude), high = Vec3(repeating: -.greatestFiniteMagnitude)
-        for piece in pieces {
-            let model = Library.model(piece.key)
-            let palette = model.rig.count > 1 ? scene.add(pose: model.pose(.idle, at: 0.5)) : 0
-            let flags = 1 | (WorldStage.isPeoples(piece.key) ? WorldStage.peopleFlags(heritage) : 0)
-            if instances[piece.key] == nil { order.append(piece.key) }
-            instances[piece.key, default: []].append(ModelInstance(model: piece.transform, colour: colour, rise: WorldStage.whole,
-                                                                   palette: palette, flags: flags))
-            for corner in [model.mesh.bounds.min, model.mesh.bounds.max] {
-                let at = piece.transform.transformPoint(corner)
-                low = pointwiseMin(low, at)
-                high = pointwiseMax(high, at)
-            }
-        }
-        guard !order.isEmpty else { return nil }
-        scene.batches = order.map { ModelBatch(key: $0, instances: instances[$0] ?? []) }
-        let aspect = Float(Portraits.vistaWidth) / Float(Portraits.vistaHeight)
-        let (eye, look) = Portraits.vistaFraming(low: low, high: high, aspect: aspect)
-        let size = CGSize(width: Portraits.vistaWidth, height: Portraits.vistaHeight)
-        var frame = FrameUniforms.make(camera: Camera(), size: size, pixelsPerPoint: 1, time: 2, motion: 0, radius: land.map.radius,
-                                       terrain: land.terrain, hovered: nil, selected: nil, houses: [], exposure: 1.5)
-        let distance = (eye - look).length
-        frame.viewProjection = Mat4.perspective(fovY: Float(Camera.fieldOfView), aspect: aspect, near: distance * 0.05, far: distance * 6)
-            * Mat4.lookAt(eye: eye, target: look)
-        frame.eye = Vec4(eye.x, eye.y, eye.z, 2)
-        frame.haze.y = 0
-        guard var bytes = renderer.pixels(frame, scene: scene, into: target) else { return nil }
-        Painting.paint(bgra: &bytes, width: Portraits.vistaWidth, height: Portraits.vistaHeight)
-        return Portraits.image(bgra: bytes, width: Portraits.vistaWidth, height: Portraits.vistaHeight)
-    }
-
     /// Begins building the stage, its shaders compiled away from the main thread.
     func warm() {
         guard stage == nil, !failed, !compiling else { return }
@@ -243,27 +165,6 @@ struct Portrait: View {
         .clipShape(RoundedRectangle(cornerRadius: 3))
         .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(Palette.line(0.25), lineWidth: 0.5))
         .accessibilityHidden(true)
-    }
-
-    /// A hold's vista at the head of its panel: for the eye alone.
-    struct Vista: View {
-        let hold: Hold
-        let state: GameState
-
-        var body: some View {
-            // Read, so the vista is drawn again once the stage is built.
-            let _ = Portraits.shared.isReady
-            if let colour = Portrait.colour(of: hold.owner, in: state),
-               let image = Portraits.shared.vista(of: hold, heritage: state.heritage(of: hold.owner), colour: colour) {
-                Image(decorative: image, scale: 1)
-                    .resizable()
-                    .interpolation(.high)
-                    .aspectRatio(CGFloat(Portraits.vistaWidth) / CGFloat(Portraits.vistaHeight), contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
-                    .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Palette.line(0.25), lineWidth: 0.5))
-                    .accessibilityHidden(true)
-            }
-        }
     }
 
     /// A House's colour as the world draws it.

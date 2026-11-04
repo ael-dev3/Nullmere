@@ -2,7 +2,7 @@ import NullmereCore
 import SwiftUI
 
 /// The turning of a watch: its number, large and thin, over the map, with
-/// what it brought. It fades by itself and never takes a click.
+/// what befell; the stores' gains are the bar's alone. It fades by itself and never takes a click.
 struct WatchCard: View {
     let summary: WatchSummary
 
@@ -19,18 +19,6 @@ struct WatchCard: View {
                 .foregroundStyle(Palette.ink)
                 .shadow(color: .black.opacity(0.9), radius: 12)
             Rule(opacity: 0.4).frame(width: 220)
-            if !summary.changes.isEmpty {
-                HStack(spacing: 14) {
-                    ForEach(summary.changes, id: \.self) { change in
-                        HStack(spacing: 4) {
-                            ResourceGlyph(resource: change.resource)
-                            Text(verbatim: change.delta > 0 ? "+\(change.delta)" : "−\(-change.delta)")
-                                .font(.nm(12).monospacedDigit())
-                                .foregroundStyle(change.delta > 0 ? Palette.good : Palette.bad)
-                        }
-                    }
-                }
-            }
             if !summary.events.isEmpty {
                 Text(verbatim: summary.events.joined(separator: "  ·  "))
                     .font(.nm(12, weight: .light))

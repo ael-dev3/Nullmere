@@ -137,7 +137,8 @@ struct PlayView: View {
             VStack(spacing: 0) {
                 TopBar(session: session)
                 // The omen under the bar, in the flow, so nothing sits beneath it.
-                if let omen = session.state.currentOmen {
+                // Bands only while nothing is chosen: a chosen thing has the view.
+                if PlayView.standingCardsShown(session), let omen = session.state.currentOmen {
                     OmenBand(omen: omen, watch: session.state.watch)
                         .chrome("band")
                         .padding(.top, 8)
@@ -145,7 +146,7 @@ struct PlayView: View {
                         .transition(.opacity)
                 }
                 // The moon's ford, only about the full.
-                if let line = MoonBand.line(watch: session.state.watch, open: session.state.ford != nil) {
+                if PlayView.standingCardsShown(session), let line = MoonBand.line(watch: session.state.watch, open: session.state.ford != nil) {
                     MoonBand(line: line)
                         .chrome("band")
                         .padding(.top, 8)
@@ -153,7 +154,7 @@ struct PlayView: View {
                         .transition(.opacity)
                 }
                 // The Still's calm, only while it gives to the keeper's shore.
-                if let line = MoonBand.calmLine(in: session.state, for: session.player) {
+                if PlayView.standingCardsShown(session), let line = MoonBand.calmLine(in: session.state, for: session.player) {
                     MoonBand(line: line)
                         .chrome("band")
                         .padding(.top, 4)
@@ -161,7 +162,7 @@ struct PlayView: View {
                         .transition(.opacity)
                 }
                 // The Drowned Crown, only while it lies on the ford.
-                if let line = MoonBand.crownLine(in: session.state, for: session.player) {
+                if PlayView.standingCardsShown(session), let line = MoonBand.crownLine(in: session.state, for: session.player) {
                     MoonBand(line: line)
                         .chrome("band")
                         .padding(.top, 4)
