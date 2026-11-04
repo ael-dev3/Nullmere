@@ -296,13 +296,6 @@ public enum WorldShaders {
         return mix(float3(grey), c, 0.7) * 0.55 + kMist * 0.25;
     }
 
-    // The mist over what the keeper has never seen, drifting slowly.
-    float3 nm_mist(float2 p, float time) {
-        float drift = nm_fbm(p * 0.18 + nm_drift(time, 0.012));
-        float wisp = nm_fbm(p * 0.6 - nm_drift(time + 2600.0, 0.024));
-        return kMist * (0.55 + 0.7 * drift) + float3(0.0016, 0.0019, 0.0028) * smoothstep(0.6, 0.9, wisp);
-    }
-
     // The night sky in a direction, but for the moon: the dark, and the
     // stars, warm and cold.
     float3 nm_stars(float3 d, float time) {
@@ -520,7 +513,7 @@ public enum WorldShaders {
             // The unknown is drawn as plain ground under the mist; it must
             // never show through, lit, where the known meets it: the known
             // ground's own colour fades into the mist over its outer half.
-            lit = mix(nm_remembered(lit) * 0.22 + nm_mist(p, time) * 0.4, lit, smoothstep(0.55, 1.0, knows.x));
+            lit = mix(nm_remembered(lit) * 0.18 + kMist * 0.3, lit, smoothstep(0.55, 1.0, knows.x));
         }
         // Past the map's edge the Spine goes on into the dark.
         float beyond = float(nm_hexDistance(h)) - radius;
@@ -607,7 +600,7 @@ public enum WorldShaders {
     // The river of the sky: a band of faint light along a great circle,
     // torn by dark lanes of dust, thick with fine stars.
     float3 nm_milkyWay(float3 d) {
-        float across = dot(d, normalize(float3(0.42, 0.55, 0.72)));
+        float across = dot(d, normalize(float3(0.86, 0.22, 0.46)));
         float along = atan2(d.z, d.x);
         float band = exp(-across * across / 0.018);
         // Below the far shore, or well off the band, there is nothing to add.
@@ -646,7 +639,7 @@ public enum WorldShaders {
         // so the far shore stands dark against a lighter band of air.
         float up = max(d.y, 0.0);
         float3 horizon = kMist * 1.6 + kMoonColour * 0.004;
-        colour = mix(horizon, colour, smoothstep(0.0, 0.22, up));
+        colour = mix(horizon, colour, smoothstep(0.0, 0.035, up));
         return float4(nm_encode(colour * frame.haze.z), 1.0);
     }
 
