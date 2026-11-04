@@ -400,10 +400,17 @@ struct FrontDoor: View {
         return "Takes a seat in the realm under the name you wrote"
     }
 
+    /// The keeper's place in the realm's line for a seat, in words.
+    static func line(_ place: Int?) -> String {
+        guard let place else { return "The realm keeps your place in line." }
+        if place == 1 { return "You are first in line." }
+        return "You are \(SeatBriefing.ordinal(place)) in line, \(place - 1) before you."
+    }
+
     /// When no seat is open: why, and what waiting means.
     private var seatNote: String? {
         if app.isWaitingForSeat {
-            return "\(Self.noSeatOpen) Stay at the door: you'll step in the moment one opens. A seat left a week, or an hour if never played, goes to whoever waits."
+            return "\(Self.noSeatOpen) \(Self.line(app.placeInLine)) Stay at the door: you'll step in the moment one opens, in your turn. A seat left a week, or an hour if never played, goes to whoever has waited longest."
         }
         if case .open(let status) = app.door, status.freeSeats == 0, !status.isEnding {
             return "\(Self.noSeatOpen) Enter to wait for the next to open."

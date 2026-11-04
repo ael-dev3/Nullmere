@@ -45,6 +45,8 @@ public final class GameApp {
     /// Known to the realm, but every seat is held: the door asks again as
     /// the realm changes, and steps in when a seat falls free.
     public private(set) var isWaitingForSeat = false
+    /// The keeper's place in the realm's line for a seat, as it last told it: first is next.
+    public private(set) var placeInLine: Int?
     private(set) var seatTimer: Timer?
     /// Back to the launcher, when the app has one.
     public var onLeave: (@MainActor () -> Void)?
@@ -564,6 +566,7 @@ public final class GameApp {
         journeyTries = nil
         keeperName = keeper.name
         UserDefaults.standard.set(keeper.name, forKey: Self.nameKey(for: address))
+        placeInLine = keeper.house == nil ? keeper.placeInLine : nil
         guard let house = keeper.house, let link else {
             startWaiting()
             // A new age begun with no seat for this keeper: back to the front

@@ -20,6 +20,12 @@ final class Listener {
         return nil
     }
 
+    /// The keeper as the realm last told it, as each arrival answers.
+    var lastKeeper: Keeper? {
+        for event in events.reversed() { if case .arrived(let keeper, _) = event { return keeper } }
+        return nil
+    }
+
     var world: GameState? {
         for event in events.reversed() {
             switch event {
@@ -846,5 +852,6 @@ final class NetworkRallyTests: XCTestCase {
         try await scene.until("both keepers to arrive") { earA.keeper != nil && earB.keeper != nil }
         let (ama, bel) = await MainActor.run { (earA.keeper!.house!, earB.keeper!.house!) }
         try await scene.contestTheCrown(ama: ama, bel: bel)
+        try await scene.waitInLine(ama: ama, bel: bel) { NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 0.05) }
     }
 }

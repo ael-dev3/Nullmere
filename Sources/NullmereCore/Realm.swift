@@ -28,6 +28,14 @@ public struct Keeper: Codable, Equatable, Identifiable, Sendable {
     /// The edition of the realm's compact this keeper accepted, as the
     /// realm recorded it when they arrived; nil before any.
     public internal(set) var compact: Int?
+    /// When they first asked for a seat and found none: their place in
+    /// the line for one. Nil while they hold a House or wait for none.
+    public internal(set) var waitingSince: Double?
+    /// When they last asked for a seat, so one who stops asking leaves the line.
+    public internal(set) var askedAt: Double?
+    /// Their place in the line for a seat, first being next; nil when they
+    /// hold one.
+    public internal(set) var placeInLine: Int?
     /// Every deed their Houses have done, in any age, once each.
     public internal(set) var deeds: [Deed]?
     /// Their favour with the lake, won watch by watch over every age (see
@@ -368,11 +376,22 @@ public struct RealmState: Codable, Equatable, Sendable {
             keepers[index].house = nil
             keepers[index].reseatedInAge = age
         }
+        // A seat goes to those who have waited longest: one who comes to
+        // a realm with keepers waiting takes their place behind them.
         if keepers[index].house == nil {
+            keepers[index].askedAt = now
+            if keepers[index].waitingSince == nil { keepers[index].waitingSince = now }
+            if isNextInLine(index, now: now) { claimSeat(for: index) }
+        }
+        if keepers[index].house == nil, releaseSeat(now: now), isNextInLine(index, now: now) {
             claimSeat(for: index)
         }
-        if keepers[index].house == nil, releaseSeat(now: now) {
-            claimSeat(for: index)
+        if keepers[index].house == nil {
+            keepers[index].placeInLine = line(now: now).firstIndex(of: index).map { $0 + 1 }
+        } else {
+            keepers[index].waitingSince = nil
+            keepers[index].askedAt = nil
+            keepers[index].placeInLine = nil
         }
         if frontier != nil {
             arrivals += raiseAtFrontier(index)
@@ -487,6 +506,26 @@ public struct RealmState: Codable, Equatable, Sendable {
         let span = keepers[index].hasPlayed == true ? "a week" : "an hour"
         world.record(.seating, [house], "\(world.houses[house].title) has stood \(span) without its keeper; the stewards keep it for another.")
         return true
+    }
+
+    /// How long a keeper waiting for a seat keeps their place without
+    /// asking again: their client asks every half minute while it waits.
+    public static let lineHeld: Double = 90
+
+    /// Those waiting for a seat, in the order they first asked: indices
+    /// into `keepers`.
+    func line(now: Double) -> [Int] {
+        keepers.indices.filter { index in
+            keepers[index].house == nil && keepers[index].waitingSince != nil
+                && now - (keepers[index].askedAt ?? -.infinity) < RealmState.lineHeld
+        }.sorted { (keepers[$0].waitingSince ?? 0, keepers[$0].arrival) < (keepers[$1].waitingSince ?? 0, keepers[$1].arrival) }
+    }
+
+    /// Whether a keeper may take a seat now: as many seats stand open as
+    /// there are keepers ahead of them in the line, and one more.
+    func isNextInLine(_ index: Int, now: Double) -> Bool {
+        let ahead = line(now: now).prefix { $0 != index }.count
+        return ahead < openSeats.count
     }
 
     /// A House open to a keeper stands free, and the age goes on.

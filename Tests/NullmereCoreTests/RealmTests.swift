@@ -87,6 +87,37 @@ final class RealmTests: XCTestCase {
         }
     }
 
+    /// The line for a seat: with none open, keepers wait in the order they
+    /// first asked and are told their place; a seat freed goes to the head
+    /// of the line, not to whoever asks first; one who stops asking leaves it.
+    func testTheRealmKeepsALineForASeat() throws {
+        var realm = realm(seats: 2)
+        _ = try realm.arrive("first", name: "Ama", now: 1)
+        // Every House a keeper's.
+        let free = realm.world.houses.indices.filter { !realm.world.houses[$0].isPlayer }
+        for house in free { realm.world.houses[house].isPlayer = true }
+        realm.newcomers = nil
+        let eda = try realm.arrive("eda", name: "Eda", now: 2)
+        XCTAssertNil(eda.house)
+        XCTAssertEqual(eda.placeInLine, 1)
+        let fen = try realm.arrive("fen", name: "Fen", now: 3)
+        XCTAssertEqual(fen.placeInLine, 2)
+        // A seat falls free; Fen asks first, and still waits.
+        let freed = try XCTUnwrap(free.first)
+        realm.world.houses[freed].isPlayer = false
+        let asked = try realm.arrive("fen", name: nil, now: 4)
+        XCTAssertNil(asked.house, "no seat taken ahead of the first in line")
+        XCTAssertEqual(asked.placeInLine, 2)
+        let seated = try realm.arrive("eda", name: nil, now: 5)
+        XCTAssertEqual(seated.house, freed)
+        XCTAssertNil(seated.placeInLine)
+        XCTAssertEqual(try realm.arrive("fen", name: nil, now: 6).placeInLine, 1, "now first")
+        // One who stops asking leaves the line to those who ask.
+        let gus = try realm.arrive("gus", name: "Gus", now: 7)
+        XCTAssertEqual(gus.placeInLine, 2)
+        XCTAssertEqual(try realm.arrive("gus", name: nil, now: 7 + RealmState.lineHeld + 1).placeInLine, 1, "Fen stopped asking")
+    }
+
     func testKeepersArriveAndTakeSeats() throws {
         var realm = realm()
         let ilsen = try realm.arrive("id-ilsen", name: "  Ilsen ", now: 1)

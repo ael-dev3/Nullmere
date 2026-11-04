@@ -864,3 +864,64 @@ extension RallyScene {
         try await until("Ama hears Bel again") { earA.world?.wordsSaid.contains { $0.text == line } == true }
     }
 }
+
+extension RallyScene {
+    /// The line for a seat, kept by the realm: with every seat taken, two
+    /// newcomers ask and are told their places, first and second; a seat
+    /// falls free; the second, asking first, still waits, and the seat goes
+    /// to the first as they ask. `newcomer` makes a fresh client.
+    func waitInLine(ama: Int, bel: Int, newcomer: @MainActor () -> NetworkRealmLink) async throws {
+        let filled = StagedHouses()
+        // Every House a keeper's, as far as seats go.
+        await steward.reshape { realm in
+            // The realm takes in a few newcomers a watch; these come fresh.
+            realm.newcomers = nil
+            for house in realm.world.houses.indices where !realm.world.houses[house].isPlayer && !realm.world.houses[house].isEliminated {
+                realm.world.houses[house].isPlayer = true
+                filled.add(house)
+            }
+        }
+        let suffix = String(KeeperIdentity.make().filter(\.isLetter).prefix(5))
+        let (e, earE, f, earF) = await MainActor.run { () -> (NetworkRealmLink, Listener, NetworkRealmLink, Listener) in
+            let e = newcomer(), f = newcomer()
+            let earE = Listener(), earF = Listener()
+            earE.listen(to: e)
+            earF.listen(to: f)
+            e.connect()
+            f.connect()
+            return (e, earE, f, earF)
+        }
+        try await until("the newcomers see the realm") { earE.hasStatus && earF.hasStatus }
+        await MainActor.run { e.arrive(name: "Eda" + suffix) }
+        try await until("the first newcomer told their place") { earE.keeper?.placeInLine == 1 }
+        await MainActor.run { f.arrive(name: "Fen" + suffix) }
+        try await until("the second told theirs") { earF.keeper?.placeInLine == 2 }
+        // A seat falls free.
+        let freed = filled.houses.first!
+        await steward.reshape { realm in realm.world.houses[freed].isPlayer = false }
+        // The second, asking first, still waits behind the first.
+        let fAsks = await MainActor.run { earF.events.count }
+        await MainActor.run { f.arrive(name: nil) }
+        try await until("the second answered") { earF.events.count > fAsks && earF.lastKeeper?.placeInLine != nil }
+        let fStill = await MainActor.run { (earF.lastKeeper?.house, earF.lastKeeper?.placeInLine) }
+        XCTAssertNil(fStill.0, "no seat taken ahead of the first in line")
+        XCTAssertEqual(fStill.1, 2)
+        await MainActor.run { e.arrive(name: nil) }
+        try await until("the seat goes to the first in line") { earE.lastKeeper?.house == freed }
+        await MainActor.run { f.arrive(name: nil) }
+        try await until("the second now first") { earF.lastKeeper?.placeInLine == 1 }
+        // The scene undone: the newcomers go, the Houses filled for it freed.
+        await MainActor.run { e.leave(); f.leave() }
+        await steward.reshape { realm in
+            for house in filled.houses where house != freed { realm.world.houses[house].isPlayer = false }
+        }
+    }
+}
+
+/// The Houses a scene filled, set inside the steward's reshape.
+final class StagedHouses: @unchecked Sendable {
+    private let lock = NSLock()
+    private var list: [Int] = []
+    func add(_ house: Int) { lock.lock(); list.append(house); lock.unlock() }
+    var houses: [Int] { lock.lock(); defer { lock.unlock() }; return list }
+}

@@ -158,7 +158,7 @@ Already in Nullmere, in its own way:
 - [x] A build stamp and patch notes (the launcher's footer, News from the repository)
 - [x] Plain notices when the realm can't be reached, a boot painting when the GPU can't draw
 - [x] Sound and music settings, reduced motion, keyboard and screen-reader play, meaning beyond colour; settings inside the world
-- [ ] An identity kept on the device between sessions; open admission with a queue (Audit of November 4: there is no queue: a keeper refused a seat retries every half minute, with no place in line and no word when a seat frees. Open until a real queue is kept at the realm.)
+- [x] An identity kept on the device between sessions; open admission with a queue (Audit of November 4: there was no queue, only a retry. Now the realm keeps a line: keepers with no seat to take wait in the order they first asked and are told their place at the door; a seat that falls free goes to the head of the line, never to whoever asks first; one who stops asking for a minute and a half gives up their place. Played between clients over the fake realm and over SpacetimeDB in CI (waitInLine), and in the rules (testTheRealmKeepsALineForASeat).)
 - [x] New worlds by generation (ages on a fresh lake, Frontier seasons), honest outcomes for every order, the realm's state before entry
 - [x] Four resources with yield, storage and their accounts; a daily reward (favour for each watch kept, with chests)
 - [ ] Sites of the land to gather from, sent from the map, full sites refused, journeys drawn and heard (Audit of November 4: proven in the rules only, never through the realm. Open until two keepers gather and a full site is refused between their clients over SpacetimeDB.)
