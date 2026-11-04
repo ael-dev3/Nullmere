@@ -746,3 +746,63 @@ extension RallyScene {
         XCTAssertEqual(calms.1, 0)
     }
 }
+
+extension RallyScene {
+    /// Warpkeep's own loop between two clients: Ama sends spears to gather
+    /// a field beside them; as the watch turns both clients see them at
+    /// work and the field's store fall; Ama brings them home, and both see
+    /// the errand end. Bel, of another House, is refused Ama's company.
+    func gatherAndBringItHome(ama: Int, bel: Int) async throws {
+        let staged = StagedWalk()
+        let siteBox = StagedWalk()
+        await steward.reshape { realm in
+            let world = realm.world
+            guard let ground = world.map.hexes.first(where: { hex in
+                guard world.map[hex]?.terrain.isPassable == true, world.map[hex]?.terrain.isWater == false,
+                      world.unit(at: hex) == nil, world.hold(at: hex) == nil, world.site(at: hex) == nil else { return false }
+                let there = hex + Hex.directions[0]
+                return world.map[there].map { $0.terrain.isPassable && !$0.terrain.isWater } == true
+                    && world.unit(at: there) == nil && world.hold(at: there) == nil && world.site(at: there) == nil
+            }) else { return }
+            let there = ground + Hex.directions[0]
+            let id = realm.world.takeID()
+            realm.world.units.append(NullmereCore.Unit(id: id, kind: .spear, owner: ama, position: ground))
+            let site = Site(id: realm.world.takeID(), store: .grain, level: 2, position: there, found: realm.world.watch)
+            realm.world.sites = (realm.world.sites ?? []) + [site]
+            realm.world.reveal(around: there, range: 2, for: ama)
+            realm.world.reveal(around: there, range: 2, for: bel)
+            staged.unit = id
+            staged.at = there
+            siteBox.unit = site.id
+        }
+        let unitID = try XCTUnwrap(staged.unit, "Open ground beside a field")
+        let siteID = try XCTUnwrap(siteBox.unit)
+        let field = try XCTUnwrap(staged.at)
+        try await until("the field in both clients") { earA.world?.site(siteID) != nil && earB.world?.site(siteID) != nil }
+        let full = await MainActor.run { earA.world?.site(siteID)?.remaining ?? 0 }
+        // Bel may not send Ama's company.
+        let belRefused = await MainActor.run { earB.world?.refusal(of: .gather(unit: unitID, site: siteID), as: bel) }
+        XCTAssertEqual(belRefused, .notYours)
+        await MainActor.run { a.send(.gather(unit: unitID, site: siteID)) }
+        try await until("Ama's spears sent") {
+            if case .gather(site: siteID)? = earA.world?.unit(unitID)?.errand { return true } else { return false }
+        }
+        let watch = await MainActor.run { earA.world?.watch ?? 0 }
+        await MainActor.run { a.setReady(true); b.setReady(true) }
+        try await until("the watch to turn") { (earA.world?.watch ?? 0) > watch && (earB.world?.watch ?? 0) > watch }
+        try await until("the spears at work on the field") { earA.world?.unit(unitID)?.position == field }
+        try await until("the field's store falling, in Bel's client too") {
+            (earB.world?.site(siteID)?.remaining ?? full) < full && (earA.world?.site(siteID)?.remaining ?? full) < full
+        }
+        let seenByBel = await MainActor.run { earB.world?.unit(unitID)?.position }
+        XCTAssertEqual(seenByBel, field, "Bel sees Ama's spears where they gather")
+        await MainActor.run { a.send(.recall(unit: unitID)) }
+        try await until("brought home: the errand ended in both clients") {
+            let home: (NullmereCore.Unit?) -> Bool = { unit in
+                if case .gather? = unit?.errand { return false }
+                return unit != nil
+            }
+            return home(earA.world?.unit(unitID)) && home(earB.world?.unit(unitID))
+        }
+    }
+}

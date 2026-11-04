@@ -158,10 +158,10 @@ Already in Nullmere, in its own way:
 - [x] A build stamp and patch notes (the launcher's footer, News from the repository)
 - [x] Plain notices when the realm can't be reached, a boot painting when the GPU can't draw
 - [x] Sound and music settings, reduced motion, keyboard and screen-reader play, meaning beyond colour; settings inside the world
-- [x] An identity kept on the device between sessions; open admission with a queue
+- [ ] An identity kept on the device between sessions; open admission with a queue (Audit of November 4: there is no queue: a keeper refused a seat retries every half minute, with no place in line and no word when a seat frees. Open until a real queue is kept at the realm.)
 - [x] New worlds by generation (ages on a fresh lake, Frontier seasons), honest outcomes for every order, the realm's state before entry
 - [x] Four resources with yield, storage and their accounts; a daily reward (favour for each watch kept, with chests)
-- [x] Sites of the land to gather from, sent from the map, full sites refused, journeys drawn and heard
+- [ ] Sites of the land to gather from, sent from the map, full sites refused, journeys drawn and heard (Audit of November 4: proven in the rules only, never through the realm. Open until two keepers gather and a full site is refused between their clients over SpacetimeDB.)
 - [x] Works at five levels with costs and times, yield works, one rising at a time, the catalogue with each level's gain, construction drawn rising, the seat entered close (the city view)
 - [x] A seeded hex world with its terrain recorded, landmarks, a bounded edge
 - [x] A camera that pans, zooms and turns, labels on every hold, records for holds and companies, selection and hover, one step back at a time, a steady world
@@ -173,14 +173,14 @@ Already in Nullmere, in its own way:
 To build, reimagined:
 - [x] Credits, rolled in the launcher, still under reduced motion
 - [x] The founding watch on a hold's record ("raised in the 23rd watch", under its name)
-- [x] Bring it home: a gatherer recalled with what it carries, and every gatherer at once (Bring home and All home on its record)
+- [ ] Bring it home: a gatherer recalled with what it carries, and every gatherer at once (Bring home and All home on its record) (Audit of November 4: proven in the rules and the client only, never through the realm.)
 - [x] The watches left of a gathering and of the way home on a gatherer's record; a list of the House's gatherers (folded under a gatherer's record)
 - [x] A gathering's length chosen as it is sent (a watch, three, until full)
 - [x] The camera's buttons on screen (under the small map, while it is shown), and Reset View to the whole House (⌘0)
 - [x] Sounds for the interface (a panel opening and closing, going back, an order refused), and the trackpad's taps where the Mac has them
-- [x] A keeper's House hidden everywhere (its Words, its notices, its ballads, its envoys' words), not only an envoy's; an unread count on the rail's Words
-- [x] Words made safe at the realm: a line reported, kept with what was said round it for the realm's steward; the realm able to remove a line and bar a keeper (the realm's whole record paged back is still the latest eighty lines)
-- [x] The realm's compact: terms and privacy in plain words, read and accepted at the front door before first entry, asked again when they change; a keeper forgotten by the realm's steward when they ask
+- [ ] A keeper's House hidden everywhere (its Words, its notices, its ballads, its envoys' words), not only an envoy's; an unread count on the rail's Words (Audit of November 4: hidden on that keeper's Mac only, not at the realm.)
+- [ ] Words made safe at the realm: a line reported, kept with what was said round it for the realm's steward; the realm able to remove a line and bar a keeper (the realm's whole record paged back is still the latest eighty lines) (Audit of November 4: no cap on a line's length or lines, no limit on how often a keeper may report, and the steward's removing and barring proven only over the fake realm.)
+- [ ] The realm's compact: terms and privacy in plain words, read and accepted at the front door before first entry, asked again when they change; a keeper forgotten by the realm's steward when they ask (Audit of November 4: accepted and kept on the keeper's Mac only; the realm never records it, so a changed client could pass without it.)
 - [x] A keeper's identity carried to another Mac: sixteen words written down (the realm keeps a digest of their digest), and taken up on the other; leaving an identity, and taking up another
 - [x] A newer build known: the launcher tells its build in its footer and the realm the tongue it speaks and the oldest it hears; a Mac too old for its realm is told so at the door, which won't open, and where to get the new one (and in the world, once, should the realm move on)
 - [x] A House's crest (Warpkeep's profile and portrait): a shield of one of seven tinctures bearing one of ten charges in another, drawn in the interface; the lake gives every House its own, the same for the same realm, and a keeper takes their own once an age from the Realm panel, told to every House; borne on each House's line among the Houses and hung in the world at every hold's gate, a shield on its board in the field's tincture with its charge in relief in its own
