@@ -103,7 +103,8 @@ extension GameState {
 
     /// Why a House can't give that answer now, if it can't.
     public func lyceumRefusal(question: Int, choice: Int, as house: Int) -> RuleError? {
-        guard houses.indices.contains(house), houses[house].isPlayer, !houses[house].isEliminated else { return .notAKeeper }
+        // Every House standing sits it, the stewards' as the keepers'.
+        guard houses.indices.contains(house), !houses[house].isEliminated else { return .notAKeeper }
         guard lyceumNow != nil else { return .lyceumNotSitting }
         guard (0..<Lyceum.questions).contains(question), (0..<4).contains(choice) else { return .lyceumNoSuchAnswer }
         guard lyceumAnswers(of: house)[question] == nil else { return .lyceumAnswered }
