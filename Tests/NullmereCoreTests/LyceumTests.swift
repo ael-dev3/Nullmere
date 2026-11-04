@@ -14,6 +14,20 @@ final class LyceumTests: XCTestCase {
         return (state, me, other)
     }
 
+    func testTheStewardsSitTheLyceumAndAreJudged() throws {
+        var state = GameState(settings: GameSettings(seedText: "stewards at the lyceum", houseCount: 6, radius: 18, keepers: 0))
+        var judged: [LyceumStanding] = []
+        while state.watch < Lyceum.every * 2 + Lyceum.sits + 1, state.outcome == nil {
+            for case let .lyceumJudged(standings) in state.endWatch() { judged = standings }
+        }
+        XCTAssertNotNil(state.lyceumHall, "its hall raised")
+        XCTAssertFalse(judged.isEmpty, "the stewards answered and were judged")
+        let living = state.livingHouses.count
+        XCTAssertEqual(judged.count, living, "every House standing sat it")
+        XCTAssertTrue(judged.contains { $0.right > 0 }, "some answered rightly")
+        XCTAssertTrue(judged.contains { $0.right < Lyceum.questions }, "and not all perfectly")
+    }
+
     func testItsHallIsRaisedOnOpenLandAndLitWhileItSits() throws {
         var (state, me, other) = sitting()
         let hall = try XCTUnwrap(state.lyceumHall)

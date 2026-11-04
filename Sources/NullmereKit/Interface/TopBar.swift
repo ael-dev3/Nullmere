@@ -398,6 +398,19 @@ struct MoonBand: View {
             + "till a company of war comes to the water"
     }
 
+    /// The keeper's House's greatest battle while it is fought: where, and
+    /// each side's troops standing of those it brought. Nil out of battle.
+    static func battleLine(in state: GameState, for player: Int) -> String? {
+        let mine = state.fieldsOfBattle.compactMap { field in field.side(of: player).map { (field, $0) } }
+        guard let (field, side) = mine.max(by: { ($0.0.troops(of: 0) + $0.0.troops(of: 1)) < ($1.0.troops(of: 0) + $1.0.troops(of: 1)) }) else {
+            return nil
+        }
+        let foe = 1 - side
+        return "Battle \(state.placeName(of: field.at)): your side \(GameState.counted(field.standing(of: side))) of "
+            + "\(GameState.counted(field.troops(of: side))) standing, the foe \(GameState.counted(field.standing(of: foe))) of "
+            + "\(GameState.counted(field.troops(of: foe)))"
+    }
+
     static func crownLine(in state: GameState, for player: Int) -> String? {
         guard let crown = state.crown else { return nil }
         let mine = state.crownSide(of: player)

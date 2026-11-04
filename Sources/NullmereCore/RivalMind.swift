@@ -91,6 +91,7 @@ struct RivalMind {
             events += studyTogether(in: &state)
             events += raiseStandard(in: &state)
             events += helpStandards(in: &state)
+            events += sitTheLyceum(in: &state, random: &random)
             events += raiseHall(in: &state)
             events += raiseStorehouse(in: &state)
             events += raiseYard(in: &state)
@@ -166,6 +167,22 @@ struct RivalMind {
     static let holySiteReach = 8
     /// The watch from which stewards raise their alliances' standards.
     static let standardsFrom = 25
+
+    /// How often a steward's scholars answer the Lyceum rightly.
+    static let lyceumWisdom = 60
+
+    /// While the Lyceum sits the steward's scholars answer every question
+    /// set, right three times in five, wrong otherwise.
+    private func sitTheLyceum(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
+        guard let questions = state.lyceumNow else { return [] }
+        var events: [GameEvent] = []
+        for (index, question) in questions.enumerated() where state.lyceumAnswers(of: house)[index] == nil {
+            let wrong = (0..<question.choices.count).filter { $0 != question.answer }
+            let choice = random.chance(RivalMind.lyceumWisdom) || wrong.isEmpty ? question.answer : wrong[random.int(in: 0...(wrong.count - 1))]
+            events += perform(.answerLyceum(question: index, choice: choice), in: &state)
+        }
+        return events
+    }
 
     private func helpStandards(in state: inout GameState) -> [GameEvent] {
         // A hand to the alliance's rising standards, with stores to spare.

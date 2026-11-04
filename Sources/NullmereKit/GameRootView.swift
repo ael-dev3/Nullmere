@@ -137,6 +137,14 @@ struct PlayView: View {
             VStack(spacing: 0) {
                 TopBar(session: session)
                 // The omen under the bar, in the flow, so nothing sits beneath it.
+                // A battle the keeper's House fights, whatever is chosen.
+                if let line = MoonBand.battleLine(in: session.state, for: session.player) {
+                    MoonBand(line: line)
+                        .chrome("band")
+                        .padding(.top, 8)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
                 // Bands only while nothing is chosen: a chosen thing has the view.
                 if PlayView.standingCardsShown(session), let omen = session.state.currentOmen {
                     OmenBand(omen: omen, watch: session.state.watch)

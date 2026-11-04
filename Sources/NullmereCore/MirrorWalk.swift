@@ -48,7 +48,7 @@ extension GameState {
             let ring = radius == 0 ? [mirrored] : mirrored.ring(radius)
             if let open = ring.first(where: { candidate in
                 guard let tile = map[candidate], tile.terrain.isPassable, !tile.terrain.isWater else { return false }
-                return unit(at: candidate) == nil && hold(at: candidate) == nil && !bound.contains(candidate)
+                return unit(at: candidate) == nil && hold(at: candidate) == nil && wild(at: candidate) == nil && !bound.contains(candidate)
             }) {
                 return open
             }
@@ -100,7 +100,7 @@ extension GameState {
             guard let index = unitIndex(walk.unit), units[index].owner == walk.house else { continue }
             walked[walk.unit] = walk.watch
             let open: (Hex) -> Bool = { [self] hex in
-                map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && unit(at: hex) == nil && hold(at: hex) == nil
+                map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && unit(at: hex) == nil && hold(at: hex) == nil && wild(at: hex) == nil
             }
             let landing = open(walk.to) ? walk.to : walk.to.spiral(MirrorWalk.reach).first(where: open)
             guard let at = landing else {
