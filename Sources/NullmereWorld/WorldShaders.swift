@@ -500,7 +500,13 @@ public enum WorldShaders {
         // The moon low over the far shore lit the slopes facing it into
         // pale banks against the rest (run 546: kept without the fog, lost
         // without the light); on the land it falls softer than on models.
-        lit += nm_light(albedo, n, frame.moon.xyz, frame.moon.w * 0.55) * shown;
+        // Softer alone kept them (run 546 after 543): the slope itself
+        // turned the land toward the moon and the fill. The land is lit by
+        // its normal bent most of the way upright, so a hillside's whole
+        // face can never stand pale against the flats beside it; the fine
+        // grain of the ground still shades within it.
+        float3 ln = normalize(mix(n, float3(0.0, 1.0, 0.0), 0.7));
+        lit += nm_light(albedo, ln, frame.moon.xyz, frame.moon.w * 0.55) * shown;
         for (int i = 0; i < 4; i++) {
             lit += nm_pointLight(albedo, in.world, n, frame.lights[i], frame.lights[i + 4]);
         }
