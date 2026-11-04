@@ -91,7 +91,7 @@ struct RivalMind {
             events += studyTogether(in: &state)
             events += raiseStandard(in: &state)
             events += helpStandards(in: &state)
-            events += sitTheLyceum(in: &state, random: &random)
+            events += sitTheLyceum(in: &state)
             events += raiseHall(in: &state)
             events += raiseStorehouse(in: &state)
             events += raiseYard(in: &state)
@@ -173,8 +173,10 @@ struct RivalMind {
 
     /// While the Lyceum sits the steward's scholars answer every question
     /// set, right three times in five, wrong otherwise.
-    private func sitTheLyceum(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
+    private func sitTheLyceum(in state: inout GameState) -> [GameEvent] {
         guard let questions = state.lyceumNow else { return [] }
+        // A draw of its own, so its answers leave the steward's other choices as they were.
+        var random = SeededRandom(seed: Seed.mix(state.settings.seed, 8_801, UInt64(state.watch), UInt64(house)))
         var events: [GameEvent] = []
         for (index, question) in questions.enumerated() where state.lyceumAnswers(of: house)[index] == nil {
             let wrong = (0..<question.choices.count).filter { $0 != question.answer }

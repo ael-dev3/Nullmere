@@ -344,6 +344,8 @@ final class SpacetimeIntegrationTests: XCTestCase {
             earA.world?.isAtWar(houseA, houseB) == true && earB.world?.isAtWar(houseA, houseB) == true
         }
         print("REALM one keeper declared war on another, and both saw it")
+        try await RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60).fightAGreatBattle(ama: houseA, bel: houseB)
+        print("REALM a host of 200,000 met a garrison of 200,000 before a seat, each ordered from its own client, in one field of 400,000 both saw fought out and told alike")
 
         // Each in an alliance of their own, they fight over the Drowned
         // Crown on the bare ford, each from their own client.

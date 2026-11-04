@@ -839,6 +839,24 @@ final class NetworkRallyTests: XCTestCase {
         try await scene.upTheSpine(ama: ama, bel: bel)
     }
 
+    func testAGreatBattleOfFourHundredThousandFromTwoClients() async throws {
+        let db = FakeSpacetime()
+        let credentials = try await db.createIdentity()
+        let steward = try await RealmSteward(transport: db, token: credentials.token, name: "The Nullmere", seed: "the great battle",
+                                             seats: 4, watchLength: 600, now: 0)
+        let running = Task { await steward.run(clock: { 1 }) }
+        defer { running.cancel() }
+        let (a, earA) = await MainActor.run { keeper(db) }
+        let (b, earB) = await MainActor.run { keeper(db) }
+        await MainActor.run { a.arrive(name: "Ama"); b.arrive(name: "Bel") }
+        let scene = RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 20)
+        try await scene.until("both keepers to arrive") { earA.keeper != nil && earB.keeper != nil }
+        let (ama, bel) = await MainActor.run { (earA.keeper!.house!, earB.keeper!.house!) }
+        await MainActor.run { a.send(.declareWar(on: bel)) }
+        try await scene.until("war, as both see it") { earA.world?.isAtWar(ama, bel) == true && earB.world?.isAtWar(ama, bel) == true }
+        try await scene.fightAGreatBattle(ama: ama, bel: bel)
+    }
+
     func testTwoAlliancesContestTheDrownedCrownFromTheirClients() async throws {
         let db = FakeSpacetime()
         let credentials = try await db.createIdentity()

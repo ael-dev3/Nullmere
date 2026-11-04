@@ -88,6 +88,12 @@ extension GameState {
     /// every host walks the rest of its way and strikes if it is there.
     mutating func walkTheRest() -> [GameEvent] {
         var events: [GameEvent] = []
+        // The fields of battle fight on for the paces the watch had left: a
+        // watch turned early, every keeper ready, cuts no battle short.
+        let left = max(0, GameState.pacesPerWatch - 1 - (pacing?.walked ?? 0))
+        for _ in 0..<left where !fieldsOfBattle.isEmpty {
+            events += fightFields()
+        }
         for id in marchingIDs() {
             events += march(id)
         }

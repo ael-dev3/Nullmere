@@ -14,10 +14,10 @@ struct RallyScene {
     let b: NetworkRealmLink, earB: Listener
     let timeout: Double
 
-    func until(_ what: String, _ condition: @escaping @MainActor @Sendable () -> Bool) async throws {
+    func until(_ what: String, line: UInt = #line, _ condition: @escaping @MainActor @Sendable () -> Bool) async throws {
         let deadline = Date().addingTimeInterval(timeout)
         while await !MainActor.run(body: condition) {
-            if Date() > deadline { throw SpacetimeError("Timed out waiting for \(what)") }
+            if Date() > deadline { throw SpacetimeError("Timed out waiting for \(what) (RallyScene line \(line))") }
             try await Task.sleep(nanoseconds: 20_000_000)
         }
     }
@@ -1059,5 +1059,112 @@ extension RallyScene {
         XCTAssertEqual(land.1, alliance, "and as Bel does")
         let borders = await MainActor.run { earB.world?.allianceBorders().isEmpty }
         XCTAssertEqual(borders, false, "its border drawn")
+    }
+}
+
+/// The ground and companies a great battle was staged on.
+final class StagedBattle: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: (host: [(Int, Hex)], garrison: [(Int, Hex)]) = ([], [])
+    func set(host: [(Int, Hex)], garrison: [(Int, Hex)]) { lock.lock(); values = (host, garrison); lock.unlock() }
+    var host: [(Int, Hex)] { lock.lock(); defer { lock.unlock() }; return values.host }
+    var garrison: [(Int, Hex)] { lock.lock(); defer { lock.unlock() }; return values.garrison }
+}
+
+extension RallyScene {
+    /// The troops a side of the great battle brings: eight companies of the
+    /// fifth tier drilled to 25,000 apiece.
+    static let greatBattleCompanies = 8
+    static let greatBattleTroops = 25_000
+
+    /// At war, Ama's host of eight drilled companies, 200,000 troops, comes
+    /// before Bel's seat, where his garrison of as many stands in line. Each
+    /// keeper orders their own companies to strike from their own client;
+    /// the blows join in one field of 400,000 that both see, fought out over
+    /// the watches until it ends, one telling for both.
+    func fightAGreatBattle(ama: Int, bel: Int) async throws {
+        let staged = StagedBattle()
+        await steward.reshape { realm in
+            let world = realm.world
+            guard let seat = world.holds.first(where: { $0.owner == bel && $0.isSeat }) else { return }
+            let east = Hex.directions[0], along = Hex.directions[5]
+            // Five spears a side face each other along the front, three bows
+            // behind each line: one front no wider than one field.
+            let spears = [0, -1, 1, -2, 2], bows = [0, -1, 1]
+            func open(_ hex: Hex) -> Bool {
+                world.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true && world.unit(at: hex) == nil
+                    && world.hold(at: hex) == nil && world.wild(at: hex) == nil
+            }
+            guard let ground = seat.position.spiral(10).first(where: { ground in
+                ground.distance(to: seat.position) >= 4
+                    && spears.allSatisfy { open(ground + along * $0) && open(ground + along * $0 + east) }
+                    && bows.allSatisfy { open(ground + along * $0 - east) && open(ground + along * $0 + east * 2) }
+            }) else { return }
+            var host: [(Int, Hex)] = [], garrison: [(Int, Hex)] = []
+            func raise(_ kind: UnitKind, of house: Int, at hex: Hex) -> Int {
+                var unit = NullmereCore.Unit(id: realm.world.takeID(), kind: kind, owner: house, position: hex, tier: 5)
+                unit.drilled = RallyScene.greatBattleTroops - realm.world.firstMuster(of: unit)
+                realm.world.units.append(unit)
+                return unit.id
+            }
+            for step in spears {
+                let front = ground + along * step
+                host.append((raise(.spear, of: ama, at: front), front + east))
+                garrison.append((raise(.spear, of: bel, at: front + east), front))
+            }
+            for step in bows {
+                let front = ground + along * step
+                host.append((raise(.bow, of: ama, at: front - east), front + east))
+                garrison.append((raise(.bow, of: bel, at: front + east * 2), front))
+            }
+            staged.set(host: host, garrison: garrison)
+        }
+        let host = staged.host, garrison = staged.garrison
+        XCTAssertEqual(host.count, RallyScene.greatBattleCompanies, "Ground for both armies before Bel's seat")
+        guard host.count == RallyScene.greatBattleCompanies else { return }
+        let all = RallyScene.greatBattleCompanies * 2 * RallyScene.greatBattleTroops
+        try await until("both to see both armies drawn up") {
+            [earA, earB].allSatisfy { ear in (host + garrison).allSatisfy { ear.world?.unit($0.0) != nil } }
+        }
+        // Each keeper's own orders, from their own client.
+        await MainActor.run {
+            for (unit, target) in host { a.send(.attack(unit: unit, target: target)) }
+            for (unit, target) in garrison { b.send(.attack(unit: unit, target: target)) }
+        }
+        try await until("both to see one field of all of them") {
+            [earA, earB].allSatisfy { ear in
+                guard let fields = ear.world?.fieldsOfBattle, fields.count == 1, let field = fields.first else { return false }
+                return field.fighters.count == 2 * RallyScene.greatBattleCompanies
+            }
+        }
+        let seen = await MainActor.run { (earA.world!.fieldsOfBattle[0], earB.world!.fieldsOfBattle[0]) }
+        XCTAssertEqual(seen.0.troops(of: 0) + seen.0.troops(of: 1), all, "every troop of both armies in the one battle, as Ama sees it")
+        XCTAssertEqual(seen.1.troops(of: 0) + seen.1.troops(of: 1), all, "and as Bel does")
+        XCTAssertEqual(seen.0.id, seen.1.id)
+        // Fought out over the watches; both told how it ended, alike.
+        let ended: @MainActor @Sendable (Listener) -> Field? = { ear in
+            for event in ear.events {
+                switch event {
+                case .heard(let events), .watchTurned(_, let events), .answered(let events), .settled(_, let events):
+                    for case let .fieldEnded(field) in events where field.id == seen.0.id { return field }
+                default: continue
+                }
+            }
+            return nil
+        }
+        for _ in 0..<12 {
+            if await MainActor.run(body: { ended(earA) != nil && ended(earB) != nil }) { break }
+            let watch = await MainActor.run { earA.world?.watch ?? 0 }
+            await MainActor.run { a.setReady(true); b.setReady(true) }
+            try await until("the watch to turn") { (earA.world?.watch ?? 0) > watch && (earB.world?.watch ?? 0) > watch }
+        }
+        try await until("both told the battle is over") { ended(earA) != nil && ended(earB) != nil }
+        let over = await MainActor.run { (ended(earA)!, ended(earB)!) }
+        XCTAssertEqual(over.0.troops(of: 0) + over.0.troops(of: 1), all)
+        XCTAssertEqual(over.0.lost(by: 0), over.1.lost(by: 0), "one battle, one count of the fallen")
+        XCTAssertEqual(over.0.lost(by: 1), over.1.lost(by: 1))
+        XCTAssertGreaterThan(over.0.lost(by: 0) + over.0.lost(by: 1), 0, "it was fought")
+        let chronicle = await MainActor.run { earA.world?.chronicle.last { $0.kind == .battle }?.text }
+        XCTAssertTrue(chronicle?.contains("400,000 troops in all") == true, chronicle ?? "no telling")
     }
 }

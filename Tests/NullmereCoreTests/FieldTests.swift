@@ -375,7 +375,7 @@ final class FieldTests: XCTestCase {
         // Struck, and standing in the battle as the watch turns: it doesn't heal.
         var turned = state
         _ = turned.endWatch()
-        XCTAssertEqual(turned.unit(spear)?.health, hurt, "No healing in battle")
+        XCTAssertLessThanOrEqual(turned.unit(spear)?.health ?? 0, hurt, "No healing in battle: it fights on as the watch turns, and may fall")
         // Out of it, it heals as ever.
         var freed = state
         freed.fields = nil
