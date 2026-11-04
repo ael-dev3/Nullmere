@@ -124,7 +124,7 @@ final class NetworkAppTests: XCTestCase {
         XCTAssertNil(first.carriedWords, "Shown only then")
 
         let identity = MemoryStore()
-        let second = app(db, identity: identity, realm: "carried-second")
+        let second = app(db, identity: identity, realm: "carried-second", accepted: false)
         defer { UserDefaults.standard.removeObject(forKey: GameApp.compactKey) }
         second.open()
         try await until("the second Mac's door") { if case .open = second.door { return true } else { return false } }
@@ -172,7 +172,7 @@ final class NetworkAppTests: XCTestCase {
         defer { PressableButtons.isListening = false }
         defer { UserDefaults.standard.removeObject(forKey: GameApp.compactKey) }
         let identity = MemoryStore()
-        let app = app(db, identity: identity, realm: "ways aside")
+        let app = app(db, identity: identity, realm: "ways aside", accepted: false)
         func doorOpens() async throws {
             try await until("the door open") { if case .open = app.door { return true } else { return false } }
         }

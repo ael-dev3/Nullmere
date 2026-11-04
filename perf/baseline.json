@@ -131,19 +131,19 @@
       "note": "one round of the calibration's plain work timed between the staging passes, the best of four, its baseline the calibration's 353 for six rounds: how busy the runner is while the stage is timed, paces only the stage's figures"
     },
     "stage.cpu.p50": {
-      "baseline": 1.64,
+      "baseline": 4.0,
       "cpu": true,
       "paced_by": "stage.pace.cpu",
       "limit": 8.3,
-      "note": "the world's models staged for a frame on the main thread: CI's first figure, 2.36 (cb5988b), at the calibration's pace there, x1.44"
+      "note": "the world's models staged for a frame on the main thread: CI's first figure, 2.36 (cb5988b), at the calibration's pace there, x1.44; raised to 4.0 for fields of battle drawn as throngs (a figure for every 500 troops standing, up to 48 a company) in the late game the stage times, where battles now fight on through every watch (CI 566: 4.38 at x1.18)"
     },
     "stage.cpu.p95": {
-      "baseline": 1.74,
+      "baseline": 4.2,
       "cpu": true,
       "paced_by": "stage.pace.cpu",
       "ratio": 1.5,
       "limit": 16.7,
-      "note": "the world's models staged for a frame on the main thread: CI's first figure, 2.50 (cb5988b), at the calibration's pace there, x1.44"
+      "note": "the world's models staged for a frame on the main thread: CI's first figure, 2.50 (cb5988b), at the calibration's pace there, x1.44; raised to 4.2 with the throngs of fields of battle (CI 566: 4.51 at x1.18)"
     },
     "wide.gpu.scale28.p50": {
       "baseline": 12.44,

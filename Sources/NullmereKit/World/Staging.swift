@@ -347,6 +347,11 @@ extension GameSession {
     func companyPoses(at now: Date, animated: Bool, time: Double) -> [CompanyPose] {
         var poses: [CompanyPose] = []
         let resting = Float(time.truncatingRemainder(dividingBy: Double(Clip.idle.period) * 64))
+        // Who stands in which field of battle, found once for the frame.
+        var fighting: [Int: (field: Field, fighter: Fighter)] = [:]
+        for field in state.fieldsOfBattle {
+            for fighter in field.fighters where fighter.standing { fighting[fighter.unit] = (field, fighter) }
+        }
         for unit in state.units where unit.owner == player || isVisible(unit.position) {
             let key = ModelKey.company(unit.kind, tier: unit.tier, heritage: state.heritage(of: unit.owner))
             let centre = Relief.centre(of: unit.position)
@@ -417,7 +422,7 @@ extension GameSession {
             if let led = unit.leader.flatMap(state.commander) { poses[poses.count - 1].stars = led.starCount }
             // Standing in a field of battle: its troops' whole throng, its
             // front ranks at it blow after blow, each a beat from the next.
-            if let field = state.field(of: unit.id), let fighter = field.fighter(unit.id), fighter.standing {
+            if let (field, fighter) = fighting[unit.id] {
                 let standing = max(fighter.troops - fighter.lost, 0)
                 poses[poses.count - 1].throng = Formation.throngCount(key, troops: standing, muster: state.musterPercent(of: unit))
                 let side = fighter.side

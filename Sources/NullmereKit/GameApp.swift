@@ -722,6 +722,9 @@ public final class GameApp {
     func enterFromEnvironment() {
         #if DEBUG
         if let name = ProcessInfo.processInfo.environment["NULLMERE_KEEPER"], !name.isEmpty {
+            // A keeper named here has chosen to enter: the compact is taken as read.
+            compactAccepted = Compact.edition
+            (link as? NetworkRealmLink)?.compactAccepted = Compact.edition
             enterWorld(name: name)
         }
         #endif

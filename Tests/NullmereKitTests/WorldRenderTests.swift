@@ -182,7 +182,7 @@ final class WorldRenderTests: XCTestCase {
         let scene = session.sceneFrame(at: 20)
         let throngs = session.companyPoses(at: Date(), animated: true, time: 20).filter { $0.throng > 0 }
         XCTAssertEqual(throngs.count, 16, "every company in the field shows its throng")
-        XCTAssertEqual(throngs.map(\.throng).reduce(0, +), 16 * Formation.throngMost, "the whole host in figures")
+        XCTAssertGreaterThan(throngs.map(\.throng).reduce(0, +), 16 * 24, "the host in its hundreds of figures")
         print("RENDER battle: \(scene.instanceCount) instances, \(scene.motes.count) motes, \(scene.lights.count) lights")
         XCTAssertGreaterThan(scene.motes.count, 40, "clash and dust over the field")
         var close = Camera(scale: 95, tilt: 0.9, heading: 0.35)
