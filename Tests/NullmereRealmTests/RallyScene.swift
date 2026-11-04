@@ -1168,3 +1168,4 @@ extension RallyScene {
         XCTAssertTrue(chronicle?.contains("400,000 troops in all") == true, chronicle ?? "no telling")
     }
 }
+

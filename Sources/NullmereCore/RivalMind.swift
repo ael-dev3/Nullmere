@@ -964,8 +964,17 @@ struct RivalMind {
     /// own hold with a Muster Hall nearest it: the ambitious most often,
     /// the wary least.
     func callRally(in state: inout GameState, random: inout SeededRandom) -> [GameEvent] {
-        guard state.watch >= RivalMind.alliancesFrom, let sworn = state.alliance(of: house),
-              !state.ralliesStanding.contains(where: { $0.caller == house }) else { return [] }
+        guard !state.ralliesStanding.contains(where: { $0.caller == house }) else { return [] }
+        // A great army is led as one host on the foe, alliance or none.
+        if let host = greatHost(in: state, random: &random) {
+            // Rallies are an alliance's: a House sworn to none raises its own banner to lead it.
+            var events: [GameEvent] = []
+            if state.alliance(of: house) == nil {
+                events += perform(.foundAlliance(name: "The Host of \(state.houses[house].name)"), in: &state)
+            }
+            return events + perform(host, in: &state)
+        }
+        guard state.watch >= RivalMind.alliancesFrom, let sworn = state.alliance(of: house) else { return [] }
         guard let plan = siegePlan(in: state), let target = state.hold(at: plan.target),
               RivalMind.massing || sworn.members.contains(where: { $0 != house && state.isAtWar($0, target.owner) }) else {
             return rallyOnALair(in: &state, random: &random)
@@ -986,6 +995,39 @@ struct RivalMind {
         }
         guard random.chance(chance) else { return [] }
         return perform(.callRally(from: muster.id, against: target.id, watches: 2), in: &state)
+    }
+
+    /// The least a House's free companies of war must number, and the
+    /// troops they must hold between them, for it to lead them as one
+    /// great host.
+    static let greatHostCompanies = 6
+    static let greatHostTroops = 150_000
+
+    /// The free companies of war a House would lead as a great host.
+    func greatHostCompanies(in state: GameState) -> [Unit] {
+        state.units(of: house).filter { $0.kind.isMilitary && $0.errand == nil && state.field(of: $0.id) == nil }
+    }
+
+    /// A House at war whose free companies make a great army, at least
+    /// `greatHostCompanies` holding `greatHostTroops` troops, calls them as
+    /// one host on the foe's hold its siege is set on, from its Muster Hall
+    /// nearest it, gathering two watches; every company it can spare then
+    /// joins (`sendToRallies`), so its army meets the foe whole.
+    func greatHost(in state: GameState, random: inout SeededRandom) -> Command? {
+        let free = greatHostCompanies(in: state)
+        guard free.count >= RivalMind.greatHostCompanies,
+              free.reduce(0, { $0 + state.troops(of: $1) }) >= RivalMind.greatHostTroops,
+              let plan = siegePlan(in: state), let target = state.hold(at: plan.target), state.isAtWar(house, target.owner),
+              !state.edictsInForce.contains(where: { $0.kind == .moonPeace }), !state.isVeiled(target.owner) else { return nil }
+        let musters = state.holds(of: house).filter { $0.level(.musterHall) >= 1 && $0.position.distance(to: target.position) <= RivalMind.rallyReach }
+        guard let muster = musters.min(by: { a, b in
+            (a.position.distance(to: target.position), a.id) < (b.position.distance(to: target.position), b.id)
+        }) else { return nil }
+        // A great army is never left to march off company by company: it is led out as one, whatever the temper.
+        let command = Command.callRally(from: muster.id, against: target.id, watches: 2)
+        // Sworn to no alliance, it may still found one to call it; any other refusal stands.
+        if state.alliance(of: house) == nil, state.refusal(of: .foundAlliance(name: "The Host"), as: house) == nil { return command }
+        return state.refusal(of: command, as: house) == nil ? command : nil
     }
 
     /// At peace with every House, a House rallies on a lair of the wilds it
