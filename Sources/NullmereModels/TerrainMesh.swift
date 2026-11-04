@@ -53,6 +53,8 @@ public struct TerrainMesh: Sendable {
 
     /// How far past the map's outermost hexes the land is drawn.
     public static let margin: Float = 7
+    /// How far, in world units, the colours' borders wander from the hexes'.
+    public static let wander: Float = 0.5
 
     public init(relief: Relief, spacing: Float = 0.3) {
         let radius = Float(relief.radius)
@@ -74,8 +76,13 @@ public struct TerrainMesh: Sendable {
                 // The colour keeps each hex's own ground toward its heart and
                 // runs into its neighbours' across a broad shore, never a
                 // hex's edge.
-                let t = Relief.triangle(x: x, z: z)
-                let wa = Relief.raise(t.wa, 3), wb = Relief.raise(t.wb, 3), wc = Relief.raise(t.wc, 3)
+                // The point is first carried a little way by a slow noise, so
+                // where one ground gives way to the next wanders as country
+                // does and never follows a hex's outline.
+                let wx = x + TerrainMesh.wander * (2 * Noise.value(x * 0.8, z * 0.8, seed: 31) - 1)
+                let wz = z + TerrainMesh.wander * (2 * Noise.value(x * 0.8, z * 0.8, seed: 32) - 1)
+                let t = Relief.triangle(x: wx, z: wz)
+                let wa = Relief.raise(t.wa, 2), wb = Relief.raise(t.wb, 2), wc = Relief.raise(t.wc, 2)
                 let total = max(wa + wb + wc, 1e-12)
                 let ta = relief.terrain(of: t.a), tb = relief.terrain(of: t.b), tc = relief.terrain(of: t.c)
                 var colour = (TerrainMesh.colour(ta) * wa + TerrainMesh.colour(tb) * wb + TerrainMesh.colour(tc) * wc) / total
