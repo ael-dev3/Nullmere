@@ -153,7 +153,17 @@ final class WorldStagingTests: XCTestCase {
         // frame in one pass, at whichever frame it falls; the stage's own
         // work slows the frame in every pass.
         var passes: [[Double]] = []
+        // Plain work timed between the passes, none of it the game's: how
+        // busy the shared Mac is while the stage is timed, so that
+        // scripts/perf-check.py paces the stage's figures by it.
+        var beside: [Double] = []
+        func plain() {
+            let start = ThreadClock.milliseconds()
+            XCTAssertNotEqual(StagingTimes.plainWork(seed: UInt64(beside.count)), 0)
+            beside.append(ThreadClock.milliseconds() - start)
+        }
         for _ in 0..<3 {
+            plain()
             var times: [Double] = []
             for index in 1...60 {
                 let start = ThreadClock.milliseconds()
@@ -163,6 +173,8 @@ final class WorldStagingTests: XCTestCase {
             }
             passes.append(times)
         }
+        plain()
+        print("PERFMETRIC stage.pace.cpu \(String(format: "%.3f", beside.min() ?? 0))")
         let steadiest = StagingTimes.steadiest(passes)
         let p50 = StagingTimes.percentile(steadiest, 0.5), p95 = StagingTimes.percentile(steadiest, 0.95)
         for (index, pass) in passes.enumerated() {
@@ -213,7 +225,17 @@ final class WorldStagingTests: XCTestCase {
         XCTAssertTrue(viewed.batches.contains { $0.instances.contains { $0.hex == seatHex } }, "The seat in view, staged")
         // Thirty frames staged three times, each frame's steadiest kept.
         var passes: [[Double]] = []
+        // Plain work timed between the passes, none of it the game's: how
+        // busy the shared Mac is while the stage is timed, so that
+        // scripts/perf-check.py paces the stage's figures by it.
+        var beside: [Double] = []
+        func plain() {
+            let start = ThreadClock.milliseconds()
+            XCTAssertNotEqual(StagingTimes.plainWork(seed: UInt64(beside.count)), 0)
+            beside.append(ThreadClock.milliseconds() - start)
+        }
         for _ in 0..<3 {
+            plain()
             var times: [Double] = []
             for index in 1...30 {
                 let start = ThreadClock.milliseconds()

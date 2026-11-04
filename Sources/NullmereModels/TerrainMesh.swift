@@ -26,19 +26,20 @@ public struct TerrainMesh: Sendable {
         case .still: return Vec3(0.06, 0.07, 0.07)
         case .shallows: return Vec3(0.14, 0.15, 0.14)
         // Wet shingle, a little silvered by the moon.
-        case .ford: return Vec3(0.19, 0.19, 0.18)
+        case .ford: return Vec3(0.13, 0.13, 0.125)
         // A stream's dark wet stones, and its shoal's paler shingle.
         case .stream: return Vec3(0.09, 0.10, 0.10)
-        case .shoal: return Vec3(0.16, 0.165, 0.17)
-        case .strand: return Vec3(0.17, 0.16, 0.145)
+        case .shoal: return Vec3(0.11, 0.115, 0.12)
+        case .strand: return Vec3(0.12, 0.11, 0.10)
         // Salt pale under the moon, a shade paler than a ford's shingle:
         // the palest land, but dull. The shore's grounds are wet and dark:
         // at a third grey the moon lit them into banks of cloud before a
-        // low eye (run 540's view without the land's light showed it).
-        case .saltFlat: return Vec3(0.25, 0.24, 0.22)
-        case .greyfield: return Vec3(0.21, 0.23, 0.19)
+        // low eye (run 540's view without the land's light showed it; run 541's at a
+        // fifth grey still showed them, fainter).
+        case .saltFlat: return Vec3(0.22, 0.21, 0.195)
+        case .greyfield: return Vec3(0.19, 0.21, 0.17)
         case .blackwood: return Vec3(0.13, 0.16, 0.13)
-        case .barrow: return Vec3(0.22, 0.21, 0.17)
+        case .barrow: return Vec3(0.18, 0.17, 0.14)
         case .spine: return Vec3(0.21, 0.21, 0.24)
         }
     }

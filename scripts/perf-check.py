@@ -26,6 +26,11 @@ calibration and the CPU figures alike; a slower path in the game moves
 only its own figure, and still fails, since the game's code can't slow
 the calibration down. A machine more than twice as slow as the
 baseline's isn't one to measure on: its CPU figures are held at twice.
+
+A metric may name, as "paced_by", plain work timed beside it at the same
+moments (marked "beside", a calibration that paces nothing else): a runner
+busy only while that one test runs slows its plain work too, and its
+figure is allowed the slower of the two paces.
 """
 import json
 import re
@@ -55,7 +60,7 @@ def check(found, baseline):
     lines, failed = [], False
     pace = 1.0
     for name, spec in metrics.items():
-        if spec.get("calibration") and spec.get("baseline") and name in found:
+        if spec.get("calibration") and not spec.get("beside") and spec.get("baseline") and name in found:
             pace = max(1.0, found[name] / spec["baseline"])
             held = " (held at most)" if pace > MOST_PACE else ""
             pace = min(pace, MOST_PACE)
@@ -86,7 +91,15 @@ def check(found, baseline):
             lines.append(f"PERF-CHECK {name} {value:.2f} ms (baseline {base:.2f}) CALIBRATION")
             continue
         if spec.get("cpu"):
-            allowed *= pace
+            # A figure that times plain work of its own beside it, at the
+            # same moments, is paced by that too: a shared runner busy only
+            # while one test runs slows that test's plain work as well.
+            local = pace
+            beside = metrics.get(spec.get("paced_by") or "", {})
+            if spec.get("paced_by") in found and beside.get("baseline"):
+                local = min(max(1.0, found[spec["paced_by"]] / beside["baseline"]), MOST_PACE)
+                lines.append(f"PERF-CHECK {name} paced by {spec['paced_by']}: x{local:.2f} beside it")
+            allowed *= max(pace, local)
         if spec.get("limit") is not None:
             allowed = min(allowed, spec["limit"])
         verdict = "OK"
@@ -135,6 +148,17 @@ def self_test():
     assert any("held at most" in line for line in lines), lines
     _, failed = check({"cal": 500.0, "w": 29.0}, paced)
     assert not failed, "29 is within 10 x 1.5 x 2"
+    beside = {"metrics": {"cal": {"baseline": 100.0, "calibration": True}, "near": {"baseline": 5.0, "calibration": True, "beside": True},
+                          "w": {"baseline": 10.0, "cpu": True, "paced_by": "near"}}}
+    _, failed = check({"cal": 100.0, "near": 8.5, "w": 16.0}, beside)
+    assert not failed, "busy only while w ran: its own plain work 1.7 times slower widens it"
+    _, failed = check({"cal": 100.0, "near": 5.0, "w": 16.0}, beside)
+    assert failed, "its own plain work at pace: 16 is over 10 x 1.5"
+    _, failed = check({"cal": 100.0, "w": 16.0}, beside)
+    assert failed, "no plain work beside it: the run's pace alone"
+    beside["metrics"]["o"] = {"baseline": 10.0, "cpu": True}
+    _, failed = check({"cal": 100.0, "near": 50.0, "w": 10.0, "o": 16.0}, beside)
+    assert failed, "plain work beside one test never paces the others' or the run's"
     print("perf-check self-test passed")
     return 0
 

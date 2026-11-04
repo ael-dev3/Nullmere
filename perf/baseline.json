@@ -116,15 +116,23 @@
       "calibration": true,
       "note": "plain work, none of it the game's, by thread CPU, as CI's runner does it on a quick day: the old work's 250 times the two works' measured ratio (1.41). The old work ran 277 to 505 on CI; CI's first figure for this one, 476, came with the realm's watches at 1.3 to 1.5 times their baselines, a slow day"
     },
+    "stage.pace.cpu": {
+      "baseline": 58.8,
+      "calibration": true,
+      "beside": true,
+      "note": "one round of the calibration's plain work timed between the staging passes, the best of four, its baseline the calibration's 353 for six rounds: how busy the runner is while the stage is timed, paces only the stage's figures"
+    },
     "stage.cpu.p50": {
       "baseline": 1.64,
       "cpu": true,
+      "paced_by": "stage.pace.cpu",
       "limit": 8.3,
       "note": "the world's models staged for a frame on the main thread: CI's first figure, 2.36 (cb5988b), at the calibration's pace there, x1.44"
     },
     "stage.cpu.p95": {
       "baseline": 1.74,
       "cpu": true,
+      "paced_by": "stage.pace.cpu",
       "ratio": 1.5,
       "limit": 16.7,
       "note": "the world's models staged for a frame on the main thread: CI's first figure, 2.50 (cb5988b), at the calibration's pace there, x1.44"
