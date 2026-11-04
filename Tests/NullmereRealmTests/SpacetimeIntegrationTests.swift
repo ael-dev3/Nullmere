@@ -526,6 +526,6 @@ final class SpacetimeIntegrationTests: XCTestCase {
         guard transports.count == 3 else { return XCTFail("Three addresses: two realms, then the Frontier") }
         let databases = FrontierPlayThrough.Databases(west: transports[0], east: transports[1], lost: transports[2], lostAddress: addresses[2],
                                                       westAddress: addresses[0], eastAddress: addresses[1])
-        try await FrontierPlayThrough.play(databases, token: token)
+        try await FrontierPlayThrough.playBounded(databases, token: token)
     }
 }

@@ -66,6 +66,61 @@ enum FrontierPlayThrough {
         }
     }
 
+    /// The play-through within a bound: one that stalls, or never lets go
+    /// of its clients and stewards, fails in its own time with where it
+    /// stood, instead of holding the job until the runner's limit.
+    static func playBounded(_ db: Databases, token: String, minutes: Double = 8) async throws {
+        // A race, not a task group: a group waits for every child as it
+        // closes, and a stalled play-through would hold it still.
+        let outcome = Outcome()
+        let playing = Task { @MainActor in
+            do { try await play(db, token: token); outcome.settle(nil) } catch { outcome.settle(error) }
+        }
+        let timer = Task {
+            try? await Task.sleep(nanoseconds: UInt64(minutes * 60 * 1_000_000_000))
+            outcome.settle(SpacetimeError("The Frontier play-through took over \(Int(minutes)) minutes, at \(FrontierPlayThrough.progress.told)"))
+        }
+        let error = await outcome.value
+        timer.cancel()
+        playing.cancel()
+        if let error { throw error }
+    }
+
+    /// The first word of a race, kept once.
+    final class Outcome: @unchecked Sendable {
+        private let lock = NSLock()
+        private var settled = false
+        private var waiting: CheckedContinuation<(any Error)?, Never>?
+        private var result: (any Error)?
+
+        func settle(_ error: (any Error)?) {
+            lock.lock()
+            guard !settled else { lock.unlock(); return }
+            settled = true
+            result = error
+            let continuation = waiting
+            waiting = nil
+            lock.unlock()
+            continuation?.resume(returning: error)
+        }
+
+        var value: (any Error)? {
+            get async {
+                await withCheckedContinuation { continuation in
+                    lock.lock()
+                    if settled {
+                        let done = result
+                        lock.unlock()
+                        continuation.resume(returning: done)
+                    } else {
+                        waiting = continuation
+                        lock.unlock()
+                    }
+                }
+            }
+        }
+    }
+
     @MainActor
     static func play(_ db: Databases, token: String) async throws {
         let suffix = String(KeeperIdentity.make().filter(\.isLetter).prefix(5)).lowercased()
@@ -104,6 +159,12 @@ enum FrontierPlayThrough {
         orlaEar.listen(to: orla)
         ilsen.connect()
         orla.connect()
+        // Every client let go at the end, whatever happened: none left
+        // asking the server once the play-through is over.
+        defer {
+            ilsen.close()
+            orla.close()
+        }
         try await until("their realms' status") { ilsenEar.hasStatus && orlaEar.hasStatus }
         ilsen.arrive(name: "Ilsen" + suffix)
         orla.arrive(name: "Orla" + suffix)
@@ -201,6 +262,6 @@ final class FrontierPlayThroughTests: XCTestCase {
             share: { credentials in
                 for db in [west, east, lost] { await db.remember(credentials) }
             })
-        try await FrontierPlayThrough.play(databases, token: steward.token)
+        try await FrontierPlayThrough.playBounded(databases, token: steward.token)
     }
 }
