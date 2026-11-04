@@ -50,6 +50,20 @@ final class WordsTests: XCTestCase {
         XCTAssertEqual(refusal(.reportWord(word: rude.id), as: other), .ownWord)
         XCTAssertEqual(refusal(.reportWord(word: 987_654), as: me), .unknownWord)
         XCTAssertEqual(refusal(.reportWord(word: rude.id), as: apart), .notAKeeper)
+        // No more than five reports a watch from one keeper; a line no
+        // longer than the realm keeps, and on one line.
+        var flood = state
+        for index in 0..<8 { _ = try flood.perform(.say(words: "Line \(index) of many", toAlliance: false), as: other) }
+        let lines = flood.wordsSaid.filter { $0.from == other && $0.text.hasPrefix("Line") }
+        for line in lines.prefix(GameState.reportsPerWatch - 1) { _ = try flood.perform(.reportWord(word: line.id), as: me) }
+        var over = flood
+        XCTAssertThrowsError(try over.perform(.reportWord(word: lines[GameState.reportsPerWatch - 1].id), as: me)) {
+            XCTAssertEqual($0 as? RuleError, .reportedEnough)
+        }
+        flood.watch += 1
+        XCTAssertNoThrow(try flood.perform(.reportWord(word: lines[GameState.reportsPerWatch - 1].id), as: me), "a new watch, a new hearing")
+        XCTAssertEqual(Envoy.carried(String(repeating: "word ", count: 100))?.count, Envoy.wordsLimit)
+        XCTAssertFalse(Envoy.carried("one\ntwo\nthree")?.contains("\n") ?? true, "one line")
 
         // The realm's steward takes the line away.
         XCTAssertEqual(state.removeWord(rude.id), [.wordRemoved(word: rude.id)])

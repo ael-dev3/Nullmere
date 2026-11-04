@@ -93,6 +93,9 @@ public struct WordsBar: Codable, Equatable, Sendable {
 extension GameState {
     /// The most reports the realm keeps for its steward, the oldest let go first.
     public static let reportsKept = 200
+    /// The most lines a keeper may report in a watch, so reports cannot
+    /// bury the steward.
+    public static let reportsPerWatch = 5
     /// What a line taken away by the realm's steward reads, where it stood.
     public static let removedWords = "Taken away by the realm's steward."
 
@@ -111,6 +114,7 @@ extension GameState {
         guard let word = words(heardBy: house).first(where: { $0.id == wordID }), word.removed != true else { return .unknownWord }
         guard word.from != house else { return .ownWord }
         if wordReports.contains(where: { $0.word == wordID && $0.by == house }) { return .reportedAlready }
+        guard wordReports.lazy.filter({ $0.by == house && $0.watch == self.watch }).count < GameState.reportsPerWatch else { return .reportedEnough }
         return nil
     }
 

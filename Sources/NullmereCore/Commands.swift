@@ -309,6 +309,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     /// A House's own line, reported.
     case ownWord
     case reportedAlready
+    /// A keeper has reported as many lines as the realm hears from one in a watch.
+    case reportedEnough
     /// Barred from the Words by the realm's steward, until a watch.
     case barredFromWords(until: Int)
     /// A House of one hold, putting an edict to the realm.
@@ -597,6 +599,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .unknownWord: return "No such line is in the Words."
         case .ownWord: return "That line is your own."
         case .reportedAlready: return "You have reported that line already."
+        case .reportedEnough: return "You have reported as many lines as the realm hears from one keeper in a watch."
         case .barredFromWords(let until): return "The realm's steward has barred your House from the Words until the \(ordinal(until)) watch."
         case .tooFewHolds: return "Only a House of two holds or more may put an edict to the realm."
         case .edictInVote: return "An edict is before the realm already; another when its vote is done."
