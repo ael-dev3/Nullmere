@@ -323,6 +323,7 @@ final class SpacetimeIntegrationTests: XCTestCase {
         try await scene.heedTheBeacon(ama: houseA, bel: houseB)
         try await scene.breakTheCalm(ama: houseA, bel: houseB)
         try await scene.gatherAndBringItHome(ama: houseA, bel: houseB)
+        try await scene.makeTheWordsSafe(ama: houseA, bel: houseB)
         print("REALM two keepers each raised a work or a muster for their watch's labour, and each was told only of their own")
         try await scene.teachTheLakeToLie(ama: houseA, bel: houseB)
         print("REALM one keeper taught the lake to lie, and the other saw her false company mirrored at the Still Hour")

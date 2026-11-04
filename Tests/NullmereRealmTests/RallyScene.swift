@@ -806,3 +806,42 @@ extension RallyScene {
         }
     }
 }
+
+extension RallyScene {
+    /// The Words made safe, between two clients: Bel says a line, Ama
+    /// reports it and is told the steward has it; the realm's steward takes
+    /// it out, and both clients see it gone where it stood; barred, Bel's
+    /// next line is refused by the realm.
+    func makeTheWordsSafe(ama: Int, bel: Int) async throws {
+        let line = "Foul words on the water \(Int.random(in: 1000...9999))"
+        await MainActor.run { b.send(.say(words: line, toAlliance: false)) }
+        let said: @MainActor @Sendable (Listener) -> Word? = { ear in ear.world?.wordsSaid.last { $0.text == line } }
+        try await until("both hear Bel's line") { said(earA) != nil && said(earB) != nil }
+        let word = try await MainActor.run { try XCTUnwrap(said(earA)) }
+        await MainActor.run { a.send(.reportWord(word: word.id)) }
+        try await until("Ama's report kept at the realm") {
+            earA.world?.wordReports.contains { $0.word == word.id && $0.by == ama } == true
+        }
+        let belSees = await MainActor.run { earB.world?.wordReports.contains { $0.word == word.id } ?? false }
+        XCTAssertFalse(belSees, "A report is its reporter's alone")
+        let kept = await steward.state.world.wordReports.contains { $0.word == word.id && $0.by == ama }
+        XCTAssertTrue(kept, "the realm's own steward has it")
+        // The steward takes the line out.
+        let took = await steward.obey("remove \(word.id)")
+        XCTAssertEqual(took, "Took line \(word.id) out of the Words.")
+        let gone: @MainActor @Sendable (Listener) -> Bool = { ear in
+            ear.world?.wordsSaid.first { $0.id == word.id }?.removed == true
+        }
+        try await until("the line gone in both clients") { gone(earA) && gone(earB) }
+        // And bars Bel's House from the Words for two watches.
+        let barred = await steward.obey("bar \(bel) 2")
+        XCTAssertTrue(barred.hasPrefix("Barred "), barred)
+        try await until("Bel's client knows it is barred") { earB.world?.barredFromWords(bel) != nil }
+        await MainActor.run { b.send(.say(words: "Let me speak", toAlliance: false)) }
+        try await until("the realm refuses Bel's line") {
+            earB.refusals.contains { $0.hasPrefix("You are barred from the Words") || $0.contains("barred") }
+        }
+        let spoke = await MainActor.run { earA.world?.wordsSaid.contains { $0.text == "Let me speak" } ?? false }
+        XCTAssertFalse(spoke, "Ama never hears it")
+    }
+}
