@@ -79,8 +79,9 @@ run build/game-lakes.png 0 lake
 WORLD_LOG="$WORLD_LOG
 $LOG"
 # The same view with one pass of the renderer left out at a time, to tell
-# which draws what (debug builds only).
-if [ "${DEBUG_PASSES:-1}" = 1 ]; then
+# which draws what (debug builds only; DEBUG_PASSES=1 asks for them, as
+# they add five launches to the run).
+if [ "${DEBUG_PASSES:-0}" = 1 ]; then
     for pass in land furniture models water motes; do
         NULLMERE_DEBUG_PASSES="$pass" run "build/game-lakes-no-$pass.png" 0 lake
     done
