@@ -345,6 +345,24 @@ public final class GameSession {
         public let start: Date
     }
 
+    /// An expedition's fight on the Spine: the line's commanders, each at
+    /// the head of a company, on the land below the ridge, and the stage's
+    /// host of the wilds on it, falling if the line wins.
+    public struct ExpeditionFight: Equatable, Identifiable {
+        public let id: Int
+        public let from: Hex
+        public let at: Hex
+        public let line: [Int]
+        public let stage: Int
+        public let won: Bool
+        public let start: Date
+
+        /// How many of the wilds hold a stage: more the higher it is.
+        public var hostSize: Int { min(2 + stage / 3, 5) }
+        /// How long its figures stand after the last blow.
+        public static let lingers = 4.0
+    }
+
     /// A hold scouted, by the player's Lanterns or by another's at the
     /// player's own: their light circling it, briefly.
     public struct Sighting: Equatable, Identifiable {
@@ -461,6 +479,8 @@ public final class GameSession {
     public private(set) var blows: [Blow] = []
     /// Commanders' skills fired in sight, while their gold is drawn.
     public private(set) var furies: [Fury] = []
+    /// The expeditions fought this moment, their figures on the ridge.
+    public private(set) var expeditionFights: [ExpeditionFight] = []
     /// Holds scouted in sight, while their Lanterns' light is drawn.
     public private(set) var sightings: [Sighting] = []
     /// What the House's Lanterns last saw of each hold they scouted, by hold.
@@ -2009,6 +2029,9 @@ public final class GameSession {
         // from the land below it, and its skill flares as it does.
         for case .expedition(let result) in events where result.house == player {
             guard let (from, at) = GameSession.expeditionField(in: state, for: player) else { continue }
+            blowCounter += 1
+            expeditionFights.append(ExpeditionFight(id: blowCounter, from: from, at: at, line: result.line ?? [result.commander],
+                                                    stage: result.stage, won: result.won, start: now))
             for (index, id) in (result.line ?? [result.commander]).enumerated() {
                 blowCounter += 1
                 blows.append(Blow(id: blowCounter, at: at, damage: result.won ? result.weight : result.against,
@@ -2040,10 +2063,11 @@ public final class GameSession {
         }
         guard shown else { return }
         Task { [weak self] in
-            try? await Task.sleep(for: .seconds(Blow.lingers + 0.05))
+            try? await Task.sleep(for: .seconds(max(Blow.lingers, ExpeditionFight.lingers) + 0.05))
             guard let self else { return }
             self.blows.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
             self.furies.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
+            self.expeditionFights.removeAll { Date().timeIntervalSince($0.start) >= ExpeditionFight.lingers }
             self.sightings.removeAll { Date().timeIntervalSince($0.start) >= Blow.lingers }
         }
     }

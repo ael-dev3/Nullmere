@@ -1260,6 +1260,35 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(session.blows.count - before, line.count)
         XCTAssertTrue(session.blows.suffix(line.count).allSatisfy { $0.at == field.at && $0.from == field.from })
         XCTAssertEqual(GameSession.place(of: .expedition(result), in: session.state), field.at)
+        // Its figures on the ridge: the line below it, each commander at the
+        // head of a company striking in turn, and the stage's host on it,
+        // falling once the last blow has landed.
+        let fight = try XCTUnwrap(session.expeditionFights.last)
+        XCTAssertEqual(fight.line, line)
+        let start = fight.start
+        let figures = { (age: Double) in
+            session.companyPoses(at: start.addingTimeInterval(age), animated: true, time: age)
+                .filter { $0.unit <= GameSession.expeditionPoseBase }
+        }
+        let early = figures(0.1)
+        let mine = early.filter(\.isOwn), host = early.filter { !$0.isOwn }
+        XCTAssertEqual(mine.count, line.count)
+        XCTAssertEqual(mine.compactMap(\.commander).count, line.count, "each led by its commander")
+        XCTAssertTrue(mine.allSatisfy { $0.hex == field.from })
+        XCTAssertEqual(mine.first?.clip, .attack, "the first strikes at once")
+        XCTAssertEqual(mine.last?.clip, .idle, "the last in its turn")
+        XCTAssertEqual(host.count, fight.hostSize)
+        XCTAssertTrue(host.allSatisfy { $0.hex == field.at })
+        XCTAssertTrue(figures(1.6).filter { !$0.isOwn }.allSatisfy { $0.clip == .death }, "won: the host falls")
+        XCTAssertTrue(figures(3.9).filter { !$0.isOwn }.isEmpty, "and is gone")
+        let lost = ExpeditionResult(house: me, commander: lead.id, stage: 7, weight: 40, against: 90, won: false)
+        session.showBlows([.expedition(lost)])
+        let held = try XCTUnwrap(session.expeditionFights.last)
+        XCTAssertEqual(held.hostSize, 4, "a higher stage, a greater host")
+        let standing = session.companyPoses(at: held.start.addingTimeInterval(1.6), animated: true, time: 1.6)
+            .filter { $0.unit <= GameSession.expeditionPoseBase - held.id * 8 - 4 && $0.unit > GameSession.expeditionPoseBase - held.id * 8 - 8 }
+        XCTAssertEqual(standing.count, 4)
+        XCTAssertTrue(standing.allSatisfy { $0.clip == .attack }, "lost: the host stands and strikes back")
     }
 
     /// A false reflection cast from a hold by the water.

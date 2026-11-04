@@ -425,6 +425,45 @@ extension GameSession {
                                      heading: headings[GameSession.wildPoseBase - wild.id] ?? Float(wild.id % 6) * .pi / 3,
                                      clipTime: resting, emphasis: hovered == wild.position ? 0.5 : 0, isOwn: false))
         }
+        // An expedition's fight on the Spine: the line below the ridge, each
+        // commander at the head of a company striking in turn, and the
+        // stage's host on the ridge, falling at the last blow if it is won.
+        for fight in expeditionFights {
+            let age = animated ? Float(now.timeIntervalSince(fight.start)) : 0
+            let below = Relief.centre(of: fight.from), ridge = Relief.centre(of: fight.at)
+            let toward = CompanyPose.heading(from: fight.from, to: fight.at)
+            let across = Vec3(-(ridge.z - below.z), 0, ridge.x - below.x).normalized
+            let heritage = state.heritage(of: player)
+            for (index, id) in fight.line.enumerated() {
+                let side = Float(index) - Float(fight.line.count - 1) / 2
+                var position = Vec3(below.x, Float(groundHeight(of: fight.from)), below.z) + across * (side * 0.34)
+                let strikeAge = age - Float(index) * 0.35
+                var clip = Clip.idle, clipTime = age
+                if strikeAge > 0, Double(strikeAge) < GameSession.Blow.duration {
+                    clip = .attack
+                    clipTime = strikeAge
+                    let lean = Float(GameSession.Blow.lunge(at: Double(strikeAge) / GameSession.Blow.duration)) * 0.6
+                    position += Vec3(ridge.x - below.x, 0, ridge.z - below.z) * lean
+                }
+                poses.append(CompanyPose(unit: GameSession.expeditionPoseBase - fight.id * 8 - index,
+                                         key: .company(.spear, tier: 2, heritage: heritage), sigil: state.houses[player].sigil,
+                                         health: 100, hex: fight.from, position: position, heading: toward, clip: clip,
+                                         clipTime: clipTime, isOwn: true, commander: commanderLook(id), spread: 0.55))
+            }
+            let lastBlow = Float(fight.line.count - 1) * 0.35 + Float(Happenings.landing)
+            for index in 0..<fight.hostSize {
+                let side = Float(index) - Float(fight.hostSize - 1) / 2
+                let position = Vec3(ridge.x, Float(groundHeight(of: fight.at)), ridge.z) + across * (side * 0.3)
+                let falling = fight.won && age > lastBlow
+                let fade = falling ? max(0, 1 - max(age - lastBlow - Clip.death.period - 0.3, 0) / 0.6) : 1
+                guard fade > 0 else { continue }
+                poses.append(CompanyPose(unit: GameSession.expeditionPoseBase - fight.id * 8 - 4 - index,
+                                         key: .wild(tier: GameSession.wildTier(of: fight.stage)), sigil: 0, health: 100,
+                                         hex: fight.at, position: position, heading: toward + .pi,
+                                         clip: falling ? .death : (fight.won ? .idle : .attack),
+                                         clipTime: falling ? age - lastBlow : age, opacity: fade, isOwn: false))
+            }
+        }
         // The fallen lie where they fell, then fade.
         for blow in blows {
             let age = Float(now.timeIntervalSince(blow.start))
@@ -540,6 +579,9 @@ extension GameSession {
     /// Where the far country's companies are numbered among the poses:
     /// below every company's id and every fallen one's.
     static let wildPoseBase = -1_000_000
+    /// Where an expedition's figures are numbered among the poses: below
+    /// the far country's.
+    static let expeditionPoseBase = -2_000_000
 
     /// A wild's look by its level: the least of them, the worse, the worst.
     static func wildTier(of level: Int) -> Int {
