@@ -468,7 +468,9 @@ jobs:
   screens:
     name: Launcher screens
     needs: macos
-    if: always()
+    # Only once the Mac job ran: when no macOS runner took it (GitHub's
+    # arm64 capacity, runs 551 and 553) there are no screens to print.
+    if: ${{ always() && (needs.macos.result == 'success' || needs.macos.result == 'failure') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -500,7 +502,9 @@ jobs:
   game-screens:
     name: Game screen ${{ matrix.screen }}
     needs: macos
-    if: always()
+    # Only once the Mac job ran: when no macOS runner took it (GitHub's
+    # arm64 capacity, runs 551 and 553) there are no screens to print.
+    if: ${{ always() && (needs.macos.result == 'success' || needs.macos.result == 'failure') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     strategy:
