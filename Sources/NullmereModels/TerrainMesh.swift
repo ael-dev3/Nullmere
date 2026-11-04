@@ -26,7 +26,7 @@ public struct TerrainMesh: Sendable {
         case .still: return Vec3(0.06, 0.07, 0.07)
         case .shallows: return Vec3(0.14, 0.15, 0.14)
         // Shingle washed silver by the moon.
-        case .ford: return Vec3(0.33, 0.34, 0.37)
+        case .ford: return Vec3(0.33, 0.33, 0.32)
         // A stream's dark wet stones, and its shoal's paler shingle.
         case .stream: return Vec3(0.09, 0.10, 0.10)
         case .shoal: return Vec3(0.28, 0.29, 0.30)
@@ -35,7 +35,7 @@ public struct TerrainMesh: Sendable {
         // the palest land, but dull: at 0.6 the flats along the Still read
         // as banks of cloud before a low eye (run 523's view without the
         // land showed them to be the land).
-        case .saltFlat: return Vec3(0.36, 0.38, 0.41)
+        case .saltFlat: return Vec3(0.37, 0.355, 0.33)
         case .greyfield: return Vec3(0.33, 0.36, 0.30)
         case .blackwood: return Vec3(0.13, 0.16, 0.13)
         case .barrow: return Vec3(0.34, 0.33, 0.27)

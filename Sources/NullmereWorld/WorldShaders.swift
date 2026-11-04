@@ -609,7 +609,11 @@ public enum WorldShaders {
         float4 far = frame.inverseViewProjection * float4(in.ndc, 1.0, 1.0);
         float3 d = normalize(far.xyz / far.w - near.xyz / near.w);
         float time = frame.eye.w;
-        float3 colour = nm_sky(d, frame.moon.xyz, time);
+        // The sky's own stars brighter than their image on the water, and a
+        // second, finer field of them behind, so the night over the far
+        // shore is full.
+        float3 colour = nm_stars(d, time) * 2.4 + nm_stars(float3(d.z, d.x, d.y) * 1.0, time + 31.0) * 0.9
+            + nm_moonGlow(d, frame.moon.xyz) + nm_moonlight(d, frame.moon.xyz);
         // The night's haze lies thick along the horizon and thins upward,
         // so the far shore stands dark against a lighter band of air.
         float up = max(d.y, 0.0);
