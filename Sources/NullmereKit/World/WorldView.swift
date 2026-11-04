@@ -288,17 +288,30 @@ struct WorldMarks: View {
             // Where the selected company could march this watch: a faint
             // wash with an edge, and a red ring on what it could strike.
             if !session.reach.isEmpty || !session.strikeTargets.isEmpty {
+                // One area, never a wall of tiles: a faint wash, and a line
+                // only along its border, where a hex it can reach meets one
+                // it cannot.
                 let layout = HexLayout(size: 1)
-                var area = Path()
+                let reach = Set(session.reach)
+                var area = Path(), border = Path()
                 for hex in session.reach {
-                    let corners = layout.corners(of: hex).map { session.viewPoint(worldX: $0.x, worldY: $0.y, onHex: hex, in: size) }
+                    let world = layout.corners(of: hex)
+                    let corners = world.map { session.viewPoint(worldX: $0.x, worldY: $0.y, onHex: hex, in: size) }
                     guard let first = corners.first else { continue }
                     area.move(to: first)
                     for corner in corners.dropFirst() { area.addLine(to: corner) }
                     area.closeSubpath()
+                    let centre = layout.center(of: hex)
+                    for index in world.indices {
+                        let a = world[index], b = world[(index + 1) % world.count]
+                        let across = layout.hex(atX: centre.x + (a.x + b.x - 2 * centre.x), y: centre.y + (a.y + b.y - 2 * centre.y))
+                        guard !reach.contains(across) else { continue }
+                        border.move(to: corners[index])
+                        border.addLine(to: corners[(index + 1) % corners.count])
+                    }
                 }
-                context.fill(area, with: .color(Palette.glow.opacity(0.09)))
-                context.stroke(area, with: .color(Palette.glow.opacity(0.22)), lineWidth: 0.6)
+                context.fill(area, with: .color(Palette.glow.opacity(0.05)))
+                context.stroke(border, with: .color(Palette.glow.opacity(0.3)), lineWidth: 0.8)
                 for hex in session.strikeTargets {
                     let point = session.viewPoint(of: hex, in: size)
                     let r = scale * 0.62
