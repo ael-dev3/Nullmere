@@ -32,8 +32,8 @@ final class FrontierStewardTests: XCTestCase {
         await frontier.border(west, at: "http://server/west")
         await frontier.border(east, at: "http://server/east")
 
-        try await west.call("arrive", [.string("i1"), .string("Ilsen")], token: ilsen.token)
-        try await east.call("arrive", [.string("o1"), .string("Orla")], token: orla.token)
+        try await west.call("arrive", [.string("i1"), .string(ArrivalPayload(name: "Ilsen", compact: Compact.edition).encoded)], token: ilsen.token)
+        try await east.call("arrive", [.string("o1"), .string(ArrivalPayload(name: "Orla", compact: Compact.edition).encoded)], token: orla.token)
         try await frontier.step(now: 1)
         try await home.step(now: 1)
         try await away.step(now: 1)
@@ -50,7 +50,7 @@ final class FrontierStewardTests: XCTestCase {
         let listed = await home.state.status(now: 2).crossings?.map(\.keeper)
         XCTAssertEqual(listed, [ilsen.identity])
         // The Frontier reads them in its time, and seats them; a stranger, never.
-        try await lost.call("arrive", [.string("s1"), .string("Stranger")], token: stranger.token)
+        try await lost.call("arrive", [.string("s1"), .string(ArrivalPayload(name: "Stranger", compact: Compact.edition).encoded)], token: stranger.token)
         try await frontier.step(now: 3)
         let early = await frontier.state.frontier?.admitted.count
         XCTAssertEqual(early, 0, "Read every few seconds, not every round")
@@ -59,8 +59,8 @@ final class FrontierStewardTests: XCTestCase {
         XCTAssertEqual(admitted, [ilsen.identity, orla.identity].sorted())
         let unseated = await frontier.state.keeper(stranger.identity)
         XCTAssertNil(unseated)
-        try await lost.call("arrive", [.string("i3"), .string("Ilsen")], token: ilsen.token)
-        try await lost.call("arrive", [.string("o3"), .string("Orla")], token: orla.token)
+        try await lost.call("arrive", [.string("i3"), .string(ArrivalPayload(name: "Ilsen", compact: Compact.edition).encoded)], token: ilsen.token)
+        try await lost.call("arrive", [.string("o3"), .string(ArrivalPayload(name: "Orla", compact: Compact.edition).encoded)], token: orla.token)
         try await frontier.step(now: 7)
         let seated = await (frontier.state.keeper(ilsen.identity)?.house, frontier.state.keeper(orla.identity)?.house)
         let mine = try XCTUnwrap(seated.0), theirs = try XCTUnwrap(seated.1)

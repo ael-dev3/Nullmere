@@ -25,6 +25,9 @@ public struct Keeper: Codable, Equatable, Identifiable, Sendable {
     public internal(set) var renown: Int?
     /// Titles won as ages ended, each with its age.
     public internal(set) var titles: [String]?
+    /// The edition of the realm's compact this keeper accepted, as the
+    /// realm recorded it when they arrived; nil before any.
+    public internal(set) var compact: Int?
     /// Every deed their Houses have done, in any age, once each.
     public internal(set) var deeds: [Deed]?
     /// Their favour with the lake, won watch by watch over every age (see
@@ -120,6 +123,8 @@ public enum RealmError: Error, Equatable, Sendable, CustomStringConvertible {
     case unknownWords
     /// Words brought to a Mac whose own identity already keeps a House.
     case keepsAnother
+    /// The keeper has not accepted the realm's compact as it now reads.
+    case compactUnaccepted
 
     public var description: String {
         switch self {
@@ -132,6 +137,7 @@ public enum RealmError: Error, Equatable, Sendable, CustomStringConvertible {
         case .refused(let reason): return reason
         case .unknownWords: return "No keeper of this realm is sealed with those words."
         case .keepsAnother: return "This Mac already keeps a House here as itself: leave its identity first, then bring the words."
+        case .compactUnaccepted: return "Read and accept the realm's compact at the door before you enter."
         }
     }
 }
@@ -312,7 +318,14 @@ public struct RealmState: Codable, Equatable, Sendable {
     /// is free; one whose House has fallen takes up a free one when
     /// `reseatsTheFallen`, as when they ask to, once an age.
     @discardableResult
-    public mutating func arrive(_ id: String, name: String?, now: Double, reseatsTheFallen: Bool = true) throws(RealmError) -> Keeper {
+    /// `compact` is the edition of the realm's compact the keeper's client
+    /// says they accepted: the realm records it, and takes in no one who
+    /// has not accepted the compact as it now reads. Within this process
+    /// (a single keeper's lake, the tests) it is taken as accepted.
+    public mutating func arrive(_ id: String, name: String?, now: Double, reseatsTheFallen: Bool = true,
+                                compact: Int? = Compact.edition) throws(RealmError) -> Keeper {
+        let recorded = keepers.first(where: { $0.id == id })?.compact
+        guard max(compact ?? 0, recorded ?? 0) >= Compact.edition else { throw .compactUnaccepted }
         let index: Int
         if let known = keepers.firstIndex(where: { $0.id == id }) {
             index = known
@@ -339,6 +352,7 @@ public struct RealmState: Codable, Equatable, Sendable {
                                   arrival: (keepers.map(\.arrival).max() ?? -1) + 1))
             index = keepers.count - 1
         }
+        keepers[index].compact = max(compact ?? 0, recorded ?? 0)
         // The realm wakes: a sleeping watch starts anew.
         if keepers.allSatisfy({ !$0.isOnline || $0.id == id }) {
             watchBegan = now
@@ -541,6 +555,7 @@ public struct RealmState: Codable, Equatable, Sendable {
     /// can't see could give, such as a company out of its sight.
     public mutating func perform(_ command: Command, by id: String) throws(RealmError) -> [GameEvent] {
         guard let keeper = keeper(id) else { throw .unknownKeeper }
+        guard (keeper.compact ?? 0) >= Compact.edition else { throw .compactUnaccepted }
         guard let house = keeper.house, !world.houses[house].isEliminated else { throw .noSeat }
         // A strike only at what their House can see: one loosed into the
         // dark would tell them what stood there.

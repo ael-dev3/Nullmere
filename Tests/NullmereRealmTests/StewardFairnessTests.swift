@@ -18,8 +18,8 @@ final class StewardFairnessTests: XCTestCase {
         let steward = try await RealmSteward(transport: db, token: key.token, name: "N", seed: seed, seats: 4, watchLength: 600, now: 0)
         let ama = try await db.createIdentity()
         let bel = try await db.createIdentity()
-        try await db.call("arrive", [.string("a1"), .string("Ama")], token: ama.token)
-        try await db.call("arrive", [.string("b1"), .string("Bel")], token: bel.token)
+        try await db.call("arrive", [.string("a1"), .string(ArrivalPayload(name: "Ama", compact: Compact.edition).encoded)], token: ama.token)
+        try await db.call("arrive", [.string("b1"), .string(ArrivalPayload(name: "Bel", compact: Compact.edition).encoded)], token: bel.token)
         try await steward.step(now: 1)
         return (db, steward, ama, bel, key)
     }
@@ -175,7 +175,7 @@ final class StewardFairnessTests: XCTestCase {
         let after = try await heard(db, bel).version
         XCTAssertEqual(after, before, "Bel's view waits for Bel")
         // Back, and shown it at once.
-        try await db.call("arrive", [.string("b3"), .string("")], token: bel.token)
+        try await db.call("arrive", [.string("b3"), .string(ArrivalPayload(name: "", compact: Compact.edition).encoded)], token: bel.token)
         try await steward.step(now: 4)
         let back = try await heard(db, bel).version
         XCTAssertGreaterThan(back, after)

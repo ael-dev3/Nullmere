@@ -305,6 +305,7 @@ public final class GameApp {
                 return
             }
             let network = NetworkRealmLink(transport: transport, credentials: identityStore, pollInterval: pollInterval)
+            network.compactAccepted = compactAccepted
             // There while this Mac is in use: an app left open with no one
             // at it falls silent, and a caretaker keeps the House.
             network.idleSeconds = { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!) }
@@ -368,6 +369,8 @@ public final class GameApp {
         guard canAccept(enteringAs: name) else { return }
         compactAccepted = Compact.edition
         UserDefaults.standard.set(Compact.edition, forKey: Self.compactKey)
+        // The realm records it with the arrival.
+        (link as? NetworkRealmLink)?.compactAccepted = Compact.edition
         readsCompact = false
         if broughtProof != nil {
             reclaimBrought()

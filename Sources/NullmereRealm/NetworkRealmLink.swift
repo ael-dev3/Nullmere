@@ -488,8 +488,12 @@ public final class NetworkRealmLink: RealmLink {
         onEvent?(.refused(.unknownKeeper))
     }
 
+    /// The edition of the realm's compact this client's keeper accepted,
+    /// sent with every arrival for the realm to record; nil if none.
+    public var compactAccepted: Int? = Compact.edition
+
     public func arrive(name: String?) {
-        enter("arrive", name ?? "")
+        enter("arrive", ArrivalPayload(name: name, compact: compactAccepted).encoded)
     }
 
     public func reclaim(proof: String) {
@@ -688,4 +692,34 @@ public final class NetworkRealmLink: RealmLink {
     /// waiting there nor answered: the realm won't carry it out from now
     /// on, and the world shows whether it did.
     public static let unanswered = "An order sent as the realm went out of reach was never answered; the world shows whether it was carried out."
+}
+
+
+/// What an arrival carries to the realm: the name a new keeper gives, and
+/// the edition of the compact they accepted. A payload with no edition (a
+/// build from before the realm recorded it) carries none.
+public struct ArrivalPayload: Equatable, Sendable {
+    public let name: String?
+    public let compact: Int?
+
+    public init(name: String?, compact: Int?) {
+        self.name = name
+        self.compact = compact
+    }
+
+    static let separator: Character = "\u{1F}"
+
+    public var encoded: String {
+        guard let compact else { return name ?? "" }
+        return "\(compact)\(ArrivalPayload.separator)\(name ?? "")"
+    }
+
+    public init(decoding payload: String) {
+        guard let cut = payload.firstIndex(of: ArrivalPayload.separator), let edition = Int(payload[..<cut]) else {
+            self.init(name: payload.isEmpty ? nil : payload, compact: nil)
+            return
+        }
+        let name = String(payload[payload.index(after: cut)...])
+        self.init(name: name.isEmpty ? nil : name, compact: edition)
+    }
 }

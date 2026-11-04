@@ -106,6 +106,37 @@ final class NetworkRealmTests: XCTestCase {
     /// A keeper's words carry them to another Mac across the network: the
     /// first Mac seals them, words not theirs take up no one, and the
     /// second Mac, bringing theirs, arrives as them.
+    /// The realm keeps the compact: a client that brings no accepted
+    /// edition is refused at the door; one that brings it comes in, the
+    /// edition recorded, and an order from a keeper the realm holds no
+    /// acceptance for is refused.
+    func testTheRealmTakesInOnlyKeepersWhoAcceptedTheCompact() async throws {
+        let db = FakeSpacetime()
+        let (steward, running, _) = try await steward(db)
+        defer { running.cancel() }
+        let (link, ear) = await MainActor.run { keeper(db) }
+        try await until("the realm's status") { ear.hasStatus }
+        await MainActor.run {
+            link.compactAccepted = nil
+            link.arrive(name: "Ama")
+        }
+        try await until("refused at the door") { ear.refusals.contains(RealmError.compactUnaccepted.description) }
+        let none = await MainActor.run { ear.keeper }
+        XCTAssertNil(none)
+        await MainActor.run {
+            link.compactAccepted = Compact.edition
+            link.arrive(name: "Ama")
+        }
+        try await until("taken in") { ear.keeper != nil }
+        let recorded = await MainActor.run { ear.keeper?.compact }
+        XCTAssertEqual(recorded, Compact.edition)
+        let kept = await steward.state.keepers.first?.compact
+        XCTAssertEqual(kept, Compact.edition, "recorded at the realm, not only on the Mac")
+        XCTAssertEqual(ArrivalPayload(decoding: ArrivalPayload(name: "Bel", compact: 3).encoded), ArrivalPayload(name: "Bel", compact: 3))
+        XCTAssertEqual(ArrivalPayload(decoding: "Bel"), ArrivalPayload(name: "Bel", compact: nil), "an old build's arrival brings none")
+        XCTAssertEqual(ArrivalPayload(decoding: ArrivalPayload(name: nil, compact: 2).encoded), ArrivalPayload(name: nil, compact: 2))
+    }
+
     func testAKeeperIsCarriedToAnotherMacByTheirWords() async throws {
         let db = FakeSpacetime()
         let (steward, running, _) = try await steward(db)
@@ -477,7 +508,7 @@ final class NetworkRealmTests: XCTestCase {
         let steward = try await RealmSteward(transport: line, token: owner.token, name: "The Nullmere", seed: "publish fails",
                                              seats: 4, watchLength: 600, now: 0)
         let ama = try await db.createIdentity()
-        try await db.call("arrive", [.string("a1"), .string("Ama")], token: ama.token)
+        try await db.call("arrive", [.string("a1"), .string(ArrivalPayload(name: "Ama", compact: Compact.edition).encoded)], token: ama.token)
         try await steward.step(now: 1)
         let keeper = await steward.state.keeper(ama.identity)
         let house = try XCTUnwrap(keeper?.house)
@@ -509,7 +540,7 @@ final class NetworkRealmTests: XCTestCase {
         let first = try await RealmSteward(transport: line, token: owner.token, name: "The Nullmere", seed: "steward stops",
                                            seats: 4, watchLength: 600, now: 0)
         let ama = try await db.createIdentity()
-        try await db.call("arrive", [.string("a1"), .string("Ama")], token: ama.token)
+        try await db.call("arrive", [.string("a1"), .string(ArrivalPayload(name: "Ama", compact: Compact.edition).encoded)], token: ama.token)
         try await first.step(now: 1)
         let keeper = await first.state.keeper(ama.identity)
         let house = try XCTUnwrap(keeper?.house)
@@ -625,7 +656,7 @@ final class NetworkRealmTests: XCTestCase {
         for index in 0..<30 {
             try await db.call("here", [.string("loud-\(index)")], token: loud.token)
         }
-        try await db.call("arrive", [.string("quiet-arrives"), .string("Ama")], token: quiet.token)
+        try await db.call("arrive", [.string("quiet-arrives"), .string(ArrivalPayload(name: "Ama", compact: Compact.edition).encoded)], token: quiet.token)
         try await steward.step(now: 1)
         let answered = try await db.query("SELECT * FROM my_replies", token: quiet.token)
         XCTAssertTrue(answered.contains { $0.first?.string == "quiet-arrives" }, "The quiet keeper is heard in the first round")

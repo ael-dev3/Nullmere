@@ -157,7 +157,7 @@ final class LinkViewTests: XCTestCase {
         try await until("arrival") { ear.keeper != nil }
         let ama = try XCTUnwrap(ear.keeper?.house)
         let bel = try await db.createIdentity()
-        try await db.call("arrive", [.string("b1"), .string("Bel")], token: bel.token)
+        try await db.call("arrive", [.string("b1"), .string(ArrivalPayload(name: "Bel", compact: Compact.edition).encoded)], token: bel.token)
         let gift = Command.gift(to: ama, resource: .grain, amount: 5)
         try await db.call("order", [.string("b2"), .string(String(decoding: try JSONEncoder().encode(gift), as: UTF8.self))], token: bel.token)
         func gifts() -> Int {
@@ -262,7 +262,7 @@ final class LinkViewTests: XCTestCase {
         await tamper.set(stale: old)
         let reads = link.viewReads
         let bel = try await db.createIdentity()
-        try await db.call("arrive", [.string("b1"), .string("Bel")], token: bel.token)
+        try await db.call("arrive", [.string("b1"), .string(ArrivalPayload(name: "Bel", compact: Compact.edition).encoded)], token: bel.token)
         try await until("the view read again") { link.viewReads > reads }
         try await db.waitFor(3, more: FakeSpacetime.statusPoll, by: token)
         XCTAssertEqual(ear.world?.unit(spear.id)?.fortified, true, "The newer view stands")

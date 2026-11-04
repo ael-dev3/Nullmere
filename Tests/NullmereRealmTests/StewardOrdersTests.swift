@@ -37,8 +37,8 @@ final class StewardOrdersTests: XCTestCase {
         let steward = try await RealmSteward(transport: db, token: key.token, name: "The Nullmere", seed: "forget me",
                                              seats: 2, watchLength: 600, now: 0)
         let ama = try await db.createIdentity(), bel = try await db.createIdentity()
-        try await db.call("arrive", [.string("a1"), .string("Ama Lin")], token: ama.token)
-        try await db.call("arrive", [.string("b1"), .string("Bel")], token: bel.token)
+        try await db.call("arrive", [.string("a1"), .string(ArrivalPayload(name: "Ama Lin", compact: Compact.edition).encoded)], token: ama.token)
+        try await db.call("arrive", [.string("b1"), .string(ArrivalPayload(name: "Bel", compact: Compact.edition).encoded)], token: bel.token)
         try await steward.step(now: 1)
         let held = await steward.state.keeper(ama.identity)?.house
         let house = try XCTUnwrap(held)

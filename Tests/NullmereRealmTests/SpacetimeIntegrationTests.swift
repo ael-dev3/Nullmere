@@ -178,6 +178,28 @@ final class SpacetimeIntegrationTests: XCTestCase {
             b.arrive(name: "Bel" + suffix)
         }
         try await until("both keepers to arrive") { earA.keeper != nil && earB.keeper != nil }
+        // The realm itself keeps the compact: a client that says nothing of
+        // it (a build from before, or one changed) is not taken in, and
+        // those that came in are recorded with the edition they accepted.
+        let (d, earD) = await MainActor.run { () -> (NetworkRealmLink, Listener) in
+            let d = NetworkRealmLink(transport: transport, credentials: MemoryStore(), pollInterval: 0.2)
+            d.compactAccepted = nil
+            let earD = Listener()
+            earD.listen(to: d)
+            d.connect()
+            return (d, earD)
+        }
+        try await until("the realm's status for the third") { earD.hasStatus }
+        await MainActor.run { d.arrive(name: "Cyn" + suffix) }
+        try await until("the realm to refuse a keeper who has not accepted the compact") {
+            earD.refusals.contains(RealmError.compactUnaccepted.description)
+        }
+        let dIn = await MainActor.run { earD.keeper }
+        XCTAssertNil(dIn, "Not taken in")
+        await MainActor.run { d.close() }
+        let recorded = await MainActor.run { (earA.keeper?.compact, earB.keeper?.compact) }
+        XCTAssertEqual(recorded.0, Compact.edition)
+        XCTAssertEqual(recorded.1, Compact.edition)
         let houseA = try await MainActor.run { try XCTUnwrap(earA.keeper?.house) }
         let world = try await MainActor.run { try XCTUnwrap(earA.world) }
         let spear = try XCTUnwrap(world.units(of: houseA).first { $0.kind == .spear })
@@ -433,8 +455,8 @@ final class SpacetimeIntegrationTests: XCTestCase {
             try await away.step(now: now)
         }
         let ilsen = try await west.createIdentity(), orla = try await east.createIdentity()
-        try await west.call("arrive", [.string("i1-" + suffix), .string("Ilsen" + suffix)], token: ilsen.token)
-        try await east.call("arrive", [.string("o1-" + suffix), .string("Orla" + suffix)], token: orla.token)
+        try await west.call("arrive", [.string("i1-" + suffix), .string(ArrivalPayload(name: "Ilsen" + suffix, compact: Compact.edition).encoded)], token: ilsen.token)
+        try await east.call("arrive", [.string("o1-" + suffix), .string(ArrivalPayload(name: "Orla" + suffix, compact: Compact.edition).encoded)], token: orla.token)
         try await round()
         let heard = await home.state.frontierNews
         XCTAssertEqual(heard?.address, addresses[2], "Where to cross to, read from the Frontier's own status")
@@ -448,8 +470,8 @@ final class SpacetimeIntegrationTests: XCTestCase {
         XCTAssertEqual(admitted, [ilsen.identity, orla.identity].sorted(), "Each realm's crossing, read from its status")
 
         // The same identities, at the Frontier's own database.
-        try await lost.call("arrive", [.string("i3-" + suffix), .string("Ilsen" + suffix)], token: ilsen.token)
-        try await lost.call("arrive", [.string("o3-" + suffix), .string("Orla" + suffix)], token: orla.token)
+        try await lost.call("arrive", [.string("i3-" + suffix), .string(ArrivalPayload(name: "Ilsen" + suffix, compact: Compact.edition).encoded)], token: ilsen.token)
+        try await lost.call("arrive", [.string("o3-" + suffix), .string(ArrivalPayload(name: "Orla" + suffix, compact: Compact.edition).encoded)], token: orla.token)
         try await round()
         let seated = await (frontier.state.keeper(ilsen.identity)?.house, frontier.state.keeper(orla.identity)?.house)
         let mine = try XCTUnwrap(seated.0), theirs = try XCTUnwrap(seated.1)

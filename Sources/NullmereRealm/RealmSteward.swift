@@ -372,7 +372,8 @@ public actor RealmSteward {
         switch kind {
         case "arrive":
             do {
-                let arrived = try state.arrive(keeper, name: payload.isEmpty ? nil : payload, now: now)
+                let arrival = ArrivalPayload(decoding: payload)
+                let arrived = try state.arrive(keeper, name: arrival.name, now: now, compact: arrival.compact)
                 // A House raised at the Frontier: its keeper hears it with
                 // the answer, the others with the next publication.
                 let raised = state.takeArrivals()

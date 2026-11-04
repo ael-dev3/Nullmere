@@ -23,9 +23,9 @@ final class StewardRoundsTests: XCTestCase {
             try await db.call("here", [.string("s\(index)")], token: stranger.token)
         }
         let ama = try await db.createIdentity(), bel = try await db.createIdentity(), cor = try await db.createIdentity()
-        try await db.call("arrive", [.string("a1"), .string("Ama")], token: ama.token)
-        try await db.call("arrive", [.string("b1"), .string("Bel")], token: bel.token)
-        try await db.call("arrive", [.string("c1"), .string("Cor")], token: cor.token)
+        try await db.call("arrive", [.string("a1"), .string(ArrivalPayload(name: "Ama", compact: Compact.edition).encoded)], token: ama.token)
+        try await db.call("arrive", [.string("b1"), .string(ArrivalPayload(name: "Bel", compact: Compact.edition).encoded)], token: bel.token)
+        try await db.call("arrive", [.string("c1"), .string(ArrivalPayload(name: "Cor", compact: Compact.edition).encoded)], token: cor.token)
         try await steward.step(now: 1)
         let remembered = await steward.keepersRemembered
         XCTAssertEqual(remembered, 3, "The three there, and no stranger")
@@ -44,7 +44,7 @@ final class StewardRoundsTests: XCTestCase {
         XCTAssertEqual(after, 0, "No one there, nothing kept of them by the steward")
         // Another may go by the name.
         let dee = try await db.createIdentity()
-        try await db.call("arrive", [.string("d1"), .string("Cor")], token: dee.token)
+        try await db.call("arrive", [.string("d1"), .string(ArrivalPayload(name: "Cor", compact: Compact.edition).encoded)], token: dee.token)
         try await steward.step(now: 3 + RealmState.unplayedSeatHeldFor)
         let named = await steward.state.keeper(dee.identity)?.name
         XCTAssertEqual(named, "Cor")
@@ -57,7 +57,7 @@ final class StewardRoundsTests: XCTestCase {
         let key = try await db.createIdentity()
         let steward = try await RealmSteward(transport: db, token: key.token, name: "N", seed: "unchanged", seats: 4, watchLength: 600, now: 0)
         let ama = try await db.createIdentity()
-        try await db.call("arrive", [.string("a1"), .string("Ama")], token: ama.token)
+        try await db.call("arrive", [.string("a1"), .string(ArrivalPayload(name: "Ama", compact: Compact.edition).encoded)], token: ama.token)
         try await steward.step(now: 1)
         let worked = await steward.viewsWorkedOut
         for round in 0..<5 {
@@ -83,7 +83,7 @@ final class StewardRoundsTests: XCTestCase {
         let key = try await db.createIdentity()
         let first = try await RealmSteward(transport: db, token: key.token, name: "N", seed: "an earlier steward", now: 0)
         let ama = try await db.createIdentity()
-        try await db.call("arrive", [.string("a1"), .string("Ama")], token: ama.token)
+        try await db.call("arrive", [.string("a1"), .string(ArrivalPayload(name: "Ama", compact: Compact.edition).encoded)], token: ama.token)
         try await first.step(now: 1)
         let given = try await db.query("SELECT * FROM my_replies", token: ama.token)
         XCTAssertEqual(given.count, 1)
@@ -113,7 +113,7 @@ final class StewardRoundsTests: XCTestCase {
         let stewardKey = try await db.createIdentity()
         let steward = try await RealmSteward(transport: db, token: stewardKey.token, name: "N", seed: "rounds", now: 0)
         let keeper = try await db.createIdentity()
-        try await db.call("arrive", [.string("first"), .string("Ama")], token: keeper.token)
+        try await db.call("arrive", [.string("first"), .string(ArrivalPayload(name: "Ama", compact: Compact.edition).encoded)], token: keeper.token)
         try await steward.step(now: 1)
         try await db.call("order", [.string("garbled"), .string("not an order")], token: keeper.token)
         try await steward.step(now: 2)

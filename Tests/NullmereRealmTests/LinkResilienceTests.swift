@@ -53,7 +53,7 @@ final class LinkResilienceTests: XCTestCase {
         XCTAssertTrue(calls.contains("ready_in_watch"))
         // Readiness for a watch already gone, carried only now: nothing.
         let bel = try await db.createIdentity()
-        try await db.call("arrive", [.string("b1"), .string("Bel")], token: bel.token)
+        try await db.call("arrive", [.string("b1"), .string(ArrivalPayload(name: "Bel", compact: Compact.edition).encoded)], token: bel.token)
         try await db.waitFor(3, more: FakeSpacetime.stewardRound)
         let watch = await steward.state.world.watch
         try await db.call("ready_in_watch", [.string("b2"), .bool(true), .integer(UInt64(watch - 1))], token: bel.token)
@@ -174,7 +174,7 @@ final class LinkResilienceTests: XCTestCase {
         let (ama, ear) = try await keeper(db, name: "Ama")
         defer { ama.close() }
         let bel = try await db.createIdentity()
-        try await db.call("arrive", [.string("b1"), .string("Bel")], token: bel.token)
+        try await db.call("arrive", [.string("b1"), .string(ArrivalPayload(name: "Bel", compact: Compact.edition).encoded)], token: bel.token)
         ama.setReady(true)
         try await until("Ama's readiness carried out") { await db.handled(kind: "ready") >= 1 }
         // The steward stops and another takes the realm up: whoever was

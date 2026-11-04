@@ -20,7 +20,7 @@ final class StewardSoundnessTests: XCTestCase {
         let heard = Lines()
         await steward.setReporter { heard.add($0) }
         let keeper = try await db.createIdentity()
-        try await db.call("arrive", [.string("arrival"), .string("Ama")], token: keeper.token)
+        try await db.call("arrive", [.string("arrival"), .string(ArrivalPayload(name: "Ama", compact: Compact.edition).encoded)], token: keeper.token)
         try await steward.step(now: 1)
         try await steward.step(now: 61)
         XCTAssertTrue(heard.all.contains { $0.hasPrefix("The world is unsound at watch") }, "\(heard.all)")

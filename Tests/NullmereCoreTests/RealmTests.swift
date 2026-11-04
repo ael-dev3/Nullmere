@@ -61,6 +61,32 @@ final class RealmTests: XCTestCase {
         }
     }
 
+    /// The realm records the compact each keeper accepted, takes in none
+    /// who has not accepted it as it now reads, and hears no order from a
+    /// keeper it holds no acceptance for (one kept from before it recorded).
+    func testTheRealmKeepsTheCompact() throws {
+        var realm = realm()
+        XCTAssertThrowsError(try realm.arrive("ama", name: "Ama", now: 1, compact: nil)) {
+            XCTAssertEqual($0 as? RealmError, .compactUnaccepted)
+        }
+        XCTAssertThrowsError(try realm.arrive("ama", name: "Ama", now: 1, compact: Compact.edition - 1)) {
+            XCTAssertEqual($0 as? RealmError, .compactUnaccepted, "an older edition is not this one")
+        }
+        XCTAssertTrue(realm.keepers.isEmpty)
+        let ama = try realm.arrive("ama", name: "Ama", now: 1, compact: Compact.edition)
+        XCTAssertEqual(ama.compact, Compact.edition)
+        // Coming back, the realm remembers it.
+        XCTAssertEqual(try realm.arrive("ama", name: nil, now: 2, compact: nil).compact, Compact.edition)
+        let house = try XCTUnwrap(ama.house)
+        let spear = try XCTUnwrap(realm.world.units(of: house).first { $0.kind == .spear })
+        XCTAssertNoThrow(try realm.perform(.fortify(unit: spear.id), by: "ama"))
+        // A keeper kept from before the realm recorded it.
+        realm.keepers[0].compact = nil
+        XCTAssertThrowsError(try realm.perform(.fortify(unit: spear.id), by: "ama")) {
+            XCTAssertEqual($0 as? RealmError, .compactUnaccepted)
+        }
+    }
+
     func testKeepersArriveAndTakeSeats() throws {
         var realm = realm()
         let ilsen = try realm.arrive("id-ilsen", name: "  Ilsen ", now: 1)
