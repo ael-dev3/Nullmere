@@ -138,6 +138,10 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var mirrorWalked: [Int: Int]?
     /// The Houses each keeper's House has hidden from its hearing.
     public internal(set) var hidden: [Int: [Int]]?
+    /// The questions of the sitting Lyceum, set as it opens.
+    public internal(set) var lyceumSet: [LyceumQuestion]?
+    /// Each House's answers at the sitting Lyceum, by question (-1 unanswered).
+    public internal(set) var lyceumBook: [Int: [Int]]?
     /// How calm the Still lies, in watches undisturbed (nil: not at all).
     public internal(set) var calm: Int?
     /// In a keeper's view only: the marches its Beacons warn of. Never kept

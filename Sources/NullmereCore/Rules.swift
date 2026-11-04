@@ -52,6 +52,8 @@ extension GameState {
             return try recallAll(of: house)
         case let .hideHouse(other, hidden):
             return try hide(other, hidden: hidden, by: house)
+        case let .answerLyceum(question, choice):
+            return try answerLyceum(question: question, choice: choice, as: house)
         case let .declareWar(target):
             return try declareWar(by: house, on: target)
         case let .propose(proposal, target):

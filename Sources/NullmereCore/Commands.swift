@@ -55,6 +55,8 @@ public enum Command: Codable, Equatable, Sendable {
     /// Hide another House from this keeper's hearing, or hear it again:
     /// its words and its envoys kept from them at the realm.
     case hideHouse(house: Int, hidden: Bool)
+    /// Answer a question of the sitting Lyceum.
+    case answerLyceum(question: Int, choice: Int)
     /// Raise a banner: found an alliance of this name, and lead it.
     case foundAlliance(name: String)
     /// Its leader invites a House into the alliance.
@@ -469,6 +471,12 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case noInnKey(InnChest)
     case notOnTheStill
     case mirrorWalkedThisMoon
+    /// The Lyceum does not sit this watch.
+    case lyceumNotSitting
+    /// No such question or answer.
+    case lyceumNoSuchAnswer
+    /// The House has answered that question.
+    case lyceumAnswered
     case noFarShore
     case reflectionThere
     case tooManyReflections(Int)
@@ -690,6 +698,9 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .noInnKey(let chest): return "Your House holds no \(chest.named) key; one comes \(chest == .silver ? "each watch" : "every \(InnKeys.goldEvery) watches")."
         case .notOnTheStill: return "A company walks the mirror from the Still's shore, beside its water."
         case .mirrorWalkedThisMoon: return "That company has walked the mirror this moon."
+        case .lyceumNotSitting: return "The Lyceum does not sit this watch."
+        case .lyceumNoSuchAnswer: return "The Lyceum set no such question or answer."
+        case .lyceumAnswered: return "You have answered that question."
         case .noFarShore: return "The Still shows no open ground on the far shore to come out on."
         case .expeditionsDone: return "Your House has taken every stage of the Spine."
         case .venturedThisWatch: return "Your House has sent an expedition this watch already."
@@ -891,6 +902,10 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case mirrorWalked(unit: Int, house: Int, from: Hex, to: Hex)
     /// The Still's calm broken by these Houses' companies at the water.
     case calmBroken(houses: [Int], calm: Int)
+    /// A House answered a question of the Lyceum, its answer its own.
+    case lyceumAnswered(house: Int, question: Int)
+    /// The Lyceum rose and judged: how each House that answered stood.
+    case lyceumJudged(standings: [LyceumStanding])
     /// A commander rises a star.
     case commanderStarred(commander: Int, house: Int, stars: Int)
     /// A House's stone heard so many marches out of its sight.

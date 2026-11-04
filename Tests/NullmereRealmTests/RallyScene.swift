@@ -950,3 +950,59 @@ final class StagedHouses: @unchecked Sendable {
     func add(_ house: Int) { lock.lock(); list.append(house); lock.unlock() }
     var houses: [Int] { lock.lock(); defer { lock.unlock() }; return list }
 }
+
+extension RallyScene {
+    /// The Lyceum sits: both keepers are set the same questions; Ama
+    /// answers all right, Bel only the first; neither sees the other's
+    /// answers; as it rises both are told the same standings, Ama first,
+    /// and both are paid in moonsalt.
+    func sitTheLyceum(ama: Int, bel: Int) async throws {
+        await steward.reshape { realm in
+            let next = (realm.world.watch / Lyceum.every + 1) * Lyceum.every
+            realm.world.watch = next
+            realm.world.openLyceum()
+        }
+        try await until("both set the Lyceum's questions") { earA.world?.lyceumNow != nil && earB.world?.lyceumNow != nil }
+        let questions = try await MainActor.run { try XCTUnwrap(earA.world?.lyceumNow) }
+        let same = await MainActor.run { earB.world?.lyceumNow }
+        XCTAssertEqual(same, questions, "the same questions for both")
+        let moonsalt = await MainActor.run { (earA.world?.houses[ama].stock.moonsalt ?? 0, earB.world?.houses[bel].stock.moonsalt ?? 0) }
+        await MainActor.run {
+            for (index, question) in questions.enumerated() {
+                a.send(.answerLyceum(question: index, choice: question.answer))
+                b.send(.answerLyceum(question: index, choice: index == 0 ? question.answer : (question.answer + 1) % 4))
+            }
+        }
+        try await until("both answered, as the realm keeps it") {
+            earA.world?.lyceumAnswers(of: ama).allSatisfy { $0 != nil } == true
+                && earB.world?.lyceumAnswers(of: bel).allSatisfy { $0 != nil } == true
+        }
+        let peek = await MainActor.run { earA.world?.lyceumAnswers(of: bel).compactMap { $0 }.count }
+        XCTAssertEqual(peek, 0, "Ama never sees Bel's answers")
+        let judged: @MainActor @Sendable (Listener) -> [LyceumStanding]? = { ear in
+            for event in ear.events {
+                switch event {
+                case .heard(let events), .watchTurned(_, let events), .answered(let events), .settled(_, let events):
+                    for case let .lyceumJudged(standings) in events where standings.contains(where: { $0.house == ama }) { return standings }
+                default: continue
+                }
+            }
+            return nil
+        }
+        for _ in 0..<Lyceum.sits {
+            let watch = await MainActor.run { earA.world?.watch ?? 0 }
+            await MainActor.run { a.setReady(true); b.setReady(true) }
+            try await until("the watch after \(watch)") { (earA.world?.watch ?? 0) > watch && (earB.world?.watch ?? 0) > watch }
+        }
+        try await until("both told how the Lyceum judged") { judged(earA) != nil && judged(earB) != nil }
+        let (byA, byB) = await MainActor.run { (judged(earA), judged(earB)) }
+        XCTAssertEqual(byA, byB, "one judgement for all")
+        let standings = try XCTUnwrap(byA)
+        XCTAssertEqual(standings.first?.house, ama)
+        XCTAssertEqual(standings.first { $0.house == ama }?.right, Lyceum.questions)
+        XCTAssertEqual(standings.first { $0.house == bel }?.right, 1)
+        try await until("both paid") {
+            (earA.world?.houses[ama].stock.moonsalt ?? 0) > moonsalt.0 && (earB.world?.houses[bel].stock.moonsalt ?? 0) > moonsalt.1
+        }
+    }
+}

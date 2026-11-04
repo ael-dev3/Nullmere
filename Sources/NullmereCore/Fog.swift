@@ -93,6 +93,8 @@ extension GameState {
             view.holds[index].wounded = nil
         }
         view.envoys = envoys.filter { ($0.from == house || $0.to == house) && hears($0.from, as: house) }
+        // A House's answers at the Lyceum are its own until it rises.
+        view.lyceumBook = lyceumBook?[house].map { [house: $0] }
         // A House's hidden Houses are its own to know.
         view.hidden = hidden?[house].map { [house: $0] }
         // Gifts too small for the chronicle are known only to the two Houses.
@@ -363,6 +365,10 @@ extension GameState {
                 return true
             case .calmBroken:
                 // The whole lake stirs: every shore sees it.
+                return true
+            case .lyceumAnswered(let owner, _):
+                return owner == house
+            case .lyceumJudged:
                 return true
             case .labourDone(let owner, _), .chestOpened(let owner, _), .innChestOpened(let owner, _, _):
                 return owner == house

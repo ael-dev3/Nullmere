@@ -36,8 +36,10 @@ final class CompactWorldTests: XCTestCase {
         XCTAssertLessThan(first, 64 * 1024)
         // A whole view after 100 watches; views travel in parts, only what
         // changed resent, so this bounds the first sending. Raised from 192
-        // KB as the realm's systems grew and its ages ran busier.
-        XCTAssertLessThan(later, 208 * 1024)
+        // KB as the realm's systems grew and its ages ran busier; to 212 KB
+        // as the Lyceum, sitting at the hundred-and-first watch, carried
+        // its five questions in every view.
+        XCTAssertLessThan(later, 212 * 1024)
     }
 
     /// A keeper's view of a realm of forty-eight seats: the other Houses'

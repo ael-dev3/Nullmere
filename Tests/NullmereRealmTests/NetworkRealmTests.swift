@@ -853,5 +853,6 @@ final class NetworkRallyTests: XCTestCase {
         let (ama, bel) = await MainActor.run { (earA.keeper!.house!, earB.keeper!.house!) }
         try await scene.contestTheCrown(ama: ama, bel: bel)
         try await scene.waitInLine(ama: ama, bel: bel) { NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 0.05) }
+        try await scene.sitTheLyceum(ama: ama, bel: bel)
     }
 }

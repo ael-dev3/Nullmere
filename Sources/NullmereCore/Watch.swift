@@ -77,6 +77,7 @@ extension GameState {
         }
         events += advanceRallies(marching: !isPaced)
         events += turnCalm()
+        events += turnLyceum()
         events += workTheLand()
         raiseShrines()
         events += holdShrines()

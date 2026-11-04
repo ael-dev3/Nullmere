@@ -288,6 +288,21 @@ CI; [PLAYING.md](PLAYING.md#what-only-nullmere-has) has the rules of each.
   standing stone on a cairn in the water, its ripples turning out about it,
   faster once it has heard; a dread note heard when it hears; wary stewards
   at war sink one.
+- [x] **The Lyceum** (Rise of Kingdoms' Lyceum of Wisdom): twice in every
+  ten watches the realm's scholars sit and every keeper's House is set the
+  same five questions on the lake's lore, drawn by the realm from its
+  studies, items and omens, the right answer among four by the draw. Each
+  House answers each once, its answers its own until the Lyceum rises;
+  then the realm judges every House that answered, pays four moonsalt for
+  each answer right and 20, 12 and 6 more to the three that answered best,
+  and tells the whole realm the standings. A card in the left column asks
+  one question at a time while it sits and nothing is chosen, gone once the
+  last is answered; a note of lore on each answer, honours or coin as it
+  rises. Ruled in the core (LyceumTests), the card tested on the Mac, and
+  played between two clients over the fake realm and over a real
+  SpacetimeDB 2.13 server (sitTheLyceum): the same questions to both, each
+  blind to the other's answers, one judgement told to both and both paid.
+  Still open: a hall of its own in the world, and the stewards sitting it
 - [x] **The Calm of the Still.** The black lake is a commons every House
   shares and any one can break: each watch that no company of war stands on
   its shore or its water, or crosses it, the Still lies a degree calmer, to

@@ -349,6 +349,7 @@ final class SpacetimeIntegrationTests: XCTestCase {
         print("REALM two alliances fought over the Drowned Crown from their own clients: taken, struck down, taken again, and given as the water came back")
         let scene2 = RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60)
         try await scene2.waitInLine(ama: houseA, bel: houseB) { NetworkRealmLink(transport: transport, credentials: MemoryStore(), pollInterval: 0.2) }
+        try await scene2.sitTheLyceum(ama: houseA, bel: houseB)
 
         // Ama marches on Bel's seat, watch by watch as both keepers turn
         // them, and strikes at it.

@@ -328,6 +328,17 @@ extension GameState {
         case .mirrorWalkBegun(_, let house, _, let to):
             if house == viewer { return Tidings("Your company steps into the Still; it comes out at \(to) as the watch turns.", .good) }
             return Tidings("The water stills at \(to): \(houses[house].title)'s company walks the mirror and comes out there as the watch turns.", .bad)
+        case .lyceumAnswered(let house, let question):
+            guard house == viewer else { return nil }
+            return Tidings("Your answer to the Lyceum's \(ordinal(question + 1)) question is given; it is judged as the Lyceum rises.", .neutral)
+        case .lyceumJudged(let standings):
+            guard let first = standings.first else { return nil }
+            let mine = standings.firstIndex { $0.house == viewer }
+            if let mine {
+                let me = standings[mine]
+                return Tidings("The Lyceum rises: you answered \(me.right) of \(Lyceum.questions), \(ordinal(mine + 1)) of \(standings.count), for \(me.moonsalt) moonsalt.", me.right > 0 ? .good : .neutral)
+            }
+            return Tidings("The Lyceum rises: \(houses[first.house].title) answered best, \(first.right) of \(Lyceum.questions).", .neutral)
         case .calmBroken(let breakers, let calm):
             let names = breakers.map { houses[$0].title }.joined(separator: " and ")
             if breakers.contains(viewer) { return Tidings("Your companies at the water break the Still's calm of \(calm) watches; every House knows it was you.", .bad) }

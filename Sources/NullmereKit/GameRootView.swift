@@ -184,7 +184,11 @@ struct PlayView: View {
                         // With a panel open, it alone stands: the column's
                         // cards give way so only one card covers the world.
                         if session.seatBriefing == nil, session.panel == nil, PlayView.standingCardsShown(session) {
-                            if let steps = session.firstSteps {
+                            if session.firstSteps == nil, LyceumCard.next(session) != nil {
+                                // The Lyceum while it sits and asks: it alone.
+                                LyceumCard(session: session)
+                                    .transition(.opacity)
+                            } else if let steps = session.firstSteps {
                                 FirstStepsCard(steps: steps) { session.dismissFirstSteps() }
                                     .transition(.opacity)
                             } else if !chargesHidden, session.state.realmBoard(for: session.player).charge != nil {
