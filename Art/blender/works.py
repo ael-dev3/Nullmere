@@ -239,8 +239,13 @@ def round_house(name, radius, height, wall, roof, band, finial, rise=None, sides
     for y in (height * 0.3, height * 0.72):
         fine.append(rings("band", [(radius * 0.98, y), (radius * 1.05, y + 0.004), (radius * 1.05, y + 0.013), (radius * 0.98, y + 0.017)],
                           sides, band, caps=(False, False)))
-    r, y = radius * 1.18 * 0.55, height + rise * 0.45
-    fine.append(rings("roof ring", [(r * 0.97, y - 0.006), (r * 1.04, y), (r * 0.97, y + 0.008)], sides, roof, caps=(False, False)))
+    # A ring laid on the roof partway up, following the cone: just under its
+    # face below and above, standing out from it between.
+    def cone(height_up):
+        return radius * 1.18 * (1 - (height_up - height) / rise)
+    y = height + rise * 0.45
+    fine.append(rings("roof ring", [(cone(y - 0.006) - 0.001, y - 0.006), (cone(y) + 0.003, y), (cone(y + 0.008) - 0.001, y + 0.008)], sides,
+                      roof, caps=(False, False)))
     fine.append(rings("finial", [(0.006, height + rise - 0.012), (0.002, height + rise + 0.035)], 4, finial))
     return far, fine
 
