@@ -19,7 +19,11 @@ final class PlainWebSocket: @unchecked Sendable {
     }
 
     private let descriptor: Int32
+    /// Guards `isClosed`; never held across a call that waits on the line.
     private let lock = NSLock()
+    /// Keeps one frame going out at a time. A send can wait on a peer that
+    /// has stopped reading; `close` never waits on it, and wakes it.
+    private let writing = NSLock()
     private var buffer: [UInt8] = []
     private var isClosed = false
     /// The most a single message may hold.
@@ -137,9 +141,9 @@ final class PlainWebSocket: @unchecked Sendable {
     }
 
     private func sendFrame(_ bytes: [UInt8]) throws {
-        lock.lock()
-        defer { lock.unlock() }
-        guard !isClosed else { throw Failure.closed }
+        writing.lock()
+        defer { writing.unlock() }
+        guard !isClosedNow else { throw Failure.closed }
         try PlainWebSocket.write(bytes, to: descriptor)
     }
 
@@ -182,17 +186,22 @@ final class PlainWebSocket: @unchecked Sendable {
         return isClosed
     }
 
-    /// Ends the connection; a `receive` waiting returns nil.
+    /// Ends the connection, at once: a `receive` or a send waiting on the
+    /// line ends (the receive with nil). The socket itself is let go only
+    /// when the last of its users does, so no thread still reading it can
+    /// find its number given to another connection.
     func close() {
         lock.lock()
-        defer { lock.unlock() }
-        guard !isClosed else { return }
+        let first = !isClosed
         isClosed = true
-        _ = shutdown(descriptor, Int32(SHUT_RDWR))
-        _ = PlainWebSocket.systemClose(descriptor)
+        lock.unlock()
+        if first { _ = shutdown(descriptor, Int32(SHUT_RDWR)) }
     }
 
-    deinit { close() }
+    deinit {
+        close()
+        _ = PlainWebSocket.systemClose(descriptor)
+    }
 
     // MARK: The socket
 

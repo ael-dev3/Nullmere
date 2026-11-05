@@ -78,6 +78,46 @@ final class RealmWatchTests: XCTestCase {
         socket.close()
     }
 
+    /// Closed from this side while a send waits on a peer that has stopped
+    /// reading (a line gone quiet, as a realm's can at a client's end): the
+    /// close is not held up by the send, and the send that waited ends. A
+    /// close that waited on it would hold whoever closed, the main actor
+    /// among them, as long as the peer kept still.
+    func testClosingIsNotHeldUpByASendThatWaits() throws {
+        let deaf = try WebSocketServer(replies: [], deaf: true)
+        defer { deaf.stop() }
+        let socket = try PlainWebSocket.open(deaf.url, protocols: [], headers: [:])
+        try socket.send(text: "hello")
+        let ended = DispatchSemaphore(value: 0)
+        let sent = SentCount()
+        let big = String(repeating: "x", count: 60_000)
+        let sender = Thread {
+            // Until the line is full and the send waits, then until it ends.
+            while (try? socket.send(text: big)) != nil { sent.add() }
+            ended.signal()
+        }
+        sender.start()
+        // Until the sends have stopped going out: the line full, one waiting.
+        var last = -1
+        for _ in 0..<100 where sent.value != last || last <= 0 {
+            last = sent.value
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+        XCTAssertGreaterThan(sent.value, 0)
+        let closed = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async {
+            socket.close()
+            closed.signal()
+        }
+        let closing = closed.wait(timeout: .now() + 3)
+        XCTAssertEqual(closing, .success, "Closing is not held up by the send")
+        XCTAssertEqual(ended.wait(timeout: .now() + 3), .success, "and the send that waited ends")
+        // (Were the close held up, a send now would wait on it too.)
+        if closing == .success {
+            XCTAssertThrowsError(try socket.send(text: "after"), "Nothing goes out once closed")
+        }
+    }
+
     func testAWatchTellsOfEachChangeAndKnowsWhenTheLineDrops() throws {
         let server = try WebSocketServer(replies: ["{\"IdentityToken\": {}}", "{\"InitialSubscription\": {}}", "{\"TransactionUpdate\": {}}"],
                                          closesAfter: true)
@@ -203,5 +243,23 @@ final class RealmWatchTests: XCTestCase {
             bel.close()
         }
         try await until("the watches stopped") { await db.watching == 0 }
+    }
+}
+
+/// How many frames a sender has put on the line.
+private final class SentCount: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    func add() {
+        lock.lock()
+        count += 1
+        lock.unlock()
+    }
+
+    var value: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return count
     }
 }

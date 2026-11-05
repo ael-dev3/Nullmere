@@ -24,11 +24,16 @@ public final class WebSocketServer: @unchecked Sendable {
     private let closesAfter: Bool
     /// The status line it answers the handshake with, if not 101.
     private let refusal: String?
+    /// Whether it stops reading once it has said its piece: a peer whose
+    /// side of the line fills, so a client's sends come to wait.
+    private let deaf: Bool
+    private var stopped = false
 
-    public init(replies: [String], closesAfter: Bool = false, refusal: String? = nil) throws {
+    public init(replies: [String], closesAfter: Bool = false, refusal: String? = nil, deaf: Bool = false) throws {
         self.replies = replies
         self.closesAfter = closesAfter
         self.refusal = refusal
+        self.deaf = deaf
         #if os(Linux)
         let stream = Int32(SOCK_STREAM.rawValue)
         #else
@@ -75,6 +80,7 @@ public final class WebSocketServer: @unchecked Sendable {
     public func stop() {
         lock.lock()
         let client = self.client
+        stopped = true
         lock.unlock()
         if client >= 0 { _ = shutdown(client, Int32(SHUT_RDWR)) }
         _ = shutdown(listener, Int32(SHUT_RDWR))
@@ -138,6 +144,11 @@ public final class WebSocketServer: @unchecked Sendable {
         if closesAfter {
             send([0x88, 0x00], to: client)
         }
+        if deaf {
+            // Hears nothing more, until it is stopped.
+            while !isStopped { Thread.sleep(forTimeInterval: 0.05) }
+            return
+        }
         // Hears the client out until it goes.
         while true {
             let count = buffer.withUnsafeMutableBytes { recv(client, $0.baseAddress, $0.count, 0) }
@@ -149,6 +160,12 @@ public final class WebSocketServer: @unchecked Sendable {
                 lock.unlock()
             }
         }
+    }
+
+    private var isStopped: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return stopped
     }
 
     /// The handshake's proof, from the client's key: checked by the system's
