@@ -393,6 +393,16 @@ class Person:
         hang(dome(name + " close" + tags + "!fine", helm_radii(margin + 0.004), HEAD, segments=14, rings=5, mat=mat, floor=floor),
              self.rig, "head")
 
+    def kettle(self, tags, mat):
+        """A kettle hat: an iron crown under a broad brim."""
+        for name, margin, segments, rings, brim_segments in (("kettle hat" + tags, 0.012, 8, 2, 8),
+                                                             ("kettle hat close" + tags + "!fine", 0.016, 14, 5, 18)):
+            crown = dome("crown", helm_radii(margin), HEAD, segments=segments, rings=rings, mat=mat, floor=0.02)
+            brim = loft("brim", [((0, HEAD[1], HEAD[2] + 0.024), HEAD_R[0] + margin + 0.004, HEAD_R[1] + margin + 0.004, {}),
+                                 ((0, HEAD[1], HEAD[2] - 0.012), HEAD_R[0] + 0.085, HEAD_R[1] + 0.085, {})],
+                        segments=brim_segments, mat=mat, caps=(False, False))
+            hang(join(name, [crown, brim]), self.rig, "head")
+
     def hood(self, tags, mat):
         """A hood over the head, open before the face, its tail down the back."""
         for name, margin, segments, rings in (("hood" + tags, 0.02, self.far(8), 3), ("hood close" + tags + "!fine", 0.024, self.near(14), 5)):
@@ -527,15 +537,18 @@ class Person:
 
     # MARK: The clips every kind on foot plays its own way
 
-    def march(self, carry, arms, hidden, shown):
+    def march(self, carry, arms, hidden, shown, reach=1.0, more=None):
         """The march: the legs' cycle, the hips rising and falling over each
         step and turning with it, the torso and head against them; the arms
         as `arms(side)` swings them (side 1 the left foot's half, -1 the
-        right's) over the kind's `carry`."""
+        right's) over the kind's `carry`. `reach`, how much further each leg
+        swings, for a kind drawn shorter that keeps the common pace; `more`,
+        a kind's own keys at each frame (a barrow's wheels)."""
         keys = {}
         for frame, t in ((0, 0.0), (7.5, 0.25), (15, 0.5), (22.5, 0.75), (30, 0.0)):
             lt, ls, lf = stride(t, True)
             rt, rs, rf = stride(t, False)
+            lt, rt = lt * reach, rt * reach
             down = t in (0.0, 0.5)
             side = 1 if t < 0.5 else -1
             keys[frame] = merge(carry, {
@@ -545,11 +558,12 @@ class Person:
                 "torso": (4, 0, 4 * side if down else 0),
                 "head": (-3, 0, -2 * side if down else 0),
                 "cloak": (10 if down else 6, 0, 2 * side),
-            }, arms(side))
+            }, arms(side), more(frame) if more else {})
         keyed(self.rig, "march", 30, keys, hidden=hidden, shown=shown)
 
-    def death(self, carry, hidden, shown):
-        """Struck down: staggered back, to the knees, and over onto the back."""
+    def death(self, carry, hidden, shown, more=None):
+        """Struck down: staggered back, to the knees, and over onto the back;
+        `more`, a kind's own keys at each frame (an engine settling askew)."""
         lying = {"hips": {"turn": (-90, 0, 4), "shift": (0, 0.12, -0.76)}, "torso": (-4, 0, 0), "head": (-16, 0, 12),
                  "thighL": (-22, 0, 0), "shinL": (28, 0, 0), "thighR": (-14, 0, 0), "shinR": (18, 0, 0),
                  "armL": (-10, -72, 0), "forearmL": (-20, 0, 0), "heldL": (20, 0, 0),
@@ -569,10 +583,13 @@ class Person:
             38: lying,
             45: lying,
         }
+        if more:
+            keys = {frame: merge(pose, more(frame)) for frame, pose in keys.items()}
         keyed(self.rig, "death", 45, keys, hidden=hidden, shown=shown)
 
-    def gather(self, hidden, shown):
-        """Two strokes of the mattock each period, both hands on its haft."""
+    def gather(self, hidden, shown, more=None):
+        """Two strokes of the mattock each period, both hands on its haft;
+        `more`, a kind's own keys at each frame (a step out of the shafts)."""
         stance = {"thighL": (-14, 0, 0), "shinL": (17, 0, 0), "thighR": (9, 0, 0), "shinR": (11, 0, 0),
                   "hips": {"turn": (0, 0, 0), "shift": (0, 0, -0.03)}}
 
@@ -589,6 +606,8 @@ class Person:
             keys[half + 16.5] = swing(0, 1)
             keys[half + 22.5] = swing(0, 1)
         keys[60] = swing(0, 0)
+        if more:
+            keys = {frame: merge(pose, more(frame)) for frame, pose in keys.items()}
         keyed(self.rig, "gather", 60, keys, hidden=hidden, shown=shown)
 
     # MARK: Out

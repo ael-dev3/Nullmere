@@ -107,20 +107,9 @@ man.hood("@2", p.tunic)
 man.hood("@fenfolk", p.tunic)
 
 
-def kettle(tags, mat):
-    """A kettle hat: an iron crown under a broad brim."""
-    for name, margin, segments, rings, brim_segments in (("kettle hat" + tags, 0.012, 8, 2, 8),
-                                                         ("kettle hat close" + tags + "!fine", 0.016, 14, 5, 18)):
-        crown = dome("crown", helm_radii(margin), HEAD, segments=segments, rings=rings, mat=mat, floor=0.02)
-        brim = loft("brim", [((0, HEAD[1], HEAD[2] + 0.024), HEAD_R[0] + margin + 0.004, HEAD_R[1] + margin + 0.004, {}),
-                             ((0, HEAD[1], HEAD[2] - 0.012), HEAD_R[0] + 0.085, HEAD_R[1] + 0.085, {})],
-                    segments=brim_segments, mat=mat, caps=(False, False))
-        hang(join(name, [crown, brim]), rig, "head")
-
-
 man.cap("iron cap", "@3", p.iron, 0.008, -0.01)
-kettle("@4", p.steel)
-kettle("@strandfolk", p.iron)
+man.kettle("@4", p.steel)
+man.kettle("@strandfolk", p.iron)
 man.crested("@5", p.steel, cheeks=False)
 
 # MARK: The bow, longer and better with the tier; the quiver; the mattock

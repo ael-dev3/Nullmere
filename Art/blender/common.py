@@ -383,6 +383,7 @@ def keyed(rig, name, frames, keys, hidden=(), shown=()):
     named = sorted({bone for pose in keys.values() for bone in pose})
     for pb in rig.pose.bones:
         pb.rotation_mode = "QUATERNION"
+    last = {}
     for frame in sorted(keys):
         pose = keys[frame]
         for bone in named:
@@ -393,9 +394,15 @@ def keyed(rig, name, frames, keys, hidden=(), shown=()):
             if "rotation" in value:
                 # A rotation already worked out in the armature's axes.
                 rest = rig.data.bones[bone].matrix_local.to_3x3()
-                pb.rotation_quaternion = (rest.inverted() @ value["rotation"] @ rest).to_quaternion()
+                q = (rest.inverted() @ value["rotation"] @ rest).to_quaternion()
             else:
-                pb.rotation_quaternion = armature_turn(rig, bone, value.get("turn", (0, 0, 0)))
+                q = armature_turn(rig, bone, value.get("turn", (0, 0, 0)))
+            # The same turn kept on the side of the last key's, so the keys
+            # between go the short way round (a wheel turned past a half).
+            if bone in last and q.dot(last[bone]) < 0:
+                q = -q
+            last[bone] = q
+            pb.rotation_quaternion = q
             pb.keyframe_insert("rotation_quaternion", frame=frame)
             pb.location = armature_shift(rig, bone, value.get("shift", (0, 0, 0)))
             pb.keyframe_insert("location", frame=frame)

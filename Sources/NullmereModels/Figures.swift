@@ -9,7 +9,7 @@ enum Figures {
         case .spear: return Art.figure(Art.spearman, tier: tier, name: name)
         case .bow: return Art.figure(Art.archer, tier: tier, name: name, more: ["string"], scale: Art.archerScale)
         case .rider: return Art.rider(tier: tier, name: name, mount: Riders.mount(tier: tier))
-        case .mangonel: return Engine.mangonel(tier: tier, name: name)
+        case .mangonel: return Art.mangonel(tier: tier, name: name)
         case .lantern: return Art.figure(Art.lantern, tier: 1, name: name, scale: Art.lanternScale)
         case .founder: return founder(name: name)
         }
@@ -76,7 +76,8 @@ enum Figures {
         // Every tier's horse made in Blender the one size, its canter keyed for the common horse's pace.
         case .figure(.rider, _): return Ride().marchSpeed
         case .figure(.founder, _): return founderGait.marchSpeed
-        case .figure(.mangonel, _): return Engine.gait.marchSpeed
+        // Its wheels made to turn once a march period at the common pace, and its crewman's stride lengthened to keep it.
+        case .figure(.mangonel, _): return Gait(hands: .spear).marchSpeed
         case .figure, .prop(.cart): return Gait(hands: .spear).marchSpeed
         case .wild(let tier): return wildGait(tier).marchSpeed
         case .commander: return commanderPace

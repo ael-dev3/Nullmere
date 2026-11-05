@@ -15,6 +15,9 @@ enum Art {
     static let archerScale: Float = 0.315 / 1.8
     /// Lantern-bearers a thirtieth shorter: slight and wiry.
     static let lanternScale: Float = 0.29 / 1.8
+    /// A Mangonel's crewman a fifteenth shorter: short and stocky, his
+    /// engine made at his measure (Art/blender/mangonel.py).
+    static let mangonelScale: Float = 0.28 / 1.8
     /// The bones of a horse and its rider after its root, in the order the
     /// rig every horse and rider keeps them (Steed): the horse's, then the
     /// rider's astride.
@@ -59,6 +62,13 @@ enum Art {
     /// are made in.
     static func colours(of mount: Mount) -> [String: Vec3] {
         ["plain_coat": mount.coat, "plain_socks": mount.socks ?? mount.coat, "plain_mane": mount.mane]
+    }
+
+    /// A Mangonel and its crewman made in Blender, at its tier: his limbs,
+    /// then the engine's wheels, arm and stone (Engine), in the order the
+    /// game names them.
+    static func mangonel(tier: Int, name: String) -> Model {
+        model(engine, tier: tier, name: name, order: limbs + ["wheelL", "wheelR", "arm", "stone"], scale: mangonelScale)
     }
 
     /// A model made in Blender, its bones in `order` after its root.

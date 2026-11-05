@@ -60,11 +60,13 @@ the keeper's realm last lay on, made as it plays.
 
 ### Every model, made in Blender or built from code
 
-Every model is original. The spearman, the archer, the lantern-bearer,
-the rider on his horse and the six commanders are made in Blender, each by
-a script ([`Art/blender/spearman.py`](../Art/blender/spearman.py),
+Every model is original. Every company of war (the spearman, the archer,
+the lantern-bearer, the rider on his horse and the Mangonel with its crewman)
+and the six commanders are made in Blender, each by a script
+([`Art/blender/spearman.py`](../Art/blender/spearman.py),
 [`archer.py`](../Art/blender/archer.py), [`lantern.py`](../Art/blender/lantern.py),
-[`rider.py`](../Art/blender/rider.py), [`commanders.py`](../Art/blender/commanders.py))
+[`rider.py`](../Art/blender/rider.py), [`commanders.py`](../Art/blender/commanders.py),
+[`mangonel.py`](../Art/blender/mangonel.py))
 that builds the body, gear and
 skeleton and keys the actions, on one body every person shares
 ([`person.py`](../Art/blender/person.py)): the skin is weighted to the
@@ -87,8 +89,8 @@ importer of its own ([`Asset.swift`](../Sources/NullmereModels/Asset.swift)):
 each vertex moves with its two heaviest bones, by its weight between them,
 and each action plays bone by bone. Every other model is still built from
 code ([`Sources/NullmereModels`](../Sources/NullmereModels)), and moves to
-Blender the same way: each kind of company in its five tiers, the wilds
-and six commanders, keeps, walls and every work at every level, the land's
+Blender the same way: the founder's handcart, the townsfolk, the wilds,
+keeps, walls and every work at every level, the land's
 firs, birches, heather, ferns, crags, reeds, pebbles, mounds and ruins, and
 what moves through the world.
 Companies stand in formation, fewer as they are worn down and more as they
