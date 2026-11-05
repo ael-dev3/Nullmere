@@ -10,10 +10,6 @@ struct Gait: Sendable {
         case lantern
         /// A handcart's shafts in both.
         case cart
-        /// Long arms of the far country, empty or clawed.
-        case wild
-        /// A great club in the right hand, dragged.
-        case club
         /// Nothing in either: the arms swing free.
         case free
     }
@@ -79,15 +75,6 @@ struct Gait: Sendable {
             p.turn(Limb.forearmR, x: -0.25)
         case .cart:
             break
-        case .wild:
-            p.turn(Limb.armL, x: -0.15, z: 0.12)
-            p.turn(Limb.armR, x: -0.15, z: -0.12)
-            p.turn(Limb.forearmL, x: -0.35)
-            p.turn(Limb.forearmR, x: -0.35)
-        case .club:
-            p.turn(Limb.armR, x: 0.1, z: -0.15)
-            p.turn(Limb.armL, x: -0.1, z: 0.15)
-            p.turn(Limb.forearmL, x: -0.4)
         case .free:
             p.turn(Limb.forearmL, x: -0.15)
             p.turn(Limb.forearmR, x: -0.15)
@@ -111,7 +98,7 @@ struct Gait: Sendable {
         case .lantern:
             p.turn(Limb.heldL, x: -p.pitch(through: [Limb.hips, Limb.torso, Limb.armL, Limb.forearmL]))
             p.turn(Limb.extra, x: -p.pitch(through: [Limb.root, Limb.hips, Limb.torso, Limb.armL, Limb.forearmL, Limb.heldL]))
-        case .cart, .wild, .club, .free:
+        case .cart, .free:
             break
         }
     }
@@ -143,8 +130,6 @@ struct Gait: Sendable {
         case .spear: thrust(&p, u)
         case .lantern: raise(&p, u)
         case .cart, .free: swing(&p, u, high: true)
-        case .wild: rake(&p, u)
-        case .club: slam(&p, u)
         }
     }
 
@@ -160,18 +145,6 @@ struct Gait: Sendable {
         level(&p)
         let lift = Motion.key(u, FootClips.lift)
         p.stretch(Limb.extra, 1 + 0.3 * lift * (0.6 + 0.4 * Motion.wave(u, cycles: 6)))
-    }
-
-    /// The long arms flung back and raked forward, the head thrust after them.
-    func rake(_ p: inout Pose, _ u: Float) {
-        for part in [Limb.armL, Limb.armR, Limb.forearmL, Limb.forearmR] { p.joints[Int(part)].rotation = .zero }
-        FootClips.rake.apply(&p, u, size: size)
-    }
-
-    /// A great club heaved overhead and brought down.
-    func slam(_ p: inout Pose, _ u: Float) {
-        for part in [Limb.armL, Limb.armR, Limb.forearmL, Limb.forearmR] { p.joints[Int(part)].rotation = .zero }
-        FootClips.slam.apply(&p, u, size: size)
     }
 
     /// The mattock swung over and down, twice a period.

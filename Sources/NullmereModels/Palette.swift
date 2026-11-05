@@ -56,7 +56,6 @@ enum Palette {
     static let horseGrey = Vec3(0.62, 0.62, 0.62)
     static let horseBlack = Vec3(0.13, 0.12, 0.12)
     static let horsePale = Vec3(0.82, 0.81, 0.78)
-    static let hoof = Vec3(0.15, 0.13, 0.12)
 
     // The far country
     static let bone = Vec3(0.80, 0.78, 0.70)

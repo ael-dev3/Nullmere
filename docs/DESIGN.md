@@ -62,12 +62,14 @@ the keeper's realm last lay on, made as it plays.
 
 Every model is original. Every company (the spearman, the archer, the
 lantern-bearer, the rider on his horse, the Mangonel with its crewman and
-the founder at his handcart)
+the founder at his handcart), the three things of the far country
 and the six commanders are made in Blender, each by a script
 ([`Art/blender/spearman.py`](../Art/blender/spearman.py),
 [`archer.py`](../Art/blender/archer.py), [`lantern.py`](../Art/blender/lantern.py),
 [`rider.py`](../Art/blender/rider.py), [`commanders.py`](../Art/blender/commanders.py),
-[`mangonel.py`](../Art/blender/mangonel.py), [`founder.py`](../Art/blender/founder.py))
+[`mangonel.py`](../Art/blender/mangonel.py), [`founder.py`](../Art/blender/founder.py),
+[`hollow.py`](../Art/blender/hollow.py), [`thornwight.py`](../Art/blender/thornwight.py),
+[`colossus.py`](../Art/blender/colossus.py))
 that builds the body, gear and
 skeleton and keys the actions, on one body every person shares
 ([`person.py`](../Art/blender/person.py)): the skin is weighted to the
@@ -90,7 +92,7 @@ importer of its own ([`Asset.swift`](../Sources/NullmereModels/Asset.swift)):
 each vertex moves with its two heaviest bones, by its weight between them,
 and each action plays bone by bone. Every other model is still built from
 code ([`Sources/NullmereModels`](../Sources/NullmereModels)), and moves to
-Blender the same way: the townsfolk, the wilds,
+Blender the same way: the townsfolk,
 keeps, walls and every work at every level, the land's
 firs, birches, heather, ferns, crags, reeds, pebbles, mounds and ruins, and
 what moves through the world.

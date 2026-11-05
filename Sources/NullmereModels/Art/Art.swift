@@ -72,6 +72,17 @@ enum Art {
         model(engine, tier: tier, name: name, order: limbs + ["wheelL", "wheelR", "arm", "stone"], scale: stockyScale)
     }
 
+    /// The things of the far country made in Blender, each its own file and
+    /// drawn at its own height: the hollow, the thornwight, the colossus.
+    static func wild(tier: Int, name: String) -> Model {
+        let (base64, height): (String, Float) = switch tier {
+        case 1: (hollow, 0.34)
+        case 2: (thornwight, 0.37)
+        default: (colossus, 0.56)
+        }
+        return model(base64, tier: 1, name: name, order: limbs, scale: height / 1.8)
+    }
+
     /// The founder and his handcart made in Blender: his limbs, then the
     /// cart's wheels (Cart), in the order the game names them.
     static func founder(name: String) -> Model {

@@ -160,12 +160,13 @@ class Person:
 
     # MARK: The body every tier and variant shares
 
-    def body(self, hands, face, seated=None):
+    def body(self, hands, face, seated=None, belt=True):
         """Legs, boots, bracers and hands, neck, head and face, and the belt.
         `hands`: (tags, material) for the hands each tier or variant wears,
         bare or gauntleted; `face`: the tags it is drawn for, where no helm
-        hides it; `seated`, for a rider, {side: (hip, knee, ankle)} where
-        each leg bends astride."""
+        hides it (None: a thing of the far country, with no face of a man);
+        `seated`, for a rider, {side: (hip, knee, ankle)} where each leg
+        bends astride; `belt`, whether it wears one."""
         body_parts = []
         for side in ("L", "R"):
             if seated:
@@ -177,7 +178,7 @@ class Person:
                 self.seated_bands(side, *seated[side])
             else:
                 self.standing_bands(side)
-        self.head_and_belt(face, body_parts)
+        self.head_and_belt(face, body_parts, belt)
 
     def standing_leg(self, side):
         """A leg standing, and its boot; the boot's foot is returned for the
@@ -270,7 +271,7 @@ class Person:
         hang(solid("sole %s!fine" % side, "box", mat=p.dark_leather, location=tuple(A + Vector((0, -0.06, -0.088))),
                    size=(0.106, 0.24, 0.018)), rig, foot)
 
-    def head_and_belt(self, face, body_parts):
+    def head_and_belt(self, face, body_parts, belt=True):
         """The neck, head and face, the belt, and the body joined and bound."""
         rig, p, g = self.rig, self.p, self.g
         paired(rig, "neck", [
@@ -280,14 +281,23 @@ class Person:
         body_parts.append(solid("head", "sphere", mat=p.skin, weights={"head": 1.0}, smooth=True, segments=self.far(8),
                                 rings=3 if self.build.lean else 4,
                                 radius=HEAD_R, location=HEAD))
-        body_parts.append(loft("belt", [((0, 0.0, 0.995), g(0.176), g(0.122), {"hips": 1.0}),
-                                        ((0, 0.0, 0.95), g(0.18), g(0.125), {"hips": 1.0})],
-                               segments=8, mat=p.dark_leather, caps=(False, False)))
+        if belt:
+            body_parts.append(loft("belt", [((0, 0.0, 0.995), g(0.176), g(0.122), {"hips": 1.0}),
+                                            ((0, 0.0, 0.95), g(0.18), g(0.125), {"hips": 1.0})],
+                                   segments=8, mat=p.dark_leather, caps=(False, False)))
         bind(join("body", body_parts), rig)
         close_head = solid("head close!fine", "sphere", mat=p.skin, smooth=True, segments=12, rings=8,
                            radius=tuple(r + 0.003 for r in HEAD_R), location=HEAD)
         hang(close_head, rig, "head")
 
+        if face is not None:
+            self.face(face)
+        if belt:
+            self.belt_gear()
+
+    def face(self, tags):
+        """A man's face, near: nose, eyes, brows, ears, beard and hair."""
+        rig, p = self.rig, self.p
         features = [solid("nose", "cone", mat=p.skin, vertices=6, radius1=0.021, depth=0.05, location=at_head(0, -0.109, -0.01),
                           rotation=(90, 0, 0))]
         for s in (1, -1):
@@ -301,7 +311,11 @@ class Person:
                               location=at_head(0, -0.07, -0.075)))
         features.append(solid("hair", "sphere", mat=p.hair, smooth=True, segments=8, rings=5, radius=(0.1, 0.095, 0.085),
                               location=at_head(0, 0.04, -0.025)))
-        hang(join("face%s!fine" % face, features), rig, "head")
+        hang(join("face%s!fine" % tags, features), rig, "head")
+
+    def belt_gear(self):
+        """What hangs at the belt, near: a buckle, a pouch, a knife."""
+        rig, p, g = self.rig, self.p, self.g
         belt_gear = [solid("buckle", "box", mat=p.steel, location=(0, g(-0.126), 0.973), size=(0.05, 0.015, 0.04)),
                      solid("pouch", "box", mat=p.dark_leather, location=(g(0.15), g(-0.085), 0.92), size=(0.07, 0.05, 0.08),
                            rotation=(0, 0, 30)),

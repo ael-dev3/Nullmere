@@ -1,9 +1,10 @@
 import Foundation
 
-/// The clips of those on foot, keyed by hand, each kind its own: how a
-/// spearman marches, an archer steps, a lantern-bearer picks a careful
-/// way, a carter leans into the shafts, the far country lopes and lumbers;
-/// how each strikes, how each takes a blow, and how each falls.
+/// The clips of the townsfolk built in code, keyed by hand, each kind its
+/// own: how an elder walks with a staff, a salter picks a careful way with
+/// a lantern, a carter leans into the shafts, folk stroll the lanes; how
+/// each strikes, how each takes a blow, and how each falls. (Every
+/// company's and wild's clips are keyed in Blender, in Art/blender.)
 enum FootClips {
     /// A track that holds one value through the clip.
     static func hold(_ part: UInt16, _ x: Float, _ y: Float = 0, _ z: Float = 0) -> Track { Track(part, [k(0, x, y, z)]) }
@@ -54,16 +55,6 @@ enum FootClips {
                 Track(Limb.armR, [k(0, 0), k(0.6, 0), k(0.68, -1.6, 0, 0.2), k(0.76, -1.6, 0, 0.35), k(0.84, 0)]),
                 Track(Limb.forearmR, [k(0, 0), k(0.6, 0), k(0.68, -1.1), k(0.76, -1.1), k(0.84, 0)]),
             ])
-        case .wild, .club:
-            // A slow, wrong tilt of the head; fingers that will not keep still; swaying.
-            return Keyed(loops: true, [
-                breathing(1.6),
-                Track(Limb.head, [k(0, 0, 0, 0.35), k(0.25, 0.05, 0.2, 0), k(0.5, 0, 0, -0.35), k(0.75, 0.05, -0.2, 0)]),
-                Track(Limb.torso, [k(0, 0, 0, 0.05), k(0.5, 0, 0, -0.05)]),
-                Track(Limb.forearmL, (0..<8).map { k(Float($0) / 8, ($0 % 2 == 0 ? 0.15 : -0.15)) }),
-                Track(Limb.forearmR, (0..<8).map { k(Float($0) / 8, ($0 % 2 == 0 ? -0.15 : 0.15)) }),
-                Track(Limb.hips, .shift, scale: .size, [k(0, 0.012), k(0.5, -0.012)]),
-            ])
         case .free:
             return Keyed(loops: true, [
                 breathing(1),
@@ -81,8 +72,6 @@ enum FootClips {
         case .spear: return spearWalk(shield: shield)
         case .lantern: return lanternWalk
         case .cart: return cartWalk
-        case .wild: return wildLope
-        case .club: return clubLumber
         case .free: return freeWalk
         }
     }
@@ -133,35 +122,6 @@ enum FootClips {
         Track(Limb.head, [k(0, -0.1), k(0.5, -0.12)]),
     ])
 
-    /// The far country's lope: long arms swinging low, the head lolling on
-    /// a neck that will not hold it straight, the trunk rolling.
-    static let wildLope = Keyed(loops: true, [
-        Track(Limb.thighL, scale: .stride, [k(0, 0), k(0.25, -1), k(0.5, 0), k(0.75, 1)]),
-        Track(Limb.thighR, scale: .stride, [k(0, 0), k(0.25, 1), k(0.5, 0), k(0.75, -1)]),
-        Track(Limb.shinL, [k(0, 1.0), k(0.12, 0.6), k(0.25, 0.1), k(0.5, 0.15), k(0.75, 0.1), k(0.88, 0.5)]),
-        Track(Limb.shinR, [k(0, 0.15), k(0.25, 0.1), k(0.38, 0.5), k(0.5, 1.0), k(0.62, 0.6), k(0.75, 0.1)]),
-        Track(Limb.hips, .shift, scale: .size, [k(0, 0, 0.016), k(0.25, 0, -0.012), k(0.5, 0, 0.016), k(0.75, 0, -0.012)]),
-        Track(Limb.torso, [k(0, 0.06, 0, 0.06), k(0.25, 0.06, 0.14, 0), k(0.5, 0.06, 0, -0.06), k(0.75, 0.06, -0.14, 0)]),
-        Track(Limb.head, [k(0, 0, 0, 0.2), k(0.25, 0.05, -0.05, 0.05), k(0.5, 0, 0, -0.2), k(0.75, 0.05, 0.05, -0.05)]),
-        Track(Limb.armL, [k(0, 0), k(0.25, 0.5), k(0.5, 0), k(0.75, -0.5)]),
-        Track(Limb.armR, [k(0, 0), k(0.25, -0.5), k(0.5, 0), k(0.75, 0.5)]),
-    ])
-
-    /// The great club-bearer's lumber: slow heavy strides that throw the
-    /// whole bulk from side to side, the club dragged.
-    static let clubLumber = Keyed(loops: true, [
-        Track(Limb.thighL, scale: .stride, [k(0, 0), k(0.25, -1), k(0.5, 0), k(0.75, 1)]),
-        Track(Limb.thighR, scale: .stride, [k(0, 0), k(0.25, 1), k(0.5, 0), k(0.75, -1)]),
-        Track(Limb.shinL, [k(0, 0.8), k(0.12, 0.45), k(0.25, 0.1), k(0.5, 0.12), k(0.75, 0.1), k(0.88, 0.4)]),
-        Track(Limb.shinR, [k(0, 0.12), k(0.25, 0.1), k(0.38, 0.4), k(0.5, 0.8), k(0.62, 0.45), k(0.75, 0.1)]),
-        Track(Limb.hips, .shift, scale: .size, [k(0, 0.01, 0.02), k(0.25, 0, -0.016), k(0.5, -0.01, 0.02), k(0.75, 0, -0.016)]),
-        Track(Limb.hips, [k(0, 0, 0, 0.08), k(0.25, 0, -0.06, 0), k(0.5, 0, 0, -0.08), k(0.75, 0, 0.06, 0)]),
-        Track(Limb.torso, [k(0, 0.05, 0, -0.1), k(0.25, 0.05, 0.08, 0), k(0.5, 0.05, 0, 0.1), k(0.75, 0.05, -0.08, 0)]),
-        Track(Limb.head, [k(0, 0, 0, 0.18), k(0.5, 0, 0, -0.18)]),
-        Track(Limb.armL, [k(0, 0), k(0.25, 0.25), k(0.5, 0), k(0.75, -0.25)]),
-        Track(Limb.armR, [k(0, 0), k(0.25, -0.12), k(0.5, 0), k(0.75, 0.12)]),
-    ])
-
     /// Folk about the lanes: an easy walk, the arms swinging free.
     static let freeWalk = Keyed(loops: true, [
         Track(Limb.thighL, scale: .stride, [k(0, 0), k(0.25, -1), k(0.5, 0), k(0.75, 1)]),
@@ -198,28 +158,6 @@ enum FootClips {
         Track(Limb.forearmR, [k(0, 0), k(0.3, -0.6), k(0.72, -0.6)]),
         Track(Limb.torso, [k(0, 0), k(0.3, -0.08), k(0.72, -0.08)]),
         Track(Limb.head, [k(0, 0), k(0.3, -0.25), k(0.72, -0.25)]),
-    ])
-
-    /// The long arms flung back and raked forward, the head thrust after.
-    static let rake = Keyed(loops: true, [
-        Track(Limb.armL, [k(0, -0.5), k(0.35, 0.41), k(0.5, -1.8), k(0.66, -1.8)]),
-        Track(Limb.armR, [k(0, -0.5), k(0.35, 0.41), k(0.5, -1.8), k(0.66, -1.8)]),
-        Track(Limb.forearmL, [k(0, -0.3), k(0.35, -0.58), k(0.5, -0.3), k(0.66, -0.3)]),
-        Track(Limb.forearmR, [k(0, -0.3), k(0.35, -0.58), k(0.5, -0.3), k(0.66, -0.3)]),
-        Track(Limb.torso, [k(0, 0), k(0.35, -0.18), k(0.5, 0.25), k(0.66, 0.25)]),
-        Track(Limb.head, [k(0, 0), k(0.35, 0.21, 0, -0.14), k(0.5, -0.3, 0, 0.2), k(0.66, -0.3, 0, 0.2)]),
-        Track(Limb.hips, .shift, scale: .size, [k(0, 0), k(0.35, 0, -0.021, -0.042), k(0.5, 0, -0.03, 0.06), k(0.66, 0, -0.03, 0.06)]),
-        hold(Limb.thighL, -0.5), hold(Limb.shinL, 0.4), hold(Limb.thighR, 0.4), hold(Limb.shinR, 0.3),
-    ])
-
-    /// The great club heaved overhead and brought down.
-    static let slam = Keyed(loops: true, [
-        Track(Limb.armR, [k(0, -0.6, 0, 0.15), k(0.42, -2.7, 0, 0.15), k(0.55, 0.135, 0, 0.15), k(0.75, 0.135, 0, 0.15)]),
-        Track(Limb.armL, [k(0, -0.6, 0, -0.35), k(0.42, -2.7, 0, -0.35), k(0.55, 0.135, 0, -0.35), k(0.75, 0.135, 0, -0.35)]),
-        hold(Limb.forearmR, -0.3), hold(Limb.forearmL, -0.3),
-        Track(Limb.torso, [k(0, 0.2), k(0.42, -0.1), k(0.55, 0.305), k(0.75, 0.305)]),
-        Track(Limb.hips, .shift, scale: .size, [k(0, 0), k(0.42, 0), k(0.55, 0, -0.0105), k(0.75, 0, -0.0105)]),
-        hold(Limb.thighL, -0.35), hold(Limb.shinL, 0.3), hold(Limb.thighR, 0.3),
     ])
 
     /// The mattock over and down, one stroke a half-period, its moment `v`
@@ -285,17 +223,6 @@ enum FootClips {
                 struck(Limb.thighL, Vec3(-0.5, 0, 0)), struck(Limb.shinL, Vec3(0.9, 0, 0)),
                 struck(Limb.armL, Vec3(-0.9, 0, -0.3)), struck(Limb.forearmL, Vec3(-0.9, 0, 0)),
             ])
-        case .wild, .club:
-            // Reeling, the head shaken on its neck, the arms flung wide.
-            return Keyed(loops: true, [
-                struck(Limb.torso, Vec3(-0.4, 0.3, 0.35)),
-                Track(Limb.head, recoil.enumerated().map { index, key in
-                    k(key.0, -0.35 * key.1, -0.3 * key.1, (index % 2 == 0 ? 0.5 : -0.5) * key.1)
-                }),
-                struck(Limb.hips, .shift, scale: .size, Vec3(0, -0.03, -0.08)),
-                struck(Limb.thighR, Vec3(0.45, 0, 0)), struck(Limb.shinR, Vec3(0.3, 0, 0)), struck(Limb.shinL, Vec3(0.45, 0, 0)),
-                struck(Limb.armL, Vec3(-0.4, 0, 0.9)), struck(Limb.armR, Vec3(-0.4, 0, -0.9)),
-            ])
         case .free:
             return Keyed(loops: true, [
                 struck(Limb.torso, Vec3(-0.38, 0.22, 0.08)), struck(Limb.head, Vec3(-0.32, -0.35, 0.1)),
@@ -357,7 +284,7 @@ enum FootClips {
                 Track(Limb.thighR, [k(0, 0), k(0.3, -0.5), k(0.75, -0.3), k(0.85, -0.3)]),
                 Track(Limb.shinR, [k(0, 0), k(0.3, 0.9), k(0.75, 0.4), k(0.85, 0.4)]),
             ])
-        case .wild, .club, .cart:
+        case .cart:
             // Pitched forward on the face, the arms flung out ahead.
             return Keyed(loops: false, [
                 Track(Limb.hips, [k(0, 0), k(0.25, 0.09), k(0.8, 1.571), k(0.85, 1.571)]),

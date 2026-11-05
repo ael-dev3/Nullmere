@@ -241,13 +241,14 @@ python3 Art/embed.py Art/models/spearman.glb Sources/NullmereModels/Art/Spearman
 ```
 
 The first line is needed once; `archer.py`, `lantern.py`, `rider.py`,
-`commanders.py`, `mangonel.py` and `founder.py` make the archer, the
-lantern-bearer, the rider, the commanders, the Mangonel and the founder the
-same way (the rider into `Art/models/rider.glb`, embedded
+`commanders.py`, `mangonel.py`, `founder.py`, `hollow.py`, `thornwight.py`
+and `colossus.py` make the archer, the lantern-bearer, the rider, the
+commanders, the Mangonel, the founder and the three wilds the same way (the rider into `Art/models/rider.glb`, embedded
 as `Art.horseman` in `Sources/NullmereModels/Art/Horseman.swift`; the
 commanders into `Art/models/commanders.glb`, embedded as `Art.heroes` in
 `Heroes.swift`; the Mangonel as `Art.engine` in `Engine.swift`; the founder
-as `Art.settler` in `Settler.swift`). The riders' and commanders' horse is
+as `Art.settler` in `Settler.swift`; each wild in its own, `Hollow.swift`,
+`Thornwight.swift` and `Colossus.swift`). The riders' and commanders' horse is
 `Art/blender/horse.py`'s; the Mangonel's and the handcart's wheels are
 `Art/blender/carts.py`'s. A figure's rig is held to 23
 bones (24 parts with the game's root): a script folds the bones it does not
