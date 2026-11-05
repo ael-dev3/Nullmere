@@ -18,8 +18,6 @@ final class EstateTests: XCTestCase {
         for level in 1...2 {
             XCTAssertGreaterThan(Library.model(.walls(level: level)).mesh.triangleCount, 2200, "The walls' own work at level \(level)")
         }
-        XCTAssertEqual(Estate.dress(Library.model(.work(.walls, level: 2)), .walls, level: 2).mesh.triangleCount,
-                       Library.model(.work(.walls, level: 2)).mesh.triangleCount, "The walls' estate is their own towers")
     }
 
     func testLayeringKeepsEachMeshsFineWorkFine() {
@@ -44,7 +42,5 @@ final class EstateTests: XCTestCase {
             let early = motion(.idle, 0.0), later = motion(.idle, 0.35)
             XCTAssertNotEqual(early[saw].rotation, later[saw].rotation, "The saw moves at level \(level)")
         }
-        XCTAssertTrue(Estate.bespoke.contains(.sawpit))
-        XCTAssertEqual(Estate.parts(4, .granary).count, 2)
     }
 }

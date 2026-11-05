@@ -10,7 +10,6 @@ final class SawpitTests: XCTestCase {
         XCTAssertTrue(counts.allSatisfy { $0 <= ModelKey.work(.sawpit, level: 1).budget }, "\(counts)")
         XCTAssertEqual(counts, counts.sorted(), "\(counts)")
         XCTAssertGreaterThan(counts[4], 2500, "\(counts)")
-        XCTAssertTrue(Estate.bespoke.contains(.sawpit))
     }
 
     func testItsSawWorks() throws {

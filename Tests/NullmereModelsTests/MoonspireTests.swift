@@ -10,7 +10,6 @@ final class MoonspireTests: XCTestCase {
         XCTAssertTrue(counts.allSatisfy { $0 <= ModelKey.work(.moonspire, level: 1).budget }, "\(counts)")
         XCTAssertEqual(counts, counts.sorted(), "\(counts)")
         XCTAssertGreaterThan(counts[4], 2500)
-        XCTAssertTrue(Estate.bespoke.contains(.moonspire))
         for level in 1...5 {
             let tower = Works.moonspire(level, "tower").mesh.triangleCount
             XCTAssertGreaterThan(counts[level - 1], tower, "Its court laid about it at stage \(level)")

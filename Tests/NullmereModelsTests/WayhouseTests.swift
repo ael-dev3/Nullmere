@@ -10,7 +10,6 @@ final class WayhouseTests: XCTestCase {
         XCTAssertTrue(counts.allSatisfy { $0 <= ModelKey.work(.wayhouse, level: 1).budget }, "\(counts)")
         XCTAssertEqual(counts, counts.sorted(), "\(counts)")
         XCTAssertGreaterThan(counts[4], 2500, "\(counts)")
-        XCTAssertTrue(Estate.bespoke.contains(.wayhouse))
     }
 
     func testItsSignSwingsAndItsVaneTurns() throws {

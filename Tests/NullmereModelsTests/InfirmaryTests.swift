@@ -11,7 +11,6 @@ final class InfirmaryTests: XCTestCase {
         XCTAssertTrue(counts.allSatisfy { $0 <= ModelKey.work(.infirmary, level: 1).budget }, "\(counts)")
         XCTAssertGreaterThan(counts[4], 2500, "Its greatest level near its budget")
         XCTAssertEqual(counts, counts.sorted(), "\(counts)")
-        XCTAssertTrue(Estate.bespoke.contains(.infirmary))
     }
 
     func testItsWellTurnsAndItsWardSmokes() throws {

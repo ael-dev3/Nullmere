@@ -11,7 +11,6 @@ final class LodgeTests: XCTestCase {
         XCTAssertTrue(counts.allSatisfy { $0 <= ModelKey.work(.lodge, level: 1).budget }, "\(counts)")
         XCTAssertGreaterThan(counts[4], 2500, "Its greatest level near its budget")
         XCTAssertEqual(counts, counts.sorted(), "Each level at least as rich as the one before: \(counts)")
-        XCTAssertTrue(Estate.bespoke.contains(.lodge), "No shared estate laid over it")
     }
 
     func testTheJibSlewsAndTheTreadwheelTurns() throws {

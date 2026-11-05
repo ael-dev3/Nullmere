@@ -13,7 +13,6 @@ final class BeaconTests: XCTestCase {
         XCTAssertEqual(counts, counts.sorted(), "\(counts)")
         let heights = models.map(\.mesh.bounds.max.y)
         XCTAssertEqual(heights, heights.sorted(), "Taller at each level: \(heights)")
-        XCTAssertTrue(Estate.bespoke.contains(.beacon))
     }
 
     func testItsFireLeaps() throws {

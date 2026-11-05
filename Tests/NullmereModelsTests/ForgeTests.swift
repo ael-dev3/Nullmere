@@ -10,7 +10,6 @@ final class ForgeTests: XCTestCase {
         XCTAssertTrue(counts.allSatisfy { $0 <= ModelKey.work(.forge, level: 1).budget }, "\(counts)")
         XCTAssertEqual(counts, counts.sorted(), "\(counts)")
         XCTAssertGreaterThan(counts[4], 2500, "\(counts)")
-        XCTAssertTrue(Estate.bespoke.contains(.forge))
     }
 
     func testItsHammerBeatsAndItsHearthFlickers() throws {

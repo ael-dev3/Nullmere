@@ -10,7 +10,6 @@ final class QuarryTests: XCTestCase {
         XCTAssertTrue(counts.allSatisfy { $0 <= ModelKey.work(.quarry, level: 1).budget }, "\(counts)")
         XCTAssertGreaterThan(counts[4], 2500, "Its greatest level near its budget")
         XCTAssertEqual(counts, counts.sorted(), "\(counts)")
-        XCTAssertTrue(Estate.bespoke.contains(.quarry))
     }
 
     func testWhatLiftsTheStoneWorks() throws {
