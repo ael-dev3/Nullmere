@@ -885,6 +885,9 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(GameSession.cue(forDepth: named, in: session.state, player: other), .honour)
         XCTAssertEqual(GameSession.cue(forDepth: GameEvent.titleBestowed(title: .craven, house: other, by: me), in: session.state, player: other), .dread)
         XCTAssertNil(GameSession.cue(forDepth: named, in: session.state, player: me))
+        // A commander raised a star is heard by its House alone.
+        XCTAssertEqual(GameSession.cue(forDepth: .commanderStarred(commander: 1, house: me, stars: 2), in: session.state, player: me), .honour)
+        XCTAssertNil(GameSession.cue(forDepth: .commanderStarred(commander: 1, house: me, stars: 2), in: session.state, player: other))
 
         // As others see who names them: a keeper, a steward, none, or no Spire this age.
         XCTAssertEqual(TitlesSection.giverLine(session.state, player: other),

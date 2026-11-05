@@ -1285,3 +1285,33 @@ extension RallyScene {
         }
     }
 }
+
+extension RallyScene {
+    /// A commander's talents (RoK's talent trees), between two clients:
+    /// Ama spends a point of her commander's from her own client and her
+    /// client shows it learned; the same order from Bel's client, on a
+    /// commander not his, is refused by the realm.
+    func learnATalent(ama: Int, bel: Int) async throws {
+        let staged = StagedWalk()
+        await steward.reshape { realm in
+            let id = realm.world.takeID()
+            var commander = Commander(id: id, name: "Isolde of the Test", archetype: Archetype.allCases[0], owner: ama)
+            commander.experience = Commander.experience(forLevel: 6)
+            realm.world.commanders = (realm.world.commanders ?? []) + [commander]
+            staged.unit = id
+        }
+        let commanderID = try XCTUnwrap(staged.unit)
+        try await until("Ama's commander in her client") { earA.world?.commander(commanderID) != nil }
+        let first = await MainActor.run { () -> Talent? in
+            guard let commander = earA.world?.commander(commanderID) else { return nil }
+            return Talent.allCases.first { commander.learnRefusal(of: $0) == nil }
+        }
+        let open = try XCTUnwrap(first, "A talent open to a fresh commander")
+        await MainActor.run { a.send(.learnTalent(commander: commanderID, talent: open)) }
+        try await until("the talent learned, in Ama's client") { earA.world?.commander(commanderID)?.rank(of: open) == 1 }
+        await MainActor.run { b.send(.learnTalent(commander: commanderID, talent: open)) }
+        try await until("Bel refused another's commander by the realm") { earB.refusals.contains(RuleError.unknownCommander.description) }
+        let rank = await MainActor.run { earA.world?.commander(commanderID)?.rank(of: open) }
+        XCTAssertEqual(rank, 1, "Bel's order changed nothing")
+    }
+}

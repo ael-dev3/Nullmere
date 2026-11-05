@@ -330,6 +330,8 @@ final class SpacetimeIntegrationTests: XCTestCase {
         try await scene.teachTheLakeToLie(ama: houseA, bel: houseB)
         print("REALM one keeper taught the lake to lie, and the other saw her false company mirrored at the Still Hour")
         try await scene.upTheSpine(ama: houseA, bel: houseB)
+        try await scene.learnATalent(ama: houseA, bel: houseB)
+        print("REALM one keeper's commander learned a talent from her own client; the other's order on it was refused by the realm")
         print("REALM two keepers sent a line and a commander up the Spine from their own clients, each seeing only their own stars")
         print("REALM two allied keepers rallied on a lair from their own clients, broke it, and both were told of it and their shares")
         try await RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60).raiseAStandardTogether(ama: houseA, bel: houseB)

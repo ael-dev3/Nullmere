@@ -1675,6 +1675,7 @@ public final class GameSession {
         case .stoneHeard(_, let house, _) where house == player: return .dread
         case .stoneSunk(_, let house, _) where house == player: return .lore
         case .sculpturesFound(let house, _) where house == player: return .coin
+        case .commanderStarred(_, let house, _) where house == player: return .honour
         case .letterSent(let letter) where letter.to == player: return .parley
         case .pedlarCame(let house, _) where house == player: return .horn
         case .expedition(let result) where result.house == player: return result.won ? .triumph : .refusal
