@@ -8,7 +8,7 @@ enum Figures {
         switch kind {
         case .spear: return Art.figure(Art.spearman, tier: tier, name: name)
         case .bow: return Art.figure(Art.archer, tier: tier, name: name, more: ["string"], scale: Art.archerScale)
-        case .rider: return Riders.rider(tier: tier, name: name)
+        case .rider: return Art.rider(tier: tier, name: name, mount: Riders.mount(tier: tier))
         case .mangonel: return Engine.mangonel(tier: tier, name: name)
         case .lantern: return Art.figure(Art.lantern, tier: 1, name: name, scale: Art.lanternScale)
         case .founder: return founder(name: name)
@@ -22,50 +22,6 @@ enum Figures {
         return Model(name: name, mesh: b.mesh, rig: f.rig(more: more)) { clip, time in gait.joints(clip, time) }
     }
 
-    // MARK: Spears
-
-    /// From a padded coat and a bare spear to mail, plate, a crested helm,
-    /// the House's cloak and a pennoned spear.
-    static func spearOutfit(_ tier: Int) -> Outfit {
-        var o = Outfit()
-        switch tier {
-        case 1:
-            o.tunic = Palette.padded
-            o.sleeves = Palette.padded
-            o.skirt = (Palette.padded, .plain, 0.3)
-            o.belt = (Palette.house, .house)
-            o.shins = Palette.wool
-        case 2:
-            o.tunic = Palette.leather
-            o.sleeves = Palette.padded
-            o.skirt = (Palette.leather, .plain, 0.32)
-            o.belt = (Palette.house, .house)
-            o.head = .cap(Palette.leatherDark)
-        case 3:
-            o.tunic = Palette.mail
-            o.tunicMaterial = .metal
-            o.sleeves = Palette.mail
-            o.sleevesMaterial = .metal
-            o.skirt = (Palette.mail, .metal, 0.33)
-            o.head = .nasal
-            o.mantle = (Palette.house, .house)
-        default:
-            o.tunic = Palette.steel
-            o.tunicMaterial = .metal
-            o.sleeves = Palette.mail
-            o.sleevesMaterial = .metal
-            o.hands = Palette.iron
-            o.skirt = (Palette.mail, .metal, 0.34)
-            o.shins = Palette.steel
-            o.shinsMaterial = .metal
-            o.pauldrons = (tier >= 5 ? Palette.gold : Palette.steel, .metal)
-            o.tabard = true
-            o.head = tier >= 5 ? .crested : .greatHelm
-            o.cloak = tier >= 5 ? 0.2 : nil
-        }
-        return o
-    }
-
     // MARK: The heritages' own companies
 
     /// A House's own company, its heritage's kind at the fifth tier in
@@ -77,7 +33,8 @@ enum Figures {
     static func signature(_ heritage: Heritage, name: String) -> Model {
         let tier = ModelKey.tiers(of: heritage.signature)
         switch heritage.signature {
-        case .rider: return Riders.rider(tier: tier, name: name, outfit: signatureOutfit(heritage), mount: signatureMount(heritage))
+        // The Wood Riders and the Barrow Riders, made in Blender with the rider.
+        case .rider: return Art.rider(tier: tier, variant: heritage.rawValue, name: name, mount: signatureMount(heritage))
         // The Reed Bows and the Strand Bows, made in Blender with the archer.
         case .bow: return Art.figure(Art.archer, tier: tier, variant: heritage.rawValue, name: name, more: ["string"],
                                      scale: Art.archerScale)
@@ -86,42 +43,13 @@ enum Figures {
         }
     }
 
-    /// The gear of the riders of the two heritages whose own company
-    /// rides (the others' are made in Blender with their kind).
-    static func signatureOutfit(_ heritage: Heritage) -> Outfit {
-        var o = Outfit()
-        o.sleeves = Palette.mail
-        o.sleevesMaterial = .metal
-        if heritage == .moundClans {
-            // Black wool under bone, great-helmed, shrouded, the House on the chest.
-            o.tunic = Palette.woolDark
-            o.sleeves = Palette.barkBlack
-            o.sleevesMaterial = .plain
-            o.skirt = (Palette.woolDark, .plain, 0.3)
-            o.pauldrons = (Palette.bone, .plain)
-            o.mantle = (Palette.shroud, .plain)
-            o.head = .greatHelm
-            o.tabard = true
-        } else {
-            // The Blackwood Kin: leather and fir-green, hooded, the House's cloak long behind.
-            o.tunic = Palette.leatherDark
-            o.sleeves = Palette.leather
-            o.sleevesMaterial = .plain
-            o.skirt = (Palette.leatherDark, .plain, 0.44)
-            o.mantle = (Palette.fir, .plain)
-            o.head = .hood(Palette.fir, .plain)
-            o.cloak = 0.12
-        }
-        return o
-    }
-
-    /// The horses the riders of a heritage ride: the Blackwood Kin's black,
-    /// light and quick under a saddle cloth; the Mound Clans' ash-grey,
-    /// caparisoned to the hoof and unbarded.
+    /// The horses the riders of a heritage ride: the Blackwood Kin's black
+    /// with grey socks, under a saddle cloth; the Mound Clans' ash-grey,
+    /// caparisoned to the hoof (their cloth made with them in Blender).
     static func signatureMount(_ heritage: Heritage) -> Mount {
         switch heritage {
-        case .moundClans: return Mount(size: 1.06, coat: Palette.ash, mane: Palette.barkBlack, cloth: 3)
-        default: return Mount(size: 1.02, coat: Palette.horseBlack, mane: Palette.horseBlack, socks: Palette.horseGrey, cloth: 1)
+        case .moundClans: return Mount(coat: Palette.ash, mane: Palette.barkBlack)
+        default: return Mount(coat: Palette.horseBlack, mane: Palette.horseBlack, socks: Palette.horseGrey)
         }
     }
 
@@ -145,7 +73,8 @@ enum Figures {
     static func marchSpeed(_ key: ModelKey) -> Float? {
         switch key.canonical {
         case .signature(let heritage): return marchSpeed(.figure(heritage.signature, tier: ModelKey.tiers(of: heritage.signature)))
-        case .figure(.rider, let tier): return Ride(arms: .lance, mount: Riders.mount(tier: tier)).marchSpeed
+        // Every tier's horse made in Blender the one size, its canter keyed for the common horse's pace.
+        case .figure(.rider, _): return Ride(arms: .lance).marchSpeed
         case .figure(.founder, _): return founderGait.marchSpeed
         case .figure(.mangonel, _): return Engine.gait.marchSpeed
         case .figure, .prop(.cart): return Gait(hands: .spear).marchSpeed

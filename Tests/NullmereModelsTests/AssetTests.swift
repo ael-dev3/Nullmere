@@ -116,6 +116,46 @@ final class AssetTests: XCTestCase {
         XCTAssertLessThan((block(model, .attack, 22.0 / 30) - Vec3(0, 0.5, 0.6)).length, 2e-3)
     }
 
+    /// Raised as it is read: at rest, and as each clip moves it, all of it
+    /// stands the lift higher, its bones' pivots with it.
+    func testItTakesTheLiftItIsGiven() throws {
+        let plain = try arm(), raised = try Asset.model(name: "arm", glb: try Asset.bytes(base64: Fixtures.arm), lift: 0.25)
+        XCTAssertEqual(raised.mesh.bounds.min.y, 0.25, accuracy: 1e-4)
+        XCTAssertEqual(raised.mesh.bounds.max.y, plain.mesh.bounds.max.y + 0.25, accuracy: 1e-4)
+        XCTAssertEqual(raised.rig.bones[2].pivot.y, plain.rig.bones[2].pivot.y + 0.25, accuracy: 1e-4)
+        for time: Float in [0, 11.0 / 30, 22.0 / 30] {
+            XCTAssertLessThan((block(raised, .attack, time) - block(plain, .attack, time) - Vec3(0, 0.25, 0)).length, 1e-4, "at \(time)")
+        }
+        let scaled = try Asset.model(name: "arm", glb: try Asset.bytes(base64: Fixtures.arm), scale: 0.5, lift: 0.1)
+        XCTAssertLessThan((block(scaled, .attack, 22.0 / 30) - Vec3(0, 0.6, 0.6)).length, 2e-3, "scaled about its origin, then lifted")
+    }
+
+    /// An action tagged for a variant is that variant's own in place of the
+    /// one for all; every other read plays the one for all.
+    func testAVariantPlaysItsOwnActions() throws {
+        let read = { (variant: String?) in try Asset.model(name: "arm", glb: try Asset.bytes(base64: Fixtures.arm), variant: variant) }
+        let plain = try arm(), other = try read("other"), elsewhere = try read("elsewhere")
+        XCTAssertLessThan((block(plain, .attack, 22.0 / 30) - Vec3(0, 1, 1.2)).length, 4e-3)
+        XCTAssertLessThan((block(other, .attack, 22.0 / 30) - Vec3(0, 1, -1.2)).length, 4e-3, "its own strike, the elbow bent the other way")
+        XCTAssertLessThan((block(elsewhere, .attack, 22.0 / 30) - Vec3(0, 1, 1.2)).length, 4e-3, "another variant's: the strike for all")
+        XCTAssertEqual(other.pose(.idle, at: 1), plain.pose(.idle, at: 1), "its idle the one for all")
+        XCTAssertEqual(try XCTUnwrap(other.skeleton).clips, [.idle, .attack])
+        let tiered = try Asset.model(name: "arm", glb: try Asset.bytes(base64: Fixtures.arm), tier: 2)
+        XCTAssertEqual(tiered.pose(.attack, at: 0.7), plain.pose(.attack, at: 0.7), "a tier reads no variant's own")
+    }
+
+    /// A material given a colour of its own by its name: what it covers in
+    /// that colour, the rest as it was made.
+    func testItTakesTheColoursItIsGiven() throws {
+        let coloured = try Asset.model(name: "arm", glb: try Asset.bytes(base64: Fixtures.arm),
+                                       colours: ["house_timber_shaft": Vec3(0.2, 0.4, 0.6)])
+        let skin = coloured.mesh.vertices.filter { $0.material == .house }
+        XCTAssertFalse(skin.isEmpty)
+        XCTAssertTrue(skin.allSatisfy { $0.color == Vec3(0.2, 0.4, 0.6) })
+        XCTAssertTrue(coloured.mesh.vertices.filter { $0.material == .metal }.allSatisfy { ($0.color - Vec3(0.7, 0.7, 0.75)).length < 0.01 },
+                      "the block as it was made")
+    }
+
     /// What the package carries is each model's file as it was made: run
     /// Art/embed.py after making a model again.
     func testTheEmbeddedModelsAreTheirFiles() throws {
@@ -124,6 +164,7 @@ final class AssetTests: XCTestCase {
         XCTAssertEqual(try Asset.bytes(base64: Art.spearman), try Data(contentsOf: models.appendingPathComponent("spearman.glb")))
         XCTAssertEqual(try Asset.bytes(base64: Art.archer), try Data(contentsOf: models.appendingPathComponent("archer.glb")))
         XCTAssertEqual(try Asset.bytes(base64: Art.lantern), try Data(contentsOf: models.appendingPathComponent("lantern.glb")))
+        XCTAssertEqual(try Asset.bytes(base64: Art.horseman), try Data(contentsOf: models.appendingPathComponent("rider.glb")))
         XCTAssertEqual(try Asset.bytes(base64: Fixtures.arm), try Data(contentsOf: models.appendingPathComponent("fixture-arm.glb")))
     }
 

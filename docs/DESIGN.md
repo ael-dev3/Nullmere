@@ -60,18 +60,24 @@ the keeper's realm last lay on, made as it plays.
 
 ### Every model, made in Blender or built from code
 
-Every model is original. The spearman, the archer and the lantern-bearer
-are made in Blender, each by a script
+Every model is original. The spearman, the archer, the lantern-bearer
+and the rider on his horse are made in Blender, each by a script
 ([`Art/blender/spearman.py`](../Art/blender/spearman.py),
-[`archer.py`](../Art/blender/archer.py), [`lantern.py`](../Art/blender/lantern.py))
+[`archer.py`](../Art/blender/archer.py), [`lantern.py`](../Art/blender/lantern.py),
+[`rider.py`](../Art/blender/rider.py))
 that builds the body, gear and
-skeleton and keys the actions, on one body every person on foot shares
+skeleton and keys the actions, on one body every person shares
 ([`person.py`](../Art/blender/person.py)): the skin is weighted to the
 bones each side of a joint, so it bends there rather than breaking, and
 each tier and heritage is a set of tagged pieces in one file. The
 archer's draw is worked out where his hands must be, the bow arm laid at
 the foe and the drawing hand at his cheek, the string and the arrow on it
-weighted to the bow at one end and to the hand at the other. The
+weighted to the bow at one end and to the hand at the other. The horse is
+a skinned body of its own under the rider, on the twelve bones every horse
+in the game moves on, its coat, socks and mane made in materials the game
+colours as each tier's horse is; the rider's legs, round its barrel, are
+carried by his seat, so horse and rider keep to the 24 parts every
+figure's rig is held to. The
 file is glTF binary, written in one fixed order so the same script always
 makes the same bytes, and the game carries it and reads it with an
 importer of its own ([`Asset.swift`](../Sources/NullmereModels/Asset.swift)):

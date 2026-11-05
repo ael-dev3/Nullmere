@@ -134,6 +134,39 @@ def hang(obj, rig, bone):
     obj.matrix_world = world
 
 
+def fold(rig, into):
+    """Bones folded into others, `into` as {bone: the bone that takes it
+    over}: each mesh's weights for a folded bone added to its taker's, each
+    piece hung from one hung from its taker, and the bone taken out of the
+    armature. A figure's rig kept to the parts the game draws it with (a
+    rider's legs carried by his seat, a hoof by its shin)."""
+    def taker(bone):
+        while bone in into:
+            bone = into[bone]
+        return bone
+    for obj in sorted((o for o in bpy.data.objects if o.type == "MESH"), key=lambda o: o.name):
+        if obj.parent == rig and obj.parent_type == "BONE" and obj.parent_bone in into:
+            hang(obj, rig, taker(obj.parent_bone))
+        for name in sorted(into):
+            group = obj.vertex_groups.get(name)
+            if group is None:
+                continue
+            shares = [(v.index, g.weight) for v in obj.data.vertices for g in v.groups if g.group == group.index]
+            target = obj.vertex_groups.get(taker(name)) or obj.vertex_groups.new(name=taker(name))
+            for index, share in shares:
+                target.add([index], share, "ADD")
+            obj.vertex_groups.remove(group)
+    select_only(rig)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bones = rig.data.edit_bones
+    for name in sorted(into):
+        for child in list(bones[name].children):
+            child.use_connect = False
+            child.parent = bones[taker(name)]
+        bones.remove(bones[name])
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+
 def action(rig, name, keys):
     """An action of the armature: keys as {frame: {bone: (rx, ry, rz) in degrees, or (rotation, location)}}."""
     rig.animation_data_create()
@@ -419,6 +452,34 @@ def dome(name, radii, centre, segments=8, rings=4, mat=None, floor=None, smooth=
     if mat:
         obj.data.materials.append(mat)
     return obj
+
+
+def settle(bm):
+    """Every face of more than three corners begun again at its least corner
+    and cut into triangles from there, so a cut that orders its work
+    differently from run to run (a bisect's) still makes the same triangles."""
+    def least(v):
+        return tuple(round(c, 5) for c in v.co)
+    # Corners all but at one place (the cut's new corners by the old) moved
+    # to the least of them and made one, so no merge later keeps whichever
+    # it happens on first.
+    corners = sorted(bm.verts, key=lambda v: (least(v), tuple(v.co)))
+    for i, v in enumerate(corners):
+        for w in corners[i + 1:]:
+            if w.co.x - v.co.x > 1e-5:
+                break
+            if (w.co - v.co).length <= 1e-5:
+                w.co = v.co.copy()
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-9)
+    for face in [f for f in bm.faces if len(f.verts) > 3]:
+        corners = list(face.verts)
+        start = min(range(len(corners)), key=lambda i: least(corners[i]))
+        ring = corners[start:] + corners[:start]
+        material, smooth = face.material_index, face.smooth
+        bm.faces.remove(face)
+        made = bm.faces.new(ring)
+        made.material_index, made.smooth = material, smooth
+        bmesh.ops.triangulate(bm, faces=[made], quad_method="FIXED", ngon_method="EAR_CLIP")
 
 
 def clean(obj):

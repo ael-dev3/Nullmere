@@ -15,7 +15,9 @@ import Foundation
 /// third tier to the fifth, "helm@4" for the fourth alone, "helm@5,saltborn"
 /// for the fifth and for the variant named saltborn; "buckle!fine" only
 /// near, as the models built in code have their fine work. Cloth and leaves
-/// carry how far they move in the wind as an attribute, _SWAY.
+/// carry how far they move in the wind as an attribute, _SWAY. Its actions
+/// are tagged the same way: "attack@warden" is the warden's strike, played
+/// by that variant in place of "attack".
 public enum Asset {
     public enum Failure: Error, Equatable, CustomStringConvertible {
         /// Not glTF binary at all.
@@ -31,15 +33,20 @@ public enum Asset {
         }
     }
 
-    /// A model from a .glb's bytes, scaled about its origin by `scale`: its
+    /// A model from a .glb's bytes, scaled about its origin by `scale` and
+    /// then raised by `lift` (a rider made seated at a man's height, his
+    /// horse beneath him, lifted till its hooves stand on the ground): its
     /// rig's bones in `order` (by name) after its root, any others after
     /// them; the pieces of `tier` alone, if it is given.
     /// The pieces of a variant (by its name) in place of a tier's, if one is
-    /// given: untagged pieces and those tagged for it.
-    public static func model(name: String, glb: Data, scale: Float = 1, order: [String] = [], tier: Int? = nil,
-                             variant: String? = nil) throws -> Model {
+    /// given: untagged pieces and those tagged for it. `colours` (sRGB), by
+    /// a material's name, in place of the colour it was made in: a horse's
+    /// coat as each tier's is.
+    public static func model(name: String, glb: Data, scale: Float = 1, lift: Float = 0, order: [String] = [], tier: Int? = nil,
+                             variant: String? = nil, colours: [String: Vec3] = [:]) throws -> Model {
         let file = try GLB(glb)
-        return try Reader(file: file, scale: scale, order: order, tier: tier, variant: variant).model(name: name)
+        return try Reader(file: file, scale: scale, lift: lift, order: order, tier: tier, variant: variant, colours: colours)
+            .model(name: name)
     }
 
     /// What a piece's name in the file says of it: its name, the tiers and
@@ -157,8 +164,10 @@ public struct Skeleton: Sendable {
     let joints: [Int]
     let inverseBinds: [Mat4]
     let actions: [Clip: Action]
-    /// The model's scale about its origin, and its inverse.
-    let scale: Float
+    /// Where the model stands from where it was made: scaled about its
+    /// origin and lifted; and back.
+    let up: Mat4
+    let down: Mat4
 
     /// The clips it has actions for.
     public var clips: Set<Clip> { Set(actions.keys) }
@@ -196,7 +205,6 @@ public struct Skeleton: Sendable {
             globals[index] = value
             return value
         }
-        let up = Mat4.scale(scale), down = Mat4.scale(1 / scale)
         return [.identity] + joints.indices.map { j in
             up * global(joints[j]) * inverseBinds[j] * down
         }
@@ -395,10 +403,15 @@ private struct GLTF: Decodable {
 private struct Reader {
     let file: GLB
     let scale: Float
+    let lift: Float
     let order: [String]
     let tier: Int?
     let variant: String?
+    let colours: [String: Vec3]
     var json: GLTF { file.json }
+    /// Where the model stands from where it was made, and back.
+    var up: Mat4 { .translation(Vec3(0, lift, 0)) * .scale(scale) }
+    var down: Mat4 { .scale(1 / scale) * .translation(Vec3(0, -lift, 0)) }
 
     // MARK: Accessors
 
@@ -542,7 +555,7 @@ private struct Reader {
             while let p = parent, !jointNodes.contains(p) { parent = parents[p] }
             let parentBone = parent.flatMap { p in jointNodes.firstIndex(of: p).map { $0 + 1 } } ?? 0
             guard parentBone <= position else { throw Asset.Failure.malformed("bone \(skeletonNodes[node].name) before its parent") }
-            rig.add(skeletonNodes[node].name, parent: parentBone, pivot: restGlobal(node).transformPoint(.zero) * scale)
+            rig.add(skeletonNodes[node].name, parent: parentBone, pivot: up.transformPoint(restGlobal(node).transformPoint(.zero)))
         }
         guard rig.count <= PackedVertex.partsMost else { throw Asset.Failure.malformed("more bones than a vertex can name") }
 
@@ -582,11 +595,21 @@ private struct Reader {
             mesh.append(fine)
         }
 
-        // The actions, each a clip by its name.
+        // The actions, each a clip by its name; one tagged as a piece is
+        // ("attack@warden") played by what it is tagged for in place of the
+        // one for all (a commander's own strike).
         var actions: [Clip: Skeleton.Action] = [:]
+        var own: Set<Clip> = []
         for animation in json.animations ?? [] {
-            let named = (animation.name ?? "").split(separator: "|").last.map { String($0).lowercased() } ?? ""
-            guard let clip = Clip(rawValue: named) else { continue }
+            let tags = Asset.tags((animation.name ?? "").split(separator: "|").last.map(String.init) ?? "")
+            guard let clip = Clip(rawValue: tags.name.lowercased()) else { continue }
+            if !tags.always {
+                // A variant's own (in place of a tier's, as its pieces are), or a tier's; read as neither, the one for all.
+                let mine = variant.map { tags.variants.contains($0) } ?? tier.map { tier in tags.tiers.contains { $0.contains(tier) } }
+                guard mine == true else { continue }
+            } else if own.contains(clip) {
+                continue
+            }
             var channels: [Skeleton.Channel] = []
             var start = Float.infinity, end = -Float.infinity
             for channel in animation.channels {
@@ -613,9 +636,10 @@ private struct Reader {
             }
             guard !channels.isEmpty else { continue }
             actions[clip] = Skeleton.Action(start: start, duration: max(end - start, 0), channels: channels)
+            if !tags.always { own.insert(clip) }
         }
 
-        let skeleton = Skeleton(nodes: skeletonNodes, joints: jointNodes, inverseBinds: binds, actions: actions, scale: scale)
+        let skeleton = Skeleton(nodes: skeletonNodes, joints: jointNodes, inverseBinds: binds, actions: actions, up: up, down: down)
         return Model(name: name, mesh: mesh, rig: rig, skeleton: skeleton)
     }
 
@@ -633,6 +657,8 @@ private struct Reader {
         let material = primitive.material.flatMap { json.materials?.indices.contains($0) == true ? json.materials?[$0] : nil }
         let (kind, surface) = Reader.kind(of: material?.name)
         let base = material?.pbrMetallicRoughness?.baseColorFactor ?? [1, 1, 1, 1]
+        // A colour given for its material, by name, in place of the one it was made in.
+        let given = material?.name.flatMap { self.colours[$0] }
         let normalMatrix = place.normalMatrix
         let first = UInt32(mesh.vertices.count)
         for i in 0..<count {
@@ -646,7 +672,7 @@ private struct Reader {
             if let (values, width) = colours, width >= 3 {
                 linear *= Vec3(values[i * width], values[i * width + 1], values[i * width + 2])
             }
-            var vertex = MeshVertex(position: p * scale, normal: n.normalized, color: Reader.srgb(linear), part: rigid,
+            var vertex = MeshVertex(position: up.transformPoint(p), normal: n.normalized, color: given ?? Reader.srgb(linear), part: rigid,
                                     material: kind, sway: min(max(sway.map { $0[i] } ?? 0, 0), 1), surface: surface)
             if let joints, let weights, joints.count >= (i + 1) * 4, weights.count >= (i + 1) * 4 {
                 var pairs: [(joint: Int, weight: Float)] = []

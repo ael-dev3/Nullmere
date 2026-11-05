@@ -1,5 +1,6 @@
 """The importer's test model: an arm of two bones under a skin of smooth
-weights, a block carried by the forearm, two materials and two actions.
+weights, a block carried by the forearm, two materials and two actions,
+and a strike of a variant's own.
 
     python Art/blender/fixture_arm.py Art/models/fixture-arm.glb
 """
@@ -24,4 +25,6 @@ hang(block, rig, "lower")
 
 action(rig, "idle", {0: {"upper": (0, 0, 0)}, 60: {"upper": (5, 0, 0)}, 120: {"upper": (0, 0, 0)}})
 action(rig, "attack", {0: {"lower": (0, 0, 0)}, 22: {"lower": (90, 0, 0)}, 45: {"lower": (0, 0, 0)}})
+# A variant's own strike, the elbow bent the other way.
+action(rig, "attack@other", {0: {"lower": (0, 0, 0)}, 22: {"lower": (-90, 0, 0)}, 45: {"lower": (0, 0, 0)}})
 export(out_path("Art/models/fixture-arm.glb"))

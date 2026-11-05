@@ -44,11 +44,14 @@ class Palette:
 class Build:
     """How a kind is built: `girth` the breadth and depth of its body and
     limbs (a spearman's 1, an archer's spare), `shoulders` how far out its
-    arms hang."""
+    arms hang; `lean`, fewer sides to what is drawn far off."""
 
-    def __init__(self, girth=1.0, shoulders=1.0):
+    def __init__(self, girth=1.0, shoulders=1.0, lean=False):
         self.girth = girth
         self.shoulders = shoulders
+        # Leaner still far off, for a figure that must share its budget
+        # (a rider with his horse): fewer sides to every lean piece.
+        self.lean = lean
 
 
 # The head, a tenth larger than life so a face reads from the camera's height.
@@ -96,20 +99,33 @@ class Person:
     """A kind's figure: its armature, its build and its materials; `variants`
     the heritages it is also made for, as a list in tags ("saltborn,...")."""
 
-    def __init__(self, name, variants, build=None, more_bones=(), moved=None):
-        """`more_bones` added after the feet; `moved`, {name: (head, tail,
-        parent)}, bones of the shared rig hung elsewhere by this kind (the
-        archer's `extra` at the bow, for its drawn arrow)."""
+    def __init__(self, name, variants, build=None, more_bones=(), moved=None, before_bones=()):
+        """`more_bones` added after the feet, `before_bones` before the
+        person's own (a rider's horse, which his seat hangs from); `moved`,
+        {name: (head, tail, parent)}, bones of the shared rig hung elsewhere
+        by this kind (the archer's `extra` at the bow, a rider's legs astride)."""
         self.build = build or Build()
         self.p = Palette()
         self.variants = variants
         bones = [(name_, *moved[name_]) if moved and name_ in moved else (name_, head, tail, parent)
                  for name_, head, tail, parent in self.bones()]
-        self.rig = armature(name, bones + list(more_bones))
+        self.rig = armature(name, list(before_bones) + bones + list(more_bones))
 
     def ax(self, x):
         """An x across the body where the arms hang, by the build."""
         return x * self.build.shoulders
+
+    def far(self, sides):
+        """The sides of a lean piece, by the build."""
+        return sides - 2 if self.build.lean else sides
+
+    def near(self, sides):
+        """The sides of a rounded piece drawn close, by the build."""
+        return sides - max(2, sides // 4) if self.build.lean else sides
+
+    def between(self, rings):
+        """The rings eased in between each two of a piece drawn close."""
+        return max(1, rings - 1) if self.build.lean else rings
 
     def g(self, r):
         """A radius of the body or a limb, by the build."""
@@ -144,61 +160,125 @@ class Person:
 
     # MARK: The body every tier and variant shares
 
-    def body(self, hands, face):
+    def body(self, hands, face, seated=None):
         """Legs, boots, bracers and hands, neck, head and face, and the belt.
         `hands`: (tags, material) for the hands each tier or variant wears,
         bare or gauntleted; `face`: the tags it is drawn for, where no helm
-        hides it."""
-        rig, p, g, a = self.rig, self.p, self.g, self.ax
+        hides it; `seated`, for a rider, {side: (hip, knee, ankle)} where
+        each leg bends astride."""
         body_parts = []
-        for s, side in ((1, "L"), (-1, "R")):
-            thigh, shin, foot = "thigh" + side, "shin" + side, "foot" + side
-            forearm = "forearm" + side
-            paired(rig, "leg " + side, [
-                ((s * 0.105, 0.0, 0.94), g(0.104), g(0.11), {"hips": 0.55, thigh: 0.45}),
-                ((s * 0.12, 0.0, 0.49), g(0.063), g(0.069), {thigh: 0.5, shin: 0.5}),
-                ((s * 0.12, 0.013, 0.30), g(0.062), g(0.07), {shin: 1.0}),
-            ], far=6, near=12, between=2, mat=p.wool)
-            paired(rig, "boot " + side, [
-                ((s * 0.12, 0.01, 0.335), g(0.07), g(0.078), {shin: 1.0}),
-                ((s * 0.12, 0.012, 0.12), g(0.058), g(0.064), {shin: 0.6, foot: 0.4}),
-            ], far=6, near=12, between=1, mat=p.leather)
-            boot = solid("foot " + side, "box", mat=p.leather, weights={foot: 1.0}, location=(s * 0.12, -0.045, 0.055),
-                         size=(0.105, 0.24, 0.11))
-            shape_vertices(boot, lambda v: Vector((v.x * (0.7 if v.y < -0.1 else 1.0), v.y,
-                                                   v.z * (0.6 if v.y < -0.1 else 1.0) + (-0.02 if v.y < -0.1 else 0))))
-            body_parts.append(boot)
-            paired(rig, "bracer " + side, [
-                ((a(s * 0.282), 0.0, 1.03), g(0.052), g(0.054), {"arm" + side: 0.5, forearm: 0.5}),
-                ((a(s * 0.295), -0.01, 0.765), g(0.04), g(0.043), {forearm: 1.0}),
-            ], far=6, near=12, between=2, mat=p.leather)
-            for tags, mat in hands:
-                hand = solid("hand %s%s" % (side, tags), "sphere", mat=mat, smooth=True, segments=5, rings=3,
-                             radius=(0.038, 0.033, 0.058), location=(a(s * 0.299), -0.014, 0.705))
-                hang(hand, rig, forearm)
-                close_hand = solid("hand close %s%s!fine" % (side, tags), "sphere", mat=mat, smooth=True, segments=8, rings=5,
-                                   radius=(0.041, 0.036, 0.061), location=(a(s * 0.299), -0.014, 0.705))
-                hang(close_hand, rig, forearm)
-                thumb = solid("thumb %s%s!fine" % (side, tags), "box", mat=mat, location=(a(s * 0.282), -0.045, 0.725),
-                              size=(0.022, 0.03, 0.045), rotation=(15, 0, 0))
-                hang(thumb, rig, forearm)
-            # Bands at the knee and the boot's cuff, near.
-            garter = loft("garter %s!fine" % side, [((s * 0.12, 0.002, 0.53), g(0.072), g(0.078), {}),
-                                                    ((s * 0.12, 0.002, 0.50), g(0.072), g(0.078), {})],
-                          segments=12, mat=p.dark_leather, caps=(False, False))
-            hang(garter, rig, thigh)
-            cuff = loft("boot cuff %s!fine" % side, [((s * 0.12, 0.01, 0.345), g(0.078), g(0.086), {}),
-                                                     ((s * 0.12, 0.01, 0.31), g(0.076), g(0.084), {})],
-                        segments=12, mat=p.dark_leather, caps=(False, False))
-            hang(cuff, rig, shin)
-            sole = solid("sole %s!fine" % side, "box", mat=p.dark_leather, location=(s * 0.12, -0.045, 0.008), size=(0.112, 0.25, 0.018))
-            hang(sole, rig, foot)
+        for side in ("L", "R"):
+            if seated:
+                body_parts.append(self.seated_leg(side, *seated[side]))
+            else:
+                body_parts.append(self.standing_leg(side))
+            self.arm_end(side, hands)
+            if seated:
+                self.seated_bands(side, *seated[side])
+            else:
+                self.standing_bands(side)
+        self.head_and_belt(face, body_parts)
 
+    def standing_leg(self, side):
+        """A leg standing, and its boot; the boot's foot is returned for the
+        body."""
+        rig, p, g = self.rig, self.p, self.g
+        s = 1 if side == "L" else -1
+        thigh, shin, foot = "thigh" + side, "shin" + side, "foot" + side
+        paired(rig, "leg " + side, [
+            ((s * 0.105, 0.0, 0.94), g(0.104), g(0.11), {"hips": 0.55, thigh: 0.45}),
+            ((s * 0.12, 0.0, 0.49), g(0.063), g(0.069), {thigh: 0.5, shin: 0.5}),
+            ((s * 0.12, 0.013, 0.30), g(0.062), g(0.07), {shin: 1.0}),
+        ], far=self.far(6), near=self.near(12), between=2, mat=p.wool)
+        paired(rig, "boot " + side, [
+            ((s * 0.12, 0.01, 0.335), g(0.07), g(0.078), {shin: 1.0}),
+            ((s * 0.12, 0.012, 0.12), g(0.058), g(0.064), {shin: 0.6, foot: 0.4}),
+        ], far=self.far(6), near=self.near(12), between=1, mat=p.leather)
+        boot = solid("foot " + side, "box", mat=p.leather, weights={foot: 1.0}, location=(s * 0.12, -0.045, 0.055),
+                     size=(0.105, 0.24, 0.11))
+        shape_vertices(boot, lambda v: Vector((v.x * (0.7 if v.y < -0.1 else 1.0), v.y,
+                                               v.z * (0.6 if v.y < -0.1 else 1.0) + (-0.02 if v.y < -0.1 else 0))))
+        return boot
+
+    def arm_end(self, side, hands):
+        """The bracer and hand of an arm, as each tier or variant wears it."""
+        rig, p, g, a = self.rig, self.p, self.g, self.ax
+        s = 1 if side == "L" else -1
+        forearm = "forearm" + side
+        paired(rig, "bracer " + side, [
+            ((a(s * 0.282), 0.0, 1.03), g(0.052), g(0.054), {"arm" + side: 0.5, forearm: 0.5}),
+            ((a(s * 0.295), -0.01, 0.765), g(0.04), g(0.043), {forearm: 1.0}),
+        ], far=self.far(6), near=self.near(12), between=2, mat=p.leather)
+        for tags, mat in hands:
+            hand = solid("hand %s%s" % (side, tags), "sphere", mat=mat, smooth=True, segments=4 if self.build.lean else 5,
+                         rings=3,
+                         radius=(0.038, 0.033, 0.058), location=(a(s * 0.299), -0.014, 0.705))
+            hang(hand, rig, forearm)
+            close_hand = solid("hand close %s%s!fine" % (side, tags), "sphere", mat=mat, smooth=True, segments=8, rings=5,
+                               radius=(0.041, 0.036, 0.061), location=(a(s * 0.299), -0.014, 0.705))
+            hang(close_hand, rig, forearm)
+            thumb = solid("thumb %s%s!fine" % (side, tags), "box", mat=mat, location=(a(s * 0.282), -0.045, 0.725),
+                          size=(0.022, 0.03, 0.045), rotation=(15, 0, 0))
+            hang(thumb, rig, forearm)
+
+    def standing_bands(self, side):
+        """Bands at the knee and the boot's cuff, and the sole, near."""
+        rig, p, g = self.rig, self.p, self.g
+        s = 1 if side == "L" else -1
+        thigh, shin, foot = "thigh" + side, "shin" + side, "foot" + side
+        garter = loft("garter %s!fine" % side, [((s * 0.12, 0.002, 0.53), g(0.072), g(0.078), {}),
+                                                ((s * 0.12, 0.002, 0.50), g(0.072), g(0.078), {})],
+                      segments=12, mat=p.dark_leather, caps=(False, False))
+        hang(garter, rig, thigh)
+        cuff = loft("boot cuff %s!fine" % side, [((s * 0.12, 0.01, 0.345), g(0.078), g(0.086), {}),
+                                                 ((s * 0.12, 0.01, 0.31), g(0.076), g(0.084), {})],
+                    segments=12, mat=p.dark_leather, caps=(False, False))
+        hang(cuff, rig, shin)
+        sole = solid("sole %s!fine" % side, "box", mat=p.dark_leather, location=(s * 0.12, -0.045, 0.008), size=(0.112, 0.25, 0.018))
+        hang(sole, rig, foot)
+
+    def seated_leg(self, side, hip, knee, ankle):
+        """A leg astride, along the bones the rider's rig bends it on: the
+        thigh out and forward round a barrel, the shin down to the stirrup,
+        the foot in it. The boot's foot is returned for the body."""
+        rig, p, g = self.rig, self.p, self.g
+        thigh, shin, foot = "thigh" + side, "shin" + side, "foot" + side
+        H, K, A = Vector(hip), Vector(knee), Vector(ankle)
+        paired(rig, "leg " + side, [
+            (tuple(H + Vector((0, 0, 0.04))), g(0.104), g(0.11), {"hips": 0.55, thigh: 0.45}),
+            (tuple(K), g(0.068), g(0.074), {thigh: 0.5, shin: 0.5}),
+            (tuple(K + (A - K) * 0.45), g(0.062), g(0.07), {shin: 1.0}),
+        ], far=self.far(6), near=self.near(12), between=self.between(2), mat=p.wool)
+        paired(rig, "boot " + side, [
+            (tuple(K + (A - K) * 0.4), g(0.07), g(0.078), {shin: 1.0}),
+            (tuple(K + (A - K) * 0.92), g(0.058), g(0.064), {shin: 0.6, foot: 0.4}),
+        ], far=self.far(6), near=self.near(12), between=1, mat=p.leather)
+        return solid("foot " + side, "box", mat=p.leather, weights={foot: 1.0}, location=tuple(A + Vector((0, -0.06, -0.035))),
+                     size=(0.1, 0.23, 0.1))
+
+    def seated_bands(self, side, hip, knee, ankle):
+        """A seated leg's bands and sole, near."""
+        rig, p, g = self.rig, self.p, self.g
+        thigh, shin, foot = "thigh" + side, "shin" + side, "foot" + side
+        K, A = Vector(knee), Vector(ankle)
+        hang(loft("garter %s!fine" % side, [(tuple(K + (A - K) * 0.04), g(0.072), g(0.078), {}),
+                                            (tuple(K - (A - K) * 0.04), g(0.072), g(0.078), {})],
+                  segments=12, mat=p.dark_leather, caps=(False, False)), rig, thigh)
+        hang(loft("boot cuff %s!fine" % side, [(tuple(K + (A - K) * 0.37), g(0.078), g(0.086), {}),
+                                               (tuple(K + (A - K) * 0.45), g(0.076), g(0.084), {})],
+                  segments=12, mat=p.dark_leather, caps=(False, False)), rig, shin)
+        hang(solid("sole %s!fine" % side, "box", mat=p.dark_leather, location=tuple(A + Vector((0, -0.06, -0.088))),
+                   size=(0.106, 0.24, 0.018)), rig, foot)
+
+    def head_and_belt(self, face, body_parts):
+        """The neck, head and face, the belt, and the body joined and bound."""
+        rig, p, g = self.rig, self.p, self.g
         paired(rig, "neck", [
             ((0, 0.012, 1.40), g(0.056), g(0.054), {"torso": 1.0}),
             ((0, 0.004, 1.50), g(0.05), g(0.05), {"head": 1.0}),
-        ], far=6, near=10, between=1, mat=p.skin)
-        body_parts.append(solid("head", "sphere", mat=p.skin, weights={"head": 1.0}, smooth=True, segments=8, rings=4,
+        ], far=self.far(6), near=self.near(10), between=1, mat=p.skin)
+        body_parts.append(solid("head", "sphere", mat=p.skin, weights={"head": 1.0}, smooth=True, segments=self.far(8),
+                                rings=3 if self.build.lean else 4,
                                 radius=HEAD_R, location=HEAD))
         body_parts.append(loft("belt", [((0, 0.0, 0.995), g(0.176), g(0.122), {"hips": 1.0}),
                                         ((0, 0.0, 0.95), g(0.18), g(0.125), {"hips": 1.0})],
@@ -233,7 +313,7 @@ class Person:
 
     # MARK: What a tier or variant wears over it
 
-    def coat(self, tags, mat, skirt_mat, sleeve_mat, long=False, hem=None, body=True):
+    def coat(self, tags, mat, skirt_mat, sleeve_mat, long=False, hem=None, body=True, skirt=True):
         """The coat of a tier: body, skirt and sleeves, lean afar and round
         close; plate, for the tiers that wear it, is the coat's body. Its
         skirt to the knee, long to the shin, or to `hem`; its body left
@@ -242,14 +322,15 @@ class Person:
         if body:
             self.coat_body(tags, mat)
         hem = hem if hem is not None else 0.52 if long else 0.70
-        self.skirt(tags, skirt_mat, hem, long)
+        if skirt:
+            self.skirt(tags, skirt_mat, hem, long)
         for s, side in ((1, "L"), (-1, "R")):
             arm, forearm = "arm" + side, "forearm" + side
             paired(rig, "sleeve " + side, [
                 ((a(s * 0.20), 0.0, 1.41), g(0.072), g(0.077), {"torso": 0.6, arm: 0.4}),
                 ((a(s * 0.262), 0.0, 1.25), g(0.063), g(0.067), {"torso": 0.1, arm: 0.9}),
                 ((a(s * 0.282), 0.0, 1.02), g(0.053), g(0.055), {arm: 0.5, forearm: 0.5}),
-            ], far=6, near=12, between=2, mat=sleeve_mat, tags=tags)
+            ], far=self.far(6), near=self.near(12), between=self.between(2), mat=sleeve_mat, tags=tags)
 
     def coat_body(self, tags, mat):
         g = self.g
@@ -260,7 +341,7 @@ class Person:
             ((0, -0.015, 1.26), g(0.205), g(0.132), {"torso": 1.0}),
             ((0, 0.0, 1.36), g(0.215), g(0.12), {"torso": 1.0}),
             ((0, 0.005, 1.43), g(0.09), g(0.085), {"torso": 1.0}),
-        ], far=8, near=16, between=1, mat=mat, tags=tags)
+        ], far=self.far(8), near=self.near(16), between=1, mat=mat, tags=tags)
 
     def skirt(self, tags, mat, hem, long):
         g = self.g
@@ -277,14 +358,15 @@ class Person:
         paired(self.rig, "mail hem", [
             ((0, 0.0, 0.80), g(0.21), g(0.145), skirt_weights(0.7)),
             ((0, 0.008, 0.66), g(0.225), g(0.158), skirt_weights(0.4)),
-        ], far=8, near=16, between=1, mat=mat or self.p.iron, tags=tags)
+        ], far=self.far(8), near=self.near(16), between=1, mat=mat or self.p.iron, tags=tags)
 
     def pauldron(self, side, tags, mat):
         """A shoulder's plate, lean afar and round close."""
         s = 1 if side == "L" else -1
         x = self.ax(s * 0.27)
-        hang(dome("pauldron %s%s" % (side, tags), (0.09, 0.096, 0.072), (x, 0.0, 1.355), segments=6, rings=2, mat=mat), self.rig, "arm" + side)
-        hang(dome("pauldron close %s%s!fine" % (side, tags), (0.094, 0.1, 0.076), (x, 0.0, 1.355), segments=12, rings=4, mat=mat),
+        hang(dome("pauldron %s%s" % (side, tags), (0.09, 0.096, 0.072), (x, 0.0, 1.355), segments=self.far(6), rings=2, mat=mat), self.rig,
+             "arm" + side)
+        hang(dome("pauldron close %s%s!fine" % (side, tags), (0.094, 0.1, 0.076), (x, 0.0, 1.355), segments=self.near(12), rings=4, mat=mat),
              self.rig, "arm" + side)
 
     def greave(self, side, tags, mat):
@@ -301,19 +383,19 @@ class Person:
             ((0, 0.0, 1.46), g(0.12), g(0.11), {"torso": 1.0}),
             ((0, 0.0, 1.38), g(0.25), g(0.16), {"torso": 0.7, "armL": 0.15, "armR": 0.15}),
             ((0, 0.0, 1.28), g(0.27), g(0.17), {"torso": 0.6, "armL": 0.2, "armR": 0.2}),
-        ], far=8, near=16, between=1, mat=mat, tags=tags)
+        ], far=self.far(8), near=self.near(16), between=1, mat=mat, tags=tags)
 
     # MARK: What they wear on the head
 
     def cap(self, name, tags, mat, margin, floor):
         """A cap or helm over the crown, lean afar, round close."""
-        hang(dome(name + tags, helm_radii(margin), HEAD, segments=8, rings=2, mat=mat, floor=floor), self.rig, "head")
+        hang(dome(name + tags, helm_radii(margin), HEAD, segments=self.far(8), rings=2, mat=mat, floor=floor), self.rig, "head")
         hang(dome(name + " close" + tags + "!fine", helm_radii(margin + 0.004), HEAD, segments=14, rings=5, mat=mat, floor=floor),
              self.rig, "head")
 
     def hood(self, tags, mat):
         """A hood over the head, open before the face, its tail down the back."""
-        for name, margin, segments, rings in (("hood" + tags, 0.02, 8, 3), ("hood close" + tags + "!fine", 0.024, 14, 5)):
+        for name, margin, segments, rings in (("hood" + tags, 0.02, self.far(8), 3), ("hood close" + tags + "!fine", 0.024, self.near(14), 5)):
             obj = dome(name, helm_radii(margin), (HEAD[0], HEAD[1] + 0.022, HEAD[2] + 0.004), segments=segments, rings=rings, mat=mat,
                        floor=-0.10)
             bm = bmesh.new()
@@ -322,6 +404,7 @@ class Person:
             normal = Vector((0, -1, 0.42)).normalized()
             bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], dist=1e-6,
                                    plane_co=(0, HEAD[1] - 0.07, HEAD[2] + 0.01), plane_no=normal, clear_outer=True)
+            settle(bm)
             bm.to_mesh(obj.data)
             bm.free()
             hang(obj, self.rig, "head")
@@ -330,7 +413,7 @@ class Person:
         hang(tail, self.rig, "head")
 
     def nasal_helm(self, tags, mat):
-        parts = [dome("helm", helm_radii(0.01), HEAD, segments=8, rings=2, mat=mat, floor=-0.025)]
+        parts = [dome("helm", helm_radii(0.01), HEAD, segments=self.far(8), rings=2, mat=mat, floor=-0.025)]
         for s in (1, -1):
             parts.append(solid("cheek", "box", mat=mat, location=at_head(s * 0.092, -0.035, -0.045), size=(0.02, 0.075, 0.1)))
         hang(join("nasal helm" + tags, parts), self.rig, "head")
@@ -339,7 +422,7 @@ class Person:
              self.rig, "head")
 
     def crested(self, tags, mat, cheeks=True):
-        parts = [dome("helm", helm_radii(0.012), HEAD, segments=8, rings=2, mat=mat, floor=-0.03),
+        parts = [dome("helm", helm_radii(0.012), HEAD, segments=self.far(8), rings=2, mat=mat, floor=-0.03),
                  solid("crest", "box", mat=self.p.tunic, location=at_head(0, 0.0, 0.135), size=(0.032, 0.24, 0.065))]
         for s in (1, -1) if cheeks else ():
             parts.append(solid("cheek", "box", mat=mat, location=at_head(s * 0.094, -0.035, -0.05), size=(0.02, 0.08, 0.11)))
@@ -354,7 +437,7 @@ class Person:
             ((0, HEAD[1] - 0.002, HEAD[2] + 0.01), rx + 0.018, ry + 0.02, {}),
             ((0, HEAD[1] + 0.002, HEAD[2] + 0.115), rx + 0.004, ry + 0.004, {}),
             ((0, HEAD[1] + 0.008, HEAD[2] + 0.152), 0.05, 0.055, {}),
-        ], segments=8, mat=mat, caps=(False, True), smooth=False)]
+        ], segments=self.far(8), mat=mat, caps=(False, True), smooth=False)]
         if plume:
             parts.append(solid("plume", "cone", mat=p.plume_cloth, vertices=6, radius1=0.035, depth=0.2, location=(0, 0.05, HEAD[2] + 0.25),
                                rotation=(-25, 0, 0)))
@@ -366,6 +449,45 @@ class Person:
              rig, "head")
         hang(solid("breaths%s!fine" % tags, "box", mat=p.eye, location=(0.045, HEAD[1] - ry - 0.019, HEAD[2] - 0.04), size=(0.03, 0.01, 0.045)),
              rig, "head")
+
+    # MARK: Shields: faced forward and a little out, on the left forearm
+
+    def shield_place(self, obj):
+        """Strapped on: centred on the left hand's grip, before the forearm,
+        faced forward and a little out."""
+        obj.rotation_euler = Euler((math.radians(90), 0, math.radians(28)), "XYZ")
+        obj.location = Vector((0.335, -0.092, 0.78))
+        apply_transforms(obj)
+        hang(obj, self.rig, "heldL")
+        return obj
+
+    def round_shield(self, name, radius, mat, boss=False):
+        p = self.p
+        base, tags = split_tags(name)
+        pieces = [solid(name, "cylinder", mat=mat, vertices=self.far(10), radius=radius, depth=0.03, location=(0, 0, 0))]
+        if boss:
+            pieces.append(solid("boss", "cone", mat=p.steel, vertices=6, radius1=0.055, depth=0.04, location=(0, 0, 0.035)))
+        self.shield_place(join(name, pieces) if len(pieces) > 1 else pieces[0])
+        rim = loft(base + " rim" + tags + "!fine",
+                   [((0, 0, -0.019), radius + 0.006, radius + 0.006, {}), ((0, 0, 0.019), radius + 0.006, radius + 0.006, {})],
+                   segments=20, mat=p.iron if boss else p.dark_leather, caps=(False, False))
+        self.shield_place(rim)
+        studs = [solid("stud", "cone", mat=p.steel, vertices=4, radius1=0.012, depth=0.012,
+                       location=(math.cos(a) * radius * 0.82, math.sin(a) * radius * 0.82, 0.018))
+                 for a in [i * math.pi / 3 for i in range(6)]]
+        self.shield_place(join(base + " studs" + tags + "!fine", studs))
+
+    def kite_shield(self, name, height, width, mat, face):
+        p = self.p
+        base, tags = split_tags(name)
+        kite = solid(name, "cylinder", mat=mat, vertices=self.far(8), radius=1, depth=0.03, location=(0, 0, 0))
+        shape_vertices(kite, lambda v, h=height, w=width: Vector((v.x * w, (v.y * h if v.y > 0 else v.y * h * 1.35) - 0.04, v.z)))
+        boss = solid("kite boss", "cone", mat=p.steel, vertices=6, radius1=0.045, depth=0.035, location=(0, 0.02, 0.032))
+        self.shield_place(join(name, [kite, boss]))
+        self.shield_place(solid(base + " emblem" + tags + "!fine", "box", mat=face, location=(0, -0.02, 0.018),
+                                size=(width * 0.25, height * 1.6, 0.006)))
+        self.shield_place(solid(base + " bar" + tags + "!fine", "box", mat=face, location=(0, 0.06, 0.018),
+                                size=(width * 1.5, 0.05, 0.006)))
 
     # MARK: Tools and cloaks
 
@@ -385,7 +507,7 @@ class Person:
             ((0, 0.11, 1.40), 0.2, 0.045, {"torso": 0.7, "cloak": 0.3}),
             ((0, 0.165, 1.12), 0.24, 0.05, {"cloak": 1.0}),
             ((0, 0.21, bottom), 0.27, 0.05, {"cloak": 1.0}),
-        ], far=8, near=16, between=2, mat=self.p.cloak_cloth, tags=tags, inflate=0.003)
+        ], far=self.far(8), near=self.near(16), between=2, mat=self.p.cloak_cloth, tags=tags, inflate=0.003)
         for piece in (lean, full):
             sway(piece, lambda q, b=bottom: max(0.0, min(1.0, (1.38 - q.z) / (1.38 - b))))
         hang(solid("clasp%s!fine" % tags, "sphere", mat=self.p.steel, segments=8, rings=4, radius=(0.025, 0.012, 0.025),
@@ -466,6 +588,9 @@ class Person:
         if doubled:
             # Blender's suffix for a name taken: the tags would not read.
             raise ValueError("pieces named twice: %s" % ", ".join(sorted(doubled)))
+        if len(self.rig.data.bones) > 23:
+            # The game's root and these: the most parts any figure's rig may have.
+            raise ValueError("%d bones: a figure's rig is 23 and the game's root" % len(self.rig.data.bones))
         for obj in bpy.context.scene.objects:
             if obj.type == "MESH":
                 clean(obj)
@@ -484,6 +609,12 @@ class Person:
                                   key=lambda o: -triangles(o)):
                     print("    %4d %s" % (triangles(obj), obj.name))
         export(path)
+
+
+def split_tags(name):
+    """A piece's name, and its tags: "round shield@1" as ("round shield", "@1")."""
+    base, tags = name.split("@")
+    return base, "@" + tags
 
 
 def triangles(obj):

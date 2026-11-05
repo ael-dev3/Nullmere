@@ -69,8 +69,9 @@ struct Mount {
     var seat: Vec3 { Vec3(0, 0.232, -0.015) * scale }
 }
 
-/// Riders, from a padded rider on a dun pony to a crested knight on a
-/// barded warhorse, and the six commanders who ride at a company's head.
+/// The six commanders who ride at a company's head, and their horses,
+/// built in code; the colours of the horses a company's riders ride, by
+/// tier (the riders themselves made in Blender: Art/blender/rider.py).
 enum Riders {
     // MARK: The horse
 
@@ -225,35 +226,16 @@ enum Riders {
 
     // MARK: Riders by tier
 
+    /// The horse a company's riders ride at a tier: a dun pony, a bay with
+    /// white socks, a black, a grey, a pale warhorse. Its cloth and steel
+    /// are made with it in Blender; its coat, socks and mane are these.
     static func mount(tier: Int) -> Mount {
         switch tier {
-        case 1: return Mount(size: 0.9, coat: Palette.horseDun, mane: Palette.hair, cloth: 1)
-        case 2: return Mount(size: 0.96, coat: Palette.horseBay, mane: Palette.horseBlack, socks: Palette.linen, cloth: 1)
-        case 3: return Mount(coat: Palette.horseBlack, mane: Palette.horseBlack, cloth: 2)
-        case 4: return Mount(size: 1.03, coat: Palette.horseGrey, mane: Palette.woolDark, cloth: 2, barding: 1)
-        default: return Mount(size: 1.06, coat: Palette.horsePale, mane: Palette.horseGrey, cloth: 3, barding: 2)
-        }
-    }
-
-    static func riderOutfit(_ tier: Int) -> Outfit {
-        var o = Figures.spearOutfit(tier)
-        o.skirt = o.skirt.map { ($0.color, $0.material, 0.44) }
-        if tier == 1 {
-            o.head = .cap(Palette.wool)
-        }
-        return o
-    }
-
-    static func rider(tier: Int, name: String, outfit: Outfit? = nil, mount chosen: Mount? = nil) -> Model {
-        let m = chosen ?? mount(tier: tier)
-        let ride = Ride(arms: .lance, shield: tier >= 2, mount: m)
-        return model(name, m, ride) { b, f in
-            Person.body(&b, f, outfit ?? riderOutfit(tier))
-            lance(&b, f, tier: tier)
-            if tier >= 2 {
-                Person.shield(&b, f, tier: tier)
-            }
-            Person.mattock(&b, f)
+        case 1: return Mount(coat: Palette.horseDun, mane: Palette.hair)
+        case 2: return Mount(coat: Palette.horseBay, mane: Palette.horseBlack, socks: Palette.linen)
+        case 3: return Mount(coat: Palette.horseBlack, mane: Palette.horseBlack)
+        case 4: return Mount(coat: Palette.horseGrey, mane: Palette.woolDark)
+        default: return Mount(coat: Palette.horsePale, mane: Palette.horseGrey)
         }
     }
 

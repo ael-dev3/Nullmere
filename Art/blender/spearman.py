@@ -70,57 +70,15 @@ man.great_helm("@spinewardens", p.dark_iron, plume=False)
 
 # MARK: Shields: faced forward and a little out, on the left forearm
 
-
-def shield_place(obj):
-    """Strapped on: centred on the left hand's grip, before the forearm, faced
-    forward and a little out."""
-    obj.rotation_euler = Euler((math.radians(90), 0, math.radians(28)), "XYZ")
-    obj.location = Vector((0.335, -0.092, 0.78))
-    apply_transforms(obj)
-    hang(obj, rig, "heldL")
-    return obj
+man.round_shield("round shield@1", 0.19, p.board)
+man.round_shield("painted shield@2", 0.22, p.painted)
+man.round_shield("bossed shield@3", 0.245, p.painted, boss=True)
 
 
-def split(name):
-    base, tags = name.split("@")
-    return base, "@" + tags
-
-
-def round_shield(name, radius, mat, boss=False):
-    base, tags = split(name)
-    pieces = [solid(name, "cylinder", mat=mat, vertices=10, radius=radius, depth=0.03, location=(0, 0, 0))]
-    if boss:
-        pieces.append(solid("boss", "cone", mat=p.steel, vertices=6, radius1=0.055, depth=0.04, location=(0, 0, 0.035)))
-    shield_place(join(name, pieces) if len(pieces) > 1 else pieces[0])
-    rim = loft(base + " rim" + tags + "!fine",
-               [((0, 0, -0.019), radius + 0.006, radius + 0.006, {}), ((0, 0, 0.019), radius + 0.006, radius + 0.006, {})],
-               segments=20, mat=p.iron if boss else p.dark_leather, caps=(False, False))
-    shield_place(rim)
-    studs = [solid("stud", "cone", mat=p.steel, vertices=4, radius1=0.012, depth=0.012,
-                   location=(math.cos(a) * radius * 0.82, math.sin(a) * radius * 0.82, 0.018))
-             for a in [i * math.pi / 3 for i in range(6)]]
-    shield_place(join(base + " studs" + tags + "!fine", studs))
-
-
-round_shield("round shield@1", 0.19, p.board)
-round_shield("painted shield@2", 0.22, p.painted)
-round_shield("bossed shield@3", 0.245, p.painted, boss=True)
-
-
-def kite_shield(name, height, width, mat, face):
-    base, tags = split(name)
-    kite = solid(name, "cylinder", mat=mat, vertices=8, radius=1, depth=0.03, location=(0, 0, 0))
-    shape_vertices(kite, lambda v, h=height, w=width: Vector((v.x * w, (v.y * h if v.y > 0 else v.y * h * 1.35) - 0.04, v.z)))
-    boss = solid("kite boss", "cone", mat=p.steel, vertices=6, radius1=0.045, depth=0.035, location=(0, 0.02, 0.032))
-    shield_place(join(name, [kite, boss]))
-    shield_place(solid(base + " emblem" + tags + "!fine", "box", mat=face, location=(0, -0.02, 0.018), size=(width * 0.25, height * 1.6, 0.006)))
-    shield_place(solid(base + " bar" + tags + "!fine", "box", mat=face, location=(0, 0.06, 0.018), size=(width * 1.5, 0.05, 0.006)))
-
-
-kite_shield("kite shield@4", 0.36, 0.2, p.painted, p.steel)
-kite_shield("tall kite shield@5", 0.42, 0.22, p.painted, p.steel)
-kite_shield("salt shield@saltborn", 0.42, 0.22, p.painted, p.salt_linen)
-kite_shield("iron shield@spinewardens", 0.4, 0.21, p.dark_iron, p.tunic)
+man.kite_shield("kite shield@4", 0.36, 0.2, p.painted, p.steel)
+man.kite_shield("tall kite shield@5", 0.42, 0.22, p.painted, p.steel)
+man.kite_shield("salt shield@saltborn", 0.42, 0.22, p.painted, p.salt_linen)
+man.kite_shield("iron shield@spinewardens", 0.4, 0.21, p.dark_iron, p.tunic)
 
 # MARK: The spear, longer and finer with the tier; and the mattock
 

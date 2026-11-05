@@ -240,7 +240,13 @@ python3.13 -m venv .blender && .blender/bin/pip install bpy==5.2.3
 python3 Art/embed.py Art/models/spearman.glb Sources/NullmereModels/Art/Spearman.swift Art spearman Art/blender/spearman.py
 ```
 
-The first line is needed once; `archer.py` makes the archer the same way.
+The first line is needed once; `archer.py`, `lantern.py` and `rider.py`
+make the archer, the lantern-bearer and the rider the same way (the rider
+into `Art/models/rider.glb`, embedded as `Art.horseman` in
+`Sources/NullmereModels/Art/Horseman.swift`). A figure's rig is held to 23
+bones (24 parts with the game's root): a script folds the bones it does not
+move away (`fold` in `Art/blender/common.py`: the rider's legs into his
+seat), and `person.py` refuses to write more.
 A script prints each tier's triangles far and near (and, with
 `NULLMERE_PIECES` set to a tier or a variant, each piece's), and writes its file in one fixed order
 (`Art/blender/canonical.py`), so running it again without a change gives

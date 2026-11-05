@@ -21,6 +21,8 @@ on:
       - UITests/**
       - Makefile
       - .github/workflows/ci.yml
+      # The models made in Blender: their scripts and files, which the tests hold to what the package carries.
+      - Art/**
       # The trailer's own files: the Trailer workflow renders and tests them.
       - "!Sources/NullmereTrailer/**"
       - "!Tests/NullmereTrailerTests/**"
@@ -42,6 +44,8 @@ on:
       - UITests/**
       - Makefile
       - .github/workflows/ci.yml
+      # The models made in Blender: their scripts and files, which the tests hold to what the package carries.
+      - Art/**
       # The trailer's own files: the Trailer workflow renders and tests them.
       - "!Sources/NullmereTrailer/**"
       - "!Tests/NullmereTrailerTests/**"
