@@ -496,6 +496,27 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertTrue(GameSession.isRealmsToTell(.prisonerQuestioned(commander: theirs.id, by: me, word: "A true thing.")))
     }
 
+    /// What a prisoner the keeper's House holds has told shows on their row:
+    /// the true thing plainly, and above it the prisoner's own voice where
+    /// this Mac's model gave them one, kept from before.
+    func testWhatAPrisonerToldShowsInTheirVoice() throws {
+        var state = world("a prisoner who talked")
+        let me = state.player
+        let steward = try XCTUnwrap(state.houses.first { !$0.isPlayer }?.id)
+        let theirs = try XCTUnwrap(state.commanders(of: steward).first)
+        let held = try XCTUnwrap(state.commanderIndex(theirs.id))
+        state.commanders![held].captive = Captivity(by: me, since: state.watch, questioned: 1, lastQuestioned: state.watch,
+                                                    told: ["The north hold's walls are only timber."])
+        let key = try XCTUnwrap(GameSession.Spoken.prisonerKey(of: state.commanders![held]))
+        let store = LocalStore(directory: dir.appendingPathComponent(UUID().uuidString))
+        store.saveVoices([key.key: "Timber, keeper. Only timber, and old."])
+        let session = GameSession(link: DepthLink(), house: me, world: state.view(for: me), store: store)
+        session.dismissSeatBriefing()
+        XCTAssertEqual(session.spoken[key], "Timber, keeper. Only timber, and old.", "the voice kept from before")
+        XCTAssertEqual(session.state.commander(theirs.id)?.captive?.told?.last, "The north hold's walls are only timber.")
+        draw(CommandersPanel(session: session))
+    }
+
     /// A letter to the age to come sealed from a hold's record, folded until
     /// asked for; the hold that keeps it says so and no other offers one;
     /// in the age after, the pointer and its drowned ruin's record tell of it.
