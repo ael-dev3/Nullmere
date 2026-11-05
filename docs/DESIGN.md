@@ -60,11 +60,11 @@ the keeper's realm last lay on, made as it plays.
 
 ### Every model, made in Blender or built from code
 
-Every model is original. The spearman, the archer, the lantern-bearer
-and the rider on his horse are made in Blender, each by a script
-([`Art/blender/spearman.py`](../Art/blender/spearman.py),
+Every model is original. The spearman, the archer, the lantern-bearer,
+the rider on his horse and the six commanders are made in Blender, each by
+a script ([`Art/blender/spearman.py`](../Art/blender/spearman.py),
 [`archer.py`](../Art/blender/archer.py), [`lantern.py`](../Art/blender/lantern.py),
-[`rider.py`](../Art/blender/rider.py))
+[`rider.py`](../Art/blender/rider.py), [`commanders.py`](../Art/blender/commanders.py))
 that builds the body, gear and
 skeleton and keys the actions, on one body every person shares
 ([`person.py`](../Art/blender/person.py)): the skin is weighted to the
@@ -77,7 +77,10 @@ a skinned body of its own under the rider, on the twelve bones every horse
 in the game moves on, its coat, socks and mane made in materials the game
 colours as each tier's horse is; the rider's legs, round its barrel, are
 carried by his seat, so horse and rider keep to the 24 parts every
-figure's rig is held to. The
+figure's rig is held to; the commanders ride the same horse
+([`horse.py`](../Art/blender/horse.py)), each his own variant of one file
+and each striking his own way, an action tagged for the variants that
+strike so. The
 file is glTF binary, written in one fixed order so the same script always
 makes the same bytes, and the game carries it and reads it with an
 importer of its own ([`Asset.swift`](../Sources/NullmereModels/Asset.swift)):

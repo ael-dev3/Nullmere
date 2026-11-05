@@ -460,6 +460,10 @@ def settle(bm):
     differently from run to run (a bisect's) still makes the same triangles."""
     def least(v):
         return tuple(round(c, 5) for c in v.co)
+    # Every corner on the ten-micrometre grid the file is written on, so a
+    # cut's last bit of difference can't reach the normals through a sliver.
+    for v in bm.verts:
+        v.co = Vector(least(v))
     # Corners all but at one place (the cut's new corners by the old) moved
     # to the least of them and made one, so no merge later keeps whichever
     # it happens on first.

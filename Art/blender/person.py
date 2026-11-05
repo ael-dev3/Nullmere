@@ -400,10 +400,22 @@ class Person:
                        floor=-0.10)
             bm = bmesh.new()
             bm.from_mesh(obj.data)
-            # The face cut away by a plane leaning back from the chin to the brow.
+            # The face left open before a plane leaning back from the chin to
+            # the brow: what lies wholly before it taken away, and every
+            # corner before it pressed back onto it, so the opening's edge
+            # rolls in a little. Each corner moves by where it is alone, so
+            # the same hood is made every time (a bisect's cut, worked from
+            # either end of an edge, is not).
             normal = Vector((0, -1, 0.42)).normalized()
-            bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], dist=1e-6,
-                                   plane_co=(0, HEAD[1] - 0.07, HEAD[2] + 0.01), plane_no=normal, clear_outer=True)
+            origin = Vector((0, HEAD[1] - 0.07, HEAD[2] + 0.01))
+            before = {v for v in bm.verts if (v.co - origin).dot(normal) > 0}
+            bmesh.ops.delete(bm, geom=[f for f in bm.faces if all(v in before for v in f.verts)], context="FACES_ONLY")
+            bmesh.ops.delete(bm, geom=[e for e in bm.edges if not e.link_faces], context="EDGES")
+            bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+            for v in bm.verts:
+                ahead = (v.co - origin).dot(normal)
+                if ahead > 0:
+                    v.co = v.co - normal * ahead
             settle(bm)
             bm.to_mesh(obj.data)
             bm.free()

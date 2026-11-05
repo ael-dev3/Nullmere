@@ -23,47 +23,26 @@ extension Person {
     /// shoulders filled; boots shaped and soled; hands with fingers and thumbs.
     static func limbs(_ b: inout MeshBuilder, _ f: Frame, _ o: Outfit) {
         let g = f.girth, s = shell
-        if f.seated {
-            for side in [Float(1), -1] {
-                let hip = Vec3(f.hipX * side, f.hip, 0), knee = Vec3(0.2 * side, f.hip - 0.07, 0.17)
-                let ankle = Vec3(0.21 * side, f.hip - 0.36, 0.07)
-                b.with(part: Limb.hips) {
-                    $0.limb(from: hip, to: knee, radius: 0.058 * g * s, topRadius: 0.05 * g * s, sides: 8, color: o.hose)
-                    $0.sphere(center: knee, radius: 0.052 * g, rings: 3, sides: 8, color: o.hose)
-                    $0.with(material: o.shinsMaterial) {
-                        $0.limb(from: knee, to: ankle, radius: 0.048 * g * s, topRadius: 0.04 * g * s, sides: 8, color: o.shins)
+        for side in [Float(1), -1] {
+            let x = f.hipX * side
+            b.with(part: side > 0 ? Limb.thighL : Limb.thighR) {
+                $0.limb(from: Vec3(x, f.hip + 0.03, 0), to: Vec3(x, f.knee - 0.01, 0), radius: 0.06 * g * s, topRadius: 0.05 * g * s,
+                        sides: 8, color: o.hose)
+            }
+            b.with(part: side > 0 ? Limb.shinL : Limb.shinR, material: o.shinsMaterial) {
+                $0.sphere(center: Vec3(x, f.knee + 0.005, 0.004), radius: 0.052 * g, rings: 3, sides: 8, color: o.shins)
+                $0.limb(from: Vec3(x, f.knee + 0.02, 0), to: Vec3(x, 0.06, 0), radius: 0.049 * g * s, topRadius: 0.041 * g * s,
+                        sides: 8, color: o.shins)
+                if o.shinsMaterial == .metal {
+                    // A knee cop with its wing, and the greave's ridge down the shin.
+                    $0.place(.translation(Vec3(x, f.knee + 0.01, 0.045 * g)) * .rotationX(.pi / 2)) {
+                        $0.cone(sides: 8, radius: 0.04 * g, to: 0.025, color: o.shins)
                     }
-                    boot(&$0, at: ankle + Vec3(0, -0.04, 0.025), toward: Vec3(0, 0, 1), g: g, o: o)
-                    // The iron stirrup under the boot.
-                    $0.with(material: .metal) {
-                        $0.box(center: ankle + Vec3(0, -0.05, 0.02), size: Vec3(0.07, 0.008, 0.05), color: Palette.iron)
-                        $0.limb(from: ankle + Vec3(0.03 * side, -0.05, 0.02), to: ankle + Vec3(0.02 * side, 0.05, 0.01), radius: 0.005,
-                                sides: 3, color: Palette.iron)
-                    }
+                    $0.box(center: Vec3(x, (f.knee + 0.06) / 2, 0.047 * g), size: Vec3(0.012, f.knee - 0.08, 0.01), color: o.shins * 1.15)
                 }
             }
-        } else {
-            for side in [Float(1), -1] {
-                let x = f.hipX * side
-                b.with(part: side > 0 ? Limb.thighL : Limb.thighR) {
-                    $0.limb(from: Vec3(x, f.hip + 0.03, 0), to: Vec3(x, f.knee - 0.01, 0), radius: 0.06 * g * s, topRadius: 0.05 * g * s,
-                            sides: 8, color: o.hose)
-                }
-                b.with(part: side > 0 ? Limb.shinL : Limb.shinR, material: o.shinsMaterial) {
-                    $0.sphere(center: Vec3(x, f.knee + 0.005, 0.004), radius: 0.052 * g, rings: 3, sides: 8, color: o.shins)
-                    $0.limb(from: Vec3(x, f.knee + 0.02, 0), to: Vec3(x, 0.06, 0), radius: 0.049 * g * s, topRadius: 0.041 * g * s,
-                            sides: 8, color: o.shins)
-                    if o.shinsMaterial == .metal {
-                        // A knee cop with its wing, and the greave's ridge down the shin.
-                        $0.place(.translation(Vec3(x, f.knee + 0.01, 0.045 * g)) * .rotationX(.pi / 2)) {
-                            $0.cone(sides: 8, radius: 0.04 * g, to: 0.025, color: o.shins)
-                        }
-                        $0.box(center: Vec3(x, (f.knee + 0.06) / 2, 0.047 * g), size: Vec3(0.012, f.knee - 0.08, 0.01), color: o.shins * 1.15)
-                    }
-                }
-                b.with(part: side > 0 ? Limb.shinL : Limb.shinR) {
-                    boot(&$0, at: Vec3(x, 0, 0.02), toward: Vec3(0, 0, 1), g: g, o: o)
-                }
+            b.with(part: side > 0 ? Limb.shinL : Limb.shinR) {
+                boot(&$0, at: Vec3(x, 0, 0.02), toward: Vec3(0, 0, 1), g: g, o: o)
             }
         }
         for side in [Float(1), -1] {

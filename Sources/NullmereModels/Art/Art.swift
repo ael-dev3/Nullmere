@@ -22,8 +22,15 @@ enum Art {
                         "hindLegR", "hindShinR", "hips", "torso", "head", "armL", "forearmL", "armR", "forearmR", "heldR", "heldL", "cloak",
                         "tool"]
     /// A rider is made seated at a man's height, his horse's hooves this far
-    /// below the ground (Art/blender/rider.py), and lifted till they stand on it.
-    static let riderLift: Float = 0.56 * figureScale
+    /// below the ground (GROUND in Art/blender/horse.py), and lifted as he
+    /// is read till they stand on it.
+    static let hooves: Float = 0.56
+    /// Commanders are drawn a ninth larger than a company's riders: tall and
+    /// broad, on great horses.
+    static let commanderScale: Float = figureScale * 1.12
+    /// The six commanders, as their file names them, in the order the game
+    /// numbers them.
+    static let commanders = ["warden", "lamplighter", "saltCrown", "hornedAxe", "standard", "tideHeir"]
 
     /// A company's figure made in Blender, at its tier, or as a heritage's
     /// own company (its variant) in place of a tier; `more`, the bones of
@@ -37,8 +44,21 @@ enum Art {
     /// heritage's own riders (its variant), the horse's coat, socks and mane
     /// the colours of `mount`'s.
     static func rider(tier: Int, variant: String? = nil, name: String, mount: Mount) -> Model {
-        model(horseman, tier: tier, variant: variant, name: name, order: steed, lift: riderLift,
-              colours: ["plain_coat": mount.coat, "plain_socks": mount.socks ?? mount.coat, "plain_mane": mount.mane])
+        model(horseman, tier: tier, variant: variant, name: name, order: steed, lift: hooves * figureScale, colours: colours(of: mount))
+    }
+
+    /// One of the six commanders made in Blender, on a horse coloured as
+    /// `mount` is. The last of their bones is where a rider's mattock
+    /// hangs: no commander digs, and the Lamplighter's light rides it.
+    static func commander(_ variant: Int, name: String, mount: Mount) -> Model {
+        model(heroes, tier: 1, variant: commanders[variant], name: name, order: steed, scale: commanderScale,
+              lift: hooves * commanderScale, colours: colours(of: mount))
+    }
+
+    /// A horse's coat, socks and mane, by the names of the materials they
+    /// are made in.
+    static func colours(of mount: Mount) -> [String: Vec3] {
+        ["plain_coat": mount.coat, "plain_socks": mount.socks ?? mount.coat, "plain_mane": mount.mane]
     }
 
     /// A model made in Blender, its bones in `order` after its root.

@@ -74,12 +74,12 @@ enum Figures {
         switch key.canonical {
         case .signature(let heritage): return marchSpeed(.figure(heritage.signature, tier: ModelKey.tiers(of: heritage.signature)))
         // Every tier's horse made in Blender the one size, its canter keyed for the common horse's pace.
-        case .figure(.rider, _): return Ride(arms: .lance).marchSpeed
+        case .figure(.rider, _): return Ride().marchSpeed
         case .figure(.founder, _): return founderGait.marchSpeed
         case .figure(.mangonel, _): return Engine.gait.marchSpeed
         case .figure, .prop(.cart): return Gait(hands: .spear).marchSpeed
         case .wild(let tier): return wildGait(tier).marchSpeed
-        case .commander(let variant): return commanderRide(variant).marchSpeed
+        case .commander: return commanderPace
         case .folk(let variant): return Folk.gait(variant).marchSpeed
         default: return nil
         }

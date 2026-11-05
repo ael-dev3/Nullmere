@@ -46,8 +46,6 @@ struct Frame {
     var girth: Float = 1
     var extraParent: UInt16 = Limb.heldL
     var extraPivot: Vec3?
-    /// Astride a horse: the legs set about its barrel, on the hips.
-    var seated = false
     /// How deep the chest is against the waist, and how thick the middle:
     /// the trunk's own shape, apart from the whole body's girth.
     var chest: Float = 1
@@ -135,33 +133,18 @@ enum Person {
     /// The body in a unit's height, each piece on its part of the rig.
     static func body(_ b: inout MeshBuilder, _ f: Frame, _ o: Outfit) {
         let g = f.girth
-        if f.seated {
-            // Astride, the legs go out round the horse's barrel and down its flanks.
-            for side in [Float(1), -1] {
-                let hip = Vec3(f.hipX * side, f.hip, 0), knee = Vec3(0.2 * side, f.hip - 0.07, 0.17)
-                let ankle = Vec3(0.21 * side, f.hip - 0.36, 0.07)
-                b.with(part: Limb.hips) {
-                    $0.limb(from: hip, to: knee, radius: 0.058 * g, topRadius: 0.05 * g, color: o.hose)
-                    $0.with(material: o.shinsMaterial) {
-                        $0.limb(from: knee, to: ankle, radius: 0.048 * g, topRadius: 0.04 * g, color: o.shins)
-                    }
-                    $0.box(min: ankle + Vec3(-0.035, -0.04, -0.04), max: ankle + Vec3(0.035, 0.02, 0.09), color: o.boots)
-                }
+        for side in [Float(1), -1] {
+            let x = f.hipX * side
+            b.with(part: side > 0 ? Limb.thighL : Limb.thighR) {
+                $0.limb(from: Vec3(x, f.hip + 0.03, 0), to: Vec3(x, f.knee - 0.01, 0), radius: 0.06 * g, topRadius: 0.05 * g,
+                        color: o.hose)
             }
-        } else {
-            for side in [Float(1), -1] {
-                let x = f.hipX * side
-                b.with(part: side > 0 ? Limb.thighL : Limb.thighR) {
-                    $0.limb(from: Vec3(x, f.hip + 0.03, 0), to: Vec3(x, f.knee - 0.01, 0), radius: 0.06 * g, topRadius: 0.05 * g,
-                            color: o.hose)
-                }
-                b.with(part: side > 0 ? Limb.shinL : Limb.shinR, material: o.shinsMaterial) {
-                    $0.limb(from: Vec3(x, f.knee + 0.02, 0), to: Vec3(x, 0.05, 0), radius: 0.049 * g, topRadius: 0.041 * g,
-                            color: o.shins)
-                }
-                b.with(part: side > 0 ? Limb.shinL : Limb.shinR) {
-                    $0.box(min: Vec3(x - 0.042 * g, 0, -0.045), max: Vec3(x + 0.042 * g, 0.065, 0.088), color: o.boots)
-                }
+            b.with(part: side > 0 ? Limb.shinL : Limb.shinR, material: o.shinsMaterial) {
+                $0.limb(from: Vec3(x, f.knee + 0.02, 0), to: Vec3(x, 0.05, 0), radius: 0.049 * g, topRadius: 0.041 * g,
+                        color: o.shins)
+            }
+            b.with(part: side > 0 ? Limb.shinL : Limb.shinR) {
+                $0.box(min: Vec3(x - 0.042 * g, 0, -0.045), max: Vec3(x + 0.042 * g, 0.065, 0.088), color: o.boots)
             }
         }
         // The hips and the coat's skirt.
@@ -294,83 +277,6 @@ enum Person {
 
     // MARK: What they carry
 
-    /// A shield on the left arm: it lies flat under the hand at rest and
-    /// faces forward once the forearm is raised to carry it.
-    static func shield(_ b: inout MeshBuilder, _ f: Frame, tier: Int) {
-        let hand = f.handL
-        b.with(part: Limb.heldL) {
-            // Its face looks down at rest: raising the forearm forward turns it to face the foe.
-            $0.place(.translation(hand + Vec3(0.015, -0.045, 0)) * .rotationX(.pi)) {
-                switch tier {
-                case 2, 3:
-                    // Round: of pale planks with the House's rim, then the House's own with an iron boss.
-                    $0.with(material: tier == 3 ? .house : .plain) {
-                        $0.lathe([(0.16, -0.016), (0.16, 0.014)], sides: 8, color: tier == 3 ? Palette.house : Palette.timberPale)
-                    }
-                    $0.with(material: tier == 3 ? .metal : .house) {
-                        $0.place(.translation(Vec3(0, 0.014, 0))) {
-                            if tier == 3 {
-                                $0.cone(sides: 5, radius: 0.045, to: 0.04, color: Palette.iron)
-                            } else {
-                                $0.tube([(0.165, -0.032), (0.165, 0.004)], sides: 8, color: Palette.houseDark)
-                            }
-                        }
-                    }
-                    $0.fine {
-                        // Rounded true, its planks' joints, the rim bound in rawhide or iron and
-                        // nailed, the boss domed.
-                        $0.with(material: tier == 3 ? .house : .plain) {
-                            $0.lathe([(0.164, -0.018), (0.164, 0.017)], sides: 20, color: tier == 3 ? Palette.house : Palette.timberPale)
-                        }
-                        $0.with(material: .metal) {
-                            $0.lathe([(0.172, -0.02), (0.172, 0.02), (0.16, 0.022)], sides: 20, color: tier == 3 ? Palette.iron : Palette.leatherDark)
-                            for index in 0..<10 {
-                                let a = Float(index) * .pi / 5
-                                $0.sphere(center: Vec3(cos(a) * 0.15, 0.021, sin(a) * 0.15), radius: 0.008, rings: 2, sides: 4, color: Palette.iron)
-                            }
-                            $0.place(.translation(Vec3(0, 0.016, 0))) {
-                                $0.lathe([(0.058, 0), (0.05, 0.022), (0.03, 0.044), (0, 0.05)], sides: 12, color: Palette.iron)
-                            }
-                        }
-                        if tier == 2 {
-                            for plank in [-0.08, 0, 0.08] as [Float] {
-                                $0.box(center: Vec3(plank, 0.018, 0), size: Vec3(0.004, 0.002, 0.3 - abs(plank)), color: Palette.timber)
-                            }
-                        }
-                    }
-                default:
-                    // Kite-shaped, the House's on a steel ground; its point hangs down once raised.
-                    $0.place(.rotationX(-.pi / 2)) {
-                        let outline = [Vec3(-0.15, 0.2, 0), Vec3(0, 0.23, 0), Vec3(0.15, 0.2, 0), Vec3(0.15, -0.05, 0), Vec3(0, -0.31, 0),
-                                       Vec3(-0.15, -0.05, 0)]
-                        $0.with(material: .house) {
-                            $0.face(outline.map { $0 * 0.86 + Vec3(0, 0, 0.022) }, outward: Vec3(0, 0, 1), color: Palette.house)
-                        }
-                        $0.with(material: .metal) {
-                            $0.sheet(outline, normal: Vec3(0, 0, 1), thickness: 0.03, color: Palette.steel, back: Palette.iron)
-                            if tier >= 5 {
-                                $0.place(.translation(Vec3(0, 0.03, 0.022)) * .rotationX(.pi / 2)) {
-                                    $0.cone(sides: 4, radius: 0.04, to: 0.03, color: Palette.gold)
-                                }
-                            }
-                            $0.fine {
-                                // A raised rim of steel about its face, nailed, and a boss.
-                                for index in 0..<outline.count {
-                                    let a = outline[index], c = outline[(index + 1) % outline.count]
-                                    $0.beam(from: a + Vec3(0, 0, 0.026), to: c + Vec3(0, 0, 0.026), width: 0.018, depth: 0.012, color: Palette.steel * 1.1)
-                                    $0.sphere(center: a * 0.93 + Vec3(0, 0, 0.03), radius: 0.008, rings: 2, sides: 4, color: Palette.iron)
-                                }
-                                $0.place(.translation(Vec3(0, 0.03, 0.026)) * .rotationX(.pi / 2)) {
-                                    $0.lathe([(0.05, 0), (0.04, 0.02), (0, 0.032)], sides: 10, color: tier >= 5 ? Palette.gold : Palette.steel)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     /// The mattock a figure brings out to gather: its haft runs on from
     /// the hand, down and forward at rest, its head across the haft's end.
     static func mattock(_ b: inout MeshBuilder, _ f: Frame) {
@@ -416,30 +322,6 @@ extension Frame {
         f.neck = 0.783
         f.head = 0.858
         f.headRadius = 0.08
-        return f
-    }
-
-    /// A horseman: barrel-chested and broad in the shoulder over a lean
-    /// waist, the legs bowed from the saddle.
-    static var horseman: Frame {
-        var f = Frame()
-        f.girth = 1.04
-        f.chest = 1.12
-        f.belly = 0.94
-        f.shoulderX = 0.158
-        f.headRadius = 0.075
-        return f
-    }
-
-    /// A lord who leads: tall and broad, carried high.
-    static var lord: Frame {
-        var f = Frame()
-        f.size = 0.32
-        f.girth = 1.06
-        f.chest = 1.1
-        f.shoulderX = 0.165
-        f.neck = 0.81
-        f.head = 0.885
         return f
     }
 }

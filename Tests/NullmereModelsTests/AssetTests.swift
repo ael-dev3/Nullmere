@@ -165,6 +165,7 @@ final class AssetTests: XCTestCase {
         XCTAssertEqual(try Asset.bytes(base64: Art.archer), try Data(contentsOf: models.appendingPathComponent("archer.glb")))
         XCTAssertEqual(try Asset.bytes(base64: Art.lantern), try Data(contentsOf: models.appendingPathComponent("lantern.glb")))
         XCTAssertEqual(try Asset.bytes(base64: Art.horseman), try Data(contentsOf: models.appendingPathComponent("rider.glb")))
+        XCTAssertEqual(try Asset.bytes(base64: Art.heroes), try Data(contentsOf: models.appendingPathComponent("commanders.glb")))
         XCTAssertEqual(try Asset.bytes(base64: Fixtures.arm), try Data(contentsOf: models.appendingPathComponent("fixture-arm.glb")))
     }
 
