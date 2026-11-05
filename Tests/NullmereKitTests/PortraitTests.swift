@@ -33,6 +33,7 @@ final class PortraitTests: XCTestCase {
         let red = Vec4(0.8, 0.2, 0.2, 1)
         let commander = try XCTUnwrap(Portraits.shared.image(of: .commander(variant: 2), colour: red))
         XCTAssertEqual(commander.width, Portraits.side)
+        keepPortraits([commander] + [ModelKey.figure(.spear, tier: 3), .keep(seat: true)].compactMap { Portraits.shared.image(of: $0) })
         XCTAssertGreaterThan(drawnShare(of: commander), 0.08, "A commander stands in the picture")
         XCTAssertTrue(Portraits.shared.image(of: .commander(variant: 2), colour: red) === commander, "Kept once drawn")
         for key: ModelKey in [.keep(seat: true), .work(.granary, level: 2), .figure(.spear, tier: 3), .shrine(.moonwell), .walls(level: 2)] {
@@ -72,5 +73,20 @@ final class PortraitTests: XCTestCase {
         XCTAssertNotNil(portraits.image(of: .keep(seat: false)))
         portraits.warm()
         XCTAssertTrue(portraits.prepareNow(), "Built already")
+    }
+
+    /// Keeps the portraits as one sheet when NULLMERE_KEEP_RENDERS names a folder.
+    private func keepPortraits(_ images: [CGImage]) {
+        guard let path = ProcessInfo.processInfo.environment["NULLMERE_KEEP_RENDERS"], !images.isEmpty else { return }
+        let side = Portraits.side
+        let sheet = NSImage(size: NSSize(width: side * images.count, height: side))
+        sheet.lockFocus()
+        for (index, image) in images.enumerated() {
+            NSImage(cgImage: image, size: NSSize(width: side, height: side)).draw(in: NSRect(x: index * side, y: 0, width: side, height: side))
+        }
+        sheet.unlockFocus()
+        guard let tiff = sheet.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
+              let png = rep.representation(using: .png, properties: [:]) else { return }
+        try? png.write(to: URL(fileURLWithPath: path).appendingPathComponent("portraits.png"))
     }
 }

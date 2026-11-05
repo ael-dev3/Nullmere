@@ -571,12 +571,14 @@ extension GameSession {
         }
         happenings.rising = (stage.risingWorks(sights) + stage.risingHalls(halls)).enumerated().map { Happenings.Spot(at: $1, seed: UInt32($0)) }
         // The dust over every field of battle in sight, the thicker the more companies stand in it.
+        // Each company found once, for every field's fronts.
+        let unitsByID = state.fieldsOfBattle.isEmpty ? [:] : Dictionary(state.units.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         for field in state.fieldsOfBattle where isVisible(field.at) {
             let standing = field.fighters.filter(\.standing).count
             happenings.battles.append(Happenings.Spot(at: ground(field.at), strength: Float(min(standing, 12)),
                                                       seed: UInt32(truncatingIfNeeded: field.id)))
             // Where each company meets the foe nearest it: a front of steel.
-            let fighters = field.fighters.filter(\.standing).compactMap { fighter in state.unit(fighter.unit).map { (fighter, $0) } }
+            let fighters = field.fighters.filter(\.standing).compactMap { fighter in unitsByID[fighter.unit].map { (fighter, $0) } }
             for (fighter, unit) in fighters where fighter.side == 0 {
                 guard let (foe, foeUnit) = fighters.filter({ $0.0.side != 0 })
                     .min(by: { $0.1.position.distance(to: unit.position) < $1.1.position.distance(to: unit.position) }),

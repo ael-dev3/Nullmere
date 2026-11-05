@@ -918,10 +918,13 @@ public final class WorldStage: @unchecked Sendable {
             func stand(_ key: ModelKey, _ place: Vec3, _ index: Int) {
                 let at = company.position + turn.transformDirection(place * (company.spread * WorldStage.figureScale))
                 let ground = ground(atX: at.x, z: at.z)
-                let lag = company.clip.loops ? offset + Float(index) * 0.137 * company.clip.period : Float(index) * 0.05
+                // A throng's figures share a few steps between them, each step's
+                // pose worked out once, not one pose for every man in it.
+                let step = company.throng > 0 ? index % WorldStage.throngSteps : index
+                let lag = company.clip.loops ? offset + Float(step) * 0.137 * company.clip.period : Float(step) * 0.05
                 var blend = company.blend
                 if let leaving = company.blend {
-                    blend?.time += leaving.clip.loops ? offset + Float(index) * 0.137 * leaving.clip.period : Float(index) * 0.05
+                    blend?.time += leaving.clip.loops ? offset + Float(step) * 0.137 * leaving.clip.period : Float(step) * 0.05
                 }
                 let start = WorldStage.pose(key, company.clip, at: company.clipTime + lag, blend: blend, shared: &shared, into: &frame)
                 placed.append((key, ModelInstance(model: .translation(Vec3(at.x, ground, at.z)) * turn * .scale(WorldStage.figureScale), colour: colour,
@@ -1064,6 +1067,8 @@ public final class WorldStage: @unchecked Sendable {
     /// A company drawing off from a field goes in broken order, its ranks
     /// spread wide, and in haste, its stride quicker.
     public static let routSpread: Float = 1.45
+    /// The steps a throng's figures are spread across, out of step with each other.
+    public static let throngSteps = 5
     /// A side in a field of battle breaks and runs once fewer than this
     /// share of the troops it brought still stand.
     public static let routBelow: Float = 0.35

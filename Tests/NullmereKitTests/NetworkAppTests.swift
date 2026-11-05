@@ -178,10 +178,14 @@ final class NetworkAppTests: XCTestCase {
         }
         app.open()
         try await doorOpens()
+        // Ama enters once with the compact carried to the realm, though this
+        // Mac keeps no word of it: below, it has never accepted it.
+        (app.link as? NetworkRealmLink)?.compactAccepted = Compact.edition
         app.enterWorld(name: "Ama")
         try await until("Ama in the world") { app.session != nil }
         app.leaveWorld()
         try await doorOpens()
+        (app.link as? NetworkRealmLink)?.compactAccepted = nil
         XCTAssertEqual(app.keeperName, "Ama", "Known here still")
 
         // Words asked for while the realm doesn't answer: none are made.

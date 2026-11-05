@@ -832,3 +832,19 @@ final class BattleFrontTests: XCTestCase {
         XCTAssertNotEqual(motes, later, "clash after clash")
     }
 }
+
+final class ThrongPoseTests: XCTestCase {
+    /// A throng of 48 shares a handful of poses: its figures out of step
+    /// with each other in a few steps, not each posed apart.
+    func testAThrongSharesItsPoses() {
+        let map = WorldMap(radius: 6, fill: Tile(terrain: .greyfield))
+        let stage = WorldStage(map: map, relief: Relief(map: map))
+        var pose = CompanyPose(unit: 3, key: .figure(.spear, tier: 5), sigil: 0, health: 100, hex: Hex(0, 0), position: .zero, heading: 0,
+                               clip: .attack, clipTime: 0.4, isOwn: true)
+        pose.throng = Formation.throngMost
+        var frame = SceneFrame()
+        let batches = stage.companies([pose], houses: [Vec4(1, 0, 0, 1)], into: &frame)
+        XCTAssertEqual(batches.flatMap(\.instances).count, Formation.throngMost, "every figure of the throng drawn")
+        XCTAssertLessThanOrEqual(Set(batches.flatMap(\.instances).map(\.palette)).count, WorldStage.throngSteps, "in a few shared poses")
+    }
+}
