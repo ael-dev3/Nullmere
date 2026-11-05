@@ -120,8 +120,13 @@ final class Portraits {
             * Mat4.lookAt(eye: eye, target: look)
         frame.eye = Vec4(eye.x, eye.y, eye.z, 2)
         frame.haze.y = 0
-        let instance = ModelInstance(model: .translation(Vec3(0, height, 0)), colour: colour ?? .zero, flags: 1)
-        let scene = SceneFrame(batches: [ModelBatch(key: key, instances: [instance])])
+        // A model with a rig stands in its own pose: without one its skeleton
+        // reads no pose at all and collapses (run 568's empty spear).
+        var scene = SceneFrame()
+        let model = Library.model(key)
+        let palette = model.rig.count > 1 ? scene.add(pose: model.pose(.idle, at: 0.5)) : 0
+        let instance = ModelInstance(model: .translation(Vec3(0, height, 0)), colour: colour ?? .zero, palette: palette, flags: 1)
+        scene.batches = [ModelBatch(key: key, instances: [instance])]
         guard var bytes = renderer.pixels(frame, scene: scene, into: target) else { return nil }
         Painting.paint(bgra: &bytes, width: Portraits.side, height: Portraits.side)
         return Portraits.image(bgra: bytes, side: Portraits.side)

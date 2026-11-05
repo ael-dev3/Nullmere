@@ -1123,8 +1123,9 @@ extension RallyScene {
         XCTAssertEqual(host.count, RallyScene.greatBattleCompanies, "Ground for both armies before Bel's seat")
         guard host.count == RallyScene.greatBattleCompanies else { return }
         let all = RallyScene.greatBattleCompanies * 2 * RallyScene.greatBattleTroops
-        try await until("both to see both armies drawn up") {
-            [earA, earB].allSatisfy { ear in (host + garrison).allSatisfy { ear.world?.unit($0.0) != nil } }
+        // Each keeper sees their own army drawn up; the foe's may lie beyond their sight until the blows.
+        try await until("each to see their own army drawn up") {
+            host.allSatisfy { earA.world?.unit($0.0) != nil } && garrison.allSatisfy { earB.world?.unit($0.0) != nil }
         }
         // Each keeper's own orders, from their own client.
         await MainActor.run {
