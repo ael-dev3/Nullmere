@@ -231,7 +231,7 @@ enum Works {
         case .musterHall: return Art.work(Art.musterHallFile, level: level, name: name)
         case .walls: return Art.walls(level: level, name: name)
         case .beacon: return Art.work(Art.beaconFile, level: level, name: name)
-        case .infirmary: return Infirmary.model(level: level, name: name)
+        case .infirmary: return Art.work(Art.infirmaryFile, level: level, name: name)
         case .moonspire: return Art.work(Art.moonspireFile, level: level, name: name)
         case .archive: return Art.work(Art.archiveFile, level: level, name: name)
         case .forge: return Art.work(Art.forgeFile, level: level, name: name)
@@ -360,6 +360,19 @@ enum Works {
     /// Where smoke rises from a Forge's chimney.
     static func forgeChimney(_ level: Int) -> Vec3 {
         Vec3(-0.13, forgeChimneyHeight(level), -0.12)
+    }
+
+    // MARK: Infirmary
+
+    /// Where the Infirmary's ward smokes, from the second level
+    /// (Art/blender/infirmary.py builds its chimney there).
+    static func infirmaryChimney(_ level: Int) -> Vec3? {
+        switch level {
+        case 2, 3: return Vec3(0.05, 0.22, -0.135)
+        case 4: return Vec3(0.08, 0.22, -0.175)
+        case 5: return Vec3(0.09, 0.24, -0.16)
+        default: return nil
+        }
     }
 
     // MARK: Saltworks
