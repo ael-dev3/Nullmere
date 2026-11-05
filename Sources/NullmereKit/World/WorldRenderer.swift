@@ -23,8 +23,10 @@ final class WorldRenderer {
         let map: WorldMap
         let terrain: TerrainMesh
         let vertices: any MTLBuffer
+        /// Its triangles chunk by chunk, as `regions` lays them out.
         let indices: any MTLBuffer
-        let indexCount: Int
+        /// The chunks of it a frame draws only when in view.
+        let regions: LandRegions
         /// The land's heights, for the water to know how deep it lies.
         let heights: any MTLTexture
     }
@@ -163,7 +165,8 @@ final class WorldRenderer {
     func setLand(_ terrain: TerrainMesh, for map: WorldMap) throws {
         guard land?.map != map else { return }
         let packed = terrain.mesh.packed
-        let indices = terrain.mesh.indices
+        let regions = LandRegions(terrain)
+        let indices = regions.indices
         guard let vertexBuffer = device.makeBuffer(bytes: packed, length: packed.count * MemoryLayout<PackedVertex>.stride,
                                                    options: .storageModeShared),
               let indexBuffer = device.makeBuffer(bytes: indices, length: indices.count * MemoryLayout<UInt32>.stride,
@@ -182,7 +185,7 @@ final class WorldRenderer {
             heights.replace(region: MTLRegionMake2D(0, 0, terrain.columns, terrain.rows), mipmapLevel: 0, withBytes: base,
                             bytesPerRow: terrain.columns * MemoryLayout<Float16>.stride)
         }
-        land = Land(map: map, terrain: terrain, vertices: vertexBuffer, indices: indexBuffer, indexCount: indices.count, heights: heights)
+        land = Land(map: map, terrain: terrain, vertices: vertexBuffer, indices: indexBuffer, regions: regions, heights: heights)
         // Another map's furniture is not this one's.
         fixed = nil
     }
@@ -254,12 +257,14 @@ final class WorldRenderer {
         encoder.setVertexTexture(tiles, index: 0)
         encoder.setFragmentTexture(tiles, index: 0)
 
-        // The land.
+        // The land: only its chunks in view.
         if !WorldRenderer.leftOut.contains("land") {
             encoder.setRenderPipelineState(landPipeline)
             encoder.setVertexBuffer(land.vertices, offset: 0, index: 0)
-            encoder.drawIndexedPrimitives(type: .triangle, indexCount: land.indexCount, indexType: .uint32,
-                                          indexBuffer: land.indices, indexBufferOffset: 0)
+            for run in land.regions.runs(seenBy: frame.viewProjection) {
+                encoder.drawIndexedPrimitives(type: .triangle, indexCount: run.count, indexType: .uint32, indexBuffer: land.indices,
+                                              indexBufferOffset: run.lowerBound * MemoryLayout<UInt32>.stride)
+            }
         }
 
         // What stands on it, kind by kind: what stands still from the
