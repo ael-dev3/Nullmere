@@ -85,16 +85,30 @@ public struct Model: Sendable {
     /// The joints at a moment of a clip, in seconds; a model that never
     /// moves has none.
     public let motion: (@Sendable (Clip, Float) -> [Joint])?
+    /// For a model made in Blender: the skeleton its skin is weighted to,
+    /// and its actions, which move it in place of `motion`.
+    public let skeleton: Skeleton?
 
     public init(name: String, mesh: Mesh, rig: Rig = Rig(), motion: (@Sendable (Clip, Float) -> [Joint])? = nil) {
         self.name = name
         self.mesh = mesh
         self.rig = rig
         self.motion = motion
+        skeleton = nil
+    }
+
+    /// A model made in Blender, moved by its skeleton's actions.
+    public init(name: String, mesh: Mesh, rig: Rig, skeleton: Skeleton) {
+        self.name = name
+        self.mesh = mesh
+        self.rig = rig
+        motion = nil
+        self.skeleton = skeleton
     }
 
     /// Each part's transform at a moment of a clip.
     public func pose(_ clip: Clip, at time: Float) -> [Mat4] {
-        rig.pose(motion?(clip, time) ?? [])
+        if let skeleton { return skeleton.pose(clip, at: time) }
+        return rig.pose(motion?(clip, time) ?? [])
     }
 }

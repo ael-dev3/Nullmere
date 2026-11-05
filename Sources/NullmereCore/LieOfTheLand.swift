@@ -121,3 +121,38 @@ final class Claims: @unchecked Sendable {
         kept = nil
     }
 }
+
+/// The nearest hex of a terrain to the hexes it was sought from: kept with
+/// the map while its ground stays as it is, the oldest let go of first.
+final class Nearest: @unchecked Sendable {
+    struct Key: Hashable {
+        let terrain: Terrain
+        let from: Hex
+    }
+
+    private let lock = NSLock()
+    private var kept: [Key: Hex?] = [:]
+    /// How many are kept before all are let go.
+    static let most = 256
+
+    /// What was found, if it was sought before: a hex, or none at all.
+    func hex(of terrain: Terrain, near hex: Hex) -> Hex?? {
+        lock.lock()
+        defer { lock.unlock() }
+        return kept[Key(terrain: terrain, from: hex)]
+    }
+
+    func keep(_ found: Hex?, of terrain: Terrain, near hex: Hex) {
+        lock.lock()
+        defer { lock.unlock() }
+        if kept.count >= Nearest.most { kept.removeAll() }
+        kept[Key(terrain: terrain, from: hex)] = .some(found)
+    }
+
+    /// Lets go of what was kept, as the ground has changed.
+    func clear() {
+        lock.lock()
+        defer { lock.unlock() }
+        kept.removeAll()
+    }
+}

@@ -55,6 +55,10 @@ public struct WorldMap: Codable, Equatable, Sendable {
     /// the ground is as it is and they stand as they stood: shared by the
     /// map's copies, and let go of by any copy whose ground changes.
     private(set) var claims = Claims()
+    /// The nearest hex of a terrain to each hex it was sought from, kept
+    /// while the ground is as it is: shared by the map's copies, and let go
+    /// of by any copy whose ground changes.
+    private(set) var nearest = Nearest()
 
     private enum CodingKeys: String, CodingKey {
         case radius
@@ -251,12 +255,27 @@ public struct WorldMap: Codable, Equatable, Sendable {
         tiles[index] = tile
         // Claims its other copies still keep are theirs, of their ground.
         if isKnownUniquelyReferenced(&claims) { claims.clear() } else { claims = Claims() }
+        if isKnownUniquelyReferenced(&nearest) { nearest.clear() } else { nearest = Nearest() }
         let step = WorldMap.step(onto: tile.terrain)
         if steps[index] != step {
             // A lie its other copies still keep is theirs, of their ground.
             if isKnownUniquelyReferenced(&lie) { lie.clear() } else { lie = LieOfTheLand() }
         }
         steps[index] = step
+    }
+
+    /// The hex of a terrain nearest a hex, the lowest q and then r among
+    /// those as near; nil if the map has none. Found ring by ring out from
+    /// the hex once, and kept while the ground is as it is.
+    public func nearest(_ terrain: Terrain, to hex: Hex) -> Hex? {
+        if let known = nearest.hex(of: terrain, near: hex) { return known }
+        var found: Hex?
+        for distance in 0...(2 * radius + 1) {
+            found = hex.ring(distance).filter { self[$0]?.terrain == terrain }.min { ($0.q, $0.r) < ($1.q, $1.r) }
+            if found != nil { break }
+        }
+        nearest.keep(found, of: terrain, near: hex)
+        return found
     }
 
     public mutating func set(_ hex: Hex, _ tile: Tile) {

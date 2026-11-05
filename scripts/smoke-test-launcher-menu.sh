@@ -32,11 +32,15 @@ if pgrep -x "$EXECUTABLE" >/dev/null; then
     exit 1
 fi
 
-# run <screenshot> [keys] [model state]
+# run <screenshot> [keys] [model state] [line awaited]
+# With a line awaited (an extended regular expression), the launcher is kept
+# open until it has said it, up to 45 seconds more: News waits on the
+# network, which is not always as quick as the lake.
 run() {
     local shot="$1"
     local keys="${2:-}"
     local state="${3:-ready}"
+    local awaited="${4:-}"
     local started
     started="$(date '+%Y-%m-%d %H:%M:%S')"
     echo "Opening the launcher${keys:+, then typing $keys}…"
@@ -48,11 +52,20 @@ run() {
         cat build/launcher-stdout.log >&2 || true
         exit 1
     fi
+    if [ -n "$awaited" ]; then
+        for _ in $(seq 1 45); do
+            if grep -qE "$awaited" build/launcher-stdout.log ||
+                log show --start "$started" --style compact --predicate "subsystem == \"$SUBSYSTEM\"" 2>/dev/null | grep -qE "$awaited"; then
+                break
+            fi
+            sleep 1
+        done
+    fi
     screencapture -x "$shot" || echo "warning: could not take a screenshot" >&2
     kill -TERM "$pid" || true
     wait "$pid" 2>/dev/null || true
     local log
-    log="$(settled_log "$started" "$SUBSYSTEM" "renders with Metal")"
+    log="$(settled_log "$started" "$SUBSYSTEM" "renders with Metal" ${awaited:+"News"})"
     # A debug build says it on its own output too, the moment it happens;
     # the unified log can lag behind.
     if ! grep -q "renders with Metal" build/launcher-stdout.log && ! echo "$log" | grep -q "renders with Metal"; then
@@ -64,7 +77,7 @@ run() {
 }
 
 run build/launcher-menu.png
-run build/launcher-news.png right,return
+run build/launcher-news.png right,return ready "News (updated|not updated)"
 echo "$LOG" | grep -E "News (updated|not updated)" || true
 if ! echo "$LOG" | grep -q "News updated"; then
     echo "error: News did not download its feed from ${NEWS_URL:-main}" >&2

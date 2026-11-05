@@ -894,6 +894,9 @@ public final class WorldStage: @unchecked Sendable {
     /// shift and size eased between the two, so no limb snaps.
     public static func blendedPose(_ key: ModelKey, _ clip: Clip, at time: Float, from blend: CompanyPose.Blend) -> [Mat4] {
         let model = Library.model(key)
+        if let skeleton = model.skeleton {
+            return skeleton.pose(clip, at: time, from: blend.clip, at: blend.time, weight: blend.weight)
+        }
         guard let motion = model.motion else { return model.pose(clip, at: time) }
         let into = motion(clip, time), out = motion(blend.clip, blend.time)
         guard into.count == out.count else { return model.pose(clip, at: time) }
