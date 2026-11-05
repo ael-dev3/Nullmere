@@ -1255,7 +1255,9 @@ extension RallyScene {
     /// member, sees both rising in his.
     func raiseTheAlliancesWorks(ama: Int, bel: Int) async throws {
         let places = StagedWalk(), store = StagedWalk()
+        let kept = KeptStock()
         await steward.reshape { realm in
+            kept.stock = realm.world.houses[ama].stock
             realm.world.houses[ama].stock = realm.world.houses[ama].stock + Stock(grain: 4000, timber: 4000, stone: 4000, moonsalt: 400)
             let world = realm.world
             let hall = world.map.hexes.first { world.hallRefusal(at: $0, by: ama) == nil }
@@ -1283,6 +1285,7 @@ extension RallyScene {
         try await until("Bel refused: he does not lead the alliance") {
             earB.refusals.contains(RuleError.notAllianceLeader.description) || earB.refusals.contains(RuleError.storehouseStanding.description)
         }
+        await restore(kept, of: ama)
     }
 }
 
@@ -1313,5 +1316,77 @@ extension RallyScene {
         try await until("Bel refused another's commander by the realm") { earB.refusals.contains(RuleError.unknownCommander.description) }
         let rank = await MainActor.run { earA.world?.commander(commanderID)?.rank(of: open) }
         XCTAssertEqual(rank, 1, "Bel's order changed nothing")
+    }
+}
+
+extension RallyScene {
+    /// Studies and scouts (RoK's research and scouting), between two
+    /// clients: Ama begins a study from her own client and sees it under
+    /// way, as does her ally Bel's; Ama's Lantern beside
+    /// Bel's seat scouts it, she is given the report and Bel hears it seen.
+    func studyAndScout(ama: Int, bel: Int) async throws {
+        let staged = StagedWalk(), chosen = StagedWalk()
+        let kept = KeptStock()
+        await steward.reshape { realm in
+            kept.stock = realm.world.houses[ama].stock
+            realm.world.houses[ama].stock = realm.world.houses[ama].stock + Stock(grain: 3000, timber: 3000, stone: 3000, moonsalt: 300)
+            realm.world.houses[ama].research.pursuit = nil
+            if let seat = realm.world.seat(of: ama), let index = realm.world.holdIndex(seat.id) {
+                realm.world.holds[index].levels[.archive] = max(realm.world.holds[index].levels[.archive] ?? 0, 3)
+            }
+            let world = realm.world
+            chosen.unit = Study.allCases.firstIndex { world.studyRefusal(of: $0, for: ama) == nil }
+            guard let seat = world.seat(of: bel), let beside = seat.position.neighbors.first(where: { hex in
+                world.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true
+                    && world.unit(at: hex) == nil && world.hold(at: hex) == nil && world.site(at: hex) == nil
+            }) else { return }
+            let id = realm.world.takeID()
+            realm.world.units.append(NullmereCore.Unit(id: id, kind: .lantern, owner: ama, position: beside))
+            realm.world.reveal(around: beside, range: 2, for: ama)
+            staged.unit = id
+        }
+        let study = Study.allCases[try XCTUnwrap(chosen.unit, "A study open to Ama")]
+        await MainActor.run { a.send(.study(study)) }
+        try await until("Ama's study under way in her client") { earA.world?.houses[ama].research.pursuit?.study == study }
+        // Her ally is told what she studies, for allies help it.
+        try await until("Ama's study seen by her ally") { earB.world?.houses[ama].research.pursuit?.study == study }
+
+        let lantern = try XCTUnwrap(staged.unit, "Open ground beside Bel's seat")
+        let belsSeen = await MainActor.run { earB.world?.seat(of: bel)?.id }
+        let belsSeat = try XCTUnwrap(belsSeen)
+        try await until("Ama's Lantern beside Bel's seat in her client") { earA.world?.unit(lantern) != nil }
+        await MainActor.run { a.send(.scout(unit: lantern, hold: belsSeat)) }
+        try await until("Ama given the scout's report") {
+            earA.events.contains { event in
+                if case .answered(let events) = event { return events.contains { if case .holdScouted = $0 { return true } else { return false } } }
+                return false
+            }
+        }
+        try await until("Bel told his seat was scouted") {
+            earB.events.contains { event in
+                if case .heard(let events) = event { return events.contains { if case .scoutSeen(belsSeat, _) = $0 { return true } else { return false } } }
+                return false
+            }
+        }
+        await dismiss(lantern)
+        await restore(kept, of: ama)
+    }
+}
+
+/// A House's stores kept aside while a scene gives it more, and put back.
+final class KeptStock: @unchecked Sendable {
+    private let lock = NSLock()
+    private var kept: Stock?
+    var stock: Stock? {
+        get { lock.lock(); defer { lock.unlock() }; return kept }
+        set { lock.lock(); kept = newValue; lock.unlock() }
+    }
+}
+
+extension RallyScene {
+    /// The House's stores as they were before the scene gave it more.
+    func restore(_ kept: KeptStock, of house: Int) async {
+        guard let stock = kept.stock else { return }
+        await steward.reshape { realm in realm.world.houses[house].stock = stock }
     }
 }
