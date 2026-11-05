@@ -96,7 +96,8 @@ final class Portraits {
         let middle = (low + high) / 2
         let target = Vec3(middle.x, height + middle.y, middle.z)
         let extent = max((high.y - low.y) / 2, max(high.x - low.x, high.z - low.z) / 2, 0.02)
-        let distance = extent / tan(Float(Camera.fieldOfView) / 2) * 1.35
+        // Close enough to fill the picture, a twentieth to spare at its edges.
+        let distance = extent / tan(Float(Camera.fieldOfView) / 2) * 1.05
         let direction = Vec3(sin(0.6) * cos(0.38), sin(0.38), cos(0.6) * cos(0.38))
         return (target + direction * distance, target)
     }

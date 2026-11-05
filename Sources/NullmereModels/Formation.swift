@@ -145,7 +145,7 @@ public enum Formation {
     /// Troops a figure stands for in a field of battle's throng.
     public static let troopsPerThrongFigure = 500
     /// The most figures one company shows in a field of battle.
-    public static let throngMost = 48
+    public static let throngMost = 36
 
     /// How many figures a company shows in a field of battle with so many
     /// troops standing: at least its formation whole, one more for every

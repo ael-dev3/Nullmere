@@ -152,10 +152,10 @@
       "note": "a realm of forty-eight seats near, only the regions in view drawn: CI's first figure (55a08ad), against 23.12 drawing the whole land"
     },
     "stage.wide.cpu.p50": {
-      "baseline": 1.95,
+      "baseline": 4.6,
       "cpu": true,
       "limit": 8.3,
-      "note": "a frame of a realm of forty-eight seats near staged on the main thread, only what is in view: CI's first figure, 2.34 (55a08ad), at the calibration's pace there, x1.20"
+      "note": "a frame of a realm of forty-eight seats near staged on the main thread, only what is in view: CI's first figure, 2.34 (55a08ad), at the calibration's pace there, x1.20; raised to 4.6 with fields of battle drawn as throngs, up to 36 figures a company (CI 570: wide 5.43, wider 5.68 at x1.20, with up to 48)"
     },
     "wide.gpu.scale28.whole.p50": {
       "baseline": 23.23,
@@ -169,10 +169,10 @@
       "note": "a realm of ninety-six seats, the widest, near, only the regions in view drawn: CI's first figure (2c57480), against 12.88 for forty-eight seats in the same run"
     },
     "stage.wider.cpu.p50": {
-      "baseline": 2.32,
+      "baseline": 4.8,
       "cpu": true,
       "limit": 8.3,
-      "note": "a frame of a realm of ninety-six seats near staged on the main thread, 242 of 2,178 models in view: CI's first figure, 2.74 (2c57480), at the calibration's pace there, x1.18"
+      "note": "a frame of a realm of ninety-six seats near staged on the main thread, 242 of 2,178 models in view: CI's first figure, 2.74 (2c57480), at the calibration's pace there, x1.18; raised to 4.8 with fields of battle drawn as throngs, up to 36 figures a company (CI 570: wide 5.43, wider 5.68 at x1.20, with up to 48)"
     }
   }
 }
