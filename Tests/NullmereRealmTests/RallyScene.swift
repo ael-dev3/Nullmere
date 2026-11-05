@@ -1472,3 +1472,52 @@ extension RallyScene {
         await dismiss(spear)
     }
 }
+
+extension RallyScene {
+    /// A happening joined (RoK's timed events), between two clients: in
+    /// the Great Muster, Bel musters a company from his own client and, as
+    /// it is done, both clients see his points on the happening's standing,
+    /// and Ama, who mustered none, has none.
+    func joinTheGreatMuster(ama: Int, bel: Int) async throws {
+        let kept = KeptStock(), seatBox = StagedWalk()
+        await steward.reshape { realm in
+            guard let seat = realm.world.seat(of: bel), let index = realm.world.holdIndex(seat.id) else { return }
+            kept.stock = realm.world.houses[bel].stock
+            realm.world.houses[bel].stock.credit(Stock(grain: 600, timber: 600, stone: 600, moonsalt: 20))
+            realm.world.holds[index].training = nil
+            realm.world.holds[index].levels[.musterHall] = max(realm.world.holds[index].levels[.musterHall] ?? 0, 1)
+            realm.world.happening = Happening(number: 90, kind: .muster, begins: realm.world.watch, houses: realm.world.houses.count)
+            seatBox.unit = seat.id
+        }
+        let seat = try XCTUnwrap(seatBox.unit)
+        try await until("the Great Muster under way, as both see it") {
+            earA.world?.happening?.kind == .muster && earB.world?.happening?.kind == .muster
+        }
+        try await until("Bel's stores given and his seat free to muster, in his client") {
+            (earB.world?.houses[bel].stock.timber ?? 0) >= 600 && earB.world?.hold(seat)?.training == nil
+        }
+        let kind = try await MainActor.run { () -> UnitKind in
+            let world = try XCTUnwrap(earB.world)
+            let open = UnitKind.allCases.filter { $0.isMilitary }
+            return try XCTUnwrap(open.first { world.refusal(of: .train(hold: seat, kind: $0), as: bel) == nil },
+                                 "\(open.map { "\($0): \(String(describing: world.refusal(of: .train(hold: seat, kind: $0), as: bel)))" })")
+        }
+        await MainActor.run { b.send(.train(hold: seat, kind: kind)) }
+        try await until("Bel's muster under way") { earB.world?.hold(seat)?.training != nil }
+        await steward.reshape { realm in
+            if let index = realm.world.holdIndex(seat) { realm.world.holds[index].training?.watchesLeft = 1 }
+        }
+        let watch = await MainActor.run { earA.world?.watch ?? 0 }
+        await MainActor.run { a.setReady(true); b.setReady(true) }
+        try await until("the watch to turn") { (earA.world?.watch ?? 0) > watch && (earB.world?.watch ?? 0) > watch }
+        try await until("Bel's points on the Great Muster, in both clients") {
+            (earA.world?.happening?.points[bel] ?? 0) > 0 && (earB.world?.happening?.points[bel] ?? 0) > 0
+        }
+        let amas = await MainActor.run { earB.world?.happening?.points[ama] }
+        XCTAssertEqual(amas, 0, "Ama mustered none")
+        let leader = await MainActor.run { earA.world?.happening?.leaderboard.first }
+        XCTAssertEqual(leader, bel, "Bel foremost, as Ama's client shows it")
+        await steward.reshape { realm in realm.world.happening = nil }
+        await restore(kept, of: bel)
+    }
+}

@@ -318,6 +318,8 @@ final class SpacetimeIntegrationTests: XCTestCase {
         try await scene.foretellAHappening(ama: houseA, bel: houseB)
         print("REALM two keepers' calendars foretold the same happening, and both saw it begin on its watch")
         try await scene.laboursOfTheWatch(ama: houseA, bel: houseB)
+        try await scene.joinTheGreatMuster(ama: houseA, bel: houseB)
+        print("REALM one keeper mustered in the Great Muster from his own client; both clients saw him foremost on its standing")
         try await scene.openTheInnsChests(ama: houseA, bel: houseB)
         try await scene.walkTheMirror(ama: houseA, bel: houseB)
         try await scene.heedTheBeacon(ama: houseA, bel: houseB)
