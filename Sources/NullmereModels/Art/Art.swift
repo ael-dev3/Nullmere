@@ -128,6 +128,20 @@ enum Art {
                      grains: grains)
     }
 
+    /// A hold's walls made in Blender at their level, each level its tier of
+    /// one file: from a palisade of stakes to high walls with round towers
+    /// under the House's cones and a gatehouse flying its banner.
+    static func walls(level: Int, name: String) -> Model {
+        let colours: [String: Vec3] = [
+            "plain_stone": Palette.stone, "plain_stone_dark": Palette.stoneDark, "plain_stone_pale": Palette.stonePale,
+            "plain_stone_patched": Palette.stonePale.mix(Palette.stone, 0.4), "plain_slate": Palette.slate, "plain_timber": Palette.timber,
+            "plain_timber_dark": Palette.timberDark, "plain_timber_pale": Palette.timberPale, "plain_thatch": Palette.thatch,
+            "plain_rope": Palette.leatherDark, "plain_hole": Palette.barkBlack, "metal_iron": Palette.iron, "house_roof": Palette.house,
+            "cloth_banner": Palette.house, "glow_fire": Palette.fire, "glow_candle": Palette.candle, "foliage_ivy": Palette.leaf,
+        ]
+        return model(wallsFile, tier: level, name: name, order: [], scale: buildingScale, colours: colours)
+    }
+
     /// A model made in Blender, its bones in `order` after its root.
     static func model(_ base64: String, tier: Int, variant: String? = nil, name: String, order: [String], scale: Float = figureScale,
                       lift: Float = 0, colours: [String: Vec3] = [:], grains: [String: Surface] = [:]) -> Model {
