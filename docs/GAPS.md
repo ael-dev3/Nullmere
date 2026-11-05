@@ -71,6 +71,8 @@ CI (a test, a figure, or a screenshot). Ticked items are done.
 
 ### 3. Animation
 - [x] Companies: idle, march, attack, gather and death, eased from clip to clip
+- [x] Struck and reeling: every company model takes a blow in a hit clip of its own on the attack's beat, a man on foot rocked back on his rear foot with his shield or his free arm thrown up, a horse shying half up on its hind legs with its rider rocked back, a Mangonel's frame jolting on its wheels as its crewman ducks; tested to reel hard just after the blow and stand at guard again before the next. In a field of battle a company's throng strikes and reels rank by rank in turn, and its men fall before it over the death clip as it loses them, one down after another, more for more lost (at most four at once); where its reeling ranks take the foe's steel, a flash, sparks (splinters from an engine's timber) and dust land on the very frame they reel, beat on beat
+- [ ] Each unit type's models made anew at a hero game's polygon count and with hand-keyed animation; the companies are the procedural figures they were, now with five clips each
 - [x] Works: construction from scaffold to finish, and each upgrade
 - [x] Combat: arrows, clashes, sparks, the flash and its light, splinters, the fallen
 - [x] Ambience: smoke, embers, fireflies, banners, torches, birds and the drift of mist
