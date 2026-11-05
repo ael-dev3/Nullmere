@@ -334,6 +334,8 @@ final class SpacetimeIntegrationTests: XCTestCase {
         print("REALM two allied keepers rallied on a lair from their own clients, broke it, and both were told of it and their shares")
         try await RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60).raiseAStandardTogether(ama: houseA, bel: houseB)
         print("REALM one keeper began a standard and her ally lent a hand from his own client; both saw it rise a watch sooner and its land become the alliance's")
+        try await RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60).raiseTheAlliancesWorks(ama: houseA, bel: houseB)
+        print("REALM an alliance's leader began its hall and storehouse from her own client, and her ally saw both rise in his")
         let gatekeeper = try await RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60).keepAnAllysGates(ama: houseA, bel: houseB)
         print("REALM one keeper sent a company to keep his ally's seat from his own client; both saw it keep her gates, her client its banner and sentries there")
         await MainActor.run { b.send(.leaveAlliance) }

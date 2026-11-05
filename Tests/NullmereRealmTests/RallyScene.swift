@@ -1247,3 +1247,41 @@ extension RallyScene {
         await steward.reshape { realm in realm.world.units.removeAll { $0.id == unitID } }
     }
 }
+
+extension RallyScene {
+    /// An alliance's fortress and storehouse (RoK's alliance buildings),
+    /// between two clients: Ama, its leader, begins the hall and the
+    /// storehouse on the alliance's land from her own client, and Bel, its
+    /// member, sees both rising in his.
+    func raiseTheAlliancesWorks(ama: Int, bel: Int) async throws {
+        let places = StagedWalk(), store = StagedWalk()
+        await steward.reshape { realm in
+            realm.world.houses[ama].stock = realm.world.houses[ama].stock + Stock(grain: 4000, timber: 4000, stone: 4000, moonsalt: 400)
+            let world = realm.world
+            let hall = world.map.hexes.first { world.hallRefusal(at: $0, by: ama) == nil }
+            places.at = hall
+            guard let hall else { return }
+            // The storehouse on other open ground of the alliance's land.
+            var after = world
+            _ = try? after.raiseHall(at: hall, by: ama)
+            store.at = after.map.hexes.first { after.storehouseRefusal(at: $0, by: ama) == nil }
+        }
+        let hallAt = try XCTUnwrap(places.at, "Open ground of the alliance's land for its hall")
+        let storeAt = try XCTUnwrap(store.at, "and for its storehouse")
+        await MainActor.run { a.send(.raiseAllianceHall(at: hallAt)) }
+        try await until("the hall begun, as both keepers see it") {
+            earA.world?.hallsStanding.contains { $0.position == hallAt } == true
+                && earB.world?.hallsStanding.contains { $0.position == hallAt } == true
+        }
+        await MainActor.run { a.send(.raiseStorehouse(at: storeAt)) }
+        try await until("the storehouse begun, as both keepers see it") {
+            earA.world?.storehousesStanding.contains { $0.position == storeAt } == true
+                && earB.world?.storehousesStanding.contains { $0.position == storeAt } == true
+        }
+        // Only the leader raises them: Bel's own order is refused by the realm.
+        await MainActor.run { b.send(.raiseStorehouse(at: storeAt)) }
+        try await until("Bel refused: he does not lead the alliance") {
+            earB.refusals.contains(RuleError.notAllianceLeader.description) || earB.refusals.contains(RuleError.storehouseStanding.description)
+        }
+    }
+}
