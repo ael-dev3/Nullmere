@@ -263,8 +263,8 @@ each of their five levels a tier of the file; `town.py` the town's pieces
 (`town.glb`, `Art.townFile` in `TownFile.swift`), each a variant named as
 the game names it. A work's family is one script and one file, each level a
 tier (`granary.py`: `granary.glb`, `Art.granaryFile` in `GranaryFile.swift`;
-`beacon.py`: `beacon.glb`, `Art.beaconFile` in `BeaconFile.swift`; both on
-`Art/blender/works.py`), its moving parts bones tagged for the levels they
+`beacon.py`: `beacon.glb`, `Art.beaconFile` in `BeaconFile.swift`; and so
+the Quarry, the Saltworks and the Forge; all on `Art/blender/works.py`), its moving parts bones tagged for the levels they
 stand at (`sack hoist@3`, which the importer keeps for that level under its
 plain name) and its motion one action, `idle`: a part turned about its axis
 or, like a fire, stretched. A block's `turn` in `building.py` runs from +x

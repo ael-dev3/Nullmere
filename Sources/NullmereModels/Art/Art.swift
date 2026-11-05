@@ -163,6 +163,11 @@ enum Art {
         "house_awning": Palette.house, "house_dark": Palette.houseDark, "cloth_banner": Palette.house, "glow_candle": Palette.candle,
         "glow_fire": Palette.fire, "crystal_moonsalt": Palette.moonsalt, "foliage_ivy": Palette.leaf, "foliage_grain": Palette.grain,
         "foliage_straw": Palette.straw, "plain_stone_rock": Palette.rock, "plain_bone": Palette.bone, "metal_bronze": Palette.bronze,
+        "plain_thatch_straw": Palette.straw, "plain_soot": Palette.barkBlack, "plain_leather_dark": Palette.leatherDark,
+        "metal_steel": Palette.steel, "metal_mail": Palette.mail, "plain_seawool": Palette.seaWool, "plain_moss": Palette.moss,
+        "plain_saltcrust": Palette.saltCrust, "crystal_saltcrust": Palette.saltCrust, "glow_moonglow": Palette.moonGlow,
+        "glow_moonsalt": Palette.moonsalt, "plain_earth_mud": Palette.loam.mix(Palette.yard, 0.4),
+        "plain_earth_quarry": Palette.rock.mix(Palette.yard, 0.5),
     ]
 
     /// A work made in Blender at its level, each level its tier of the

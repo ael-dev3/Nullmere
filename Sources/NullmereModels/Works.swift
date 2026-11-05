@@ -226,15 +226,15 @@ enum Works {
         switch kind {
         case .granary: return Art.work(Art.granaryFile, level: level, name: name)
         case .sawpit: return Sawpit.model(level: level, name: name)
-        case .quarry: return Quarry.model(level: level, name: name)
-        case .saltworks: return Saltworks.model(level: level, name: name)
+        case .quarry: return Art.work(Art.quarryFile, level: level, name: name)
+        case .saltworks: return Art.work(Art.saltworksFile, level: level, name: name)
         case .musterHall: return MusterHall.model(level: level, name: name)
         case .walls: return Art.walls(level: level, name: name)
         case .beacon: return Art.work(Art.beaconFile, level: level, name: name)
         case .infirmary: return Infirmary.model(level: level, name: name)
         case .moonspire: return Moonspire.model(level: level, name: name)
         case .archive: return Archive.model(level: level, name: name)
-        case .forge: return Forge.model(level: level, name: name)
+        case .forge: return Art.work(Art.forgeFile, level: level, name: name)
         case .wayhouse: return Wayhouse.model(level: level, name: name)
         case .lodge: return Lodge.model(level: level, name: name)
         }
@@ -360,6 +360,15 @@ enum Works {
     /// Where smoke rises from a Forge's chimney.
     static func forgeChimney(_ level: Int) -> Vec3 {
         Vec3(-0.13, forgeChimneyHeight(level), -0.12)
+    }
+
+    // MARK: Saltworks
+
+    /// Where the Saltworks' boiling house smokes, at the levels that have one
+    /// (Art/blender/saltworks.py builds its chimney there).
+    static func saltworksChimney(_ level: Int) -> Vec3? {
+        guard (3...4).contains(level) else { return nil }
+        return Vec3(-0.06, 0.25, -0.145)
     }
 
     // MARK: Moonspire
