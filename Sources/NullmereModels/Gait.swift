@@ -132,29 +132,10 @@ struct Gait: Sendable {
 
     // MARK: Clips
 
+    /// At rest, as this kind stands, keyed.
     func idle(_ p: inout Pose, _ u: Float) {
         carry(&p)
-        let breath = Motion.wave(u, cycles: 3)
-        p.stretch(Limb.torso, Vec3(1 + 0.012 * breath, 1 + 0.01 * breath, 1 + 0.025 * breath))
-        let shift = Motion.wave(u, cycles: 1)
-        p.shift(Limb.hips, Vec3(0.012 * size * shift, 0, 0))
-        p.turn(Limb.hips, z: 0.035 * shift)
-        p.turn(Limb.torso, z: -0.045 * shift)
-        p.turn(Limb.thighL, z: -0.035 * shift)
-        p.turn(Limb.thighR, z: -0.035 * shift)
-        let look = Motion.key(u, [(0, 0), (0.18, 0), (0.3, 0.55), (0.46, 0.55), (0.58, -0.4), (0.72, -0.4), (0.84, 0), (1, 0)])
-        p.turn(Limb.head, x: 0.04 * Motion.wave(u, cycles: 2), y: look)
-        if hands == .wild || hands == .club {
-            // A slow, wrong tilt of the head, and fingers that will not keep still.
-            p.turn(Limb.head, z: 0.35 * Motion.wave(u, cycles: 1, phase: 0.25))
-            p.turn(Limb.forearmL, x: 0.15 * Motion.wave(u, cycles: 4))
-            p.turn(Limb.forearmR, x: 0.15 * Motion.wave(u, cycles: 4, phase: 0.5))
-        } else if hands != .cart {
-            p.turn(Limb.armR, x: 0.03 * Motion.wave(u, cycles: 3, phase: 0.2))
-        }
-        if hands == .lantern {
-            p.turn(Limb.extra, z: 0.12 * Motion.wave(u, cycles: 2))
-        }
+        FootClips.idle(hands).apply(&p, u, size: size)
         level(&p)
     }
 

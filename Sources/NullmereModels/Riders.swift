@@ -357,23 +357,12 @@ struct Ride: Sendable {
 
     // MARK: Clips
 
+    /// At rest, keyed.
     func idle(_ p: inout Pose, _ u: Float) {
         carry(&p)
-        let breath = Motion.wave(u, cycles: 3)
-        p.stretch(Steed.body, Vec3(1 + 0.02 * breath, 1 + 0.015 * breath, 1))
-        p.turn(Steed.neck, x: 0.06 * Motion.wave(u, cycles: 1) - 0.05)
-        p.turn(Steed.head, x: 0.08 * Motion.wave(u, cycles: 2, phase: 0.3))
-        p.turn(Steed.tail, y: 0.35 * Motion.wave(u, cycles: 2), z: 0.1 * Motion.wave(u, cycles: 1))
-        // A hind hoof rested, then set down.
-        let rest = Motion.key(u, [(0, 0), (0.35, 0), (0.45, 1), (0.8, 1), (0.9, 0), (1, 0)])
-        p.turn(Steed.hindR, x: -0.08 * rest)
-        p.turn(Steed.hindShinR, x: -0.35 * rest)
-        p.shift(Steed.body, Vec3(0.002 * rest, -0.003 * rest, 0))
-        let look = Motion.key(u, [(0, 0), (0.2, 0), (0.3, -0.5), (0.48, -0.5), (0.6, 0.35), (0.75, 0.35), (0.85, 0), (1, 0)])
-        p.turn(Steed.riderHead, y: look)
-        p.stretch(Steed.torso, Vec3(1 + 0.01 * breath, 1 + 0.01 * breath, 1 + 0.02 * breath))
+        RiderClips.idle.apply(&p, u)
         if arms == .wave {
-            p.turn(Steed.heldR, z: 0.05 * Motion.wave(u, cycles: 2))
+            RiderClips.standardStirs.apply(&p, u)
         }
         level(&p)
     }
@@ -429,17 +418,12 @@ struct Ride: Sendable {
     func graze(_ p: inout Pose, _ u: Float) {
         carry(&p)
         level(&p)
-        p.turn(Steed.neck, x: 0.95)
-        p.turn(Steed.head, x: 0.45 + 0.08 * Motion.wave(u, cycles: 6))
-        p.turn(Steed.tail, y: 0.3 * Motion.wave(u, cycles: 2))
+        RiderClips.graze.apply(&p, u)
         let v = u * 2 - (u * 2).rounded(.down)
-        let swing = Motion.key(v, [(0, 0), (0.4, 1), (0.55, -0.15), (0.75, -0.15), (1, 0)])
         p.joints[Int(Steed.tool)].scale = Vec3(1, 1, 1)
         p.hide(Steed.heldR)
         p.joints[Int(Steed.armR)].rotation = .zero
         p.joints[Int(Steed.forearmR)].rotation = .zero
-        p.turn(Steed.torso, x: 0.2 - 0.15 * swing, z: 0.25)
-        p.turn(Steed.armR, x: -0.5 - 2.0 * swing, z: -0.3)
-        p.turn(Steed.forearmR, x: -0.3)
+        RiderClips.mattock.apply(&p, v)
     }
 }

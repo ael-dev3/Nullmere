@@ -227,6 +227,11 @@ enum Engine {
         FootClips.struck(Limb.torso, Vec3(0.6, 0, 0)),
     ])
 
+    /// At rest the arm creaks in its skein, twice a period.
+    static let creak = Keyed(loops: true, [
+        Track(arm, [k(0, 0), k(0.125, 0.015), k(0.375, -0.015), k(0.625, 0.015), k(0.875, -0.015)]),
+    ])
+
     /// The throw: the crewman pulls the pin, the arm flies to the stop bar,
     /// and he bends to the winch and winds it back down, cranking.
     static let loosing: Keyed = {
@@ -300,7 +305,7 @@ enum Engine {
         switch clip {
         case .idle:
             gait.idle(&p, u)
-            p.turn(arm, x: 0.015 * Motion.wave(u, cycles: 2))
+            Engine.creak.apply(&p, u)
         case .march:
             gait.march(&p, u)
         case .gather:

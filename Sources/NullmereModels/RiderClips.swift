@@ -45,6 +45,58 @@ enum RiderClips {
         return Keyed(loops: true, tracks)
     }()
 
+    /// Three breaths a period, swelling a part by `depth` at full.
+    static func breath(_ part: UInt16, _ depth: Vec3) -> Track {
+        var keys: [(Float, Vec3)] = []
+        for index in 0..<6 {
+            let sign: Float = index % 2 == 0 ? 1 : -1
+            keys.append((Float(index) / 6 + 1 / 12, depth * sign))
+        }
+        return Track(part, .stretch, keys)
+    }
+
+    /// Horse and rider at rest: the horse breathing, its head nodding, its
+    /// tail switching, a hind hoof rested and set down again; its rider
+    /// looking about.
+    static let idle = Keyed(loops: true, [
+        breath(Steed.body, Vec3(0.02, 0.015, 0)),
+        Track(Steed.neck, [k(0, -0.05), k(0.25, 0.01), k(0.5, -0.05), k(0.75, -0.11)]),
+        Track(Steed.head, [k(0, 0), k(0.2, 0.08), k(0.45, -0.06), k(0.7, 0.08), k(0.9, -0.04)]),
+        Track(Steed.tail, [k(0, 0, 0, 0.1), k(0.125, 0, 0.35, 0), k(0.375, 0, -0.35, -0.1), k(0.625, 0, 0.35, 0), k(0.875, 0, -0.35, 0.1)]),
+        Track(Steed.hindR, [k(0, 0), k(0.35, 0), k(0.45, -0.08), k(0.8, -0.08), k(0.9, 0)]),
+        Track(Steed.hindShinR, [k(0, 0), k(0.35, 0), k(0.45, -0.35), k(0.8, -0.35), k(0.9, 0)]),
+        Track(Steed.body, .shift, [k(0, 0), k(0.35, 0), k(0.45, 0.002, -0.003), k(0.8, 0.002, -0.003), k(0.9, 0)]),
+        Track(Steed.riderHead, [k(0, 0), k(0.2, 0), k(0.3, 0, -0.5), k(0.48, 0, -0.5), k(0.6, 0, 0.35), k(0.75, 0, 0.35), k(0.85, 0)]),
+        breath(Steed.torso, Vec3(0.01, 0.01, 0.02)),
+    ])
+
+    /// A standard stirring at rest.
+    static let standardStirs = Keyed(loops: true, [
+        Track(Steed.heldR, [k(0, 0), k(0.125, 0, 0, 0.05), k(0.375, 0, 0, -0.05), k(0.625, 0, 0, 0.05), k(0.875, 0, 0, -0.05)]),
+    ])
+
+    /// The horse crops the grass, head down, chewing, tail going; its
+    /// rider down beside it at work with a mattock, two strokes a period.
+    static let chewing: [(Float, Vec3)] = {
+        var keys: [(Float, Vec3)] = []
+        for index in 0..<12 {
+            let nod: Float = index % 2 == 0 ? 0.08 : -0.08
+            keys.append(k(Float(index) / 12, 0.45 + nod))
+        }
+        return keys
+    }()
+
+    static let graze = Keyed(loops: true, [
+        Track(Steed.neck, [k(0, 0.95), k(0.5, 1.0)]),
+        Track(Steed.head, chewing),
+        Track(Steed.tail, [k(0, 0, 0.3), k(0.25, 0, -0.3), k(0.5, 0, 0.3), k(0.75, 0, -0.3)]),
+    ])
+    static let mattock = Keyed(loops: true, [
+        Track(Steed.torso, [k(0, 0.2, 0, 0.25), k(0.4, 0.05, 0, 0.25), k(0.55, 0.2225, 0, 0.25), k(0.75, 0.2225, 0, 0.25)]),
+        Track(Steed.armR, [k(0, -0.5, 0, -0.3), k(0.4, -2.5, 0, -0.3), k(0.55, -0.2, 0, -0.3), k(0.75, -0.2, 0, -0.3)]),
+        Track(Steed.forearmR, [k(0, -0.3)]),
+    ])
+
     /// How far the rider is couched down over the neck through the charge.
     static let couch: [(Float, Float)] = [(0, 0.3), (0.2, 1), (0.85, 1), (1, 0.3)]
 

@@ -8,6 +8,83 @@ enum FootClips {
     /// A track that holds one value through the clip.
     static func hold(_ part: UInt16, _ x: Float, _ y: Float = 0, _ z: Float = 0) -> Track { Track(part, [k(0, x, y, z)]) }
 
+    // MARK: Standing
+
+    /// Three breaths a period, the chest rising and falling.
+    static func breathing(_ depth: Float) -> Track {
+        Track(Limb.torso, .stretch, (0..<6).map { index in
+            let full = index % 2 == 0
+            return k(Float(index) / 6 + 1 / 12, 0.012 * depth * (full ? 1 : -1), 0.01 * depth * (full ? 1 : -1), 0.025 * depth * (full ? 1 : -1))
+        })
+    }
+
+    /// Each kind at rest, keyed through a long, slow period.
+    static func idle(_ hands: Gait.Hands) -> Keyed {
+        switch hands {
+        case .spear:
+            // Planted square, the weight moved once from foot to foot, a long look along the line.
+            return Keyed(loops: true, [
+                breathing(1),
+                Track(Limb.hips, .shift, scale: .size, [k(0, 0), k(0.25, 0.01), k(0.5, 0), k(0.75, -0.01)]),
+                Track(Limb.hips, [k(0, 0), k(0.25, 0, 0, 0.03), k(0.5, 0), k(0.75, 0, 0, -0.03)]),
+                Track(Limb.torso, [k(0, 0), k(0.25, 0, 0, -0.04), k(0.5, 0), k(0.75, 0, 0, 0.04)]),
+                Track(Limb.thighL, [k(0, 0), k(0.25, 0, 0, -0.03), k(0.5, 0), k(0.75, 0, 0, 0.03)]),
+                Track(Limb.thighR, [k(0, 0), k(0.25, 0, 0, -0.03), k(0.5, 0), k(0.75, 0, 0, 0.03)]),
+                Track(Limb.head, [k(0, 0), k(0.18, 0), k(0.3, 0.02, 0.5), k(0.46, 0.02, 0.5), k(0.58, -0.02, -0.35), k(0.72, -0.02, -0.35),
+                                  k(0.84, 0)]),
+                Track(Limb.armR, [k(0, 0), k(0.33, 0.03), k(0.66, -0.02)]),
+            ])
+        case .bow:
+            // Restless: shifting often, rolling the shoulders, testing the string, looking far off.
+            return Keyed(loops: true, [
+                breathing(1.1),
+                Track(Limb.hips, .shift, scale: .size, [k(0, 0), k(0.125, 0.012), k(0.375, -0.008), k(0.625, 0.012), k(0.875, -0.008)]),
+                Track(Limb.hips, [k(0, 0), k(0.125, 0, 0, 0.04), k(0.375, 0, 0, -0.03), k(0.625, 0, 0, 0.04), k(0.875, 0, 0, -0.03)]),
+                Track(Limb.torso, [k(0, 0), k(0.2, 0, 0.12, -0.03), k(0.45, 0, -0.08, 0.03), k(0.7, 0, 0.05, 0)]),
+                Track(Limb.head, [k(0, -0.05), k(0.15, -0.05, 0.4), k(0.35, -0.06, 0.4), k(0.5, 0, 0), k(0.7, -0.04, -0.45), k(0.85, -0.04, -0.45)]),
+                Track(Limb.armR, [k(0, 0), k(0.55, 0), k(0.62, -0.5, 0, -0.2), k(0.72, -0.5, 0, -0.2), k(0.8, 0)]),
+                Track(Limb.forearmR, [k(0, 0), k(0.55, 0), k(0.62, 0, 0, 0.6), k(0.72, 0, 0, 0.6), k(0.8, 0)]),
+            ])
+        case .lantern:
+            // Wary: the lantern held out and turned, the head searching the dark all round.
+            return Keyed(loops: true, [
+                breathing(0.9),
+                Track(Limb.torso, [k(0, 0.06), k(0.25, 0.06, 0.15), k(0.5, 0.06), k(0.75, 0.06, -0.15)]),
+                Track(Limb.head, [k(0, -0.05, 0), k(0.12, -0.08, 0.6), k(0.3, -0.08, 0.6), k(0.42, 0.05, 0), k(0.55, -0.08, -0.6),
+                                  k(0.72, -0.08, -0.6), k(0.86, -0.12, 0)]),
+                Track(Limb.armL, [k(0, 0), k(0.25, -0.15, 0, -0.05), k(0.5, 0), k(0.75, -0.15, 0, 0.05)]),
+                Track(Limb.extra, [k(0, 0, 0, 0.12), k(0.25, 0, 0, -0.12), k(0.5, 0, 0, 0.12), k(0.75, 0, 0, -0.12)]),
+                Track(Limb.armR, [k(0, 0), k(0.33, 0.04), k(0.66, -0.03)]),
+            ])
+        case .cart:
+            // Resting on the shafts, breathing hard, wiping the brow once.
+            return Keyed(loops: true, [
+                breathing(1.5),
+                Track(Limb.torso, [k(0, 0.06), k(0.5, 0.1)]),
+                Track(Limb.head, [k(0, 0), k(0.25, 0, 0.3), k(0.5, 0), k(0.75, 0, -0.25)]),
+                Track(Limb.armR, [k(0, 0), k(0.6, 0), k(0.68, -1.6, 0, 0.2), k(0.76, -1.6, 0, 0.35), k(0.84, 0)]),
+                Track(Limb.forearmR, [k(0, 0), k(0.6, 0), k(0.68, -1.1), k(0.76, -1.1), k(0.84, 0)]),
+            ])
+        case .wild, .club:
+            // A slow, wrong tilt of the head; fingers that will not keep still; swaying.
+            return Keyed(loops: true, [
+                breathing(1.6),
+                Track(Limb.head, [k(0, 0, 0, 0.35), k(0.25, 0.05, 0.2, 0), k(0.5, 0, 0, -0.35), k(0.75, 0.05, -0.2, 0)]),
+                Track(Limb.torso, [k(0, 0, 0, 0.05), k(0.5, 0, 0, -0.05)]),
+                Track(Limb.forearmL, (0..<8).map { k(Float($0) / 8, ($0 % 2 == 0 ? 0.15 : -0.15)) }),
+                Track(Limb.forearmR, (0..<8).map { k(Float($0) / 8, ($0 % 2 == 0 ? -0.15 : 0.15)) }),
+                Track(Limb.hips, .shift, scale: .size, [k(0, 0.012), k(0.5, -0.012)]),
+            ])
+        case .free:
+            return Keyed(loops: true, [
+                breathing(1),
+                Track(Limb.hips, .shift, scale: .size, [k(0, 0), k(0.25, 0.012), k(0.5, 0), k(0.75, -0.012)]),
+                Track(Limb.hips, [k(0, 0), k(0.25, 0, 0, 0.035), k(0.5, 0), k(0.75, 0, 0, -0.035)]),
+                Track(Limb.head, [k(0, 0), k(0.18, 0), k(0.3, 0, 0.55), k(0.46, 0, 0.55), k(0.58, 0, -0.4), k(0.72, 0, -0.4), k(0.84, 0)]),
+            ])
+        }
+    }
+
     // MARK: Walking
 
     static func walk(_ hands: Gait.Hands, shield: Bool) -> Keyed {

@@ -11,6 +11,8 @@ struct Track: Sendable {
         case turn
         /// An offset, in the body's own units, added to the part's.
         case shift
+        /// A swelling or a shrinking, by this much more than it was on each axis.
+        case stretch
     }
 
     /// What the keys' values are measured in, given when the clip is played.
@@ -111,6 +113,7 @@ struct Keyed: Sendable {
             switch track.kind {
             case .turn: p.turn(track.part, x: value.x, y: value.y, z: value.z)
             case .shift: p.shift(track.part, value)
+            case .stretch: p.stretch(track.part, Vec3(1, 1, 1) + value)
             }
         }
     }
