@@ -129,6 +129,15 @@ final class GatheringTests: XCTestCase {
         XCTAssertEqual(refusal(.gather(unit: spear, site: site), in: state, as: me), .loadFull)
         state.units[index].load = Stock(grain: 10)
         XCTAssertNil(refusal(.gather(unit: spear, site: site), in: state, as: me), "More of the same, with room")
+        // Another House's company at work on it: the site is taken.
+        let other = try XCTUnwrap(state.units.firstIndex { $0.owner != me && $0.kind.isMilitary })
+        state.units[other].position = there
+        state.units[other].errand = .gather(site: site)
+        XCTAssertEqual(refusal(.gather(unit: spear, site: site), in: state, as: me), .siteTaken)
+        XCTAssertEqual(RuleError.siteTaken.description, "Another House's company is working this site.")
+        // Gone home, it is free again.
+        state.units[other].errand = nil
+        XCTAssertNotEqual(refusal(.gather(unit: spear, site: site), in: state, as: me), .siteTaken)
     }
 
     func testRateAndLoadGrowWithTierCommanderAndStudies() throws {

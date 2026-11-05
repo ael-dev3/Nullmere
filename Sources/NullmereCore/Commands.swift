@@ -291,6 +291,8 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
     case cannotGather(UnitKind)
     /// A company carrying all it can, or another store than the site's.
     case loadFull
+    /// A site another House's company is working: one gatherer at a time.
+    case siteTaken
     /// It is neither gathering nor carrying anything home.
     case notGathering
     case noneGathering
@@ -597,6 +599,7 @@ public enum RuleError: Error, Equatable, Sendable, CustomStringConvertible {
         case .unknownSite: return "Your House knows of no such site."
         case .cannotGather(let kind): return "\(kind.title) gather nothing."
         case .loadFull: return "It carries all it can; bring it home first."
+        case .siteTaken: return "Another House's company is working this site."
         case .notGathering: return "It isn't gathering, and carries nothing home."
         case .noneGathering: return "None of your companies is out gathering."
         case .notSingable: return "That is no deed of your House's to sing of."

@@ -166,7 +166,7 @@ Already in Nullmere, in its own way:
 - [x] An identity kept on the device between sessions; open admission with a queue (Audit of November 4: there was no queue, only a retry. Now the realm keeps a line: keepers with no seat to take wait in the order they first asked and are told their place at the door; a seat that falls free goes to the head of the line, never to whoever asks first; one who stops asking for a minute and a half gives up their place. Played between clients over the fake realm and over a real SpacetimeDB 2.13 server, locally and in CI (waitInLine), and in the rules (testTheRealmKeepsALineForASeat).)
 - [x] New worlds by generation (ages on a fresh lake, Frontier seasons), honest outcomes for every order, the realm's state before entry
 - [x] Four resources with yield, storage and their accounts; a daily reward (favour for each watch kept, with chests)
-- [ ] Sites of the land to gather from, sent from the map, full sites refused, journeys drawn and heard (Audit of November 4: proven in the rules only, never through the realm. Open until two keepers gather and a full site is refused between their clients over SpacetimeDB.)
+- [x] Sites of the land to gather from, sent from the map, full sites refused, journeys drawn and heard (Audit of November 4: proven in the rules only. Now played through SpacetimeDB between two clients: Ama's company gathers a field both clients see fall, and Bel's own company sent to it while hers works it is refused by the realm, "Another House's company is working this site.", one gatherer to a site as in Rise of Kingdoms.)
 - [x] Works at five levels with costs and times, yield works, one rising at a time, the catalogue with each level's gain, construction drawn rising, the seat entered close (the city view)
 - [x] A seeded hex world with its terrain recorded, landmarks, a bounded edge
 - [x] A camera that pans, zooms and turns, labels on every hold, records for holds and companies, selection and hover, one step back at a time, a steady world
@@ -178,7 +178,7 @@ Already in Nullmere, in its own way:
 To build, reimagined:
 - [x] Credits, rolled in the launcher, still under reduced motion
 - [x] The founding watch on a hold's record ("raised in the 23rd watch", under its name)
-- [ ] Bring it home: a gatherer recalled with what it carries, and every gatherer at once (Bring home and All home on its record) (Audit of November 4: proven in the rules and the client only, never through the realm.)
+- [x] Bring it home: a gatherer recalled with what it carries, and every gatherer at once (Bring home and All home on its record) (Audit of November 4: proven in the rules and the client only. Now All home is sent from a keeper's client through SpacetimeDB, and both clients see the errand end.)
 - [x] The watches left of a gathering and of the way home on a gatherer's record; a list of the House's gatherers (folded under a gatherer's record)
 - [x] A gathering's length chosen as it is sent (a watch, three, until full)
 - [x] The camera's buttons on screen (under the small map, while it is shown), and Reset View to the whole House (⌘0)

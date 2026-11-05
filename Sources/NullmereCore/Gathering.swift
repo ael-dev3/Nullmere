@@ -160,6 +160,11 @@ extension GameState {
         guard unit.kind.isMilitary else { return .cannotGather(unit.kind) }
         guard let site = site(siteID), isExplored(site.position, by: house) else { return .unknownSite }
         if let yard = site.alliance, alliance(of: house)?.id != yard { return .foreignYard }
+        let taken = units.contains { other in
+            guard other.owner != house, case .gather(site: siteID)? = other.errand else { return false }
+            return other.position == site.position
+        }
+        if taken { return .siteTaken }
         if let load = unit.load, !load.isZero {
             let carried = Resource.allCases.first { load[$0] > 0 } ?? site.store
             if carried != site.store || load[carried] >= capacity(of: unit, for: carried) { return .loadFull }

@@ -755,6 +755,7 @@ extension RallyScene {
     func gatherAndBringItHome(ama: Int, bel: Int) async throws {
         let staged = StagedWalk()
         let siteBox = StagedWalk()
+        let belBox = StagedWalk()
         await steward.reshape { realm in
             let world = realm.world
             guard let ground = world.map.hexes.first(where: { hex in
@@ -771,6 +772,15 @@ extension RallyScene {
             realm.world.sites = (realm.world.sites ?? []) + [site]
             realm.world.reveal(around: there, range: 2, for: ama)
             realm.world.reveal(around: there, range: 2, for: bel)
+            // Bel's own company two steps off, to try the same field.
+            if let side = there.ring(2).first(where: { hex in
+                world.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true
+                    && world.unit(at: hex) == nil && world.hold(at: hex) == nil && world.site(at: hex) == nil && hex != ground
+            }) {
+                let belID = realm.world.takeID()
+                realm.world.units.append(NullmereCore.Unit(id: belID, kind: .spear, owner: bel, position: side))
+                belBox.unit = belID
+            }
             staged.unit = id
             staged.at = there
             siteBox.unit = site.id
@@ -796,7 +806,16 @@ extension RallyScene {
         }
         let seenByBel = await MainActor.run { earB.world?.unit(unitID)?.position }
         XCTAssertEqual(seenByBel, field, "Bel sees Ama's spears where they gather")
-        await MainActor.run { a.send(.recall(unit: unitID)) }
+        // The field is taken: Bel's own company sent to it from his client
+        // is refused by the realm while Ama's spears work it.
+        let belsSpear = try XCTUnwrap(belBox.unit, "Open ground for Bel's company")
+        try await until("Bel's spears in his client") { earB.world?.unit(belsSpear) != nil }
+        await MainActor.run { b.send(.gather(unit: belsSpear, site: siteID)) }
+        try await until("the realm's refusal: the site is taken") { earB.refusals.contains(RuleError.siteTaken.description) }
+        let belsErrand = await MainActor.run { earB.world?.unit(belsSpear)?.errand }
+        XCTAssertNil(belsErrand, "Bel's spears not sent")
+        // Every gatherer home at once, by All home.
+        await MainActor.run { a.send(.recallAll) }
         try await until("brought home: the errand ended in both clients") {
             let home: (NullmereCore.Unit?) -> Bool = { unit in
                 if case .gather? = unit?.errand { return false }
