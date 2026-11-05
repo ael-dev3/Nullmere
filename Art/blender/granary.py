@@ -268,6 +268,6 @@ for index in range(16):
 join("chaff!fine", chaff)
 
 # Its sack hoist swinging at the loft door as the grain goes up.
-idle(rig, [("sack hoist@%d" % level, (0, 1, 0), lambda u: 0.5 * swing(u)) for level in LEVELS])
+idle(rig, turns=[("sack hoist@%d" % level, (0, 1, 0), lambda u: 0.5 * swing(u)) for level in LEVELS])
 
 finish_building(out_path("Art/models/granary.glb"), [str(level) for level in LEVELS])

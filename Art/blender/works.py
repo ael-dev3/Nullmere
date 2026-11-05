@@ -11,7 +11,7 @@ asked for under their names without their tags. Its motion is one action,
 import math
 
 import bpy
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 from building import *
 from common import *
@@ -48,12 +48,6 @@ def on(obj, rig, bone):
     return obj
 
 
-def turning(rig, bone, axis, angle):
-    """A pose that turns `bone` `angle` radians about `axis` (the world's)."""
-    blender_axis = Vector((axis[0], -axis[2], axis[1])).normalized()
-    return {"rotation": Matrix.Rotation(angle, 3, blender_axis)}
-
-
 def swing(u):
     """A swing's share at a share `u` of the idle: out, held, back past
     rest, and home (Machinery.Swing's in the game)."""
@@ -66,14 +60,58 @@ def swing(u):
     return 0.0
 
 
-def idle(rig, motions, frames=120, step=4):
-    """The work's idle: each moving part as (bone, axis, angle(u)), keyed
-    every `step` frames of `frames`."""
-    keys = {}
-    for frame in range(0, frames + 1, step):
+def wheel_turns(turns):
+    """A wheel's angle at a share `u` of the idle: `turns` whole turns
+    round, at one even rate (Machinery.Wheel's)."""
+    return lambda u: 2 * math.pi * turns * u
+
+
+def leaping(u):
+    """A flame's stretch at a share `u` of the idle: across, up, across
+    (Machinery's flames)."""
+    leap = 0.6 * math.sin(2 * math.pi * u * 5) + 0.4 * math.sin(2 * math.pi * (u * 7 + 0.3))
+    return (1 + 0.08 * leap, 1 + 0.22 * leap, 1 + 0.08 * leap)
+
+
+def idle(rig, turns=(), stretches=(), frames=120):
+    """The work's idle, keyed at every frame of `frames`: each turning part
+    as (bone, axis in the world's axes, angle(u)), each flame as (bone,
+    stretch(u) across, up and across)."""
+    rig.animation_data_create()
+    act = bpy.data.actions.new("idle")
+    rig.animation_data.action = act
+    for pb in rig.pose.bones:
+        pb.rotation_mode = "QUATERNION"
+    last = {}
+    for frame in range(frames + 1):
         u = frame / frames
-        keys[frame] = {bone: turning(rig, bone, axis, angle(u)) for bone, axis, angle in motions}
-    keyed(rig, "idle", frames, keys)
+        for bone, axis, angle in turns:
+            pb = rig.pose.bones[bone]
+            rest = rig.data.bones[bone].matrix_local.to_3x3()
+            turn = Matrix.Rotation(angle(u), 3, Vector((axis[0], -axis[2], axis[1])).normalized())
+            q = (rest.inverted() @ turn @ rest).to_quaternion()
+            # The same turn kept on the side of the last frame's, so a wheel
+            # turned past a half goes on the short way round.
+            if bone in last and q.dot(last[bone]) < 0:
+                q = -q
+            last[bone] = q
+            pb.rotation_quaternion = q
+            pb.keyframe_insert("rotation_quaternion", frame=frame)
+        for bone, stretch in stretches:
+            pb = rig.pose.bones[bone]
+            across, up, deep = stretch(u)
+            # The bone stands upright: its own y is the world's up.
+            pb.scale = Vector((across, up, deep))
+            pb.keyframe_insert("scale", frame=frame)
+    track = rig.animation_data.nla_tracks.new()
+    track.name = "idle"
+    strip = track.strips.new("idle", 0, act)
+    strip.name = "idle"
+    rig.animation_data.action = None
+    for pb in rig.pose.bones:
+        pb.rotation_quaternion = Quaternion()
+        pb.scale = Vector((1, 1, 1))
+    return act
 
 
 # MARK: What works are built of
