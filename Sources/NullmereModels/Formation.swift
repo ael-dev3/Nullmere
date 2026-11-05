@@ -172,8 +172,11 @@ public enum Formation {
             var z = front - Float(rank) * depth
             // A little out of line, the same each time it is drawn.
             let h = UInt32(truncatingIfNeeded: seed &* 7_919 &+ index &* 104_729)
-            x += (Float(h % 97) / 97 - 0.5) * spacing * 0.5
-            z += (Float((h / 97) % 89) / 89 - 0.5) * depth * 0.5
+            // A battle's ranks are broken: each man well off his place, and
+            // the front ranks surging forward unevenly where the press is.
+            x += (Float(h % 97) / 97 - 0.5) * spacing * 0.95
+            z += (Float((h / 97) % 89) / 89 - 0.5) * depth * 0.9
+            if rank < 2 { z += Float((h / 8_633) % 61) / 61 * depth * 0.8 }
             let reach = (x * x + z * z).squareRoot(), most = hexInner - 0.05
             if reach > most { x *= most / reach; z *= most / reach }
             offsets.append(Vec3(x, 0, z))
