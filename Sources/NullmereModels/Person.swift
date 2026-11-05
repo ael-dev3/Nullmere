@@ -371,71 +371,6 @@ enum Person {
         }
     }
 
-    /// A bow in the left hand, upright, its string toward the archer; it
-    /// grows longer and is tipped with steel from the fourth tier.
-    static func bow(_ b: inout MeshBuilder, _ f: Frame, tier: Int) {
-        let hand = f.handL
-        let half: Float = 0.4 + 0.06 * Float(min(tier, 4))
-        let bend: Float = tier >= 5 ? 0.13 : 0.1
-        let wood = tier >= 4 ? Palette.timberDark : Palette.timber
-        var points: [Vec3] = []
-        for index in -3...3 {
-            let t = Float(index) / 3
-            points.append(hand + Vec3(0.01, t * half, bend * (1 - t * t)))
-        }
-        if tier >= 5 {
-            // Recurved: the tips turn forward.
-            points[0] += Vec3(0, 0.02, 0.07)
-            points[6] += Vec3(0, -0.02, 0.07)
-        }
-        b.with(part: Limb.heldL) {
-            for index in 0..<(points.count - 1) {
-                let thick: Float = abs(Float(index) - 2.5) < 1 ? 0.034 : 0.026
-                $0.limb(from: points[index], to: points[index + 1], radius: thick, topRadius: thick, sides: 3, color: wood)
-            }
-            if tier >= 4 {
-                $0.with(material: .metal) {
-                    for tip in [points[0], points[6]] {
-                        $0.place(.translation(tip - Vec3(0, 0.03, 0))) {
-                            $0.cone(sides: 3, radius: 0.03, to: 0.06, color: Palette.steel)
-                        }
-                    }
-                }
-            }
-        }
-        // The string, straight between the tips, set aside while drawn.
-        b.with(part: Bowman.string) {
-            $0.limb(from: points[0], to: points[6], radius: 0.006, sides: 3, color: Palette.linen)
-        }
-        // On the string while drawn: the arrow, and the string pulled back to it.
-        b.with(part: Limb.extra) {
-            let nock = hand + Vec3(0.01, 0, -0.5), head = hand + Vec3(0.01, 0, bend + 0.07)
-            $0.limb(from: nock, to: head, radius: 0.01, sides: 3, color: Palette.timberPale)
-            $0.with(material: .metal) {
-                $0.place(.translation(head) * .rotationX(.pi / 2)) {
-                    $0.cone(sides: 3, radius: 0.022, to: 0.06, color: Palette.steel)
-                }
-            }
-            $0.limb(from: nock, to: points[0], radius: 0.006, sides: 3, color: Palette.linen)
-            $0.limb(from: nock, to: points[6], radius: 0.006, sides: 3, color: Palette.linen)
-        }
-    }
-
-    /// A quiver on the back, its arrows' fletchings showing.
-    static func quiver(_ b: inout MeshBuilder, _ f: Frame, color: Vec3) {
-        b.with(part: Limb.torso) {
-            let foot = Vec3(0.08, f.hip - 0.02, -0.12), mouth = Vec3(-0.05, f.shoulder + 0.07, -0.15)
-            $0.place(.translation(foot) * Mat4.aligningUp(to: mouth - foot)) {
-                $0.lathe([(0.042, 0), (0.046, (mouth - foot).length)], sides: 5, color: color)
-            }
-            for index in 0..<3 {
-                let spread = Vec3(Float(index - 1) * 0.026, 0.08, Float(index % 2) * 0.014)
-                $0.sheet([mouth, mouth + spread + Vec3(0.012, 0, 0), mouth + spread + Vec3(0.012, 0.03, 0)], normal: Vec3(0, 0, 1),
-                         color: Palette.linen)
-            }
-        }
-    }
-
     /// The mattock a figure brings out to gather: its haft runs on from
     /// the hand, down and forward at rest, its head across the haft's end.
     static func mattock(_ b: inout MeshBuilder, _ f: Frame) {
@@ -451,38 +386,17 @@ enum Person {
     }
 }
 
-/// The parts an archer adds to a person.
+/// The parts an archer adds to a person (made in Blender, its bones kept
+/// in this order: Art/blender/archer.py).
 enum Bowman {
     /// The bow's string at rest, put away while it is drawn.
     static let string: UInt16 = 17
 }
 
-/// Each kind's own build: the bodies of those who draw bows, carry
-/// lanterns, haul and crew, ride and lead are not one body in different
-/// dress. (The spearman's is made in Blender, Art/blender/spearman.py.)
+/// Each kind's own build: the bodies of those who carry lanterns, haul and
+/// crew, ride and lead are not one body in different dress. (The
+/// spearman's and the archer's are made in Blender, in Art/blender.)
 extension Frame {
-    /// An archer: tall and spare, long in the leg and the arm, narrow at
-    /// the waist, the shoulders drawn back by the bow.
-    static var lean: Frame {
-        var f = Frame()
-        f.size = 0.315
-        f.girth = 0.86
-        f.chest = 0.95
-        f.belly = 0.88
-        f.shoulderX = 0.142
-        f.hipX = 0.064
-        f.knee = 0.29
-        f.hip = 0.53
-        f.waist = 0.56
-        f.shoulder = 0.772
-        f.elbow = 0.57
-        f.wrist = 0.4
-        f.neck = 0.815
-        f.head = 0.888
-        f.headRadius = 0.071
-        return f
-    }
-
     /// A lantern-bearer: slight and wiry, long-armed, a large head on a
     /// thin neck.
     static var wiry: Frame {

@@ -10,6 +10,8 @@ then any its kind adds. Pieces are tagged for the tiers (@1-5) and the
 variants (@saltborn) they are worn at; "!fine" only near.
 """
 import math
+import os
+import re
 
 from common import *
 
@@ -94,11 +96,16 @@ class Person:
     """A kind's figure: its armature, its build and its materials; `variants`
     the heritages it is also made for, as a list in tags ("saltborn,...")."""
 
-    def __init__(self, name, variants, build=None, more_bones=()):
+    def __init__(self, name, variants, build=None, more_bones=(), moved=None):
+        """`more_bones` added after the feet; `moved`, {name: (head, tail,
+        parent)}, bones of the shared rig hung elsewhere by this kind (the
+        archer's `extra` at the bow, for its drawn arrow)."""
         self.build = build or Build()
         self.p = Palette()
         self.variants = variants
-        self.rig = armature(name, self.bones() + list(more_bones))
+        bones = [(name_, *moved[name_]) if moved and name_ in moved else (name_, head, tail, parent)
+                 for name_, head, tail, parent in self.bones()]
+        self.rig = armature(name, bones + list(more_bones))
 
     def ax(self, x):
         """An x across the body where the arms hang, by the build."""
@@ -226,25 +233,16 @@ class Person:
 
     # MARK: What a tier or variant wears over it
 
-    def coat(self, tags, mat, skirt_mat, sleeve_mat, long=False):
+    def coat(self, tags, mat, skirt_mat, sleeve_mat, long=False, hem=None, body=True):
         """The coat of a tier: body, skirt and sleeves, lean afar and round
-        close; plate, for the tiers that wear it, is the coat's body."""
+        close; plate, for the tiers that wear it, is the coat's body. Its
+        skirt to the knee, long to the shin, or to `hem`; its body left
+        out (`body` False) where a tabard covers it whole."""
         rig, g, a = self.rig, self.g, self.ax
-        paired(rig, "coat", [
-            ((0, 0.0, 0.84), g(0.19), g(0.125), {"hips": 1.0}),
-            ((0, 0.0, 0.98), g(0.165), g(0.112), {"hips": 0.5, "torso": 0.5}),
-            ((0, -0.005, 1.12), g(0.178), g(0.118), {"torso": 1.0}),
-            ((0, -0.015, 1.26), g(0.205), g(0.132), {"torso": 1.0}),
-            ((0, 0.0, 1.36), g(0.215), g(0.12), {"torso": 1.0}),
-            ((0, 0.005, 1.43), g(0.09), g(0.085), {"torso": 1.0}),
-        ], far=8, near=16, between=1, mat=mat, tags=tags)
-        hem = 0.52 if long else 0.70
-        paired(rig, "skirt", [
-            ((0, 0.0, 0.99), g(0.171), g(0.118), {"hips": 1.0}),
-            ((0, 0.0, 0.86), g(0.20), g(0.135), skirt_weights(0.8)),
-            ((0, 0.006, hem), g(0.218 + (0.02 if long else 0)), g(0.152 + (0.015 if long else 0)),
-             skirt_weights(0.45 if not long else 0.35)),
-        ], far=8, near=16, between=2, mat=skirt_mat, tags=tags)
+        if body:
+            self.coat_body(tags, mat)
+        hem = hem if hem is not None else 0.52 if long else 0.70
+        self.skirt(tags, skirt_mat, hem, long)
         for s, side in ((1, "L"), (-1, "R")):
             arm, forearm = "arm" + side, "forearm" + side
             paired(rig, "sleeve " + side, [
@@ -252,6 +250,26 @@ class Person:
                 ((a(s * 0.262), 0.0, 1.25), g(0.063), g(0.067), {"torso": 0.1, arm: 0.9}),
                 ((a(s * 0.282), 0.0, 1.02), g(0.053), g(0.055), {arm: 0.5, forearm: 0.5}),
             ], far=6, near=12, between=2, mat=sleeve_mat, tags=tags)
+
+    def coat_body(self, tags, mat):
+        g = self.g
+        paired(self.rig, "coat", [
+            ((0, 0.0, 0.84), g(0.19), g(0.125), {"hips": 1.0}),
+            ((0, 0.0, 0.98), g(0.165), g(0.112), {"hips": 0.5, "torso": 0.5}),
+            ((0, -0.005, 1.12), g(0.178), g(0.118), {"torso": 1.0}),
+            ((0, -0.015, 1.26), g(0.205), g(0.132), {"torso": 1.0}),
+            ((0, 0.0, 1.36), g(0.215), g(0.12), {"torso": 1.0}),
+            ((0, 0.005, 1.43), g(0.09), g(0.085), {"torso": 1.0}),
+        ], far=8, near=16, between=1, mat=mat, tags=tags)
+
+    def skirt(self, tags, mat, hem, long):
+        g = self.g
+        paired(self.rig, "skirt", [
+            ((0, 0.0, 0.99), g(0.171), g(0.118), {"hips": 1.0}),
+            ((0, 0.0, 0.86), g(0.20), g(0.135), skirt_weights(0.8)),
+            ((0, 0.006, hem), g(0.218 + (0.02 if long else 0)), g(0.152 + (0.015 if long else 0)),
+             skirt_weights(0.45 if not long else 0.35)),
+        ], far=8, near=16, between=2, mat=mat, tags=tags)
 
     def mail_hem(self, tags, mat=None):
         """Mail's hem below the coat."""
@@ -293,6 +311,24 @@ class Person:
         hang(dome(name + " close" + tags + "!fine", helm_radii(margin + 0.004), HEAD, segments=14, rings=5, mat=mat, floor=floor),
              self.rig, "head")
 
+    def hood(self, tags, mat):
+        """A hood over the head, open before the face, its tail down the back."""
+        for name, margin, segments, rings in (("hood" + tags, 0.02, 8, 3), ("hood close" + tags + "!fine", 0.024, 14, 5)):
+            obj = dome(name, helm_radii(margin), (HEAD[0], HEAD[1] + 0.022, HEAD[2] + 0.004), segments=segments, rings=rings, mat=mat,
+                       floor=-0.10)
+            bm = bmesh.new()
+            bm.from_mesh(obj.data)
+            # The face cut away by a plane leaning back from the chin to the brow.
+            normal = Vector((0, -1, 0.42)).normalized()
+            bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], dist=1e-6,
+                                   plane_co=(0, HEAD[1] - 0.07, HEAD[2] + 0.01), plane_no=normal, clear_outer=True)
+            bm.to_mesh(obj.data)
+            bm.free()
+            hang(obj, self.rig, "head")
+        tail = solid("hood tail%s!fine" % tags, "cone", mat=mat, vertices=6, radius1=0.035, depth=0.2,
+                     location=(0, HEAD[1] + 0.13, HEAD[2] - 0.12), rotation=(200, 0, 0))
+        hang(tail, self.rig, "head")
+
     def nasal_helm(self, tags, mat):
         parts = [dome("helm", helm_radii(0.01), HEAD, segments=8, rings=2, mat=mat, floor=-0.025)]
         for s in (1, -1):
@@ -302,10 +338,10 @@ class Person:
         hang(solid("nasal%s!fine" % tags, "box", mat=self.p.steel, location=at_head(0, -0.115, 0.005), size=(0.02, 0.012, 0.075)),
              self.rig, "head")
 
-    def crested(self, tags, mat):
+    def crested(self, tags, mat, cheeks=True):
         parts = [dome("helm", helm_radii(0.012), HEAD, segments=8, rings=2, mat=mat, floor=-0.03),
                  solid("crest", "box", mat=self.p.tunic, location=at_head(0, 0.0, 0.135), size=(0.032, 0.24, 0.065))]
-        for s in (1, -1):
+        for s in (1, -1) if cheeks else ():
             parts.append(solid("cheek", "box", mat=mat, location=at_head(s * 0.094, -0.035, -0.05), size=(0.02, 0.08, 0.11)))
         hang(join("crested helm" + tags, parts), self.rig, "head")
         hang(dome("crested helm close%s!fine" % tags, helm_radii(0.016), HEAD, segments=14, rings=5, mat=mat, floor=-0.03), self.rig, "head")
@@ -384,7 +420,8 @@ class Person:
                  "thighL": (-22, 0, 0), "shinL": (28, 0, 0), "thighR": (-14, 0, 0), "shinR": (18, 0, 0),
                  "armL": (-10, -72, 0), "forearmL": (-20, 0, 0), "heldL": (20, 0, 0),
                  "armR": (-6, 66, 0), "forearmR": (-12, 0, 0), "heldR": (12, 0, 0), "footL": (10, 0, 0), "footR": (6, 0, 0),
-                 "cloak": (-60, 0, 0)}
+                 # Lying on its back, the cloak spread on the ground beneath.
+                 "cloak": (6, 0, 0)}
         keys = {
             0: merge(carry, {}),
             6: merge(carry, {"torso": (-10, 0, 0), "head": (-15, 0, 0), "hips": {"turn": (0, 0, 0), "shift": (0, 0.015, 0)}}),
@@ -393,7 +430,7 @@ class Person:
             22: {"hips": {"turn": (-45, 0, 2), "shift": (0, 0.07, -0.36)}, "torso": (-8, 0, 0), "head": (-14, 0, 8),
                  "thighL": (-34, 0, 0), "shinL": (54, 0, 0), "thighR": (-28, 0, 0), "shinR": (48, 0, 0),
                  "armL": (-14, -36, 0), "forearmL": (-40, 0, 0), "heldL": (40, 0, 0),
-                 "armR": (-8, 34, 0), "forearmR": (-20, 0, 0), "heldR": (20, 0, 0), "cloak": (-30, 0, 0)},
+                 "armR": (-8, 34, 0), "forearmR": (-20, 0, 0), "heldR": (20, 0, 0), "cloak": (-12, 0, 0)},
             36: lying,
             38: lying,
             45: lying,
@@ -425,6 +462,10 @@ class Person:
     def finish(self, path, looks):
         """Every mesh cleaned, each look's triangles far and near told, and
         the figure written out. `looks`: (tier, variant or None) pairs."""
+        doubled = [obj.name for obj in bpy.context.scene.objects if obj.type == "MESH" and re.search(r"\.\d{3}$", obj.name)]
+        if doubled:
+            # Blender's suffix for a name taken: the tags would not read.
+            raise ValueError("pieces named twice: %s" % ", ".join(sorted(doubled)))
         for obj in bpy.context.scene.objects:
             if obj.type == "MESH":
                 clean(obj)
@@ -438,6 +479,10 @@ class Person:
                 else:
                     coarse += triangles(obj)
             print("%s: %d triangles far, %d near" % (variant or "TIER %d" % tier, coarse, coarse + fine))
+            if os.environ.get("NULLMERE_PIECES") == (variant or str(tier)):
+                for obj in sorted((o for o in bpy.context.scene.objects if o.type == "MESH" and drawn(o.name, tier, variant)),
+                                  key=lambda o: -triangles(o)):
+                    print("    %4d %s" % (triangles(obj), obj.name))
         export(path)
 
 

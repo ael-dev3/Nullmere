@@ -34,17 +34,6 @@ enum FootClips {
                                   k(0.84, 0)]),
                 Track(Limb.armR, [k(0, 0), k(0.33, 0.03), k(0.66, -0.02)]),
             ])
-        case .bow:
-            // Restless: shifting often, rolling the shoulders, testing the string, looking far off.
-            return Keyed(loops: true, [
-                breathing(1.1),
-                Track(Limb.hips, .shift, scale: .size, [k(0, 0), k(0.125, 0.012), k(0.375, -0.008), k(0.625, 0.012), k(0.875, -0.008)]),
-                Track(Limb.hips, [k(0, 0), k(0.125, 0, 0, 0.04), k(0.375, 0, 0, -0.03), k(0.625, 0, 0, 0.04), k(0.875, 0, 0, -0.03)]),
-                Track(Limb.torso, [k(0, 0), k(0.2, 0, 0.12, -0.03), k(0.45, 0, -0.08, 0.03), k(0.7, 0, 0.05, 0)]),
-                Track(Limb.head, [k(0, -0.05), k(0.15, -0.05, 0.4), k(0.35, -0.06, 0.4), k(0.5, 0, 0), k(0.7, -0.04, -0.45), k(0.85, -0.04, -0.45)]),
-                Track(Limb.armR, [k(0, 0), k(0.55, 0), k(0.62, -0.5, 0, -0.2), k(0.72, -0.5, 0, -0.2), k(0.8, 0)]),
-                Track(Limb.forearmR, [k(0, 0), k(0.55, 0), k(0.62, 0, 0, 0.6), k(0.72, 0, 0, 0.6), k(0.8, 0)]),
-            ])
         case .lantern:
             // Wary: the lantern held out and turned, the head searching the dark all round.
             return Keyed(loops: true, [
@@ -90,7 +79,6 @@ enum FootClips {
     static func walk(_ hands: Gait.Hands, shield: Bool) -> Keyed {
         switch hands {
         case .spear: return spearWalk(shield: shield)
-        case .bow: return bowWalk
         case .lantern: return lanternWalk
         case .cart: return cartWalk
         case .wild: return wildLope
@@ -116,23 +104,6 @@ enum FootClips {
             Track(Limb.armR, [k(0, 0), k(0.25, -0.1), k(0.5, 0), k(0.75, 0.1)]),
         ])
     }
-
-    /// The archer's step: light and quick, up on the balls of the feet,
-    /// leaning into the going, the free arm swinging wide and the bow arm
-    /// carrying it level.
-    static let bowWalk = Keyed(loops: true, [
-        Track(Limb.thighL, scale: .stride, [k(0, 0), k(0.25, -1.05), k(0.5, 0), k(0.75, 1)]),
-        Track(Limb.thighR, scale: .stride, [k(0, 0), k(0.25, 1), k(0.5, 0), k(0.75, -1.05)]),
-        Track(Limb.shinL, [k(0, 1.15), k(0.1, 0.75), k(0.25, 0.08), k(0.5, 0.2), k(0.75, 0.1), k(0.9, 0.7)]),
-        Track(Limb.shinR, [k(0, 0.2), k(0.25, 0.1), k(0.4, 0.7), k(0.5, 1.15), k(0.6, 0.75), k(0.75, 0.08)]),
-        Track(Limb.hips, .shift, scale: .size, [k(0, 0, 0.018), k(0.25, 0, -0.006), k(0.5, 0, 0.018), k(0.75, 0, -0.006)]),
-        Track(Limb.hips, [k(0, 0), k(0.25, 0, -0.12), k(0.5, 0), k(0.75, 0, 0.12)]),
-        Track(Limb.torso, [k(0, 0.09), k(0.25, 0.08, 0.16), k(0.5, 0.09), k(0.75, 0.08, -0.16)]),
-        Track(Limb.head, [k(0, -0.03), k(0.25, -0.04, -0.08), k(0.5, -0.03), k(0.75, -0.04, 0.08)]),
-        Track(Limb.armL, [k(0, 0), k(0.25, 0.22), k(0.5, 0), k(0.75, -0.22)]),
-        Track(Limb.armR, [k(0, 0), k(0.25, -0.34), k(0.5, 0), k(0.75, 0.34)]),
-        Track(Limb.forearmR, [k(0, -0.1), k(0.25, -0.05), k(0.5, -0.1), k(0.75, -0.3)]),
-    ])
 
     /// The lantern-bearer's careful way into the dark: stooped, short
     /// steps, the head turning to look one side and then the other, the
@@ -218,24 +189,6 @@ enum FootClips {
         hold(Limb.thighL, -0.45), hold(Limb.shinL, 0.35), hold(Limb.thighR, 0.35), hold(Limb.shinR, 0.25),
     ])
 
-    /// How far the bow is raised through the loose, and how far drawn.
-    static let bowRaise = Track(0, [k(0, 0.35), k(0.15, 1), k(0.78, 1), k(0.95, 0.4)])
-    static let bowDraw: [(Float, Float)] = [(0, 0), (0.15, 0.1), (0.5, 1), (0.6, 1), (0.63, 0), (1, 0)]
-
-    /// The loose: the bow raised, the string drawn to the cheek, held, let
-    /// fly, and the bow lowered half-way.
-    static let loose = Keyed(loops: true, [
-        Track(Limb.torso, [k(0, 0, -0.16), k(0.15, 0, -0.45), k(0.78, 0, -0.45), k(0.95, 0, -0.18)]),
-        Track(Limb.head, [k(0, 0, 0.14), k(0.15, 0, 0.4), k(0.78, 0, 0.4), k(0.95, 0, 0.16)]),
-        Track(Limb.armL, [k(0, -0.51, 0.16), k(0.15, -1.45, 0.45), k(0.78, -1.45, 0.45), k(0.95, -0.58, 0.18)]),
-        Track(Limb.forearmL, [k(0, 0.12), k(0.15, 0.35), k(0.78, 0.35), k(0.95, 0.14)]),
-        Track(Limb.armR, [k(0, -0.52, -0.09), k(0.15, -1.5, -0.35), k(0.5, -1.5, -1.25), k(0.6, -1.5, -1.25), k(0.66, -1.5, -0.3),
-                          k(0.78, -1.5, -0.25), k(0.95, -0.6, -0.1)]),
-        Track(Limb.forearmR, [k(0, 0, 0, 0.18), k(0.15, 0, 0, 0.71), k(0.5, 0, 0, 2.6), k(0.6, 0, 0, 2.6), k(0.66, 0, 0, 0.55),
-                              k(0.78, 0, 0, 0.5), k(0.95, 0, 0, 0.2)]),
-        hold(Limb.thighL, -0.2), hold(Limb.thighR, 0.2),
-    ])
-
     /// The lantern lifted high, flaring, and lowered.
     static let lift: [(Float, Float)] = [(0, 0), (0.3, 1), (0.72, 1), (1, 0)]
     static let raiseLantern = Keyed(loops: true, [
@@ -314,16 +267,6 @@ enum FootClips {
                 struck(Limb.forearmL, shield ? Vec3(-0.38, 0, 0) : Vec3(-1.0, 0, 0)),
                 struck(Limb.armR, Vec3(0.3, 0, -0.22)),
             ])
-        case .bow:
-            // No shield: thrown back a full step, arms up over the face.
-            return Keyed(loops: true, [
-                struck(Limb.torso, Vec3(-0.46, 0.28, 0.1)), struck(Limb.head, Vec3(-0.4, -0.45, 0.12)),
-                struck(Limb.hips, .shift, scale: .size, Vec3(0, -0.04, -0.09)),
-                struck(Limb.thighR, Vec3(0.5, 0, 0)), struck(Limb.shinR, Vec3(0.35, 0, 0)),
-                struck(Limb.thighL, Vec3(-0.3, 0, 0)), struck(Limb.shinL, Vec3(0.5, 0, 0)),
-                struck(Limb.armL, Vec3(-0.9, 0, -0.3)), struck(Limb.forearmL, Vec3(-0.7, 0, 0)),
-                struck(Limb.armR, Vec3(-1.2, 0, 0.3)), struck(Limb.forearmR, Vec3(-1.1, 0, 0)),
-            ])
         case .lantern:
             // Flinching from it, the lantern held away, the free arm across the face.
             return Keyed(loops: true, [
@@ -388,7 +331,7 @@ enum FootClips {
                 Track(Limb.thighR, [k(0, 0), k(0.3, -0.45), k(0.75, -0.18), k(0.85, -0.18)]),
                 Track(Limb.shinR, [k(0, 0), k(0.3, 0.8), k(0.75, 0.32), k(0.85, 0.32)]),
             ])
-        case .bow, .free:
+        case .free:
             // Crumpling to the knees, then turning as it goes down on its back.
             return Keyed(loops: false, [
                 Track(Limb.hips, [k(0, 0), k(0.3, -0.12, 0.1), k(0.8, -1.571, 0.4), k(0.85, -1.571, 0.4)]),

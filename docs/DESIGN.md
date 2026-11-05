@@ -60,11 +60,16 @@ the keeper's realm last lay on, made as it plays.
 
 ### Every model, made in Blender or built from code
 
-Every model is original. The spearman is made in Blender, by a script
-([`Art/blender/spearman.py`](../Art/blender/spearman.py)) that builds his
-body, gear and skeleton and keys his actions: his skin is weighted to the
+Every model is original. The spearman and the archer are made in Blender,
+each by a script ([`Art/blender/spearman.py`](../Art/blender/spearman.py),
+[`archer.py`](../Art/blender/archer.py)) that builds the body, gear and
+skeleton and keys the actions, on one body every person on foot shares
+([`person.py`](../Art/blender/person.py)): the skin is weighted to the
 bones each side of a joint, so it bends there rather than breaking, and
-each of his tiers and heritages is a set of tagged pieces in one file. The
+each tier and heritage is a set of tagged pieces in one file. The
+archer's draw is worked out where his hands must be, the bow arm laid at
+the foe and the drawing hand at his cheek, the string and the arrow on it
+weighted to the bow at one end and to the hand at the other. The
 file is glTF binary, written in one fixed order so the same script always
 makes the same bytes, and the game carries it and reads it with an
 importer of its own ([`Asset.swift`](../Sources/NullmereModels/Asset.swift)):

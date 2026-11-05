@@ -71,6 +71,18 @@ def influences(gltf, primitive, joints, weights, joint_bytes, weight_bytes, coun
     return struct.pack(f"<{count * 4}{joint_form}", *out_j), struct.pack(f"<{count * 4}{weight_form}", *out_w)
 
 
+# Where a cut crosses an edge, Blender works the new point out from either
+# end as the edge happens to be held, so its last bit can differ from run
+# to run; points and normals are kept to ten micrometres, which no eye or
+# light can tell, and the same model is written the same.
+SNAP = 1e-5
+
+
+def snapped(data):
+    values = struct.unpack(f"<{len(data) // 4}f", data)
+    return struct.pack(f"<{len(values)}f", *(round(v / SNAP) * SNAP + 0.0 for v in values))
+
+
 def ordered(gltf, binary, primitive):
     """A primitive's vertices in the order of what they hold, and its
     triangles in order, each begun at its least vertex, its winding kept:
@@ -87,6 +99,9 @@ def ordered(gltf, binary, primitive):
                                                            columns[joints], columns[weights], count)
     if any(gltf["accessors"][primitive["attributes"][name]]["count"] != count for name in names):
         raise ValueError("attributes of unequal counts")
+    for name in ("POSITION", "NORMAL"):
+        if name in columns:
+            columns[name] = snapped(columns[name])
     if primitive.get("mode", 4) != 4:
         raise ValueError("primitives other than triangles aren't kept")
     if "indices" not in primitive:
@@ -126,6 +141,11 @@ def canonical(data):
             raw = accessor_bytes(gltf, binary, index)
         target = gltf["bufferViews"][old["bufferView"]].get("target")
         described = {k: v for k, v in old.items() if k not in ("bufferView", "byteOffset", "name")}
+        if "min" in described and described.get("componentType") == 5126 and described.get("type") == "VEC3":
+            # The bounds of what is written, not of what was read.
+            values = struct.unpack(f"<{len(raw) // 4}f", raw)
+            described["min"] = [min(values[k::3]) for k in range(3)]
+            described["max"] = [max(values[k::3]) for k in range(3)]
         key = (json.dumps(described, sort_keys=True), target, raw)
         if key in made:
             return made[key]

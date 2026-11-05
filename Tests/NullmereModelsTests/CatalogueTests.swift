@@ -402,13 +402,20 @@ final class CatalogueTests: XCTestCase {
         return far
     }
 
+    /// A company's figure far off as it stands, at the start of its idle:
+    /// one made in Blender is made with its arms straight down, a pose no
+    /// clip takes, and is drawn as its clips hold it.
+    static func standing(_ key: ModelKey) -> Mesh {
+        far(PreviewTests.posed(Library.model(key), .idle, 0))
+    }
+
     /// Kinds and tiers read apart at a glance: as a company is drawn among
-    /// the hundreds, far off, by the shape of its figures. Close, every
-    /// figure is the same rounded body under its kit, and is told by its
-    /// kit, its colours and its gear.
+    /// the hundreds, far off, by the shape of its figures as they stand.
+    /// Close, every figure is the same rounded body under its kit, and is
+    /// told by its kit, its colours and its gear.
     func testKindsAndTiersAreToldApart() {
         let companies = CatalogueTests.keys.filter(CatalogueTests.isCompany)
-        let shapes = companies.map { CatalogueTests.cells(CatalogueTests.far(Library.model($0).mesh)) }
+        let shapes = companies.map { CatalogueTests.cells(CatalogueTests.standing($0)) }
         for i in companies.indices {
             for j in companies.indices where j > i {
                 let unlike = CatalogueTests.unlike(shapes[i], shapes[j])
@@ -420,8 +427,8 @@ final class CatalogueTests: XCTestCase {
             let kinds = [ModelKey.figure(.spear, tier: tier), .figure(.bow, tier: tier), .figure(.rider, tier: tier)]
             for i in kinds.indices {
                 for j in kinds.indices where j > i {
-                    let unlike = CatalogueTests.unlike(CatalogueTests.cells(CatalogueTests.far(Library.model(kinds[i]).mesh)),
-                                                       CatalogueTests.cells(CatalogueTests.far(Library.model(kinds[j]).mesh)))
+                    let unlike = CatalogueTests.unlike(CatalogueTests.cells(CatalogueTests.standing(kinds[i])),
+                                                       CatalogueTests.cells(CatalogueTests.standing(kinds[j])))
                     XCTAssertGreaterThan(unlike, 0.35, "\(kinds[i]) and \(kinds[j]) read apart")
                 }
             }

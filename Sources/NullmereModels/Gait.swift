@@ -6,8 +6,6 @@ struct Gait: Sendable {
     enum Hands: Sendable {
         /// A spear upright in the right hand.
         case spear
-        /// A bow in the left hand.
-        case bow
         /// A lantern's staff in the left hand.
         case lantern
         /// A handcart's shafts in both.
@@ -56,9 +54,6 @@ struct Gait: Sendable {
         var p = Pose(count: parts)
         let u = clip.progress(at: time)
         p.hide(Limb.tool)
-        if hands == .bow {
-            p.hide(Limb.extra)
-        }
         switch clip {
         case .idle: idle(&p, u)
         case .march: march(&p, u)
@@ -78,13 +73,6 @@ struct Gait: Sendable {
         case .spear:
             p.turn(Limb.armR, x: -0.12, z: -0.05)
             p.turn(Limb.forearmR, x: -0.5)
-        case .bow:
-            // The bow held before the left hip, slanting across the body.
-            p.turn(Limb.armL, x: -0.3, z: 0.05)
-            p.turn(Limb.forearmL, x: -0.75)
-            p.turn(Limb.heldL, z: 0.35)
-            p.turn(Limb.armR, z: -0.06)
-            p.turn(Limb.forearmR, x: -0.2)
         case .lantern:
             p.turn(Limb.armL, x: -0.25, z: 0.08)
             p.turn(Limb.forearmL, x: -0.55)
@@ -115,13 +103,11 @@ struct Gait: Sendable {
     }
 
     /// Keeps what is held at its angle however the arm stands: a spear
-    /// upright, a bow upright, a lantern hanging.
-    func level(_ p: inout Pose, spear: Float = 0, bow: Float = 0) {
+    /// upright, a lantern hanging.
+    func level(_ p: inout Pose, spear: Float = 0) {
         switch hands {
         case .spear:
             p.turn(Limb.heldR, x: spear - p.pitch(through: [Limb.hips, Limb.torso, Limb.armR, Limb.forearmR]))
-        case .bow:
-            p.turn(Limb.heldL, x: bow - p.pitch(through: [Limb.hips, Limb.torso, Limb.armL, Limb.forearmL]))
         case .lantern:
             p.turn(Limb.heldL, x: -p.pitch(through: [Limb.hips, Limb.torso, Limb.armL, Limb.forearmL]))
             p.turn(Limb.extra, x: -p.pitch(through: [Limb.root, Limb.hips, Limb.torso, Limb.armL, Limb.forearmL, Limb.heldL]))
@@ -155,7 +141,6 @@ struct Gait: Sendable {
         carry(&p)
         switch hands {
         case .spear: thrust(&p, u)
-        case .bow: loose(&p, u)
         case .lantern: raise(&p, u)
         case .cart, .free: swing(&p, u, high: true)
         case .wild: rake(&p, u)
@@ -167,19 +152,6 @@ struct Gait: Sendable {
     func thrust(_ p: inout Pose, _ u: Float) {
         FootClips.thrust.apply(&p, u, size: size)
         level(&p, spear: .pi / 2)
-    }
-
-    /// A bow raised, drawn to the cheek, loosed, and lowered half-way.
-    func loose(_ p: inout Pose, _ u: Float) {
-        let raise = FootClips.bowRaise.value(at: u, loops: true).x
-        let draw = Motion.key(u, FootClips.bowDraw)
-        p.joints[Int(Limb.heldL)].rotation.z = 0.35 * (1 - raise)
-        FootClips.loose.apply(&p, u, size: size)
-        if u > 0.12 && u < 0.62 {
-            p.joints[Int(Limb.extra)].scale = Vec3(1, 1, 0.35 + 0.65 * draw)
-            p.hide(Bowman.string)
-        }
-        level(&p, bow: 0)
     }
 
     /// A lantern lifted high, flaring, and lowered.

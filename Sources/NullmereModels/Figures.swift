@@ -7,7 +7,7 @@ enum Figures {
     static func build(_ kind: UnitKind, tier: Int, name: String) -> Model {
         switch kind {
         case .spear: return Art.figure(Art.spearman, tier: tier, name: name)
-        case .bow: return archer(tier: tier, name: name)
+        case .bow: return Art.figure(Art.archer, tier: tier, name: name, more: ["string"], scale: Art.archerScale)
         case .rider: return Riders.rider(tier: tier, name: name)
         case .mangonel: return Engine.mangonel(tier: tier, name: name)
         case .lantern: return lanternBearer(name: name)
@@ -66,58 +66,6 @@ enum Figures {
         return o
     }
 
-    // MARK: Bows
-
-    /// From a hooded coat and a short bow to plate, a crested helm, the
-    /// House's cloak and a steel-tipped war bow.
-    static func bowOutfit(_ tier: Int) -> Outfit {
-        var o = Outfit()
-        switch tier {
-        case 1:
-            o.tunic = Palette.wool
-            o.sleeves = Palette.wool
-            o.skirt = (Palette.wool, .plain, 0.25)
-            o.belt = (Palette.house, .house)
-            o.head = .hood(Palette.padded, .plain)
-            o.mantle = (Palette.padded, .plain)
-        case 2:
-            o.tunic = Palette.leather
-            o.sleeves = Palette.wool
-            o.skirt = (Palette.leather, .plain, 0.34)
-            o.head = .hood(Palette.house, .house)
-            o.mantle = (Palette.house, .house)
-        case 3:
-            o.tunic = Palette.mail
-            o.tunicMaterial = .metal
-            o.sleeves = Palette.wool
-            o.skirt = (Palette.wool, .plain, 0.33)
-            o.head = .kettle
-            o.tabard = true
-        default:
-            o.tunic = tier >= 5 ? Palette.steel : Palette.leatherDark
-            o.tunicMaterial = tier >= 5 ? .metal : .plain
-            o.sleeves = Palette.mail
-            o.sleevesMaterial = .metal
-            o.skirt = (Palette.mail, .metal, 0.34)
-            o.pauldrons = (tier >= 5 ? Palette.gold : Palette.steel, .metal)
-            o.tabard = true
-            o.head = tier >= 5 ? .crested : .kettle
-            o.cloak = 0.24
-        }
-        return o
-    }
-
-    static func archer(tier: Int, name: String, outfit: Outfit? = nil) -> Model {
-        let f = Frame.lean
-        let gait = Gait.paced(.bow, f, parts: Limb.count + 1)
-        return model(name, f, gait, more: [("string", Limb.heldL, f.handL)]) { b in
-            Person.body(&b, f, outfit ?? bowOutfit(tier))
-            Person.bow(&b, f, tier: tier)
-            Person.quiver(&b, f, color: tier >= 3 ? Palette.leatherDark : Palette.leather)
-            Person.mattock(&b, f)
-        }
-    }
-
     // MARK: The heritages' own companies
 
     /// A House's own company, its heritage's kind at the fifth tier in
@@ -128,72 +76,23 @@ enum Figures {
     /// in bone and black on ash-grey ones.
     static func signature(_ heritage: Heritage, name: String) -> Model {
         let tier = ModelKey.tiers(of: heritage.signature)
-        let o = signatureOutfit(heritage)
         switch heritage.signature {
-        case .bow: return archer(tier: tier, name: name, outfit: o)
-        case .rider: return Riders.rider(tier: tier, name: name, outfit: o, mount: signatureMount(heritage))
+        case .rider: return Riders.rider(tier: tier, name: name, outfit: signatureOutfit(heritage), mount: signatureMount(heritage))
+        // The Reed Bows and the Strand Bows, made in Blender with the archer.
+        case .bow: return Art.figure(Art.archer, tier: tier, variant: heritage.rawValue, name: name, more: ["string"],
+                                     scale: Art.archerScale)
         // The Salt Wardens and the Spine Guard, made in Blender with the spearman.
         default: return Art.figure(Art.spearman, tier: tier, variant: heritage.rawValue, name: name)
         }
     }
 
+    /// The gear of the riders of the two heritages whose own company
+    /// rides (the others' are made in Blender with their kind).
     static func signatureOutfit(_ heritage: Heritage) -> Outfit {
         var o = Outfit()
         o.sleeves = Palette.mail
         o.sleevesMaterial = .metal
-        switch heritage {
-        case .saltborn:
-            // Salt-white surcoats over mail, crested, the House's cloak to the heel.
-            o.tunic = Palette.linen
-            o.skirt = (Palette.linen, .plain, 0.22)
-            o.hands = Palette.steel
-            o.shins = Palette.steel
-            o.shinsMaterial = .metal
-            o.mantle = (Palette.saltCrust, .plain)
-            o.head = .crested
-            o.cloak = 0.04
-        case .spinewardens:
-            // Dark iron plate from crown to shin, the House's colour on the
-            // shoulders, no cloak to catch on the rock.
-            o.tunic = Palette.iron
-            o.tunicMaterial = .metal
-            o.sleeves = Palette.iron
-            o.hands = Palette.iron
-            o.skirt = (Palette.iron, .metal, 0.4)
-            o.shins = Palette.stoneDark
-            o.shinsMaterial = .metal
-            o.mantle = (Palette.house, .house)
-            o.head = .greatHelm
-        case .fenfolk:
-            // Reed and moss, hooded in the House's colour, cloaked.
-            o.tunic = Palette.moss
-            o.sleeves = Palette.reed
-            o.sleevesMaterial = .plain
-            o.skirt = (Palette.reed, .plain, 0.2)
-            o.shins = Palette.leather
-            o.mantle = (Palette.reed, .plain)
-            o.head = .hood(Palette.house, .house)
-            o.cloak = 0.3
-        case .strandfolk:
-            // Sea-grey wool under kettle hats, bronze on the shoulders, the
-            // House on the chest.
-            o.tunic = Palette.seaWool
-            o.sleeves = Palette.canvas
-            o.sleevesMaterial = .plain
-            o.skirt = (Palette.canvas, .plain, 0.38)
-            o.pauldrons = (Palette.bronze, .metal)
-            o.head = .kettle
-            o.tabard = true
-        case .blackwood:
-            // Leather and fir-green, hooded, the House's cloak long behind.
-            o.tunic = Palette.leatherDark
-            o.sleeves = Palette.leather
-            o.sleevesMaterial = .plain
-            o.skirt = (Palette.leatherDark, .plain, 0.44)
-            o.mantle = (Palette.fir, .plain)
-            o.head = .hood(Palette.fir, .plain)
-            o.cloak = 0.12
-        case .moundClans:
+        if heritage == .moundClans {
             // Black wool under bone, great-helmed, shrouded, the House on the chest.
             o.tunic = Palette.woolDark
             o.sleeves = Palette.barkBlack
@@ -203,6 +102,15 @@ enum Figures {
             o.mantle = (Palette.shroud, .plain)
             o.head = .greatHelm
             o.tabard = true
+        } else {
+            // The Blackwood Kin: leather and fir-green, hooded, the House's cloak long behind.
+            o.tunic = Palette.leatherDark
+            o.sleeves = Palette.leather
+            o.sleevesMaterial = .plain
+            o.skirt = (Palette.leatherDark, .plain, 0.44)
+            o.mantle = (Palette.fir, .plain)
+            o.head = .hood(Palette.fir, .plain)
+            o.cloak = 0.12
         }
         return o
     }

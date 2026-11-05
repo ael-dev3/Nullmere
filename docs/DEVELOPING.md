@@ -240,8 +240,9 @@ python3.13 -m venv .blender && .blender/bin/pip install bpy==5.2.3
 python3 Art/embed.py Art/models/spearman.glb Sources/NullmereModels/Art/Spearman.swift Art spearman Art/blender/spearman.py
 ```
 
-The first line is needed once. A script prints each tier's triangles far
-and near, and writes its file in one fixed order
+The first line is needed once; `archer.py` makes the archer the same way.
+A script prints each tier's triangles far and near (and, with
+`NULLMERE_PIECES` set to a tier or a variant, each piece's), and writes its file in one fixed order
 (`Art/blender/canonical.py`), so running it again without a change gives
 the same bytes. `Art/embed.py` writes the file into the package as Swift,
 where the importer reads it; a test fails if the two differ. Pieces are
