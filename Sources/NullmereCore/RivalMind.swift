@@ -814,7 +814,13 @@ struct RivalMind {
             let renown = state.renown(of: house)
             let foremost = state.livingIDs.allSatisfy { $0 == house || state.renown(of: $0) <= renown }
             let able = state.holds(of: house).count >= 4 || foremost
-            if state.watch >= spireFrom, !threatened, me.liege == nil, able || hold.level(.moonspire) > 0 { wishes.append(.moonspire) }
+            // Its first Archive before it saves for the Moonspire, which
+            // would starve every lesser work: a House that never studies
+            // never opens its higher tiers.
+            if state.watch >= spireFrom, !threatened, me.liege == nil, able || hold.level(.moonspire) > 0 {
+                if hold.level(.archive) < min(1, RivalMind.archiveWanted(at: state.watch)) { wishes.append(.archive) }
+                wishes.append(.moonspire)
+            }
             if me.temperament == .ambitious, hold.level(.musterHall) < 3 { wishes.append(.musterHall) }
             if hold.level(.musterHall) < 2, state.watch >= 14 { wishes.append(.musterHall) }
             // Riders, for a House at war or with stores to spare.

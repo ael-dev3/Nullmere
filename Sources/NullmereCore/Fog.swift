@@ -376,7 +376,7 @@ extension GameState {
                 return true
             case .lyceumAnswered(let owner, _):
                 return owner == house
-            case .lyceumJudged:
+            case .lyceumJudged, .monumentStoneSet:
                 return true
             case .labourDone(let owner, _), .chestOpened(let owner, _), .innChestOpened(let owner, _, _):
                 return owner == house

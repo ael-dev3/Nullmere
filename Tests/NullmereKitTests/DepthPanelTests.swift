@@ -2836,3 +2836,18 @@ private final class DepthLink: RealmLink {
     func setReady(_ ready: Bool) {}
     func leave() {}
 }
+
+extension DepthPanelTests {
+    /// The Monument on the Realm screen: the stone being raised, the lake's
+    /// part and the keeper's, and the stones set.
+    func testTheMonumentShowsTheStoneBeingRaised() throws {
+        var state = world("the monument shown")
+        let hold = try XCTUnwrap(state.holds(of: state.player).first)
+        state.countMonument([.buildingCompleted(hold: hold.id, kind: .granary, level: 2)])
+        XCTAssertEqual(MonumentSection.summary(state.lakeMonument), "Stone 1 of \(MonumentStone.allCases.count) · 1 of \(MonumentStone.foundations.measure)")
+        XCTAssertEqual(MonumentSection.summary(Monument(set: MonumentStone.allCases.count, done: 0, parts: [:])), "Whole: every stone set")
+        let (session, _) = session(state)
+        draw(MonumentSection(session: session, open: true))
+        draw(RealmPanel(session: session))
+    }
+}

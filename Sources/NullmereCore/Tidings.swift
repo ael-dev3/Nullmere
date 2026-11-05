@@ -331,6 +331,9 @@ extension GameState {
             guard house == viewer else { return nil }
             let next = GameState.nextStillHour(from: watch + 1) - watch
             return Tidings("A false reflection is cast on the shore \(placeName(of: at)): in \(next) watches the lake will mirror a company of yours there that is not.", .good)
+        case .monumentStoneSet(let stone):
+            let gift = stone.gift
+            return Tidings("The lake's Houses together set a stone of the Monument: \(stone.title.components(separatedBy: ":").first ?? stone.title). Every House is given \(gift.stock); those who did their part share \(stone.share) moonsalt.", .good)
         case .labourDone(let house, let kind):
             guard house == viewer else { return nil }
             return Tidings("A labour of the watch done: \(kind.title.lowercased()). \(Labours.vigourPerLabour) vigour.", .good)

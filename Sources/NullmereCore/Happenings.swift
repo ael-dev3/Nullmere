@@ -146,6 +146,7 @@ extension GameState {
     mutating func tally(_ events: [GameEvent]) {
         // And toward each keeper's labours of the watch.
         countLabours(events)
+        countMonument(events)
         guard var happening, watch < happening.ends else { return }
         var changed = false
         for event in events {

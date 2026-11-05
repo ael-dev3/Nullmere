@@ -333,7 +333,11 @@ final class ForecastTests: XCTestCase {
                         guard let forecast = state.forecast(unit: unit.id, at: hex) else { continue }
                         var trial = state
                         let events = try trial.perform(.attack(unit: unit.id, target: hex), as: unit.owner)
-                        for case .battle(let battle) in events {
+                        // The strike itself, the first blow: what the forecast is of. The
+                        // companies keeping an allied hold's gates may sally after it,
+                        // and those blows are their own, not the striker's.
+                        let strike = events.lazy.compactMap { event -> Battle? in if case .battle(let battle) = event { return battle } else { return nil } }.first
+                        if let battle = strike {
                             XCTAssertTrue(forecast.dealt.contains(battle.damageDealt), "\(battle) vs \(forecast)")
                             XCTAssertTrue(forecast.taken.contains(battle.damageTaken), "\(battle) vs \(forecast)")
                             checked += 1

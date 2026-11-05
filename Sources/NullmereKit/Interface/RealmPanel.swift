@@ -33,6 +33,8 @@ struct RealmPanel: View {
                         Rule(opacity: 0.18)
                         LaboursSection(session: session)
                     }
+                    Rule(opacity: 0.18)
+                    MonumentSection(session: session)
                     if session.state.innBook?[session.player] != nil {
                         Rule(opacity: 0.18)
                         InnSection(session: session)
@@ -608,6 +610,48 @@ struct LaboursSection: View {
                     .font(.nm(9.5))
                     .foregroundStyle(Palette.text(0.5))
                     .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+/// The lake's Monument, folded until opened: the stone being raised, how
+/// far the lake has come with it, the keeper's House's part, what setting
+/// it brings, and the stones set before it.
+struct MonumentSection: View {
+    let session: GameSession
+    @State private var open: Bool
+
+    init(session: GameSession, open: Bool = false) {
+        self.session = session
+        _open = State(initialValue: open)
+    }
+
+    static func summary(_ monument: Monument) -> String {
+        guard let stone = monument.raising else { return "Whole: every stone set" }
+        return "Stone \(monument.set + 1) of \(MonumentStone.allCases.count) · \(min(monument.done, stone.measure)) of \(stone.measure)"
+    }
+
+    var body: some View {
+        let monument = session.state.lakeMonument
+        FoldedList(title: "The Monument", count: monument.set, summary: MonumentSection.summary(monument), open: $open) {
+            if let stone = monument.raising {
+                Text(verbatim: stone.title)
+                    .font(.nm(10.5, weight: .medium))
+                    .foregroundStyle(Palette.text(0.85))
+                    .fixedSize(horizontal: false, vertical: true)
+                ProgressView(value: Double(min(monument.done, stone.measure)), total: Double(stone.measure))
+                    .tint(Palette.glowWords)
+                    .accessibilityLabel("The lake's part, \(min(monument.done, stone.measure)) of \(stone.measure)")
+                Text(verbatim: "Your part: \(session.state.monumentPart(of: session.player)). Set, every House is given \(stone.gift.stock); those who did their part share \(stone.share) moonsalt by it.")
+                    .font(.nm(9.5))
+                    .foregroundStyle(Palette.text(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(MonumentStone.allCases.prefix(monument.set), id: \.rawValue) { stone in
+                Text(verbatim: "Set: \(stone.title)")
+                    .font(.nm(10))
+                    .foregroundStyle(Palette.good)
             }
         }
     }

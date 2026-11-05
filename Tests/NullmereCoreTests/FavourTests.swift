@@ -113,7 +113,16 @@ final class FavourTests: XCTestCase {
             now += 61
             events += try XCTUnwrap(realm.tick(now: now))
         }
-        XCTAssertFalse(events.contains { if case .itemsGiven(house, .hourglass, _) = $0 { return true } else { return false } })
+        // None from favour; the lake's Monument may give its own as a stone is set.
+        let fromMonument = events.reduce(0) { total, event in
+            if case .monumentStoneSet(let stone) = event { return total + stone.gift.items.filter { $0 == .hourglass }.count }
+            return total
+        }
+        let hourglasses = events.reduce(0) { total, event in
+            if case .itemsGiven(house, .hourglass, let count) = event { return total + count }
+            return total
+        }
+        XCTAssertEqual(hourglasses, fromMonument)
     }
 
     func testAKeepersFavourTakesItsSeatWithThemInANewAge() throws {

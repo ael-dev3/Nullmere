@@ -902,6 +902,8 @@ public enum GameEvent: Codable, Equatable, Sendable {
     case expedition(ExpeditionResult)
     /// A House has done one of its watch's labours.
     case labourDone(house: Int, kind: LabourKind)
+    /// The lake's Houses together set a stone of the Monument.
+    case monumentStoneSet(stone: MonumentStone)
     /// A House casts a false reflection on the shore.
     case reflectionCast(house: Int, at: Hex)
     /// A House climbs the ladder of the lairs to a level.

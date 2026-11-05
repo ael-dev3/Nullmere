@@ -97,6 +97,7 @@ extension GameState {
         refreshSight()
         tally(Array(events[turning...]))
         events += turnLabours()
+        events += setMonumentStone()
         turnInn()
         events += turnHappenings()
         events += turnSundering()

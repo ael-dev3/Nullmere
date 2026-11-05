@@ -130,6 +130,8 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var expeditionBest: [Int: [Int: Int]]?
     /// Each keeper's House's labours for the watch and vigour of the moon.
     public internal(set) var labourBook: [Int: Labours]?
+    /// The lake's Monument, raised by every House together; nil before its first stone is begun.
+    public internal(set) var monument: Monument?
     /// Each keeper's House's keys at the Lantern Inn.
     public internal(set) var innBook: [Int: InnKeys]?
     /// The companies walking the mirror, to come out as the watch turns.

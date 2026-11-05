@@ -1678,6 +1678,7 @@ public final class GameSession {
         case .pedlarCame(let house, _) where house == player: return .horn
         case .expedition(let result) where result.house == player: return result.won ? .triumph : .refusal
         case .chestOpened(let house, _) where house == player: return .coin
+        case .monumentStoneSet: return .honour
         case .innChestOpened(let house, _, _) where house == player: return .coin
         case .eclipse: return .dread
         case .riddleAnswered(let house, let right, _) where house == player: return right ? .triumph : .refusal
