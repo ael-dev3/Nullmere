@@ -257,6 +257,10 @@ extension GameSession {
             (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
                                                      time: time)
                 .effects(at: t)
+            // The fishers out on the lake, their lanterns on the water.
+            let fishers = stage.boats(about: Vec3(lake.x, Relief.waterline, lake.z), time: t, into: &frame)
+            frame.batches += fishers.batches
+            frame.lights += fishers.lights
         }
         // The omen's weather: rain or mist about the middle of the view; or,
         // while the drowned age walks, the moon all but gone.

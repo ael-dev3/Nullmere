@@ -915,3 +915,26 @@ final class ImpactTests: XCTestCase {
         XCTAssertTrue(Happenings().effects(at: 9.35).motes.isEmpty)
     }
 }
+
+final class LakeLifeTests: XCTestCase {
+    /// Fishers row out on the lake at night, only over water, each with a
+    /// lantern whose light lies on the water about it and flickers.
+    func testFishersRowTheLakeWithTheirLanterns() throws {
+        let map = WorldMap(radius: 6, fill: Tile(terrain: .still))
+        let stage = WorldStage(map: map, relief: Relief(map: map))
+        var frame = SceneFrame()
+        let out = stage.boats(about: Vec3(0, Relief.waterline, 0), time: 3, into: &frame)
+        let boats = out.batches.flatMap(\.instances)
+        XCTAssertEqual(boats.count, WorldStage.boatCount, "every boat out on open water")
+        XCTAssertEqual(out.lights.count, boats.count, "each with its lantern lit")
+        XCTAssertTrue(out.lights.allSatisfy { $0.colour.x > $0.colour.z }, "lantern-warm")
+        let later = stage.boats(about: Vec3(0, Relief.waterline, 0), time: 9, into: &frame)
+        XCTAssertNotEqual(later.lights.map(\.position), out.lights.map(\.position), "rowing round")
+        let land = WorldMap(radius: 6, fill: Tile(terrain: .greyfield))
+        let ashore = WorldStage(map: land, relief: Relief(map: land)).boats(about: .zero, time: 3, into: &frame)
+        XCTAssertTrue(ashore.batches.isEmpty && ashore.lights.isEmpty, "no boat on dry land")
+        // The boat rocks on the swell and its fisher rows.
+        let boat = Library.model(.prop(.boat))
+        XCTAssertNotEqual(boat.pose(.idle, at: 0), boat.pose(.idle, at: 1), "it rows")
+    }
+}

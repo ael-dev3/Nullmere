@@ -11,6 +11,7 @@ enum Props {
         case .brazier: return brazier(name: name)
         case .puff: return puff(name: name)
         case .stone: return Model(name: name, mesh: stone())
+        case .boat: return boat(name: name)
         }
     }
 
@@ -88,6 +89,78 @@ enum Props {
             let flap = 0.75 * glide * Motion.wave(u, cycles: beats) + 0.1
             p.turn(1, z: flap)
             p.turn(2, z: -flap)
+            return p.joints
+        }
+    }
+
+    /// A fisher's boat: a clinker hull of dark planks, thwarts and a net
+    /// heaped in the stern, its fisher on the middle thwart at the oars, and
+    /// a lantern hung from a pole at the bow, lit. Keyed at idle: the hull
+    /// rocks and heaves on the swell, the oars dip and pull, the fisher
+    /// leans into each stroke, the lantern swings on its hook.
+    static func boat(name: String) -> Model {
+        var b = MeshBuilder()
+        var rig = Rig()
+        let hull = rig.add("hull", pivot: Vec3(0, 0, 0))
+        let fisher = rig.add("fisher", parent: Int(hull), pivot: Vec3(0, 0.05, -0.01))
+        let oarL = rig.add("oar left", parent: Int(fisher), pivot: Vec3(0.07, 0.06, 0.0))
+        let oarR = rig.add("oar right", parent: Int(fisher), pivot: Vec3(-0.07, 0.06, 0.0))
+        let lantern = rig.add("lantern", parent: Int(hull), pivot: Vec3(0, 0.2, 0.2))
+        b.with(part: hull) {
+            // The hull: a long lathe flattened, its strakes darker toward the keel.
+            $0.place(.rotationX(.pi / 2) * .scale(Vec3(1, 1, 0.55))) {
+                $0.lathe([(0, -0.22), (0.04, -0.2), (0.07, -0.12), (0.08, 0), (0.07, 0.12), (0.045, 0.2), (0, 0.24)], sides: 10,
+                         color: Palette.timberDark)
+            }
+            $0.box(center: Vec3(0, 0.03, 0), size: Vec3(0.11, 0.008, 0.36), color: Palette.timber)
+            for z in [Float(-0.1), 0.0, 0.12] {
+                $0.box(center: Vec3(0, 0.04, z), size: Vec3(0.13, 0.01, 0.025), color: Palette.timberPale)
+            }
+            $0.rock(center: Vec3(0, 0.045, -0.15), size: Vec3(0.04, 0.02, 0.035), rings: 2, sides: 5, jitter: 0.2, seed: 3, color: Palette.linen * 0.6)
+            $0.limb(from: Vec3(0, 0.03, 0.18), to: Vec3(0, 0.22, 0.22), radius: 0.004, sides: 4, color: Palette.timberDark)
+        }
+        b.with(part: lantern) {
+            $0.limb(from: Vec3(0, 0.22, 0.22), to: Vec3(0, 0.19, 0.22), radius: 0.002, sides: 3, color: Palette.iron)
+            $0.box(center: Vec3(0, 0.175, 0.22), size: Vec3(0.022, 0.03, 0.022), color: Palette.iron)
+            $0.with(material: .glow) {
+                $0.box(center: Vec3(0, 0.175, 0.22), size: Vec3(0.016, 0.022, 0.024), color: Palette.candle)
+            }
+        }
+        b.with(part: fisher) {
+            // Hunched in a hooded coat on the thwart.
+            $0.place(.translation(Vec3(0, 0.04, -0.01))) {
+                $0.tube([(0.035, 0), (0.04, 0.04), (0.03, 0.09), (0, 0.11)], sides: 6, color: Palette.woolDark)
+            }
+            $0.sphere(center: Vec3(0, 0.165, 0.0), radius: 0.022, rings: 3, sides: 6, color: Palette.skin)
+            $0.place(.translation(Vec3(0, 0.15, -0.006))) {
+                $0.tube([(0.028, 0), (0.026, 0.03), (0, 0.05)], sides: 6, color: Palette.wool)
+            }
+            for side in [Float(1), -1] {
+                $0.limb(from: Vec3(0.03 * side, 0.12, 0), to: Vec3(0.07 * side, 0.08, 0.04), radius: 0.008, sides: 4, color: Palette.woolDark)
+            }
+        }
+        for (part, side) in [(oarL, Float(1)), (oarR, -1)] {
+            b.with(part: part) {
+                $0.limb(from: Vec3(0.05 * side, 0.08, 0.04), to: Vec3(0.26 * side, -0.01, 0.0), radius: 0.004, sides: 4, color: Palette.timberPale)
+                $0.box(center: Vec3(0.27 * side, -0.012, 0.0), size: Vec3(0.05, 0.004, 0.02), color: Palette.timberPale)
+            }
+        }
+        let parts = rig.count
+        let rowing = Keyed(loops: true, [
+            // A stroke each half-period: dip, pull, lift, swing forward.
+            Track(oarL, [k(0, 0, -0.5, 0.2), k(0.15, 0, 0.0, 0.25), k(0.3, 0, 0.5, 0.15), k(0.4, 0, 0.45, -0.1), k(0.5, 0, -0.5, 0.2),
+                         k(0.65, 0, 0.0, 0.25), k(0.8, 0, 0.5, 0.15), k(0.9, 0, 0.45, -0.1)]),
+            Track(oarR, [k(0, 0, 0.5, -0.2), k(0.15, 0, 0.0, -0.25), k(0.3, 0, -0.5, -0.15), k(0.4, 0, -0.45, 0.1), k(0.5, 0, 0.5, -0.2),
+                         k(0.65, 0, 0.0, -0.25), k(0.8, 0, -0.5, -0.15), k(0.9, 0, -0.45, 0.1)]),
+            Track(fisher, [k(0, 0.25), k(0.3, -0.2), k(0.42, -0.1), k(0.5, 0.25), k(0.8, -0.2), k(0.92, -0.1)]),
+            // The swell under it: a slow heave, a roll, a pitch.
+            Track(hull, .shift, [k(0, 0, 0.006), k(0.25, 0, -0.004), k(0.5, 0, 0.006), k(0.75, 0, -0.004)]),
+            Track(hull, [k(0, 0.03, 0, 0.05), k(0.25, -0.02, 0, -0.01), k(0.5, -0.03, 0, -0.05), k(0.75, 0.02, 0, 0.01)]),
+            Track(lantern, [k(0, 0.12, 0, -0.08), k(0.25, -0.05, 0, 0.1), k(0.5, -0.12, 0, 0.08), k(0.75, 0.05, 0, -0.1)]),
+        ])
+        return Model(name: name, mesh: b.mesh, rig: rig) { clip, time in
+            var p = Pose(count: parts)
+            rowing.apply(&p, clip.progress(at: time))
             return p.joints
         }
     }

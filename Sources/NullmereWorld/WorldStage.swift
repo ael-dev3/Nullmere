@@ -1321,6 +1321,36 @@ public final class WorldStage: @unchecked Sendable {
         return batches(placed)
     }
 
+    /// The fishers out on the lake at night: a few boats rowed slowly round
+    /// over open water, each with its lantern at the bow casting its light
+    /// on the water about it, flickering. Only where there is water under
+    /// them.
+    public func boats(about lake: Vec3, time: Float, into frame: inout SceneFrame) -> (batches: [ModelBatch], lights: [PointLight]) {
+        var placed: [(ModelKey, ModelInstance)] = []
+        var lights: [PointLight] = []
+        var shared: [PoseKey: UInt32] = [:]
+        for boat in 0..<WorldStage.boatCount {
+            let b = Float(boat)
+            let radius = 0.8 + b * 0.55
+            let way: Float = boat % 2 == 0 ? 1 : -1
+            let angle = time * (0.035 + b * 0.008) * way + b * 2.1
+            let x = lake.x + radius * Float(cos(Double(angle))), z = lake.z + radius * Float(sin(Double(angle)))
+            guard relief.height(atX: x, z: z) < Relief.waterline - 0.02 else { continue }
+            let at = Vec3(x, Relief.waterline, z)
+            let heading = Float(atan2(Double(-Float(sin(Double(angle))) * way), Double(Float(cos(Double(angle))) * way)))
+            let turn = Mat4.rotationY(heading)
+            let pose = WorldStage.pose(.prop(.boat), .idle, at: time * 0.5 + b * 1.7, shared: &shared, into: &frame)
+            placed.append((.prop(.boat), ModelInstance(model: .translation(at) * turn * .scale(WorldStage.boatScale), phase: b,
+                                                       palette: pose, flags: ModelInstance.alwaysShown)))
+            let lamp = at + turn.transformDirection(Vec3(0, 0.18, 0.22) * WorldStage.boatScale)
+            let flicker = 0.8 + 0.2 * Float(sin(Double(time * 9.1 + b * 2.3))) * Float(sin(Double(time * 5.7 + b)))
+            lights.append(PointLight(at: lamp + Vec3(0, 0.05, 0), reach: 1.5, colour: Vec3(1.9, 1.15, 0.45) * flicker))
+        }
+        return (WorldStage.batches(placed), lights)
+    }
+    public static let boatCount = 4
+    public static let boatScale: Float = 1.6
+
     // MARK: Helpers
 
     /// Instances gathered by their model's key, in a steady order.

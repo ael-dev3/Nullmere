@@ -207,6 +207,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     public var budget: Int {
         switch self {
         case .figure, .signature, .wild, .commander, .folk: return 4000
+        case .prop(.boat): return 700
         case .furnishing, .prop, .town: return 300
         case .keep, .keepOf, .allianceHall, .lyceumHall: return 4500
         case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .gatehold, .standard, .rallyCamp, .barge, .raising, .drownedCrown, .storehouse, .yard: return 3000
@@ -295,6 +296,9 @@ public enum Prop: String, CaseIterable, Sendable {
     case puff
     /// A Mangonel's stone in flight.
     case stone
+    /// A fisher's boat out on the lake at night, a lantern at its bow; at
+    /// idle it rocks on the water and its fisher rows.
+    case boat
 }
 
 /// One model placed in the world.
