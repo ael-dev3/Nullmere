@@ -64,8 +64,9 @@ Every model is original. Every company (the spearman, the archer, the
 lantern-bearer, the rider on his horse, the Mangonel with its crewman and
 the founder at his handcart), the three things of the far country, the
 six commanders, the townsfolk with their carters, the keeps, the walls, the
-town and five of the works (the Granary, the Beacon, the Quarry, the
-Saltworks and the Forge) are made in Blender, each by a script
+town and seven of the works (the Granary, the Beacon, the Sawpit, the
+Quarry, the Saltworks, the Forge and the Moonspire) are made in Blender,
+each by a script
 ([`Art/blender/spearman.py`](../Art/blender/spearman.py),
 [`archer.py`](../Art/blender/archer.py), [`lantern.py`](../Art/blender/lantern.py),
 [`rider.py`](../Art/blender/rider.py), [`commanders.py`](../Art/blender/commanders.py),
@@ -75,7 +76,8 @@ Saltworks and the Forge) are made in Blender, each by a script
 [`carters.py`](../Art/blender/carters.py), [`keep.py`](../Art/blender/keep.py),
 [`walls.py`](../Art/blender/walls.py), [`town.py`](../Art/blender/town.py), [`granary.py`](../Art/blender/granary.py),
 [`beacon.py`](../Art/blender/beacon.py), [`quarry.py`](../Art/blender/quarry.py),
-[`saltworks.py`](../Art/blender/saltworks.py), [`forge.py`](../Art/blender/forge.py))
+[`saltworks.py`](../Art/blender/saltworks.py), [`forge.py`](../Art/blender/forge.py),
+[`sawpit.py`](../Art/blender/sawpit.py), [`moonspire.py`](../Art/blender/moonspire.py))
 that builds the body, gear and
 skeleton and keys the actions, on one body every person shares
 ([`person.py`](../Art/blender/person.py)): the skin is weighted to the
@@ -126,9 +128,11 @@ figure, 3,000 for a work, 4,500 for a keep or an alliance's hall);
 - **The works.** On every hall and round house of the works, courses across
   the roofs, boards and vents in the gables, the rafters' ends under the
   eaves, hoops and finials.
-- **Their yards.** In every work's yard but the Moonspire's, its odds and
-  ends, barrels, crates, sacks, a bucket, a bench and stacks of logs, set
-  down where nothing of the work stands and clear of the way to its door.
+- **Their yards.** Every work's yard is modelled with it, level by level:
+  its logs, sacks, barrels, carts and tools set down clear of the way to its
+  door. The storehouse's and the alliance yards' odds and ends, barrels,
+  crates, sacks, a bucket, a bench and stacks of logs, are set down where
+  nothing of theirs stands.
 - **The Moonspire.** The Moonspire rises past its third stage as the age's
   wonder: a colonnade of white columns about its drum under a ring of stone,
   a string course, the House's banners hung between its buttresses and a

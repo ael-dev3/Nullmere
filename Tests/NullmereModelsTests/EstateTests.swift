@@ -20,17 +20,6 @@ final class EstateTests: XCTestCase {
         }
     }
 
-    func testLayeringKeepsEachMeshsFineWorkFine() {
-        var a = MeshBuilder(), b = MeshBuilder()
-        a.box(center: .zero, size: Vec3(repeating: 0.1), turn: 0, color: Palette.stone)
-        a.fine { $0.box(center: .zero, size: Vec3(repeating: 0.01), turn: 0, color: Palette.stone) }
-        b.box(center: .zero, size: Vec3(repeating: 0.1), turn: 0, color: Palette.timber)
-        let laid = Estate.layered(a.mesh, b.mesh)
-        XCTAssertEqual(laid.triangleCount, a.mesh.triangleCount + b.mesh.triangleCount)
-        XCTAssertEqual(laid.fineFrom, a.mesh.coarseIndexCount + b.mesh.coarseIndexCount)
-        XCTAssertEqual(Estate.layered(a.mesh, Mesh()), a.mesh)
-    }
-
     /// The sawpit works: at its first two levels the pit-saw rocks in its
     /// cut through the working clip; from the third a horse walks the gin
     /// that drives the frame saw.
