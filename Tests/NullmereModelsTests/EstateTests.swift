@@ -38,9 +38,7 @@ final class EstateTests: XCTestCase {
         for level in 1...5 {
             let model = Library.model(.work(.sawpit, level: level))
             let saw = try XCTUnwrap(model.rig.index(of: level <= 2 ? "pit-saw" : "gin"), "level \(level)")
-            let motion = try XCTUnwrap(model.motion)
-            let early = motion(.idle, 0.0), later = motion(.idle, 0.35)
-            XCTAssertNotEqual(early[saw].rotation, later[saw].rotation, "The saw moves at level \(level)")
+            XCTAssertNotEqual(model.pose(.idle, at: 0)[saw], model.pose(.idle, at: 0.35)[saw], "The saw moves at level \(level)")
         }
     }
 }

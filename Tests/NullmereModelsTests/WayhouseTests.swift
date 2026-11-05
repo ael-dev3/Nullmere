@@ -16,8 +16,7 @@ final class WayhouseTests: XCTestCase {
         for level in 1...5 {
             let model = Library.model(.work(.wayhouse, level: level))
             let part = try XCTUnwrap(model.rig.index(of: "inn sign"), "level \(level)")
-            let motion = try XCTUnwrap(model.motion)
-            XCTAssertNotEqual(motion(.idle, 0)[part].rotation, motion(.idle, 0.4)[part].rotation, "level \(level)")
+            XCTAssertNotEqual(model.pose(.idle, at: 0)[part], model.pose(.idle, at: 0.4)[part], "level \(level)")
         }
         XCTAssertNotNil(Library.model(.work(.wayhouse, level: 4)).rig.index(of: "post vane"))
     }

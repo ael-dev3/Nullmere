@@ -17,12 +17,11 @@ final class LodgeTests: XCTestCase {
         for level in 1...5 {
             let model = Library.model(.work(.lodge, level: level))
             let jib = try XCTUnwrap(model.rig.index(of: "lodge jib"), "level \(level)")
-            let motion = try XCTUnwrap(model.motion)
-            XCTAssertNotEqual(motion(.idle, 0)[jib].rotation, motion(.idle, 0.4)[jib].rotation, "The jib slews at level \(level)")
+            XCTAssertNotEqual(model.pose(.idle, at: 0)[jib], model.pose(.idle, at: 0.4)[jib], "The jib slews at level \(level)")
             let wheel = model.rig.index(of: "treadwheel")
             XCTAssertEqual(wheel != nil, level >= 4, "The treadwheel from the fourth level")
             if let wheel {
-                XCTAssertNotEqual(motion(.idle, 0)[wheel].rotation, motion(.idle, 0.4)[wheel].rotation)
+                XCTAssertNotEqual(model.pose(.idle, at: 0)[wheel], model.pose(.idle, at: 0.4)[wheel])
             }
         }
     }

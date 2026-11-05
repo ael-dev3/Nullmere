@@ -18,8 +18,7 @@ final class ArchiveTests: XCTestCase {
         for level in 1...5 {
             let model = Library.model(.study(level: level))
             let part = try XCTUnwrap(model.rig.index(of: level <= 2 ? "archive vane" : "armillary"), "level \(level)")
-            let motion = try XCTUnwrap(model.motion)
-            XCTAssertNotEqual(motion(.idle, 0)[part].rotation, motion(.idle, 0.4)[part].rotation, "level \(level)")
+            XCTAssertNotEqual(model.pose(.idle, at: 0)[part], model.pose(.idle, at: 0.4)[part], "level \(level)")
         }
     }
 }

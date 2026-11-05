@@ -19,8 +19,7 @@ final class BeaconTests: XCTestCase {
         for level in 1...3 {
             let model = Library.model(.work(.beacon, level: level))
             let fire = try XCTUnwrap(model.rig.index(of: "beacon fire"), "level \(level)")
-            let motion = try XCTUnwrap(model.motion)
-            XCTAssertNotEqual(motion(.idle, 0.05)[fire].scale, motion(.idle, 0.3)[fire].scale, "The fire leaps at level \(level)")
+            XCTAssertNotEqual(model.pose(.idle, at: 0.05)[fire], model.pose(.idle, at: 0.3)[fire], "The fire leaps at level \(level)")
         }
     }
 }

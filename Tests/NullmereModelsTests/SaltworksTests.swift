@@ -17,8 +17,7 @@ final class SaltworksTests: XCTestCase {
         for level in 1...5 {
             let model = Library.model(.work(.saltworks, level: level))
             let part = try XCTUnwrap(model.rig.index(of: level >= 4 ? "brine wheel" : "shaduf"), "level \(level)")
-            let motion = try XCTUnwrap(model.motion)
-            XCTAssertNotEqual(motion(.idle, 0)[part].rotation, motion(.idle, 0.4)[part].rotation, "level \(level)")
+            XCTAssertNotEqual(model.pose(.idle, at: 0)[part], model.pose(.idle, at: 0.4)[part], "level \(level)")
             XCTAssertEqual(Library.smoke(of: .work(.saltworks, level: level)).count, (3...4).contains(level) ? 1 : 0, "level \(level)")
         }
     }

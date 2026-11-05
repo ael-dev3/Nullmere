@@ -468,7 +468,8 @@ final class CatalogueTests: XCTestCase {
         for key: ModelKey in [.work(.sawpit, level: 3), .work(.quarry, level: 3), .work(.beacon, level: 1), .work(.saltworks, level: 2),
                               .work(.moonspire, level: 5), .study(level: 3), .study(level: 5), .work(.forge, level: 1),
                               .work(.forge, level: 5), .storehouse, .yard(.timber), .yard(.stone), .yard(.moonsalt)] {
-            XCTAssertNotNil(Library.model(key).motion, "\(key) has an idle motion")
+            let model = Library.model(key)
+            XCTAssertTrue(model.motion != nil || model.skeleton?.actions[.idle] != nil, "\(key) has an idle motion, by code or by its skeleton")
         }
         // A rider is one model: horse and rider, the rider's parts on the horse's back.
         let rider = Library.model(.figure(.rider, tier: 3)).rig

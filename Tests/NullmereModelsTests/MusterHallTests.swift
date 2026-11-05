@@ -16,9 +16,8 @@ final class MusterHallTests: XCTestCase {
     func testTheQuintainSpinsAndTheDrumIsBeaten() throws {
         for level in 1...5 {
             let model = Library.model(.work(.musterHall, level: level))
-            let motion = try XCTUnwrap(model.motion)
             let quintain = try XCTUnwrap(model.rig.index(of: "quintain"), "level \(level)")
-            XCTAssertNotEqual(motion(.idle, 0)[quintain].rotation, motion(.idle, 0.4)[quintain].rotation, "level \(level)")
+            XCTAssertNotEqual(model.pose(.idle, at: 0)[quintain], model.pose(.idle, at: 0.4)[quintain], "level \(level)")
             XCTAssertEqual(model.rig.index(of: "drumstick") != nil, level == 5)
         }
     }

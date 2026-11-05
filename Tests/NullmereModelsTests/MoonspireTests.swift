@@ -14,6 +14,7 @@ final class MoonspireTests: XCTestCase {
             let tower = Works.moonspire(level, "tower").mesh.triangleCount
             XCTAssertGreaterThan(counts[level - 1], tower, "Its court laid about it at stage \(level)")
         }
-        XCTAssertNotNil(Library.model(.work(.moonspire, level: 5)).motion, "The crowned spire's crystal turns")
+        let crowned = Library.model(.work(.moonspire, level: 5))
+        XCTAssertTrue(crowned.motion != nil || crowned.skeleton?.actions[.idle] != nil, "The crowned spire's crystal turns")
     }
 }
