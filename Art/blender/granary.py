@@ -195,7 +195,7 @@ def dovecote(at_point):
         angle = index / 8 * 2 * math.pi
         for y in (0.135, 0.155):
             x, z = x0 + 0.0355 * math.cos(angle), z0 - 0.0355 * math.sin(angle)
-            fine.append(block("hole", (x - 0.004, y - 0.0035, z - 0.002), (x + 0.004, y + 0.0035, z + 0.002), dark, turn=-angle, about=(x, y, z)))
+            fine.append(block("hole", (x - 0.004, y - 0.0035, z - 0.002), (x + 0.004, y + 0.0035, z + 0.002), dark, turn=-angle - math.pi / 2, about=(x, y, z)))
     return far, fine
 
 

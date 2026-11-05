@@ -230,7 +230,7 @@ enum Works {
         case .saltworks: return Saltworks.model(level: level, name: name)
         case .musterHall: return MusterHall.model(level: level, name: name)
         case .walls: return Art.walls(level: level, name: name)
-        case .beacon: return Beacon.model(level: level, name: name)
+        case .beacon: return Art.work(Art.beaconFile, level: level, name: name)
         case .infirmary: return Infirmary.model(level: level, name: name)
         case .moonspire: return Moonspire.model(level: level, name: name)
         case .archive: return Archive.model(level: level, name: name)
@@ -361,25 +361,6 @@ enum Works {
     static func forgeChimney(_ level: Int) -> Vec3 {
         Vec3(-0.13, forgeChimneyHeight(level), -0.12)
     }
-
-
-    // MARK: Beacon
-
-    /// A beacon's alarm bell: two posts and a beam, the bell hung from it
-    /// and its rope down to a cleat on a post.
-    static func beaconBell(_ b: inout MeshBuilder, at: Vec3) {
-        for z in [Float(-0.026), 0.026] {
-            b.limb(from: at + Vec3(0, 0, z), to: at + Vec3(0, 0.1, z), radius: 0.004, sides: 4, color: Palette.timberDark)
-        }
-        b.beam(from: at + Vec3(0, 0.1, -0.034), to: at + Vec3(0, 0.1, 0.034), width: 0.008, color: Palette.timberDark)
-        b.with(material: .metal) {
-            $0.place(.translation(at + Vec3(0, 0.058, 0))) {
-                $0.lathe([(0.017, 0), (0.013, 0.012), (0.009, 0.034), (0.0, 0.038)], sides: 7, color: Palette.bronze)
-            }
-        }
-        b.limb(from: at + Vec3(0.004, 0.06, 0), to: at + Vec3(0.004, 0.035, 0.022), radius: 0.0012, sides: 3, color: Palette.linen)
-    }
-
 
     // MARK: Moonspire
 

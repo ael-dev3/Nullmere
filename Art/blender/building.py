@@ -45,7 +45,11 @@ def mesh_object(name, build, mat, smooth=False):
 def block(name, low, high, mat, chamfer=0.0, turn=0.0, about=None):
     """A block from one corner to the other (the world's axes), its edges
     cut back by `chamfer` (world units) if given, turned `turn` radians
-    about the upright through `about` (its middle, if not given)."""
+    about the upright through `about` (its middle, if not given): its own
+    +x turned to (cos turn, 0, sin turn), from +x toward +z. That is the
+    other way round to the game's .rotationY, so a Swift box turned `t` is
+    a block turned `-t`; a piece at (cos a, sin a) round an upright lies
+    along its ring at a + pi/2 and points out from it at a."""
     lo, hi = at(*low), at(*high)
     a = Vector((min(lo.x, hi.x), min(lo.y, hi.y), min(lo.z, hi.z)))
     b = Vector((max(lo.x, hi.x), max(lo.y, hi.y), max(lo.z, hi.z)))
@@ -193,7 +197,7 @@ def merlons(name, a, b, count, size, mat, chamfer=0.0):
         middle = a + along * ((index + 0.5) / count)
         low = (middle.x - size[0] / 2, middle.y, middle.z - size[2] / 2)
         high = (middle.x + size[0] / 2, middle.y + size[1], middle.z + size[2] / 2)
-        pieces.append(block("merlon", low, high, mat, chamfer=chamfer, turn=-turn, about=tuple(middle)))
+        pieces.append(block("merlon", low, high, mat, chamfer=chamfer, turn=turn, about=tuple(middle)))
     return join(name, pieces)
 
 

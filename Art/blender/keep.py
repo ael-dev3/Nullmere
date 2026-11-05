@@ -184,7 +184,7 @@ if SEAT:
         for k in range(6):
             angle = 2 * math.pi * (k + 0.5) / 6
             mx, mz = x + 0.098 * math.cos(angle), -0.08 + 0.098 * math.sin(angle)
-            flanks.append(block("merlon", (mx - 0.02, 0.73, mz - 0.015), (mx + 0.02, 0.775, mz + 0.015), trim, turn=-angle - math.pi / 2,
+            flanks.append(block("merlon", (mx - 0.02, 0.73, mz - 0.015), (mx + 0.02, 0.775, mz + 0.015), trim, turn=angle + math.pi / 2,
                                 about=(mx, 0.73, mz)))
         cones.append(rings("cone", [(0.1, 0.72), (0.0, 1.01)], 8, house, centre=(x, -0.08)))
         flanks.append(lit("round window", (x, 0.48, -0.08 + 0.087), 0.03, 0.06, 0.0, candle))
@@ -318,7 +318,7 @@ if SEAT:
         outward = (math.pi, math.pi * 0.75, math.pi * 1.25) if x < 0 else (0.0, math.pi * 0.25, -math.pi * 0.25)
         for angle in outward:
             sx, sz = x + 0.088 * math.cos(angle), -0.08 + 0.088 * math.sin(angle)
-            close.append(block("slit", (sx - 0.006, 0.24, sz - 0.008), (sx + 0.006, 0.3, sz + 0.008), beam, turn=-angle, about=(sx, 0.27, sz)))
+            close.append(block("slit", (sx - 0.006, 0.24, sz - 0.008), (sx + 0.006, 0.3, sz + 0.008), beam, turn=angle + math.pi / 2, about=(sx, 0.27, sz)))
         # Each cone ribbed and tipped, a door to the yard at its foot.
         for k in range(6):
             angle = 2 * math.pi * k / 6 + math.pi / 6

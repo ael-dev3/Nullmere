@@ -64,7 +64,7 @@ Every model is original. Every company (the spearman, the archer, the
 lantern-bearer, the rider on his horse, the Mangonel with its crewman and
 the founder at his handcart), the three things of the far country, the
 six commanders, the townsfolk with their carters, the keeps, the walls, the
-town and the Granary are made in Blender, each by a script
+town, the Granary and the Beacon are made in Blender, each by a script
 ([`Art/blender/spearman.py`](../Art/blender/spearman.py),
 [`archer.py`](../Art/blender/archer.py), [`lantern.py`](../Art/blender/lantern.py),
 [`rider.py`](../Art/blender/rider.py), [`commanders.py`](../Art/blender/commanders.py),
@@ -72,7 +72,8 @@ town and the Granary are made in Blender, each by a script
 [`hollow.py`](../Art/blender/hollow.py), [`thornwight.py`](../Art/blender/thornwight.py),
 [`colossus.py`](../Art/blender/colossus.py), [`folk.py`](../Art/blender/folk.py),
 [`carters.py`](../Art/blender/carters.py), [`keep.py`](../Art/blender/keep.py),
-[`walls.py`](../Art/blender/walls.py), [`town.py`](../Art/blender/town.py), [`granary.py`](../Art/blender/granary.py))
+[`walls.py`](../Art/blender/walls.py), [`town.py`](../Art/blender/town.py), [`granary.py`](../Art/blender/granary.py),
+[`beacon.py`](../Art/blender/beacon.py))
 that builds the body, gear and
 skeleton and keys the actions, on one body every person shares
 ([`person.py`](../Art/blender/person.py)): the skin is weighted to the

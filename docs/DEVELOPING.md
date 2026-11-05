@@ -262,10 +262,14 @@ its colours and grain given by the game for the materials it is made of.
 each of their five levels a tier of the file; `town.py` the town's pieces
 (`town.glb`, `Art.townFile` in `TownFile.swift`), each a variant named as
 the game names it. A work's family is one script and one file, each level a
-tier (`granary.py`: `granary.glb`, `Art.granaryFile` in `GranaryFile.swift`,
-on `Art/blender/works.py`), its moving parts bones tagged for the levels they
+tier (`granary.py`: `granary.glb`, `Art.granaryFile` in `GranaryFile.swift`;
+`beacon.py`: `beacon.glb`, `Art.beaconFile` in `BeaconFile.swift`; both on
+`Art/blender/works.py`), its moving parts bones tagged for the levels they
 stand at (`sack hoist@3`, which the importer keeps for that level under its
-plain name) and its motion one action, `idle`. The riders' and commanders' horse is
+plain name) and its motion one action, `idle`: a part turned about its axis
+or, like a fire, stretched. A block's `turn` in `building.py` runs from +x
+toward +z, the other way round to the game's `.rotationY`; tests find a
+moving part by its name, never by its place in the rig. The riders' and commanders' horse is
 `Art/blender/horse.py`'s; the Mangonel's and the handcarts' wheels and the
 handcart itself are `Art/blender/carts.py`'s. A figure's rig is held to 23
 bones (24 parts with the game's root): a script folds the bones it does not

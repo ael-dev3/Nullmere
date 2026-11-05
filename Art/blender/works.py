@@ -9,6 +9,7 @@ asked for under their names without their tags. Its motion is one action,
 "idle", keyed at every few frames of the idle's four seconds.
 """
 import math
+import random
 
 import bpy
 from mathutils import Matrix, Quaternion, Vector
@@ -115,6 +116,63 @@ def idle(rig, turns=(), stretches=(), frames=120):
 
 
 # MARK: What works are built of
+
+def on_ring(radius, y, angle, centre=(0.0, 0.0)):
+    """A point `radius` out from an upright at `centre` (x, z), `angle`
+    round it as the game's MeshBuilder.ring counts: from +x toward -z."""
+    return (centre[0] + radius * math.cos(angle), y, centre[1] - radius * math.sin(angle))
+
+
+def posed(obj, at_point, axis, angle):
+    """A piece made about the origin, turned `angle` about an axis of the
+    world's (as the game's rotations turn) and set down at a point."""
+    turn = Matrix.Rotation(angle, 4, Vector((axis[0], -axis[2], axis[1])).normalized())
+    obj.matrix_world = Matrix.Translation(at(*at_point)) @ turn
+    apply_transforms(obj)
+    return obj
+
+
+def rock(name, centre, size, seed, mat, bands=3, sides=6, jitter=0.2):
+    """A rough stone about `centre`, `size` its half-extents (the world's
+    x, y, z), each point pushed in or out at random by up to `jitter` of
+    its reach, the same stone for the same seed."""
+    chance = random.Random(seed)
+
+    def build(bm):
+        rows = []
+        for band in range(bands + 1):
+            latitude = math.pi * band / bands - math.pi / 2
+            pole = band in (0, bands)
+            row = []
+            for side in range(1 if pole else sides):
+                longitude = 2 * math.pi * side / sides
+                push = 1 + jitter * (2 * chance.random() - 1)
+                d = (math.cos(latitude) * math.cos(longitude), math.sin(latitude), -math.cos(latitude) * math.sin(longitude))
+                row.append(bm.verts.new(at(centre[0] + d[0] * size[0] * push, centre[1] + d[1] * size[1] * push,
+                                           centre[2] + d[2] * size[2] * push)))
+            rows.append(row)
+        for lower, upper in zip(rows, rows[1:]):
+            for side in range(sides):
+                n = (side + 1) % sides
+                if len(lower) == 1:
+                    bm.faces.new((lower[0], upper[n], upper[side]))
+                elif len(upper) == 1:
+                    bm.faces.new((lower[side], lower[n], upper[0]))
+                else:
+                    bm.faces.new((lower[side], lower[n], upper[n], upper[side]))
+    return mesh_object(name, build, mat)
+
+
+def log(name, a, b, radius, sides=5):
+    """A log in its bark, its sawn ends pale."""
+    obj = rod(name, a, b, radius, material("plain_timber_bark", (0.25, 0.2, 0.15)), sides=sides)
+    obj.data.materials.append(material("plain_timber_pale", (0.45, 0.37, 0.28)))
+    axis = (at(*b) - at(*a)).normalized()
+    for poly in obj.data.polygons:
+        if abs(poly.normal.dot(axis)) > 0.9:
+            poly.material_index = 1
+    return obj
+
 
 def pad(name, radius, mat, sides=12):
     """Packed ground a work stands on, sunk deep enough to sit on a slope."""

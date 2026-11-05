@@ -183,7 +183,8 @@ final class ClipTests: XCTestCase {
         let gin = Library.model(.work(.sawpit, level: 4)).rig.index(of: "gin") ?? 0
         XCTAssertGreaterThan(moved(.work(.sawpit, level: 4), .idle, UInt16(gin)), 0.5, "the horse walks the gin")
         XCTAssertGreaterThan(moved(.work(.quarry, level: 5), .idle, 1), 0.3, "the crane slews")
-        XCTAssertGreaterThan(moved(.work(.beacon, level: 2), .idle, 1), 0.05, "the beacon's fire leaps")
+        let fire = Library.model(.work(.beacon, level: 2)).rig.index(of: "beacon fire") ?? 0
+        XCTAssertGreaterThan(moved(.work(.beacon, level: 2), .idle, UInt16(fire)), 0.05, "the beacon's fire leaps")
         XCTAssertGreaterThan(moved(.prop(.bird), .idle, 1), 0.5)
         XCTAssertGreaterThan(moved(.prop(.puff), .idle, 1), 0.1, "smoke rises")
         XCTAssertGreaterThan(moved(.commander(variant: 4), .attack, Steed.heldR), 0.3, "the standard is waved")

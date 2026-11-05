@@ -162,7 +162,7 @@ enum Art {
         "metal_iron": Palette.iron, "metal_gold": Palette.gold, "house_roof": Palette.house, "house_door": Palette.house,
         "house_awning": Palette.house, "house_dark": Palette.houseDark, "cloth_banner": Palette.house, "glow_candle": Palette.candle,
         "glow_fire": Palette.fire, "crystal_moonsalt": Palette.moonsalt, "foliage_ivy": Palette.leaf, "foliage_grain": Palette.grain,
-        "foliage_straw": Palette.straw,
+        "foliage_straw": Palette.straw, "plain_stone_rock": Palette.rock, "plain_bone": Palette.bone, "metal_bronze": Palette.bronze,
     ]
 
     /// A work made in Blender at its level, each level its tier of the
