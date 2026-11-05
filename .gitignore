@@ -4,3 +4,6 @@
 /.swiftpm/
 *.xcodeproj/xcuserdata/
 DerivedData/
+
+# Python bytecode, as the Blender scripts leave it.
+__pycache__/
