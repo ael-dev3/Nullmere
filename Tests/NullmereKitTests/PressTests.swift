@@ -127,7 +127,7 @@ final class PressTests: XCTestCase {
         XCTAssertEqual(index, 0, "the first question first")
         draw(LyceumCard(session: session))
         let choice = question.choices.count - 1
-        XCTAssertTrue(PressableButtons.press("Answer \(question.choices[choice])"), "Among \(shown)")
+        XCTAssertTrue(PressableButtons.press(question.choices[choice]), "Among \(shown)")
         XCTAssertTrue(link.sent.contains { if case .answerLyceum(0, choice) = $0 { return true } else { return false } },
                       "The answer pressed is sent: \(link.sent)")
 
