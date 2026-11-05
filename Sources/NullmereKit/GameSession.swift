@@ -1768,8 +1768,13 @@ public final class GameSession {
     /// nearest their seat, and the land beside it the line strikes from.
     static func expeditionField(in state: GameState, for player: Int) -> (from: Hex, at: Hex)? {
         guard let seat = state.seat(of: player)?.position else { return nil }
-        let ridge = state.map.hexes.filter { state.map[$0]?.terrain == .spine }
-            .min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) }
+        // Ring by ring outward from the seat, the nearest spine first: the
+        // field is asked for every frame, and the map can be wide.
+        var ridge: Hex?
+        for radius in 0...(2 * state.map.radius + 1) {
+            ridge = seat.ring(radius).filter { state.map[$0]?.terrain == .spine }.min { ($0.q, $0.r) < ($1.q, $1.r) }
+            if ridge != nil { break }
+        }
         guard let at = ridge else { return nil }
         let below = state.map.neighbors(of: at).filter { state.map[$0].map { $0.terrain.isPassable && !$0.terrain.isWater } == true }
             .min { ($0.distance(to: seat), $0.q, $0.r) < ($1.distance(to: seat), $1.q, $1.r) }

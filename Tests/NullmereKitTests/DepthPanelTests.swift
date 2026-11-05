@@ -2849,5 +2849,9 @@ extension DepthPanelTests {
         let (session, _) = session(state)
         draw(MonumentSection(session: session, open: true))
         draw(RealmPanel(session: session))
+        // With stones set, each is named under the one being raised.
+        state.monument = Monument(set: 2, done: 0, parts: [:])
+        let (raised, _) = self.session(state)
+        draw(MonumentSection(session: raised, open: true))
     }
 }

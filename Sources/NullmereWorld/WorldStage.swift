@@ -1384,7 +1384,11 @@ public final class WorldStage: @unchecked Sendable {
     /// thrown on its yard, flickering with the bellows, at most a few.
     public func forgeFires(near focus: Vec3, within reach: Float = 5, time: Float) -> [PointLight] {
         var fires: [(distance: Float, light: PointLight)] = []
-        for (_, entry) in drawnPieces {
+        for (id, entry) in drawnPieces {
+            // Only the holds about the eye: their pieces, not every hold's.
+            guard let hold = laid[id]?.hold, hold.level(.forge) > 0 else { continue }
+            let heart = Relief.centre(of: hold.position)
+            guard (Vec3(heart.x, 0, heart.z) - Vec3(focus.x, 0, focus.z)).length <= reach + HoldLayout.reach * HoldLayout.grandeur else { continue }
             for piece in entry.drawn {
                 guard case .work(.forge, _) = piece.key, piece.progress >= 1 else { continue }
                 let at = piece.position
