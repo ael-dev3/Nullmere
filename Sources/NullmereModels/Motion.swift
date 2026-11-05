@@ -13,6 +13,7 @@ public extension Clip {
         case .attack: return 1.5
         case .death: return 1.5
         case .gather: return 2
+        case .hit: return 1.5
         }
     }
 

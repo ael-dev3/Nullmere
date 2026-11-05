@@ -187,6 +187,15 @@ enum Engine {
             p.turn(body, x: -0.05 * fall, z: 0.14 * fall)
             p.shift(body, Vec3(0, -0.012 * gait.size * fall, 0))
             p.turn(arm, x: 0.35 * fall)
+        case .hit:
+            // A stone or a charge into the frame: it jolts and rocks on its
+            // wheels, the arm jumping in its skein, its crewman ducking.
+            gait.hit(&p, u)
+            let r = Gait.recoil(u)
+            p.turn(body, x: 0.08 * r, z: -0.1 * r * Motion.wave(u, cycles: 2))
+            p.shift(body, Vec3(0, 0.01 * gait.size * r, -0.02 * gait.size * r))
+            p.turn(arm, x: 0.25 * r)
+            p.turn(Limb.torso, x: 0.6 * r)
         case .attack:
             gait.idle(&p, u)
             // The pin pulled, the arm flies; then wound back down.

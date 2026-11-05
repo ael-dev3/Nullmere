@@ -847,4 +847,43 @@ final class ThrongPoseTests: XCTestCase {
         XCTAssertEqual(batches.flatMap(\.instances).count, Formation.throngMost, "every figure of the throng drawn")
         XCTAssertLessThanOrEqual(Set(batches.flatMap(\.instances).map(\.palette)).count, WorldStage.throngSteps, "in a few shared poses")
     }
+
+    /// A throng struck in its field: every other step reels under the
+    /// foe's blows while the rest strike; out of a field, none does.
+    func testAStruckThrongStrikesAndReelsByTurns() {
+        var pose = CompanyPose(unit: 4, key: .figure(.rider, tier: 3), sigil: 0, health: 100, hex: Hex(0, 0), position: .zero, heading: 0,
+                               clip: .attack, clipTime: 0.2, isOwn: true)
+        pose.throng = Formation.throngMost
+        XCTAssertEqual(WorldStage.throngClip(pose, step: 1), .attack, "not struck, all strike")
+        pose.struck = true
+        let clips = (0..<WorldStage.throngSteps).map { WorldStage.throngClip(pose, step: $0) }
+        XCTAssertEqual(clips, [.attack, .hit, .attack, .hit, .attack])
+        var marching = pose
+        marching.clip = .march
+        XCTAssertEqual(WorldStage.throngClip(marching, step: 1), .march, "only a company at the foe takes blows")
+        let map = WorldMap(radius: 6, fill: Tile(terrain: .greyfield))
+        let stage = WorldStage(map: map, relief: Relief(map: map))
+        var frame = SceneFrame(), still = SceneFrame()
+        _ = stage.companies([pose], houses: [Vec4(1, 0, 0, 1)], into: &frame)
+        pose.struck = false
+        _ = stage.companies([pose], houses: [Vec4(1, 0, 0, 1)], into: &still)
+        XCTAssertNotEqual(frame.palette, still.palette, "its reeling ranks stand otherwise than striking ones")
+    }
+}
+
+final class ImpactTests: XCTestCase {
+    /// Where a struck throng takes its blows, steel sparks and flashes beat
+    /// on beat, on its phase; a struck engine's timber splinters.
+    func testBlowsLandOnTheStruckBeatOnBeat() {
+        var happenings = Happenings()
+        happenings.impacts = [Happenings.Impact(at: Vec3(1, 0, 1), phase: 0.3, every: 1.5, seed: 9)]
+        let landed = happenings.effects(at: 1.5 * 6 + 0.3 + 0.05).motes
+        XCTAssertFalse(landed.isEmpty, "a blow just landed")
+        XCTAssertTrue(landed.allSatisfy { ($0.place.x - 1).magnitude < 0.6 && ($0.place.z - 1).magnitude < 0.6 }, "where it landed")
+        XCTAssertNotEqual(landed, happenings.effects(at: 1.5 * 7 + 0.3 + 0.05).motes, "each blow its own")
+        var engine = happenings
+        engine.impacts[0].timber = true
+        XCTAssertNotEqual(engine.effects(at: 1.5 * 6 + 0.3 + 0.05).motes, landed, "timber splinters where steel sparks")
+        XCTAssertTrue(Happenings().effects(at: 9.35).motes.isEmpty)
+    }
 }

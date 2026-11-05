@@ -26,7 +26,8 @@ final class ClipTests: XCTestCase {
     }
 
     func testClipsKeepTime() {
-        XCTAssertEqual(Clip.allCases.filter(\.loops), [.idle, .march, .attack, .gather])
+        XCTAssertEqual(Clip.allCases.filter(\.loops), [.idle, .march, .attack, .hit, .gather])
+        XCTAssertEqual(Clip.hit.period, Clip.attack.period, "struck on the beat the foe strikes")
         XCTAssertFalse(Clip.death.loops)
         for clip in Clip.allCases {
             XCTAssertGreaterThan(clip.period, 0.5)
@@ -91,6 +92,24 @@ final class ClipTests: XCTestCase {
                 let across = ClipTests.difference(model.pose(clip, at: clip.period - step), model.pose(clip, at: clip.period + step))
                 XCTAssertLessThanOrEqual(across, usual * 1.5 + 2e-3, "\(key) \(clip) joins smoothly")
             }
+        }
+    }
+
+    /// Every company, struck, reels: hardest just after the blow, at guard
+    /// again before the next, so a rank can take blow after blow.
+    func testEveryCompanyReelsWhenStruckAndRecovers() {
+        XCTAssertEqual(Gait.recoil(0), 0)
+        XCTAssertEqual(Gait.recoil(0.14), 1, accuracy: 1e-5, "at its worst a moment after the blow")
+        XCTAssertEqual(Gait.recoil(1), 0)
+        for key in Library.catalogue where CatalogueTests.isCompany(key) {
+            let model = Library.model(key)
+            guard model.motion != nil else { continue }
+            let guardPose = model.pose(.hit, at: 0), worst = model.pose(.hit, at: 0.14 * Clip.hit.period)
+            XCTAssertGreaterThan(ClipTests.difference(guardPose, worst), 0.02, "\(key) reels when struck")
+            XCTAssertLessThan(ClipTests.difference(guardPose, model.pose(.hit, at: 0.9 * Clip.hit.period)), 1e-3,
+                              "\(key) back at guard before the next blow")
+            XCTAssertGreaterThan(ClipTests.difference(worst, model.pose(.attack, at: 0.14 * Clip.attack.period)), 0.02,
+                                 "\(key) taking a blow is not giving one")
         }
     }
 

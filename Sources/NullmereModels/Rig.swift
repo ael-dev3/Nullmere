@@ -69,6 +69,10 @@ public enum Clip: String, CaseIterable, Sendable {
     case attack
     /// Struck and falling; it ends lying still.
     case death
+    /// Struck and still standing: a blow taken on the shield or the body,
+    /// a stagger back and a recovery to guard, a beat at a time, as a rank
+    /// at the front of a battle takes it again and again.
+    case hit
     /// Working a site: reaping, felling, cutting, raking salt.
     case gather
 }

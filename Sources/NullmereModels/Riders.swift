@@ -315,6 +315,7 @@ struct Ride: Sendable {
         case .attack: charge(&p, u)
         case .death: fall(&p, u)
         case .gather: graze(&p, u)
+        case .hit: shy(&p, u)
         }
         return p.joints
     }
@@ -433,6 +434,37 @@ struct Ride: Sendable {
             level(&p, angle: 0)
             p.turn(Steed.heldR, z: 0.55 * couch * Motion.wave(u, cycles: 2))
         }
+    }
+
+    /// Struck: the horse shies and half rears, its head flung up and its
+    /// fore hooves pawing; its rider is rocked back in the saddle, the
+    /// shield thrown up; and both come down to the line again.
+    func shy(_ p: inout Pose, _ u: Float) {
+        carry(&p)
+        let r = Gait.recoil(u)
+        p.turn(Steed.body, x: -0.3 * r, z: 0.06 * Motion.wave(u, cycles: 2) * r)
+        p.shift(Steed.body, Vec3(0, 0.012 * mount.scale * r, -0.02 * mount.scale * r))
+        for (upper, lower, phase) in [(Steed.foreL, Steed.foreShinL, Float(0)), (Steed.foreR, Steed.foreShinR, 0.25)] {
+            p.turn(upper, x: -0.7 * r + 0.15 * Motion.wave(u, cycles: 3, phase: phase) * r)
+            p.turn(lower, x: 1.3 * r)
+        }
+        for (upper, lower) in [(Steed.hindL, Steed.hindShinL), (Steed.hindR, Steed.hindShinR)] {
+            p.turn(upper, x: 0.25 * r)
+            p.turn(lower, x: -0.2 * r)
+        }
+        p.turn(Steed.neck, x: -0.5 * r, y: 0.25 * r)
+        p.turn(Steed.head, x: -0.35 * r)
+        p.turn(Steed.tail, x: -0.5 * r, y: 0.3 * Motion.wave(u, cycles: 3) * r)
+        p.turn(Steed.seat, x: 0.12 * r)
+        p.turn(Steed.torso, x: -0.3 * r, y: 0.2 * r)
+        p.turn(Steed.riderHead, x: -0.25 * r, y: -0.3 * r)
+        if shield {
+            p.turn(Steed.armL, x: -0.5 * r)
+        } else {
+            p.turn(Steed.armL, x: -0.9 * r, z: -0.3 * r)
+            p.turn(Steed.forearmL, x: -0.8 * r)
+        }
+        level(&p, angle: 0.4 * r)
     }
 
     /// The horse goes down on its side; its rider is thrown and lies by it.

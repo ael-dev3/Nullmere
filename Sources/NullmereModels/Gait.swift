@@ -55,6 +55,7 @@ struct Gait: Sendable {
         case .attack: attack(&p, u)
         case .death: death(&p, u)
         case .gather: gather(&p, u)
+        case .hit: hit(&p, u)
         }
         return p.joints
     }
@@ -309,6 +310,45 @@ struct Gait: Sendable {
     func gather(_ p: inout Pose, _ u: Float) {
         carry(&p)
         swing(&p, u, high: false)
+    }
+
+    /// How hard a blow lands through a hit's beat: struck at once, the
+    /// stagger at its worst a moment after, then the slow recovery to guard
+    /// before the next. Every model that is struck takes it on this beat.
+    static func recoil(_ u: Float) -> Float {
+        Motion.key(u, [(0, 0), (0.06, 0.15), (0.14, 1), (0.32, 0.7), (0.62, 0.2), (0.85, 0), (1, 0)])
+    }
+
+    /// Struck and standing: rocked back on the rear foot, the head snapped
+    /// aside, the shield or the arms thrown up to guard, and back to the
+    /// line. The far country's reel and shake their heads; a founder ducks
+    /// behind the cart.
+    func hit(_ p: inout Pose, _ u: Float) {
+        carry(&p)
+        let r = Gait.recoil(u)
+        let wild = hands == .wild || hands == .club
+        p.turn(Limb.torso, x: -0.38 * r, y: 0.22 * r, z: (wild ? 0.3 : 0.08) * r)
+        p.turn(Limb.head, x: -0.32 * r, y: -0.35 * r, z: (wild ? 0.45 : 0.1) * Motion.wave(u, cycles: 2) * r)
+        p.shift(Limb.hips, Vec3(0, -0.035 * size * r, -0.07 * size * r))
+        // A step back to catch the weight, the front knee giving.
+        p.turn(Limb.thighR, x: 0.42 * r)
+        p.turn(Limb.shinR, x: 0.3 * r)
+        p.turn(Limb.thighL, x: -0.25 * r)
+        p.turn(Limb.shinL, x: 0.45 * r)
+        if shield {
+            // The shield up before the face, taking it.
+            p.turn(Limb.armL, x: -0.55 * r, z: -0.1 * r)
+            p.turn(Limb.forearmL, x: -0.35 * r)
+        } else if hands == .cart {
+            p.turn(Limb.torso, x: 0.55 * r)
+            p.turn(Limb.head, x: 0.4 * r)
+        } else {
+            // The free arm flung up across the face.
+            p.turn(Limb.armL, x: -1.1 * r, z: -0.35 * r)
+            p.turn(Limb.forearmL, x: -1.0 * r)
+        }
+        p.turn(Limb.armR, x: 0.35 * r, z: -0.25 * r)
+        level(&p, spear: 0.5 * r)
     }
 
     /// Struck: the knees go, and it falls and lies still. The far

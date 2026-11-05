@@ -48,6 +48,9 @@ extension GameSession {
 
     /// How fast a company's feet go on the march, strides a second.
     static let marchStrides: Float = 2.2
+    /// How far ahead of the world's clock a company fighting in a field
+    /// stands in its attack: each a little apart from the next.
+    nonisolated static func attackBeat(of unit: Int) -> Float { Float(unit % 11) * 0.17 }
     /// How long a company takes to ease from one clip into the next.
     static let easing = 0.25
 
@@ -388,10 +391,12 @@ extension GameSession {
                 spread = 0.3
             }
             if animated {
-                // Struck: jolted back from the blow, and shaken.
+                // Struck: jolted back from the blow, and shaken, reeling as it takes it.
                 for blow in blows where blow.defender == unit.id && blow.from != unit.position {
                     let age = now.timeIntervalSince(blow.start) - Double(Happenings.landing)
                     guard age > 0, age < 0.4 else { continue }
+                    clip = .hit
+                    clipTime = Float(age) * Clip.hit.period / 0.4 * 0.62
                     let from = Relief.centre(of: blow.from)
                     let away = Vec3(centre.x - from.x, 0, centre.z - from.z).normalized
                     let jolt = Float(sin(Double.pi * age / 0.4)) * 0.07
@@ -434,10 +439,12 @@ extension GameSession {
                     poses[poses.count - 1].spread = WorldStage.routSpread
                     poses[poses.count - 1].blend = nil
                 } else if clip == .idle {
+                    // At the foe blow after blow, and taking theirs: its ranks strike and reel by turns.
                     let beat = Clip.attack.period
                     poses[poses.count - 1].clip = .attack
-                    poses[poses.count - 1].clipTime = Float((time + Double(unit.id % 11) * 0.17).truncatingRemainder(dividingBy: Double(beat)))
+                    poses[poses.count - 1].clipTime = Float((time + Double(GameSession.attackBeat(of: unit.id))).truncatingRemainder(dividingBy: Double(beat)))
                     poses[poses.count - 1].blend = nil
+                    poses[poses.count - 1].struck = true
                 }
             }
             if let leading = unit.leader.flatMap(state.commander)?.leadingTree {
@@ -587,6 +594,25 @@ extension GameSession {
                 happenings.fronts.append(Happenings.Front(from: ground(unit.position), to: ground(foeUnit.position),
                                                           strength: Float(troops) / 25_000,
                                                           seed: UInt32(truncatingIfNeeded: unit.id &* 131 &+ foeUnit.id)))
+            }
+        }
+        // Where each struck throng takes its blows, landing as its reeling ranks reel.
+        for pose in poses where pose.struck && pose.throng > 0 {
+            let period = Clip.hit.period
+            let forward = Mat4.rotationY(pose.heading).transformDirection(Vec3(0, 0, 1))
+            let at = pose.position + forward * (0.14 * pose.spread * WorldStage.figureScale / 0.3)
+            let timber: Bool
+            switch pose.key {
+            case .figure(.mangonel, _): timber = true
+            default: timber = false
+            }
+            for step in WorldStage.struckSteps {
+                // When the figures at this step are a tenth into their hit:
+                // their clip's time is the world's, their company's beat and their lag on.
+                let lead = GameSession.attackBeat(of: pose.unit) + WorldStage.throngLag(unit: pose.unit, step: step, period: period)
+                let phase = (Happenings.impactAt * period - lead).truncatingRemainder(dividingBy: period)
+                happenings.impacts.append(Happenings.Impact(at: at, phase: phase, every: period, timber: timber,
+                                                            seed: UInt32(truncatingIfNeeded: pose.unit &* 13 &+ step)))
             }
         }
         completions.removeAll { now.timeIntervalSince($0.at) > 3 }

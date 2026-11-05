@@ -431,6 +431,30 @@ public struct Happenings: Equatable, Sendable {
     }
     /// How often each front throws a clash of steel, in seconds.
     public static let clashEvery: Float = 0.22
+    /// Where a struck throng's ranks take the foe's blows, beat on beat, in
+    /// time with their figures reeling (`Clip.hit`): steel on shields and
+    /// mail, dust kicked from the staggering feet, timber split from an
+    /// engine's frame.
+    public var impacts: [Impact] = []
+    public struct Impact: Equatable, Sendable {
+        /// At the struck company's front.
+        public var at: Vec3
+        /// Moments, on the effects' clock, when a blow lands, every `every` seconds.
+        public var phase: Float
+        public var every: Float
+        /// Its frame is timber: splinters, not sparks.
+        public var timber: Bool
+        public var seed: UInt32
+        public init(at: Vec3, phase: Float, every: Float, timber: Bool = false, seed: UInt32) {
+            self.at = at
+            self.phase = phase
+            self.every = every
+            self.timber = timber
+            self.seed = seed
+        }
+    }
+    /// How far into a hit's beat its blow lands: where the recoil peaks.
+    public static let impactAt: Float = 0.1
 
     public init() {}
 
@@ -516,6 +540,21 @@ public struct Happenings: Equatable, Sendable {
             let middle = (front.from + front.to) * 0.5 + Vec3(0, 0.25, 0)
             let glint = 0.6 + 0.4 * Float(sin(Double(time * 17 + Float(front.seed % 89))))
             lights.append(PointLight(at: middle, reach: 1.4, colour: Vec3(0.55, 0.6, 0.75) * glint * min(front.strength, 2)))
+        }
+        for impact in impacts {
+            // The blow before this one and this one, each where it landed.
+            let beat = ((time - impact.phase) / impact.every).rounded(.down)
+            for back in 0...1 {
+                let n = UInt32(truncatingIfNeeded: Int(beat) - back)
+                let start = (beat - Float(back)) * impact.every + impact.phase
+                let seed = impact.seed &* 2_654_435_761 &+ n &* 97
+                let jitter = Vec3(0.16 * Effects.unit(seed, 1) - 0.08, 0, 0.16 * Effects.unit(seed, 2) - 0.08)
+                let at = impact.at + jitter + Vec3(0, 0.1, 0)
+                bursts.append(Burst(.flash, at: at, start: start, count: 1, seed: seed, scale: 0.6))
+                bursts.append(Burst(impact.timber ? .splinters : .sparks, at: at, start: start, count: impact.timber ? 9 : 7, seed: seed &+ 1,
+                                    scale: 0.75))
+                bursts.append(Burst(.dust, at: impact.at + jitter, start: start, count: 4, seed: seed &+ 2, scale: 0.55))
+            }
         }
         for battle in battles {
             // The dust a battle throws up over its whole field, the thicker

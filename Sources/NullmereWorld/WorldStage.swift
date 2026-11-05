@@ -41,6 +41,9 @@ public struct CompanyPose: Equatable, Sendable {
     /// The figures it shows standing in a field of battle, its troops'
     /// throng (see `Formation.throng`); 0 out of battle.
     public var throng: Int = 0
+    /// In a field and taking blows as it gives them: every other step of
+    /// its throng staggers under the foe's (`Clip.hit`) while the rest strike.
+    public var struck = false
 
     /// A clip being left: where it was, and how much of it still shows.
     public struct Blend: Equatable, Sendable {
@@ -921,12 +924,13 @@ public final class WorldStage: @unchecked Sendable {
                 // A throng's figures share a few steps between them, each step's
                 // pose worked out once, not one pose for every man in it.
                 let step = company.throng > 0 ? index % WorldStage.throngSteps : index
-                let lag = company.clip.loops ? offset + Float(step) * 0.137 * company.clip.period : Float(step) * 0.05
+                let clip = WorldStage.throngClip(company, step: step)
+                let lag = clip.loops ? WorldStage.throngLag(unit: company.unit, step: step, period: clip.period) : Float(step) * 0.05
                 var blend = company.blend
                 if let leaving = company.blend {
                     blend?.time += leaving.clip.loops ? offset + Float(step) * 0.137 * leaving.clip.period : Float(step) * 0.05
                 }
-                let start = WorldStage.pose(key, company.clip, at: company.clipTime + lag, blend: blend, shared: &shared, into: &frame)
+                let start = WorldStage.pose(key, clip, at: company.clipTime + lag, blend: blend, shared: &shared, into: &frame)
                 placed.append((key, ModelInstance(model: .translation(Vec3(at.x, ground, at.z)) * turn * .scale(WorldStage.figureScale), colour: colour,
                                                   opacity: company.opacity, phase: Float(company.unit % 17) * 0.31,
                                                   emphasis: company.emphasis, hex: hex, palette: start, flags: flags)))
@@ -1069,6 +1073,20 @@ public final class WorldStage: @unchecked Sendable {
     public static let routSpread: Float = 1.45
     /// The steps a throng's figures are spread across, out of step with each other.
     public static let throngSteps = 5
+    /// The throng's steps that take the foe's blows while the company is
+    /// struck: every other one, so its ranks strike and reel by turns.
+    public static let struckSteps: [Int] = (0..<throngSteps).filter { $0 % 2 == 1 }
+
+    /// What a figure at a step of its company's throng is doing.
+    public static func throngClip(_ company: CompanyPose, step: Int) -> Clip {
+        company.struck && company.throng > 0 && company.clip == .attack && struckSteps.contains(step) ? .hit : company.clip
+    }
+
+    /// How far behind its company's moment a figure at a step stands: each
+    /// company a little out of step with the next, each step with its neighbour.
+    public static func throngLag(unit: Int, step: Int, period: Float) -> Float {
+        Float(unit % 7) * 0.53 + Float(step) * 0.137 * period
+    }
     /// A side in a field of battle breaks and runs once fewer than this
     /// share of the troops it brought still stand.
     public static let routBelow: Float = 0.35
