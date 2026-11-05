@@ -52,9 +52,13 @@ on:
 permissions:
   contents: read
 
+# On main a run under way is let finish, so every push that starts one is
+# measured whole (its tests, coverage and frame times); a push made while
+# one runs waits behind it, and a later push takes the waiting one's place.
+# Pull requests and working branches cancel their run under way, as before.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   macos:
