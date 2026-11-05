@@ -175,6 +175,8 @@ final class WorldRenderTests: XCTestCase {
         for (house, unit, target) in orders { _ = try state.perform(.attack(unit: unit, target: target), as: house) }
         let field = try XCTUnwrap(state.fieldsOfBattle.first)
         XCTAssertEqual(field.fighters.count, 16)
+        let told = try XCTUnwrap(MoonBand.battleLine(in: state, for: me), "the battle told in the moon band")
+        XCTAssertTrue(told.hasPrefix("Battle ") && told.contains("your side") && told.contains("the foe"), told)
         state.houses[me].explored = Array(repeating: true, count: state.map.count)
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }

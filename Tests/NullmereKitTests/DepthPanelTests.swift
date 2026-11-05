@@ -515,6 +515,15 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(session.spoken[key], "Timber, keeper. Only timber, and old.", "the voice kept from before")
         XCTAssertEqual(session.state.commander(theirs.id)?.captive?.told?.last, "The north hold's walls are only timber.")
         draw(CommandersPanel(session: session))
+        // Without a voice kept, what they told is asked of the model anew.
+        struct Speaks: Voice {
+            func speak(_ moment: VoiceMoment) async -> String? { "Only timber." }
+        }
+        let fresh = GameSession(link: DepthLink(), house: me, world: state.view(for: me),
+                                store: LocalStore(directory: dir.appendingPathComponent(UUID().uuidString)), voice: Speaks())
+        let deadline = Date().addingTimeInterval(5)
+        while fresh.spoken[key] == nil, Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
+        XCTAssertEqual(fresh.spoken[key], "Only timber.", "Their words voiced by the model")
     }
 
     /// A letter to the age to come sealed from a hold's record, folded until
