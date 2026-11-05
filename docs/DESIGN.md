@@ -64,10 +64,10 @@ Every model is original. Every company (the spearman, the archer, the
 lantern-bearer, the rider on his horse, the Mangonel with its crewman and
 the founder at his handcart), the three things of the far country, the
 six commanders, the townsfolk with their carters, the keeps, the walls, the
-town, every work but the Wayhouse (the Granary, the Beacon, the Sawpit, the
-Quarry, the Saltworks, the Muster Hall, the Infirmary, the Archive, the
-Forge, the Masons' Lodge and the Moonspire) and an alliance's hall are made
-in Blender, each by a script
+town, every work (the Granary, the Beacon, the Sawpit, the Quarry, the
+Saltworks, the Muster Hall, the Infirmary, the Archive, the Forge, the
+Wayhouse, the Masons' Lodge and the Moonspire), an alliance's hall and the
+Lyceum's hall with its orrery are made in Blender, each by a script
 ([`Art/blender/spearman.py`](../Art/blender/spearman.py),
 [`archer.py`](../Art/blender/archer.py), [`lantern.py`](../Art/blender/lantern.py),
 [`rider.py`](../Art/blender/rider.py), [`commanders.py`](../Art/blender/commanders.py),
@@ -80,7 +80,8 @@ in Blender, each by a script
 [`saltworks.py`](../Art/blender/saltworks.py), [`forge.py`](../Art/blender/forge.py),
 [`sawpit.py`](../Art/blender/sawpit.py), [`moonspire.py`](../Art/blender/moonspire.py),
 [`musterhall.py`](../Art/blender/musterhall.py), [`archive.py`](../Art/blender/archive.py),
-[`hall.py`](../Art/blender/hall.py), [`infirmary.py`](../Art/blender/infirmary.py), [`lodge.py`](../Art/blender/lodge.py))
+[`hall.py`](../Art/blender/hall.py), [`infirmary.py`](../Art/blender/infirmary.py), [`lodge.py`](../Art/blender/lodge.py),
+[`wayhouse.py`](../Art/blender/wayhouse.py), [`lyceum.py`](../Art/blender/lyceum.py))
 that builds the body, gear and
 skeleton and keys the actions, on one body every person shares
 ([`person.py`](../Art/blender/person.py)): the skin is weighted to the

@@ -235,7 +235,7 @@ enum Works {
         case .moonspire: return Art.work(Art.moonspireFile, level: level, name: name)
         case .archive: return Art.work(Art.archiveFile, level: level, name: name)
         case .forge: return Art.work(Art.forgeFile, level: level, name: name)
-        case .wayhouse: return Wayhouse.model(level: level, name: name)
+        case .wayhouse: return Art.work(Art.wayhouseFile, level: level, name: name)
         case .lodge: return Art.work(Art.lodgeFile, level: level, name: name)
         }
     }

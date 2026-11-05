@@ -170,13 +170,21 @@ enum Art {
         "plain_earth_quarry": Palette.rock.mix(Palette.yard, 0.5), "plain_water": Palette.slate, "plain_horse_dun": Palette.horseDun,
         "plain_hair": Palette.hair, "plain_leather": Palette.leather, "plain_water_deep": Vec3(0.05, 0.07, 0.09),
         "plain_moss_weld": Palette.moss.mix(Palette.weld, 0.3), "cloth_linen": Palette.linen,
-        "plain_stone_ashlar": Palette.stoneWhite * 0.96,
+        "plain_stone_ashlar": Palette.stoneWhite * 0.96, "plain_horse_bay": Palette.horseBay, "plain_horse_grey": Palette.horseGrey,
+        "plain_horse_black": Palette.horseBlack, "plain_wool": Palette.wool, "plain_ash": Palette.ash,
+        "metal_moonsalt": Palette.moonsalt * 0.8, "glow_page": Palette.candle * 0.6,
     ]
 
     /// An alliance's hall, made in Blender (Art/blender/hall.py), its roof,
     /// shields and banners in the alliance's colour.
     static func hall(name: String) -> Model {
         model(hallFile, tier: 1, name: name, order: [], scale: buildingScale, colours: buildingColours)
+    }
+
+    /// The Lyceum's hall or the orrery over its dome, made in Blender
+    /// (Art/blender/lyceum.py), each a variant of one file.
+    static func lyceum(_ variant: String, name: String) -> Model {
+        model(lyceumFile, tier: 1, variant: variant, name: name, order: [], scale: buildingScale, colours: buildingColours)
     }
 
     /// A work made in Blender at its level, each level its tier of the
