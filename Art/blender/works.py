@@ -202,8 +202,11 @@ def hall(name, width, depth, height, wall, roof, frame, pitch=0.55, footing=None
     for x in (-w, w):
         for z in (-d, d):
             far.append(block("post", (x - 0.007, -0.02, z - 0.007), (x + 0.007, height + 0.02, z + 0.007), frame))
+    # The boards along the eaves stop a little short of the gables' faces,
+    # never in their plane.
     for z in (-d - 0.02, d + 0.02):
-        far.append(block("eave board", (-w - 0.022, height - 0.001, z - 0.004), (w + 0.022, height + 0.009, z + 0.004), frame))
+        far.append(block("eave board", (-w - overhang + 0.002, height - 0.001, z - 0.004), (w + overhang - 0.002, height + 0.009, z + 0.004),
+                         frame))
     far.append(block("ridge", (-w - 0.025, height + rise - 0.002, -0.007), (w + 0.025, height + rise + 0.01, 0.007), frame))
     fine = []
     eave, end = d + overhang, w + overhang
@@ -214,7 +217,10 @@ def hall(name, width, depth, height, wall, roof, frame, pitch=0.55, footing=None
     for x in (-end + 0.003, end - 0.003):
         for side in (1, -1):
             fine.append(lath("bargeboard", (x, height + rise * 0.05, side * eave * 0.95), (x, height + rise + 0.006, 0), 0.012, 0.012, frame))
-        fine.append(block("vent", (x - 0.003, height + rise * 0.38 - 0.011, -0.013), (x + 0.003, height + rise * 0.38 + 0.011, 0.013), frame))
+        # Each gable's vent stands a little proud of it, not in its face.
+        out = 0.002 if x > 0 else -0.002
+        fine.append(block("vent", (x + out - 0.003, height + rise * 0.38 - 0.011, -0.013), (x + out + 0.003, height + rise * 0.38 + 0.011, 0.013),
+                          frame))
     rafters = max(int(round(width / 0.06)), 2)
     for index in range(rafters + 1):
         x = -w + width * index / rafters

@@ -99,18 +99,6 @@ def building(name, at_point, width, depth, height, wall, roof, pitch, turn=0.0, 
     """A hall with its gable roof and frame, on a chamfered footing of
     stone if it has one, set down at a point and turned (as the game turns)."""
     far, fine = hall(name, width, depth, height, wall, roof, dark, pitch=pitch, eaves=eaves)
-    for obj in fine:
-        if obj.name.startswith("vent"):
-            # Each gable's vent stood a little proud of the roof's gable, as
-            # the game's are, and not in its face.
-            out = 0.002 * UNIT * (1 if obj.data.vertices[0].co.x > 0 else -1)
-            for v in obj.data.vertices:
-                v.co.x += out
-    for obj in far:
-        if obj.name.startswith("eave board"):
-            # And the boards along the eaves run on past the gables' faces.
-            for v in obj.data.vertices:
-                v.co.x += 0.002 * UNIT * (1 if v.co.x > 0 else -1)
     if footing is not None:
         far.append(block(name + " footing", (-width / 2 - 0.012, -0.08, -depth / 2 - 0.012), (width / 2 + 0.012, 0.04, depth / 2 + 0.012),
                          footing, chamfer=0.004))
