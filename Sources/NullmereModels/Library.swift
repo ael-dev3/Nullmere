@@ -420,7 +420,7 @@ public enum Library {
         case .furnishing(let furnishing): mesh = Land.furnishing(furnishing)
         case .site(let resource): return Land.site(resource, name: key.canonical.description)
         case .prop(let prop): return Props.build(prop, name: key.canonical.description)
-        case .shrine(let kind): return Land.shrine(kind, name: key.canonical.description)
+        case .shrine(let kind): return Art.shrine(kind.rawValue, name: key.canonical.description)
         case .lair(let kind): return Lairs.build(kind, name: key.canonical.description)
         case .gatehold: return Lairs.gatehold(name: key.canonical.description)
         case .standard: return Land.standard(name: key.canonical.description)

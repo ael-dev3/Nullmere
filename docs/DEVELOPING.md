@@ -261,7 +261,8 @@ its colours and grain given by the game for the materials it is made of.
 `walls.py` makes the walls (`walls.glb`, `Art.wallsFile` in `Walls.swift`),
 each of their five levels a tier of the file; `town.py` the town's pieces
 (`town.glb`, `Art.townFile` in `TownFile.swift`), each a variant named as
-the game names it. A work's family is one script and one file, each level a
+the game names it, and `shrines.py` the holy sites (`shrines.glb`,
+`Art.shrinesFile` in `ShrinesFile.swift`), each kind a variant by its name. A work's family is one script and one file, each level a
 tier (`granary.py`: `granary.glb`, `Art.granaryFile` in `GranaryFile.swift`;
 `beacon.py`: `beacon.glb`, `Art.beaconFile` in `BeaconFile.swift`; and so
 the Sawpit, the Quarry, the Saltworks, the Muster Hall, the Infirmary, the

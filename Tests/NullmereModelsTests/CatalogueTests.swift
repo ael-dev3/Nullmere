@@ -455,19 +455,20 @@ final class CatalogueTests: XCTestCase {
             case .furnishing, .scaffold, .site, .keep, .keepOf, .walls, .prop(.arrow), .prop(.stone), .prop(.materials), .prop(.waystone), .prop(.waystoneLit), .lair, .gatehold, .hostBanner, .talentSigil, .helpLight, .borderStone, .commanderStar, .crestBoard, .crestCharge, .barge, .allianceHall, .lyceumHall, .lyceumOrrery,
                  .yard(.grain), .town:
                 XCTAssertNil(model.motion, "\(key) stands still")
-            case .shrine, .standard, .rallyCamp, .drownedCrown, .listeningStone, .pedlarSkiff:
-                XCTAssertNotNil(model.motion, "\(key): its motes turn, its fires burn, its ripples spread")
+            case .standard, .rallyCamp, .drownedCrown, .listeningStone, .pedlarSkiff:
+                XCTAssertNotNil(model.motion, "\(key): its fires burn, its ripples spread")
             case .prop:
                 XCTAssertNotNil(model.motion, "\(key)")
             case .raising:
                 XCTAssertNotNil(model.motion, "\(key) works as its work rises")
-            case .work, .study, .storehouse, .yard:
+            case .work, .study, .storehouse, .yard, .shrine:
                 break
             }
         }
         for key: ModelKey in [.work(.sawpit, level: 3), .work(.quarry, level: 3), .work(.beacon, level: 1), .work(.saltworks, level: 2),
                               .work(.moonspire, level: 5), .study(level: 3), .study(level: 5), .work(.forge, level: 1),
-                              .work(.forge, level: 5), .storehouse, .yard(.timber), .yard(.stone), .yard(.moonsalt)] {
+                              .work(.forge, level: 5), .storehouse, .yard(.timber), .yard(.stone), .yard(.moonsalt)]
+            + ShrineKind.allCases.map({ .shrine($0) }) {
             let model = Library.model(key)
             XCTAssertTrue(model.motion != nil || model.skeleton?.actions[.idle] != nil, "\(key) has an idle motion, by code or by its skeleton")
         }

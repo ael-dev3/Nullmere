@@ -187,6 +187,20 @@ enum Art {
         model(lyceumFile, tier: 1, variant: variant, name: name, order: [], scale: buildingScale, colours: buildingColours)
     }
 
+    /// A holy site made in Blender (Art/blender/shrines.py), each kind a
+    /// variant of one file by the kind's name: the ring of standing stones
+    /// under their lintels about its heart, its motes turning and its fires
+    /// leaping, the pennant in its holder's colour.
+    static func shrine(_ kind: String, name: String) -> Model {
+        let colours = buildingColours.merging([
+            "plain_stone_floor": Palette.stonePale.mix(Palette.stone, 0.5), "plain_stone_bleached": Palette.stonePale.mix(Palette.stoneWhite, 0.35),
+            "plain_stone_weathered": Palette.stonePale.mix(Palette.stone, 0.25), "plain_wooldark": Palette.woolDark,
+            "crystal_moonglow": Palette.moonGlow, "crystal_slatedrop": Palette.slate, "crystal_stonepale": Palette.stonePale,
+            "foliage_grass": Palette.grass, "foliage_thatch_reed": Palette.reed,
+        ]) { _, own in own }
+        return model(shrinesFile, tier: 1, variant: kind, name: name, order: [], scale: buildingScale, colours: colours)
+    }
+
     /// A work made in Blender at its level, each level its tier of the
     /// family's one file, its moving parts the bones tagged for that level.
     static func work(_ base64: String, level: Int, name: String, colours: [String: Vec3] = [:]) -> Model {

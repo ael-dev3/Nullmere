@@ -27,16 +27,22 @@ final class SiteTests: XCTestCase {
     }
 
     /// The holy sites, the rally camp and the alliance standard are alive:
-    /// each holy heart turns its motes, the camp's fire leaps and its drum
-    /// is beaten, the standard's braziers burn; and none is plain.
+    /// each holy heart turns its motes and its fires leap, the camp's fire
+    /// leaps and its drum is beaten, the standard's braziers burn; and none
+    /// is plain.
     func testHolySitesCampAndStandardMove() throws {
         let keys: [(ModelKey, Int)] = ShrineKind.allCases.map { (.shrine($0), 1_400) } + [(.rallyCamp, 1_200), (.standard, 1_400), (.drownedCrown, 1_600)]
         for (key, least) in keys {
             let model = Library.model(key)
             XCTAssertGreaterThan(model.mesh.triangleCount, least, "\(key)")
             XCTAssertLessThanOrEqual(model.mesh.triangleCount, key.budget, "\(key)")
-            let motion = try XCTUnwrap(model.motion, "\(key) moves")
-            XCTAssertNotEqual(motion(.idle, 0), motion(.idle, 0.4), "\(key) moves")
+            XCTAssertNotEqual(model.pose(.idle, at: 0), model.pose(.idle, at: 0.4), "\(key) moves")
+        }
+        // A holy site's motes turn about its heart, by its skeleton.
+        for kind in ShrineKind.allCases {
+            let model = Library.model(.shrine(kind))
+            XCTAssertNotNil(model.skeleton, "\(kind) made in Blender")
+            XCTAssertNotNil(model.rig.index(of: "holy motes"), "\(kind)'s motes")
         }
     }
 }
