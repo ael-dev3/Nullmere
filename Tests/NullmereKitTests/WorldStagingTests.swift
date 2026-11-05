@@ -129,6 +129,28 @@ final class WorldStagingTests: XCTestCase {
 
     /// Frames timed over passes keep each frame's steadiest time: a slow
     /// moment in one pass is not counted, a frame slow in every pass is.
+    /// The House's expedition field stands under the Spine nearest its seat
+    /// once it is in sight: its war camp, and a waystone for each stage,
+    /// lit for each it has won.
+    func testTheExpeditionFieldStandsUnderTheSpine() throws {
+        let session = try session { state in
+            let me = state.player
+            state.expeditions = [me: 4]
+            guard let (from, _) = GameSession.expeditionField(in: state, for: me),
+                  let index = state.units.firstIndex(where: { $0.owner == me }) else { return }
+            state.units[index].position = from
+        }
+        guard let (from, _) = GameSession.expeditionField(in: session.state, for: session.player) else {
+            throw XCTSkip("no Spine on this lake")
+        }
+        XCTAssertTrue(session.isVisible(from), "the field in sight")
+        let scene = session.sceneFrame(at: 5)
+        let count = { (key: ModelKey) in scene.batches.filter { $0.key == key }.flatMap(\.instances).count }
+        XCTAssertEqual(count(.prop(.waystoneLit)), 4, "a stone lit for each stage won")
+        XCTAssertEqual(count(.prop(.waystone)) + count(.prop(.waystoneLit)), ExpeditionStage.count)
+        XCTAssertGreaterThanOrEqual(count(.rallyCamp), 1, "the House's camp below the ridge")
+    }
+
     func testEachFramesSteadiestTimeIsKept() {
         let passes: [[Double]] = [[1, 5, 2, 7], [4, 1, 2, 7], [1, 1, 9, 7]]
         XCTAssertEqual(StagingTimes.steadiest(passes), [1, 1, 2, 7])
