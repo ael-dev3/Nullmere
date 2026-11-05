@@ -26,7 +26,7 @@ final class PlacementTests: XCTestCase {
         let pose = model.pose(.idle, at: 0)
         var low = SIMD2<Float>(repeating: .infinity), high = SIMD2<Float>(repeating: -.infinity)
         for vertex in model.mesh.vertices {
-            let m = pose[Int(vertex.part)]
+            let m = vertex.skinning(pose)
             guard Vec3(m.c0.x, m.c0.y, m.c0.z).length > 0.01 else { continue }
             let p = m.transformPoint(vertex.position)
             low = pointwiseMin(low, SIMD2(p.x, p.z))

@@ -399,8 +399,12 @@ public enum WorldShaders {
         packed_float3 position;
         packed_char4 normalMaterial;
         packed_uchar4 colorSway;
-        ushort part;
-        ushort surface;
+        // The part it moves with, a second part it moves with by blend
+        // 255ths (skin over a joint), and the grain drawn on it.
+        uchar part;
+        uchar part2;
+        uchar surface;
+        uchar blend;
     };
 
     struct ModelInstance {
@@ -733,6 +737,10 @@ public enum WorldShaders {
             local += nm_wind(local, sway, material, time) * frame.world.w;
         }
         float4x4 part = palette[instance.palette + uint(v.part)];
+        if (v.blend > 0) {
+            float w = float(v.blend) / 255.0;
+            part = part * (1.0 - w) + palette[instance.palette + uint(v.part2)] * w;
+        }
         float4 posed = part * float4(local, 1.0);
         float4 world = instance.model * posed;
         float3 normal = (instance.model * (part * float4(float3(packedNormal.xyz) / 127.0, 0.0))).xyz;

@@ -520,6 +520,8 @@ public enum PreviewExport {
                 "colors": mesh.vertices.flatMap { [round($0.color.x), round($0.color.y), round($0.color.z)] },
                 "materials": mesh.vertices.map { Int($0.material.rawValue) },
                 "parts": mesh.vertices.map { Int($0.part) },
+                "parts2": mesh.vertices.map { Int($0.part2) },
+                "blends": mesh.vertices.map { round(PackedVertex.blendWeight($0.blend)) },
                 "indices": mesh.indices.map { Int($0) },
                 "bounds": [[bounds.min.x, bounds.min.y, bounds.min.z], [bounds.max.x, bounds.max.y, bounds.max.z]],
                 "pose": model.pose(clip, at: time).map { m in

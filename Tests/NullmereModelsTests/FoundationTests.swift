@@ -132,7 +132,9 @@ final class MeshTests: XCTestCase {
         XCTAssertEqual(MemoryLayout<PackedVertex>.offset(of: \.normalMaterial), 12)
         XCTAssertEqual(MemoryLayout<PackedVertex>.offset(of: \.colorSway), 16)
         XCTAssertEqual(MemoryLayout<PackedVertex>.offset(of: \.part), 20)
+        XCTAssertEqual(MemoryLayout<PackedVertex>.offset(of: \.part2), 21)
         XCTAssertEqual(MemoryLayout<PackedVertex>.offset(of: \.surfaceCode), 22)
+        XCTAssertEqual(MemoryLayout<PackedVertex>.offset(of: \.blend), 23)
         XCTAssertEqual(MemoryLayout<Mat4>.size, 64)
         let vertex = MeshVertex(position: Vec3(1.5, -2, 3), normal: Vec3(0.3, 0.9, -0.2), color: Vec3(0.2, 0.6, 1),
                                 part: 7, material: .metal, sway: 0.4, surface: .slate)
@@ -144,6 +146,41 @@ final class MeshTests: XCTestCase {
         XCTAssertEqual(packed.sway, 0.4, accuracy: 0.01)
         XCTAssertEqual(packed.part, 7)
         XCTAssertEqual(packed.surface, .slate)
+        XCTAssertEqual(packed.part2, 0)
+        XCTAssertEqual(packed.blend, 0, "One part alone: no blend")
+        // Skin over a joint: a second part, and how much it moves with it.
+        var skin = vertex
+        skin.part2 = 9
+        skin.blend = 0.25
+        let skinned = PackedVertex(skin)
+        XCTAssertEqual(skinned.part, 7)
+        XCTAssertEqual(skinned.part2, 9)
+        XCTAssertEqual(skinned.blend, 64)
+        XCTAssertEqual(skinned.surface, .slate)
+    }
+
+    /// A vertex over a joint moves with its two parts as the GPU blends
+    /// them: a part turned away while the other stands, it goes a share of
+    /// the way between where each would put it.
+    func testSkinOverAJointMovesWithBothItsParts() {
+        var palette = [Mat4](repeating: .identity, count: 3)
+        palette[2] = .translation(Vec3(0, 1, 0))
+        let rigid = MeshVertex(position: Vec3(1, 0, 0), normal: .up, color: Vec3(0.5, 0.5, 0.5), part: 2)
+        XCTAssertEqual(rigid.posed(palette), Vec3(1, 1, 0), "With its one part")
+        var skin = rigid
+        skin.part = 1
+        skin.part2 = 2
+        skin.blend = 0.5
+        XCTAssertEqual(skin.posed(palette).y, PackedVertex.blendWeight(0.5), accuracy: 1e-6, "Half way, as the GPU's byte has it")
+        skin.blend = 1
+        XCTAssertEqual(skin.posed(palette), Vec3(1, 1, 0), "All with the second")
+        let mesh = Mesh(vertices: [rigid, skin], indices: [])
+        XCTAssertEqual(mesh.parts, [1, 2])
+        // Blending is linear in each entry.
+        let a = Mat4.translation(Vec3(2, 0, 0)), b = Mat4.rotationY(1)
+        let mixed = a * 0.25 + b * 0.75
+        XCTAssertEqual(mixed.c3.x, 0.5, accuracy: 1e-6)
+        XCTAssertEqual(mixed.c0.x, 0.25 + 0.75 * cos(1), accuracy: 1e-6)
     }
 
     func testSurfacesTakeTheGrainOfWhatTheyAreMadeOf() {

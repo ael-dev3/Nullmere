@@ -22,7 +22,7 @@ final class ClipTests: XCTestCase {
     /// leaving out parts it does not fall with.
     static func top(_ model: Model, _ clip: Clip, _ time: Float, leaving out: Set<UInt16> = []) -> Float {
         let pose = model.pose(clip, at: time)
-        return model.mesh.vertices.filter { !out.contains($0.part) }.map { pose[Int($0.part)].transformPoint($0.position).y }.max() ?? 0
+        return model.mesh.vertices.filter { !out.contains($0.part) }.map { $0.posed(pose).y }.max() ?? 0
     }
 
     func testClipsKeepTime() {

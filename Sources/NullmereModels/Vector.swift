@@ -81,6 +81,16 @@ public struct Mat4: Equatable, Sendable {
         Mat4(a.apply(b.c0), a.apply(b.c1), a.apply(b.c2), a.apply(b.c3))
     }
 
+    /// Every entry scaled: with `+`, two transforms blended as skin over a
+    /// joint is.
+    public static func * (m: Mat4, k: Float) -> Mat4 {
+        Mat4(m.c0 * k, m.c1 * k, m.c2 * k, m.c3 * k)
+    }
+
+    public static func + (a: Mat4, b: Mat4) -> Mat4 {
+        Mat4(a.c0 + b.c0, a.c1 + b.c1, a.c2 + b.c2, a.c3 + b.c3)
+    }
+
     public func apply(_ v: Vec4) -> Vec4 {
         c0 * v.x + c1 * v.y + c2 * v.z + c3 * v.w
     }

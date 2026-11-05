@@ -208,10 +208,12 @@ final class PreviewTests: XCTestCase {
         let pose = model.pose(clip, at: time)
         var mesh = model.mesh
         for index in mesh.vertices.indices {
-            let m = pose[Int(mesh.vertices[index].part)]
+            let m = mesh.vertices[index].skinning(pose)
             mesh.vertices[index].position = m.transformPoint(mesh.vertices[index].position)
             mesh.vertices[index].normal = m.normalMatrix.transformDirection(mesh.vertices[index].normal).normalized
             mesh.vertices[index].part = 0
+            mesh.vertices[index].part2 = 0
+            mesh.vertices[index].blend = 0
         }
         return mesh
     }

@@ -216,6 +216,7 @@ enum Riders {
         var mesh = person.mesh
         for index in mesh.vertices.indices {
             mesh.vertices[index].part = Steed.rider(mesh.vertices[index].part)
+            mesh.vertices[index].part2 = Steed.rider(mesh.vertices[index].part2)
         }
         var whole = b.mesh
         whole.append(mesh, transform: .translation(lift(m, f)))

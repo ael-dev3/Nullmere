@@ -108,6 +108,8 @@ final class CatalogueTests: XCTestCase {
                               "\(key)'s colours are albedo")
                 XCTAssertTrue((0...1).contains(vertex.sway), "\(key)'s sway")
                 XCTAssertLessThan(Int(vertex.part), model.rig.count, "\(key)'s parts within its rig")
+                XCTAssertLessThan(Int(vertex.part2), model.rig.count, "\(key)'s second parts within its rig")
+                XCTAssertTrue((0...1).contains(vertex.blend), "\(key)'s blends")
             }
             var turned = 0
             for (a, b, c) in mesh.triangles {

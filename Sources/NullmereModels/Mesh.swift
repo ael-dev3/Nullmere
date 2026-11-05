@@ -83,9 +83,15 @@ public struct MeshVertex: Equatable, Sendable {
     public var sway: Float
     /// The grain drawn on it.
     public var surface: Surface
+    /// A second part it moves with, as skin over a joint does: an elbow
+    /// with both the upper arm and the forearm, by `blend`.
+    public var part2: UInt16
+    /// How much it moves with `part2` rather than `part`, 0 to 1; 0 for a
+    /// vertex that moves with one part alone.
+    public var blend: Float
 
     public init(position: Vec3, normal: Vec3, color: Vec3, part: UInt16 = 0, material: Material = .plain, sway: Float = 0,
-                surface: Surface = .smooth) {
+                surface: Surface = .smooth, part2: UInt16 = 0, blend: Float = 0) {
         self.position = position
         self.normal = normal
         self.color = color
@@ -93,12 +99,28 @@ public struct MeshVertex: Equatable, Sendable {
         self.material = material
         self.sway = sway
         self.surface = surface
+        self.part2 = part2
+        self.blend = blend
+    }
+
+    /// The transform it moves by, given each part's: its part's, or its two
+    /// parts' blended as the GPU blends them.
+    public func skinning(_ palette: [Mat4]) -> Mat4 {
+        let first = palette[Int(part)]
+        guard blend > 0, Int(part2) < palette.count else { return first }
+        let w = PackedVertex.blendWeight(blend)
+        return first * (1 - w) + palette[Int(part2)] * w
+    }
+
+    /// Where it stands, given each part's transform.
+    public func posed(_ palette: [Mat4]) -> Vec3 {
+        skinning(palette).transformPoint(position)
     }
 }
 
 /// A vertex as the GPU reads it: 24 bytes, matching `ModelVertex` in the
 /// world's shaders (`packed_float3 position; char4 normalMaterial;
-/// uchar4 colorSway; ushort part; ushort surface;`).
+/// uchar4 colorSway; uchar part; uchar part2; uchar surface; uchar blend;`).
 public struct PackedVertex: Equatable, Sendable {
     public var x: Float
     public var y: Float
@@ -107,9 +129,21 @@ public struct PackedVertex: Equatable, Sendable {
     public var normalMaterial: UInt32
     /// The colour as three bytes of sRGB, then the sway.
     public var colorSway: UInt32
-    public var part: UInt16
+    public var part: UInt8
+    /// The second part it moves with, by `blend`.
+    public var part2: UInt8
     /// The grain drawn on it, as `Surface`'s raw value.
-    public var surfaceCode: UInt16
+    public var surfaceCode: UInt8
+    /// How much it moves with `part2`, in 255ths.
+    public var blend: UInt8
+
+    /// The most parts a model's rig may have: each vertex names its parts in a byte.
+    public static let partsMost = 256
+
+    /// A blend as the GPU reads it back, from its byte.
+    public static func blendWeight(_ blend: Float) -> Float {
+        Float(UInt8(clamping: Int((min(max(blend, 0), 1) * 255).rounded()))) / 255
+    }
 
     public init(_ vertex: MeshVertex) {
         x = vertex.position.x
@@ -124,8 +158,12 @@ public struct PackedVertex: Equatable, Sendable {
         }
         normalMaterial = signedByte(n.x) | signedByte(n.y) << 8 | signedByte(n.z) << 16 | UInt32(vertex.material.rawValue) << 24
         colorSway = byte(vertex.color.x) | byte(vertex.color.y) << 8 | byte(vertex.color.z) << 16 | byte(vertex.sway) << 24
-        part = vertex.part
-        surfaceCode = UInt16(vertex.surface.rawValue)
+        precondition(Int(vertex.part) < PackedVertex.partsMost && Int(vertex.part2) < PackedVertex.partsMost,
+                     "a vertex names its parts in a byte")
+        part = UInt8(truncatingIfNeeded: vertex.part)
+        part2 = UInt8(truncatingIfNeeded: vertex.part2)
+        surfaceCode = vertex.surface.rawValue
+        blend = UInt8(clamping: Int((min(max(vertex.blend, 0), 1) * 255).rounded()))
     }
 
     public var position: Vec3 { Vec3(x, y, z) }
@@ -144,7 +182,7 @@ public struct PackedVertex: Equatable, Sendable {
 
     public var sway: Float { Float(UInt8(truncatingIfNeeded: colorSway >> 24)) / 255 }
 
-    public var surface: Surface? { Surface(rawValue: UInt8(truncatingIfNeeded: surfaceCode)) }
+    public var surface: Surface? { Surface(rawValue: surfaceCode) }
 }
 
 /// Triangles: three indices into the vertices for each, wound
@@ -220,5 +258,5 @@ public struct Mesh: Equatable, Sendable {
     }
 
     /// Every part the triangles move with.
-    public var parts: Set<UInt16> { Set(vertices.map(\.part)) }
+    public var parts: Set<UInt16> { Set(vertices.flatMap { $0.blend > 0 ? [$0.part, $0.part2] : [$0.part] }) }
 }

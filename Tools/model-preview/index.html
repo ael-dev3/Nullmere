@@ -36,11 +36,13 @@ const look = params.get('look') ? params.get('look').split(',').map(Number) : nu
 function fail(message) { document.getElementById('error').textContent = message; }
 
 const vertexSource = `#version 300 es
-in vec3 position; in vec3 normal; in vec3 color; in float material; in float part;
-uniform mat4 viewProjection; uniform mat4 parts[32];
+in vec3 position; in vec3 normal; in vec3 color; in float material; in float part; in float part2; in float blend;
+uniform mat4 viewProjection; uniform mat4 parts[48];
 out vec3 vNormal; out vec3 vColor; out float vMaterial; out vec3 vWorld;
 void main() {
   mat4 m = parts[int(part)];
+  // Skin over a joint moves with two parts, blended as the world's shader blends them.
+  if (blend > 0.0) m = m * (1.0 - blend) + parts[int(part2)] * blend;
   vec4 world = m * vec4(position, 1.0);
   vWorld = world.xyz;
   vNormal = mat3(m) * normal;
@@ -139,7 +141,8 @@ async function main() {
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
     for (const [name, size, values] of [['position', 3, model.positions], ['normal', 3, model.normals], ['color', 3, model.colors],
-                                         ['material', 1, model.materials], ['part', 1, model.parts]]) {
+                                         ['material', 1, model.materials], ['part', 1, model.parts],
+                                         ['part2', 1, model.parts2 || model.parts], ['blend', 1, model.blends || model.parts.map(() => 0)]]) {
       const buffer = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(values), gl.STATIC_DRAW);
@@ -159,8 +162,8 @@ async function main() {
                  centre[2] + distance * Math.cos(pitch) * Math.cos(yaw)];
     const viewProjection = multiply(perspective(0.6, 1, distance * 0.05, distance * 6), lookAt(eye, centre));
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'viewProjection'), false, viewProjection);
-    const parts = new Float32Array(32 * 16);
-    for (let p = 0; p < 32; p++) {
+    const parts = new Float32Array(48 * 16);
+    for (let p = 0; p < 48; p++) {
       const pose = model.pose && model.pose[p];
       parts.set(pose || [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], p * 16);
     }

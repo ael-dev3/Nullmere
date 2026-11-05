@@ -110,8 +110,13 @@ void main() {
   float ring = 1.0 - smoothstep(pixel * 0.8, pixel * 2.4, edge.x);
   lit += vec3(0.20, 0.22, 0.26) * ring * hovered * 0.6;
   lit += kGlow * (ring * 0.9 + (1.0 - smoothstep(0.0, 0.35, edge.x)) * 0.08) * chosen;
-  lit = mix(nm_remembered(lit), lit, smoothstep(0.15, 0.85, vWatched));
-  lit = mix(nm_mist(p, time), lit, smoothstep(0.0, 1.0, vKnown));
+  // What the keeper knows of the ground, blended between hexes, as the
+  // world's land fragment has it.
+  vec2 knows = nm_knowledgeAround(p, radius);
+  lit = mix(nm_remembered(lit), lit, smoothstep(0.0, 1.0, knows.y));
+  if (knows.x < 0.999) {
+    lit = mix(nm_remembered(lit) * 0.18 + kMist * 0.3, lit, smoothstep(0.55, 1.0, knows.x));
+  }
   float beyond = float(nm_hexDistance(h)) - radius;
   lit *= clamp(1.0 - 0.13 * beyond, 0.18, 1.0);
   lit = nm_haze(lit, distance(vWorld, eye.xyz), haze.x, haze.y);
@@ -150,7 +155,7 @@ void main() {
 
 const modelVertex = header + `
 uniform sampler2D palette;
-in vec3 position; in vec4 normalMaterial; in vec4 colorSway; in float part; in float surface;
+in vec3 position; in vec4 normalMaterial; in vec4 colorSway; in vec2 parts; in vec2 surfaceBlend;
 in vec4 m0; in vec4 m1; in vec4 m2; in vec4 m3; in vec4 iColour; in vec4 iParams; in ivec2 iHex; in uint iPalette; in uint iFlags;
 out vec3 vWorld; out vec3 vNormal; out vec3 vColour; out float vLocalY; out vec3 vLocal; out vec3 vLocalNormal;
 flat out float vMaterial; flat out vec4 vParams; flat out float vWatched; flat out float vSurface;
@@ -160,9 +165,16 @@ void main() {
   float time = eye.w + iParams.z;
   vec3 local = position;
   if (sway > 0.0) { local += nm_wind(local, sway, material, time) * world.w; }
-  int row = int(iPalette) + int(part);
+  int row = int(iPalette) + int(parts.x);
   mat4 posing = mat4(texelFetch(palette, ivec2(0, row), 0), texelFetch(palette, ivec2(1, row), 0),
                      texelFetch(palette, ivec2(2, row), 0), texelFetch(palette, ivec2(3, row), 0));
+  float blend = surfaceBlend.y / 255.0;
+  if (blend > 0.0) {
+    int second = int(iPalette) + int(parts.y);
+    mat4 other = mat4(texelFetch(palette, ivec2(0, second), 0), texelFetch(palette, ivec2(1, second), 0),
+                      texelFetch(palette, ivec2(2, second), 0), texelFetch(palette, ivec2(3, second), 0));
+    posing = posing * (1.0 - blend) + other * blend;
+  }
   vec4 posed = posing * vec4(local, 1.0);
   mat4 model = mat4(m0, m1, m2, m3);
   vec4 place = model * posed;
@@ -186,7 +198,7 @@ void main() {
   vLocalY = posed.y;
   vLocal = position;
   vLocalNormal = normalMaterial.xyz / 127.0;
-  vSurface = surface;
+  vSurface = surfaceBlend.x;
   vMaterial = material;
   vParams = iParams;
   vWatched = watched;
@@ -355,8 +367,8 @@ if (frame.scene) {
     vertex('position', 3, gl.FLOAT, 0);
     vertex('normalMaterial', 4, gl.BYTE, 12);
     vertex('colorSway', 4, gl.UNSIGNED_BYTE, 16);
-    vertex('part', 1, gl.UNSIGNED_SHORT, 20);
-    vertex('surface', 1, gl.UNSIGNED_SHORT, 22);
+    vertex('parts', 2, gl.UNSIGNED_BYTE, 20);
+    vertex('surfaceBlend', 2, gl.UNSIGNED_BYTE, 22);
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
     gl.bufferData(gl.ARRAY_BUFFER, decode(batch.instances, Uint8Array), gl.STATIC_DRAW);
     const instance = (name, size, type, offset, integer) => {

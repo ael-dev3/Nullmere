@@ -85,6 +85,10 @@ float4 operator*(const float4x4 &, const float4 &);
 float2x2 operator*(const float2x2 &, const float2x2 &);
 float3x3 operator*(const float3x3 &, const float3x3 &);
 float4x4 operator*(const float4x4 &, const float4x4 &);
+// Metal adds matrices of a size and scales them by a scalar.
+float4x4 operator*(const float4x4 &, float);
+float4x4 operator*(float, const float4x4 &);
+float4x4 operator+(const float4x4 &, const float4x4 &);
 float2x2 make_float2x2(float2, float2);
 float2x2 make_float2x2(float);
 float3x3 make_float3x3(float3, float3, float3);
