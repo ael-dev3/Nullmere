@@ -13,21 +13,6 @@ import math
 from common import *
 from person import *
 
-# The shared walk covers this much ground a period at a man's height.
-WALK = 2 * 0.85 * (math.sin(math.radians(26)) + math.sin(math.radians(24)))
-
-
-def reach(pace, height):
-    """How much further than a man's each leg must swing for a thing
-    `height` tall (in the game's units) to walk at `pace`."""
-    return pace / (WALK * height / 1.8)
-
-
-def gait_pace(size, stride):
-    """A walker's pace as the game reckons it (Gait.marchSpeed)."""
-    return 4 * 0.46 * math.sin(stride) * size
-
-
 def eyes(man, glow, spread=0.036, forward=-0.104, lift=0.02):
     """Two cold eyes where a face would be."""
     pair = [solid("eye", "box", mat=glow, location=at_head(s * spread, forward, lift), size=(0.03, 0.012, 0.016)) for s in (1, -1)]

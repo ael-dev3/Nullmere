@@ -15,13 +15,6 @@ enum Figures {
         }
     }
 
-    static func model(_ name: String, _ f: Frame, _ gait: Gait, more: [(name: String, parent: UInt16, pivot: Vec3)] = [],
-                      _ body: (inout MeshBuilder) -> Void) -> Model {
-        var b = MeshBuilder()
-        b.place(.scale(f.size)) { body(&$0) }
-        return Model(name: name, mesh: b.mesh, rig: f.rig(more: more)) { clip, time in gait.joints(clip, time) }
-    }
-
     // MARK: The heritages' own companies
 
     /// A House's own company, its heritage's kind at the fifth tier in
@@ -59,9 +52,9 @@ enum Figures {
     /// with strides set to keep it: a slow glide, a long prowl, a heavy tread.
     static func wildGait(_ tier: Int) -> Gait {
         switch tier {
-        case 1: return Gait(hands: .free, size: 0.34, stride: 0.38)
-        case 2: return Gait(hands: .free, size: 0.37, stride: 0.5)
-        default: return Gait(hands: .free, size: 0.56, stride: 0.32)
+        case 1: return Gait(size: 0.34, stride: 0.38)
+        case 2: return Gait(size: 0.37, stride: 0.5)
+        default: return Gait(size: 0.56, stride: 0.32)
         }
     }
 
@@ -73,21 +66,15 @@ enum Figures {
         // Every tier's horse made in Blender the one size, its canter keyed for the common horse's pace.
         case .figure(.rider, _): return Ride().marchSpeed
         // His cart's wheels made to turn once a march period at the common pace, his stride lengthened to keep it.
-        case .figure(.founder, _): return Gait(hands: .spear).marchSpeed
+        case .figure(.founder, _): return Gait().marchSpeed
         // Its wheels made to turn once a march period at the common pace, and its crewman's stride lengthened to keep it.
-        case .figure(.mangonel, _): return Gait(hands: .spear).marchSpeed
-        case .figure, .prop(.cart): return Gait(hands: .spear).marchSpeed
+        case .figure(.mangonel, _): return Gait().marchSpeed
+        case .figure, .prop(.cart): return Gait().marchSpeed
         case .wild(let tier): return wildGait(tier).marchSpeed
         case .commander: return commanderPace
         case .folk(let variant): return Folk.gait(variant).marchSpeed
         default: return nil
         }
-    }
-
-    /// The handcart's wheels' radius, in the body's units: one turn of
-    /// them is one period's march.
-    static func cartWheel(_ gait: Gait) -> Float {
-        gait.marchSpeed * Clip.march.period / (2 * .pi * gait.size)
     }
 
     // MARK: The far country

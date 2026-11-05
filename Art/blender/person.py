@@ -85,6 +85,21 @@ def skirt_weights(top):
     return weights
 
 
+# The shared walk covers this much ground a period at a man's height.
+WALK = 2 * 0.85 * (math.sin(math.radians(26)) + math.sin(math.radians(24)))
+
+
+def reach(pace, height):
+    """How much further than a man's each leg must swing for one `height`
+    tall (in the game's units) to walk at `pace`."""
+    return pace / (WALK * height / 1.8)
+
+
+def gait_pace(size, stride):
+    """A walker's pace as the game reckons it (Gait.marchSpeed)."""
+    return 4 * 0.46 * math.sin(stride) * size
+
+
 def stride(t, lead):
     """A leg through the march's cycle: forward at the heel's strike (0),
     passing under (0.25), back at the toe's lift (0.5), passing (0.75)."""
@@ -160,13 +175,14 @@ class Person:
 
     # MARK: The body every tier and variant shares
 
-    def body(self, hands, face, seated=None, belt=True):
+    def body(self, hands, face, seated=None, belt=True, beard=True):
         """Legs, boots, bracers and hands, neck, head and face, and the belt.
         `hands`: (tags, material) for the hands each tier or variant wears,
         bare or gauntleted; `face`: the tags it is drawn for, where no helm
         hides it (None: a thing of the far country, with no face of a man);
         `seated`, for a rider, {side: (hip, knee, ankle)} where each leg
-        bends astride; `belt`, whether it wears one."""
+        bends astride; `belt`, whether it wears one; `beard`, whether
+        the face has one."""
         body_parts = []
         for side in ("L", "R"):
             if seated:
@@ -178,7 +194,7 @@ class Person:
                 self.seated_bands(side, *seated[side])
             else:
                 self.standing_bands(side)
-        self.head_and_belt(face, body_parts, belt)
+        self.head_and_belt(face, body_parts, belt, beard)
 
     def standing_leg(self, side):
         """A leg standing, and its boot; the boot's foot is returned for the
@@ -271,7 +287,7 @@ class Person:
         hang(solid("sole %s!fine" % side, "box", mat=p.dark_leather, location=tuple(A + Vector((0, -0.06, -0.088))),
                    size=(0.106, 0.24, 0.018)), rig, foot)
 
-    def head_and_belt(self, face, body_parts, belt=True):
+    def head_and_belt(self, face, body_parts, belt=True, beard=True):
         """The neck, head and face, the belt, and the body joined and bound."""
         rig, p, g = self.rig, self.p, self.g
         paired(rig, "neck", [
@@ -291,12 +307,12 @@ class Person:
         hang(close_head, rig, "head")
 
         if face is not None:
-            self.face(face)
+            self.face(face, beard)
         if belt:
             self.belt_gear()
 
-    def face(self, tags):
-        """A man's face, near: nose, eyes, brows, ears, beard and hair."""
+    def face(self, tags, beard=True):
+        """A face, near: nose, eyes, brows, ears, hair, and a beard if it has one."""
         rig, p = self.rig, self.p
         features = [solid("nose", "cone", mat=p.skin, vertices=6, radius1=0.021, depth=0.05, location=at_head(0, -0.109, -0.01),
                           rotation=(90, 0, 0))]
@@ -307,8 +323,9 @@ class Person:
                                   rotation=(0, s * 8, 0)))
             features.append(solid("ear", "sphere", mat=p.skin, segments=4, rings=3, radius=(0.013, 0.024, 0.033),
                                   location=at_head(s * 0.093, 0.007, 0.0)))
-        features.append(solid("beard", "sphere", mat=p.hair, smooth=True, segments=8, rings=5, radius=(0.08, 0.056, 0.058),
-                              location=at_head(0, -0.07, -0.075)))
+        if beard:
+            features.append(solid("beard", "sphere", mat=p.hair, smooth=True, segments=8, rings=5, radius=(0.08, 0.056, 0.058),
+                                  location=at_head(0, -0.07, -0.075)))
         features.append(solid("hair", "sphere", mat=p.hair, smooth=True, segments=8, rings=5, radius=(0.1, 0.095, 0.085),
                               location=at_head(0, 0.04, -0.025)))
         hang(join("face%s!fine" % tags, features), rig, "head")
@@ -407,6 +424,14 @@ class Person:
         hang(dome(name + " close" + tags + "!fine", helm_radii(margin + 0.004), HEAD, segments=14, rings=5, mat=mat, floor=floor),
              self.rig, "head")
 
+    def crown(self, name, tags, mat, margin, brow, nape):
+        """Hair or a cap over the crown, its rim `brow` above the head's
+        middle before and `nape` behind (below it, if less than nothing),
+        lean afar, round close."""
+        for full, more, segments, rings in ((name + tags, 0.0, self.far(8), 2), (name + " close" + tags + "!fine", 0.004, 14, 5)):
+            hang(slanted_dome(full, helm_radii(margin + more), HEAD, segments=segments, rings=rings, mat=mat, front=brow, back=nape),
+                 self.rig, "head")
+
     def kettle(self, tags, mat):
         """A kettle hat: an iron crown under a broad brim."""
         for name, margin, segments, rings, brim_segments in (("kettle hat" + tags, 0.012, 8, 2, 8),
@@ -422,27 +447,9 @@ class Person:
         for name, margin, segments, rings in (("hood" + tags, 0.02, self.far(8), 3), ("hood close" + tags + "!fine", 0.024, self.near(14), 5)):
             obj = dome(name, helm_radii(margin), (HEAD[0], HEAD[1] + 0.022, HEAD[2] + 0.004), segments=segments, rings=rings, mat=mat,
                        floor=-0.10)
-            bm = bmesh.new()
-            bm.from_mesh(obj.data)
             # The face left open before a plane leaning back from the chin to
-            # the brow: what lies wholly before it taken away, and every
-            # corner before it pressed back onto it, so the opening's edge
-            # rolls in a little. Each corner moves by where it is alone, so
-            # the same hood is made every time (a bisect's cut, worked from
-            # either end of an edge, is not).
-            normal = Vector((0, -1, 0.42)).normalized()
-            origin = Vector((0, HEAD[1] - 0.07, HEAD[2] + 0.01))
-            before = {v for v in bm.verts if (v.co - origin).dot(normal) > 0}
-            bmesh.ops.delete(bm, geom=[f for f in bm.faces if all(v in before for v in f.verts)], context="FACES_ONLY")
-            bmesh.ops.delete(bm, geom=[e for e in bm.edges if not e.link_faces], context="EDGES")
-            bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
-            for v in bm.verts:
-                ahead = (v.co - origin).dot(normal)
-                if ahead > 0:
-                    v.co = v.co - normal * ahead
-            settle(bm)
-            bm.to_mesh(obj.data)
-            bm.free()
+            # the brow.
+            pinch(obj, (0, HEAD[1] - 0.07, HEAD[2] + 0.01), (0, -1, 0.42))
             hang(obj, self.rig, "head")
         tail = solid("hood tail%s!fine" % tags, "cone", mat=mat, vertices=6, radius1=0.035, depth=0.2,
                      location=(0, HEAD[1] + 0.13, HEAD[2] - 0.12), rotation=(200, 0, 0))
@@ -654,6 +661,29 @@ class Person:
                                   key=lambda o: -triangles(o)):
                     print("    %4d %s" % (triangles(obj), obj.name))
         export(path)
+
+
+def pinch(obj, origin, normal):
+    """Cut away what of a mesh lies wholly before a plane through `origin`
+    facing `normal`, and press every corner still before it back onto it,
+    so the cut's edge rolls in a little. Each corner moves by where it is
+    alone, so the same cut is made every time (a bisect's, worked from
+    either end of an edge, is not)."""
+    normal = Vector(normal).normalized()
+    origin = Vector(origin)
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    before = {v for v in bm.verts if (v.co - origin).dot(normal) > 0}
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if all(v in before for v in f.verts)], context="FACES_ONLY")
+    bmesh.ops.delete(bm, geom=[e for e in bm.edges if not e.link_faces], context="EDGES")
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    for v in bm.verts:
+        ahead = (v.co - origin).dot(normal)
+        if ahead > 0:
+            v.co = v.co - normal * ahead
+    settle(bm)
+    bm.to_mesh(obj.data)
+    bm.free()
 
 
 def split_tags(name):

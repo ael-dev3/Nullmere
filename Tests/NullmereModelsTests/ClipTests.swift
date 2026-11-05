@@ -98,9 +98,6 @@ final class ClipTests: XCTestCase {
     /// Every company, struck, reels: hardest just after the blow, at guard
     /// again before the next, so a rank can take blow after blow.
     func testEveryCompanyReelsWhenStruckAndRecovers() {
-        XCTAssertEqual(Gait.recoil(0), 0)
-        XCTAssertEqual(Gait.recoil(0.14), 1, accuracy: 1e-5, "at its worst a moment after the blow")
-        XCTAssertEqual(Gait.recoil(1), 0)
         for key in Library.catalogue where CatalogueTests.isCompany(key) {
             let model = Library.model(key)
             guard model.motion != nil || model.skeleton != nil else { continue }
@@ -208,11 +205,37 @@ final class ClipTests: XCTestCase {
         XCTAssertGreaterThan(ModelKey.figure(.rider, tier: 1).marchSpeed ?? 0, ModelKey.figure(.spear, tier: 1).marchSpeed ?? 0)
         XCTAssertEqual(ModelKey.prop(.cart).marchSpeed, ModelKey.figure(.bow, tier: 2).marchSpeed, "a cart keeps pace with those on foot")
         XCTAssertGreaterThan(ModelKey.wild(tier: 3).marchSpeed ?? 0, 0)
-        let foot = Gait(hands: .spear).marchSpeed, horse = Ride().marchSpeed
+        let foot = Gait().marchSpeed, horse = Ride().marchSpeed
         XCTAssertGreaterThan(foot, 0.1)
         XCTAssertLessThan(foot, 0.5)
         XCTAssertGreaterThan(horse, foot, "riders outpace those on foot")
-        XCTAssertEqual(Figures.cartWheel(Gait(hands: .cart, stride: 0.4)) * 2 * .pi * 0.3, Gait(hands: .cart, stride: 0.4).marchSpeed,
-                       accuracy: 1e-4, "a cart's wheel turns once a period over the ground walked")
+    }
+
+    /// A cart's wheels roll over the ground its puller walks, not skidding:
+    /// between two moments of the walk the rim turns as far as the ground
+    /// they cover, a turn of them each march period.
+    func testCartWheelsRollOverTheGroundWalked() throws {
+        for key: ModelKey in [.figure(.founder, tier: 1), .figure(.mangonel, tier: 1), .folk(of: .sawpit), .folk(of: .quarry)] {
+            let model = Library.model(key), mesh = model.mesh
+            let speed = try XCTUnwrap(key.marchSpeed)
+            let far = Set(mesh.indices[..<mesh.coarseIndexCount].map(Int.init))
+            let rim = far.map { mesh.vertices[$0] }.filter { $0.part == Cart.wheelL }.map(\.position)
+            XCTAssertFalse(rim.isEmpty, "\(key) has wheels")
+            guard let first = rim.first else { continue }
+            let low = rim.reduce(first) { Vec3(min($0.x, $1.x), min($0.y, $1.y), min($0.z, $1.z)) }
+            let high = rim.reduce(first) { Vec3(max($0.x, $1.x), max($0.y, $1.y), max($0.z, $1.z)) }
+            let axle = (low + high) * 0.5
+            let radius = rim.map { Vec3(0, $0.y - axle.y, $0.z - axle.z).length }.max() ?? 0
+            let (early, later) = (Clip.march.period * 0.1, Clip.march.period * 0.35)
+            func spoke(_ time: Float) -> Vec3 {
+                let wheel = model.pose(.march, at: time)[Int(Cart.wheelL)]
+                let out = wheel.transformPoint(axle + Vec3(0, radius, 0)) - wheel.transformPoint(axle)
+                return Vec3(0, out.y, out.z).normalized
+            }
+            let a = spoke(early), b = spoke(later)
+            let turned = acos(min(max(a.y * b.y + a.z * b.z, -1), 1))
+            let walked = speed * (later - early)
+            XCTAssertEqual(turned * radius, walked, accuracy: walked * 0.04, "\(key)'s wheels roll, not skid")
+        }
     }
 }

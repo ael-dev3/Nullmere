@@ -461,6 +461,53 @@ def dome(name, radii, centre, segments=8, rings=4, mat=None, floor=None, smooth=
     return obj
 
 
+def slanted_dome(name, radii, centre, segments=8, rings=3, mat=None, front=0.0, back=0.0, smooth=True):
+    """The crown of an ellipsoid down to a plane that runs from `front`
+    above its middle at its fore edge (toward -y) to `back` above it at its
+    hind edge: a cap or a head of hair worn back from the face. Each
+    meridian is cut where the plane meets it and ringed evenly above, so no
+    face is folded, and the rim is left open."""
+    rx, ry, rz = radii
+    middle, tilt = (front + back) / 2, (front - back) / 2
+    mesh = bpy.data.meshes.new(name)
+    obj = link(bpy.data.objects.new(name, mesh))
+    bm = bmesh.new()
+    top = bm.verts.new((centre[0], centre[1], centre[2] + rz))
+    meridians = []
+    for j in range(segments):
+        phi = 2 * math.pi * j / segments
+        # On the meridian at phi, rz cos(t) = middle + tilt sin(t) cos(phi):
+        # R cos(t + d) = middle, R and d from rz and tilt cos(phi).
+        lean = tilt * math.cos(phi)
+        rim = math.acos(max(-1.0, min(1.0, middle / math.hypot(rz, lean)))) - math.atan2(lean, rz)
+        column = []
+        for k in range(1, rings + 1):
+            t = rim * k / rings
+            column.append(bm.verts.new((centre[0] + rx * math.sin(t) * math.sin(phi), centre[1] - ry * math.sin(t) * math.cos(phi),
+                                        centre[2] + rz * math.cos(t))))
+        meridians.append(column)
+    middle_point = Vector(centre)
+
+    def face(corners):
+        normal = (corners[1].co - corners[0].co).cross(corners[2].co - corners[0].co)
+        if normal.dot(corners[0].co - middle_point) < 0:
+            corners = list(reversed(corners))
+        bm.faces.new(corners)
+
+    for j in range(segments):
+        n = (j + 1) % segments
+        face([top, meridians[j][0], meridians[n][0]])
+        for k in range(rings - 1):
+            face([meridians[j][k], meridians[j][k + 1], meridians[n][k + 1], meridians[n][k]])
+    bm.to_mesh(mesh)
+    bm.free()
+    for poly in mesh.polygons:
+        poly.use_smooth = smooth
+    if mat:
+        mesh.materials.append(mat)
+    return obj
+
+
 def settle(bm):
     """Every face of more than three corners begun again at its least corner
     and cut into triangles from there, so a cut that orders its work

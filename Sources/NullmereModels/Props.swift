@@ -224,7 +224,7 @@ enum Props {
         var b = MeshBuilder()
         var rig = Rig()
         // One turn of the wheels each march period covers a man's march.
-        let radius = Gait(hands: .spear).marchSpeed * Clip.march.period / (2 * .pi)
+        let radius = Gait().marchSpeed * Clip.march.period / (2 * .pi)
         let axle = Vec3(0, radius, -0.02)
         b.box(min: Vec3(-0.085, radius + 0.02, -0.15), max: Vec3(0.085, radius + 0.04, 0.12), color: Palette.timberPale)
         for x in [Float(-0.088), 0.088] {

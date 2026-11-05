@@ -48,16 +48,7 @@ man.mattock()
 
 # MARK: The handcart, on the extra bone at the rig's root
 
-cart = []
-for s in (1, -1):
-    # A shaft from each hand back along the bed's side to its tail.
-    cart.append(beam("shaft", Vector((a(s * 0.30), 0.0, 0.73)), Vector((s * 0.396, BED_BACK, BED + 0.06)), 0.05, p.shaft))
-    cart.append(solid("rail", "box", mat=p.shaft, location=(s * 0.414, (BED_FRONT + BED_BACK) / 2, BED + 0.13),
-                      size=(0.07, BED_BACK - BED_FRONT, 0.13)))
-cart.append(solid("bed", "box", mat=pale, location=(0, (BED_FRONT + BED_BACK) / 2, BED), size=(0.86, BED_BACK - BED_FRONT, 0.10)))
-# The prop at its tail, to stand it level when he lets it go.
-cart.append(beam("prop", Vector((-0.324, BED_BACK - 0.08, BED - 0.04)), Vector((-0.324, BED_BACK - 0.02, 0.0)), 0.045, p.shaft))
-hang(join("handcart", cart), rig, "extra")
+handcart(rig, p, "handcart", (a(0.30), 0.0, 0.73), BED_FRONT, BED_BACK, BED, p.shaft, pale)
 
 # Its load: a barrel and a cask stood up, a sack, and the House's canvas
 # drawn over the rest.
@@ -94,6 +85,7 @@ IDLE = {f: merge(CARRY, {"head": (-8, 0, 18 * math.sin(2 * math.pi * f / 120)), 
         for f in range(0, 121, 10)}
 keyed(rig, "idle", 120, IDLE, **AT_SHAFTS)
 man.march(CARRY, lambda side: {"torso": (14, 0, 0)}, **AT_SHAFTS, reach=REACH, more=rolling)
+roll_evenly(rig, "march")
 
 # Out of the shafts, a step to the side of the cart: to strike, a mattock
 # swung high overhead and down, twice; to gather, worked at the ground.

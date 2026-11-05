@@ -89,6 +89,20 @@ enum Art {
         model(settler, tier: 1, name: name, order: limbs + ["wheelL", "wheelR"], scale: stockyScale)
     }
 
+    /// One of the townsfolk made in Blender, by the name its file gives
+    /// them (Folk.names), drawn `height` tall.
+    static func folk(_ variant: String, name: String, height: Float) -> Model {
+        model(townsfolk, tier: 1, variant: variant, name: name, order: limbs, scale: height / 1.8)
+    }
+
+    /// A carter and their handcart made in Blender, hauling timber or stone:
+    /// their limbs, then the cart's wheels (Cart), in the order the game
+    /// names them, drawn as tall as the townsfolk.
+    static func carter(stone: Bool, name: String) -> Model {
+        model(carters, tier: 1, variant: stone ? "stone" : "timber", name: name, order: limbs + ["wheelL", "wheelR"],
+              scale: Folk.size / 1.8)
+    }
+
     /// A model made in Blender, its bones in `order` after its root.
     static func model(_ base64: String, tier: Int, variant: String? = nil, name: String, order: [String], scale: Float = figureScale,
                       lift: Float = 0, colours: [String: Vec3] = [:]) -> Model {

@@ -168,7 +168,8 @@ final class AssetTests: XCTestCase {
         XCTAssertEqual(try Asset.bytes(base64: Art.heroes), try Data(contentsOf: models.appendingPathComponent("commanders.glb")))
         XCTAssertEqual(try Asset.bytes(base64: Art.engine), try Data(contentsOf: models.appendingPathComponent("mangonel.glb")))
         XCTAssertEqual(try Asset.bytes(base64: Art.settler), try Data(contentsOf: models.appendingPathComponent("founder.glb")))
-        for (embedded, file) in [(Art.hollow, "hollow.glb"), (Art.thornwight, "thornwight.glb"), (Art.colossus, "colossus.glb")] {
+        for (embedded, file) in [(Art.hollow, "hollow.glb"), (Art.thornwight, "thornwight.glb"), (Art.colossus, "colossus.glb"),
+                                 (Art.townsfolk, "folk.glb"), (Art.carters, "carters.glb")] {
             XCTAssertEqual(try Asset.bytes(base64: embedded), try Data(contentsOf: models.appendingPathComponent(file)), file)
         }
         XCTAssertEqual(try Asset.bytes(base64: Fixtures.arm), try Data(contentsOf: models.appendingPathComponent("fixture-arm.glb")))

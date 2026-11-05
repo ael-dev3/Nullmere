@@ -607,8 +607,10 @@ public final class WorldStage: @unchecked Sendable {
             let people = WorldStage.peopleFlags(sight.heritage)
             for piece in drawn(sight) {
                 let model = Library.model(piece.key)
+                // A work turns and burns as it stands; the folk set about it work.
+                let clip: Clip = if case .folk = piece.key { .gather } else { .idle }
                 let palette = model.rig.count > 1
-                    ? WorldStage.pose(piece.key, .idle, at: time + phase, shared: &poses, into: &frame) : 0
+                    ? WorldStage.pose(piece.key, clip, at: time + phase, shared: &poses, into: &frame) : 0
                 placed.append((piece.key, ModelInstance(model: piece.transform, colour: sight.colour, rise: piece.risen ?? WorldStage.whole,
                                                         phase: phase, hex: SIMD2(Int32(piece.hex.q), Int32(piece.hex.r)),
                                                         palette: palette, flags: WorldStage.isPeoples(piece.key) ? people : 0)))
@@ -731,8 +733,10 @@ public final class WorldStage: @unchecked Sendable {
     public static let portersMost = 3
 
     /// Where a townsfolk is on its errand, `time` seconds in, and what it
-    /// does: walking out from the door, standing at its work, walking back,
-    /// standing at the door, round and round at its own pace.
+    /// does: walking out from the door, at work where it was going (the
+    /// farmhand pitching, the carter loading the cart, the householder
+    /// talking with a neighbour), walking back, standing at the door, round
+    /// and round at its own pace.
     public static func walk(_ errand: Errand, at time: Float) -> (position: Vec3, heading: Float, clip: Clip) {
         let length = errand.length
         guard let first = errand.path.first, let last = errand.path.last, length > 1e-3 else {
@@ -759,7 +763,7 @@ public final class WorldStage: @unchecked Sendable {
             let (at, heading) = along(length * t / walking)
             return (at, heading, .march)
         }
-        if t < walking + pause { return (last, arrived, .idle) }
+        if t < walking + pause { return (last, arrived, .gather) }
         if t < 2 * walking + pause {
             let (at, heading) = along(length * (1 - (t - walking - pause) / walking))
             return (at, heading + .pi, .march)

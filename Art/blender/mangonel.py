@@ -208,6 +208,7 @@ keyed(rig, "idle", 120, IDLE, **AT_WORK)
 
 
 man.march(CARRY, lambda side: {}, **AT_WORK, reach=REACH, more=rolling)
+roll_evenly(rig, "march")
 
 
 def loosing(frame):

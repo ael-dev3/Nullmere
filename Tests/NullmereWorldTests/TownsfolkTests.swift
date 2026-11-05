@@ -139,7 +139,9 @@ final class TownsfolkTests: XCTestCase {
                 let now = WorldStage.walk(errand, at: time), next = WorldStage.walk(errand, at: time + 0.05)
                 clips.insert(now.clip)
                 if now.clip == .idle {
-                    XCTAssertTrue(flat(now.position, errand.path[0]) < 1e-3 || flat(now.position, errand.path.last!) < 1e-3, "Standing at an end")
+                    XCTAssertLessThan(flat(now.position, errand.path[0]), 1e-3, "Standing at the door")
+                } else if now.clip == .gather {
+                    XCTAssertLessThan(flat(now.position, errand.path.last!), 1e-3, "At work where it went")
                 } else if next.clip == .march {
                     // At a walk the feet hold the ground; facing where it goes.
                     let step = flat(now.position, next.position)
@@ -153,7 +155,7 @@ final class TownsfolkTests: XCTestCase {
                 }
                 time += 0.05
             }
-            XCTAssertEqual(clips, [.march, .idle])
+            XCTAssertEqual(clips, [.march, .idle, .gather])
             XCTAssertEqual(flat(WorldStage.walk(errand, at: 3).position, WorldStage.walk(errand, at: 3 + round).position), 0, accuracy: 1e-4,
                            "Round and round")
         }
@@ -186,7 +188,9 @@ final class TownsfolkTests: XCTestCase {
             while time < 2 * errand.length / speed + 2 * WorldStage.townsfolkPause {
                 let now = WorldStage.walk(errand, at: time), next = WorldStage.walk(errand, at: time + 0.05)
                 if now.clip == .idle {
-                    XCTAssertTrue(flat(now.position, errand.path[0]) < 1e-3 || flat(now.position, errand.path.last!) < 1e-3, "At an end")
+                    XCTAssertLessThan(flat(now.position, errand.path[0]), 1e-3, "At the door")
+                } else if now.clip == .gather {
+                    XCTAssertLessThan(flat(now.position, errand.path.last!), 1e-3, "Where it went")
                 } else if next.clip == .march {
                     XCTAssertLessThanOrEqual(flat(now.position, next.position), speed * 0.05 + 1e-3, "At a walk")
                 }
