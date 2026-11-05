@@ -65,10 +65,11 @@ jobs:
     # Write only to push the screenshots to the ci-shots branch.
     permissions:
       contents: write
-    # The tests alone take some eighteen minutes now that the world's
-    # models, motes and lights are rendered on the GPU; then the bundle,
-    # the release rehearsal and the screenshots of the game and the realm.
-    timeout-minutes: 45
+    # The tests alone take some twenty-five to thirty minutes now that the
+    # world's models, motes and lights are rendered on the GPU; then the
+    # bundle, the release rehearsal and the screenshots of the game and the
+    # realm: about forty minutes on a quick runner, over forty-five on a slow one.
+    timeout-minutes: 60
     # "bash" runs with -o pipefail, so a failure piped through tee still fails.
     defaults:
       run:
