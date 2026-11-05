@@ -954,3 +954,22 @@ final class LakeLifeTests: XCTestCase {
         XCTAssertNotEqual(boat.pose(.idle, at: 0), boat.pose(.idle, at: 1), "it rows")
     }
 }
+
+final class ExpeditionFieldTests: XCTestCase {
+    /// An expedition's own field under the Spine: the House's camp in its
+    /// colour, and a waystone for every stage, lit for each one won.
+    func testTheFieldLightsAWaystoneForEveryStageWon() {
+        let map = WorldMap(radius: 6, fill: Tile(terrain: .greyfield))
+        let stage = WorldStage(map: map, relief: Relief(map: map))
+        var frame = SceneFrame()
+        let colour = Vec4(0.7, 0.2, 0.1, 1)
+        let field = stage.expeditionField(from: Hex(0, 0), at: Hex(1, 0), won: 5, colour: colour, into: &frame, time: 2)
+        let count = { (key: ModelKey) in field.filter { $0.key == key }.flatMap(\.instances).count }
+        XCTAssertEqual(count(.rallyCamp), 1, "the House's camp")
+        XCTAssertEqual(field.first { $0.key == .rallyCamp }?.instances.first?.colour, colour)
+        XCTAssertEqual(count(.prop(.waystoneLit)), 5, "a stone lit for each stage won")
+        XCTAssertEqual(count(.prop(.waystone)) + count(.prop(.waystoneLit)), ExpeditionStage.count, "one for every stage")
+        let none = stage.expeditionField(from: Hex(0, 0), at: Hex(1, 0), won: 0, colour: colour, into: &frame, time: 2)
+        XCTAssertTrue(none.allSatisfy { $0.key != .prop(.waystoneLit) }, "none lit before the first is won")
+    }
+}

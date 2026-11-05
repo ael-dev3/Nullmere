@@ -302,6 +302,10 @@ public enum Prop: String, CaseIterable, Sendable {
     /// The builders' stores beside a work being raised: squared stone
     /// blocks and sawn timber on bearers, drawn on as it rises.
     case materials
+    /// A waystone of the Spine's climb, a stage of the expedition: dark
+    /// until its stage is won, then its cap lit.
+    case waystone
+    case waystoneLit
 }
 
 /// One model placed in the world.

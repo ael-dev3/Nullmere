@@ -261,6 +261,12 @@ extension GameSession {
             let fishers = stage.boats(about: Vec3(lake.x, Relief.waterline, lake.z), time: t, into: &frame)
             frame.batches += fishers.batches
             frame.lights += fishers.lights
+            // The House's expedition field under the Spine: its camp, and the
+            // climb's waystones lit for every stage won.
+            if let (from, at) = GameSession.expeditionField(in: state, for: player), isVisible(from) {
+                frame.batches += stage.expeditionField(from: from, at: at, won: state.expeditionStage(of: player),
+                                                       colour: WorldStage.colour(houses, sigil: state.houses[player].sigil), into: &frame, time: t)
+            }
             // The forges at work nearest the eye, their hearths lighting their yards.
             frame.lights += stage.forgeFires(near: camera.focus, time: t)
         }

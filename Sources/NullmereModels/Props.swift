@@ -13,6 +13,8 @@ enum Props {
         case .stone: return Model(name: name, mesh: stone())
         case .boat: return boat(name: name)
         case .materials: return Model(name: name, mesh: materials())
+        case .waystone: return Model(name: name, mesh: waystone(lit: false))
+        case .waystoneLit: return Model(name: name, mesh: waystone(lit: true))
         }
     }
 
@@ -117,6 +119,30 @@ enum Props {
             }
         }
         b.box(center: Vec3(0.09, 0.07, -0.02), size: Vec3(0.012, 0.012, 0.06), color: Palette.timberDark)
+        return b.mesh
+    }
+
+    /// A waystone of the Spine's climb: a leaning slab of dark stone on a
+    /// cairn, cut with a stage's notches, a cap of moonsalt that glows once
+    /// its stage is won.
+    static func waystone(lit: Bool) -> Mesh {
+        var b = MeshBuilder()
+        b.rock(center: Vec3(0, 0.025, 0), size: Vec3(0.07, 0.03, 0.06), rings: 2, sides: 6, jitter: 0.2, seed: 5, color: Palette.stoneDark)
+        b.with(surface: .stone) {
+            $0.place(.rotationZ(0.06)) {
+                $0.prism(sides: 4, radius: 0.026, topRadius: 0.018, from: 0.03, to: 0.2, color: Palette.rock)
+            }
+            for notch in 0..<3 {
+                $0.box(center: Vec3(0, 0.09 + Float(notch) * 0.03, 0.02), size: Vec3(0.022, 0.004, 0.004), color: Palette.barkBlack)
+            }
+        }
+        if lit {
+            b.with(material: .glow) {
+                $0.sphere(center: Vec3(0.008, 0.215, 0), radius: 0.018, rings: 2, sides: 5, color: Palette.moonsalt)
+            }
+        } else {
+            b.sphere(center: Vec3(0.008, 0.215, 0), radius: 0.016, rings: 2, sides: 5, color: Palette.saltCrust * 0.4)
+        }
         return b.mesh
     }
 

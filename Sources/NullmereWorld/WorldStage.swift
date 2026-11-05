@@ -1367,6 +1367,31 @@ public final class WorldStage: @unchecked Sendable {
     }
     public static let forgeFiresMost = 2
 
+    /// An expedition's own field under the Spine: the House's war camp on
+    /// the open ground below the ridge, where its line musters, and the
+    /// climb's waystones up toward the ridge, one for each stage, lit for
+    /// each the House has won.
+    public func expeditionField(from: Hex, at: Hex, won: Int, colour: Vec4, into frame: inout SceneFrame, time: Float) -> [ModelBatch] {
+        var placed: [(ModelKey, ModelInstance)] = []
+        let below = Relief.centre(of: from), ridge = Relief.centre(of: at)
+        let up = Vec3(ridge.x - below.x, 0, ridge.z - below.z), across = Vec3(-up.z, 0, up.x).normalized
+        let hex = SIMD2(Int32(from.q), Int32(from.r))
+        let camp = Vec3(below.x, 0, below.z) - up * 0.35
+        placed.append((.rallyCamp, ModelInstance(model: .translation(Vec3(camp.x, ground(atX: camp.x, z: camp.z), camp.z))
+                                                    * .rotationY(Float(atan2(Double(up.x), Double(up.z)))) * .scale(0.7),
+                                                 colour: colour, hex: hex, flags: ModelInstance.alwaysShown)))
+        for stage in 0..<WorldStage.waystones {
+            let t = (Float(stage) + 0.5) / Float(WorldStage.waystones)
+            let zig: Float = stage % 2 == 0 ? 0.18 : -0.18
+            let point = Vec3(below.x, 0, below.z) + up * (0.1 + t * 0.8) + across * zig
+            let key: ModelKey = .prop(stage < won ? .waystoneLit : .waystone)
+            placed.append((key, ModelInstance(model: .translation(Vec3(point.x, ground(atX: point.x, z: point.z), point.z))
+                                                * .rotationY(Float(stage) * 0.9) * .scale(1.4), hex: hex, flags: ModelInstance.alwaysShown)))
+        }
+        return animate(WorldStage.batches(placed), time: time, into: &frame)
+    }
+    public static let waystones = ExpeditionStage.count
+
     public static let boatCount = 4
     public static let boatScale: Float = 1.6
 
