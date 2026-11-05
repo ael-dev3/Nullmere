@@ -438,7 +438,7 @@ final class CatalogueTests: XCTestCase {
             case .figure, .signature, .wild, .commander, .folk:
                 XCTAssertNotNil(model.motion, "\(key)")
                 XCTAssertGreaterThanOrEqual(model.rig.count, 17, "\(key) has a body's parts")
-            case .furnishing, .scaffold, .site, .keep, .keepOf, .walls, .prop(.arrow), .prop(.stone), .lair, .gatehold, .hostBanner, .talentSigil, .helpLight, .borderStone, .commanderStar, .crestBoard, .crestCharge, .barge, .allianceHall, .lyceumHall, .lyceumOrrery,
+            case .furnishing, .scaffold, .site, .keep, .keepOf, .walls, .prop(.arrow), .prop(.stone), .prop(.materials), .lair, .gatehold, .hostBanner, .talentSigil, .helpLight, .borderStone, .commanderStar, .crestBoard, .crestCharge, .barge, .allianceHall, .lyceumHall, .lyceumOrrery,
                  .yard(.grain), .town:
                 XCTAssertNil(model.motion, "\(key) stands still")
             case .shrine, .standard, .rallyCamp, .drownedCrown, .listeningStone, .pedlarSkiff:

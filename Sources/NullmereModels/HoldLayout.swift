@@ -168,6 +168,18 @@ public enum HoldLayout {
                 let tall = max(height * min(progress + 0.12, 1), 0.2)
                 pieces.append(Piece(key: .scaffold, transform: .translation(at) * facing * .scale(Vec3(scaffoldWidth, tall, scaffoldWidth)),
                                     hex: hex))
+                // The builders' stores before it, drawn on stage by stage as
+                // it rises, and two builders at them.
+                let left = HoldLayout.storesLeft(rising.progress)
+                if left > 0 {
+                    pieces.append(Piece(key: .prop(.materials), transform: .translation(at) * facing * .translation(Vec3(-0.15, 0, -0.1))
+                                        * .scale(Vec3(1, left, 1)), hex: hex))
+                }
+                for (index, offset) in [Vec3(-0.04, 0, -0.2), Vec3(0.06, 0, -0.24)].enumerated() {
+                    pieces.append(Piece(key: .folk(variant: index == 0 ? Folk.stoneCarter : Folk.timberCarter),
+                                        transform: .translation(at) * facing * .translation(offset) * .rotationY(.pi * (index == 0 ? 0.8 : 1.2)),
+                                        hex: hex))
+                }
                 // The family's own rig beside it on the side away from the
                 // keep, clear of the walls, its builders at work.
                 let family: BuildingKind? = { if case .building(let kind) = work { return kind }; return .archive }()
@@ -186,6 +198,13 @@ public enum HoldLayout {
 
     /// How much of a rising work to draw: an upgrade starts from the height
     /// of the level it stands at.
+    /// How much of the builders' stores is left at a work's rising: drawn
+    /// on in four stages, the last gone as its roof goes on.
+    public static func storesLeft(_ progress: Float) -> Float {
+        let stage = (min(max(progress, 0), 1) * 4).rounded(.down)
+        return max(0, 1 - stage / 4)
+    }
+
     static func shown(_ work: Work, from standing: Int, to level: Int, progress: Float) -> Float {
         let new = Library.model(work.key(level: level)).mesh.bounds
         var start: Float = 0

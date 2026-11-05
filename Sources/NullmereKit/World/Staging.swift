@@ -261,6 +261,8 @@ extension GameSession {
             let fishers = stage.boats(about: Vec3(lake.x, Relief.waterline, lake.z), time: t, into: &frame)
             frame.batches += fishers.batches
             frame.lights += fishers.lights
+            // The forges at work nearest the eye, their hearths lighting their yards.
+            frame.lights += stage.forgeFires(near: camera.focus, time: t)
         }
         // The omen's weather: rain or mist about the middle of the view; or,
         // while the drowned age walks, the moon all but gone.

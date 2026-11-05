@@ -94,6 +94,22 @@ final class StageTests: XCTestCase {
         }
     }
 
+    /// A forge at work throws its firelight on its yard when the eye is
+    /// near, flickering; far off, none.
+    func testAForgeAtWorkLightsItsYard() throws {
+        let stage = stage()
+        var hold = try XCTUnwrap(Self.state.holds.first { $0.isSeat })
+        hold.levels[.forge] = 3
+        var frame = SceneFrame()
+        _ = stage.holds([HoldSight(hold: hold, colour: Vec4(0.8, 0.1, 0.1, 1))], time: 3, into: &frame)
+        let heart = Relief.centre(of: hold.position)
+        let near = stage.forgeFires(near: Vec3(heart.x, 0, heart.z), time: 1)
+        XCTAssertEqual(near.count, 1, "the forge lit")
+        XCTAssertGreaterThan(near[0].colour.x, near[0].colour.z, "fire-warm")
+        XCTAssertNotEqual(near[0].colour, stage.forgeFires(near: Vec3(heart.x, 0, heart.z), time: 1.37)[0].colour, "flickering")
+        XCTAssertTrue(stage.forgeFires(near: Vec3(heart.x + 40, 0, heart.z), time: 1).isEmpty, "none far off")
+    }
+
     func testHoldsStandInTheirHousesColoursWithTheirWorksRising() throws {
         let stage = stage()
         var hold = try XCTUnwrap(Self.state.holds.first { $0.isSeat })

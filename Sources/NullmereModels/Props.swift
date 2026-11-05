@@ -12,6 +12,7 @@ enum Props {
         case .puff: return puff(name: name)
         case .stone: return Model(name: name, mesh: stone())
         case .boat: return boat(name: name)
+        case .materials: return Model(name: name, mesh: materials())
         }
     }
 
@@ -91,6 +92,32 @@ enum Props {
             p.turn(2, z: -flap)
             return p.joints
         }
+    }
+
+    /// The builders' stores: a stack of sawn timber on two bearers and a
+    /// pile of squared stone blocks, a mallet laid on top.
+    static func materials() -> Mesh {
+        var b = MeshBuilder()
+        b.with(surface: .timber) {
+            for x in [Float(-0.05), 0.05] {
+                $0.box(center: Vec3(x, 0.006, 0), size: Vec3(0.02, 0.012, 0.16), color: Palette.timberDark)
+            }
+            for layer in 0..<3 {
+                for plank in 0..<(4 - layer) {
+                    let x = (Float(plank) - Float(3 - layer) / 2) * 0.03
+                    $0.box(center: Vec3(x - 0.06, 0.02 + Float(layer) * 0.02, 0), size: Vec3(0.026, 0.018, 0.18), color: Palette.timberPale)
+                }
+            }
+        }
+        b.with(surface: .stone) {
+            let blocks: [Vec3] = [Vec3(0.07, 0.016, -0.04), Vec3(0.11, 0.016, -0.04), Vec3(0.07, 0.016, 0.0), Vec3(0.11, 0.016, 0.0),
+                                  Vec3(0.09, 0.048, -0.02), Vec3(0.09, 0.016, 0.04)]
+            for at in blocks {
+                $0.box(center: at, size: Vec3(0.038, 0.032, 0.036), color: Palette.stonePale)
+            }
+        }
+        b.box(center: Vec3(0.09, 0.07, -0.02), size: Vec3(0.012, 0.012, 0.06), color: Palette.timberDark)
+        return b.mesh
     }
 
     /// A fisher's boat: a clinker hull of dark planks, thwarts and a net

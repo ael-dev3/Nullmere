@@ -132,6 +132,44 @@ final class WorldRenderTests: XCTestCase {
         try keep([stood, ablaze, figures], as: "world-models")
     }
 
+    /// A grown seat close in, at three moments of a work going up: its
+    /// walls and works, a forge at work lighting its yard, its banners, its
+    /// townsfolk about its lanes, and the granary rising in its scaffold,
+    /// its builders at their stores and the stores drawn on stage by stage.
+    @MainActor
+    func testACityAtWorkRaisesAWorkStageByStage() throws {
+        let renderer = try renderer()
+        renderer.meshSource = { Library.model($0).mesh }
+        var state = WorldRenderTests.world.state
+        let index = try XCTUnwrap(state.holds.firstIndex { $0.isSeat && $0.owner == state.player })
+        for (kind, level) in [(BuildingKind.walls, 3), (.forge, 3), (.sawpit, 3), (.quarry, 2), (.musterHall, 2), (.archive, 2), (.beacon, 2)] {
+            state.holds[index].levels[kind] = level
+        }
+        state.holds[index].levels[.granary] = 2
+        let seat = state.holds[index]
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        var frames: [Drawn] = []
+        var stores: [Float] = []
+        for (moment, left) in [(0, 9), (1, 5), (2, 2)] {
+            var rising = state
+            rising.holds[index].project = Hold.Project(kind: .granary, targetLevel: 3, watchesLeft: left)
+            let session = GameSession(state: rising, store: LocalStore(directory: directory.appendingPathComponent("\(moment)")))
+            let scene = session.sceneFrame(at: 20 + Double(moment) * 1.3)
+            let pile = scene.batches.first { $0.key == .prop(.materials) }?.instances.first
+            stores.append(pile.map { $0.model.c1.y } ?? 0)
+            XCTAssertTrue(scene.batches.contains { $0.key == .scaffold }, "the work rises in its scaffold")
+            XCTAssertGreaterThanOrEqual(scene.batches.filter { if case .folk = $0.key { return true } else { return false } }
+                                            .flatMap(\.instances).count, 2, "builders and townsfolk at work")
+            var near = Camera(scale: 150, tilt: 0.9, heading: 0.6 + Float(moment) * 0.25)
+            near.focus(on: seat.position)
+            frames.append(try draw(renderer, "city \(moment)", camera: near, tiles: session.tileBytes, scene: scene))
+            XCTAssertTrue(scene.lights.contains { $0.colour.x > $0.colour.z * 3 }, "the forge's fire lighting its yard")
+        }
+        XCTAssertGreaterThan(stores[0], stores[2], "the builders' stores drawn on as it rises: \(stores)")
+        try keep(frames, as: "world-city")
+    }
+
     /// A great battle close in: two armies of eight drilled companies,
     /// 400,000 troops, met in one field before the keeper's seat. Each
     /// company shows its throng; the front flashes and sparks; dust hangs

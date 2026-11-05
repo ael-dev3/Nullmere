@@ -299,6 +299,9 @@ public enum Prop: String, CaseIterable, Sendable {
     /// A fisher's boat out on the lake at night, a lantern at its bow; at
     /// idle it rocks on the water and its fisher rows.
     case boat
+    /// The builders' stores beside a work being raised: squared stone
+    /// blocks and sawn timber on bearers, drawn on as it rises.
+    case materials
 }
 
 /// One model placed in the world.

@@ -1348,6 +1348,25 @@ public final class WorldStage: @unchecked Sendable {
         }
         return (WorldStage.batches(placed), lights)
     }
+    /// The firelight of the forges nearest the view: each hearth's glow
+    /// thrown on its yard, flickering with the bellows, at most a few.
+    public func forgeFires(near focus: Vec3, within reach: Float = 5, time: Float) -> [PointLight] {
+        var fires: [(distance: Float, light: PointLight)] = []
+        for (_, entry) in drawnPieces {
+            for piece in entry.drawn {
+                guard case .work(.forge, _) = piece.key, piece.progress >= 1 else { continue }
+                let at = piece.position
+                let distance = (Vec3(at.x, 0, at.z) - Vec3(focus.x, 0, focus.z)).length
+                guard distance <= reach else { continue }
+                let seed = at.x * 13 + at.z * 7
+                let flicker = 0.75 + 0.25 * Float(sin(Double(time * 8.3 + seed))) * Float(sin(Double(time * 3.1 + seed)))
+                fires.append((distance, PointLight(at: at + Vec3(0, 0.28, 0), reach: 1.3, colour: Vec3(2.4, 1.1, 0.35) * flicker)))
+            }
+        }
+        return fires.sorted { $0.distance < $1.distance }.prefix(WorldStage.forgeFiresMost).map(\.light)
+    }
+    public static let forgeFiresMost = 2
+
     public static let boatCount = 4
     public static let boatScale: Float = 1.6
 

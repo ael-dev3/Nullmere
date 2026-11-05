@@ -153,7 +153,12 @@ final class PlacementTests: XCTestCase {
             let at = SIMD2(piece.position.x, piece.position.z)
             let model = Library.model(piece.key)
             XCTAssertTrue((0...1).contains(piece.progress), file: file, line: line)
-            if case .raising = piece.key {
+            let beside: Bool
+            switch piece.key {
+            case .raising, .prop(.materials), .folk: beside = true
+            default: beside = false
+            }
+            if beside {
                 // A rig stands within its work's slot, on the side away from
                 // the keep, and names its work's hex.
                 XCTAssertTrue(works.contains { ($0.0 - at).length < HoldLayout.workRadius && $0.1.hex == piece.hex },
@@ -539,5 +544,34 @@ final class PlacementTests: XCTestCase {
                 }
             }
         }
+    }
+}
+
+final class ConstructionStageTests: XCTestCase {
+    /// A work going up draws on its builders' stores stage by stage, two
+    /// builders at them, until the roof goes on and the stores are gone.
+    func testAWorkGoingUpDrawsOnItsStoresStageByStage() {
+        XCTAssertEqual(HoldLayout.storesLeft(0), 1)
+        XCTAssertEqual(HoldLayout.storesLeft(0.3), 0.75)
+        XCTAssertEqual(HoldLayout.storesLeft(0.6), 0.5)
+        XCTAssertEqual(HoldLayout.storesLeft(0.8), 0.25)
+        XCTAssertEqual(HoldLayout.storesLeft(1), 0)
+        let map = WorldMap(radius: 4, fill: Tile(terrain: .greyfield))
+        let relief = Relief(map: map)
+        func pieces(_ progress: Float) -> [Piece] {
+            HoldLayout.pieces(HoldLayout.Plan(hex: Hex(0, 0), isSeat: true, levels: [.building(.granary): 1],
+                                              rising: .init(work: .building(.granary), level: 2, progress: progress)), relief: relief)
+        }
+        let early = pieces(0.1), late = pieces(0.9)
+        let stores = { (p: [Piece]) in p.first { $0.key == .prop(.materials) } }
+        let first = try? XCTUnwrap(stores(early)), last = try? XCTUnwrap(stores(late))
+        XCTAssertNotNil(first)
+        XCTAssertNotNil(last)
+        if let first, let last {
+            XCTAssertGreaterThan(first.transform.c1.y, last.transform.c1.y, "fewer stores left as it rises")
+        }
+        XCTAssertEqual(early.filter { if case .folk = $0.key { return true } else { return false } }.count, 2, "two builders at work")
+        XCTAssertNil(stores(HoldLayout.pieces(HoldLayout.Plan(hex: Hex(0, 0), isSeat: true, levels: [.building(.granary): 2]), relief: relief)),
+                     "none once it stands")
     }
 }
