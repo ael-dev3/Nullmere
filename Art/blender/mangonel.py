@@ -24,17 +24,11 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
+from carts import *
 from common import *
 from person import *
 
 reset()
-# Every company on foot marches at one pace (Gait.spear's in the game), and
-# the crewman is drawn at 0.28/1.8 of a unit to Blender's.
-PACE = 2 * 2 * 0.46 * math.sin(0.45) * 0.3
-SCALE = 0.28 / 1.8
-WHEEL = PACE / (2 * math.pi * SCALE)
-REACH = 0.3 / 0.28
-
 # Its measures, in Blender's units from the crewman's feet: where the arm
 # turns in its skein, how long it is, where the stop bar stands, and where
 # the frame ends before (-y), for the engine and the great engine.
@@ -94,12 +88,6 @@ for side in ("L", "R"):
 man.mattock()
 
 # MARK: The engine, on the extra bone at the rig's root
-
-def beam(name, start, end, width, mat):
-    """A square beam from one point to another."""
-    return loft(name, [(tuple(start), width / 2, width / 2, {}), (tuple(end), width / 2, width / 2, {})], segments=4, mat=mat,
-                caps=(True, True), smooth=False)
-
 
 def frame(tags, m, wood):
     """Shafts from the hands forward to the frame's tail, the frame's two
@@ -168,27 +156,6 @@ def arm(tags, m, wood):
     hang(rock, rig, "stone")
 
 
-def wheels(tags, m, wood, rimmed):
-    """Its two wheels on their axle, two spokes across each far off; close,
-    eight about a hub, the felloes shod in iron."""
-    piv, ln, fr, ax, by, bz, cp = m
-    for s, side in ((1, "L"), (-1, "R")):
-        centre = (ax.x + s * 0.468, ax.y, ax.z)
-        rim = loft("wheel %s%s" % (side, tags), [((centre[0] - 0.036, centre[1], centre[2]), WHEEL, WHEEL, {}),
-                                               ((centre[0] + 0.036, centre[1], centre[2]), WHEEL, WHEEL, {})],
-                   segments=6, mat=p.iron if rimmed else wood, caps=(False, False))
-        spokes = [solid("spoke", "box", mat=wood, location=centre, size=(0.04, 2 * WHEEL * 0.96, 0.05), rotation=(angle, 0, 0))
-                  for angle in (0,)]
-        hang(join("wheel %s%s" % (side, tags), [rim] + spokes), rig, "wheel" + side)
-        close = [loft("felloe", [((centre[0] - 0.041, centre[1], centre[2]), WHEEL * 1.02, WHEEL * 1.02, {}),
-                                 ((centre[0] + 0.041, centre[1], centre[2]), WHEEL * 1.02, WHEEL * 1.02, {})],
-                      segments=16, mat=p.iron, caps=(False, False)),
-                 solid("hub", "cylinder", mat=dark, vertices=10, radius=0.07, depth=0.15, location=centre, rotation=(0, 90, 0))]
-        close += [solid("spoke", "box", mat=wood, location=centre, size=(0.03, 2 * WHEEL * 0.98, 0.036), rotation=(angle, 0, 0))
-                  for angle in (45, 90, 135)]
-        hang(join("wheel close %s%s!fine" % (side, tags), close), rig, "wheel" + side)
-
-
 def close_work(tags, m, wood):
     """Near: the skein wound in turns of rope between iron washers, the
     winch at the tail with its drum and crank, the frame's lashings."""
@@ -222,7 +189,7 @@ for tier in range(1, 6):
     frame(tags, m, wood)
     furniture(tier, m, wood)
     arm(tags, m, wood)
-    wheels(tags, m, wood, rimmed=tier >= 4)
+    wheel_pair(rig, p, m[3], 0.468, tags, wood, rimmed=tier >= 4, hub=dark)
     close_work(tags, m, wood)
 
 # MARK: The clips
@@ -238,12 +205,6 @@ def creak(u):
 
 IDLE = {f: merge(CARRY, creak(f / 120), {"head": (-6, 0, 16 * math.sin(2 * math.pi * f / 120))}) for f in range(0, 121, 10)}
 keyed(rig, "idle", 120, IDLE, **AT_WORK)
-
-
-def rolling(frame):
-    """Both wheels a turn each march period."""
-    turn = 360 * frame / 30
-    return {"wheelL": (turn, 0, 0), "wheelR": (turn, 0, 0)}
 
 
 man.march(CARRY, lambda side: {}, **AT_WORK, reach=REACH, more=rolling)

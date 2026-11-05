@@ -298,30 +298,3 @@ enum Bowman {
     /// The bow's string at rest, put away while it is drawn.
     static let string: UInt16 = 17
 }
-
-/// Each kind's own build: the bodies of those who haul and crew, ride and
-/// lead are not one body in different dress. (The spearman's, the
-/// archer's and the lantern-bearer's are made in Blender, in Art/blender.)
-extension Frame {
-    /// A carter or an engine's crewman: short, broad and thick in the
-    /// middle, short-legged, built to haul.
-    static var stocky: Frame {
-        var f = Frame()
-        f.size = 0.28
-        f.girth = 1.18
-        f.chest = 1.06
-        f.belly = 1.16
-        f.shoulderX = 0.16
-        f.hipX = 0.08
-        f.knee = 0.25
-        f.hip = 0.47
-        f.waist = 0.5
-        f.shoulder = 0.735
-        f.elbow = 0.545
-        f.wrist = 0.39
-        f.neck = 0.783
-        f.head = 0.858
-        f.headRadius = 0.08
-        return f
-    }
-}

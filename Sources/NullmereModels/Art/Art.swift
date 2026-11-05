@@ -15,9 +15,10 @@ enum Art {
     static let archerScale: Float = 0.315 / 1.8
     /// Lantern-bearers a thirtieth shorter: slight and wiry.
     static let lanternScale: Float = 0.29 / 1.8
-    /// A Mangonel's crewman a fifteenth shorter: short and stocky, his
-    /// engine made at his measure (Art/blender/mangonel.py).
-    static let mangonelScale: Float = 0.28 / 1.8
+    /// A Mangonel's crewman and a founder a fifteenth shorter: short and
+    /// stocky, the engine and the handcart made at their measure
+    /// (Art/blender/carts.py).
+    static let stockyScale: Float = 0.28 / 1.8
     /// The bones of a horse and its rider after its root, in the order the
     /// rig every horse and rider keeps them (Steed): the horse's, then the
     /// rider's astride.
@@ -68,7 +69,13 @@ enum Art {
     /// then the engine's wheels, arm and stone (Engine), in the order the
     /// game names them.
     static func mangonel(tier: Int, name: String) -> Model {
-        model(engine, tier: tier, name: name, order: limbs + ["wheelL", "wheelR", "arm", "stone"], scale: mangonelScale)
+        model(engine, tier: tier, name: name, order: limbs + ["wheelL", "wheelR", "arm", "stone"], scale: stockyScale)
+    }
+
+    /// The founder and his handcart made in Blender: his limbs, then the
+    /// cart's wheels (Cart), in the order the game names them.
+    static func founder(name: String) -> Model {
+        model(settler, tier: 1, name: name, order: limbs + ["wheelL", "wheelR"], scale: stockyScale)
     }
 
     /// A model made in Blender, its bones in `order` after its root.

@@ -11,7 +11,7 @@ enum Figures {
         case .rider: return Art.rider(tier: tier, name: name, mount: Riders.mount(tier: tier))
         case .mangonel: return Art.mangonel(tier: tier, name: name)
         case .lantern: return Art.figure(Art.lantern, tier: 1, name: name, scale: Art.lanternScale)
-        case .founder: return founder(name: name)
+        case .founder: return Art.founder(name: name)
         }
     }
 
@@ -55,9 +55,6 @@ enum Figures {
 
     // MARK: Founders
 
-    /// A settler's walk, leaning into the shafts.
-    static let founderGait = Gait.paced(.cart, .stocky, parts: Limb.count + 2)
-
     /// How the far country's things move: a slow stooped glide, a long
     /// prowl, a heavy tread.
     static func wildGait(_ tier: Int) -> Gait {
@@ -75,7 +72,8 @@ enum Figures {
         case .signature(let heritage): return marchSpeed(.figure(heritage.signature, tier: ModelKey.tiers(of: heritage.signature)))
         // Every tier's horse made in Blender the one size, its canter keyed for the common horse's pace.
         case .figure(.rider, _): return Ride().marchSpeed
-        case .figure(.founder, _): return founderGait.marchSpeed
+        // His cart's wheels made to turn once a march period at the common pace, his stride lengthened to keep it.
+        case .figure(.founder, _): return Gait(hands: .spear).marchSpeed
         // Its wheels made to turn once a march period at the common pace, and its crewman's stride lengthened to keep it.
         case .figure(.mangonel, _): return Gait(hands: .spear).marchSpeed
         case .figure, .prop(.cart): return Gait(hands: .spear).marchSpeed
@@ -90,59 +88,6 @@ enum Figures {
     /// them is one period's march.
     static func cartWheel(_ gait: Gait) -> Float {
         gait.marchSpeed * Clip.march.period / (2 * .pi * gait.size)
-    }
-
-    /// A settler between the shafts of a handcart piled with bundles under
-    /// the House's canvas.
-    static func founder(name: String) -> Model {
-        var f = Frame.stocky
-        f.extraParent = Limb.root
-        let gait = founderGait
-        let wheel = cartWheel(gait)
-        let axle = Vec3(0, wheel, -0.62)
-        f.extraPivot = axle
-        var o = Outfit()
-        o.tunic = Palette.linen
-        o.sleeves = Palette.linen
-        o.skirt = (Palette.wool, .plain, 0.3)
-        o.head = .hood(Palette.wool, .plain)
-        o.mantle = (Palette.canvas, .plain)
-        let more: [(name: String, parent: UInt16, pivot: Vec3)] = [
-            ("wheel left", Cart.body, axle + Vec3(0.27, 0, 0)), ("wheel right", Cart.body, axle + Vec3(-0.27, 0, 0)),
-        ]
-        return model(name, f, gait, more: more) { b in
-            Person.body(&b, f, o)
-            Person.mattock(&b, f)
-            let grip = f.grip
-            b.with(part: Cart.body) {
-                // Shafts from the hands back to the bed.
-                for side in [Float(1), -1] {
-                    $0.beam(from: Vec3(side * f.shoulderX, grip, 0.05), to: Vec3(side * 0.22, wheel + 0.2, -0.95), width: 0.03,
-                            color: Palette.timber)
-                }
-                $0.box(min: Vec3(-0.24, wheel + 0.13, -0.95), max: Vec3(0.24, wheel + 0.19, -0.33), color: Palette.timberPale)
-                $0.box(min: Vec3(-0.25, wheel + 0.19, -0.95), max: Vec3(-0.21, wheel + 0.27, -0.33), color: Palette.timber)
-                $0.box(min: Vec3(0.21, wheel + 0.19, -0.95), max: Vec3(0.25, wheel + 0.27, -0.33), color: Palette.timber)
-                // The load: a barrel, sacks, and the House's canvas over the rest.
-                $0.prism(sides: 6, radius: 0.08, from: wheel + 0.19, to: wheel + 0.4, color: Palette.timber)
-                $0.place(.translation(Vec3(0.12, 0, -0.42))) {
-                    $0.prism(sides: 6, radius: 0.075, from: wheel + 0.19, to: wheel + 0.38, color: Palette.timber)
-                }
-                $0.rock(center: Vec3(-0.1, wheel + 0.27, -0.42), size: Vec3(0.09, 0.08, 0.09), rings: 2, sides: 5, jitter: 0.15,
-                        seed: 3, color: Palette.canvas)
-                $0.with(material: .house) {
-                    $0.place(.translation(Vec3(0, wheel + 0.19, -0.74))) {
-                        $0.lathe([(0.26, 0), (0.25, 0.14), (0.16, 0.24), (0, 0.27)], sides: 6, color: Palette.house)
-                    }
-                }
-                $0.beam(from: Vec3(-0.18, wheel + 0.15, -0.9), to: Vec3(-0.18, 0, -0.93), width: 0.025, color: Palette.timber)
-            }
-            for (part, x) in [(Cart.wheelL, Float(0.27)), (Cart.wheelR, -0.27)] {
-                b.with(part: part) {
-                    $0.wheel(center: axle + Vec3(x, 0, 0), radius: wheel, width: 0.04, spokes: 3, color: Palette.timber)
-                }
-            }
-        }
     }
 
     // MARK: The far country
