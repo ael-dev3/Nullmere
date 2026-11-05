@@ -161,7 +161,7 @@ final class WorldRenderTests: XCTestCase {
             XCTAssertTrue(scene.batches.contains { $0.key == .scaffold }, "the work rises in its scaffold")
             XCTAssertGreaterThanOrEqual(scene.batches.filter { if case .folk = $0.key { return true } else { return false } }
                                             .flatMap(\.instances).count, 2, "builders and townsfolk at work")
-            var near = Camera(scale: 150, tilt: 0.9, heading: 0.6 + Float(moment) * 0.25)
+            var near = Camera(scale: 150, tilt: 0.9, heading: 0.6 + Double(moment) * 0.25)
             near.focus(on: seat.position)
             frames.append(try draw(renderer, "city \(moment)", camera: near, tiles: session.tileBytes, scene: scene))
             XCTAssertTrue(scene.lights.contains { $0.colour.x > $0.colour.z * 3 }, "the forge's fire lighting its yard")
