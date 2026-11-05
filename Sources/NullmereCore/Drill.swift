@@ -60,9 +60,16 @@ extension GameState {
     /// The hold whose Muster Hall drills a company where it stands: of its
     /// House's at or beside it, the one whose hall is highest.
     public func drillHold(for unit: Unit) -> Hold? {
-        unit.position.spiral(1).compactMap { hold(at: $0) }
-            .filter { $0.owner == unit.owner && $0.level(.musterHall) > 0 }
-            .max { ($0.level(.musterHall), -$0.id) < ($1.level(.musterHall), -$1.id) }
+        // Its House's holds read where they stand, in one pass, not every
+        // hex about it sought through all the lake's holds.
+        var best: Int?
+        for index in holds.indices where holds[index].owner == unit.owner && holds[index].position.distance(to: unit.position) <= 1 {
+            let level = holds[index].level(.musterHall)
+            guard level > 0 else { continue }
+            if let chosen = best, (holds[chosen].level(.musterHall), -holds[chosen].id) >= (level, -holds[index].id) { continue }
+            best = index
+        }
+        return best.map { holds[$0] }
     }
 
     /// What drilling so many troops into a company costs, rounded up.

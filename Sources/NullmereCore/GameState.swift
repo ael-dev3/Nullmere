@@ -586,16 +586,19 @@ public struct GameState: Codable, Equatable, Sendable {
     /// Every House's strength, by its id, as `strength(of:)` weighs each,
     /// from one pass over the companies and the holds.
     public func strengths() -> [Int] {
-        var weighed = [[UnitKind: (attack: Int, defense: Int)]](repeating: [:], count: houses.count)
+        // Each House's attack and defence for each kind kept by the House
+        // and the kind's place, not hashed.
+        var weighed = [(attack: Int, defense: Int)?](repeating: nil, count: houses.count * UnitKind.count)
         var army = [Int](repeating: 0, count: houses.count)
         for index in units.indices where army.indices.contains(units[index].owner) {
             let owner = units[index].owner, kind = units[index].kind
+            let slot = owner * UnitKind.count + kind.ordinal
             let bonuses: (attack: Int, defense: Int)
-            if let found = weighed[owner][kind] {
+            if let found = weighed[slot] {
                 bonuses = found
             } else {
                 bonuses = (bonus(.attack(kind), for: owner), bonus(.defense(kind), for: owner))
-                weighed[owner][kind] = bonuses
+                weighed[slot] = bonuses
             }
             army[owner] += strength(of: units[index], house: bonuses)
         }
@@ -612,12 +615,16 @@ public struct GameState: Codable, Equatable, Sendable {
     public func strength(of house: Int) -> Int {
         if let reputed, reputed.indices.contains(house) { return reputed[house] }
         // The House's own attack and defence for each kind, weighed once
-        // for all its companies of that kind.
-        var weighed: [UnitKind: (attack: Int, defense: Int)] = [:]
-        let army = units(of: house).reduce(0) { total, unit in
-            let bonuses = weighed[unit.kind] ?? (bonus(.attack(unit.kind), for: house), bonus(.defense(unit.kind), for: house))
-            weighed[unit.kind] = bonuses
-            return total + strength(of: unit, house: bonuses)
+        // for all its companies of that kind, kept by the kind's place
+        // rather than hashed; its companies read where they stand, not
+        // copied out.
+        var weighed = [(attack: Int, defense: Int)?](repeating: nil, count: UnitKind.count)
+        var army = 0
+        for index in units.indices where units[index].owner == house {
+            let kind = units[index].kind
+            let bonuses = weighed[kind.ordinal] ?? (bonus(.attack(kind), for: house), bonus(.defense(kind), for: house))
+            weighed[kind.ordinal] = bonuses
+            army += strength(of: units[index], house: bonuses)
         }
         var walls = 0
         for index in holds.indices where holds[index].owner == house { walls += holds[index].ward / 2 }
@@ -634,6 +641,27 @@ public struct GameState: Codable, Equatable, Sendable {
         }
         for index in units.indices where units[index].owner == house { companies += 1 }
         return held * 10 + built * 2 + companies + spire * 15
+    }
+
+    /// Every House's renown, by its id, as `renown(of:)` reckons each, from
+    /// one pass over the holds and one over the companies.
+    public func renowns() -> [Int] {
+        var held = [Int](repeating: 0, count: houses.count), built = held, spire = held, companies = held
+        for index in holds.indices where held.indices.contains(holds[index].owner) {
+            let owner = holds[index].owner
+            held[owner] += 1
+            built[owner] += holds[index].levels.values.reduce(0, +)
+            spire[owner] = max(spire[owner], holds[index].level(.moonspire))
+        }
+        for index in units.indices where companies.indices.contains(units[index].owner) { companies[units[index].owner] += 1 }
+        return houses.indices.map { held[$0] * 10 + built[$0] * 2 + companies[$0] + spire[$0] * 15 }
+    }
+
+    /// Whether no House standing is more renowned than this one.
+    public func isForemost(_ house: Int) -> Bool {
+        let renowns = renowns()
+        guard renowns.indices.contains(house) else { return false }
+        return livingIDs.allSatisfy { $0 == house || renowns[$0] <= renowns[house] }
     }
 
     // MARK: Sight

@@ -12,6 +12,21 @@ public enum UnitKind: String, CaseIterable, Codable, Sendable, PlainCases {
     /// Settlers who found a new hold where they stand.
     case founder
 
+    /// Its place among the kinds, for what is kept kind by kind in a list.
+    var ordinal: Int {
+        switch self {
+        case .lantern: return 0
+        case .spear: return 1
+        case .bow: return 2
+        case .rider: return 3
+        case .mangonel: return 4
+        case .founder: return 5
+        }
+    }
+
+    /// How many kinds there are.
+    static let count = allCases.count
+
     public var title: String {
         switch self {
         case .lantern: return "Lanterns"
