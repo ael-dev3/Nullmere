@@ -9,10 +9,10 @@ import NullmereCore
 /// town's folk out about its lanes: a householder empty-handed, a
 /// water-carrier with a pail from the well, an elder on a stick, and a
 /// child. Drawn by the dozen, built as lean as the companies' figures.
-enum Folk {
+public enum Folk {
     /// The townsfolk there are: the works' folk, then the homes'.
     static let variants = 9
-    static let farmhand = 0, timberCarter = 1, stoneCarter = 2, salter = 3, porter = 4
+    public static let farmhand = 0, timberCarter = 1, stoneCarter = 2, salter = 3, porter = 4
     static let householder = 5, waterCarrier = 6, elder = 7, child = 8
 
     /// A little smaller than a soldier, and an unhurried walk.

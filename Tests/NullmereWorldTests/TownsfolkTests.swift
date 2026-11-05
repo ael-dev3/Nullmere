@@ -205,9 +205,9 @@ final class TownsfolkTests: XCTestCase {
 
         // Only as the view comes close.
         var frame = SceneFrame()
-        let works = stage.errands(of: sight).count
+        let works = stage.errands(of: sight).count + stage.porters(of: sight).count
         func folk(_ batches: [ModelBatch]) -> Int { batches.reduce(0) { $0 + $1.instances.count } }
-        XCTAssertEqual(folk(stage.townsfolk([sight], time: 12, into: &frame)), works, "From afar, the works' folk alone")
+        XCTAssertEqual(folk(stage.townsfolk([sight], time: 12, into: &frame)), works, "From afar, the works' folk and porters alone")
         let close = stage.townsfolk([sight], time: 12, crowds: true, into: &frame)
         XCTAssertEqual(folk(close), works + strolls.count)
         for instance in close.flatMap(\.instances) {
@@ -267,5 +267,26 @@ final class TownsfolkTests: XCTestCase {
         burning.ward = burning.maximumWard / 2 - 1
         var dark = SceneFrame()
         XCTAssertTrue(stage.townsfolk([HoldSight(hold: burning, colour: Vec4(1, 0, 0, 1))], time: 12, into: &dark).isEmpty, "They keep within")
+    }
+}
+
+extension TownsfolkTests {
+    /// In a walled hold, porters walk the lane between its works, from the
+    /// front of one to its neighbour's and back, round the lane a step at a
+    /// time; an unwalled hold has none.
+    func testPortersWalkBetweenTheWorks() throws {
+        let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
+        let hold = try seat([.walls: 2, .granary: 1, .quarry: 1, .sawpit: 1, .forge: 1])
+        let porters = stage.porters(of: HoldSight(hold: hold, colour: Vec4(1, 0, 0, 1)))
+        XCTAssertEqual(porters.count, min(WorldStage.portersMost, 3))
+        let works = stage.errands(of: HoldSight(hold: hold, colour: Vec4(1, 0, 0, 1))).compactMap(\.path.last)
+        for porter in porters {
+            XCTAssertEqual(porter.key, .folk(variant: Folk.porter))
+            XCTAssertGreaterThan(porter.length, 0.2)
+            let ends = [porter.path.first!, porter.path.last!]
+            XCTAssertTrue(ends.allSatisfy { end in works.contains { flat($0, end) < 0.25 } }, "from one work's front to another's")
+        }
+        XCTAssertTrue(stage.porters(of: HoldSight(hold: try seat([.granary: 1, .quarry: 1]), colour: Vec4(1, 0, 0, 1))).isEmpty,
+                      "none without walls to keep a lane")
     }
 }

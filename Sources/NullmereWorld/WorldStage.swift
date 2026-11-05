@@ -650,14 +650,20 @@ public final class WorldStage: @unchecked Sendable {
     /// straight out along the work's own lane, or where the hold is walled
     /// out through the gate, round the ring lane outside the walls and out
     /// along the work's lane.
-    public func errands(of sight: HoldSight) -> [Errand] {
+    public func errands(of sight: HoldSight) -> [Errand] { plan(of: sight).errands }
+
+    /// The porters walking between a walled hold's works, carrying what
+    /// one makes to its neighbour along the lane: up to `portersMost`.
+    public func porters(of sight: HoldSight) -> [Errand] { plan(of: sight).porters }
+
+    private func plan(of sight: HoldSight) -> (errands: [Errand], porters: [Errand]) {
         let pieces = pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage)
         guard let keep = pieces.first(where: { piece in
             switch piece.key {
             case .keep, .keepOf: return true
             default: return false
             }
-        }) else { return [] }
+        }) else { return ([], []) }
         let heart = Vec3(keep.position.x, 0, keep.position.z)
         func toward(_ point: Vec3, from origin: Vec3) -> Vec3 {
             let dx = point.x - origin.x, dz = point.z - origin.z
@@ -668,6 +674,7 @@ public final class WorldStage: @unchecked Sendable {
         let gate = HoldLayout.gate(of: sight.hold.position)
         let out = toward(gate, from: heart)
         var errands: [Errand] = []
+        var fronts: [(angle: Float, front: Vec3)] = []
         for (index, piece) in pieces.enumerated() where piece.progress >= 1 && errands.count < WorldStage.townsfolkMost {
             let key: ModelKey
             switch piece.key {
@@ -695,9 +702,33 @@ public final class WorldStage: @unchecked Sendable {
             }
             let middle = Relief.centre(of: sight.hold.position)
             errands.append(Errand(key: key, path: path.map { WorldStage.grand($0, about: middle) }, salt: sight.hold.id &* 31 &+ index))
+            fronts.append((angle: Float(atan2(Double(way.z), Double(way.x))), front: heart + way * max(reach, HoldLayout.ringLane)))
         }
-        return errands
+        // Porters between the works, carrying what one makes to the next
+        // along the lane within the walls: from the front of one work round
+        // to the front of its neighbour, and back.
+        var porters: [Errand] = []
+        if walled, fronts.count >= 2 {
+            let middle = Relief.centre(of: sight.hold.position)
+            let round = fronts.sorted { $0.angle < $1.angle }
+            for index in 0..<min(WorldStage.portersMost, round.count - 1) {
+                let a = round[index], b = round[index + 1]
+                let turn = b.angle - a.angle
+                let steps = max(2, Int((abs(turn) / (Float.pi / 12)).rounded(.up)))
+                var path = [a.front]
+                path += (0...steps).map { step in
+                    let angle = Double(a.angle + turn * Float(step) / Float(steps))
+                    return heart + Vec3(Float(cos(angle)), 0, Float(sin(angle))) * HoldLayout.ringLane
+                }
+                path.append(b.front)
+                porters.append(Errand(key: .folk(variant: Folk.porter), path: path.map { WorldStage.grand($0, about: middle) },
+                                      salt: sight.hold.id &* 53 &+ index &+ 7))
+            }
+        }
+        return (errands, porters)
     }
+    /// The most porters walking between one hold's works.
+    public static let portersMost = 3
 
     /// Where a townsfolk is on its errand, `time` seconds in, and what it
     /// does: walking out from the door, standing at its work, walking back,
@@ -764,7 +795,8 @@ public final class WorldStage: @unchecked Sendable {
         var shared: [PoseKey: UInt32] = [:]
         for sight in sights where sight.hold.ward * 2 >= sight.hold.maximumWard {
             let hex = SIMD2(Int32(sight.hold.position.q), Int32(sight.hold.position.r))
-            for errand in errands(of: sight) + (crowds ? strolls(of: sight) : []) {
+            let planned = plan(of: sight)
+            for errand in planned.errands + planned.porters + (crowds ? strolls(of: sight) : []) {
                 let (at, heading, clip) = WorldStage.walk(errand, at: time)
                 let start = WorldStage.pose(errand.key, clip, at: time + Float(errand.salt % 13) * 0.29, shared: &shared, into: &frame)
                 placed.append((errand.key, ModelInstance(model: .translation(Vec3(at.x, ground(atX: at.x, z: at.z), at.z)) * .rotationY(heading),
