@@ -198,6 +198,22 @@ final class WorldRenderTests: XCTestCase {
         print("RENDER battle: \(changed) of \(WorldRenderTests.width * WorldRenderTests.height / 4) sampled pixels changed by the host")
         XCTAssertGreaterThan(changed, 6_000, "the host fills the field")
         try keep([fought], as: "world-battle")
+
+        // The foe's side broken, three in four of its troops lost: its
+        // companies turn their backs and run, ranks gone; the keeper's own
+        // stand and fight on.
+        let foeSide = try XCTUnwrap(field.side(of: foe))
+        var broken = state
+        for index in field.fighters.indices where field.fighters[index].side == foeSide {
+            broken.fields?[0].fighters[index].lost = field.fighters[index].troops * 3 / 4
+        }
+        let routed = GameSession(state: broken, store: LocalStore(directory: directory))
+            .companyPoses(at: Date(), animated: true, time: 20).filter { $0.throng > 0 }
+        let fleeing = routed.filter { broken.unit($0.unit)?.owner == foe }
+        XCTAssertEqual(fleeing.count, 8)
+        XCTAssertTrue(fleeing.allSatisfy { $0.clip == .march && $0.spread == WorldStage.routSpread }, "a broken side runs")
+        XCTAssertTrue(routed.filter { broken.unit($0.unit)?.owner == me }.allSatisfy { $0.spread != WorldStage.routSpread },
+                      "the side that holds does not")
     }
 
     /// Where the view's ray through a pixel meets the world, and what is there.

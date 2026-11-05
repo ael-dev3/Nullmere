@@ -115,6 +115,28 @@ final class PressTests: XCTestCase {
         spin(until: "\(house.title) open") { PressableButtons.actions["Offer a trade"] != nil }
     }
 
+    /// While the Lyceum sits, its card asks the keeper's next question and
+    /// each answer pressed is sent to the realm as that question's answer;
+    /// once none is left the card draws nothing.
+    func testTheLyceumCardSendsTheAnswerPressed() throws {
+        var state = GameState(settings: GameSettings(seedText: "lyceum card", houseCount: 4, radius: 14, keepers: 1))
+        state.watch = Lyceum.every * 3
+        state.openLyceum()
+        let (session, link) = session(state)
+        let (index, question) = try XCTUnwrap(LyceumCard.next(session))
+        XCTAssertEqual(index, 0, "the first question first")
+        draw(LyceumCard(session: session))
+        let choice = question.choices.count - 1
+        XCTAssertTrue(PressableButtons.press("Answer \(question.choices[choice])"), "Among \(shown)")
+        XCTAssertTrue(link.sent.contains { if case .answerLyceum(0, choice) = $0 { return true } else { return false } },
+                      "The answer pressed is sent: \(link.sent)")
+
+        var between = GameState(settings: GameSettings(seedText: "no lyceum", houseCount: 4, radius: 14, keepers: 1))
+        between.watch = Lyceum.every * 3 + Lyceum.sits
+        let (quiet, _) = self.session(between)
+        XCTAssertNil(LyceumCard.next(quiet), "No card while the Lyceum does not sit")
+    }
+
     private func offers(_ link: RecordingLink) -> Int {
         link.sent.filter { if case .offerTrade = $0 { return true } else { return false } }.count
     }
