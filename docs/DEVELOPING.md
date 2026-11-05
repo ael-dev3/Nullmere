@@ -259,7 +259,9 @@ measures, at ten times the world's size, with no skeleton, and each
 people's look is a variant: its roof's pitch and its crown its own pieces,
 its colours and grain given by the game for the materials it is made of.
 `walls.py` makes the walls (`walls.glb`, `Art.wallsFile` in `Walls.swift`),
-each of their five levels a tier of the file. The riders' and commanders' horse is
+each of their five levels a tier of the file; `town.py` the town's pieces
+(`town.glb`, `Art.townFile` in `TownFile.swift`), each a variant named as
+the game names it. The riders' and commanders' horse is
 `Art/blender/horse.py`'s; the Mangonel's and the handcarts' wheels and the
 handcart itself are `Art/blender/carts.py`'s. A figure's rig is held to 23
 bones (24 parts with the game's root): a script folds the bones it does not

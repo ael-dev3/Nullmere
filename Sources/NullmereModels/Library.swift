@@ -443,7 +443,7 @@ public enum Library {
         case .storehouse: return Stores.storehouse(name: key.canonical.description)
         case .yard(let resource): return Stores.yard(resource, name: key.canonical.description)
         case .folk(let variant): return Folk.build(variant, name: key.canonical.description)
-        case .town(let piece): return Town.build(piece, name: key.canonical.description)
+        case .town(let piece): return Art.town(piece, name: key.canonical.description)
         }
         return Model(name: key.canonical.description, mesh: mesh)
     }

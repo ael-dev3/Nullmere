@@ -142,6 +142,24 @@ enum Art {
         return model(wallsFile, tier: level, name: name, order: [], scale: buildingScale, colours: colours)
     }
 
+    /// A piece of a hold's town made in Blender, each a variant of one file
+    /// by the name the game gives it: its homes, well, fields, lanes and
+    /// market stalls.
+    static func town(_ piece: Town, name: String) -> Model {
+        let colours: [String: Vec3] = [
+            "plain_stone_white": Palette.stoneWhite, "plain_stone": Palette.stone, "plain_stone_dark": Palette.stoneDark,
+            "plain_stone_pale": Palette.stonePale, "plain_timber_dark": Palette.timberDark, "plain_timber": Palette.timber,
+            "plain_timber_pale": Palette.timberPale, "plain_timber_grey": Palette.timberGrey, "plain_timber_bark": Palette.bark,
+            "plain_thatch": Palette.thatch, "plain_thatch_cap": Palette.thatch.mix(Palette.bark, 0.3), "plain_slate": Palette.slate,
+            "plain_earth_loam": Palette.loam, "plain_earth_yard": Palette.yard, "plain_water": Palette.loam, "house_door": Palette.house,
+            "house_awning": Palette.house, "glow_candle": Palette.candle, "metal_iron": Palette.iron,
+            "plain_clay": Palette.madder.mix(Palette.earth, 0.4), "plain_madder": Palette.madder, "plain_weld": Palette.weld,
+            "foliage_grain": Palette.grain, "foliage_straw": Palette.straw, "plain_linen": Palette.linen, "plain_reed": Palette.reed,
+            "crystal_moonsalt": Palette.moonsalt,
+        ]
+        return model(townFile, tier: 1, variant: piece.rawValue, name: name, order: [], scale: buildingScale, colours: colours)
+    }
+
     /// A model made in Blender, its bones in `order` after its root.
     static func model(_ base64: String, tier: Int, variant: String? = nil, name: String, order: [String], scale: Float = figureScale,
                       lift: Float = 0, colours: [String: Vec3] = [:], grains: [String: Surface] = [:]) -> Model {
