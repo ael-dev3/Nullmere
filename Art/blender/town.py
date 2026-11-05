@@ -190,12 +190,28 @@ join(tagged("fence", tag), fence)
 # MARK: The lane
 
 tag = ["lane"]
-lane = [block("earth", (-0.5, -0.05, -0.05), (0.5, 0.005, 0.05), yard)]
-for index in range(4):
-    jitter = 0.5 + 0.5 * math.sin(index * 2.9 + 1.3)
-    x = -0.375 + index * 0.25
-    lane.append(block("stone", (x - 0.035, 0.004, (jitter - 0.5) * 0.04 - 0.02), (x + 0.035, 0.008, (jitter - 0.5) * 0.04 + 0.02),
-                      pale_stone if index % 2 == 0 else stone))
+# Trodden earth a unit long, crowned along its middle and worn down to the
+# grass at its edges, so lengths laid end to end read as one way; a few
+# flat stones set low in it near its middle, never at its ends (made long,
+# for a length of lane is laid squeezed to a third or less of a unit).
+section = [(-0.05, -0.05), (-0.05, -0.002), (-0.032, 0.004), (0.032, 0.004), (0.05, -0.002), (0.05, -0.05)]
+
+
+def lane_strip(bm):
+    ends = []
+    for x in (-0.5, 0.5):
+        ends.append([bm.verts.new(at(x, y, z)) for z, y in section])
+    a, b = ends
+    n = len(section)
+    for i in range(n - 1):
+        bm.faces.new((a[i], a[i + 1], b[i + 1], b[i]))
+    bm.faces.new(list(reversed(a)))
+    bm.faces.new(b)
+
+
+lane = [mesh_object("earth", lane_strip, yard)]
+for index, (x, dz) in enumerate(((-0.17, -0.012), (0.04, 0.01), (0.21, -0.006))):
+    lane.append(block("stone", (x - 0.07, 0.003, dz - 0.016), (x + 0.07, 0.006, dz + 0.016), stone if index % 2 == 0 else pale_stone))
 join(tagged("lane", tag), lane)
 
 # MARK: The stall
