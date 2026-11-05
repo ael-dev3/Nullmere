@@ -64,9 +64,9 @@ Every model is original. Every company (the spearman, the archer, the
 lantern-bearer, the rider on his horse, the Mangonel with its crewman and
 the founder at his handcart), the three things of the far country, the
 six commanders, the townsfolk with their carters, the keeps, the walls, the
-town and seven of the works (the Granary, the Beacon, the Sawpit, the
-Quarry, the Saltworks, the Forge and the Moonspire) are made in Blender,
-each by a script
+town, nine of the works (the Granary, the Beacon, the Sawpit, the Quarry,
+the Saltworks, the Muster Hall, the Archive, the Forge and the Moonspire)
+and an alliance's hall are made in Blender, each by a script
 ([`Art/blender/spearman.py`](../Art/blender/spearman.py),
 [`archer.py`](../Art/blender/archer.py), [`lantern.py`](../Art/blender/lantern.py),
 [`rider.py`](../Art/blender/rider.py), [`commanders.py`](../Art/blender/commanders.py),
@@ -77,7 +77,9 @@ each by a script
 [`walls.py`](../Art/blender/walls.py), [`town.py`](../Art/blender/town.py), [`granary.py`](../Art/blender/granary.py),
 [`beacon.py`](../Art/blender/beacon.py), [`quarry.py`](../Art/blender/quarry.py),
 [`saltworks.py`](../Art/blender/saltworks.py), [`forge.py`](../Art/blender/forge.py),
-[`sawpit.py`](../Art/blender/sawpit.py), [`moonspire.py`](../Art/blender/moonspire.py))
+[`sawpit.py`](../Art/blender/sawpit.py), [`moonspire.py`](../Art/blender/moonspire.py),
+[`musterhall.py`](../Art/blender/musterhall.py), [`archive.py`](../Art/blender/archive.py),
+[`hall.py`](../Art/blender/hall.py))
 that builds the body, gear and
 skeleton and keys the actions, on one body every person shares
 ([`person.py`](../Art/blender/person.py)): the skin is weighted to the

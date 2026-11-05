@@ -228,12 +228,12 @@ enum Works {
         case .sawpit: return Art.work(Art.sawpitFile, level: level, name: name)
         case .quarry: return Art.work(Art.quarryFile, level: level, name: name)
         case .saltworks: return Art.work(Art.saltworksFile, level: level, name: name)
-        case .musterHall: return MusterHall.model(level: level, name: name)
+        case .musterHall: return Art.work(Art.musterHallFile, level: level, name: name)
         case .walls: return Art.walls(level: level, name: name)
         case .beacon: return Art.work(Art.beaconFile, level: level, name: name)
         case .infirmary: return Infirmary.model(level: level, name: name)
         case .moonspire: return Art.work(Art.moonspireFile, level: level, name: name)
-        case .archive: return Archive.model(level: level, name: name)
+        case .archive: return Art.work(Art.archiveFile, level: level, name: name)
         case .forge: return Art.work(Art.forgeFile, level: level, name: name)
         case .wayhouse: return Wayhouse.model(level: level, name: name)
         case .lodge: return Lodge.model(level: level, name: name)
@@ -369,37 +369,5 @@ enum Works {
     static func saltworksChimney(_ level: Int) -> Vec3? {
         guard (3...4).contains(level) else { return nil }
         return Vec3(-0.06, 0.25, -0.145)
-    }
-
-    // MARK: Shared by the works still built in code
-
-    /// A dome on a short drum, an open slit facing +z.
-    static func dome(_ b: inout MeshBuilder, at: Vec3, radius: Float, wall: Float, color: Vec3) {
-        b.place(.translation(at)) {
-            if wall > 0 {
-                $0.lathe([(radius, -0.06), (radius, wall)], sides: 8, color: Palette.stonePale)
-            }
-            let rings: [(radius: Float, y: Float)] = (0...3).map { ring in
-                let angle = Float(ring) / 3 * .pi / 2
-                return (radius * 1.05 * Float(cos(Double(angle))), wall + radius * Float(sin(Double(angle))))
-            }
-            $0.tube(rings, sides: 8, color: color)
-            $0.box(min: Vec3(-0.018, wall + radius * 0.2, radius * 0.75), max: Vec3(0.018, wall + radius * 1.02, radius * 1.02),
-                   color: Palette.timberDark)
-        }
-    }
-
-    /// Three bronze rings crossed about a point: the heavens' wheels.
-    static func armillary(_ b: inout MeshBuilder, part: UInt16, at centre: Vec3, radius: Float) {
-        b.with(part: part, material: .metal) {
-            for (index, tilt) in [Mat4.identity, .rotationX(.pi / 2), .rotationZ(.pi / 2) * .rotationX(0.4)].enumerated() {
-                $0.place(.translation(centre) * tilt) {
-                    let r = radius * (1 - 0.08 * Float(index))
-                    $0.tube([(r, -0.006), (r, 0.006)], sides: 10, color: index == 0 ? Palette.gold : Palette.bronze)
-                    $0.tube([(r * 0.9, 0.006), (r * 0.9, -0.006)], sides: 10, color: Palette.bronze)
-                }
-            }
-            $0.sphere(center: centre, radius: radius * 0.22, rings: 2, sides: 5, color: Palette.gold)
-        }
     }
 }

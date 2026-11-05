@@ -168,8 +168,14 @@ enum Art {
         "plain_saltcrust": Palette.saltCrust, "crystal_saltcrust": Palette.saltCrust, "glow_moonglow": Palette.moonGlow,
         "glow_moonsalt": Palette.moonsalt, "plain_earth_mud": Palette.loam.mix(Palette.yard, 0.4),
         "plain_earth_quarry": Palette.rock.mix(Palette.yard, 0.5), "plain_water": Palette.slate, "plain_horse_dun": Palette.horseDun,
-        "plain_hair": Palette.hair,
+        "plain_hair": Palette.hair, "plain_leather": Palette.leather, "plain_water_deep": Vec3(0.05, 0.07, 0.09),
     ]
+
+    /// An alliance's hall, made in Blender (Art/blender/hall.py), its roof,
+    /// shields and banners in the alliance's colour.
+    static func hall(name: String) -> Model {
+        model(hallFile, tier: 1, name: name, order: [], scale: buildingScale, colours: buildingColours)
+    }
 
     /// A work made in Blender at its level, each level its tier of the
     /// family's one file, its moving parts the bones tagged for that level.
