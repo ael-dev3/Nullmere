@@ -410,8 +410,9 @@ public enum Library {
         case .signature(let heritage): return Figures.signature(heritage, name: key.canonical.description)
         case .wild(let tier): return Figures.wild(tier: tier, name: key.canonical.description)
         case .commander(let variant): return Figures.commander(variant, name: key.canonical.description)
-        case .keep(let seat): return Holds.keep(seat: seat, name: key.canonical.description)
-        case .keepOf(let heritage, let seat): return Holds.keep(seat: seat, name: key.canonical.description, style: .of(heritage))
+        case .keep(let seat): return Art.keep(seat: seat, style: .common, people: "common", name: key.canonical.description)
+        case .keepOf(let heritage, let seat):
+            return Art.keep(seat: seat, style: .of(heritage), people: heritage.rawValue, name: key.canonical.description)
         case .walls(let level): return Works.build(.walls, level: level, name: key.canonical.description)
         case .work(let kind, let level): return Works.build(kind, level: level, name: key.canonical.description)
         case .study(let level): return Archive.model(level: level, name: key.canonical.description)

@@ -103,12 +103,37 @@ enum Art {
               scale: Folk.size / 1.8)
     }
 
+    /// Buildings are made at ten times the world's measure.
+    static let buildingScale: Float = 0.1
+
+    /// A keep made in Blender, a seat's or a hold's, built as a people
+    /// builds it (`people`, the name its file gives their pieces: the pitch
+    /// of their roof and their crown): its walls, dark courses, trim and roof
+    /// in `style`'s colours and grains.
+    static func keep(seat: Bool, style: KeepStyle, people: String, name: String) -> Model {
+        let roofGrain = style.roofGrain ?? Surface.of(style.roof)
+        let colours: [String: Vec3] = [
+            "plain_stone_wall": style.wall, "plain_stone_dark": style.dark, "plain_stone_trim": style.trim, "plain_slate_roof": style.roof,
+            "plain_slate_rib": style.roof * 0.7, "plain_timber_dark": Palette.timberDark, "plain_timber": Palette.timber,
+            "plain_timber_pale": Palette.timberPale, "plain_timber_grey": Palette.timberGrey, "house_roof": Palette.house,
+            "house_dark": Palette.houseDark, "cloth_banner": Palette.house, "glow_candle": Palette.candle, "glow_fire": Palette.fire,
+            "metal_iron": Palette.iron, "metal_gold": Palette.gold, "crystal_moonsalt": Palette.moonsalt, "plain_earth": Palette.earth,
+            "foliage_ivy": Palette.leaf,
+        ]
+        let grains: [String: Surface] = [
+            "plain_stone_wall": style.wallGrain ?? Surface.of(style.wall), "plain_stone_dark": Surface.of(style.dark),
+            "plain_stone_trim": Surface.of(style.trim), "plain_slate_roof": roofGrain, "plain_slate_rib": roofGrain,
+        ]
+        return model(seat ? seatKeep : holdKeep, tier: 1, variant: people, name: name, order: [], scale: buildingScale, colours: colours,
+                     grains: grains)
+    }
+
     /// A model made in Blender, its bones in `order` after its root.
     static func model(_ base64: String, tier: Int, variant: String? = nil, name: String, order: [String], scale: Float = figureScale,
-                      lift: Float = 0, colours: [String: Vec3] = [:]) -> Model {
+                      lift: Float = 0, colours: [String: Vec3] = [:], grains: [String: Surface] = [:]) -> Model {
         do {
             return try Asset.model(name: name, glb: try Asset.bytes(base64: base64), scale: scale, lift: lift, order: order, tier: tier,
-                                   variant: variant, colours: colours)
+                                   variant: variant, colours: colours, grains: grains)
         } catch {
             // Written into the package and read by its tests: never a keeper's to meet.
             preconditionFailure("\(name), made in Blender, can't be read: \(error)")

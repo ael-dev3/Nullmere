@@ -250,7 +250,14 @@ commanders into `Art/models/commanders.glb`, embedded as `Art.heroes` in
 `Heroes.swift`; the Mangonel as `Art.engine` in `Engine.swift`; the founder
 as `Art.settler` in `Settler.swift`; each wild in its own, `Hollow.swift`,
 `Thornwight.swift` and `Colossus.swift`; the townsfolk as `Art.townsfolk` in
-`Townsfolk.swift` and the carters as `Art.carters` in `Carters.swift`). The riders' and commanders' horse is
+`Townsfolk.swift` and the carters as `Art.carters` in `Carters.swift`).
+`keep.py` makes a hold's keep (`Art/models/keep.glb`, `Art.holdKeep` in
+`Keep.swift`) and, given `seat` after the file, a seat's (`seat.glb`,
+`Art.seatKeep` in `SeatKeep.swift`); like every building, it is made with
+the shapes `Art/blender/building.py` lays out in the world's own axes and
+measures, at ten times the world's size, with no skeleton, and each
+people's look is a variant: its roof's pitch and its crown its own pieces,
+its colours and grain given by the game for the materials it is made of. The riders' and commanders' horse is
 `Art/blender/horse.py`'s; the Mangonel's and the handcarts' wheels and the
 handcart itself are `Art/blender/carts.py`'s. A figure's rig is held to 23
 bones (24 parts with the game's root): a script folds the bones it does not

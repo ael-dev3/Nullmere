@@ -41,12 +41,14 @@ public enum Asset {
     /// The pieces of a variant (by its name) in place of a tier's, if one is
     /// given: untagged pieces and those tagged for it. `colours` (sRGB), by
     /// a material's name, in place of the colour it was made in: a horse's
-    /// coat as each tier's is.
+    /// coat as each tier's is; `grains`, by a material's name, in place of
+    /// the grain its name gives it: a people's keep walled in timber where
+    /// another's is stone.
     public static func model(name: String, glb: Data, scale: Float = 1, lift: Float = 0, order: [String] = [], tier: Int? = nil,
-                             variant: String? = nil, colours: [String: Vec3] = [:]) throws -> Model {
+                             variant: String? = nil, colours: [String: Vec3] = [:], grains: [String: Surface] = [:]) throws -> Model {
         let file = try GLB(glb)
-        return try Reader(file: file, scale: scale, lift: lift, order: order, tier: tier, variant: variant, colours: colours)
-            .model(name: name)
+        return try Reader(file: file, scale: scale, lift: lift, order: order, tier: tier, variant: variant, colours: colours,
+                          grains: grains).model(name: name)
     }
 
     /// What a piece's name in the file says of it: its name, the tiers and
@@ -408,6 +410,7 @@ private struct Reader {
     let tier: Int?
     let variant: String?
     let colours: [String: Vec3]
+    let grains: [String: Surface]
     var json: GLTF { file.json }
     /// Where the model stands from where it was made, and back.
     var up: Mat4 { .translation(Vec3(0, lift, 0)) * .scale(scale) }
@@ -655,7 +658,9 @@ private struct Reader {
         let weights = skinned ? try primitive.attributes["WEIGHTS_0"].map { try floats($0).values } : nil
         let sway = try primitive.attributes["_SWAY"].map { try floats($0).values }
         let material = primitive.material.flatMap { json.materials?.indices.contains($0) == true ? json.materials?[$0] : nil }
-        let (kind, surface) = Reader.kind(of: material?.name)
+        let (kind, named) = Reader.kind(of: material?.name)
+        // A grain given for its material, by name, in place of the one its name gives.
+        let surface = material?.name.flatMap { grains[$0] } ?? named
         let base = material?.pbrMetallicRoughness?.baseColorFactor ?? [1, 1, 1, 1]
         // A colour given for its material, by name, in place of the one it was made in.
         let given = material?.name.flatMap { self.colours[$0] }

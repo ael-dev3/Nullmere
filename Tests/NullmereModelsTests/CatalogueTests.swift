@@ -240,7 +240,8 @@ final class CatalogueTests: XCTestCase {
         XCTAssertTrue(mesh(.moundClans).vertices.contains { $0.color == Palette.moss && $0.surface == .earth }, "Turf on the Mound Clans'")
         XCTAssertTrue(mesh(.blackwood).vertices.contains { $0.color == Palette.barkBlack && $0.surface == .timber }, "Shingle on the Blackwood's")
         XCTAssertGreaterThan(mesh(.blackwood).bounds.max.y, Library.model(.keep(seat: true)).mesh.bounds.max.y - 0.001)
-        XCTAssertEqual(Library.model(.keep(seat: true)).mesh, Holds.keep(seat: true, name: "seat keep").mesh, "The common keep as it was")
+        XCTAssertEqual(Library.model(.keep(seat: true)).mesh, Art.keep(seat: true, style: .common, people: "common", name: "seat keep").mesh,
+                       "The common keep as it was")
     }
 
     /// A keep's fine work comes last, drawn only near: its quoins, framed

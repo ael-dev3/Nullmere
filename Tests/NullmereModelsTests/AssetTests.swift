@@ -156,6 +156,19 @@ final class AssetTests: XCTestCase {
                       "the block as it was made")
     }
 
+    /// A material's grain can be given in place of the one its name gives:
+    /// the arm's House timber made stone, its iron left as it was.
+    func testItTakesTheGrainsItIsGiven() throws {
+        let made = try Asset.model(name: "arm", glb: try Asset.bytes(base64: Fixtures.arm))
+        let grained = try Asset.model(name: "arm", glb: try Asset.bytes(base64: Fixtures.arm), grains: ["house_timber_shaft": .stone])
+        let shaft = grained.mesh.vertices.filter { $0.material == .house }
+        XCTAssertFalse(shaft.isEmpty)
+        XCTAssertTrue(made.mesh.vertices.filter { $0.material == .house }.allSatisfy { $0.surface == .timber }, "timber as it was named")
+        XCTAssertTrue(shaft.allSatisfy { $0.surface == .stone })
+        XCTAssertEqual(grained.mesh.vertices.filter { $0.material == .metal }.map(\.surface),
+                       made.mesh.vertices.filter { $0.material == .metal }.map(\.surface), "the block as it was made")
+    }
+
     /// What the package carries is each model's file as it was made: run
     /// Art/embed.py after making a model again.
     func testTheEmbeddedModelsAreTheirFiles() throws {
@@ -169,7 +182,8 @@ final class AssetTests: XCTestCase {
         XCTAssertEqual(try Asset.bytes(base64: Art.engine), try Data(contentsOf: models.appendingPathComponent("mangonel.glb")))
         XCTAssertEqual(try Asset.bytes(base64: Art.settler), try Data(contentsOf: models.appendingPathComponent("founder.glb")))
         for (embedded, file) in [(Art.hollow, "hollow.glb"), (Art.thornwight, "thornwight.glb"), (Art.colossus, "colossus.glb"),
-                                 (Art.townsfolk, "folk.glb"), (Art.carters, "carters.glb")] {
+                                 (Art.townsfolk, "folk.glb"), (Art.carters, "carters.glb"), (Art.holdKeep, "keep.glb"),
+                                 (Art.seatKeep, "seat.glb")] {
             XCTAssertEqual(try Asset.bytes(base64: embedded), try Data(contentsOf: models.appendingPathComponent(file)), file)
         }
         XCTAssertEqual(try Asset.bytes(base64: Fixtures.arm), try Data(contentsOf: models.appendingPathComponent("fixture-arm.glb")))
