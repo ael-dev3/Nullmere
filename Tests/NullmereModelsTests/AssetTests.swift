@@ -123,6 +123,7 @@ final class AssetTests: XCTestCase {
             .deletingLastPathComponent().appendingPathComponent("Art/models")
         XCTAssertEqual(try Asset.bytes(base64: Art.spearman), try Data(contentsOf: models.appendingPathComponent("spearman.glb")))
         XCTAssertEqual(try Asset.bytes(base64: Art.archer), try Data(contentsOf: models.appendingPathComponent("archer.glb")))
+        XCTAssertEqual(try Asset.bytes(base64: Art.lantern), try Data(contentsOf: models.appendingPathComponent("lantern.glb")))
         XCTAssertEqual(try Asset.bytes(base64: Fixtures.arm), try Data(contentsOf: models.appendingPathComponent("fixture-arm.glb")))
     }
 

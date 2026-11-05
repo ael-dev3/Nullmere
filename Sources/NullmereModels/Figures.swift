@@ -10,7 +10,7 @@ enum Figures {
         case .bow: return Art.figure(Art.archer, tier: tier, name: name, more: ["string"], scale: Art.archerScale)
         case .rider: return Riders.rider(tier: tier, name: name)
         case .mangonel: return Engine.mangonel(tier: tier, name: name)
-        case .lantern: return lanternBearer(name: name)
+        case .lantern: return Art.figure(Art.lantern, tier: 1, name: name, scale: Art.lanternScale)
         case .founder: return founder(name: name)
         }
     }
@@ -125,49 +125,7 @@ enum Figures {
         }
     }
 
-    // MARK: Lanterns and founders
-
-    /// A scout in a dark coat and the House's hood, a lantern hung from a
-    /// crook held high.
-    static func lanternBearer(name: String) -> Model {
-        var f = Frame.wiry
-        let hook = Vec3(f.shoulderX, 1.13, 0.15)
-        f.extraPivot = hook
-        var o = Outfit()
-        o.tunic = Palette.woolDark
-        o.sleeves = Palette.woolDark
-        o.skirt = (Palette.woolDark, .plain, 0.24)
-        o.head = .hood(Palette.house, .house)
-        o.mantle = (Palette.wool, .plain)
-        let gait = Gait.paced(.lantern, f)
-        return model(name, f, gait) { b in
-            Person.body(&b, f, o)
-            let hand = f.handL
-            b.with(part: Limb.heldL) {
-                $0.strut(from: Vec3(hand.x, 0.03, 0), to: Vec3(hand.x, 1.16, 0), radius: 0.018, sides: 4, color: Palette.timberPale)
-                $0.beam(from: Vec3(hand.x, 1.15, 0), to: hook + Vec3(0, 0.02, 0), width: 0.022, color: Palette.timberPale)
-            }
-            b.with(part: Limb.extra) {
-                // The lantern: an iron cap and frame round a light.
-                $0.beam(from: hook, to: hook - Vec3(0, 0.05, 0), width: 0.008, color: Palette.iron)
-                $0.with(material: .metal) {
-                    $0.place(.translation(hook - Vec3(0, 0.07, 0))) {
-                        $0.cone(sides: 4, radius: 0.07, to: 0.045, color: Palette.iron, twist: .pi / 4)
-                    }
-                    $0.box(center: hook - Vec3(0, 0.205, 0), size: Vec3(0.085, 0.02, 0.085), color: Palette.iron)
-                }
-                $0.with(material: .glow) {
-                    $0.box(center: hook - Vec3(0, 0.14, 0), size: Vec3(0.07, 0.11, 0.07), color: Palette.candle)
-                }
-            }
-            // A long knife at the belt.
-            b.with(part: Limb.hips) {
-                $0.beam(from: Vec3(-0.12, f.waist - 0.02, 0.06), to: Vec3(-0.15, f.waist - 0.24, 0.1), width: 0.03, depth: 0.012,
-                        color: Palette.leatherDark)
-            }
-            Person.mattock(&b, f)
-        }
-    }
+    // MARK: Founders
 
     /// A settler's walk, leaning into the shafts.
     static let founderGait = Gait.paced(.cart, .stocky, parts: Limb.count + 2)

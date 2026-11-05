@@ -393,27 +393,10 @@ enum Bowman {
     static let string: UInt16 = 17
 }
 
-/// Each kind's own build: the bodies of those who carry lanterns, haul and
-/// crew, ride and lead are not one body in different dress. (The
-/// spearman's and the archer's are made in Blender, in Art/blender.)
+/// Each kind's own build: the bodies of those who haul and crew, ride and
+/// lead are not one body in different dress. (The spearman's, the
+/// archer's and the lantern-bearer's are made in Blender, in Art/blender.)
 extension Frame {
-    /// A lantern-bearer: slight and wiry, long-armed, a large head on a
-    /// thin neck.
-    static var wiry: Frame {
-        var f = Frame()
-        f.size = 0.29
-        f.girth = 0.8
-        f.chest = 0.9
-        f.belly = 0.85
-        f.shoulderX = 0.138
-        f.hipX = 0.062
-        f.wrist = 0.38
-        f.neck = 0.81
-        f.head = 0.885
-        f.headRadius = 0.083
-        return f
-    }
-
     /// A carter or an engine's crewman: short, broad and thick in the
     /// middle, short-legged, built to haul.
     static var stocky: Frame {

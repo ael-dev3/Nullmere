@@ -60,9 +60,11 @@ the keeper's realm last lay on, made as it plays.
 
 ### Every model, made in Blender or built from code
 
-Every model is original. The spearman and the archer are made in Blender,
-each by a script ([`Art/blender/spearman.py`](../Art/blender/spearman.py),
-[`archer.py`](../Art/blender/archer.py)) that builds the body, gear and
+Every model is original. The spearman, the archer and the lantern-bearer
+are made in Blender, each by a script
+([`Art/blender/spearman.py`](../Art/blender/spearman.py),
+[`archer.py`](../Art/blender/archer.py), [`lantern.py`](../Art/blender/lantern.py))
+that builds the body, gear and
 skeleton and keys the actions, on one body every person on foot shares
 ([`person.py`](../Art/blender/person.py)): the skin is weighted to the
 bones each side of a joint, so it bends there rather than breaking, and

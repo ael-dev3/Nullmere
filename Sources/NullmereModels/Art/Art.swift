@@ -13,6 +13,8 @@ enum Art {
     static let figureScale: Float = 0.3 / 1.8
     /// Archers are drawn a twentieth taller: lean and tall, as their kind is.
     static let archerScale: Float = 0.315 / 1.8
+    /// Lantern-bearers a thirtieth shorter: slight and wiry.
+    static let lanternScale: Float = 0.29 / 1.8
 
     /// A company's figure made in Blender, at its tier, or as a heritage's
     /// own company (its variant) in place of a tier; `more`, the bones of
