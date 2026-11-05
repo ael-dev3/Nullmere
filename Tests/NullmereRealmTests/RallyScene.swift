@@ -1390,3 +1390,35 @@ extension RallyScene {
         await steward.reshape { realm in realm.world.houses[house].stock = stock }
     }
 }
+
+extension RallyScene {
+    /// The Infirmary (RoK's hospital), between two clients: Ama pays for
+    /// the healing of a company in her seat's beds from her own client, it
+    /// rises whole as the watch turns, and Bel's order to heal her beds is
+    /// refused by the realm.
+    func healTheWounded(ama: Int, bel: Int) async throws {
+        let kept = KeptStock(), seatBox = StagedWalk()
+        await steward.reshape { realm in
+            guard let seat = realm.world.seat(of: ama), let index = realm.world.holdIndex(seat.id) else { return }
+            kept.stock = realm.world.houses[ama].stock
+            realm.world.houses[ama].stock = realm.world.houses[ama].stock + Stock(grain: 2000, timber: 2000, stone: 2000, moonsalt: 200)
+            realm.world.holds[index].levels[.infirmary] = max(realm.world.holds[index].levels[.infirmary] ?? 0, 1)
+            realm.world.holds[index].wounded = [Wounded(kind: .spear, tier: 1, experience: 0, since: realm.world.watch)]
+            seatBox.unit = seat.id
+        }
+        let seat = try XCTUnwrap(seatBox.unit, "Ama's seat")
+        try await until("a wounded company in Ama's beds, in her client") { earA.world?.hold(seat)?.wounded?.count == 1 }
+        await MainActor.run { b.send(.heal(hold: seat)) }
+        try await until("Bel refused another's beds by the realm") { earB.refusals.contains(RuleError.notYours.description) }
+        let spears = await MainActor.run { earA.world?.units(of: ama).filter { $0.kind == .spear }.count ?? 0 }
+        await MainActor.run { a.send(.heal(hold: seat)) }
+        try await until("its healing paid for, in Ama's client") { earA.world?.hold(seat)?.wounded?.first?.healing == true }
+        let watch = await MainActor.run { earA.world?.watch ?? 0 }
+        await MainActor.run { a.setReady(true); b.setReady(true) }
+        try await until("the watch to turn") { (earA.world?.watch ?? 0) > watch }
+        try await until("the company risen whole from the beds") {
+            (earA.world?.hold(seat)?.wounded ?? []).isEmpty && (earA.world?.units(of: ama).filter { $0.kind == .spear }.count ?? 0) > spears
+        }
+        await restore(kept, of: ama)
+    }
+}
