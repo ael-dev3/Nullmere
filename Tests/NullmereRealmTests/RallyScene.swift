@@ -2,7 +2,9 @@ import Foundation
 @testable import NullmereCore
 import XCTest
 @testable import NullmereRealm
+import NullmereModels
 import NullmereTestSupport
+import NullmereWorld
 
 /// Two keepers of one alliance, each on their own client, break a lair of
 /// the wilds with a rally: the scene set in the steward's realm, then
@@ -1189,3 +1191,59 @@ extension RallyScene {
     }
 }
 
+
+extension RallyScene {
+    /// Keeping an ally's gates (RoK's garrison), between two clients: Bel
+    /// sends a company of his to keep Ama's seat; both clients see it there
+    /// on its errand and among the seat's keepers, and Ama's client stands
+    /// its banner and sentries at her gate.
+    func keepAnAllysGates(ama: Int, bel: Int) async throws -> Int {
+        let staged = StagedWalk()
+        await steward.reshape { realm in
+            let world = realm.world
+            guard let seat = world.seat(of: ama), let beside = seat.position.neighbors.first(where: { hex in
+                world.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true
+                    && world.unit(at: hex) == nil && world.hold(at: hex) == nil && world.site(at: hex) == nil
+            }) else { return }
+            let id = realm.world.takeID()
+            realm.world.units.append(NullmereCore.Unit(id: id, kind: .spear, owner: bel, position: beside))
+            realm.world.reveal(around: beside, range: 2, for: bel)
+            staged.unit = id
+            staged.at = beside
+        }
+        let unitID = try XCTUnwrap(staged.unit, "Open ground beside Ama's seat")
+        let seatSeen = await MainActor.run { earA.world?.seat(of: ama) }
+        let seat = try XCTUnwrap(seatSeen)
+        try await until("Bel's spears beside Ama's seat in his client") { earB.world?.unit(unitID) != nil }
+        await MainActor.run { b.send(.reinforce(unit: unitID, hold: seat.id)) }
+        do {
+            try await until("Bel's spears sent to keep Ama's gates") { earB.world?.unit(unitID)?.errand == .reinforce(hold: seat.id) }
+        } catch {
+            let said = await MainActor.run { earB.refusals.suffix(3) }
+            print("GATE refused: \(said)")
+            throw error
+        }
+        try await until("Bel's spears keeping Ama's gates, as both clients see it") {
+            earA.world?.keepers(of: seat.id).contains { $0.id == unitID } == true
+                && earB.world?.keepers(of: seat.id).contains { $0.id == unitID } == true
+        }
+        // Ama's client stands Bel's banner and sentries at her gate.
+        let seen = await MainActor.run { earA.world }
+        let world = try XCTUnwrap(seen)
+        let keeper = try XCTUnwrap(world.unit(unitID))
+        let stage = WorldStage(map: world.map, relief: Relief(map: world.map))
+        var frame = SceneFrame()
+        let watch = stage.gateWatch([WorldStage.GateWatch(hold: seat.position, keeper: keeper.position, kind: keeper.kind,
+                                                          tier: keeper.tier, colour: Vec4(0.3, 0.5, 0.9, 1))], time: 2, into: &frame)
+        XCTAssertEqual(watch.first { $0.key == .hostBanner }?.instances.count, 1, "Bel's banner at Ama's gate")
+        XCTAssertEqual(watch.first { $0.key != .hostBanner }?.instances.count, 2, "and his two sentries pacing it")
+        return unitID
+    }
+}
+
+extension RallyScene {
+    /// A company staged for a scene taken off the world once it is played.
+    func dismiss(_ unitID: Int) async {
+        await steward.reshape { realm in realm.world.units.removeAll { $0.id == unitID } }
+    }
+}

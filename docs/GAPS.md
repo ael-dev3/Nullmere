@@ -203,6 +203,24 @@ Left out by design, with what stands in their place:
 - Time passing with nobody in the realm: an empty realm sleeps, and a caretaker keeps an absent keeper's House
 - A lyric film and moving water: the lake is still by design, under a night that never ends
 
+## Audit of November 5: Rise of Kingdoms as shipped live
+
+GAPS was checked again against the code, not against itself: for each Rise
+of Kingdoms system, whether its orders are played between two clients over
+SpacetimeDB (Tests/NullmereRealmTests), whether it stands in the 3D world,
+and whether it is heard. Played live and present already: rallies on lairs,
+alliance standards and territory's border stones, alliance studies and
+help, gathering and bringing it home, troop tiers and drill, marches, fields
+of battle, the Drowned Crown (Ark of Osiris), the Frontier and the Sundering
+(KvK), the Spine's expeditions, the Lyceum. What was or is still thin:
+
+- [x] Garrisons (RoK's reinforcing an ally's city): rules and orders only, never played between clients, and nothing drawn; and the hold's own keeper could not even see who kept her gates, for every view hid another House's errand. Now the keeper of a hold is shown who keeps it (no one else is); an ally's company keeping a hold's gates stands its House's war banner there, stirring in the wind, with two sentries of its kind and tier pacing across the gate; and two keepers play it over SpacetimeDB: Bel sends his spears to keep Ama's seat from his client, both clients see them among its keepers, Ama's client stands their banner and sentries, and once Bel leaves the alliance his spears go back to his orders as the watch turns.
+- [ ] Alliance fortress and storehouse raised between clients: rules, models and cues exist (raiseAllianceHall, raiseStorehouse), but no two-client play sends them.
+- [ ] Commander talents and star raising between clients: learnTalent is never sent over the realm; a talent learned or a star raised has no presence in the world and a commander starred no cue of its own.
+- [ ] Scouting, the Infirmary's healing and the House's studies between clients: scout, heal and study are proven in the rules and client only.
+- [ ] Holy sites taken between clients: shrines are drawn and heard, but no two-client play takes one.
+- [ ] Happenings joined between clients: the calendar's happenings are foretold alike in both clients, but no keeper's order toward one is played over the realm.
+
 ## Beyond Rise of Kingdoms: what nobody has shipped
 
 Direction of October 31: cover Rise of Kingdoms whole, then go past it with

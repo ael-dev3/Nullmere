@@ -1767,6 +1767,18 @@ public final class GameSession {
 
     /// Where an expedition up the Spine is drawn for a keeper: the Spine hex
     /// nearest their seat, and the land beside it the line strikes from.
+    /// Each company keeping the gates of a hold not its House's, in view:
+    /// the hold, where the company stands, its kind and tier, its House's
+    /// colour.
+    static func gateWatches(in state: GameState, colours: [Vec4], where shown: (Hex) -> Bool) -> [WorldStage.GateWatch] {
+        state.units.compactMap { unit in
+            guard case .reinforce(let holdID)? = unit.errand, let hold = state.hold(holdID), hold.owner != unit.owner,
+                  unit.position.distance(to: hold.position) <= 1, unit.position != hold.position, shown(hold.position) else { return nil }
+            return WorldStage.GateWatch(hold: hold.position, keeper: unit.position, kind: unit.kind, tier: unit.tier,
+                                        colour: WorldStage.colour(colours, sigil: state.houses[unit.owner].sigil))
+        }
+    }
+
     struct RidgeKey: Hashable { let seat: Hex; let radius: Int; let tiles: Int }
     /// Each seat's nearest hex of the Spine, as `expeditionField` found it.
     static let ridges = Mutex<[RidgeKey: Hex?]>([:])

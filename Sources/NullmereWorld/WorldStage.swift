@@ -1099,6 +1099,58 @@ public final class WorldStage: @unchecked Sendable {
         return WorldStage.batches(placed)
     }
 
+    /// An ally's companies keeping a hold's gates (RoK's garrison): at the
+    /// gate between the hold and each keeping company, its House's war
+    /// banner stirring in the wind, and two sentries of its kind and tier
+    /// pacing across the gate, turning at each end.
+    public struct GateWatch: Sendable {
+        public var hold: Hex
+        public var keeper: Hex
+        public var kind: UnitKind
+        public var tier: Int
+        public var colour: Vec4
+        public init(hold: Hex, keeper: Hex, kind: UnitKind, tier: Int, colour: Vec4) {
+            self.hold = hold; self.keeper = keeper; self.kind = kind; self.tier = tier; self.colour = colour
+        }
+    }
+
+    public func gateWatch(_ watches: [GateWatch], time: Float, into frame: inout SceneFrame) -> [ModelBatch] {
+        var placed: [(ModelKey, ModelInstance)] = []
+        var shared: [PoseKey: UInt32] = [:]
+        for watch in watches {
+            let inside = Relief.centre(of: watch.hold), outside = Relief.centre(of: watch.keeper)
+            var out = Vec3(outside.x - inside.x, 0, outside.z - inside.z)
+            guard out.length > 1e-4 else { continue }
+            out = out.normalized
+            let across = Vec3(-out.z, 0, out.x)
+            let gate = Vec3(inside.x, 0, inside.z) + out * WorldStage.gateReach
+            let hex = SIMD2(Int32(watch.hold.q), Int32(watch.hold.r))
+            let facing = Float(atan2(Double(out.x), Double(out.z)))
+            let stir = 0.05 * Float(sin(Double(time * 1.7 + gate.x * 3)))
+            let banner = gate + across * 0.12
+            placed.append((.hostBanner, ModelInstance(model: .translation(Vec3(banner.x, ground(atX: banner.x, z: banner.z), banner.z))
+                                                        * .rotationY(facing) * .rotationX(-stir) * .scale(0.6),
+                                                     colour: watch.colour, hex: hex, flags: ModelInstance.alwaysShown)))
+            let key: ModelKey = .figure(watch.kind, tier: watch.tier)
+            for sentry in 0..<2 {
+                let ends = [gate - across * WorldStage.gateBeat, gate + across * WorldStage.gateBeat]
+                let path = sentry == 0 ? ends : ends.reversed()
+                let errand = Errand(key: key, path: path, salt: watch.hold.q &* 31 &+ watch.hold.r &* 7 &+ sentry * 5)
+                let (at, heading, clip) = WorldStage.walk(errand, at: time + Float(sentry) * 1.3)
+                let start = WorldStage.pose(key, clip, at: time + Float(sentry) * 0.37, shared: &shared, into: &frame)
+                placed.append((key, ModelInstance(model: .translation(Vec3(at.x, ground(atX: at.x, z: at.z), at.z)) * .rotationY(heading)
+                                                    * .scale(WorldStage.sentryScale),
+                                                 colour: watch.colour, hex: hex, palette: start)))
+            }
+        }
+        return WorldStage.batches(placed)
+    }
+    /// How far out from a hold's heart its gate is kept; how far each way
+    /// across it a sentry paces; how large a sentry stands beside the town.
+    public static let gateReach: Float = 0.42
+    public static let gateBeat: Float = 0.1
+    public static let sentryScale: Float = 0.55
+
     /// How far toward a side of its hex a border stone stands.
     public static let borderInset: Float = 0.38
 

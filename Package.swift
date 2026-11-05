@@ -45,7 +45,7 @@ var targets: [Target] = [
     // SpacetimeDB in memory, and credentials kept in memory, for tests of
     // the realm across the network: the realm's and the app's.
     .target(name: "NullmereTestSupport", dependencies: ["NullmereRealm", "NullmereCore"], path: "Tests/NullmereTestSupport"),
-    .testTarget(name: "NullmereRealmTests", dependencies: ["NullmereRealm", "NullmereCore", "NullmereModels", "NullmereTestSupport"]),
+    .testTarget(name: "NullmereRealmTests", dependencies: ["NullmereRealm", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereTestSupport"]),
     // Platform-independent launcher logic: settings, navigation, scene
     // constants, the news feed and the moon's veil. Pure Swift, so it is
     // tested on Linux too.

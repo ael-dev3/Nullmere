@@ -267,6 +267,8 @@ extension GameSession {
                 frame.batches += stage.expeditionField(from: from, at: at, won: state.expeditionStage(of: player),
                                                        colour: WorldStage.colour(houses, sigil: state.houses[player].sigil), into: &frame, time: t)
             }
+            // Allies keeping a hold's gates: their banner and sentries there.
+            frame.batches += stage.gateWatch(GameSession.gateWatches(in: state, colours: houses, where: isVisible), time: t, into: &frame)
             // The forges at work nearest the eye, their hearths lighting their yards.
             frame.lights += stage.forgeFires(near: camera.focus, time: t)
         }

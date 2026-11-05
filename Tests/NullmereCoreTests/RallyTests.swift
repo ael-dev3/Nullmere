@@ -386,6 +386,9 @@ final class RallyTests: XCTestCase {
         XCTAssertEqual(refusal(.reinforce(unit: keeper, hold: theirSeat.id), in: state, as: me), .alreadyThere)
         _ = try state.perform(.fortify(unit: keeper), as: me)
         XCTAssertEqual(state.unit(keeper)?.errand, .reinforce(hold: theirSeat.id), "Digging in at the gates is keeping them")
+        // The hold's keeper sees who keeps her gates; a third House does not.
+        XCTAssertEqual(state.view(for: 1).keepers(of: theirSeat.id).map(\.id), [keeper])
+        XCTAssertNil(state.view(for: 3).unit(keeper)?.errand)
 
         // A company of House 2 strikes the hold from its gates: the keeper
         // strikes back, for its House is at war with House 2 too.

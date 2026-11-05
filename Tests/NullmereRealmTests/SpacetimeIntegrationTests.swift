@@ -334,10 +334,22 @@ final class SpacetimeIntegrationTests: XCTestCase {
         print("REALM two allied keepers rallied on a lair from their own clients, broke it, and both were told of it and their shares")
         try await RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60).raiseAStandardTogether(ama: houseA, bel: houseB)
         print("REALM one keeper began a standard and her ally lent a hand from his own client; both saw it rise a watch sooner and its land become the alliance's")
+        let gatekeeper = try await RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60).keepAnAllysGates(ama: houseA, bel: houseB)
+        print("REALM one keeper sent a company to keep his ally's seat from his own client; both saw it keep her gates, her client its banner and sentries there")
         await MainActor.run { b.send(.leaveAlliance) }
         try await until("Bel gone from the alliance, as both see it") {
             earA.world?.areAllied(houseA, houseB) == false && earB.world?.alliance(of: houseB) == nil
         }
+        // No longer allies, Bel's company leaves Ama's gates as the watch turns.
+        let parted = try await MainActor.run { try XCTUnwrap(earA.world?.watch) }
+        await MainActor.run { a.setReady(true); b.setReady(true) }
+        try await until("the watch after parting") { (earB.world?.watch ?? 0) > parted }
+        try await until("Bel's spears gone from Ama's gates") {
+            if case .reinforce? = earB.world?.unit(gatekeeper)?.errand { return false }
+            return earB.world?.unit(gatekeeper) != nil
+        }
+        // Its part played, the company is taken off the field the battle below is staged on.
+        await RallyScene(steward: steward, a: a, earA: earA, b: b, earB: earB, timeout: 60).dismiss(gatekeeper)
 
         // Then war between them, as both see it.
         await MainActor.run { a.send(.declareWar(on: houseB)) }

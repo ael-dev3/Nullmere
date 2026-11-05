@@ -67,7 +67,11 @@ extension GameState {
         }
         for index in view.units.indices where view.units[index].owner != house {
             view.units[index].destination = nil
-            view.units[index].errand = nil
+            // A keeper knows who keeps her own gates; no one else is told.
+            if case .reinforce(let holdID)? = view.units[index].errand, hold(holdID)?.owner == house {
+            } else {
+                view.units[index].errand = nil
+            }
             view.units[index].load = nil
             view.units[index].drillAt = nil
             view.units[index].gatherFor = nil
