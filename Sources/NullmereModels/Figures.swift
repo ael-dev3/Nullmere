@@ -67,8 +67,8 @@ enum Figures {
     }
 
     static func spearman(tier: Int, name: String, outfit: Outfit? = nil) -> Model {
-        let f = Frame()
-        let gait = Gait(hands: .spear, shield: tier >= 2, size: f.size)
+        let f = Frame.heavy
+        let gait = Gait.paced(.spear, f, shield: tier >= 2)
         return model(name, f, gait) { b in
             Person.body(&b, f, outfit ?? spearOutfit(tier))
             Person.spear(&b, f, tier: tier)
@@ -121,8 +121,8 @@ enum Figures {
     }
 
     static func archer(tier: Int, name: String, outfit: Outfit? = nil) -> Model {
-        let f = Frame()
-        let gait = Gait(hands: .bow, size: f.size, parts: Limb.count + 1)
+        let f = Frame.lean
+        let gait = Gait.paced(.bow, f, parts: Limb.count + 1)
         return model(name, f, gait, more: [("string", Limb.heldL, f.handL)]) { b in
             Person.body(&b, f, outfit ?? bowOutfit(tier))
             Person.bow(&b, f, tier: tier)
@@ -234,7 +234,7 @@ enum Figures {
     /// A scout in a dark coat and the House's hood, a lantern hung from a
     /// crook held high.
     static func lanternBearer(name: String) -> Model {
-        var f = Frame()
+        var f = Frame.wiry
         let hook = Vec3(f.shoulderX, 1.13, 0.15)
         f.extraPivot = hook
         var o = Outfit()
@@ -243,7 +243,7 @@ enum Figures {
         o.skirt = (Palette.woolDark, .plain, 0.24)
         o.head = .hood(Palette.house, .house)
         o.mantle = (Palette.wool, .plain)
-        let gait = Gait(hands: .lantern, size: f.size)
+        let gait = Gait.paced(.lantern, f)
         return model(name, f, gait) { b in
             Person.body(&b, f, o)
             let hand = f.handL
@@ -274,7 +274,7 @@ enum Figures {
     }
 
     /// A settler's walk, leaning into the shafts.
-    static let founderGait = Gait(hands: .cart, stride: 0.4, parts: Limb.count + 2)
+    static let founderGait = Gait.paced(.cart, .stocky, parts: Limb.count + 2)
 
     /// How the far country's things move: a slow stooped glide, a long
     /// prowl, a heavy tread.
@@ -311,7 +311,7 @@ enum Figures {
     /// A settler between the shafts of a handcart piled with bundles under
     /// the House's canvas.
     static func founder(name: String) -> Model {
-        var f = Frame()
+        var f = Frame.stocky
         f.extraParent = Limb.root
         let gait = founderGait
         let wheel = cartWheel(gait)

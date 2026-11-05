@@ -205,9 +205,9 @@ enum Riders {
 
     /// A horse and its rider: the rider built as a person astride, its
     /// parts taken over as the rider's.
-    static func model(_ name: String, _ m: Mount, _ ride: Ride, swing: (parent: UInt16, pivot: Vec3)? = nil,
+    static func model(_ name: String, _ m: Mount, _ ride: Ride, swing: (parent: UInt16, pivot: Vec3)? = nil, frame: Frame = .horseman,
                       rider: (inout MeshBuilder, Frame) -> Void) -> Model {
-        var f = Frame()
+        var f = frame
         f.seated = true
         var b = MeshBuilder()
         horse(&b, m)
@@ -378,121 +378,51 @@ struct Ride: Sendable {
         level(&p)
     }
 
-    /// The canter: `v` counts strides. Fast, the body stretches further.
+    /// The canter: `v` counts strides, each stride keyed; fast, the horse
+    /// reaches further.
     func canter(_ p: inout Pose, _ v: Float, speed: Float) {
         carry(&p)
-        let phases: [(upper: UInt16, lower: UInt16, phase: Float, fore: Bool)] = [
-            (Steed.hindL, Steed.hindShinL, 0, false), (Steed.hindR, Steed.hindShinR, 0.12, false),
-            (Steed.foreR, Steed.foreShinR, 0.45, true), (Steed.foreL, Steed.foreShinL, 0.57, true),
-        ]
-        let reach = 0.5 * speed
-        for leg in phases {
-            let s = Motion.wave(v, phase: -leg.phase), c = Motion.cosine(v, phase: -leg.phase)
-            p.turn(leg.upper, x: -reach * s)
-            if leg.fore {
-                p.turn(leg.lower, x: 1.3 * max(0, c) * max(0, c))
-            } else {
-                p.turn(leg.lower, x: -0.7 * max(0, c) * max(0, c) + 0.1)
-            }
-        }
-        p.turn(Steed.body, x: 0.07 * speed * Motion.wave(v, phase: 0.1))
-        p.shift(Steed.body, Vec3(0, 0.008 * mount.scale * Motion.cosine(v, phase: 0.1), 0))
-        p.turn(Steed.neck, x: -0.12 * Motion.wave(v, phase: 0.1) - 0.08)
-        p.turn(Steed.tail, x: -0.3 - 0.1 * Motion.wave(v))
-        // The rider sits the stride, leaning into it.
-        p.turn(Steed.seat, x: -0.05 * speed * Motion.wave(v, phase: 0.1))
-        p.turn(Steed.torso, x: 0.1 * speed)
-        p.shift(Steed.seat, Vec3(0, 0.004 * Motion.cosine(v, cycles: 2), 0))
+        RiderClips.canter.apply(&p, v - v.rounded(.down), stride: speed, size: mount.scale)
         level(&p)
     }
 
     func charge(_ p: inout Pose, _ u: Float) {
         canter(&p, u * 3, speed: 1.3)
-        let couch = Motion.key(u, [(0, 0.3), (0.2, 1), (0.85, 1), (1, 0.3)])
+        let couch = Motion.key(u, RiderClips.couch)
         switch arms {
         case .lance:
-            let thrust = Motion.key(u, [(0, 0), (0.45, 0), (0.58, 1), (0.72, 1), (0.85, 0), (1, 0)])
-            p.turn(Steed.torso, x: 0.2 * couch)
-            p.turn(Steed.armR, x: -0.35 * couch - 0.5 * thrust)
-            p.turn(Steed.forearmR, x: 0.3 * thrust)
             p.joints[Int(Steed.heldR)].rotation = .zero
+            RiderClips.charge(.lance).apply(&p, u)
             level(&p, angle: .pi / 2 * couch)
         case .chop:
-            let blow = Motion.key(u, [(0, 0), (0.38, 1), (0.52, -0.5), (0.7, -0.5), (1, 0)])
-            p.turn(Steed.armR, x: -2.2 * max(blow, 0) + 0.2 * max(-blow, 0), z: -0.25)
-            p.turn(Steed.heldR, x: 1.4 * max(-blow, 0) + 0.3 * max(blow, 0))
-            p.turn(Steed.torso, x: 0.15 - 0.15 * blow, y: 0.25 * blow)
+            RiderClips.charge(.chop).apply(&p, u)
         case .raise:
-            let lift = couch
-            p.turn(Steed.armL, x: -2.3 * lift, z: -0.15 * lift)
-            p.turn(Steed.forearmL, x: 0.4 * lift)
+            RiderClips.charge(.raise).apply(&p, u)
             p.joints[Int(Steed.heldL)].rotation = .zero
             level(&p)
-            p.stretch(Steed.cloak, 1 + 0.35 * lift * (0.6 + 0.4 * Motion.wave(u, cycles: 6)))
+            p.stretch(Steed.cloak, 1 + 0.35 * couch * (0.6 + 0.4 * Motion.wave(u, cycles: 6)))
         case .wave:
-            p.turn(Steed.armR, x: -1.2 * couch)
+            RiderClips.charge(.wave).apply(&p, u)
+            let sweep = p.joints[Int(Steed.heldR)].rotation.z
             p.joints[Int(Steed.heldR)].rotation = .zero
             level(&p, angle: 0)
-            p.turn(Steed.heldR, z: 0.55 * couch * Motion.wave(u, cycles: 2))
+            p.turn(Steed.heldR, z: sweep * couch)
         }
     }
 
-    /// Struck: the horse shies and half rears, its head flung up and its
-    /// fore hooves pawing; its rider is rocked back in the saddle, the
-    /// shield thrown up; and both come down to the line again.
+    /// Struck: the horse shies and half rears, its rider rocked back, and
+    /// both come down to the line again.
     func shy(_ p: inout Pose, _ u: Float) {
         carry(&p)
-        let r = Gait.recoil(u)
-        p.turn(Steed.body, x: -0.3 * r, z: 0.06 * Motion.wave(u, cycles: 2) * r)
-        p.shift(Steed.body, Vec3(0, 0.012 * mount.scale * r, -0.02 * mount.scale * r))
-        for (upper, lower, phase) in [(Steed.foreL, Steed.foreShinL, Float(0)), (Steed.foreR, Steed.foreShinR, 0.25)] {
-            p.turn(upper, x: -0.7 * r + 0.15 * Motion.wave(u, cycles: 3, phase: phase) * r)
-            p.turn(lower, x: 1.3 * r)
-        }
-        for (upper, lower) in [(Steed.hindL, Steed.hindShinL), (Steed.hindR, Steed.hindShinR)] {
-            p.turn(upper, x: 0.25 * r)
-            p.turn(lower, x: -0.2 * r)
-        }
-        p.turn(Steed.neck, x: -0.5 * r, y: 0.25 * r)
-        p.turn(Steed.head, x: -0.35 * r)
-        p.turn(Steed.tail, x: -0.5 * r, y: 0.3 * Motion.wave(u, cycles: 3) * r)
-        p.turn(Steed.seat, x: 0.12 * r)
-        p.turn(Steed.torso, x: -0.3 * r, y: 0.2 * r)
-        p.turn(Steed.riderHead, x: -0.25 * r, y: -0.3 * r)
-        if shield {
-            p.turn(Steed.armL, x: -0.5 * r)
-        } else {
-            p.turn(Steed.armL, x: -0.9 * r, z: -0.3 * r)
-            p.turn(Steed.forearmL, x: -0.8 * r)
-        }
-        level(&p, angle: 0.4 * r)
+        RiderClips.shy(shield: shield).apply(&p, u)
+        level(&p, angle: 0.4 * Gait.recoil(u))
     }
 
     /// The horse goes down on its side; its rider is thrown and lies by it.
     func fall(_ p: inout Pose, _ u: Float) {
         carry(&p)
         level(&p)
-        let rear = Motion.key(u, [(0, 0), (0.2, 1), (0.45, 0.2), (0.8, 0), (1, 0)])
-        let fall = Motion.key(u, [(0, 0), (0.25, 0), (0.85, 1), (1, 1)])
-        let h = mount.scale
-        p.turn(Steed.body, x: -0.35 * rear, z: -Float.pi / 2 * fall)
-        p.shift(Steed.body, Vec3(0, -0.118 * h * fall, -0.01 * h * rear))
-        for (upper, lower) in [(Steed.foreL, Steed.foreShinL), (Steed.foreR, Steed.foreShinR)] {
-            p.turn(upper, x: -0.6 * rear - 0.3 * fall)
-            p.turn(lower, x: 1.2 * rear + 0.5 * fall)
-        }
-        for (upper, lower) in [(Steed.hindL, Steed.hindShinL), (Steed.hindR, Steed.hindShinR)] {
-            p.turn(upper, x: 0.3 * fall)
-            p.turn(lower, x: -0.3 * fall)
-        }
-        p.turn(Steed.neck, x: -0.4 * rear + 0.3 * fall, y: 0.4 * fall)
-        p.turn(Steed.head, x: 0.4 * fall)
-        // Thrown clear on the far side, the rider lies with arms flung.
-        p.turn(Steed.seat, z: -0.6 * fall)
-        p.shift(Steed.seat, Vec3(0, 0.03 * h * fall, 0))
-        p.turn(Steed.armL, z: 1.2 * fall)
-        p.turn(Steed.armR, z: -1.2 * fall)
-        p.turn(Steed.riderHead, x: -0.3 * fall)
+        RiderClips.fall(scale: mount.scale).apply(&p, u)
     }
 
     /// The horse crops the ground while its rider works a mattock beside it.

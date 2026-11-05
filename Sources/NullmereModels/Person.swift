@@ -48,6 +48,10 @@ struct Frame {
     var extraPivot: Vec3?
     /// Astride a horse: the legs set about its barrel, on the hips.
     var seated = false
+    /// How deep the chest is against the waist, and how thick the middle:
+    /// the trunk's own shape, apart from the whole body's girth.
+    var chest: Float = 1
+    var belly: Float = 1
 
     /// Where the hands close, at rest.
     var grip: Float { wrist - 0.045 }
@@ -163,7 +167,8 @@ enum Person {
         // The hips and the coat's skirt.
         b.with(part: Limb.hips) {
             $0.place(.scale(Vec3(1, 1, 0.78))) {
-                $0.tube([(0.1 * g, f.hip - 0.07), (0.12 * g, f.hip), (0.113 * g, f.waist + 0.03)], sides: 5, color: o.hose)
+                $0.tube([(0.1 * g * f.belly, f.hip - 0.07), (0.12 * g * f.belly, f.hip), (0.113 * g * f.belly, f.waist + 0.03)], sides: 5,
+                        color: o.hose)
             }
             if let skirt = o.skirt {
                 $0.with(material: skirt.material) {
@@ -184,8 +189,8 @@ enum Person {
         // The trunk, closing to the neck.
         b.with(part: Limb.torso, material: o.tunicMaterial) {
             $0.place(.scale(Vec3(1, 1, 0.74))) {
-                $0.tube([(0.113 * g, f.waist), (0.128 * g, f.waist + 0.1), (0.143 * g, f.shoulder - 0.04),
-                         (0.118 * g, f.shoulder + 0.02), (0, f.neck + 0.01)], sides: 6, color: o.tunic)
+                $0.tube([(0.113 * g * f.belly, f.waist), (0.128 * g * f.belly, f.waist + 0.1), (0.143 * g * f.chest, f.shoulder - 0.04),
+                         (0.118 * g * f.chest, f.shoulder + 0.02), (0, f.neck + 0.01)], sides: 6, color: o.tunic)
             }
         }
         if o.tabard {
@@ -495,4 +500,109 @@ enum Person {
 enum Bowman {
     /// The bow's string at rest, put away while it is drawn.
     static let string: UInt16 = 17
+}
+
+/// Each kind's own build: the bodies of those who bear spears, draw bows,
+/// carry lanterns, haul and crew, ride and lead are not one body in
+/// different dress.
+extension Frame {
+    /// A spearman: thick through the neck and shoulders, a deep chest over
+    /// a solid middle, set square on his legs.
+    static var heavy: Frame {
+        var f = Frame()
+        f.size = 0.31
+        f.girth = 1.12
+        f.chest = 1.12
+        f.shoulderX = 0.163
+        f.hipX = 0.078
+        f.headRadius = 0.073
+        f.neck = 0.795
+        f.head = 0.868
+        return f
+    }
+
+    /// An archer: tall and spare, long in the leg and the arm, narrow at
+    /// the waist, the shoulders drawn back by the bow.
+    static var lean: Frame {
+        var f = Frame()
+        f.size = 0.315
+        f.girth = 0.86
+        f.chest = 0.95
+        f.belly = 0.88
+        f.shoulderX = 0.142
+        f.hipX = 0.064
+        f.knee = 0.29
+        f.hip = 0.53
+        f.waist = 0.56
+        f.shoulder = 0.772
+        f.elbow = 0.57
+        f.wrist = 0.4
+        f.neck = 0.815
+        f.head = 0.888
+        f.headRadius = 0.071
+        return f
+    }
+
+    /// A lantern-bearer: slight and wiry, long-armed, a large head on a
+    /// thin neck.
+    static var wiry: Frame {
+        var f = Frame()
+        f.size = 0.29
+        f.girth = 0.8
+        f.chest = 0.9
+        f.belly = 0.85
+        f.shoulderX = 0.138
+        f.hipX = 0.062
+        f.wrist = 0.38
+        f.neck = 0.81
+        f.head = 0.885
+        f.headRadius = 0.083
+        return f
+    }
+
+    /// A carter or an engine's crewman: short, broad and thick in the
+    /// middle, short-legged, built to haul.
+    static var stocky: Frame {
+        var f = Frame()
+        f.size = 0.28
+        f.girth = 1.18
+        f.chest = 1.06
+        f.belly = 1.16
+        f.shoulderX = 0.16
+        f.hipX = 0.08
+        f.knee = 0.25
+        f.hip = 0.47
+        f.waist = 0.5
+        f.shoulder = 0.735
+        f.elbow = 0.545
+        f.wrist = 0.39
+        f.neck = 0.783
+        f.head = 0.858
+        f.headRadius = 0.08
+        return f
+    }
+
+    /// A horseman: barrel-chested and broad in the shoulder over a lean
+    /// waist, the legs bowed from the saddle.
+    static var horseman: Frame {
+        var f = Frame()
+        f.girth = 1.04
+        f.chest = 1.12
+        f.belly = 0.94
+        f.shoulderX = 0.158
+        f.headRadius = 0.075
+        return f
+    }
+
+    /// A lord who leads: tall and broad, carried high.
+    static var lord: Frame {
+        var f = Frame()
+        f.size = 0.32
+        f.girth = 1.06
+        f.chest = 1.1
+        f.shoulderX = 0.165
+        f.neck = 0.81
+        f.head = 0.885
+        return f
+    }
 }

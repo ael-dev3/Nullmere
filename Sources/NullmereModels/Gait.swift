@@ -42,6 +42,16 @@ struct Gait: Sendable {
         2 * 2 * leg * Float(sin(Double(stride))) * size / Clip.march.period
     }
 
+    /// A walker of this body, its stride set so it keeps the one pace
+    /// every company on foot marches at, the feet holding the ground.
+    static func paced(_ hands: Hands, _ f: Frame, shield: Bool = false, stoop: Float = 0, parts: Int = Limb.count) -> Gait {
+        let base = Gait(hands: .spear).marchSpeed
+        var gait = Gait(hands: hands, shield: shield, size: f.size, stoop: stoop, leg: f.hip - 0.04, hip: f.hip, parts: parts)
+        let reach = 4 * gait.leg * f.size / Clip.march.period
+        gait.stride = Float(asin(Double(min(base / reach, 0.95))))
+        return gait
+    }
+
     func joints(_ clip: Clip, _ time: Float) -> [Joint] {
         var p = Pose(count: parts)
         let u = clip.progress(at: time)
@@ -148,42 +158,14 @@ struct Gait: Sendable {
         level(&p)
     }
 
+    /// The march, as this kind's walk is keyed; a carter's wheels roll
+    /// under it, once a period over the ground walked.
     func march(_ p: inout Pose, _ u: Float) {
         carry(&p)
-        let s = Motion.wave(u), c = Motion.cosine(u)
-        p.turn(Limb.thighL, x: -stride * s)
-        p.turn(Limb.thighR, x: stride * s)
-        p.turn(Limb.shinL, x: 1.0 * max(0, c) * max(0, c) + 0.05)
-        p.turn(Limb.shinR, x: 1.0 * max(0, -c) * max(0, -c) + 0.05)
-        p.shift(Limb.hips, Vec3(0, 0.014 * size * Motion.cosine(u, cycles: 2), 0))
-        p.turn(Limb.hips, y: -0.1 * s)
-        p.turn(Limb.torso, x: 0.06, y: 0.14 * s)
-        p.turn(Limb.head, y: -0.06 * s)
-        let swing: Float
-        switch hands {
-        case .spear, .lantern: swing = 0.12
-        case .bow: swing = 0.3
-        case .cart: swing = 0
-        case .wild: swing = 0.5
-        case .club: swing = 0.25
-        case .free: swing = 0.32
-        }
-        p.turn(Limb.armL, x: (shield ? 0.1 : swing) * s)
-        p.turn(Limb.armR, x: -swing * s)
-        switch hands {
-        case .cart:
-            // Leaning into the shafts; the wheels roll.
-            p.turn(Limb.torso, x: 0.12)
-            p.turn(Limb.hips, x: 0.06)
+        FootClips.walk(hands, shield: shield).apply(&p, u, stride: stride, size: size)
+        if hands == .cart {
             p.turn(Cart.wheelL, x: 2 * .pi * wheelTurns * u)
             p.turn(Cart.wheelR, x: 2 * .pi * wheelTurns * u)
-        case .wild, .club:
-            p.turn(Limb.head, z: 0.2 * Motion.wave(u, phase: 0.1))
-            p.turn(Limb.torso, z: 0.06 * s)
-        case .lantern:
-            p.turn(Limb.extra, x: 0.18 * Motion.wave(u, cycles: 2))
-        case .spear, .bow, .free:
-            break
         }
         level(&p)
     }
@@ -202,33 +184,16 @@ struct Gait: Sendable {
 
     /// A spear levelled and driven forward, the weight behind it.
     func thrust(_ p: inout Pose, _ u: Float) {
-        let drive = Motion.key(u, [(0, 0), (0.3, -1), (0.45, 1), (0.62, 1), (1, 0)])
-        p.turn(Limb.armR, x: -0.45 - 0.4 * drive, z: 0.05)
-        p.turn(Limb.forearmR, x: -0.55 + 0.45 * max(drive, 0))
-        p.turn(Limb.torso, x: 0.1 + 0.12 * drive, y: 0.28 * drive)
-        p.shift(Limb.hips, Vec3(0, -0.02 * size, 0.04 * size * drive))
-        p.turn(Limb.thighL, x: -0.45)
-        p.turn(Limb.shinL, x: 0.35)
-        p.turn(Limb.thighR, x: 0.35)
-        p.turn(Limb.shinR, x: 0.25)
-        p.turn(Limb.head, y: -0.2 * drive)
+        FootClips.thrust.apply(&p, u, size: size)
         level(&p, spear: .pi / 2)
     }
 
     /// A bow raised, drawn to the cheek, loosed, and lowered half-way.
     func loose(_ p: inout Pose, _ u: Float) {
-        let raise = Motion.key(u, [(0, 0.35), (0.15, 1), (0.78, 1), (1, 0.35)])
-        let draw = Motion.key(u, [(0, 0), (0.15, 0.1), (0.5, 1), (0.6, 1), (0.63, 0), (1, 0)])
+        let raise = FootClips.bowRaise.value(at: u, loops: true).x
+        let draw = Motion.key(u, FootClips.bowDraw)
         p.joints[Int(Limb.heldL)].rotation.z = 0.35 * (1 - raise)
-        p.turn(Limb.torso, y: -0.45 * raise)
-        p.turn(Limb.head, y: 0.4 * raise)
-        p.turn(Limb.armL, x: -1.45 * raise, y: 0.45 * raise)
-        p.turn(Limb.forearmL, x: 0.35 * raise)
-        // The draw: the elbow swung out to the right, the forearm folded back to the cheek.
-        p.turn(Limb.armR, x: -1.5 * raise, y: (-0.25 - 1.0 * draw) * raise)
-        p.turn(Limb.forearmR, z: (0.5 + 2.1 * draw) * raise)
-        p.turn(Limb.thighL, x: -0.2)
-        p.turn(Limb.thighR, x: 0.2)
+        FootClips.loose.apply(&p, u, size: size)
         if u > 0.12 && u < 0.62 {
             p.joints[Int(Limb.extra)].scale = Vec3(1, 1, 0.35 + 0.65 * draw)
             p.hide(Bowman.string)
@@ -238,53 +203,27 @@ struct Gait: Sendable {
 
     /// A lantern lifted high, flaring, and lowered.
     func raise(_ p: inout Pose, _ u: Float) {
-        let lift = Motion.key(u, [(0, 0), (0.3, 1), (0.72, 1), (1, 0)])
-        p.turn(Limb.armL, x: -2.35 * lift, z: -0.1 * lift)
-        p.turn(Limb.forearmL, x: 0.4 * lift)
-        p.turn(Limb.armR, x: -0.9 * lift, z: -0.2 * lift)
-        p.turn(Limb.forearmR, x: -0.6 * lift)
-        p.turn(Limb.torso, x: -0.08 * lift)
-        p.turn(Limb.head, x: -0.25 * lift)
+        FootClips.raiseLantern.apply(&p, u, size: size)
         level(&p)
-        let flare = 1 + 0.3 * lift * (0.6 + 0.4 * Motion.wave(u, cycles: 6))
-        p.stretch(Limb.extra, flare)
+        let lift = Motion.key(u, FootClips.lift)
+        p.stretch(Limb.extra, 1 + 0.3 * lift * (0.6 + 0.4 * Motion.wave(u, cycles: 6)))
     }
 
     /// The long arms flung back and raked forward, the head thrust after them.
     func rake(_ p: inout Pose, _ u: Float) {
-        let lunge = Motion.key(u, [(0, 0), (0.35, -0.7), (0.5, 1), (0.66, 1), (1, 0)])
-        for arm in [Limb.armL, Limb.armR] {
-            p.turn(arm, x: -0.5 - 1.3 * lunge)
-        }
-        p.turn(Limb.forearmL, x: -0.3 - 0.4 * max(-lunge, 0))
-        p.turn(Limb.forearmR, x: -0.3 - 0.4 * max(-lunge, 0))
-        p.turn(Limb.torso, x: 0.25 * lunge)
-        p.turn(Limb.head, x: -0.3 * lunge, z: 0.2 * lunge)
-        p.shift(Limb.hips, Vec3(0, -0.03 * size * abs(lunge), 0.06 * size * lunge))
-        p.turn(Limb.thighL, x: -0.5)
-        p.turn(Limb.shinL, x: 0.4)
-        p.turn(Limb.thighR, x: 0.4)
-        p.turn(Limb.shinR, x: 0.3)
+        for part in [Limb.armL, Limb.armR, Limb.forearmL, Limb.forearmR] { p.joints[Int(part)].rotation = .zero }
+        FootClips.rake.apply(&p, u, size: size)
     }
 
     /// A great club heaved overhead and brought down.
     func slam(_ p: inout Pose, _ u: Float) {
-        let heave = Motion.key(u, [(0, 0), (0.42, 1), (0.55, -0.35), (0.75, -0.35), (1, 0)])
-        p.turn(Limb.armR, x: -0.6 - 2.1 * heave, z: 0.15)
-        p.turn(Limb.armL, x: -0.6 - 2.1 * heave, z: -0.35)
-        p.turn(Limb.forearmR, x: -0.3)
-        p.turn(Limb.forearmL, x: -0.3)
-        p.turn(Limb.torso, x: 0.2 - 0.3 * heave)
-        p.shift(Limb.hips, Vec3(0, -0.03 * size * max(-heave, 0), 0))
-        p.turn(Limb.thighL, x: -0.35)
-        p.turn(Limb.shinL, x: 0.3)
-        p.turn(Limb.thighR, x: 0.3)
+        for part in [Limb.armL, Limb.armR, Limb.forearmL, Limb.forearmR] { p.joints[Int(part)].rotation = .zero }
+        FootClips.slam.apply(&p, u, size: size)
     }
 
     /// The mattock swung over and down, twice a period.
     func swing(_ p: inout Pose, _ u: Float, high: Bool) {
         let v = u * 2 - (u * 2).rounded(.down)
-        let s = Motion.key(v, [(0, 0), (0.4, 1), (0.55, -0.15), (0.75, -0.15), (1, 0)])
         p.joints[Int(Limb.tool)].scale = Vec3(1, 1, 1)
         p.hide(Limb.heldR)
         if hands != .cart {
@@ -295,16 +234,7 @@ struct Gait: Sendable {
         for joint in [Limb.armR, Limb.armL, Limb.forearmR, Limb.forearmL, Limb.torso] {
             p.joints[Int(joint)].rotation = .zero
         }
-        p.turn(Limb.armR, x: -0.6 - 2.2 * s, z: 0.15)
-        p.turn(Limb.armL, x: -0.6 - 2.2 * s, z: -0.35)
-        p.turn(Limb.forearmR, x: -0.3)
-        p.turn(Limb.forearmL, x: -0.45)
-        p.turn(Limb.torso, x: (high ? 0.05 : 0.2) - 0.25 * s + stoop)
-        p.shift(Limb.hips, Vec3(0, -0.015 * size * (1 - s), 0))
-        p.turn(Limb.thighL, x: -0.25)
-        p.turn(Limb.shinL, x: 0.3)
-        p.turn(Limb.thighR, x: 0.15)
-        p.turn(Limb.shinR, x: 0.2)
+        FootClips.stroke(stoop: stoop, high: high).apply(&p, v, size: size)
     }
 
     func gather(_ p: inout Pose, _ u: Float) {
@@ -312,78 +242,31 @@ struct Gait: Sendable {
         swing(&p, u, high: false)
     }
 
-    /// How hard a blow lands through a hit's beat: struck at once, the
-    /// stagger at its worst a moment after, then the slow recovery to guard
-    /// before the next. Every model that is struck takes it on this beat.
+    /// How hard a blow lands through a hit's beat, as its keys are set:
+    /// struck at once, the stagger at its worst a moment after, the slow
+    /// recovery to guard before the next. Every model struck takes it on
+    /// this beat.
     static func recoil(_ u: Float) -> Float {
-        Motion.key(u, [(0, 0), (0.06, 0.15), (0.14, 1), (0.32, 0.7), (0.62, 0.2), (0.85, 0), (1, 0)])
+        FootClips.recoilTrack.value(at: u, loops: true).x
     }
 
-    /// Struck and standing: rocked back on the rear foot, the head snapped
-    /// aside, the shield or the arms thrown up to guard, and back to the
-    /// line. The far country's reel and shake their heads; a founder ducks
-    /// behind the cart.
+    /// Struck and standing, as this kind takes a blow.
     func hit(_ p: inout Pose, _ u: Float) {
         carry(&p)
-        let r = Gait.recoil(u)
-        let wild = hands == .wild || hands == .club
-        p.turn(Limb.torso, x: -0.38 * r, y: 0.22 * r, z: (wild ? 0.3 : 0.08) * r)
-        p.turn(Limb.head, x: -0.32 * r, y: -0.35 * r, z: (wild ? 0.45 : 0.1) * Motion.wave(u, cycles: 2) * r)
-        p.shift(Limb.hips, Vec3(0, -0.035 * size * r, -0.07 * size * r))
-        // A step back to catch the weight, the front knee giving.
-        p.turn(Limb.thighR, x: 0.42 * r)
-        p.turn(Limb.shinR, x: 0.3 * r)
-        p.turn(Limb.thighL, x: -0.25 * r)
-        p.turn(Limb.shinL, x: 0.45 * r)
-        if shield {
-            // The shield up before the face, taking it.
-            p.turn(Limb.armL, x: -0.55 * r, z: -0.1 * r)
-            p.turn(Limb.forearmL, x: -0.35 * r)
-        } else if hands == .cart {
-            p.turn(Limb.torso, x: 0.55 * r)
-            p.turn(Limb.head, x: 0.4 * r)
-        } else {
-            // The free arm flung up across the face.
-            p.turn(Limb.armL, x: -1.1 * r, z: -0.35 * r)
-            p.turn(Limb.forearmL, x: -1.0 * r)
-        }
-        p.turn(Limb.armR, x: 0.35 * r, z: -0.25 * r)
-        level(&p, spear: 0.5 * r)
+        FootClips.hit(hands, shield: shield).apply(&p, u, size: size)
+        level(&p, spear: 0.5 * Gait.recoil(u))
     }
 
-    /// Struck: the knees go, and it falls and lies still. The far
-    /// country's fall forward; so do founders, away from their cart, which
-    /// hangs from the root and stays where it was let go.
+    /// Struck down, as this kind falls, and lying still: the arms let go of
+    /// what they carried as it goes, the hips come down to the ground.
     func death(_ p: inout Pose, _ u: Float) {
         carry(&p)
-        let fall = Motion.key(u, [(0, 0), (0.25, 0.06), (0.8, 1), (1, 1)])
-        let buckle = Motion.key(u, [(0, 0), (0.3, 1), (0.75, 0.4), (1, 0.4)])
-        // The arms let go as it falls: what they carried lies along them.
+        let fall = FootClips.fallTrack.value(at: u, loops: false).x
         for part in [Limb.armL, Limb.forearmL, Limb.armR, Limb.forearmR, Limb.heldL, Limb.heldR] {
             p.joints[Int(part)].rotation *= 1 - fall
         }
-        let forward = hands == .wild || hands == .club || hands == .cart
-        let lying = Float.pi / 2 * fall
-        // Turned about the hips and lowered till the back, or the chest, lies on the ground.
-        let drop = (hip - 0.1) * size * fall
-        if forward {
-            p.turn(Limb.hips, x: lying)
-            p.shift(Limb.hips, Vec3(0, -drop, 0.06 * size * fall))
-            p.turn(Limb.armL, x: -2.4 * fall, z: 0.3 * fall)
-            p.turn(Limb.armR, x: -2.4 * fall, z: -0.3 * fall)
-            p.turn(Limb.forearmL, x: -0.4 * fall)
-            p.turn(Limb.forearmR, x: -0.4 * fall)
-        } else {
-            p.turn(Limb.hips, x: -lying)
-            p.shift(Limb.hips, Vec3(0, -drop, -0.06 * size * fall))
-            p.turn(Limb.armL, z: 1.0 * fall)
-            p.turn(Limb.armR, z: -1.0 * fall)
-            p.turn(Limb.head, x: -0.25 * fall)
-        }
-        p.turn(Limb.thighL, x: -0.6 * buckle)
-        p.turn(Limb.shinL, x: 0.9 * buckle)
-        p.turn(Limb.thighR, x: -0.45 * buckle)
-        p.turn(Limb.shinR, x: 0.8 * buckle)
+        FootClips.death(hands).apply(&p, u, size: size)
+        p.shift(Limb.hips, Vec3(0, -(hip - 0.1) * size * fall, 0))
     }
 }
 

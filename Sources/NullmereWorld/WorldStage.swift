@@ -867,8 +867,9 @@ public final class WorldStage: @unchecked Sendable {
         guard into.count == out.count else { return model.pose(clip, at: time) }
         let w = min(max(blend.weight, 0), 1)
         let joints = zip(into, out).map { a, b in
-            Joint(rotation: a.rotation + (b.rotation - a.rotation) * w, offset: a.offset + (b.offset - a.offset) * w,
-                  scale: a.scale + (b.scale - a.scale) * w)
+            // Weighted each way, so all of one clip is that clip exactly.
+            Joint(rotation: a.rotation * (1 - w) + b.rotation * w, offset: a.offset * (1 - w) + b.offset * w,
+                  scale: a.scale * (1 - w) + b.scale * w)
         }
         return model.rig.pose(joints)
     }

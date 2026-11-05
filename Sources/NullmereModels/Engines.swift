@@ -10,7 +10,7 @@ enum Engine {
     static let stone: UInt16 = 20
 
     /// How the crewman walks behind it, leaning into its shafts.
-    static let gait = Gait(hands: .cart, stride: 0.4, parts: Limb.count + 4)
+    static let gait = Gait.paced(.cart, .stocky, parts: Limb.count + 4)
     /// How far the arm swings from where it lies cocked to the stop bar.
     static let throwAngle: Float = 1.75
     /// Where it lies cocked, back over the frame from upright, its cup
@@ -26,7 +26,7 @@ enum Engine {
     /// longer in the frame and the arm, its stop bar higher, gilt and
     /// flying a pennon.
     static func mangonel(tier: Int, name: String) -> Model {
-        var f = Frame()
+        var f = Frame.stocky
         f.extraParent = Limb.root
         let great = tier >= 5
         let wheel = Figures.cartWheel(gait)
@@ -217,6 +217,46 @@ enum Engine {
         }
     }
 
+    /// The engine struck: jolted on its wheels and rocked, the arm jumping
+    /// in its skein, the crewman ducking; keyed on the blow's beat.
+    static let struck = Keyed(loops: true, [
+        FootClips.struck(body, Vec3(0.08, 0, 0)),
+        Track(body, FootClips.recoil.enumerated().map { index, key in k(key.0, 0, 0, (index % 2 == 0 ? -0.1 : 0.1) * key.1) }),
+        FootClips.struck(body, .shift, scale: .size, Vec3(0, 0.01, -0.02)),
+        FootClips.struck(arm, Vec3(0.25, 0, 0)),
+        FootClips.struck(Limb.torso, Vec3(0.6, 0, 0)),
+    ])
+
+    /// The throw: the crewman pulls the pin, the arm flies to the stop bar,
+    /// and he bends to the winch and winds it back down, cranking.
+    static let loosing: Keyed = {
+        var crank: [(Float, Vec3)] = []
+        for step in 0...12 {
+            let t = 0.42 + Float(step) * 0.04
+            let wind: Float = t < 0.5 ? (t - 0.42) / 0.08 : t > 0.84 ? max(0, (0.92 - t) / 0.08) : 1
+            crank.append(k(min(t, 0.999), 0.35 * (step % 2 == 0 ? 1 : -1) * wind))
+        }
+        return Keyed(loops: true, [
+            Track(arm, [k(0, 0), k(0.22, 0), k(0.3, throwAngle), k(0.42, throwAngle), k(0.9, 0)]),
+            Track(Limb.torso, [k(0, 0), k(0.16, -0.1), k(0.26, -0.1), k(0.34, 0), k(0.42, 0), k(0.5, 0.3), k(0.84, 0.3), k(0.92, 0)]),
+            Track(Limb.armR, [k(0, 0), k(0.16, -0.5), k(0.26, -0.5), k(0.34, 0), k(0.42, 0), k(0.5, -0.7), k(0.84, -0.7), k(0.92, 0)]),
+            Track(Limb.armL, [k(0, 0), k(0.16, -0.5), k(0.26, -0.5), k(0.34, 0), k(0.42, 0), k(0.5, -0.7), k(0.84, -0.7), k(0.92, 0)]),
+            Track(Limb.armR, [k(0, 0)] + crank.map { k($0.0, -$0.1.x) }),
+            Track(Limb.armL, [k(0, 0)] + crank),
+            Track(Limb.forearmR, [k(0, 0), k(0.16, -0.4), k(0.26, -0.4), k(0.34, 0), k(0.42, 0), k(0.5, -0.5), k(0.84, -0.5), k(0.92, 0)]),
+            Track(Limb.forearmL, [k(0, 0), k(0.16, -0.4), k(0.26, -0.4), k(0.34, 0), k(0.42, 0), k(0.5, -0.5), k(0.84, -0.5), k(0.92, 0)]),
+            Track(Limb.thighL, [k(0, 0), k(0.42, 0), k(0.5, -0.25), k(0.84, -0.25), k(0.92, 0)]),
+            Track(Limb.shinL, [k(0, 0), k(0.42, 0), k(0.5, 0.35), k(0.84, 0.35), k(0.92, 0)]),
+        ])
+    }()
+
+    /// The engine wrecked: it settles askew where it stands, the arm slack.
+    static let wrecked = Keyed(loops: false, [
+        Track(body, [k(0, 0), k(0.3, 0), k(0.8, -0.05, 0, 0.14), k(0.85, -0.05, 0, 0.14)]),
+        Track(body, .shift, scale: .size, [k(0, 0), k(0.3, 0), k(0.8, 0, -0.012, 0), k(0.85, 0, -0.012, 0)]),
+        Track(arm, [k(0, 0), k(0.3, 0), k(0.8, 0.35), k(0.85, 0.35)]),
+    ])
+
     /// The crew's dress by tier: a padded coat and a hood; leather and a
     /// cap; mail and a helm; plate; plate with gilt on the shoulders.
     static func crewOutfit(_ tier: Int) -> Outfit {
@@ -267,37 +307,18 @@ enum Engine {
             gait.gather(&p, u)
         case .death:
             gait.death(&p, u)
-            let fall = Motion.key(u, [(0, 0), (0.3, 0), (0.8, 1), (1, 1)])
-            p.turn(body, x: -0.05 * fall, z: 0.14 * fall)
-            p.shift(body, Vec3(0, -0.012 * gait.size * fall, 0))
-            p.turn(arm, x: 0.35 * fall)
+            Engine.wrecked.apply(&p, u, size: gait.size)
         case .hit:
             // A stone or a charge into the frame: it jolts and rocks on its
             // wheels, the arm jumping in its skein, its crewman ducking.
             gait.hit(&p, u)
-            let r = Gait.recoil(u)
-            p.turn(body, x: 0.08 * r, z: -0.1 * r * Motion.wave(u, cycles: 2))
-            p.shift(body, Vec3(0, 0.01 * gait.size * r, -0.02 * gait.size * r))
-            p.turn(arm, x: 0.25 * r)
-            p.turn(Limb.torso, x: 0.6 * r)
+            Engine.struck.apply(&p, u, size: gait.size)
         case .attack:
             gait.idle(&p, u)
             // The pin pulled, the arm flies; then wound back down.
-            let fly = Motion.key(u, [(0, 0), (0.22, 0), (0.3, 1), (0.42, 1), (0.9, 0), (1, 0)])
-            p.turn(arm, x: throwAngle * fly)
+            Engine.loosing.apply(&p, u)
             // The stone goes with the throw, and another is laid in once the arm is down.
             if u > 0.27 && u < 0.92 { p.hide(stone) }
-            // The crewman pulls back on the pin, then bends to the winch.
-            let pull = Motion.key(u, [(0, 0), (0.16, 1), (0.26, 1), (0.34, 0), (1, 0)])
-            let wind = Motion.key(u, [(0, 0), (0.42, 0), (0.5, 1), (0.84, 1), (0.92, 0), (1, 0)])
-            let crank = Motion.wave(u, cycles: 6) * wind
-            p.turn(Limb.torso, x: 0.3 * wind - 0.1 * pull)
-            p.turn(Limb.armR, x: -0.5 * pull - 0.7 * wind - 0.35 * crank)
-            p.turn(Limb.armL, x: -0.5 * pull - 0.7 * wind + 0.35 * crank)
-            p.turn(Limb.forearmR, x: -0.4 * pull - 0.5 * wind)
-            p.turn(Limb.forearmL, x: -0.4 * pull - 0.5 * wind)
-            p.turn(Limb.thighL, x: -0.25 * wind)
-            p.turn(Limb.shinL, x: 0.35 * wind)
         }
         return p.joints
     }

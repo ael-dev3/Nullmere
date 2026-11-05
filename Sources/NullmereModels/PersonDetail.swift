@@ -125,7 +125,8 @@ extension Person {
         let g = f.girth, s: Float = 1.035
         b.with(part: Limb.hips) {
             $0.place(.scale(Vec3(1, 1, 0.78))) {
-                $0.tube([(0.1 * g * s, f.hip - 0.07), (0.12 * g * s, f.hip), (0.113 * g * s, f.waist + 0.03)], sides: 12, color: o.hose)
+                $0.tube([(0.1 * g * s * f.belly, f.hip - 0.07), (0.12 * g * s * f.belly, f.hip), (0.113 * g * s * f.belly, f.waist + 0.03)],
+                        sides: 12, color: o.hose)
             }
             if let skirt = o.skirt {
                 $0.with(material: skirt.material) {
@@ -161,8 +162,8 @@ extension Person {
         }
         b.with(part: Limb.torso, material: o.tunicMaterial) {
             $0.place(.scale(Vec3(1, 1, 0.74))) {
-                $0.tube([(0.113 * g * s, f.waist), (0.128 * g * s, f.waist + 0.1), (0.143 * g * s, f.shoulder - 0.04),
-                         (0.118 * g * s, f.shoulder + 0.02), (0.05 * g, f.neck - 0.01)], sides: 14, color: o.tunic)
+                $0.tube([(0.113 * g * s * f.belly, f.waist), (0.128 * g * s * f.belly, f.waist + 0.1), (0.143 * g * s * f.chest, f.shoulder - 0.04),
+                         (0.118 * g * s * f.chest, f.shoulder + 0.02), (0.05 * g, f.neck - 0.01)], sides: 14, color: o.tunic)
             }
             if o.tunicMaterial == .metal {
                 // A breastplate's ridge, and the lames of the fauld below it.

@@ -52,7 +52,7 @@ extension Figures {
         o.tabard = true
         o.head = .crested
         o.cloak = 0.34
-        return Riders.model(name, ride.mount, ride) { b, f in
+        return Riders.model(name, ride.mount, ride, frame: .lord) { b, f in
             Person.body(&b, f, o)
             // A taller plume than any knight's.
             b.with(part: Limb.head, material: .house, sway: 0.5) {
@@ -86,10 +86,10 @@ extension Figures {
         o.head = .hood(Palette.house, .house)
         o.mantle = (Palette.house, .house)
         o.belt = (Palette.gold, .metal)
-        var f = Frame()
+        var f = Frame.lord
         f.seated = true
         let top = Vec3(f.shoulderX, f.grip + 1.25, 0.03)
-        return Riders.model(name, ride.mount, ride, swing: (Steed.heldL, top)) { b, f in
+        return Riders.model(name, ride.mount, ride, swing: (Steed.heldL, top), frame: .lord) { b, f in
             Person.body(&b, f, o)
             let hand = f.handL
             b.with(part: Limb.heldL) {
@@ -120,7 +120,7 @@ extension Figures {
         o.cloak = 0.3
         o.tabard = true
         o.hair = Palette.stonePale
-        return Riders.model(name, ride.mount, ride) { b, f in
+        return Riders.model(name, ride.mount, ride, frame: .lord) { b, f in
             Person.body(&b, f, o)
             // A crown of moonsalt spikes, tall at the brow.
             b.with(part: Limb.head, material: .crystal) {
@@ -154,7 +154,7 @@ extension Figures {
         o.skirt = (Palette.mail, .metal, 0.44)
         o.mantle = (Palette.fur, .plain)
         o.head = .nasal
-        return Riders.model(name, ride.mount, ride) { b, f in
+        return Riders.model(name, ride.mount, ride, frame: .lord) { b, f in
             var big = f
             big.girth = 1.12
             Person.body(&b, big, o)
@@ -190,7 +190,7 @@ extension Figures {
         plate(&o)
         o.tabard = true
         o.head = .greatHelm
-        return Riders.model(name, ride.mount, ride) { b, f in
+        return Riders.model(name, ride.mount, ride, frame: .lord) { b, f in
             Person.body(&b, f, o)
             let x = f.handR.x, top = f.grip + 2.1
             b.with(part: Limb.heldR) {
@@ -219,7 +219,7 @@ extension Figures {
         o.head = .greatHelm
         o.cloak = 0.3
         o.belt = (Palette.house, .house)
-        return Riders.model(name, ride.mount, ride) { b, f in
+        return Riders.model(name, ride.mount, ride, frame: .lord) { b, f in
             Person.body(&b, f, o)
             // A crest like a breaking wave.
             b.with(part: Limb.head, material: .metal) {
