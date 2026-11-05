@@ -294,51 +294,6 @@ enum Person {
 
     // MARK: What they carry
 
-    /// A spear upright in the right hand, its butt by the foot: plain at
-    /// first, then longer-bladed, winged, and pennoned.
-    static func spear(_ b: inout MeshBuilder, _ f: Frame, tier: Int) {
-        let x = f.handR.x, top: Float = 1.42 + 0.04 * Float(tier)
-        b.with(part: Limb.heldR) {
-            $0.limb(from: Vec3(x, 0.03, 0), to: Vec3(x, top, 0), radius: 0.018, sides: 4,
-                    color: tier >= 3 ? Palette.timberDark : Palette.timber)
-            $0.with(material: .metal) {
-                let blade: Float = tier == 1 ? 0.12 : 0.15 + 0.012 * Float(tier)
-                $0.place(.translation(Vec3(x, top, 0))) {
-                    $0.lathe([(0.014, 0), (0.038, blade * 0.3), (0, blade)], sides: 4, color: tier == 1 ? Palette.iron : Palette.steel)
-                }
-                if tier >= 4 {
-                    $0.box(center: Vec3(x, top - 0.01, 0), size: Vec3(0.12, 0.018, 0.02), color: Palette.steel)
-                }
-            }
-            if tier >= 5 {
-                $0.flag(at: Vec3(x - 0.01, top - 0.03, 0), width: 0.22, height: 0.1, turn: .pi / 2, tail: true)
-            }
-            $0.fine {
-                // The shaft rounded and bound at the grip; the socket and its
-                // langets nailed down the shaft; an iron butt-spike.
-                $0.limb(from: Vec3(x, 0.03, 0), to: Vec3(x, top, 0), radius: 0.0195, sides: 8, color: tier >= 3 ? Palette.timberDark : Palette.timber)
-                $0.place(.translation(Vec3(x, f.grip - 0.06, 0))) {
-                    $0.tube([(0.024, 0), (0.024, 0.12)], sides: 8, color: Palette.leather)
-                }
-                $0.with(material: .metal) {
-                    $0.place(.translation(Vec3(x, top - 0.07, 0))) {
-                        $0.lathe([(0.016, 0), (0.024, 0.06), (0.019, 0.075)], sides: 8, color: Palette.iron)
-                    }
-                    $0.box(center: Vec3(x, top - 0.13, 0.017), size: Vec3(0.01, 0.12, 0.006), color: Palette.iron)
-                    $0.box(center: Vec3(x, top - 0.13, -0.017), size: Vec3(0.01, 0.12, 0.006), color: Palette.iron)
-                    $0.place(.translation(Vec3(x, 0.03, 0)) * .rotationX(.pi)) {
-                        $0.cone(sides: 6, radius: 0.02, to: 0.05, color: Palette.iron)
-                    }
-                    let blade: Float = tier == 1 ? 0.12 : 0.15 + 0.012 * Float(tier)
-                    $0.place(.translation(Vec3(x, top, 0)) * .scale(Vec3(1, 1, 0.45))) {
-                        $0.lathe([(0.016, 0), (0.043, blade * 0.3), (0.03, blade * 0.65), (0, blade * 1.02)], sides: 8,
-                                 color: tier == 1 ? Palette.iron : Palette.steel)
-                    }
-                }
-            }
-        }
-    }
-
     /// A shield on the left arm: it lies flat under the hand at rest and
     /// faces forward once the forearm is raised to carry it.
     static func shield(_ b: inout MeshBuilder, _ f: Frame, tier: Int) {
@@ -502,25 +457,10 @@ enum Bowman {
     static let string: UInt16 = 17
 }
 
-/// Each kind's own build: the bodies of those who bear spears, draw bows,
-/// carry lanterns, haul and crew, ride and lead are not one body in
-/// different dress.
+/// Each kind's own build: the bodies of those who draw bows, carry
+/// lanterns, haul and crew, ride and lead are not one body in different
+/// dress. (The spearman's is made in Blender, Art/blender/spearman.py.)
 extension Frame {
-    /// A spearman: thick through the neck and shoulders, a deep chest over
-    /// a solid middle, set square on his legs.
-    static var heavy: Frame {
-        var f = Frame()
-        f.size = 0.31
-        f.girth = 1.12
-        f.chest = 1.12
-        f.shoulderX = 0.163
-        f.hipX = 0.078
-        f.headRadius = 0.073
-        f.neck = 0.795
-        f.head = 0.868
-        return f
-    }
-
     /// An archer: tall and spare, long in the leg and the arm, narrow at
     /// the waist, the shoulders drawn back by the bow.
     static var lean: Frame {

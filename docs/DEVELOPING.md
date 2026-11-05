@@ -228,6 +228,29 @@ sheet of stills from it, as the assets of the `trailer` pre-release:
 https://github.com/ael-dev3/Nullmere/releases/download/trailer/nullmere-trailer.mp4
 (the stills: `nullmere-trailer-stills.jpg` beside it).
 
+## Models made in Blender
+
+The models made in Blender are made by scripts in `Art/blender`, run by
+Blender's own Python module (`bpy` 5.2, for Python 3.13), with no
+Blender window and nothing drawn by hand outside the script:
+
+```sh
+python3.13 -m venv .blender && .blender/bin/pip install bpy==5.2.3
+.blender/bin/python Art/blender/spearman.py Art/models/spearman.glb
+python3 Art/embed.py Art/models/spearman.glb Sources/NullmereModels/Art/Spearman.swift Art spearman Art/blender/spearman.py
+```
+
+The first line is needed once. A script prints each tier's triangles far
+and near, and writes its file in one fixed order
+(`Art/blender/canonical.py`), so running it again without a change gives
+the same bytes. `Art/embed.py` writes the file into the package as Swift,
+where the importer reads it; a test fails if the two differ. Pieces are
+tagged by their names: `@2-5` for the tiers they are worn at, `@saltborn`
+for a heritage's own, `!fine` for work drawn only near, and the actions
+are named for the clips they play (`idle`, `march`, `attack`, `hit`,
+`death`, `gather`). The importer's own test arm is made the same way, by
+`Art/blender/fixture_arm.py`.
+
 ## Layout
 
 ```
@@ -237,7 +260,7 @@ Sources/
   LauncherKit/        SwiftUI interface, Metal backdrop, services (on-device model, news)
   NullmereLauncher/   The Nullmere Online app's entry point
   NullmereCore/       The rules and the realm's authority: world generation, economy, war, diplomacy, stewards, keepers, watches, ages. Pure, deterministic Swift
-  NullmereModels/     The world's shapes: the land's relief and mesh, and every model in it built from solids in code, with the rigs that move them. Pure Swift
+  NullmereModels/     The world's shapes: the land's relief and mesh, the models made in Blender read from their glTF files, and every other model built from solids in code, with the rigs that move them. Pure Swift
   NullmereWorld/      The world as the GPU draws it, apart from the GPU: the camera, the shaders' source, the frame's data. Pure Swift
   NullmereRealm/      The client's line to the realm over SpacetimeDB or in-process, the steward, keeper identity. Foundation only
   NullmereSound/      The game's sound apart from the Mac's audio engine: the synthesiser, its instruments, its hall and the score. Pure Swift
@@ -251,6 +274,7 @@ news/                 news.json, the launcher's news feed
 perf/                 CI's performance baseline; scripts/measure-mac.sh adds figures from real Macs in perf/mac/
 Packaging/            The Info.plist template, the Liquid Glass icon (AppIcon.icon) and the classic 1024 px icon
 scripts/              Building, packing and checking a release; smoke tests; raising the realm; going live
+Art/                  The models made in Blender: their scripts (blender/), the files they make (models/), and embed.py, which writes a file into the package
 Tools/icon/           Draws the icon, its Liquid Glass layers and the classic one (make-icon.py)
 Tools/scene-preview/  Browser preview of the lake shader
 Tools/world3d-preview/ Browser preview of the world's land, mist, water and staged models, from the shaders' shared section

@@ -10,6 +10,12 @@ import Foundation
 /// world's materials (plain, house, glow, foliage, cloth, crystal, metal),
 /// the second, if it is one, the grain drawn on it (stone, timber, thatch,
 /// slate, earth); "house_timber_shaft" is timber in the House's colour.
+///
+/// Its pieces are named for when they are drawn: "helm@3-5" only for the
+/// third tier to the fifth, "helm@4" for the fourth alone, "helm@5,saltborn"
+/// for the fifth and for the variant named saltborn; "buckle!fine" only
+/// near, as the models built in code have their fine work. Cloth and leaves
+/// carry how far they move in the wind as an attribute, _SWAY.
 public enum Asset {
     public enum Failure: Error, Equatable, CustomStringConvertible {
         /// Not glTF binary at all.
@@ -25,10 +31,58 @@ public enum Asset {
         }
     }
 
-    /// A model from a .glb's bytes, scaled about its origin by `scale`.
-    public static func model(name: String, glb: Data, scale: Float = 1) throws -> Model {
+    /// A model from a .glb's bytes, scaled about its origin by `scale`: its
+    /// rig's bones in `order` (by name) after its root, any others after
+    /// them; the pieces of `tier` alone, if it is given.
+    /// The pieces of a variant (by its name) in place of a tier's, if one is
+    /// given: untagged pieces and those tagged for it.
+    public static func model(name: String, glb: Data, scale: Float = 1, order: [String] = [], tier: Int? = nil,
+                             variant: String? = nil) throws -> Model {
         let file = try GLB(glb)
-        return try Reader(file: file, scale: scale).model(name: name)
+        return try Reader(file: file, scale: scale, order: order, tier: tier, variant: variant).model(name: name)
+    }
+
+    /// What a piece's name in the file says of it: its name, the tiers and
+    /// variants it is drawn for (none: always), and whether only near.
+    struct Tags: Equatable {
+        var name: String
+        var tiers: [ClosedRange<Int>] = []
+        var variants: [String] = []
+        var fine = false
+
+        var always: Bool { tiers.isEmpty && variants.isEmpty }
+
+        /// Whether it is drawn for a tier, or for a variant in place of one.
+        func drawn(tier: Int?, variant: String?) -> Bool {
+            if always { return true }
+            if let variant { return variants.contains(variant) }
+            guard let tier else { return true }
+            return tiers.contains { $0.contains(tier) }
+        }
+    }
+
+    static func tags(_ name: String) -> Tags {
+        var base = name
+        var tags = Tags(name: name)
+        if base.hasSuffix("!fine") {
+            tags.fine = true
+            base.removeLast(5)
+        }
+        if let at = base.lastIndex(of: "@") {
+            for item in base[base.index(after: at)...].split(separator: ",") {
+                let bounds = item.split(separator: "-").compactMap { Int($0) }
+                if bounds.count == 1, !item.contains("-") {
+                    tags.tiers.append(bounds[0]...bounds[0])
+                } else if bounds.count == 2, bounds[0] <= bounds[1] {
+                    tags.tiers.append(bounds[0]...bounds[1])
+                } else if !item.isEmpty, item.allSatisfy({ $0.isLetter }) {
+                    tags.variants.append(String(item))
+                }
+            }
+            base = String(base[..<at])
+        }
+        tags.name = base
+        return tags
     }
 
     /// Bytes written in Swift as base64, as the models made in Blender are
@@ -341,6 +395,9 @@ private struct GLTF: Decodable {
 private struct Reader {
     let file: GLB
     let scale: Float
+    let order: [String]
+    let tier: Int?
+    let variant: String?
     var json: GLTF { file.json }
 
     // MARK: Accessors
@@ -449,9 +506,18 @@ private struct Reader {
         guard skins.count <= 1 else { throw Asset.Failure.malformed("\(skins.count) skins; a model has one") }
         let skinJoints = skins.first?.joints ?? []
         guard skinJoints.allSatisfy({ nodes.indices.contains($0) }) else { throw Asset.Failure.malformed("a joint past the nodes") }
-        // Joints parent first, as the rig takes its bones.
+        // Joints in the order asked for, the rest parent first after them.
         func depth(_ index: Int) -> Int { parents[index].map { depth($0) + 1 } ?? 0 }
-        let order = skinJoints.indices.sorted { (depth(skinJoints[$0]), $0) < (depth(skinJoints[$1]), $1) }
+        var named: [Int] = []
+        for wanted in self.order {
+            guard let joint = skinJoints.indices.first(where: { nodes[skinJoints[$0]].name == wanted }) else {
+                throw Asset.Failure.malformed("no bone \(wanted)")
+            }
+            named.append(joint)
+        }
+        let rest = skinJoints.indices.filter { !named.contains($0) }
+            .sorted { (depth(skinJoints[$0]), $0) < (depth(skinJoints[$1]), $1) }
+        let order = named + rest
         var bone = [Int: Int]()  // the skin's joint index to the rig's bone
         for (position, joint) in order.enumerated() { bone[joint] = position + 1 }
         let jointNodes = order.map { skinJoints[$0] }
@@ -475,7 +541,7 @@ private struct Reader {
             var parent = parents[node]
             while let p = parent, !jointNodes.contains(p) { parent = parents[p] }
             let parentBone = parent.flatMap { p in jointNodes.firstIndex(of: p).map { $0 + 1 } } ?? 0
-            precondition(parentBone <= position, "a joint's parent comes before it")
+            guard parentBone <= position else { throw Asset.Failure.malformed("bone \(skeletonNodes[node].name) before its parent") }
             rig.add(skeletonNodes[node].name, parent: parentBone, pivot: restGlobal(node).transformPoint(.zero) * scale)
         }
         guard rig.count <= PackedVertex.partsMost else { throw Asset.Failure.malformed("more bones than a vertex can name") }
@@ -488,9 +554,11 @@ private struct Reader {
             reached.append(next)
             queue.append(contentsOf: nodes[next].children ?? [])
         }
-        var mesh = Mesh()
+        var mesh = Mesh(), fine = Mesh()
         for index in reached {
             guard let meshIndex = nodes[index].mesh else { continue }
+            let tags = Asset.tags(nodes[index].name ?? "")
+            guard tags.drawn(tier: tier, variant: variant) else { continue }
             guard let meshes = json.meshes, meshes.indices.contains(meshIndex) else { throw Asset.Failure.malformed("mesh \(meshIndex)") }
             let skinned = nodes[index].skin != nil
             // A mesh hung from a joint moves with it whole: a spear in the hand.
@@ -498,12 +566,21 @@ private struct Reader {
             while let h = holder, bone[skinJoints.firstIndex(of: h) ?? -1] == nil { holder = parents[h] }
             let rigid = holder.flatMap { h in skinJoints.firstIndex(of: h).flatMap { bone[$0] } } ?? 0
             let place = restGlobal(index)
+            let boneOf: (Int) -> UInt16 = { joint in skinJoints.indices.contains(joint) ? UInt16(bone[joint] ?? 0) : 0 }
             for primitive in meshes[meshIndex].primitives {
-                try append(primitive, to: &mesh, skinned: skinned, rigid: UInt16(rigid), place: place,
-                           bone: { joint in skinJoints.indices.contains(joint) ? UInt16(bone[joint] ?? 0) : 0 })
+                if tags.fine {
+                    try append(primitive, to: &fine, skinned: skinned, rigid: UInt16(rigid), place: place, bone: boneOf)
+                } else {
+                    try append(primitive, to: &mesh, skinned: skinned, rigid: UInt16(rigid), place: place, bone: boneOf)
+                }
             }
         }
         guard !mesh.isEmpty else { throw Asset.Failure.malformed("no triangles") }
+        if !fine.isEmpty {
+            // Drawn only near: after every coarse triangle.
+            fine.fineFrom = 0
+            mesh.append(fine)
+        }
 
         // The actions, each a clip by its name.
         var actions: [Clip: Skeleton.Action] = [:]
@@ -552,6 +629,7 @@ private struct Reader {
         let colours = try primitive.attributes["COLOR_0"].map { try floats($0) }
         let joints = skinned ? try primitive.attributes["JOINTS_0"].map { try integers($0).values } : nil
         let weights = skinned ? try primitive.attributes["WEIGHTS_0"].map { try floats($0).values } : nil
+        let sway = try primitive.attributes["_SWAY"].map { try floats($0).values }
         let material = primitive.material.flatMap { json.materials?.indices.contains($0) == true ? json.materials?[$0] : nil }
         let (kind, surface) = Reader.kind(of: material?.name)
         let base = material?.pbrMetallicRoughness?.baseColorFactor ?? [1, 1, 1, 1]
@@ -569,7 +647,7 @@ private struct Reader {
                 linear *= Vec3(values[i * width], values[i * width + 1], values[i * width + 2])
             }
             var vertex = MeshVertex(position: p * scale, normal: n.normalized, color: Reader.srgb(linear), part: rigid,
-                                    material: kind, surface: surface)
+                                    material: kind, sway: min(max(sway.map { $0[i] } ?? 0, 0), 1), surface: surface)
             if let joints, let weights, joints.count >= (i + 1) * 4, weights.count >= (i + 1) * 4 {
                 var pairs: [(joint: Int, weight: Float)] = []
                 for k in 0..<4 {

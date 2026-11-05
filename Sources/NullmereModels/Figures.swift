@@ -6,7 +6,7 @@ import NullmereCore
 enum Figures {
     static func build(_ kind: UnitKind, tier: Int, name: String) -> Model {
         switch kind {
-        case .spear: return spearman(tier: tier, name: name)
+        case .spear: return Art.figure(Art.spearman, tier: tier, name: name)
         case .bow: return archer(tier: tier, name: name)
         case .rider: return Riders.rider(tier: tier, name: name)
         case .mangonel: return Engine.mangonel(tier: tier, name: name)
@@ -64,19 +64,6 @@ enum Figures {
             o.cloak = tier >= 5 ? 0.2 : nil
         }
         return o
-    }
-
-    static func spearman(tier: Int, name: String, outfit: Outfit? = nil) -> Model {
-        let f = Frame.heavy
-        let gait = Gait.paced(.spear, f, shield: tier >= 2)
-        return model(name, f, gait) { b in
-            Person.body(&b, f, outfit ?? spearOutfit(tier))
-            Person.spear(&b, f, tier: tier)
-            if tier >= 2 {
-                Person.shield(&b, f, tier: tier)
-            }
-            Person.mattock(&b, f)
-        }
     }
 
     // MARK: Bows
@@ -145,7 +132,8 @@ enum Figures {
         switch heritage.signature {
         case .bow: return archer(tier: tier, name: name, outfit: o)
         case .rider: return Riders.rider(tier: tier, name: name, outfit: o, mount: signatureMount(heritage))
-        default: return spearman(tier: tier, name: name, outfit: o)
+        // The Salt Wardens and the Spine Guard, made in Blender with the spearman.
+        default: return Art.figure(Art.spearman, tier: tier, variant: heritage.rawValue, name: name)
         }
     }
 

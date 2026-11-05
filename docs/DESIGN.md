@@ -58,13 +58,23 @@ the keeper's realm last lay on, made as it plays.
   has never seen lies under mist; what they saw once and see no longer,
   greyed as memory.
 
-### Every model, built from code
+### Every model, made in Blender or built from code
 
-Every model is original and built from code
-([`Sources/NullmereModels`](../Sources/NullmereModels)): each kind of
-company in its five tiers, the wilds and six commanders, keeps, walls and
-every work at every level, the land's firs, birches, heather, ferns, crags,
-reeds, pebbles, mounds and ruins, and what moves through the world.
+Every model is original. The spearman is made in Blender, by a script
+([`Art/blender/spearman.py`](../Art/blender/spearman.py)) that builds his
+body, gear and skeleton and keys his actions: his skin is weighted to the
+bones each side of a joint, so it bends there rather than breaking, and
+each of his tiers and heritages is a set of tagged pieces in one file. The
+file is glTF binary, written in one fixed order so the same script always
+makes the same bytes, and the game carries it and reads it with an
+importer of its own ([`Asset.swift`](../Sources/NullmereModels/Asset.swift)):
+each vertex moves with its two heaviest bones, by its weight between them,
+and each action plays bone by bone. Every other model is still built from
+code ([`Sources/NullmereModels`](../Sources/NullmereModels)), and moves to
+Blender the same way: each kind of company in its five tiers, the wilds
+and six commanders, keeps, walls and every work at every level, the land's
+firs, birches, heather, ferns, crags, reeds, pebbles, mounds and ruins, and
+what moves through the world.
 Companies stand in formation, fewer as they are worn down and more as they
 are drilled; holds lay out their works on the land around the keep. Near,
 the models show fine work that is left off from afar, where it is too small

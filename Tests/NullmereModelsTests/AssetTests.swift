@@ -116,6 +116,15 @@ final class AssetTests: XCTestCase {
         XCTAssertLessThan((block(model, .attack, 22.0 / 30) - Vec3(0, 0.5, 0.6)).length, 2e-3)
     }
 
+    /// What the package carries is each model's file as it was made: run
+    /// Art/embed.py after making a model again.
+    func testTheEmbeddedModelsAreTheirFiles() throws {
+        let models = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Art/models")
+        XCTAssertEqual(try Asset.bytes(base64: Art.spearman), try Data(contentsOf: models.appendingPathComponent("spearman.glb")))
+        XCTAssertEqual(try Asset.bytes(base64: Fixtures.arm), try Data(contentsOf: models.appendingPathComponent("fixture-arm.glb")))
+    }
+
     func testWhatIsNotAModelIsRefusedAsSuch() throws {
         XCTAssertThrowsError(try Asset.model(name: "x", glb: Data("not a model at all".utf8))) { error in
             XCTAssertEqual(error as? Asset.Failure, .notGLB)

@@ -7,3 +7,6 @@ DerivedData/
 
 # Python bytecode, as the Blender scripts leave it.
 __pycache__/
+
+# The Blender module, installed as docs/DEVELOPING.md says.
+/.blender/
