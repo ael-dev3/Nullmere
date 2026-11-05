@@ -520,9 +520,12 @@ final class ExpansionAndFallTests: XCTestCase {
     /// A rival can win the lake by dominion, its vassals' holds counted
     /// with its own.
     func testARivalCanWinByDominion() throws {
-        // In one of a few worlds, played out, a rival wins by dominion.
-        var state = GameState(settings: GameSettings(seedText: "siege check 15", keepers: 1))
-        for seed in 15..<35 {
+        // In one of a few worlds, played out, a rival wins by dominion. The
+        // search starts where one is first found since stewards raise great
+        // hosts (seed 21, watch 73): the worlds before it play all 200
+        // watches to other ends, half a minute each, and told nothing more.
+        var state = GameState(settings: GameSettings(seedText: "siege check 21", keepers: 1))
+        for seed in 21..<41 {
             state = GameState(settings: GameSettings(seedText: "siege check \(seed)", keepers: 1))
             while state.outcome == nil, state.watch < 200 {
                 _ = state.stewardTurn(for: state.player)
