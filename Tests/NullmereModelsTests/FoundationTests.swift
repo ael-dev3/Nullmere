@@ -189,6 +189,28 @@ final class MeshTests: XCTestCase {
         XCTAssertEqual(whole.bounds.max.x, 10.5, accuracy: 1e-5)
         XCTAssertTrue(whole.indices.allSatisfy { Int($0) < whole.vertices.count })
     }
+
+    /// One mesh with fine work appended to another keeps every far
+    /// triangle before every fine one, so far off the fine is still left off.
+    func testAppendingKeepsTheFarWorkBeforeTheFine() {
+        var near = MeshBuilder()
+        near.box(center: .zero, size: Vec3(1, 1, 1), color: Vec3(1, 1, 1))
+        near.fine { $0.box(center: Vec3(0, 2, 0), size: Vec3(0.2, 0.2, 0.2), color: Vec3(0, 0, 1)) }
+        var plain = MeshBuilder()
+        plain.box(center: Vec3(5, 0, 0), size: Vec3(1, 1, 1), color: Vec3(1, 0, 0))
+        var whole = plain.mesh
+        whole.append(near.mesh)
+        whole.append(near.mesh, transform: .translation(Vec3(0, 0, 3)))
+        XCTAssertEqual(whole.triangleCount, 60)
+        XCTAssertEqual(whole.coarseIndexCount / 3, 36, "the plain box and two boxes far off, each one's fine after")
+        let far = whole.indices[0..<whole.coarseIndexCount].map { whole.vertices[Int($0)].color }
+        let fine = whole.indices[whole.coarseIndexCount...].map { whole.vertices[Int($0)].color }
+        XCTAssertFalse(far.contains(Vec3(0, 0, 1)), "no fine work drawn far off")
+        XCTAssertTrue(fine.allSatisfy { $0 == Vec3(0, 0, 1) })
+        var lean = plain.mesh
+        lean.append(plain.mesh)
+        XCTAssertNil(lean.fineFrom, "none where neither has any")
+    }
 }
 
 final class RigTests: XCTestCase {

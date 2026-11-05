@@ -180,7 +180,10 @@ public struct Mesh: Equatable, Sendable {
     /// Adds another mesh's triangles, moved by `transform`; the whole is
     /// then drawn near and far alike.
     public mutating func append(_ other: Mesh, transform: Mat4 = .identity) {
-        fineFrom = nil
+        // Each one's far work before either's fine, so the renderer can
+        // still leave the fine off far away.
+        let coarseHere = coarseIndexCount, coarseThere = other.coarseIndexCount
+        let layered = fineFrom != nil || other.fineFrom != nil
         let base = UInt32(vertices.count)
         let normals = transform.normalMatrix
         vertices.reserveCapacity(vertices.count + other.vertices.count)
@@ -189,7 +192,14 @@ public struct Mesh: Equatable, Sendable {
             vertex.normal = normals.transformDirection(vertex.normal).normalized
             vertices.append(vertex)
         }
-        indices.append(contentsOf: other.indices.map { $0 + base })
+        let theirs = other.indices.map { $0 + base }
+        if layered {
+            indices = Array(indices[0..<coarseHere]) + theirs[0..<coarseThere] + indices[coarseHere...] + theirs[coarseThere...]
+            fineFrom = coarseHere + coarseThere
+        } else {
+            indices.append(contentsOf: theirs)
+            fineFrom = nil
+        }
     }
 
     /// Adds one triangle of three new corners.

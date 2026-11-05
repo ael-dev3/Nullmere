@@ -206,7 +206,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// times, keeps once a hold.
     public var budget: Int {
         switch self {
-        case .figure, .signature, .wild, .commander, .folk: return 700
+        case .figure, .signature, .wild, .commander, .folk: return 4000
         case .furnishing, .prop, .town: return 300
         case .keep, .keepOf, .allianceHall, .lyceumHall: return 4500
         case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .gatehold, .standard, .rallyCamp, .barge, .raising, .drownedCrown, .storehouse, .yard: return 3000
@@ -214,6 +214,16 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .listeningStone, .lyceumOrrery: return 900
         case .commanderStar: return 160
         case .pedlarSkiff: return 2400
+        }
+    }
+
+    /// The triangles a model may draw far off, where its fine work is left
+    /// off: a figure, drawn by the hundred, only its lean body; anything
+    /// else all of its budget.
+    public var farBudget: Int {
+        switch self {
+        case .figure, .signature, .wild, .commander, .folk: return 700
+        default: return budget
         }
     }
 }

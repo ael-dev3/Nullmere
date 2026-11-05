@@ -127,10 +127,94 @@ enum Engine {
                 b.with(part: part) {
                     $0.wheel(center: axle + Vec3(x, 0, 0), radius: wheel, width: 0.04, spokes: 2, color: timber,
                              rim: tier >= 4 ? Palette.iron : nil)
+                    $0.fine {
+                        // Close, a true wheel: eight spokes about a hub, its felloes shod in iron.
+                        $0.wheel(center: axle + Vec3(x, 0, 0), radius: wheel * 1.02, width: 0.046, spokes: 4, color: timber, rim: Palette.iron)
+                        $0.place(.translation(axle + Vec3(x, 0, 0)) * .rotationZ(.pi / 2)) {
+                            $0.lathe([(0.035, -0.04), (0.04, -0.02), (0.04, 0.02), (0.03, 0.045)], sides: 10, color: Palette.timberDark)
+                        }
+                    }
                 }
             }
+            detail(&b, tier: tier, pivot: pivot, rail: rail, front: front, barZ: barZ, cup: cup, band: band, timber: timber)
         }
         return Model(name: name, mesh: b.mesh, rig: f.rig(more: more)) { clip, time in joints(clip, time) }
+    }
+
+    /// The Mangonel close: its skein wound in turns of rope and set in iron
+    /// washers, the frame's joints lashed and bolted, the winch at its tail,
+    /// the mantlet's planks and battens, the arm banded, its cup laced, the
+    /// stone in it rounded.
+    static func detail(_ b: inout MeshBuilder, tier: Int, pivot: Vec3, rail: Float, front: Float, barZ: Float, cup: Vec3, band: Vec3,
+                       timber: Vec3) {
+        let great = tier >= 5
+        b.fine {
+            $0.with(part: Engine.body) {
+                // The skein wound in its turns of rope, and the iron washers it is twisted in.
+                $0.place(.translation(pivot) * .rotationZ(.pi / 2)) {
+                    for turn in 0..<7 {
+                        let y = -0.15 + Float(turn) * 0.05
+                        $0.lathe([(0.052, y), (0.058, y + 0.02), (0.052, y + 0.04)], sides: 10, color: Palette.linen * (turn % 2 == 0 ? 1 : 0.85))
+                    }
+                    $0.with(material: .metal) {
+                        for y: Float in [-0.19, 0.17] {
+                            $0.lathe([(0.075, y), (0.075, y + 0.02)], sides: 12, color: Palette.iron)
+                        }
+                    }
+                }
+                // Rope lashed round the joints of the frame, and the bolts through it.
+                for side in [Float(1), -1] {
+                    for z in [Float(0.38), front - 0.05, barZ + 0.07] {
+                        $0.place(.translation(Vec3(side * 0.2, rail + 0.035, z))) {
+                            $0.lathe([(0.04, -0.012), (0.044, 0), (0.04, 0.012)], sides: 8, color: Palette.linen * 0.8)
+                        }
+                    }
+                    $0.with(material: .metal) {
+                        for z in stride(from: Float(0.42), to: front - 0.04, by: 0.09) {
+                            $0.sphere(center: Vec3(side * 0.232, rail + 0.035, z), radius: 0.009, rings: 2, sides: 5, color: Palette.iron)
+                        }
+                    }
+                }
+                // The winch at the tail that winds the arm down: its drum, rope and crank.
+                $0.place(.translation(Vec3(0, rail + 0.11, 0.44)) * .rotationZ(.pi / 2)) {
+                    $0.lathe([(0.04, -0.16), (0.04, 0.16)], sides: 10, color: Palette.timberPale)
+                    $0.lathe([(0.046, -0.08), (0.046, 0.08)], sides: 10, color: Palette.linen * 0.85)
+                }
+                for side in [Float(1), -1] {
+                    $0.beam(from: Vec3(side * 0.18, rail + 0.07, 0.44), to: Vec3(side * 0.18, rail + 0.16, 0.44), width: 0.03, color: timber)
+                }
+                $0.with(material: .metal) {
+                    $0.beam(from: Vec3(0.2, rail + 0.11, 0.44), to: Vec3(0.24, rail + 0.06, 0.44), width: 0.012, color: Palette.iron)
+                }
+                $0.limb(from: Vec3(0, rail + 0.15, 0.44), to: pivot + Vec3(0, 0.03, 0.06), radius: 0.006, sides: 3, color: Palette.linen)
+                if tier >= 3 {
+                    // The mantlet's planks and their battens.
+                    for x in stride(from: Float(-0.2), through: 0.2, by: 0.1) {
+                        $0.box(center: Vec3(x, (rail + 0.07 + (great ? 0.6 : 0.5)) / 2, front + 0.064),
+                               size: Vec3(0.004, (great ? 0.6 : 0.5) - rail - 0.09, 0.004), color: Palette.timberDark)
+                    }
+                    for y: Float in [rail + 0.14, (great ? 0.6 : 0.5) - 0.07] {
+                        $0.box(center: Vec3(0, y, front + 0.068), size: Vec3(0.48, 0.03, 0.012), color: timber)
+                    }
+                }
+            }
+            $0.with(part: Engine.arm) {
+                // The arm's iron bands, and the cup's rope lashing.
+                $0.with(material: .metal) {
+                    for t in [Float(0.25), 0.55, 0.8] {
+                        let at = pivot + (cup - pivot) * t
+                        $0.box(center: at, size: Vec3(0.055, 0.055, 0.02), color: band)
+                    }
+                }
+                $0.place(.translation(cup + Vec3(0, 0.01, 0))) {
+                    $0.lathe([(0.064, 0), (0.06, 0.03), (0.045, 0.034)], sides: 10, color: Palette.leather)
+                }
+            }
+            $0.with(part: Engine.stone) {
+                $0.rock(center: cup + Vec3(0, 0.05, 0), size: Vec3(0.054, 0.05, 0.054), rings: 4, sides: 8, jitter: 0.1, seed: 11,
+                        color: Palette.stone)
+            }
+        }
     }
 
     /// The crew's dress by tier: a padded coat and a hood; leather and a

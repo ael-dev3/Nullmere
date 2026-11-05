@@ -158,6 +158,7 @@ enum Riders {
                     }
                 }
             }
+            detail(&$0, m)
         }
     }
 

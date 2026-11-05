@@ -119,16 +119,33 @@ final class CatalogueTests: XCTestCase {
             }
             XCTAssertEqual(turned, 0, "\(key)'s winding agrees with its normals")
             XCTAssertLessThanOrEqual(mesh.triangleCount, key.budget, "\(key) keeps its budget")
+            XCTAssertLessThanOrEqual(mesh.coarseIndexCount / 3, key.farBudget, "\(key) keeps its budget far off")
             XCTAssertLessThanOrEqual(model.rig.count, 24, "\(key)'s rig")
             XCTAssertEqual(model.name, key.description)
             XCTAssertTrue(mesh.packed.map(\.material).allSatisfy { $0 != nil }, "\(key) packs for the GPU")
         }
     }
 
+    /// Every company and every one of the folk is modelled whole for the
+    /// near view: its fine work several times its lean body, rounding it and
+    /// dressing it, on its own rig's parts so every clip drives it.
+    func testEveryFigureIsModelledWholeClose() {
+        for key in CatalogueTests.keys where CatalogueTests.isCompany(key) {
+            let mesh = Library.model(key).mesh
+            let far = mesh.coarseIndexCount / 3, near = mesh.triangleCount
+            XCTAssertNotNil(mesh.fineFrom, "\(key) has fine work")
+            XCTAssertGreaterThanOrEqual(near, far * 2, "\(key): \(near) triangles close against \(far) far off")
+            let parts = Set(mesh.indices[mesh.coarseIndexCount...].map { mesh.vertices[Int($0)].part })
+            XCTAssertGreaterThanOrEqual(parts.count, 8, "\(key)'s fine work moves with its limbs")
+        }
+    }
+
     func testBudgetsByFamily() {
-        XCTAssertEqual(ModelKey.figure(.spear, tier: 1).budget, 700)
-        XCTAssertEqual(ModelKey.wild(tier: 3).budget, 700)
-        XCTAssertEqual(ModelKey.commander(variant: 0).budget, 700)
+        XCTAssertEqual(ModelKey.figure(.spear, tier: 1).budget, 4000)
+        XCTAssertEqual(ModelKey.figure(.spear, tier: 1).farBudget, 700, "drawn by the hundred far off, lean")
+        XCTAssertEqual(ModelKey.wild(tier: 3).farBudget, 700)
+        XCTAssertEqual(ModelKey.commander(variant: 0).farBudget, 700)
+        XCTAssertEqual(ModelKey.keep(seat: true).farBudget, ModelKey.keep(seat: true).budget)
         XCTAssertEqual(ModelKey.furnishing(.fir).budget, 300)
         XCTAssertEqual(ModelKey.prop(.puff).budget, 300)
         XCTAssertEqual(ModelKey.work(.granary, level: 5).budget, 3000)
@@ -243,7 +260,8 @@ final class CatalogueTests: XCTestCase {
         XCTAssertEqual(fir.coarseIndexCount, fir.indices.count)
         var whole = Library.model(.keep(seat: false)).mesh
         whole.append(fir)
-        XCTAssertNil(whole.fineFrom, "Put together, drawn whole")
+        XCTAssertEqual(whole.coarseIndexCount, Library.model(.keep(seat: false)).mesh.coarseIndexCount + fir.indices.count,
+                       "Put together, the fir is drawn far off with the keep's far work, the keep's fine still last")
         // Fine work kept after the rest, whenever it is built and however it nests.
         var b = MeshBuilder()
         b.box(center: .zero, size: Vec3(1, 1, 1), color: Palette.stone)
@@ -370,9 +388,21 @@ final class CatalogueTests: XCTestCase {
     }
 
     /// Kinds and tiers read apart: their shapes differ, not just their colours.
+    /// A mesh as it is drawn far off, its fine work left off.
+    static func far(_ mesh: Mesh) -> Mesh {
+        var far = mesh
+        far.indices = Array(mesh.indices[0..<mesh.coarseIndexCount])
+        far.fineFrom = nil
+        return far
+    }
+
+    /// Kinds and tiers read apart at a glance: as a company is drawn among
+    /// the hundreds, far off, by the shape of its figures. Close, every
+    /// figure is the same rounded body under its kit, and is told by its
+    /// kit, its colours and its gear.
     func testKindsAndTiersAreToldApart() {
         let companies = CatalogueTests.keys.filter(CatalogueTests.isCompany)
-        let shapes = companies.map { CatalogueTests.cells(Library.model($0).mesh) }
+        let shapes = companies.map { CatalogueTests.cells(CatalogueTests.far(Library.model($0).mesh)) }
         for i in companies.indices {
             for j in companies.indices where j > i {
                 let unlike = CatalogueTests.unlike(shapes[i], shapes[j])
@@ -384,8 +414,8 @@ final class CatalogueTests: XCTestCase {
             let kinds = [ModelKey.figure(.spear, tier: tier), .figure(.bow, tier: tier), .figure(.rider, tier: tier)]
             for i in kinds.indices {
                 for j in kinds.indices where j > i {
-                    let unlike = CatalogueTests.unlike(CatalogueTests.cells(Library.model(kinds[i]).mesh),
-                                                       CatalogueTests.cells(Library.model(kinds[j]).mesh))
+                    let unlike = CatalogueTests.unlike(CatalogueTests.cells(CatalogueTests.far(Library.model(kinds[i]).mesh)),
+                                                       CatalogueTests.cells(CatalogueTests.far(Library.model(kinds[j]).mesh)))
                     XCTAssertGreaterThan(unlike, 0.35, "\(kinds[i]) and \(kinds[j]) read apart")
                 }
             }

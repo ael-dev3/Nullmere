@@ -241,6 +241,7 @@ enum Person {
             $0.sphere(center: Vec3(0, f.head, 0.006), radius: f.headRadius, rings: 3, sides: 5, color: o.skin)
         }
         headgear(&b, f, o)
+        detail(&b, f, o)
     }
 
     static func headgear(_ b: inout MeshBuilder, _ f: Frame, _ o: Outfit) {
@@ -307,6 +308,29 @@ enum Person {
             if tier >= 5 {
                 $0.flag(at: Vec3(x - 0.01, top - 0.03, 0), width: 0.22, height: 0.1, turn: .pi / 2, tail: true)
             }
+            $0.fine {
+                // The shaft rounded and bound at the grip; the socket and its
+                // langets nailed down the shaft; an iron butt-spike.
+                $0.limb(from: Vec3(x, 0.03, 0), to: Vec3(x, top, 0), radius: 0.0195, sides: 8, color: tier >= 3 ? Palette.timberDark : Palette.timber)
+                $0.place(.translation(Vec3(x, f.grip - 0.06, 0))) {
+                    $0.tube([(0.024, 0), (0.024, 0.12)], sides: 8, color: Palette.leather)
+                }
+                $0.with(material: .metal) {
+                    $0.place(.translation(Vec3(x, top - 0.07, 0))) {
+                        $0.lathe([(0.016, 0), (0.024, 0.06), (0.019, 0.075)], sides: 8, color: Palette.iron)
+                    }
+                    $0.box(center: Vec3(x, top - 0.13, 0.017), size: Vec3(0.01, 0.12, 0.006), color: Palette.iron)
+                    $0.box(center: Vec3(x, top - 0.13, -0.017), size: Vec3(0.01, 0.12, 0.006), color: Palette.iron)
+                    $0.place(.translation(Vec3(x, 0.03, 0)) * .rotationX(.pi)) {
+                        $0.cone(sides: 6, radius: 0.02, to: 0.05, color: Palette.iron)
+                    }
+                    let blade: Float = tier == 1 ? 0.12 : 0.15 + 0.012 * Float(tier)
+                    $0.place(.translation(Vec3(x, top, 0)) * .scale(Vec3(1, 1, 0.45))) {
+                        $0.lathe([(0.016, 0), (0.043, blade * 0.3), (0.03, blade * 0.65), (0, blade * 1.02)], sides: 8,
+                                 color: tier == 1 ? Palette.iron : Palette.steel)
+                    }
+                }
+            }
         }
     }
 
@@ -332,6 +356,28 @@ enum Person {
                             }
                         }
                     }
+                    $0.fine {
+                        // Rounded true, its planks' joints, the rim bound in rawhide or iron and
+                        // nailed, the boss domed.
+                        $0.with(material: tier == 3 ? .house : .plain) {
+                            $0.lathe([(0.164, -0.018), (0.164, 0.017)], sides: 20, color: tier == 3 ? Palette.house : Palette.timberPale)
+                        }
+                        $0.with(material: .metal) {
+                            $0.lathe([(0.172, -0.02), (0.172, 0.02), (0.16, 0.022)], sides: 20, color: tier == 3 ? Palette.iron : Palette.leatherDark)
+                            for index in 0..<10 {
+                                let a = Float(index) * .pi / 5
+                                $0.sphere(center: Vec3(cos(a) * 0.15, 0.021, sin(a) * 0.15), radius: 0.008, rings: 2, sides: 4, color: Palette.iron)
+                            }
+                            $0.place(.translation(Vec3(0, 0.016, 0))) {
+                                $0.lathe([(0.058, 0), (0.05, 0.022), (0.03, 0.044), (0, 0.05)], sides: 12, color: Palette.iron)
+                            }
+                        }
+                        if tier == 2 {
+                            for plank in [-0.08, 0, 0.08] as [Float] {
+                                $0.box(center: Vec3(plank, 0.018, 0), size: Vec3(0.004, 0.002, 0.3 - abs(plank)), color: Palette.timber)
+                            }
+                        }
+                    }
                 default:
                     // Kite-shaped, the House's on a steel ground; its point hangs down once raised.
                     $0.place(.rotationX(-.pi / 2)) {
@@ -345,6 +391,17 @@ enum Person {
                             if tier >= 5 {
                                 $0.place(.translation(Vec3(0, 0.03, 0.022)) * .rotationX(.pi / 2)) {
                                     $0.cone(sides: 4, radius: 0.04, to: 0.03, color: Palette.gold)
+                                }
+                            }
+                            $0.fine {
+                                // A raised rim of steel about its face, nailed, and a boss.
+                                for index in 0..<outline.count {
+                                    let a = outline[index], c = outline[(index + 1) % outline.count]
+                                    $0.beam(from: a + Vec3(0, 0, 0.026), to: c + Vec3(0, 0, 0.026), width: 0.018, depth: 0.012, color: Palette.steel * 1.1)
+                                    $0.sphere(center: a * 0.93 + Vec3(0, 0, 0.03), radius: 0.008, rings: 2, sides: 4, color: Palette.iron)
+                                }
+                                $0.place(.translation(Vec3(0, 0.03, 0.026)) * .rotationX(.pi / 2)) {
+                                    $0.lathe([(0.05, 0), (0.04, 0.02), (0, 0.032)], sides: 10, color: tier >= 5 ? Palette.gold : Palette.steel)
                                 }
                             }
                         }
