@@ -170,6 +170,7 @@ enum Art {
         "plain_earth_quarry": Palette.rock.mix(Palette.yard, 0.5), "plain_water": Palette.slate, "plain_horse_dun": Palette.horseDun,
         "plain_hair": Palette.hair, "plain_leather": Palette.leather, "plain_water_deep": Vec3(0.05, 0.07, 0.09),
         "plain_moss_weld": Palette.moss.mix(Palette.weld, 0.3), "cloth_linen": Palette.linen,
+        "plain_stone_ashlar": Palette.stoneWhite * 0.96,
     ]
 
     /// An alliance's hall, made in Blender (Art/blender/hall.py), its roof,

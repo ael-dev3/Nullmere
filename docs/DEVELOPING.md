@@ -265,7 +265,7 @@ the game names it. A work's family is one script and one file, each level a
 tier (`granary.py`: `granary.glb`, `Art.granaryFile` in `GranaryFile.swift`;
 `beacon.py`: `beacon.glb`, `Art.beaconFile` in `BeaconFile.swift`; and so
 the Sawpit, the Quarry, the Saltworks, the Muster Hall, the Infirmary, the
-Archive, the Forge and the Moonspire; all on
+Archive, the Forge, the Masons' Lodge and the Moonspire; all on
 `Art/blender/works.py`), its moving parts bones tagged for the levels they
 stand at (`sack hoist@3`, which the importer keeps for that level under its
 plain name) and its motion one action, `idle`: a part turned about its axis
