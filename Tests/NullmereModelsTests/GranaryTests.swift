@@ -16,8 +16,9 @@ final class GranaryTests: XCTestCase {
         for level in 1...5 {
             let model = Library.model(.work(.granary, level: level))
             let hoist = try XCTUnwrap(model.rig.index(of: "sack hoist"), "level \(level)")
-            let motion = try XCTUnwrap(model.motion)
-            XCTAssertNotEqual(motion(.idle, 0)[hoist].rotation, motion(.idle, 0.4)[hoist].rotation, "level \(level)")
+            XCTAssertEqual(model.rig.count, 3, "The base and this level's hoist alone, level \(level)")
+            XCTAssertNotEqual(model.pose(.idle, at: 0)[hoist], model.pose(.idle, at: Clip.idle.period * 0.3)[hoist], "level \(level)")
+            XCTAssertEqual(model.pose(.idle, at: 0)[hoist], model.pose(.idle, at: Clip.idle.period)[hoist], "level \(level) comes round")
         }
     }
 }

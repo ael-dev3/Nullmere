@@ -73,8 +73,12 @@ final class AssetTests: XCTestCase {
         // Halfway between keys, halfway round: turned through 45 degrees.
         let between = block(model, .attack, 11.0 / 30)
         XCTAssertEqual(atan2(between.z, between.y - 1), Float.pi / 4, accuracy: 0.03, "\(between)")
-        // A clip it has no action for plays its idle.
-        XCTAssertEqual(model.pose(.march, at: 0.5), model.pose(.idle, at: 0.5))
+        // A clip it has no action for plays its idle, in its own time:
+        // halfway through a march, halfway through the idle.
+        XCTAssertEqual(model.pose(.march, at: 0.5 * Clip.march.period), model.pose(.idle, at: 0.5 * Clip.idle.period))
+        for (a, b) in zip(model.pose(.march, at: 0.2), model.pose(.march, at: 0.2 + Clip.march.period)) {
+            XCTAssertLessThan(((a.c3 - b.c3) * (a.c3 - b.c3)).sum(), 1e-8, "and comes round in the clip's")
+        }
         // A looping clip comes round.
         let once = model.pose(.attack, at: 0.4), again = model.pose(.attack, at: 0.4 + Clip.attack.period)
         for (a, b) in zip(once, again) {
@@ -183,7 +187,8 @@ final class AssetTests: XCTestCase {
         XCTAssertEqual(try Asset.bytes(base64: Art.settler), try Data(contentsOf: models.appendingPathComponent("founder.glb")))
         for (embedded, file) in [(Art.hollow, "hollow.glb"), (Art.thornwight, "thornwight.glb"), (Art.colossus, "colossus.glb"),
                                  (Art.townsfolk, "folk.glb"), (Art.carters, "carters.glb"), (Art.holdKeep, "keep.glb"),
-                                 (Art.seatKeep, "seat.glb"), (Art.wallsFile, "walls.glb"), (Art.townFile, "town.glb")] {
+                                 (Art.seatKeep, "seat.glb"), (Art.wallsFile, "walls.glb"), (Art.townFile, "town.glb"),
+                                 (Art.granaryFile, "granary.glb")] {
             XCTAssertEqual(try Asset.bytes(base64: embedded), try Data(contentsOf: models.appendingPathComponent(file)), file)
         }
         XCTAssertEqual(try Asset.bytes(base64: Fixtures.arm), try Data(contentsOf: models.appendingPathComponent("fixture-arm.glb")))

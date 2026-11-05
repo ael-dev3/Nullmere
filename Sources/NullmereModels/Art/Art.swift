@@ -133,31 +133,42 @@ enum Art {
     /// under the House's cones and a gatehouse flying its banner.
     static func walls(level: Int, name: String) -> Model {
         let colours: [String: Vec3] = [
-            "plain_stone": Palette.stone, "plain_stone_dark": Palette.stoneDark, "plain_stone_pale": Palette.stonePale,
-            "plain_stone_patched": Palette.stonePale.mix(Palette.stone, 0.4), "plain_slate": Palette.slate, "plain_timber": Palette.timber,
-            "plain_timber_dark": Palette.timberDark, "plain_timber_pale": Palette.timberPale, "plain_thatch": Palette.thatch,
-            "plain_rope": Palette.leatherDark, "plain_hole": Palette.barkBlack, "metal_iron": Palette.iron, "house_roof": Palette.house,
-            "cloth_banner": Palette.house, "glow_fire": Palette.fire, "glow_candle": Palette.candle, "foliage_ivy": Palette.leaf,
+            "plain_stone_patched": Palette.stonePale.mix(Palette.stone, 0.4), "plain_rope": Palette.leatherDark,
+            "plain_hole": Palette.barkBlack,
         ]
-        return model(wallsFile, tier: level, name: name, order: [], scale: buildingScale, colours: colours)
+        return work(wallsFile, level: level, name: name, colours: colours)
     }
 
     /// A piece of a hold's town made in Blender, each a variant of one file
     /// by the name the game gives it: its homes, well, fields, lanes and
     /// market stalls.
     static func town(_ piece: Town, name: String) -> Model {
-        let colours: [String: Vec3] = [
-            "plain_stone_white": Palette.stoneWhite, "plain_stone": Palette.stone, "plain_stone_dark": Palette.stoneDark,
-            "plain_stone_pale": Palette.stonePale, "plain_timber_dark": Palette.timberDark, "plain_timber": Palette.timber,
-            "plain_timber_pale": Palette.timberPale, "plain_timber_grey": Palette.timberGrey, "plain_timber_bark": Palette.bark,
-            "plain_thatch": Palette.thatch, "plain_thatch_cap": Palette.thatch.mix(Palette.bark, 0.3), "plain_slate": Palette.slate,
-            "plain_earth_loam": Palette.loam, "plain_earth_yard": Palette.yard, "plain_water": Palette.loam, "house_door": Palette.house,
-            "house_awning": Palette.house, "glow_candle": Palette.candle, "metal_iron": Palette.iron,
-            "plain_clay": Palette.madder.mix(Palette.earth, 0.4), "plain_madder": Palette.madder, "plain_weld": Palette.weld,
-            "foliage_grain": Palette.grain, "foliage_straw": Palette.straw, "plain_linen": Palette.linen, "plain_reed": Palette.reed,
-            "crystal_moonsalt": Palette.moonsalt,
-        ]
+        let colours = buildingColours.merging([
+            "plain_thatch_cap": Palette.thatch.mix(Palette.bark, 0.3), "plain_water": Palette.loam,
+            "plain_clay": Palette.madder.mix(Palette.earth, 0.4),
+        ]) { _, own in own }
         return model(townFile, tier: 1, variant: piece.rawValue, name: name, order: [], scale: buildingScale, colours: colours)
+    }
+
+    /// The colours of the materials buildings made in Blender are made in,
+    /// by their names: the palette's own, exactly.
+    static let buildingColours: [String: Vec3] = [
+        "plain_stone": Palette.stone, "plain_stone_dark": Palette.stoneDark, "plain_stone_pale": Palette.stonePale,
+        "plain_stone_white": Palette.stoneWhite, "plain_slate": Palette.slate, "plain_timber": Palette.timber,
+        "plain_timber_dark": Palette.timberDark, "plain_timber_pale": Palette.timberPale, "plain_timber_grey": Palette.timberGrey,
+        "plain_timber_bark": Palette.bark, "plain_thatch": Palette.thatch, "plain_earth": Palette.earth, "plain_earth_yard": Palette.yard,
+        "plain_earth_loam": Palette.loam, "plain_daub": Palette.linen.mix(Palette.thatch, 0.4), "plain_weld": Palette.weld,
+        "plain_madder": Palette.madder, "plain_canvas": Palette.canvas, "plain_linen": Palette.linen, "plain_reed": Palette.reed,
+        "metal_iron": Palette.iron, "metal_gold": Palette.gold, "house_roof": Palette.house, "house_door": Palette.house,
+        "house_awning": Palette.house, "house_dark": Palette.houseDark, "cloth_banner": Palette.house, "glow_candle": Palette.candle,
+        "glow_fire": Palette.fire, "crystal_moonsalt": Palette.moonsalt, "foliage_ivy": Palette.leaf, "foliage_grain": Palette.grain,
+        "foliage_straw": Palette.straw,
+    ]
+
+    /// A work made in Blender at its level, each level its tier of the
+    /// family's one file, its moving parts the bones tagged for that level.
+    static func work(_ base64: String, level: Int, name: String, colours: [String: Vec3] = [:]) -> Model {
+        model(base64, tier: level, name: name, order: [], scale: buildingScale, colours: buildingColours.merging(colours) { _, own in own })
     }
 
     /// A model made in Blender, its bones in `order` after its root.

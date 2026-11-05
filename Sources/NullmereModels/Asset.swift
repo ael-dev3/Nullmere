@@ -179,12 +179,13 @@ public struct Skeleton: Sendable {
 
     /// Every node as it stands at a moment of a clip: a share of the way
     /// through the clip's period is the same share through its action, so
-    /// a clip plays in its own time whatever the action's length.
+    /// a clip plays in its own time whatever the action's length. A clip it
+    /// has no action for plays its idle in that clip's time, as a work's
+    /// machinery turns at whatever pace it is asked.
     public func locals(_ clip: Clip, at time: Float) -> [JointPose] {
         var poses = nodes.map { $0.rest ?? .rest }
         guard let action = actions[clip] ?? actions[.idle] else { return poses }
-        let played = actions[clip] == nil ? Clip.idle : clip
-        let at = action.start + played.progress(at: time) * action.duration
+        let at = action.start + clip.progress(at: time) * action.duration
         for channel in action.channels {
             let value = Skeleton.sample(channel, at: at)
             switch channel.path {
@@ -522,16 +523,22 @@ private struct Reader {
         guard skins.count <= 1 else { throw Asset.Failure.malformed("\(skins.count) skins; a model has one") }
         let skinJoints = skins.first?.joints ?? []
         guard skinJoints.allSatisfy({ nodes.indices.contains($0) }) else { throw Asset.Failure.malformed("a joint past the nodes") }
+        // A joint is tagged as a piece is ("sack hoist@3"): one moving part
+        // of a work for each of its levels, each where that level has it.
+        // Those of this tier or variant are the rig's, by their names
+        // without their tags.
+        let jointTags = skinJoints.map { Asset.tags(nodes[$0].name ?? "") }
+        let kept = skinJoints.indices.filter { jointTags[$0].drawn(tier: tier, variant: variant) }
         // Joints in the order asked for, the rest parent first after them.
         func depth(_ index: Int) -> Int { parents[index].map { depth($0) + 1 } ?? 0 }
         var named: [Int] = []
         for wanted in self.order {
-            guard let joint = skinJoints.indices.first(where: { nodes[skinJoints[$0]].name == wanted }) else {
+            guard let joint = kept.first(where: { jointTags[$0].name == wanted }) else {
                 throw Asset.Failure.malformed("no bone \(wanted)")
             }
             named.append(joint)
         }
-        let rest = skinJoints.indices.filter { !named.contains($0) }
+        let rest = kept.filter { !named.contains($0) }
             .sorted { (depth(skinJoints[$0]), $0) < (depth(skinJoints[$1]), $1) }
         let order = named + rest
         var bone = [Int: Int]()  // the skin's joint index to the rig's bone
@@ -558,7 +565,8 @@ private struct Reader {
             while let p = parent, !jointNodes.contains(p) { parent = parents[p] }
             let parentBone = parent.flatMap { p in jointNodes.firstIndex(of: p).map { $0 + 1 } } ?? 0
             guard parentBone <= position else { throw Asset.Failure.malformed("bone \(skeletonNodes[node].name) before its parent") }
-            rig.add(skeletonNodes[node].name, parent: parentBone, pivot: up.transformPoint(restGlobal(node).transformPoint(.zero)))
+            rig.add(Asset.tags(skeletonNodes[node].name).name, parent: parentBone,
+                    pivot: up.transformPoint(restGlobal(node).transformPoint(.zero)))
         }
         guard rig.count <= PackedVertex.partsMost else { throw Asset.Failure.malformed("more bones than a vertex can name") }
 

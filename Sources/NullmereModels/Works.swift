@@ -224,7 +224,7 @@ enum Works {
     /// The work itself, its family's own at its level.
     static func trade(_ kind: BuildingKind, level: Int, name: String) -> Model {
         switch kind {
-        case .granary: return Granary.model(level: level, name: name)
+        case .granary: return Art.work(Art.granaryFile, level: level, name: name)
         case .sawpit: return Sawpit.model(level: level, name: name)
         case .quarry: return Quarry.model(level: level, name: name)
         case .saltworks: return Saltworks.model(level: level, name: name)
