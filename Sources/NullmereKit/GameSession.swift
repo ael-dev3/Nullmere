@@ -1,3 +1,4 @@
+import Synchronization
 import AppKit
 import Foundation
 import LauncherCore
@@ -1766,14 +1767,29 @@ public final class GameSession {
 
     /// Where an expedition up the Spine is drawn for a keeper: the Spine hex
     /// nearest their seat, and the land beside it the line strikes from.
+    struct RidgeKey: Hashable { let seat: Hex; let radius: Int; let tiles: Int }
+    /// Each seat's nearest hex of the Spine, as `expeditionField` found it.
+    static let ridges = Mutex<[RidgeKey: Hex?]>([:])
+
     static func expeditionField(in state: GameState, for player: Int) -> (from: Hex, at: Hex)? {
         guard let seat = state.seat(of: player)?.position else { return nil }
-        // Ring by ring outward from the seat, the nearest spine first: the
-        // field is asked for every frame, and the map can be wide.
-        var ridge: Hex?
-        for radius in 0...(2 * state.map.radius + 1) {
-            ridge = seat.ring(radius).filter { state.map[$0]?.terrain == .spine }.min { ($0.q, $0.r) < ($1.q, $1.r) }
-            if ridge != nil { break }
+        // The Spine never moves: its nearest hex to a seat is found once and
+        // kept, for the field is asked for every frame and the map can be wide.
+        let key = RidgeKey(seat: seat, radius: state.map.radius, tiles: state.map.tiles.count)
+        let ridge: Hex?
+        if let known = GameSession.ridges.withLock({ $0[key] }) {
+            ridge = known
+        } else {
+            var found: Hex?
+            for radius in 0...(2 * state.map.radius + 1) {
+                found = seat.ring(radius).filter { state.map[$0]?.terrain == .spine }.min { ($0.q, $0.r) < ($1.q, $1.r) }
+                if found != nil { break }
+            }
+            ridge = found
+            GameSession.ridges.withLock { cache in
+                if cache.count > 64 { cache.removeAll() }
+                cache[key] = found
+            }
         }
         guard let at = ridge else { return nil }
         let below = state.map.neighbors(of: at).filter { state.map[$0].map { $0.terrain.isPassable && !$0.terrain.isWater } == true }
