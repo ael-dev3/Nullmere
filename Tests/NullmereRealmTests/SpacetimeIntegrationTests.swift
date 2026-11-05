@@ -376,6 +376,8 @@ final class SpacetimeIntegrationTests: XCTestCase {
         try await scene2.waitInLine(ama: houseA, bel: houseB) { NetworkRealmLink(transport: transport, credentials: MemoryStore(), pollInterval: 0.2) }
         print("REALM a seat freed went to the keeper first in line, as both the line's keepers saw it")
         try await scene2.sitTheLyceum(ama: houseA, bel: houseB)
+        try await scene2.takeAHolySite(ama: houseA, bel: houseB)
+        print("REALM one keeper's spears took a holy site from her own client; both clients saw it hers and the other heard it taken")
         print("REALM two keepers sat the Lyceum in its lit hall from their own clients, answered blind, and were judged and paid alike")
 
         // Ama marches on Bel's seat, watch by watch as both keepers turn

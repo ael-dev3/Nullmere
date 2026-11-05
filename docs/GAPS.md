@@ -219,7 +219,7 @@ of battle, the Drowned Crown (Ark of Osiris), the Frontier and the Sundering
 - [x] Commander talents and star raising between clients: learnTalent was never sent over the realm, and a commander starred had no cue. Now a keeper's commander learns a talent from her own client over SpacetimeDB, another keeper's order on it is refused by the realm, and a commander raised a star is heard by its House (the honour cue). In the world a commander's stars past the first already stand in an arc over its head, and its leading talents' sigil glows on the march.
 - [x] Scouting and the House's studies between clients: scout and study were proven in the rules and client only. Now a keeper begins a study from her own client over SpacetimeDB and her ally's client sees it under way; her Lantern beside his seat scouts it, she is given the report and he hears his seat was scouted.
 - [x] The Infirmary's healing between clients: heal was proven in the rules and client only. Now a keeper pays for the healing of a company in her seat's beds from her own client over SpacetimeDB and sees it rise whole as the watch turns; another keeper's order to heal her beds is refused by the realm.
-- [ ] Holy sites taken between clients: shrines are drawn and heard, but no two-client play takes one.
+- [x] Holy sites taken between clients: shrines were drawn and heard, but no two-client play took one. Now a keeper's spears step onto a shrine from her own client over SpacetimeDB; as the watch turns it is hers in both clients and the other keeper hears it taken.
 - [ ] Happenings joined between clients: the calendar's happenings are foretold alike in both clients, but no keeper's order toward one is played over the realm.
 
 ## Beyond Rise of Kingdoms: what nobody has shipped

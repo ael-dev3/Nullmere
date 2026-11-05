@@ -1422,3 +1422,53 @@ extension RallyScene {
         await restore(kept, of: ama)
     }
 }
+
+extension RallyScene {
+    /// A holy site (RoK's holy sites), between two clients: Ama's spears
+    /// step onto a shrine from her own client and, as the watch turns, it
+    /// is hers in both clients, and Bel hears it taken.
+    func takeAHolySite(ama: Int, bel: Int) async throws {
+        let staged = StagedWalk(), shrineBox = StagedWalk()
+        await steward.reshape { realm in
+            let world = realm.world
+            for shrine in world.holySites where shrine.holder != ama && world.unit(at: shrine.position) == nil {
+                guard let beside = shrine.position.neighbors.first(where: { hex in
+                    world.map[hex].map { $0.terrain.isPassable && !$0.terrain.isWater } == true
+                        && world.unit(at: hex) == nil && world.hold(at: hex) == nil && world.site(at: hex) == nil
+                }) else { continue }
+                let id = realm.world.takeID()
+                realm.world.units.append(NullmereCore.Unit(id: id, kind: .spear, owner: ama, position: beside))
+                realm.world.reveal(around: shrine.position, range: 2, for: ama)
+                realm.world.reveal(around: shrine.position, range: 2, for: bel)
+                staged.unit = id
+                shrineBox.unit = shrine.id
+                shrineBox.at = shrine.position
+                return
+            }
+        }
+        let spear = try XCTUnwrap(staged.unit, "A shrine with open ground beside it")
+        let shrineID = try XCTUnwrap(shrineBox.unit), at = try XCTUnwrap(shrineBox.at)
+        try await until("Ama's spears beside the shrine in her client") { earA.world?.unit(spear) != nil }
+        await MainActor.run { a.send(.move(unit: spear, to: at)) }
+        for _ in 0..<4 {
+            let held = await MainActor.run { earA.world?.holySites.first { $0.id == shrineID }?.holder == ama }
+            if held { break }
+            let watch = await MainActor.run { earA.world?.watch ?? 0 }
+            await MainActor.run { a.setReady(true); b.setReady(true) }
+            try await until("the watch after \(watch)") { (earA.world?.watch ?? 0) > watch && (earB.world?.watch ?? 0) > watch }
+        }
+        try await until("the shrine Ama's, as both clients see it") {
+            earA.world?.holySites.first { $0.id == shrineID }?.holder == ama && earB.world?.holySites.first { $0.id == shrineID }?.holder == ama
+        }
+        try await until("Bel told the shrine was taken") {
+            earB.events.contains { event in
+                switch event {
+                case .heard(let events), .watchTurned(_, let events), .settled(_, let events):
+                    return events.contains { if case .shrineTaken(shrineID, ama, _) = $0 { return true } else { return false } }
+                default: return false
+                }
+            }
+        }
+        await dismiss(spear)
+    }
+}
