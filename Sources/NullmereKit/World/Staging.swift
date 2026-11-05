@@ -445,6 +445,8 @@ extension GameSession {
                     poses[poses.count - 1].clipTime = Float((time + Double(GameSession.attackBeat(of: unit.id))).truncatingRemainder(dividingBy: Double(beat)))
                     poses[poses.count - 1].blend = nil
                     poses[poses.count - 1].struck = true
+                    poses[poses.count - 1].falling = WorldStage.falling(count: WorldStage.fallingCount(lost: fighter.lost), unit: unit.id,
+                                                                        at: Float(time))
                 }
             }
             if let leading = unit.leader.flatMap(state.commander)?.leadingTree {
@@ -600,7 +602,9 @@ extension GameSession {
         for pose in poses where pose.struck && pose.throng > 0 {
             let period = Clip.hit.period
             let forward = Mat4.rotationY(pose.heading).transformDirection(Vec3(0, 0, 1))
-            let at = pose.position + forward * (0.14 * pose.spread * WorldStage.figureScale / 0.3)
+            // At its front rank, where the foe's steel meets it.
+            let front = Formation.throng(count: pose.throng, seed: pose.unit).map(\.z).max() ?? 0
+            let at = pose.position + forward * (front * pose.spread * WorldStage.figureScale)
             let timber: Bool
             switch pose.key {
             case .figure(.mangonel, _): timber = true

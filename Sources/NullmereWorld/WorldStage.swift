@@ -44,6 +44,10 @@ public struct CompanyPose: Equatable, Sendable {
     /// In a field and taking blows as it gives them: every other step of
     /// its throng staggers under the foe's (`Clip.hit`) while the rest strike.
     public var struck = false
+    /// Its men falling before the foe as it loses them, each at a moment
+    /// of its death (`Clip.death`): one down, then the next, as long as the
+    /// field goes on.
+    public var falling: [Float] = []
 
     /// A clip being left: where it was, and how much of it still shows.
     public struct Blend: Equatable, Sendable {
@@ -941,6 +945,19 @@ public final class WorldStage: @unchecked Sendable {
             for (index, place) in places.enumerated() {
                 stand(company.key, place, index)
             }
+            if !company.falling.isEmpty, !places.isEmpty {
+                // The fallen go down at the front, before the foe.
+                let front = places.sorted { $0.z > $1.z }
+                for (index, time) in company.falling.enumerated() {
+                    let place = front[(index * 3) % front.count] + Vec3(0, 0, WorldStage.fallenAhead)
+                    let at = company.position + turn.transformDirection(place * (company.spread * WorldStage.figureScale))
+                    let start = WorldStage.pose(company.key, .death, at: time, shared: &shared, into: &frame)
+                    placed.append((company.key, ModelInstance(model: .translation(Vec3(at.x, ground(atX: at.x, z: at.z), at.z)) * turn
+                                                                * .scale(WorldStage.figureScale), colour: colour, opacity: company.opacity,
+                                                              phase: Float(company.unit % 17) * 0.31, emphasis: company.emphasis, hex: hex,
+                                                              palette: start, flags: flags)))
+                }
+            }
             if let commander = company.commander, !places.isEmpty {
                 let head = Formation.commander(company.key, health: company.health, muster: company.muster)
                 stand(.commander(variant: commander), head, places.count)
@@ -1073,6 +1090,32 @@ public final class WorldStage: @unchecked Sendable {
     public static let routSpread: Float = 1.45
     /// The steps a throng's figures are spread across, out of step with each other.
     public static let throngSteps = 5
+    /// How far before its front ranks a throng's fallen lie, in its places' units.
+    public static let fallenAhead: Float = 0.05
+    /// How many of a company's men are seen falling for the troops it has
+    /// lost in its field: one for its first losses, one more for each
+    /// figure's worth, at most `fallingMost`.
+    public static func fallingCount(lost: Int) -> Int {
+        lost <= 0 ? 0 : min(fallingMost, 1 + lost / Formation.troopsPerThrongFigure / 4)
+    }
+    public static let fallingMost = 4
+    /// Each fallen man's turn: down over a death, a while lying, then gone
+    /// as the next falls, seconds.
+    public static let fallingCycle: Float = 3.2
+    public static let fallenLies: Float = 1.1
+
+    /// The moments of their deaths for a company's falling men at a time of
+    /// the world, each in its own turn; those between turns are not drawn.
+    /// Taken to the tenth of a second, so the companies of a field share them.
+    public static func falling(count: Int, unit: Int, at time: Float) -> [Float] {
+        (0..<count).compactMap { index in
+            let t = (time + Float(index) * 0.83 + Float(unit % 5) * 0.37).truncatingRemainder(dividingBy: fallingCycle)
+            let at = t < 0 ? t + fallingCycle : t
+            guard at < Clip.death.period + fallenLies else { return nil }
+            return (at * 10).rounded() / 10
+        }
+    }
+
     /// The throng's steps that take the foe's blows while the company is
     /// struck: every other one, so its ranks strike and reel by turns.
     public static let struckSteps: [Int] = (0..<throngSteps).filter { $0 % 2 == 1 }

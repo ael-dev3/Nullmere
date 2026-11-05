@@ -871,6 +871,34 @@ final class ThrongPoseTests: XCTestCase {
     }
 }
 
+final class FallingTests: XCTestCase {
+    /// A company losing men in its field shows them falling before it, one
+    /// after another, as many more as it has lost, up to a few.
+    func testACompanyLosingMenShowsThemFalling() {
+        XCTAssertEqual(WorldStage.fallingCount(lost: 0), 0, "none lost, none falling")
+        XCTAssertEqual(WorldStage.fallingCount(lost: 1), 1)
+        XCTAssertGreaterThan(WorldStage.fallingCount(lost: 6_000), WorldStage.fallingCount(lost: 1))
+        XCTAssertEqual(WorldStage.fallingCount(lost: 400_000), WorldStage.fallingMost)
+        // Each man in his turn: falling, lying, then gone as the next goes down.
+        let times = (0..<64).map { WorldStage.falling(count: 3, unit: 7, at: Float($0) * 0.1) }
+        XCTAssertTrue(times.allSatisfy { $0.allSatisfy { $0 >= 0 && $0 <= Clip.death.period + WorldStage.fallenLies } })
+        XCTAssertTrue(times.contains { $0.count < 3 }, "some between their turns")
+        XCTAssertTrue(times.contains { $0.contains { $0 < 0.3 } }, "one just struck down")
+        XCTAssertTrue(times.flatMap { $0 }.allSatisfy { ($0 * 10 - ($0 * 10).rounded()).magnitude < 1e-3 }, "to the tenth, so shared")
+
+        let map = WorldMap(radius: 6, fill: Tile(terrain: .greyfield))
+        let stage = WorldStage(map: map, relief: Relief(map: map))
+        var pose = CompanyPose(unit: 2, key: .figure(.spear, tier: 2), sigil: 0, health: 100, hex: Hex(0, 0), position: .zero, heading: 0,
+                               clip: .attack, clipTime: 0.3, isOwn: true)
+        pose.throng = 12
+        pose.struck = true
+        pose.falling = [0.2, 1.4]
+        var frame = SceneFrame()
+        let drawn = stage.companies([pose], houses: [Vec4(1, 0, 0, 1)], into: &frame).flatMap(\.instances)
+        XCTAssertEqual(drawn.count, 12 + 2, "the throng and its two falling")
+    }
+}
+
 final class ImpactTests: XCTestCase {
     /// Where a struck throng takes its blows, steel sparks and flashes beat
     /// on beat, on its phase; a struck engine's timber splinters.
