@@ -48,6 +48,9 @@ enum CrowdPlayThrough {
         var seated = 0.0
         var turned = 0.0
         var heard = 0.0
+        /// Every keeper's order given at once, carried out in every keeper's
+        /// own view.
+        var ordered = 0.0
         /// The realm's publications meanwhile, the calls they took and the
         /// megabytes those carried.
         var publications = 0
@@ -55,8 +58,8 @@ enum CrowdPlayThrough {
         var publicationBytes = 0
 
         var description: String {
-            String(format: "all seated and shown the world in %.1f s, the realm taking in a quarter of its seats each watch; the watch turned for every keeper %.1f s after the last made ready; one keeper's words heard by every other in %.1f s; %d publications in %d calls, %.1f MB",
-                   seated, turned, heard, publications, publicationCalls, Double(publicationBytes) / 1_048_576)
+            String(format: "all seated and shown the world in %.1f s, the realm taking in a quarter of its seats each watch; the watch turned for every keeper %.1f s after the last made ready; one keeper's words heard by every other in %.1f s; every keeper's order, given at once, carried out in their view in %.1f s; %d publications in %d calls, %.1f MB",
+                   seated, turned, heard, ordered, publications, publicationCalls, Double(publicationBytes) / 1_048_576)
         }
     }
 
@@ -200,6 +203,29 @@ enum CrowdPlayThrough {
         if let log {
             let from = spoke.timeIntervalSince1970, to = Date().timeIntervalSince1970
             print("CROWD the words came to each keeper: \(spread(heardAt))")
+            print("CROWD requests as they went: \(log.told(from: from, to: to))")
+            print("CROWD the steward as they went: \(log.stewardsRound(from: from, to: to))")
+        }
+
+        // Every keeper gives an order at once, each a company of theirs dug
+        // in; each sees it carried out in their own view.
+        var digging: [ObjectIdentifier: Int] = [:]
+        for (index, ear) in ears.enumerated() {
+            guard let house = ear.keeper?.house, let unit = ear.world?.units.first(where: { $0.owner == house && !$0.fortified }) else { continue }
+            digging[ObjectIdentifier(ear)] = unit.id
+            links[index].send(.fortify(unit: unit.id))
+        }
+        let dug = digging
+        XCTAssertEqual(dug.count, seats, "Every keeper a company to dig in")
+        let ordered = Date()
+        let carriedAt = try await untilEvery("every keeper's order carried out in their view", of: ears, since: ordered, timeout: timeout) { ear in
+            guard let id = dug[ObjectIdentifier(ear)] else { return true }
+            return ear.world?.unit(id)?.fortified == true
+        }
+        timings.ordered = Date().timeIntervalSince(ordered)
+        if let log {
+            let from = ordered.timeIntervalSince1970, to = Date().timeIntervalSince1970
+            print("CROWD the orders were carried out for each keeper: \(spread(carriedAt))")
             print("CROWD requests as they went: \(log.told(from: from, to: to))")
             print("CROWD the steward as they went: \(log.stewardsRound(from: from, to: to))")
         }
