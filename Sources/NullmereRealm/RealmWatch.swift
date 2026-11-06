@@ -8,6 +8,9 @@ import FoundationNetworking
 public protocol RealmWatch: AnyObject, Sendable {
     /// Whether the word is coming: connected and subscribed.
     var isAlive: Bool { get }
+    /// The rows watched, as the word tells them, where it tells them: read
+    /// rather than asked after while they are live.
+    var mirror: SubscriptionMirror? { get }
     func stop()
 }
 
@@ -71,6 +74,9 @@ final class SpacetimeWatch: RealmWatch, @unchecked Sendable {
     private let token: String
     private let queries: [String]
     private let changed: @Sendable () -> Void
+    /// The rows the queries watch, kept as the server's messages tell them.
+    private let rows = SubscriptionMirror()
+    var mirror: SubscriptionMirror? { rows }
     private let lock = NSLock()
     private var alive = false
     private var stopped = false
@@ -117,6 +123,7 @@ final class SpacetimeWatch: RealmWatch, @unchecked Sendable {
     }
 
     func stop() {
+        rows.lost()
         lock.lock()
         stopped = true
         alive = false
@@ -137,6 +144,7 @@ final class SpacetimeWatch: RealmWatch, @unchecked Sendable {
         while !isStopped {
             if listen() { wait = SpacetimeWatch.firstRetry }
             setAlive(false)
+            rows.lost()
             guard !isStopped else { return }
             Thread.sleep(forTimeInterval: wait * Double.random(in: 0.8...1.2))
             wait = min(wait * 2, SpacetimeWatch.longestRetry)
@@ -173,6 +181,9 @@ final class SpacetimeWatch: RealmWatch, @unchecked Sendable {
     private func hear(_ text: String) -> Bool {
         switch SpacetimeSubscription.heard(text) {
         case .changed:
+            // The rows first, in the order the server sent them; then the
+            // word that they changed.
+            rows.apply(text)
             setAlive(true)
             changed()
             return true

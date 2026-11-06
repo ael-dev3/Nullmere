@@ -31,23 +31,113 @@ public actor FakeSpacetime: SpacetimeTransport {
     /// The largest call's body yet, in bytes.
     public private(set) var largestCall = 0
     /// Those told when the status changes, as the server pushes it; none
-    /// unless pushing is asked for, as most tests of the link poll.
-    private var watchers: [UUID: @Sendable () -> Void] = [:]
+    /// unless pushing is asked for, as most tests of the link poll. Each
+    /// with whom it is, and, where the rows themselves are pushed, those it
+    /// keeps of theirs and those it last told them.
+    private struct Watcher {
+        let identity: String
+        let changed: @Sendable () -> Void
+        let mirror: SubscriptionMirror?
+        var told: [String: [String: [JSONValue]]] = [:]
+    }
+    private var watchers: [UUID: Watcher] = [:]
     private var pushing = false
+    private var pushingRows = false
 
     /// Pushes word of the status's changes to whoever watches it, as the
-    /// real server does over its WebSocket.
-    public func setPushing(_ pushing: Bool) { self.pushing = pushing }
+    /// real server does over its WebSocket; with `rows`, the rows a keeper
+    /// reads themselves, as its subscription messages carry them.
+    public func setPushing(_ pushing: Bool, rows: Bool = false) {
+        self.pushing = pushing
+        pushingRows = rows
+    }
 
     public var watching: Int { watchers.count }
 
     public func watch(_ queries: [String], token: String, changed: @escaping @Sendable () -> Void) async -> (any RealmWatch)? {
-        guard pushing, identities[token] != nil, queries.contains(where: { $0.contains("FROM status") }) else { return nil }
+        guard pushing, let identity = identities[token], queries.contains(where: { $0.contains("FROM status") }) else { return nil }
         let id = UUID()
-        watchers[id] = changed
-        return FakeWatch { [weak self] in
+        let mirror = pushingRows ? SubscriptionMirror() : nil
+        watchers[id] = Watcher(identity: identity, changed: changed, mirror: mirror)
+        if mirror != nil { tell(id, first: true) }
+        return FakeWatch(mirror: mirror) { [weak self] in
             Task { await self?.unwatch(id) }
         }
+    }
+
+    /// The rows an identity's subscription watches, as the module gives them:
+    /// the status, their view, their view's parts and the pages told alike,
+    /// and the answers to their requests; each table's rows by key.
+    private func rowsWatched(by identity: String) -> [String: [String: [JSONValue]]] {
+        var tables: [String: [String: [JSONValue]]] = ["status": [:], "my_view": [:], "my_view_parts": [:], "my_replies": [:]]
+        if let status { tables["status"]?["0"] = [.number(0), .number(Double(status.version)), .string(status.status)] }
+        if let view = views[identity] {
+            tables["my_view"]?[identity] = [.string(identity), .number(Double(view.version)), .string(view.view), .string(view.events)]
+        }
+        for keeper in Set([identity, AlikePages.keeper]) {
+            for (name, part) in viewParts[keeper] ?? [:] {
+                let key = "\(keeper)/\(name)"
+                tables["my_view_parts"]?[key] = [.string(key), .string(keeper), .string(name), .number(Double(part.version)), .string(part.text)]
+            }
+        }
+        for (nonce, reply) in replies where reply.keeper == identity {
+            tables["my_replies"]?[nonce] = [.string(nonce), .string(reply.keeper), .string(reply.payload)]
+        }
+        return tables
+    }
+
+    /// Tells a watcher what changed of the rows they watch since they were
+    /// last told, in the server's own words: every row at first, each as an
+    /// object by column; then a transaction's rows let go and written, each
+    /// as an array of its values in the columns' order.
+    private func tell(_ id: UUID, first: Bool = false) {
+        guard var watcher = watchers[id], let mirror = watcher.mirror else { return }
+        var now = rowsWatched(by: watcher.identity)
+        for table in withheld { now[table] = watcher.told[table] ?? [:] }
+        func text(_ row: [JSONValue], named columns: [String]?) -> String {
+            let values: [Any] = row.map { value in
+                switch value {
+                case .string(let text): return text
+                case .number(let number): return number
+                case .bool(let bool): return bool
+                default: return NSNull()
+                }
+            }
+            let shaped: Any = columns.map { Dictionary(uniqueKeysWithValues: zip($0, values)) } ?? values
+            return String(decoding: (try? JSONSerialization.data(withJSONObject: shaped)) ?? Data(), as: UTF8.self)
+        }
+        var tables: [[String: Any]] = []
+        for (name, rows) in now.sorted(by: { $0.key < $1.key }) {
+            let before = first ? [:] : watcher.told[name] ?? [:]
+            let deletes = before.filter { rows[$0.key] != $0.value }.map(\.value)
+            let inserts = rows.filter { before[$0.key] != $0.value }.map(\.value)
+            guard first || !deletes.isEmpty || !inserts.isEmpty else { continue }
+            let columns = first ? SubscriptionMirror.realm[name]?.columns : nil
+            tables.append(["table_id": 4096 + tables.count, "table_name": name, "num_rows": deletes.count + inserts.count,
+                           "updates": [["deletes": deletes.map { text($0, named: nil) }, "inserts": inserts.map { text($0, named: columns) }]]])
+        }
+        watcher.told = now
+        watchers[id] = watcher
+        guard first || !tables.isEmpty else { return }
+        let message: [String: Any] = first
+            ? ["InitialSubscription": ["database_update": ["tables": tables], "request_id": 1]]
+            : ["TransactionUpdateLight": ["request_id": 0, "update": ["tables": tables]]]
+        mirror.apply(String(decoding: (try? JSONSerialization.data(withJSONObject: message)) ?? Data(), as: UTF8.self))
+        rowsPushed += 1
+        watcher.changed()
+    }
+
+    /// How many of the server's words carried rows, all told.
+    public private(set) var rowsPushed = 0
+
+    /// Tables whose rows are no longer pushed, as if lost on the way: what
+    /// a watcher was told of them stands, and only asking finds the rest.
+    private var withheld: Set<String> = []
+    public func withhold(_ table: String) { withheld.insert(table) }
+
+    /// Tells every watcher of rows what a transaction changed of theirs.
+    private func tellTheRows() {
+        for id in watchers.keys where watchers[id]?.mirror != nil { tell(id) }
     }
 
     private func unwatch(_ id: UUID) { watchers[id] = nil }
@@ -151,7 +241,10 @@ public actor FakeSpacetime: SpacetimeTransport {
     }
 
     /// The steward forgets every answer it gave, as it does ten minutes on.
-    public func forgetReplies() { replies.removeAll() }
+    public func forgetReplies() {
+        replies.removeAll()
+        tellTheRows()
+    }
 
     /// The server forgets an identity, as when it is made anew, or is out of
     /// sorts and refuses every key.
@@ -183,6 +276,7 @@ public actor FakeSpacetime: SpacetimeTransport {
         legacyWorld = nil
         nextID = 1
         steward = owner
+        tellTheRows()
     }
 
     /// A world already kept, as a realm's own steward left it.
@@ -261,6 +355,7 @@ public actor FakeSpacetime: SpacetimeTransport {
         case "forget":
             guard me == steward else { throw SpacetimeError("Only the steward forgets answers.", status: 530) }
             if case .strings(let nonces)? = arguments.first { nonces.forEach { replies[$0] = nil } }
+            tellTheRows()
         case "hand_over":
             guard me == steward else { throw SpacetimeError("Only the steward hands over the realm.", status: 530) }
             steward = try string(0)
@@ -302,7 +397,7 @@ public actor FakeSpacetime: SpacetimeTransport {
             partsSent += names.count
             status = (version, said)
             stamp = (version, time)
-            for changed in watchers.values { changed() }
+            for watcher in watchers.values where watcher.mirror == nil { watcher.changed() }
             for (index, keeper) in keepers.enumerated() {
                 views[keeper] = (version, shown[index], heard[index])
                 // The parts its row no longer names are let go.
@@ -321,6 +416,8 @@ public actor FakeSpacetime: SpacetimeTransport {
                     requests.remove(at: index)
                 }
             }
+            // The transaction done, its rows told, as the server tells them.
+            tellTheRows()
         default:
             throw SpacetimeError("No such reducer: \(reducer)")
         }
@@ -418,13 +515,17 @@ public actor FakeSpacetime: SpacetimeTransport {
 }
 
 /// Credentials kept in memory, as the keychain would keep them.
-/// A watch on the fake: alive until stopped.
+/// A watch on the fake: alive until stopped, keeping the rows it was told
+/// where it is told them.
 final class FakeWatch: RealmWatch, @unchecked Sendable {
     private let lock = NSLock()
     private var stopped = false
     private let onStop: @Sendable () -> Void
+    private let rows: SubscriptionMirror?
+    var mirror: SubscriptionMirror? { rows }
 
-    init(onStop: @escaping @Sendable () -> Void) {
+    init(mirror: SubscriptionMirror? = nil, onStop: @escaping @Sendable () -> Void) {
+        rows = mirror
         self.onStop = onStop
     }
 
@@ -435,6 +536,7 @@ final class FakeWatch: RealmWatch, @unchecked Sendable {
     }
 
     func stop() {
+        rows?.lost()
         lock.lock()
         let first = !stopped
         stopped = true

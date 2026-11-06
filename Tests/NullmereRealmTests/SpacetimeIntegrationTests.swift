@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import NullmereCore
 import NullmereModels
 import XCTest
@@ -140,8 +143,10 @@ final class SpacetimeIntegrationTests: XCTestCase {
     func testKeepersPlayThroughSpacetime() async throws {
         let (transport, token) = try server()
         let steward = try await takeUp(transport, token, seats: 4, watchLength: 600)
-        let running = Task { await steward.run() }
-        defer { running.cancel() }
+        Task { await steward.run() }
+        // Stopped, not cancelled: its round under way finishes, so no
+        // request in flight is cancelled.
+        defer { Task { await steward.stop() } }
 
         // A second steward, started by mistake, finds the realm held.
         do {
@@ -569,12 +574,16 @@ final class SpacetimeIntegrationTests: XCTestCase {
     @MainActor
     func testAFullRealmOfKeepersPlaysAtOnce() async throws {
         let environment = ProcessInfo.processInfo.environment
-        guard let text = environment["NULLMERE_STDB_CROWD"], let url = URL(string: text), let transport = SpacetimeHTTP(address: url),
+        guard let text = environment["NULLMERE_STDB_CROWD"], let url = URL(string: text), SpacetimeHTTP(address: url) != nil,
               let token = environment["NULLMERE_STDB_TOKEN"], !token.isEmpty else {
             throw XCTSkip("Set NULLMERE_STDB_CROWD and NULLMERE_STDB_TOKEN to play a full realm of keepers on a SpacetimeDB server")
         }
+        // The steward and every keeper's Mac each reach the server by their
+        // own connections, as they do in the world, not queued in one.
+        func own() -> any SpacetimeTransport { SpacetimeHTTP(address: url, session: URLSession(configuration: .ephemeral))! }
         let seats = WorldGenerator.mostHouses
-        let timings = try await CrowdPlayThrough.play(transport, token: token, seats: seats, watchLength: 20, newcomerWait: 2...4, timeout: 600)
+        let timings = try await CrowdPlayThrough.play(own(), token: token, seats: seats, watchLength: 20, newcomerWait: 2...4,
+                                                      timeout: 600, clients: own, log: TimedTransport.Log())
         print("REALM \(seats) keepers' clients took every seat of the widest realm at once on SpacetimeDB: \(timings)")
     }
 }

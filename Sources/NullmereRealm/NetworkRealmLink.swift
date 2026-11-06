@@ -48,6 +48,17 @@ public final class NetworkRealmLink: RealmLink {
     private var restNumber = 0
     /// How many times the realm's pushed word brought a read, for tests.
     private(set) var pushes = 0
+    /// The realm's words heard, all told, and when the last came: one
+    /// more with every push, read or not.
+    private var wordsHeard = 0
+    private var lastWord = -Double.infinity
+    /// Those waiting for the realm's next word, by number: woken by it, or
+    /// by their own time running out.
+    private var awaitingWord: [Int: CheckedContinuation<Void, Never>] = [:]
+    private var awaitingNumber = 0
+    /// The subscription whose first status was aged by the server's clock:
+    /// a status pushed since is as old as the push, none.
+    private var agedConnection: Int?
     private var statusVersion: UInt64 = 0
     private var viewVersion: UInt64 = 0
     /// The parts of the keeper's view as last read, by name, each with the
@@ -228,6 +239,11 @@ public final class NetworkRealmLink: RealmLink {
 
     /// The realm said its status changed: it is read now, not at the next poll.
     func pushed() {
+        wordsHeard += 1
+        lastWord = now()
+        let waiting = awaitingWord.values
+        awaitingWord.removeAll()
+        for continuation in waiting { continuation.resume() }
         guard polling != nil else { return }
         pushes += 1
         if isPolling {
@@ -237,14 +253,49 @@ public final class NetworkRealmLink: RealmLink {
         endRest()
     }
 
-    /// Asks the realm to push word of its status, once; the transport keeps
-    /// it open, and opens it again when it drops.
+    /// Asks the realm to push word of what the keeper reads, once: its
+    /// status, the keeper's view and its parts, and the answers to their
+    /// requests, the rows themselves where the transport keeps them. The
+    /// transport keeps it open, and opens it again when it drops.
     private func startWatching(_ credentials: SpacetimeCredentials) async {
         guard !watchAsked else { return }
         watchAsked = true
-        watch = await transport.watch(["SELECT * FROM status"], token: credentials.token) { [weak self] in
+        watch = await transport.watch(SubscriptionMirror.realmQueries, token: credentials.token) { [weak self] in
             Task { @MainActor [weak self] in self?.pushed() }
         }
+    }
+
+    /// The rows the realm's word brings, while they are the server's: the
+    /// subscription holds, and a word came within `wordWindow` (the steward
+    /// publishes at least every twenty seconds, so a line gone quiet
+    /// longer may be dead without knowing it, and the realm is asked).
+    private var liveMirror: SubscriptionMirror? {
+        guard let mirror = watch?.mirror, mirror.isLive, now() - lastWord < Self.wordWindow else { return nil }
+        return mirror
+    }
+
+    /// How long the rows pushed stand for the realm's without a word.
+    public static let wordWindow = 30.0
+
+    /// Waits for the realm's next word after the `seen`th, `seconds` at most.
+    private func nextWord(after seen: Int, within seconds: Double) async {
+        guard wordsHeard <= seen, seconds > 0 else { return }
+        awaitingNumber += 1
+        let number = awaitingNumber
+        await withCheckedContinuation { continuation in
+            awaitingWord[number] = continuation
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                self?.awaitingWord.removeValue(forKey: number)?.resume()
+            }
+        }
+    }
+
+    /// Wakes whoever waits for the realm's word: the link is closing.
+    private func wakeTheWaiting() {
+        let waiting = awaitingWord.values
+        awaitingWord.removeAll()
+        for continuation in waiting { continuation.resume() }
     }
 
     /// Seconds to the next poll: the link's own interval while the realm
@@ -282,7 +333,13 @@ public final class NetworkRealmLink: RealmLink {
         do {
             let credentials = try await ensureCredentials()
             await startWatching(credentials)
-            let heads = try await transport.query("SELECT version, status FROM status", token: credentials.token)
+            let mirror = liveMirror
+            let heads: [[JSONValue]]
+            if let mirror {
+                heads = mirror.rows(of: "status").filter { $0.count == 3 }.map { [$0[1], $0[2]] }
+            } else {
+                heads = try await transport.query("SELECT version, status FROM status", token: credentials.token)
+            }
             guard let head = heads.first, head.count == 2, let number = head[0].number, let text = head[1].string else {
                 onEvent?(.unreachable("The realm isn't open yet."))
                 return
@@ -301,7 +358,12 @@ public final class NetworkRealmLink: RealmLink {
                 wasUnreachable = false
                 statusVersion = UInt64(number)
                 let status = try JSONDecoder().decode(RealmStatus.self, from: Data(text.utf8))
-                onEvent?(.status(status.aged(by: await age(of: UInt64(number), credentials))))
+                // Pushed as it was published, a status is as old as the
+                // push; the first a connection brings may be older.
+                var aged = 0
+                if mirror == nil || mirror?.connection != agedConnection { aged = await age(of: UInt64(number), credentials) }
+                if let mirror { agedConnection = mirror.connection }
+                onEvent?(.status(status.aged(by: aged)))
             }
             guard arrived else { return }
             // "Here" while the steward is silent would only pile up for it;
@@ -318,7 +380,7 @@ public final class NetworkRealmLink: RealmLink {
             // The realm's word on the last "here": a realm begun anew no
             // longer knows the keeper, who goes back to its door rather than
             // look on at a world that is gone.
-            if let nonce = hereAwaited, let reply = try? await answer(to: nonce, credentials) {
+            if let nonce = hereAwaited, let reply = try? await reply(to: nonce, credentials) {
                 hereAwaited = nil
                 if reply.unknownKeeper == true {
                     forgottenByTheRealm()
@@ -424,6 +486,49 @@ public final class NetworkRealmLink: RealmLink {
         return (view, (try? JSONDecoder().decode([HeardBatch].self, from: Data(heard.utf8))) ?? [])
     }
 
+    /// The keeper's view as the realm's word brought it, its row and parts
+    /// together: true if that is all there is to read (taken, or not moved
+    /// on, or not yet shown them), false if the rows held don't make it
+    /// whole and it is to be asked for.
+    private func readMirrored(_ mirror: SubscriptionMirror) async throws -> Bool {
+        let rows = mirror.snapshot()
+        guard let row = rows["my_view"]?.first else { return true }
+        guard row.count == 4, let number = row[1].number, let names = row[2].string, let heard = row[3].string,
+              let named = Self.parts(named: names) else { return false }
+        let version = UInt64(number)
+        guard version > viewVersion || view == nil else { return true }
+        var held: [String: (version: UInt64, text: String)] = [:]
+        for part in rows["my_view_parts"] ?? [] {
+            guard part.count == 5, let name = part[2].string, named[name] != nil, let at = part[3].number, let text = part[4].string
+            else { continue }
+            held[name] = (UInt64(at), text)
+        }
+        guard named.allSatisfy({ AlikePages.isAlike($0.key) ? held[$0.key] != nil : held[$0.key]?.version == $0.value }) else {
+            return false
+        }
+        // Kept as read, should the word stop and the realm be asked again.
+        viewParts = held
+        partsThrough = max(partsThrough, version)
+        let texts = Dictionary(held.map { (AlikePages.page(of: $0.key), $0.value.text) }) { first, _ in first }
+        let read = partsRead
+        let (fresh, batches) = try await Task.detached(priority: .userInitiated) { try Self.decode(parts: texts, heard: heard, read: read) }.value
+        deliver(fresh, version: version, heard: batches)
+        return true
+    }
+
+    /// The steward's answer to a request as the realm's word brought it.
+    private func mirroredAnswer(to nonce: String, in mirror: SubscriptionMirror) throws -> RealmReply? {
+        guard let row = mirror.row(of: "my_replies", key: nonce), row.count == 3, let text = row[2].string else { return nil }
+        return try JSONDecoder().decode(RealmReply.self, from: Data(text.utf8))
+    }
+
+    /// The steward's answer to a request: as pushed, while the realm's word
+    /// comes; asked after, while it doesn't.
+    private func reply(to nonce: String, _ credentials: SpacetimeCredentials) async throws -> RealmReply? {
+        if let mirror = liveMirror { return try mirroredAnswer(to: nonce, in: mirror) }
+        return try await answer(to: nonce, credentials)
+    }
+
     /// The version of the keeper's own view, if the realm shows them one.
     private func viewHead(_ credentials: SpacetimeCredentials) async throws -> UInt64? {
         let heads = try await transport.query("SELECT version FROM my_view", token: credentials.token)
@@ -435,6 +540,7 @@ public final class NetworkRealmLink: RealmLink {
     private func readView(_ credentials: SpacetimeCredentials) async throws -> Bool {
         guard outbox.isEmpty else { return false }
         viewReads += 1
+        if let mirror = liveMirror, try await readMirrored(mirror) { return true }
         // The row's version first: the whole view, tens of kilobytes to
         // fetch and decode, only when it has moved on. Most publications
         // move the status, not this keeper's view.
@@ -490,17 +596,40 @@ public final class NetworkRealmLink: RealmLink {
             throw error
         }
         mayReach?()
-        // Asked often at first, when the steward most likely answers, then
-        // less, for thirty seconds.
+        // The answer comes with a publication, whose word the realm pushes:
+        // while it does, the answer is taken as it comes, and asked after
+        // only now and then, should a word be lost. While it doesn't, it is
+        // asked after often at first, when the steward most likely answers,
+        // then less. For thirty seconds either way.
         let deadline = now() + 30
         var wait = 0.1
-        for _ in 0..<60 where now() < deadline {
+        var asked = 0, words = 0
+        var askedAt = now()
+        while now() < deadline, asked < 60, words < Self.wordsAwaited {
+            if let mirror = liveMirror {
+                let seen = wordsHeard
+                if let reply = try mirroredAnswer(to: nonce, in: mirror) { return reply }
+                if now() - askedAt < Self.askedAfterEvery {
+                    words += 1
+                    await nextWord(after: seen, within: Self.askedAfterEvery - (now() - askedAt))
+                    continue
+                }
+            }
+            asked += 1
+            askedAt = now()
             if let reply = try await answer(to: nonce, credentials) { return reply }
-            try await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
-            wait = min(wait * 1.5, 1)
+            if liveMirror == nil {
+                try await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+                wait = min(wait * 1.5, 1)
+            }
         }
         throw SpacetimeError("The realm didn't answer in time.")
     }
+
+    /// While the realm's word comes, how often an answer not yet pushed is
+    /// asked after all the same, and how many words are waited through.
+    public static let askedAfterEvery = 2.0
+    static let wordsAwaited = 600
 
     /// Whether an error proves a request never left this Mac: no network,
     /// no such server, or no connection made. A request lost on the way
@@ -543,6 +672,7 @@ public final class NetworkRealmLink: RealmLink {
     private func catchUp(at answered: UInt64? = nil) async throws {
         let credentials = try await ensureCredentials()
         if answered == 0 {
+            if let mirror = liveMirror, try await readMirrored(mirror) { return }
             if let number = try await viewHead(credentials), number > viewVersion || view == nil,
                let (version, fresh, batches) = try await fetchView(credentials), version > viewVersion || view == nil {
                 deliver(fresh, version: version, heard: batches)
@@ -557,6 +687,16 @@ public final class NetworkRealmLink: RealmLink {
             // Taken already, by a poll, perhaps before the answer came: the
             // view it names, or, where it names none, any newer than held.
             if let target { if viewVersion >= target { return } } else if viewVersion > seen { return }
+            // Pushed, the view comes with the realm's word: taken as it comes.
+            if let mirror = liveMirror {
+                let heard = wordsHeard
+                if try await readMirrored(mirror) {
+                    if let target { if viewVersion >= target { return } } else if viewVersion > seen { return }
+                    guard now() < deadline else { return }
+                    await nextWord(after: heard, within: min(Self.askedAfterEvery, deadline - now()))
+                    continue
+                }
+            }
             // Its version first: the whole view only once it has moved on.
             if let number = try await viewHead(credentials), number > viewVersion, number >= target ?? 0 {
                 if let (version, fresh, batches) = try await fetchView(credentials), version > viewVersion {
@@ -812,6 +952,7 @@ public final class NetworkRealmLink: RealmLink {
         enteringNumber += 1
         stopPolling()
         stopWatching()
+        wakeTheWaiting()
         // What is being sent finishes on its own and goes no further: the
         // sender, no longer the present one, stops as its request ends.
         senderNumber += 1

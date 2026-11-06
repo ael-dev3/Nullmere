@@ -135,8 +135,10 @@ enum FrontierPlayThrough {
         await away.border(db.lost, at: db.lostAddress)
         await frontier.border(db.west, at: db.westAddress)
         await frontier.border(db.east, at: db.eastAddress)
-        let running = [home, away, frontier].map { steward in Task { await steward.run() } }
-        defer { running.forEach { $0.cancel() } }
+        for steward in [home, away, frontier] { Task { await steward.run() } }
+        // Stopped, not cancelled: each round under way finishes, so no
+        // request in flight is cancelled.
+        defer { Task { for steward in [home, away, frontier] { await steward.stop() } } }
         // Should the play-through stall, every minute it says on what, from
         // off the main actor.
         let watchdog = Task.detached {

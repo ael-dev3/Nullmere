@@ -36,7 +36,7 @@ steward's answer). For development a realm can also be hosted in-process
   each long list, the rest), and its row names every part with the version
   it was written at: a publication writes only the parts of each view that
   changed and lets go of those a view no longer has, and a keeper's Mac
-  reads only the parts written since it last read, and decodes only
+  takes only the parts written since it last took them, and decodes only
   those, keeping the rest as it read them, so a pace that moves a few
   companies sends a page of them, not the whole world again, and a
   company exploring sends the pages of map it explored. What every view
@@ -78,11 +78,26 @@ steward's answer). For development a realm can also be hosted in-process
   written at, or that it isn't, and their Mac waits for that call or for
   none; should a call fail part way, the next round shows the keepers it
   didn't reach their view.
+- **Pushed, not asked after.** A keeper's Mac subscribes to everything it
+  reads (the status, `my_view`, `my_view_parts` and `my_replies`) and keeps
+  the rows the server pushes, as its messages tell them: every row when the
+  subscription takes, then each transaction's rows let go and written. While
+  those rows come, the Mac takes the status, its view and the answers to its
+  requests from them and asks the server nothing: a publication reaches a
+  keeper as it is committed, with no request of theirs after it. An answer
+  not pushed within two seconds is asked after all the same; a line quiet
+  for thirty seconds (the steward publishes at least every twenty) is
+  taken for dead and the realm read as before, as it is wherever the line
+  can't be kept. On a local SpacetimeDB server, ninety-six keepers' clients
+  built as shipped saw the watch turn 1.1 to 1.7 s after the last made
+  ready over two runs (2.2 s asking after their views), and one keeper's
+  words reached every other in 0.7 to 0.8 s (1.2 s).
 - **Many keepers in one process.** A keeper's link never cancels a request
   in flight: a push or a waking ends the wait between its reads early, and
   closing it lets what is in flight finish and go no further. Cancelling a
   request just as it finished could stop Linux's networking for every link
-  in the process, as ninety-six links in one test showed.
+  in the process, as ninety-six links in one test showed. A steward is
+  stopped the same way: its round under way finishes, and no other begins.
 - **Memory.** The steward keeps in memory only what it needs of the keepers
   there, and the realm forgets a keeper long gone with no seat (away a
   week, or an hour if they never played), their name free again, so

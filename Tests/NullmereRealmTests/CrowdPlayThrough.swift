@@ -70,6 +70,31 @@ enum CrowdPlayThrough {
         }
     }
 
+    /// Waits for every ear to come to `condition`, keeping when each first
+    /// did, in seconds after `since`, earliest first.
+    @MainActor
+    static func untilEvery(_ what: String, of ears: [Ear], since: Date, timeout: Double, _ condition: (Ear) -> Bool) async throws -> [Double] {
+        print("CROWD waiting for \(what)")
+        var came: [Int: Double] = [:]
+        let deadline = Date().addingTimeInterval(timeout)
+        while came.count < ears.count {
+            for (index, ear) in ears.enumerated() where came[index] == nil && condition(ear) {
+                came[index] = Date().timeIntervalSince(since)
+            }
+            if came.count == ears.count { break }
+            if Date() > deadline { throw SpacetimeError("Timed out waiting for \(what): \(standing(ears))") }
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        return came.values.sorted()
+    }
+
+    /// When the first of a crowd came, half of them, nine in ten and the last.
+    static func spread(_ times: [Double]) -> String {
+        guard !times.isEmpty else { return "none" }
+        func at(_ part: Double) -> Double { times[min(times.count - 1, Int(Double(times.count) * part))] }
+        return String(format: "first %.1f s, half %.1f s, nine in ten %.1f s, last %.1f s", times[0], at(0.5), at(0.9), times[times.count - 1])
+    }
+
     /// How the crowd stands, for a wait that times out.
     @MainActor
     static func standing(_ ears: [Ear]) -> String {
@@ -83,20 +108,28 @@ enum CrowdPlayThrough {
     /// A realm of `seats` whose watch lasts `watchLength`, every seat taken
     /// by its own client at once; each turned away while the realm takes in
     /// its newcomers asks again within `newcomerWait`. A `budget` smaller
-    /// than the steward's own puts its publications in more calls.
+    /// than the steward's own puts its publications in more calls. Each
+    /// client reaches the realm by `clients`, its own connections as a
+    /// keeper's Mac has, or by the steward's `transport`.
     @MainActor
     static func play(_ transport: any SpacetimeTransport, token: String, seats: Int, watchLength: Double,
-                     newcomerWait: ClosedRange<Double>, timeout: Double = 240, budget: Int? = nil) async throws -> Timings {
-        let steward = try await RealmSteward(transport: transport, token: token, name: "The Nullmere", seed: "a crowd at the door",
+                     newcomerWait: ClosedRange<Double>, timeout: Double = 240, budget: Int? = nil,
+                     clients: (() -> any SpacetimeTransport)? = nil, log: TimedTransport.Log? = nil) async throws -> Timings {
+        func timed(_ transport: any SpacetimeTransport, _ who: String) -> any SpacetimeTransport {
+            log.map { TimedTransport(transport, who: who, log: $0) } ?? transport
+        }
+        let steward = try await RealmSteward(transport: timed(transport, "steward"), token: token, name: "The Nullmere", seed: "a crowd at the door",
                                              seats: seats, watchLength: watchLength, now: Date().timeIntervalSince1970)
         if let budget { await steward.setPublicationBudget(budget) }
         // What the steward says of its rounds, as whoever runs the realm hears it.
         await steward.setReporter { print("CROWD the steward: \($0)") }
         let running = Task.detached { await steward.run() }
-        defer { running.cancel() }
+        // Stopped, not cancelled: its round under way finishes, so no
+        // request in flight is cancelled.
+        defer { Task { await steward.stop() } }
         var timings = Timings()
-        let links = (0..<seats).map { _ in
-            let link = NetworkRealmLink(transport: transport, credentials: MemoryStore(), pollInterval: 0.5)
+        let links = (0..<seats).map { index in
+            let link = NetworkRealmLink(transport: timed(clients?() ?? transport, "keeper \(index)"), credentials: MemoryStore(), pollInterval: 0.5)
             link.newcomerWait = newcomerWait
             return link
         }
@@ -143,27 +176,39 @@ enum CrowdPlayThrough {
         let watch = ears.compactMap { $0.world?.watch }.max() ?? 1
         for link in links { link.setReady(true) }
         let ready = Date()
-        try await until("the watch to turn for every keeper", timeout: timeout, standing: { standing(ears) }) {
-            ears.allSatisfy { ($0.world?.watch ?? 0) > watch }
+        let turnedAt = try await untilEvery("the watch to turn for every keeper", of: ears, since: ready, timeout: timeout) {
+            ($0.world?.watch ?? 0) > watch
         }
         timings.turned = Date().timeIntervalSince(ready)
+        if let log {
+            let from = ready.timeIntervalSince1970, to = Date().timeIntervalSince1970
+            print("CROWD the watch turned for each keeper: \(spread(turnedAt))")
+            print("CROWD requests as it turned: \(log.told(from: from, to: to))")
+            print("CROWD the steward as it turned: \(log.stewardsRound(from: from, to: to))")
+        }
 
         // One keeper speaks to the realm; every other hears it.
         let words = "The lake is full tonight " + suffix
         let speaker = try XCTUnwrap(houses.first)
         let spoke = Date()
         links[0].send(.say(words: words, toAlliance: false))
-        try await until("every keeper to hear the words", timeout: timeout, standing: { standing(ears) }) {
-            ears.allSatisfy { ear in
-                guard let house = ear.keeper?.house, let world = ear.world else { return false }
-                return world.words(heardBy: house).contains { $0.from == speaker && $0.text == words }
-            }
+        let heardAt = try await untilEvery("every keeper to hear the words", of: ears, since: spoke, timeout: timeout) { ear in
+            guard let house = ear.keeper?.house, let world = ear.world else { return false }
+            return world.words(heardBy: house).contains { $0.from == speaker && $0.text == words }
         }
         timings.heard = Date().timeIntervalSince(spoke)
+        if let log {
+            let from = spoke.timeIntervalSince1970, to = Date().timeIntervalSince1970
+            print("CROWD the words came to each keeper: \(spread(heardAt))")
+            print("CROWD requests as they went: \(log.told(from: from, to: to))")
+            print("CROWD the steward as they went: \(log.stewardsRound(from: from, to: to))")
+        }
         timings.publications = await steward.publications
         timings.publicationCalls = await steward.publicationCalls
         timings.publicationBytes = await steward.publicationBytes
         print("CROWD \(seats) keepers' clients at once: \(timings)")
+        await steward.stop()
+        await running.value
         return timings
     }
 }
@@ -190,5 +235,22 @@ final class CrowdPlayThroughTests: XCTestCase {
         let timings = try await CrowdPlayThrough.play(db, token: steward.token, seats: 12, watchLength: 4, newcomerWait: 0.3...0.6,
                                                       timeout: 90, budget: 20_000)
         XCTAssertGreaterThan(timings.publicationCalls, timings.publications, "Publications in more calls than one")
+    }
+
+    /// The same over a realm that pushes the rows each keeper reads, as
+    /// SpacetimeDB's subscriptions carry them: every keeper is seated, shown
+    /// their world, sees the watch turn and hears the words, none of them
+    /// asking after their view.
+    @MainActor
+    func testACrowdShownTheRealmByTheRowsItPushes() async throws {
+        let db = FakeSpacetime()
+        await db.setPushing(true, rows: true)
+        let steward = try await db.createIdentity()
+        let timings = try await CrowdPlayThrough.play(db, token: steward.token, seats: 12, watchLength: 4, newcomerWait: 0.3...0.6, timeout: 90)
+        XCTAssertGreaterThan(timings.seated, 0)
+        let asked = await db.queried(FakeSpacetime.viewPartsAsked)
+        XCTAssertEqual(asked, 0, "Every view taken as pushed")
+        let pushed = await db.rowsPushed
+        XCTAssertGreaterThan(pushed, 12)
     }
 }

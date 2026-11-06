@@ -134,6 +134,28 @@ final class RealmWatchTests: XCTestCase {
         XCTAssertTrue(server.heard.first?.contains("SELECT * FROM status") ?? false, "it asked for the status")
     }
 
+    /// The watch keeps the rows its subscription is told, in the order it
+    /// is told them, and once the line drops they stand for nothing.
+    func testAWatchKeepsTheRowsItIsToldUntilTheLineDrops() throws {
+        let first = #"{"InitialSubscription":{"database_update":{"tables":[{"table_id":1,"table_name":"status","num_rows":1,"#
+            + #""updates":[{"deletes":[],"inserts":["{\"id\":0,\"version\":7,\"status\":\"{}\"}"]}]}]},"request_id":1}}"#
+        let then = #"{"TransactionUpdateLight":{"request_id":0,"update":{"tables":[{"table_id":1,"table_name":"status","num_rows":2,"#
+            + #""updates":[{"deletes":["[0,7,\"{}\"]"],"inserts":["[0,8,\"{}\"]"]}]}]}}}"#
+        let server = try WebSocketServer(replies: ["{\"IdentityToken\": {}}", first, then], closesAfter: true)
+        defer { server.stop() }
+        let told = expectation(description: "told twice")
+        told.expectedFulfillmentCount = 2
+        let watch = SpacetimeWatch(address: server.url, token: "key", queries: SubscriptionMirror.realmQueries) { told.fulfill() }
+        watch.start()
+        wait(for: [told], timeout: 10)
+        XCTAssertEqual(watch.mirror?.rows(of: "status"), [[.number(0), .number(8), .string("{}")]])
+        let deadline = Date().addingTimeInterval(5)
+        while watch.mirror?.isLive == true, Date() < deadline { Thread.sleep(forTimeInterval: 0.02) }
+        XCTAssertEqual(watch.mirror?.isLive, false, "the server closed: the rows are no longer its")
+        watch.stop()
+        XCTAssertTrue(server.heard.first?.contains("SELECT * FROM my_view_parts") ?? false, "it asked for every table the keeper reads")
+    }
+
     #if canImport(Darwin)
     /// On a Mac, a realm over TLS is heard through the system's WebSockets:
     /// the same subscription, the same word.

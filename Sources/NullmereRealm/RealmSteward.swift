@@ -908,9 +908,16 @@ public actor RealmSteward {
         answered += done.answers.map { ($0.nonce, done.at) }
     }
 
-    /// Runs the realm until cancelled, a step every quarter second.
+    /// Asked to stop: the round under way finishes, its requests with it,
+    /// and no other begins. A request in flight is never cancelled, for
+    /// FoundationNetworking can deadlock cancelling one as it finishes.
+    private var stopping = false
+
+    public func stop() { stopping = true }
+
+    /// Runs the realm until stopped or cancelled, a step every quarter second.
     public func run(clock: @Sendable () -> Double = { Date().timeIntervalSince1970 }) async {
-        while !Task.isCancelled, !isDisplaced {
+        while !Task.isCancelled, !isDisplaced, !stopping {
             let now = clock()
             do {
                 try await step(now: now)

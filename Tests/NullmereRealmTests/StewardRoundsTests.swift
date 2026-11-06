@@ -10,6 +10,23 @@ import XCTest
 /// whoever runs the realm, and a steward that keeps nothing of passers-by
 /// and works out no view that can't have changed.
 final class StewardRoundsTests: XCTestCase {
+    /// A steward asked to stop finishes the round under way and begins no
+    /// other: its running ends without a request cancelled in flight.
+    func testAStewardAskedToStopEndsItsRunning() async throws {
+        let db = FakeSpacetime()
+        let credentials = try await db.createIdentity()
+        let steward = try await RealmSteward(transport: db, token: credentials.token, name: "The Nullmere", seed: "stopped", seats: 2,
+                                             watchLength: 600, now: 0)
+        let running = Task { await steward.run(clock: { 1 }) }
+        try await db.waitFor(1, more: FakeSpacetime.stewardRound)
+        await steward.stop()
+        await running.value
+        let rounds = await db.queried(FakeSpacetime.stewardRound)
+        try await Task.sleep(nanoseconds: 600_000_000)
+        let after = await db.queried(FakeSpacetime.stewardRound)
+        XCTAssertEqual(after, rounds, "No round begun once stopped")
+    }
+
     /// Neither the steward nor the realm keeps every identity it hears of:
     /// strangers who never came in are kept by neither, the steward keeps
     /// only what it needs of those there, and a keeper long gone without a
