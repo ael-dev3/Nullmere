@@ -84,6 +84,49 @@ final class RealmPartsTests: XCTestCase {
         XCTAssertEqual(back.relations, unlike.relations)
     }
 
+    /// What a pace changes of the head goes in a part of its own: the head
+    /// holds none of it, a pace walked writes it and not the head, and the
+    /// realm comes back exactly; a world written while it rode in the head
+    /// reads as it did.
+    func testAPaceGoesApartFromTheHead() throws {
+        var realm = try played(watches: 3)
+        XCTAssertEqual(try RealmState(parts: try realm.parts(using: encoder)), realm)
+        let before = try realm.world.parts(using: encoder)
+        let pace = try XCTUnwrap(before[GameState.pacePart])
+        XCTAssertTrue(pace.contains("draws"), pace)
+        let head = try JSONDecoder().decode(GameState.self, from: Data(try XCTUnwrap(before["head"]).utf8))
+        XCTAssertNil(head.pacing)
+        XCTAssertEqual(head.draws, 0)
+        XCTAssertEqual(head.nextID, 0)
+        XCTAssertTrue(head.envoys.isEmpty)
+
+        // A pace walked: its part written anew, the head as it was.
+        let world = realm.world
+        _ = realm.world.walk(to: 1)
+        let after = try realm.world.parts(using: encoder, reusing: [(world, try world.parts(using: encoder))])
+        let worldBefore = try world.parts(using: encoder)
+        XCTAssertNotEqual(after[GameState.pacePart], worldBefore[GameState.pacePart])
+        XCTAssertEqual(after["head"], worldBefore["head"], "The head untouched by a pace")
+        var walked = try JSONDecoder().decode(GameState.self, from: Data(try XCTUnwrap(after["head"]).utf8))
+        try walked.join(after, using: JSONDecoder())
+        XCTAssertEqual(walked, realm.world)
+
+        // A world written before: the pace in its head, no part of its own.
+        var older = worldBefore
+        older[GameState.pacePart] = nil
+        var oldHead = head
+        oldHead.pacing = world.pacing
+        oldHead.draws = world.draws
+        oldHead.nextID = world.nextID
+        oldHead.envoys = world.envoys
+        oldHead.marches = world.marches
+        oldHead.gifts = world.gifts
+        older["head"] = String(decoding: try encoder.encode(oldHead), as: UTF8.self)
+        var read = try JSONDecoder().decode(GameState.self, from: Data(try XCTUnwrap(older["head"]).utf8))
+        try read.join(older, using: JSONDecoder())
+        XCTAssertEqual(read, world)
+    }
+
     /// A full realm, a few watches in, its chronicle long.
     private func played(watches: Int) throws -> RealmState {
         var realm = RealmState(name: "The Nullmere", seed: "in parts", seats: 12, radius: 36, watchLength: 600, now: 0)

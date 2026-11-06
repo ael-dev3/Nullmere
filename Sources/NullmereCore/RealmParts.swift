@@ -290,7 +290,46 @@ extension GameState {
             }
             head.atlas = Atlas(rivers: [], regions: [], crests: [])
         }
+        // What a pace changes of the head apart from it, so a pace writes a
+        // few hundred bytes, not the whole head again (95 KB of a realm of
+        // ninety-six seats, every keeper's view's head with it).
+        let pace = Pace(of: self)
+        if let same = written.first(where: { $0.parts[GameState.pacePart] != nil && Pace(of: $0.world) == pace }) {
+            parts[GameState.pacePart] = same.parts[GameState.pacePart]
+        } else {
+            parts[GameState.pacePart] = try text(pace)
+        }
+        head.pacing = nil
+        head.draws = 0
+        head.nextID = 0
+        head.envoys = []
+        head.marches = nil
+        head.gifts = nil
         return head
+    }
+
+    /// The part what a pace changes of the head goes in.
+    public static let pacePart = "pace"
+
+    /// What a pace changes of a world's head: where the watch's paces
+    /// stand, the draws made and the next id, the envoys on the road, the
+    /// marches under way and the gifts on their way.
+    struct Pace: Codable, Equatable {
+        var pacing: Pacing?
+        var draws: UInt64
+        var nextID: Int
+        var envoys: [Envoy]
+        var marches: [March]?
+        var gifts: [Gift]?
+
+        init(of world: GameState) {
+            pacing = world.pacing
+            draws = world.draws
+            nextID = world.nextID
+            envoys = world.envoys
+            marches = world.marches
+            gifts = world.gifts
+        }
     }
 
     /// A world's head given back its map and its long lists from `parts`;
@@ -330,6 +369,17 @@ extension GameState {
             map = whole
         } else {
             map = try GameState.part("map", of: parts, using: decoder, read: read)
+        }
+        // What a pace changes, apart from the head; a world written before
+        // it went apart keeps it in its head.
+        if parts[GameState.pacePart] != nil {
+            let pace = try GameState.part(GameState.pacePart, of: parts, using: decoder, as: Pace.self, read: read)
+            pacing = pace.pacing
+            draws = pace.draws
+            nextID = pace.nextID
+            envoys = pace.envoys
+            marches = pace.marches
+            gifts = pace.gifts
         }
         units = Companies(try pages("units", of: Unit.self))
         houses = try pages("houses", of: House.self)

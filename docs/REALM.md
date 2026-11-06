@@ -51,7 +51,12 @@ steward's answer). For development a realm can also be hosted in-process
   tell them of theirs, go apart from the pages of every House and every
   hold ("own"), so those pages are told alike; and the deeds every House
   has done go in pages of their own, not in the head written at every
-  pace. The pages every
+  pace. What a pace changes of the head (where the watch's paces stand,
+  the draws and the next id, the envoys, marches and gifts on their way)
+  goes apart from it too, so a pace writes those few hundred bytes for the
+  world and each view rather than every head again: at ninety-six seats a
+  watch's twelve paces write 14.5 MB of the world and every view against
+  22.7 (a probe's measure at the fiftieth watch). The pages every
   keeper is told alike, just as a keeper of no House is told them, are
   kept on the server once, as no keeper's, under "~", the page's name and
   the mark of its text, and each view names the ones it has: written once
