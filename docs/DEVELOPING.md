@@ -200,13 +200,18 @@ for its syntax, names and types.
 
 ## The trailer
 
-The trailer is a minute and fifty-two seconds of the game's own world at
+The trailer is a minute and fifty-nine seconds of the game's own world at
 night, with no interface and nothing of the rules, every camera low and
 slow near the water and the holds: the lake of the title screen under the
-moon; low over the black water in to a hold on the shore; about a seat,
-its Moonspire crowned; past a great hold, low over its roofs; another
-House's Moonspire rising, its crane at work; alongside a host on the
-march; rain off the lake; in among the lines of a battle in the dark; the
+moon; low over the black water in to a hold on the shore; close by a
+seat's Moonspire as its last stage rises in its scaffold and it is
+crowned, and about the seat, the Moonspire whole; past a great hold, low
+over its roofs; another House's Moonspire rising, its crane at work;
+alongside a host on the march; a hold of another House besieged at its
+gate, from behind the Mangonels hurling their stones at its walls in to
+the spears striking at them, volleys loosed over the walls and back from
+within, the hold burning behind them; rain off the lake; in among the
+lines of a battle in the dark; the
 moon eaten over the still water, and the field after under it; out over
 the water to the moon's image on it; and the title. Nothing the game lays
 over its world for its keepers is drawn: no lanes, no skill's ring, no

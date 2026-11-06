@@ -88,6 +88,10 @@ final class TrailerTests: XCTestCase {
         XCTAssertEqual(world.seat.level(.moonspire), BuildingKind.moonspire.maxLevel, "The heart's Moonspire crowned")
         XCTAssertEqual(world.rising.level(.moonspire), 3, "Another rising, its crane at work")
         XCTAssertNotEqual(world.rising.owner, world.seat.owner)
+        XCTAssertNotEqual(world.besieged.owner, world.seat.owner, "Another House's hold besieged")
+        XCTAssertGreaterThanOrEqual(world.besieged.level(.walls), 4, "Walled in stone")
+        XCTAssertFalse([world.town.id, world.shore.id].contains(world.besieged.id))
+        XCTAssertEqual(world.holds.first { $0.id == world.besieged.id }, world.besieged, "Drawn as it is dressed")
         XCTAssertGreaterThan(state.holds.count, 24, "Holds about the whole lake")
         XCTAssertFalse(world.furniture.isEmpty)
         XCTAssertFalse(world.ways.isEmpty, "Ways for the carts")
@@ -105,7 +109,7 @@ final class TrailerTests: XCTestCase {
                 XCTAssertEqual(scene.weather, shot.weather)
                 // Nothing laid over the world: no lanes ringing the holds.
                 XCTAssertFalse((scene.fixed + scene.batches).contains { $0.key == .town(.lane) }, "\(shot.name) at \(u): no lanes")
-                if shot.weather == .clear && shot.action != .battle && shot.action != .aftermath {
+                if shot.weather == .clear && ![.battle, .aftermath, .siege].contains(shot.action) {
                     XCTAssertTrue(scene.motes.isEmpty, "\(shot.name) at \(u): nothing hanging in the air, no fireflies, no dust")
                 }
             }
@@ -161,6 +165,96 @@ final class TrailerTests: XCTestCase {
         XCTAssertEqual(after.filter { $0.clip == .idle }.count, 13)
     }
 
+    /// A hold besieged at its gate: its walls struck by the Mangonels'
+    /// stones and the spears' blows, volleys loosed over them and back from
+    /// within, the hold burning once the stones fall; every besieger before
+    /// the gate on land clear of the hold's works, its defenders within the
+    /// walls.
+    func testTheSiegeHurlsStonesAtTheGateAndIsAnsweredFromTheWalls() throws {
+        let trailer = TrailerTests.trailer
+        let shot = try XCTUnwrap(trailer.shots.first { $0.action == .siege })
+        XCTAssertEqual(shot.length, Siege.length)
+        var clips: Set<Clip> = []
+        var stones = 0, arrows = 0, strikes = 0, burning = 0
+        for step in stride(from: 0.0, through: Siege.length, by: 0.25) {
+            var poses: [CompanyPose] = []
+            var flights: [ArrowFlight] = []
+            var happenings = Happenings()
+            trailer.siege.stage(at: step, in: trailer.world, poses: &poses, arrows: &flights, happenings: &happenings)
+            XCTAssertEqual(poses.count, 11, "Three Mangonels, two bows, three spears and a commander's riders; two bows within")
+            clips.formUnion(poses.map(\.clip))
+            stones += flights.filter { $0.stone && (0...1).contains($0.progress) }.count
+            arrows += flights.filter { !$0.stone && (0...1).contains($0.progress) }.count
+            strikes += happenings.strikes.count
+            burning += happenings.blazes.count
+            if step < Siege.burns { XCTAssertTrue(happenings.blazes.isEmpty, "Not burning before the stones fall") }
+        }
+        XCTAssertEqual(clips, [.idle, .attack], "Standing and striking")
+        XCTAssertGreaterThan(stones, 10, "Stones in flight")
+        XCTAssertGreaterThan(arrows, 40, "Volleys in flight")
+        XCTAssertGreaterThan(strikes, 20)
+        XCTAssertGreaterThan(burning, 0)
+        let beats = trailer.siege.beats
+        XCTAssertGreaterThanOrEqual(beats.filter { $0.sound == .batter }.count, 4, "Stones heard on the walls")
+        XCTAssertEqual(beats.filter { $0.sound == .horn }.count, 2)
+        XCTAssertTrue(beats.contains { $0.sound == .loose })
+        XCTAssertEqual(beats.map(\.time), beats.map(\.time).sorted())
+        // Where they stand: the besiegers before the gate, outside the walls
+        // as the hold is drawn, none on a work; its own within them.
+        let world = trailer.world
+        let centre = world.ground(world.besieged.position)
+        let walls = HoldLayout.wallRadius * HoldLayout.grandeur
+        var poses: [CompanyPose] = []
+        var flights: [ArrowFlight] = []
+        var happenings = Happenings()
+        trailer.siege.stage(at: 0, in: world, poses: &poses, arrows: &flights, happenings: &happenings)
+        let works = HoldLayout.pieces(hold: world.besieged, relief: world.relief).compactMap { piece -> Vec3? in
+            switch piece.key {
+            case .walls, .keep, .keepOf, .town(.lane): return nil
+            default: return Vec3(centre.x, 0, centre.z) + (Vec3(piece.transform.c3.x, 0, piece.transform.c3.z) - Vec3(centre.x, 0, centre.z)) * HoldLayout.grandeur
+            }
+        }
+        for pose in poses {
+            let from = Vec3(pose.position.x - centre.x, 0, pose.position.z - centre.z).length
+            if pose.isOwn {
+                XCTAssertGreaterThan(from, walls * 0.95, "\(pose.key) besieging from outside the walls")
+                XCTAssertTrue(works.allSatisfy { (Vec3(pose.position.x, 0, pose.position.z) - $0).length >= 0.39 }, "\(pose.key) on no work")
+            } else {
+                XCTAssertLessThan(from, walls, "\(pose.key) defending within the walls")
+            }
+        }
+    }
+
+    /// The heart's Moonspire seen close as it is crowned: its last stage
+    /// rising in its scaffold, then standing crowned, the scaffold gone.
+    func testTheHeartsMoonspireIsCrownedClose() throws {
+        let trailer = TrailerTests.trailer
+        let shot = try XCTUnwrap(trailer.shots.first { $0.action == .crowning })
+        let next = try XCTUnwrap(trailer.shots.first { $0.start == shot.end })
+        XCTAssertEqual(next.name, "the seat", "Crowned, then seen whole about its seat")
+        let crowned = ModelKey.work(.moonspire, level: BuildingKind.moonspire.maxLevel)
+        let seat = trailer.world.ground(trailer.world.seat.position)
+        func near(_ instance: ModelInstance) -> Bool {
+            Vec3(instance.model.c3.x - seat.x, 0, instance.model.c3.z - seat.z).length < HoldLayout.reach * HoldLayout.grandeur
+        }
+        func spires(at time: Double) -> [ModelInstance] {
+            trailer.scene(of: shot, at: time).batches.filter { $0.key == crowned }.flatMap(\.instances).filter(near)
+        }
+        func scaffolds(at time: Double) -> [ModelInstance] {
+            trailer.scene(of: shot, at: time).batches.filter { $0.key == .scaffold }.flatMap(\.instances).filter(near)
+        }
+        let rising = try XCTUnwrap(spires(at: shot.start + 0.5).first, "The last stage in view")
+        XCTAssertLessThan(rising.params.x, WorldStage.whole, "Rising")
+        XCTAssertFalse(scaffolds(at: shot.start + 0.5).isEmpty, "In its scaffold")
+        let higher = try XCTUnwrap(spires(at: shot.start + 3).first)
+        XCTAssertGreaterThan(higher.params.x, rising.params.x, "Higher as the shot goes")
+        let done = try XCTUnwrap(spires(at: shot.end - 0.5).first)
+        XCTAssertEqual(done.params.x, WorldStage.whole, "Crowned")
+        XCTAssertTrue(scaffolds(at: shot.end - 0.5).isEmpty, "Its scaffold gone")
+        XCTAssertNil(Trailer.risen(at: Trailer.crowningLength - Trailer.crownedFor))
+        XCTAssertEqual(try XCTUnwrap(Trailer.risen(at: 0)), 0.45, accuracy: 1e-6)
+    }
+
     func testPicturesDissolveAndDarken() {
         let from: [UInt8] = [0, 100, 200, 255], into: [UInt8] = [255, 100, 0, 255]
         var a = from
@@ -200,8 +294,17 @@ final class TrailerTests: XCTestCase {
         XCTAssertEqual(soundtrack.duration, trailer.duration)
         XCTAssertEqual(soundtrack.events.map(\.time), soundtrack.events.map(\.time).sorted())
         let battle = try XCTUnwrap(trailer.shots.first { $0.action == .battle })
+        let siege = try XCTUnwrap(trailer.shots.first { $0.action == .siege })
         let clashes = soundtrack.events.filter { if case .cue(.clash, _, _) = $0.event { return true } else { return false } }
-        XCTAssertTrue(clashes.allSatisfy { $0.time >= battle.start && $0.time <= battle.end + 1 }, "Blows heard in the battle")
+        XCTAssertTrue(clashes.allSatisfy { ($0.time >= battle.start && $0.time <= battle.end + 1) || ($0.time >= siege.start && $0.time <= siege.end + 1) },
+                      "Blows heard in the battle and at the siege's gate")
+        let stones = soundtrack.events.filter { if case .cue(.batter, _, _) = $0.event { return true } else { return false } }
+        XCTAssertTrue(stones.contains { $0.time >= siege.start && $0.time <= siege.end }, "The siege's stones heard on the walls")
+        let crowning = try XCTUnwrap(trailer.shots.first { $0.action == .crowning })
+        XCTAssertTrue(soundtrack.events.contains { event in
+            if case .cue(.triumph, _, _) = event.event { return event.time > crowning.start && event.time < crowning.end }
+            return false
+        }, "The Moonspire's crowning heard")
         // Its opening seconds: sound rising out of silence, never clipped.
         let (left, right) = soundtrack.render(until: 12)
         XCTAssertEqual(left.count, 12 * Soundtrack.sampleRate)

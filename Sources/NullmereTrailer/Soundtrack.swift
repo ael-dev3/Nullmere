@@ -5,9 +5,11 @@ import NullmereSound
 /// The trailer's sound: the game's own night over the water and its own
 /// score, rendered by its synthesiser away from any audio engine, shot by
 /// shot. The drone and the wind from the first moment and the score at
-/// peace; the towns as the camera comes among them; the drums of war
-/// under the march, a horn as it sets out and the hooves of its riders;
-/// the din of the battle and every blow, volley, fall and horn in it, as
+/// peace; the towns as the camera comes among them; the Moonspire's last
+/// stone set and the triumph of its crowning; the drums of war under the
+/// march, a horn as it sets out and the hooves of its riders; the siege's
+/// stones on the walls, its volleys and its blows at the gate; the din of
+/// the battle and every blow, volley, fall and horn in it, as
 /// the picture throws them; a deep toll as the moon is eaten and another
 /// as it goes wholly dark; the lake's
 /// title theme over the lake from on high and the title, two stately
@@ -35,8 +37,12 @@ public struct Soundtrack: Sendable {
         at(5.5, .cue(.watch, pan: 0, gain: 0.7))
         // Among the holds and their folk.
         let shore = start(of: "the shore"), seat = start(of: "the seat"), town = start(of: "the town")
-        let rising = start(of: "the rising")
+        let rising = start(of: "the rising"), crowning = start(of: "the crowning")
         at(shore + 5, .town(0.3, pan: 0))
+        // The last stone set, and the Moonspire crowned.
+        at(crowning, .town(0.4, pan: 0))
+        at(crowning + Trailer.crowningLength - Trailer.crownedFor, .cue(.complete, pan: 0, gain: 0.7))
+        at(crowning + Trailer.crowningLength - Trailer.crownedFor + 0.4, .cue(.triumph, pan: 0, gain: 0.65))
         at(seat, .town(0.6, pan: -0.2))
         at(town, .town(0.9, pan: 0.2))
         at(town + 3, .cue(.coin, pan: -0.4, gain: 0.5))
@@ -51,18 +57,16 @@ public struct Soundtrack: Sendable {
             at(march + offset, .cue(.ride, pan: Float(index) * 0.3 - 0.3, gain: 0.6))
         }
         at(march + 7, .cue(.muster, pan: 0.2, gain: 0.55))
+        // The siege: its stones on the walls, its volleys, its blows at the gate.
+        let siege = start(of: "the siege")
+        at(siege, .din(0.45, pan: 0))
+        for beat in trailer.siege.beats { at(siege + beat.time, Soundtrack.cue(for: beat.sound)) }
+        at(siege + Siege.length, .din(0, pan: 0))
         // The battle, as the picture throws it.
         let battle = start(of: "the battle")
         at(battle, .cue(.herald, pan: 0, gain: 0.75))
         at(battle + 0.5, .din(0.8, pan: 0))
-        for beat in trailer.battle.beats {
-            switch beat.sound {
-            case .clash(let across): at(battle + beat.time, .cue(.clash, pan: across, gain: 0.75))
-            case .loose: at(battle + beat.time, .cue(.loose, pan: 0, gain: 0.55))
-            case .fall: at(battle + beat.time, .cue(.dread, pan: 0, gain: 0.6))
-            case .horn: at(battle + beat.time, .cue(.horn, pan: 0, gain: 0.7))
-            }
-        }
+        for beat in trailer.battle.beats { at(battle + beat.time, Soundtrack.cue(for: beat.sound)) }
         if trailer.battle.blaze != nil {
             at(battle + 2.5, .cue(.batter, pan: 0.5, gain: 0.6))
         }
@@ -79,6 +83,17 @@ public struct Soundtrack: Sendable {
         at(trailer.titleRises + 0.3, .cue(.banner, pan: 0, gain: 0.7))
         at(trailer.fadesOut - 0.5, .fadeOut(rate: 0.5))
         self.events = events.sorted { $0.time < $1.time }
+    }
+
+    /// How a beat of a fight is heard.
+    static func cue(for beat: Battle.Beat) -> Event {
+        switch beat {
+        case .clash(let across): return .cue(.clash, pan: across, gain: 0.75)
+        case .loose: return .cue(.loose, pan: 0, gain: 0.55)
+        case .fall: return .cue(.dread, pan: 0, gain: 0.6)
+        case .horn: return .cue(.horn, pan: 0, gain: 0.7)
+        case .batter: return .cue(.batter, pan: 0, gain: 0.7)
+        }
     }
 
     /// Its samples, left and right, from its first moment to `end` (all of

@@ -4,10 +4,10 @@ import NullmereModels
 import NullmereWorld
 
 /// The trailer, shot by shot: the still black lake under the moon, the
-/// seats on its shores and their towns at night, the Moonspire crowned and
-/// another rising, a host on the march, rain off the water, a battle in
-/// the dark, the moon eaten over the still water and the field after under
-/// it, the whole lake from on high, and the title. No interface and nothing of the rules: only the world as
+/// seats on its shores and their towns at night, a Moonspire crowned close
+/// and another rising, a host on the march and a hold besieged, rain off
+/// the water, a battle in the dark, the moon eaten over the still water and
+/// the field after under it, the whole lake from on high, and the title. No interface and nothing of the rules: only the world as
 /// the game draws it, through moving cameras, and its score.
 public struct Trailer {
     /// What a shot shows.
@@ -29,6 +29,11 @@ public struct Trailer {
         case battle
         /// The field after: the fallen, the smoke, under the eaten moon.
         case aftermath
+        /// The heart's Moonspire raising its last stage in its scaffold
+        /// until it is crowned.
+        case crowning
+        /// A hold besieged at its gate.
+        case siege
     }
 
     public struct Shot: Sendable {
@@ -58,6 +63,7 @@ public struct Trailer {
     public let shots: [Shot]
     public let march: March
     public let battle: Battle
+    public let siege: Siege
 
     public var duration: Double { shots.last?.end ?? 0 }
     public var frameCount: Int { Int((duration * Double(Trailer.framesPerSecond)).rounded()) }
@@ -71,14 +77,16 @@ public struct Trailer {
         self.world = world
         let march = March(world: world)
         let battle = Battle(world: world)
+        let siege = Siege(world: world)
         self.march = march
         self.battle = battle
-        shots = Trailer.shots(world: world, march: march, battle: battle)
+        self.siege = siege
+        shots = Trailer.shots(world: world, march: march, battle: battle, siege: siege)
     }
 
     // MARK: The shots
 
-    static func shots(world: TrailerWorld, march: March, battle: Battle) -> [Shot] {
+    static func shots(world: TrailerWorld, march: March, battle: Battle, siege: Siege) -> [Shot] {
         let layout = HexLayout(size: 1)
         func at(_ hex: Hex) -> (x: Double, y: Double) {
             let c = layout.center(of: hex)
@@ -109,19 +117,25 @@ public struct Trailer {
                    y: (lake.y - shore.y) / max(hypot(lake.x - shore.x, lake.y - shore.y), 1e-6))
         let toMoon = atan2(-Double(Sky.moon.x), -Double(Sky.moon.z))
         // The still: the lake of the title screen, the moon on the water.
-        add("the still", 8, .lake)
+        add("the still", 7, .lake)
         // Low over the black water, coming in to a hold on the shore, the
         // seats' lights beyond it.
-        add("the shore", 11, .world, dissolve: 2) { u in
+        add("the shore", 9, .world, dissolve: 2) { u in
             Trailer.move(relief, u, (shore.x + out.x * 3.1, shore.y + out.y * 3.1, 115, 1.2, toLake + .pi - 0.18),
                  (shore.x + out.x * 0.4, shore.y + out.y * 0.4, 138, 1.17, toLake + .pi + 0.02))
         }
+        // Close by the heart's Moonspire as its last stage rises in its
+        // scaffold and it is crowned, the camera turning about it.
+        let spire = Trailer.spire(of: world)
+        add("the crowning", Trailer.crowningLength, .world, action: .crowning) { u in
+            Trailer.move(relief, u, (Double(spire.x), Double(spire.z), 290, 1.04, 2.2), (Double(spire.x), Double(spire.z), 320, 1.0, 2.75))
+        }
         // About the seat, its Moonspire crowned, close and turning slowly.
-        add("the seat", 11, .world) { u in
-            Trailer.move(relief, u, (seat.x, seat.y, 175, 1.12, 0.4), (seat.x, seat.y, 195, 1.12, 1.45))
+        add("the seat", 8, .world) { u in
+            Trailer.move(relief, u, (seat.x, seat.y, 175, 1.12, 0.4), (seat.x, seat.y, 195, 1.12, 1.25))
         }
         // Gliding past a great hold, low over its roofs and its folk.
-        add("the town", 9, .world) { u in
+        add("the town", 8, .world) { u in
             Trailer.move(relief, u, (town.x - 0.7, town.y - 0.8, 200, 1.14, 0.9), (town.x + 0.7, town.y + 0.8, 200, 1.14, 1.3))
         }
         // Another House's Moonspire rising, its crane at work.
@@ -135,8 +149,15 @@ public struct Trailer {
             return Trailer.aimed(relief, x: Double(middle.x), y: Double(middle.z), scale: Trailer.mix(175, 185, u), tilt: 1.18,
                                  heading: h + Trailer.mix(-0.15, 0.15, Trailer.ease(u)))
         }
+        // A hold of another House besieged at its gate, from behind the
+        // Mangonels in to the spears at the walls.
+        add("the siege", Siege.length, .world, action: .siege) { u in
+            let from = siege.before(2.9), to = siege.before(0.6)
+            return Trailer.move(relief, u, (Double(from.x), Double(from.z), 150, 1.18, siege.heading - 0.35),
+                                (Double(to.x), Double(to.z), 205, 1.12, siege.heading + 0.15))
+        }
         // Rain off the lake over the hold on the shore.
-        add("the rain", 7, .world, weather: .rain) { u in
+        add("the rain", 6, .world, weather: .rain) { u in
             Trailer.move(relief, u, (shore.x, shore.y, 150, 1.16, toLake + 0.05), (shore.x, shore.y, 165, 1.16, toLake + 0.35))
         }
         // Battle in the dark, from the edge of the field in among the lines.
@@ -154,12 +175,40 @@ public struct Trailer {
             return Trailer.move(relief, u, (Double(c.x), Double(c.z), 185, 1.12, battle.sideHeading + 0.4), (Double(c.x), Double(c.z), 200, 1.12, battle.sideHeading + 0.7))
         }
         // Out from the shore over the black water to the moon's image on it.
-        add("the lake", 9, .world, dissolve: 1.5) { u in
+        add("the lake", 8, .world, dissolve: 1.5) { u in
             Trailer.move(relief, u, (shore.x + out.x * 2.6, shore.y + out.y * 2.6, 95, 1.2, toLake + 0.3),
                  (shore.x + out.x * 9, shore.y + out.y * 9, 70, 1.05, toMoon))
         }
         add("the title", 10, .title, dissolve: 2)
         return shots
+    }
+
+    /// How long the crowning's shot lasts, and how long before its end the
+    /// Moonspire stands crowned.
+    public static let crowningLength = 7.0
+    public static let crownedFor = 2.0
+
+    /// Where the heart's Moonspire stands, on the ground, as its hold is
+    /// drawn.
+    static func spire(of world: TrailerWorld) -> Vec3 {
+        let c = world.ground(world.seat.position)
+        let centre = Vec3(c.x, 0, c.z)
+        let piece = HoldLayout.pieces(hold: world.seat, relief: world.relief).first { piece in
+            if case .work(.moonspire, _) = piece.key { return true } else { return false }
+        }
+        guard let piece else { return centre }
+        let p = Vec3(piece.transform.c3.x, 0, piece.transform.c3.z)
+        return centre + (p - centre) * HoldLayout.grandeur
+    }
+
+    /// How far the heart's last stage has risen, seconds into the crowning:
+    /// from half raised, easing up through its scaffold until it stands
+    /// crowned `crownedFor` seconds before the shot ends; nothing once it
+    /// is.
+    public static func risen(at elapsed: Double) -> Float? {
+        let raising = crowningLength - crownedFor
+        guard elapsed < raising else { return nil }
+        return Float(0.45 + 0.55 * Trailer.ease(min(max(elapsed / raising, 0), 1)))
     }
 
     /// A camera whose view's middle falls on the ground at a point of the
@@ -275,9 +324,19 @@ public struct Trailer {
         var frame = SceneFrame()
         frame.fine = camera.scale >= 56
         let view = ViewFrustum(viewProjection: camera.viewProjection(in: Trailer.viewSize))
-        let sights = world.holds.filter { view.sees($0.position, within: HoldLayout.reach + 1.5) }.map { hold in
+        var sights = world.holds.filter { view.sees($0.position, within: HoldLayout.reach + 1.5) }.map { hold in
             HoldSight(hold: hold, colour: world.colour(of: hold.owner), progress: nil, finishing: nil,
                       heritage: world.state.heritage(of: hold.owner))
+        }
+        // The crowning: the heart's Moonspire at its fourth stage, its fifth
+        // rising in its scaffold until it stands crowned.
+        if shot.action == .crowning, let index = sights.firstIndex(where: { $0.hold.id == world.seat.id }),
+           let risen = Trailer.risen(at: time - shot.start) {
+            var hold = world.seat
+            let crowned = BuildingKind.moonspire.maxLevel
+            hold.levels[.moonspire] = crowned - 1
+            hold.project = Hold.Project(kind: .moonspire, targetLevel: crowned, watchesLeft: 1)
+            sights[index] = HoldSight(hold: hold, colour: sights[index].colour, progress: risen, heritage: sights[index].heritage)
         }
         let (holds, hearths) = world.stage.holds(sights, time: t, into: &frame)
         let folk = world.stage.townsfolk(sights, time: t, crowds: frame.fine, into: &frame) + world.stage.traffic(world.ways, time: t, into: &frame)
@@ -295,6 +354,8 @@ public struct Trailer {
         case .march: march.stage(at: elapsed, in: world, poses: &poses, happenings: &happenings)
         case .battle: battle.stage(at: elapsed, in: world, poses: &poses, arrows: &arrows, happenings: &happenings)
         case .aftermath: battle.after(at: elapsed, in: world, poses: &poses, happenings: &happenings)
+        case .siege: siege.stage(at: elapsed, in: world, poses: &poses, arrows: &arrows, happenings: &happenings)
+        case .crowning: break
         }
         let companies = world.stage.companies(poses, houses: world.houses, into: &frame)
         let lake = Relief.centre(of: Hex(0, 0))

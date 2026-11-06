@@ -22,6 +22,9 @@ public enum HoldLayout {
     /// larger-than-life figures (`WorldStage.figureScale`) as a map of war
     /// draws its cities.
     public static let grandeur: Float = 1.6
+    /// How far from a hold's heart its walls stand, in its plan: to the
+    /// corners of their ring.
+    public static let wallRadius: Float = Holds.wallRadius
 
     /// Where a hold's walls open, on the ground plane: the middle of the
     /// gate in the flat of the ring that faces its front.

@@ -307,5 +307,207 @@ public struct Battle: Sendable {
         case loose
         case fall
         case horn
+        /// A stone striking a wall.
+        case batter
+    }
+}
+
+/// A siege at a hold's walls: the heart's House come against a hold of
+/// another, walled in stone, by night. Its Mangonels stand off at their
+/// reach and hurl their stones at the walls, its bows loose over them, its
+/// spears strike at them and a commander rides behind; the hold's own bows
+/// loose back from within, and the hold burns behind its walls once the
+/// stones have begun to fall. Nothing laid over it that the game marks a
+/// siege with.
+public struct Siege: Sendable {
+    public struct Company: Sendable {
+        let kind: UnitKind
+        let tier: Int
+        /// 0 the besiegers, 1 the hold's own.
+        let side: Int
+        let place: Vec3
+        let commander: Int?
+        /// Where its blows or its stones land.
+        let mark: Vec3
+        /// Its first blow and the time between, seconds into the siege; no
+        /// blows from a company that only stands.
+        let first: Double?
+        let every: Double
+    }
+
+    /// The hold's heart, and the way from the besiegers toward it.
+    public let centre: Vec3
+    let toward: Vec3
+    /// How far its gate stands from its heart, as the hold is drawn.
+    let gate: Float
+    let companies: [Company]
+    let sigils: [Int]
+    let heritages: [Heritage]
+    /// When the commander's horn sounds, seconds into it.
+    let horns: [Double]
+    /// How long the siege's shot lasts, in seconds.
+    public static let length = 9.0
+    /// How long a stone flies from its Mangonel to the walls, and an arrow
+    /// from its bow.
+    static let stoneFlight = 1.7
+    static let arrowFlight = 1.1
+    /// When the hold begins to burn, the first stones fallen.
+    static let burns = 3.0
+
+    init(world: TrailerWorld) {
+        let hold = world.besieged, heart = world.seat
+        let c = world.ground(hold.position)
+        let centre = Vec3(c.x, 0, c.z)
+        // Before its gate, the way its lane leads in: the gate's middle, as
+        // the hold is drawn, `HoldLayout.grandeur` times its plan.
+        let grand = HoldLayout.grandeur
+        let plan = HoldLayout.gate(of: hold.position)
+        var out = Vec3(plan.x - centre.x, 0, plan.z - centre.z).normalized
+        if !out.x.isFinite || out.length < 0.5 { out = Vec3(1, 0, 0) }
+        let across = Vec3(-out.z, 0, out.x)
+        let gate = HoldLayout.wallRadius * Float(cos(Double.pi / 6)) * grand
+        self.centre = centre
+        toward = Vec3(-out.x, 0, -out.z)
+        self.gate = gate
+        // What stands about the hold as it is drawn, but its keep, its walls
+        // and its lanes: no company is set down on a work.
+        let standing: [Vec3] = HoldLayout.pieces(hold: hold, relief: world.relief).compactMap { piece in
+            switch piece.key {
+            case .walls, .keep, .keepOf, .town(.lane): return nil
+            default:
+                let p = Vec3(piece.transform.c3.x, 0, piece.transform.c3.z)
+                return centre + (p - centre) * grand
+            }
+        }
+        let layout = HexLayout(size: 1)
+        func land(_ p: Vec3) -> Bool {
+            world.state.map[layout.hex(atX: Double(p.x), y: Double(p.z))].map { $0.terrain.isPassable && !$0.terrain.isWater } ?? false
+        }
+        // The first spot so far out before the gate, or a little further,
+        // on land and clear of every work by `room`.
+        func spot(_ distance: Float, _ side: Float, room: Float) -> Vec3 {
+            for step in 0..<12 {
+                let p = centre + out * (distance + Float(step) * 0.15) + across * side
+                if land(p), standing.allSatisfy({ ($0 - p).length >= room }) { return p }
+            }
+            return centre + out * distance + across * side
+        }
+        func wall(_ side: Float) -> Vec3 { centre + out * gate + across * side }
+        var companies: [Company] = []
+        // Three Mangonels at their reach, each its stone at the walls in turn.
+        for k in 0..<3 {
+            companies.append(Company(kind: .mangonel, tier: 3 + k, side: 0, place: spot(gate + 2.5, Float(k - 1) * 1.0, room: 0.5),
+                                     commander: nil, mark: wall(Float(k - 1) * 0.3), first: 0.6 + Double(k) * 1.3, every: 4.2))
+        }
+        // Bows loosing over the walls into the hold.
+        for k in 0..<2 {
+            companies.append(Company(kind: .bow, tier: 4, side: 0, place: spot(gate + 1.6, k == 0 ? -0.85 : 0.85, room: 0.45),
+                                     commander: nil, mark: centre + out * 0.3 + across * (k == 0 ? -0.2 : 0.2), first: 1.0 + Double(k) * 1.2,
+                                     every: 3.0))
+        }
+        // Spears at the gate, striking at it; a commander riding behind.
+        for k in 0..<3 {
+            companies.append(Company(kind: .spear, tier: 4, side: 0, place: spot(gate + 0.55, Float(k - 1) * 0.55, room: 0.4),
+                                     commander: nil, mark: wall(Float(k - 1) * 0.4), first: 0.4 + Double(k) * 0.5, every: 1.8))
+        }
+        companies.append(Company(kind: .rider, tier: 5, side: 0, place: spot(gate + 1.15, 0, room: 0.45), commander: 0, mark: wall(0),
+                                 first: nil, every: 0))
+        // The hold's bows within its walls behind the gate, loosing back at the spears.
+        for k in 0..<2 {
+            companies.append(Company(kind: .bow, tier: 3, side: 1, place: centre + out * (gate - 0.42) + across * (k == 0 ? -0.3 : 0.3),
+                                     commander: nil, mark: centre + out * (gate + 0.55) + across * (k == 0 ? -0.55 : 0.55),
+                                     first: 1.6 + Double(k) * 1.0, every: 3.4))
+        }
+        self.companies = companies
+        sigils = [world.state.houses[heart.owner].sigil, world.state.houses[hold.owner].sigil]
+        heritages = [world.state.heritage(of: heart.owner), world.state.heritage(of: hold.owner)]
+        horns = [0.8, 6.4]
+    }
+
+    /// The camera's heading to look at the gate from behind the Mangonels.
+    public var heading: Double { Double(facing(Vec3(-toward.x, 0, -toward.z))) }
+
+    /// A point so far out before the gate, for the camera.
+    public func before(_ distance: Float) -> Vec3 {
+        Vec3(centre.x - toward.x * (gate + distance), 0, centre.z - toward.z * (gate + distance))
+    }
+
+    /// The blows a company throws, by when each begins.
+    func blows(of company: Company, until elapsed: Double) -> [Double] {
+        guard let first = company.first, company.every > 0 else { return [] }
+        return Array(stride(from: first, through: elapsed, by: company.every))
+    }
+
+    func stage(at elapsed: Double, in world: TrailerWorld, poses: inout [CompanyPose], arrows: inout [ArrowFlight],
+               happenings: inout Happenings) {
+        let layout = HexLayout(size: 1)
+        for (index, company) in companies.enumerated() {
+            let ground = world.ground(x: company.place.x, z: company.place.z)
+            let mark = world.ground(x: company.mark.x, z: company.mark.z)
+            var position = ground
+            var clip = Clip.idle
+            var clipTime = Float(elapsed) + Float(index) * 0.7
+            let blows = blows(of: company, until: elapsed)
+            if let last = blows.last, elapsed - last < Double(Clip.attack.period) {
+                clip = .attack
+                clipTime = Float(elapsed - last)
+                // Spears lean in at the walls as they strike, and back.
+                if company.kind == .spear {
+                    let lean = Float(sin(Double.pi * (elapsed - last) / Double(Clip.attack.period))) * 0.18
+                    position = Vec3(position.x + (mark.x - position.x) * lean, position.y, position.z + (mark.z - position.z) * lean)
+                }
+            }
+            let at = Vec3(mark.x - ground.x, 0, mark.z - ground.z)
+            poses.append(CompanyPose(unit: 9_300 + index, key: .company(company.kind, tier: company.tier, heritage: heritages[company.side]),
+                                     sigil: sigils[company.side], health: 100,
+                                     hex: layout.hex(atX: Double(position.x), y: Double(position.z)), position: position,
+                                     heading: facing(at.length > 1e-4 ? at : toward), clip: clip, clipTime: clipTime,
+                                     isOwn: company.side == 0, commander: company.commander, spread: company.side == 1 ? 0.6 : 1,
+                                     muster: company.kind == .bow ? 900 : 1_600))
+            // Its stones and arrows in flight, and where they land.
+            for blow in blows where elapsed - blow < Siege.stoneFlight + 0.6 {
+                let seed = UInt32(index * 101 + Int(blow * 10))
+                switch company.kind {
+                case .mangonel:
+                    let flight = (elapsed - blow) / Siege.stoneFlight
+                    arrows.append(ArrowFlight(from: Vec3(position.x, position.y + 0.32, position.z), to: Vec3(mark.x, mark.y + 0.22, mark.z),
+                                              progress: Float(flight), stone: true))
+                    happenings.strikes.append(Happenings.Strike(from: position, at: mark, start: Float(blow + Siege.stoneFlight), ranged: true,
+                                                                seed: seed))
+                case .bow:
+                    let flight = (elapsed - blow) / Siege.arrowFlight
+                    for arrow in 0..<6 {
+                        let spread = Vec3(Float(arrow % 3 - 1) * 0.24, 0, Float(arrow / 3) * 0.26 - 0.13)
+                        let from = Vec3(position.x + spread.x * 0.5, position.y + 0.3, position.z + spread.z * 0.5)
+                        arrows.append(ArrowFlight(from: from, to: Vec3(mark.x + spread.x, mark.y + 0.1, mark.z + spread.z),
+                                                  progress: Float(flight - Double(arrow) * 0.04)))
+                    }
+                default:
+                    happenings.strikes.append(Happenings.Strike(from: position, at: mark, start: Float(blow), ranged: false, seed: seed))
+                }
+            }
+        }
+        // The hold burning behind its walls once the stones have begun to fall.
+        if elapsed >= Siege.burns {
+            let fire = world.ground(x: centre.x + toward.x * 0.1, z: centre.z + toward.z * 0.1)
+            happenings.blazes.append(Happenings.Spot(at: fire, strength: Float(min((elapsed - Siege.burns) / 2, 1)) * 0.8, seed: 91))
+        }
+    }
+
+    /// The moments the siege sounds: each stone as it strikes the walls,
+    /// each volley loosed, each blow at the walls, each horn, seconds into it.
+    public var beats: [(time: Double, sound: Battle.Beat)] {
+        var beats: [(time: Double, sound: Battle.Beat)] = []
+        for (index, company) in companies.enumerated() {
+            for blow in blows(of: company, until: Siege.length) {
+                switch company.kind {
+                case .mangonel: beats.append((time: blow + Siege.stoneFlight, sound: .batter))
+                case .bow: beats.append((time: blow, sound: .loose))
+                default: beats.append((time: blow + 0.35, sound: .clash(across: Float(index % 3 - 1) / 2)))
+                }
+            }
+        }
+        for horn in horns { beats.append((time: horn, sound: .horn)) }
+        return beats.sorted { $0.time < $1.time }
     }
 }

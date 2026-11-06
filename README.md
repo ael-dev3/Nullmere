@@ -31,7 +31,7 @@ Website: [nullmere.online](https://nullmere.online).
 
 ## The trailer
 
-A minute and fifty-two seconds of the game's own world at night, drawn by its
+A minute and fifty-nine seconds of the game's own world at night, drawn by its
 own renderers and scored by its own synthesiser, with nothing of the
 interface over it: [the trailer](https://github.com/ael-dev3/Nullmere/releases/tag/trailer)
 (1920 by 1080 at sixty frames a second, [MP4](https://github.com/ael-dev3/Nullmere/releases/download/trailer/nullmere-trailer.mp4)).

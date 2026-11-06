@@ -7,8 +7,9 @@ import NullmereWorld
 /// their stewards until its holds have grown towns and works, all of it
 /// seen, so nothing lies under mist. One seat is shown raised whole, its
 /// Moonspire crowned, for the trailer's heart; another's Moonspire at its
-/// third stage, its crane at work. The realm itself is left as its stewards
-/// made it: the two seats are dressed only as the trailer draws them.
+/// third stage, its crane at work; and a hold of another House walled in
+/// stone, for the heart's House to besiege. The realm itself is left as its
+/// stewards made it: those three are dressed only as the trailer draws them.
 public struct TrailerWorld {
     public let state: GameState
     /// Every hold as the trailer draws it, the two seats dressed.
@@ -25,6 +26,8 @@ public struct TrailerWorld {
     /// A great hold for the town's shot, and one on the shore for the rain.
     public let town: Hold
     public let shore: Hold
+    /// A hold of another House near the heart, walled in stone, under siege.
+    public let besieged: Hold
     /// The land's furniture, laid out once.
     public let furniture: [ModelBatch]
     /// The ways the carts go between each House's holds.
@@ -58,8 +61,8 @@ public struct TrailerWorld {
             second.levels[.moonspire] = 3
             second.project = nil
         }
-        let dressed = [heart.id: heart, second.id: second]
-        holds = state.holds.map { dressed[$0.id] ?? $0 }
+        var dressed = [heart.id: heart, second.id: second]
+        let drawn = state.holds.map { dressed[$0.id] ?? $0 }
         self.state = state
         self.houses = houses
         relief = Relief(map: state.map)
@@ -68,13 +71,40 @@ public struct TrailerWorld {
         seat = heart
         rising = second
         // The town: the hold with the most raised, other than the two seats.
-        let rest = holds.filter { $0.id != heart.id && $0.id != second.id }
+        let rest = drawn.filter { $0.id != heart.id && $0.id != second.id }
         func raised(_ hold: Hold) -> Int { hold.levels.values.reduce(0, +) }
-        town = rest.max { (raised($0), -$0.id) < (raised($1), -$1.id) } ?? heart
+        let great = rest.max { (raised($0), -$0.id) < (raised($1), -$1.id) } ?? heart
+        town = great
         // The shore: a hold with still water beside it, nearest the heart.
         let map = state.map
         let onShore = rest.filter { hold in hold.position.neighbors.contains { map[$0]?.terrain.isWater == true } }
-        shore = onShore.min { ($0.position.distance(to: heart.position), $0.id) < ($1.position.distance(to: heart.position), $1.id) } ?? town
+        let still = onShore.min { ($0.position.distance(to: heart.position), $0.id) < ($1.position.distance(to: heart.position), $1.id) } ?? great
+        shore = still
+        // The besieged: of the other Houses' holds, neither the town's nor
+        // the shore's, the nearest the heart with open ground before its
+        // gate for the besiegers to stand on, its walls raised in stone.
+        let besiegers = heart.owner
+        func standing(_ hex: Hex) -> Bool {
+            guard let tile = map[hex] else { return false }
+            return tile.terrain.isPassable && !tile.terrain.isWater && state.hold(at: hex) == nil
+        }
+        func room(_ hold: Hold) -> Int {
+            let centre = Relief.centre(of: hold.position), gate = HoldLayout.gate(of: hold.position)
+            let out = Vec3(gate.x - centre.x, 0, gate.z - centre.z).normalized
+            return hold.position.spiral(3).filter { hex in
+                guard hex.distance(to: hold.position) >= 2, standing(hex) else { return false }
+                let c = Relief.centre(of: hex)
+                let along = Vec3(c.x - centre.x, 0, c.z - centre.z).normalized
+                return along.x * out.x + along.z * out.z > 0.5
+            }.count
+        }
+        let candidates = rest.filter { $0.owner != besiegers && $0.id != great.id && $0.id != still.id && room($0) >= 4 }
+        var walled = candidates.min { ($0.position.distance(to: heart.position), $0.id) < ($1.position.distance(to: heart.position), $1.id) } ?? second
+        walled.levels[.walls] = max(walled.level(.walls), 4)
+        walled.project = nil
+        besieged = walled
+        dressed[walled.id] = walled
+        holds = state.holds.map { dressed[$0.id] ?? $0 }
         let all = holds
         furniture = stage.furnish(occupied: Set(state.sitesInLand.map(\.position) + state.lairsStanding.map(\.position)),
                                   holds: Set(all.map(\.position)))
