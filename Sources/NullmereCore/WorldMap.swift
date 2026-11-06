@@ -1,15 +1,15 @@
 import Foundation
 
 extension Terrain {
-    private static let codes: [Terrain: UInt8] = Dictionary(uniqueKeysWithValues: allCases.enumerated().map { ($1, UInt8($0)) })
-    /// Its place among the terrains, found once.
-    public var code: UInt8 { Terrain.codes[self]! }
+    /// Its place among the terrains: the case it is, as it is held, which
+    /// is its place in the order they are told in.
+    public var code: UInt8 { caseNumber }
 }
 
 extension Feature {
-    private static let codes: [Feature: UInt8] = Dictionary(uniqueKeysWithValues: allCases.enumerated().map { ($1, UInt8($0)) })
-    /// Its place among the features, found once.
-    public var code: UInt8 { Feature.codes[self]! }
+    /// Its place among the features: the case it is, as it is held, which
+    /// is its place in the order they are told in.
+    public var code: UInt8 { caseNumber }
 }
 
 /// One tile of the world.
@@ -83,7 +83,8 @@ public struct WorldMap: Codable, Equatable, Sendable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        radius = try container.decode(Int.self, forKey: .radius)
+        let radius = try container.decode(Int.self, forKey: .radius)
+        let tiles: [Tile]
         if let cells = try container.decodeIfPresent(String.self, forKey: .cells) {
             guard let decoded = WorldMap.tiles(fromCells: cells) else {
                 throw DecodingError.dataCorruptedError(forKey: .cells, in: container, debugDescription: "Unreadable tiles")
@@ -92,13 +93,62 @@ public struct WorldMap: Codable, Equatable, Sendable {
         } else {
             tiles = try container.decode([Tile].self, forKey: .tiles)
         }
-        guard radius >= 1, tiles.count == WorldMap.count(radius: radius) else {
+        guard let map = WorldMap(radius: radius, tiles: tiles) else {
             throw DecodingError.dataCorruptedError(forKey: .tiles, in: container, debugDescription: "Tile count doesn't match the radius")
         }
+        self = map
+    }
+
+    /// A map of these tiles, row by row; nil if they aren't as many as a
+    /// world of this radius has.
+    init?(radius: Int, tiles: [Tile]) {
+        guard radius >= 1, tiles.count == WorldMap.count(radius: radius) else { return nil }
+        self.radius = radius
+        self.tiles = tiles
         rowStarts = WorldMap.rowStarts(radius: radius)
         hexList = WorldMap.hexes(radius: radius)
         neighbours = WorldMap.neighbours(radius: radius, of: hexList)
         steps = tiles.map { WorldMap.step(onto: $0.terrain) }
+    }
+
+    /// This map as one who has explored none of it knows it: every tile as
+    /// `GameState.unknown` tells it.
+    public var unexplored: WorldMap {
+        var map = self
+        map.tiles = tiles.map(GameState.unknown)
+        map.steps = map.tiles.map { WorldMap.step(onto: $0.terrain) }
+        map.forget()
+        return map
+    }
+
+    /// This map as one who has explored the tiles `known` marks knows it:
+    /// `unexplored`, this map as `unexplored` gives it, with each tile known
+    /// as it is here. Worked out from the tiles known alone, so a House
+    /// that has explored a little of a wide lake costs a little.
+    func known(by known: Explored, from unexplored: WorldMap) -> WorldMap {
+        precondition(unexplored.count == count, "The unexplored map of another world")
+        var map = unexplored
+        var any = false
+        known.forEachSeen { index in
+            guard index < tiles.count else { return }
+            if !any {
+                any = true
+                // Its ground is not the unexplored map's: what that one keeps
+                // of its own ground is not this one's.
+                map.forget()
+            }
+            map.tiles[index] = tiles[index]
+            map.steps[index] = steps[index]
+        }
+        return map
+    }
+
+    /// What it keeps of its ground let go of, for ground of its own.
+    private mutating func forget() {
+        lie = LieOfTheLand()
+        claims = Claims()
+        nearest = Nearest()
+        deep = Deepest()
     }
 
     /// What stepping onto ground costs, 0 where it can't be entered.
@@ -119,7 +169,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
 
     // The order of terrains and features is part of the stored world: new
     // ones go at the end.
-    static func cells(of tiles: [Tile]) -> String {
+    static func cells<Tiles: Collection>(of tiles: Tiles) -> String where Tiles.Element == Tile {
         var bytes = [UInt8]()
         bytes.reserveCapacity(tiles.count * 3)
         for tile in tiles {

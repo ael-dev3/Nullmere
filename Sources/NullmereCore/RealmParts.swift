@@ -1,21 +1,33 @@
 import Foundation
 
-/// The realm in parts, as SpacetimeDB keeps it: the map, each long list a
-/// page of `RealmState.partPage` at a time, and the rest. The steward
-/// writes only the parts that changed, so an order moving one company
-/// sends a page of companies, not the whole world, and the chronicle and
-/// the history, which only grow, send their last page alone. A keeper's
-/// view goes in parts the same way, so what a pace changes in it is all
-/// that is sent of it.
+/// The realm in parts, as SpacetimeDB keeps it: the map a page of
+/// `RealmState.mapPage` tiles at a time, each long list a page of
+/// `RealmState.partPage` at a time, and the rest. The steward writes only
+/// the parts that changed, so an order moving one company sends a page of
+/// companies, not the whole world, and the chronicle and the history,
+/// which only grow, send their last page alone. A keeper's view goes in
+/// parts the same way, so what a pace changes in it is all that is sent of
+/// it, and a page of it just as every keeper is told it is written once for
+/// all of them.
 extension RealmState {
     public static let partPage = 32
+    /// How many of the map's tiles go to a part: a wide lake's map is a
+    /// megabyte, and a keeper's view of it changes only where they explore.
+    public static let mapPage = 2_048
 
     /// Each part's name and its JSON. Joined by `init(parts:)`, they give
     /// back this realm exactly.
     public func parts(using encoder: JSONEncoder) throws -> [String: String] {
+        try parts(using: encoder, reusing: [])
+    }
+
+    /// Its parts, each page of the map and of a long list that is just as
+    /// it was in a world already written (`reusing`, each a world and its
+    /// parts as written with the same encoder) taken as written there.
+    public func parts(using encoder: JSONEncoder, reusing written: [GameState.Written]) throws -> [String: String] {
         var parts: [String: String] = [:]
         var head = self
-        head.world = try world.split(into: &parts, using: encoder)
+        head.world = try world.split(into: &parts, using: encoder, reusing: written)
         parts["head"] = String(decoding: try encoder.encode(head), as: UTF8.self)
         return parts
     }
@@ -38,8 +50,17 @@ extension RealmView {
     /// as the world has them, its chronicle, relations and history, are
     /// taken from those parts, not written again for every keeper.
     public func parts(using encoder: JSONEncoder, sharing whole: (world: GameState, parts: [String: String])? = nil) throws -> [String: String] {
+        try parts(using: encoder, reusing: whole.map { [$0] } ?? [])
+    }
+
+    /// A keeper's view in parts, each page of its map and of its long lists
+    /// that is just as it is in a world already written (`reusing`: the
+    /// world the view is of, or the view of a keeper of no House, each with
+    /// its parts as written with the same encoder) taken as written there:
+    /// most of every view is what every keeper is told alike, written once.
+    public func parts(using encoder: JSONEncoder, reusing written: [GameState.Written]) throws -> [String: String] {
         var parts: [String: String] = [:]
-        let head = RealmView(keeper: keeper, age: age, world: try world.split(into: &parts, using: encoder, sharing: whole))
+        let head = RealmView(keeper: keeper, age: age, world: try world.split(into: &parts, using: encoder, reusing: written))
         parts["head"] = String(decoding: try encoder.encode(head), as: UTF8.self)
         return parts
     }
@@ -56,66 +77,106 @@ extension RealmView {
 }
 
 extension GameState {
+    /// A world and its parts as written: what a page just as it is there is
+    /// taken from, not written again.
+    public typealias Written = (world: GameState, parts: [String: String])
+
+    /// This world in parts as a view's world goes, `head` the rest of it:
+    /// what views of it take their pages from (`RealmView.parts(using:reusing:)`).
+    public func parts(using encoder: JSONEncoder, reusing written: [Written] = []) throws -> [String: String] {
+        var parts: [String: String] = [:]
+        let head = try split(into: &parts, using: encoder, reusing: written)
+        parts["head"] = String(decoding: try encoder.encode(head), as: UTF8.self)
+        return parts
+    }
+
+    /// The map's head among its parts: how wide the world is and how many
+    /// tiles each of its pages ("map.0", "map.1", ...) holds, the cells of
+    /// each as the map itself writes them.
+    struct MapPages: Codable, Equatable {
+        let radius: Int
+        let page: Int
+
+        /// Wider than any lake a realm raises, by far.
+        static let widest = 1 << 14
+
+        var count: Int { (WorldMap.count(radius: radius) + page - 1) / page }
+
+        /// The tiles of a page, by their indices.
+        func tiles(of page: Int) -> Range<Int> {
+            page * self.page..<min((page + 1) * self.page, WorldMap.count(radius: radius))
+        }
+    }
+
     /// A world's map and each long list, a page at a time, into `parts`;
-    /// what is left of it, the head, returned.
-    func split(into parts: inout [String: String], using encoder: JSONEncoder,
-               sharing whole: (world: GameState, parts: [String: String])? = nil) throws -> GameState {
+    /// what is left of it, the head, returned. A page just as it is in a
+    /// world already written (`written`, searched in order) is taken as
+    /// written there.
+    func split(into parts: inout [String: String], using encoder: JSONEncoder, reusing written: [Written] = []) throws -> GameState {
         func text<T: Encodable>(_ value: T) throws -> String {
             String(decoding: try encoder.encode(value), as: UTF8.self)
         }
-        func paged<T: Encodable>(_ name: String, _ items: [T]?) throws {
+        func paged<T: Encodable & Equatable, Items: RandomAccessCollection>(_ name: String, _ items: Items?, as theirs: (GameState) -> Items?) throws
+            where Items.Element == T, Items.Index == Int {
             guard let items else { return }
-            try page(name, items)
-        }
-        /// A list the world has just the same, its pages taken as written.
-        func shared<T: Encodable & Equatable>(_ name: String, _ items: [T]?, as theirs: (GameState) -> [T]?) throws {
-            guard let items else { return }
-            if let whole, theirs(whole.world) == items, whole.parts["\(name).0"] != nil {
-                for (key, value) in whole.parts where key.hasPrefix(name + ".") { parts[key] = value }
-                return
-            }
-            try page(name, items)
-        }
-        func page<T: Encodable>(_ name: String, _ items: [T]) throws {
+            let others = written.map { (theirs($0.world), $0.parts) }
             // An empty list keeps its first page, so a page lost is told
             // from a list with nothing in it.
             for start in stride(from: 0, to: max(items.count, 1), by: RealmState.partPage) {
-                parts["\(name).\(start / RealmState.partPage)"] = try text(Array(items[start..<min(start + RealmState.partPage, items.count)]))
+                let end = min(start + RealmState.partPage, items.count)
+                let key = "\(name).\(start / RealmState.partPage)"
+                // The same page there: the same items, and no more after
+                // them on it.
+                let alike = others.first { list, theirParts in
+                    guard let list, theirParts[key] != nil, min(start + RealmState.partPage, list.count) == end else { return false }
+                    return list[start..<end].elementsEqual(items[start..<end])
+                }
+                parts[key] = try alike?.1[key] ?? text(Array(items[start..<end]))
             }
         }
         var head = self
-        parts["map"] = try text(map)
+        // The map, a page at a time; a page just as it is in a world written
+        // with pages of the same size is taken as written there.
+        let pages = MapPages(radius: map.radius, page: RealmState.mapPage)
+        let mapHead = try text(pages)
+        parts["map"] = mapHead
+        let mapped = written.filter { $0.parts["map"] == mapHead }
+        for page in 0..<pages.count {
+            let key = "map.\(page)", range = pages.tiles(of: page)
+            let alike = mapped.first { $0.parts[key] != nil && $0.world.map.tiles[range] == map.tiles[range] }
+            parts[key] = alike?.parts[key] ?? WorldMap.cells(of: map.tiles[range])
+        }
         head.map = GameState.noMap
-        try paged("units", Array(units))
+        try paged("units", units) { $0.units }
         head.units = []
-        try paged("houses", houses)
+        try paged("houses", houses) { $0.houses }
         head.houses = []
-        try paged("holds", Array(holds))
+        try paged("holds", holds) { $0.holds }
         head.holds = []
-        try shared("relations", relations) { $0.relations }
+        try paged("relations", relations) { $0.relations }
         head.relations = []
-        try shared("chronicle", chronicle) { $0.chronicle }
+        try paged("chronicle", chronicle) { $0.chronicle }
         head.chronicle = []
-        try shared("recorded", recorded) { $0.recorded }
+        try paged("recorded", recorded) { $0.recorded }
         head.recorded = recorded.map { _ in [] }
         // Lists a realm from before them doesn't have stay absent from it.
-        try paged("commanders", commanders)
+        try paged("commanders", commanders) { $0.commanders }
         head.commanders = commanders.map { _ in [] }
-        try paged("wilds", wilds)
+        try paged("wilds", wilds) { $0.wilds }
         head.wilds = wilds.map { _ in [] }
-        try paged("sites", sites)
+        try paged("sites", sites) { $0.sites }
         head.sites = sites.map { _ in [] }
-        try paged("armoury", armoury)
+        try paged("armoury", armoury) { $0.armoury }
         head.armoury = armoury.map { _ in [] }
         // The songbook, like the Chronicle, is every keeper's to read.
-        try shared("ballads", ballads) { $0.ballads }
+        try paged("ballads", ballads) { $0.ballads }
         head.ballads = ballads.map { _ in [] }
         // The atlas, the same all age long and in every view, apart: the
         // head, written at every pace, leaves it out, keeping only an empty
         // one to say there is one.
         if let atlas {
-            if let whole, whole.world.atlas == atlas, let written = whole.parts["atlas"] {
-                parts["atlas"] = written
+            if let same = written.first(where: { $0.world.atlas == atlas && $0.parts["atlas"] != nil }) {
+                parts["atlas"] = same.parts["atlas"]
             } else {
                 parts["atlas"] = try text(atlas)
             }
@@ -130,7 +191,28 @@ extension GameState {
             let count = max(parts.keys.filter { $0.hasPrefix(name + ".") }.count, 1)
             return try (0..<count).flatMap { try GameState.part("\(name).\($0)", of: parts, using: decoder, as: [T].self) }
         }
-        map = try GameState.part("map", of: parts, using: decoder)
+        if parts["map.0"] != nil {
+            // The map in pages: as many as its head says, each the cells of
+            // as many tiles as it says.
+            let pages: MapPages = try GameState.part("map", of: parts, using: decoder)
+            // No more pages than there are parts: a head that says otherwise
+            // is refused before anything is laid out for it.
+            guard (1...MapPages.widest).contains(pages.radius), pages.page >= 1, pages.count <= parts.count else {
+                throw RealmPartsError.unreadable("map")
+            }
+            var tiles: [Tile] = []
+            for page in 0..<pages.count {
+                guard let cells = parts["map.\(page)"] else { throw RealmPartsError.missing("map.\(page)") }
+                guard let read = WorldMap.tiles(fromCells: cells), read.count == pages.tiles(of: page).count else {
+                    throw RealmPartsError.unreadable("map.\(page)")
+                }
+                tiles += read
+            }
+            guard let whole = WorldMap(radius: pages.radius, tiles: tiles) else { throw RealmPartsError.unreadable("map") }
+            map = whole
+        } else {
+            map = try GameState.part("map", of: parts, using: decoder)
+        }
         units = Companies(try pages("units", of: Unit.self))
         houses = try pages("houses", of: House.self)
         holds = Holdings(try pages("holds", of: Hold.self))
@@ -171,4 +253,6 @@ extension GameState {
 
 public enum RealmPartsError: Error, Equatable {
     case missing(String)
+    /// A part there, but not what its name says it is.
+    case unreadable(String)
 }

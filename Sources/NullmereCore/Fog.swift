@@ -17,9 +17,36 @@ extension GameState {
         [.still, .shallows, .stream].contains(tile.terrain) ? Tile(terrain: tile.terrain, relief: tile.relief) : Tile(terrain: .greyfield, relief: tile.relief)
     }
 
+    /// What every keeper's view takes alike from the world as it stands,
+    /// worked out once for all of them: the way of every company on the
+    /// march, every House's strength and might as all are told them, the
+    /// map as one who has explored none of it knows it, and the ground no
+    /// House is known by another to have explored.
+    public struct ViewCommons: Sendable {
+        let ways: [Int: [Hex]]?
+        let reputed: [Int]
+        let reputedMight: [Int]
+        let unexplored: WorldMap
+        let unknown: Explored
+    }
+
+    /// `ways`, the way of every company on the march as `ways()` finds
+    /// them, found once for many views; found as needed without.
+    public func viewCommons(ways: [Int: [Hex]]? = nil) -> ViewCommons {
+        ViewCommons(ways: ways, reputed: strengths(), reputedMight: houses.map { might(of: $0.id) },
+                    unexplored: map.unexplored, unknown: Explored(repeating: false, count: map.count))
+    }
+
     /// `ways`, the way of every company on the march as `ways()` finds
     /// them, found once for many views; found as needed without.
     public func view(for house: Int, ways: [Int: [Hex]]? = nil) -> GameState {
+        view(for: house, commons: viewCommons(ways: ways))
+    }
+
+    /// A House's view of the world with what every view takes alike already
+    /// worked out (`viewCommons`), of this world as it stands.
+    public func view(for house: Int, commons: ViewCommons) -> GameState {
+        let ways = commons.ways
         var view = self
         // The realm's words would grow the whole map again; where its
         // rounds begin is all the keeper's copy needs of them.
@@ -43,15 +70,14 @@ extension GameState {
         view.sculptureCounts = sculptureCounts?[house].map { [house: $0] }
         // A House's listening stones, and what they hear, are its own.
         view.listeningStones = listeningStones.map { all in all.filter { $0.owner == house } }.flatMap { $0.isEmpty ? nil : $0 }
-        view.soundings = soundings(heardBy: house).isEmpty ? nil : soundings(heardBy: house)
+        let heard = soundings(heardBy: house)
+        view.soundings = heard.isEmpty ? nil : heard
         view.listened = nil
         // A keeper's dreams are their own.
         view.dreams = dreams.map { all in all.filter { $0.house == house } }
         view.settings.seedText = ""
         let explored = houses.indices.contains(house) ? houses[house].explored : []
-        for index in 0..<map.count where !(explored.indices.contains(index) && explored[index]) {
-            view.map.set(index: index, GameState.unknown(map[index]))
-        }
+        view.map = map.known(by: explored, from: commons.unexplored)
         let seen = visibility(for: house)
         view.units = Companies(units.filter { unit in
             unit.owner == house || (map.index(of: unit.position).map { seen[$0] } ?? false)
@@ -78,11 +104,11 @@ extension GameState {
         }
         // Allies know what each other has under way, for they help it.
         let allies = Set(alliance(of: house)?.members ?? [])
-        // Ground no other House is known to have explored: one, shared.
-        let unknown = Explored(repeating: false, count: map.count)
+        // Ground no other House is known to have explored: one, shared by
+        // every view.
         for index in view.houses.indices where view.houses[index].id != house {
             view.houses[index].stock = .zero
-            view.houses[index].explored = unknown
+            view.houses[index].explored = commons.unknown
             view.houses[index].research = Research()
             if allies.contains(view.houses[index].id) {
                 view.houses[index].research.pursuit = houses[index].research.pursuit
@@ -103,8 +129,8 @@ extension GameState {
         view.hidden = hidden?[house].map { [house: $0] }
         // Gifts too small for the chronicle are known only to the two Houses.
         view.gifts = gifts?.filter { $0.from == house || $0.to == house }
-        view.reputed = strengths()
-        view.reputedMight = houses.map { might(of: $0.id) }
+        view.reputed = commons.reputed
+        view.reputedMight = commons.reputedMight
         // A House's riddle is its own, and its answer kept until it is answered.
         view.riddles = riddles.map { all in
             all.filter { $0.house == house }.map { riddle in
@@ -488,8 +514,13 @@ public struct RealmView: Codable, Equatable, Sendable {
 extension RealmState {
     /// What the realm tells one keeper: their own view of its world.
     public func view(for id: String, ways: [Int: [Hex]]? = nil) -> RealmView? {
+        view(for: id, commons: world.viewCommons(ways: ways))
+    }
+
+    /// A keeper's view with what every view takes alike already worked out
+    /// (`GameState.viewCommons`), of this realm's world as it stands.
+    public func view(for id: String, commons: GameState.ViewCommons) -> RealmView? {
         guard let keeper = keeper(id) else { return nil }
-        let world = keeper.house.map { self.world.view(for: $0, ways: ways) } ?? self.world.view(for: -1, ways: ways)
-        return RealmView(keeper: keeper, age: age, world: world)
+        return RealmView(keeper: keeper, age: age, world: world.view(for: keeper.house ?? -1, commons: commons))
     }
 }

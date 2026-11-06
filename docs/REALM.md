@@ -32,12 +32,19 @@ steward's answer). For development a realm can also be hosted in-process
   keepers write requests through reducers and read only their own view and
   replies, through SpacetimeDB views (`my_view`, `my_view_parts`,
   `my_replies`), and the realm's public status. A keeper's view is kept in
-  parts as the world is (its map, a page of each long list, the rest), and
-  its row names every part with the version it was written at: a
-  publication writes only the parts of each view that changed and lets go
-  of those a view no longer has, and a keeper's Mac reads only the parts
-  written since it last read, so a pace that moves a few companies sends a
-  page of them, not the whole world again.
+  parts as the world is (its map 2,048 tiles to a page, a page of 32 of
+  each long list, the rest), and its row names every part with the version
+  it was written at: a publication writes only the parts of each view that
+  changed and lets go of those a view no longer has, and a keeper's Mac
+  reads only the parts written since it last read, so a pace that moves a
+  few companies sends a page of them, not the whole world again, and a
+  company exploring sends the pages of map it explored. What every view
+  takes alike (every House's strength and might, the map as one who has
+  explored none of it knows it, the view of a keeper of no House in its
+  parts) is worked out once a publication, and each view takes every page
+  just as it is there as written there: only the pages that are a keeper's
+  own (their House's, their head, the map they have explored, the
+  companies they see) are written for them.
 - **Requests.** A request carries a nonce of 1 to 64 bytes and at most 4 KB
   besides; a keeper may have 32 requests waiting at most, and the steward
   carries out a few of each keeper's every round, so no one keeper can

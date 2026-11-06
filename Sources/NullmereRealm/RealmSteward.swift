@@ -117,6 +117,10 @@ public actor RealmSteward {
     /// The world's parts as SpacetimeDB keeps them, to send only those
     /// that changed.
     private var keptParts: [String: String] = [:]
+    /// The world those parts are of, when this steward wrote them: a page
+    /// of the world just as it was there is taken as written, not written
+    /// again. Nil when they were read back from the server.
+    private var keptWorld: GameState?
     /// The last publication failed: whether SpacetimeDB kept it is unknown.
     private var unsure = false
     /// What each keeper there heard lately, and when: published with their
@@ -513,6 +517,7 @@ public actor RealmSteward {
             if let attempt = lastAttempt, kept >= attempt.version { settle(attempt) }
             version = max(version, kept)
             keptParts = parts
+            keptWorld = nil
             lastAttempt = nil
             unsure = false
         }
@@ -536,8 +541,9 @@ public actor RealmSteward {
         // The way each company on the march goes, found once for every
         // keeper who sees a stretch of it.
         var ways: [Int: [Hex]]?
-        // The world's parts, which the views take their shared lists from.
-        let parts = worldChanged ? try state.parts(using: encoder) : keptParts
+        // The world's parts, which the views take their shared lists from:
+        // a page just as it was when last kept is taken as written then.
+        let parts = worldChanged ? try state.parts(using: encoder, reusing: keptWorld.map { [($0, keptParts)] } ?? []) : keptParts
         // Each keeper's view to be shown, in parts, worked out side by side.
         let showing = state.keepers.filter { $0.isOnline && !(unchanged && published[$0.id] != nil) }.map(\.id)
         if !showing.isEmpty { ways = state.world.ways() }
@@ -577,8 +583,8 @@ public actor RealmSteward {
         // The world's parts that changed, and those no longer there.
         let changed = parts.filter { keptParts[$0.key] != $0.value }.sorted { $0.key < $1.key }
         let gone = keptParts.keys.filter { parts[$0] == nil }.sorted()
-        let attempt = Attempt(version: version + 1, at: now, status: status, shown: shown, shownAt: shownAt, parts: parts, heard: lately,
-                              events: told.count, acts: acts.count, answers: answers.map(\.nonce))
+        let attempt = Attempt(version: version + 1, at: now, status: status, shown: shown, shownAt: shownAt, parts: parts, world: state.world,
+                              heard: lately, events: told.count, acts: acts.count, answers: answers.map(\.nonce))
         do {
             try await transport.call("publish", [
                 .integer(version + 1),
@@ -608,15 +614,25 @@ public actor RealmSteward {
     /// The views of these keepers, in parts, worked out side by side: each
     /// from the same world and only its own, so the order they are worked
     /// out in changes nothing. A keeper with no House to see from has none.
+    /// What every view takes alike is worked out once (the world as a
+    /// keeper of no House is told it, in its parts), and each view takes
+    /// every page just as it is there as written there: a keeper's view
+    /// costs what is theirs alone, not the whole realm.
     static func views(of keepers: [String], in state: RealmState, ways: [Int: [Hex]]?,
                       sharing parts: [String: String]) async throws -> [String: [String: String]] {
-        try await withThrowingTaskGroup(of: (String, [String: String]?).self) { group in
+        guard !keepers.isEmpty else { return [:] }
+        let commons = state.world.viewCommons(ways: ways)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        let stranger = state.world.view(for: -1, commons: commons)
+        let told: [GameState.Written] = [(stranger, try stranger.parts(using: encoder, reusing: [(state.world, parts)])), (state.world, parts)]
+        return try await withThrowingTaskGroup(of: (String, [String: String]?).self) { group in
             for keeper in keepers {
                 group.addTask {
                     let encoder = JSONEncoder()
                     encoder.outputFormatting = .sortedKeys
-                    guard let view = state.view(for: keeper, ways: ways) else { return (keeper, nil) }
-                    return (keeper, try view.parts(using: encoder, sharing: (state.world, parts)))
+                    guard let view = state.view(for: keeper, commons: commons) else { return (keeper, nil) }
+                    return (keeper, try view.parts(using: encoder, reusing: told))
                 }
             }
             var worked: [String: [String: String]] = [:]
@@ -635,6 +651,8 @@ public actor RealmSteward {
         let shown: [String: [String: String]]
         let shownAt: [String: [String: UInt64]]
         let parts: [String: String]
+        /// The world those parts are of.
+        let world: GameState
         let heard: [String: [(at: Double, batch: HeardBatch)]]
         /// How many of the pending events, acts and answers it carried.
         let events: Int
@@ -657,6 +675,7 @@ public actor RealmSteward {
         published = published.merging(attempt.shown) { $1 }.filter { there.contains($0.key) }
         publishedAt = publishedAt.merging(attempt.shownAt) { $1 }.filter { there.contains($0.key) }
         keptParts = attempt.parts
+        keptWorld = attempt.world
         recentlyHeard = attempt.heard
         pendingEvents.removeFirst(min(attempt.events, pendingEvents.count))
         pendingActs.removeFirst(min(attempt.acts, pendingActs.count))

@@ -87,6 +87,18 @@ public struct Explored: RandomAccessCollection, MutableCollection, Equatable, Ha
         words.reduce(0) { $0 + $1.nonzeroBitCount }
     }
 
+    /// Each tile seen, by its index, in order: a word at a time, the unseen
+    /// passed over sixty-four at once.
+    func forEachSeen(_ body: (Int) -> Void) {
+        for (word, bits) in words.enumerated() where bits != 0 {
+            var rest = bits
+            while rest != 0 {
+                body(word << 6 | rest.trailingZeroBitCount)
+                rest &= rest &- 1
+            }
+        }
+    }
+
     /// The tiles as bytes, eight to a byte, the first in each byte's lowest
     /// bit: as many as the tiles need.
     var bytes: [UInt8] {
