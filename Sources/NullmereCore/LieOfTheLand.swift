@@ -99,19 +99,31 @@ final class Claims: @unchecked Sendable {
     }
 
     private let lock = NSLock()
-    private var kept: (claimants: [Claimant], owners: [Int?])?
+    private var kept: (token: UInt64, claimants: [Claimant], owners: [Int?])?
 
-    func owners(for claimants: [Claimant]) -> [Int?]? {
+    /// What holds of this token claim, if they were the last to ask: told
+    /// by the token alone (`Holdings.claims`), not hold by hold.
+    func owners(forToken token: UInt64) -> [Int?]? {
         lock.lock()
         defer { lock.unlock() }
-        guard let kept, kept.claimants == claimants else { return nil }
+        guard let kept, kept.token == token else { return nil }
         return kept.owners
     }
 
-    func keep(_ owners: [Int?], for claimants: [Claimant]) {
+    /// What these holds claim, if holds the same in all that decides it
+    /// were the last to ask: kept from now under their token.
+    func owners(for claimants: [Claimant], token: UInt64) -> [Int?]? {
         lock.lock()
         defer { lock.unlock() }
-        kept = (claimants, owners)
+        guard let found = kept, found.claimants == claimants else { return nil }
+        kept = (token, found.claimants, found.owners)
+        return found.owners
+    }
+
+    func keep(_ owners: [Int?], for claimants: [Claimant], token: UInt64) {
+        lock.lock()
+        defer { lock.unlock() }
+        kept = (token, claimants, owners)
     }
 
     /// Lets go of what was kept, as the ground has changed.
@@ -154,5 +166,34 @@ final class Nearest: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         kept.removeAll()
+    }
+}
+
+/// The open water farthest from any shore, kept with the map while its
+/// ground stays as it is: sought through every tile of the lake the first
+/// time it is asked, given again every time after. A wide lake's every
+/// steward asks it at every pace of the full moon's walks on the mirror.
+final class Deepest: @unchecked Sendable {
+    private let lock = NSLock()
+    /// Unasked, or what was found: the deepest water, or none at all.
+    private var kept: DeepWater??
+
+    var water: DeepWater?? {
+        lock.lock()
+        defer { lock.unlock() }
+        return kept
+    }
+
+    func keep(_ found: DeepWater?) {
+        lock.lock()
+        defer { lock.unlock() }
+        kept = .some(found)
+    }
+
+    /// Lets go of what was kept, as the ground has changed.
+    func clear() {
+        lock.lock()
+        defer { lock.unlock() }
+        kept = nil
     }
 }

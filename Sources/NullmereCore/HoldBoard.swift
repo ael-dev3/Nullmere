@@ -1,3 +1,5 @@
+import Foundation
+
 /// The realm's holds in the order they were founded, with where each lies
 /// and whose each is kept beside them: the hold on a hex, a House's holds
 /// and its seat are found at once, not sought through every hold of the
@@ -17,6 +19,12 @@ public struct Holdings: RandomAccessCollection, MutableCollection, RangeReplacea
     private var board: [Hex: [Int]]
     /// Where in the list each House's holds lie, in the list's order.
     private var owned: [Int: [Int]]
+    /// What the holds claim of the land follows from: a token drawn anew,
+    /// unlike any other drawn in any realm, whenever a hold is founded or
+    /// lost, or one's id, place, founding, seat or Beacon changes. Holds
+    /// with the same token claim the same land (`GameState.territory`):
+    /// the claims kept for them are theirs without each hold being asked.
+    private(set) var claims: UInt64 = Holdings.drawClaims()
 
     public init() {
         list = []
@@ -68,19 +76,50 @@ public struct Holdings: RandomAccessCollection, MutableCollection, RangeReplacea
         _read { yield list[position] }
         set {
             let was = (list[position].position, list[position].owner)
+            let claimed = Holdings.claim(of: list[position])
             list[position] = newValue
             moved(position, from: was)
+            if Holdings.claim(of: list[position]) != claimed { claims = Holdings.drawClaims() }
         }
         // Changed where it lies; moved on the board, or to its new House, only
         // if it moved or was taken.
         _modify {
             let was = (list[position].position, list[position].owner)
+            let claimed = Holdings.claim(of: list[position])
             yield &list[position]
             moved(position, from: was)
+            if Holdings.claim(of: list[position]) != claimed { claims = Holdings.drawClaims() }
+        }
+    }
+
+    /// What a hold claims of the land by: its id, where it stands, when it
+    /// was founded, and how far it reaches (by its seat and Beacon).
+    private static func claim(of hold: Hold) -> Claims.Claimant {
+        Claims.Claimant(id: hold.id, position: hold.position, founded: hold.foundedWatch, reach: hold.territoryRadius)
+    }
+
+    /// A token for the holds' claims none drawn before it shares.
+    private static func drawClaims() -> UInt64 {
+        drawn.next()
+    }
+
+    private static let drawn = Tokens()
+
+    /// The tokens drawn, for any realm on any thread to draw the next.
+    private final class Tokens: @unchecked Sendable {
+        private let lock = NSLock()
+        private var last: UInt64 = 0
+
+        func next() -> UInt64 {
+            lock.lock()
+            defer { lock.unlock() }
+            last += 1
+            return last
         }
     }
 
     public mutating func replaceSubrange<C: Collection>(_ subrange: Range<Int>, with elements: C) where C.Element == Hold {
+        claims = Holdings.drawClaims()
         if subrange.isEmpty, subrange.lowerBound == list.count {
             // Founded at the end, as holds are: each laid where it is, after
             // every other.

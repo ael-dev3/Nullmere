@@ -479,15 +479,19 @@ public struct GameState: Codable, Equatable, Sendable {
         // without taking the whole state with it.
         let map = map
         // Every steward of a watch asks for it, and between their turns the
-        // holds seldom change: what the holds that last asked claimed is
-        // kept with the map's ground, and given again to the same holds.
+        // holds seldom change what they claim: what the holds that last
+        // asked claimed is kept with the map's ground, and given again to
+        // holds of the same token (`Holdings.claims`) without a look at each,
+        // or, the token new, to holds the same in all that decides it.
+        let token = holds.claims
+        if let kept = map.claims.owners(forToken: token) { return kept }
         var claimants: [Claims.Claimant] = []
         claimants.reserveCapacity(holds.count)
         for index in holds.indices {
             claimants.append(Claims.Claimant(id: holds[index].id, position: holds[index].position, founded: holds[index].foundedWatch,
                                              reach: holds[index].territoryRadius))
         }
-        if let kept = map.claims.owners(for: claimants) { return kept }
+        if let kept = map.claims.owners(for: claimants, token: token) { return kept }
         var owners = [Int?](repeating: nil, count: map.count)
         // The holds in the order they were founded, by index, none copied;
         // what each claims is the same in whatever order its hexes come.
@@ -504,7 +508,7 @@ public struct GameState: Codable, Equatable, Sendable {
                 owners[tile] = id
             }
         }
-        map.claims.keep(owners, for: claimants)
+        map.claims.keep(owners, for: claimants, token: token)
         return owners
     }
 

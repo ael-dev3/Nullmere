@@ -59,6 +59,10 @@ public struct WorldMap: Codable, Equatable, Sendable {
     /// while the ground is as it is: shared by the map's copies, and let go
     /// of by any copy whose ground changes.
     private(set) var nearest = Nearest()
+    /// The deepest of its open water, kept while the ground is as it is:
+    /// shared by the map's copies, and let go of by any copy whose ground
+    /// changes.
+    private(set) var deep = Deepest()
 
     private enum CodingKeys: String, CodingKey {
         case radius
@@ -256,6 +260,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
         // Claims its other copies still keep are theirs, of their ground.
         if isKnownUniquelyReferenced(&claims) { claims.clear() } else { claims = Claims() }
         if isKnownUniquelyReferenced(&nearest) { nearest.clear() } else { nearest = Nearest() }
+        if isKnownUniquelyReferenced(&deep) { deep.clear() } else { deep = Deepest() }
         let step = WorldMap.step(onto: tile.terrain)
         if steps[index] != step {
             // A lie its other copies still keep is theirs, of their ground.
@@ -304,6 +309,14 @@ extension WorldMap {
     /// The hex of open water farthest from any shore; of equals, the
     /// nearest the middle of the world. Nil when there is no open water.
     public func deepestWater() -> DeepWater? {
+        if let kept = deep.water { return kept }
+        let found = seekDeepestWater()
+        deep.keep(found)
+        return found
+    }
+
+    /// The deepest water, sought through every tile of the lake.
+    func seekDeepestWater() -> DeepWater? {
         // Hexes of open water, by their distance from anything that isn't.
         var depth = [Int](repeating: -1, count: count)
         var frontier: [Int] = []
