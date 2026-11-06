@@ -35,9 +35,10 @@ steward's answer). For development a realm can also be hosted in-process
   parts as the world is (its map's ground 2,048 tiles to a page and its
   relief whole, a page of 32 of each long list but the relations between
   every two Houses, a thousand to a page, and the rest), and its row
-  names every part with the version it was written at: a publication
-  writes only the parts of each view that changed and lets go of those a
-  view no longer has, and a keeper's Mac
+  names the parts that are its own, each with the version it was written
+  at, and the list of the pages told alike it takes: a publication writes
+  only the parts of each view that changed and lets go of those a view no
+  longer has, and a keeper's Mac
   takes only the parts written since it last took them, and decodes only
   those, keeping the rest as it read them, so a pace that moves a few
   companies sends a page of them, not the whole world again, and a
@@ -63,14 +64,20 @@ steward's answer). For development a realm can also be hosted in-process
   from the one before, in one part every view is told alike, as the lie
   of the land is known however little of the land is: a keeper's own
   pages of the map come to 2 KB where they were 39 as cells, three bytes
-  a tile. At ninety-six seats a watch's twelve paces write 7.3 MB of the
+  a tile. At ninety-six seats a watch's twelve paces write 5.8 MB of the
   world and every view against 22.7, and the world itself is 703 KB
   against 1,257 (a probe's measure at the fiftieth watch). The pages every
   keeper is told alike, just as a keeper of no House is told them, are
   kept on the server once, as no keeper's, under "~", the page's name and
-  the mark of its text, and each view names the ones it has: written once
-  a publication rather than once in every view, and let go once no view
-  names them. At ninety-six keepers, every view shown whole comes to
+  the mark of its text, and their names in one list, kept so too under
+  "~#" and the mark of its text: each view's row names the list and the
+  pages of it the view hasn't, and the view takes every page of it but
+  those it has its own of. A page told alike is written once a
+  publication rather than once in every view, and named once in the list
+  rather than in every view's row: at ninety-six seats a keeper's row
+  names a dozen parts where it named some ninety, and a watch's rows come
+  to 0.23 MB against 2.3 (a probe's measure at the fiftieth watch). The
+  pages and lists no view names are let go. At ninety-six keepers, every view shown whole comes to
   1.8 MB written against 40.6, and a watch's turn to 1.1 MB against 13.5
   (a probe's measure at the fiftieth watch).
 - **Requests.** A request carries a nonce of 1 to 64 bytes and at most 4 KB

@@ -475,12 +475,6 @@ public actor RealmSteward {
         }
     }
 
-    /// The parts of a keeper's view and the version each was written at,
-    /// as their row of `keeper_view` carries them: "head:12,map:3,units.0:12".
-    static func manifest(_ versions: [String: UInt64]) -> String {
-        versions.sorted { $0.key < $1.key }.map { "\($0.key):\($0.value)" }.joined(separator: ",")
-    }
-
     /// The world's parts as SpacetimeDB keeps them, by name.
     private static func keptParts(_ transport: any SpacetimeTransport, token: String) async throws -> [String: String] {
         let rows = try await transport.query("SELECT name, text FROM world_part", token: token)
@@ -582,6 +576,11 @@ public actor RealmSteward {
         let showing = state.keepers.filter { $0.isOnline && !(unchanged && published[$0.id] != nil) }.map(\.id)
         if !showing.isEmpty { ways = state.world.ways() }
         let worked = try await RealmSteward.views(of: showing, in: state, ways: ways, sharing: parts)
+        // Every page told alike, by the name of its row, in the one list
+        // every view's row names: a page told alike written anew is a new
+        // list, not every page named again in every row.
+        let toldAlike = AlikePages.named(worked.alike, alike: worked.alike)
+        let list = toldAlike.isEmpty ? nil : ViewRow.list(of: toldAlike.keys)
         var shown: [Shown] = []
         // The pages told alike the views there name as published: kept
         // until no view names them.
@@ -603,7 +602,10 @@ public actor RealmSteward {
             // Each page as the view names it: its own, or, told just as a
             // keeper of no House is told it, the page every view that has
             // it shares, kept once.
-            let viewParts = AlikePages.named(pages, alike: worked.alike)
+            var viewParts = AlikePages.named(pages, alike: worked.alike)
+            // The list it takes its pages told alike from, itself a page
+            // told alike, kept while a view names it.
+            if let list { viewParts[list.name] = list.text }
             let was = published[keeper.id] ?? [:]
             let changed = viewParts.filter { !AlikePages.isAlike($0.key) && was[$0.key] != $0.value }.sorted { $0.key < $1.key }
             let others = acts.filter { $0.by != keeper.id }.flatMap(\.events)
@@ -618,7 +620,8 @@ public actor RealmSteward {
                 alikeNamed[name] = viewParts[name]
             }
             shown.append(Shown(keeper: keeper.id, parts: viewParts, changed: changed, at: at,
-                               heard: String(decoding: try encoder.encode(batches.map(\.batch)), as: UTF8.self)))
+                               heard: String(decoding: try encoder.encode(batches.map(\.batch)), as: UTF8.self),
+                               told: list?.name, without: list == nil ? [] : Set(worked.alike.keys).subtracting(pages.keys)))
         }
         // And once it is: the views shown name these, the rest as they did.
         let showingNow = Set(shown.map(\.keeper))
@@ -691,6 +694,17 @@ public actor RealmSteward {
         let changed: [(key: String, value: String)]
         let at: [String: UInt64]
         let heard: String
+        /// The list of pages told alike its row names, and the pages of
+        /// that list the view hasn't; no list, and the row names every part.
+        var told: String?
+        var without: Set<String> = []
+
+        /// Its row, its parts written at `at`: its own, and the list it
+        /// takes its pages told alike from.
+        func row(_ at: [String: UInt64]) -> String {
+            guard let told else { return ViewRow(own: at).text }
+            return ViewRow(own: at.filter { !AlikePages.isAlike($0.key) }, told: told, without: without).text
+        }
     }
 
     /// One call of a publication, as the module's `publish` takes it.
@@ -737,7 +751,7 @@ public actor RealmSteward {
                       answers: [Answer], from version: UInt64, budget: Int) throws -> [Call] {
         let encoder = JSONEncoder()
         func encoded(_ reply: RealmReply) throws -> String { String(decoding: try encoder.encode(reply), as: UTF8.self) }
-        func keeps(_ names: [String]) -> String { manifest(Dictionary(uniqueKeysWithValues: names.map { ($0, UInt64(0)) })) }
+        func keeps(_ names: [String]) -> String { ViewRow(own: Dictionary(uniqueKeysWithValues: names.map { ($0, UInt64(0)) })).text }
         var calls = [Call(version: version)]
         calls[0].worldNames = changed.map(\.key)
         calls[0].worldTexts = changed.map(\.value)
@@ -775,7 +789,7 @@ public actor RealmSteward {
         for view in shown {
             var at = view.at
             for (name, _) in view.changed { at[name] = 0 }
-            let size = view.changed.reduce(0) { $0 + $1.key.utf8.count + $1.value.utf8.count } + view.heard.utf8.count + manifest(at).utf8.count
+            let size = view.changed.reduce(0) { $0 + $1.key.utf8.count + $1.value.utf8.count } + view.heard.utf8.count + view.row(at).utf8.count
             room(for: size)
             let last = calls.count - 1
             for (name, text) in view.changed {
@@ -785,7 +799,7 @@ public actor RealmSteward {
                 calls[last].partTexts.append(text)
             }
             calls[last].keepers.append(view.keeper)
-            calls[last].views.append(manifest(at))
+            calls[last].views.append(view.row(at))
             calls[last].heard.append(view.heard)
             calls[last].shown[view.keeper] = view.parts
             calls[last].shownAt[view.keeper] = at

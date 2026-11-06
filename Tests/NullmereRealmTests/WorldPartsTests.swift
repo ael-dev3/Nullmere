@@ -53,7 +53,7 @@ final class WorldPartsTests: XCTestCase {
         let state = await steward.state
         let keeper = state.keepers[0]
         let whole = try XCTUnwrap(state.view(for: keeper.id)).parts(using: JSONEncoder()).count
-        XCTAssertEqual(first, whole, "Their whole view the first time: \(whole) parts")
+        XCTAssertEqual(first, whole + 1, "Their whole view the first time: \(whole) parts, and the list of those told alike")
         let shown = try await db.keptView(of: ama.identity)
         XCTAssertEqual(shown, state.view(for: keeper.id))
 
@@ -72,17 +72,19 @@ final class WorldPartsTests: XCTestCase {
         XCTAssertEqual(kept, now.view(for: keeper.id))
         XCTAssertEqual(kept?.world.unit(spear.id)?.fortified, true)
 
-        // The row names every part and the version it was written at.
+        // The row names their own parts and the version each was written
+        // at, and the list of the pages told alike they take.
         let rows = try await db.query("SELECT * FROM my_view", token: ama.token)
-        let named = try XCTUnwrap(NetworkRealmLink.parts(named: try XCTUnwrap(rows.first?[2].string)))
-        XCTAssertEqual(named.count, whole)
-        XCTAssertEqual(Set(named.keys.map(AlikePages.page(of:))).count, whole, "Every page named once")
+        let row = try XCTUnwrap(ViewRow(try XCTUnwrap(rows.first?[2].string)))
+        let list = await db.alikeKept[try XCTUnwrap(row.told)]
+        let named = try XCTUnwrap(row.parts(told: try XCTUnwrap(list)))
+        XCTAssertEqual(named.count, whole + 1, "Every part, and the list")
+        XCTAssertEqual(Set(named.keys.filter { !ViewRow.isList($0) }.map(AlikePages.page(of:))).count, whole, "Every page named once")
         XCTAssertEqual(named["head"], 3, "Their head their own, written as the order changed it")
         XCTAssertTrue(named.keys.contains { AlikePages.isAlike($0) && AlikePages.page(of: $0) == "map" },
                       "The lake's pages as every keeper is told them, kept once")
+        XCTAssertFalse(row.own.keys.contains(where: AlikePages.isAlike), "Those named by the list alone")
         XCTAssertEqual(named.values.max(), 3, "The parts the order changed written at the latest")
-        XCTAssertNil(NetworkRealmLink.parts(named: "map:x"))
-        XCTAssertNil(NetworkRealmLink.parts(named: ""))
     }
 
     /// A part a keeper's view no longer has is let go: kept once with a
@@ -176,10 +178,14 @@ final class WorldPartsTests: XCTestCase {
                 let view = try await db.keptView(of: keeper.identity)
                 XCTAssertEqual(view, state.view(for: keeper.identity), "\(when): their view as kept joins into their view exactly")
                 let rows = try await db.query("SELECT * FROM my_view", token: keeper.token)
-                let names = try XCTUnwrap(NetworkRealmLink.parts(named: try XCTUnwrap(rows.first?[2].string))).keys
-                XCTAssertTrue(names.contains("head"), "\(when): their head their own")
-                XCTAssertTrue(names.contains(where: AlikePages.isAlike), "\(when): pages told alike")
-                named.formUnion(names.filter(AlikePages.isAlike))
+                let text = try XCTUnwrap(rows.first?[2].string)
+                let row = try XCTUnwrap(ViewRow(text))
+                let parts = try XCTUnwrap(row.parts(told: row.told.flatMap { kept[$0] }))
+                XCTAssertTrue(parts.keys.contains("head"), "\(when): their head their own")
+                XCTAssertTrue(parts.keys.contains(where: AlikePages.isAlike), "\(when): pages told alike")
+                XCTAssertLessThan(text.utf8.count * 2, ViewRow(own: parts).text.utf8.count,
+                                  "\(when): their row names their own parts and the list, not every part")
+                named.formUnion(parts.keys.filter(AlikePages.isAlike))
             }
             XCTAssertEqual(Set(kept.keys), named, "\(when): the rows the views name kept, and no others")
             for (row, text) in kept { XCTAssertEqual(AlikePages.row(AlikePages.page(of: row), text), row, "\(when): each row its text's own") }
@@ -201,7 +207,9 @@ final class WorldPartsTests: XCTestCase {
             }
         }
         let sent = await db.viewBytesSent
-        XCTAssertEqual(sent, own + alike.values.reduce(0) { $0 + $1.utf8.count }, "Their own pages, and those told alike once")
+        let list = ViewRow.list(of: AlikePages.named(worked.alike, alike: worked.alike).keys)
+        XCTAssertEqual(sent, own + alike.values.reduce(0) { $0 + $1.utf8.count } + list.text.utf8.count,
+                       "Their own pages, and those told alike once, and the list of them")
         let everyView = try keepers.reduce(0) { total, keeper in
             total + (try XCTUnwrap(state.view(for: keeper.identity)).parts(using: encoder)).values.reduce(0) { $0 + $1.utf8.count }
         }

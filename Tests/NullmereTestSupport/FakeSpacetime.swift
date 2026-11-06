@@ -203,11 +203,15 @@ public actor FakeSpacetime: SpacetimeTransport {
     public private(set) var viewPartsRead = 0
     public private(set) var viewBytesSent = 0
 
-    /// A keeper's view as the server keeps it, its parts joined.
+    /// A keeper's view as the server keeps it, its parts joined: those its
+    /// row names, and the pages told alike its list names that it takes.
     public func keptView(of keeper: String) throws -> RealmView? {
         guard let row = views[keeper] else { return nil }
+        guard let viewRow = ViewRow(row.view) else { throw SpacetimeError("The row of \(keeper) isn't a view's row.") }
+        let list = viewRow.told.flatMap { viewParts[AlikePages.keeper]?[$0]?.text }
+        guard let named = viewRow.parts(told: list) else { throw SpacetimeError("The view of \(keeper) names a list that isn't kept.") }
         var parts: [String: String] = [:]
-        for name in Self.named(row.view) {
+        for name in named.keys where !ViewRow.isList(name) {
             let kept = AlikePages.isAlike(name) ? viewParts[AlikePages.keeper]?[name] : viewParts[keeper]?[name]
             guard let kept else { throw SpacetimeError("The view of \(keeper) names \(name), which isn't kept.") }
             parts[AlikePages.page(of: name)] = kept.text

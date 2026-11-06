@@ -425,16 +425,17 @@ public final class NetworkRealmLink: RealmLink {
     }
 
     /// The keeper's own view: `my_view` holds one row, theirs, naming the
-    /// parts of their view and the version each was written at; the parts
-    /// written since those last read come from `my_view_parts`, so a pace
-    /// that moved a few companies brings a page of them, not the whole
-    /// world again. A view whose parts don't all match its row, published
-    /// again between the two reads, is read again.
+    /// parts of their view that are theirs and the version each was written
+    /// at, and the list of pages told alike it takes; the parts written
+    /// since those last read come from `my_view_parts`, so a pace that moved
+    /// a few companies brings a page of them, not the whole world again. A
+    /// view whose parts don't all match its row, published again between
+    /// the two reads, is read again.
     private func fetchView(_ credentials: SpacetimeCredentials) async throws -> (UInt64, RealmView, [HeardBatch])? {
         for _ in 0..<3 {
             let rows = try await transport.query("SELECT * FROM my_view", token: credentials.token)
             guard let row = rows.first, row.count == 4, let number = row[1].number, let names = row[2].string, let heard = row[3].string,
-                  let named = Self.parts(named: names) else {
+                  let viewRow = ViewRow(names) else {
                 return nil
             }
             // A realm kept anew counts its publications from the start: its
@@ -450,7 +451,19 @@ public final class NetworkRealmLink: RealmLink {
                 guard part.count == 3, let name = part[0].string, let at = part[1].number, let text = part[2].string else { continue }
                 viewParts[name] = (UInt64(at), text)
             }
-            // Pages told alike the view names that this Mac let go of, or
+            func ask(after name: String) async throws {
+                let rows = try await transport.query("SELECT name, version, text FROM my_view_parts WHERE name = \(sqlString(name))",
+                                                     token: credentials.token)
+                for part in rows {
+                    guard part.count == 3, let found = part[0].string, let at = part[1].number, let text = part[2].string else { continue }
+                    viewParts[found] = (UInt64(at), text)
+                }
+            }
+            // The list of pages told alike, if this Mac doesn't hold it, is
+            // asked for by name, and the view read again without it.
+            if let told = viewRow.told, viewParts[told] == nil { try await ask(after: told) }
+            guard let named = viewRow.parts(told: viewRow.told.flatMap { viewParts[$0]?.text }) else { continue }
+            // Pages told alike the view takes that this Mac let go of, or
             // never held, written before it last read: asked for by name, a
             // few of them; more, and every part is read afresh.
             let missing = named.keys.filter { AlikePages.isAlike($0) && viewParts[$0] == nil }.sorted()
@@ -459,21 +472,14 @@ public final class NetworkRealmLink: RealmLink {
                 partsThrough = 0
                 continue
             }
-            for name in missing {
-                let rows = try await transport.query("SELECT name, version, text FROM my_view_parts WHERE name = \(sqlString(name))",
-                                                     token: credentials.token)
-                for part in rows {
-                    guard part.count == 3, let found = part[0].string, let at = part[1].number, let text = part[2].string else { continue }
-                    viewParts[found] = (UInt64(at), text)
-                }
-            }
+            for name in missing { try await ask(after: name) }
             // A page told alike is its text's own row: there, it is the page.
             guard named.allSatisfy({ AlikePages.isAlike($0.key) ? viewParts[$0.key] != nil : viewParts[$0.key]?.version == $0.value }) else {
                 continue
             }
             viewParts = viewParts.filter { named[$0.key] != nil }
             partsThrough = max(partsThrough, UInt64(number))
-            let texts = Dictionary(viewParts.map { (AlikePages.page(of: $0.key), $0.value.text) }) { first, _ in first }
+            let texts = Self.texts(of: viewParts)
             // Tens of kilobytes of world, read away from the main thread, so
             // the map doesn't falter while it is.
             let read = partsRead
@@ -487,15 +493,11 @@ public final class NetworkRealmLink: RealmLink {
         return nil
     }
 
-    /// The parts a view's row names, each with the version it was written
-    /// at: "head:12,map:3,units.0:12". Nothing if the row says otherwise.
-    nonisolated static func parts(named text: String) -> [String: UInt64]? {
-        var parts: [String: UInt64] = [:]
-        for entry in text.split(separator: ",") {
-            guard let colon = entry.lastIndex(of: ":"), let version = UInt64(entry[entry.index(after: colon)...]) else { return nil }
-            parts[String(entry[..<colon])] = version
-        }
-        return parts.isEmpty ? nil : parts
+    /// A view's parts as their pages, by the names its row and its list
+    /// give them: each page its own text or the one every keeper is told,
+    /// and the list no page.
+    nonisolated static func texts(of parts: [String: (version: UInt64, text: String)]) -> [String: String] {
+        Dictionary(parts.lazy.filter { !ViewRow.isList($0.key) }.map { (AlikePages.page(of: $0.key), $0.value.text) }) { first, _ in first }
     }
 
     nonisolated static func decode(parts: [String: String], heard: String, read: PartsRead? = nil) throws -> (RealmView, [HeardBatch]) {
@@ -511,11 +513,15 @@ public final class NetworkRealmLink: RealmLink {
         let rows = mirror.snapshot()
         guard let row = rows["my_view"]?.first else { return true }
         guard row.count == 4, let number = row[1].number, let names = row[2].string, let heard = row[3].string,
-              let named = Self.parts(named: names) else { return false }
+              let viewRow = ViewRow(names) else { return false }
         let version = UInt64(number)
         guard version > viewVersion || view == nil else { return true }
+        let pushed = rows["my_view_parts"] ?? []
+        // The list of pages told alike the row names, among the rows pushed.
+        let list = viewRow.told.flatMap { told in pushed.first { $0.count == 5 && $0[2].string == told }?[4].string }
+        guard let named = viewRow.parts(told: list) else { return false }
         var held: [String: (version: UInt64, text: String)] = [:]
-        for part in rows["my_view_parts"] ?? [] {
+        for part in pushed {
             guard part.count == 5, let name = part[2].string, named[name] != nil, let at = part[3].number, let text = part[4].string
             else { continue }
             held[name] = (UInt64(at), text)
@@ -526,7 +532,7 @@ public final class NetworkRealmLink: RealmLink {
         // Kept as read, should the word stop and the realm be asked again.
         viewParts = held
         partsThrough = max(partsThrough, version)
-        let texts = Dictionary(held.map { (AlikePages.page(of: $0.key), $0.value.text) }) { first, _ in first }
+        let texts = Self.texts(of: held)
         let read = partsRead
         let (fresh, batches) = try await Task.detached(priority: .userInitiated) { try Self.decode(parts: texts, heard: heard, read: read) }.value
         deliver(fresh, version: version, heard: batches)

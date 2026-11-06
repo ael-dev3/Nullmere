@@ -74,12 +74,13 @@ public enum Speech {
     /// its pages of Houses, and the deeds done in pages of their own. 5:
     /// what a pace changes apart from the head, and explored ground as its
     /// runs. 6: the map's ground as its runs, its relief apart and told
-    /// alike.
-    public static let current = 6
+    /// alike. 7: a view's row naming its own parts and the list of pages
+    /// told alike it takes, not every page.
+    public static let current = 7
     /// The oldest tongue a realm of this build still hears from a keeper's
-    /// Mac: a Mac before the map's ground went as its runs would find no
-    /// map in its view.
-    public static let oldestHeard = 6
+    /// Mac: a Mac before a view's row named a list would find only the
+    /// view's own parts in it.
+    public static let oldestHeard = 7
     /// Where a keeper gets the newest Nullmere Online.
     public static let newestBuild = "https://github.com/ael-dev3/Nullmere/releases/latest"
 }

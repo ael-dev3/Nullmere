@@ -12,9 +12,13 @@ actor ViewTamper {
     var malformed = false
     /// The first page told alike left out of every read of the parts
     /// written since a version, as one written before the Mac last read
-    /// would be.
+    /// would be: a page of the list of those told alike, or the list.
     var hidingAnAlikePage = false
-    func hideAnAlikePage() { hidingAnAlikePage = true }
+    var hidingTheList = false
+    func hideAnAlikePage(theList: Bool = false) {
+        hidingAnAlikePage = true
+        hidingTheList = theList
+    }
     /// Every page told alike left out of the next read of the parts written
     /// since a version, as a Mac back after long away would find them.
     var hidingEveryAlikePageOnce = false
@@ -61,7 +65,8 @@ actor ViewTamper {
     /// The parts of the view, its head a new age's, all of them sent as if
     /// written since.
     func bend(parts rows: [[JSONValue]]) throws -> [[JSONValue]] {
-        if hidingAnAlikePage, let hidden = rows.compactMap({ $0.first?.string }).filter(AlikePages.isAlike).min() {
+        if hidingAnAlikePage,
+           let hidden = rows.compactMap({ $0.first?.string }).filter({ AlikePages.isAlike($0) && ViewRow.isList($0) == hidingTheList }).min() {
             return rows.filter { $0.first?.string != hidden }
         }
         if hidingEveryAlikePageOnce {
@@ -175,6 +180,22 @@ final class LinkViewTests: XCTestCase {
         XCTAssertNotNil(ear.world?.seat(of: house))
     }
 
+    /// The list of pages told alike the view's row names, written before
+    /// the Mac last read and not held, is asked for by its name, and the
+    /// view read whole by it.
+    func testTheListOfPagesToldAlikeTheMacDoesntHoldIsAskedForByName() async throws {
+        let (db, tamper, link, ear, running) = try await realm("the list asked for")
+        defer { running.cancel(); link.leave() }
+        await tamper.hideAnAlikePage(theList: true)
+        link.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        let token = try XCTUnwrap(link.credentials?.token)
+        let asked = await db.queried(FakeSpacetime.viewPartAsked, by: token)
+        XCTAssertGreaterThan(asked, 0, "The list asked for by name")
+        let kept = try await db.keptView(of: try XCTUnwrap(link.credentials?.identity))
+        XCTAssertEqual(ear.world, kept?.world, "Their whole view, read by the list")
+    }
+
     /// A view naming more pages told alike than the Mac holds, beyond a
     /// few to ask for by name, is read afresh, every part, and whole.
     func testAViewNamingManyPagesTheMacDoesntHoldIsReadAfresh() async throws {
@@ -187,7 +208,7 @@ final class LinkViewTests: XCTestCase {
         try await until("arrival") { ear.keeper != nil }
         let token = try XCTUnwrap(link.credentials?.token)
         let byName = await db.queried(FakeSpacetime.viewPartAsked, by: token)
-        XCTAssertEqual(byName, 0, "Not asked for one by one")
+        XCTAssertLessThanOrEqual(byName, 1, "Not asked for one by one: the list of them alone")
         let reads = await db.queried(FakeSpacetime.viewPartsAsked, by: token)
         XCTAssertGreaterThanOrEqual(reads, 2, "Read again from the start")
         let kept = try await db.keptView(of: try XCTUnwrap(link.credentials?.identity))

@@ -147,7 +147,7 @@ final class StewardRoundsTests: XCTestCase {
             XCTAssertEqual(call.partKeepers, call.keepers, "Each view's parts in the call with its row")
             XCTAssertEqual(call.partNames, call.keepers.map { _ in "units.0" })
             for (keeper, row) in zip(call.keepers, call.views) {
-                let named = try XCTUnwrap(NetworkRealmLink.parts(named: row))
+                let named = try XCTUnwrap(ViewRow(row)).own
                 XCTAssertEqual(named, ["head": 3, "units.0": call.version], "Its new part written in the call that carries it")
                 XCTAssertEqual(call.shownAt[keeper], named, "Kept as shown once the call is")
                 XCTAssertEqual(call.shown[keeper], ["head": "h\(keeper.dropFirst())", "units.0": units])
