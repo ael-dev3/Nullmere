@@ -71,7 +71,9 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var watch: Int
     public internal(set) var map: WorldMap
     public internal(set) var houses: [House]
-    public internal(set) var holds: [Hold]
+    /// The realm's holds, in the order they were founded, the hold on a
+    /// hex and each House's found at once (`Holdings`).
+    public internal(set) var holds: Holdings
     /// The realm's companies, in the order they were raised, each hex's
     /// found at once (`Companies`).
     public internal(set) var units: Companies
@@ -388,24 +390,23 @@ public struct GameState: Codable, Equatable, Sendable {
     }
 
     public func hold(at hex: Hex) -> Hold? {
-        for index in holds.indices where holds[index].position == hex { return holds[index] }
-        return nil
+        holds.first(at: hex).map { holds[$0] }
     }
 
     public func holds(of house: Int) -> [Hold] {
         var found: [Hold] = []
-        for index in holds.indices where holds[index].owner == house { found.append(holds[index]) }
+        for index in holds.places(of: house) { found.append(holds[index]) }
         return found
     }
 
     public func units(of house: Int) -> [Unit] {
         var found: [Unit] = []
-        for index in units.indices where units[index].owner == house { found.append(units[index]) }
+        for index in units.places(of: house) { found.append(units[index]) }
         return found
     }
 
     public func seat(of house: Int) -> Hold? {
-        for index in holds.indices where holds[index].owner == house && holds[index].isSeat { return holds[index] }
+        for index in holds.places(of: house) where holds[index].isSeat { return holds[index] }
         return nil
     }
 
@@ -580,7 +581,7 @@ public struct GameState: Codable, Equatable, Sendable {
     public func upkeep(of house: Int) -> Int {
         // Summed where its companies stand, not over a copy of them.
         var total = 0
-        for index in units.indices where units[index].owner == house { total += upkeep(of: units[index]) }
+        for index in units.places(of: house) { total += upkeep(of: units[index]) }
         return total
     }
 
@@ -621,26 +622,26 @@ public struct GameState: Codable, Equatable, Sendable {
         // copied out.
         var weighed = [(attack: Int, defense: Int)?](repeating: nil, count: UnitKind.count)
         var army = 0
-        for index in units.indices where units[index].owner == house {
+        for index in units.places(of: house) {
             let kind = units[index].kind
             let bonuses = weighed[kind.ordinal] ?? (bonus(.attack(kind), for: house), bonus(.defense(kind), for: house))
             weighed[kind.ordinal] = bonuses
             army += strength(of: units[index], house: bonuses)
         }
         var walls = 0
-        for index in holds.indices where holds[index].owner == house { walls += holds[index].ward / 2 }
+        for index in holds.places(of: house) { walls += holds[index].ward / 2 }
         return army + walls
     }
 
     /// Renown, for ranking the Houses.
     public func renown(of house: Int) -> Int {
-        var held = 0, built = 0, spire = 0, companies = 0
-        for index in holds.indices where holds[index].owner == house {
+        var held = 0, built = 0, spire = 0
+        for index in holds.places(of: house) {
             held += 1
             built += holds[index].levels.values.reduce(0, +)
             spire = max(spire, holds[index].level(.moonspire))
         }
-        for index in units.indices where units[index].owner == house { companies += 1 }
+        let companies = units.ids(of: house).count
         return held * 10 + built * 2 + companies + spire * 15
     }
 
@@ -776,7 +777,6 @@ public struct GameState: Codable, Equatable, Sendable {
     }
 
     func holdIndex(_ id: Int) -> Int? {
-        for index in holds.indices where holds[index].id == id { return index }
-        return nil
+        holds.index(ofID: id)
     }
 }

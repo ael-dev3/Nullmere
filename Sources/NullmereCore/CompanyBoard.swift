@@ -16,10 +16,13 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
     /// The ids of the companies standing on each hex, lowest first: a hex
     /// a company has left is let go.
     private var board: [Hex: [Int]]
+    /// The ids of each House's companies, lowest first.
+    private var owned: [Int: [Int]]
 
     public init() {
         list = []
         board = [:]
+        owned = [:]
     }
 
     public init(arrayLiteral elements: Unit...) {
@@ -29,7 +32,8 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
     public init<S: Sequence>(_ elements: S) where S.Element == Unit {
         list = Array(elements)
         board = [:]
-        for unit in list { stand(unit.id, on: unit.position) }
+        owned = [:]
+        for unit in list { enter(unit) }
     }
 
     public init(from decoder: any Decoder) throws {
@@ -64,28 +68,23 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
         // hundred bytes and asked after many thousand times a watch.
         _read { yield list[position] }
         set {
-            let was = list[position]
+            let was = (id: list[position].id, at: list[position].position, owner: list[position].owner)
             list[position] = newValue
-            if was.id != newValue.id || was.position != newValue.position {
-                leave(was.id, from: was.position)
-                stand(newValue.id, on: newValue.position)
-            }
+            moved(position, from: was)
         }
-        // Changed where it lies; moved on the board only if it moved.
+        // Changed where it lies; moved on the board only if it moved, and to
+        // another House only if it was given over.
         _modify {
-            let id = list[position].id, at = list[position].position
+            let was = (id: list[position].id, at: list[position].position, owner: list[position].owner)
             yield &list[position]
-            if list[position].id != id || list[position].position != at {
-                leave(id, from: at)
-                stand(list[position].id, on: list[position].position)
-            }
+            moved(position, from: was)
         }
     }
 
     public mutating func replaceSubrange<C: Collection>(_ subrange: Range<Int>, with elements: C) where C.Element == Unit {
-        for index in subrange { leave(list[index].id, from: list[index].position) }
+        for index in subrange { leave(list[index].id, at: list[index].position, of: list[index].owner) }
         list.replaceSubrange(subrange, with: elements)
-        for unit in elements { stand(unit.id, on: unit.position) }
+        for unit in elements { enter(unit) }
     }
 
     public mutating func reserveCapacity(_ minimumCapacity: Int) {
@@ -109,6 +108,21 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
     /// Whether any company stands on a hex.
     public func isHeld(_ hex: Hex) -> Bool {
         board[hex] != nil
+    }
+
+    /// The ids of a House's companies, lowest first.
+    public func ids(of house: Int) -> [Int] {
+        owned[house] ?? []
+    }
+
+    /// Where in the list a House's companies lie, in the list's order.
+    public func places(of house: Int) -> [Int] {
+        guard let ids = owned[house] else { return [] }
+        var places = ids.compactMap(index(ofID:))
+        // As raised, lowest id first, the list's order already; sorted only
+        // should any lie out of that order.
+        if zip(places, places.dropFirst()).contains(where: { $0 >= $1 }) { places.sort() }
+        return places
     }
 
     /// Where in the list the first company standing on a hex lies, as a
@@ -135,30 +149,52 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
         return nil
     }
 
-    private mutating func stand(_ id: Int, on hex: Hex) {
-        Companies.insert(id, into: &board[hex, default: []])
+    private mutating func enter(_ unit: Unit) {
+        Companies.lay(unit.id, into: &board[unit.position, default: []])
+        Companies.lay(unit.id, into: &owned[unit.owner, default: []])
     }
 
-    /// An id laid among a hex's, lowest first: changed where it lies.
-    private static func insert(_ id: Int, into ids: inout [Int]) {
+    private mutating func leave(_ id: Int, at hex: Hex, of owner: Int) {
+        Companies.lift(id, from: &board, at: hex)
+        Companies.lift(id, from: &owned, at: owner)
+    }
+
+    private mutating func moved(_ place: Int, from was: (id: Int, at: Hex, owner: Int)) {
+        let now = list[place]
+        if now.id != was.id || now.position != was.at {
+            Companies.lift(was.id, from: &board, at: was.at)
+            Companies.lay(now.id, into: &board[now.position, default: []])
+        }
+        if now.id != was.id || now.owner != was.owner {
+            Companies.lift(was.id, from: &owned, at: was.owner)
+            Companies.lay(now.id, into: &owned[now.owner, default: []])
+        }
+    }
+
+    /// An id laid among others, lowest first: changed where it lies.
+    private static func lay(_ id: Int, into ids: inout [Int]) {
         var place = ids.count
         while place > 0, ids[place - 1] > id { place -= 1 }
         ids.insert(id, at: place)
     }
 
-    private mutating func leave(_ id: Int, from hex: Hex) {
-        // Looked at, and let go before the hex's ids are changed in place.
-        let found: (count: Int, place: Int)? = board[hex].flatMap { ids in ids.firstIndex(of: id).map { (ids.count, $0) } }
+    private static func lift<Key: Hashable>(_ id: Int, from ids: inout [Key: [Int]], at key: Key) {
+        // Looked at, and let go before the key's ids are changed in place.
+        let found: (count: Int, place: Int)? = ids[key].flatMap { list in list.firstIndex(of: id).map { (list.count, $0) } }
         guard let found else { return }
-        if found.count == 1 { board[hex] = nil } else { board[hex]?.remove(at: found.place) }
+        if found.count == 1 { ids[key] = nil } else { ids[key]?.remove(at: found.place) }
     }
 
-    /// Whether the board holds every company where it stands and nothing
-    /// else: for the tests.
+    /// Whether the board holds every company where it stands, and each
+    /// House's its own, and nothing else: for the tests.
     func boardHolds() -> Bool {
-        var expected: [Hex: [Int]] = [:]
-        for unit in list { expected[unit.position, default: []].append(unit.id) }
-        for key in expected.keys { expected[key]?.sort() }
-        return expected == board
+        var hexes: [Hex: [Int]] = [:], houses: [Int: [Int]] = [:]
+        for unit in list {
+            hexes[unit.position, default: []].append(unit.id)
+            houses[unit.owner, default: []].append(unit.id)
+        }
+        for key in hexes.keys { hexes[key]?.sort() }
+        for key in houses.keys { houses[key]?.sort() }
+        return hexes == board && houses == owned
     }
 }

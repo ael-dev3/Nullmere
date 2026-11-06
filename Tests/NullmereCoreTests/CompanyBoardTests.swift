@@ -25,6 +25,10 @@ final class CompanyBoardTests: XCTestCase {
             XCTAssertEqual(units.ids(at: hex), walked.ids, "\(note): every one on \(hex)", file: file, line: line)
             XCTAssertEqual(units.isHeld(hex), walked.first != nil, file: file, line: line)
         }
+        for house in Set(units.map(\.owner)).union([42]) {
+            XCTAssertEqual(units.places(of: house), units.indices.filter { units[$0].owner == house }, "\(note): House \(house)'s", file: file, line: line)
+            XCTAssertEqual(units.ids(of: house), units.filter { $0.owner == house }.map(\.id).sorted(), file: file, line: line)
+        }
     }
 
     func testTheBoardFollowsEveryChange() {
@@ -36,6 +40,8 @@ final class CompanyBoardTests: XCTestCase {
         assertBoard(units, "one moved onto a held hex")
         units[1].health -= 10
         assertBoard(units, "one changed but not moved")
+        units[1].owner = 5
+        assertBoard(units, "one given over to another House")
         units[2] = company(5, 3, 3)
         assertBoard(units, "one written anew")
         units.remove(at: 1)
@@ -100,6 +106,9 @@ final class CompanyBoardTests: XCTestCase {
         XCTAssertGreaterThan(world.units.count, 12, "Companies raised")
         for unit in world.units {
             XCTAssertNotNil(world.unit(at: unit.position))
+        }
+        for house in world.houses.indices {
+            XCTAssertEqual(world.units(of: house).map(\.id), world.units.filter { $0.owner == house }.map(\.id))
         }
     }
 }

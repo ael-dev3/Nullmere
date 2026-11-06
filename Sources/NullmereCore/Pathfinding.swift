@@ -116,7 +116,7 @@ struct SearchRoom {
         SearchRoom.bring(&halls, to: state.hallsStanding, on: map, standing: &standing, blocked: &blocked, spare: &spare)
         SearchRoom.bring(&storehouses, to: state.storehousesStanding, on: map, standing: &standing, blocked: &blocked, spare: &spare)
         if let index = state.unitIndex(unit.id) { lift(state.units[index].position, on: map) }
-        for index in state.holds.indices where state.holds[index].owner == unit.owner { lift(state.holds[index].position, on: map) }
+        for index in state.holds.places(of: unit.owner) { lift(state.holds[index].position, on: map) }
         // Only its alliance's companies pass through a hall, or a storehouse.
         for hall in state.hallsStanding where state.isOfHall(unit.owner, hall) { lift(hall.position, on: map) }
         for storehouse in state.storehousesStanding where state.isOf(storehouse.alliance, unit.owner) { lift(storehouse.position, on: map) }

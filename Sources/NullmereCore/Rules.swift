@@ -788,11 +788,11 @@ extension GameState {
         // Its holds, those mustering Founders and its Founders on the march
         // counted where they stand, not copied out to be counted.
         var held = 0, mustering = 0, marching = 0
-        for index in holds.indices where holds[index].owner == house {
+        for index in holds.places(of: house) {
             held += 1
             if holds[index].training?.kind == .founder { mustering += 1 }
         }
-        for index in units.indices where units[index].owner == house && units[index].kind == .founder { marching += 1 }
+        for index in units.places(of: house) where units[index].kind == .founder { marching += 1 }
         let extra = max(0, held - 1) + mustering + marching
         return GameState.lessened(kind.cost.scaled(percent: 100 + 50 * extra), by: discount)
     }
@@ -956,7 +956,7 @@ extension GameState {
             setStance(.pact, between: proposer, and: other, by: actor)
             houses[proposer].liege = other
             // A vassal raises no Moonspire: the works on its tower stop.
-            for index in holds.indices where holds[index].owner == proposer && holds[index].project?.kind == .moonspire {
+            for index in holds.places(of: proposer) where holds[index].project?.kind == .moonspire {
                 holds[index].project = nil
             }
             record(.pact, [proposer, other], "\(houses[proposer].title) bends the knee and swears fealty to \(houses[other].title).")

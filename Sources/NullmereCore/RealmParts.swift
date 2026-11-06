@@ -90,7 +90,7 @@ extension GameState {
         head.units = []
         try paged("houses", houses)
         head.houses = []
-        try paged("holds", holds)
+        try paged("holds", Array(holds))
         head.holds = []
         try shared("relations", relations) { $0.relations }
         head.relations = []
@@ -133,7 +133,7 @@ extension GameState {
         map = try GameState.part("map", of: parts, using: decoder)
         units = Companies(try pages("units", of: Unit.self))
         houses = try pages("houses", of: House.self)
-        holds = try pages("holds", of: Hold.self)
+        holds = Holdings(try pages("holds", of: Hold.self))
         relations = try pages("relations", of: Relation.self)
         chronicle = try pages("chronicle", of: ChronicleEntry.self)
         if recorded != nil {

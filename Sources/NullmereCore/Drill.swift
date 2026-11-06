@@ -63,7 +63,7 @@ extension GameState {
         // Its House's holds read where they stand, in one pass, not every
         // hex about it sought through all the lake's holds.
         var best: Int?
-        for index in holds.indices where holds[index].owner == unit.owner && holds[index].position.distance(to: unit.position) <= 1 {
+        for index in holds.places(of: unit.owner) where holds[index].position.distance(to: unit.position) <= 1 {
             let level = holds[index].level(.musterHall)
             guard level > 0 else { continue }
             if let chosen = best, (holds[chosen].level(.musterHall), -holds[chosen].id) >= (level, -holds[index].id) { continue }

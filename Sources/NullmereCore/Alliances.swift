@@ -246,7 +246,7 @@ extension GameState {
             helpers = (helpers ?? []) + [house]
             if helpers!.count % GameState.helpsPerWatch == 0, watchesLeft > 1 { watchesLeft -= 1 }
         }
-        for index in holds.indices where holds[index].owner == ally {
+        for index in holds.places(of: ally) {
             if var project = holds[index].project, !(project.helpers ?? []).contains(house) {
                 hasten(&project.helpers, &project.watchesLeft)
                 holds[index].project = project
