@@ -172,8 +172,9 @@ final class ClipTests: XCTestCase {
         XCTAssertLessThan(size(engine.pose(.attack, at: Clip.attack.period * 0.5)[Int(Engine.stone)]), 0.01, "and thrown")
         let flung = engine.pose(.attack, at: Clip.attack.period * 0.35)[Int(Engine.arm)].transformDirection(Vec3(0, 0, -1))
         XCTAssertGreaterThan(flung.y, 0.5, "the arm thrown up from where it lay back")
-        XCTAssertGreaterThan(moved(.prop(.cart), .march, 1), 0.5)
-        XCTAssertEqual(moved(.prop(.cart), .idle, 1), 0, "a cart at rest is still")
+        let wheel = UInt16(Library.model(.prop(.cart)).rig.index(of: "wheel left") ?? 0)
+        XCTAssertGreaterThan(moved(.prop(.cart), .march, wheel), 0.5)
+        XCTAssertEqual(moved(.prop(.cart), .idle, wheel), 0, "a cart at rest is still")
         // A tool comes out to gather, and is put away otherwise.
         let gatherer = Library.model(.figure(.bow, tier: 4))
         XCTAssertEqual(size(gatherer.pose(.gather, at: 0.3)[Int(Limb.tool)]), 1, accuracy: 1e-3)
@@ -186,8 +187,10 @@ final class ClipTests: XCTestCase {
         XCTAssertGreaterThan(moved(.work(.quarry, level: 5), .idle, UInt16(trolley)), 0.3, "the crane slews")
         let fire = Library.model(.work(.beacon, level: 2)).rig.index(of: "beacon fire") ?? 0
         XCTAssertGreaterThan(moved(.work(.beacon, level: 2), .idle, UInt16(fire)), 0.05, "the beacon's fire leaps")
-        XCTAssertGreaterThan(moved(.prop(.bird), .idle, 1), 0.5)
-        XCTAssertGreaterThan(moved(.prop(.puff), .idle, 1), 0.1, "smoke rises")
+        let wing = UInt16(Library.model(.prop(.bird)).rig.index(of: "wing left") ?? 0)
+        XCTAssertGreaterThan(moved(.prop(.bird), .idle, wing), 0.5)
+        let cloud = UInt16(Library.model(.prop(.puff)).rig.index(of: "cloud") ?? 0)
+        XCTAssertGreaterThan(moved(.prop(.puff), .idle, cloud), 0.1, "smoke rises")
         XCTAssertGreaterThan(moved(.commander(variant: 4), .attack, Steed.heldR), 0.3, "the standard is waved")
         XCTAssertGreaterThan(moved(.commander(variant: 0), .attack, Steed.heldR), 0.3, "the blade is swung")
     }

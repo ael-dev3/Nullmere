@@ -67,8 +67,11 @@ six commanders, the townsfolk with their carters, the keeps, the walls, the
 town, every work (the Granary, the Beacon, the Sawpit, the Quarry, the
 Saltworks, the Muster Hall, the Infirmary, the Archive, the Forge, the
 Wayhouse, the Masons' Lodge and the Moonspire), an alliance's hall, the
-Lyceum's hall with its orrery and the five holy sites are made in Blender,
-each by a script
+Lyceum's hall with its orrery, the holy sites, the gathering sites, the
+lairs and the gatehold, an alliance's storehouse and yards, the rigs a
+rising work is raised beside, and what moves through the world (arrows,
+banners, birds, carts, braziers, smoke, boats, a builder's stores,
+waystones) are made in Blender, each by a script
 ([`Art/blender/spearman.py`](../Art/blender/spearman.py),
 [`archer.py`](../Art/blender/archer.py), [`lantern.py`](../Art/blender/lantern.py),
 [`rider.py`](../Art/blender/rider.py), [`commanders.py`](../Art/blender/commanders.py),
@@ -83,7 +86,9 @@ each by a script
 [`musterhall.py`](../Art/blender/musterhall.py), [`archive.py`](../Art/blender/archive.py),
 [`hall.py`](../Art/blender/hall.py), [`infirmary.py`](../Art/blender/infirmary.py), [`lodge.py`](../Art/blender/lodge.py),
 [`wayhouse.py`](../Art/blender/wayhouse.py), [`lyceum.py`](../Art/blender/lyceum.py),
-[`shrines.py`](../Art/blender/shrines.py))
+[`shrines.py`](../Art/blender/shrines.py), [`sites.py`](../Art/blender/sites.py),
+[`lairs.py`](../Art/blender/lairs.py), [`stores.py`](../Art/blender/stores.py),
+[`raising.py`](../Art/blender/raising.py), [`props.py`](../Art/blender/props.py))
 that builds the body, gear and
 skeleton and keys the actions, on one body every person shares
 ([`person.py`](../Art/blender/person.py)): the skin is weighted to the
@@ -106,9 +111,9 @@ importer of its own ([`Asset.swift`](../Sources/NullmereModels/Asset.swift)):
 each vertex moves with its two heaviest bones, by its weight between them,
 and each action plays bone by bone. Every other model is still built from
 code ([`Sources/NullmereModels`](../Sources/NullmereModels)), and moves to
-Blender the same way: the gathering sites, the lairs and the gatehold, the
-alliance's storehouse and yards, the land's firs, birches, heather, ferns,
-crags, reeds, pebbles, mounds and ruins, and what moves through the world.
+Blender the same way: the land's firs, birches, heather, ferns, crags,
+reeds, pebbles, mounds and ruins, an alliance's standard, a rally's war
+camp and the land's other marks.
 Companies stand in formation, fewer as they are worn down and more as they
 are drilled; holds lay out their works on the land around the keep. Near,
 the models show fine work that is left off from afar, where it is too small

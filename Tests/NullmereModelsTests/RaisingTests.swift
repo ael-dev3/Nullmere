@@ -19,8 +19,8 @@ final class RaisingTests: XCTestCase {
 
             let model = Library.model(.raising(kind))
             XCTAssertLessThanOrEqual(model.mesh.triangleCount, ModelKey.raising(kind).budget)
-            let motion = try XCTUnwrap(model.motion)
-            XCTAssertNotEqual(motion(.idle, 0), motion(.idle, 0.4), "\(kind)'s rig works")
+            XCTAssertNotNil(model.skeleton?.actions[.idle], "\(kind)'s rig keyed in Blender")
+            XCTAssertNotEqual(model.pose(.idle, at: 0), model.pose(.idle, at: 0.4), "\(kind)'s rig works")
         }
         XCTAssertEqual(ModelKey.raising(.lodge).description, "raising lodge")
         // A family with no rig of its own rises in the scaffold alone.
