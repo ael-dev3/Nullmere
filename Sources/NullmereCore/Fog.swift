@@ -53,9 +53,9 @@ extension GameState {
             view.map.set(index: index, GameState.unknown(map[index]))
         }
         let seen = visibility(for: house)
-        view.units = units.filter { unit in
+        view.units = Companies(units.filter { unit in
             unit.owner == house || (map.index(of: unit.position).map { seen[$0] } ?? false)
-        }
+        })
         // A company in sight shows where it stands and how many it is, not
         // where it is bound, nor what it is about or carries, nor whether it
         // drills.

@@ -72,7 +72,9 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var map: WorldMap
     public internal(set) var houses: [House]
     public internal(set) var holds: [Hold]
-    public internal(set) var units: [Unit]
+    /// The realm's companies, in the order they were raised, each hex's
+    /// found at once (`Companies`).
+    public internal(set) var units: Companies
     public internal(set) var relations: [Relation]
     public internal(set) var envoys: [Envoy]
     public internal(set) var chronicle: [ChronicleEntry]
@@ -382,8 +384,7 @@ public struct GameState: Codable, Equatable, Sendable {
     }
 
     public func unit(at hex: Hex) -> Unit? {
-        for index in units.indices where units[index].position == hex { return units[index] }
-        return nil
+        units.first(at: hex).map { units[$0] }
     }
 
     public func hold(at hex: Hex) -> Hold? {
@@ -771,18 +772,7 @@ public struct GameState: Codable, Equatable, Sendable {
     }
 
     func unitIndex(_ id: Int) -> Int? {
-        // Companies are kept in the order they were raised, each id above
-        // the one before, so one is found by halving the list; one not
-        // found so is looked for in each, should any be out of that order.
-        var low = 0, high = units.count
-        while low < high {
-            let middle = (low + high) / 2
-            let found = units[middle].id
-            if found == id { return middle }
-            if found < id { low = middle + 1 } else { high = middle }
-        }
-        for index in units.indices where units[index].id == id { return index }
-        return nil
+        units.index(ofID: id)
     }
 
     func holdIndex(_ id: Int) -> Int? {

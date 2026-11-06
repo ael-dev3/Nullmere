@@ -1543,10 +1543,10 @@ struct RivalMind {
     private func foeInReach(of unit: Unit, companiesOfWarOnly: Bool = false, in state: GameState) -> Hex? {
         guard unit.movesLeft > 0 else { return nil }
         let range = unit.kind.range
-        // What stands within its reach, found in one pass over the companies
-        // and one over the holds, not one for every hex: the first on a hex,
-        // as `unit(at:)` and `hold(at:)` find it, looked at where it stands
-        // and kept by its owner and kind alone, not copied out whole.
+        // What stands within its reach: the companies read off the realm's
+        // board hex by hex, the holds in one pass over them, not each sought
+        // for every hex; the first on a hex, as `unit(at:)` and `hold(at:)`
+        // find it, kept by its owner and kind alone, not copied out whole.
         // Each in its place on a little board about the company, by its
         // offset from it, not hashed.
         let side = 2 * range + 1
@@ -1554,11 +1554,10 @@ struct RivalMind {
         var holding = [Int?](repeating: nil, count: side * side)
         let at = unit.position
         func place(_ hex: Hex) -> Int { (hex.q - at.q + range) * side + (hex.r - at.r + range) }
-        for index in state.units.indices {
-            let position = state.units[index].position
-            guard abs(position.q - at.q) <= range, position.distance(to: at) <= range else { continue }
-            let slot = place(position)
-            if standing[slot] == nil { standing[slot] = (state.units[index].owner, state.units[index].kind.isMilitary) }
+        at.forEach(within: range) { hex in
+            if let index = state.units.first(at: hex) {
+                standing[place(hex)] = (state.units[index].owner, state.units[index].kind.isMilitary)
+            }
         }
         for index in state.holds.indices {
             let position = state.holds[index].position
@@ -1625,25 +1624,26 @@ struct RivalMind {
         var gates: [Hex] = []
         for index in state.holds.indices where state.holds[index].owner == house { gates.append(state.holds[index].position) }
         // An engine meets no one: soft in the field, it keeps to its siege.
-        // The companies near looked at where they stand, not copied out to
-        // be sifted, those far along the map's columns passed over at a
-        // glance; through a list held for the look rather than read through
-        // the realm handed in to be changed, and let go before it is.
+        // The companies near read off the realm's board, hex by hex within
+        // three, every one on a hex, not sought through all the realm's;
+        // through a list held for the look rather than read through the
+        // realm handed in to be changed, and let go before it is.
         var skirmish: (key: (Int, Int), position: Hex)?
         if unit.kind != .mangonel {
             let units = state.units
-            for index in units.indices {
-                let position = units[index].position
-                guard abs(position.q - unit.position.q) <= 3 else { continue }
-                let distance = position.distance(to: unit.position), owner = units[index].owner
-                guard distance <= 3, owner != house, units[index].kind.isMilitary, state.isAtWar(house, owner) else { continue }
-                if let siege, position.distance(to: siege.target) > unit.position.distance(to: siege.target),
-                   !gates.contains(where: { $0.distance(to: position) <= 3 }) {
-                    continue
+            unit.position.forEach(within: 3) { position in
+                for id in units.ids(at: position) {
+                    guard let index = units.index(ofID: id) else { continue }
+                    let distance = position.distance(to: unit.position), owner = units[index].owner
+                    guard owner != house, units[index].kind.isMilitary, state.isAtWar(house, owner) else { continue }
+                    if let siege, position.distance(to: siege.target) > unit.position.distance(to: siege.target),
+                       !gates.contains(where: { $0.distance(to: position) <= 3 }) {
+                        continue
+                    }
+                    guard let tile = state.map.index(of: position), visible[tile] else { continue }
+                    let key = (distance, id)
+                    if skirmish.map({ key < $0.key }) ?? true { skirmish = (key, position) }
                 }
-                guard let tile = state.map.index(of: position), visible[tile] else { continue }
-                let key = (distance, units[index].id)
-                if skirmish.map({ key < $0.key }) ?? true { skirmish = (key, position) }
             }
         }
         if let skirmish {

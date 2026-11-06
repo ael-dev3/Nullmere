@@ -148,8 +148,9 @@ struct SearchRoom {
     /// its old tile and put on its new, one gone taken off, one come put on.
     /// However they came to be ordered, each thing marked is taken off or
     /// kept once and each standing now put on or kept once.
-    private static func bring<Thing: InTheWay>(_ marks: inout [Mark], to things: [Thing], on map: WorldMap,
-                                               standing: inout [UInt16], blocked: inout [Bool], spare: inout [Mark]) {
+    private static func bring<Things: RandomAccessCollection>(_ marks: inout [Mark], to things: Things, on map: WorldMap,
+                                                          standing: inout [UInt16], blocked: inout [Bool], spare: inout [Mark])
+        where Things.Element: InTheWay, Things.Index == Int {
         func tile(_ hex: Hex) -> Int32 { map.index(of: hex).map { Int32($0) } ?? -1 }
         func put(_ tile: Int32) {
             guard tile >= 0 else { return }

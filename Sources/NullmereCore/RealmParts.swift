@@ -86,7 +86,7 @@ extension GameState {
         var head = self
         parts["map"] = try text(map)
         head.map = GameState.noMap
-        try paged("units", units)
+        try paged("units", Array(units))
         head.units = []
         try paged("houses", houses)
         head.houses = []
@@ -131,7 +131,7 @@ extension GameState {
             return try (0..<count).flatMap { try GameState.part("\(name).\($0)", of: parts, using: decoder, as: [T].self) }
         }
         map = try GameState.part("map", of: parts, using: decoder)
-        units = try pages("units", of: Unit.self)
+        units = Companies(try pages("units", of: Unit.self))
         houses = try pages("houses", of: House.self)
         holds = try pages("holds", of: Hold.self)
         relations = try pages("relations", of: Relation.self)
