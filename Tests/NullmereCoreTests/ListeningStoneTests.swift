@@ -84,7 +84,7 @@ final class ListeningStoneTests: XCTestCase {
         XCTAssertNil(state.view(for: me).listened, "Where others stand is never in a view")
         // A march in plain sight is seen, not heard.
         state.units[state.unitIndex(company.id)!].position = hidden
-        state.houses[me].explored = state.houses[me].explored.map { _ in true }
+        state.houses[me].explored = Explored(repeating: true, count: state.houses[me].explored.count)
         var sighted = state
         sighted.units.append(Unit(id: sighted.takeID(), kind: .spear, owner: me, position: step))
         sighted.refreshSight()

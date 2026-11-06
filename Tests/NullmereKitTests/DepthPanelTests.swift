@@ -642,7 +642,7 @@ final class DepthPanelTests: XCTestCase {
         XCTAssertEqual(opening.camera.scale, GameSession.openingScale(knownRadius: known), accuracy: 1e-9)
         XCTAssertGreaterThan(opening.camera.scale, GameSession.lakeScale, "Closer than the lake's view")
         XCTAssertLessThan(opening.camera.scale, GameSession.fineScale, "Short of the fine work")
-        state.houses[me].explored = Array(repeating: true, count: state.map.count)
+        state.houses[me].explored = Explored(repeating: true, count: state.map.count)
         let (knowing, _) = session(state)
         XCTAssertEqual(knowing.camera.scale, GameSession.lakeScale, accuracy: 1e-9, "Knowing the whole lake, the lake's view")
         XCTAssertEqual(GameSession.openingScale(knownRadius: 0), GameSession.fineScale * 0.85, accuracy: 1e-9)
@@ -768,7 +768,7 @@ final class DepthPanelTests: XCTestCase {
         defer { UserDefaults.standard.removeObject(forKey: LandSection.openKey) }
         var state = GameState(settings: GameSettings(seedText: "land named", houseCount: 6, radius: 20, keepers: 1, rivers: true))
         // The whole land found, so its streams show in the keeper's view.
-        state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
+        state.houses[state.player].explored = Explored(repeating: true, count: state.map.count)
         let atlas = try XCTUnwrap(state.atlas)
         let (session, _) = session(state)
         let regions = session.regions()

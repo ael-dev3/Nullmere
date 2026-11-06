@@ -56,7 +56,7 @@ final class CompactWorldTests: XCTestCase {
         XCTAssertEqual(String(decoding: data, as: UTF8.self).components(separatedBy: unexplored).count - 1, 47)
         let decoded = try JSONDecoder().decode(RealmView.self, from: data)
         XCTAssertEqual(decoded.world.houses.filter { $0.id != view.world.player }.map(\.explored),
-                       Array(repeating: Array(repeating: false, count: wide.world.map.count), count: 47))
+                       Array(repeating: Explored(repeating: false, count: wide.world.map.count), count: 47))
         XCTAssertEqual(decoded, view)
     }
 

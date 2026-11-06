@@ -94,7 +94,7 @@ final class WorldPerformanceTests: XCTestCase {
     /// the whole land, as was done before.
     private func measureNear(seats: Int, seed: String, wholeToo: Bool, renderer: WorldRenderer) throws -> (culled: Double, whole: Double?) {
         var state = GameState(settings: GameSettings(seedText: seed, houseCount: seats, radius: RealmState.radius(forSeats: seats), keepers: 1))
-        state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
+        state.houses[state.player].explored = Explored(repeating: true, count: state.map.count)
         try renderer.setLand(TerrainMesh.shared(for: state.map), for: state.map)
         try renderer.updateTiles(TileTexture.bytes(for: state, viewer: state.player), side: TileTexture.side(for: state.map))
         let terrain = try XCTUnwrap(renderer.land).terrain

@@ -236,14 +236,15 @@ extension GameState {
 
     /// Whether an enemy company of war stands at a hold's gates.
     func isBesieged(_ hold: Hold) -> Bool {
-        let gates = hold.position
-        for index in units.indices {
-            // Where it stands first, passing over those far along the map's
-            // columns at a glance: asked of every company for every hold.
-            let position = units[index].position
-            guard abs(position.q - gates.q) <= 1, position.distance(to: gates) == 1 else { continue }
-            let owner = units[index].owner
-            if units[index].kind.isMilitary && owner != hold.owner && isAtWar(owner, hold.owner) { return true }
+        // The companies at its gates found on the hexes about it, where the
+        // realm keeps them, not sought through every company of the realm
+        // for every hold.
+        for hex in hold.position.neighbors {
+            for id in units.ids(at: hex) {
+                guard let index = units.index(ofID: id) else { continue }
+                let owner = units[index].owner
+                if units[index].kind.isMilitary && owner != hold.owner && isAtWar(owner, hold.owner) { return true }
+            }
         }
         return false
     }

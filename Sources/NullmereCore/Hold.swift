@@ -202,8 +202,8 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
     public var isPlayer: Bool
     public var temperament: Temperament
     public var stock: Stock
-    /// Tiles this House has ever seen, by map index.
-    public var explored: [Bool]
+    /// Tiles this House has ever seen, by map index, a bit to a tile.
+    public var explored: Explored
     public var isEliminated: Bool
     /// The House this one has sworn fealty to, if any.
     public var liege: Int?
@@ -228,7 +228,7 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
         self.isPlayer = isPlayer
         self.temperament = temperament
         self.stock = Stock(grain: 60, timber: 50, stone: 40, moonsalt: 5)
-        self.explored = Array(repeating: false, count: tileCount)
+        self.explored = Explored(repeating: false, count: tileCount)
         self.isEliminated = false
     }
 
@@ -252,7 +252,7 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
             }
             self.explored = explored
         } else {
-            explored = try container.decode([Bool].self, forKey: .explored)
+            explored = Explored(try container.decode([Bool].self, forKey: .explored))
         }
         isEliminated = try container.decode(Bool.self, forKey: .isEliminated)
         liege = try container.decodeIfPresent(Int.self, forKey: .liege)
@@ -287,21 +287,16 @@ enum Bits {
     /// keeper's view carries every other House's explored ground.
     static let noneSet = "-"
 
-    static func encode(_ values: [Bool]) -> String {
+    static func encode(_ values: Explored) -> String {
         guard values.contains(true) else { return "\(values.count):\(noneSet)" }
-        var bytes = [UInt8](repeating: 0, count: (values.count + 7) / 8)
-        for (index, value) in values.enumerated() where value {
-            bytes[index / 8] |= 1 << UInt8(index % 8)
-        }
-        return "\(values.count):" + Data(bytes).base64EncodedString()
+        return "\(values.count):" + Data(values.bytes).base64EncodedString()
     }
 
-    static func decode(_ text: String) -> [Bool]? {
+    static func decode(_ text: String) -> Explored? {
         let parts = text.split(separator: ":", maxSplits: 1)
         guard parts.count == 2, let count = Int(parts[0]), count >= 0 else { return nil }
-        if parts[1] == noneSet { return Array(repeating: false, count: count) }
+        if parts[1] == noneSet { return Explored(repeating: false, count: count) }
         guard let data = Data(base64Encoded: String(parts[1])), data.count == (count + 7) / 8 else { return nil }
-        let bytes = [UInt8](data)
-        return (0..<count).map { bytes[$0 / 8] & (1 << UInt8($0 % 8)) != 0 }
+        return Explored(count: count, bytes: [UInt8](data))
     }
 }

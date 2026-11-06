@@ -111,7 +111,7 @@ final class StandingOrdersTests: XCTestCase {
     func testTheCaretakerKeepsEveryCompanyHome() throws {
         var (state, me, seat, steward) = try keeperWorld("standing home")
         _ = try state.declareWar(by: steward, on: me)
-        state.houses[me].explored = Array(repeating: true, count: state.map.count)
+        state.houses[me].explored = Explored(repeating: true, count: state.map.count)
         // A company of the keeper's far from home, nearer the foe's seat than its own.
         let foeSeat = try XCTUnwrap(state.seat(of: steward)).position
         let home = state.holds[seat].position

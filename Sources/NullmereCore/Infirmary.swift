@@ -41,7 +41,7 @@ extension GameState {
     /// none is carried into a hold with a foe at its gates.
     mutating func carryToInfirmary(_ unit: Unit) -> [GameEvent] {
         guard unit.kind.isMilitary, houses.indices.contains(unit.owner), !houses[unit.owner].isEliminated else { return [] }
-        let open = holds.indices.filter { holds[$0].owner == unit.owner && holds[$0].freeBeds > 0 && !isBesieged(holds[$0]) }
+        let open = holds.places(of: unit.owner).filter { holds[$0].freeBeds > 0 && !isBesieged(holds[$0]) }
         guard let index = open.min(by: { a, b in
             (holds[a].position.distance(to: unit.position), holds[a].id) < (holds[b].position.distance(to: unit.position), holds[b].id)
         }) else { return [] }

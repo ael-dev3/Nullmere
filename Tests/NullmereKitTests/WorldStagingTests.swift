@@ -164,7 +164,7 @@ final class WorldStagingTests: XCTestCase {
     /// share of a frame on the main thread once the land is laid out.
     func testStagingAFrameKeepsWithinItsShare() throws {
         var state = GameState(settings: GameSettings(seedText: "a full realm staged", houseCount: 12, radius: 24, keepers: 1))
-        state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
+        state.houses[state.player].explored = Explored(repeating: true, count: state.map.count)
         let session = GameSession(state: state, store: LocalStore(directory: dir))
         let started = ThreadClock.milliseconds()
         let first = session.sceneFrame(at: 0)
@@ -231,7 +231,7 @@ final class WorldStagingTests: XCTestCase {
     /// thirty frames' thread time.
     private func stageNear(seats: Int, seed: String) throws -> (viewed: Int, whole: Int, p50: Double) {
         var state = GameState(settings: GameSettings(seedText: seed, houseCount: seats, radius: RealmState.radius(forSeats: seats), keepers: 1))
-        state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
+        state.houses[state.player].explored = Explored(repeating: true, count: state.map.count)
         let session = GameSession(state: state, store: LocalStore(directory: dir))
         session.dismissSeatBriefing()
         let seat = try XCTUnwrap(state.seat(of: state.player)).position

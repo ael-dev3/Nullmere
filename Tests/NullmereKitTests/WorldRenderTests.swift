@@ -31,7 +31,7 @@ final class WorldRenderTests: XCTestCase {
         let state: GameState
         let opening: [UInt8]
         /// What the keeper knows as the age opens, by map index.
-        let openingKnown: [Bool]
+        let openingKnown: Explored
         let whole: [UInt8]
         let terrain: TerrainMesh
         let relief: Relief
@@ -40,7 +40,7 @@ final class WorldRenderTests: XCTestCase {
             var state = GameState(settings: GameSettings(seedText: "drawn in the round", houseCount: 12, radius: 24, keepers: 1))
             opening = TileTexture.bytes(for: state, viewer: state.player)
             openingKnown = state.houses[state.player].explored
-            state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
+            state.houses[state.player].explored = Explored(repeating: true, count: state.map.count)
             whole = TileTexture.bytes(for: state, viewer: state.player)
             self.state = state
             terrain = TerrainMesh.shared(for: state.map)
@@ -215,7 +215,7 @@ final class WorldRenderTests: XCTestCase {
         XCTAssertEqual(field.fighters.count, 16)
         let told = try XCTUnwrap(MoonBand.battleLine(in: state, for: me), "the battle told in the moon band")
         XCTAssertTrue(told.hasPrefix("Battle ") && told.contains("your side") && told.contains("the foe"), told)
-        state.houses[me].explored = Array(repeating: true, count: state.map.count)
+        state.houses[me].explored = Explored(repeating: true, count: state.map.count)
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let session = GameSession(state: state, store: LocalStore(directory: directory))

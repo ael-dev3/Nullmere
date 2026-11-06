@@ -72,7 +72,7 @@ final class StewardEnginesTests: XCTestCase {
     /// from there, never stepping onto the hold.
     func testAnEngineStandsOffAtItsReachAndBreaksTheWalls() throws {
         var (state, steward, _, foe) = try atWar()
-        state.houses[steward].explored = Array(repeating: true, count: state.map.count)
+        state.houses[steward].explored = Explored(repeating: true, count: state.map.count)
         // The foe's seat, bare of its companies, the steward's only foe at war.
         let target = try XCTUnwrap(state.seat(of: foe))
         state.units.removeAll { $0.owner == foe }

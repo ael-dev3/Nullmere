@@ -471,7 +471,7 @@ final class RallyTests: XCTestCase {
         outpost.levels[.musterHall] = 1
         state.holds.append(outpost)
         // It knows of Thornwick, and of no other hold of House 2's.
-        state.houses[1].explored = Array(repeating: false, count: state.map.count)
+        state.houses[1].explored = Explored(repeating: false, count: state.map.count)
         state.reveal(around: try XCTUnwrap(state.seat(of: 1)).position, range: 2, for: 1)
         state.reveal(around: stage.targetHex, range: 1, for: 1)
         state.watch = RivalMind.alliancesFrom

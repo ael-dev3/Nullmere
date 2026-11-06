@@ -659,18 +659,21 @@ struct RivalMind {
             events += perform(.answer(envoy: envoy.id, accept: accept), in: &state)
         }
         let mine = max(1, state.strength(of: house))
-        for other in state.livingHouses where state.isAtWar(house, other.id) {
-            guard let relation = state.relation(house, other.id) else { continue }
+        // The Houses standing as the look begins, by their places, none
+        // copied out.
+        let living = state.houses.indices.filter { !state.houses[$0].isEliminated }
+        for other in living where state.isAtWar(house, other) {
+            guard let relation = state.relation(house, other) else { continue }
             switch standing.peace {
             case false?:
                 continue
             case true?:
                 // Sued for in every war, whoever is the stronger.
-                events += perform(.propose(.peace, to: other.id), in: &state)
+                events += perform(.propose(.peace, to: other), in: &state)
             case nil:
                 guard state.watch - relation.since >= 4 else { continue }
-                if mine * 10 < max(1, state.strength(of: other.id)) * 9, random.chance(40) {
-                    events += perform(.propose(.peace, to: other.id), in: &state)
+                if mine * 10 < max(1, state.strength(of: other)) * 9, random.chance(40) {
+                    events += perform(.propose(.peace, to: other), in: &state)
                 }
             }
         }

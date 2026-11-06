@@ -715,11 +715,10 @@ public struct GameState: Codable, Equatable, Sendable {
     mutating func refreshSight() {
         let (own, lent) = sightToLend()
         for index in houses.indices where !houses[index].isEliminated {
-            var explored = houses[index].explored
+            // Written where it lies, not copied out whole and back.
             for watcher in lent[index] {
-                for tile in own[watcher] { explored[tile] = true }
+                for tile in own[watcher] { houses[index].explored[tile] = true }
             }
-            houses[index].explored = explored
         }
     }
 

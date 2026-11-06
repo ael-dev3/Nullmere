@@ -114,7 +114,7 @@ final class WorldPreviewTests: XCTestCase {
     func testAWorldExportsForThePreview() throws {
         var state = GameState(settings: GameSettings(seedText: "preview", houseCount: 12, radius: 24, keepers: 1))
         let opening = TileTexture.bytes(for: state, viewer: state.player)
-        state.houses[state.player].explored = Array(repeating: true, count: state.map.count)
+        state.houses[state.player].explored = Explored(repeating: true, count: state.map.count)
         let whole = TileTexture.bytes(for: state, viewer: state.player)
         let terrain = TerrainMesh(relief: Relief(map: state.map), spacing: 0.3)
         let seat = try XCTUnwrap(state.seat(of: state.player)).position

@@ -14,7 +14,7 @@ final class GreatHostTests: XCTestCase {
         var hold = Hold(id: state.takeID(), name: "Harrowgate", owner: steward, position: spot, isSeat: false, foundedWatch: 1)
         hold.levels[.musterHall] = 2
         state.holds.append(hold)
-        state.houses[steward].explored = Array(repeating: true, count: state.map.count)
+        state.houses[steward].explored = Explored(repeating: true, count: state.map.count)
         _ = try state.declareWar(by: steward, on: foe)
         state.edicts = nil
         state.veils = nil
