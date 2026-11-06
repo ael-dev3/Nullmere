@@ -89,7 +89,12 @@ steward's answer). For development a realm can also be hosted in-process
 - **Rounds.** The steward keeps the world and gives its answers in one
   transaction, so a round it couldn't publish, or a steward stopped
   mid-round, loses and doubles nothing; it says when a round fails, and
-  every ten minutes how the realm stands. It works out a keeper's view only
+  every ten minutes how the realm stands. It subscribes to the requests
+  waiting, and a round begins as the server says one has come: a
+  fiftieth of a second after, for those sent with it, and a tenth of a
+  second after the last round at the soonest, so requests that come
+  together are taken together; with no word of them, a round every
+  quarter second. It works out a keeper's view only
   when something may have changed it, and sends with it what they heard in
   the last two minutes, the latest sixteen publications' worth at most. A
   publication larger than the server takes in one request (2 MiB) goes in
@@ -111,12 +116,13 @@ steward's answer). For development a realm can also be hosted in-process
   for thirty seconds (the steward publishes at least every twenty) is
   taken for dead and the realm read as before, as it is wherever the line
   can't be kept. On a local SpacetimeDB server, ninety-six keepers' clients
-  built as shipped saw the watch turn 0.6 to 1.1 s after the last made
-  ready, as the steward's round, a quarter second after the last, took the
-  last readiness in (2.2 s asking after their views, before a pace went
-  apart from the head and ground went as its runs), and one keeper's words
-  reached every other in 0.5 to 0.6 s (1.2 s); the crowd's publications
-  came to 14.4 to 15.1 MB, each in one call, against 42 MB.
+  built as shipped saw the watch turn 0.9 s after the last made ready in
+  two runs, as the steward's round took the last readiness in (0.6 to
+  1.2 s while it read the requests a quarter second after each round,
+  2.2 s asking after their views, before a pace went apart from the head
+  and ground went as its runs), and one keeper's words reached every
+  other in 0.4 to 0.5 s (0.5 to 0.6 s, 1.2 s); the crowd's 370 and 383
+  publications came to 12.5 and 14.4 MB, each in one call, against 42 MB.
 - **Many keepers in one process.** A keeper's link never cancels a request
   in flight: a push or a waking ends the wait between its reads early, and
   closing it lets what is in flight finish and go no further. Cancelling a

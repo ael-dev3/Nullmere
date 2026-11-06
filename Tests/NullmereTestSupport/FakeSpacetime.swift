@@ -39,6 +39,8 @@ public actor FakeSpacetime: SpacetimeTransport {
         let changed: @Sendable () -> Void
         let mirror: SubscriptionMirror?
         var told: [String: [String: [JSONValue]]] = [:]
+        /// Whether it watches the requests waiting, as the steward does.
+        var requests = false
     }
     private var watchers: [UUID: Watcher] = [:]
     private var pushing = false
@@ -52,13 +54,17 @@ public actor FakeSpacetime: SpacetimeTransport {
         pushingRows = rows
     }
 
-    public var watching: Int { watchers.count }
+    /// How many watch the realm's word, as keepers' Macs do; and how many
+    /// the requests waiting, as the steward does.
+    public var watching: Int { watchers.values.filter { !$0.requests }.count }
+    public var watchingRequests: Int { watchers.values.filter(\.requests).count }
 
     public func watch(_ queries: [String], token: String, changed: @escaping @Sendable () -> Void) async -> (any RealmWatch)? {
-        guard pushing, let identity = identities[token], queries.contains(where: { $0.contains("FROM status") }) else { return nil }
+        let requests = queries.contains { $0.contains("FROM request") }
+        guard pushing, let identity = identities[token], requests || queries.contains(where: { $0.contains("FROM status") }) else { return nil }
         let id = UUID()
-        let mirror = pushingRows ? SubscriptionMirror() : nil
-        watchers[id] = Watcher(identity: identity, changed: changed, mirror: mirror)
+        let mirror = pushingRows && !requests ? SubscriptionMirror() : nil
+        watchers[id] = Watcher(identity: identity, changed: changed, mirror: mirror, requests: requests)
         if mirror != nil { tell(id, first: true) }
         return FakeWatch(mirror: mirror) { [weak self] in
             Task { await self?.unwatch(id) }
@@ -356,6 +362,7 @@ public actor FakeSpacetime: SpacetimeTransport {
             }
             requests.append(Request(id: nextID, keeper: me, kind: kind, nonce: nonce, payload: payload))
             nextID += 1
+            for watcher in watchers.values where watcher.requests { watcher.changed() }
         case "forget":
             guard me == steward else { throw SpacetimeError("Only the steward forgets answers.", status: 530) }
             if case .strings(let nonces)? = arguments.first { nonces.forEach { replies[$0] = nil } }
@@ -401,7 +408,7 @@ public actor FakeSpacetime: SpacetimeTransport {
             partsSent += names.count
             status = (version, said)
             stamp = (version, time)
-            for watcher in watchers.values where watcher.mirror == nil { watcher.changed() }
+            for watcher in watchers.values where watcher.mirror == nil && !watcher.requests { watcher.changed() }
             for (index, keeper) in keepers.enumerated() {
                 views[keeper] = (version, shown[index], heard[index])
                 // The parts its row no longer names are let go.
@@ -413,6 +420,7 @@ public actor FakeSpacetime: SpacetimeTransport {
             }
             viewPartsSent += partNames.count
             viewBytesSent += partTexts.reduce(0) { $0 + $1.utf8.count }
+            let waiting = requests.count
             for (id, answer) in zip(ids, answers) {
                 if let index = requests.firstIndex(where: { $0.id == id }) {
                     replies[requests[index].nonce] = (requests[index].keeper, answer)
@@ -420,8 +428,12 @@ public actor FakeSpacetime: SpacetimeTransport {
                     requests.remove(at: index)
                 }
             }
-            // The transaction done, its rows told, as the server tells them.
+            // The transaction done, its rows told, as the server tells them:
+            // the requests it carried out let go, to whoever watches them.
             tellTheRows()
+            if requests.count != waiting {
+                for watcher in watchers.values where watcher.requests { watcher.changed() }
+            }
         default:
             throw SpacetimeError("No such reducer: \(reducer)")
         }

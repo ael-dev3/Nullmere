@@ -27,6 +27,62 @@ final class StewardRoundsTests: XCTestCase {
         XCTAssertEqual(after, rounds, "No round begun once stopped")
     }
 
+    /// A steward resting long between rounds begins one as the server says
+    /// a request has come, not at the rest's end; and asked to stop, or
+    /// its running cancelled, it ends its rest at once and stops watching.
+    func testARequestIsTakenAsItComesNotAtTheRestsEnd() async throws {
+        let db = FakeSpacetime()
+        await db.setPushing(true)
+        let key = try await db.createIdentity()
+        let steward = try await RealmSteward(transport: db, token: key.token, name: "The Nullmere", seed: "woken", seats: 4,
+                                             watchLength: 600, now: 0)
+        let running = Task.detached { await steward.run(clock: { 1 }, resting: 600) }
+        try await db.waitFor(1, more: FakeSpacetime.stewardRound)
+        let watching = await db.watchingRequests
+        XCTAssertEqual(watching, 1, "The steward watching the requests")
+        // Resting now, for ten minutes but for a request.
+        try await Task.sleep(nanoseconds: 100_000_000)
+        let rounds = await db.queried(FakeSpacetime.stewardRound)
+        let ama = try await db.createIdentity()
+        let asked = Date()
+        try await db.call("arrive", [.string("a1"), .string(ArrivalPayload(name: "Ama", compact: Compact.edition).encoded)], token: ama.token)
+        let deadline = Date().addingTimeInterval(10)
+        while try await db.keptView(of: ama.identity) == nil {
+            if Date() > deadline { return XCTFail("Ama's arrival was never taken") }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        XCTAssertLessThan(Date().timeIntervalSince(asked), 5, "Taken as it came, not after the rest")
+        let afterRounds = await db.queried(FakeSpacetime.stewardRound)
+        XCTAssertLessThanOrEqual(afterRounds - rounds, 3, "A round or two for it, not rounds without rest")
+
+        let stopping = Date()
+        await steward.stop()
+        await running.value
+        XCTAssertLessThan(Date().timeIntervalSince(stopping), 5, "Its rest ended as it was asked to stop")
+        try await until("the watch let go") { await db.watchingRequests == 0 }
+
+        // Its running cancelled while it rests: it ends as soon. (The
+        // first's hold on the realm let lapse.)
+        await db.advance(61)
+        let again = try await RealmSteward(transport: db, token: key.token, name: "The Nullmere", seed: "woken", seats: 4,
+                                           watchLength: 600, now: 2)
+        let cancelled = Task.detached { await again.run(clock: { 2 }, resting: 600) }
+        try await db.waitFor(1, more: FakeSpacetime.stewardRound)
+        try await Task.sleep(nanoseconds: 100_000_000)
+        let cancelling = Date()
+        cancelled.cancel()
+        await cancelled.value
+        XCTAssertLessThan(Date().timeIntervalSince(cancelling), 5, "Its rest ended as its running was cancelled")
+    }
+
+    private func until(_ what: String, timeout: Double = 10, _ condition: () async -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !(await condition()) {
+            if Date() > deadline { throw SpacetimeError("Timed out waiting for \(what)") }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+    }
+
     /// Neither the steward nor the realm keeps every identity it hears of:
     /// strangers who never came in are kept by neither, the steward keeps
     /// only what it needs of those there, and a keeper long gone without a

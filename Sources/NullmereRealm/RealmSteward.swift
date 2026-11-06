@@ -927,10 +927,89 @@ public actor RealmSteward {
     /// FoundationNetworking can deadlock cancelling one as it finishes.
     private var stopping = false
 
-    public func stop() { stopping = true }
+    public func stop() {
+        stopping = true
+        endRest()
+    }
 
-    /// Runs the realm until stopped or cancelled, a step every quarter second.
-    public func run(clock: @Sendable () -> Double = { Date().timeIntervalSince1970 }) async {
+    /// How long the steward rests between rounds while no request comes.
+    public static let rest = 0.25
+    /// How long it waits once a request comes, for those sent with it.
+    public static let gathering = 0.02
+    /// How long it rests after a round at the least, however requests
+    /// come: those that come meanwhile are taken together.
+    public static let pause = 0.1
+
+    /// The server's word that requests have come, where it gives it: a
+    /// round begins as they do, rather than at the rest's end.
+    private var requestsWatch: (any RealmWatch)?
+    /// The rest under way between rounds, and whether word came while a
+    /// round was, so the next begins once the pause after it is over.
+    private var restUnderWay: (number: Int, continuation: CheckedContinuation<Void, Never>)?
+    private var rests = 0
+    private var cameMeanwhile = false
+    private var roundEnded = ContinuousClock.now
+
+    /// Word of requests come: the rest ends once those sent with them have
+    /// come too, and the pause after a round is over; in a round, the
+    /// next begins once the pause after it is.
+    private func requestsCame() {
+        guard let number = restUnderWay?.number else {
+            cameMeanwhile = true
+            return
+        }
+        let paused = (ContinuousClock.now - roundEnded) / .seconds(1)
+        let wait = max(RealmSteward.gathering, RealmSteward.pause - paused)
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+            await self?.endRest(number)
+        }
+    }
+
+    /// Rests `seconds` between rounds, or until requests come.
+    private func rest(_ seconds: Double) async {
+        roundEnded = ContinuousClock.now
+        guard !cameMeanwhile else {
+            cameMeanwhile = false
+            try? await Task.sleep(nanoseconds: UInt64(RealmSteward.pause * 1_000_000_000))
+            return
+        }
+        rests += 1
+        let number = rests
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                guard !Task.isCancelled else { return continuation.resume() }
+                restUnderWay = (number, continuation)
+                Task { [weak self] in
+                    try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                    await self?.endRest(number)
+                }
+            }
+        } onCancel: {
+            Task { await self.endRest(number) }
+        }
+    }
+
+    /// Ends the rest under way: the one numbered `number`, or any.
+    private func endRest(_ number: Int? = nil) {
+        guard let rest = restUnderWay, number == nil || rest.number == number else { return }
+        restUnderWay = nil
+        rest.continuation.resume()
+    }
+
+    /// Runs the realm until stopped or cancelled: a round, then a rest of
+    /// `resting` seconds or until requests come, as the server says they do
+    /// where it can.
+    public func run(clock: @Sendable () -> Double = { Date().timeIntervalSince1970 }, resting: Double = RealmSteward.rest) async {
+        if requestsWatch == nil {
+            requestsWatch = await transport.watch(["SELECT * FROM request"], token: token) { [weak self] in
+                Task { await self?.requestsCame() }
+            }
+        }
+        defer {
+            requestsWatch?.stop()
+            requestsWatch = nil
+        }
         while !Task.isCancelled, !isDisplaced, !stopping {
             let now = clock()
             do {
@@ -954,7 +1033,7 @@ public actor RealmSteward {
                     report("A round failed (\(failures) so far): \(error)")
                 }
             }
-            try? await Task.sleep(nanoseconds: 250_000_000)
+            await rest(resting)
         }
     }
 }
