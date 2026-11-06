@@ -97,7 +97,7 @@ listening stone, the pedlar's skiff) are made in Blender, each by a script
 [`lairs.py`](../Art/blender/lairs.py), [`stores.py`](../Art/blender/stores.py),
 [`raising.py`](../Art/blender/raising.py), [`props.py`](../Art/blender/props.py),
 [`furnishings.py`](../Art/blender/furnishings.py), [`tokens.py`](../Art/blender/tokens.py),
-[`marks.py`](../Art/blender/marks.py))
+[`marks.py`](../Art/blender/marks.py), [`furies.py`](../Art/blender/furies.py))
 that builds the body, gear and
 skeleton and keys the actions, on one body every person shares
 ([`person.py`](../Art/blender/person.py)): the skin is weighted to the

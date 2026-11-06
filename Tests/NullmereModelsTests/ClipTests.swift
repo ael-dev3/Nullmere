@@ -61,6 +61,9 @@ final class ClipTests: XCTestCase {
         for key in Library.catalogue {
             let model = Library.model(key)
             guard model.skeleton != nil else { continue }
+            // A skill at work plays its idle once as it fires and fades
+            // (WorldStage.furies), never round.
+            if case .fury = key { continue }
             for clip in Clip.allCases where clip.loops {
                 for time in [Float(0), 0.31, 0.77, 1.3] {
                     let a = model.pose(clip, at: time), b = model.pose(clip, at: time + clip.period)

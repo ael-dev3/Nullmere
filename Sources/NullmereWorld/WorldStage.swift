@@ -1430,6 +1430,45 @@ public final class WorldStage: @unchecked Sendable {
         }
         return (WorldStage.batches(placed), lights)
     }
+    // MARK: Commanders' skills at work
+
+    /// How long a commander's skill stands at work where it fired, in
+    /// seconds: its look's model plays its whole idle once over it, fading
+    /// out over its last third.
+    public static let furyWorks: Float = Clip.idle.period / 2
+
+    /// How much of what lies behind a skill's look it hides at its fullest:
+    /// a ward's dome lets the company within it be seen; a quake's rock
+    /// hides what stands behind it.
+    public static func furyOpacity(_ look: FuryLook) -> Float {
+        switch look {
+        case .ward: return 0.45
+        case .blaze, .volley: return 0.8
+        case .ring: return 0.9
+        case .quake: return 1
+        }
+    }
+
+    /// Commanders' skills at work where they fired: each its look's model,
+    /// its idle played once over its working (`furyWorks`), fading as it
+    /// ends, seen by every House; none before it fires or once it is done.
+    public static func furies(_ furies: [Happenings.Fury], time: Float, into frame: inout SceneFrame) -> [ModelBatch] {
+        var placed: [(ModelKey, ModelInstance)] = []
+        var shared: [PoseKey: UInt32] = [:]
+        for fury in furies {
+            let age = time - fury.start
+            guard age >= 0, age < furyWorks else { continue }
+            let key = ModelKey.fury(fury.look)
+            let share = age / furyWorks
+            let palette = pose(key, .idle, at: share * Clip.idle.period, shared: &shared, into: &frame)
+            let fade = min(max((1 - share) * 3, 0), 1)
+            let turn = Float(fury.seed % 360) * .pi / 180
+            placed.append((key, ModelInstance(model: .translation(fury.at) * .rotationY(turn), rise: whole, opacity: furyOpacity(fury.look) * fade,
+                                              palette: palette, flags: ModelInstance.alwaysShown)))
+        }
+        return batches(placed)
+    }
+
     /// The firelight of the forges nearest the view: each hearth's glow
     /// thrown on its yard, flickering with the bellows, at most a few.
     public func forgeFires(near focus: Vec3, within reach: Float = 5, time: Float) -> [PointLight] {

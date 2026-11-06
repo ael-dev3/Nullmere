@@ -328,6 +328,15 @@ enum Art {
         return model(propsFile, tier: 1, variant: prop, name: name, order: [], scale: buildingScale, colours: colours)
     }
 
+    /// A commander's skill at work, made in Blender (Art/blender/furies.py),
+    /// each look a variant of one file by its name: a ward's dome of pale
+    /// light, a blaze's fire thrown out, a volley's shafts of light falling,
+    /// a gleaner's rings of gold, a quake's shards of rock; each moved by
+    /// its own bones over its idle, which the world plays once as it works.
+    static func fury(_ look: String, name: String) -> Model {
+        model(furiesFile, tier: 1, variant: look, name: name, order: [], scale: buildingScale, colours: buildingColours)
+    }
+
     /// A work made in Blender at its level, each level its tier of the
     /// family's one file, its moving parts the bones tagged for that level.
     static func work(_ base64: String, level: Int, name: String, colours: [String: Vec3] = [:]) -> Model {

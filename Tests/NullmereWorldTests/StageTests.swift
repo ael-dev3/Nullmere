@@ -605,6 +605,42 @@ final class StageTests: XCTestCase {
         XCTAssertEqual(out, plan * HoldLayout.grandeur, accuracy: 1e-3, "as far out as the hold is drawn, not as its plan lies")
     }
 
+    /// A commander's skill works where it fired: its look's model there
+    /// from the moment it fires, seen by every House and drawn whole,
+    /// posed anew as it works and fading as it ends; none before, none once
+    /// it is done.
+    func testACommandersSkillWorksWhereItFired() throws {
+        let at = Vec3(1.5, 0.2, -2.0)
+        let fired = FuryLook.allCases.enumerated().map { index, look in
+            Happenings.Fury(at: at + Vec3(Float(index), 0, 0), start: 10, look: look, seed: UInt32(index * 37))
+        }
+        func staged(_ time: Float) -> (batches: [ModelBatch], frame: SceneFrame) {
+            var frame = SceneFrame()
+            let batches = WorldStage.furies(fired, time: time, into: &frame)
+            return (batches, frame)
+        }
+        XCTAssertTrue(staged(9.9).batches.isEmpty, "Nothing before it fires")
+        XCTAssertTrue(staged(10 + WorldStage.furyWorks).batches.isEmpty, "Nothing once it is done")
+        let early = staged(10.2), late = staged(10 + WorldStage.furyWorks * 0.9)
+        XCTAssertEqual(Set(early.batches.map(\.key)), Set(FuryLook.allCases.map { ModelKey.fury($0) }), "Each its look's model")
+        for batch in early.batches {
+            let instance = try XCTUnwrap(batch.instances.first)
+            guard case .fury(let look) = batch.key else { return XCTFail("\(batch.key)") }
+            let index = try XCTUnwrap(FuryLook.allCases.firstIndex(of: look))
+            XCTAssertEqual(instance.model.c3.x, at.x + Float(index), accuracy: 1e-4, "Where it fired")
+            XCTAssertEqual(instance.model.c3.y, at.y, accuracy: 1e-4)
+            XCTAssertEqual(instance.params.x, WorldStage.whole, "Drawn whole, however tall it stands")
+            XCTAssertEqual(instance.params.y, WorldStage.furyOpacity(look), accuracy: 1e-5, "At its fullest early on")
+            XCTAssertEqual(instance.flags & ModelInstance.alwaysShown, ModelInstance.alwaysShown, "Seen by every House")
+            let ending = try XCTUnwrap(late.batches.first { $0.key == batch.key }?.instances.first)
+            XCTAssertLessThan(ending.params.y, instance.params.y * 0.5, "Fading as it ends")
+            let posedEarly = Array(early.frame.palette[Int(instance.palette)..<Int(instance.palette) + Library.model(batch.key).rig.count])
+            let posedLate = Array(late.frame.palette[Int(ending.palette)..<Int(ending.palette) + Library.model(batch.key).rig.count])
+            XCTAssertNotEqual(posedEarly, posedLate, "\(look) moves as it works")
+        }
+        XCTAssertLessThan(WorldStage.furyOpacity(.ward), WorldStage.furyOpacity(.quake), "A ward's company seen within it; a quake's rock solid")
+    }
+
     /// The Lyceum's hall stands dark between sittings; while its scholars
     /// sit its orrery turns over the dome and five lights circle it.
     func testTheLyceumStandsDarkAndIsLitWhileItSits() throws {

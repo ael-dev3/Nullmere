@@ -108,6 +108,10 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
     /// Of the town about a hold (see `Town`): a home, its well, a field, a
     /// length of lane, a market stall.
     case town(Town)
+    /// A commander's skill at work where it fired, by its look (see
+    /// `FuryLook`): a ward's dome, a blaze's fire, a volley's shafts, a
+    /// gleaner's ring, a quake's shards.
+    case fury(FuryLook)
 
     public var description: String {
         switch self {
@@ -148,6 +152,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .yard(let resource): return "\(resource.rawValue) yard"
         case .folk(let variant): return "folk \(variant)"
         case .town(let piece): return piece.rawValue
+        case .fury(let look): return "\(look.rawValue) fury"
         }
     }
 
@@ -192,7 +197,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .talentSigil(let tree): return .talentSigil(tree: min(max(tree, 0), 2))
         case .crestCharge(let charge): return .crestCharge(min(max(charge, 0), 9))
         case .keep, .keepOf, .scaffold, .furnishing, .prop, .site, .shrine, .lair, .gatehold, .standard, .rallyCamp, .hostBanner, .helpLight, .borderStone, .listeningStone, .commanderStar, .pedlarSkiff, .crestBoard, .barge, .raising, .drownedCrown, .allianceHall, .lyceumHall, .lyceumOrrery, .storehouse,
-             .yard, .signature, .town:
+             .yard, .signature, .town, .fury:
             return self
         }
     }
@@ -212,7 +217,7 @@ public enum ModelKey: Hashable, Sendable, CustomStringConvertible {
         case .keep, .keepOf, .allianceHall, .lyceumHall: return 4500
         case .walls, .work, .scaffold, .site, .study, .shrine, .lair, .gatehold, .standard, .rallyCamp, .barge, .raising, .drownedCrown, .storehouse, .yard: return 3000
         case .hostBanner, .talentSigil, .helpLight, .borderStone, .crestBoard, .crestCharge: return 300
-        case .listeningStone, .lyceumOrrery: return 900
+        case .listeningStone, .lyceumOrrery, .fury: return 900
         case .commanderStar: return 160
         case .pedlarSkiff: return 2400
         }
@@ -397,6 +402,7 @@ public enum Library {
         keys.append(.storehouse)
         keys += Resource.allCases.map { .yard($0) }
         keys += Heritage.allCases.map { .signature($0) }
+        keys += FuryLook.allCases.map { .fury($0) }
         keys += (0..<Folk.variants).map { .folk(variant: $0) }
         keys += Town.allCases.map { .town($0) }
         return keys
@@ -443,6 +449,7 @@ public enum Library {
         case .yard(let resource): return Art.stores(resource.rawValue, name: key.canonical.description)
         case .folk(let variant): return Folk.build(variant, name: key.canonical.description)
         case .town(let piece): return Art.town(piece, name: key.canonical.description)
+        case .fury(let look): return Art.fury(look.rawValue, name: key.canonical.description)
         }
     }
 

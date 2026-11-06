@@ -254,9 +254,11 @@ extension GameSession {
         } + walking), time: t, into: &frame)
         frame.batches = holds + townsfolk + halls + storehouses + siteBatches + yards.batches + lairBatches + standards + campBatches + mirror + banners + help + crests + fieldBanners + borders + barges + crown + lyceum + stones + skiff + companies + flights
         if full {
-            (frame.motes, frame.lights) = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now,
-                                                     time: time)
-                .effects(at: t)
+            let happened = happenings(poses: poses, sights: sights, halls: hallSights + storehouseSights, stage: stage, at: now, time: time)
+            (frame.motes, frame.lights) = happened.effects(at: t)
+            // Commanders' skills at work where they fired, each its look made whole.
+            let skillsAtWork = WorldStage.furies(happened.furies, time: t, into: &frame)
+            frame.batches += skillsAtWork
             // The fishers out on the lake, their lanterns on the water.
             let fishers = stage.boats(about: Vec3(lake.x, Relief.waterline, lake.z), time: t, into: &frame)
             frame.batches += fishers.batches

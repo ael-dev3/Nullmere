@@ -436,6 +436,9 @@ final class CatalogueTests: XCTestCase {
                 XCTAssertNotNil(model.skeleton?.actions[.idle], "\(key) moves by its skeleton")
             case .raising:
                 XCTAssertNotNil(model.skeleton?.actions[.idle], "\(key) works as its work rises")
+            case .fury:
+                XCTAssertNotNil(model.skeleton?.actions[.idle], "\(key): a skill at work moves by its skeleton")
+                XCTAssertTrue(model.mesh.vertices.contains { $0.material == .glow }, "\(key) is made of light")
             case .work, .study, .storehouse, .yard, .shrine:
                 break
             }
