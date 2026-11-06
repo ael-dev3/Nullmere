@@ -90,9 +90,9 @@ steward's answer). For development a realm can also be hosted in-process
   for thirty seconds (the steward publishes at least every twenty) is
   taken for dead and the realm read as before, as it is wherever the line
   can't be kept. On a local SpacetimeDB server, ninety-six keepers' clients
-  built as shipped saw the watch turn 1.1 to 1.7 s after the last made
-  ready over two runs (2.2 s asking after their views), and one keeper's
-  words reached every other in 0.7 to 0.8 s (1.2 s).
+  built as shipped saw the watch turn 1.4 s after the last made ready
+  (2.2 s asking after their views), and one keeper's words reached every
+  other in 0.5 s (1.2 s).
 - **Many keepers in one process.** A keeper's link never cancels a request
   in flight: a push or a waking ends the wait between its reads early, and
   closing it lets what is in flight finish and go no further. Cancelling a

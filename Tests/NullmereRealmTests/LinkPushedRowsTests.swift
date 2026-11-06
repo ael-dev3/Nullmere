@@ -197,6 +197,40 @@ final class LinkPushedRowsTests: XCTestCase {
         XCTAssertEqual(asked[FakeSpacetime.viewPartsAsked], 0, "Her view taken as pushed")
         XCTAssertEqual(asked["SELECT * FROM my_view"], 0)
     }
+
+    /// Keepers whose links rest a minute between reads of their own make
+    /// ready in a realm that publishes in many calls, the answers before
+    /// the views: each sees the watch turn as its view is pushed, word that
+    /// comes while the answer is taken read as it comes, never left to the
+    /// minute's rest.
+    @MainActor
+    func testTheWatchTurnedIsSeenAsItIsPushed() async throws {
+        let db = FakeSpacetime()
+        await db.setPushing(true, rows: true)
+        let credentials = try await db.createIdentity()
+        let steward = try await RealmSteward(transport: db, token: credentials.token, name: "The Nullmere", seed: "turned at once", seats: 4,
+                                             watchLength: 600, now: 0)
+        await steward.setPublicationBudget(4_000)
+        let running = Task.detached { await steward.run(clock: { 1 }) }
+        defer { running.cancel() }
+        // As many as the realm takes in at once while its watch stands.
+        let links = (0..<RealmState.fewestNewcomersPerWatch).map { _ in NetworkRealmLink(transport: db, credentials: MemoryStore(), pollInterval: 60) }
+        let ears = links.map { link in
+            let ear = Listener()
+            ear.listen(to: link)
+            link.connect()
+            return ear
+        }
+        defer { links.forEach { $0.close() } }
+        try await until("the realm watched") { await db.watching == links.count }
+        for (index, link) in links.enumerated() { link.arrive(name: ["Ama", "Bel", "Cai"][index]) }
+        try await until("every keeper seated") { ears.allSatisfy { $0.keeper?.house != nil && $0.world != nil } }
+        let watch = ears.compactMap { $0.world?.watch }.max() ?? 1
+        for link in links { link.setReady(true) }
+        try await until("the watch turned for every keeper, well within a rest", timeout: 10) {
+            ears.allSatisfy { ($0.world?.watch ?? 0) > watch }
+        }
+    }
 }
 
 /// A clock a test moves on.

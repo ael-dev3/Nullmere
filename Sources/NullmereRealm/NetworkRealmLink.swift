@@ -313,6 +313,23 @@ public final class NetworkRealmLink: RealmLink {
         return backed * Double.random(in: 0.8...1.2)
     }
 
+    /// The realm read now: by the polling loop where it runs, its rest
+    /// ended, or a read again after the one under way, so that word pushed
+    /// meanwhile is read as it comes and not left to the loop's next rest
+    /// (as it was by a read of the sender's own, the loop resting through
+    /// it); read here where no loop runs.
+    private func readNow() async {
+        guard polling != nil else {
+            await poll()
+            return
+        }
+        if isPolling {
+            pushedWhilePolling = true
+        } else {
+            endRest()
+        }
+    }
+
     /// The Mac woke, or found the network again: the realm is asked at
     /// once, not at the end of a long wait.
     public func wake() {
@@ -913,7 +930,7 @@ public final class NetworkRealmLink: RealmLink {
                             self.onEvent?(.orderRefused(.refused(reply.refusal ?? "The realm refused the order."), world))
                         }
                     case .ready:
-                        if self.outbox.isEmpty { await self.poll() }
+                        if self.outbox.isEmpty { await self.readNow() }
                     }
                 } catch {
                     if self.senderNumber != number { break }
