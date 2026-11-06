@@ -69,6 +69,14 @@ public struct WorldMap: Codable, Equatable, Sendable {
     /// that share it have the same relief, though not a tile of it is
     /// compared.
     private(set) var reliefOf = ReliefOf()
+    /// Which ground it lies on, page by page: shared by the map's copies
+    /// and by the maps a keeper is shown of the unexplored map, which keep
+    /// its ground but where they are told otherwise; and the pages of it
+    /// this map has written tiles of its own to (`apart`). Two maps of one
+    /// ground have the same tiles on every page neither set apart, though
+    /// not a tile of them is compared.
+    private(set) var groundOf = GroundOf()
+    private(set) var apart: Set<Int> = []
 
     private enum CodingKeys: String, CodingKey {
         case radius
@@ -134,6 +142,9 @@ public struct WorldMap: Codable, Equatable, Sendable {
     public var unexplored: WorldMap {
         var map = self
         map.tiles = tiles.map(GameState.unknown)
+        // Ground of its own.
+        map.groundOf = GroundOf()
+        map.apart = []
         map.steps = map.tiles.map { WorldMap.step(onto: $0.terrain) }
         map.forget()
         // The lie of the land is known, however little of the land is: its
@@ -150,6 +161,7 @@ public struct WorldMap: Codable, Equatable, Sendable {
         precondition(unexplored.count == count, "The unexplored map of another world")
         var map = unexplored
         var any = false
+        var page = -1
         known.forEachSeen { index in
             guard index < tiles.count else { return }
             if !any {
@@ -160,11 +172,23 @@ public struct WorldMap: Codable, Equatable, Sendable {
             }
             map.tiles[index] = tiles[index]
             map.steps[index] = steps[index]
+            // The tiles seen come in order: each page set apart once.
+            if index / RealmState.mapPage != page {
+                page = index / RealmState.mapPage
+                map.apart.insert(page)
+            }
         }
         // Its relief this map's where the unexplored map's was this map's;
         // else some of each.
         if any, map.reliefOf !== reliefOf { map.reliefOf = ReliefOf() }
         return map
+    }
+
+    /// Whether a page of it (`RealmState.mapPage` tiles a page, `range`
+    /// its tiles) is `other`'s, tile for tile: at a glance where both lie
+    /// on one ground and neither has written tiles of its own to the page.
+    func hasTheGround(of other: WorldMap, onPage page: Int, tiles range: Range<Int>) -> Bool {
+        (groundOf === other.groundOf && !apart.contains(page) && !other.apart.contains(page)) || tiles[range] == other.tiles[range]
     }
 
     /// Whether its relief is `other`'s, tile for tile: at a glance where
@@ -432,6 +456,10 @@ public struct WorldMap: Codable, Equatable, Sendable {
         // Relief its other copies still have is theirs.
         if tiles[index].relief != tile.relief { reliefOf = ReliefOf() }
         tiles[index] = tile
+        // The ground of its page its own, if another map lies on its
+        // ground: the others keep theirs. A ground no other shares is just
+        // this map's, whatever its tiles.
+        if !isKnownUniquelyReferenced(&groundOf) { apart.insert(index / RealmState.mapPage) }
         // Claims its other copies still keep are theirs, of their ground.
         if isKnownUniquelyReferenced(&claims) { claims.clear() } else { claims = Claims() }
         if isKnownUniquelyReferenced(&nearest) { nearest.clear() } else { nearest = Nearest() }

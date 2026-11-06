@@ -385,11 +385,12 @@ extension GameState {
 struct Routes {
     private let state: GameState
     private var inTheWay: [Int: [Bool]] = [:]
-    private var search: WaySearch
+    /// Its room for searches, the map's size: laid out for the first way
+    /// sought, so routes on a keeper's view that seek none cost nothing.
+    private var search: WaySearch?
 
     init(on state: GameState) {
         self.state = state
-        search = WaySearch(count: state.map.count)
     }
 
     /// What stands in the way of a House's companies: every company, and
@@ -421,10 +422,11 @@ struct Routes {
               map.steps[goal] != 0
         else { return nil }
         let blocked = blocked(for: unit.owner)
+        if search == nil { search = WaySearch(count: map.count) }
         if let guide = map.guide(from: start, to: goal) {
-            return search.way(on: map, from: start, to: goal, around: blocked, guide: guide)
+            return search!.way(on: map, from: start, to: goal, around: blocked, guide: guide)
         }
-        return search.way(on: map, from: start, to: goal, around: blocked)
+        return search!.way(on: map, from: start, to: goal, around: blocked)
     }
 }
 

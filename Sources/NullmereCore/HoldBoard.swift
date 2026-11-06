@@ -58,6 +58,23 @@ public struct Holdings: RandomAccessCollection, MutableCollection, RangeReplacea
         lhs.list == rhs.list
     }
 
+    /// The holds of a stretch of the list, as they lie: a page of them
+    /// compared where they lie, not copied out one by one.
+    func page(_ range: Range<Int>) -> ArraySlice<Hold> {
+        list[range]
+    }
+
+    /// The hold at a place as every keeper is told it (`Hold.toldAlike`),
+    /// or, as its House's allies are, but for who lies in its beds. Neither
+    /// moves it, gives it to another House nor changes what it claims, so
+    /// nothing kept beside the holds is asked again.
+    mutating func tellAlike(at place: Int, toAllies: Bool = false) {
+        list[place].wounded = nil
+        guard !toAllies else { return }
+        list[place].project = nil
+        list[place].training = nil
+    }
+
     // MARK: A list
 
     public var startIndex: Int { 0 }

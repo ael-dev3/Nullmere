@@ -114,11 +114,13 @@ extension GameState {
         }
         // What a hold raises and trains its House's allies know too; who
         // lies in its beds, its own House alone.
+        // Each asked where it lies, and written only if it has anything to
+        // hide: most holds are told alike already.
         for index in view.holds.indices where view.holds[index].owner != house {
             if allies.contains(view.holds[index].owner) {
-                view.holds[index].wounded = nil
-            } else {
-                view.holds[index] = view.holds[index].toldAlike()
+                if view.holds[index].wounded != nil { view.holds.tellAlike(at: index, toAllies: true) }
+            } else if !view.holds[index].isToldAlike {
+                view.holds.tellAlike(at: index)
             }
         }
         view.envoys = envoys.filter { ($0.from == house || $0.to == house) && hears($0.from, as: house) }

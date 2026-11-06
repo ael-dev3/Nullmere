@@ -72,19 +72,15 @@ extension RealmView {
         var told = world
         var own = Own()
         let unknown = Explored.unknown(count: world.map.count)
-        for index in told.houses.indices {
-            let alike = told.houses[index].toldAlike(unknown: unknown)
-            if alike != told.houses[index] {
-                own.houses.append(told.houses[index])
-                told.houses[index] = alike
-            }
+        // Each asked where it lies whether it is told alike already, as all
+        // but a view's own and its allies' are: only those are copied.
+        for index in told.houses.indices where !told.houses[index].isToldAlike(unknown: unknown) {
+            own.houses.append(told.houses[index])
+            told.houses[index] = told.houses[index].toldAlike(unknown: unknown)
         }
-        for index in told.holds.indices {
-            let alike = told.holds[index].toldAlike()
-            if alike != told.holds[index] {
-                own.holds.append(told.holds[index])
-                told.holds[index] = alike
-            }
+        for index in told.holds.indices where !told.holds[index].isToldAlike {
+            own.holds.append(told.holds[index])
+            told.holds.tellAlike(at: index)
         }
         let head = RealmView(keeper: keeper, age: age, world: try told.split(into: &parts, using: encoder, reusing: written))
         parts["head"] = String(decoding: try encoder.encode(head), as: UTF8.self)
@@ -213,17 +209,16 @@ extension GameState {
         func text<T: Encodable>(_ value: T) throws -> String {
             String(decoding: try encoder.encode(value), as: UTF8.self)
         }
-        func paged<T: Encodable & Equatable, Items: RandomAccessCollection>(_ name: String, _ items: Items?, page size: Int = RealmState.partPage,
-                                                                             as theirs: (GameState) -> Items?) throws
-            where Items.Element == T, Items.Index == Int {
+        func paged<T: Encodable & Equatable, Items: Paged>(_ name: String, _ items: Items?, page size: Int = RealmState.partPage,
+                                                           as theirs: (GameState) -> Items?) throws where Items.Element == T {
             guard let items else { return }
             let others = written.map { (theirs($0.world), $0.parts) }
             // A list kept in the very storage of one written, as a view keeps
             // what it hides nothing of, is that list, page for page: nothing
             // of it is compared.
             let same = others.map { list, _ -> Bool in
-                guard let mine = items as? [T], let kept = list as? [T], mine.count == kept.count else { return false }
-                return mine.withUnsafeBufferPointer { ours in kept.withUnsafeBufferPointer { ours.baseAddress == $0.baseAddress } }
+                guard let list, list.count == items.count else { return false }
+                return GameState.sameStorage(list.page(0..<list.count), items.page(0..<items.count))
             }
             // An empty list keeps its first page, so a page lost is told
             // from a list with nothing in it.
@@ -235,9 +230,9 @@ extension GameState {
                 let alike = others.indices.first { index in
                     let (list, theirParts) = others[index]
                     guard let list, theirParts[key] != nil, min(start + size, list.count) == end else { return false }
-                    return same[index] || list[start..<end].elementsEqual(items[start..<end])
+                    return same[index] || GameState.sameItems(list.page(start..<end), items.page(start..<end))
                 }
-                parts[key] = try alike.flatMap { others[$0].1[key] } ?? text(Array(items[start..<end]))
+                parts[key] = try alike.flatMap { others[$0].1[key] } ?? text(Array(items.page(start..<end)))
             }
         }
         var head = self
@@ -250,7 +245,7 @@ extension GameState {
         let mapped = written.filter { $0.parts["map"] == mapHead }
         for page in 0..<pages.count {
             let key = "ground.\(page)", range = pages.tiles(of: page)
-            let alike = mapped.first { $0.parts[key] != nil && $0.world.map.tiles[range] == map.tiles[range] }
+            let alike = mapped.first { $0.parts[key] != nil && map.hasTheGround(of: $0.world.map, onPage: page, tiles: range) }
             parts[key] = alike?.parts[key] ?? WorldMap.ground(of: map.tiles[range])
         }
         // And its relief, whole: told alike however much of the lake a
@@ -337,6 +332,27 @@ extension GameState {
         head.stillHour = nil
         head.happening = nil
         return head
+    }
+
+    /// Whether two stretches of items lie in the very same storage: one
+    /// kept in another's, as a copy keeps the list it was made from until
+    /// either changes.
+    static func sameStorage<T>(_ a: ArraySlice<T>, _ b: ArraySlice<T>) -> Bool {
+        a.count == b.count && a.withUnsafeBufferPointer { ours in b.withUnsafeBufferPointer { ours.baseAddress == $0.baseAddress } }
+    }
+
+    /// Whether two stretches of items are the same, item by item, compared
+    /// where they lie: a hold or a company, hundreds of bytes and many
+    /// lists of its own, is never copied out only to be compared.
+    static func sameItems<T: Equatable>(_ a: ArraySlice<T>, _ b: ArraySlice<T>) -> Bool {
+        guard a.count == b.count else { return false }
+        return a.withUnsafeBufferPointer { ours in
+            b.withUnsafeBufferPointer { theirs in
+                if ours.baseAddress == theirs.baseAddress { return true }
+                for index in ours.indices where ours[index] != theirs[index] { return false }
+                return true
+            }
+        }
     }
 
     /// The part what a pace changes of the head goes in.
@@ -533,3 +549,19 @@ public enum RealmPartsError: Error, Equatable {
     /// A part there, but not what its name says it is.
     case unreadable(String)
 }
+
+/// A list a world keeps in pages: a plain list, or its holds or its
+/// companies, each an array underneath, so a page of it is a stretch of
+/// that array, compared where it lies.
+protocol Paged: RandomAccessCollection where Index == Int, Element: Equatable {
+    /// The items of a stretch of the list, as they lie.
+    func page(_ range: Range<Int>) -> ArraySlice<Element>
+}
+
+extension Array: Paged where Element: Equatable {
+    func page(_ range: Range<Int>) -> ArraySlice<Element> { self[range] }
+}
+
+extension Holdings: Paged {}
+
+extension Companies: Paged {}

@@ -94,6 +94,53 @@ final class MapGroundTests: XCTestCase {
         XCTAssertFalse(smaller.hasTheRelief(of: map), "A map of another size")
     }
 
+    /// A map's ground is known to be another's page by page at a glance
+    /// where both lie on one ground: its copies', and the pages of the
+    /// maps a keeper is shown of the unexplored map that they explored
+    /// none of. A page either wrote tiles of its own to, and maps of other
+    /// ground, are compared tile by tile, and found alike or not as they are.
+    func testAMapsGroundIsKnownPageByPage() throws {
+        let map = GameState(settings: GameSettings(seedText: "ground at a glance", houseCount: 12, radius: 40)).map
+        let pages = GameState.MapPages(radius: map.radius, page: RealmState.mapPage)
+        XCTAssertGreaterThan(pages.count, 2)
+        let unexplored = map.unexplored
+        XCTAssertFalse(unexplored.groundOf === map.groundOf, "The unexplored map's ground its own")
+        var seen = Explored(repeating: false, count: map.count)
+        // A few tiles of the second page explored, and the whole of the
+        // first.
+        for index in pages.tiles(of: 0) { seen[index] = true }
+        let unlike = try XCTUnwrap(pages.tiles(of: 1).first { map.tiles[$0] != unexplored.tiles[$0] })
+        seen[unlike] = true
+        let known = map.known(by: seen, from: unexplored)
+        XCTAssertTrue(known.groundOf === unexplored.groundOf)
+        XCTAssertEqual(known.apart, [0, 1])
+        for page in 0..<pages.count {
+            let range = pages.tiles(of: page)
+            XCTAssertEqual(known.hasTheGround(of: unexplored, onPage: page, tiles: range), known.tiles[range] == unexplored.tiles[range], "page \(page)")
+            XCTAssertEqual(known.hasTheGround(of: map, onPage: page, tiles: range), known.tiles[range] == map.tiles[range], "page \(page)")
+        }
+        XCTAssertTrue(known.hasTheGround(of: map, onPage: 0, tiles: pages.tiles(of: 0)), "Explored whole, the world's page, tile for tile")
+        XCTAssertFalse(known.hasTheGround(of: unexplored, onPage: 1, tiles: pages.tiles(of: 1)))
+        XCTAssertTrue(known.hasTheGround(of: unexplored, onPage: 2, tiles: pages.tiles(of: 2)))
+        XCTAssertTrue(map.known(by: Explored(repeating: false, count: map.count), from: unexplored).apart.isEmpty)
+        // A copy whose tile changes sets its page apart; the map it was
+        // made from keeps its own.
+        var ford = map
+        let index = pages.tiles(of: 2).lowerBound + 7
+        ford.set(index: index, Tile(terrain: .ford, relief: map.tiles[index].relief))
+        XCTAssertTrue(ford.groundOf === map.groundOf)
+        XCTAssertEqual(ford.apart, [2])
+        XCTAssertTrue(map.apart.isEmpty, "A ground no other map shared when its tiles were laid")
+        XCTAssertFalse(ford.hasTheGround(of: map, onPage: 2, tiles: pages.tiles(of: 2)))
+        XCTAssertTrue(ford.hasTheGround(of: map, onPage: 1, tiles: pages.tiles(of: 1)))
+        var back = ford
+        back.set(index: index, map.tiles[index])
+        XCTAssertTrue(back.hasTheGround(of: map, onPage: 2, tiles: pages.tiles(of: 2)), "Changed and changed back: the same tiles")
+        let read = try JSONDecoder().decode(WorldMap.self, from: JSONEncoder().encode(map))
+        XCTAssertFalse(read.groundOf === map.groundOf, "A map read: ground of its own")
+        XCTAssertTrue(read.hasTheGround(of: map, onPage: 1, tiles: pages.tiles(of: 1)))
+    }
+
     func testWhatDoesntReadIsRefused() {
         let tiles = [Tile(terrain: .still), Tile(terrain: .still), Tile(terrain: .barrow, feature: .stoneSeam, relief: 40)]
         let ground = WorldMap.ground(of: tiles), relief = WorldMap.relief(of: tiles)

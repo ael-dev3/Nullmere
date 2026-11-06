@@ -331,6 +331,12 @@ extension Hold {
         told.wounded = nil
         return told
     }
+
+    /// Whether the hold is as every keeper is told it (`toldAlike`): asked
+    /// of it where it lies, with nothing copied.
+    var isToldAlike: Bool {
+        project == nil && training == nil && wounded == nil
+    }
 }
 
 extension House {
@@ -342,5 +348,13 @@ extension House {
         told.explored = unknown
         told.research = Research()
         return told
+    }
+
+    /// Whether the House is as every keeper but its own is told it
+    /// (`toldAlike(unknown:)`): asked of it where it lies, with nothing
+    /// copied, the ground it has explored the very nothing known if it is
+    /// told none.
+    func isToldAlike(unknown: Explored) -> Bool {
+        stock == .zero && research == Research() && explored == unknown
     }
 }

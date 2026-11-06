@@ -138,6 +138,12 @@ final class Claims: @unchecked Sendable {
 /// keep the same one while their relief is its relief.
 final class ReliefOf: Sendable {}
 
+/// A map's ground, as one, page by page (`RealmState.mapPage` tiles a
+/// page, as its pages go): its copies, and the maps a keeper is shown of
+/// it, keep the same one, each setting apart the pages it writes tiles of
+/// its own to.
+final class GroundOf: Sendable {}
+
 /// The nearest hex of a terrain to the hexes it was sought from: kept with
 /// the map while its ground stays as it is, the oldest let go of first.
 final class Nearest: @unchecked Sendable {

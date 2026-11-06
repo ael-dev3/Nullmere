@@ -51,6 +51,12 @@ public struct Companies: RandomAccessCollection, MutableCollection, RangeReplace
         lhs.list == rhs.list
     }
 
+    /// The companies of a stretch of the list, as they lie: a page of them
+    /// compared where they lie, not copied out one by one.
+    func page(_ range: Range<Int>) -> ArraySlice<Unit> {
+        list[range]
+    }
+
     // MARK: A list
 
     public var startIndex: Int { 0 }

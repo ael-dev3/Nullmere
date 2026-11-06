@@ -46,6 +46,44 @@ final class HoldBoardTests: XCTestCase {
         assertKept(holds, "none left")
     }
 
+    /// A hold told alike where it lies is the hold `toldAlike` gives; to
+    /// its House's allies, all but who lies in its beds. Neither moves it,
+    /// gives it to another House nor changes what the holds claim.
+    func testAHoldIsToldAlikeWhereItLies() {
+        var full = hold(2, 2, 0, owner: 1, seat: true)
+        full.project = Hold.Project(kind: .granary, targetLevel: 2, watchesLeft: 3)
+        full.training = Hold.Training(kind: .spear, watchesLeft: 2)
+        full.wounded = [Wounded(kind: .spear, tier: 1, experience: 0, since: 4)]
+        var holds: Holdings = [hold(1, 0, 0, owner: 0, seat: true), full, hold(3, 0, 3, owner: 1)]
+        let claims = holds.claims
+        XCTAssertTrue(holds[0].isToldAlike)
+        XCTAssertFalse(holds[1].isToldAlike)
+        var allies = holds
+        allies.tellAlike(at: 1, toAllies: true)
+        XCTAssertNil(allies[1].wounded)
+        XCTAssertEqual(allies[1].project, full.project, "Its allies know what it raises")
+        XCTAssertEqual(allies[1].training, full.training)
+        XCTAssertFalse(allies[1].isToldAlike)
+        holds.tellAlike(at: 1)
+        XCTAssertEqual(holds[1], full.toldAlike())
+        XCTAssertTrue(holds[1].isToldAlike)
+        XCTAssertEqual(holds.claims, claims, "What the holds claim as it was")
+        assertKept(holds, "one told alike")
+        for one in [full, full.toldAlike(), hold(4, 1, 1, owner: 2)] {
+            XCTAssertEqual(one.isToldAlike, one == one.toldAlike())
+        }
+        // A page of holds compared where they lie, as a list of them is.
+        let other: Holdings = [hold(1, 0, 0, owner: 0, seat: true), full.toldAlike(), hold(3, 0, 3, owner: 1)]
+        XCTAssertTrue(GameState.sameItems(holds.page(0..<3), other.page(0..<3)))
+        XCTAssertFalse(GameState.sameItems(allies.page(0..<3), other.page(0..<3)))
+        XCTAssertTrue(GameState.sameItems(allies.page(0..<1), other.page(0..<1)))
+        XCTAssertFalse(GameState.sameItems(holds.page(0..<2), other.page(0..<3)), "Of another length")
+        XCTAssertFalse(GameState.sameStorage(holds.page(0..<3), other.page(0..<3)))
+        let copy = holds
+        XCTAssertTrue(GameState.sameStorage(copy.page(0..<3), holds.page(0..<3)), "A copy keeps the list it was made from")
+        XCTAssertTrue(GameState.sameItems(copy.page(1..<3), holds.page(1..<3)))
+    }
+
     func testAHoldIsFoundByItsId() {
         let holds: Holdings = [hold(3, 0, 0, owner: 0), hold(5, 1, 0, owner: 0), hold(4, 2, 0, owner: 1)]
         XCTAssertEqual(holds.index(ofID: 5), 1)
