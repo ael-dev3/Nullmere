@@ -115,3 +115,29 @@ public struct Explored: RandomAccessCollection, MutableCollection, Equatable, Ha
         words[words.count - 1] &= (1 << UInt64(count % 64)) - 1
     }
 }
+
+extension Explored {
+    /// Nothing known of a map of `count` tiles: one kept for every map of
+    /// that size, so every House told as a stranger knows the very same
+    /// nothing, and two of them are found alike at a glance (one storage),
+    /// not word by word across a wide lake's hundreds of thousands of tiles.
+    public static func unknown(count: Int) -> Explored {
+        NothingKnown.shared.explored(count: count)
+    }
+}
+
+/// The nothing known of each map's size, made once.
+private final class NothingKnown: @unchecked Sendable {
+    static let shared = NothingKnown()
+    private let lock = NSLock()
+    private var kept: [Int: Explored] = [:]
+
+    func explored(count: Int) -> Explored {
+        lock.lock()
+        defer { lock.unlock() }
+        if let known = kept[count] { return known }
+        let made = Explored(repeating: false, count: count)
+        kept[count] = made
+        return made
+    }
+}

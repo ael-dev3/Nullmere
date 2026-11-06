@@ -34,7 +34,7 @@ extension GameState {
     /// them, found once for many views; found as needed without.
     public func viewCommons(ways: [Int: [Hex]]? = nil) -> ViewCommons {
         ViewCommons(ways: ways, reputed: strengths(), reputedMight: houses.map { might(of: $0.id) },
-                    unexplored: map.unexplored, unknown: Explored(repeating: false, count: map.count))
+                    unexplored: map.unexplored, unknown: Explored.unknown(count: map.count))
     }
 
     /// `ways`, the way of every company on the march as `ways()` finds

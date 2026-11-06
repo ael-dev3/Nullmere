@@ -33,7 +33,8 @@ steward's answer). For development a realm can also be hosted in-process
   replies, through SpacetimeDB views (`my_view`, `my_view_parts`,
   `my_replies`), and the realm's public status. A keeper's view is kept in
   parts as the world is (its map 2,048 tiles to a page, a page of 32 of
-  each long list, the rest), and its row names every part with the version
+  each long list but the relations between every two Houses, a thousand
+  to a page, and the rest), and its row names every part with the version
   it was written at: a publication writes only the parts of each view that
   changed and lets go of those a view no longer has, and a keeper's Mac
   takes only the parts written since it last took them, and decodes only

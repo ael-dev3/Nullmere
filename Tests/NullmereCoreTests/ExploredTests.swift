@@ -37,6 +37,26 @@ final class ExploredTests: XCTestCase {
         }
     }
 
+    /// Nothing known of a map of a size is one, kept for every House told
+    /// as a stranger: alike to nothing made anew, and a House that comes to
+    /// know a tile knows it alone.
+    func testNothingKnownIsOneForEveryMapOfASize() {
+        let nothing = Explored.unknown(count: 300)
+        XCTAssertEqual(nothing, Explored(repeating: false, count: 300))
+        XCTAssertEqual(nothing.count, 300)
+        XCTAssertFalse(nothing.contains(true))
+        nothing.words.withUnsafeBufferPointer { kept in
+            Explored.unknown(count: 300).words.withUnsafeBufferPointer { again in
+                XCTAssertEqual(kept.baseAddress, again.baseAddress, "the very same storage")
+            }
+        }
+        var learnt = Explored.unknown(count: 300)
+        learnt[7] = true
+        XCTAssertTrue(learnt[7])
+        XCTAssertFalse(Explored.unknown(count: 300)[7], "what one House learns, the nothing doesn't")
+        XCTAssertEqual(Explored.unknown(count: 5).count, 5)
+    }
+
     func testAllOrNoneAndTheTileBeyondTheLast() {
         for count in [0, 5, 64, 70] {
             let all = Explored(repeating: true, count: count), none = Explored(repeating: false, count: count)

@@ -11,6 +11,11 @@ import Foundation
 /// all of them.
 extension RealmState {
     public static let partPage = 32
+    /// How many relations go to a page: one for every two Houses, each a
+    /// line of a few bytes that changes only as their dealings do, so a
+    /// realm of hundreds of Houses is a few hundred pages of them rather
+    /// than many thousands, each to be named and read in every view.
+    public static let relationPage = 1_024
     /// How many of the map's tiles go to a part: a wide lake's map is a
     /// megabyte, and a keeper's view of it changes only where they explore.
     public static let mapPage = 2_048
@@ -66,7 +71,7 @@ extension RealmView {
         var parts: [String: String] = [:]
         var told = world
         var own = Own()
-        let unknown = Explored(repeating: false, count: world.map.count)
+        let unknown = Explored.unknown(count: world.map.count)
         for index in told.houses.indices {
             let alike = told.houses[index].toldAlike(unknown: unknown)
             if alike != told.houses[index] {
@@ -206,22 +211,31 @@ extension GameState {
         func text<T: Encodable>(_ value: T) throws -> String {
             String(decoding: try encoder.encode(value), as: UTF8.self)
         }
-        func paged<T: Encodable & Equatable, Items: RandomAccessCollection>(_ name: String, _ items: Items?, as theirs: (GameState) -> Items?) throws
+        func paged<T: Encodable & Equatable, Items: RandomAccessCollection>(_ name: String, _ items: Items?, page size: Int = RealmState.partPage,
+                                                                             as theirs: (GameState) -> Items?) throws
             where Items.Element == T, Items.Index == Int {
             guard let items else { return }
             let others = written.map { (theirs($0.world), $0.parts) }
+            // A list kept in the very storage of one written, as a view keeps
+            // what it hides nothing of, is that list, page for page: nothing
+            // of it is compared.
+            let same = others.map { list, _ -> Bool in
+                guard let mine = items as? [T], let kept = list as? [T], mine.count == kept.count else { return false }
+                return mine.withUnsafeBufferPointer { ours in kept.withUnsafeBufferPointer { ours.baseAddress == $0.baseAddress } }
+            }
             // An empty list keeps its first page, so a page lost is told
             // from a list with nothing in it.
-            for start in stride(from: 0, to: max(items.count, 1), by: RealmState.partPage) {
-                let end = min(start + RealmState.partPage, items.count)
-                let key = "\(name).\(start / RealmState.partPage)"
+            for start in stride(from: 0, to: max(items.count, 1), by: size) {
+                let end = min(start + size, items.count)
+                let key = "\(name).\(start / size)"
                 // The same page there: the same items, and no more after
                 // them on it.
-                let alike = others.first { list, theirParts in
-                    guard let list, theirParts[key] != nil, min(start + RealmState.partPage, list.count) == end else { return false }
-                    return list[start..<end].elementsEqual(items[start..<end])
+                let alike = others.indices.first { index in
+                    let (list, theirParts) = others[index]
+                    guard let list, theirParts[key] != nil, min(start + size, list.count) == end else { return false }
+                    return same[index] || list[start..<end].elementsEqual(items[start..<end])
                 }
-                parts[key] = try alike?.1[key] ?? text(Array(items[start..<end]))
+                parts[key] = try alike.flatMap { others[$0].1[key] } ?? text(Array(items[start..<end]))
             }
         }
         var head = self
@@ -243,7 +257,7 @@ extension GameState {
         head.houses = []
         try paged("holds", holds) { $0.holds }
         head.holds = []
-        try paged("relations", relations) { $0.relations }
+        try paged("relations", relations, page: RealmState.relationPage) { $0.relations }
         head.relations = []
         try paged("chronicle", chronicle) { $0.chronicle }
         head.chronicle = []
