@@ -281,7 +281,10 @@ public struct House: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
-/// Booleans as "count:base64", eight to a byte.
+/// Booleans as they travel: "count:base64", eight to a byte; or, where it
+/// is shorter, as a House's explored ground mostly is, "count;base64" of
+/// its runs (`Explored.runs`), each a number seven bits to a byte, the
+/// last byte of each without its high bit.
 enum Bits {
     /// Bits none of which is set, as they travel: their count alone, as a
     /// keeper's view carries every other House's explored ground.
@@ -289,14 +292,44 @@ enum Bits {
 
     static func encode(_ values: Explored) -> String {
         guard values.contains(true) else { return "\(values.count):\(noneSet)" }
+        var runs: [UInt8] = []
+        for run in values.runs {
+            var rest = run
+            while rest >= 0x80 {
+                runs.append(UInt8(rest & 0x7F) | 0x80)
+                rest >>= 7
+            }
+            runs.append(UInt8(rest))
+        }
+        // Runs when they are fewer bytes than the tiles, eight to a byte.
+        if runs.count < (values.count + 7) / 8 {
+            return "\(values.count);" + Data(runs).base64EncodedString()
+        }
         return "\(values.count):" + Data(values.bytes).base64EncodedString()
     }
 
     static func decode(_ text: String) -> Explored? {
-        let parts = text.split(separator: ":", maxSplits: 1)
-        guard parts.count == 2, let count = Int(parts[0]), count >= 0 else { return nil }
-        if parts[1] == noneSet { return Explored(repeating: false, count: count) }
-        guard let data = Data(base64Encoded: String(parts[1])), data.count == (count + 7) / 8 else { return nil }
+        guard let mark = text.firstIndex(where: { $0 == ":" || $0 == ";" }), let count = Int(text[..<mark]), count >= 0 else { return nil }
+        let rest = String(text[text.index(after: mark)...])
+        if text[mark] == ";" {
+            guard let data = Data(base64Encoded: rest) else { return nil }
+            var runs: [Int] = [], run = 0, shift = 0
+            for byte in data {
+                guard shift < 56 else { return nil }
+                run |= Int(byte & 0x7F) << shift
+                if byte & 0x80 == 0 {
+                    runs.append(run)
+                    run = 0
+                    shift = 0
+                } else {
+                    shift += 7
+                }
+            }
+            guard shift == 0 else { return nil }
+            return Explored(count: count, runs: runs)
+        }
+        if rest == noneSet { return Explored(repeating: false, count: count) }
+        guard let data = Data(base64Encoded: rest), data.count == (count + 7) / 8 else { return nil }
         return Explored(count: count, bytes: [UInt8](data))
     }
 }

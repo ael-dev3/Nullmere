@@ -54,9 +54,12 @@ steward's answer). For development a realm can also be hosted in-process
   pace. What a pace changes of the head (where the watch's paces stand,
   the draws and the next id, the envoys, marches and gifts on their way)
   goes apart from it too, so a pace writes those few hundred bytes for the
-  world and each view rather than every head again: at ninety-six seats a
-  watch's twelve paces write 14.5 MB of the world and every view against
-  22.7 (a probe's measure at the fiftieth watch). The pages every
+  world and each view rather than every head again; and a House's
+  explored ground goes as its runs (how many unseen, how many seen, by
+  turns), a few hundred bytes where its bits were 5 KB. At ninety-six
+  seats a watch's twelve paces write 9.3 MB of the world and every view
+  against 22.7, and the world itself is 768 KB against 1,257 (a probe's
+  measure at the fiftieth watch). The pages every
   keeper is told alike, just as a keeper of no House is told them, are
   kept on the server once, as no keeper's, under "~", the page's name and
   the mark of its text, and each view names the ones it has: written once
@@ -95,9 +98,11 @@ steward's answer). For development a realm can also be hosted in-process
   for thirty seconds (the steward publishes at least every twenty) is
   taken for dead and the realm read as before, as it is wherever the line
   can't be kept. On a local SpacetimeDB server, ninety-six keepers' clients
-  built as shipped saw the watch turn 1.4 s after the last made ready
-  (2.2 s asking after their views), and one keeper's words reached every
-  other in 0.5 s (1.2 s).
+  built as shipped saw the watch turn 0.6 s after the last made ready
+  (2.2 s asking after their views, before a pace went apart from the head
+  and ground went as its runs), and one keeper's words reached every other
+  in 0.6 s (1.2 s); the crowd's publications came to 15.8 MB, each in one
+  call, against 42 MB.
 - **Many keepers in one process.** A keeper's link never cancels a request
   in flight: a push or a waking ends the wait between its reads early, and
   closing it lets what is in flight finish and go no further. Cancelling a

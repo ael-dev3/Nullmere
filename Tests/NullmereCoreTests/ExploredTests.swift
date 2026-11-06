@@ -57,6 +57,60 @@ final class ExploredTests: XCTestCase {
         XCTAssertEqual(Explored.unknown(count: 5).count, 5)
     }
 
+    /// Ground that lies together travels as its runs, ground scattered as
+    /// its bits, whichever is shorter; either comes back exactly, and the
+    /// bits as they travelled before read as they did.
+    func testGroundTravelsAsItsRunsWhereThatIsShorter() throws {
+        var together = Explored(repeating: false, count: 10_000)
+        for tile in 2_000..<3_500 { together[tile] = true }
+        for tile in 7_000..<7_040 { together[tile] = true }
+        XCTAssertEqual(together.runs, [2_000, 1_500, 3_500, 40, 2_960])
+        let runs = Bits.encode(together)
+        XCTAssertTrue(runs.hasPrefix("10000;"), runs)
+        XCTAssertLessThan(runs.count, 30)
+        XCTAssertEqual(Bits.decode(runs), together)
+
+        var scattered = Explored(repeating: false, count: 1_000)
+        for tile in stride(from: 0, to: 1_000, by: 2) { scattered[tile] = true }
+        let bits = Bits.encode(scattered)
+        XCTAssertTrue(bits.hasPrefix("1000:"), "Bits, where runs would be longer")
+        XCTAssertEqual(Bits.decode(bits), scattered)
+        XCTAssertEqual(Bits.decode("1000:" + Data(scattered.bytes).base64EncodedString()), scattered)
+
+        // The first tile seen, the last, every one, a run longer than a
+        // byte's seven bits can count, and ground drawn at random.
+        var edges = Explored(repeating: false, count: 300)
+        edges[0] = true
+        edges[299] = true
+        for values in [edges, Explored(repeating: true, count: 200), Explored(repeating: false, count: 64)] {
+            XCTAssertEqual(Bits.decode(Bits.encode(values)), values)
+        }
+        XCTAssertEqual(edges.runs.first, 0)
+        var generator = SystemRandomNumberGenerator()
+        for _ in 0..<20 {
+            var random = Explored(repeating: false, count: Int.random(in: 1...5_000, using: &generator))
+            var tile = 0
+            while tile < random.count {
+                let run = Int.random(in: 1...400, using: &generator)
+                if Bool.random(using: &generator) { for seen in tile..<min(tile + run, random.count) { random[seen] = true } }
+                tile += run
+            }
+            XCTAssertEqual(Bits.decode(Bits.encode(random)), random)
+            XCTAssertEqual(Explored(count: random.count, runs: random.runs), random)
+        }
+
+        // Runs that don't come to the tiles told of, a run of none past the
+        // first, and a number cut short are refused.
+        XCTAssertNil(Explored(count: 10, runs: [3, 4]))
+        XCTAssertNil(Explored(count: 10, runs: [3, 0, 7]))
+        XCTAssertNil(Explored(count: 10, runs: [-1, 11]))
+        XCTAssertNil(Bits.decode("10;" + Data([0x83]).base64EncodedString()))
+        XCTAssertNil(Bits.decode("10;" + Data([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01]).base64EncodedString()))
+        XCTAssertNil(Bits.decode("10;not base64!"))
+        XCTAssertNil(Bits.decode("x;AA=="))
+        XCTAssertNil(Bits.decode("10"))
+    }
+
     func testAllOrNoneAndTheTileBeyondTheLast() {
         for count in [0, 5, 64, 70] {
             let all = Explored(repeating: true, count: count), none = Explored(repeating: false, count: count)
@@ -79,14 +133,21 @@ final class ExploredTests: XCTestCase {
         XCTAssertNil(Bits.decode("16:AA=="), "Too few bytes for sixteen tiles")
     }
 
-    /// A House's whole explored ground, kept as bits, travels as the same
-    /// text and reads back the same.
+    /// A House's whole explored ground travels as its runs, lying together
+    /// as it does, and reads back the same; a House written while it went as
+    /// bits reads as it did.
     func testAHouseTravelsAsItDid() throws {
         var state = GameState(settings: GameSettings(seedText: "explored as bits", houseCount: 3, radius: 16))
         for _ in 0..<3 { _ = state.endWatch() }
         let house = state.houses[0]
         let text = String(decoding: try JSONEncoder().encode(house), as: UTF8.self)
-        XCTAssertTrue(text.contains(travelled(Array(house.explored)).replacingOccurrences(of: "/", with: "\\/")))
+        let runs = Bits.encode(house.explored)
+        XCTAssertTrue(runs.contains(";"), "As runs: \(runs)")
+        XCTAssertTrue(text.contains(runs.replacingOccurrences(of: "/", with: "\\/")))
         XCTAssertEqual(try JSONDecoder().decode(House.self, from: Data(text.utf8)).explored, house.explored)
+        let bits = travelled(Array(house.explored)).replacingOccurrences(of: "/", with: "\\/")
+        let before = text.replacingOccurrences(of: runs.replacingOccurrences(of: "/", with: "\\/"), with: bits)
+        XCTAssertNotEqual(before, text)
+        XCTAssertEqual(try JSONDecoder().decode(House.self, from: Data(before.utf8)), house)
     }
 }

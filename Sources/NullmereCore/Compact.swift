@@ -72,11 +72,13 @@ public enum Speech {
     /// pages every keeper is told alike kept once, as no keeper's, and
     /// named by each view that has them. 4: a view's own Houses apart from
     /// its pages of Houses, and the deeds done in pages of their own. 5:
-    /// what a pace changes apart from the head.
+    /// what a pace changes apart from the head, and explored ground as its
+    /// runs.
     public static let current = 5
     /// The oldest tongue a realm of this build still hears from a keeper's
     /// Mac: a Mac before a pace went apart from the head would read the
-    /// watch's paces as never begun.
+    /// watch's paces as never begun, and before ground went as its runs
+    /// couldn't read its own.
     public static let oldestHeard = 5
     /// Where a keeper gets the newest Nullmere Online.
     public static let newestBuild = "https://github.com/ael-dev3/Nullmere/releases/latest"

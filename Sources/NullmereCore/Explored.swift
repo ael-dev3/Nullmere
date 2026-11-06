@@ -109,6 +109,51 @@ public struct Explored: RandomAccessCollection, MutableCollection, Equatable, Ha
         return bytes
     }
 
+    /// The tiles as runs: how many unseen, then how many seen, and so on
+    /// by turns to the last tile, the first run of unseen perhaps none. A
+    /// House's ground lies together, so its hundreds of thousands of tiles
+    /// are a few hundred runs. Found a word at a time.
+    var runs: [Int] {
+        var runs: [Int] = []
+        var start = 0, seen = false
+        while start < count {
+            let end = next(from: start, otherThan: seen)
+            runs.append(end - start)
+            start = end
+            seen.toggle()
+        }
+        return runs
+    }
+
+    /// The first tile from `start` on not told of as `value`, or `count`.
+    private func next(from start: Int, otherThan value: Bool) -> Int {
+        var word = start >> 6
+        guard word < words.count else { return count }
+        // The bits that differ from `value`, from `start` on.
+        var bits = (value ? ~words[word] : words[word]) & (~0 << UInt64(start & 63))
+        while bits == 0 {
+            word += 1
+            guard word < words.count else { return count }
+            bits = value ? ~words[word] : words[word]
+        }
+        return Swift.min(word << 6 | bits.trailingZeroBitCount, count)
+    }
+
+    /// The tiles of `runs`, by turns unseen and seen; none if they don't come
+    /// to `count` tiles, or a run but the first is of none.
+    init?(count: Int, runs: [Int]) {
+        guard count >= 0, runs.allSatisfy({ $0 >= 0 }), runs.dropFirst().allSatisfy({ $0 > 0 }),
+              runs.reduce(0, { $0 + $1 }) == count else { return nil }
+        self.init(repeating: false, count: count)
+        var at = 0
+        for (index, run) in runs.enumerated() {
+            if index % 2 == 1 {
+                for tile in at..<(at + run) { words[tile >> 6] |= 1 << UInt64(tile & 63) }
+            }
+            at += run
+        }
+    }
+
     /// No bit set past the last tile.
     private mutating func trim() {
         guard count % 64 != 0, !words.isEmpty else { return }
