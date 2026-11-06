@@ -62,9 +62,4 @@ enum Holds {
     /// gate in the +z flat. Turned 30° (and any sixth), it sits within a
     /// hex with its gate toward a neighbour.
     static let wallRadius: Float = 0.84
-
-    static func wallCorner(_ index: Int) -> Vec3 {
-        let angle = Float(index) * .pi / 3
-        return Vec3(wallRadius * Float(cos(Double(angle))), 0, wallRadius * Float(sin(Double(angle))))
-    }
 }

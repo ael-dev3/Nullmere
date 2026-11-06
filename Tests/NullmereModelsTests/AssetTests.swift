@@ -10,6 +10,45 @@ final class AssetTests: XCTestCase {
         try Asset.model(name: "arm", glb: try Asset.bytes(base64: Fixtures.arm), scale: scale)
     }
 
+    /// The fixture arm's JSON and binary buffer, to be changed and packed
+    /// again (`glb`).
+    private func armParts() throws -> (json: [String: Any], bin: Data) {
+        let data = try Asset.bytes(base64: Fixtures.arm)
+        func word(_ at: Int) -> Int {
+            Int(UInt32(littleEndian: data.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: at, as: UInt32.self) }))
+        }
+        let text = word(12), binary = 20 + text
+        let json = try XCTUnwrap(try JSONSerialization.jsonObject(with: data.subdata(in: 20..<binary)) as? [String: Any])
+        return (json, data.subdata(in: (binary + 8)..<(binary + 8 + word(binary))))
+    }
+
+    /// A glTF binary of a JSON's text and a buffer, each padded as the format asks.
+    private func glb(text: Data, bin: Data) -> Data {
+        var text = text, bin = bin
+        while text.count % 4 != 0 { text.append(0x20) }
+        while bin.count % 4 != 0 { bin.append(0) }
+        var data = Data()
+        for word in [0x4654_6C67, 2, 28 + text.count + bin.count, text.count, 0x4E4F_534A] {
+            withUnsafeBytes(of: UInt32(word).littleEndian) { data.append(contentsOf: $0) }
+        }
+        data.append(text)
+        for word in [bin.count, 0x004E_4942] { withUnsafeBytes(of: UInt32(word).littleEndian) { data.append(contentsOf: $0) } }
+        data.append(bin)
+        return data
+    }
+
+    private func glb(_ json: [String: Any], _ bin: Data) throws -> Data {
+        glb(text: try JSONSerialization.data(withJSONObject: json), bin: bin)
+    }
+
+    /// The arm read from its parts as changed.
+    private func arm(_ change: (inout [String: Any], inout Data) throws -> Void, variant: String? = nil,
+                     order: [String] = []) throws -> Model {
+        var (json, bin) = try armParts()
+        try change(&json, &bin)
+        return try Asset.model(name: "arm", glb: try glb(json, bin), order: order, variant: variant)
+    }
+
     /// The block's middle, as the model stands at a moment of a clip.
     private func block(_ model: Model, _ clip: Clip, _ time: Float) -> Vec3 {
         let pose = model.pose(clip, at: time)
@@ -219,6 +258,136 @@ final class AssetTests: XCTestCase {
         XCTAssertEqual(Asset.tags("ring@talentSigil0").variants, ["talentSigil0"])
         XCTAssertTrue(Asset.tags("stub@3rd").always, "Neither a tier nor a variant")
         XCTAssertEqual(Asset.tags("plain").name, "plain")
+    }
+
+    func testTheArmPackedAgainIsTheArm() throws {
+        let packed = try arm { _, _ in }
+        XCTAssertEqual(packed.mesh.vertices, try arm().mesh.vertices, "What the tests change is read as the fixture is")
+        XCTAssertEqual(packed.pose(.attack, at: 0.4), try arm().pose(.attack, at: 0.4))
+    }
+
+    /// A node may be given as one matrix in place of its parts (glTF's
+    /// `matrix`): it stands where the same parts would stand it.
+    func testANodeGivenAsAMatrixStandsAsItsPartsWould() throws {
+        func nodes(_ json: inout [String: Any], _ change: (inout [String: Any]) -> Void) {
+            var all = json["nodes"] as? [[String: Any]] ?? []
+            change(&all[4])
+            json["nodes"] = all
+        }
+        let parts = try arm { json, _ in nodes(&json) { $0["translation"] = [0.5, 0, 0.25] } }
+        let matrix = try arm { json, _ in nodes(&json) { $0["matrix"] = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0.5, 0, 0.25, 1] } }
+        XCTAssertEqual(matrix.mesh.vertices.map(\.position), parts.mesh.vertices.map(\.position))
+        XCTAssertNotEqual(matrix.mesh.vertices.map(\.position), try arm().mesh.vertices.map(\.position), "The arm moved by its root")
+        for time: Float in [0, 0.4, 1.1] {
+            XCTAssertEqual(matrix.pose(.idle, at: time), parts.pose(.idle, at: time))
+            XCTAssertEqual(matrix.pose(.attack, at: time), parts.pose(.attack, at: time))
+        }
+    }
+
+    /// A variant's own action plays in place of the one for all, whichever
+    /// the file writes first.
+    func testAVariantsOwnActionWinsWhereverItIsWritten() throws {
+        let written = try arm({ _, _ in }, variant: "other")
+        let ownFirst = try arm({ json, _ in
+            let actions = json["animations"] as? [[String: Any]] ?? []
+            json["animations"] = [actions[1], actions[0], actions[2]]
+        }, variant: "other")
+        XCTAssertLessThan((block(ownFirst, .attack, 22.0 / 30) - Vec3(0, 1, -1.2)).length, 4e-3, "its own strike, written first")
+        for time: Float in [0.2, 0.7, 1.3] {
+            XCTAssertEqual(ownFirst.pose(.attack, at: time), written.pose(.attack, at: time))
+        }
+    }
+
+    /// Colours painted on its vertices (glTF's `COLOR_0`, here as
+    /// normalised integers, as Blender may write them) tint its material's.
+    func testColoursPaintedOnItsVerticesTintItsMaterial() throws {
+        let tinted = try arm { json, bin in
+            var views = json["bufferViews"] as? [[String: Any]] ?? [], accessors = json["accessors"] as? [[String: Any]] ?? []
+            var meshes = json["meshes"] as? [[String: Any]] ?? [], buffers = json["buffers"] as? [[String: Any]] ?? []
+            views.append(["buffer": 0, "byteOffset": bin.count, "byteLength": 24 * 8])
+            for _ in 0..<24 {
+                for value: UInt16 in [65535, 32768, 0, 65535] { withUnsafeBytes(of: value.littleEndian) { bin.append(contentsOf: $0) } }
+            }
+            buffers[0]["byteLength"] = bin.count
+            accessors.append(["bufferView": views.count - 1, "componentType": 5123, "normalized": true, "count": 24, "type": "VEC4"])
+            var block = meshes[1]["primitives"] as? [[String: Any]] ?? []
+            var attributes = block[0]["attributes"] as? [String: Any] ?? [:]
+            attributes["COLOR_0"] = accessors.count - 1
+            block[0]["attributes"] = attributes
+            meshes[1]["primitives"] = block
+            json["bufferViews"] = views
+            json["accessors"] = accessors
+            json["meshes"] = meshes
+            json["buffers"] = buffers
+        }
+        let plain = try arm().mesh.vertices.filter { $0.material == .metal }, painted = tinted.mesh.vertices.filter { $0.material == .metal }
+        XCTAssertEqual(painted.count, plain.count)
+        for (paint, was) in zip(painted, plain) {
+            XCTAssertEqual(paint.color.x, was.color.x, accuracy: 1e-5, "red kept whole")
+            XCTAssertLessThan(paint.color.y, was.color.y * 0.8, "green halved, as light")
+            XCTAssertEqual(paint.color.z, 0, accuracy: 1e-6, "blue taken away")
+        }
+        XCTAssertEqual(tinted.mesh.vertices.filter { $0.material != .metal }, try arm().mesh.vertices.filter { $0.material != .metal },
+                       "the skin, unpainted, as it was")
+    }
+
+    /// glTF's normalised integers read as the spec has them stand for floats.
+    func testNormalisedIntegersAreReadAsTheSpecSays() {
+        XCTAssertEqual(Asset.float(normalized: 255, componentType: 5121), 1)
+        XCTAssertEqual(Asset.float(normalized: 51, componentType: 5121), 0.2)
+        XCTAssertEqual(Asset.float(normalized: 65535, componentType: 5123), 1)
+        XCTAssertEqual(Asset.float(normalized: 127, componentType: 5120), 1)
+        XCTAssertEqual(Asset.float(normalized: -128, componentType: 5120), -1, "the least held at -1")
+        XCTAssertEqual(Asset.float(normalized: 32767, componentType: 5122), 1)
+        XCTAssertEqual(Asset.float(normalized: -32768, componentType: 5122), -1)
+        XCTAssertEqual(Asset.float(normalized: 3, componentType: 5126), 3, "a float as it is")
+    }
+
+    /// Triangles written without indices are drawn in the order written.
+    func testTrianglesWrittenWithoutIndicesAreDrawnInOrder() throws {
+        let unindexed = try arm { json, _ in
+            var meshes = json["meshes"] as? [[String: Any]] ?? []
+            var block = meshes[1]["primitives"] as? [[String: Any]] ?? []
+            block[0]["indices"] = nil
+            meshes[1]["primitives"] = block
+            json["meshes"] = meshes
+        }
+        let indexed = try arm()
+        let blockFrom = indexed.mesh.vertices.count - 24
+        XCTAssertEqual(unindexed.mesh.vertices, indexed.mesh.vertices)
+        XCTAssertEqual(Array(unindexed.mesh.indices.suffix(24)), (0..<24).map { UInt32(blockFrom + $0) })
+        XCTAssertEqual(unindexed.mesh.indices.count, indexed.mesh.indices.count - 36 + 24)
+    }
+
+    /// What claims to be the arm but is written wrongly is refused, never
+    /// read as something else.
+    func testWhatIsWrittenWronglyIsRefused() throws {
+        func refused(_ note: String, _ read: () throws -> Model) {
+            XCTAssertThrowsError(try read(), note) { error in
+                guard case .malformed? = error as? Asset.Failure else { return XCTFail("\(note): \(error)") }
+            }
+        }
+        let bin = try armParts().bin
+        refused("its JSON broken") { try Asset.model(name: "x", glb: glb(text: Data("{ \"nodes\": [".utf8), bin: bin)) }
+        refused("an accessor running past its buffer") {
+            try arm { json, _ in
+                var accessors = json["accessors"] as? [[String: Any]] ?? []
+                accessors[2]["count"] = 100_000
+                json["accessors"] = accessors
+            }
+        }
+        refused("an action's keys too few for its times") {
+            try arm { json, _ in
+                var actions = json["animations"] as? [[String: Any]] ?? []
+                var samplers = actions[2]["samplers"] as? [[String: Any]] ?? []
+                samplers[1]["output"] = 9
+                actions[2]["samplers"] = samplers
+                json["animations"] = actions
+            }
+        }
+        refused("a bone asked for that it hasn't") { try arm({ _, _ in }, order: ["wing"]) }
+        refused("a bone asked for before the one it hangs from") { try arm({ _, _ in }, order: ["lower"]) }
+        XCTAssertNoThrow(try arm({ _, _ in }, order: ["upper", "lower"]), "the bones it has, each after the one it hangs from")
     }
 
     func testWhatIsNotAModelIsRefusedAsSuch() throws {

@@ -103,16 +103,6 @@ public struct MeshBuilder: Sendable {
         transform = saved
     }
 
-    /// Builds `body` as another part of the rig, with another material.
-    /// Draws with a grain of its own where colours alone would not say it;
-    /// none given, as the colours say.
-    public mutating func with(surface: Surface?, _ body: (inout MeshBuilder) -> Void) {
-        let saved = self.surface
-        if let surface { self.surface = surface }
-        body(&self)
-        self.surface = saved
-    }
-
     public mutating func with(part: UInt16? = nil, material: Material? = nil, sway: Float? = nil,
                               _ body: (inout MeshBuilder) -> Void) {
         let saved = (self.part, self.material, self.sway, self.swayRange)
@@ -148,27 +138,25 @@ public struct MeshBuilder: Sendable {
 
     /// A solid turned about the vertical axis from its profile, bottom to
     /// top: a tower, a trunk, a cone, a dome. Ends with a radius are
-    /// capped. `colors`, if given, colours each band between two rings.
-    public mutating func lathe(_ profile: [(radius: Float, y: Float)], sides: Int, color: Vec3, colors: [Vec3]? = nil,
-                               twist: Float = 0) {
+    /// capped.
+    public mutating func lathe(_ profile: [(radius: Float, y: Float)], sides: Int, color: Vec3, twist: Float = 0) {
         guard profile.count >= 2, sides >= 3 else { return }
         let step = 2 * Float.pi / Float(sides)
         for band in 0..<(profile.count - 1) {
             let (r0, y0) = profile[band], (r1, y1) = profile[band + 1]
-            let shade = colors.map { $0[min(band, $0.count - 1)] } ?? color
             for side in 0..<sides {
                 let a0 = Float(side) * step + twist, a1 = a0 + step
                 quad(MeshBuilder.ring(r0, y0, a0), MeshBuilder.ring(r0, y0, a1),
-                     MeshBuilder.ring(r1, y1, a1), MeshBuilder.ring(r1, y1, a0), color: shade)
+                     MeshBuilder.ring(r1, y1, a1), MeshBuilder.ring(r1, y1, a0), color: color)
             }
         }
         if let bottom = profile.first, bottom.radius > 0 {
             let points = (0..<sides).reversed().map { MeshBuilder.ring(bottom.radius, bottom.y, Float($0) * step + twist) }
-            polygon(points, color: colors?.first ?? color)
+            polygon(points, color: color)
         }
         if let top = profile.last, top.radius > 0 {
             let points = (0..<sides).map { MeshBuilder.ring(top.radius, top.y, Float($0) * step + twist) }
-            polygon(points, color: colors?.last ?? color)
+            polygon(points, color: color)
         }
     }
 

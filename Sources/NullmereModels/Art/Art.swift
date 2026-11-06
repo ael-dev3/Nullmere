@@ -143,11 +143,19 @@ enum Art {
     /// by the name the game gives it: its homes, well, fields, lanes and
     /// market stalls.
     static func town(_ piece: Town, name: String) -> Model {
-        let colours = buildingColours.merging([
+        let colours = withBuildingColours([
             "plain_thatch_cap": Palette.thatch.mix(Palette.bark, 0.3), "plain_water": Palette.loam,
             "plain_clay": Palette.madder.mix(Palette.earth, 0.4),
-        ]) { _, own in own }
+        ])
         return model(townFile, tier: 1, variant: piece.rawValue, name: name, order: [], scale: buildingScale, colours: colours)
+    }
+
+    /// The buildings' colours with a family's own beside them, its own
+    /// taken where both name one.
+    static func withBuildingColours(_ own: [String: Vec3]) -> [String: Vec3] {
+        var colours = buildingColours
+        for (name, colour) in own { colours[name] = colour }
+        return colours
     }
 
     /// The colours of the materials buildings made in Blender are made in,
@@ -192,12 +200,12 @@ enum Art {
     /// under their lintels about its heart, its motes turning and its fires
     /// leaping, the pennant in its holder's colour.
     static func shrine(_ kind: String, name: String) -> Model {
-        let colours = buildingColours.merging([
+        let colours = withBuildingColours([
             "plain_stone_floor": Palette.stonePale.mix(Palette.stone, 0.5), "plain_stone_bleached": Palette.stonePale.mix(Palette.stoneWhite, 0.35),
             "plain_stone_weathered": Palette.stonePale.mix(Palette.stone, 0.25), "plain_wooldark": Palette.woolDark,
             "crystal_moonglow": Palette.moonGlow, "crystal_slatedrop": Palette.slate, "crystal_stonepale": Palette.stonePale,
             "foliage_grass": Palette.grass, "foliage_thatch_reed": Palette.reed,
-        ]) { _, own in own }
+        ])
         return model(shrinesFile, tier: 1, variant: kind, name: name, order: [], scale: buildingScale, colours: colours)
     }
 
@@ -205,7 +213,7 @@ enum Art {
     /// Blender (Art/blender/stores.py), each a variant of one file: the
     /// storehouse by that name, a yard by its store's.
     static func stores(_ variant: String, name: String) -> Model {
-        let colours = buildingColours.merging(["plain_stone_saltearth": Palette.saltCrust.mix(Palette.earth, 0.55)]) { _, own in own }
+        let colours = withBuildingColours(["plain_stone_saltearth": Palette.saltCrust.mix(Palette.earth, 0.55)])
         return model(storesFile, tier: 1, variant: variant, name: name, order: [], scale: buildingScale, colours: colours)
     }
 
@@ -214,13 +222,13 @@ enum Art {
     /// grain stooked in rows, a stand of firs part felled, a stone outcrop
     /// cut in faces, a moonsalt pan crusted white.
     static func site(_ store: String, name: String) -> Model {
-        let colours = buildingColours.merging([
+        let colours = withBuildingColours([
             "plain_timber_birchbark": Palette.birchBark, "plain_thatch_reed": Palette.reed, "plain_wooldark": Palette.woolDark,
             "plain_jug": Palette.earth.mix(Palette.madder, 0.3), "plain_earth_saltflat": Palette.saltCrust.mix(Palette.earth, 0.5),
             "foliage_fir": Palette.fir, "foliage_firdark": Palette.firDark, "foliage_birchleaf": Palette.birchLeaf,
             "foliage_fern": Palette.fern, "foliage_heather": Palette.heather, "foliage_heatherdark": Palette.heatherDark,
             "foliage_heatherbloom": Palette.heatherBloom, "foliage_reed": Palette.reed, "foliage_grass": Palette.grass,
-        ]) { _, own in own }
+        ])
         return model(sitesFile, tier: 1, variant: store, name: name, order: [], scale: buildingScale, colours: colours)
     }
 
@@ -231,13 +239,13 @@ enum Art {
     /// furrows, pebbles and stepping stones. Still, but for its foliage
     /// swaying in the wind by its height above the ground.
     static func furnishing(_ kind: String, name: String) -> Model {
-        let colours = buildingColours.merging([
+        let colours = withBuildingColours([
             "foliage_fir": Palette.fir, "foliage_firdark": Palette.firDark, "foliage_birchleaf": Palette.birchLeaf,
             "foliage_fern": Palette.fern, "foliage_heather": Palette.heather, "foliage_heatherdark": Palette.heatherDark,
             "foliage_heatherbloom": Palette.heatherBloom, "foliage_grass": Palette.grass, "foliage_thatch_reed": Palette.reed,
             "plain_timber_birchbark": Palette.birchBark, "plain_timber_deadwood": Palette.deadWood,
             "plain_barrowturf": Palette.grass.mix(Palette.earth, 0.3), "plain_ruinturf": Palette.grass.mix(Palette.earth, 0.4),
-        ]) { _, own in own }
+        ])
         return model(furnishingsFile, tier: 1, variant: kind, name: name, order: [], scale: buildingScale, colours: colours)
     }
 
@@ -248,11 +256,11 @@ enum Art {
     /// crest's board, a barge of the Still and its ferryman, a commander's
     /// star. Still: the world moves each whole.
     static func token(_ variant: String, name: String) -> Model {
-        let colours = buildingColours.merging([
+        let colours = withBuildingColours([
             "glow_ember": Vec3(0.95, 0.42, 0.18), "glow_wardblue": Vec3(0.45, 0.68, 1.0), "glow_roadgreen": Vec3(0.55, 0.9, 0.62),
             "glow_helplight": Vec3(1.0, 0.86, 0.55), "glow_starlight": Palette.moonGlow.mix(Palette.gold, 0.35),
             "plain_timber_tar": Palette.timberDark.mix(Vec3(0.05, 0.05, 0.06), 0.55), "plain_hood": Palette.linen.mix(Palette.leather, 0.6),
-        ]) { _, own in own }
+        ])
         return model(tokensFile, tier: 1, variant: variant, name: name, order: [], scale: buildingScale, colours: colours)
     }
 
@@ -265,7 +273,7 @@ enum Art {
     /// skeleton, the host's banner still.
     static func mark(_ variant: String, name: String) -> Model {
         let weed = Vec3(0.13, 0.24, 0.17), crimson = Vec3(0.45, 0.16, 0.18)
-        let colours = buildingColours.merging([
+        let colours = withBuildingColours([
             "crystal_moonglow": Palette.moonGlow, "plain_moonsalt": Palette.moonsalt,
             "plain_guyrope": Palette.linen.mix(Palette.leather, 0.5), "plain_cowhorn": Palette.linen.mix(Palette.leather, 0.3),
             "plain_crowngold": Palette.gold.mix(Palette.bronze, 0.35), "plain_verdigris": Palette.bronze.mix(Vec3(0.24, 0.45, 0.38), 0.6),
@@ -276,7 +284,7 @@ enum Art {
             "plain_awningpatch": Palette.linen.mix(crimson, 0.35), "plain_timber_crate": Palette.timber.mix(Palette.timberDark, 0.4),
             "plain_crimson": crimson, "plain_bluecloth": Palette.moonGlow.mix(Palette.slate, 0.6),
             "glow_lantern": Palette.fire.mix(Palette.gold, 0.3), "plain_cloak": Vec3(0.12, 0.11, 0.14), "plain_hood": Vec3(0.1, 0.09, 0.12),
-        ]) { _, own in own }
+        ])
         return model(marksFile, tier: 1, variant: variant, name: name, order: [], scale: buildingScale, colours: colours)
     }
 
@@ -284,7 +292,7 @@ enum Art {
     /// (Art/blender/lairs.py), each a variant of one file by its kind's
     /// name or "gatehold": still, its fires and wild lights glowing.
     static func lair(_ kind: String, name: String) -> Model {
-        let colours = buildingColours.merging([
+        let colours = withBuildingColours([
             "plain_fur": Palette.fur, "plain_timber_deadwood": Palette.deadWood, "glow_wildglow": Palette.wildGlow,
             "foliage_grass": Palette.grass, "foliage_thatch_reed": Palette.reed, "plain_hide": Palette.canvas.mix(Palette.leather, 0.4),
             "plain_stone_mossy": Palette.stonePale.mix(Palette.moss, 0.3), "plain_lichen": Palette.moss.mix(Palette.grass, 0.4),
@@ -297,7 +305,7 @@ enum Art {
             "plain_rawhide": Palette.leather.mix(Palette.linen, 0.3), "plain_timber_wet": Palette.timberDark.mix(Palette.barkBlack, 0.45),
             "plain_stone_altar": Palette.stonePale.mix(Palette.moss, 0.25), "metal_mossbronze": Palette.bronze.mix(Palette.moss, 0.35),
             "plain_lilypad": Palette.moss.mix(Palette.leaf, 0.5), "plain_water_black": Vec3(0.03, 0.04, 0.05),
-        ]) { _, own in own }
+        ])
         return model(lairsFile, tier: 1, variant: kind, name: name, order: [], scale: buildingScale, colours: colours)
     }
 
@@ -313,17 +321,17 @@ enum Art {
     /// arrow or a stone in flight, a banner, a bird, a cart, a brazier, a
     /// puff of smoke, a fisher's boat, a builder's stores, a waystone.
     static func prop(_ prop: String, name: String) -> Model {
-        let colours = buildingColours.merging([
+        let colours = withBuildingColours([
             "plain_feather": Vec3(0.12, 0.12, 0.13), "plain_smoke": Palette.smoke, "plain_wooldark": Palette.woolDark,
             "plain_skin": Palette.skin, "plain_net": Palette.linen * 0.6, "plain_saltcrust_dim": Palette.saltCrust * 0.4,
-        ]) { _, own in own }
+        ])
         return model(propsFile, tier: 1, variant: prop, name: name, order: [], scale: buildingScale, colours: colours)
     }
 
     /// A work made in Blender at its level, each level its tier of the
     /// family's one file, its moving parts the bones tagged for that level.
     static func work(_ base64: String, level: Int, name: String, colours: [String: Vec3] = [:]) -> Model {
-        model(base64, tier: level, name: name, order: [], scale: buildingScale, colours: buildingColours.merging(colours) { _, own in own })
+        model(base64, tier: level, name: name, order: [], scale: buildingScale, colours: withBuildingColours(colours))
     }
 
     /// A model made in Blender, its bones in `order` after its root.

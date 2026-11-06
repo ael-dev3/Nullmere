@@ -94,6 +94,19 @@ public enum Asset {
         return tags
     }
 
+    /// A normalised integer of glTF's as the float it stands for: an
+    /// unsigned one over 0…1, a signed one over −1…1, the least of each
+    /// held at −1 as the spec asks; any other kind as it is.
+    static func float(normalized value: Double, componentType: Int) -> Float {
+        switch componentType {
+        case 5121: return Float(value) / 255
+        case 5123: return Float(value) / 65535
+        case 5120: return max(Float(value) / 127, -1)
+        case 5122: return max(Float(value) / 32767, -1)
+        default: return Float(value)
+        }
+    }
+
     /// Bytes written in Swift as base64, as the models made in Blender are
     /// kept in the package (Sources/NullmereModels/Art).
     public static func bytes(base64: String) throws -> Data {
@@ -433,19 +446,9 @@ private struct Reader {
     func floats(_ index: Int) throws -> (values: [Float], width: Int) {
         let accessor = try accessor(index)
         guard let width = Reader.width(accessor.type) else { throw Asset.Failure.malformed("accessor type \(accessor.type)") }
-        let normalized = accessor.normalized ?? false
         let raw = try read(accessor, width: width)
-        let values: [Float] = raw.map { value in
-            guard normalized else { return Float(value) }
-            switch accessor.componentType {
-            case 5121: return Float(value) / 255
-            case 5123: return Float(value) / 65535
-            case 5120: return max(Float(value) / 127, -1)
-            case 5122: return max(Float(value) / 32767, -1)
-            default: return Float(value)
-            }
-        }
-        return (values, width)
+        guard accessor.normalized == true else { return (raw.map { Float($0) }, width) }
+        return (raw.map { Asset.float(normalized: $0, componentType: accessor.componentType) }, width)
     }
 
     /// An accessor's values as integers.
