@@ -296,6 +296,15 @@ extension GameState {
                 return hold(id).map { $0.owner == house || visible($0.position) } ?? false
             case .buildingStarted(let id, _, _), .trainingStarted(let id, _), .unitTrained(_, let id):
                 return hold(id)?.owner == house
+            case .buildingCompleted(let id, _, _):
+                // A work finished is told its own House, its allies, who know
+                // it under way, and whoever sees the hold: every keeper is
+                // told every hold's works as they stand, and a far one's
+                // finishing is no news to the rest (eighty-five at a turn of
+                // a realm of ninety-six seats, heard by every keeper, were
+                // nine in ten of what a turn told them).
+                guard let hold = hold(id) else { return false }
+                return hold.owner == house || visible(hold.position) || (alliance(of: house)?.members.contains(hold.owner) ?? false)
             case .gifted(let from, let to, _), .tradeAnswered(_, let from, let to, _):
                 return from == house || to == house
             case .bartered(let owner, _, _), .starving(let owner), .studyBegun(let owner, _, _), .studyCompleted(let owner, _, _),
@@ -477,7 +486,7 @@ extension GameState {
                 return envoy.from == house || envoy.to == house
             case .proposalAnswered(_, let from, let to, _):
                 return from == house || to == house
-            case .holdCaptured, .seatMoved, .holdFounded, .buildingCompleted, .stanceChanged, .houseFell, .gameEnded, .shrineTaken:
+            case .holdCaptured, .seatMoved, .holdFounded, .stanceChanged, .houseFell, .gameEnded, .shrineTaken:
                 return true
             }
         }

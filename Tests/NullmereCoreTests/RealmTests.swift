@@ -554,6 +554,32 @@ final class FogTests: XCTestCase {
         XCTAssertEqual(heard, [.battle(mine), war])
     }
 
+    /// A work finished is told its own House, its House's allies and
+    /// whoever sees the hold; not a keeper far off, who is told the hold's
+    /// works as they stand.
+    func testAWorkFinishedIsToldThoseWhoKnowItOrSeeIt() throws {
+        var state = game()
+        let me = state.player
+        let seen = state.visibility(for: me)
+        let mine = try XCTUnwrap(state.seat(of: me))
+        let far = try XCTUnwrap(state.holds.first { hold in
+            hold.owner != me && !(state.map.index(of: hold.position).map { seen[$0] } ?? true)
+        })
+        let near = Hold(id: 9_999, name: "Near", owner: far.owner, position: try XCTUnwrap(mine.position.ring(2).first { hex in
+            (state.map.index(of: hex).map { seen[$0] } ?? false) && state.hold(at: hex) == nil
+        }), isSeat: false, foundedWatch: 1)
+        state.holds.append(near)
+        func finished(_ hold: Hold) -> GameEvent { .buildingCompleted(hold: hold.id, kind: .granary, level: 2) }
+        XCTAssertEqual(state.events([finished(mine), finished(near), finished(far)], heardBy: me), [finished(mine), finished(near)],
+                       "Its own, and one in sight; not one far off")
+        XCTAssertEqual(state.events([finished(far)], heardBy: far.owner), [finished(far)], "Its own House hears it")
+        // Allied, a House hears of its ally's works however far.
+        var pact = Alliance(id: state.takeID(), name: "The Pact", leader: me, founded: state.watch)
+        pact.members = [me, far.owner]
+        state.alliances = [pact]
+        XCTAssertEqual(state.events([finished(far)], heardBy: me), [finished(far)])
+    }
+
     func testTheRealmTellsEachKeeperTheirOwnView() throws {
         var realm = RealmState(name: "R", seed: "views", seats: 4, radius: 18, watchLength: 60, now: 0)
         let a = try realm.arrive("a", name: "Ama", now: 0)
