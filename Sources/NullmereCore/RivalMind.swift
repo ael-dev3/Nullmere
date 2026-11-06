@@ -720,10 +720,17 @@ struct RivalMind {
     /// Moonspire highest at its third stage or above, then the higher
     /// tie-break, the first in the holds' order where both are even.
     func risingFoe(in state: GameState) -> Int? {
+        // The seats of the Houses it is at war with that bend the knee to
+        // none, found among each one's own holds rather than sought through
+        // every hold of the realm, and looked at in the realm's order.
+        var seats: [Int] = []
+        for owner in state.houses.indices where state.isAtWar(house, owner) && state.houses[owner].liege == nil {
+            for index in state.holds.places(of: owner) where state.holds[index].isSeat { seats.append(index) }
+        }
+        seats.sort()
         var best: (key: (stage: Int, tie: UInt64), owner: Int)?
-        for index in state.holds.indices where state.holds[index].isSeat && state.holds[index].owner != house {
+        for index in seats {
             let owner = state.holds[index].owner
-            guard state.isAtWar(house, owner), state.houses[owner].liege == nil else { continue }
             let stage = state.holds[index].level(.moonspire)
             guard stage >= 3 else { continue }
             let key = (stage, tieBreak(owner, in: state))
@@ -1808,14 +1815,17 @@ struct RivalMind {
     func siegePlan(in state: GameState) -> Siege? {
         guard let seat = state.seat(of: house) else { return nil }
         let explored = state.houses[house].explored
-        // By index, none copied but the hold taken.
+        // By index, none copied but the hold taken: each foe's own holds it
+        // knows, rather than every hold of the realm sought, in the realm's
+        // order.
         var enemyHolds: [Int] = []
-        for index in state.holds.indices {
-            let owner = state.holds[index].owner
-            guard owner != house, state.isAtWar(house, owner),
-                  state.map.index(of: state.holds[index].position).map({ explored[$0] }) ?? false else { continue }
-            enemyHolds.append(index)
+        for owner in state.houses.indices where state.isAtWar(house, owner) {
+            for index in state.holds.places(of: owner)
+                where state.map.index(of: state.holds[index].position).map({ explored[$0] }) ?? false {
+                enemyHolds.append(index)
+            }
         }
+        enemyHolds.sort()
         let target: Hold?
         // An alliance's front: a member goes for the hold its leader goes
         // for, when it is at war with that hold's House and knows it, so
