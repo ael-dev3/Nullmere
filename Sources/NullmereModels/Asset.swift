@@ -84,7 +84,7 @@ public enum Asset {
                     tags.tiers.append(bounds[0]...bounds[0])
                 } else if bounds.count == 2, bounds[0] <= bounds[1] {
                     tags.tiers.append(bounds[0]...bounds[1])
-                } else if !item.isEmpty, item.allSatisfy({ $0.isLetter }) {
+                } else if let first = item.first, first.isLetter, item.allSatisfy({ $0.isLetter || ("0"..."9").contains($0) }) {
                     tags.variants.append(String(item))
                 }
             }

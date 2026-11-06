@@ -224,6 +224,38 @@ enum Art {
         return model(sitesFile, tier: 1, variant: store, name: name, order: [], scale: buildingScale, colours: colours)
     }
 
+    /// The land's furniture, made in Blender (Art/blender/furnishings.py),
+    /// each kind a variant of one file by its name: the firs, birches and
+    /// elder trees, the crags, boulders and cut faces, reeds, grass,
+    /// heather and ferns, barrows, standing stones and ruins, driftwood,
+    /// furrows, pebbles and stepping stones. Still, but for its foliage
+    /// swaying in the wind by its height above the ground.
+    static func furnishing(_ kind: String, name: String) -> Model {
+        let colours = buildingColours.merging([
+            "foliage_fir": Palette.fir, "foliage_firdark": Palette.firDark, "foliage_birchleaf": Palette.birchLeaf,
+            "foliage_fern": Palette.fern, "foliage_heather": Palette.heather, "foliage_heatherdark": Palette.heatherDark,
+            "foliage_heatherbloom": Palette.heatherBloom, "foliage_grass": Palette.grass, "foliage_thatch_reed": Palette.reed,
+            "plain_timber_birchbark": Palette.birchBark, "plain_timber_deadwood": Palette.deadWood,
+            "plain_barrowturf": Palette.grass.mix(Palette.earth, 0.3), "plain_ruinturf": Palette.grass.mix(Palette.earth, 0.4),
+        ]) { _, own in own }
+        return model(furnishingsFile, tier: 1, variant: kind, name: name, order: [], scale: buildingScale, colours: colours)
+    }
+
+    /// The tokens the world sets over the land, and the scaffold round a
+    /// rising work, made in Blender (Art/blender/tokens.py), each a variant
+    /// of one file by its name: a talent's sigil by its tree's number, a
+    /// crest's charge by its own, an ally's help light, a border stone, a
+    /// crest's board, a barge of the Still and its ferryman, a commander's
+    /// star. Still: the world moves each whole.
+    static func token(_ variant: String, name: String) -> Model {
+        let colours = buildingColours.merging([
+            "glow_ember": Vec3(0.95, 0.42, 0.18), "glow_wardblue": Vec3(0.45, 0.68, 1.0), "glow_roadgreen": Vec3(0.55, 0.9, 0.62),
+            "glow_helplight": Vec3(1.0, 0.86, 0.55), "glow_starlight": Palette.moonGlow.mix(Palette.gold, 0.35),
+            "plain_timber_tar": Palette.timberDark.mix(Vec3(0.05, 0.05, 0.06), 0.55), "plain_hood": Palette.linen.mix(Palette.leather, 0.6),
+        ]) { _, own in own }
+        return model(tokensFile, tier: 1, variant: variant, name: name, order: [], scale: buildingScale, colours: colours)
+    }
+
     /// A lair of the wilds or a gatehold of the Crown, made in Blender
     /// (Art/blender/lairs.py), each a variant of one file by its kind's
     /// name or "gatehold": still, its fires and wild lights glowing.

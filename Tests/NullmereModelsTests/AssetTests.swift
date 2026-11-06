@@ -196,10 +196,28 @@ final class AssetTests: XCTestCase {
                                  (Art.lodgeFile, "lodge.glb"), (Art.wayhouseFile, "wayhouse.glb"), (Art.lyceumFile, "lyceum.glb"),
                                  (Art.shrinesFile, "shrines.glb"), (Art.storesFile, "stores.glb"),
                                  (Art.sitesFile, "sites.glb"), (Art.lairsFile, "lairs.glb"),
-                                 (Art.raisingFile, "raising.glb"), (Art.propsFile, "props.glb")] {
+                                 (Art.raisingFile, "raising.glb"), (Art.propsFile, "props.glb"),
+                                 (Art.furnishingsFile, "furnishings.glb"), (Art.tokensFile, "tokens.glb")] {
             XCTAssertEqual(try Asset.bytes(base64: embedded), try Data(contentsOf: models.appendingPathComponent(file)), file)
         }
         XCTAssertEqual(try Asset.bytes(base64: Fixtures.arm), try Data(contentsOf: models.appendingPathComponent("fixture-arm.glb")))
+    }
+
+    /// A piece's name says the tiers and the variants it is drawn for: a
+    /// tier by its number or a span of them, a variant by its name, letters
+    /// and then any digits, as a crest's charges and the talents' sigils are
+    /// named.
+    func testAPiecesNameSaysTheTiersAndVariantsItIsDrawnFor() {
+        let charge = Asset.tags("charge@crestCharge3,crestCharge10!fine")
+        XCTAssertEqual(charge.name, "charge")
+        XCTAssertEqual(charge.variants, ["crestCharge3", "crestCharge10"])
+        XCTAssertTrue(charge.fine)
+        XCTAssertTrue(charge.drawn(tier: 1, variant: "crestCharge10"))
+        XCTAssertFalse(charge.drawn(tier: 1, variant: "crestCharge1"), "Each charge its own")
+        XCTAssertEqual(Asset.tags("tower@2-4,5").tiers, [2...4, 5...5])
+        XCTAssertEqual(Asset.tags("ring@talentSigil0").variants, ["talentSigil0"])
+        XCTAssertTrue(Asset.tags("stub@3rd").always, "Neither a tier nor a variant")
+        XCTAssertEqual(Asset.tags("plain").name, "plain")
     }
 
     func testWhatIsNotAModelIsRefusedAsSuch() throws {

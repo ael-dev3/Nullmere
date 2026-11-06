@@ -69,9 +69,14 @@ Saltworks, the Muster Hall, the Infirmary, the Archive, the Forge, the
 Wayhouse, the Masons' Lodge and the Moonspire), an alliance's hall, the
 Lyceum's hall with its orrery, the holy sites, the gathering sites, the
 lairs and the gatehold, an alliance's storehouse and yards, the rigs a
-rising work is raised beside, and what moves through the world (arrows,
+rising work is raised beside, what moves through the world (arrows,
 banners, birds, carts, braziers, smoke, boats, a builder's stores,
-waystones) are made in Blender, each by a script
+waystones), the land's furniture (its firs, birches and elder trees, crags,
+boulders, reeds, grass, heather, ferns, barrows, standing stones, ruins,
+driftwood, furrows, pebbles and stepping stones), the tokens set over the
+land (a talent's sigil, an ally's help light, a border stone, a crest's
+board and charges, a barge of the Still, a commander's star) and the
+scaffold round a rising work are made in Blender, each by a script
 ([`Art/blender/spearman.py`](../Art/blender/spearman.py),
 [`archer.py`](../Art/blender/archer.py), [`lantern.py`](../Art/blender/lantern.py),
 [`rider.py`](../Art/blender/rider.py), [`commanders.py`](../Art/blender/commanders.py),
@@ -88,7 +93,8 @@ waystones) are made in Blender, each by a script
 [`wayhouse.py`](../Art/blender/wayhouse.py), [`lyceum.py`](../Art/blender/lyceum.py),
 [`shrines.py`](../Art/blender/shrines.py), [`sites.py`](../Art/blender/sites.py),
 [`lairs.py`](../Art/blender/lairs.py), [`stores.py`](../Art/blender/stores.py),
-[`raising.py`](../Art/blender/raising.py), [`props.py`](../Art/blender/props.py))
+[`raising.py`](../Art/blender/raising.py), [`props.py`](../Art/blender/props.py),
+[`furnishings.py`](../Art/blender/furnishings.py), [`tokens.py`](../Art/blender/tokens.py))
 that builds the body, gear and
 skeleton and keys the actions, on one body every person shares
 ([`person.py`](../Art/blender/person.py)): the skin is weighted to the
@@ -111,9 +117,9 @@ importer of its own ([`Asset.swift`](../Sources/NullmereModels/Asset.swift)):
 each vertex moves with its two heaviest bones, by its weight between them,
 and each action plays bone by bone. Every other model is still built from
 code ([`Sources/NullmereModels`](../Sources/NullmereModels)), and moves to
-Blender the same way: the land's firs, birches, heather, ferns, crags,
-reeds, pebbles, mounds and ruins, an alliance's standard, a rally's war
-camp and the land's other marks.
+Blender the same way: an alliance's standard, a rally's war camp, a
+host's banner, the Drowned Crown, the listening stone and the pedlar's
+skiff.
 Companies stand in formation, fewer as they are worn down and more as they
 are drilled; holds lay out their works on the land around the keep. Near,
 the models show fine work that is left off from afar, where it is too small

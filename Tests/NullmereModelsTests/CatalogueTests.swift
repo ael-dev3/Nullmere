@@ -480,6 +480,30 @@ final class CatalogueTests: XCTestCase {
         XCTAssertEqual(spire.risen ?? 0, bounds.min.y + 0.25 * (bounds.max.y - bounds.min.y), accuracy: 1e-5)
         XCTAssertEqual(Piece(key: spire.key, transform: .identity, hex: .origin, progress: 0).risen, bounds.min.y, "begun from its footings")
     }
+
+    /// A crest's charges lie in relief on its board's shield, within the
+    /// shield about where its face hangs (`Land.crestFace`), standing just
+    /// proud of it, each in the House's charge tincture: the world sets
+    /// the charge where the board stands.
+    func testACrestsChargesLieOnItsShield() {
+        let face = Land.crestFace
+        let shield = Library.model(.crestBoard).mesh.vertices.filter { $0.material == .house }
+        XCTAssertFalse(shield.isEmpty, "The shield in the House's field")
+        let front = shield.map(\.position.z).max() ?? 0
+        XCTAssertEqual(front, face.z + 0.006, accuracy: 0.004, "The shield's face where the crest hangs it")
+        for charge in 0...9 {
+            let vertices = Library.model(.crestCharge(charge)).mesh.vertices
+            XCTAssertFalse(vertices.isEmpty)
+            XCTAssertTrue(vertices.allSatisfy { $0.material == .house }, "Charge \(charge) in the charge's tincture")
+            for vertex in vertices {
+                let p = vertex.position
+                XCTAssertLessThanOrEqual(abs(p.x - face.x), 0.08, "Charge \(charge) within the shield's breadth")
+                XCTAssertTrue((face.y - 0.11)...(face.y + 0.1) ~= p.y, "Charge \(charge) within the shield's height")
+                XCTAssertTrue((front - 0.004)...(front + 0.01) ~= p.z, "Charge \(charge) on the shield's face, in relief")
+            }
+            XCTAssertGreaterThan(vertices.map(\.position.z).max() ?? 0, front, "Charge \(charge) stands proud of the face")
+        }
+    }
 }
 
 /// Counts gathered from many threads.

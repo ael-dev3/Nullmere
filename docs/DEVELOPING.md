@@ -269,10 +269,15 @@ each of their five levels a tier of the file; `town.py` the town's pieces
 the game names it. So are the holy sites (`shrines.py`: `shrines.glb`,
 `Art.shrinesFile` in `ShrinesFile.swift`), the gathering sites (`sites.py`),
 the lairs with the gatehold (`lairs.py`), an alliance's storehouse with its
-yards (`stores.py`), the rigs a rising work is raised beside (`raising.py`)
-and the props (`props.py`), each kind a variant by the name the game gives
-it; what the world places them and lights them by (a fire's smoke, a
-footing's height) stays in Swift beside them. A work's family is one script and one file, each level a
+yards (`stores.py`), the rigs a rising work is raised beside (`raising.py`),
+the props (`props.py`), the land's furniture (`furnishings.py`), its
+foliage swaying by its height above the ground, and the tokens set over
+the land with the scaffold round a rising work (`tokens.py`), each kind a
+variant by the name the game gives it, a talent's sigil and a crest's
+charge by their numbers (`talentSigil0`, `crestCharge7`): a piece's tag
+names its variants in letters and then any digits. What the world places
+them and lights them by (a fire's smoke, a footing's height, where a
+crest's shield hangs) stays in Swift beside them. A work's family is one script and one file, each level a
 tier (`granary.py`: `granary.glb`, `Art.granaryFile` in `GranaryFile.swift`;
 `beacon.py`: `beacon.glb`, `Art.beaconFile` in `BeaconFile.swift`; and so
 the Sawpit, the Quarry, the Saltworks, the Muster Hall, the Infirmary, the

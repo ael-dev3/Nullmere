@@ -404,7 +404,6 @@ public enum Library {
 
     /// Builds a model afresh, without keeping it.
     static func build(_ key: ModelKey) -> Model {
-        let mesh: Mesh
         switch key.canonical {
         case .figure(let kind, let tier): return Figures.build(kind, tier: tier, name: key.canonical.description)
         case .signature(let heritage): return Figures.signature(heritage, name: key.canonical.description)
@@ -416,8 +415,8 @@ public enum Library {
         case .walls(let level): return Works.build(.walls, level: level, name: key.canonical.description)
         case .work(let kind, let level): return Works.build(kind, level: level, name: key.canonical.description)
         case .study(let level): return Art.work(Art.archiveFile, level: level, name: key.canonical.description)
-        case .scaffold: mesh = Holds.scaffold()
-        case .furnishing(let furnishing): mesh = Land.furnishing(furnishing)
+        case .scaffold: return Art.token("scaffold", name: key.canonical.description)
+        case .furnishing(let furnishing): return Art.furnishing(furnishing.rawValue, name: key.canonical.description)
         case .site(let resource): return Art.site(resource.rawValue, name: key.canonical.description)
         case .prop(let prop): return Art.prop(prop.rawValue, name: key.canonical.description)
         case .shrine(let kind): return Art.shrine(kind.rawValue, name: key.canonical.description)
@@ -426,17 +425,17 @@ public enum Library {
         case .standard: return Land.standard(name: key.canonical.description)
         case .rallyCamp: return Land.rallyCamp(name: key.canonical.description)
         case .hostBanner: return Land.hostBanner(name: key.canonical.description)
-        case .talentSigil(let tree): return Land.talentSigil(tree, name: key.canonical.description)
-        case .helpLight: return Land.helpLight(name: key.canonical.description)
-        case .borderStone: return Land.borderStone(name: key.canonical.description)
+        case .talentSigil(let tree): return Art.token("talentSigil\(tree)", name: key.canonical.description)
+        case .helpLight: return Art.token("helpLight", name: key.canonical.description)
+        case .borderStone: return Art.token("borderStone", name: key.canonical.description)
         case .listeningStone: return Land.listeningStone(name: key.canonical.description)
-        case .commanderStar: return Land.commanderStar(name: key.canonical.description)
+        case .commanderStar: return Art.token("commanderStar", name: key.canonical.description)
         case .pedlarSkiff: return Land.pedlarSkiff(name: key.canonical.description)
-        case .crestBoard: return Land.crestBoard(name: key.canonical.description)
-        case .barge: return Land.barge(name: key.canonical.description)
+        case .crestBoard: return Art.token("crestBoard", name: key.canonical.description)
+        case .barge: return Art.token("barge", name: key.canonical.description)
         case .raising(let kind): return Art.raising(kind.rawValue, name: key.canonical.description)
         case .drownedCrown: return Land.drownedCrown(name: key.canonical.description)
-        case .crestCharge(let charge): return Land.crestCharge(charge, name: key.canonical.description)
+        case .crestCharge(let charge): return Art.token("crestCharge\(charge)", name: key.canonical.description)
         case .allianceHall: return Art.hall(name: key.canonical.description)
         case .lyceumHall: return Art.lyceum("hall", name: key.canonical.description)
         case .lyceumOrrery: return Art.lyceum("orrery", name: key.canonical.description)
@@ -445,7 +444,6 @@ public enum Library {
         case .folk(let variant): return Folk.build(variant, name: key.canonical.description)
         case .town(let piece): return Art.town(piece, name: key.canonical.description)
         }
-        return Model(name: key.canonical.description, mesh: mesh)
     }
 
     /// Where smoke rises from a model's chimneys, in its own frame: a keep's
