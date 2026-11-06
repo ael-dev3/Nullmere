@@ -26,6 +26,11 @@ calibration and the CPU figures alike; a slower path in the game moves
 only its own figure, and still fails, since the game's code can't slow
 the calibration down. A machine more than twice as slow as the
 baseline's isn't one to measure on: its CPU figures are held at twice.
+So are its GPU figures: a runner's GPU is a share of its host's, as its
+CPU is, and a host busy enough to slow the plain work draws slowly too
+(a runner twice as slow drew the far world's frames at 1.56 times their
+baseline, CI 642). A GPU figure is never allowed past its limit, the
+frame at sixty a second the game keeps however slow the runner.
 
 A metric may name, as "paced_by", plain work timed beside it at the same
 moments (marked "beside", a calibration that paces nothing else): a runner
@@ -100,6 +105,8 @@ def check(found, baseline):
                 local = min(max(1.0, found[spec["paced_by"]] / beside["baseline"]), MOST_PACE)
                 lines.append(f"PERF-CHECK {name} paced by {spec['paced_by']}: x{local:.2f} beside it")
             allowed *= max(pace, local)
+        elif spec.get("gpu"):
+            allowed *= pace
         if spec.get("limit") is not None:
             allowed = min(allowed, spec["limit"])
         verdict = "OK"
@@ -148,6 +155,16 @@ def self_test():
     assert any("held at most" in line for line in lines), lines
     _, failed = check({"cal": 500.0, "w": 29.0}, paced)
     assert not failed, "29 is within 10 x 1.5 x 2"
+    drawn = {"metrics": {"cal": {"baseline": 353.0, "calibration": True},
+                         "far": {"baseline": 7.37, "gpu": True, "ratio": 1.5, "limit": 16.7}}}
+    _, failed = check({"cal": 353.0, "far": 11.48}, drawn)
+    assert failed, "on a runner of the baseline's pace, 11.48 is over 7.37 x 1.5"
+    _, failed = check({"cal": 782.8, "far": 11.48}, drawn)
+    assert not failed, "on a runner twice as slow, a GPU figure is allowed twice as much"
+    _, failed = check({"cal": 782.8, "far": 17.0}, drawn)
+    assert failed, "never past its limit, however slow the runner"
+    _, failed = check({"cal": 200.0, "far": 11.48}, drawn)
+    assert failed, "a faster runner is held to the baseline as it is"
     beside = {"metrics": {"cal": {"baseline": 100.0, "calibration": True}, "near": {"baseline": 5.0, "calibration": True, "beside": True},
                           "w": {"baseline": 10.0, "cpu": True, "paced_by": "near"}}}
     _, failed = check({"cal": 100.0, "near": 8.5, "w": 16.0}, beside)
