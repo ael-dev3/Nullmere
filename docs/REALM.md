@@ -56,7 +56,12 @@ steward's answer). For development a realm can also be hosted in-process
   pace. What a pace changes of the head (where the watch's paces stand,
   the draws and the next id, the envoys, marches and gifts on their way)
   goes apart from it too, so a pace writes those few hundred bytes for the
-  world and each view rather than every head again; and a House's
+  world and each view rather than every head again; what every keeper is
+  told alike of the realm as it stands (every House's strength and might,
+  the Still Hour's glimpses, the realm's happening) goes apart from it as
+  one part told alike, so a House's strength changed at a pace writes
+  that part once rather than every keeper's head (at 384 seats, 16 KB a
+  keeper at nearly every pace); and a House's
   explored ground goes as its runs (how many unseen, how many seen, by
   turns), a few hundred bytes where its bits were 5 KB. The map's ground
   goes as its runs too, its terrain and its features each (how many
@@ -64,8 +69,9 @@ steward's answer). For development a realm can also be hosted in-process
   from the one before, in one part every view is told alike, as the lie
   of the land is known however little of the land is: a keeper's own
   pages of the map come to 2 KB where they were 39 as cells, three bytes
-  a tile. At ninety-six seats a watch's twelve paces write 5.8 MB of the
-  world and every view against 22.7, and the world itself is 703 KB
+  a tile. At ninety-six seats a watch's twelve paces write 5.7 MB of the
+  world and every view against 22.7, and at 384 seats a pace 2.1 MB
+  against 8.4; the world itself is 703 KB
   against 1,257 (a probe's measure at the fiftieth watch). The pages every
   keeper is told alike, just as a keeper of no House is told them, are
   kept on the server once, as no keeper's, under "~", the page's name and

@@ -312,11 +312,47 @@ extension GameState {
         head.envoys = []
         head.marches = nil
         head.gifts = nil
+        // What every keeper is told alike of the realm as it stands, apart
+        // from the head too: the same in every view, and every House's
+        // strength and might in it move at nearly every pace of a wide
+        // realm while the rest of a keeper's head stands (at 384 seats,
+        // every keeper's head, 16 KB, was written again at every pace).
+        let common = Common(of: self)
+        if let same = written.first(where: { $0.parts[GameState.commonPart] != nil && Common(of: $0.world) == common }) {
+            parts[GameState.commonPart] = same.parts[GameState.commonPart]
+        } else {
+            parts[GameState.commonPart] = try text(common)
+        }
+        head.reputed = nil
+        head.reputedMight = nil
+        head.stillHour = nil
+        head.happening = nil
         return head
     }
 
     /// The part what a pace changes of the head goes in.
     public static let pacePart = "pace"
+
+    /// The part what every keeper is told alike of the realm as it stands
+    /// goes in.
+    public static let commonPart = "common"
+
+    /// What every keeper is told alike of the realm as it stands: every
+    /// House's strength and might as all are told them, the glimpses of the
+    /// Still Hour, and the realm's happening.
+    struct Common: Codable, Equatable {
+        var reputed: [Int]?
+        var reputedMight: [Int]?
+        var stillHour: StillHour?
+        var happening: Happening?
+
+        init(of world: GameState) {
+            reputed = world.reputed
+            reputedMight = world.reputedMight
+            stillHour = world.stillHour
+            happening = world.happening
+        }
+    }
 
     /// What a pace changes of a world's head: where the watch's paces
     /// stand, the draws made and the next id, the envoys on the road, the
@@ -402,6 +438,15 @@ extension GameState {
             envoys = pace.envoys
             marches = pace.marches
             gifts = pace.gifts
+        }
+        // And what every keeper is told alike; a world written before it
+        // went apart keeps it in its head.
+        if parts[GameState.commonPart] != nil {
+            let common = try GameState.part(GameState.commonPart, of: parts, using: decoder, as: Common.self, read: read)
+            reputed = common.reputed
+            reputedMight = common.reputedMight
+            stillHour = common.stillHour
+            happening = common.happening
         }
         units = Companies(try pages("units", of: Unit.self))
         houses = try pages("houses", of: House.self)

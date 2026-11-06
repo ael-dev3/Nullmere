@@ -127,6 +127,53 @@ final class RealmPartsTests: XCTestCase {
         XCTAssertEqual(read, world)
     }
 
+    /// What every keeper is told alike of the realm as it stands goes apart
+    /// from the head, the same in every view: a House's strength changed,
+    /// that part is written anew and every head stands; and a world or
+    /// view written before, with it in its head, reads as it did.
+    func testWhatEveryKeeperIsToldAlikeGoesApartFromTheHead() throws {
+        let realm = try played(watches: 3)
+        let commons = realm.world.viewCommons(ways: realm.world.ways())
+        let stranger = realm.world.view(for: -1, commons: commons)
+        let told = try XCTUnwrap(try stranger.parts(using: encoder)[GameState.commonPart])
+        XCTAssertTrue(told.contains("reputed"), told)
+        for keeper in realm.keepers {
+            let view = try XCTUnwrap(realm.view(for: keeper.id, commons: commons))
+            let parts = try view.parts(using: encoder)
+            XCTAssertEqual(parts[GameState.commonPart], told, "\(keeper.name)'s told as every keeper is")
+            let head = try XCTUnwrap(parts["head"])
+            XCTAssertFalse(head.contains("reputed"), "Every House's strength out of the head")
+            XCTAssertEqual(try RealmView(parts: parts), view)
+        }
+        XCTAssertEqual(try RealmState(parts: try realm.parts(using: encoder)), realm)
+
+        // A House's strength as all are told it otherwise: the part told
+        // alike written anew, the head as it was.
+        let keeper = realm.keepers[0]
+        let view = try XCTUnwrap(realm.view(for: keeper.id, commons: commons))
+        var stronger = view
+        var world = stronger.world
+        world.reputed = world.reputed.map { reputed in reputed.map { $0 + 1 } }
+        stronger = RealmView(keeper: view.keeper, age: view.age, world: world)
+        let before = try view.parts(using: encoder)
+        let after = try stronger.parts(using: encoder, reusing: [(view.world, before)])
+        XCTAssertNotEqual(after[GameState.commonPart], before[GameState.commonPart])
+        XCTAssertEqual(after["head"], before["head"], "The head untouched")
+        XCTAssertEqual(try RealmView(parts: after), stronger)
+
+        // A view written before: what is told alike in its head, no part
+        // of its own.
+        var older = before
+        older[GameState.commonPart] = nil
+        var oldHead = try JSONSerialization.jsonObject(with: Data(try XCTUnwrap(before["head"]).utf8)) as? [String: Any] ?? [:]
+        var oldWorld = oldHead["world"] as? [String: Any] ?? [:]
+        let common = try JSONSerialization.jsonObject(with: Data(try XCTUnwrap(before[GameState.commonPart]).utf8)) as? [String: Any] ?? [:]
+        for (key, value) in common { oldWorld[key] = value }
+        oldHead["world"] = oldWorld
+        older["head"] = String(decoding: try JSONSerialization.data(withJSONObject: oldHead, options: [.sortedKeys]), as: UTF8.self)
+        XCTAssertEqual(try RealmView(parts: older), view)
+    }
+
     /// A full realm, a few watches in, its chronicle long.
     private func played(watches: Int) throws -> RealmState {
         var realm = RealmState(name: "The Nullmere", seed: "in parts", seats: 12, radius: 36, watchLength: 600, now: 0)

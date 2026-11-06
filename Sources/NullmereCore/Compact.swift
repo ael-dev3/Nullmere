@@ -75,12 +75,13 @@ public enum Speech {
     /// what a pace changes apart from the head, and explored ground as its
     /// runs. 6: the map's ground as its runs, its relief apart and told
     /// alike. 7: a view's row naming its own parts and the list of pages
-    /// told alike it takes, not every page.
-    public static let current = 7
+    /// told alike it takes, not every page. 8: what every keeper is told
+    /// alike of the realm as it stands apart from the head.
+    public static let current = 8
     /// The oldest tongue a realm of this build still hears from a keeper's
-    /// Mac: a Mac before a view's row named a list would find only the
-    /// view's own parts in it.
-    public static let oldestHeard = 7
+    /// Mac: a Mac before what every keeper is told alike went apart from
+    /// the head would know no House's strength.
+    public static let oldestHeard = 8
     /// Where a keeper gets the newest Nullmere Online.
     public static let newestBuild = "https://github.com/ael-dev3/Nullmere/releases/latest"
 }
