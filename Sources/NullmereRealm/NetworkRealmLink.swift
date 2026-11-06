@@ -514,24 +514,32 @@ public final class NetworkRealmLink: RealmLink {
     /// the view it published. A publication goes in several calls, the
     /// answers in the first: the answer tells the version the keeper's view
     /// is written at (`viewAt`), waited for up to `catchUpWait` seconds, or
-    /// that it isn't written, and nothing is waited for but the view as it
-    /// stands, should this Mac never have read it (a keeper back by their
-    /// identity on another Mac). From a steward that doesn't say, any view
-    /// newer than the last read is waited for, a few seconds at most.
-    /// Asked often at first, then less.
+    /// that it isn't written, and nothing is waited for: the view as it
+    /// stands is what came of it, read now if this Mac's is behind it (its
+    /// poll not yet come round, or a keeper back by their identity on
+    /// another Mac). From a steward that doesn't say, any view newer than
+    /// the last read is waited for, a few seconds at most. Asked often at
+    /// first, then less.
     private func catchUp(at answered: UInt64? = nil) async throws {
-        if answered == 0, view != nil { return }
-        let target = answered == 0 ? nil : answered
         let credentials = try await ensureCredentials()
+        if answered == 0 {
+            if let number = try await viewHead(credentials), number > viewVersion || view == nil,
+               let (version, fresh, batches) = try await fetchView(credentials), version > viewVersion || view == nil {
+                deliver(fresh, version: version, heard: batches)
+            }
+            return
+        }
+        let target = answered
         let seen = viewVersion
         let deadline = now() + (target == nil ? Self.catchUpGuess : Self.catchUpWait)
         var wait = 0.1
         while true {
-            // Taken meanwhile, by a poll.
-            if viewVersion > seen, viewVersion >= target ?? 0 { return }
+            // Taken already, by a poll, perhaps before the answer came: the
+            // view it names, or, where it names none, any newer than held.
+            if let target { if viewVersion >= target { return } } else if viewVersion > seen { return }
             // Its version first: the whole view only once it has moved on.
-            if let number = try await viewHead(credentials), number > seen, number >= target ?? 0 {
-                if let (version, fresh, batches) = try await fetchView(credentials), version > seen {
+            if let number = try await viewHead(credentials), number > viewVersion, number >= target ?? 0 {
+                if let (version, fresh, batches) = try await fetchView(credentials), version > viewVersion {
                     deliver(fresh, version: version, heard: batches)
                     return
                 }
@@ -627,6 +635,8 @@ public final class NetworkRealmLink: RealmLink {
                     return
                 }
                 try await catchUp(at: reply.viewAt)
+                // Asked anew meanwhile: the newer asking tells what came of it.
+                guard number == enteringNumber else { return }
                 guard let view else {
                     onEvent?(.refused(.refused("The realm took you in, but hasn't shown you the world yet. Try again.")))
                     return
