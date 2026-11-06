@@ -114,6 +114,7 @@ final class RealmPartsTests: XCTestCase {
         // A world written before: the pace in its head, no part of its own.
         var older = worldBefore
         older[GameState.pacePart] = nil
+        older[GameState.goingsPart] = nil
         var oldHead = head
         oldHead.pacing = world.pacing
         oldHead.draws = world.draws
@@ -125,6 +126,47 @@ final class RealmPartsTests: XCTestCase {
         var read = try JSONDecoder().decode(GameState.self, from: Data(try XCTUnwrap(older["head"]).utf8))
         try read.join(older, using: JSONDecoder())
         XCTAssertEqual(read, world)
+    }
+
+    /// Where the watch's paces stand is the same in every view, told alike;
+    /// what is on the road goes apart from it, each keeper told their own,
+    /// and stands as a pace is walked. A world written while both went in
+    /// the pace's part reads as it did.
+    func testWhatIsOnTheRoadGoesApartFromThePace() throws {
+        var realm = try played(watches: 3)
+        let commons = realm.world.viewCommons(ways: realm.world.ways())
+        let stranger = try realm.world.view(for: -1, commons: commons).parts(using: encoder)
+        for keeper in realm.keepers {
+            let parts = try XCTUnwrap(realm.view(for: keeper.id, commons: commons)).parts(using: encoder)
+            XCTAssertEqual(parts[GameState.pacePart], stranger[GameState.pacePart], "\(keeper.name)'s pace as every keeper's")
+            XCTAssertNotNil(parts[GameState.goingsPart])
+        }
+        let before = try realm.world.parts(using: encoder)
+        XCTAssertFalse(try XCTUnwrap(before[GameState.pacePart]).contains("envoys"))
+        let world = realm.world
+        _ = realm.world.walk(to: 1)
+        let after = try realm.world.parts(using: encoder, reusing: [(world, before)])
+        if realm.world.envoys == world.envoys, realm.world.marches == world.marches, realm.world.gifts == world.gifts {
+            XCTAssertEqual(after[GameState.goingsPart], before[GameState.goingsPart], "What is on the road as it was")
+        }
+        XCTAssertNotEqual(after[GameState.pacePart], before[GameState.pacePart])
+
+        // Written while what is on the road went with the pace.
+        var older = before
+        let pace = try JSONSerialization.jsonObject(with: Data(try XCTUnwrap(before[GameState.pacePart]).utf8)) as? [String: Any] ?? [:]
+        let goings = try JSONSerialization.jsonObject(with: Data(try XCTUnwrap(before[GameState.goingsPart]).utf8)) as? [String: Any] ?? [:]
+        older[GameState.pacePart] = String(decoding: try JSONSerialization.data(withJSONObject: pace.merging(goings) { $1 }, options: [.sortedKeys]),
+                                           as: UTF8.self)
+        older[GameState.goingsPart] = nil
+        var read = try JSONDecoder().decode(GameState.self, from: Data(try XCTUnwrap(older["head"]).utf8))
+        try read.join(older, using: JSONDecoder())
+        XCTAssertEqual(read, world)
+        let cache = PartsRead()
+        for _ in 0..<2 {
+            var again = try JSONDecoder().decode(GameState.self, from: Data(try XCTUnwrap(older["head"]).utf8))
+            try again.join(older, using: JSONDecoder(), read: cache)
+            XCTAssertEqual(again, world, "And again, read by what was read")
+        }
     }
 
     /// What every keeper is told alike of the realm as it stands goes apart

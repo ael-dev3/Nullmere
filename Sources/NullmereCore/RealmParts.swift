@@ -299,12 +299,21 @@ extension GameState {
         }
         // What a pace changes of the head apart from it, so a pace writes a
         // few hundred bytes, not the whole head again (95 KB of a realm of
-        // ninety-six seats, every keeper's view's head with it).
+        // ninety-six seats, every keeper's view's head with it): where the
+        // watch's paces stand, the same in every view, apart from what is on
+        // the road, which a keeper is told of their own and which seldom
+        // changes, as a march, once begun, stands as it was begun.
         let pace = Pace(of: self)
         if let same = written.first(where: { $0.parts[GameState.pacePart] != nil && Pace(of: $0.world) == pace }) {
             parts[GameState.pacePart] = same.parts[GameState.pacePart]
         } else {
             parts[GameState.pacePart] = try text(pace)
+        }
+        let goings = Goings(of: self)
+        if let same = written.first(where: { $0.parts[GameState.goingsPart] != nil && Goings(of: $0.world) == goings }) {
+            parts[GameState.goingsPart] = same.parts[GameState.goingsPart]
+        } else {
+            parts[GameState.goingsPart] = try text(goings)
         }
         head.pacing = nil
         head.draws = 0
@@ -354,21 +363,32 @@ extension GameState {
         }
     }
 
+    /// The part what is on the road goes in.
+    public static let goingsPart = "goings"
+
     /// What a pace changes of a world's head: where the watch's paces
-    /// stand, the draws made and the next id, the envoys on the road, the
-    /// marches under way and the gifts on their way.
+    /// stand, the draws made and the next id.
     struct Pace: Codable, Equatable {
         var pacing: Pacing?
         var draws: UInt64
         var nextID: Int
-        var envoys: [Envoy]
-        var marches: [March]?
-        var gifts: [Gift]?
 
         init(of world: GameState) {
             pacing = world.pacing
             draws = world.draws
             nextID = world.nextID
+        }
+    }
+
+    /// What is on the road: the envoys, the marches under way and the gifts
+    /// on their way. A world written before it went apart from the pace
+    /// keeps it with the pace.
+    struct Goings: Codable, Equatable {
+        var envoys: [Envoy]
+        var marches: [March]?
+        var gifts: [Gift]?
+
+        init(of world: GameState) {
             envoys = world.envoys
             marches = world.marches
             gifts = world.gifts
@@ -435,9 +455,11 @@ extension GameState {
             pacing = pace.pacing
             draws = pace.draws
             nextID = pace.nextID
-            envoys = pace.envoys
-            marches = pace.marches
-            gifts = pace.gifts
+            let goings = try GameState.part(parts[GameState.goingsPart] == nil ? GameState.pacePart : GameState.goingsPart, of: parts,
+                                            using: decoder, as: Goings.self, read: read)
+            envoys = goings.envoys
+            marches = goings.marches
+            gifts = goings.gifts
         }
         // And what every keeper is told alike; a world written before it
         // went apart keeps it in its head.
