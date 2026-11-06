@@ -315,14 +315,113 @@ final class TownTests: XCTestCase {
         XCTAssertGreaterThan(walked, 300, "Folk out about the holds")
         XCTAssertGreaterThan(ringed, 60, "Round the walls to the works")
         XCTAssertGreaterThan(gated, 100, "Out through the gate")
-        // A bare keep's few homes keep one of their folk out on the way to the gate.
+        // A bare keep's few homes keep their few folk out on the way to the
+        // gate, the only way laid.
         let relief = Relief(map: TownTests.worlds[0].map)
         let bare = try XCTUnwrap(TownTests.worlds[0].holds.lazy.map { HoldLayout.Plan(hex: $0.position, isSeat: false) }.first { plan in
             HoldLayout.lots(plan, relief: relief).filter { Town.homes.contains($0.piece) }.count >= HoldLayout.homesPerStroll
         })
         let few = HoldLayout.strolls(bare, relief: relief)
-        XCTAssertEqual(few.count, 1)
-        XCTAssertEqual(few.first?.count, 2)
+        let homes = HoldLayout.lots(bare, relief: relief).filter { Town.homes.contains($0.piece) }.count
+        XCTAssertEqual(few.count, homes / HoldLayout.homesPerStroll)
+        XCTAssertGreaterThanOrEqual(few.count, 1)
+        XCTAssertTrue(few.allSatisfy { $0.count == 2 }, "Out along the way to the gate and back")
+    }
+
+    /// The town's folk gathered where its life is: water-carriers first at
+    /// the well's rim, more of the town's folk there for a town of many
+    /// homes, to four; at a seat, a stallholder behind each stall's counter
+    /// and its folk at its ends. Each faces what it gathered at, stands clear
+    /// of the lanes laid and of those out walking them, of every work, of
+    /// every lot but the one it stands at and of the others gathered, and
+    /// all are the same each time.
+    func testTheTownsFolkGatherAtTheWellAndTheStalls() throws {
+        var wells = 0, atWells = 0, carriers = 0, stalls = 0, atStalls = 0, holders = 0
+        let rim = HoldLayout.wellRing + HoldLayout.standing + HoldLayout.standOff
+        let behind = HoldLayout.counter.depth + HoldLayout.standing + HoldLayout.standOff
+        let ends = HoldLayout.awning + HoldLayout.standing + HoldLayout.standOff
+        for state in TownTests.worlds {
+            let relief = Relief(map: state.map)
+            for hold in state.holds {
+                for walled in [false, true] {
+                    var plan = grand(hold.position, seat: hold.isSeat)
+                    if !walled { plan.levels[.building(.walls)] = nil }
+                    let lots = HoldLayout.lots(plan, relief: relief)
+                    let homes = lots.filter { Town.homes.contains($0.piece) }.count
+                    let gathered = HoldLayout.gatherings(plan, relief: relief)
+                    XCTAssertEqual(HoldLayout.gatherings(plan, relief: relief), gathered, "The same each time")
+                    let works = HoldLayout.pieces(plan, relief: relief).filter { piece in
+                        switch piece.key {
+                        case .work, .study: return true
+                        default: return false
+                        }
+                    }
+                    let lanes = HoldLayout.town(plan, relief: relief).filter { $0.key == .town(.lane) }.map {
+                        ($0.transform.transformPoint(Vec3(-0.5, 0, 0)), $0.transform.transformPoint(Vec3(0.5, 0, 0)))
+                    }
+                    var walks: [Vec3] = []
+                    for path in HoldLayout.strolls(plan, relief: relief) {
+                        for (a, b) in zip(path, path.dropFirst()) {
+                            for step in 0...24 { walks.append(a + (b - a) * (Float(step) / 24)) }
+                        }
+                    }
+                    // What each stands at: a well at its rim, a stall behind its counter or at its ends.
+                    var at: [Int: (lot: HoldLayout.Lot, away: Float)] = [:]
+                    for (index, one) in gathered.enumerated() {
+                        for lot in lots where lot.piece == .well || lot.piece == .stall {
+                            for away in lot.piece == .well ? [rim] : [behind, ends] where abs(flat(one.position, lot.position) - away) < 1e-4 {
+                                at[index] = (lot, away)
+                            }
+                        }
+                        let stood = try XCTUnwrap(at[index], "\(one.key) at the well or a stall")
+                        let toward = Float(atan2(Double(stood.lot.position.x - one.position.x), Double(stood.lot.position.z - one.position.z)))
+                        XCTAssertLessThan(abs(remainder(Double(toward - one.facing), 2 * .pi)), 1e-3, "Facing what it gathered at")
+                        for lane in lanes {
+                            let run = Vec3(lane.1.x - lane.0.x, 0, lane.1.z - lane.0.z), off = Vec3(one.position.x - lane.0.x, 0, one.position.z - lane.0.z)
+                            let t = max(0, min(1, off.dot(run) / run.dot(run)))
+                            XCTAssertGreaterThanOrEqual((off - run * t).length, HoldLayout.laneHalfWidth + HoldLayout.standing - 1e-4, "Off the lanes")
+                        }
+                        for p in walks {
+                            XCTAssertGreaterThan(flat(p, one.position), 2 * HoldLayout.standing, "Never in the way of those out walking")
+                        }
+                        for lot in lots where lot.position != stood.lot.position {
+                            XCTAssertGreaterThanOrEqual(flat(one.position, lot.position), lot.piece.footprint + HoldLayout.standing - 1e-4,
+                                                        "Clear of a \(lot.piece)")
+                        }
+                        for work in works {
+                            XCTAssertGreaterThan(flat(one.position, work.position), HoldLayout.workRadius, "Clear of \(work.key)")
+                        }
+                        for other in gathered.prefix(index) {
+                            XCTAssertGreaterThanOrEqual(flat(one.position, other.position), 2 * HoldLayout.standing - 1e-4, "Clear of each other")
+                        }
+                    }
+                    if let well = lots.first(where: { $0.piece == .well }) {
+                        wells += 1
+                        let there = gathered.indices.filter { at[$0]?.lot.position == well.position }.map { gathered[$0] }
+                        XCTAssertLessThanOrEqual(there.count, min(2 + homes / HoldLayout.homesPerWellFolk, HoldLayout.wellMost))
+                        XCTAssertTrue(there.prefix(2).allSatisfy { $0.key == .folk(variant: Folk.waterCarrier) }, "Water-carriers first")
+                        atWells += there.count
+                        carriers += there.prefix(2).count
+                    }
+                    for stall in lots where stall.piece == .stall {
+                        stalls += 1
+                        let there = gathered.indices.filter { at[$0]?.lot.position == stall.position }
+                        XCTAssertLessThanOrEqual(there.count, 1 + HoldLayout.stallFolk)
+                        let held = there.filter { at[$0]?.away == behind }
+                        XCTAssertLessThanOrEqual(held.count, 1, "One stallholder")
+                        XCTAssertTrue(held.allSatisfy { gathered[$0].key == .folk(variant: Folk.householder) })
+                        holders += held.count
+                        atStalls += there.count
+                    }
+                }
+            }
+        }
+        XCTAssertGreaterThan(wells, 30, "A well in every town but where the land is short")
+        XCTAssertGreaterThan(Double(carriers), Double(wells) * 1.7, "Most wells have their two water-carriers")
+        XCTAssertGreaterThan(Double(atWells), Double(carriers) * 1.2, "And more of the town's folk at a town of many homes")
+        XCTAssertGreaterThan(stalls, 20)
+        XCTAssertGreaterThan(Double(holders), Double(stalls) * 0.6, "Most stalls have their holder")
+        XCTAssertGreaterThan(Double(atStalls), Double(stalls) * 2, "The market thronged")
     }
 
     func testTheSameHoldGivesTheSameTownAndEachPeopleBuildsItTheirWay() throws {

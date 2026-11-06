@@ -100,24 +100,62 @@ extension HoldLayout {
         return (all.filter { used.contains($0.index) }, granary)
     }
 
+    /// What the town keeps clear of about a hold: the keep, the lanes'
+    /// lines, the ground a work may ever stand on, the hearts of the hexes
+    /// about the hold where companies stand, the walls' ground and the edge
+    /// of the hold's land.
+    struct Ground {
+        let heart: Vec3
+        let angles: [Float]
+        let reserved: [Slot]
+        /// Where the granary stands once all are raised.
+        let granary: Slot?
+        let hearts: [Vec3]
+        let keepClear: Float
+        let land: Set<Hex>
+
+        init(_ plan: Plan, relief: Relief) {
+            let centre = Relief.centre(of: plan.hex)
+            heart = Vec3(centre.x, 0, centre.z)
+            angles = laneAngles(of: plan.hex)
+            (reserved, granary) = reservedSlots(plan, relief: relief)
+            hearts = plan.hex.neighbors.map { hex -> Vec3 in
+                let c = Relief.centre(of: hex)
+                return Vec3(c.x, 0, c.z)
+            }
+            let keep = Library.model(plan.heritage.map { ModelKey.keepOf($0, seat: plan.isSeat) } ?? .keep(seat: plan.isSeat)).mesh.bounds
+            keepClear = max(-keep.min.x, keep.max.x, -keep.min.z, keep.max.z) + 0.03
+            land = HoldLayout.land(of: plan.hex, relief: relief)
+        }
+
+        /// Whether something `footprint` about its middle at `p` stands
+        /// clear of all of it.
+        func clear(_ p: Vec3, footprint: Float) -> Bool {
+            let offset = p - heart
+            let r = (offset.x * offset.x + offset.z * offset.z).squareRoot()
+            guard r - footprint >= keepClear, r + footprint <= reach - 0.02,
+                  r + footprint <= wardEdge || r - footprint >= ringLane + laneHalfWidth else { return false }
+            for angle in angles {
+                let way = Vec3(Float(cos(Double(angle))), 0, Float(sin(Double(angle))))
+                let along = offset.dot(way)
+                let off = along > 0 ? (offset - way * along).length : r
+                if off < footprint + laneHalfWidth { return false }
+            }
+            if reserved.contains(where: { ($0.position - p).length < footprint + workRadius + 0.02 }) { return false }
+            if hearts.contains(where: { ($0 - p).length < footprint + heartClear }) { return false }
+            let layout = HexLayout(size: 1)
+            return points(around: p, radius: footprint).allSatisfy { land.contains(layout.hex(atX: Double($0.x), y: Double($0.z))) }
+        }
+    }
+
     /// The town's lots as they are taken: the well, the seat's stalls, the
     /// fields the granary works, and the homes from the keep outward. The
     /// fields' ground is kept whether worked or not, so no home stands
     /// where a field is to come.
     static func lots(_ plan: Plan, relief: Relief) -> [Lot] {
-        let centre = Relief.centre(of: plan.hex)
-        let heart = Vec3(centre.x, 0, centre.z)
+        let ground = Ground(plan, relief: relief)
+        let heart = ground.heart, angles = ground.angles, granary = ground.granary
         let front = frontAngle(of: plan.hex)
-        let land = land(of: plan.hex, relief: relief)
-        let layout = HexLayout(size: 1)
-        let angles = laneAngles(of: plan.hex)
-        let (reserved, granary) = reservedSlots(plan, relief: relief)
-        let hearts = plan.hex.neighbors.map { hex -> Vec3 in
-            let c = Relief.centre(of: hex)
-            return Vec3(c.x, 0, c.z)
-        }
-        let keep = Library.model(plan.heritage.map { ModelKey.keepOf($0, seat: plan.isSeat) } ?? .keep(seat: plan.isSeat)).mesh.bounds
-        let keepClear = max(-keep.min.x, keep.max.x, -keep.min.z, keep.max.z) + 0.03
         var taken: [Lot] = []
 
         func polar(_ r: Float, _ angle: Float) -> Vec3 {
@@ -136,25 +174,9 @@ extension HoldLayout {
             }
             return Float(atan2(Double(best.toward.x), Double(best.toward.z)))
         }
-        func fits(_ p: Vec3, _ piece: Town) -> Bool {
-            let footprint = piece.footprint
-            let offset = p - heart
-            let r = (offset.x * offset.x + offset.z * offset.z).squareRoot()
-            guard r - footprint >= keepClear, r + footprint <= reach - 0.02,
-                  r + footprint <= wardEdge || r - footprint >= ringLane + laneHalfWidth else { return false }
-            for angle in angles {
-                let way = Vec3(Float(cos(Double(angle))), 0, Float(sin(Double(angle))))
-                let along = offset.dot(way)
-                let off = along > 0 ? (offset - way * along).length : r
-                if off < footprint + laneHalfWidth { return false }
-            }
-            if reserved.contains(where: { ($0.position - p).length < footprint + workRadius + 0.02 }) { return false }
-            if hearts.contains(where: { ($0 - p).length < footprint + heartClear }) { return false }
-            if taken.contains(where: { ($0.position - p).length < footprint + $0.piece.footprint + 0.02 }) { return false }
-            return points(around: p, radius: footprint).allSatisfy { land.contains(layout.hex(atX: Double($0.x), y: Double($0.z))) }
-        }
         func take(_ piece: Town, at p: Vec3) -> Bool {
-            guard fits(p, piece) else { return false }
+            guard !taken.contains(where: { ($0.position - p).length < piece.footprint + $0.piece.footprint + 0.02 }),
+                  ground.clear(p, footprint: piece.footprint) else { return false }
             taken.append(Lot(piece: piece, position: p, facing: facing(p)))
             return true
         }
@@ -284,10 +306,10 @@ extension HoldLayout {
     // MARK: The strolls
 
     /// The most of a hold's folk out and about its lanes; a seat's.
-    public static let strollsMost = 10
-    public static let seatStrollsMost = 16
+    public static let strollsMost = 14
+    public static let seatStrollsMost = 24
     /// One of the town's folk is out for every so many of its homes.
-    public static let homesPerStroll = 3
+    public static let homesPerStroll = 2
     /// How far to one side of a lane's line its folk keep, the one way or
     /// the other, so those going out and those coming back pass.
     public static let keepSide: Float = 0.03
@@ -296,7 +318,7 @@ extension HoldLayout {
     public static let marketReach: Float = 0.12
 
     /// The ways the town's folk walk out and about its lanes, on the ground
-    /// plane: one for every three of its homes, to the most a hold or a
+    /// plane: one for every two of its homes, to the most a hold or a
     /// seat has, each there and back along the lanes, keeping to one side
     /// of them. One in four goes from the market by the keep's door out
     /// along the way to the gate, through it where the hold is walled, as
@@ -356,6 +378,82 @@ extension HoldLayout {
             out[lane, default: 0] += 1
         }
         return strolls
+    }
+
+    // MARK: The gatherings
+
+    /// One of the town's folk standing where its life gathers: who they
+    /// are, where on the ground plane, and the way they face.
+    public struct Gathered: Equatable, Sendable {
+        public var key: ModelKey
+        public var position: Vec3
+        public var facing: Float
+    }
+
+    /// Half the ground one of the town's folk takes, standing.
+    public static let standing: Float = 0.025
+    /// How far beyond what they stand at the gathered keep.
+    static let standOff: Float = 0.004
+    /// The well's ring of stone about its middle, and a stall's counter
+    /// (half its length, half its depth) and awning (half its length), as
+    /// made (Art/blender/town.py).
+    static let wellRing: Float = 0.042
+    static let counter = (half: Float(0.05), depth: Float(0.028)), awning: Float = 0.06
+    /// The most of the town's folk at its well: two drawing water, and one
+    /// more for every so many of its homes.
+    public static let wellMost = 4
+    public static let homesPerWellFolk = 12
+    /// The folk at each of a seat's stalls besides its stallholder.
+    public static let stallFolk = 2
+
+    /// The town's folk gathered where its life is, standing about what
+    /// they gathered at and facing it: two water-carriers crouched at the
+    /// well's rim drawing water, and more of the town's folk there for
+    /// every twelve of its homes, to four; at a seat, a stallholder behind
+    /// each stall's counter and two of the market's folk at its ends. Each
+    /// stands clear of the lanes, where the town's folk walk, of every work,
+    /// of every lot but the one it stands at, of the companies' ground and
+    /// of each other; where there is no room, fewer gather. The same town
+    /// always gathers the same folk in the same places.
+    public static func gatherings(_ plan: Plan, relief: Relief) -> [Gathered] {
+        let ground = Ground(plan, relief: relief)
+        let lots = lots(plan, relief: relief)
+        let homes = lots.filter { Town.homes.contains($0.piece) }.count
+        var gathered: [Gathered] = []
+        func roll(_ k: Int, _ salt: UInt32) -> Float {
+            Noise.unit(Int32(truncatingIfNeeded: plan.hex.q) &* 19 &+ Int32(k), Int32(truncatingIfNeeded: plan.hex.r), salt)
+        }
+        /// One of the folk stood `away` from a lot's middle at `angle` from
+        /// the way it faces, facing its middle, if there is room for them.
+        func stand(_ key: ModelKey, at lot: Lot, away: Float, angle: Float) -> Bool {
+            let heading = lot.facing + angle
+            let p = lot.position + Vec3(Float(sin(Double(heading))), 0, Float(cos(Double(heading)))) * away
+            guard ground.clear(p, footprint: standing),
+                  !lots.contains(where: { $0.position != lot.position && ($0.position - p).length < $0.piece.footprint + standing }),
+                  !gathered.contains(where: { ($0.position - p).length < 2 * standing }) else { return false }
+            gathered.append(Gathered(key: key, position: p, facing: heading + .pi))
+            return true
+        }
+        // At the well's rim, round it from a way of its own.
+        if let well = lots.first(where: { $0.piece == .well }) {
+            let count = min(2 + homes / homesPerWellFolk, wellMost)
+            let start = roll(0, 0x3E11) * 2 * .pi
+            var stood = 0
+            for index in 0..<12 where stood < count {
+                let key: ModelKey = stood < 2 ? .folk(variant: Folk.waterCarrier) : .folk(ofHome: roll(stood, 0x3E12))
+                if stand(key, at: well, away: wellRing + standing + standOff, angle: start + Float(index) * .pi / 6) { stood += 1 }
+            }
+        }
+        // At each stall: its holder behind the counter, its folk at its ends.
+        for (index, stall) in lots.filter({ $0.piece == .stall }).enumerated() {
+            _ = stand(.folk(variant: Folk.householder), at: stall, away: counter.depth + standing + standOff, angle: .pi)
+            var stood = 0
+            let ends: [Float] = [.pi / 2, -.pi / 2, 1.2, -1.2, 1.95, -1.95]
+            for angle in ends where stood < stallFolk {
+                if stand(.folk(ofHome: roll(index * 8 + stood, 0x3E13)), at: stall, away: awning + standing + standOff, angle: angle) { stood += 1 }
+            }
+        }
+        return gathered
     }
 
     /// A way kept to one side of its lanes: each point of it moved `side`

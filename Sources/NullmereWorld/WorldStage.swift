@@ -233,8 +233,9 @@ public final class WorldStage: @unchecked Sendable {
     /// kept with the plan they were drawn from: carried out and set on the
     /// land once, not each frame.
     private var drawnPieces: [Int: (plan: [Piece], drawn: [Piece])] = [:]
-    /// The folk of each hold's homes out walking, by the town they walk.
-    private var strolled: [Int: (plan: HoldLayout.Plan, ways: [Errand])] = [:]
+    /// The folk of each hold's homes out walking and gathered, by the town
+    /// they walk and gather in.
+    private var strolled: [Int: (plan: HoldLayout.Plan, ways: [Errand], gathered: [HoldLayout.Gathered])] = [:]
     /// The land's height where figures have stood, by the 64th of a unit:
     /// worked out once, not each frame.
     private var grounds: [SIMD2<Int32>: Float] = [:]
@@ -776,25 +777,39 @@ public final class WorldStage: @unchecked Sendable {
     /// `HoldLayout.strolls`), there and back: each a householder, a
     /// water-carrier, an elder or a child, by a roll of its own. Laid out
     /// again only as the town changes, not as a work rises.
-    public func strolls(of sight: HoldSight) -> [Errand] {
+    public func strolls(of sight: HoldSight) -> [Errand] { folk(of: sight).ways }
+
+    /// A hold's townsfolk gathered where its life is (see
+    /// `HoldLayout.gatherings`), standing where the hold is drawn: at its
+    /// well and, at a seat, its stalls. Laid out again, with its strolls,
+    /// only as the town changes.
+    public func gatherings(of sight: HoldSight) -> [HoldLayout.Gathered] { folk(of: sight).gathered }
+
+    private func folk(of sight: HoldSight) -> (ways: [Errand], gathered: [HoldLayout.Gathered]) {
         var plan = WorldStage.plan(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage)
         plan.rising?.progress = 0
-        if let kept = strolled[sight.hold.id], kept.plan == plan { return kept.ways }
+        if let kept = strolled[sight.hold.id], kept.plan == plan { return (kept.ways, kept.gathered) }
         let middle = Relief.centre(of: sight.hold.position)
         let ways = HoldLayout.strolls(plan, relief: relief).enumerated().map { index, path in
             Errand(key: .folk(ofHome: Noise.unit(Int32(truncatingIfNeeded: sight.hold.id), Int32(index), 0xF01C)),
                    path: path.map { WorldStage.grand($0, about: middle) },
                    salt: sight.hold.id &* 53 &+ 7 &+ index)
         }
-        strolled[sight.hold.id] = (plan, ways)
-        return ways
+        let gathered = HoldLayout.gatherings(plan, relief: relief).map { folk in
+            var drawn = folk
+            drawn.position = WorldStage.grand(folk.position, about: middle)
+            return drawn
+        }
+        strolled[sight.hold.id] = (plan, ways, gathered)
+        return (ways, gathered)
     }
 
     /// The townsfolk who keep the holds' works and, with `crowds`, as the
-    /// view comes down close, the rest of their folk out about the lanes, as
-    /// a frame at `time` sees them: each on the land under it, posed as it
-    /// walks or stands. None about a hold whose ward is broken below half:
-    /// they keep within.
+    /// view comes down close, the rest of their folk out about the lanes and
+    /// gathered at the well and the stalls, as a frame at `time` sees them:
+    /// each on the land under it, posed as it walks or stands, those
+    /// gathered each at their own moment of what they do there. None about
+    /// a hold whose ward is broken below half: they keep within.
     public func townsfolk(_ sights: [HoldSight], time: Float, crowds: Bool = false, into frame: inout SceneFrame) -> [ModelBatch] {
         var placed: [(ModelKey, ModelInstance)] = []
         var shared: [PoseKey: UInt32] = [:]
@@ -807,6 +822,14 @@ public final class WorldStage: @unchecked Sendable {
                 placed.append((errand.key, ModelInstance(model: .translation(Vec3(at.x, ground(atX: at.x, z: at.z), at.z)) * .rotationY(heading),
                                                          colour: sight.colour, phase: Float(errand.salt % 17) * 0.31, hex: hex,
                                                          palette: start)))
+            }
+            guard crowds else { continue }
+            for (index, folk) in gatherings(of: sight).enumerated() {
+                let salt = sight.hold.id &* 61 &+ index
+                let start = WorldStage.pose(folk.key, .gather, at: time + Float(salt % 13) * 0.37, shared: &shared, into: &frame)
+                let at = folk.position
+                placed.append((folk.key, ModelInstance(model: .translation(Vec3(at.x, ground(atX: at.x, z: at.z), at.z)) * .rotationY(folk.facing),
+                                                       colour: sight.colour, phase: Float(salt % 17) * 0.31, hex: hex, palette: start)))
             }
         }
         return WorldStage.batches(placed)

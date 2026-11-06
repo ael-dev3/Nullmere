@@ -213,12 +213,66 @@ final class TownsfolkTests: XCTestCase {
         func folk(_ batches: [ModelBatch]) -> Int { batches.reduce(0) { $0 + $1.instances.count } }
         XCTAssertEqual(folk(stage.townsfolk([sight], time: 12, into: &frame)), works, "From afar, the works' folk and porters alone")
         let close = stage.townsfolk([sight], time: 12, crowds: true, into: &frame)
-        XCTAssertEqual(folk(close), works + strolls.count)
+        let gathered = stage.gatherings(of: sight)
+        XCTAssertEqual(folk(close), works + strolls.count + gathered.count)
         for instance in close.flatMap(\.instances) {
             let at = Vec3(instance.model.c3.x, instance.model.c3.y, instance.model.c3.z)
             XCTAssertEqual(at.y, stage.ground(atX: at.x, z: at.z), accuracy: 1e-4, "On the ground")
             XCTAssertEqual(instance.colour, sight.colour, "In their House's colour")
         }
+        var burning = hold
+        burning.ward = burning.maximumWard / 2 - 1
+        XCTAssertTrue(stage.townsfolk([HoldSight(hold: burning, colour: sight.colour)], time: 12, crowds: true, into: &frame).isEmpty,
+                      "They keep within")
+    }
+
+    /// The town's folk gathered at the well and the stalls: drawn only as
+    /// the view comes close, each standing where the hold is drawn, on the
+    /// ground, facing what they gathered at and posed at their own moment of
+    /// what they do there (drawing water, talking, resting, at play); laid
+    /// out once for the town, and keeping within a burning hold.
+    func testTheTownsFolkGatherAtTheWellAndTheStalls() throws {
+        let stage = WorldStage(map: state.map, relief: Relief(map: state.map))
+        let hold = try seat([.walls: 2, .granary: 3, .sawpit: 2, .quarry: 2, .saltworks: 1, .infirmary: 1, .forge: 1, .beacon: 1])
+        let sight = HoldSight(hold: hold, colour: Vec4(0.6, 0.2, 0.2, 1))
+        let gathered = stage.gatherings(of: sight)
+        let plan = HoldLayout.Plan(hold: hold)
+        let laid = HoldLayout.gatherings(plan, relief: Relief(map: state.map))
+        XCTAssertEqual(gathered.count, laid.count)
+        XCTAssertGreaterThanOrEqual(gathered.count, 6, "A grown seat's well and stalls are thronged")
+        XCTAssertGreaterThanOrEqual(gathered.filter { $0.key == .folk(ofHome: 0.5) }.count, 2, "Two water-carriers at the well")
+        let middle = heart(of: hold)
+        for (drawn, planned) in zip(gathered, laid) {
+            XCTAssertEqual(drawn.key, planned.key)
+            XCTAssertEqual(drawn.facing, planned.facing)
+            XCTAssertEqual(flat(drawn.position, middle), flat(planned.position, middle) * HoldLayout.grandeur, accuracy: 1e-4,
+                           "Where the hold is drawn, its grandeur about its middle")
+        }
+        XCTAssertEqual(stage.gatherings(of: sight), gathered, "Laid out once for the town")
+
+        var frame = SceneFrame()
+        func folk(_ batches: [ModelBatch]) -> [(ModelKey, ModelInstance)] { batches.flatMap { batch in batch.instances.map { (batch.key, $0) } } }
+        let far = folk(stage.townsfolk([sight], time: 12, into: &frame))
+        let close = folk(stage.townsfolk([sight], time: 12, crowds: true, into: &frame))
+        for one in gathered {
+            let standing = close.filter { key, instance in
+                key == one.key && flat(Vec3(instance.model.c3.x, 0, instance.model.c3.z), one.position) < 1e-4
+            }
+            XCTAssertEqual(standing.count, 1, "\(one.key) gathered where it stands, close")
+            XCTAssertFalse(far.contains { $0.0 == one.key && flat(Vec3($0.1.model.c3.x, 0, $0.1.model.c3.z), one.position) < 1e-4 },
+                           "None from afar")
+            guard let (_, instance) = standing.first else { continue }
+            XCTAssertEqual(instance.model.c3.y, stage.ground(atX: one.position.x, z: one.position.z), accuracy: 1e-4, "On the ground")
+            XCTAssertEqual(instance.colour, sight.colour)
+            // Turned by its facing about the up axis: its front, +z, toward its facing.
+            let front = Vec3(instance.model.c2.x, 0, instance.model.c2.z)
+            XCTAssertLessThan(abs(remainder(atan2(Double(front.x), Double(front.z)) - Double(one.facing), 2 * .pi)), 1e-3, "Facing what they gathered at")
+        }
+        // Posed as they work at what they gathered for, each at its own moment.
+        let poses = Set(close.filter { key, instance in
+            gathered.contains { $0.key == key && flat(Vec3(instance.model.c3.x, 0, instance.model.c3.z), $0.position) < 1e-4 }
+        }.map(\.1.palette))
+        XCTAssertGreaterThan(poses.count, 2, "Not all at one moment")
         var burning = hold
         burning.ward = burning.maximumWard / 2 - 1
         XCTAssertTrue(stage.townsfolk([HoldSight(hold: burning, colour: sight.colour)], time: 12, crowds: true, into: &frame).isEmpty,
