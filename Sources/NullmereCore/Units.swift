@@ -269,53 +269,99 @@ public struct Unit: Codable, Equatable, Identifiable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
+        /// The company in one line, comma by comma: its id, kind, owner, q
+        /// and r, health, moves left, whether fortified and whether it acted
+        /// (1 or 0), experience and tier; then, as far as it has any of them,
+        /// its destination ("q:r"), leader, second and the troops drilled.
+        case line = "u"
         case id, kind, owner, position, health, movesLeft, destination, fortified, acted, experience, tier, leader, second, errand, load, drilled, drillAt, way
+    }
+
+    /// Its line (`CodingKeys.line`): a company travels in a few dozen bytes,
+    /// a page of them a few, where every field named was five times as many.
+    var line: String {
+        func field(_ value: Int?) -> String { value.map(String.init) ?? "" }
+        var fields = [field(id), kind.rawValue, field(owner), field(position.q), field(position.r), field(health), field(movesLeft),
+                      fortified ? "1" : "0", acted ? "1" : "0", field(experience), field(tier)]
+        let rest = [destination.map { "\($0.q):\($0.r)" } ?? "", field(leader), field(second), field(drilled)]
+        if let last = rest.lastIndex(where: { !$0.isEmpty }) { fields += rest[...last] }
+        return fields.joined(separator: ",")
     }
 
     // A way is written as a march's is: its first hex and a digit for each
     // step after.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(kind, forKey: .kind)
-        try container.encode(owner, forKey: .owner)
-        try container.encode(position, forKey: .position)
-        try container.encode(health, forKey: .health)
-        try container.encode(movesLeft, forKey: .movesLeft)
-        try container.encodeIfPresent(destination, forKey: .destination)
-        try container.encode(fortified, forKey: .fortified)
-        try container.encode(acted, forKey: .acted)
-        try container.encode(experience, forKey: .experience)
-        try container.encode(tier, forKey: .tier)
-        try container.encodeIfPresent(leader, forKey: .leader)
-        try container.encodeIfPresent(second, forKey: .second)
+        try container.encode(line, forKey: .line)
         try container.encodeIfPresent(errand, forKey: .errand)
         try container.encodeIfPresent(load, forKey: .load)
-        try container.encodeIfPresent(drilled, forKey: .drilled)
         try container.encodeIfPresent(drillAt, forKey: .drillAt)
         try container.encodeIfPresent(way.flatMap(March.way(of:)), forKey: .way)
     }
 
     /// Games saved before veterancy have no experience recorded; it starts at
-    /// zero. Those saved before tiers are of the first.
+    /// zero. Those saved before tiers are of the first. Companies written
+    /// before they went as lines are read field by field.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(Int.self, forKey: .id)
-        kind = try container.decode(UnitKind.self, forKey: .kind)
-        owner = try container.decode(Int.self, forKey: .owner)
-        position = try container.decode(Hex.self, forKey: .position)
-        health = try container.decode(Int.self, forKey: .health)
-        movesLeft = try container.decode(Int.self, forKey: .movesLeft)
-        destination = try container.decodeIfPresent(Hex.self, forKey: .destination)
-        fortified = try container.decode(Bool.self, forKey: .fortified)
-        acted = try container.decode(Bool.self, forKey: .acted)
-        experience = try container.decodeIfPresent(Int.self, forKey: .experience) ?? 0
-        tier = try container.decodeIfPresent(Int.self, forKey: .tier) ?? 1
-        leader = try container.decodeIfPresent(Int.self, forKey: .leader)
-        second = try container.decodeIfPresent(Int.self, forKey: .second)
+        if let line = try container.decodeIfPresent(String.self, forKey: .line) {
+            let fields = line.split(separator: ",", omittingEmptySubsequences: false)
+            func unreadable() -> DecodingError {
+                DecodingError.dataCorruptedError(forKey: .line, in: container, debugDescription: "Unreadable company: \(line)")
+            }
+            func number(_ index: Int) throws -> Int? {
+                guard index < fields.count, !fields[index].isEmpty else { return nil }
+                guard let value = Int(fields[index]) else { throw unreadable() }
+                return value
+            }
+            func flag(_ index: Int) throws -> Bool {
+                guard fields[index] == "0" || fields[index] == "1" else { throw unreadable() }
+                return fields[index] == "1"
+            }
+            // As many fields as it writes, and none left empty at its end.
+            guard (11...15).contains(fields.count), fields.count == 11 || !fields[fields.count - 1].isEmpty,
+                  let kind = UnitKind(rawValue: String(fields[1])),
+                  let id = try number(0), let owner = try number(2), let q = try number(3), let r = try number(4),
+                  let health = try number(5), let movesLeft = try number(6), let experience = try number(9), let tier = try number(10)
+            else { throw unreadable() }
+            self.id = id
+            self.kind = kind
+            self.owner = owner
+            position = Hex(q, r)
+            self.health = health
+            self.movesLeft = movesLeft
+            fortified = try flag(7)
+            acted = try flag(8)
+            self.experience = experience
+            self.tier = tier
+            if fields.count > 11, !fields[11].isEmpty {
+                let ends = fields[11].split(separator: ":", omittingEmptySubsequences: false)
+                guard ends.count == 2, let q = Int(ends[0]), let r = Int(ends[1]) else { throw unreadable() }
+                destination = Hex(q, r)
+            } else {
+                destination = nil
+            }
+            leader = try number(12)
+            second = try number(13)
+            drilled = try number(14)
+        } else {
+            id = try container.decode(Int.self, forKey: .id)
+            kind = try container.decode(UnitKind.self, forKey: .kind)
+            owner = try container.decode(Int.self, forKey: .owner)
+            position = try container.decode(Hex.self, forKey: .position)
+            health = try container.decode(Int.self, forKey: .health)
+            movesLeft = try container.decode(Int.self, forKey: .movesLeft)
+            destination = try container.decodeIfPresent(Hex.self, forKey: .destination)
+            fortified = try container.decode(Bool.self, forKey: .fortified)
+            acted = try container.decode(Bool.self, forKey: .acted)
+            experience = try container.decodeIfPresent(Int.self, forKey: .experience) ?? 0
+            tier = try container.decodeIfPresent(Int.self, forKey: .tier) ?? 1
+            leader = try container.decodeIfPresent(Int.self, forKey: .leader)
+            second = try container.decodeIfPresent(Int.self, forKey: .second)
+            drilled = try container.decodeIfPresent(Int.self, forKey: .drilled)
+        }
         errand = try container.decodeIfPresent(Errand.self, forKey: .errand)
         load = try container.decodeIfPresent(Stock.self, forKey: .load)
-        drilled = try container.decodeIfPresent(Int.self, forKey: .drilled)
         drillAt = try container.decodeIfPresent(Hex.self, forKey: .drillAt)
         if let way = try container.decodeIfPresent(String.self, forKey: .way) {
             guard let route = March.route(fromWay: way) else {

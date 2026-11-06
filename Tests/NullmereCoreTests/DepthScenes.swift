@@ -26,7 +26,7 @@ enum Scene {
     private static func stripped(_ value: Any, _ keys: Set<String>) -> Any {
         if let object = value as? [String: Any] {
             var kept: [String: Any] = [:]
-            for (key, inner) in object where !keys.contains(key) {
+            for (key, inner) in fieldByField(object) where !keys.contains(key) {
                 kept[key] = stripped(inner, keys)
             }
             return kept
@@ -35,6 +35,33 @@ enum Scene {
             return array.map { stripped($0, keys) }
         }
         return value
+    }
+
+    /// A company as it was written before it went as one line: each field
+    /// under its own name, as a world from then has it.
+    private static func fieldByField(_ object: [String: Any]) -> [String: Any] {
+        guard let line = object["u"] as? String else { return object }
+        let fields = line.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+        func number(_ index: Int) -> Int? { index < fields.count ? Int(fields[index]) : nil }
+        var named = object
+        named["u"] = nil
+        named["id"] = number(0) ?? 0
+        named["kind"] = fields[1]
+        named["owner"] = number(2) ?? 0
+        named["position"] = ["q": number(3) ?? 0, "r": number(4) ?? 0]
+        named["health"] = number(5) ?? 0
+        named["movesLeft"] = number(6) ?? 0
+        named["fortified"] = fields[7] == "1"
+        named["acted"] = fields[8] == "1"
+        named["experience"] = number(9) ?? 0
+        named["tier"] = number(10) ?? 1
+        if fields.count > 11, case let ends = fields[11].split(separator: ":"), ends.count == 2, let q = Int(ends[0]), let r = Int(ends[1]) {
+            named["destination"] = ["q": q, "r": r]
+        }
+        for (index, key) in [(12, "leader"), (13, "second"), (14, "drilled")] {
+            if let value = number(index) { named[key] = value }
+        }
+        return named
     }
 }
 

@@ -147,6 +147,59 @@ final class CompactWorldTests: XCTestCase {
         XCTAssertLessThan(size, 20 * 1024)
     }
 
+    /// A company travels as one line, what it has beyond what every
+    /// company has only as far as it has any, its errand, load, drilling
+    /// ground and way beside it; and comes back exactly. A company written
+    /// field by field, as companies were, reads as it did.
+    func testACompanyTravelsAsOneLine() throws {
+        func json(_ unit: NullmereCore.Unit) throws -> String { String(decoding: try JSONEncoder().encode(unit), as: UTF8.self) }
+        var unit = NullmereCore.Unit(id: 7, kind: .bow, owner: 2, position: Hex(3, -1))
+        XCTAssertEqual(try json(unit), #"{"u":"7,bow,2,3,-1,100,\#(UnitKind.bow.movement),0,0,0,1"}"#)
+        unit.fortified = true
+        unit.acted = true
+        unit.experience = 4
+        unit.tier = 3
+        unit.health = 61
+        unit.movesLeft = 0
+        unit.drilled = 2_500
+        XCTAssertEqual(unit.line, "7,bow,2,3,-1,61,0,1,1,4,3,,,,2500")
+        unit.destination = Hex(-4, 9)
+        unit.leader = 12
+        unit.second = 13
+        XCTAssertEqual(unit.line, "7,bow,2,3,-1,61,0,1,1,4,3,-4:9,12,13,2500")
+        unit.errand = .homeward
+        unit.load = Stock(grain: 5, moonsalt: 1)
+        unit.drillAt = Hex(1, 1)
+        for kept in [NullmereCore.Unit(id: 0, kind: .spear, owner: 0, position: Hex(0, 0)), unit] {
+            XCTAssertEqual(try JSONDecoder().decode(NullmereCore.Unit.self, from: try JSONEncoder().encode(kept)), kept)
+        }
+        for bad in ["", "7,bow,2,3,-1,100,4,0,0,0", "7,axe,2,3,-1,100,4,0,0,0,1", "7,bow,2,3,-1,100,4,2,0,0,1", "x,bow,2,3,-1,100,4,0,0,0,1",
+                    "7,bow,2,3,-1,100,4,0,0,0,1,", "7,bow,2,3,-1,100,4,0,0,0,1,4", "7,bow,2,3,-1,100,4,0,0,0,1,4:x",
+                    "7,bow,2,3,-1,100,4,0,0,0,1,,,,,9", "7,bow,2,3,-1,100,4,0,0,0,1,,a"] {
+            XCTAssertThrowsError(try JSONDecoder().decode(NullmereCore.Unit.self, from: Data(#"{"u":"\#(bad)"}"#.utf8)), bad)
+        }
+
+        // Written field by field, as companies were before.
+        var fields: [String: Any] = ["id": 7, "kind": "bow", "owner": 2, "position": ["q": 3, "r": -1], "health": 61, "movesLeft": 0,
+                                     "fortified": true, "acted": true, "experience": 4, "tier": 3, "destination": ["q": -4, "r": 9],
+                                     "leader": 12, "second": 13, "drilled": 2_500, "drillAt": ["q": 1, "r": 1]]
+        fields["errand"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(Errand.homeward))
+        fields["load"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(unit.load))
+        XCTAssertEqual(try JSONDecoder().decode(NullmereCore.Unit.self, from: JSONSerialization.data(withJSONObject: fields)), unit)
+
+        // A wide realm's companies as lines: a fifth of what they were.
+        let wide = RealmState.world(seed: "companies", age: 1, seats: 48, radius: RealmState.radius(forSeats: 48))
+        let size = try JSONEncoder().encode(Array(wide.units)).count
+        let named = try wide.units.reduce(0) { total, unit in
+            let fields: [String: Any] = ["id": unit.id, "kind": unit.kind.rawValue, "owner": unit.owner, "position": ["q": unit.position.q, "r": unit.position.r],
+                                         "health": unit.health, "movesLeft": unit.movesLeft, "fortified": unit.fortified, "acted": unit.acted,
+                                         "experience": unit.experience, "tier": unit.tier]
+            return total + (try JSONSerialization.data(withJSONObject: fields)).count + 1
+        }
+        print("PERF a realm of 48 seats' companies: \(size / 1024) KB as lines, \(named / 1024) KB field by field")
+        XCTAssertLessThan(size * 3, named)
+    }
+
     /// Stored worlds name terrains and features by their place in these
     /// lists: new ones go at the end, and none moves.
     func testTheOrderOfTerrainsAndFeaturesHolds() {

@@ -429,9 +429,7 @@ final class VeterancyTests: XCTestCase {
     /// Games saved before veterancy still load, with every company untried.
     func testOlderSavesLoad() throws {
         let unit = Unit(id: 7, kind: .bow, owner: 2, position: Hex(3, -1))
-        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(unit)) as? [String: Any])
-        json["experience"] = nil
-        let old = try JSONSerialization.data(withJSONObject: json)
+        let old = Data(#"{"id":7,"kind":"bow","owner":2,"position":{"q":3,"r":-1},"health":100,"movesLeft":\#(UnitKind.bow.movement),"fortified":false,"acted":false}"#.utf8)
         let loaded = try JSONDecoder().decode(Unit.self, from: old)
         XCTAssertEqual(loaded.experience, 0)
         XCTAssertEqual(loaded.id, 7)

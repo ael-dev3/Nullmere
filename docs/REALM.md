@@ -69,10 +69,13 @@ steward's answer). For development a realm can also be hosted in-process
   from the one before, in one part every view is told alike, as the lie
   of the land is known however little of the land is: a keeper's own
   pages of the map come to 2 KB where they were 39 as cells, three bytes
-  a tile. At ninety-six seats a watch's twelve paces write 5.7 MB of the
-  world and every view against 22.7, and at 384 seats a pace 2.1 MB
-  against 8.4; the world itself is 703 KB
-  against 1,257 (a probe's measure at the fiftieth watch). The pages every
+  a tile. A company goes as one line ("7,bow,2,3,-1,100,4,0,0,0,1": its
+  id, kind, owner, place, health, moves, whether fortified and whether
+  it acted, experience and tier, and then what more it has), a fifth of
+  what every field named came to. At ninety-six seats a watch's twelve
+  paces write 3.7 MB of the world and every view against 22.7, and at 384
+  seats a pace 1.2 MB against 8.4; the world itself is 562 KB against
+  1,257 (a probe's measure at the fiftieth watch). The pages every
   keeper is told alike, just as a keeper of no House is told them, are
   kept on the server once, as no keeper's, under "~", the page's name and
   the mark of its text, and their names in one list, kept so too under
@@ -84,7 +87,7 @@ steward's answer). For development a realm can also be hosted in-process
   names a dozen parts where it named some ninety, and a watch's rows come
   to 0.23 MB against 2.3 (a probe's measure at the fiftieth watch). The
   pages and lists no view names are let go. At ninety-six keepers, every view shown whole comes to
-  1.8 MB written against 40.6, and a watch's turn to 1.1 MB against 13.5
+  1.0 MB written against 40.6, and a watch's turn to 0.7 MB against 13.5
   (a probe's measure at the fiftieth watch).
 - **Requests.** A request carries a nonce of 1 to 64 bytes and at most 4 KB
   besides; a keeper may have 32 requests waiting at most, and the steward

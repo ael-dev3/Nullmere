@@ -66,9 +66,10 @@ final class CompactTests: XCTestCase {
         // A realm of an earlier build sends none of the three: read as nil.
         var json = try XCTUnwrap(String(data: JSONEncoder().encode(told(oldest: nil, compact: nil)), encoding: .utf8))
         XCTAssertFalse(json.contains("speech"))
-        json = json.replacingOccurrences(of: "}", with: ",\"speech\":9,\"oldestSpeech\":9,\"compact\":1}")
+        let beyond = Speech.current + 1
+        json = json.replacingOccurrences(of: "}", with: ",\"speech\":\(beyond),\"oldestSpeech\":\(beyond),\"compact\":1}")
         let later = try JSONDecoder().decode(RealmStatus.self, from: Data(json.utf8))
-        XCTAssertEqual(later.oldestSpeech, 9)
+        XCTAssertEqual(later.oldestSpeech, beyond)
         XCTAssertTrue(later.wantsNewerBuild)
         XCTAssertTrue(RealmStatus.newerBuildNote.contains("github.com/ael-dev3/Nullmere/releases"))
         XCTAssertTrue(Speech.newestBuild.hasPrefix("https://github.com/ael-dev3/Nullmere/releases"))
