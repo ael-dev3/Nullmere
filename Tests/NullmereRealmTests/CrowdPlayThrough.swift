@@ -48,13 +48,15 @@ enum CrowdPlayThrough {
         var seated = 0.0
         var turned = 0.0
         var heard = 0.0
-        /// The realm's publications meanwhile, and the calls they took.
+        /// The realm's publications meanwhile, the calls they took and the
+        /// megabytes those carried.
         var publications = 0
         var publicationCalls = 0
+        var publicationBytes = 0
 
         var description: String {
-            String(format: "all seated and shown the world in %.1f s, the realm taking in a quarter of its seats each watch; the watch turned for every keeper %.1f s after the last made ready; one keeper's words heard by every other in %.1f s; %d publications in %d calls",
-                   seated, turned, heard, publications, publicationCalls)
+            String(format: "all seated and shown the world in %.1f s, the realm taking in a quarter of its seats each watch; the watch turned for every keeper %.1f s after the last made ready; one keeper's words heard by every other in %.1f s; %d publications in %d calls, %.1f MB",
+                   seated, turned, heard, publications, publicationCalls, Double(publicationBytes) / 1_048_576)
         }
     }
 
@@ -160,6 +162,7 @@ enum CrowdPlayThrough {
         timings.heard = Date().timeIntervalSince(spoke)
         timings.publications = await steward.publications
         timings.publicationCalls = await steward.publicationCalls
+        timings.publicationBytes = await steward.publicationBytes
         print("CROWD \(seats) keepers' clients at once: \(timings)")
         return timings
     }

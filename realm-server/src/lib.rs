@@ -154,11 +154,16 @@ fn my_view(ctx: &ViewContext) -> Option<KeeperView> {
     ctx.db.keeper_view().keeper().find(ctx.sender().to_hex().to_string())
 }
 
-/// The parts of the caller's own view of the realm.
+/// The parts of the caller's own view of the realm, and the pages every
+/// keeper is told alike (kept once, as no keeper's, under "~name#mark"),
+/// which their view names where it has them.
 #[view(accessor = my_view_parts, public)]
 fn my_view_parts(ctx: &ViewContext) -> Vec<ViewPart> {
     let me = ctx.sender().to_hex().to_string();
-    ctx.db.view_part().keeper().filter(&me).collect()
+    let alike = String::new();
+    let mut parts: Vec<ViewPart> = ctx.db.view_part().keeper().filter(&me).collect();
+    parts.extend(ctx.db.view_part().keeper().filter(&alike));
+    parts
 }
 
 /// The caller's own requests still waiting for the steward: a client asks

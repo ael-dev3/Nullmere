@@ -135,6 +135,11 @@ public actor RealmSteward {
     private var keptWorld: GameState?
     /// The last publication failed: whether SpacetimeDB kept it is unknown.
     private var unsure = false
+    /// The rows of pages told alike that the server keeps, by name
+    /// ("~map.3#…", the page's name and its text's mark): each page every
+    /// keeper is told alike is written once for all their views, when a
+    /// view first names it, and let go once none does.
+    private var alikeKept: Set<String> = []
     /// A publication failed part way, some of its calls kept and some not:
     /// the next works out every view there again, whatever changed, so the
     /// keepers in the calls never kept are shown theirs and what they heard.
@@ -157,9 +162,11 @@ public actor RealmSteward {
     public static let heardBatches = 16
     /// Views worked out and written for publication, for tests.
     private(set) var viewsWorkedOut = 0
-    /// Publications sent, and the calls they took, for tests.
+    /// Publications sent, the calls they took and the bytes of text those
+    /// carried, for tests.
     private(set) var publications = 0
     private(set) var publicationCalls = 0
+    private(set) var publicationBytes = 0
     /// Keepers the steward keeps anything of, for tests: those there alone.
     var keepersRemembered: Int { Set(heard.keys).union(left.keys).union(published.keys).union(recentlyHeard.keys).count }
 
@@ -545,6 +552,9 @@ public actor RealmSteward {
             version = max(version, kept)
             keptParts = parts
             keptWorld = nil
+            // Which pages told alike the server keeps isn't known: those the
+            // views name are written again.
+            alikeKept = []
             lastAttempt = nil
             unsure = false
         }
@@ -573,6 +583,13 @@ public actor RealmSteward {
         if !showing.isEmpty { ways = state.world.ways() }
         let worked = try await RealmSteward.views(of: showing, in: state, ways: ways, sharing: parts)
         var shown: [Shown] = []
+        // The pages told alike the views there name as published: kept
+        // until no view names them.
+        var namedBefore: Set<String> = []
+        for keeper in state.keepers where keeper.isOnline {
+            namedBefore.formUnion((published[keeper.id] ?? [:]).keys.filter(AlikePages.isAlike))
+        }
+        var alikeNamed: [String: String] = [:]
         for keeper in state.keepers where keeper.isOnline {
             var batches = Array((recentlyHeard[keeper.id] ?? []).filter { now - $0.at <= RealmSteward.heardKept }
                 .suffix(RealmSteward.heardBatches))
@@ -581,32 +598,52 @@ public actor RealmSteward {
             // Their view in parts: only those that changed are sent, with
             // the names of all it has now and the version each was written
             // at, so their Mac takes up the new and lets the gone go.
-            guard let viewParts = worked[keeper.id] else { continue }
+            guard let pages = worked.views[keeper.id] else { continue }
             viewsWorkedOut += 1
+            // Each page as the view names it: its own, or, told just as a
+            // keeper of no House is told it, the page every view that has
+            // it shares, kept once.
+            let viewParts = AlikePages.named(pages, alike: worked.alike)
             let was = published[keeper.id] ?? [:]
-            let changed = viewParts.filter { was[$0.key] != $0.value }.sorted { $0.key < $1.key }
+            let changed = viewParts.filter { !AlikePages.isAlike($0.key) && was[$0.key] != $0.value }.sorted { $0.key < $1.key }
             let others = acts.filter { $0.by != keeper.id }.flatMap(\.events)
             let events = keeper.house.map { state.world.events(others + told, heardBy: $0) } ?? []
             guard !changed.isEmpty || Set(was.keys) != Set(viewParts.keys) || !events.isEmpty else { continue }
             if !events.isEmpty { batches.append((now, HeardBatch(version: version + 1, events: events))) }
             batches = Array(batches.suffix(RealmSteward.heardBatches))
             lately[keeper.id] = batches
-            shown.append(Shown(keeper: keeper.id, parts: viewParts, changed: changed,
-                               at: (publishedAt[keeper.id] ?? [:]).filter { viewParts[$0.key] != nil },
+            var at = (publishedAt[keeper.id] ?? [:]).filter { viewParts[$0.key] != nil }
+            for name in viewParts.keys where AlikePages.isAlike(name) {
+                at[name] = 0
+                alikeNamed[name] = viewParts[name]
+            }
+            shown.append(Shown(keeper: keeper.id, parts: viewParts, changed: changed, at: at,
                                heard: String(decoding: try encoder.encode(batches.map(\.batch)), as: UTF8.self)))
         }
+        // And once it is: the views shown name these, the rest as they did.
+        let showingNow = Set(shown.map(\.keeper))
+        var namedAfter: Set<String> = []
+        for keeper in state.keepers where keeper.isOnline && !showingNow.contains(keeper.id) {
+            namedAfter.formUnion((published[keeper.id] ?? [:]).keys.filter(AlikePages.isAlike))
+        }
+        for view in shown { namedAfter.formUnion(view.parts.keys.filter(AlikePages.isAlike)) }
+        // Those the server doesn't keep are written; the rest stand.
+        let alike = alikeNamed.filter { !alikeKept.contains($0.key) }.sorted { $0.key < $1.key }
+        let keepAlike = Alike(rows: alike, during: namedBefore.union(namedAfter).sorted(),
+                              after: alike.isEmpty && namedAfter == alikeKept ? nil : namedAfter.sorted())
         // The world's parts that changed, and those no longer there.
         let changed = parts.filter { keptParts[$0.key] != $0.value }.sorted { $0.key < $1.key }
         let gone = keptParts.keys.filter { parts[$0] == nil }.sorted()
         // In as many calls as keep each under what the server takes in one.
-        let calls = try RealmSteward.calls(world: changed, gone: gone, shown: shown, answers: unanswered, from: version + 1,
-                                       budget: publicationBudget)
+        let calls = try RealmSteward.calls(world: changed, gone: gone, alike: keepAlike, shown: shown, answers: unanswered,
+                                           from: version + 1, budget: publicationBudget)
         let statusText = String(decoding: try encoder.encode(status), as: UTF8.self)
         publications += 1
         for (index, call) in calls.enumerated() {
             let settling = Settling(version: call.version, at: now, status: status, shown: call.shown, shownAt: call.shownAt,
                                     world: index == 0 ? (parts, state.world, lately, told.count, acts.count) : nil,
-                                    answers: call.answers.map { ($0.id, $0.nonce) })
+                                    answers: call.answers.map { ($0.id, $0.nonce) },
+                                    alike: (written: call.alikeWritten, kept: call.alikeKeeps, final: call.alikeFinal))
             do {
                 try await transport.call("publish", [
                     .integer(call.version),
@@ -633,6 +670,7 @@ public actor RealmSteward {
             }
             settle(settling)
             publicationCalls += 1
+            publicationBytes += call.size
         }
         viewsOwed = false
     }
@@ -664,6 +702,12 @@ public actor RealmSteward {
         var answers: [Answer] = []
         /// The answers as sent, each telling where its keeper's view is.
         var replies: [String] = []
+        /// The rows of pages told alike it writes, and, if it says which
+        /// to keep, those it keeps; once every view is written, the last
+        /// keeps exactly the rows the views name.
+        var alikeWritten: [String] = []
+        var alikeKeeps: [String]?
+        var alikeFinal = false
         /// What it shows, to be kept once it is: each keeper's parts, and the
         /// version each was written at.
         var shown: [String: [String: String]] = [:], shownAt: [String: [String: UInt64]] = [:]
@@ -681,14 +725,19 @@ public actor RealmSteward {
     /// world's parts that changed and those gone, and every answer, whatever
     /// their size: the world and the answers that came of it are kept in one
     /// transaction, so a steward stopped between calls neither loses a
-    /// request nor carries one out twice. Each keeper's view goes whole in
-    /// one call, its parts with its row, as the module asks; each answer
+    /// request nor carries one out twice. Then the pages told alike the
+    /// views name that the server doesn't keep, each written once for every
+    /// view, before any view that names them; then each keeper's view whole
+    /// in one call, its parts with its row, as the module asks. Each answer
     /// tells the version its keeper's view is written at, 0 if it isn't,
-    /// and their Mac waits for that call, or for none.
-    static func calls(world changed: [(key: String, value: String)], gone: [String], shown: [Shown], answers: [Answer],
-                      from version: UInt64, budget: Int) throws -> [Call] {
+    /// and their Mac waits for that call, or for none. The rows of pages
+    /// told alike that no view names are let go in the last call, once
+    /// every view is written.
+    static func calls(world changed: [(key: String, value: String)], gone: [String], alike: Alike = Alike(), shown: [Shown],
+                      answers: [Answer], from version: UInt64, budget: Int) throws -> [Call] {
         let encoder = JSONEncoder()
         func encoded(_ reply: RealmReply) throws -> String { String(decoding: try encoder.encode(reply), as: UTF8.self) }
+        func keeps(_ names: [String]) -> String { manifest(Dictionary(uniqueKeysWithValues: names.map { ($0, UInt64(0)) })) }
         var calls = [Call(version: version)]
         calls[0].worldNames = changed.map(\.key)
         calls[0].worldTexts = changed.map(\.value)
@@ -697,14 +746,37 @@ public actor RealmSteward {
         // The answers' size as they will go, the version they tell aside.
         calls[0].size = changed.reduce(0) { $0 + $1.key.utf8.count + $1.value.utf8.count } + gone.reduce(0) { $0 + $1.utf8.count }
             + (try answers.reduce(0) { $0 + (try encoded($1.reply.with(viewAt: version))).utf8.count })
+        /// A new call, if what comes next would take the last over budget.
+        func room(for size: Int) {
+            if calls[calls.count - 1].size > 0, calls[calls.count - 1].size + size > budget {
+                calls.append(Call(version: calls[calls.count - 1].version + 1))
+            }
+        }
+        let during = keeps(alike.during)
+        for (name, text) in alike.rows {
+            room(for: name.utf8.count + text.utf8.count + (calls[calls.count - 1].alikeKeeps == nil ? during.utf8.count : 0))
+            let last = calls.count - 1
+            if calls[last].alikeKeeps == nil {
+                // Every row a view there names stays while the views are
+                // written anew.
+                calls[last].alikeKeeps = alike.during
+                calls[last].keepers.append(AlikePages.keeper)
+                calls[last].views.append(during)
+                calls[last].heard.append("[]")
+                calls[last].size += during.utf8.count
+            }
+            calls[last].partKeepers.append(AlikePages.keeper)
+            calls[last].partNames.append(name)
+            calls[last].partTexts.append(text)
+            calls[last].alikeWritten.append(name)
+            calls[last].size += name.utf8.count + text.utf8.count
+        }
         var viewAt: [String: UInt64] = [:]
         for view in shown {
             var at = view.at
             for (name, _) in view.changed { at[name] = 0 }
             let size = view.changed.reduce(0) { $0 + $1.key.utf8.count + $1.value.utf8.count } + view.heard.utf8.count + manifest(at).utf8.count
-            if calls[calls.count - 1].size > 0, calls[calls.count - 1].size + size > budget {
-                calls.append(Call(version: calls[calls.count - 1].version + 1))
-            }
+            room(for: size)
             let last = calls.count - 1
             for (name, text) in view.changed {
                 at[name] = calls[last].version
@@ -720,6 +792,19 @@ public actor RealmSteward {
             calls[last].size += size
             viewAt[view.keeper] = calls[last].version
         }
+        // Once every view is written, the rows none names are let go.
+        if let after = alike.after {
+            let last = calls.count - 1
+            if let index = calls[last].keepers.firstIndex(of: AlikePages.keeper) {
+                calls[last].views[index] = keeps(after)
+            } else {
+                calls[last].keepers.append(AlikePages.keeper)
+                calls[last].views.append(keeps(after))
+                calls[last].heard.append("[]")
+            }
+            calls[last].alikeKeeps = after
+            calls[last].alikeFinal = true
+        }
         calls[0].replies = try answers.map { try encoded($0.reply.with(viewAt: viewAt[$0.keeper] ?? 0)) }
         return calls
     }
@@ -732,14 +817,15 @@ public actor RealmSteward {
     /// every page just as it is there as written there: a keeper's view
     /// costs what is theirs alone, not the whole realm.
     static func views(of keepers: [String], in state: RealmState, ways: [Int: [Hex]]?,
-                      sharing parts: [String: String]) async throws -> [String: [String: String]] {
-        guard !keepers.isEmpty else { return [:] }
+                      sharing parts: [String: String]) async throws -> Worked {
+        guard !keepers.isEmpty else { return Worked() }
         let commons = state.world.viewCommons(ways: ways)
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         let stranger = state.world.view(for: -1, commons: commons)
-        let told: [GameState.Written] = [(stranger, try stranger.parts(using: encoder, reusing: [(state.world, parts)])), (state.world, parts)]
-        return try await withThrowingTaskGroup(of: (String, [String: String]?).self) { group in
+        let alike = try stranger.parts(using: encoder, reusing: [(state.world, parts)])
+        let told: [GameState.Written] = [(stranger, alike), (state.world, parts)]
+        let views = try await withThrowingTaskGroup(of: (String, [String: String]?).self) { group in
             for keeper in keepers {
                 group.addTask {
                     let encoder = JSONEncoder()
@@ -754,7 +840,25 @@ public actor RealmSteward {
             }
             return worked
         }
+        return Worked(views: views, alike: alike)
     }
+
+    /// Keepers' views in parts, and the pages a keeper of no House is told:
+    /// those every view that has them is told alike.
+    struct Worked {
+        var views: [String: [String: String]] = [:]
+        var alike: [String: String] = [:]
+    }
+
+    /// The pages told alike a publication writes, and the rows to keep:
+    /// `during`, while views that named the old are written anew, and
+    /// `after`, once they are, if the rows kept change.
+    struct Alike {
+        var rows: [(key: String, value: String)] = []
+        var during: [String] = []
+        var after: [String]?
+    }
+
 
     /// A call of a publication, as sent: what it settles once it is known
     /// to be kept; the first of a publication also the world and what
@@ -767,6 +871,9 @@ public actor RealmSteward {
         let shownAt: [String: [String: UInt64]]
         let world: (parts: [String: String], world: GameState, heard: [String: [(at: Double, batch: HeardBatch)]], events: Int, acts: Int)?
         let answers: [(id: UInt64, nonce: String)]
+        /// The rows of pages told alike it wrote, those it kept, and
+        /// whether those are every row the views name.
+        let alike: (written: [String], kept: [String]?, final: Bool)
     }
 
     /// The call sent last, if whether it was kept is unknown.
@@ -793,6 +900,11 @@ public actor RealmSteward {
         }
         let given = Set(done.answers.map(\.id))
         unanswered.removeAll { given.contains($0.id) }
+        // The server let go of the rows the call didn't keep, then wrote
+        // those it carried; once every view is written, it keeps just the
+        // rows they name, each written when a view first named it.
+        if let kept = done.alike.kept { alikeKept = done.alike.final ? Set(kept) : alikeKept.intersection(kept) }
+        alikeKept.formUnion(done.alike.written)
         answered += done.answers.map { ($0.nonce, done.at) }
     }
 

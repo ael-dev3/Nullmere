@@ -371,10 +371,30 @@ public final class NetworkRealmLink: RealmLink {
                 guard part.count == 3, let name = part[0].string, let at = part[1].number, let text = part[2].string else { continue }
                 viewParts[name] = (UInt64(at), text)
             }
-            guard named.allSatisfy({ viewParts[$0.key]?.version == $0.value }) else { continue }
+            // Pages told alike the view names that this Mac let go of, or
+            // never held, written before it last read: asked for by name, a
+            // few of them; more, and every part is read afresh.
+            let missing = named.keys.filter { AlikePages.isAlike($0) && viewParts[$0] == nil }.sorted()
+            if missing.count > Self.alikeAskedByName {
+                viewParts = [:]
+                partsThrough = 0
+                continue
+            }
+            for name in missing {
+                let rows = try await transport.query("SELECT name, version, text FROM my_view_parts WHERE name = \(sqlString(name))",
+                                                     token: credentials.token)
+                for part in rows {
+                    guard part.count == 3, let found = part[0].string, let at = part[1].number, let text = part[2].string else { continue }
+                    viewParts[found] = (UInt64(at), text)
+                }
+            }
+            // A page told alike is its text's own row: there, it is the page.
+            guard named.allSatisfy({ AlikePages.isAlike($0.key) ? viewParts[$0.key] != nil : viewParts[$0.key]?.version == $0.value }) else {
+                continue
+            }
             viewParts = viewParts.filter { named[$0.key] != nil }
             partsThrough = max(partsThrough, UInt64(number))
-            let texts = viewParts.mapValues(\.text)
+            let texts = Dictionary(viewParts.map { (AlikePages.page(of: $0.key), $0.value.text) }) { first, _ in first }
             // Tens of kilobytes of world, read away from the main thread, so
             // the map doesn't falter while it is.
             let read = partsRead
@@ -552,6 +572,10 @@ public final class NetworkRealmLink: RealmLink {
             wait = min(wait * 1.5, 1)
         }
     }
+
+    /// The most pages told alike asked for one by one: a view naming more
+    /// that this Mac doesn't hold is read afresh.
+    static let alikeAskedByName = 8
 
     /// The longest a keeper answered waits for the view the answer names.
     public static let catchUpWait = 20.0

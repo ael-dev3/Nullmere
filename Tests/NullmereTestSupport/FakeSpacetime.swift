@@ -61,6 +61,9 @@ public actor FakeSpacetime: SpacetimeTransport {
     /// A keeper asks after one answer, or one request still waiting, by its
     /// nonce; counted as one statement, whatever the nonce.
     public static let viewPartsAsked = "SELECT name, version, text FROM my_view_parts WHERE version > ?"
+    /// A keeper asks for one part of their view by its name: a page told
+    /// alike they don't hold.
+    public static let viewPartAsked = "SELECT name, version, text FROM my_view_parts WHERE name = ?"
     public static let answerAsked = "SELECT * FROM my_replies WHERE nonce = ?"
     public static let requestAsked = "SELECT nonce FROM my_requests WHERE nonce = ?"
 
@@ -112,9 +115,23 @@ public actor FakeSpacetime: SpacetimeTransport {
 
     /// A keeper's view as the server keeps it, its parts joined.
     public func keptView(of keeper: String) throws -> RealmView? {
-        guard let parts = viewParts[keeper] else { return nil }
-        return try RealmView(parts: parts.mapValues(\.text))
+        guard let row = views[keeper] else { return nil }
+        var parts: [String: String] = [:]
+        for name in Self.named(row.view) {
+            let kept = AlikePages.isAlike(name) ? viewParts[AlikePages.keeper]?[name] : viewParts[keeper]?[name]
+            guard let kept else { throw SpacetimeError("The view of \(keeper) names \(name), which isn't kept.") }
+            parts[AlikePages.page(of: name)] = kept.text
+        }
+        return try RealmView(parts: parts)
     }
+
+    /// The parts a view's row names: "head:12,map:3,~houses.1#…:0".
+    static func named(_ row: String) -> [String] {
+        row.split(separator: ",").map { entry in entry.lastIndex(of: ":").map { String(entry[..<$0]) } ?? String(entry) }
+    }
+
+    /// The rows of pages told alike the server keeps, by name.
+    public var alikeKept: [String: String] { (viewParts[AlikePages.keeper] ?? [:]).mapValues(\.text) }
     /// The server's clock, in seconds, moved on by tests.
     private var time = 0.0
     private var lease: (holder: String, until: Double)?
@@ -289,9 +306,7 @@ public actor FakeSpacetime: SpacetimeTransport {
             for (index, keeper) in keepers.enumerated() {
                 views[keeper] = (version, shown[index], heard[index])
                 // The parts its row no longer names are let go.
-                let named = Set(shown[index].split(separator: ",").map { entry in
-                    entry.lastIndex(of: ":").map { String(entry[..<$0]) } ?? String(entry)
-                })
+                let named = Set(Self.named(shown[index]))
                 viewParts[keeper] = viewParts[keeper]?.filter { named.contains($0.key) }
             }
             for (index, keeper) in partKeepers.enumerated() {
@@ -323,10 +338,23 @@ public actor FakeSpacetime: SpacetimeTransport {
         if sql.hasPrefix(partsPrefix), let since = UInt64(sql.dropFirst(partsPrefix.count)) {
             queryCounts[Self.viewPartsAsked, default: 0] += 1
             queryCounts[Self.viewPartsAsked + "\u{0}" + me, default: 0] += 1
-            let rows: [[JSONValue]] = (viewParts[me] ?? [:]).filter { $0.value.version > since }.sorted { $0.key < $1.key }
+            // Their own, and the pages told alike, as the module's view gives them.
+            let mine = (viewParts[me] ?? [:]).merging(me == AlikePages.keeper ? [:] : viewParts[AlikePages.keeper] ?? [:]) { own, _ in own }
+            let rows: [[JSONValue]] = mine.filter { $0.value.version > since }.sorted { $0.key < $1.key }
                 .map { [.string($0.key), .number(Double($0.value.version)), .string($0.value.text)] }
             viewPartsRead += rows.count
             return rows
+        }
+        let partPrefix = String(Self.viewPartAsked.dropLast())
+        if sql.hasPrefix(partPrefix) {
+            let literal = sql.dropFirst(partPrefix.count)
+            guard literal.count >= 2, literal.hasPrefix("'"), literal.hasSuffix("'") else { throw SpacetimeError("bad query", status: 400) }
+            let name = String(literal.dropFirst().dropLast()).replacingOccurrences(of: "''", with: "'")
+            queryCounts[Self.viewPartAsked, default: 0] += 1
+            queryCounts[Self.viewPartAsked + "\u{0}" + me, default: 0] += 1
+            let kept = viewParts[me]?[name] ?? viewParts[AlikePages.keeper]?[name]
+            viewPartsRead += kept == nil ? 0 : 1
+            return kept.map { [[.string(name), .number(Double($0.version)), .string($0.text)]] } ?? []
         }
         let byNonce = [Self.answerAsked, Self.requestAsked].lazy.compactMap { pattern -> (String, String)? in
             let prefix = String(pattern.dropLast())

@@ -76,7 +76,10 @@ final class WorldPartsTests: XCTestCase {
         let rows = try await db.query("SELECT * FROM my_view", token: ama.token)
         let named = try XCTUnwrap(NetworkRealmLink.parts(named: try XCTUnwrap(rows.first?[2].string)))
         XCTAssertEqual(named.count, whole)
-        XCTAssertEqual(named["map"], 2, "The map written as they arrived, and not since")
+        XCTAssertEqual(Set(named.keys.map(AlikePages.page(of:))).count, whole, "Every page named once")
+        XCTAssertEqual(named["head"], 3, "Their head their own, written as the order changed it")
+        XCTAssertTrue(named.keys.contains { AlikePages.isAlike($0) && AlikePages.page(of: $0) == "map" },
+                      "The lake's pages as every keeper is told them, kept once")
         XCTAssertEqual(named.values.max(), 3, "The parts the order changed written at the latest")
         XCTAssertNil(NetworkRealmLink.parts(named: "map:x"))
         XCTAssertNil(NetworkRealmLink.parts(named: ""))
@@ -143,9 +146,78 @@ final class WorldPartsTests: XCTestCase {
             guard let view = realm.view(for: keeper, ways: ways) else { continue }
             alone[keeper] = try view.parts(using: encoder, sharing: (realm.world, parts))
         }
-        let together = try await RealmSteward.views(of: keepers, in: realm, ways: ways, sharing: parts)
+        let together = try await RealmSteward.views(of: keepers, in: realm, ways: ways, sharing: parts).views
         XCTAssertEqual(together, alone)
         XCTAssertEqual(Set(together.keys), Set(realm.keepers.map(\.id)), "None for one the realm doesn't know")
+    }
+
+    /// The pages every keeper is told alike are kept once, as no keeper's:
+    /// each keeper's view names the rows it has and joins into their view
+    /// exactly, holding as its own only what is theirs; the first
+    /// publication writes each keeper's own pages and each page told alike
+    /// once; a page rewritten is a new row, and the old is let go once no
+    /// view names it.
+    func testThePagesEveryKeeperIsToldAlikeAreKeptOnce() async throws {
+        let db = FakeSpacetime()
+        let key = try await db.createIdentity()
+        let steward = try await RealmSteward(transport: db, token: key.token, name: "N", seed: "told alike", seats: 6, watchLength: 60, now: 0)
+        var keepers: [SpacetimeCredentials] = []
+        for (index, name) in ["Ama", "Bel", "Cai"].enumerated() {
+            let keeper = try await db.createIdentity()
+            try await db.call("arrive", [.string("a\(index)"), .string(ArrivalPayload(name: name, compact: Compact.edition).encoded)], token: keeper.token)
+            keepers.append(keeper)
+        }
+        try await steward.step(now: 1)
+        func check(_ when: String) async throws {
+            let state = await steward.state
+            let kept = await db.alikeKept
+            var named: Set<String> = []
+            for keeper in keepers {
+                let view = try await db.keptView(of: keeper.identity)
+                XCTAssertEqual(view, state.view(for: keeper.identity), "\(when): their view as kept joins into their view exactly")
+                let rows = try await db.query("SELECT * FROM my_view", token: keeper.token)
+                let names = try XCTUnwrap(NetworkRealmLink.parts(named: try XCTUnwrap(rows.first?[2].string))).keys
+                XCTAssertTrue(names.contains("head"), "\(when): their head their own")
+                XCTAssertTrue(names.contains(where: AlikePages.isAlike), "\(when): pages told alike")
+                named.formUnion(names.filter(AlikePages.isAlike))
+            }
+            XCTAssertEqual(Set(kept.keys), named, "\(when): the rows the views name kept, and no others")
+            for (row, text) in kept { XCTAssertEqual(AlikePages.row(AlikePages.page(of: row), text), row, "\(when): each row its text's own") }
+        }
+        try await check("Arrived")
+
+        // What the first publication wrote: each keeper's own pages, and each
+        // page told alike once.
+        let state = await steward.state
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        let worked = try await RealmSteward.views(of: keepers.map(\.identity), in: state, ways: state.world.ways(),
+                                                  sharing: try state.parts(using: encoder))
+        var own = 0, alike: [String: String] = [:]
+        for keeper in keepers {
+            let named = AlikePages.named(try XCTUnwrap(worked.views[keeper.identity]), alike: worked.alike)
+            for (name, text) in named {
+                if AlikePages.isAlike(name) { alike[name] = text } else { own += text.utf8.count }
+            }
+        }
+        let sent = await db.viewBytesSent
+        XCTAssertEqual(sent, own + alike.values.reduce(0) { $0 + $1.utf8.count }, "Their own pages, and those told alike once")
+        let everyView = try keepers.reduce(0) { total, keeper in
+            total + (try XCTUnwrap(state.view(for: keeper.identity)).parts(using: encoder)).values.reduce(0) { $0 + $1.utf8.count }
+        }
+        print("PERF three keepers' views first written in \(sent / 1024) KB, against \(everyView / 1024) KB for the three views whole")
+        XCTAssertLessThan(sent, everyView, "Less than their views written whole")
+
+        // A watch's turn rewrites pages; each new text a new row, and the
+        // rows no view names any longer let go.
+        let before = await db.alikeKept
+        try await steward.step(now: 62)
+        let turned = await steward.state.world.watch
+        XCTAssertEqual(turned, 2)
+        try await check("The watch turned")
+        let after = await db.alikeKept
+        XCTAssertFalse(Set(after.keys).subtracting(before.keys).isEmpty, "Pages rewritten, under rows of their own")
+        XCTAssertFalse(Set(before.keys).subtracting(after.keys).isEmpty, "The old let go")
     }
 
     func testWhatIsntTheWorldsIsClearedAway() async throws {

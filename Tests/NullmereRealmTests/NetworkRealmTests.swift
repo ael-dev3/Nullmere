@@ -539,9 +539,10 @@ final class NetworkRealmTests: XCTestCase {
         XCTAssertEqual(world.world.houses[house].stock.grain, before.grain + 10, "and kept")
     }
 
-    /// A realm of two keepers whose steward publishes the world in one call
-    /// and each view in one of its own, and a round of it, Ama speaking to
-    /// the realm and Bo bartering, whose last call, Bo's view, is lost.
+    /// A realm of two keepers whose steward publishes the world, each page
+    /// told alike and each view in calls of their own, and a round of it,
+    /// Ama speaking to the realm and Bo bartering, whose call showing Bo
+    /// his view, the last, is lost.
     private struct PartWay {
         let db: FakeSpacetime
         let owner: SpacetimeCredentials
@@ -577,7 +578,7 @@ final class NetworkRealmTests: XCTestCase {
         try await db.call("arrive", [.string("b1"), .string(ArrivalPayload(name: "Bo", compact: Compact.edition).encoded)], token: bo.token)
         try await steward.step(now: 1)
         let (publications, calls) = (await steward.publications, await steward.publicationCalls)
-        XCTAssertEqual(calls - publications, 2, "The world, then each of two views in its own call")
+        XCTAssertGreaterThanOrEqual(calls - publications, 2, "The world, the pages told alike and each view in calls of their own")
         let seated = await steward.state
         let amasHouse = try XCTUnwrap(seated.keeper(ama.identity)?.house)
         let bosHouse = try XCTUnwrap(seated.keeper(bo.identity)?.house)
@@ -590,7 +591,7 @@ final class NetworkRealmTests: XCTestCase {
         try await db.call("order", [.string("b2"), .string(barter)], token: bo.token)
         let rows = try await db.query("SELECT version FROM status", token: owner.token)
         let before = try XCTUnwrap(rows.first?.first?.number.map { UInt64($0) })
-        await line.failCall("publish", skipping: 2)
+        await line.failCall(showing: bo.identity)
         do {
             try await steward.step(now: 2)
             XCTFail("The last call was lost")
@@ -607,7 +608,7 @@ final class NetworkRealmTests: XCTestCase {
     /// numbered on from the last call kept.
     func testAPublicationFailedPartWayShowsTheRestNext() async throws {
         let realm = try await publicationLostPartWay()
-        XCTAssertEqual(realm.kept, realm.before + 2, "The world's call and Ama's view's kept")
+        XCTAssertGreaterThan(realm.kept, realm.before, "The calls before Bo's kept: the world's, and Ama's view")
         for (keeper, nonce) in [(realm.ama, "a2"), (realm.bo, "b2")] {
             let replies = try await realm.db.query("SELECT * FROM my_replies", token: keeper.token)
             XCTAssertTrue(replies.contains { $0.first?.string == nonce }, "\(nonce) answered with the world")
@@ -827,10 +828,10 @@ actor Flaky: SpacetimeTransport {
     private var losingAnswers: Set<String> = []
     /// The next call to this reducer never reaches the server.
     func failNext(_ reducer: String) { failing.insert(reducer) }
-    /// The call to this reducer after `skipping` more never reaches the
-    /// server: one call of a publication in several.
-    func failCall(_ reducer: String, skipping: Int) { failingAfter[reducer] = skipping }
-    private var failingAfter: [String: Int] = [:]
+    /// The next publication's call showing this keeper their view never
+    /// reaches the server: one call of a publication in several.
+    func failCall(showing keeper: String) { failingShown = keeper }
+    private var failingShown: String?
     /// Answers asked after by their nonce wait until let through.
     func holdAnswers(_ hold: Bool) { holdingAnswers = hold }
     private var holdingAnswers = false
@@ -845,9 +846,9 @@ actor Flaky: SpacetimeTransport {
     func call(_ reducer: String, _ arguments: [ReducerArgument], token: String) async throws {
         if down { throw SpacetimeError("The network is down.") }
         if failing.remove(reducer) != nil { throw SpacetimeError("The call to \(reducer) was lost.") }
-        if let skipping = failingAfter[reducer] {
-            failingAfter[reducer] = skipping == 0 ? nil : skipping - 1
-            if skipping == 0 { throw SpacetimeError("The call to \(reducer) was lost.") }
+        if reducer == "publish", let keeper = failingShown, arguments.count > 5, case .strings(let shown) = arguments[5], shown.contains(keeper) {
+            failingShown = nil
+            throw SpacetimeError("The call to \(reducer) was lost.")
         }
         try await db.call(reducer, arguments, token: token)
         if losingAnswers.remove(reducer) != nil { throw SpacetimeError("The answer was lost.") }

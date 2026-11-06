@@ -10,6 +10,19 @@ import XCTest
 /// slowly, counted.
 actor ViewTamper {
     var malformed = false
+    /// The first page told alike left out of every read of the parts
+    /// written since a version, as one written before the Mac last read
+    /// would be.
+    var hidingAnAlikePage = false
+    func hideAnAlikePage() { hidingAnAlikePage = true }
+    /// Every page told alike left out of the next read of the parts written
+    /// since a version, as a Mac back after long away would find them.
+    var hidingEveryAlikePageOnce = false
+    func hideEveryAlikePageOnce() { hidingEveryAlikePageOnce = true }
+    /// The view's version read as none, the next so many times: a view
+    /// not yet written where its answer said.
+    var headsHeld = 0
+    func holdHeads(_ times: Int) { headsHeld = times }
     var newAge = false
     var stale: [[JSONValue]]?
     var slowIdentities = false
@@ -31,7 +44,11 @@ actor ViewTamper {
 
     /// The view's version: far ahead, while an older view is being passed off.
     func bend(head rows: [[JSONValue]]) -> [[JSONValue]] {
-        stale == nil ? rows : [[.number(1e9)]]
+        if headsHeld > 0 {
+            headsHeld -= 1
+            return []
+        }
+        return stale == nil ? rows : [[.number(1e9)]]
     }
 
     func bend(_ rows: [[JSONValue]]) throws -> [[JSONValue]] {
@@ -44,6 +61,13 @@ actor ViewTamper {
     /// The parts of the view, its head a new age's, all of them sent as if
     /// written since.
     func bend(parts rows: [[JSONValue]]) throws -> [[JSONValue]] {
+        if hidingAnAlikePage, let hidden = rows.compactMap({ $0.first?.string }).filter(AlikePages.isAlike).min() {
+            return rows.filter { $0.first?.string != hidden }
+        }
+        if hidingEveryAlikePageOnce {
+            hidingEveryAlikePageOnce = false
+            return rows.filter { !AlikePages.isAlike($0.first?.string ?? "") }
+        }
         guard newAge else { return rows }
         return try rows.map { row in
             guard row.count == 3, row[0].string == "head", let text = row[2].string else { return row }
@@ -100,11 +124,11 @@ final class LinkViewTests: XCTestCase {
         }
     }
 
-    private func realm(_ seed: String) async throws -> (FakeSpacetime, ViewTamper, NetworkRealmLink, Listener, Task<Void, Never>) {
+    private func realm(_ seed: String, seats: Int = 4) async throws -> (FakeSpacetime, ViewTamper, NetworkRealmLink, Listener, Task<Void, Never>) {
         let db = FakeSpacetime()
         let key = try await db.createIdentity()
         let steward = try await RealmSteward(transport: db, token: key.token, name: "The Nullmere", seed: seed,
-                                             seats: 4, watchLength: 600, now: 0)
+                                             seats: seats, watchLength: 600, now: 0)
         let running = Task { await steward.run(clock: { 1 }) }
         let tamper = ViewTamper()
         let link = NetworkRealmLink(transport: TamperedSpacetime(inner: db, tamper: tamper), credentials: MemoryStore(),
@@ -131,6 +155,58 @@ final class LinkViewTests: XCTestCase {
         await tamper.set()
         link.arrive(name: nil)
         try await until("arrival") { ear.keeper != nil }
+    }
+
+    /// A page told alike that the view names and the Mac doesn't hold,
+    /// written before it last read, is asked for by its name, and the view
+    /// is read whole all the same.
+    func testAPageToldAlikeTheMacDoesntHoldIsAskedForByName() async throws {
+        let (db, tamper, link, ear, running) = try await realm("asked by name")
+        defer { running.cancel(); link.leave() }
+        await tamper.hideAnAlikePage()
+        link.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        let token = try XCTUnwrap(link.credentials?.token)
+        let asked = await db.queried(FakeSpacetime.viewPartAsked, by: token)
+        XCTAssertGreaterThan(asked, 0, "The page asked for by name")
+        let house = try XCTUnwrap(ear.keeper?.house)
+        let kept = try await db.keptView(of: try XCTUnwrap(link.credentials?.identity))
+        XCTAssertEqual(ear.world, kept?.world, "Their whole view, the page asked for in it")
+        XCTAssertNotNil(ear.world?.seat(of: house))
+    }
+
+    /// A view naming more pages told alike than the Mac holds, beyond a
+    /// few to ask for by name, is read afresh, every part, and whole.
+    func testAViewNamingManyPagesTheMacDoesntHoldIsReadAfresh() async throws {
+        // Wide enough that its view names many pages told alike: every
+        // dealing between twenty-four Houses, among others.
+        let (db, tamper, link, ear, running) = try await realm("read afresh", seats: 24)
+        defer { running.cancel(); link.leave() }
+        await tamper.hideEveryAlikePageOnce()
+        link.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        let token = try XCTUnwrap(link.credentials?.token)
+        let byName = await db.queried(FakeSpacetime.viewPartAsked, by: token)
+        XCTAssertEqual(byName, 0, "Not asked for one by one")
+        let reads = await db.queried(FakeSpacetime.viewPartsAsked, by: token)
+        XCTAssertGreaterThanOrEqual(reads, 2, "Read again from the start")
+        let kept = try await db.keptView(of: try XCTUnwrap(link.credentials?.identity))
+        XCTAssertEqual(ear.world, kept?.world)
+    }
+
+    /// An answer naming a view not yet to be read where it said is waited
+    /// for, asked after less often as it goes, and the keeper told once it
+    /// is.
+    func testAnAnswersViewNotYetReadIsWaitedFor() async throws {
+        let (db, tamper, link, ear, running) = try await realm("view waited for")
+        defer { running.cancel(); link.leave() }
+        await tamper.holdHeads(3)
+        link.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        let token = try XCTUnwrap(link.credentials?.token)
+        let heads = await db.queried("SELECT version FROM my_view", by: token)
+        XCTAssertGreaterThan(heads, 3, "The view's version asked after until it came")
+        XCTAssertNotNil(ear.world?.seat(of: try XCTUnwrap(ear.keeper?.house)))
     }
 
     func testAnUnreadableViewInPlayIsPassedOver() async throws {

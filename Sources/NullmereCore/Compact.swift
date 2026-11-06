@@ -68,11 +68,14 @@ public enum Compact {
 /// with an earlier build could no longer play on a realm of this one, and a
 /// realm tells the oldest it still hears.
 public enum Speech {
-    /// The tongue this build speaks. 2: a view's map in pages.
-    public static let current = 2
+    /// The tongue this build speaks. 2: a view's map in pages. 3: the
+    /// pages every keeper is told alike kept once, as no keeper's, and
+    /// named by each view that has them.
+    public static let current = 3
     /// The oldest tongue a realm of this build still hears from a keeper's
-    /// Mac: a Mac before the map went in pages can't read a view of it.
-    public static let oldestHeard = 2
+    /// Mac: a Mac before the pages told alike were kept once can't read a
+    /// view that names them.
+    public static let oldestHeard = 3
     /// Where a keeper gets the newest Nullmere Online.
     public static let newestBuild = "https://github.com/ael-dev3/Nullmere/releases/latest"
 }
