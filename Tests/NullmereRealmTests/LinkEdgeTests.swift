@@ -127,6 +127,49 @@ final class LinkEdgeTests: XCTestCase {
         XCTAssertTrue(ear.events.allSatisfy { if case .answered = $0 { return false } else { return true } },
                       "Nothing told once gone")
     }
+
+    /// Keepers new to the realm come in a few at a time: one turned away
+    /// because the realm took in its few just now is told so once, and let
+    /// in as it takes in more, their Mac asking again on its own; one who
+    /// closes theirs meanwhile is asked in no more.
+    func testANewcomerTurnedAwayIsLetInAsTheRealmTakesInMore() async throws {
+        let db = FakeSpacetime()
+        let credentials = try await db.createIdentity()
+        // Four seats, so three newcomers a watch; and a watch of a few
+        // seconds, so the next three come soon.
+        let steward = try await RealmSteward(transport: db, token: credentials.token, name: "The Nullmere", seed: "a narrow door",
+                                             seats: 4, watchLength: 3, now: Date().timeIntervalSince1970)
+        let running = Task { await steward.run() }
+        defer { running.cancel() }
+        let crowd = (0..<5).map { _ in link(db) }
+        for (index, (link, _)) in crowd.enumerated() {
+            link.newcomerWait = 0.2...0.3
+            link.arrive(name: ["Ama", "Bel", "Cor", "Dee", "Eno"][index])
+        }
+        defer { for (link, _) in crowd { link.close() } }
+        func toldToWait(_ ear: Listener) -> Int {
+            ear.events.filter { if case .refused(.manyNewcomers) = $0 { return true } else { return false } }.count
+        }
+        try await until("three taken in and two told to wait") {
+            crowd.filter { $0.1.keeper != nil }.count == 3 && crowd.filter { toldToWait($0.1) == 1 }.count == 2
+        }
+        let waiting = crowd.filter { $0.1.keeper == nil }
+        // One closes their Mac while waiting; the other is let in as the realm
+        // takes in more, told to wait only the once.
+        waiting[0].0.close()
+        let asked = await db.handled(kind: "arrive")
+        try await until("the one still waiting let in", timeout: 20) { waiting[1].1.keeper != nil }
+        XCTAssertEqual(toldToWait(waiting[1].1), 1, "Told once")
+        XCTAssertNil(waiting[0].1.keeper)
+        let askedSince = await db.handled(kind: "arrive") - asked
+        XCTAssertLessThan(askedSince, 40, "Asked again a few times in a few seconds, by the one still waiting alone")
+        try await Task.sleep(nanoseconds: 800_000_000)
+        let after = await db.handled(kind: "arrive")
+        try await Task.sleep(nanoseconds: 800_000_000)
+        let later = await db.handled(kind: "arrive")
+        XCTAssertEqual(later, after, "No one asks once in or gone")
+        XCTAssertNil(waiting[0].1.keeper, "The one who closed theirs never came in")
+    }
 }
 
 /// The link on its own clock: an order kept through a long outage is let

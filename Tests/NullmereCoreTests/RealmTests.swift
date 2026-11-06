@@ -164,6 +164,25 @@ final class RealmTests: XCTestCase {
         XCTAssertEqual(realm.keepers.map(\.arrival), [0, 1, 2, 3], "Each in the order they came")
     }
 
+    /// A wide realm takes in a quarter of its seats a watch: a crowd come to
+    /// it together is all in within four watches, and no more at once.
+    func testAWideRealmTakesInAQuarterOfItsSeatsAWatch() throws {
+        var realm = RealmState(name: "N", seed: "a wide door", seats: 48, now: 0)
+        XCTAssertEqual(realm.newcomersPerWatch, 12)
+        XCTAssertEqual(RealmState(name: "N", seed: "a narrow door", seats: 6, now: 0).newcomersPerWatch, RealmState.fewestNewcomersPerWatch,
+                       "Never fewer than three")
+        func name(_ index: Int) -> String { "Keeper " + String(UnicodeScalar(UInt8(65 + index / 26))) + String(UnicodeScalar(UInt8(97 + index % 26))) }
+        var seated = 0
+        for watch in 0..<4 {
+            let at = Double(watch) * realm.watchLength
+            for index in 0..<48 where realm.keeper("id-\(index)") == nil {
+                if (try? realm.arrive("id-\(index)", name: name(index), now: at)) != nil { seated += 1 }
+            }
+            XCTAssertEqual(seated, 12 * (watch + 1), "Watch \(watch): a quarter more")
+        }
+        XCTAssertEqual(realm.keepers.filter { $0.house != nil }.count, 48, "Every seat taken within four watches")
+    }
+
     /// A keeper long gone with no seat is forgotten, their name free again;
     /// a seat keeps its keeper's place however long they are away.
     func testAKeeperLongGoneWithNoSeatIsForgotten() throws {

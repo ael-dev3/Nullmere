@@ -139,7 +139,7 @@ public enum RealmError: Error, Equatable, Sendable, CustomStringConvertible {
         case .unknownKeeper: return "The realm doesn't know you yet."
         case .nameInvalid: return "A name is two to twenty letters, spaces, hyphens or apostrophes."
         case .nameTaken: return "A keeper or a House already goes by that name."
-        case .manyNewcomers: return "The realm takes in a few new keepers at a time, and some came in just now. Try again in a few minutes."
+        case .manyNewcomers: return "The realm takes in a few new keepers at a time, and some came in just now. You'll be let in as it takes in more."
         case .noSeat: return "You hold no House standing on the lake."
         case .rule(let error): return error.description
         case .refused(let reason): return reason
@@ -310,9 +310,14 @@ public struct RealmState: Codable, Equatable, Sendable {
     /// in passing can't hold the lake.
     public static let unplayedSeatHeldFor: Double = 3600
     /// Keepers new to the realm it takes in within any one watch's length
-    /// of time. A name and an identity are had for the asking, so they come
-    /// in a few at a time: no one can fill the lake with names in a moment.
-    public static let newcomersPerWatch = 3
+    /// of time: a quarter of its seats, and never fewer than three. A name
+    /// and an identity are had for the asking, so they come in so many at a
+    /// time: no one can fill the lake with names in a moment, and a crowd
+    /// come to a new realm together is all taken in within four watches.
+    public var newcomersPerWatch: Int { max(RealmState.fewestNewcomersPerWatch, seats / 4) }
+    /// The fewest new keepers a realm takes in within a watch's length,
+    /// however few its seats.
+    public static let fewestNewcomersPerWatch = 3
 
     func seatHeld(by keeper: Keeper) -> Double {
         keeper.hasPlayed == true ? RealmState.seatHeldFor : RealmState.unplayedSeatHeldFor
@@ -356,7 +361,7 @@ public struct RealmState: Codable, Equatable, Sendable {
             guard !keepers.contains(where: { $0.name.lowercased() == lowered }),
                   !world.houses.contains(where: { $0.name.lowercased() == lowered }) else { throw .nameTaken }
             let lately = (newcomers ?? []).filter { now - $0 < watchLength }
-            guard lately.count < RealmState.newcomersPerWatch else { throw .manyNewcomers }
+            guard lately.count < newcomersPerWatch else { throw .manyNewcomers }
             newcomers = lately + [now]
             keepers.append(Keeper(id: id, name: chosen, house: nil, isReady: false, isOnline: true,
                                   arrival: (keepers.map(\.arrival).max() ?? -1) + 1))

@@ -519,11 +519,32 @@ public final class NetworkRealmLink: RealmLink {
         }
     }
 
-    /// In as the keeper the realm answers with: by a name, or by words.
+    /// How long a keeper the realm turned away, because it took in its few
+    /// new keepers just now, waits before asking again: a little more or
+    /// less each time, so a crowd turned away together doesn't ask again
+    /// all at once.
+    public var newcomerWait: ClosedRange<Double> = 8...14
+    /// The asking in under way: one at a time, a new one taking its place.
+    private var entering: Task<Void, Never>?
+
+    /// In as the keeper the realm answers with: by a name, or by words. One
+    /// turned away only because the realm took in its few new keepers just
+    /// now is told so once, and asked in again as it takes in more, until
+    /// it does, they ask anew or the link is closed.
     private func enter(_ reducer: String, _ argument: String) {
-        Task {
+        entering?.cancel()
+        entering = Task {
             do {
-                let reply = try await request(reducer, [.string(argument)])
+                var reply = try await request(reducer, [.string(argument)])
+                var told = false
+                while !reply.ok, reply.refusal == RealmError.manyNewcomers.description {
+                    if !told {
+                        told = true
+                        onEvent?(.refused(.manyNewcomers))
+                    }
+                    try await Task.sleep(nanoseconds: UInt64(Double.random(in: newcomerWait) * 1_000_000_000))
+                    reply = try await request(reducer, [.string(argument)])
+                }
                 guard reply.ok, reply.keeper != nil else {
                     onEvent?(.refused(.refused(reply.refusal ?? "The realm wouldn't take you in.")))
                     return
@@ -536,6 +557,8 @@ public final class NetworkRealmLink: RealmLink {
                 arrived = true
                 lastHere = now()
                 onEvent?(.arrived(view.keeper, view.world))
+            } catch is CancellationError {
+                // Asked anew, or the link closed: nothing more to tell.
             } catch {
                 onEvent?(.refused(.refused(RealmTrouble.words(for: error))))
             }
@@ -663,6 +686,8 @@ public final class NetworkRealmLink: RealmLink {
     public func leave() {
         onEvent = nil
         arrived = false
+        entering?.cancel()
+        entering = nil
         polling?.cancel()
         polling = nil
         stopWatching()
@@ -676,6 +701,8 @@ public final class NetworkRealmLink: RealmLink {
     public func close() {
         onEvent = nil
         arrived = false
+        entering?.cancel()
+        entering = nil
         polling?.cancel()
         polling = nil
         stopWatching()

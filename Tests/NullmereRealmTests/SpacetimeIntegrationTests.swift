@@ -561,4 +561,20 @@ final class SpacetimeIntegrationTests: XCTestCase {
                                                       westAddress: addresses[0], eastAddress: addresses[1])
         try await FrontierPlayThrough.playBounded(databases, token: token)
     }
+
+    /// Every seat of the widest realm taken at once, each by a keeper's own
+    /// client, on a real server: all seated and shown the world, all ready
+    /// and every client seeing the watch turn, one keeper heard by all. A
+    /// database of its own, fresh. CI sets NULLMERE_STDB_CROWD to it.
+    @MainActor
+    func testAFullRealmOfKeepersPlaysAtOnce() async throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let text = environment["NULLMERE_STDB_CROWD"], let url = URL(string: text), let transport = SpacetimeHTTP(address: url),
+              let token = environment["NULLMERE_STDB_TOKEN"], !token.isEmpty else {
+            throw XCTSkip("Set NULLMERE_STDB_CROWD and NULLMERE_STDB_TOKEN to play a full realm of keepers on a SpacetimeDB server")
+        }
+        let seats = WorldGenerator.mostHouses
+        let timings = try await CrowdPlayThrough.play(transport, token: token, seats: seats, watchLength: 20, newcomerWait: 2...4, timeout: 600)
+        print("REALM \(seats) keepers' clients took every seat of the widest realm at once on SpacetimeDB: \(timings)")
+    }
 }

@@ -135,8 +135,12 @@ full screen at launch as chosen.
   straight back to yours. No newcomer may take up a House sworn to another,
   the House leading the lake, or one within reach of dominion or with its
   Moonspire risen. A name and an identity are had for the asking, so the
-  realm takes in keepers new to it a few at a time, three in any watch's
-  length; one who comes just after is asked to try again in a few minutes.
+  realm takes in keepers new to it so many at a time: a quarter of its
+  seats in any watch's length, and never fewer than three (three of the
+  realm proper's twelve, twenty-four of ninety-six), so a crowd come to a
+  new realm together is all in within four watches. One who comes just
+  after is told so and let in as it takes in more, their Mac asking again
+  on its own until it does.
 - **Seats.** The lake has twelve seats, held by the twelve elder Houses. A
   realm raised with more, up to ninety-six, lies on a lake as much wider
   as keeps each seat as much country (a radius of 72 hexes for forty-eight
