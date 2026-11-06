@@ -293,14 +293,7 @@ enum Bits {
     static func encode(_ values: Explored) -> String {
         guard values.contains(true) else { return "\(values.count):\(noneSet)" }
         var runs: [UInt8] = []
-        for run in values.runs {
-            var rest = run
-            while rest >= 0x80 {
-                runs.append(UInt8(rest & 0x7F) | 0x80)
-                rest >>= 7
-            }
-            runs.append(UInt8(rest))
-        }
+        for run in values.runs { Varint.append(run, to: &runs) }
         // Runs when they are fewer bytes than the tiles, eight to a byte.
         if runs.count < (values.count + 7) / 8 {
             return "\(values.count);" + Data(runs).base64EncodedString()
@@ -312,20 +305,14 @@ enum Bits {
         guard let mark = text.firstIndex(where: { $0 == ":" || $0 == ";" }), let count = Int(text[..<mark]), count >= 0 else { return nil }
         let rest = String(text[text.index(after: mark)...])
         if text[mark] == ";" {
-            guard let data = Data(base64Encoded: rest) else { return nil }
-            var runs: [Int] = [], run = 0, shift = 0
-            for byte in data {
-                guard shift < 56 else { return nil }
-                run |= Int(byte & 0x7F) << shift
-                if byte & 0x80 == 0 {
-                    runs.append(run)
-                    run = 0
-                    shift = 0
-                } else {
-                    shift += 7
-                }
+            // Runs tell of any number of tiles in a few bytes: no more than
+            // the widest lake has.
+            guard count <= WorldMap.count(radius: GameState.MapPages.widest), let data = Data(base64Encoded: rest) else { return nil }
+            var read = Varint.Reader([UInt8](data)), runs: [Int] = []
+            while !read.isAtEnd {
+                guard let run = read.count() else { return nil }
+                runs.append(run)
             }
-            guard shift == 0 else { return nil }
             return Explored(count: count, runs: runs)
         }
         if rest == noneSet { return Explored(repeating: false, count: count) }

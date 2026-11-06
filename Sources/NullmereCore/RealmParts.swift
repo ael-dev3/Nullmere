@@ -186,8 +186,10 @@ extension GameState {
     }
 
     /// The map's head among its parts: how wide the world is and how many
-    /// tiles each of its pages ("map.0", "map.1", ...) holds, the cells of
-    /// each as the map itself writes them.
+    /// tiles each of its pages ("ground.0", "ground.1", ...) holds, the
+    /// ground of each as the map itself writes it, and the relief of every
+    /// tile apart ("relief"). A map kept before its ground went as its runs
+    /// has the cells of each page ("map.0", ...) instead.
     struct MapPages: Codable, Equatable {
         let radius: Int
         let page: Int
@@ -239,17 +241,22 @@ extension GameState {
             }
         }
         var head = self
-        // The map, a page at a time; a page just as it is in a world written
-        // with pages of the same size is taken as written there.
+        // The map's ground, a page at a time; a page just as it is in a
+        // world written with pages of the same size is taken as written
+        // there.
         let pages = MapPages(radius: map.radius, page: RealmState.mapPage)
         let mapHead = try text(pages)
         parts["map"] = mapHead
         let mapped = written.filter { $0.parts["map"] == mapHead }
         for page in 0..<pages.count {
-            let key = "map.\(page)", range = pages.tiles(of: page)
+            let key = "ground.\(page)", range = pages.tiles(of: page)
             let alike = mapped.first { $0.parts[key] != nil && $0.world.map.tiles[range] == map.tiles[range] }
-            parts[key] = alike?.parts[key] ?? WorldMap.cells(of: map.tiles[range])
+            parts[key] = alike?.parts[key] ?? WorldMap.ground(of: map.tiles[range])
         }
+        // And its relief, whole: told alike however much of the lake a
+        // keeper knows, and the same from the age's first watch to its last.
+        let level = written.first { $0.parts["relief"] != nil && $0.world.map.hasTheRelief(of: map) }
+        parts["relief"] = level?.parts["relief"] ?? WorldMap.relief(of: map.tiles)
         head.map = GameState.noMap
         try paged("units", units) { $0.units }
         head.units = []
@@ -339,31 +346,46 @@ extension GameState {
             let count = max(parts.keys.filter { $0.hasPrefix(name + ".") }.count, 1)
             return try (0..<count).flatMap { try GameState.part("\(name).\($0)", of: parts, using: decoder, as: [T].self, read: read) }
         }
-        if parts["map.0"] != nil {
-            // The map in pages: as many as its head says, each the cells of
-            // as many tiles as it says.
+        let apart = parts["ground.0"] != nil
+        if apart || parts["map.0"] != nil {
+            // The map in pages: as many as its head says, each of as many
+            // tiles as it says.
             let pages: MapPages = try GameState.part("map", of: parts, using: decoder, read: read)
             // No more pages than there are parts: a head that says otherwise
             // is refused before anything is laid out for it.
             guard (1...MapPages.widest).contains(pages.radius), pages.page >= 1, pages.count <= parts.count else {
                 throw RealmPartsError.unreadable("map")
             }
+            // A page read, or taken as read when its text is as it was.
+            func value<T>(_ name: String, _ decode: (String) -> T?) throws -> T {
+                func decoded(_ text: String) throws -> T {
+                    guard let value = decode(text) else { throw RealmPartsError.unreadable(name) }
+                    return value
+                }
+                if let read { return try read.value(name, in: parts, decoded) }
+                guard let text = parts[name] else { throw RealmPartsError.missing(name) }
+                return try decoded(text)
+            }
+            // The relief first: a byte at the least for each tile, it tells
+            // of no more of them than it holds, before the ground's runs are
+            // laid out for as many.
+            let reliefs: [Int]? = apart ? try value("relief", WorldMap.reliefs(fromText:)) : nil
+            if let reliefs, reliefs.count != WorldMap.count(radius: pages.radius) { throw RealmPartsError.unreadable("relief") }
             var tiles: [Tile] = []
             for page in 0..<pages.count {
-                let name = "map.\(page)"
-                func cells(_ text: String) throws -> [Tile] {
-                    guard let tiles = WorldMap.tiles(fromCells: text) else { throw RealmPartsError.unreadable(name) }
-                    return tiles
-                }
+                let count = pages.tiles(of: page).count
+                let name = apart ? "ground.\(page)" : "map.\(page)"
                 let paged: [Tile]
-                if let read {
-                    paged = try read.value(name, in: parts, cells)
+                if apart {
+                    paged = try value(name) { WorldMap.tiles(fromGround: $0, count: count) }
                 } else {
-                    guard let text = parts[name] else { throw RealmPartsError.missing(name) }
-                    paged = try cells(text)
+                    paged = try value(name, WorldMap.tiles(fromCells:))
                 }
-                guard paged.count == pages.tiles(of: page).count else { throw RealmPartsError.unreadable(name) }
+                guard paged.count == count else { throw RealmPartsError.unreadable(name) }
                 tiles += paged
+            }
+            if let reliefs {
+                for index in tiles.indices { tiles[index].relief = reliefs[index] }
             }
             guard let whole = WorldMap(radius: pages.radius, tiles: tiles) else { throw RealmPartsError.unreadable("map") }
             map = whole

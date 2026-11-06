@@ -142,8 +142,15 @@ public struct Explored: RandomAccessCollection, MutableCollection, Equatable, Ha
     /// The tiles of `runs`, by turns unseen and seen; none if they don't come
     /// to `count` tiles, or a run but the first is of none.
     init?(count: Int, runs: [Int]) {
-        guard count >= 0, runs.allSatisfy({ $0 >= 0 }), runs.dropFirst().allSatisfy({ $0 > 0 }),
-              runs.reduce(0, { $0 + $1 }) == count else { return nil }
+        guard count >= 0, runs.allSatisfy({ $0 >= 0 }), runs.dropFirst().allSatisfy({ $0 > 0 }) else { return nil }
+        // Counted so that runs past the tiles are refused before their sum
+        // could run past any number.
+        var told = 0
+        for run in runs {
+            guard run <= count - told else { return nil }
+            told += run
+        }
+        guard told == count else { return nil }
         self.init(repeating: false, count: count)
         var at = 0
         for (index, run) in runs.enumerated() {

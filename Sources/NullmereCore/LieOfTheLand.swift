@@ -134,6 +134,10 @@ final class Claims: @unchecked Sendable {
     }
 }
 
+/// A map's relief, as one: its copies, and the maps a keeper is shown of it,
+/// keep the same one while their relief is its relief.
+final class ReliefOf: Sendable {}
+
 /// The nearest hex of a terrain to the hexes it was sought from: kept with
 /// the map while its ground stays as it is, the oldest let go of first.
 final class Nearest: @unchecked Sendable {

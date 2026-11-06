@@ -107,6 +107,17 @@ final class ExploredTests: XCTestCase {
         XCTAssertNil(Bits.decode("10;" + Data([0x83]).base64EncodedString()))
         XCTAssertNil(Bits.decode("10;" + Data([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01]).base64EncodedString()))
         XCTAssertNil(Bits.decode("10;not base64!"))
+        // Runs that tell of more tiles than the widest lake has, in a few
+        // bytes, or of more than any count, are refused before a tile is
+        // laid out for them.
+        let widest = WorldMap.count(radius: GameState.MapPages.widest)
+        for count in [widest + 1, Int.max] {
+            var run: [UInt8] = []
+            Varint.append(count, to: &run)
+            XCTAssertNil(Bits.decode("\(count);" + Data(run).base64EncodedString()), "\(count) tiles")
+        }
+        XCTAssertNil(Bits.decode("10;" + Data([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0x80, 0x01]).base64EncodedString()))
+        XCTAssertNil(Explored(count: 10, runs: [Int.max, Int.max, 10]), "Runs whose sum runs past any number")
         XCTAssertNil(Bits.decode("x;AA=="))
         XCTAssertNil(Bits.decode("10"))
     }

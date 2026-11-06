@@ -85,8 +85,10 @@ final class ViewsAtScaleTests: XCTestCase {
         let tiles = Terrain.allCases.flatMap { terrain in
             [Tile(terrain: terrain, relief: 7)] + Feature.allCases.map { Tile(terrain: terrain, feature: $0, relief: 93) }
         }
-        XCTAssertEqual(WorldMap.tiles(fromCells: WorldMap.cells(of: tiles)), tiles)
-        XCTAssertEqual(WorldMap.cells(of: tiles[3..<9]), WorldMap.cells(of: Array(tiles[3..<9])), "A run of tiles as the tiles alone")
+        XCTAssertEqual(WorldMap.tiles(ground: WorldMap.ground(of: tiles), relief: WorldMap.relief(of: tiles)), tiles)
+        XCTAssertEqual(WorldMap.tiles(fromCells: MapGroundTests.cells(of: tiles)), tiles, "As maps were kept before")
+        XCTAssertEqual(WorldMap.ground(of: tiles[3..<9]), WorldMap.ground(of: Array(tiles[3..<9])), "A run of tiles as the tiles alone")
+        XCTAssertEqual(WorldMap.relief(of: tiles[3..<9]), WorldMap.relief(of: Array(tiles[3..<9])))
     }
 
     func testEachTileSeenIsToldInOrder() {
@@ -121,13 +123,15 @@ final class ViewsAtScaleTests: XCTestCase {
         let pages = (map.count + RealmState.mapPage - 1) / RealmState.mapPage
         for parts in [try realm.parts(using: encoder), try XCTUnwrap(realm.view(for: "id-ama")).parts(using: encoder)] {
             XCTAssertEqual(parts["map"], "{\"page\":\(RealmState.mapPage),\"radius\":\(map.radius)}")
-            XCTAssertEqual(parts.keys.filter { $0.hasPrefix("map.") }.count, pages)
-            XCTAssertNil(parts["map.\(pages)"])
+            XCTAssertEqual(parts.keys.filter { $0.hasPrefix("ground.") }.count, pages)
+            XCTAssertEqual(parts["relief"], WorldMap.relief(of: map.tiles), "The relief whole, the world's own")
+            XCTAssertNil(parts["ground.\(pages)"])
+            XCTAssertTrue(parts.keys.allSatisfy { !$0.hasPrefix("map.") }, "No page kept as cells")
         }
         let parts = try realm.parts(using: encoder)
         let last = (pages - 1) * RealmState.mapPage
-        XCTAssertEqual(parts["map.0"], WorldMap.cells(of: map.tiles[0..<RealmState.mapPage]))
-        XCTAssertEqual(parts["map.\(pages - 1)"], WorldMap.cells(of: map.tiles[last...]))
+        XCTAssertEqual(parts["ground.0"], WorldMap.ground(of: map.tiles[0..<RealmState.mapPage]))
+        XCTAssertEqual(parts["ground.\(pages - 1)"], WorldMap.ground(of: map.tiles[last...]))
         XCTAssertEqual(try RealmState(parts: parts), realm)
         let view = try XCTUnwrap(realm.view(for: "id-ama"))
         XCTAssertEqual(try RealmView(parts: view.parts(using: encoder)), view)
@@ -138,9 +142,40 @@ final class ViewsAtScaleTests: XCTestCase {
     func testAMapKeptWholeStillReads() throws {
         let realm = try played()
         var parts = try realm.parts(using: encoder)
-        for key in parts.keys where key.hasPrefix("map.") { parts[key] = nil }
-        parts["map"] = String(decoding: try encoder.encode(realm.world.map), as: UTF8.self)
+        for key in parts.keys where key.hasPrefix("ground.") || key == "relief" { parts[key] = nil }
+        let map = realm.world.map
+        parts["map"] = #"{"cells":"\#(MapGroundTests.cells(of: map.tiles))","radius":\#(map.radius)}"#
         XCTAssertEqual(try RealmState(parts: parts), realm)
+        parts["map"] = String(decoding: try encoder.encode(map), as: UTF8.self)
+        XCTAssertEqual(try RealmState(parts: parts), realm, "And whole as a map is kept now")
+    }
+
+    /// A world and a view kept while each page of the map was the cells of
+    /// its tiles read as they did.
+    func testAMapKeptAsCellsStillReads() throws {
+        let realm = try played()
+        let view = try XCTUnwrap(realm.view(for: "id-ama"))
+        func kept(_ parts: [String: String], _ tiles: [Tile]) -> [String: String] {
+            var kept = parts.filter { !$0.key.hasPrefix("ground.") && $0.key != "relief" }
+            for start in stride(from: 0, to: tiles.count, by: RealmState.mapPage) {
+                kept["map.\(start / RealmState.mapPage)"] = MapGroundTests.cells(of: tiles[start..<min(start + RealmState.mapPage, tiles.count)])
+            }
+            return kept
+        }
+        let world = kept(try realm.parts(using: encoder), realm.world.map.tiles)
+        XCTAssertEqual(try RealmState(parts: world), realm)
+        XCTAssertEqual(try RealmView(parts: kept(try view.parts(using: encoder), view.world.map.tiles)), view)
+        var broken = world
+        broken["map.1"] = nil
+        XCTAssertThrowsError(try RealmState(parts: broken)) { error in
+            XCTAssertEqual(error as? RealmPartsError, .missing("map.1"))
+        }
+        broken["map.1"] = MapGroundTests.cells(of: realm.world.map.tiles[0..<10])
+        XCTAssertThrowsError(try RealmState(parts: broken)) { error in
+            XCTAssertEqual(error as? RealmPartsError, .unreadable("map.1"))
+        }
+        // Its pages taken by a world written now are written afresh.
+        XCTAssertEqual(try realm.parts(using: encoder, reusing: [(realm.world, world)]), try realm.parts(using: encoder))
     }
 
     func testAMapHalfKeptIsRefused() throws {
@@ -153,9 +188,16 @@ final class ViewsAtScaleTests: XCTestCase {
                 XCTAssertEqual(error as? RealmPartsError, expected, line: line)
             }
         }
-        refused({ $0["map.1"] = nil }, as: .missing("map.1"))
-        refused({ $0["map.0"] = "not cells" }, as: .unreadable("map.0"))
-        refused({ $0["map.1"] = $0["map.0"].map { String($0.dropLast(4)) } }, as: .unreadable("map.1"))
+        refused({ $0["ground.1"] = nil }, as: .missing("ground.1"))
+        refused({ $0["relief"] = nil }, as: .missing("relief"))
+        refused({ $0["ground.0"] = "not ground" }, as: .unreadable("ground.0"))
+        refused({ $0["relief"] = "not relief" }, as: .unreadable("relief"))
+        refused({ $0["relief"] = $0["relief"].map { String($0.dropLast(4)) } }, as: .unreadable("relief"))
+        // A page's ground, and the relief, that tell of fewer tiles than
+        // there are.
+        let few = Array(realm.world.map.tiles[0..<10])
+        refused({ $0["relief"] = WorldMap.relief(of: few) }, as: .unreadable("relief"))
+        refused({ $0["ground.1"] = WorldMap.ground(of: few) }, as: .unreadable("ground.1"))
         refused({ $0["map"] = "{\"page\":\(RealmState.mapPage),\"radius\":\(1 << 20)}" }, as: .unreadable("map"))
         refused({ $0["map"] = "{\"page\":0,\"radius\":36}" }, as: .unreadable("map"))
         refused({ $0["map"] = "{\"page\":1,\"radius\":36}" }, as: .unreadable("map"))
@@ -189,7 +231,10 @@ final class ViewsAtScaleTests: XCTestCase {
             let unseen = (0..<((world.map.count + RealmState.mapPage - 1) / RealmState.mapPage)).filter { page in
                 !(page * RealmState.mapPage..<min((page + 1) * RealmState.mapPage, world.map.count)).contains { explored.indices.contains($0) && explored[$0] }
             }
-            for page in unseen { XCTAssertEqual(taken["map.\(page)"], strangerParts["map.\(page)"]) }
+            for page in unseen { XCTAssertEqual(taken["ground.\(page)"], strangerParts["ground.\(page)"]) }
+            // The lie of the land is told alike, the world's own.
+            XCTAssertEqual(taken["relief"], strangerParts["relief"])
+            XCTAssertEqual(taken["relief"], worldParts["relief"])
             XCTAssertEqual(taken["relations.0"], worldParts["relations.0"])
             XCTAssertEqual(taken["chronicle.0"], worldParts["chronicle.0"])
         }
@@ -206,17 +251,21 @@ final class ViewsAtScaleTests: XCTestCase {
         // filled with another ground, its parts as they were.
         var other = world
         other.houses[0].name = "House Otherwise"
-        other.map.set(index: 0, Tile(terrain: .barrow))
+        other.map.set(index: 0, Tile(terrain: .barrow, relief: world.map.tiles[0].relief + 1))
         var otherParts = try other.parts(using: encoder)
         otherParts["houses.0"] = try view.world.parts(using: encoder)["houses.0"].map { $0 + " " }
-        otherParts["map.0"] = "AAAA"
+        otherParts["ground.0"] = "AAAA"
+        otherParts["relief"] = "AAAA"
         let taken = try view.parts(using: encoder, reusing: [(other, otherParts)])
         XCTAssertEqual(taken, fresh)
         // The same world, its map head saying pages of another size.
         var resized = try view.world.parts(using: encoder)
         resized["map"] = "{\"page\":1024,\"radius\":\(world.map.radius)}"
-        resized["map.0"] = "AAAA"
-        XCTAssertEqual(try view.parts(using: encoder, reusing: [(view.world, resized)])["map.0"], fresh["map.0"])
+        resized["ground.0"] = "AAAA"
+        let takenResized = try view.parts(using: encoder, reusing: [(view.world, resized)])
+        XCTAssertEqual(takenResized["ground.0"], fresh["ground.0"])
+        // Its relief, whole and in no pages, is.
+        XCTAssertEqual(takenResized["relief"], fresh["relief"])
         // A list that ran on past a page taken as written is not taken for
         // the shorter list's last page.
         var less = view.world
@@ -334,9 +383,14 @@ final class ViewsAtScaleTests: XCTestCase {
             XCTAssertEqual(error as? RealmPartsError, .missing("houses.0"))
         }
         broken = fewer
-        broken["map.1"] = "AAAA"
+        broken["ground.1"] = "AAAA"
         XCTAssertThrowsError(try RealmView(parts: broken, read: read)) { error in
-            XCTAssertEqual(error as? RealmPartsError, .unreadable("map.1"))
+            XCTAssertEqual(error as? RealmPartsError, .unreadable("ground.1"))
+        }
+        broken = fewer
+        broken["relief"] = "AAAA"
+        XCTAssertThrowsError(try RealmView(parts: broken, read: read)) { error in
+            XCTAssertEqual(error as? RealmPartsError, .unreadable("relief"))
         }
         read.forget()
         XCTAssertEqual(read.count, 0)
@@ -353,6 +407,7 @@ final class ViewsAtScaleTests: XCTestCase {
         let taken = try realm.parts(using: encoder, reusing: [(before, beforeParts)])
         XCTAssertEqual(taken, try realm.parts(using: encoder))
         XCTAssertEqual(try RealmState(parts: taken), realm)
-        XCTAssertEqual(taken["map.0"], beforeParts["map.0"], "The ground as it was")
+        XCTAssertEqual(taken["ground.0"], beforeParts["ground.0"], "The ground as it was")
+        XCTAssertEqual(taken["relief"], beforeParts["relief"])
     }
 }

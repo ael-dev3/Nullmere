@@ -20,13 +20,22 @@ final class RareCaseTests: XCTestCase {
     func testAMapThatCantBeReadIsRefused() throws {
         let map = GameState(settings: GameSettings(seedText: "unreadable", houseCount: 3, radius: 16, keepers: 1)).map
         let saved = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(map)) as? [String: Any])
-        XCTAssertNotNil(saved["cells"], "Maps are kept as cells")
-        func decoded(_ changes: [String: Any]) throws -> WorldMap {
-            try JSONDecoder().decode(WorldMap.self, from: JSONSerialization.data(withJSONObject: saved.merging(changes) { $1 }))
+        XCTAssertNotNil(saved["ground"], "Maps are kept as their ground")
+        XCTAssertNotNil(saved["relief"], "and their relief")
+        func decoded(_ changes: [String: Any], without gone: [String] = []) throws -> WorldMap {
+            var changed = saved.merging(changes) { $1 }
+            for key in gone { changed[key] = nil }
+            return try JSONDecoder().decode(WorldMap.self, from: JSONSerialization.data(withJSONObject: changed))
         }
         XCTAssertEqual(try decoded([:]), map)
-        XCTAssertThrowsError(try decoded(["cells": "not cells"]), "Unreadable tiles")
+        XCTAssertThrowsError(try decoded(["ground": "not ground"]), "Unreadable ground")
+        XCTAssertThrowsError(try decoded(["relief": "not relief"]), "Unreadable relief")
+        XCTAssertThrowsError(try decoded([:], without: ["relief"]), "Ground without its relief")
+        XCTAssertThrowsError(try decoded(["relief": WorldMap.relief(of: map.tiles.dropLast())]), "A relief of fewer tiles")
         XCTAssertThrowsError(try decoded(["radius": map.radius + 1]), "Too few tiles for the radius")
+        // Kept as cells, as maps were before their ground went as its runs.
+        XCTAssertEqual(try decoded(["cells": MapGroundTests.cells(of: map.tiles)], without: ["ground", "relief"]), map)
+        XCTAssertThrowsError(try decoded(["cells": "not cells"], without: ["ground", "relief"]), "Unreadable tiles")
     }
 
     /// A House whose explored ground can't be read is refused.

@@ -63,12 +63,25 @@ public struct WorldMap: Codable, Equatable, Sendable {
     /// shared by the map's copies, and let go of by any copy whose ground
     /// changes.
     private(set) var deep = Deepest()
+    /// Which relief it has: shared by the map's copies and by the maps a
+    /// keeper is shown of it (`unexplored`, `known(by:from:)`), which keep
+    /// its relief, and let go of by any copy whose relief changes; two maps
+    /// that share it have the same relief, though not a tile of it is
+    /// compared.
+    private(set) var reliefOf = ReliefOf()
 
     private enum CodingKeys: String, CodingKey {
         case radius
         case tiles
-        /// Three bytes a tile, base64: terrain, feature (0 for none), relief.
+        /// Three bytes a tile, base64: terrain, feature (0 for none),
+        /// relief. Maps were kept so before their ground went as its runs.
         case cells
+        /// The terrain and feature of every tile, each as its runs
+        /// (`WorldMap.ground(of:)`).
+        case ground
+        /// Every tile's relief, each as its difference from the one before
+        /// it (`WorldMap.relief(of:)`).
+        case relief
     }
 
     public init(radius: Int, fill: Tile) {
@@ -85,7 +98,12 @@ public struct WorldMap: Codable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let radius = try container.decode(Int.self, forKey: .radius)
         let tiles: [Tile]
-        if let cells = try container.decodeIfPresent(String.self, forKey: .cells) {
+        if let ground = try container.decodeIfPresent(String.self, forKey: .ground) {
+            guard let decoded = WorldMap.tiles(ground: ground, relief: try container.decode(String.self, forKey: .relief)) else {
+                throw DecodingError.dataCorruptedError(forKey: .ground, in: container, debugDescription: "Unreadable ground")
+            }
+            tiles = decoded
+        } else if let cells = try container.decodeIfPresent(String.self, forKey: .cells) {
             guard let decoded = WorldMap.tiles(fromCells: cells) else {
                 throw DecodingError.dataCorruptedError(forKey: .cells, in: container, debugDescription: "Unreadable tiles")
             }
@@ -118,6 +136,9 @@ public struct WorldMap: Codable, Equatable, Sendable {
         map.tiles = tiles.map(GameState.unknown)
         map.steps = map.tiles.map { WorldMap.step(onto: $0.terrain) }
         map.forget()
+        // The lie of the land is known, however little of the land is: its
+        // relief is this map's.
+        assert(map.tiles.lazy.map(\.relief).elementsEqual(tiles.lazy.map(\.relief)), "Unknown ground keeps its relief")
         return map
     }
 
@@ -140,7 +161,16 @@ public struct WorldMap: Codable, Equatable, Sendable {
             map.tiles[index] = tiles[index]
             map.steps[index] = steps[index]
         }
+        // Its relief this map's where the unexplored map's was this map's;
+        // else some of each.
+        if any, map.reliefOf !== reliefOf { map.reliefOf = ReliefOf() }
         return map
+    }
+
+    /// Whether its relief is `other`'s, tile for tile: at a glance where
+    /// both have the relief of one map.
+    func hasTheRelief(of other: WorldMap) -> Bool {
+        reliefOf === other.reliefOf || (count == other.count && tiles.lazy.map(\.relief).elementsEqual(other.tiles.lazy.map(\.relief)))
     }
 
     /// What it keeps of its ground let go of, for ground of its own.
@@ -164,22 +194,115 @@ public struct WorldMap: Codable, Equatable, Sendable {
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(radius, forKey: .radius)
-        try container.encode(WorldMap.cells(of: tiles), forKey: .cells)
+        try container.encode(WorldMap.ground(of: tiles), forKey: .ground)
+        try container.encode(WorldMap.relief(of: tiles), forKey: .relief)
     }
 
     // The order of terrains and features is part of the stored world: new
     // ones go at the end.
-    static func cells<Tiles: Collection>(of tiles: Tiles) -> String where Tiles.Element == Tile {
-        var bytes = [UInt8]()
-        bytes.reserveCapacity(tiles.count * 3)
+
+    /// A run of tiles' ground, base64: how many tiles there are, then the
+    /// terrain of each as its runs (how many tiles, then which terrain),
+    /// then each one's feature so (0 for none, else its place and one).
+    /// The lake's ground lies together, so a page of the map is a few
+    /// hundred runs, and a House that knows a little of the lake is told a
+    /// little; the relief goes apart (`relief(of:)`), as it is the same
+    /// however much of the lake is known.
+    static func ground<Tiles: Collection>(of tiles: Tiles) -> String where Tiles.Element == Tile {
+        var bytes: [UInt8] = []
+        Varint.append(tiles.count, to: &bytes)
+        runs(of: tiles.lazy.map { tile in tile.terrain.code }, into: &bytes)
+        runs(of: tiles.lazy.map { tile in tile.feature.map { $0.code + 1 } ?? 0 }, into: &bytes)
+        return Data(bytes).base64EncodedString()
+    }
+
+    private static func runs<Codes: Sequence>(of codes: Codes, into bytes: inout [UInt8]) where Codes.Element == UInt8 {
+        var code: UInt8?
+        var run = 0
+        for next in codes {
+            if next == code {
+                run += 1
+                continue
+            }
+            if let code {
+                Varint.append(run, to: &bytes)
+                bytes.append(code)
+            }
+            code = next
+            run = 1
+        }
+        if let code {
+            Varint.append(run, to: &bytes)
+            bytes.append(code)
+        }
+    }
+
+    /// A run of tiles' relief, base64: how many tiles there are, then each
+    /// one's relief as its difference from the one before it (the first's
+    /// from none). The land rises and falls by a little from tile to tile,
+    /// so each is a byte.
+    static func relief<Tiles: Collection>(of tiles: Tiles) -> String where Tiles.Element == Tile {
+        var bytes: [UInt8] = []
+        bytes.reserveCapacity(tiles.count + 3)
+        Varint.append(tiles.count, to: &bytes)
+        var last = 0
         for tile in tiles {
-            bytes.append(tile.terrain.code)
-            bytes.append(tile.feature.map { $0.code + 1 } ?? 0)
-            bytes.append(UInt8(clamping: tile.relief))
+            Varint.append(Varint.zigzag(tile.relief &- last), to: &bytes)
+            last = tile.relief
         }
         return Data(bytes).base64EncodedString()
     }
 
+    /// The tiles `ground(of:)` and `relief(of:)` wrote; nil unless each
+    /// reads whole and both tell of the same tiles.
+    static func tiles(ground: String, relief: String) -> [Tile]? {
+        guard let reliefs = reliefs(fromText: relief), var tiles = tiles(fromGround: ground, count: reliefs.count) else { return nil }
+        for index in tiles.indices { tiles[index].relief = reliefs[index] }
+        return tiles
+    }
+
+    /// Each tile's relief as `relief(of:)` wrote it; nil unless it reads
+    /// whole.
+    static func reliefs(fromText text: String) -> [Int]? {
+        guard let data = Data(base64Encoded: text) else { return nil }
+        var read = Varint.Reader([UInt8](data))
+        // A byte at the least for each tile's: no more tiles than bytes.
+        guard let count = read.count(), count <= data.count else { return nil }
+        var reliefs: [Int] = []
+        reliefs.reserveCapacity(count)
+        var relief = 0
+        for _ in 0..<count {
+            guard let step = read.next() else { return nil }
+            relief &+= Varint.unzigzag(step)
+            reliefs.append(relief)
+        }
+        return read.isAtEnd ? reliefs : nil
+    }
+
+    /// The `count` tiles `ground(of:)` wrote, their relief none; nil unless
+    /// it tells of `count` tiles and reads whole.
+    static func tiles(fromGround text: String, count: Int) -> [Tile]? {
+        guard let data = Data(base64Encoded: text) else { return nil }
+        var read = Varint.Reader([UInt8](data))
+        guard read.count() == count else { return nil }
+        func codes(below limit: Int) -> [UInt8]? {
+            var codes: [UInt8] = []
+            codes.reserveCapacity(count)
+            while codes.count < count {
+                guard let run = read.count(), run >= 1, run <= count - codes.count, let code = read.byte(), Int(code) < limit else { return nil }
+                codes.append(contentsOf: repeatElement(code, count: run))
+            }
+            return codes
+        }
+        let terrains = Terrain.allCases, features = Feature.allCases
+        guard let terrain = codes(below: terrains.count), let feature = codes(below: features.count + 1), read.isAtEnd else { return nil }
+        return zip(terrain, feature).map { terrain, feature in
+            Tile(terrain: terrains[Int(terrain)], feature: feature == 0 ? nil : features[Int(feature) - 1])
+        }
+    }
+
+    /// The tiles of a map kept before its ground went as its runs: three
+    /// bytes a tile, base64 (terrain, feature or 0, relief).
     static func tiles(fromCells text: String) -> [Tile]? {
         guard let data = Data(base64Encoded: text), data.count % 3 == 0 else { return nil }
         let bytes = [UInt8](data)
@@ -306,6 +429,8 @@ public struct WorldMap: Codable, Equatable, Sendable {
     }
 
     mutating func set(index: Int, _ tile: Tile) {
+        // Relief its other copies still have is theirs.
+        if tiles[index].relief != tile.relief { reliefOf = ReliefOf() }
         tiles[index] = tile
         // Claims its other copies still keep are theirs, of their ground.
         if isKnownUniquelyReferenced(&claims) { claims.clear() } else { claims = Claims() }
