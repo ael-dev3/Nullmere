@@ -57,9 +57,14 @@ extension GameState {
     /// House it could be told from, or a hold of the drowned age; and four
     /// names to choose from, the true one among them.
     func riddle(for house: Int) -> Riddle? {
-        var random = SeededRandom(seed: Seed.mix(settings.seed, UInt64(watch), UInt64(house) &+ 700))
         let titles = houses.map(\.title)
-        // The lines that could be asked of, and the House each names.
+        return riddle(for: house, titles: titles, lines: rememberedLines(titles: titles))
+    }
+
+    /// The lines of the Chronicle a riddle could ask of now, and the House
+    /// each names: the same for every House, so sought once for all the
+    /// riddles a half moon sets, not through the whole Chronicle for each.
+    func rememberedLines(titles: [String]) -> [(entry: Int, named: Int)] {
         var lines: [(entry: Int, named: Int)] = []
         for (index, entry) in chronicle.enumerated()
         where GameState.remembered.contains(entry.kind) && entry.watch + GameState.riddleAge <= watch {
@@ -67,6 +72,13 @@ extension GameState {
                 lines.append((index, named))
             }
         }
+        return lines
+    }
+
+    /// The riddle the lake would set a House now, from the lines that could
+    /// be asked of (`rememberedLines`).
+    private func riddle(for house: Int, titles: [String], lines: [(entry: Int, named: Int)]) -> Riddle? {
+        var random = SeededRandom(seed: Seed.mix(settings.seed, UInt64(watch), UInt64(house) &+ 700))
         let drownedNames = Array(Set(drownedHolds.map(\.house))).sorted()
         let drowned = drownedNames.count >= 4 ? drownedHolds : []
         guard lines.count + drowned.count > 0 else { return nil }
@@ -96,7 +108,9 @@ extension GameState {
     mutating func setRiddles() -> [GameEvent] {
         guard GameState.riddleMoons.contains(GameState.moonAge(at: watch)) else { return [] }
         let keepers = houses.filter { $0.isPlayer && !$0.isEliminated }.map(\.id)
-        let set = keepers.compactMap { riddle(for: $0) }
+        let titles = houses.map(\.title)
+        let lines = keepers.isEmpty ? [] : rememberedLines(titles: titles)
+        let set = keepers.compactMap { riddle(for: $0, titles: titles, lines: lines) }
         guard !set.isEmpty || riddles != nil else { return [] }
         riddles = set.isEmpty ? nil : set
         return set.map { .riddleSet(house: $0.house) }

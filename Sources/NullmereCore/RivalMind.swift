@@ -1899,15 +1899,15 @@ struct RivalMind {
         let explored = state.houses[house].explored
         let map = state.map
         // Tiles by their index, not hexes in sets: a scout searches far.
-        var occupied = [Bool](repeating: false, count: map.count)
-        for other in state.units { if let index = map.index(of: other.position) { occupied[index] = true } }
-        for wild in state.wildsStanding { if let index = map.index(of: wild.position) { occupied[index] = true } }
-        for lair in state.lairsStanding { if let index = map.index(of: lair.position) { occupied[index] = true } }
+        // What stands on each and which it has reached, in a room kept from
+        // one scout's look to the next, not laid out anew for every scout.
+        var room = ScoutRoom.take(count: map.count)
+        defer { ScoutRoom.give(back: &room) }
+        room.ready(in: state)
         // Known ruins first, then the nearest edge of the unknown: tile by
         // tile through the map's neighbours, in the order of the directions.
         let neighbours = map.neighbours
-        var seen = [Bool](repeating: false, count: map.count)
-        seen[start] = true
+        room.reach(start)
         var queue = [start]
         queue.reserveCapacity(2_600)
         var head = 0
@@ -1915,7 +1915,7 @@ struct RivalMind {
         while head < queue.count, head < 2_500 {
             let tile = queue[head]
             head += 1
-            if tile != start, !occupied[tile] {
+            if tile != start, !room.occupied[tile] {
                 if map[tile].feature == .drownedRuin {
                     frontier = tile
                     break
@@ -1929,8 +1929,8 @@ struct RivalMind {
             }
             for side in 0..<6 {
                 let next = Int(neighbours[tile * 6 + side])
-                guard next >= 0, !seen[next], map[next].terrain.isPassable else { continue }
-                seen[next] = true
+                guard next >= 0, !room.hasReached(next), map[next].terrain.isPassable else { continue }
+                room.reach(next)
                 queue.append(next)
             }
             if frontier != nil, head > 400 { break }
@@ -1962,8 +1962,19 @@ struct RivalMind {
         // lies near enough to a hold of the House's own to rule out a tile
         // it would weigh.
         let reach = 9
+        // The bounds of its holds, a hex beyond them passed over at a
+        // glance, not measured from each of its holds in turn: a realm of
+        // many seats has many holds, companies and wilds far from its own.
+        var low = (q: Int.max, r: Int.max, s: Int.max), high = (q: Int.min, r: Int.min, s: Int.min)
+        for anchor in anchors {
+            low = (min(low.q, anchor.q), min(low.r, anchor.r), min(low.s, anchor.s))
+            high = (max(high.q, anchor.q), max(high.r, anchor.r), max(high.s, anchor.s))
+        }
         func near(_ hex: Hex, within beyond: Int) -> Bool {
-            anchors.contains { $0.distance(to: hex) <= reach + beyond }
+            let far = reach + beyond, s = hex.s
+            guard hex.q >= low.q - far, hex.q <= high.q + far, hex.r >= low.r - far, hex.r <= high.r + far,
+                  s >= low.s - far, s <= high.s + far else { return false }
+            return anchors.contains { $0.distance(to: hex) <= far }
         }
         // The holds and companies read where they stand, not copied.
         var ruledOut = [Bool](repeating: false, count: map.count)

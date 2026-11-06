@@ -679,22 +679,18 @@ public struct GameState: Codable, Equatable, Sendable {
     /// Each tile a House sees right now, by its index, with its allies'
     /// sight; a tile seen from two places is told twice.
     func see(for house: Int, _ seen: (Int) -> Void) {
-        // Its watchers' companies and holds found in one pass over each,
-        // not a pass for every ally, and each watcher's own sight reckoned
-        // once, not for every company and hold of it.
-        var sights = [(unit: Int, hold: Int)?](repeating: nil, count: houses.count)
+        // Each watcher's companies and holds found where the realm keeps
+        // them by their House, not sought through every company and hold of
+        // the realm, and each watcher's own sight reckoned once, not for
+        // every company and hold of it.
         for watcher in watchers(for: house) {
-            sights[watcher] = (bonus(.sight, for: watcher), bonus(.holdSight, for: watcher))
-        }
-        for index in units.indices {
-            let owner = units[index].owner
-            guard sights.indices.contains(owner), let sight = sights[owner] else { continue }
-            map.forEachIndex(within: self.sight(of: units[index], house: sight.unit), of: units[index].position, seen)
-        }
-        for index in holds.indices {
-            let owner = holds[index].owner
-            guard sights.indices.contains(owner), let sight = sights[owner] else { continue }
-            map.forEachIndex(within: self.sight(of: holds[index], house: sight.hold), of: holds[index].position, seen)
+            let unitSight = bonus(.sight, for: watcher), holdSight = bonus(.holdSight, for: watcher)
+            for index in units.places(of: watcher) {
+                map.forEachIndex(within: sight(of: units[index], house: unitSight), of: units[index].position, seen)
+            }
+            for index in holds.places(of: watcher) {
+                map.forEachIndex(within: sight(of: holds[index], house: holdSight), of: holds[index].position, seen)
+            }
         }
     }
 

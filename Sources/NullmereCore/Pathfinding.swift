@@ -148,7 +148,7 @@ struct SearchRoom {
     /// its old tile and put on its new, one gone taken off, one come put on.
     /// However they came to be ordered, each thing marked is taken off or
     /// kept once and each standing now put on or kept once.
-    private static func bring<Things: RandomAccessCollection>(_ marks: inout [Mark], to things: Things, on map: WorldMap,
+    fileprivate static func bring<Things: RandomAccessCollection>(_ marks: inout [Mark], to things: Things, on map: WorldMap,
                                                           standing: inout [UInt16], blocked: inout [Bool], spare: inout [Mark])
         where Things.Element: InTheWay, Things.Index == Int {
         func tile(_ hex: Hex) -> Int32 { map.index(of: hex).map { Int32($0) } ?? -1 }
@@ -232,6 +232,94 @@ struct SearchRoom {
         }
 
         func put(_ room: SearchRoom) {
+            lock.lock()
+            defer { lock.unlock() }
+            if rooms.count < 8 { rooms.append(room) }
+        }
+    }
+}
+
+/// Room for a scout's look for the unknown (`RivalMind.explore`), kept from
+/// one look to the next as a way's search keeps its own: each tile a
+/// company, the wilds or a lair stands on, brought up to the realm by what
+/// has moved since the last look, and the tiles this look has reached, told
+/// by the look's own number rather than cleared for every look. A wide
+/// lake's tiles are too many to lay out twice over for every scout at every
+/// pace.
+struct ScoutRoom {
+    /// Each tile a company, the wilds or a lair stands on.
+    private(set) var occupied: [Bool]
+    /// How many stand on each tile.
+    private var standing: [UInt16]
+    private var companies: [SearchRoom.Mark] = []
+    private var wilds: [SearchRoom.Mark] = []
+    private var lairs: [SearchRoom.Mark] = []
+    private var spare: [SearchRoom.Mark] = []
+    /// The look that last reached each tile, and this look's number.
+    private var reachedBy: [UInt32]
+    private var look: UInt32 = 0
+
+    /// A room for a map of so many tiles; its looks numbered on from
+    /// `look` (for the tests, to see them come round).
+    init(count: Int, look: UInt32 = 0) {
+        occupied = [Bool](repeating: false, count: count)
+        standing = [UInt16](repeating: 0, count: count)
+        reachedBy = [UInt32](repeating: 0, count: count)
+        self.look = look
+    }
+
+    /// Readies the room for a new look over the realm: brought up to what
+    /// stands in it now, and no tile reached yet.
+    mutating func ready(in state: GameState) {
+        let map = state.map
+        SearchRoom.bring(&companies, to: state.units, on: map, standing: &standing, blocked: &occupied, spare: &spare)
+        SearchRoom.bring(&wilds, to: state.wildsStanding, on: map, standing: &standing, blocked: &occupied, spare: &spare)
+        SearchRoom.bring(&lairs, to: state.lairsStanding, on: map, standing: &standing, blocked: &occupied, spare: &spare)
+        look &+= 1
+        if look == 0 {
+            // Its numbers come round again after four thousand million
+            // looks: every tile told afresh.
+            for index in reachedBy.indices { reachedBy[index] = 0 }
+            look = 1
+        }
+    }
+
+    /// Whether this look has reached a tile.
+    func hasReached(_ tile: Int) -> Bool {
+        reachedBy[tile] == look
+    }
+
+    /// A tile reached by this look.
+    mutating func reach(_ tile: Int) {
+        reachedBy[tile] = look
+    }
+
+    private static let shelf = Shelf()
+
+    /// A room for a map of so many tiles.
+    static func take(count: Int) -> ScoutRoom {
+        shelf.take(count: count)
+    }
+
+    /// A room done with, put back for the next look.
+    static func give(back room: inout ScoutRoom) {
+        shelf.put(room)
+    }
+
+    /// The rooms not in use, for any look on any thread to take.
+    private final class Shelf: @unchecked Sendable {
+        private let lock = NSLock()
+        private var rooms: [ScoutRoom] = []
+
+        func take(count: Int) -> ScoutRoom {
+            lock.lock()
+            defer { lock.unlock() }
+            guard let index = rooms.lastIndex(where: { $0.occupied.count == count }) else { return ScoutRoom(count: count) }
+            rooms.swapAt(index, rooms.count - 1)
+            return rooms.removeLast()
+        }
+
+        func put(_ room: ScoutRoom) {
             lock.lock()
             defer { lock.unlock() }
             if rooms.count < 8 { rooms.append(room) }

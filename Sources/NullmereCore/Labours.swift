@@ -86,16 +86,24 @@ extension GameState {
     /// What a House does counts toward its watch's labours as it is done:
     /// its orders, its marches' paces and the watch's turn alike.
     mutating func countLabours(_ events: [GameEvent]) {
-        guard var book = labourBook, !events.isEmpty else { return }
+        guard var book = labourBook, !book.isEmpty, !events.isEmpty else { return }
+        // Each event's share reckoned once for each kind of labour, by the
+        // House it falls to, not once for every House's every labour: a
+        // realm of many keepers has as many events as it has Houses.
+        var shares: [LabourKind: [Int: Int]] = [:]
+        for kind in LabourKind.allCases {
+            for event in events {
+                guard let share = kind.share(of: event, in: self), share.amount > 0 else { continue }
+                shares[kind, default: [:]][share.house, default: 0] += share.amount
+            }
+        }
+        guard !shares.isEmpty else { return }
         var changed = false
         for (house, var kept) in book {
             for index in kept.tasks.indices where !kept.tasks[index].isDone {
-                for event in events {
-                    if let share = kept.tasks[index].kind.share(of: event, in: self), share.house == house, share.amount > 0 {
-                        kept.tasks[index].done += share.amount
-                        changed = true
-                    }
-                }
+                guard let amount = shares[kept.tasks[index].kind]?[house] else { continue }
+                kept.tasks[index].done += amount
+                changed = true
             }
             book[house] = kept
         }

@@ -321,11 +321,12 @@ extension GameState {
     /// Masons' Lodge.
     public static let lodgePace = 6
 
-    /// The highest of a kind of work among a House's holds.
+    /// The highest of a kind of work among a House's holds: found among
+    /// its own where they lie, not sought through every hold of the realm.
     public func highest(_ kind: BuildingKind, of house: Int) -> Int {
         var best = 0
-        for hold in holds where hold.owner == house {
-            if let level = hold.levels[kind], level > best { best = level }
+        for index in holds.places(of: house) {
+            if let level = holds[index].levels[kind], level > best { best = level }
         }
         return best
     }

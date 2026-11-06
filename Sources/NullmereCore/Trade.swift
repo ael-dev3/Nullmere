@@ -172,21 +172,35 @@ extension RivalMind {
     /// want was met.
     func seekTrade(giving high: Resource, for low: Resource, amount: Int, in state: inout GameState) -> (events: [GameEvent], met: Bool) {
         guard let trade = terms(giving: high, for: low, amount: amount, in: state) else { return ([], false) }
-        let partners = state.livingHouses
-            .filter { $0.id != house && state.stance(house, $0.id) != .war }
-            .sorted { ($0.stock[low], tieBreak($0.id, in: state)) > ($1.stock[low], tieBreak($1.id, in: state)) }
+        // The Houses standing and not at war with it, those with the most of
+        // what it lacks first: of them it asks only the first three, and the
+        // first keeper with plenty, so those are found in one pass over the
+        // Houses, each weighed once, not every House copied out and sorted.
+        // Of two weighed the same, the one first in the realm's order.
+        var foremost: [(key: (Int, UInt64), id: Int)] = []
+        var keeper: (key: (Int, UInt64), id: Int)?
+        for other in state.houses.indices where other != house && !state.houses[other].isEliminated && state.stance(house, other) != .war {
+            let key = (state.houses[other].stock[low], tieBreak(other, in: state))
+            if foremost.count < 3 || key > foremost[foremost.count - 1].key {
+                let place = foremost.firstIndex { key > $0.key } ?? foremost.count
+                foremost.insert((key, other), at: place)
+                if foremost.count > 3 { foremost.removeLast() }
+            }
+            if state.houses[other].isPlayer, state.houses[other].stock[low] >= amount * 2, keeper.map({ key > $0.key }) ?? true {
+                keeper = (key, other)
+            }
+        }
         var events: [GameEvent] = []
-        for partner in partners.prefix(3) where !partner.isPlayer {
-            guard state.canSettle(trade, from: house, to: partner.id),
-                  RivalMind(house: partner.id).acceptsTrade(trade, from: house, in: state) else { continue }
-            events += (try? state.offerTrade(trade, from: house, to: partner.id)) ?? []
+        for partner in foremost.map(\.id) where !state.houses[partner].isPlayer {
+            guard state.canSettle(trade, from: house, to: partner),
+                  RivalMind(house: partner).acceptsTrade(trade, from: house, in: state) else { continue }
+            events += (try? state.offerTrade(trade, from: house, to: partner)) ?? []
             return (events, true)
         }
         // A keeper with plenty hears an offer now and then, never twice at once.
-        if let keeper = partners.first(where: { $0.isPlayer && $0.stock[low] >= amount * 2 }),
-           (state.watch + house) % 5 == 0,
-           !state.envoys.contains(where: { $0.from == house && $0.to == keeper.id }) {
-            events += (try? state.offerTrade(trade, from: house, to: keeper.id)) ?? []
+        if let keeper = keeper?.id, (state.watch + house) % 5 == 0,
+           !state.envoys.contains(where: { $0.from == house && $0.to == keeper }) {
+            events += (try? state.offerTrade(trade, from: house, to: keeper)) ?? []
         }
         return (events, false)
     }
