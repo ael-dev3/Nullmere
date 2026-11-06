@@ -118,7 +118,10 @@ file is glTF binary, written in one fixed order so the same script always
 makes the same bytes, and the game carries it and reads it with an
 importer of its own ([`Asset.swift`](../Sources/NullmereModels/Asset.swift)):
 each vertex moves with its two heaviest bones, by its weight between them,
-and each action plays bone by bone. No model is built from code any
+and each action plays bone by bone. A model read from a file of many
+keeps only its own bones and the nodes they hang from, and samples only
+what moves them, so a pose costs what its own skeleton does, never the
+whole file's. No model is built from code any
 more, and none moves by keys written in code: what the world still reads
 of them in Swift ([`Sources/NullmereModels`](../Sources/NullmereModels))
 is where they stand and are lit (a chimney's smoke, a footing's height,

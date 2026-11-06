@@ -183,6 +183,29 @@ public struct Skeleton: Sendable {
     /// origin and lifted; and back.
     let up: Mat4
     let down: Mat4
+    /// Every node after the node it hangs from: the order a pose is worked
+    /// out in, each where it stands from its parent's.
+    let order: [Int]
+    /// How every node stands at rest, before any action moves it.
+    let rests: [JointPose]
+
+    init(nodes: [Node], joints: [Int], inverseBinds: [Mat4], actions: [Clip: Action], up: Mat4, down: Mat4) {
+        self.nodes = nodes
+        self.joints = joints
+        self.inverseBinds = inverseBinds
+        self.actions = actions
+        self.up = up
+        self.down = down
+        var depths = [Int?](repeating: nil, count: nodes.count)
+        func depth(_ index: Int) -> Int {
+            if let known = depths[index] { return known }
+            let found = nodes[index].parent.map { depth($0) + 1 } ?? 0
+            depths[index] = found
+            return found
+        }
+        order = nodes.indices.sorted { (depth($0), $0) < (depth($1), $1) }
+        rests = nodes.map { $0.rest ?? .rest }
+    }
 
     /// The clips it has actions for.
     public var clips: Set<Clip> { Set(actions.keys) }
@@ -196,7 +219,7 @@ public struct Skeleton: Sendable {
     /// has no action for plays its idle in that clip's time, as a work's
     /// machinery turns at whatever pace it is asked.
     public func locals(_ clip: Clip, at time: Float) -> [JointPose] {
-        var poses = nodes.map { $0.rest ?? .rest }
+        var poses = rests
         guard let action = actions[clip] ?? actions[.idle] else { return poses }
         let at = action.start + clip.progress(at: time) * action.duration
         for channel in action.channels {
@@ -212,18 +235,25 @@ public struct Skeleton: Sendable {
 
     /// Each bone's transform, the root's first, from every node's pose.
     public func palette(_ locals: [JointPose]) -> [Mat4] {
-        var globals = [Mat4?](repeating: nil, count: nodes.count)
-        func global(_ index: Int) -> Mat4 {
-            if let known = globals[index] { return known }
+        // Where each node stands in the model, its parent's first: a
+        // skeleton keeps only the joints and what they hang from, so every
+        // node is wanted.
+        var globals = [Mat4](repeating: .identity, count: nodes.count)
+        for index in order {
             let node = nodes[index]
             let local = node.rest == nil ? node.matrix : locals[index].matrix
-            let value = node.parent.map { global($0) * local } ?? local
-            globals[index] = value
-            return value
+            if let parent = node.parent {
+                globals[index] = globals[parent] * local
+            } else {
+                globals[index] = local
+            }
         }
-        return [.identity] + joints.indices.map { j in
-            up * global(joints[j]) * inverseBinds[j] * down
+        var palette = [Mat4.identity]
+        palette.reserveCapacity(joints.count + 1)
+        for (bone, joint) in joints.enumerated() {
+            palette.append(up * globals[joint] * inverseBinds[bone] * down)
         }
+        return palette
     }
 
     public func pose(_ clip: Clip, at time: Float) -> [Mat4] {
@@ -609,9 +639,25 @@ private struct Reader {
             mesh.append(fine)
         }
 
+        // What is posed: the rig's joints and every node they hang from.
+        // The rest of a file of many variants or tiers (another's bones, the
+        // meshes) moves nothing of this model, so its skeleton keeps none of
+        // it, and its actions none of what moves it: a pose is worked out
+        // for every frame of every instance, and in a file of many it
+        // would walk them all.
+        var posed = Set<Int>()
+        for joint in jointNodes {
+            var node: Int? = joint
+            while let next = node, posed.insert(next).inserted { node = parents[next] }
+        }
+        let keptNodes = posed.sorted()
+        var posedAt = [Int: Int]()  // the file's node to the skeleton's
+        for (index, node) in keptNodes.enumerated() { posedAt[node] = index }
+
         // The actions, each a clip by its name; one tagged as a piece is
         // ("attack@warden") played by what it is tagged for in place of the
-        // one for all (a commander's own strike).
+        // one for all (a commander's own strike). Each runs as long as all
+        // it moves in the file, whatever of it this model is.
         var actions: [Clip: Skeleton.Action] = [:]
         var own: Set<Clip> = []
         for animation in json.animations ?? [] {
@@ -625,7 +671,7 @@ private struct Reader {
                 continue
             }
             var channels: [Skeleton.Channel] = []
-            var start = Float.infinity, end = -Float.infinity
+            var start = Float.infinity, end = -Float.infinity, moves = 0
             for channel in animation.channels {
                 guard let node = channel.target.node, nodes.indices.contains(node),
                       animation.samplers.indices.contains(channel.sampler) else { continue }
@@ -638,22 +684,28 @@ private struct Reader {
                 }
                 let sampler = animation.samplers[channel.sampler]
                 let times = try floats(sampler.input).values
+                guard let first = times.first, let last = times.last else { throw Asset.Failure.malformed("an action's keys") }
+                start = min(start, first)
+                end = max(end, last)
+                moves += 1
+                guard let at = posedAt[node] else { continue }
                 let (values, width) = try floats(sampler.output)
                 let cubic = sampler.interpolation == "CUBICSPLINE"
-                guard !times.isEmpty, values.count == times.count * width * (cubic ? 3 : 1) else {
-                    throw Asset.Failure.malformed("an action's keys")
-                }
-                start = min(start, times[0])
-                end = max(end, times[times.count - 1])
-                channels.append(Skeleton.Channel(node: node, path: path, times: times, values: values, width: width,
+                guard values.count == times.count * width * (cubic ? 3 : 1) else { throw Asset.Failure.malformed("an action's keys") }
+                channels.append(Skeleton.Channel(node: at, path: path, times: times, values: values, width: width,
                                                  step: sampler.interpolation == "STEP", cubic: cubic))
             }
-            guard !channels.isEmpty else { continue }
+            guard moves > 0 else { continue }
             actions[clip] = Skeleton.Action(start: start, duration: max(end - start, 0), channels: channels)
             if !tags.always { own.insert(clip) }
         }
 
-        let skeleton = Skeleton(nodes: skeletonNodes, joints: jointNodes, inverseBinds: binds, actions: actions, up: up, down: down)
+        let skeleton = Skeleton(nodes: keptNodes.map { node in
+                                    let whole = skeletonNodes[node]
+                                    return Skeleton.Node(name: whole.name, parent: whole.parent.flatMap { posedAt[$0] }, rest: whole.rest,
+                                                         matrix: whole.matrix)
+                                },
+                                joints: jointNodes.compactMap { posedAt[$0] }, inverseBinds: binds, actions: actions, up: up, down: down)
         return Model(name: name, mesh: mesh, rig: rig, skeleton: skeleton)
     }
 

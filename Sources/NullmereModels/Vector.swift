@@ -92,7 +92,16 @@ public struct Mat4: Equatable, Sendable {
     }
 
     public func apply(_ v: Vec4) -> Vec4 {
-        c0 * v.x + c1 * v.y + c2 * v.z + c3 * v.w
+        // Lane by lane: the products of `c0 * v.x + c1 * v.y + c2 * v.z +
+        // c3 * v.w`, added in its order, so the very same floats; without
+        // the vector arithmetic's generic steps, which an unoptimised build
+        // (the tests', timing the stage) takes one by one for every lane of
+        // every product of every pose.
+        let x = v.x, y = v.y, z = v.z, w = v.w
+        return Vec4(c0.x * x + c1.x * y + c2.x * z + c3.x * w,
+                    c0.y * x + c1.y * y + c2.y * z + c3.y * w,
+                    c0.z * x + c1.z * y + c2.z * z + c3.z * w,
+                    c0.w * x + c1.w * y + c2.w * z + c3.w * w)
     }
 
     public func transformPoint(_ p: Vec3) -> Vec3 {

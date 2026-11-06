@@ -131,19 +131,19 @@
       "note": "one round of the calibration's plain work timed between the staging passes, the best of four, its baseline the calibration's 353 for six rounds: how busy the runner is while the stage is timed, paces only the stage's figures"
     },
     "stage.cpu.p50": {
-      "baseline": 4.0,
+      "baseline": 1.1,
       "cpu": true,
       "paced_by": "stage.pace.cpu",
       "limit": 8.3,
-      "note": "the world's models staged for a frame on the main thread: CI's first figure, 2.36 (cb5988b), at the calibration's pace there, x1.44; raised to 4.0 for fields of battle drawn as throngs (a figure for every 500 troops standing, up to 48 a company) in the late game the stage times, where battles now fight on through every watch (CI 566: 4.38 at x1.18)"
+      "note": "the world's models staged for a frame on the main thread: CI's first figure, 2.36 (cb5988b), at the calibration's pace there, x1.44; raised to 4.0 for fields of battle drawn as throngs (a figure for every 500 troops standing, up to 48 a company) in the late game the stage times, where battles now fight on through every watch (CI 566: 4.38 at x1.18); lowered to 1.1 once each model made in Blender is posed from its own joints alone and a matrix product is worked lane by lane, the same floats at a fifth of the time unoptimised (CI 623 on 424ef79: 5.67 at x1.16; a Linux debug build of this frame: 5.1 to 5.5, then 1.03)"
     },
     "stage.cpu.p95": {
-      "baseline": 4.2,
+      "baseline": 1.2,
       "cpu": true,
       "paced_by": "stage.pace.cpu",
       "ratio": 1.5,
       "limit": 16.7,
-      "note": "the world's models staged for a frame on the main thread: CI's first figure, 2.50 (cb5988b), at the calibration's pace there, x1.44; raised to 4.2 with the throngs of fields of battle (CI 566: 4.51 at x1.18)"
+      "note": "the world's models staged for a frame on the main thread: CI's first figure, 2.50 (cb5988b), at the calibration's pace there, x1.44; raised to 4.2 with the throngs of fields of battle (CI 566: 4.51 at x1.18); lowered to 1.2 with the poses' cost cut (CI 623: 5.91 at x1.16; a Linux debug build: 5.5 to 5.9, then 1.11 to 1.13)"
     },
     "wide.gpu.scale28.p50": {
       "baseline": 12.44,
@@ -152,10 +152,10 @@
       "note": "a realm of forty-eight seats near, only the regions in view drawn: CI's first figure (55a08ad), against 23.12 drawing the whole land"
     },
     "stage.wide.cpu.p50": {
-      "baseline": 4.6,
+      "baseline": 1.35,
       "cpu": true,
       "limit": 8.3,
-      "note": "a frame of a realm of forty-eight seats near staged on the main thread, only what is in view: CI's first figure, 2.34 (55a08ad), at the calibration's pace there, x1.20; raised to 4.6 with fields of battle drawn as throngs, up to 36 figures a company (CI 570: wide 5.43, wider 5.68 at x1.20, with up to 48)"
+      "note": "a frame of a realm of forty-eight seats near staged on the main thread, only what is in view: CI's first figure, 2.34 (55a08ad), at the calibration's pace there, x1.20; raised to 4.6 with fields of battle drawn as throngs, up to 36 figures a company (CI 570: wide 5.43, wider 5.68 at x1.20, with up to 48); lowered to 1.35 with the poses' cost cut (a Linux debug build of this frame: 6.0 to 6.3, then 1.27 to 1.30)"
     },
     "wide.gpu.scale28.whole.p50": {
       "baseline": 23.23,
@@ -169,10 +169,10 @@
       "note": "a realm of ninety-six seats, the widest, near, only the regions in view drawn: CI's first figure (2c57480), against 12.88 for forty-eight seats in the same run"
     },
     "stage.wider.cpu.p50": {
-      "baseline": 4.8,
+      "baseline": 1.6,
       "cpu": true,
       "limit": 8.3,
-      "note": "a frame of a realm of ninety-six seats near staged on the main thread, 242 of 2,178 models in view: CI's first figure, 2.74 (2c57480), at the calibration's pace there, x1.18; raised to 4.8 with fields of battle drawn as throngs, up to 36 figures a company (CI 570: wide 5.43, wider 5.68 at x1.20, with up to 48)"
+      "note": "a frame of a realm of ninety-six seats near staged on the main thread, 242 of 2,178 models in view: CI's first figure, 2.74 (2c57480), at the calibration's pace there, x1.18; raised to 4.8 with fields of battle drawn as throngs, up to 36 figures a company (CI 570: wide 5.43, wider 5.68 at x1.20, with up to 48); lowered to 1.6 with the poses' cost cut (a Linux debug build of this frame, 246 models in view: 6.4, then 1.48 to 1.63)"
     }
   }
 }
