@@ -45,6 +45,9 @@ public final class NetworkRealmLink: RealmLink {
     /// through: a view read again takes only the parts written since.
     private var viewParts: [String: (version: UInt64, text: String)] = [:]
     private var partsThrough: UInt64 = 0
+    /// Those parts as read: each decoded once, when it is new, so a view
+    /// read again decodes the few parts a publication rewrote.
+    private let partsRead = PartsRead()
     /// The last publication whose events the keeper has heard.
     private var heardThrough: UInt64 = 0
     /// The realm's publication the keeper's view was last read against:
@@ -317,6 +320,7 @@ public final class NetworkRealmLink: RealmLink {
             if UInt64(number) < partsThrough {
                 viewParts = [:]
                 partsThrough = 0
+                partsRead.forget()
             }
             let written = try await transport.query("SELECT name, version, text FROM my_view_parts WHERE version > \(partsThrough)",
                                                     token: credentials.token)
@@ -330,12 +334,14 @@ public final class NetworkRealmLink: RealmLink {
             let texts = viewParts.mapValues(\.text)
             // Tens of kilobytes of world, read away from the main thread, so
             // the map doesn't falter while it is.
-            let (view, batches) = try await Task.detached(priority: .userInitiated) { try Self.decode(parts: texts, heard: heard) }.value
+            let read = partsRead
+            let (view, batches) = try await Task.detached(priority: .userInitiated) { try Self.decode(parts: texts, heard: heard, read: read) }.value
             return (UInt64(number), view, batches)
         }
         // Never once whole: the next read takes every part afresh.
         viewParts = [:]
         partsThrough = 0
+        partsRead.forget()
         return nil
     }
 
@@ -350,8 +356,8 @@ public final class NetworkRealmLink: RealmLink {
         return parts.isEmpty ? nil : parts
     }
 
-    nonisolated static func decode(parts: [String: String], heard: String) throws -> (RealmView, [HeardBatch]) {
-        let view = try RealmView(parts: parts)
+    nonisolated static func decode(parts: [String: String], heard: String, read: PartsRead? = nil) throws -> (RealmView, [HeardBatch]) {
+        let view = try RealmView(parts: parts, read: read)
         return (view, (try? JSONDecoder().decode([HeardBatch].self, from: Data(heard.utf8))) ?? [])
     }
 
@@ -490,6 +496,7 @@ public final class NetworkRealmLink: RealmLink {
         viewVersion = 0
         viewParts = [:]
         partsThrough = 0
+        partsRead.forget()
         viewReadAt = nil
         heardThrough = 0
         askedReady = nil

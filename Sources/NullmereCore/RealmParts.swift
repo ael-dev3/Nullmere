@@ -66,13 +66,69 @@ extension RealmView {
     }
 
     /// A keeper's view from its parts; one missing, or not what its name
-    /// says, is an error.
-    public init(parts: [String: String]) throws {
+    /// says, is an error. With `read`, what a keeper's Mac has read of its
+    /// view before: each part decoded only if its text is new, the rest
+    /// taken as read, and the view the same as read afresh.
+    public init(parts: [String: String], read: PartsRead? = nil) throws {
         let decoder = JSONDecoder()
-        let head: RealmView = try GameState.part("head", of: parts, using: decoder)
+        let head: RealmView = try GameState.part("head", of: parts, using: decoder, read: read)
         var world = head.world
-        try world.join(parts, using: decoder)
+        try world.join(parts, using: decoder, read: read)
+        read?.keepOnly(parts.keys)
         self.init(keeper: head.keeper, age: head.age, world: world)
+    }
+}
+
+/// What a keeper's Mac has read of its view, part by part: each part
+/// decoded once, when its text is new, and kept with that text. A view's
+/// publication rewrites a few of its parts (its head, the companies that
+/// moved, the map they explored), so joined from parts already read the
+/// view decodes those few, not the whole realm again; and is the view read
+/// afresh, to the last field.
+public final class PartsRead: @unchecked Sendable {
+    private let lock = NSLock()
+    private var kept: [String: (text: String, value: Any)] = [:]
+    /// How many parts it has decoded, for its tests.
+    private(set) var decoded = 0
+
+    /// How many parts it holds as read.
+    var count: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return kept.count
+    }
+
+    public init() {}
+
+    /// What the part `name` of `parts` reads as: decoded by `read` only if
+    /// its text is not the text it was last read from.
+    func value<T>(_ name: String, in parts: [String: String], _ read: (String) throws -> T) throws -> T {
+        guard let text = parts[name] else { throw RealmPartsError.missing(name) }
+        lock.lock()
+        let known = kept[name]
+        lock.unlock()
+        if let known, known.text == text, let value = known.value as? T { return value }
+        let value = try read(text)
+        lock.lock()
+        kept[name] = (text, value)
+        decoded += 1
+        lock.unlock()
+        return value
+    }
+
+    /// Lets go of what it read of parts no longer among these.
+    func keepOnly<Names: Sequence>(_ names: Names) where Names.Element == String {
+        let current = Set(names)
+        lock.lock()
+        kept = kept.filter { current.contains($0.key) }
+        lock.unlock()
+    }
+
+    /// Lets go of all it has read: a view from another realm, or read anew.
+    public func forget() {
+        lock.lock()
+        kept.removeAll()
+        lock.unlock()
     }
 }
 
@@ -185,16 +241,17 @@ extension GameState {
         return head
     }
 
-    /// A world's head given back its map and its long lists from `parts`.
-    mutating func join(_ parts: [String: String], using decoder: JSONDecoder) throws {
+    /// A world's head given back its map and its long lists from `parts`;
+    /// with `read`, each part decoded only if its text is new.
+    mutating func join(_ parts: [String: String], using decoder: JSONDecoder, read: PartsRead? = nil) throws {
         func pages<T: Decodable>(_ name: String, of type: T.Type) throws -> [T] {
             let count = max(parts.keys.filter { $0.hasPrefix(name + ".") }.count, 1)
-            return try (0..<count).flatMap { try GameState.part("\(name).\($0)", of: parts, using: decoder, as: [T].self) }
+            return try (0..<count).flatMap { try GameState.part("\(name).\($0)", of: parts, using: decoder, as: [T].self, read: read) }
         }
         if parts["map.0"] != nil {
             // The map in pages: as many as its head says, each the cells of
             // as many tiles as it says.
-            let pages: MapPages = try GameState.part("map", of: parts, using: decoder)
+            let pages: MapPages = try GameState.part("map", of: parts, using: decoder, read: read)
             // No more pages than there are parts: a head that says otherwise
             // is refused before anything is laid out for it.
             guard (1...MapPages.widest).contains(pages.radius), pages.page >= 1, pages.count <= parts.count else {
@@ -202,16 +259,25 @@ extension GameState {
             }
             var tiles: [Tile] = []
             for page in 0..<pages.count {
-                guard let cells = parts["map.\(page)"] else { throw RealmPartsError.missing("map.\(page)") }
-                guard let read = WorldMap.tiles(fromCells: cells), read.count == pages.tiles(of: page).count else {
-                    throw RealmPartsError.unreadable("map.\(page)")
+                let name = "map.\(page)"
+                func cells(_ text: String) throws -> [Tile] {
+                    guard let tiles = WorldMap.tiles(fromCells: text) else { throw RealmPartsError.unreadable(name) }
+                    return tiles
                 }
-                tiles += read
+                let paged: [Tile]
+                if let read {
+                    paged = try read.value(name, in: parts, cells)
+                } else {
+                    guard let text = parts[name] else { throw RealmPartsError.missing(name) }
+                    paged = try cells(text)
+                }
+                guard paged.count == pages.tiles(of: page).count else { throw RealmPartsError.unreadable(name) }
+                tiles += paged
             }
             guard let whole = WorldMap(radius: pages.radius, tiles: tiles) else { throw RealmPartsError.unreadable("map") }
             map = whole
         } else {
-            map = try GameState.part("map", of: parts, using: decoder)
+            map = try GameState.part("map", of: parts, using: decoder, read: read)
         }
         units = Companies(try pages("units", of: Unit.self))
         houses = try pages("houses", of: House.self)
@@ -237,12 +303,15 @@ extension GameState {
             ballads = try pages("ballads", of: Ballad.self)
         }
         if atlas != nil {
-            atlas = try GameState.part("atlas", of: parts, using: decoder)
+            atlas = try GameState.part("atlas", of: parts, using: decoder, read: read)
         }
     }
 
-    /// One part, read as what its name says it is.
-    static func part<T: Decodable>(_ name: String, of parts: [String: String], using decoder: JSONDecoder, as type: T.Type = T.self) throws -> T {
+    /// One part, read as what its name says it is: with `read`, decoded
+    /// only if its text is new.
+    static func part<T: Decodable>(_ name: String, of parts: [String: String], using decoder: JSONDecoder, as type: T.Type = T.self,
+                                   read: PartsRead? = nil) throws -> T {
+        if let read { return try read.value(name, in: parts) { try decoder.decode(T.self, from: Data($0.utf8)) } }
         guard let text = parts[name] else { throw RealmPartsError.missing(name) }
         return try decoder.decode(T.self, from: Data(text.utf8))
     }

@@ -226,6 +226,51 @@ final class ViewsAtScaleTests: XCTestCase {
         XCTAssertEqual(try shorter.parts(using: encoder, reusing: [(view.world, fresh)]), shorterFresh)
     }
 
+    /// A view read part by part as its publications come, each part decoded
+    /// only when its text is new, is the view read afresh every time, and
+    /// decodes only the parts that were rewritten.
+    func testAViewReadPartByPartIsTheViewReadAfresh() throws {
+        var realm = try played()
+        let read = PartsRead()
+        var last: [String: String] = [:]
+        for pace in 1...4 {
+            let view = try XCTUnwrap(realm.view(for: "id-ama"))
+            let parts = try view.parts(using: encoder)
+            let before = read.decoded
+            XCTAssertEqual(try RealmView(parts: parts, read: read), view, "Pace \(pace)")
+            let rewritten = parts.filter { last[$0.key] != $0.value }.count
+            XCTAssertEqual(read.decoded - before, rewritten, "Pace \(pace): only the parts rewritten decoded")
+            if !last.isEmpty { XCTAssertLessThan(rewritten, parts.count, "Some of a view stands from one pace to the next") }
+            XCTAssertEqual(try RealmView(parts: parts, read: read), try RealmView(parts: parts), "Read again, the same")
+            XCTAssertEqual(read.decoded - before, rewritten, "and nothing more decoded")
+            XCTAssertEqual(read.count, parts.count)
+            last = parts
+            _ = realm.world.walk(to: pace)
+        }
+        // A view of fewer parts: what was read of the rest let go.
+        var less = try XCTUnwrap(realm.view(for: "id-ama")).world
+        less.chronicle = Array(less.chronicle.prefix(1))
+        let fewer = try RealmView(keeper: try XCTUnwrap(realm.keeper("id-ama")), age: realm.age, world: less).parts(using: encoder)
+        XCTAssertEqual(try RealmView(parts: fewer, read: read), try RealmView(parts: fewer))
+        XCTAssertEqual(read.count, fewer.count)
+        // A part not what its name says, read anew: refused as before.
+        var broken = fewer
+        broken["houses.0"] = "{}"
+        XCTAssertThrowsError(try RealmView(parts: broken, read: read))
+        broken["houses.0"] = nil
+        XCTAssertThrowsError(try RealmView(parts: broken, read: read)) { error in
+            XCTAssertEqual(error as? RealmPartsError, .missing("houses.0"))
+        }
+        broken = fewer
+        broken["map.1"] = "AAAA"
+        XCTAssertThrowsError(try RealmView(parts: broken, read: read)) { error in
+            XCTAssertEqual(error as? RealmPartsError, .unreadable("map.1"))
+        }
+        read.forget()
+        XCTAssertEqual(read.count, 0)
+        XCTAssertEqual(try RealmView(parts: fewer, read: read), try RealmView(parts: fewer), "Read anew after forgetting")
+    }
+
     /// The world's parts a pace on, taking what is just as it was when last
     /// written, are the world's parts written afresh.
     func testTheWorldAPaceOnTakesWhatStandsAsItWas() throws {

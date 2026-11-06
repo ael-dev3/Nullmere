@@ -36,8 +36,9 @@ steward's answer). For development a realm can also be hosted in-process
   each long list, the rest), and its row names every part with the version
   it was written at: a publication writes only the parts of each view that
   changed and lets go of those a view no longer has, and a keeper's Mac
-  reads only the parts written since it last read, so a pace that moves a
-  few companies sends a page of them, not the whole world again, and a
+  reads only the parts written since it last read, and decodes only
+  those, keeping the rest as it read them, so a pace that moves a few
+  companies sends a page of them, not the whole world again, and a
   company exploring sends the pages of map it explored. What every view
   takes alike (every House's strength and might, the map as one who has
   explored none of it knows it, the view of a keeper of no House in its
