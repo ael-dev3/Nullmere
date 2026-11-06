@@ -107,20 +107,19 @@ extension GameState {
         // Ground no other House is known to have explored: one, shared by
         // every view.
         for index in view.houses.indices where view.houses[index].id != house {
-            view.houses[index].stock = .zero
-            view.houses[index].explored = commons.unknown
-            view.houses[index].research = Research()
+            view.houses[index] = view.houses[index].toldAlike(unknown: commons.unknown)
             if allies.contains(view.houses[index].id) {
                 view.houses[index].research.pursuit = houses[index].research.pursuit
             }
         }
-        for index in view.holds.indices where view.holds[index].owner != house && !allies.contains(view.holds[index].owner) {
-            view.holds[index].project = nil
-            view.holds[index].training = nil
-        }
-        // Who lies in a hold's beds is its own House's to know.
+        // What a hold raises and trains its House's allies know too; who
+        // lies in its beds, its own House alone.
         for index in view.holds.indices where view.holds[index].owner != house {
-            view.holds[index].wounded = nil
+            if allies.contains(view.holds[index].owner) {
+                view.holds[index].wounded = nil
+            } else {
+                view.holds[index] = view.holds[index].toldAlike()
+            }
         }
         view.envoys = envoys.filter { ($0.from == house || $0.to == house) && hears($0.from, as: house) }
         // A House's answers at the Lyceum are its own until it rises.

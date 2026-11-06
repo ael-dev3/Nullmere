@@ -58,11 +58,45 @@ extension RealmView {
     /// world the view is of, or the view of a keeper of no House, each with
     /// its parts as written with the same encoder) taken as written there:
     /// most of every view is what every keeper is told alike, written once.
+    /// The Houses and the holds go in their pages as a keeper of no House
+    /// is told them, so every view's pages of them are alike; the keeper's
+    /// own House and holds, and what their allies tell them of theirs, go
+    /// apart in "own".
     public func parts(using encoder: JSONEncoder, reusing written: [GameState.Written]) throws -> [String: String] {
         var parts: [String: String] = [:]
-        let head = RealmView(keeper: keeper, age: age, world: try world.split(into: &parts, using: encoder, reusing: written))
+        var told = world
+        var own = Own()
+        let unknown = Explored(repeating: false, count: world.map.count)
+        for index in told.houses.indices {
+            let alike = told.houses[index].toldAlike(unknown: unknown)
+            if alike != told.houses[index] {
+                own.houses.append(told.houses[index])
+                told.houses[index] = alike
+            }
+        }
+        for index in told.holds.indices {
+            let alike = told.holds[index].toldAlike()
+            if alike != told.holds[index] {
+                own.holds.append(told.holds[index])
+                told.holds[index] = alike
+            }
+        }
+        let head = RealmView(keeper: keeper, age: age, world: try told.split(into: &parts, using: encoder, reusing: written))
         parts["head"] = String(decoding: try encoder.encode(head), as: UTF8.self)
+        if !own.houses.isEmpty || !own.holds.isEmpty {
+            parts[RealmView.ownPart] = String(decoding: try encoder.encode(own), as: UTF8.self)
+        }
         return parts
+    }
+
+    /// The part a view's own Houses and holds go in.
+    public static let ownPart = "own"
+
+    /// What a view holds that no other keeper is told: their own House and
+    /// holds, and what their allies tell them of theirs, whole.
+    struct Own: Codable, Equatable {
+        var houses: [House] = []
+        var holds: [Hold] = []
     }
 
     /// A keeper's view from its parts; one missing, or not what its name
@@ -227,6 +261,10 @@ extension GameState {
         // The songbook, like the Chronicle, is every keeper's to read.
         try paged("ballads", ballads) { $0.ballads }
         head.ballads = ballads.map { _ in [] }
+        // The deeds every House has done this age, the same in every view,
+        // apart from the head that is written at every pace.
+        try paged("deeds", deedsDone) { $0.deedsDone }
+        head.deedsDone = deedsDone.map { _ in [] }
         // The atlas, the same all age long and in every view, apart: the
         // head, written at every pace, leaves it out, keeping only an empty
         // one to say there is one.
@@ -281,7 +319,24 @@ extension GameState {
         }
         units = Companies(try pages("units", of: Unit.self))
         houses = try pages("houses", of: House.self)
+        // The deeds done, in pages; a world written before kept them in its head.
+        if deedsDone != nil, parts["deeds.0"] != nil {
+            deedsDone = try pages("deeds", of: DeedDone.self)
+        }
         holds = Holdings(try pages("holds", of: Hold.self))
+        // A view's own House and holds, and what allies tell of theirs, over
+        // the pages every keeper is told alike.
+        if parts[RealmView.ownPart] != nil {
+            let own = try GameState.part(RealmView.ownPart, of: parts, using: decoder, as: RealmView.Own.self, read: read)
+            for house in own.houses {
+                guard houses.indices.contains(house.id), houses[house.id].id == house.id else { throw RealmPartsError.unreadable(RealmView.ownPart) }
+                houses[house.id] = house
+            }
+            for hold in own.holds {
+                guard let index = holds.index(ofID: hold.id) else { throw RealmPartsError.unreadable(RealmView.ownPart) }
+                holds[index] = hold
+            }
+        }
         relations = try pages("relations", of: Relation.self)
         chronicle = try pages("chronicle", of: ChronicleEntry.self)
         if recorded != nil {

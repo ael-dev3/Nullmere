@@ -226,6 +226,78 @@ final class ViewsAtScaleTests: XCTestCase {
         XCTAssertEqual(try shorter.parts(using: encoder, reusing: [(view.world, fresh)]), shorterFresh)
     }
 
+    /// A view's pages of Houses and of holds are those every keeper is told
+    /// alike: the keeper's own House and holds, and what allies tell them
+    /// of theirs, go apart in its own part, and the view joins whole. The
+    /// deeds every House has done go in pages of their own, the same in
+    /// every view; and a world kept with its deeds in its head still reads
+    /// as it did.
+    func testAViewsOwnHousesGoApartAndDeedsInPages() throws {
+        var realm = try played()
+        let ama = try XCTUnwrap(realm.keeper("id-ama")?.house), bel = try XCTUnwrap(realm.keeper("id-bel")?.house)
+        realm.world.deedsDone = (0..<40).map { DeedDone(house: $0 % 12, deed: Deed.allCases[$0 % Deed.allCases.count], watch: $0, told: $0 % 3 == 0) }
+        // A granary rising at Ama's seat and spearmen training at Bel's.
+        let amasSeat = try XCTUnwrap(realm.world.holds.firstIndex { $0.owner == ama && $0.isSeat })
+        realm.world.holds[amasSeat].project = Hold.Project(kind: .granary, targetLevel: 2, watchesLeft: 3)
+        let belsSeat = try XCTUnwrap(realm.world.holds.firstIndex { $0.owner == bel && $0.isSeat })
+        realm.world.holds[belsSeat].training = Hold.Training(kind: UnitKind.allCases[0], watchesLeft: 2)
+        let view = try XCTUnwrap(realm.view(for: "id-ama"))
+        let parts = try view.parts(using: encoder)
+        let stranger = try realm.world.view(for: -1).parts(using: encoder)
+        let pages = parts.keys.filter { $0.hasPrefix("houses.") || $0.hasPrefix("holds.") }
+        XCTAssertGreaterThan(pages.count, 1)
+        for page in pages { XCTAssertEqual(parts[page], stranger[page], "\(page) as every keeper is told it") }
+        let own = try JSONDecoder().decode(RealmView.Own.self, from: Data(try XCTUnwrap(parts[RealmView.ownPart]).utf8))
+        XCTAssertEqual(own.houses, [view.world.houses[ama]], "Their own House apart, whole")
+        let ownHolds = view.world.holds.filter { $0.toldAlike() != $0 }
+        XCTAssertFalse(ownHolds.isEmpty, "Holds with works under way")
+        XCTAssertTrue(ownHolds.allSatisfy { $0.owner == ama })
+        XCTAssertEqual(own.holds, Array(ownHolds), "Their holds' works apart, whole")
+        XCTAssertEqual(try RealmView(parts: parts), view)
+
+        // An ally's study and training under way, told them: apart too.
+        var told = view.world
+        told.houses[bel].research.pursuit = Pursuit(study: Study.allCases[0], grade: 1, watchesLeft: 3)
+        let belsSeatID = realm.world.holds[belsSeat].id
+        let belsSeatTold = try XCTUnwrap(told.holds.index(ofID: belsSeatID))
+        XCTAssertNil(told.holds[belsSeatTold].training, "Not told a stranger's training")
+        told.holds[belsSeatTold].training = realm.world.holds[belsSeat].training
+        let allied = RealmView(keeper: view.keeper, age: view.age, world: told)
+        let alliedParts = try allied.parts(using: encoder)
+        let alliedOwn = try JSONDecoder().decode(RealmView.Own.self, from: Data(try XCTUnwrap(alliedParts[RealmView.ownPart]).utf8))
+        XCTAssertEqual(alliedOwn.houses.map(\.id).sorted(), [ama, bel].sorted())
+        XCTAssertTrue(alliedOwn.holds.contains { $0.id == belsSeatID && $0.training != nil }, "An ally's training apart")
+        for page in pages { XCTAssertEqual(alliedParts[page], stranger[page]) }
+        XCTAssertEqual(try RealmView(parts: alliedParts), allied)
+
+        // The deeds in pages, alike in every view and in the world's own.
+        XCTAssertEqual(parts.keys.filter { $0.hasPrefix("deeds.") }.sorted(), ["deeds.0", "deeds.1"])
+        let worldParts = try realm.world.parts(using: encoder)
+        XCTAssertEqual(worldParts["deeds.0"], parts["deeds.0"])
+        XCTAssertEqual(worldParts["deeds.1"], stranger["deeds.1"])
+        var head = try JSONDecoder().decode(GameState.self, from: Data(try XCTUnwrap(worldParts["head"]).utf8))
+        XCTAssertEqual(head.deedsDone, [], "The head says only that there are deeds")
+        var joined = head
+        try joined.join(worldParts, using: JSONDecoder())
+        XCTAssertEqual(joined.deedsDone, realm.world.deedsDone)
+        // Kept before deeds had pages: in the head, and read from there.
+        head.deedsDone = realm.world.deedsDone
+        let before = worldParts.filter { !$0.key.hasPrefix("deeds.") }
+        var kept = head
+        try kept.join(before, using: JSONDecoder())
+        XCTAssertEqual(kept.deedsDone, realm.world.deedsDone)
+        // An own House that isn't one of the realm's is refused.
+        var stray = parts
+        let none = House(id: view.world.houses.count + 3, name: "House Astray", sigil: 0, isPlayer: false,
+                         temperament: Temperament.allCases[0], tileCount: view.world.map.count)
+        stray[RealmView.ownPart] = String(decoding: try encoder.encode(RealmView.Own(houses: [none])), as: UTF8.self)
+        XCTAssertThrowsError(try RealmView(parts: stray))
+        var strayHold = view.world.holds[0]
+        strayHold = Hold(id: view.world.holds.map(\.id).max()! + 9, name: "Astray", owner: ama, position: strayHold.position, isSeat: false, foundedWatch: 0)
+        stray[RealmView.ownPart] = String(decoding: try encoder.encode(RealmView.Own(holds: [strayHold])), as: UTF8.self)
+        XCTAssertThrowsError(try RealmView(parts: stray), "A hold not of the realm")
+    }
+
     /// A view read part by part as its publications come, each part decoded
     /// only when its text is new, is the view read afresh every time, and
     /// decodes only the parts that were rewritten.

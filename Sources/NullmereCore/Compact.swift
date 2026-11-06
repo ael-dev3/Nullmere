@@ -70,12 +70,13 @@ public enum Compact {
 public enum Speech {
     /// The tongue this build speaks. 2: a view's map in pages. 3: the
     /// pages every keeper is told alike kept once, as no keeper's, and
-    /// named by each view that has them.
-    public static let current = 3
+    /// named by each view that has them. 4: a view's own Houses apart from
+    /// its pages of Houses, and the deeds done in pages of their own.
+    public static let current = 4
     /// The oldest tongue a realm of this build still hears from a keeper's
-    /// Mac: a Mac before the pages told alike were kept once can't read a
-    /// view that names them.
-    public static let oldestHeard = 3
+    /// Mac: a Mac before a view's own Houses went apart would read its own
+    /// House as a stranger's.
+    public static let oldestHeard = 4
     /// Where a keeper gets the newest Nullmere Online.
     public static let newestBuild = "https://github.com/ael-dev3/Nullmere/releases/latest"
 }

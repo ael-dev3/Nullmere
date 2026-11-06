@@ -43,15 +43,20 @@ steward's answer). For development a realm can also be hosted in-process
   takes alike (every House's strength and might, the map as one who has
   explored none of it knows it, the view of a keeper of no House in its
   parts) is worked out once a publication, and each view takes every page
-  just as it is there as written there: only the pages that are a keeper's
-  own (their House's, their head, the map they have explored, the
-  companies they see) are written for them. The pages every keeper is
-  told alike, just as a keeper of no House is told them, are kept on the
-  server once, as no keeper's, under "~", the page's name and the mark of
-  its text, and each view names the ones it has: written once a
-  publication rather than once in every view, and let go once no view
+  just as it is there as written there: only what is a keeper's own
+  (their head, their House, the map they have explored, the companies
+  they see) is written for them. Their House and the works under way in
+  their holds (what they build, train and heal there), and what allies
+  tell them of theirs, go apart from the pages of every House and every
+  hold ("own"), so those pages are told alike; and the deeds every House
+  has done go in pages of their own, not in the head written at every
+  pace. The pages every
+  keeper is told alike, just as a keeper of no House is told them, are
+  kept on the server once, as no keeper's, under "~", the page's name and
+  the mark of its text, and each view names the ones it has: written once
+  a publication rather than once in every view, and let go once no view
   names them. At ninety-six keepers, every view shown whole comes to
-  8.3 MB written against 40.6, and a watch's turn to 5.3 MB against 13.5
+  5.8 MB written against 40.6, and a watch's turn to 2.8 MB against 13.5
   (a probe's measure at the fiftieth watch).
 - **Requests.** A request carries a nonce of 1 to 64 bytes and at most 4 KB
   besides; a keeper may have 32 requests waiting at most, and the steward

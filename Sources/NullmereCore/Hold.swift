@@ -300,3 +300,27 @@ enum Bits {
         return Explored(count: count, bytes: [UInt8](data))
     }
 }
+
+extension Hold {
+    /// The hold as every keeper is told it but its own House's: what it
+    /// raises and trains, and who lies in its beds, its House's to know.
+    public func toldAlike() -> Hold {
+        var told = self
+        told.project = nil
+        told.training = nil
+        told.wounded = nil
+        return told
+    }
+}
+
+extension House {
+    /// The House as every keeper is told it but its own: its stores, the
+    /// ground it has explored and its studies its own to know.
+    public func toldAlike(unknown: Explored) -> House {
+        var told = self
+        told.stock = .zero
+        told.explored = unknown
+        told.research = Research()
+        return told
+    }
+}
