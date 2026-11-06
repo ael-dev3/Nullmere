@@ -279,13 +279,20 @@ public struct WorldGenerator: Sendable {
         var seats: [Hex] = []
         if !candidates.isEmpty {
             seats.append(random.pick(candidates))
+            // Each site's distance to its nearest seat yet, brought up to date
+            // as each seat is placed, not measured anew from every seat at
+            // every comparison: a lake of many seats has many sites.
+            var nearest = candidates.map { $0.distance(to: seats[0]) }
             while seats.count < houseCount {
-                let next = candidates.max { a, b in
-                    let da = seats.map { $0.distance(to: a) }.min()!
-                    let db = seats.map { $0.distance(to: b) }.min()!
-                    return (da, b) < (db, a)
-                }!
+                // The site furthest from every seat yet; of equals, the least.
+                var best = 0
+                for index in candidates.indices.dropFirst()
+                where nearest[index] > nearest[best] || (nearest[index] == nearest[best] && candidates[index] < candidates[best]) {
+                    best = index
+                }
+                let next = candidates[best]
                 seats.append(next)
+                for index in candidates.indices { nearest[index] = min(nearest[index], candidates[index].distance(to: next)) }
             }
             // Picked so, the last few are squeezed between the first: each
             // in turn moves to the nearby site furthest from its nearest
@@ -294,18 +301,22 @@ public struct WorldGenerator: Sendable {
             for _ in 0..<4 {
                 for i in seats.indices {
                     let others = seats.indices.filter { $0 != i }.map { seats[$0] }
+                    // Of them, those near enough to weigh: a site is weighed
+                    // within three of the seat, its room no more than twelve
+                    // and its land within six.
+                    let close = others.filter { $0.distance(to: seats[i]) <= 15 }
                     // Room enough from its neighbours, then, among the
                     // roomiest sites, the most land nearer it than any other
                     // seat.
-                    func room(_ hex: Hex) -> Int { min(others.map { $0.distance(to: hex) }.min() ?? 0, 12) }
+                    func room(_ hex: Hex) -> Int { others.isEmpty ? 0 : min(close.map { $0.distance(to: hex) }.min() ?? 12, 12) }
                     func land(_ hex: Hex) -> Int {
                         hex.spiral(6).filter { tile in
                             guard let index = map.index(of: tile), map[index].terrain.isSettleable else { return false }
                             let mine = tile.distance(to: hex)
-                            return others.allSatisfy { $0.distance(to: tile) > mine }
+                            return close.allSatisfy { $0.distance(to: tile) > mine }
                         }.count
                     }
-                    let near = seats[i].spiral(3).filter { sites.contains($0) && !others.contains($0) }.map { ($0, room($0)) }
+                    let near = seats[i].spiral(3).filter { sites.contains($0) && !close.contains($0) }.map { ($0, room($0)) }
                     guard let roomiest = near.map(\.1).max(), roomiest >= room(seats[i]) else { continue }
                     let finalists = near.filter { $0.1 == roomiest }.map { ($0.0, land($0.0)) }
                     let here = (room(seats[i]), land(seats[i]))
@@ -318,10 +329,12 @@ public struct WorldGenerator: Sendable {
             // the Spine or its neighbours, moves to the best site anywhere
             // still well apart from the rest.
             func ownLand(_ hex: Hex, among others: [Hex]) -> Int {
-                hex.spiral(6).filter { tile in
+                // Only a seat within twelve can stand nearer a tile within six.
+                let close = others.filter { $0.distance(to: hex) <= 12 }
+                return hex.spiral(6).filter { tile in
                     guard let index = map.index(of: tile), map[index].terrain.isSettleable else { return false }
                     let mine = tile.distance(to: hex)
-                    return others.allSatisfy { $0.distance(to: tile) > mine }
+                    return close.allSatisfy { $0.distance(to: tile) > mine }
                 }.count
             }
             let lands = seats.indices.map { i in ownLand(seats[i], among: seats.indices.filter { $0 != i }.map { seats[$0] }) }
