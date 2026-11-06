@@ -312,9 +312,7 @@ final class WorldPartsTests: XCTestCase {
     /// What a keeper's client reads of their view: its version, and the
     /// batches of what they heard.
     private func heard(_ db: FakeSpacetime, _ keeper: SpacetimeCredentials) async throws -> (version: UInt64, batches: [HeardBatch]) {
-        let rows = try await db.query("SELECT * FROM my_view", token: keeper.token)
-        let row = try XCTUnwrap(rows.first)
-        return (UInt64(try XCTUnwrap(row[1].number)), try JSONDecoder().decode([HeardBatch].self, from: Data(try XCTUnwrap(row[3].string).utf8)))
+        try await db.heard(by: keeper.token)
     }
 
     func testWhatAKeptPublicationToldIsNotToldAgainUnderANewVersion() async throws {

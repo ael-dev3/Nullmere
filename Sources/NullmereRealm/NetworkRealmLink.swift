@@ -434,7 +434,7 @@ public final class NetworkRealmLink: RealmLink {
     private func fetchView(_ credentials: SpacetimeCredentials) async throws -> (UInt64, RealmView, [HeardBatch])? {
         for _ in 0..<3 {
             let rows = try await transport.query("SELECT * FROM my_view", token: credentials.token)
-            guard let row = rows.first, row.count == 4, let number = row[1].number, let names = row[2].string, let heard = row[3].string,
+            guard let row = rows.first, row.count == 4, let number = row[1].number, let names = row[2].string, row[3].string != nil,
                   let viewRow = ViewRow(names) else {
                 return nil
             }
@@ -479,7 +479,7 @@ public final class NetworkRealmLink: RealmLink {
             }
             viewParts = viewParts.filter { named[$0.key] != nil }
             partsThrough = max(partsThrough, UInt64(number))
-            let texts = Self.texts(of: viewParts)
+            let texts = Self.texts(of: viewParts), heard = Self.heard(in: viewParts)
             // Tens of kilobytes of world, read away from the main thread, so
             // the map doesn't falter while it is.
             let read = partsRead
@@ -494,15 +494,20 @@ public final class NetworkRealmLink: RealmLink {
     }
 
     /// A view's parts as their pages, by the names its row and its list
-    /// give them: each page its own text or the one every keeper is told,
-    /// and the list no page.
+    /// give them: each page its own text or the one every keeper is told;
+    /// the list, and what the keeper heard, no page.
     nonisolated static func texts(of parts: [String: (version: UInt64, text: String)]) -> [String: String] {
-        Dictionary(parts.lazy.filter { !ViewRow.isList($0.key) }.map { (AlikePages.page(of: $0.key), $0.value.text) }) { first, _ in first }
+        let pages = parts.lazy.filter { !ViewRow.isList($0.key) && !HeardBatch.isPart($0.key) }
+        return Dictionary(pages.map { (AlikePages.page(of: $0.key), $0.value.text) }) { first, _ in first }
     }
 
-    nonisolated static func decode(parts: [String: String], heard: String, read: PartsRead? = nil) throws -> (RealmView, [HeardBatch]) {
-        let view = try RealmView(parts: parts, read: read)
-        return (view, (try? JSONDecoder().decode([HeardBatch].self, from: Data(heard.utf8))) ?? [])
+    /// What the keeper heard lately among a view's parts, by its parts' names.
+    nonisolated static func heard(in parts: [String: (version: UInt64, text: String)]) -> [String: String] {
+        parts.filter { HeardBatch.isPart($0.key) }.mapValues(\.text)
+    }
+
+    nonisolated static func decode(parts: [String: String], heard: [String: String], read: PartsRead? = nil) throws -> (RealmView, [HeardBatch]) {
+        (try RealmView(parts: parts, read: read), HeardBatch.batches(in: heard))
     }
 
     /// The keeper's view as the realm's word brought it, its row and parts
@@ -512,7 +517,7 @@ public final class NetworkRealmLink: RealmLink {
     private func readMirrored(_ mirror: SubscriptionMirror) async throws -> Bool {
         let rows = mirror.snapshot()
         guard let row = rows["my_view"]?.first else { return true }
-        guard row.count == 4, let number = row[1].number, let names = row[2].string, let heard = row[3].string,
+        guard row.count == 4, let number = row[1].number, let names = row[2].string, row[3].string != nil,
               let viewRow = ViewRow(names) else { return false }
         let version = UInt64(number)
         guard version > viewVersion || view == nil else { return true }
@@ -532,7 +537,7 @@ public final class NetworkRealmLink: RealmLink {
         // Kept as read, should the word stop and the realm be asked again.
         viewParts = held
         partsThrough = max(partsThrough, version)
-        let texts = Self.texts(of: held)
+        let texts = Self.texts(of: held), heard = Self.heard(in: held)
         let read = partsRead
         let (fresh, batches) = try await Task.detached(priority: .userInitiated) { try Self.decode(parts: texts, heard: heard, read: read) }.value
         deliver(fresh, version: version, heard: batches)

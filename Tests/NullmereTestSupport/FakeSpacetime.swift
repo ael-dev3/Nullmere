@@ -217,12 +217,22 @@ public actor FakeSpacetime: SpacetimeTransport {
         let list = viewRow.told.flatMap { viewParts[AlikePages.keeper]?[$0]?.text }
         guard let named = viewRow.parts(told: list) else { throw SpacetimeError("The view of \(keeper) names a list that isn't kept.") }
         var parts: [String: String] = [:]
-        for name in named.keys where !ViewRow.isList(name) {
+        for name in named.keys where !ViewRow.isList(name) && !HeardBatch.isPart(name) {
             let kept = AlikePages.isAlike(name) ? viewParts[AlikePages.keeper]?[name] : viewParts[keeper]?[name]
             guard let kept else { throw SpacetimeError("The view of \(keeper) names \(name), which isn't kept.") }
             parts[AlikePages.page(of: name)] = kept.text
         }
         return try RealmView(parts: parts)
+    }
+
+    /// What a keeper's client reads of what they heard, as their Mac reads
+    /// it: their view's version, and the batches among the parts its row
+    /// names.
+    public func heard(by token: String) throws -> (version: UInt64, batches: [HeardBatch]) {
+        let me = try sender(token)
+        guard let row = views[me] else { throw SpacetimeError("No view is kept for \(me).") }
+        let named = Set(Self.named(row.view))
+        return (row.version, HeardBatch.batches(in: (viewParts[me] ?? [:]).filter { named.contains($0.key) }.mapValues(\.text)))
     }
 
     /// The parts a view's row names: "head:12,map:3,~houses.1#…:0".

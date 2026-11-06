@@ -25,10 +25,7 @@ final class StewardFairnessTests: XCTestCase {
     }
 
     private func heard(_ db: FakeSpacetime, _ keeper: SpacetimeCredentials) async throws -> (version: UInt64, batches: [HeardBatch]) {
-        let rows = try await db.query("SELECT * FROM my_view", token: keeper.token)
-        let row = try XCTUnwrap(rows.first)
-        let version = UInt64(try XCTUnwrap(row[1].number))
-        return (version, try JSONDecoder().decode([HeardBatch].self, from: Data(try XCTUnwrap(row[3].string).utf8)))
+        try await db.heard(by: keeper.token)
     }
 
     func testAKeeperStillPlayingAfterARestartCountsAgain() async throws {
@@ -160,6 +157,84 @@ final class StewardFairnessTests: XCTestCase {
         XCTAssertEqual(told.batches.count, RealmSteward.heardBatches)
         XCTAssertEqual(told.batches.last?.version, told.version, "The latest kept")
         XCTAssertEqual(told.batches.map(\.version), told.batches.map(\.version).sorted())
+    }
+
+    /// What a keeper heard with a publication goes as a part of their view
+    /// of its own, written as it first goes: the publications after it name
+    /// it while it is kept and never write it again, and once their row no
+    /// longer names it the server lets it go. Their row carries no events of
+    /// its own.
+    func testWhatAKeeperHeardIsWrittenOnce() async throws {
+        let (db, steward, ama, bel, _) = try await stewarded("written once")
+        let state = await steward.state
+        let amaHouse = try XCTUnwrap(state.keepers[0].house)
+        let gift = String(decoding: try JSONEncoder().encode(Command.gift(to: amaHouse, resource: .grain, amount: 1)), as: UTF8.self)
+        /// Ama's parts as the server keeps them: each with the version it
+        /// was written at.
+        func parts() async throws -> [String: (version: UInt64, text: String)] {
+            var kept: [String: (version: UInt64, text: String)] = [:]
+            for row in try await db.query("SELECT name, version, text FROM my_view_parts WHERE version > 0", token: ama.token) {
+                guard let name = row[0].string, let version = row[1].number, let text = row[2].string else { continue }
+                kept[name] = (UInt64(version), text)
+            }
+            return kept
+        }
+        try await db.call("order", [.string("b-gift-0"), .string(gift)], token: bel.token)
+        try await steward.step(now: 2)
+        let first = try await heard(db, ama)
+        let gifted = try XCTUnwrap(first.batches.last)
+        let name = HeardBatch.part(of: gifted.version)
+        XCTAssertTrue(gifted.events.contains { if case .gifted = $0 { return true } else { return false } })
+        let firstParts = try await parts()
+        let written = try XCTUnwrap(firstParts[name])
+        XCTAssertEqual(try JSONDecoder().decode(HeardBatch.self, from: Data(written.text.utf8)), gifted)
+        let rows = try await db.query("SELECT * FROM my_view", token: ama.token)
+        let row = try XCTUnwrap(rows.first)
+        XCTAssertEqual(row[3].string, "[]", "The row carries no events of its own")
+        XCTAssertEqual(ViewRow(try XCTUnwrap(row[2].string))?.own[name], written.version, "and names the part, as written")
+
+        // Another gift: a part of its own, the first named and not written
+        // again.
+        try await db.call("order", [.string("b-gift-1"), .string(gift)], token: bel.token)
+        try await steward.step(now: 3)
+        let second = try await heard(db, ama)
+        XCTAssertEqual(second.batches.count, 2)
+        XCTAssertEqual(second.batches.first, gifted)
+        let kept = try await parts()
+        XCTAssertEqual(kept[name]?.version, written.version, "The first batch never written again")
+        let newest = try XCTUnwrap(second.batches.last)
+        XCTAssertEqual(kept[HeardBatch.part(of: newest.version)]?.version, second.version)
+
+        // Long after, neither is named, and the server keeps neither.
+        try await db.call("here", [.string("a3")], token: ama.token)
+        try await db.call("order", [.string("b-gift-2"), .string(gift)], token: bel.token)
+        try await steward.step(now: 3 + RealmSteward.heardKept + 1)
+        let later = try await heard(db, ama)
+        XCTAssertEqual(later.batches.count, 1, "The new gift alone")
+        let left = try await parts()
+        XCTAssertNil(left[name], "Let go once no row names it")
+        XCTAssertEqual(left.keys.filter(HeardBatch.isPart), [HeardBatch.part(of: try XCTUnwrap(later.batches.first).version)])
+    }
+
+    /// A batch is read from the part named for its version and from nothing
+    /// else: a part of another version, one that doesn't read, and a part
+    /// of the view that isn't a batch are none.
+    func testABatchIsReadFromThePartNamedForIt() throws {
+        let batch = HeardBatch(version: 12, events: [.said(Word(id: 1, from: 0, watch: 3, text: "hail", alliance: nil))])
+        let text = String(decoding: try JSONEncoder().encode(batch), as: UTF8.self)
+        let older = HeardBatch(version: 9, events: [])
+        let parts = [
+            HeardBatch.part(of: 12): text,
+            HeardBatch.part(of: 13): text,
+            HeardBatch.part(of: 9): String(decoding: try JSONEncoder().encode(older), as: UTF8.self),
+            HeardBatch.part(of: 14): "not a batch",
+            "head": text,
+        ]
+        XCTAssertEqual(HeardBatch.batches(in: parts), [older, batch], "In the order they came")
+        XCTAssertEqual(HeardBatch.part(of: 12), "heard.12")
+        XCTAssertTrue(HeardBatch.isPart("heard.12"))
+        XCTAssertFalse(HeardBatch.isPart("head"))
+        XCTAssertEqual(HeardBatch.batches(in: [:]), [])
     }
 
     func testAKeeperAwayIsNotShownTheirView() async throws {

@@ -119,9 +119,10 @@ pub struct Stamp {
     pub at_micros: i64,
 }
 
-/// One keeper's view of the realm, and what they heard lately: the events
-/// of the last few publications, each with its version, so a client that
-/// missed one still hears it, and only once.
+/// One keeper's view of the realm: the row naming its parts (what they
+/// heard lately among them, each publication's worth a part of its own,
+/// with its version, so a client that missed one still hears it, and only
+/// once). `events` is what a steward before those parts sent with the row.
 #[table(accessor = keeper_view)]
 pub struct KeeperView {
     #[primary_key]

@@ -108,7 +108,13 @@ steward's answer). For development a realm can also be hosted in-process
   together are taken together; with no word of them, a round every
   quarter second. It works out a keeper's view only
   when something may have changed it, and sends with it what they heard in
-  the last two minutes, the latest sixteen publications' worth at most. A
+  the last two minutes, the latest sixteen publications' worth at most:
+  each publication's worth a part of their view of its own
+  (`heard.<version>`), written as it first goes and named by their row as
+  long as it is kept, not every batch written again with every view that
+  changes (7.9 MB of a watch at ninety-six seats by its fiftieth watch,
+  where the batches as they first go come to 0.45 MB and the rows naming
+  them 0.19 MB). A
   publication larger than the server takes in one request (2 MiB) goes in
   several calls of about a megabyte, one version each: the world and every
   answer in the first, each keeper's view whole in one of them, so a full

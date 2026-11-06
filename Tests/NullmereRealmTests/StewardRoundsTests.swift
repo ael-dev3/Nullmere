@@ -182,7 +182,7 @@ final class StewardRoundsTests: XCTestCase {
         let world: [(key: String, value: String)] = [("head", String(repeating: "w", count: 300)), ("map.0", String(repeating: "m", count: 500))]
         let shown = (0..<6).map { index in
             RealmSteward.Shown(keeper: "k\(index)", parts: ["head": "h\(index)", "units.0": units], changed: [(key: "units.0", value: units)],
-                               at: ["head": 3], heard: "[]")
+                               at: ["head": 3])
         }
         let answers = [(1, "k4"), (2, "elsewhere"), (3, "k0")].map { id, keeper in
             RealmSteward.Answer(id: UInt64(id), nonce: "n\(id)", keeper: keeper, reply: .done)

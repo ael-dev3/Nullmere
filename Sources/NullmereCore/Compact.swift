@@ -78,12 +78,13 @@ public enum Speech {
     /// told alike it takes, not every page. 8: what every keeper is told
     /// alike of the realm as it stands apart from the head. 9: a company
     /// as one line. 10: what is on the road apart from where the watch's
-    /// paces stand.
-    public static let current = 10
+    /// paces stand. 11: what a keeper heard in parts of their view, each
+    /// written once.
+    public static let current = 11
     /// The oldest tongue a realm of this build still hears from a keeper's
-    /// Mac: a Mac before what is on the road went apart from the pace
-    /// would see no march.
-    public static let oldestHeard = 10
+    /// Mac: a Mac before what a keeper heard went in parts of their view
+    /// would hear nothing of what came.
+    public static let oldestHeard = 11
     /// Where a keeper gets the newest Nullmere Online.
     public static let newestBuild = "https://github.com/ael-dev3/Nullmere/releases/latest"
 }

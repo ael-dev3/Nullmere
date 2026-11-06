@@ -44,7 +44,10 @@ public struct RealmReply: Codable, Equatable, Sendable {
 /// What a keeper heard with one publication. A keeper's view carries the
 /// last few, so a client that missed a publication (its own order on the
 /// way, a slow poll) still hears what it brought, and each once: those up
-/// to the version it last read are passed over.
+/// to the version it last read are passed over. Each goes as a part of
+/// their view of its own, named for its version ("heard.<version>") and
+/// written once, as the view's other parts are: their row names the last
+/// few, and those it no longer names are let go.
 public struct HeardBatch: Codable, Equatable, Sendable {
     public let version: UInt64
     public let events: [GameEvent]
@@ -52,6 +55,24 @@ public struct HeardBatch: Codable, Equatable, Sendable {
     public init(version: UInt64, events: [GameEvent]) {
         self.version = version
         self.events = events
+    }
+
+    /// The part of a keeper's view the batch of this version goes in.
+    public static func part(of version: UInt64) -> String { "heard.\(version)" }
+
+    /// Whether a part a view's row names is a batch of what its keeper heard.
+    public static func isPart(_ name: String) -> Bool { name.hasPrefix("heard.") }
+
+    /// The batches among a view's parts, by the names its row gives them,
+    /// in the order they came: each the part named for its version, and a
+    /// part that isn't (unreadable, or of another version) none.
+    public static func batches(in parts: [String: String]) -> [HeardBatch] {
+        let decoder = JSONDecoder()
+        return parts.compactMap { name, text -> HeardBatch? in
+            guard isPart(name), let batch = try? decoder.decode(HeardBatch.self, from: Data(text.utf8)), part(of: batch.version) == name
+            else { return nil }
+            return batch
+        }.sorted { $0.version < $1.version }
     }
 }
 
@@ -607,12 +628,23 @@ public actor RealmSteward {
             // told alike, kept while a view names it.
             if let list { viewParts[list.name] = list.text }
             let was = published[keeper.id] ?? [:]
-            let changed = viewParts.filter { !AlikePages.isAlike($0.key) && was[$0.key] != $0.value }.sorted { $0.key < $1.key }
             let others = acts.filter { $0.by != keeper.id }.flatMap(\.events)
             let events = keeper.house.map { state.world.events(others + told, heardBy: $0) } ?? []
-            guard !changed.isEmpty || Set(was.keys) != Set(viewParts.keys) || !events.isEmpty else { continue }
             if !events.isEmpty { batches.append((now, HeardBatch(version: version + 1, events: events))) }
             batches = Array(batches.suffix(RealmSteward.heardBatches))
+            // What they heard lately, each publication's worth a part of
+            // their view of its own, written as it first goes and named as
+            // long as it is kept: never written again with every view that
+            // changes (sixteen publications' worth for each keeper, 7.9 MB of
+            // a watch at ninety-six seats by its fiftieth). A batch is the
+            // same text from the publication that first sent it on: one not
+            // kept is never among those published.
+            for (_, batch) in batches {
+                let name = HeardBatch.part(of: batch.version)
+                viewParts[name] = try was[name] ?? String(decoding: encoder.encode(batch), as: UTF8.self)
+            }
+            let changed = viewParts.filter { !AlikePages.isAlike($0.key) && was[$0.key] != $0.value }.sorted { $0.key < $1.key }
+            guard !changed.isEmpty || Set(was.keys) != Set(viewParts.keys) else { continue }
             lately[keeper.id] = batches
             var at = (publishedAt[keeper.id] ?? [:]).filter { viewParts[$0.key] != nil }
             for name in viewParts.keys where AlikePages.isAlike(name) {
@@ -620,7 +652,6 @@ public actor RealmSteward {
                 alikeNamed[name] = viewParts[name]
             }
             shown.append(Shown(keeper: keeper.id, parts: viewParts, changed: changed, at: at,
-                               heard: String(decoding: try encoder.encode(batches.map(\.batch)), as: UTF8.self),
                                told: list?.name, without: list == nil ? [] : Set(worked.alike.keys).subtracting(pages.keys)))
         }
         // And once it is: the views shown name these, the rest as they did.
@@ -686,14 +717,14 @@ public actor RealmSteward {
         let reply: RealmReply
     }
 
-    /// A keeper's view to be shown: all its parts, those that changed, the
-    /// version each of the rest was written at, and what they heard lately.
+    /// A keeper's view to be shown: all its parts (what they heard lately
+    /// among them), those that changed, and the version each of the rest
+    /// was written at.
     struct Shown {
         let keeper: String
         let parts: [String: String]
         let changed: [(key: String, value: String)]
         let at: [String: UInt64]
-        let heard: String
         /// The list of pages told alike its row names, and the pages of
         /// that list the view hasn't; no list, and the row names every part.
         var told: String?
@@ -789,7 +820,7 @@ public actor RealmSteward {
         for view in shown {
             var at = view.at
             for (name, _) in view.changed { at[name] = 0 }
-            let size = view.changed.reduce(0) { $0 + $1.key.utf8.count + $1.value.utf8.count } + view.heard.utf8.count + view.row(at).utf8.count
+            let size = view.changed.reduce(0) { $0 + $1.key.utf8.count + $1.value.utf8.count } + view.row(at).utf8.count
             room(for: size)
             let last = calls.count - 1
             for (name, text) in view.changed {
@@ -800,7 +831,9 @@ public actor RealmSteward {
             }
             calls[last].keepers.append(view.keeper)
             calls[last].views.append(view.row(at))
-            calls[last].heard.append(view.heard)
+            // What they heard goes in its parts; the row's own events are
+            // none.
+            calls[last].heard.append("[]")
             calls[last].shown[view.keeper] = view.parts
             calls[last].shownAt[view.keeper] = at
             calls[last].size += size
