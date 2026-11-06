@@ -58,7 +58,7 @@ the keeper's realm last lay on, made as it plays.
   has never seen lies under mist; what they saw once and see no longer,
   greyed as memory.
 
-### Every model, made in Blender or built from code
+### Every model, made in Blender
 
 Every model is original. Every company (the spearman, the archer, the
 lantern-bearer, the rider on his horse, the Mangonel with its crewman and
@@ -75,8 +75,10 @@ waystones), the land's furniture (its firs, birches and elder trees, crags,
 boulders, reeds, grass, heather, ferns, barrows, standing stones, ruins,
 driftwood, furrows, pebbles and stepping stones), the tokens set over the
 land (a talent's sigil, an ally's help light, a border stone, a crest's
-board and charges, a barge of the Still, a commander's star) and the
-scaffold round a rising work are made in Blender, each by a script
+board and charges, a barge of the Still, a commander's star), the
+scaffold round a rising work and the land's marks (an alliance's
+standard, a rally's war camp, a host's banner, the Drowned Crown, a
+listening stone, the pedlar's skiff) are made in Blender, each by a script
 ([`Art/blender/spearman.py`](../Art/blender/spearman.py),
 [`archer.py`](../Art/blender/archer.py), [`lantern.py`](../Art/blender/lantern.py),
 [`rider.py`](../Art/blender/rider.py), [`commanders.py`](../Art/blender/commanders.py),
@@ -94,7 +96,8 @@ scaffold round a rising work are made in Blender, each by a script
 [`shrines.py`](../Art/blender/shrines.py), [`sites.py`](../Art/blender/sites.py),
 [`lairs.py`](../Art/blender/lairs.py), [`stores.py`](../Art/blender/stores.py),
 [`raising.py`](../Art/blender/raising.py), [`props.py`](../Art/blender/props.py),
-[`furnishings.py`](../Art/blender/furnishings.py), [`tokens.py`](../Art/blender/tokens.py))
+[`furnishings.py`](../Art/blender/furnishings.py), [`tokens.py`](../Art/blender/tokens.py),
+[`marks.py`](../Art/blender/marks.py))
 that builds the body, gear and
 skeleton and keys the actions, on one body every person shares
 ([`person.py`](../Art/blender/person.py)): the skin is weighted to the
@@ -115,11 +118,11 @@ file is glTF binary, written in one fixed order so the same script always
 makes the same bytes, and the game carries it and reads it with an
 importer of its own ([`Asset.swift`](../Sources/NullmereModels/Asset.swift)):
 each vertex moves with its two heaviest bones, by its weight between them,
-and each action plays bone by bone. Every other model is still built from
-code ([`Sources/NullmereModels`](../Sources/NullmereModels)), and moves to
-Blender the same way: an alliance's standard, a rally's war camp, a
-host's banner, the Drowned Crown, the listening stone and the pedlar's
-skiff.
+and each action plays bone by bone. No model is built from code any
+more, and none moves by keys written in code: what the world still reads
+of them in Swift ([`Sources/NullmereModels`](../Sources/NullmereModels))
+is where they stand and are lit (a chimney's smoke, a footing's height,
+where a rally's fire burns), never their shapes.
 Companies stand in formation, fewer as they are worn down and more as they
 are drilled; holds lay out their works on the land around the keep. Near,
 the models show fine work that is left off from afar, where it is too small

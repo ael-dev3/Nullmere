@@ -256,6 +256,30 @@ enum Art {
         return model(tokensFile, tier: 1, variant: variant, name: name, order: [], scale: buildingScale, colours: colours)
     }
 
+    /// The land's marks, made in Blender (Art/blender/marks.py), each a
+    /// variant of one file by its name: an alliance's standard on its
+    /// plinth, a rally's war camp, a host's banner, the Drowned Crown, a
+    /// listening stone and the pedlar's skiff; their fires leaping, the
+    /// camp's drum beaten, the crown's halo and the stone's rings turning,
+    /// the crown's drips swinging and the pedlar rocking, each a bone of its
+    /// skeleton, the host's banner still.
+    static func mark(_ variant: String, name: String) -> Model {
+        let weed = Vec3(0.13, 0.24, 0.17), crimson = Vec3(0.45, 0.16, 0.18)
+        let colours = buildingColours.merging([
+            "crystal_moonglow": Palette.moonGlow, "plain_moonsalt": Palette.moonsalt,
+            "plain_guyrope": Palette.linen.mix(Palette.leather, 0.5), "plain_cowhorn": Palette.linen.mix(Palette.leather, 0.3),
+            "plain_crowngold": Palette.gold.mix(Palette.bronze, 0.35), "plain_verdigris": Palette.bronze.mix(Vec3(0.24, 0.45, 0.38), 0.6),
+            "foliage_lakeweed": weed, "foliage_mossweed": weed.mix(Palette.moss, 0.4),
+            "plain_pearl": Palette.stoneWhite.mix(Palette.moonGlow, 0.2), "plain_velvet": Palette.madder.mix(Palette.barkBlack, 0.55),
+            "crystal_drip": Palette.slate.mix(Palette.moonGlow, 0.4), "glow_ripple": Palette.moonGlow.mix(Palette.slate, 0.5),
+            "plain_tar": Palette.timberDark.mix(Vec3(0.05, 0.05, 0.06), 0.6), "plain_awning": Palette.linen.mix(Palette.leather, 0.45),
+            "plain_awningpatch": Palette.linen.mix(crimson, 0.35), "plain_timber_crate": Palette.timber.mix(Palette.timberDark, 0.4),
+            "plain_crimson": crimson, "plain_bluecloth": Palette.moonGlow.mix(Palette.slate, 0.6),
+            "glow_lantern": Palette.fire.mix(Palette.gold, 0.3), "plain_cloak": Vec3(0.12, 0.11, 0.14), "plain_hood": Vec3(0.1, 0.09, 0.12),
+        ]) { _, own in own }
+        return model(marksFile, tier: 1, variant: variant, name: name, order: [], scale: buildingScale, colours: colours)
+    }
+
     /// A lair of the wilds or a gatehold of the Crown, made in Blender
     /// (Art/blender/lairs.py), each a variant of one file by its kind's
     /// name or "gatehold": still, its fires and wild lights glowing.

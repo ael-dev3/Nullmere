@@ -1,45 +1,6 @@
 import Foundation
 import NullmereCore
 
-/// What turns, swings and flickers on a work, the same in every clip: a
-/// wheel turns once a period, a crane slews and comes back, a fire leaps.
-struct Machinery: Sendable {
-    struct Wheel: Sendable {
-        var part: UInt16
-        var axis: Vec3
-        var turns: Float
-    }
-
-    struct Swing: Sendable {
-        var part: UInt16
-        var axis: Vec3
-        var angle: Float
-    }
-
-    var wheels: [Wheel] = []
-    var swings: [Swing] = []
-    var flames: [UInt16] = []
-    var parts: Int
-
-    func joints(_ clip: Clip, _ time: Float) -> [Joint] {
-        var p = Pose(count: parts)
-        let u = clip.progress(at: time)
-        for wheel in wheels {
-            let angle = 2 * Float.pi * wheel.turns * u
-            p.turn(wheel.part, x: wheel.axis.x * angle, y: wheel.axis.y * angle, z: wheel.axis.z * angle)
-        }
-        for swing in swings {
-            let angle = swing.angle * Motion.key(u, [(0, 0), (0.3, 1), (0.5, 1), (0.8, -0.4), (1, 0)])
-            p.turn(swing.part, x: swing.axis.x * angle, y: swing.axis.y * angle, z: swing.axis.z * angle)
-        }
-        for flame in flames {
-            let leap = 0.6 * Motion.wave(u, cycles: 5) + 0.4 * Motion.wave(u, cycles: 7, phase: 0.3)
-            p.stretch(flame, Vec3(1 + 0.08 * leap, 1 + 0.22 * leap, 1 + 0.08 * leap))
-        }
-        return p.joints
-    }
-}
-
 /// Every work at every level, standing on y = 0 and facing +z toward the
 /// keep, each level grander than the last. Each fits within
 /// `HoldLayout.workRadius` of its foot.

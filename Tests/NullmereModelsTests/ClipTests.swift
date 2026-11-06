@@ -41,23 +41,6 @@ final class ClipTests: XCTestCase {
         XCTAssertEqual(Clip.death.progress(at: -2), 0)
     }
 
-    func testKeyframesEaseAndHold() {
-        XCTAssertEqual(Motion.key(0.5, []), 0)
-        let frames: [(Float, Float)] = [(0.2, 1), (0.6, 3)]
-        XCTAssertEqual(Motion.key(0, frames), 1, "held before the first")
-        XCTAssertEqual(Motion.key(1, frames), 3, "held after the last")
-        XCTAssertEqual(Motion.key(0.4, frames), 2, accuracy: 1e-5, "eased through the middle")
-        XCTAssertEqual(Motion.smooth(-1), 0)
-        XCTAssertEqual(Motion.smooth(2), 1)
-        XCTAssertEqual(Motion.wave(0.25), 1, accuracy: 1e-5)
-        XCTAssertEqual(Motion.cosine(0.5), -1, accuracy: 1e-5)
-        var pose = Pose(count: 2)
-        pose.hide(1)
-        XCTAssertEqual(pose.joints[1].scale, Vec3(repeating: Motion.hidden))
-        pose.stretch(1, 2)
-        XCTAssertEqual(pose.joints[1].scale.x, Motion.hidden * 2, accuracy: 1e-7)
-    }
-
     func testEveryPoseIsSound() {
         for key in Library.catalogue {
             let model = Library.model(key)

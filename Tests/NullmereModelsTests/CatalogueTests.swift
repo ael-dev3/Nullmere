@@ -431,7 +431,7 @@ final class CatalogueTests: XCTestCase {
                  .yard(.grain), .town:
                 XCTAssertNil(model.motion, "\(key) stands still")
             case .standard, .rallyCamp, .drownedCrown, .listeningStone, .pedlarSkiff:
-                XCTAssertNotNil(model.motion, "\(key): its fires burn, its ripples spread")
+                XCTAssertNotNil(model.skeleton?.actions[.idle], "\(key): its fires burn, its rings turn, by its skeleton")
             case .prop:
                 XCTAssertNotNil(model.skeleton?.actions[.idle], "\(key) moves by its skeleton")
             case .raising:

@@ -272,7 +272,9 @@ the lairs with the gatehold (`lairs.py`), an alliance's storehouse with its
 yards (`stores.py`), the rigs a rising work is raised beside (`raising.py`),
 the props (`props.py`), the land's furniture (`furnishings.py`), its
 foliage swaying by its height above the ground, and the tokens set over
-the land with the scaffold round a rising work (`tokens.py`), each kind a
+the land with the scaffold round a rising work (`tokens.py`), and the
+land's marks (`marks.py`: a standard, a war camp, a host's banner, the
+Drowned Crown, a listening stone, the pedlar's skiff), each kind a
 variant by the name the game gives it, a talent's sigil and a crest's
 charge by their numbers (`talentSigil0`, `crestCharge7`): a piece's tag
 names its variants in letters and then any digits. What the world places

@@ -197,7 +197,8 @@ final class AssetTests: XCTestCase {
                                  (Art.shrinesFile, "shrines.glb"), (Art.storesFile, "stores.glb"),
                                  (Art.sitesFile, "sites.glb"), (Art.lairsFile, "lairs.glb"),
                                  (Art.raisingFile, "raising.glb"), (Art.propsFile, "props.glb"),
-                                 (Art.furnishingsFile, "furnishings.glb"), (Art.tokensFile, "tokens.glb")] {
+                                 (Art.furnishingsFile, "furnishings.glb"), (Art.tokensFile, "tokens.glb"),
+                                 (Art.marksFile, "marks.glb")] {
             XCTAssertEqual(try Asset.bytes(base64: embedded), try Data(contentsOf: models.appendingPathComponent(file)), file)
         }
         XCTAssertEqual(try Asset.bytes(base64: Fixtures.arm), try Data(contentsOf: models.appendingPathComponent("fixture-arm.glb")))
