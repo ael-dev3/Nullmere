@@ -198,7 +198,7 @@ final class CatalogueTests: XCTestCase {
             let plain = ModelKey.figure(heritage.signature, tier: 5)
             let own = Library.model(key), base = Library.model(plain)
             XCTAssertEqual(own.rig.count, base.rig.count, "\(heritage) moves as its kind does")
-            XCTAssertTrue(own.motion != nil || own.skeleton != nil, "\(heritage) moves")
+            XCTAssertNotNil(own.skeleton?.actions[.idle], "\(heritage) moves by its skeleton")
             let colours = own.mesh.vertices.map(\.color)
             XCTAssertNotEqual(colours, base.mesh.vertices.map(\.color), "\(heritage) in its own gear")
             XCTAssertFalse(looks.contains(colours), "\(heritage) like no other")
@@ -425,11 +425,11 @@ final class CatalogueTests: XCTestCase {
             let model = Library.model(key)
             switch key {
             case .figure, .signature, .wild, .commander, .folk:
-                XCTAssertTrue(model.motion != nil || model.skeleton != nil, "\(key) moves, by code or by its skeleton")
+                XCTAssertNotNil(model.skeleton?.actions[.idle], "\(key) moves by its skeleton")
                 XCTAssertGreaterThanOrEqual(model.rig.count, 17, "\(key) has a body's parts")
             case .furnishing, .scaffold, .site, .keep, .keepOf, .walls, .prop(.arrow), .prop(.stone), .prop(.materials), .prop(.waystone), .prop(.waystoneLit), .lair, .gatehold, .hostBanner, .talentSigil, .helpLight, .borderStone, .commanderStar, .crestBoard, .crestCharge, .barge, .allianceHall, .lyceumHall, .lyceumOrrery,
                  .yard(.grain), .town:
-                XCTAssertNil(model.motion, "\(key) stands still")
+                XCTAssertEqual(model.rig.count, 1, "\(key) stands still: no bone of its own to move")
             case .standard, .rallyCamp, .drownedCrown, .listeningStone, .pedlarSkiff:
                 XCTAssertNotNil(model.skeleton?.actions[.idle], "\(key): its fires burn, its rings turn, by its skeleton")
             case .prop:
@@ -445,7 +445,7 @@ final class CatalogueTests: XCTestCase {
                               .work(.forge, level: 5), .storehouse, .yard(.timber), .yard(.stone), .yard(.moonsalt)]
             + ShrineKind.allCases.map({ .shrine($0) }) {
             let model = Library.model(key)
-            XCTAssertTrue(model.motion != nil || model.skeleton?.actions[.idle] != nil, "\(key) has an idle motion, by code or by its skeleton")
+            XCTAssertNotNil(model.skeleton?.actions[.idle], "\(key) has an idle motion, by its skeleton")
         }
         // A rider is one model: horse and rider, the rider's parts on the horse's back.
         let rider = Library.model(.figure(.rider, tier: 3)).rig

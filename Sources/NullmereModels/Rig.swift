@@ -27,36 +27,6 @@ public struct Rig: Equatable, Sendable {
     public func index(of name: String) -> Int? {
         bones.firstIndex { $0.name == name }
     }
-
-    /// Each part's transform in the model's frame, given how each stands;
-    /// parts without a joint given stand at rest.
-    public func pose(_ joints: [Joint]) -> [Mat4] {
-        var transforms: [Mat4] = []
-        transforms.reserveCapacity(bones.count)
-        for (index, bone) in bones.enumerated() {
-            let joint = index < joints.count ? joints[index] : .rest
-            let local = Mat4.translation(bone.pivot + joint.offset) * Mat4.rotation(joint.rotation)
-                * Mat4.scale(joint.scale) * Mat4.translation(-bone.pivot)
-            transforms.append(bone.parent.map { transforms[$0] * local } ?? local)
-        }
-        return transforms
-    }
-}
-
-/// How one part stands at a moment: turned about its pivot (radians about
-/// x, then y, then z), shifted, and scaled about the pivot.
-public struct Joint: Equatable, Sendable {
-    public var rotation: Vec3
-    public var offset: Vec3
-    public var scale: Vec3
-
-    public init(rotation: Vec3 = .zero, offset: Vec3 = .zero, scale: Vec3 = Vec3(1, 1, 1)) {
-        self.rotation = rotation
-        self.offset = offset
-        self.scale = scale
-    }
-
-    public static let rest = Joint()
 }
 
 /// What a model is doing, for its parts to show.
@@ -77,23 +47,21 @@ public enum Clip: String, CaseIterable, Sendable {
     case gather
 }
 
-/// A model and how it moves.
+/// A model and how it moves: made in Blender, by its skeleton's actions;
+/// one that never moves (a mesh made for a preview) stands as it is.
 public struct Model: Sendable {
     public let name: String
     public let mesh: Mesh
     public let rig: Rig
-    /// The joints at a moment of a clip, in seconds; a model that never
-    /// moves has none.
-    public let motion: (@Sendable (Clip, Float) -> [Joint])?
     /// For a model made in Blender: the skeleton its skin is weighted to,
-    /// and its actions, which move it in place of `motion`.
+    /// and its actions, which move it.
     public let skeleton: Skeleton?
 
-    public init(name: String, mesh: Mesh, rig: Rig = Rig(), motion: (@Sendable (Clip, Float) -> [Joint])? = nil) {
+    /// A model that never moves.
+    public init(name: String, mesh: Mesh) {
         self.name = name
         self.mesh = mesh
-        self.rig = rig
-        self.motion = motion
+        rig = Rig()
         skeleton = nil
     }
 
@@ -102,13 +70,12 @@ public struct Model: Sendable {
         self.name = name
         self.mesh = mesh
         self.rig = rig
-        motion = nil
         self.skeleton = skeleton
     }
 
-    /// Each part's transform at a moment of a clip.
+    /// Each part's transform at a moment of a clip: a model that never
+    /// moves stands at rest.
     public func pose(_ clip: Clip, at time: Float) -> [Mat4] {
-        if let skeleton { return skeleton.pose(clip, at: time) }
-        return rig.pose(motion?(clip, time) ?? [])
+        skeleton?.pose(clip, at: time) ?? [Mat4](repeating: .identity, count: rig.count)
     }
 }

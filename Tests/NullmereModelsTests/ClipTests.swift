@@ -60,7 +60,7 @@ final class ClipTests: XCTestCase {
     func testLoopingClipsComeRound() {
         for key in Library.catalogue {
             let model = Library.model(key)
-            guard model.motion != nil || model.skeleton != nil else { continue }
+            guard model.skeleton != nil else { continue }
             for clip in Clip.allCases where clip.loops {
                 for time in [Float(0), 0.31, 0.77, 1.3] {
                     let a = model.pose(clip, at: time), b = model.pose(clip, at: time + clip.period)
@@ -83,7 +83,7 @@ final class ClipTests: XCTestCase {
     func testEveryCompanyReelsWhenStruckAndRecovers() {
         for key in Library.catalogue where CatalogueTests.isCompany(key) {
             let model = Library.model(key)
-            guard model.motion != nil || model.skeleton != nil else { continue }
+            guard model.skeleton != nil else { continue }
             let guardPose = model.pose(.hit, at: 0), worst = model.pose(.hit, at: 0.14 * Clip.hit.period)
             XCTAssertGreaterThan(ClipTests.difference(guardPose, worst), 0.02, "\(key) reels when struck")
             XCTAssertLessThan(ClipTests.difference(guardPose, model.pose(.hit, at: 0.9 * Clip.hit.period)), 1e-3,

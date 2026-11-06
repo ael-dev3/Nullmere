@@ -251,30 +251,27 @@ final class MeshTests: XCTestCase {
 }
 
 final class RigTests: XCTestCase {
-    func testAPartTurnsAboutItsPivotAndCarriesItsChildren() {
+    /// A rig's parts each hang from one before them, the root's unless
+    /// told, each turning about its own pivot, found by its name.
+    func testAPartHangsFromTheOneBeforeIt() {
         var rig = Rig()
         let arm = rig.add("arm", pivot: Vec3(0, 1, 0))
         let hand = rig.add("hand", parent: Int(arm), pivot: Vec3(1, 1, 0))
+        XCTAssertEqual(rig.count, 3, "the root and two parts")
         XCTAssertEqual(rig.index(of: "hand"), Int(hand))
-        var joints = [Joint](repeating: .rest, count: rig.count)
-        joints[Int(arm)] = Joint(rotation: Vec3(0, 0, .pi / 2))
-        let pose = rig.pose(joints)
-        let pivot = pose[Int(arm)].transformPoint(Vec3(0, 1, 0))
-        XCTAssertLessThan((pivot - Vec3(0, 1, 0)).length, 1e-5, "the shoulder stays put")
-        let fingertip = pose[Int(hand)].transformPoint(Vec3(1, 1, 0))
-        XCTAssertLessThan((fingertip - Vec3(0, 2, 0)).length, 1e-5, "the hand swings up with the arm")
-        XCTAssertEqual(rig.pose([]), [Mat4](repeating: .identity, count: 3), "with no joints, all stands at rest")
+        XCTAssertNil(rig.index(of: "wing"))
+        XCTAssertEqual(rig.bones[Int(arm)].parent, 0, "the root's unless told")
+        XCTAssertEqual(rig.bones[Int(hand)].parent, Int(arm))
+        XCTAssertEqual(rig.bones[Int(hand)].pivot, Vec3(1, 1, 0))
     }
 
-    func testAModelPosesItsClips() {
-        var rig = Rig()
-        rig.add("blade", pivot: .zero)
-        let model = Model(name: "blade", mesh: Mesh(), rig: rig) { clip, time in
-            [.rest, Joint(offset: Vec3(0, clip == .march ? time : 0, 0))]
-        }
-        XCTAssertEqual(model.pose(.march, at: 2)[1].transformPoint(.zero), Vec3(0, 2, 0))
-        XCTAssertEqual(model.pose(.idle, at: 2)[1].transformPoint(.zero), .zero)
-        XCTAssertEqual(Model(name: "stone", mesh: Mesh()).pose(.idle, at: 1), [.identity])
+    /// A model that never moves, a mesh made for a preview, stands at rest
+    /// whatever it is asked.
+    func testAModelThatNeverMovesStandsAtRest() {
+        let stone = Model(name: "stone", mesh: Mesh())
+        XCTAssertNil(stone.skeleton)
+        XCTAssertEqual(stone.pose(.idle, at: 1), [.identity])
+        XCTAssertEqual(stone.pose(.march, at: 7), [.identity])
     }
 }
 

@@ -538,6 +538,73 @@ final class StageTests: XCTestCase {
         XCTAssertEqual(stage.drownedCrown(at: hex, borne: false, time: 0).first?.key, .drownedCrown)
     }
 
+    /// A House's listening stones stand on the water where they were sunk,
+    /// seen by every House, each turned its own way; one that heard a march
+    /// last watch turns its ripples faster.
+    func testListeningStonesStandOnTheWaterWhereTheyWereSunk() throws {
+        let stage = stage()
+        let water = Array(Self.state.map.hexes.filter { Self.state.map[$0]?.terrain.isWater == true }.prefix(2))
+        XCTAssertEqual(water.count, 2)
+        let batches = stage.listeningStones([(at: water[0], heard: false), (at: water[1], heard: true)])
+        XCTAssertEqual(batches.map(\.key), [.listeningStone])
+        let stones = batches.flatMap(\.instances)
+        XCTAssertEqual(stones.count, 2)
+        for (stone, hex) in zip(stones, water) {
+            let centre = Relief.centre(of: hex)
+            XCTAssertEqual(stone.model.c3.x, centre.x, accuracy: 1e-4)
+            XCTAssertEqual(stone.model.c3.z, centre.z, accuracy: 1e-4)
+            XCTAssertEqual(stone.model.c3.y, stage.ground(atX: centre.x, z: centre.z), accuracy: 1e-4, "on the water's face")
+            XCTAssertEqual(stone.hex, SIMD2(Int32(hex.q), Int32(hex.r)))
+            XCTAssertEqual(stone.flags & ModelInstance.alwaysShown, ModelInstance.alwaysShown, "seen by every House")
+        }
+        XCTAssertNotEqual(stones[0].model.c0, stones[1].model.c0, "each turned its own way")
+        XCTAssertGreaterThan(stones[1].params.z, stones[0].params.z, "the one that heard turns its ripples faster")
+    }
+
+    /// The pedlar's skiff lies on the water off a hold, its prow toward the
+    /// shore, rocking a little as time goes.
+    func testThePedlarsSkiffLiesOffTheShoreItsProwToTheLand() throws {
+        let stage = stage()
+        let water = try XCTUnwrap(Self.state.map.hexes.first { hex in
+            Self.state.map[hex]?.terrain.isWater == true && hex.neighbors.contains { Self.state.map[$0]?.terrain.isWater == false }
+        })
+        let shore = try XCTUnwrap(water.neighbors.first { Self.state.map[$0]?.terrain.isWater == false })
+        let batches = stage.pedlarSkiff(at: water, toward: shore, time: 1.3)
+        XCTAssertEqual(batches.map(\.key), [.pedlarSkiff])
+        let skiff = try XCTUnwrap(batches.first?.instances.first)
+        let centre = Relief.centre(of: water), land = Relief.centre(of: shore)
+        XCTAssertEqual(skiff.model.c3.x, centre.x, accuracy: 1e-4)
+        XCTAssertEqual(skiff.model.c3.z, centre.z, accuracy: 1e-4)
+        XCTAssertEqual(skiff.model.c3.y, stage.ground(atX: centre.x, z: centre.z), accuracy: 0.006, "on the water, rocking a little")
+        let prow = skiff.model.transformDirection(Vec3(0, 0, 1))
+        let toward = Vec3(land.x - centre.x, 0, land.z - centre.z).normalized
+        XCTAssertGreaterThan(Vec3(prow.x, 0, prow.z).normalized.dot(toward), 0.999, "its prow toward the shore")
+        let later = try XCTUnwrap(stage.pedlarSkiff(at: water, toward: shore, time: 2.9).first?.instances.first)
+        XCTAssertNotEqual(later.model, skiff.model, "rocking as time goes")
+        XCTAssertEqual(skiff.flags & ModelInstance.alwaysShown, ModelInstance.alwaysShown)
+    }
+
+    /// A work being raised raises its dust where it is drawn, carried out
+    /// from the hold's middle as its works are, and only while it rises.
+    func testDustRisesWhereTheRisingWorkIsDrawn() throws {
+        let stage = stage()
+        var hold = try XCTUnwrap(Self.state.holds.first { $0.isSeat })
+        XCTAssertEqual(stage.risingWorks([HoldSight(hold: hold, colour: Vec4(1, 1, 1, 1))]), [], "nothing being raised")
+        hold.project = try JSONDecoder().decode(Hold.Project.self, from: Data(#"{"kind":"sawpit","targetLevel":1,"watchesLeft":2}"#.utf8))
+        let sight = HoldSight(hold: hold, colour: Vec4(1, 1, 1, 1), progress: 0.25)
+        let dust = stage.risingWorks([sight])
+        XCTAssertEqual(dust.count, 1, "the sawpit alone, not its scaffold")
+        var frame = SceneFrame()
+        let drawn = try XCTUnwrap(stage.holds([sight], time: 3, into: &frame).batches.first { $0.key == .work(.sawpit, level: 1) }?.instances.first)
+        XCTAssertEqual(dust[0].x, drawn.model.c3.x, accuracy: 1e-4)
+        XCTAssertEqual(dust[0].z, drawn.model.c3.z, accuracy: 1e-4)
+        let middle = Relief.centre(of: hold.position)
+        let planned = try XCTUnwrap(stage.pieces(of: hold, progress: 0.25).first { $0.key == .work(.sawpit, level: 1) }).position
+        let out = (Vec3(dust[0].x - middle.x, 0, dust[0].z - middle.z)).length
+        let plan = (Vec3(planned.x - middle.x, 0, planned.z - middle.z)).length
+        XCTAssertEqual(out, plan * HoldLayout.grandeur, accuracy: 1e-3, "as far out as the hold is drawn, not as its plan lies")
+    }
+
     /// The Lyceum's hall stands dark between sittings; while its scholars
     /// sit its orrery turns over the dome and five lights circle it.
     func testTheLyceumStandsDarkAndIsLitWhileItSits() throws {

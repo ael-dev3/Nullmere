@@ -66,7 +66,6 @@ final class AssetTests: XCTestCase {
         XCTAssertEqual(skeleton.clips, [.idle, .attack])
         XCTAssertEqual(try XCTUnwrap(skeleton.duration(of: .attack)), Clip.attack.period, accuracy: 1e-4)
         XCTAssertEqual(try XCTUnwrap(skeleton.duration(of: .idle)), Clip.idle.period, accuracy: 1e-4)
-        XCTAssertNil(model.motion, "Moved by its skeleton, not by code")
     }
 
     func testItStandsAtRestAsItWasMade() throws {

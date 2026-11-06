@@ -23,7 +23,7 @@ final class MoonspireTests: XCTestCase {
             XCTAssertEqual(model.mesh.vertices.contains { $0.material == .glow && out($0.position) > 0.28 }, stage >= 3, "stage \(stage)")
         }
         let crowned = Library.model(.work(.moonspire, level: 5))
-        XCTAssertTrue(crowned.motion != nil || crowned.skeleton?.actions[.idle] != nil, "The crowned spire's crystal turns")
+        XCTAssertNotNil(crowned.skeleton?.actions[.idle], "The crowned spire's crystal turns")
         let crown = crowned.rig.index(of: "crown"), halo = crowned.rig.index(of: "halo")
         XCTAssertNotNil(crown)
         XCTAssertNotNil(halo)

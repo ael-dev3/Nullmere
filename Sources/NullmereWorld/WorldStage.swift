@@ -510,11 +510,12 @@ public final class WorldStage: @unchecked Sendable {
         return spots
     }
 
-    /// Where each work being raised stands, for the dust of its building.
+    /// Where each work being raised stands as the hold is drawn, for the
+    /// dust of its building: carried out from the hold's middle as its
+    /// works are (`HoldLayout.grandeur`), not where its plan has it.
     public func risingWorks(_ sights: [HoldSight]) -> [Vec3] {
         sights.flatMap { sight in
-            pieces(of: sight.hold, progress: sight.progress, finishing: sight.finishing, heritage: sight.heritage)
-                .filter { $0.progress < 1 && $0.key != .scaffold }.map(\.position)
+            drawn(sight).filter { $0.progress < 1 && $0.key != .scaffold }.map(\.position)
         }
     }
 
@@ -894,23 +895,13 @@ public final class WorldStage: @unchecked Sendable {
         return Int(moment)
     }
 
-    /// A model's pose partway from one clip into another: each part's turn,
-    /// shift and size eased between the two, so no limb snaps.
+    /// A model's pose partway from one clip into another: each bone's turn,
+    /// shift and size eased between the two, so no limb snaps; a model
+    /// that never moves stands as it is.
     public static func blendedPose(_ key: ModelKey, _ clip: Clip, at time: Float, from blend: CompanyPose.Blend) -> [Mat4] {
         let model = Library.model(key)
-        if let skeleton = model.skeleton {
-            return skeleton.pose(clip, at: time, from: blend.clip, at: blend.time, weight: blend.weight)
-        }
-        guard let motion = model.motion else { return model.pose(clip, at: time) }
-        let into = motion(clip, time), out = motion(blend.clip, blend.time)
-        guard into.count == out.count else { return model.pose(clip, at: time) }
-        let w = min(max(blend.weight, 0), 1)
-        let joints = zip(into, out).map { a, b in
-            // Weighted each way, so all of one clip is that clip exactly.
-            Joint(rotation: a.rotation * (1 - w) + b.rotation * w, offset: a.offset * (1 - w) + b.offset * w,
-                  scale: a.scale * (1 - w) + b.scale * w)
-        }
-        return model.rig.pose(joints)
+        guard let skeleton = model.skeleton else { return model.pose(clip, at: time) }
+        return skeleton.pose(clip, at: time, from: blend.clip, at: blend.time, weight: blend.weight)
     }
 
     /// A model's pose at a moment, added to the frame's palette once for
