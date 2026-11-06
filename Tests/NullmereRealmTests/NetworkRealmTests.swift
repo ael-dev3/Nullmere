@@ -539,6 +539,119 @@ final class NetworkRealmTests: XCTestCase {
         XCTAssertEqual(world.world.houses[house].stock.grain, before.grain + 10, "and kept")
     }
 
+    /// A realm of two keepers whose steward publishes the world in one call
+    /// and each view in one of its own, and a round of it, Ama speaking to
+    /// the realm and Bo bartering, whose last call, Bo's view, is lost.
+    private struct PartWay {
+        let db: FakeSpacetime
+        let owner: SpacetimeCredentials
+        let steward: RealmSteward
+        let ama: SpacetimeCredentials, bo: SpacetimeCredentials
+        let amasHouse: Int, bosHouse: Int
+        let words: String
+        let grain: Int
+        /// The status's version before the round, and after its calls kept.
+        let before: UInt64, kept: UInt64
+
+        func published() async throws -> UInt64 {
+            let rows = try await db.query("SELECT version FROM status", token: owner.token)
+            return try XCTUnwrap(rows.first?.first?.number.map { UInt64($0) })
+        }
+
+        /// Whether a keeper's view as the server keeps it has the words.
+        func heard(_ keeper: SpacetimeCredentials, _ house: Int) async throws -> Bool {
+            let view = try await db.keptView(of: keeper.identity)
+            return view?.world.words(heardBy: house).contains { $0.text == words } == true
+        }
+    }
+
+    private func publicationLostPartWay() async throws -> PartWay {
+        let db = FakeSpacetime()
+        let owner = try await db.createIdentity()
+        let line = Flaky(db)
+        let steward = try await RealmSteward(transport: line, token: owner.token, name: "The Nullmere", seed: "publish part way",
+                                             seats: 4, watchLength: 600, now: 0)
+        await steward.setPublicationBudget(1)
+        let ama = try await db.createIdentity(), bo = try await db.createIdentity()
+        try await db.call("arrive", [.string("a1"), .string(ArrivalPayload(name: "Ama", compact: Compact.edition).encoded)], token: ama.token)
+        try await db.call("arrive", [.string("b1"), .string(ArrivalPayload(name: "Bo", compact: Compact.edition).encoded)], token: bo.token)
+        try await steward.step(now: 1)
+        let (publications, calls) = (await steward.publications, await steward.publicationCalls)
+        XCTAssertEqual(calls - publications, 2, "The world, then each of two views in its own call")
+        let seated = await steward.state
+        let amasHouse = try XCTUnwrap(seated.keeper(ama.identity)?.house)
+        let bosHouse = try XCTUnwrap(seated.keeper(bo.identity)?.house)
+        let grain = seated.world.houses[bosHouse].stock.grain
+
+        let words = "The reeds are whispering"
+        let say = String(decoding: try JSONEncoder().encode(Command.say(words: words, toAlliance: false)), as: UTF8.self)
+        let barter = String(decoding: try JSONEncoder().encode(Command.barter(give: .timber, take: .grain, amount: 10)), as: UTF8.self)
+        try await db.call("order", [.string("a2"), .string(say)], token: ama.token)
+        try await db.call("order", [.string("b2"), .string(barter)], token: bo.token)
+        let rows = try await db.query("SELECT version FROM status", token: owner.token)
+        let before = try XCTUnwrap(rows.first?.first?.number.map { UInt64($0) })
+        await line.failCall("publish", skipping: 2)
+        do {
+            try await steward.step(now: 2)
+            XCTFail("The last call was lost")
+        } catch {}
+        let after = try await db.query("SELECT version FROM status", token: owner.token)
+        let kept = try XCTUnwrap(after.first?.first?.number.map { UInt64($0) })
+        return PartWay(db: db, owner: owner, steward: steward, ama: ama, bo: bo, amasHouse: amasHouse, bosHouse: bosHouse,
+                       words: words, grain: grain, before: before, kept: kept)
+    }
+
+    /// A publication in several calls that fails part way: the calls the
+    /// server kept stand, the world and both answers among them, and the
+    /// next round shows the keeper whose call never reached it their view,
+    /// numbered on from the last call kept.
+    func testAPublicationFailedPartWayShowsTheRestNext() async throws {
+        let realm = try await publicationLostPartWay()
+        XCTAssertEqual(realm.kept, realm.before + 2, "The world's call and Ama's view's kept")
+        for (keeper, nonce) in [(realm.ama, "a2"), (realm.bo, "b2")] {
+            let replies = try await realm.db.query("SELECT * FROM my_replies", token: keeper.token)
+            XCTAssertTrue(replies.contains { $0.first?.string == nonce }, "\(nonce) answered with the world")
+        }
+        let amaHeard = try await realm.heard(realm.ama, realm.amasHouse)
+        let boHeard = try await realm.heard(realm.bo, realm.bosHouse)
+        XCTAssertTrue(amaHeard)
+        XCTAssertFalse(boHeard, "Bo's view never reached the server")
+
+        // The next round, nothing new asked: Bo is shown the realm as it is.
+        try await realm.steward.step(now: 3)
+        let boHeardAfter = try await realm.heard(realm.bo, realm.bosHouse)
+        XCTAssertTrue(boHeardAfter)
+        let state = await realm.steward.state
+        let bosView = try await realm.db.keptView(of: realm.bo.identity)
+        XCTAssertEqual(bosView, state.view(for: realm.bo.identity))
+        XCTAssertEqual(bosView?.world.houses[realm.bosHouse].stock.grain, realm.grain + 10)
+        let after = try await realm.published()
+        let version = await realm.steward.version
+        XCTAssertGreaterThan(after, realm.kept, "Numbered on from the last call kept")
+        XCTAssertEqual(after, version)
+        let orders = await realm.db.handled(kind: "order")
+        XCTAssertEqual(orders, 2, "Each carried out once")
+    }
+
+    /// The steward stops just after a publication failed part way: another
+    /// takes up the realm as the server kept it, the world with both orders
+    /// carried out, and carries neither out again.
+    func testAStewardStoppedBetweenCallsCarriesNothingOutTwice() async throws {
+        let realm = try await publicationLostPartWay()
+        await realm.db.advance(61)
+        let second = try await RealmSteward(transport: realm.db, token: realm.owner.token, name: "ignored", seed: "ignored", now: 3)
+        // Bo is still there, and says so.
+        try await realm.db.call("here", [.string("b3")], token: realm.bo.token)
+        try await second.step(now: 4)
+        let state = await second.state
+        XCTAssertEqual(state.world.houses[realm.bosHouse].stock.grain, realm.grain + 10, "Bo's barter carried out once")
+        XCTAssertEqual(state.world.words(heardBy: realm.bosHouse).filter { $0.text == realm.words }.count, 1, "Ama's words said once")
+        let orders = await realm.db.handled(kind: "order")
+        XCTAssertEqual(orders, 2)
+        let boHeard = try await realm.heard(realm.bo, realm.bosHouse)
+        XCTAssertTrue(boHeard, "Bo shown the realm as it was kept")
+    }
+
     func testAStewardThatStopsBeforePublishingLosesNothing() async throws {
         let db = FakeSpacetime()
         let owner = try await db.createIdentity()
@@ -714,6 +827,10 @@ actor Flaky: SpacetimeTransport {
     private var losingAnswers: Set<String> = []
     /// The next call to this reducer never reaches the server.
     func failNext(_ reducer: String) { failing.insert(reducer) }
+    /// The call to this reducer after `skipping` more never reaches the
+    /// server: one call of a publication in several.
+    func failCall(_ reducer: String, skipping: Int) { failingAfter[reducer] = skipping }
+    private var failingAfter: [String: Int] = [:]
     /// Answers asked after by their nonce wait until let through.
     func holdAnswers(_ hold: Bool) { holdingAnswers = hold }
     private var holdingAnswers = false
@@ -728,6 +845,10 @@ actor Flaky: SpacetimeTransport {
     func call(_ reducer: String, _ arguments: [ReducerArgument], token: String) async throws {
         if down { throw SpacetimeError("The network is down.") }
         if failing.remove(reducer) != nil { throw SpacetimeError("The call to \(reducer) was lost.") }
+        if let skipping = failingAfter[reducer] {
+            failingAfter[reducer] = skipping == 0 ? nil : skipping - 1
+            if skipping == 0 { throw SpacetimeError("The call to \(reducer) was lost.") }
+        }
         try await db.call(reducer, arguments, token: token)
         if losingAnswers.remove(reducer) != nil { throw SpacetimeError("The answer was lost.") }
         if losing, reducer == "order" {

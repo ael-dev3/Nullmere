@@ -36,6 +36,16 @@ public final class NetworkRealmLink: RealmLink {
     public static let watchedPoll = 5.0
     private var isPolling = false
     private var pushedWhilePolling = false
+    /// The polling under way, by its number: one that finds its number gone
+    /// stops. A task awaiting the network is never cancelled, for
+    /// FoundationNetworking can deadlock cancelling a request as it
+    /// finishes (a push cancelling a poll, 96 links in one process).
+    private var pollingNumber = 0
+    /// The poll loop's rest between reads, to be ended early by a push, and
+    /// the timer that ends it in its time (a sleep, safe to cancel).
+    private var resting: CheckedContinuation<Void, Never>?
+    private var restTimer: Task<Void, Never>?
+    private var restNumber = 0
     /// How many times the realm's pushed word brought a read, for tests.
     private(set) var pushes = 0
     private var statusVersion: UInt64 = 0
@@ -169,18 +179,51 @@ public final class NetworkRealmLink: RealmLink {
             statusVersion = 0
             return
         }
+        pollingNumber += 1
+        let number = pollingNumber
         polling = Task { [weak self] in
-            while !Task.isCancelled {
-                guard let self else { return }
+            while let self, self.pollingNumber == number {
                 await self.poll()
+                guard self.pollingNumber == number else { return }
                 // Word pushed during the read is read now.
                 if self.pushedWhilePolling {
                     self.pushedWhilePolling = false
                     continue
                 }
-                try? await Task.sleep(nanoseconds: UInt64(self.nextPoll * 1_000_000_000))
+                await self.rest(self.nextPoll)
             }
         }
+    }
+
+    /// Rests `seconds` before the next read, or until woken (`endRest`).
+    private func rest(_ seconds: Double) async {
+        restNumber += 1
+        let number = restNumber
+        await withCheckedContinuation { continuation in
+            resting = continuation
+            restTimer = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                guard !Task.isCancelled else { return }
+                self?.endRest(number)
+            }
+        }
+    }
+
+    /// Ends the poll loop's rest, if it rests (`number`, the rest's own,
+    /// when its time is up): the realm is read now.
+    private func endRest(_ number: Int? = nil) {
+        guard let continuation = resting, number == nil || number == restNumber else { return }
+        resting = nil
+        if number == nil { restTimer?.cancel() }
+        restTimer = nil
+        continuation.resume()
+    }
+
+    /// Stops the polling: a read under way finishes, and the loop with it.
+    private func stopPolling() {
+        polling = nil
+        pollingNumber += 1
+        endRest()
     }
 
     /// The realm said its status changed: it is read now, not at the next poll.
@@ -191,9 +234,7 @@ public final class NetworkRealmLink: RealmLink {
             pushedWhilePolling = true
             return
         }
-        polling?.cancel()
-        polling = nil
-        connect()
+        endRest()
     }
 
     /// Asks the realm to push word of its status, once; the transport keeps
@@ -226,9 +267,11 @@ public final class NetworkRealmLink: RealmLink {
     public func wake() {
         guard polling != nil else { return }
         failures = 0
-        polling?.cancel()
-        polling = nil
-        connect()
+        if isPolling {
+            pushedWhilePolling = true
+        } else {
+            endRest()
+        }
     }
 
     /// Reads the realm's status and the keeper's view if they have moved
@@ -468,22 +511,44 @@ public final class NetworkRealmLink: RealmLink {
     }
 
     /// Waits for the steward to publish what came of a request, and takes
-    /// the view it published.
-    private func catchUp() async throws {
+    /// the view it published. A publication goes in several calls, the
+    /// answers in the first: the answer tells the version the keeper's view
+    /// is written at (`viewAt`), waited for up to `catchUpWait` seconds, or
+    /// that it isn't written, and nothing is waited for but the view as it
+    /// stands, should this Mac never have read it (a keeper back by their
+    /// identity on another Mac). From a steward that doesn't say, any view
+    /// newer than the last read is waited for, a few seconds at most.
+    /// Asked often at first, then less.
+    private func catchUp(at answered: UInt64? = nil) async throws {
+        if answered == 0, view != nil { return }
+        let target = answered == 0 ? nil : answered
         let credentials = try await ensureCredentials()
         let seen = viewVersion
-        for _ in 0..<50 {
+        let deadline = now() + (target == nil ? Self.catchUpGuess : Self.catchUpWait)
+        var wait = 0.1
+        while true {
             // Taken meanwhile, by a poll.
-            if viewVersion > seen { return }
+            if viewVersion > seen, viewVersion >= target ?? 0 { return }
             // Its version first: the whole view only once it has moved on.
-            if let number = try await viewHead(credentials), number > seen,
-               let (version, fresh, batches) = try await fetchView(credentials), version > seen {
-                deliver(fresh, version: version, heard: batches)
-                return
+            if let number = try await viewHead(credentials), number > seen, number >= target ?? 0 {
+                if let (version, fresh, batches) = try await fetchView(credentials), version > seen {
+                    deliver(fresh, version: version, heard: batches)
+                    return
+                }
+                // Written where the answer said, and not to be read: no
+                // waiting makes it so.
+                if target != nil { return }
             }
-            try await Task.sleep(nanoseconds: 100_000_000)
+            guard now() < deadline else { return }
+            try await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+            wait = min(wait * 1.5, 1)
         }
     }
+
+    /// The longest a keeper answered waits for the view the answer names.
+    public static let catchUpWait = 20.0
+    /// The longest they wait when the answer doesn't say.
+    public static let catchUpGuess = 5.0
 
     /// The realm was begun anew and doesn't know this keeper: what was asked
     /// of it and what was read from it go, and the keeper goes back to the
@@ -531,32 +596,37 @@ public final class NetworkRealmLink: RealmLink {
     /// less each time, so a crowd turned away together doesn't ask again
     /// all at once.
     public var newcomerWait: ClosedRange<Double> = 8...14
-    /// The asking in under way: one at a time, a new one taking its place.
-    private var entering: Task<Void, Never>?
+    /// The asking in under way, by its number: one at a time, a new one
+    /// taking its place, and one that finds its number gone stops.
+    private var enteringNumber = 0
 
     /// In as the keeper the realm answers with: by a name, or by words. One
     /// turned away only because the realm took in its few new keepers just
     /// now is told so once, and asked in again as it takes in more, until
     /// it does, they ask anew or the link is closed.
     private func enter(_ reducer: String, _ argument: String) {
-        entering?.cancel()
-        entering = Task {
+        enteringNumber += 1
+        let number = enteringNumber
+        Task {
             do {
                 var reply = try await request(reducer, [.string(argument)])
                 var told = false
                 while !reply.ok, reply.refusal == RealmError.manyNewcomers.description {
+                    guard number == enteringNumber else { return }
                     if !told {
                         told = true
                         onEvent?(.refused(.manyNewcomers))
                     }
                     try await Task.sleep(nanoseconds: UInt64(Double.random(in: newcomerWait) * 1_000_000_000))
+                    guard number == enteringNumber else { return }
                     reply = try await request(reducer, [.string(argument)])
                 }
+                guard number == enteringNumber else { return }
                 guard reply.ok, reply.keeper != nil else {
                     onEvent?(.refused(.refused(reply.refusal ?? "The realm wouldn't take you in.")))
                     return
                 }
-                try await catchUp()
+                try await catchUp(at: reply.viewAt)
                 guard let view else {
                     onEvent?(.refused(.refused("The realm took you in, but hasn't shown you the world yet. Try again.")))
                     return
@@ -564,9 +634,8 @@ public final class NetworkRealmLink: RealmLink {
                 arrived = true
                 lastHere = now()
                 onEvent?(.arrived(view.keeper, view.world))
-            } catch is CancellationError {
-                // Asked anew, or the link closed: nothing more to tell.
             } catch {
+                guard number == enteringNumber else { return }
                 onEvent?(.refused(.refused(RealmTrouble.words(for: error))))
             }
         }
@@ -592,7 +661,7 @@ public final class NetworkRealmLink: RealmLink {
         let number = senderNumber
         sending = Task { [weak self] in
             var delay = self?.retryDelay ?? 1
-            while let self, let next = self.outbox.first {
+            while let self, self.senderNumber == number, let next = self.outbox.first {
                 var expired = false
                 if case .order = next.kind { expired = self.now() - next.given > Self.orderLifetime }
                 // Told as it may reach the realm, while it is still this
@@ -627,7 +696,7 @@ public final class NetworkRealmLink: RealmLink {
                             // Left, or forgotten by the realm, while it was
                             // asked after: the outbox is gone, and so is
                             // this sender's errand.
-                            guard !Task.isCancelled, self.outbox.first?.nonce == next.nonce else { break }
+                            guard self.senderNumber == number, self.outbox.first?.nonce == next.nonce else { break }
                             self.outbox.removeFirst()
                             if let world = self.view?.world {
                                 self.onEvent?(.orderRefused(.refused(Self.unanswered), world))
@@ -653,7 +722,7 @@ public final class NetworkRealmLink: RealmLink {
                     }
                     // Left while the answer came: the outbox is gone, and
                     // so is this sender's errand.
-                    guard !Task.isCancelled, self.outbox.first?.nonce == next.nonce else { break }
+                    guard self.senderNumber == number, self.outbox.first?.nonce == next.nonce else { break }
                     delay = self.retryDelay
                     self.outbox.removeFirst()
                     if self.wasUnreachable {
@@ -663,7 +732,7 @@ public final class NetworkRealmLink: RealmLink {
                     switch next.kind {
                     case .order:
                         if reply.ok {
-                            if self.outbox.isEmpty { try? await self.catchUp() }
+                            if self.outbox.isEmpty { try? await self.catchUp(at: reply.viewAt) }
                             self.onEvent?(.answered(reply.events ?? []))
                         } else if let world = self.view?.world {
                             // A refused order changed nothing: the world is as last seen.
@@ -673,7 +742,7 @@ public final class NetworkRealmLink: RealmLink {
                         if self.outbox.isEmpty { await self.poll() }
                     }
                 } catch {
-                    if Task.isCancelled { break }
+                    if self.senderNumber != number { break }
                     self.wasUnreachable = true
                     self.onEvent?(.unreachable(RealmTrouble.words(for: error)))
                     try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
@@ -693,10 +762,8 @@ public final class NetworkRealmLink: RealmLink {
     public func leave() {
         onEvent = nil
         arrived = false
-        entering?.cancel()
-        entering = nil
-        polling?.cancel()
-        polling = nil
+        enteringNumber += 1
+        stopPolling()
         stopWatching()
         let waiting = sending
         Task { [self] in
@@ -708,12 +775,12 @@ public final class NetworkRealmLink: RealmLink {
     public func close() {
         onEvent = nil
         arrived = false
-        entering?.cancel()
-        entering = nil
-        polling?.cancel()
-        polling = nil
+        enteringNumber += 1
+        stopPolling()
         stopWatching()
-        sending?.cancel()
+        // What is being sent finishes on its own and goes no further: the
+        // sender, no longer the present one, stops as its request ends.
+        senderNumber += 1
         sending = nil
         outbox.removeAll()
     }

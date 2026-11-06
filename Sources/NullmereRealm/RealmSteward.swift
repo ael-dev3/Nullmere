@@ -13,13 +13,25 @@ public struct RealmReply: Codable, Equatable, Sendable {
     /// The realm doesn't know this keeper (it was begun anew): the client
     /// goes back to the door rather than giving orders no one will carry.
     public let unknownKeeper: Bool?
+    /// The version the publication giving this answer wrote the keeper's
+    /// view at, 0 if it left their view as it was: a publication goes in
+    /// several calls, and the client waits for this one, or for none.
+    /// Nothing from a steward that doesn't say.
+    public let viewAt: UInt64?
 
-    public init(ok: Bool, keeper: Keeper?, refusal: String?, events: [GameEvent]? = nil, unknownKeeper: Bool? = nil) {
+    public init(ok: Bool, keeper: Keeper?, refusal: String?, events: [GameEvent]? = nil, unknownKeeper: Bool? = nil,
+                viewAt: UInt64? = nil) {
         self.ok = ok
         self.keeper = keeper
         self.refusal = refusal
         self.events = events
         self.unknownKeeper = unknownKeeper
+        self.viewAt = viewAt
+    }
+
+    /// The same answer, telling where the keeper's view is written.
+    func with(viewAt version: UInt64) -> RealmReply {
+        RealmReply(ok: ok, keeper: keeper, refusal: refusal, events: events, unknownKeeper: unknownKeeper, viewAt: version)
     }
 
     public static let done = RealmReply(ok: true, keeper: nil, refusal: nil)
@@ -85,7 +97,7 @@ public actor RealmSteward {
     public static let leavingGrace = 15.0
     /// Requests carried out whose answers wait for the next publication,
     /// which keeps the world and gives them in one transaction.
-    private var unanswered: [(id: UInt64, nonce: String, reply: String)] = []
+    private var unanswered: [Answer] = []
     /// The world changed since it was last published.
     private var worldChanged = false
     /// Events since the last publication, for the keepers to hear.
@@ -123,6 +135,18 @@ public actor RealmSteward {
     private var keptWorld: GameState?
     /// The last publication failed: whether SpacetimeDB kept it is unknown.
     private var unsure = false
+    /// A publication failed part way, some of its calls kept and some not:
+    /// the next works out every view there again, whatever changed, so the
+    /// keepers in the calls never kept are shown theirs and what they heard.
+    private var viewsOwed = false
+    /// Most text one call of a publication carries, in bytes.
+    private(set) var publicationBudget = RealmSteward.publicationBudget
+
+    /// A smaller budget for a publication's calls, to try many calls with
+    /// few keepers.
+    func setPublicationBudget(_ bytes: Int) {
+        publicationBudget = max(bytes, 1)
+    }
     /// What each keeper there heard lately, and when: published with their
     /// view until it is old enough to have been read.
     private var recentlyHeard: [String: [(at: Double, batch: HeardBatch)]] = [:]
@@ -133,6 +157,9 @@ public actor RealmSteward {
     public static let heardBatches = 16
     /// Views worked out and written for publication, for tests.
     private(set) var viewsWorkedOut = 0
+    /// Publications sent, and the calls they took, for tests.
+    private(set) var publications = 0
+    private(set) var publicationCalls = 0
     /// Keepers the steward keeps anything of, for tests: those there alone.
     var keepersRemembered: Int { Set(heard.keys).union(left.keys).union(published.keys).union(recentlyHeard.keys).count }
 
@@ -278,7 +305,7 @@ public actor RealmSteward {
             let (reply, didChange, turned) = handle(kind: request.kind, keeper: request.keeper, payload: request.payload, now: now)
             changed = changed || didChange
             pendingEvents += turned
-            unanswered.append((request.id, request.nonce, String(decoding: try JSONEncoder().encode(reply), as: UTF8.self)))
+            unanswered.append(Answer(id: request.id, nonce: request.nonce, keeper: request.keeper, reply: reply))
         }
 
         // The silent have left.
@@ -527,9 +554,6 @@ public actor RealmSteward {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         let status = state.status(now: now)
-        var keepers: [String] = [], views: [String] = [], heard: [String] = []
-        var partKeepers: [String] = [], partNames: [String] = [], partTexts: [String] = []
-        var shown: [String: [String: String]] = [:], shownAt: [String: [String: UInt64]] = [:]
         var lately: [String: [(at: Double, batch: HeardBatch)]] = [:]
         // Nothing changed since the last publication kept (a heartbeat, a
         // "here" answered): every view as published stands, and none is
@@ -537,7 +561,7 @@ public actor RealmSteward {
         // What waits to be heard, taken now: what an order of whoever runs
         // the realm adds while this publication waits is the next one's.
         let acts = pendingActs, told = pendingEvents
-        let unchanged = !worldChanged && told.isEmpty && acts.isEmpty
+        let unchanged = !worldChanged && told.isEmpty && acts.isEmpty && !viewsOwed
         // The way each company on the march goes, found once for every
         // keeper who sees a stretch of it.
         var ways: [Int: [Hex]]?
@@ -548,6 +572,7 @@ public actor RealmSteward {
         let showing = state.keepers.filter { $0.isOnline && !(unchanged && published[$0.id] != nil) }.map(\.id)
         if !showing.isEmpty { ways = state.world.ways() }
         let worked = try await RealmSteward.views(of: showing, in: state, ways: ways, sharing: parts)
+        var shown: [Shown] = []
         for keeper in state.keepers where keeper.isOnline {
             var batches = Array((recentlyHeard[keeper.id] ?? []).filter { now - $0.at <= RealmSteward.heardKept }
                 .suffix(RealmSteward.heardBatches))
@@ -566,49 +591,137 @@ public actor RealmSteward {
             if !events.isEmpty { batches.append((now, HeardBatch(version: version + 1, events: events))) }
             batches = Array(batches.suffix(RealmSteward.heardBatches))
             lately[keeper.id] = batches
-            var at = (publishedAt[keeper.id] ?? [:]).filter { viewParts[$0.key] != nil }
-            for (name, text) in changed {
-                at[name] = version + 1
-                partKeepers.append(keeper.id)
-                partNames.append(name)
-                partTexts.append(text)
-            }
-            shown[keeper.id] = viewParts
-            shownAt[keeper.id] = at
-            keepers.append(keeper.id)
-            views.append(RealmSteward.manifest(at))
-            heard.append(String(decoding: try encoder.encode(batches.map(\.batch)), as: UTF8.self))
+            shown.append(Shown(keeper: keeper.id, parts: viewParts, changed: changed,
+                               at: (publishedAt[keeper.id] ?? [:]).filter { viewParts[$0.key] != nil },
+                               heard: String(decoding: try encoder.encode(batches.map(\.batch)), as: UTF8.self)))
         }
-        let answers = unanswered
         // The world's parts that changed, and those no longer there.
         let changed = parts.filter { keptParts[$0.key] != $0.value }.sorted { $0.key < $1.key }
         let gone = keptParts.keys.filter { parts[$0] == nil }.sorted()
-        let attempt = Attempt(version: version + 1, at: now, status: status, shown: shown, shownAt: shownAt, parts: parts, world: state.world,
-                              heard: lately, events: told.count, acts: acts.count, answers: answers.map(\.nonce))
-        do {
-            try await transport.call("publish", [
-                .integer(version + 1),
-                .strings(changed.map(\.key)),
-                .strings(changed.map(\.value)),
-                .strings(gone),
-                .string(String(decoding: try encoder.encode(status), as: UTF8.self)),
-                .strings(keepers),
-                .strings(views),
-                .strings(heard),
-                .integers(answers.map(\.id)),
-                .strings(answers.map(\.reply)),
-                .string(holder),
-                .strings(partKeepers),
-                .strings(partNames),
-                .strings(partTexts),
-            ], token: token)
-        } catch {
-            if RealmSteward.isHeldByAnother(error) { isDisplaced = true }
-            unsure = true
-            lastAttempt = attempt
-            throw error
+        // In as many calls as keep each under what the server takes in one.
+        let calls = try RealmSteward.calls(world: changed, gone: gone, shown: shown, answers: unanswered, from: version + 1,
+                                       budget: publicationBudget)
+        let statusText = String(decoding: try encoder.encode(status), as: UTF8.self)
+        publications += 1
+        for (index, call) in calls.enumerated() {
+            let settling = Settling(version: call.version, at: now, status: status, shown: call.shown, shownAt: call.shownAt,
+                                    world: index == 0 ? (parts, state.world, lately, told.count, acts.count) : nil,
+                                    answers: call.answers.map { ($0.id, $0.nonce) })
+            do {
+                try await transport.call("publish", [
+                    .integer(call.version),
+                    .strings(call.worldNames),
+                    .strings(call.worldTexts),
+                    .strings(call.gone),
+                    .string(statusText),
+                    .strings(call.keepers),
+                    .strings(call.views),
+                    .strings(call.heard),
+                    .integers(call.answers.map(\.id)),
+                    .strings(call.replies),
+                    .string(holder),
+                    .strings(call.partKeepers),
+                    .strings(call.partNames),
+                    .strings(call.partTexts),
+                ], token: token)
+            } catch {
+                if RealmSteward.isHeldByAnother(error) { isDisplaced = true }
+                unsure = true
+                lastAttempt = settling
+                viewsOwed = viewsOwed || calls.count > 1
+                throw error
+            }
+            settle(settling)
+            publicationCalls += 1
         }
-        settle(attempt)
+        viewsOwed = false
+    }
+
+    /// A request answered, and whose it was.
+    struct Answer {
+        let id: UInt64
+        let nonce: String
+        let keeper: String
+        let reply: RealmReply
+    }
+
+    /// A keeper's view to be shown: all its parts, those that changed, the
+    /// version each of the rest was written at, and what they heard lately.
+    struct Shown {
+        let keeper: String
+        let parts: [String: String]
+        let changed: [(key: String, value: String)]
+        let at: [String: UInt64]
+        let heard: String
+    }
+
+    /// One call of a publication, as the module's `publish` takes it.
+    struct Call {
+        let version: UInt64
+        var worldNames: [String] = [], worldTexts: [String] = [], gone: [String] = []
+        var keepers: [String] = [], views: [String] = [], heard: [String] = []
+        var partKeepers: [String] = [], partNames: [String] = [], partTexts: [String] = []
+        var answers: [Answer] = []
+        /// The answers as sent, each telling where its keeper's view is.
+        var replies: [String] = []
+        /// What it shows, to be kept once it is: each keeper's parts, and the
+        /// version each was written at.
+        var shown: [String: [String: String]] = [:], shownAt: [String: [String: UInt64]] = [:]
+        /// The text it carries, in bytes.
+        var size = 0
+    }
+
+    /// Most text one call of a publication carries, in bytes: the server
+    /// takes no request of over 2 MiB, and the text grows by its escapes as
+    /// it is sent.
+    static let publicationBudget = 1_000_000
+
+    /// A publication in calls, each carrying at most `budget` bytes of text
+    /// where it can, numbered on from `version`. The first carries the
+    /// world's parts that changed and those gone, and every answer, whatever
+    /// their size: the world and the answers that came of it are kept in one
+    /// transaction, so a steward stopped between calls neither loses a
+    /// request nor carries one out twice. Each keeper's view goes whole in
+    /// one call, its parts with its row, as the module asks; each answer
+    /// tells the version its keeper's view is written at, 0 if it isn't,
+    /// and their Mac waits for that call, or for none.
+    static func calls(world changed: [(key: String, value: String)], gone: [String], shown: [Shown], answers: [Answer],
+                      from version: UInt64, budget: Int) throws -> [Call] {
+        let encoder = JSONEncoder()
+        func encoded(_ reply: RealmReply) throws -> String { String(decoding: try encoder.encode(reply), as: UTF8.self) }
+        var calls = [Call(version: version)]
+        calls[0].worldNames = changed.map(\.key)
+        calls[0].worldTexts = changed.map(\.value)
+        calls[0].gone = gone
+        calls[0].answers = answers
+        // The answers' size as they will go, the version they tell aside.
+        calls[0].size = changed.reduce(0) { $0 + $1.key.utf8.count + $1.value.utf8.count } + gone.reduce(0) { $0 + $1.utf8.count }
+            + (try answers.reduce(0) { $0 + (try encoded($1.reply.with(viewAt: version))).utf8.count })
+        var viewAt: [String: UInt64] = [:]
+        for view in shown {
+            var at = view.at
+            for (name, _) in view.changed { at[name] = 0 }
+            let size = view.changed.reduce(0) { $0 + $1.key.utf8.count + $1.value.utf8.count } + view.heard.utf8.count + manifest(at).utf8.count
+            if calls[calls.count - 1].size > 0, calls[calls.count - 1].size + size > budget {
+                calls.append(Call(version: calls[calls.count - 1].version + 1))
+            }
+            let last = calls.count - 1
+            for (name, text) in view.changed {
+                at[name] = calls[last].version
+                calls[last].partKeepers.append(view.keeper)
+                calls[last].partNames.append(name)
+                calls[last].partTexts.append(text)
+            }
+            calls[last].keepers.append(view.keeper)
+            calls[last].views.append(manifest(at))
+            calls[last].heard.append(view.heard)
+            calls[last].shown[view.keeper] = view.parts
+            calls[last].shownAt[view.keeper] = at
+            calls[last].size += size
+            viewAt[view.keeper] = calls[last].version
+        }
+        calls[0].replies = try answers.map { try encoded($0.reply.with(viewAt: viewAt[$0.keeper] ?? 0)) }
+        return calls
     }
 
     /// The views of these keepers, in parts, worked out side by side: each
@@ -643,44 +756,44 @@ public actor RealmSteward {
         }
     }
 
-    /// A publication, as sent: what it settles once it is known to be kept.
-    private struct Attempt {
+    /// A call of a publication, as sent: what it settles once it is known
+    /// to be kept; the first of a publication also the world and what
+    /// every keeper heard lately.
+    private struct Settling {
         let version: UInt64
         let at: Double
         let status: RealmStatus
         let shown: [String: [String: String]]
         let shownAt: [String: [String: UInt64]]
-        let parts: [String: String]
-        /// The world those parts are of.
-        let world: GameState
-        let heard: [String: [(at: Double, batch: HeardBatch)]]
-        /// How many of the pending events, acts and answers it carried.
-        let events: Int
-        let acts: Int
-        let answers: [String]
+        let world: (parts: [String: String], world: GameState, heard: [String: [(at: Double, batch: HeardBatch)]], events: Int, acts: Int)?
+        let answers: [(id: UInt64, nonce: String)]
     }
 
-    /// The publication sent last, if whether it was kept is unknown.
-    private var lastAttempt: Attempt?
+    /// The call sent last, if whether it was kept is unknown.
+    private var lastAttempt: Settling?
 
-    /// Settles a publication kept: its version, views, parts and what it
-    /// told are the steward's record now, and what it carried is done.
-    private func settle(_ attempt: Attempt) {
-        lastPublished = attempt.at
-        version = max(version, attempt.version)
-        lastStatus = attempt.status
+    /// Settles a call kept: its version and views are the steward's record
+    /// now, the world and what was told with the first, and the answers it
+    /// carried are given.
+    private func settle(_ done: Settling) {
+        lastPublished = done.at
+        version = max(version, done.version)
+        lastStatus = done.status
         // The views of those there alone: one who comes back is shown theirs
         // as they arrive.
         let there = Set(state.keepers.lazy.filter(\.isOnline).map(\.id))
-        published = published.merging(attempt.shown) { $1 }.filter { there.contains($0.key) }
-        publishedAt = publishedAt.merging(attempt.shownAt) { $1 }.filter { there.contains($0.key) }
-        keptParts = attempt.parts
-        keptWorld = attempt.world
-        recentlyHeard = attempt.heard
-        pendingEvents.removeFirst(min(attempt.events, pendingEvents.count))
-        pendingActs.removeFirst(min(attempt.acts, pendingActs.count))
-        unanswered.removeFirst(min(attempt.answers.count, unanswered.count))
-        answered += attempt.answers.map { ($0, attempt.at) }
+        published = published.merging(done.shown) { $1 }.filter { there.contains($0.key) }
+        publishedAt = publishedAt.merging(done.shownAt) { $1 }.filter { there.contains($0.key) }
+        if let world = done.world {
+            keptParts = world.parts
+            keptWorld = world.world
+            recentlyHeard = world.heard
+            pendingEvents.removeFirst(min(world.events, pendingEvents.count))
+            pendingActs.removeFirst(min(world.acts, pendingActs.count))
+        }
+        let given = Set(done.answers.map(\.id))
+        unanswered.removeAll { given.contains($0.id) }
+        answered += done.answers.map { ($0.nonce, done.at) }
     }
 
     /// Runs the realm until cancelled, a step every quarter second.

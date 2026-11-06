@@ -48,10 +48,13 @@ enum CrowdPlayThrough {
         var seated = 0.0
         var turned = 0.0
         var heard = 0.0
+        /// The realm's publications meanwhile, and the calls they took.
+        var publications = 0
+        var publicationCalls = 0
 
         var description: String {
-            String(format: "all seated and shown the world in %.1f s, the realm taking in a quarter of its seats each watch; the watch turned for every keeper %.1f s after the last made ready; one keeper's words heard by every other in %.1f s",
-                   seated, turned, heard)
+            String(format: "all seated and shown the world in %.1f s, the realm taking in a quarter of its seats each watch; the watch turned for every keeper %.1f s after the last made ready; one keeper's words heard by every other in %.1f s; %d publications in %d calls",
+                   seated, turned, heard, publications, publicationCalls)
         }
     }
 
@@ -77,12 +80,16 @@ enum CrowdPlayThrough {
 
     /// A realm of `seats` whose watch lasts `watchLength`, every seat taken
     /// by its own client at once; each turned away while the realm takes in
-    /// its newcomers asks again within `newcomerWait`.
+    /// its newcomers asks again within `newcomerWait`. A `budget` smaller
+    /// than the steward's own puts its publications in more calls.
     @MainActor
     static func play(_ transport: any SpacetimeTransport, token: String, seats: Int, watchLength: Double,
-                     newcomerWait: ClosedRange<Double>, timeout: Double = 240) async throws -> Timings {
+                     newcomerWait: ClosedRange<Double>, timeout: Double = 240, budget: Int? = nil) async throws -> Timings {
         let steward = try await RealmSteward(transport: transport, token: token, name: "The Nullmere", seed: "a crowd at the door",
                                              seats: seats, watchLength: watchLength, now: Date().timeIntervalSince1970)
+        if let budget { await steward.setPublicationBudget(budget) }
+        // What the steward says of its rounds, as whoever runs the realm hears it.
+        await steward.setReporter { print("CROWD the steward: \($0)") }
         let running = Task.detached { await steward.run() }
         defer { running.cancel() }
         var timings = Timings()
@@ -151,6 +158,8 @@ enum CrowdPlayThrough {
             }
         }
         timings.heard = Date().timeIntervalSince(spoke)
+        timings.publications = await steward.publications
+        timings.publicationCalls = await steward.publicationCalls
         print("CROWD \(seats) keepers' clients at once: \(timings)")
         return timings
     }
@@ -164,5 +173,19 @@ final class CrowdPlayThroughTests: XCTestCase {
         let steward = try await db.createIdentity()
         let timings = try await CrowdPlayThrough.play(db, token: steward.token, seats: 24, watchLength: 4, newcomerWait: 0.3...0.6, timeout: 90)
         XCTAssertGreaterThan(timings.seated, 0)
+        let largest = await db.largestCall
+        XCTAssertLessThan(largest, FakeSpacetime.largestBody, "No call the server wouldn't take")
+    }
+
+    /// The same, the realm's publications each in many calls, as a realm of
+    /// hundreds of keepers sends them: every keeper is seated, shown their
+    /// world, sees the watch turn and hears the words all the same.
+    @MainActor
+    func testACrowdShownTheRealmInPublicationsOfManyCalls() async throws {
+        let db = FakeSpacetime()
+        let steward = try await db.createIdentity()
+        let timings = try await CrowdPlayThrough.play(db, token: steward.token, seats: 12, watchLength: 4, newcomerWait: 0.3...0.6,
+                                                      timeout: 90, budget: 20_000)
+        XCTAssertGreaterThan(timings.publicationCalls, timings.publications, "Publications in more calls than one")
     }
 }

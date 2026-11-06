@@ -28,6 +28,8 @@ public actor FakeSpacetime: SpacetimeTransport {
     private var views: [String: (version: UInt64, view: String, events: String)] = [:] // by keeper
     private var viewParts: [String: [String: (version: UInt64, text: String)]] = [:] // by keeper, then name
     public private(set) var calls: [String] = []
+    /// The largest call's body yet, in bytes.
+    public private(set) var largestCall = 0
     /// Those told when the status changes, as the server pushes it; none
     /// unless pushing is asked for, as most tests of the link poll.
     private var watchers: [UUID: @Sendable () -> Void] = [:]
@@ -67,6 +69,8 @@ public actor FakeSpacetime: SpacetimeTransport {
     public static let maxNonce = 64
     public static let maxPayload = 4096
     public static let maxWaiting = 32
+    /// Most a call's body may be, as the server takes it: 2 MiB.
+    public static let largestBody = 2 << 20
     public static let leaseSeconds = 60.0
 
     /// How many times a statement has been queried, by anyone or by the
@@ -203,6 +207,13 @@ public actor FakeSpacetime: SpacetimeTransport {
 
     public func call(_ reducer: String, _ arguments: [ReducerArgument], token: String) async throws {
         try answering()
+        // The body as the link sends it: one the server can't take is refused
+        // before anything else is asked of it.
+        let body = try JSONSerialization.data(withJSONObject: arguments.map(\.json))
+        largestCall = max(largestCall, body.count)
+        guard body.count < Self.largestBody else {
+            throw SpacetimeError("Failed to buffer the request body: length limit exceeded", status: 413)
+        }
         let me = try sender(token)
         calls.append(reducer)
         func string(_ index: Int) throws -> String {

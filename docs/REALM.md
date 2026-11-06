@@ -57,7 +57,20 @@ steward's answer). For development a realm can also be hosted in-process
   mid-round, loses and doubles nothing; it says when a round fails, and
   every ten minutes how the realm stands. It works out a keeper's view only
   when something may have changed it, and sends with it what they heard in
-  the last two minutes, the latest sixteen publications' worth at most.
+  the last two minutes, the latest sixteen publications' worth at most. A
+  publication larger than the server takes in one request (2 MiB) goes in
+  several calls of about a megabyte, one version each: the world and every
+  answer in the first, each keeper's view whole in one of them, so a full
+  realm of ninety-six keepers arriving at once is shown the world in a
+  few calls a round. Each answer tells the version its keeper's view is
+  written at, or that it isn't, and their Mac waits for that call or for
+  none; should a call fail part way, the next round shows the keepers it
+  didn't reach their view.
+- **Many keepers in one process.** A keeper's link never cancels a request
+  in flight: a push or a waking ends the wait between its reads early, and
+  closing it lets what is in flight finish and go no further. Cancelling a
+  request just as it finished could stop Linux's networking for every link
+  in the process, as ninety-six links in one test showed.
 - **Memory.** The steward keeps in memory only what it needs of the keepers
   there, and the realm forgets a keeper long gone with no seat (away a
   week, or an hour if they never played), their name free again, so

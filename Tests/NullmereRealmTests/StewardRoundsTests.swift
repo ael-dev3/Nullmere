@@ -97,6 +97,63 @@ final class StewardRoundsTests: XCTestCase {
         XCTAssertTrue(left.isEmpty, "Forgotten in their time, though another steward gave them")
     }
 
+    /// A publication too large for one call goes in several, each one the
+    /// server keeps whole on its own: the world's parts that changed and
+    /// those gone, and every answer, in the first, the world and what came
+    /// of it in one transaction; every keeper's view in one call, its parts
+    /// with its row; each answer telling the version its keeper's view is
+    /// written at, or 0; one version to a call, numbered on; and no call
+    /// over the budget but one carrying a single thing larger.
+    func testAPublicationTooLargeForOneCallGoesInSeveral() throws {
+        let units = String(repeating: "u", count: 400)
+        let world: [(key: String, value: String)] = [("head", String(repeating: "w", count: 300)), ("map.0", String(repeating: "m", count: 500))]
+        let shown = (0..<6).map { index in
+            RealmSteward.Shown(keeper: "k\(index)", parts: ["head": "h\(index)", "units.0": units], changed: [(key: "units.0", value: units)],
+                               at: ["head": 3], heard: "[]")
+        }
+        let answers = [(1, "k4"), (2, "elsewhere"), (3, "k0")].map { id, keeper in
+            RealmSteward.Answer(id: UInt64(id), nonce: "n\(id)", keeper: keeper, reply: .done)
+        }
+        func told(_ call: RealmSteward.Call) throws -> [UInt64?] {
+            try call.replies.map { try JSONDecoder().decode(RealmReply.self, from: Data($0.utf8)).viewAt }
+        }
+        let budget = 1_000
+        let calls = try RealmSteward.calls(world: world, gone: ["units.9"], shown: shown, answers: answers, from: 10, budget: budget)
+        XCTAssertEqual(calls.map(\.version), [10, 11, 12, 13], "The world alone, then two views to a call")
+        XCTAssertEqual(calls[0].worldNames, ["head", "map.0"])
+        XCTAssertEqual(calls[0].worldTexts, world.map(\.value))
+        XCTAssertEqual(calls[0].gone, ["units.9"])
+        XCTAssertTrue(calls.dropFirst().allSatisfy { $0.worldNames.isEmpty && $0.gone.isEmpty }, "The world whole, in the first")
+        XCTAssertEqual(calls.flatMap(\.keepers), shown.map(\.keeper), "Every view once, in order")
+        for call in calls {
+            XCTAssertTrue(call.size <= budget || call.keepers.count <= 1, "Over the budget only with one thing in it")
+            XCTAssertEqual(call.partKeepers, call.keepers, "Each view's parts in the call with its row")
+            XCTAssertEqual(call.partNames, call.keepers.map { _ in "units.0" })
+            for (keeper, row) in zip(call.keepers, call.views) {
+                let named = try XCTUnwrap(NetworkRealmLink.parts(named: row))
+                XCTAssertEqual(named, ["head": 3, "units.0": call.version], "Its new part written in the call that carries it")
+                XCTAssertEqual(call.shownAt[keeper], named, "Kept as shown once the call is")
+                XCTAssertEqual(call.shown[keeper], ["head": "h\(keeper.dropFirst())", "units.0": units])
+            }
+            XCTAssertEqual(call.heard.count, call.keepers.count)
+        }
+        XCTAssertEqual(calls[0].answers.map(\.id), [1, 2, 3], "Every answer with the world")
+        XCTAssertEqual(try told(calls[0]), [13, 0, 11], "Each telling where its keeper's view is written, or that it isn't")
+        XCTAssertTrue(calls.dropFirst().allSatisfy { $0.answers.isEmpty && $0.replies.isEmpty })
+
+        // Small enough, it is one call as it always was.
+        let one = try RealmSteward.calls(world: world, gone: [], shown: shown, answers: answers, from: 10, budget: RealmSteward.publicationBudget)
+        XCTAssertEqual(one.count, 1)
+        XCTAssertEqual(one[0].keepers.count, 6)
+        XCTAssertEqual(one[0].answers.map(\.id), [1, 2, 3])
+        XCTAssertEqual(try told(one[0]), [10, 0, 10])
+        // Nothing changed and no one shown: one call, the answers telling
+        // their keepers no view of theirs is written.
+        let quiet = try RealmSteward.calls(world: [], gone: [], shown: [], answers: answers, from: 10, budget: 1)
+        XCTAssertEqual(quiet.count, 1)
+        XCTAssertEqual(try told(quiet[0]), [0, 0, 0])
+    }
+
     func testHealthIsSaidPlainly() {
         let one = RealmStatus(name: "N", age: 2, watch: 40, seats: 12, freeSeats: 1, keepers: 11, online: 1, ready: 0,
                               secondsLeft: 60, isEnding: false)
