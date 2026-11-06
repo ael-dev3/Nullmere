@@ -207,7 +207,13 @@ public final class NetworkRealmLink: RealmLink {
     /// answers; after failures, doubling to `longestPoll`, a little
     /// earlier or later at random so keepers don't all come back at once.
     var nextPoll: Double {
-        guard failures > 1 else { return watch?.isAlive == true ? max(pollInterval, Self.watchedPoll) : pollInterval }
+        guard failures > 1 else {
+            // The realm's word on a "here" changes nothing it pushes word
+            // of: while it is awaited the link reads at its own pace, so a
+            // realm begun anew sends its keeper back to the door at once.
+            if hereAwaited != nil { return pollInterval }
+            return watch?.isAlive == true ? max(pollInterval, Self.watchedPoll) : pollInterval
+        }
         let backed = min(pollInterval * pow(2, Double(failures - 1)), max(pollInterval, Self.longestPoll))
         return backed * Double.random(in: 0.8...1.2)
     }
@@ -254,10 +260,12 @@ public final class NetworkRealmLink: RealmLink {
             guard arrived else { return }
             // "Here" while the steward is silent would only pile up for it;
             // and it is said only while someone is at this Mac.
+            // Said once an interval; one the realm never took is said again
+            // at the next read, not an interval on.
             if !toldSilence, idleSeconds() < Self.presenceWindow, now() - lastHere > Self.hereInterval {
-                lastHere = now()
                 let nonce = Self.nonce()
                 if (try? await transport.call("here", [.string(nonce)], token: credentials.token)) != nil {
+                    lastHere = now()
                     hereAwaited = nonce
                 }
             }

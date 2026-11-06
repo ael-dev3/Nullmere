@@ -237,6 +237,31 @@ final class LinkResilienceTests: XCTestCase {
         XCTAssertGreaterThan(asked, 0, "Its answer read by its nonce alone")
     }
 
+    /// A "here" that never reached the realm is said again at the next read,
+    /// not an interval on: the realm hears its keeper, and a realm begun
+    /// anew sends them back to its door, though the link's clock stands
+    /// still.
+    func testAHereThatNeverReachedTheRealmIsSaidAgainAtTheNextRead() async throws {
+        let db = FakeSpacetime()
+        let (_, running, _) = try await steward(db, seed: "a here lost on the way")
+        defer { running.cancel() }
+        let line = Flaky(db)
+        let ama = NetworkRealmLink(transport: line, credentials: MemoryStore(), pollInterval: 0.05, retryDelay: 0.05)
+        defer { ama.close() }
+        let ear = Listener()
+        ear.listen(to: ama)
+        var clock = 1_000.0
+        ama.now = { clock }
+        ama.connect()
+        ama.arrive(name: "Ama")
+        try await until("arrival") { ear.keeper != nil }
+        let before = await db.calls.filter { $0 == "here" }.count
+        await line.failNext("here")
+        clock += NetworkRealmLink.hereInterval + 1
+        try await until("Ama's here said again and heard") { await db.calls.filter { $0 == "here" }.count > before }
+        try await until("the realm's answer read") { await db.handled(kind: "here") >= 1 }
+    }
+
     /// An order past its time is asked after; let go as it is (the keeper
     /// leaves the world), the link finds its outbox empty and drops the
     /// errand, rather than tripping over it.
