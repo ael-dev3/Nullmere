@@ -36,10 +36,21 @@ public struct Sundering: Codable, Equatable, Sendable {
     /// Whether it has ended and its spoils were given; it is kept, settled,
     /// until the next begins.
     public internal(set) var settled: Bool
-    /// The Houses its war set at war, each pair the lower id first: those
-    /// at peace with one across the water as it began. Laid down as it
-    /// ends, those still fought.
+    /// The Houses its war set at war that the realm keeps a relation for,
+    /// each pair the lower id first: those at peace with one across the
+    /// water as it began that had dealt before, and those kept since, as
+    /// they deal. Laid down as it ends, those still fought. Every other
+    /// two Houses it set at war, the most of them, the realm knows by
+    /// `alliances` and `lieges`, not pair by pair: it is the kingdoms' war.
     public internal(set) var wars: [[Int]]?
+    /// Each House's alliance as it began, and its liege: two Houses across
+    /// the water sworn to one alliance, or one the other's liege, it did
+    /// not set at war. Absent in a Sundering begun while the realm kept a
+    /// relation for every two Houses, whose every war is among `wars`.
+    public internal(set) var alliances: [Int?]?
+    public internal(set) var lieges: [Int?]?
+    /// The watch its wars were laid down, as it ended.
+    public internal(set) var laidDown: Int?
 
     public init(begins: Int, shores: [Shore?]) {
         self.begins = begins
@@ -74,6 +85,45 @@ public struct Sundering: Codable, Equatable, Sendable {
     /// The shore a House stands with, if any.
     public func shore(of house: Int) -> Shore? {
         shores.indices.contains(house) ? shores[house] : nil
+    }
+
+    /// Whether it set two Houses at war that the realm kept no relation
+    /// for as it began: across the water from each other, neither sworn
+    /// to one alliance with the other nor its liege or vassal. Such two
+    /// were at peace, as every two Houses are that have never dealt, or
+    /// as an earlier Sundering left them.
+    func setsAtWar(_ first: Int, _ second: Int) -> Bool {
+        // Read where they lie, none of its lists copied out: asked of every
+        // two Houses whenever the rules ask whether two are at war.
+        guard first >= 0, second >= 0, let sworn = alliances?.count, let sworeFealty = lieges?.count,
+              max(first, second) < min(shores.count, sworn, sworeFealty),
+              let mine = shores[first], let theirs = shores[second], mine != theirs else { return false }
+        if let alliance = alliances?[first] ?? nil, alliance == alliances?[second] ?? nil { return false }
+        return (lieges?[first] ?? nil) != second && (lieges?[second] ?? nil) != first
+    }
+
+    /// Whether it holds two Houses the realm keeps no relation for at war
+    /// now: it set them at war, and its war is not yet laid down.
+    func holdsAtWar(_ first: Int, _ second: Int) -> Bool {
+        laidDown == nil && setsAtWar(first, second)
+    }
+
+    /// Two Houses it set at war as it left them: at war since it began
+    /// while it goes on, at peace from the watch it laid its wars down.
+    func left(_ relation: Relation) -> Relation {
+        var relation = relation
+        relation.stance = laidDown == nil ? .war : .peace
+        relation.since = laidDown ?? begins
+        return relation
+    }
+
+    /// As it is kept once it is over, for the relations of the Houses it
+    /// set at war: its points given and its wars laid down, neither is.
+    var past: Sundering {
+        var past = self
+        past.points = []
+        past.wars = nil
+        return past
     }
 
     /// A kingdom's points: its Houses' together.
@@ -124,7 +174,10 @@ extension GameState {
     public func isSunderingWar(_ a: Int, _ b: Int) -> Bool {
         guard let sundering, !sundering.settled, watch < sundering.ends, let wars = sundering.wars,
               let relation = relation(a, b), relation.stance == .war, relation.since == sundering.begins else { return false }
-        return wars.contains([min(a, b), max(a, b)])
+        // Kept, it is among its wars; not kept, it stands as the Sundering
+        // set it, if the Sundering set it at all.
+        let first = min(a, b), second = max(a, b)
+        return relationIndex(first, second) == nil ? sundering.setsAtWar(first, second) : wars.contains([first, second])
     }
 
     /// Points to the Sundering under way for what was done across the shores.
@@ -166,7 +219,8 @@ extension GameState {
             }
             events.append(.sunderingEnded(winner: winner, eastern: east, western: west, hailed: hailed))
             events += given
-            // The wars it began, still fought, laid down.
+            // The wars it began, still fought, laid down: those kept pair by
+            // pair here, and every other at once, as the kingdoms' war ends.
             for pair in sundering.wars ?? [] where pair.count == 2 {
                 guard let index = relationIndex(pair[0], pair[1]), relations[index].stance == .war,
                       relations[index].since == sundering.begins else { continue }
@@ -174,6 +228,7 @@ extension GameState {
                 relations[index].since = watch
             }
             sundering.settled = true
+            if sundering.alliances != nil { sundering.laidDown = watch }
             self.sundering = sundering
         }
         if sundering?.settled != false, Sundering.begins(at: watch) {
@@ -185,18 +240,29 @@ extension GameState {
             // The shores take up arms: every House at peace with one across
             // the water, neither sworn to one alliance with it nor its liege
             // or vassal, is at war with it until the Sundering ends. Neither
-            // declared it: it is the kingdoms' war, no House's grudge.
+            // declared it: it is the kingdoms' war, no House's grudge. Two
+            // Houses that have dealt are set at war pair by pair; every
+            // other two, the most of them, by the kingdoms' war itself, the
+            // realm keeping no relation for them.
+            var sworn = [Int?](repeating: nil, count: houses.count)
+            for alliance in alliancesStanding {
+                for member in alliance.members where sworn.indices.contains(member) && sworn[member] == nil { sworn[member] = alliance.id }
+            }
+            begun.alliances = sworn
+            begun.lieges = houses.map(\.liege)
             var wars: [[Int]] = []
-            for first in houses.indices where shores[first] != nil {
-                for second in houses.indices where second > first && shores[second] != nil && shores[second] != shores[first] {
-                    guard let index = relationIndex(first, second), relations[index].stance == .peace, !areAllied(first, second),
-                          houses[first].liege != second, houses[second].liege != first else { continue }
-                    relations[index].stance = .war
-                    relations[index].since = watch
-                    wars.append([first, second])
-                }
+            for index in relations.indices {
+                let first = relations[index].first, second = relations[index].second
+                guard relations[index].stance == .peace, begun.setsAtWar(first, second) else { continue }
+                relations[index].stance = .war
+                relations[index].since = watch
+                wars.append([first, second])
             }
             begun.wars = wars
+            // The last, its war over, is kept for the Houses it left at peace.
+            if let last = sundering, last.alliances != nil {
+                sunderings = (sunderings ?? []) + [last.past]
+            }
             sundering = begun
             record(.happening, [], "The Sundering begins: the Eastern and the Western Shore war as kingdoms until the "
                    + "\(ordinal(begun.ends)) watch.")

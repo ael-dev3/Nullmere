@@ -173,7 +173,7 @@ extension GameState {
                     store(goods, for: oath.to)
                 } else {
                     // Unpaid: the oath is broken, and remembered as a betrayal is.
-                    if let index = relationIndex(oath.by, oath.to) { relations[index].betrayals += 1 }
+                    if let index = keptRelationIndex(oath.by, oath.to) { relations[index].betrayals += 1 }
                     record(.betrayal, [oath.by, oath.to],
                            "\(houses[oath.by].title) breaks its oath to \(houses[oath.to].title), sending nothing it swore to send.")
                     events.append(.oathEnded(oath, why: .broken))

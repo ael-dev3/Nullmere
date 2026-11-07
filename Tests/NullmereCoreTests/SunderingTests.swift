@@ -93,18 +93,22 @@ final class SunderingTests: XCTestCase {
         let wars = try XCTUnwrap(sundering.wars)
         for a in east {
             for b in west {
-                let pair = [min(a, b), max(a, b)]
                 switch (a, b) {
                 case (east[1], west[1]): XCTAssertEqual(state.stance(a, b), .pact, "A pact holds")
                 case (east[1], west[0]): XCTAssertEqual(state.stance(a, b), .peace, "One alliance's Houses keep the peace")
-                case (east[0], west[1]): XCTAssertFalse(wars.contains(pair), "A war already fought is its own")
+                case (east[0], west[1]): XCTAssertFalse(state.isSunderingWar(a, b), "A war already fought is its own")
                 default:
                     XCTAssertEqual(state.stance(a, b), .war, "Across the water, at war")
-                    XCTAssertTrue(wars.contains(pair))
+                    XCTAssertEqual(state.relation(a, b)?.since, Sundering.first)
+                    XCTAssertTrue(state.isSunderingWar(a, b))
                     XCTAssertNil(state.relation(a, b)?.aggressor, "Neither declared it")
                 }
             }
         }
+        // The kingdoms' war, not each pair's: the realm keeps a relation
+        // only for the two that had dealt, and none for its wars.
+        XCTAssertEqual(state.relations.count, 2)
+        XCTAssertEqual(wars, [])
         XCTAssertEqual(state.stance(east[0], east[1]), .peace, "A shore's own Houses at peace")
         XCTAssertEqual(state.problems(), [])
         // Not theirs to end: peace is refused until it ends, but their own war's.
@@ -121,6 +125,80 @@ final class SunderingTests: XCTestCase {
         XCTAssertEqual(state.relation(east[0], west[0])?.since, sundering.ends)
         XCTAssertEqual(state.stance(east[0], west[1]), .war, "Its own war fought on")
         XCTAssertFalse(state.isSunderingWar(east[0], west[0]))
+    }
+
+    /// Two Houses the Sundering set at war that come to deal while it lasts
+    /// are kept from then on as it set them: still its war, refused peace,
+    /// and laid down as it ends.
+    func testTwoHousesKeptAsTheSunderingGoesStayItsWar() throws {
+        var state = world()
+        state.watch = Sundering.first
+        _ = state.turnSundering()
+        let (east, west) = try across(state)
+        XCTAssertNil(state.relationIndex(east, west), "Not kept: the kingdoms' war")
+        XCTAssertTrue(state.isSunderingWar(east, west))
+        // A betrayal between them is kept, as an oath broken keeps it.
+        let index = try XCTUnwrap(state.keptRelationIndex(east, west))
+        state.relations[index].betrayals += 1
+        XCTAssertEqual(state.relation(east, west)?.stance, .war)
+        XCTAssertEqual(state.relation(east, west)?.since, Sundering.first)
+        XCTAssertTrue(state.isSunderingWar(east, west), "Kept, still the Sundering's")
+        XCTAssertEqual(state.sundering?.wars, [[min(east, west), max(east, west)]])
+        XCTAssertThrowsError(try state.propose(.peace, from: east, to: west)) { XCTAssertEqual($0 as? RuleError, .sunderingWar) }
+        XCTAssertEqual(state.problems(), [])
+        let ends = try XCTUnwrap(state.sundering?.ends)
+        state.watch = ends
+        _ = state.turnSundering()
+        XCTAssertEqual(state.relation(east, west)?.stance, .peace, "Laid down as it ends")
+        XCTAssertEqual(state.relation(east, west)?.since, ends)
+        XCTAssertEqual(state.relation(east, west)?.betrayals, 1)
+        XCTAssertFalse(state.isSunderingWar(east, west))
+    }
+
+    /// The Houses a Sundering set at war stand at peace from the watch it
+    /// ended, the realm keeping no relation for them; as the next begins,
+    /// two of them sworn since to one alliance stand as the last left them,
+    /// while every other two across the water are at war again, and at
+    /// peace again from its end. A keeper's view knows them as the realm.
+    func testEachSunderingLeavesTheHousesItSetAtWarAsItEnds() throws {
+        var state = world()
+        state.watch = Sundering.first
+        _ = state.turnSundering()
+        let first = try XCTUnwrap(state.sundering)
+        state.watch = first.ends
+        _ = state.turnSundering()
+        let (east, west) = try across(state)
+        let other = try XCTUnwrap(state.houses.indices.first { $0 != west && first.shore(of: $0) == .western })
+        for house in [west, other] {
+            XCTAssertEqual(state.relation(east, house)?.stance, .peace)
+            XCTAssertEqual(state.relation(east, house)?.since, first.ends, "At peace from the watch it ended")
+        }
+        XCTAssertTrue(state.relations.isEmpty, "None kept for the kingdoms' war")
+        // Sworn since to one alliance, two of them keep the peace as the next begins.
+        var sworn = Alliance(id: state.takeID(), name: "The Grey Hand", leader: east, founded: state.watch)
+        sworn.members = [east, west]
+        state.alliances = [sworn]
+        let next = Sundering.next(from: first.ends + 1)
+        state.watch = next
+        _ = state.turnSundering()
+        XCTAssertEqual(state.sunderings?.map(\.begins), [first.begins], "The last kept for those it left")
+        XCTAssertEqual(state.relation(east, west)?.stance, .peace)
+        XCTAssertEqual(state.relation(east, west)?.since, first.ends, "As the last left them")
+        XCTAssertEqual(state.relation(east, other)?.stance, .war)
+        XCTAssertEqual(state.relation(east, other)?.since, next)
+        XCTAssertTrue(state.isSunderingWar(east, other))
+        XCTAssertFalse(state.isSunderingWar(east, west))
+        let view = state.view(for: east)
+        for house in state.houses.indices where house != east {
+            XCTAssertEqual(view.relation(east, house), state.relation(east, house), "Known in a view as the realm knows it")
+        }
+        let ends = try XCTUnwrap(state.sundering?.ends)
+        state.watch = ends
+        _ = state.turnSundering()
+        XCTAssertEqual(state.relation(east, other)?.since, ends)
+        XCTAssertEqual(state.relation(east, west)?.since, first.ends)
+        XCTAssertTrue(state.relations.isEmpty)
+        XCTAssertEqual(state.problems(), [])
     }
 
     func testDeedsAcrossTheShoresScoreForTheStrikersKingdom() throws {

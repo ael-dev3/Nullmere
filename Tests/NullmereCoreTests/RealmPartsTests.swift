@@ -33,7 +33,7 @@ final class RealmPartsTests: XCTestCase {
         let view = try XCTUnwrap(realm.view(for: "a"))
         let paged = try view.parts(using: encoder)
         XCTAssertNotNil(paged["relations.0"])
-        XCTAssertEqual(paged.keys.filter { $0.hasPrefix("relations.") }.count, 1, "Fifteen relations to a page")
+        XCTAssertEqual(paged.keys.filter { $0.hasPrefix("relations.") }.count, 1, "A page for every 32 Houses")
 
         // The lists a view keeps as the world has them are taken from the
         // world's parts, and come to the same parts as written for it.
@@ -51,17 +51,25 @@ final class RealmPartsTests: XCTestCase {
         return encoder
     }()
 
-    /// The relations of a realm of many Houses, one for every two of them,
-    /// go a thousand to a page, and come back exactly; a view keeping them
-    /// as the world does takes the world's pages of them as written, and a
-    /// view whose relations are its own, though alike, takes them too.
-    func testRelationsGoAThousandToAPage() throws {
-        let realm = RealmState(name: "N", seed: "many dealings", seats: 48, now: 0)
-        XCTAssertGreaterThan(realm.world.relations.count, RealmState.relationPage)
+    /// The relations a realm keeps, of the Houses that have dealt, go a
+    /// page to every thirty-two Houses by the first of each two, and come
+    /// back exactly; a page is written anew only as its own Houses deal,
+    /// however many relations come to be kept before it; a view keeping
+    /// them as the world does takes the world's pages of them as written,
+    /// and a view whose relations are its own, though alike, takes them too.
+    func testRelationsGoAPageToEveryThirtyTwoHouses() throws {
+        var realm = RealmState(name: "N", seed: "many dealings", seats: 48, now: 0)
+        let none = try realm.parts(using: encoder)
+        XCTAssertEqual(none.keys.filter { $0.hasPrefix("relations.") }.sorted(), ["relations.0", "relations.1"])
+        XCTAssertEqual(none["relations.0"], "[]", "None kept: no two Houses have dealt")
+        for (first, second) in [(0, 5), (3, 40), (31, 47), (32, 33), (40, 47)] {
+            realm.world.setStance(.war, between: second, and: first, by: first)
+        }
         let world = try realm.parts(using: encoder)
         let pages = world.keys.filter { $0.hasPrefix("relations.") }.sorted()
         XCTAssertEqual(pages, ["relations.0", "relations.1"])
         XCTAssertEqual(try RealmState(parts: world), realm)
+        XCTAssertEqual(try RealmState(parts: world).world.relations.map(\.second), [5, 40, 47, 33, 47])
 
         let shared = realm.world
         let taken = try shared.parts(using: encoder, reusing: [(realm.world, world)])
@@ -70,18 +78,20 @@ final class RealmPartsTests: XCTestCase {
         // page for page.
         var apart = realm.world
         apart.relations = realm.world.relations.map { $0 }
-        apart.relations.append(apart.relations.removeLast())
         let alike = try apart.parts(using: encoder, reusing: [(realm.world, world)])
         for page in pages { XCTAssertEqual(alike[page], world[page]) }
-        // One relation otherwise: its page written anew, the other as written.
-        var unlike = realm.world
-        unlike.relations[RealmState.relationPage + 3].since += 1
-        let rewritten = try unlike.parts(using: encoder, reusing: [(realm.world, world)])
-        XCTAssertEqual(rewritten["relations.0"], world["relations.0"])
-        XCTAssertNotEqual(rewritten["relations.1"], world["relations.1"])
+        // Two Houses of the first page dealing for the first time: that
+        // page written anew, the second as written, though every relation
+        // of it now lies one further on.
+        var dealt = realm.world
+        dealt.setStance(.pact, between: 1, and: 2, by: 1)
+        let rewritten = try dealt.parts(using: encoder, reusing: [(realm.world, world)])
+        XCTAssertNotEqual(rewritten["relations.0"], world["relations.0"])
+        XCTAssertEqual(rewritten["relations.1"], world["relations.1"])
         var back = try JSONDecoder().decode(GameState.self, from: Data(try XCTUnwrap(rewritten["head"]).utf8))
         try back.join(rewritten, using: JSONDecoder())
-        XCTAssertEqual(back.relations, unlike.relations)
+        XCTAssertEqual(back.relations, dealt.relations)
+        XCTAssertEqual(back.stance(2, 1), .pact)
     }
 
     /// What a pace changes of the head goes in a part of its own: the head

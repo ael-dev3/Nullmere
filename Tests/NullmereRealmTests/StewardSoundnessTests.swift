@@ -10,6 +10,7 @@ final class StewardSoundnessTests: XCTestCase {
     func testAnUnsoundWorldIsSaidAtTheTurnOfTheWatch() async throws {
         var realm = RealmState(name: "The Nullmere", seed: "gone wrong", seats: 4, watchLength: 60, now: 0)
         // Two standings between the same two Houses: a world gone wrong.
+        realm.world.setStance(.war, between: 0, and: 1, by: 0)
         realm.world.relations.append(realm.world.relations[0])
         XCTAssertFalse(realm.world.problems().isEmpty)
         let db = FakeSpacetime()

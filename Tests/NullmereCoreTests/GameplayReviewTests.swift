@@ -16,7 +16,7 @@ final class GameplayReviewTests: XCTestCase {
             // As kindly disposed as it can be: sworn to a pact, given gifts,
             // lacking what it is offered and with plenty of what it pays.
             state.houses[other].temperament = .steadfast
-            let index = try XCTUnwrap(state.relations.firstIndex { $0.first == min(me, other) && $0.second == max(me, other) })
+            let index = try XCTUnwrap(state.keptRelationIndex(me, other))
             state.relations[index].stance = .pact
             state.gifts = [Gift(from: me, to: other, worth: 500, watch: state.watch)]
             let room = state.storage(of: other)

@@ -137,7 +137,7 @@ final class RulesReviewTests: XCTestCase {
         let me = state.player
         let ally = try XCTUnwrap(state.houses.first { !$0.isPlayer }).id
         let conqueror = try XCTUnwrap(state.houses.first { !$0.isPlayer && $0.id != ally }).id
-        let index = try XCTUnwrap(state.relations.firstIndex { $0.first == min(me, ally) && $0.second == max(me, ally) })
+        let index = try XCTUnwrap(state.keptRelationIndex(me, ally))
         state.relations[index].stance = .pact
         let allied = state.visibility(for: me).filter { $0 }.count
         for hold in state.holds.indices where state.holds[hold].owner == me { state.holds[hold].owner = conqueror }

@@ -261,8 +261,13 @@ final class CrowdPlayThroughTests: XCTestCase {
     func testACrowdShownTheRealmInPublicationsOfManyCalls() async throws {
         let db = FakeSpacetime()
         let steward = try await db.createIdentity()
+        // Calls of a third of the world as it is first published, so it is
+        // too big for one and goes ahead of the call that publishes it,
+        // however small the realm's world comes to be written.
+        let world = try RealmState(name: "The Nullmere", seed: "a crowd at the door", seats: 12, now: 0).parts(using: JSONEncoder())
+        let budget = world.reduce(0) { $0 + $1.key.utf8.count + $1.value.utf8.count } / 3
         let timings = try await CrowdPlayThrough.play(db, token: steward.token, seats: 12, watchLength: 4, newcomerWait: 0.3...0.6,
-                                                      timeout: 90, budget: 20_000)
+                                                      timeout: 90, budget: budget)
         XCTAssertGreaterThan(timings.publicationCalls, timings.publications, "Publications in more calls than one")
         XCTAssertGreaterThan(timings.callsSentAhead, 1, "The world, too big for one call, sent ahead of the call that publishes it")
     }

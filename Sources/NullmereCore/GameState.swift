@@ -253,6 +253,11 @@ public struct GameState: Codable, Equatable, Sendable {
     public internal(set) var happening: Happening?
     /// The Sundering under way, or the last, settled, until the next.
     public internal(set) var sundering: Sundering?
+    /// The age's Sunderings before the last, oldest first, kept for the
+    /// Houses whose relations stand as one of them left them: those that
+    /// set two Houses at war the realm keeps no relation for. Absent
+    /// before a second Sundering.
+    public internal(set) var sunderings: [Sundering]?
     /// The Moonford's hexes while the tide lays it bare about a full moon;
     /// absent while the water lies over it.
     public internal(set) var ford: [Hex]?
@@ -347,11 +352,6 @@ public struct GameState: Codable, Equatable, Sendable {
             placeUnit(.lantern, for: index, near: seat)
             placeUnit(.spear, for: index, near: seat)
         }
-        for first in houses.indices {
-            for second in houses.indices where second > first {
-                relations.append(Relation(first: first, second: second))
-            }
-        }
         record(.beginning, houses.map(\.id), "The Houses take their seats around \(settings.lake.title). The water lies still under a full moon.")
         // Every House knows the country around its own seat.
         for hold in holds {
@@ -430,27 +430,83 @@ public struct GameState: Codable, Equatable, Sendable {
 
     // MARK: Diplomacy
 
+    /// How two Houses stand: as the realm keeps it for two that have
+    /// dealt, and otherwise as the last Sundering to set them at war left
+    /// them, or as every two Houses stand as the age begins. None for a
+    /// House and itself, or one the realm hasn't.
     public func relation(_ a: Int, _ b: Int) -> Relation? {
-        relationIndex(a, b).map { relations[$0] }
+        let first = min(a, b), second = max(a, b)
+        guard first >= 0, first != second, second < houses.count else { return nil }
+        if let index = relationIndex(first, second) { return relations[index] }
+        return unkeptRelation(first, second)
     }
 
-    /// Where the relation between two Houses lies: in the order the
-    /// relations are made, each House with every House after it, so found
-    /// at once however many Houses sit around the lake; sought through them
-    /// all only where they lie otherwise.
-    func relationIndex(_ a: Int, _ b: Int) -> Int? {
-        let first = min(a, b), second = max(a, b), count = houses.count
-        guard first >= 0, first != second else { return nil }
-        let index = first * (2 * count - first - 1) / 2 + (second - first - 1)
-        if second < count, relations.indices.contains(index), relations[index].first == first, relations[index].second == second {
-            return index
+    /// How two Houses the realm keeps no relation for stand: as the last
+    /// Sundering to set them at war left them, or at peace as every two
+    /// Houses are as the age begins.
+    func unkeptRelation(_ first: Int, _ second: Int) -> Relation {
+        let relation = Relation(first: first, second: second)
+        if sundering?.setsAtWar(first, second) == true, let left = sundering?.left(relation) { return left }
+        for index in (sunderings?.indices ?? 0..<0).reversed() where sunderings?[index].setsAtWar(first, second) == true {
+            return sunderings?[index].left(relation) ?? relation
         }
-        return relations.firstIndex { $0.first == first && $0.second == second }
+        return relation
+    }
+
+    /// Where the relation kept between two Houses lies, if one is. The
+    /// realm keeps one only for two Houses that have dealt, in order of the
+    /// first House and then the second, so it is found at once however many
+    /// Houses sit around the lake and however many have dealt.
+    func relationIndex(_ a: Int, _ b: Int) -> Int? {
+        let first = min(a, b), second = max(a, b)
+        guard first >= 0, first != second else { return nil }
+        let place = relationPlace(first, second)
+        guard relations.indices.contains(place), relations[place].first == first, relations[place].second == second else { return nil }
+        return place
+    }
+
+    /// Where the relation between two Houses lies among those kept, or
+    /// would lie: the first kept that comes no sooner than theirs.
+    private func relationPlace(_ first: Int, _ second: Int) -> Int {
+        var low = 0, high = relations.count
+        while low < high {
+            let middle = (low + high) / 2
+            let keptFirst = relations[middle].first
+            if keptFirst < first || (keptFirst == first && relations[middle].second < second) {
+                low = middle + 1
+            } else {
+                high = middle
+            }
+        }
+        return low
+    }
+
+    /// Where the relation between two Houses lies among those kept, kept
+    /// now as they stand if they had never dealt: for whatever is to be
+    /// changed of it. A war of the Sundering's kept so is still among its
+    /// wars, to be laid down as it ends.
+    mutating func keptRelationIndex(_ a: Int, _ b: Int) -> Int? {
+        let first = min(a, b), second = max(a, b)
+        guard first >= 0, first != second, second < houses.count else { return nil }
+        let place = relationPlace(first, second)
+        if relations.indices.contains(place), relations[place].first == first, relations[place].second == second { return place }
+        let relation = unkeptRelation(first, second)
+        relations.insert(relation, at: place)
+        if var sundering, !sundering.settled, sundering.setsAtWar(first, second), relation.stance == .war {
+            sundering.wars = (sundering.wars ?? []) + [[first, second]]
+            self.sundering = sundering
+        }
+        return place
     }
 
     public func stance(_ a: Int, _ b: Int) -> Stance {
         guard a != b else { return .pact }
-        return relation(a, b)?.stance ?? .peace
+        let first = min(a, b), second = max(a, b)
+        guard first >= 0, second < houses.count else { return .peace }
+        if let index = relationIndex(first, second) { return relations[index].stance }
+        // Two that never dealt are at war only while a Sundering that set
+        // them at war goes on: every Sundering before it left them at peace.
+        return sundering?.holdsAtWar(first, second) == true ? .war : .peace
     }
 
     public func isAtWar(_ a: Int, _ b: Int) -> Bool {
@@ -458,7 +514,7 @@ public struct GameState: Codable, Equatable, Sendable {
     }
 
     mutating func setStance(_ stance: Stance, between a: Int, and b: Int, by actor: Int) {
-        guard let index = relationIndex(a, b) else { return }
+        guard let index = keptRelationIndex(a, b) else { return }
         let previous = relations[index].stance
         relations[index].stance = stance
         relations[index].since = watch

@@ -251,7 +251,8 @@ final class RealmTests: XCTestCase {
             for other in seats[(index + 1)...] { nearest = min(nearest, seat.distance(to: other)) }
         }
         XCTAssertGreaterThanOrEqual(nearest, 6, "Room between the seats")
-        XCTAssertEqual(realm.world.relations.count, 48 * 47 / 2)
+        XCTAssertTrue(realm.world.relations.isEmpty, "No relation kept before two Houses deal")
+        XCTAssertEqual(realm.world.stance(0, 47), .peace)
         let keeper = try realm.arrive("wide", name: "Ama", now: 0)
         let house = try XCTUnwrap(keeper.house)
         XCTAssertEqual(realm.world.houses[house].name, "Ama")

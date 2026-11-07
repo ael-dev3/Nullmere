@@ -44,7 +44,7 @@ final class WildTests: XCTestCase {
 
     func testAnyHouseMayStrikeTheWildsWithoutAWar() throws {
         var (state, me, spear, wild, there) = try hunt()
-        XCTAssertTrue(state.relations.allSatisfy { $0.stance != .war })
+        XCTAssertFalse(state.houses.indices.contains { state.isAtWarWithAny($0) }, "No House at war")
         let forecast = try XCTUnwrap(state.forecast(unit: spear, at: there))
         XCTAssertEqual(forecast.target, .wild(.reavers, level: 1))
         XCTAssertFalse(forecast.couldCapture)

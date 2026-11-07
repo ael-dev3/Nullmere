@@ -138,10 +138,17 @@ final class CompactWorldTests: XCTestCase {
         for bad in ["", "3,7,peace", "3,7,truce,1", "x,7,peace,1", "3,7,peace,1,a", "3,7,peace,1,,,,,9"] {
             XCTAssertThrowsError(try JSONDecoder().decode(Relation.self, from: Data("\"\(bad)\"".utf8)), bad)
         }
-        // A realm of forty-eight seats keeps 1,128 relations: as lines, a
-        // tenth of a keeper's first view, not half.
-        let wide = RealmState.world(seed: "relations", age: 1, seats: 48, radius: RealmState.radius(forSeats: 48))
+        // A realm keeps a relation only for two Houses that have dealt, and
+        // a realm of forty-eight seats begins with none; were every two of
+        // its Houses to deal, its 1,128 relations as lines are a tenth of a
+        // keeper's first view, not half.
+        var wide = RealmState.world(seed: "relations", age: 1, seats: 48, radius: RealmState.radius(forSeats: 48))
+        XCTAssertTrue(wide.relations.isEmpty)
+        for first in 0..<48 {
+            for second in (first + 1)..<48 { XCTAssertNotNil(wide.keptRelationIndex(second, first)) }
+        }
         XCTAssertEqual(wide.relations.count, 48 * 47 / 2)
+        XCTAssertEqual(wide.problems(), [], "Kept in their order")
         let size = try JSONEncoder().encode(wide.relations).count
         print("PERF a realm of 48 seats' relations: \(size / 1024) KB")
         XCTAssertLessThan(size, 20 * 1024)

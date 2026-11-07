@@ -27,7 +27,10 @@ final class RulesTests: XCTestCase {
             let seat = state.seat(of: house.id)!
             XCTAssertTrue(house.explored[state.map.index(of: seat.position)!], "A House sees its own seat")
         }
-        XCTAssertTrue(state.relations.allSatisfy { $0.stance == .peace })
+        XCTAssertTrue(state.relations.isEmpty, "No relation kept: no two Houses have dealt")
+        for a in state.houses.indices {
+            for b in state.houses.indices where b > a { XCTAssertEqual(state.relation(a, b), Relation(first: a, second: b), "At peace") }
+        }
         XCTAssertEqual(state.chronicle.count, 1)
     }
 

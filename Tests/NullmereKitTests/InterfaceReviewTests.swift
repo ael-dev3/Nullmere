@@ -129,7 +129,7 @@ final class InterfaceReviewTests: XCTestCase {
         })
         state.units.append(NullmereCore.Unit(id: state.nextID, kind: .spear, owner: foe, position: beside))
         state.nextID += 1
-        let index = try XCTUnwrap(state.relations.firstIndex { $0.first == min(me, foe) && $0.second == max(me, foe) })
+        let index = try XCTUnwrap(state.keptRelationIndex(me, foe))
         state.relations[index].stance = .war
         let session = GameSession(state: state, store: LocalStore(directory: dir))
         session.voiceOverRunning = { true }

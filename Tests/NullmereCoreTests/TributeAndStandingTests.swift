@@ -128,18 +128,26 @@ final class StandingAndHistoryTests: XCTestCase {
     }
 
     func testSavesFromBeforeTheHistoryStillOpen() throws {
-        let state = GameState(settings: GameSettings(seedText: "old history", houseCount: 3, radius: 16, keepers: 1))
+        var state = GameState(settings: GameSettings(seedText: "old history", houseCount: 3, radius: 16, keepers: 1))
+        state.setStance(.war, between: 0, and: 2, by: 2)
         var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(state)) as? [String: Any])
         json["recorded"] = nil
-        // Its relations kept field by field, as they were then, with no tribute.
-        json["relations"] = state.relations.map { relation -> [String: Any] in
-            ["first": relation.first, "second": relation.second, "stance": relation.stance.rawValue, "since": relation.since,
-             "betrayals": relation.betrayals]
+        // Its relations kept field by field, as they were then, with no
+        // tribute, and one for every two Houses, as the realm kept them then.
+        let every = try (0..<3).flatMap { first in try ((first + 1)..<3).map { try XCTUnwrap(state.relation(first, $0)) } }
+        json["relations"] = every.map { relation -> [String: Any] in
+            var fields: [String: Any] = ["first": relation.first, "second": relation.second, "stance": relation.stance.rawValue,
+                                         "since": relation.since, "betrayals": relation.betrayals]
+            if let aggressor = relation.aggressor { fields["aggressor"] = aggressor }
+            return fields
         }
         let restored = try JSONDecoder().decode(GameState.self, from: JSONSerialization.data(withJSONObject: json))
         XCTAssertTrue(restored.history.isEmpty)
         XCTAssertNil(restored.relations.first?.tributePaid)
-        XCTAssertEqual(restored.relations, state.relations)
+        XCTAssertEqual(restored.relations, every)
+        for first in 0..<3 {
+            for second in (first + 1)..<3 { XCTAssertEqual(restored.relation(first, second), state.relation(first, second)) }
+        }
     }
 
     func testStandingsNameTheNearestThreat() throws {

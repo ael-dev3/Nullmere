@@ -55,8 +55,11 @@ steward's answer). For development a realm can also be hosted in-process
   replies, through SpacetimeDB views (`my_view`, `my_view_parts`,
   `my_replies`), and the realm's public status. A keeper's view is kept in
   parts as the world is (its map's ground 2,048 tiles to a page and its
-  relief whole, a page of 32 of each long list but the relations between
-  every two Houses, a thousand to a page, and the rest), and its row
+  relief whole, a page of 32 of each long list but the relations, and the
+  rest; the realm keeps a relation only for two Houses that have dealt, a
+  page of them for every 32 Houses by the first of each two, so a page is
+  written only as its own Houses deal, and the Sundering's war between the
+  shores is the kingdoms', kept once, not pair by pair), and its row
   names the parts that are its own, each with the version it was written
   at, and the list of the pages told alike it takes: a publication writes
   only the parts of each view that changed and lets go of those a view no

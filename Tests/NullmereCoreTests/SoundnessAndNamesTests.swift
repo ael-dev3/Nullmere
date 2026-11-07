@@ -54,7 +54,15 @@ final class SoundnessTests: XCTestCase {
         }
         assertFinds("was given out before the next id") { $0.nextID = 1 }
         assertFinds("Envoy 1234 runs from") { $0.envoys.append(Envoy(id: 1234, from: 1, to: 1, proposal: .peace, arrived: 1)) }
-        assertFinds("Two Houses have more than one standing") { $0.relations.append($0.relations[0]) }
+        assertFinds("Two Houses have more than one standing") { state in
+            state.setStance(.war, between: 0, and: 1, by: 0)
+            state.relations.append(state.relations[0])
+        }
+        assertFinds("The standings kept are out of order") { state in
+            state.setStance(.war, between: 0, and: 1, by: 0)
+            state.setStance(.war, between: 0, and: 2, by: 0)
+            state.relations.reverse()
+        }
         assertFinds("A standing between 2 and 2") { $0.relations.append(Relation(first: 2, second: 2)) }
     }
 }

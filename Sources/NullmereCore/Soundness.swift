@@ -280,6 +280,10 @@ extension GameState {
         }
         let pairs = Set(relations.map { [$0.first, $0.second] })
         if pairs.count != relations.count { found.append("Two Houses have more than one standing") }
+        // Those kept lie in order, first House and then second, to be found.
+        if zip(relations, relations.dropFirst()).contains(where: { ($0.first, $0.second) > ($1.first, $1.second) }) {
+            found.append("The standings kept are out of order")
+        }
         for relation in relations where !houseIDs.contains(relation.first) || !houseIDs.contains(relation.second) || relation.first == relation.second {
             found.append("A standing between \(relation.first) and \(relation.second)")
         }

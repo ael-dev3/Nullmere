@@ -11,11 +11,12 @@ import Foundation
 /// all of them.
 extension RealmState {
     public static let partPage = 32
-    /// How many relations go to a page: one for every two Houses, each a
-    /// line of a few bytes that changes only as their dealings do, so a
-    /// realm of hundreds of Houses is a few hundred pages of them rather
-    /// than many thousands, each to be named and read in every view.
-    public static let relationPage = 1_024
+    /// How many Houses' relations go to a page: those kept of every two
+    /// Houses whose first is one of so many, each a line of a few bytes
+    /// that changes only as their dealings do. The realm keeps one only for
+    /// two Houses that have dealt, so a realm of thousands of Houses is a
+    /// page for every 32 of them, each changed only as they deal.
+    public static let relationPage = 32
     /// How many of the map's tiles go to a part: a wide lake's map is a
     /// megabyte, and a keeper's view of it changes only where they explore.
     public static let mapPage = 2_048
@@ -259,7 +260,21 @@ extension GameState {
         head.houses = []
         try paged("holds", holds) { $0.holds }
         head.holds = []
-        try paged("relations", relations, page: RealmState.relationPage) { $0.relations }
+        // The relations kept, a page for the pairs whose first House is
+        // each `relationPage` Houses in turn: a page changes only as its
+        // own Houses deal, however many pairs come to be kept before it.
+        let blocks = max((houses.count + RealmState.relationPage - 1) / RealmState.relationPage, 1)
+        let theirRelations = written.map { ($0.world.relations, $0.parts) }
+        for block in 0..<blocks {
+            let key = "relations.\(block)"
+            let ours = relations.firstIndices(of: block)
+            let alike = theirRelations.first { list, theirParts in
+                guard theirParts[key] != nil else { return false }
+                let theirs = list.firstIndices(of: block)
+                return GameState.sameItems(list[theirs], relations[ours])
+            }
+            parts[key] = try alike.flatMap { $0.1[key] } ?? text(Array(relations[ours]))
+        }
         head.relations = []
         try paged("chronicle", chronicle) { $0.chronicle }
         head.chronicle = []
@@ -413,8 +428,8 @@ extension GameState {
     /// end, the omens and the eclipse, the Spire's titles, the Augury, the
     /// veils, the Ring, the ripples, the monument, the mirror's walks, the
     /// Lyceum's questions and its hall, the calm, the lairs' ladder, the
-    /// oaths, the deep water, the broken Spire, the edicts, the Sundering,
-    /// its ford and the drowned crown, the charges done, and where the
+    /// oaths, the deep water, the broken Spire, the edicts, the Sundering
+    /// and those before it this age, its ford and the drowned crown, the charges done, and where the
     /// realm's rounds of words begin.
     struct Realm: Codable, Equatable {
         var settings: GameSettings
@@ -440,6 +455,7 @@ extension GameState {
         var brokenSpire: BrokenSpire?
         var edicts: [Edict]?
         var sundering: Sundering?
+        var sunderings: [Sundering]?
         var ford: [Hex]?
         var crown: DrownedCrown?
         var unsundered: Bool?
@@ -470,6 +486,7 @@ extension GameState {
             brokenSpire = world.brokenSpire
             edicts = world.edicts
             sundering = world.sundering
+            sunderings = world.sunderings
             ford = world.ford
             crown = world.crown
             unsundered = world.unsundered
@@ -502,6 +519,7 @@ extension GameState {
             world.brokenSpire = brokenSpire
             world.edicts = edicts
             world.sundering = sundering
+            world.sunderings = sunderings
             world.ford = ford
             world.crown = crown
             world.unsundered = unsundered
@@ -842,6 +860,22 @@ public enum RealmPartsError: Error, Equatable {
 /// A list a world keeps in pages: a plain list, or its holds or its
 /// companies, each an array underneath, so a page of it is a stretch of
 /// that array, compared where it lies.
+extension [Relation] {
+    /// Where the relations kept whose first House is one of a page's lie:
+    /// the Houses `page * RealmState.relationPage` and the next so many.
+    func firstIndices(of page: Int) -> Range<Int> {
+        func place(_ house: Int) -> Int {
+            var low = 0, high = count
+            while low < high {
+                let middle = (low + high) / 2
+                if self[middle].first < house { low = middle + 1 } else { high = middle }
+            }
+            return low
+        }
+        return place(page * RealmState.relationPage)..<place((page + 1) * RealmState.relationPage)
+    }
+}
+
 protocol Paged: RandomAccessCollection where Index == Int, Element: Equatable {
     /// The items of a stretch of the list, as they lie.
     func page(_ range: Range<Int>) -> ArraySlice<Element>
