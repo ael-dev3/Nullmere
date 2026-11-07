@@ -105,6 +105,8 @@ final class WorldRenderer {
     private let glassy: any MTLDepthStencilState
     private let pixelFormat: MTLPixelFormat
     private var tiles: (any MTLTexture)?
+    /// Each House's colour as the land's shader reads it (see `HousePalette`).
+    private let housePalette: any MTLTexture
     private(set) var land: Land?
     private var meshes: [ModelKey: GPUMesh] = [:]
     /// What stands still, as the GPU holds it, and the version it was sent at.
@@ -158,6 +160,13 @@ final class WorldRenderer {
         guard let shadows = device.makeTexture(descriptor: map) else { throw Failure.noTexture }
         shadows.label = "Nullmere moon's shadows"
         self.shadows = shadows
+        let colours = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float, width: HousePalette.side,
+                                                               height: HousePalette.side, mipmapped: false)
+        colours.usage = .shaderRead
+        colours.storageMode = .shared
+        guard let housePalette = device.makeTexture(descriptor: colours) else { throw Failure.noTexture }
+        housePalette.label = "Nullmere Houses' colours"
+        self.housePalette = housePalette
         guard let commandQueue = device.makeCommandQueue() else { throw Failure.noCommandQueue }
         commandQueue.label = "Nullmere world"
         let solidDescriptor = MTLDepthStencilDescriptor()
@@ -174,6 +183,19 @@ final class WorldRenderer {
         self.commandQueue = commandQueue
         self.device = device
         self.pixelFormat = pixelFormat
+        // The game's own colours, until told others.
+        setHouses(WorldView.houseColours)
+    }
+
+    /// Each House's colour by its sigil, linear, for the land's wash of
+    /// whose it is and the line where one House's meets another's.
+    func setHouses(_ houses: [Vec4]) {
+        let texels = HousePalette.texels(houses)
+        texels.withUnsafeBytes { raw in
+            guard let base = raw.baseAddress else { return }
+            housePalette.replace(region: MTLRegionMake2D(0, 0, HousePalette.side, HousePalette.side), mipmapLevel: 0,
+                                 withBytes: base, bytesPerRow: HousePalette.side * 4 * MemoryLayout<Float>.stride)
+        }
     }
 
     // MARK: The world's data
@@ -319,6 +341,7 @@ final class WorldRenderer {
         encoder.setVertexTexture(tiles, index: 0)
         encoder.setFragmentTexture(tiles, index: 0)
         encoder.setFragmentTexture(shadows, index: 2)
+        encoder.setFragmentTexture(housePalette, index: 3)
 
         // The land: only its chunks in view.
         if !WorldRenderer.leftOut.contains("land") {

@@ -242,6 +242,14 @@ public enum WorldShaders {
         return floor(NM_TILE(h + int2(r, r)) * 255.0 + 0.5);
     }
 
+    // Whose land a tile is, from its bytes as nm_tileAt gives them: a
+    // House's sigil plus one, its low eight bits the fourth byte and its
+    // high four the first byte's high half, over the terrain's code; none
+    // is zero (see TileTexture).
+    float nm_owner(float4 tile) {
+        return tile.w + 256.0 * floor(tile.x / 16.0);
+    }
+
     // Whether the keeper knows a hex at all, and whether they watch it now.
     float2 nm_knowledge(int2 h, float radius NM_TEXTURE_ARGUMENT) {
         float feature = nm_tileAt(h, radius NM_TEXTURE_PASS).y;
@@ -428,7 +436,6 @@ public enum WorldShaders {
         float4 extent;     // the land's corner and far corner (x, z)
         float4 haze;       // haze start, density, exposure, heights spacing
         float4 heights;    // the heights grid's corner (x, z), columns, rows
-        float4 houses[128]; // each House's colour, by sigil plus one
         float4 lights[8];  // the world's own lights: where and how far, then colour
         float4 still;      // the Still's calm, 0 to 1; whether the moon casts shadows; a shadow texel, in world units and in the map's
         float4x4 shadow;   // the moon's view and projection, from the world to its shadow map
@@ -496,14 +503,15 @@ public enum WorldShaders {
     fragment float4 nm_land_fragment(LandOut in [[stage_in]],
                                      constant FrameUniforms &frame [[buffer(0)]],
                                      texture2d<float, access::read> tiles [[texture(0)]],
-                                     depth2d<float> shadows [[texture(2)]]) {
+                                     depth2d<float> shadows [[texture(2)]],
+                                     texture2d<float, access::read> housePalette [[texture(3)]]) {
         float time = frame.eye.w;
         float radius = frame.world.x;
         float3 n = normalize(in.normal);
         float2 p = in.world.xz;
         int2 h = nm_hexRound(nm_axial(p));
         float4 tile = nm_tileAt(h, radius, tiles);
-        float owner = tile.w;
+        float owner = nm_owner(tile);
     #ifndef NM_NO_GRAIN
         float3 albedo = nm_grain(p, in.colour);
     #else
@@ -516,7 +524,10 @@ public enum WorldShaders {
         // it meets another's.
         float3 lit = float3(0.0);
         if (owner > 0.5 && in.known > 0.5) {
-            float3 house = frame.houses[min(int(owner), 127)].rgb;
+            // Each House's colour a texel past its sigil, 64 to a row (see
+            // HousePalette).
+            uint slot = uint(owner);
+            float3 house = housePalette.read(uint2(slot % 64u, slot / 64u)).rgb;
             // The wash is the faintest breath of the House's colour, broken
             // by the ground's own grain, so the land reads as land.
             float breath = 0.035 + 0.025 * nm_hash12(floor(p * 7.0));
@@ -527,7 +538,7 @@ public enum WorldShaders {
             float2 centre = nm_hexCentre(h);
             int2 across = nm_hexRound(nm_axial(centre + (p - centre) * 1.45));
             if (across.x != h.x || across.y != h.y) {
-                float otherOwner = nm_tileAt(across, radius, tiles).w;
+                float otherOwner = nm_owner(nm_tileAt(across, radius, tiles));
                 if (abs(otherOwner - owner) > 0.5) {
                     float line = 1.0 - smoothstep(pixel * 0.8, pixel * 3.2, edge.x);
                     lit += house * line * 0.22;

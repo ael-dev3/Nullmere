@@ -155,7 +155,7 @@ final class Projector: @unchecked Sendable {
             let scene = trailer.scene(of: shot, at: time)
             var frame = FrameUniforms.make(camera: camera, size: Trailer.viewSize, pixelsPerPoint: Trailer.pixelsPerPoint, time: Float(time),
                                            motion: 1, radius: trailer.world.state.map.radius, terrain: trailer.world.terrain,
-                                           hovered: nil, selected: nil, houses: trailer.world.houses)
+                                           hovered: nil, selected: nil)
             frame.light(with: PointLight.strongest(scene.lights, near: camera.focus))
             frame.weather(scene.weather)
             return world.pixels(frame, scene: scene, into: target) ?? [UInt8](repeating: 0, count: width * height * 4)

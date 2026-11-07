@@ -15,7 +15,7 @@
 
 Nullmere Online is one world shared by everyone who plays it: a great dead
 lake, still as black glass under a full moon, ringed by the seats of twelve
-Houses (a realm may be raised with up to ninety-six). Each player is a
+Houses (a realm may be raised with up to a thousand and twenty-four). Each player is a
 keeper and holds a House. Keepers found holds and work the land, raise works
 and pursue studies, muster companies by the thousand under their commanders,
 make and break pacts and alliances, and win the age by dominion over the

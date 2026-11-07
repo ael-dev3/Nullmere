@@ -63,8 +63,9 @@ public struct WorldGenerator: Sendable {
     /// Whether streams run from the Spine to the lake.
     public let rivers: Bool
 
-    /// The most Houses a lake seats: one for every House with a name.
-    public static let mostHouses = 96
+    /// The most Houses a lake seats: one for every House with a name, a
+    /// kingdom of a thousand and more.
+    public static let mostHouses = 1_024
 
     /// How many tiles from the world's middle the Marches' Crown stands: a
     /// ring of the Spine about the land between its meres, a sixth of the
@@ -75,7 +76,7 @@ public struct WorldGenerator: Sendable {
 
     public init(seed: UInt64, radius: Int = 24, houseCount: Int = 5, lake: Lake = .round, rivers: Bool = false) {
         precondition(radius >= 12, "the world needs room for a lake and its shores")
-        precondition((2...WorldGenerator.mostHouses).contains(houseCount), "between two and ninety-six Houses")
+        precondition((2...WorldGenerator.mostHouses).contains(houseCount), "between two and \(WorldGenerator.mostHouses) Houses")
         self.seed = seed
         self.radius = radius
         self.houseCount = houseCount

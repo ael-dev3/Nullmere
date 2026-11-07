@@ -156,14 +156,18 @@ full screen at launch as chosen.
   after is told so and let in as it takes in more, their Mac asking again
   on its own until it does.
 - **Seats.** The lake has twelve seats, held by the twelve elder Houses. A
-  realm raised with more, up to ninety-six, lies on a lake as much wider
-  as keeps each seat as much country (a radius of 72 hexes for forty-eight
-  seats and 102 for ninety-six, against the realm proper's 36), its seats
-  a longer walk from the shore so that they keep their room (on each
-  lake's shape, forty-eight seats lay eight hexes or more apart and
-  ninety-six seven or more), and the seats past twelve go to younger
-  Houses, each with a name and a colour of its own, on the map and in its
-  words. Seats no keeper holds are played by stewards, the same minds that
+  realm raised with more, up to a thousand and twenty-four, lies on a lake
+  as much wider as keeps each seat as much country (a radius of 72 hexes
+  for forty-eight seats, 102 for ninety-six and 333 for a thousand and
+  twenty-four, against the realm proper's 36), its seats a longer walk
+  from the shore so that they keep their room (on each lake's shape,
+  forty-eight seats lay eight hexes or more apart, ninety-six seven or
+  more and a thousand and twenty-four six or more), and the seats past
+  twelve go to younger Houses, and those past ninety-six to the Houses of
+  the widest lakes, each with a name and a colour of its own, on the map
+  and in its words. A thousand colours can't each be as plainly apart as
+  ninety-six are: at the widest lakes a House's name, and the line where
+  its land meets another's, tell it apart where its colour alone can't. Seats no keeper holds are played by stewards, the same minds that
   once played rivals, until a keeper claims them. When every seat is
   held, a newcomer waits at the front door and steps in the moment one
   falls free. A seat whose keeper has been away a week goes back to the

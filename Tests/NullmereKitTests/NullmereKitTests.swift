@@ -24,17 +24,27 @@ final class WorldShaderTests: XCTestCase {
             XCTAssertEqual(Double(shader.y), pow(interface.green, 2.2), accuracy: 1e-5)
             XCTAssertEqual(Double(shader.z), pow(interface.blue, 2.2), accuracy: 1e-5)
         }
-        // Each a colour of its own: the elder Houses' plainly apart, and
-        // every younger House's still apart from any beside it.
+        // Each a colour of its own: the elder Houses' plainly apart, every
+        // younger House's of a lake of up to ninety-six seats still apart
+        // from any beside it, and each of the widest lakes' still its own,
+        // as far from every other as a thousand colours can be.
         let components = Palette.houses.compactMap { NSColor($0).usingColorSpace(.sRGB) }
         XCTAssertEqual(components.count, Names.houses.count)
+        let hand = Names.houses.count - HousePalette.widestLakes.count
+        XCTAssertEqual(hand, 96, "Ninety-six named by hand")
+        var nearest = (elder: Double.infinity, hand: Double.infinity, widest: Double.infinity)
         for (index, a) in components.enumerated() {
             for (other, b) in components.enumerated() where other > index {
-                let distance = abs(a.redComponent - b.redComponent) + abs(a.greenComponent - b.greenComponent) + abs(a.blueComponent - b.blueComponent)
-                let elder = other < Names.elder.count
-                XCTAssertGreaterThan(distance, elder ? 0.3 : 0.18, "Houses \(index) and \(other) too alike in colour")
+                let distance = Double(abs(a.redComponent - b.redComponent) + abs(a.greenComponent - b.greenComponent)
+                    + abs(a.blueComponent - b.blueComponent))
+                if other < Names.elder.count { nearest.elder = min(nearest.elder, distance) }
+                else if other < hand { nearest.hand = min(nearest.hand, distance) }
+                else { nearest.widest = min(nearest.widest, distance) }
             }
         }
+        XCTAssertGreaterThan(nearest.elder, 0.3, "The elder Houses' plainly apart")
+        XCTAssertGreaterThan(nearest.hand, 0.18, "A lake of up to ninety-six seats, each House's apart from any other")
+        XCTAssertGreaterThan(nearest.widest, 0.03, "The widest lakes', each its own")
     }
 
     /// Compiles the world's shaders and builds their pipelines on this Mac's GPU.

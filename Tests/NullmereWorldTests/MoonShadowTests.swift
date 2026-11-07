@@ -97,7 +97,7 @@ final class MoonShadowTests: XCTestCase {
         let terrain = TerrainMesh(relief: Relief(map: state.map), spacing: 0.3)
         func frame(_ scale: Double) -> FrameUniforms {
             FrameUniforms.make(camera: camera(scale: scale), size: size, pixelsPerPoint: 2, time: 1, motion: 1, radius: 12,
-                               terrain: terrain, hovered: nil, selected: nil, houses: [])
+                               terrain: terrain, hovered: nil, selected: nil)
         }
         var close = frame(90)
         XCTAssertTrue(close.casts)

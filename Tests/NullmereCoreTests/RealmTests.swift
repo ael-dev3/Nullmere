@@ -210,13 +210,13 @@ final class RealmTests: XCTestCase {
         XCTAssertThrowsError(try realm.perform(.fortify(unit: 1), by: "c")) { XCTAssertEqual($0 as? RealmError, .noSeat) }
     }
 
-    /// A realm has two to ninety-six seats, as many as one lake can seat;
-    /// the steward refuses aloud to begin one of any other size, never
-    /// making it another without a word. The realm proper seats twelve; a
-    /// realm of more lies on a lake as much wider as keeps each seat as
-    /// much country.
-    func testARealmHasTwoToNinetySixSeats() {
-        XCTAssertEqual(RealmState.seatRange, 2...96)
+    /// A realm has two to a thousand and twenty-four seats, as many as one
+    /// lake can seat; the steward refuses aloud to begin one of any other
+    /// size, never making it another without a word. The realm proper seats
+    /// twelve; a realm of more lies on a lake as much wider as keeps each
+    /// seat as much country.
+    func testARealmHasTwoToAThousandAndTwentyFourSeats() {
+        XCTAssertEqual(RealmState.seatRange, 2...1_024)
         XCTAssertEqual(RealmState.seatRange.upperBound, Names.houses.count, "A name for every House a lake seats")
         XCTAssertEqual(RealmState.defaultSeats, 12)
         for seats in [2, 7, 12] {
@@ -228,7 +228,30 @@ final class RealmTests: XCTestCase {
         XCTAssertEqual(RealmState.radius(forSeats: 13), 37)
         XCTAssertEqual(RealmState.radius(forSeats: 48), 72)
         XCTAssertEqual(RealmState.radius(forSeats: 96), 102)
+        XCTAssertEqual(RealmState.radius(forSeats: 1_024), 333)
         XCTAssertEqual(realm(seats: 2).radius, 18, "A lake as wide as asked, when asked")
+    }
+
+    /// A realm of more than ninety-six seats: every elder and younger House
+    /// seated, and past them Houses of the widest lakes, each with its own
+    /// name and colour, and room between every seat.
+    func testARealmWiderThanNinetySixSeatsSeatsTheWidestLakesHouses() throws {
+        let realm = RealmState(name: "The Widest Nullmere", seed: "a hundred and twenty-eight", seats: 128, now: 0)
+        XCTAssertEqual(realm.radius, RealmState.radius(forSeats: 128))
+        let names = realm.world.houses.map(\.name)
+        XCTAssertEqual(Set(names).count, 128, "Every House its own name")
+        XCTAssertTrue(Set(Names.elder + Names.younger).isSubset(of: Set(names)), "Every elder and younger House seated")
+        XCTAssertEqual(names.filter { Names.widest.contains($0) }.count, 32, "and thirty-two of the widest lakes'")
+        XCTAssertEqual(Set(realm.world.houses.map(\.sigil)).count, 128, "Each its own colour")
+        XCTAssertTrue(realm.world.houses.allSatisfy { Names.houses.firstIndex(of: $0.name) == $0.sigil }, "Each colour its name's")
+        XCTAssertGreaterThan(realm.world.houses.map(\.sigil).max() ?? 0, 95, "Past the ninety-six")
+        let seats = realm.world.houses.compactMap { realm.world.seat(of: $0.id)?.position }
+        XCTAssertEqual(seats.count, 128)
+        var nearest = Int.max
+        for (index, seat) in seats.enumerated() {
+            for other in seats[(index + 1)...] { nearest = min(nearest, seat.distance(to: other)) }
+        }
+        XCTAssertGreaterThanOrEqual(nearest, 6, "Room between the seats")
     }
 
     /// A realm of forty-eight seats: the twelve elder Houses and thirty-six

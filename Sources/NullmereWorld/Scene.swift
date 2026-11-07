@@ -59,11 +59,10 @@ public struct SceneFrame: Equatable, Sendable {
 }
 
 extension FrameUniforms {
-    /// A frame's uniforms for a camera over a map's land, at a moment.
-    /// `houses` are the Houses' colours by sigil, linear; the shaders find
-    /// them a slot on, slot zero being no House's.
+    /// A frame's uniforms for a camera over a map's land, at a moment. The
+    /// Houses' colours go to the shaders apart, as a `HousePalette`.
     public static func make(camera: Camera, size: CGSize, pixelsPerPoint: Double, time: Float, motion: Float,
-                            radius: Int, terrain: TerrainMesh, hovered: Hex?, selected: Hex?, houses: [Vec4],
+                            radius: Int, terrain: TerrainMesh, hovered: Hex?, selected: Hex?,
                             exposure: Float = 1) -> FrameUniforms {
         let eye = camera.eye(in: size)
         let low = terrain.low, high = terrain.high
@@ -77,8 +76,7 @@ extension FrameUniforms {
             highlight: Vec4(Float(hovered?.q ?? 999), Float(hovered?.r ?? 999), Float(selected?.q ?? 999), Float(selected?.r ?? 999)),
             extent: Vec4(low.x, low.z, high.x, high.z),
             haze: Sky.haze(eyeDistance: (eye - camera.focus).length, exposure: exposure, spacing: terrain.spacing),
-            heights: Vec4(terrain.originX, terrain.originZ, Float(terrain.columns), Float(terrain.rows)),
-            houses: [Vec4(0.6, 0.6, 0.6, 1)] + houses)
+            heights: Vec4(terrain.originX, terrain.originZ, Float(terrain.columns), Float(terrain.rows)))
         frame.cast(MoonShadow.matrix(camera: camera, size: size))
         return frame
     }

@@ -28,11 +28,13 @@ struct HousesPanel: View {
                     Rule(opacity: 0.18)
                     RaceTable(session: session)
                     Rule(opacity: 0.18)
-                    ForEach(state.houses.filter { $0.id != session.player }) { house in
-                        HouseRow(session: session, house: house, draft: drafts.draft(for: house), expanded: open == house.id) {
-                            withAnimation(.easeOut(duration: 0.2)) { open = open == house.id ? nil : house.id }
-                        }
-                        Rule(opacity: 0.18)
+                    let others = state.houses.filter { $0.id != session.player }
+                    if others.count > Standing.shownWhole {
+                        // A realm of a thousand Houses: each laid out as it
+                        // scrolls into view, not every one as the panel opens.
+                        LazyVStack(alignment: .leading, spacing: 14) { rows(others) }
+                    } else {
+                        rows(others)
                     }
                 }
             }
@@ -44,6 +46,16 @@ struct HousesPanel: View {
         .frame(width: PanelWidth.rail)
         .panelHeight()
         .panelBackground()
+    }
+
+    /// A row for each House, a rule after it; one opened at a time.
+    @ViewBuilder private func rows(_ others: [House]) -> some View {
+        ForEach(others) { house in
+            HouseRow(session: session, house: house, draft: drafts.draft(for: house), expanded: open == house.id) {
+                withAnimation(.easeOut(duration: 0.2)) { open = open == house.id ? nil : house.id }
+            }
+            Rule(opacity: 0.18)
+        }
     }
 }
 
@@ -72,7 +84,9 @@ struct RaceTable: View {
                 Caps("Moonspire", size: 9).foregroundStyle(Palette.text(0.6))
                     .frame(width: Self.spireColumn, alignment: .leading)
             }
-            ForEach(session.standings, id: \.house) { standing in
+            // A wide realm's race: its leaders and the keeper's own place.
+            let shown = Standing.shown(session.standings, to: session.player)
+            ForEach(shown, id: \.house) { standing in
                 let house = state.houses[standing.house]
                 HStack(spacing: 8) {
                     RoundedRectangle(cornerRadius: 1).fill(Palette.house(house)).frame(width: 3, height: 12)
@@ -102,7 +116,17 @@ struct RaceTable: View {
                 .accessibilityLabel(RaceTable.spoken(standing, in: state, player: session.player))
                 .accessibilityAddTraits(.isStaticText)
             }
+            if shown.count < session.standings.count {
+                Text(verbatim: RaceTable.more(session.standings.count - shown.count))
+                    .font(.nm(10))
+                    .foregroundStyle(Palette.text(0.6))
+            }
         }
+    }
+
+    /// The Houses of a wide realm's race its table leaves out.
+    static func more(_ count: Int) -> String {
+        "\(count) more Houses, further from winning"
     }
 
     static func spoken(_ standing: Standing, in state: GameState, player: Int) -> String {

@@ -92,6 +92,21 @@ final class PanelRenderTests: XCTestCase {
         }
     }
 
+    /// A realm wider than ninety-six seats draws its Houses and their race:
+    /// the race shows its dozen leaders and the keeper's own place, and says
+    /// how many more there are.
+    func testAWideRealmsHousesAndRaceDraw() throws {
+        let state = GameState(settings: GameSettings(seedText: "a wide realm's Houses", houseCount: 128,
+                                                     radius: RealmState.radius(forSeats: 128), keepers: 1))
+        let session = GameSession(state: state, store: LocalStore(directory: dir))
+        let shown = Standing.shown(session.standings, to: session.player)
+        let leading = session.standings.prefix(Standing.leaders).contains { $0.house == session.player }
+        XCTAssertEqual(shown.count, Standing.leaders + (leading ? 0 : 1), "Its leaders and the keeper's own place")
+        XCTAssertEqual(RaceTable.more(session.standings.count - shown.count), "\(128 - shown.count) more Houses, further from winning")
+        try draw(HousesPanel(session: session), width: 360, height: 900)
+        try draw(RaceTable(session: session), width: 360)
+    }
+
     func testThePanelsDrawAGameUnderWay() throws {
         let session = busySession()
         for larger in [false, true] {

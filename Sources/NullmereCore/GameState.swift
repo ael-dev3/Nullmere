@@ -320,14 +320,15 @@ public struct GameState: Codable, Equatable, Sendable {
 
         // The elder Houses take the seats in a shuffled order; a lake that
         // seats more than they fill gives the rest to the younger Houses,
-        // shuffled after them.
+        // shuffled after them, and one that seats more than those to the
+        // widest lakes' Houses, shuffled after them in turn.
         let open = { (names: [String]) in settings.keepers > 0 ? names.filter { $0 != settings.playerHouse } : names }
         var names = open(Names.elder)
         random.shuffle(&names)
         // A kept first seat takes its keeper's name, not one of these.
         let named = settings.keepers > 0 ? world.seats.count - 1 : world.seats.count
-        if named > names.count {
-            var younger = open(Names.younger)
+        for more in [Names.younger, Names.widest] where named > names.count {
+            var younger = open(more)
             random.shuffle(&younger)
             names += younger
         }

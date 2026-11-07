@@ -599,7 +599,7 @@ public struct RealmState: Codable, Equatable, Sendable {
 
     private func unusedHouseName() -> String {
         let used = Set(world.houses.map { $0.name.lowercased() } + keepers.map { $0.name.lowercased() })
-        let spare = (Names.elder + RealmState.reserveNames + Names.younger).first { !used.contains($0.lowercased()) }
+        let spare = (Names.elder + RealmState.reserveNames + Names.younger + Names.widest).first { !used.contains($0.lowercased()) }
         return spare ?? "Nameless \(world.houses.count)"
     }
 

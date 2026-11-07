@@ -115,7 +115,7 @@ final class Portraits {
         let (eye, look) = Portraits.framing(low: low, high: high, ground: height)
         let size = CGSize(width: Portraits.side, height: Portraits.side)
         var frame = FrameUniforms.make(camera: Camera(), size: size, pixelsPerPoint: 1, time: 2, motion: 0, radius: land.map.radius,
-                                       terrain: land.terrain, hovered: nil, selected: nil, houses: [], exposure: 1.5)
+                                       terrain: land.terrain, hovered: nil, selected: nil, exposure: 1.5)
         let distance = (eye - look).length
         frame.viewProjection = Mat4.perspective(fovY: Float(Camera.fieldOfView), aspect: 1, near: distance * 0.05, far: distance * 6)
             * Mat4.lookAt(eye: eye, target: look)

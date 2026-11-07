@@ -167,4 +167,19 @@ final class StandingAndHistoryTests: XCTestCase {
         state.houses[rival].liege = state.player
         XCTAssertNil(state.standing(of: rival).threat, "A vassal threatens no one")
     }
+
+    /// A race's table shows every House of a lake of up to ninety-six
+    /// seats; a wider realm's, its dozen leaders and the keeper's own place,
+    /// last, when it falls among the rest.
+    func testAWideRealmsRaceShowsItsLeadersAndYourOwn() {
+        func race(_ count: Int) -> [Standing] {
+            (0..<count).map { Standing(house: $0, realm: count - $0, needed: 2 * count, spire: 0, isVassal: false) }
+        }
+        XCTAssertEqual(Standing.shown(race(96), to: 90).map(\.house), Array(0..<96), "Every House of a lake of ninety-six")
+        let wide = race(1_024)
+        XCTAssertEqual(Standing.shown(wide, to: 3).map(\.house), Array(0..<12), "Among the leaders, shown with them")
+        XCTAssertEqual(Standing.shown(wide, to: 700).map(\.house), Array(0..<12) + [700], "Further back, shown after them")
+        XCTAssertEqual(Standing.shown(wide, to: 5_000).map(\.house), Array(0..<12), "No House of the realm's, the leaders alone")
+        XCTAssertEqual(Standing.shown(wide, to: 700).last, wide[700], "Its own standing as it is")
+    }
 }

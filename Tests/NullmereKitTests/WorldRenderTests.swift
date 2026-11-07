@@ -66,8 +66,7 @@ final class WorldRenderTests: XCTestCase {
         try renderer.updateTiles(tiles, side: TileTexture.side(for: world.state.map))
         let target = try renderer.makeTarget(width: WorldRenderTests.width, height: WorldRenderTests.height)
         var frame = FrameUniforms.make(camera: camera, size: WorldRenderTests.size, pixelsPerPoint: 1, time: 20, motion: 1,
-                                       radius: world.state.map.radius, terrain: world.terrain, hovered: nil, selected: selected,
-                                       houses: WorldView.houseColours)
+                                       radius: world.state.map.radius, terrain: world.terrain, hovered: nil, selected: selected)
         frame.light(with: PointLight.strongest(scene.lights, near: camera.focus))
         let pixels = try XCTUnwrap(renderer.pixels(frame, scene: scene, into: target), "\(name) drawn")
         return Drawn(name: name, pixels: pixels, camera: camera)
@@ -414,8 +413,7 @@ final class WorldRenderTests: XCTestCase {
         camera.focus(on: course[course.count / 2])
         let target = try renderer.makeTarget(width: WorldRenderTests.width, height: WorldRenderTests.height)
         let frame = FrameUniforms.make(camera: camera, size: WorldRenderTests.size, pixelsPerPoint: 1, time: 20, motion: 1,
-                                       radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil,
-                                       houses: WorldView.houseColours)
+                                       radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil)
         let drawn = Drawn(name: "moonford", pixels: try XCTUnwrap(renderer.pixels(frame, scene: SceneFrame(), into: target)), camera: camera)
         try keep([drawn], as: "world-moonford")
 

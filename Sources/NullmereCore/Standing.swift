@@ -70,3 +70,21 @@ extension GameState {
         recorded?.append(snapshot)
     }
 }
+
+extension Standing {
+    /// The most Houses a race's table shows whole: every House of a lake of
+    /// up to ninety-six seats.
+    public static let shownWhole = 96
+    /// The Houses leading a wider realm's race that its table shows.
+    public static let leaders = 12
+
+    /// What a race's table shows a House of `standings`, nearest to winning
+    /// first: all of them, up to ninety-six; past that, the dozen leading
+    /// and the House's own, should it not be among them.
+    public static func shown(_ standings: [Standing], to house: Int) -> [Standing] {
+        guard standings.count > shownWhole else { return standings }
+        let leading = Array(standings.prefix(leaders))
+        guard !leading.contains(where: { $0.house == house }), let own = standings.first(where: { $0.house == house }) else { return leading }
+        return leading + [own]
+    }
+}

@@ -42,8 +42,11 @@ final class WorldMetalView: MTKView {
     var relief: Relief?
     /// The models standing in the world at a moment of the map's clock.
     var scene: ((Double, CGSize) -> SceneFrame)?
-    /// Each House's colour by its sigil, linear.
-    var houseColours: [Vec4] = []
+    /// Each House's colour by its sigil, linear: the renderer's palette,
+    /// sent again only when they change.
+    var houseColours: [Vec4] = [] {
+        didSet { if houseColours != oldValue, !houseColours.isEmpty { renderer?.setHouses(houseColours) } }
+    }
     /// How much the map moves: still, it is drawn only when something
     /// changes; reduced, its clock runs slower, at 30 frames a second.
     var motion: ResolvedMotion = .full {
@@ -288,6 +291,7 @@ final class WorldMetalView: MTKView {
             let renderer = try WorldRenderer(device: device, library: library, pixelFormat: pixelFormat)
             renderer.meshSource = WorldMetalView.meshSource
             renderer.onFault = { [weak self] in self?.gpuFaulted() }
+            if !houseColours.isEmpty { renderer.setHouses(houseColours) }
             if let pendingTiles {
                 try renderer.updateTiles(pendingTiles.bytes, side: pendingTiles.side)
                 self.pendingTiles = nil
@@ -326,7 +330,7 @@ final class WorldMetalView: MTKView {
         let time = clock.advance(to: CACurrentMediaTime(), rate: motion.clockRate)
         var frame = FrameUniforms.make(camera: camera, size: bounds.size, pixelsPerPoint: pixelsPerPoint, time: Float(time),
                                        motion: Float(motion.clockRate), radius: radius, terrain: land.terrain,
-                                       hovered: hovered, selected: selected, houses: houseColours)
+                                       hovered: hovered, selected: selected)
         let staged = scene?(time, bounds.size) ?? SceneFrame()
         frame.light(with: PointLight.strongest(staged.lights, near: camera.focus))
         frame.weather(staged.weather)

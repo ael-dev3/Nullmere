@@ -46,8 +46,7 @@ final class WorldPerformanceTests: XCTestCase {
             var times: [Double] = []
             for frame in 0..<85 {
                 let uniforms = FrameUniforms.make(camera: camera, size: size, pixelsPerPoint: 2 * fraction, time: Float(3 + Double(frame) / 60),
-                                                  motion: 1, radius: state.map.radius, terrain: terrain, hovered: seat, selected: seat,
-                                                  houses: WorldView.houseColours)
+                                                  motion: 1, radius: state.map.radius, terrain: terrain, hovered: seat, selected: seat)
                 if let ms = renderer.measureFrame(uniforms, into: target) { times.append(ms) }
             }
             let settled = Array(times.dropFirst(5)).sorted()
@@ -124,8 +123,7 @@ final class WorldPerformanceTests: XCTestCase {
             var times: [Double] = []
             for frame in 0..<85 {
                 var uniforms = FrameUniforms.make(camera: camera, size: size, pixelsPerPoint: 2 * fraction, time: Float(3 + Double(frame) / 60),
-                                                  motion: 1, radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil,
-                                                  houses: WorldView.houseColours)
+                                                  motion: 1, radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil)
                 XCTAssertTrue(uniforms.casts, "Close in, the moon casts shadows")
                 if !casting { uniforms.cast(nil) }
                 if let ms = renderer.measureFrame(uniforms, scene: scene, into: target) { times.append(ms) }
@@ -172,8 +170,7 @@ final class WorldPerformanceTests: XCTestCase {
             var times: [Double] = []
             for frame in 0..<85 {
                 let uniforms = FrameUniforms.make(camera: camera, size: size, pixelsPerPoint: 2 * fraction, time: Float(3 + Double(frame) / 60),
-                                                  motion: 1, radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil,
-                                                  houses: WorldView.houseColours)
+                                                  motion: 1, radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil)
                 if let ms = renderer.measureFrame(uniforms, scene: scene, into: target) { times.append(ms) }
             }
             let settled = Array(times.dropFirst(5)).sorted()

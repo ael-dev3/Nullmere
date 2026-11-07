@@ -50,8 +50,7 @@ final class FrameHarnessTests: XCTestCase {
                 let camera = Camera(centerX: start.x + t * 6, centerY: start.y + t * 2, scale: scale)
                 let began = ContinuousClock.now
                 let uniforms = FrameUniforms.make(camera: camera, size: size, pixelsPerPoint: 2 * fraction, time: Float(3 + t), motion: 1,
-                                                  radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil,
-                                                  houses: WorldView.houseColours)
+                                                  radius: state.map.radius, terrain: terrain, hovered: nil, selected: nil)
                 guard let ms = renderer.measureFrame(uniforms, into: target) else { continue }
                 let took = ContinuousClock.now - began
                 if frame >= 10 {

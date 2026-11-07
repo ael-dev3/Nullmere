@@ -2,6 +2,7 @@ import AppKit
 import LauncherCore
 import LauncherKit
 import NullmereCore
+import NullmereWorld
 import Observation
 import SwiftUI
 
@@ -19,8 +20,10 @@ enum Palette {
 
     /// One colour for each House that may sit around the lake, in the order
     /// of their names: the twelve elder Houses' first, each plainly apart,
-    /// then the younger Houses', each still its own beside any other. The
-    /// world's shaders take the same, made linear.
+    /// then the younger Houses' of lakes of up to ninety-six seats, each
+    /// still its own beside any other, then the widest lakes' (see
+    /// `HousePalette.widestLakes`). The world's shaders take the same, made
+    /// linear.
     static let houseRGB: [RGB] = [
         RGB(0.86, 0.74, 0.47),
         RGB(0.70, 0.27, 0.25),
@@ -118,7 +121,7 @@ enum Palette {
         RGB(0.820, 0.676, 0.574),
         RGB(0.900, 0.450, 0.360),
         RGB(0.587, 0.640, 0.320),
-    ]
+    ] + HousePalette.widestLakes.map(RGB.init(hex:))
     static let houses: [Color] = houseRGB.map(\.colour)
 
     /// A colour as its three parts, for working out how it reads.
@@ -129,6 +132,11 @@ enum Palette {
             self.red = red
             self.green = green
             self.blue = blue
+        }
+
+        /// A colour from its bytes of red, green and blue, as 0xRRGGBB.
+        init(hex: UInt32) {
+            self.init(Double(hex >> 16 & 0xFF) / 255, Double(hex >> 8 & 0xFF) / 255, Double(hex & 0xFF) / 255)
         }
 
         var colour: Color { Color(red: red, green: green, blue: blue) }

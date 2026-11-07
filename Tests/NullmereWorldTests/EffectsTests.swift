@@ -287,7 +287,7 @@ final class WeatherTests: XCTestCase {
         XCTAssertEqual(Set(OmenKind.allCases.map { Weather.of($0) }).count, OmenKind.allCases.count, "Each omen its own")
         var frame = FrameUniforms.make(camera: Camera(), size: CGSize(width: 800, height: 600), pixelsPerPoint: 2, time: 0, motion: 1,
                                        radius: 8, terrain: TerrainMesh(relief: Relief(map: WorldMap(radius: 8, fill: Tile(terrain: .greyfield)))),
-                                       hovered: nil, selected: nil, houses: [])
+                                       hovered: nil, selected: nil)
         let (haze, moon) = (frame.haze.y, frame.moon.w)
         frame.weather(.rain)
         XCTAssertEqual(frame.haze.y, haze * 1.6, accuracy: 1e-6)

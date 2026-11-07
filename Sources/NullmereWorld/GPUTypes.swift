@@ -23,9 +23,6 @@ public struct FrameUniforms: Equatable, Sendable {
     public var haze: Vec4
     /// The heights grid's corner (x, z) and its columns and rows.
     public var heights: Vec4
-    /// Each House's colour, by its sigil plus one, linear: slot zero is no
-    /// House's, and every House a lake can seat has a slot after it.
-    public var houses: InlineArray<128, Vec4>
     /// The world's own lights: four places and reaches, then their four colours.
     public var lights: (Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4, Vec4)
     /// The Still's calm, none to deepest (0 to 1); whether the moon casts
@@ -36,12 +33,11 @@ public struct FrameUniforms: Equatable, Sendable {
     /// clip space, where it casts shadows.
     public var shadow: Mat4 = .identity
 
-    public static let houseSlots = 128
     public static let lightSlots = 4
 
     public init(viewProjection: Mat4 = .identity, eye: Vec4 = .zero, moon: Vec4 = .zero, viewport: Vec4 = .zero,
                 world: Vec4 = .zero, highlight: Vec4 = Vec4(999, 999, 999, 999), extent: Vec4 = .zero,
-                haze: Vec4 = Vec4(30, 0.02, 1, 0.3), heights: Vec4 = .zero, houses: [Vec4] = []) {
+                haze: Vec4 = Vec4(30, 0.02, 1, 0.3), heights: Vec4 = .zero) {
         self.viewProjection = viewProjection
         self.inverseViewProjection = viewProjection.inverse ?? .identity
         self.eye = eye
@@ -52,9 +48,6 @@ public struct FrameUniforms: Equatable, Sendable {
         self.extent = extent
         self.haze = haze
         self.heights = heights
-        var slots = InlineArray<128, Vec4>(repeating: Vec4(0.6, 0.6, 0.6, 1))
-        for (index, colour) in houses.prefix(FrameUniforms.houseSlots).enumerated() { slots[index] = colour }
-        self.houses = slots
         self.lights = (.zero, .zero, .zero, .zero, .zero, .zero, .zero, .zero)
     }
 
@@ -76,11 +69,35 @@ public struct FrameUniforms: Equatable, Sendable {
     public static func == (a: FrameUniforms, b: FrameUniforms) -> Bool {
         a.viewProjection == b.viewProjection && a.eye == b.eye && a.moon == b.moon && a.viewport == b.viewport
             && a.world == b.world && a.highlight == b.highlight && a.extent == b.extent && a.haze == b.haze
-            && a.heights == b.heights && a.houseColours == b.houseColours && a.lightValues == b.lightValues && a.still == b.still
+            && a.heights == b.heights && a.lightValues == b.lightValues && a.still == b.still
     }
+}
 
-    public var houseColours: [Vec4] {
-        houses.indices.map { houses[$0] }
+/// Each House's colour as the world's shaders read it, in a square texture
+/// of its own rather than among a frame's uniforms: a realm may seat a
+/// thousand Houses and more, and a frame's uniforms go to the GPU with every
+/// frame. A House's colour is at its sigil plus one, linear; texel zero is
+/// no House's, and every texel no House has is grey.
+public enum HousePalette {
+    /// The texture's side: room for every House a tile can name.
+    public static let side = 64
+    /// The most Houses a palette holds, the first texel being no House's.
+    public static let slots = side * side - 1
+    /// A colour for ground no House holds, and for a slot no House has.
+    public static let none = Vec4(0.6, 0.6, 0.6, 1)
+
+    /// The texture's texels, four floats each, row by row: the Houses'
+    /// colours by sigil, a texel on.
+    public static func texels(_ houses: [Vec4]) -> [Float] {
+        var texels = [Float](repeating: 0, count: side * side * 4)
+        for slot in 0..<(side * side) {
+            let colour = slot >= 1 && slot - 1 < houses.count ? houses[slot - 1] : none
+            texels[slot * 4] = colour.x
+            texels[slot * 4 + 1] = colour.y
+            texels[slot * 4 + 2] = colour.z
+            texels[slot * 4 + 3] = colour.w
+        }
+        return texels
     }
 }
 

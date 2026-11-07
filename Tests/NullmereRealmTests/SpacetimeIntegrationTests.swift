@@ -690,10 +690,12 @@ final class SpacetimeIntegrationTests: XCTestCase {
         mac.leave()
     }
 
-    /// Every seat of the widest realm taken at once, each by a keeper's own
-    /// client, on a real server: all seated and shown the world, all ready
-    /// and every client seeing the watch turn, one keeper heard by all. A
-    /// database of its own, fresh. CI sets NULLMERE_STDB_CROWD to it.
+    /// Every seat of a realm taken at once, each by a keeper's own client,
+    /// on a real server: all seated and shown the world, all ready and every
+    /// client seeing the watch turn, one keeper heard by all. A database of
+    /// its own, fresh. CI sets NULLMERE_STDB_CROWD to it and plays ninety-six
+    /// seats; NULLMERE_STDB_CROWD_SEATS asks for more, up to the widest
+    /// realm's thousand and twenty-four.
     @MainActor
     func testAFullRealmOfKeepersPlaysAtOnce() async throws {
         let environment = ProcessInfo.processInfo.environment
@@ -704,10 +706,10 @@ final class SpacetimeIntegrationTests: XCTestCase {
         // The steward and every keeper's Mac each reach the server by their
         // own connections, as they do in the world, not queued in one.
         func own() -> any SpacetimeTransport { SpacetimeHTTP(address: url, session: URLSession(configuration: .ephemeral))! }
-        let seats = WorldGenerator.mostHouses
+        let seats = min(Int(environment["NULLMERE_STDB_CROWD_SEATS"] ?? "") ?? 96, WorldGenerator.mostHouses)
         let timings = try await CrowdPlayThrough.play(own(), token: token, seats: seats, watchLength: 20, newcomerWait: 2...4,
                                                       timeout: 600, clients: own, log: TimedTransport.Log())
-        print("REALM \(seats) keepers' clients took every seat of the widest realm at once on SpacetimeDB: \(timings)")
+        print("REALM \(seats) keepers' clients took every seat of a realm of \(seats) at once on SpacetimeDB: \(timings)")
     }
 
     /// A realm whose every world is too big for one call of a publication,

@@ -23,14 +23,16 @@ final class WorldPreviewTests: XCTestCase {
             highlight: Vec4(999, 999, 999, 999),
             extent: Vec4(low.x, low.z, high.x, high.z),
             haze: Sky.haze(eyeDistance: (eye - camera.focus).length, spacing: terrain.spacing),
-            heights: Vec4(terrain.originX, terrain.originZ, Float(terrain.columns), Float(terrain.rows)),
-            houses: (0..<16).map { index in
-                let hue = Double(index) / 16 * 6.283
-                return Vec4(Float(0.35 + 0.3 * cos(hue)), Float(0.3 + 0.25 * cos(hue + 2.1)), Float(0.3 + 0.25 * cos(hue + 4.2)), 1)
-            })
+            heights: Vec4(terrain.originX, terrain.originZ, Float(terrain.columns), Float(terrain.rows)))
         // Close in, the moon casts shadows, as the app's frames have it.
         frame.cast(MoonShadow.matrix(camera: camera, size: size))
         return frame
+    }
+
+    /// The preview's Houses' colours, sixteen hues round the wheel.
+    static let houses: [Vec4] = (0..<16).map { index in
+        let hue = Double(index) / 16 * 6.283
+        return Vec4(Float(0.35 + 0.3 * cos(hue)), Float(0.3 + 0.25 * cos(hue + 2.1)), Float(0.3 + 0.25 * cos(hue + 4.2)), 1)
     }
 
     static func uniforms(_ frame: FrameUniforms) -> [String: Any] {
@@ -38,7 +40,8 @@ final class WorldPreviewTests: XCTestCase {
         func v(_ x: Vec4) -> [Float] { [x.x, x.y, x.z, x.w] }
         return ["viewProjection": m(frame.viewProjection), "eye": v(frame.eye), "moon": v(frame.moon), "viewport": v(frame.viewport),
                 "world": v(frame.world), "highlight": v(frame.highlight), "extent": v(frame.extent), "haze": v(frame.haze),
-                "heights": v(frame.heights), "houses": frame.houseColours.flatMap(v), "lights": frame.lightValues.flatMap(v),
+                // The palette's first 128 texels, as the preview takes them.
+                "heights": v(frame.heights), "houses": Array(HousePalette.texels(houses).prefix(128 * 4)), "lights": frame.lightValues.flatMap(v),
                 "shadow": m(frame.shadow), "still": v(frame.still)]
     }
 
