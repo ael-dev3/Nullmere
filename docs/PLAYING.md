@@ -400,7 +400,13 @@ a vote on the realm's law to cast.
   word on it.
 - **Alliance.** The alliance and its Houses, the leader first, with Help
   for each ally with works, musters or study under way the House hasn't
-  helped yet, and Help all where there are several; what was said in it lately, and to the whole realm, the
+  helped yet, and Help all where there are several, and, for its leader,
+  Cast out, asked first as the Mac asks; the alliance's own, as the Mac's
+  Alliance panel tells it: its standards, and folded beneath them its
+  hall, coffers, storehouse and yards, and, once the storehouse stands
+  whole, what the House has laid up there, with Lay up and Take back, a
+  measure at a time (100 grain, timber or stone, 10 moonsalt) or all it
+  laid up; what was said in it lately, and to the whole realm, the
   latest three of each open and the earlier folded beneath them; and a
   line to say to either. The realm's law, as the Mac's Houses tell it: the
   edict before the realm, who put it and what it would forbid, the vote as

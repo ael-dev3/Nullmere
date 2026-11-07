@@ -595,6 +595,63 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertEqual(state.gear(of: me).count, before + 1, "Into the armoury")
     }
 
+    /// What the House's alliance keeps of its own on the phone, in the words
+    /// of the Mac's Alliance panel: nothing while sworn to no alliance;
+    /// sworn, its standards, hall, coffers, storehouse and yards told, and
+    /// nothing to lay up while no storehouse stands; the leader may cast
+    /// another House out, the other may not; the storehouse standing whole,
+    /// what the House has laid up, each measure offered to lay up and take
+    /// back as the rules take it, and all it laid up.
+    func testThePhoneKeepsTheAlliancesOwnStoresAndCastsOut() throws {
+        var (state, me) = try world()
+        XCTAssertNil(CompanionLedger(world: state, player: me).allianceOwn)
+        _ = try state.perform(.foundAlliance(name: "The Stone Accord"), as: me)
+        let ally = (me + 1) % state.houses.count
+        state.houses[ally].isPlayer = true
+        let founded = try XCTUnwrap(state.alliance(of: me))
+        _ = try state.perform(.inviteToAlliance(house: ally), as: me)
+        _ = try state.perform(.answerInvitation(alliance: founded.id, accept: true), as: ally)
+        var ledger = CompanionLedger(world: state, player: me)
+        let sworn = try XCTUnwrap(state.alliance(of: me))
+        let own = try XCTUnwrap(ledger.allianceOwn)
+        XCTAssertEqual(own.lines, [state.standardsSaid(of: sworn), state.hallSaid(of: sworn), state.coffersSaid(of: sworn),
+                                   state.storehouseSaid(of: sworn), state.yardsSaid(of: sworn)])
+        XCTAssertTrue(own.lines[3].hasPrefix("Storehouse: none yet."), own.lines[3])
+        XCTAssertNil(own.laidUp)
+        XCTAssertTrue(own.layUp.isEmpty && own.takeBack.isEmpty, "Nothing laid up while no storehouse stands")
+        XCTAssertEqual(ledger.castOut.map(\.title), ["Cast \(state.houses[ally].title) out of The Stone Accord"])
+        assertTaken(ledger.castOut, in: state, as: me)
+        XCTAssertTrue(CompanionLedger(world: state, player: ally).castOut.isEmpty, "Not the ally's to do")
+
+        // A standard stands, and the storehouse rises whole on its land.
+        let seat = try XCTUnwrap(state.seat(of: me))
+        state.reveal(around: seat.position, range: 7, for: me)
+        let flag = try XCTUnwrap(seat.position.spiral(3).first { hex in
+            (2...3).contains(hex.distance(to: seat.position)) && state.standardRefusal(at: hex, by: me) == nil
+        })
+        _ = try state.perform(.raiseStandard(at: flag), as: me)
+        for index in (state.standards ?? []).indices { state.standards![index].built = Standard.raising }
+        let spot = try XCTUnwrap(flag.spiral(Standard.reach).first { state.storehouseRefusal(at: $0, by: me) == nil })
+        _ = try state.perform(.raiseStorehouse(at: spot), as: me)
+        for _ in 0..<Storehouse.raising { _ = state.keepAllianceStores() }
+        state.houses[me].stock.grain = 200 // room enough to take back what it lays up
+        ledger = CompanionLedger(world: state, player: me)
+        let standing = try XCTUnwrap(ledger.allianceOwn)
+        XCTAssertTrue(standing.lines[3].hasPrefix("Storehouse: standing"), standing.lines[3])
+        XCTAssertEqual(standing.laidUp, Storehouse.laidUpSaid(.zero))
+        XCTAssertEqual(standing.layUp.map(\.title), Storehouse.measures.map { "Lay up \($0)" })
+        XCTAssertTrue(standing.takeBack.isEmpty, "Nothing laid up to take back")
+        assertTaken(standing.layUp, in: state, as: me)
+
+        // Laid up: told, and offered back.
+        let first = Storehouse.measures[0]
+        _ = try state.perform(try XCTUnwrap(standing.layUp.first).command, as: me)
+        let laid = try XCTUnwrap(CompanionLedger(world: state, player: me).allianceOwn)
+        XCTAssertEqual(laid.laidUp, Storehouse.laidUpSaid(first))
+        XCTAssertEqual(laid.takeBack.map(\.title), ["Take back \(first)", "Take back all you laid up"])
+        assertTaken(laid.takeBack, in: state, as: me)
+    }
+
     /// The armoury and what each commander wears on the phone, in the words
     /// of the Mac's Commanders: nothing kept, told how gear comes; a piece
     /// kept, offered to every free commander and to break up, each taken by

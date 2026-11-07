@@ -678,6 +678,7 @@ struct AllianceTab: View {
     @State private var leaving = false
     @State private var letter = ""
     @State private var writingTo: Int?
+    @State private var castingOut: CompanionLedger.Order?
 
     var body: some View {
         NavigationStack {
@@ -707,10 +708,34 @@ struct AllianceTab: View {
                                 .font(Night.small)
                                 .accessibilityLabel("Help every ally with work under way")
                             }
+                            // For the leader: another House cast out, asked first
+                            // as the Mac asks.
+                            if !ledger.castOut.isEmpty {
+                                Menu("Cast out") {
+                                    ForEach(Array(ledger.castOut.enumerated()), id: \.offset) { order in
+                                        Button(order.element.title, role: .destructive) { castingOut = order.element }
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .font(Night.small)
+                                .accessibilityLabel("Cast a House out of your alliance")
+                                .confirmationDialog("\(castingOut?.title ?? "Cast them out")?",
+                                                    isPresented: Binding(get: { castingOut != nil }, set: { if !$0 { castingOut = nil } }),
+                                                    titleVisibility: .visible, presenting: castingOut) { order in
+                                    Button(order.title, role: .destructive) { session.give(order.command, told: order.title) }
+                                }
+                            }
                         } else {
                             Text(verbatim: "Your House is in no alliance.")
                                 .font(Night.small)
                                 .foregroundStyle(Night.ink.opacity(0.75))
+                        }
+                    }
+                    // What the alliance keeps of its own, as the Mac's Alliance
+                    // panel tells it, and the House's stores laid up there.
+                    if let own = ledger.allianceOwn {
+                        Section("The alliance's own") {
+                            AllianceOwnRows(session: session, own: own)
                         }
                     }
                     // The realm's law, as the Mac's Houses tell it: the edict
@@ -1274,6 +1299,47 @@ struct CommanderOrders: View {
                 .buttonStyle(.bordered)
                 .font(Night.small)
                 .accessibilityLabel("Ransom \(commander.name) home, for \(ransom.title.replacingOccurrences(of: "Ransom for ", with: ""))")
+        }
+    }
+}
+
+/// What the House's alliance keeps of its own, in the Mac's words: its
+/// standards, hall, coffers, storehouse and yards, folded beneath the
+/// first; what the House has laid up in the storehouse; and Lay up and
+/// Take back, each measure the rules would take now.
+struct AllianceOwnRows: View {
+    let session: CompanionSession
+    let own: CompanionLedger.AllianceOwn
+
+    var body: some View {
+        DisclosureGroup {
+            ForEach(Array(own.lines.dropFirst().enumerated()), id: \.offset) { line in
+                Text(verbatim: line.element)
+                    .font(Night.small)
+                    .foregroundStyle(Night.ink.opacity(0.75))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } label: {
+            Text(verbatim: own.lines.first ?? "")
+                .font(Night.small)
+                .foregroundStyle(Night.ink.opacity(0.75))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if let laid = own.laidUp {
+            Text(verbatim: laid)
+                .font(Night.small)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if !own.layUp.isEmpty || !own.takeBack.isEmpty {
+            HStack(spacing: 10) {
+                ListedOrdersMenu(title: "Lay up", orders: own.layUp, label: "Lay up stores in the alliance's storehouse") { order in
+                    session.give(order.command, told: order.title)
+                }
+                ListedOrdersMenu(title: "Take back", orders: own.takeBack, label: "Take back stores from the alliance's storehouse") { order in
+                    session.give(order.command, told: order.title)
+                }
+            }
+            .font(Night.small)
         }
     }
 }

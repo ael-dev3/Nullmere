@@ -489,6 +489,23 @@ public struct CompanionLedger: Equatable, Sendable {
     public let invites: [Order]
     /// The House's alliance to leave, while it is sworn to one.
     public let leave: Order?
+    /// For the leader, each of its alliance's other Houses to cast out.
+    public let castOut: [Order]
+    /// What the House's alliance keeps of its own, while it is sworn to one.
+    public let allianceOwn: AllianceOwn?
+
+    /// What the House's alliance keeps of its own, as the Mac's Alliance
+    /// panel tells it: its standards, hall, coffers, storehouse and yards;
+    /// and, once the storehouse stands whole, what the House has laid up
+    /// there, with what it may lay up or take back now.
+    public struct AllianceOwn: Equatable, Sendable {
+        public let lines: [String]
+        /// What the House has laid up, once the storehouse stands whole.
+        public let laidUp: String?
+        public let layUp: [Order]
+        /// Each measure the House may take back now, and all it laid up.
+        public let takeBack: [Order]
+    }
     /// The Houses nearest the keeper's seat, the nearest first, and the
     /// dealings the rules would take with each.
     public let dealings: [Dealing]
@@ -564,7 +581,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.stores.map(\.gain) == b.stores.map(\.gain) && a.storage == b.storage && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
             && a.invitations == b.invitations && a.requests == b.requests && a.asks == b.asks && a.invites == b.invites
-            && a.leave == b.leave && a.calls == b.calls
+            && a.leave == b.leave && a.castOut == b.castOut && a.allianceOwn == b.allianceOwn && a.calls == b.calls
             && a.allianceLore == b.allianceLore && a.pursuits == b.pursuits && a.allianceGifts == b.allianceGifts
             && a.dealings == b.dealings && a.standing == b.standing && a.inn == b.inn
             && a.letters == b.letters && a.correspondents == b.correspondents && a.pedlar == b.pedlar && a.spine == b.spine
@@ -880,6 +897,27 @@ public struct CompanionLedger: Equatable, Sendable {
             .prefix(CompanionLedger.alliancesOffered)
             .map { Order(title: "Invite \(title($0))", command: .inviteToAlliance(house: $0)) }
         leave = board.alliance.map { Order(title: "Leave \($0.name)", command: .leaveAlliance) }
+        castOut = board.alliance.map { own in
+            sworn.filter { $0 != player && world.refusal(of: .expel(house: $0), as: player) == nil }.map { other in
+                Order(title: "Cast \(title(other)) out of \(own.name)", command: .expel(house: other))
+            }
+        } ?? []
+        allianceOwn = allied.map { own in
+            let laid = world.laidUp(by: player)
+            let whole = world.wholeStorehouse(for: player) != nil
+            let layUp = whole ? Storehouse.measures.filter { world.layUpRefusal($0, by: player) == nil }.map {
+                Order(title: "Lay up \($0)", command: .layUp($0))
+            } : []
+            var takeBack = whole ? Storehouse.measures.filter { world.takeBackRefusal($0, by: player) == nil }.map {
+                Order(title: "Take back \($0)", command: .takeBack($0))
+            } : []
+            if whole, !laid.isZero, world.takeBackRefusal(laid, by: player) == nil {
+                takeBack.append(Order(title: "Take back all you laid up", command: .takeBack(laid)))
+            }
+            return AllianceOwn(lines: [world.standardsSaid(of: own), world.hallSaid(of: own), world.coffersSaid(of: own),
+                                       world.storehouseSaid(of: own), world.yardsSaid(of: own)],
+                               laidUp: whole ? Storehouse.laidUpSaid(laid) : nil, layUp: layUp, takeBack: takeBack)
+        }
         calls = CompanionLedger.calls(in: world, player: player, holds: holds)
         // The alliance's studies, as the Mac's Alliance panel reads them.
         dealings = CompanionLedger.dealings(in: world, player: player)
