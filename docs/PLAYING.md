@@ -261,7 +261,10 @@ been heard from lately.
   Strike what lies in its reach (the wilds, and the companies and holds of
   Houses at war with the keeper's), Gather at the nearest sites of the
   land it may work, Rally to a rally of the alliance gathering, and Keep
-  gates at the nearest of the allies' seats. An order the rules wouldn't take from the keeper's view is
+  gates at the nearest of the allies' seats. Above them, Call a rally,
+  sworn to an alliance and with none called: on a lair the House has found
+  within its rung, or a hold it knows of a House at war, the nearest first,
+  mustered at its nearest Muster Hall and gathering two watches. An order the rules wouldn't take from the keeper's view is
   refused on the phone with their reason and sent nowhere; one sent is
   carried out on the phone at once, as the realm will, and the realm's
   word follows, the world as it truly stands with it. What the phone

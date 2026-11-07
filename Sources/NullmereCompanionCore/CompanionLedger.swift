@@ -167,6 +167,14 @@ public struct CompanionLedger: Equatable, Sendable {
     public let invites: [Order]
     /// The House's alliance to leave, while it is sworn to one.
     public let leave: Order?
+    /// The rallies the House may call now, as the Mac's panels call them:
+    /// on the lairs it has found within its rung and the holds it knows of
+    /// Houses at war with it, the nearest first, each gathering two watches
+    /// at the House's hold with a Muster Hall nearest it.
+    public let calls: [Order]
+
+    /// The watches a rally called from the phone gathers.
+    public static let rallyGathering = 2
 
     /// The most alliances offered to ask, and Houses to invite, at once.
     public static let alliancesOffered = 6
@@ -181,7 +189,7 @@ public struct CompanionLedger: Equatable, Sendable {
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.storage == b.storage && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
             && a.invitations == b.invitations && a.requests == b.requests && a.asks == b.asks && a.invites == b.invites
-            && a.leave == b.leave
+            && a.leave == b.leave && a.calls == b.calls
     }
 
     /// The House's stores as one stock.
@@ -341,6 +349,32 @@ public struct CompanionLedger: Equatable, Sendable {
             .prefix(CompanionLedger.alliancesOffered)
             .map { Order(title: "Invite \(title($0))", command: .inviteToAlliance(house: $0)) }
         leave = board.alliance.map { Order(title: "Leave \($0.name)", command: .leaveAlliance) }
+        calls = CompanionLedger.calls(in: world, player: player, holds: holds)
+    }
+
+    /// The rallies the House may call: none while it is sworn to no
+    /// alliance, has called one already or has no Muster Hall; otherwise
+    /// the nearest targets the rules would take (those it has found), at
+    /// most six.
+    static func calls(in world: GameState, player: Int, holds: [NullmereCore.Hold]) -> [Order] {
+        let musters = holds.filter { $0.level(.musterHall) >= 1 }
+        guard world.alliance(of: player) != nil, !musters.isEmpty,
+              !world.ralliesStanding.contains(where: { $0.caller == player }) else { return [] }
+        let rung = world.lairRung(of: player) + 1
+        var targets: [(id: Int, position: Hex, name: String)] = world.lairsStanding
+            .filter { $0.level <= rung }
+            .map { ($0.id, $0.position, "the \($0.title)") }
+        targets += world.holds.filter { $0.owner != player && world.isAtWar(player, $0.owner) }
+            .map { ($0.id, $0.position, $0.name) }
+        var offered: [(distance: Int, order: Order)] = []
+        for target in targets {
+            let muster = musters.min { ($0.position.distance(to: target.position), $0.id) < ($1.position.distance(to: target.position), $1.id) }!
+            offered.append((muster.position.distance(to: target.position),
+                            Order(title: "Rally on \(target.name)",
+                                  command: .callRally(from: muster.id, against: target.id, watches: CompanionLedger.rallyGathering))))
+        }
+        return offered.sorted { ($0.distance, $0.order.title) < ($1.distance, $1.order.title) }
+            .lazy.map(\.order).filter { world.refusal(of: $0.command, as: player) == nil }.prefix(CompanionLedger.alliancesOffered).map { $0 }
     }
 
     /// The most sites a company is offered to gather at: the nearest.

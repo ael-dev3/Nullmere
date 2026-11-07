@@ -303,6 +303,31 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertTrue(ledger.invites.isEmpty, "Full: no House could join it now")
     }
 
+    /// Rallies called from the phone, as on the Mac: none while the House is
+    /// sworn to no alliance or has no Muster Hall; then on a hold it has
+    /// found of a House at war, mustered at its own Muster Hall and gathering
+    /// two watches, one the rules take; none once it has called one.
+    func testRalliesAreCalledFromThePhone() throws {
+        var (state, me) = try world()
+        let foe = try XCTUnwrap(state.houses.indices.first { $0 != me })
+        let seat = try XCTUnwrap(state.seat(of: me))
+        let seatIndex = try XCTUnwrap(state.holdIndex(seat.id))
+        _ = try state.declareWar(by: me, on: foe)
+        let foeSeat = try XCTUnwrap(state.seat(of: foe))
+        state.reveal(around: foeSeat.position, range: 0, for: me)
+        XCTAssertTrue(CompanionLedger(world: state, player: me).calls.isEmpty, "Sworn to no alliance")
+        _ = try state.perform(.foundAlliance(name: "Rallyward"), as: me)
+        XCTAssertTrue(CompanionLedger(world: state, player: me).calls.isEmpty, "No Muster Hall")
+        state.holds[seatIndex].levels[.musterHall] = 1
+        let ledger = CompanionLedger(world: state, player: me)
+        let call = try XCTUnwrap(ledger.calls.first { $0.command == .callRally(from: seat.id, against: foeSeat.id, watches: 2) })
+        XCTAssertEqual(call.title, "Rally on \(foeSeat.name)")
+        XCTAssertLessThanOrEqual(ledger.calls.count, CompanionLedger.alliancesOffered)
+        assertTaken(ledger.calls, in: state, as: me)
+        _ = try state.perform(call.command, as: me)
+        XCTAssertTrue(CompanionLedger(world: state, player: me).calls.isEmpty, "One rally called at a time")
+    }
+
     /// Envoys waiting on the keeper, the first come first, their terms as
     /// the Mac words them and the answers the rules take; a trade the keeper
     /// can't pay offered no acceptance; a steward's demand of tribute marked,

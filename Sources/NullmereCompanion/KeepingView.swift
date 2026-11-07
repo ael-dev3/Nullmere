@@ -230,6 +230,16 @@ struct ArmyTab: View {
                     Section {
                         WordLine(session: session)
                     }
+                    // A rally called from the phone, as on the Mac: on a lair
+                    // found or a hold of a House at war, gathering two watches.
+                    if !ledger.calls.isEmpty {
+                        Section("Call a rally") {
+                            OrdersMenu(title: "Call a rally", orders: ledger.calls, label: "Call a rally of your alliance") { order in
+                                session.give(order.command, told: order.title)
+                            }
+                            .font(Night.body)
+                        }
+                    }
                     if ledger.companies.isEmpty {
                         Text(verbatim: "Your House has no companies.")
                             .font(Night.body)
