@@ -90,6 +90,12 @@ public struct Storehouse: Codable, Equatable, Identifiable, Sendable {
     public static let room = Stock(grain: 600, timber: 600, stone: 600, moonsalt: 50)
     /// How near another House's hold it may stand, and no nearer.
     public static let fromOthers = 3
+
+    /// What raising it does, said beside it on the Mac and the phone.
+    public static var raiseSaid: String {
+        "Raise your alliance's storehouse here. It rises over \(raising) watches; whole, each of its Houses may lay up to \(room) "
+            + "there, beyond its own storage and out of any taker's reach."
+    }
 }
 
 /// The yards an alliance raises on its land: sites of its own that never
@@ -103,6 +109,11 @@ public enum Yard {
     public static let gathering = 25
     /// The share of what is worked at it the coffers gain besides, in percent.
     public static let tithe = 10
+
+    /// What raising one does, said beside it on the Mac and the phone.
+    public static var raiseSaid: String {
+        "Raise a yard here: your alliance's companies alone work it, \(gathering)% faster, and its coffers take a tithe of what they gather."
+    }
 
     /// What a yard of a store holds when raised.
     public static func richness(of store: Resource) -> Int {
@@ -206,7 +217,7 @@ extension GameState {
     }
 
     /// Why a House can't raise its alliance's storehouse at a hex, if it can't.
-    func storehouseRefusal(at hex: Hex, by house: Int) -> RuleError? {
+    public func storehouseRefusal(at hex: Hex, by house: Int) -> RuleError? {
         guard let sworn = alliance(of: house) else { return .notInAlliance }
         guard sworn.leader == house else { return .notAllianceLeader }
         guard storehouse(of: sworn.id) == nil else { return .storehouseStanding }
@@ -243,7 +254,7 @@ extension GameState {
     }
 
     /// Why a House can't lay up so much in its alliance's storehouse, if it can't.
-    func layUpRefusal(_ stock: Stock, by house: Int) -> RuleError? {
+    public func layUpRefusal(_ stock: Stock, by house: Int) -> RuleError? {
         guard alliance(of: house) != nil else { return .notInAlliance }
         guard let storehouse = wholeStorehouse(for: house) else { return .noStorehouse }
         guard Resource.allCases.allSatisfy({ stock[$0] >= 0 }), !stock.isZero else { return .nothingGiven }
@@ -267,7 +278,7 @@ extension GameState {
 
     /// Why a House can't take back so much from its alliance's storehouse,
     /// if it can't.
-    func takeBackRefusal(_ stock: Stock, by house: Int) -> RuleError? {
+    public func takeBackRefusal(_ stock: Stock, by house: Int) -> RuleError? {
         guard alliance(of: house) != nil else { return .notInAlliance }
         guard let storehouse = wholeStorehouse(for: house) else { return .noStorehouse }
         guard Resource.allCases.allSatisfy({ stock[$0] >= 0 }), !stock.isZero else { return .nothingGiven }
@@ -339,7 +350,7 @@ extension GameState {
 
     /// Why a House can't raise its alliance a yard of a store at a hex, if
     /// it can't.
-    func yardRefusal(_ store: Resource, at hex: Hex, by house: Int) -> RuleError? {
+    public func yardRefusal(_ store: Resource, at hex: Hex, by house: Int) -> RuleError? {
         guard let sworn = alliance(of: house) else { return .notInAlliance }
         guard sworn.leader == house else { return .notAllianceLeader }
         guard !yards(of: sworn.id).contains(where: { $0.store == store }) else { return .yardStanding(store) }

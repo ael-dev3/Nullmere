@@ -1032,7 +1032,7 @@ struct StandardRow: View {
         let state = session.state
         let refusal = state.refusal(of: .raiseStandard(at: hex), as: session.player)
         VStack(alignment: .leading, spacing: 5) {
-            Text(verbatim: "Raise a standard of your alliance here: the land two tiles about it becomes the alliance's.")
+            Text(verbatim: Standard.raiseSaid)
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)
@@ -1057,9 +1057,8 @@ struct StandardHelpRow: View {
     var body: some View {
         let state = session.state
         let refusal = state.refusal(of: .helpStandard(standard: standard.id), as: session.player)
-        let left = Standard.raising - (standard.built ?? Standard.raising)
         VStack(alignment: .leading, spacing: 5) {
-            Text(verbatim: "It rises, whole in \(left) watch\(left == 1 ? "" : "es"); its land is the alliance's only once it stands.")
+            Text(verbatim: standard.risingSaid)
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)
@@ -1092,9 +1091,7 @@ struct HallRow: View {
         let state = session.state
         let refusal = state.refusal(of: .raiseAllianceHall(at: hex), as: session.player)
         VStack(alignment: .leading, spacing: 5) {
-            Text(verbatim: "Begin your alliance's hall here. It rises over \(AllianceHall.raising) watches; whole, the land "
-                 + "\(AllianceHall.reach) tiles about it is the alliance's, its keepers stand a quarter firmer, your alliance's rallies "
-                 + "take \(AllianceHall.rallyCompanies) more companies and it may keep \(AllianceHall.standards) more standards.")
+            Text(verbatim: AllianceHall.raiseSaid)
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)
@@ -1127,8 +1124,7 @@ struct StorehouseRow: View {
         let state = session.state
         let refusal = state.refusal(of: .raiseStorehouse(at: hex), as: session.player)
         VStack(alignment: .leading, spacing: 5) {
-            Text(verbatim: "Raise your alliance's storehouse here. It rises over \(Storehouse.raising) watches; whole, each of its Houses "
-                 + "may lay up to \(Storehouse.room) there, beyond its own storage and out of any taker's reach.")
+            Text(verbatim: Storehouse.raiseSaid)
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)
@@ -1164,8 +1160,7 @@ struct YardRow: View {
     var body: some View {
         let state = session.state
         VStack(alignment: .leading, spacing: 5) {
-            Text(verbatim: "Raise a yard here: your alliance's companies alone work it, \(Yard.gathering)% faster, and its coffers take a "
-                 + "tithe of what they gather.")
+            Text(verbatim: Yard.raiseSaid)
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)
@@ -1407,8 +1402,7 @@ struct SeatMoveRow: View {
         let state = session.state
         let refusal = state.seatMoveRefusal(to: hex, as: session.player)
         VStack(alignment: .leading, spacing: 5) {
-            Text(verbatim: "Raise your seat anew here: its works, walls and ward as they stand, and the company at its gates with it. "
-                 + "Once in \(GameState.seatMoveRest) watches, and never while it is beset.")
+            Text(verbatim: GameState.seatMoveSaid)
                 .font(.nm(10.5))
                 .foregroundStyle(Palette.text(0.6))
                 .fixedSize(horizontal: false, vertical: true)

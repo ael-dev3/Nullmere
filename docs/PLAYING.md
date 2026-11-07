@@ -317,7 +317,14 @@ a vote on the realm's law to cast.
   it from each company in reach, a rally called on it, a hold of another
   House scouted by the House's Lanterns in reach (the report following
   on the Army tab), Gather here and
-  March here with the House's nearest companies, six at most; the House's
+  March here with the House's nearest companies, six at most; and, To
+  raise here, what the rules would let the House raise there, each said
+  as the Mac's ground panel says it and for its cost: its seat raised anew
+  on its own open ground (once in thirty watches, never while beset), a
+  standard of its alliance near its holds, a hand lent to its alliance's
+  standard as it rises, and, for the alliance's leader on its land, the
+  alliance's hall, storehouse and a yard of each store it has none of
+  (paid first from the alliance's coffers); the House's
   own companies and hold there come with their orders, as on the Army and
   House tabs. VoiceOver reads each mark on the chart and chooses it.
 - **Army.** Each company as the order book names it (two alike in kind,

@@ -81,9 +81,21 @@ public struct CompanionChart: Equatable, Sendable {
         public let gathers: [CompanionLedger.Order]
         /// The House's companies marched there, the nearest first.
         public let marches: [CompanionLedger.Order]
+        /// What the House may raise there, as the Mac's ground panel offers
+        /// it: a standard of its alliance, a hand lent to one rising, the
+        /// alliance's hall, storehouse or yards, or its own seat anew.
+        public var raisings: [Raising] = []
 
         /// Every order the rules would take there, each as offered.
-        public var orders: [CompanionLedger.Order] { strikes + calls + scouts + gathers + marches }
+        public var orders: [CompanionLedger.Order] { strikes + calls + scouts + gathers + marches + raisings.flatMap(\.orders) }
+    }
+
+    /// Something the House may raise at a hex: what raising it does, as the
+    /// Mac's ground panel says it, and the orders the rules would take, one
+    /// for each yard of a store.
+    public struct Raising: Equatable, Sendable {
+        public let said: String
+        public let orders: [CompanionLedger.Order]
     }
 
     /// The hex at its heart: the House's seat, or where the House has
@@ -257,7 +269,43 @@ public struct CompanionChart: Equatable, Sendable {
         return Place(hex: hex, title: title, lines: lines, companies: own.filter { $0.position == hex }.map(\.id),
                      hold: hold.flatMap { $0.owner == player ? $0.id : nil }, strikes: strikes,
                      calls: CompanionLedger.calls(in: world, player: player, holds: world.holds(of: player), at: hex),
-                     scouts: scouts, gathers: gathers, marches: Array(marches))
+                     scouts: scouts, gathers: gathers, marches: Array(marches),
+                     raisings: CompanionChart.raisings(at: hex, in: world, player: player))
+    }
+
+    /// What `player`'s House may raise at `hex`, each where the rules would
+    /// take it, by the rules' own refusals, as the Mac's ground panel offers
+    /// it; what alliance works cost, its coffers pay first.
+    static func raisings(at hex: Hex, in world: GameState, player: Int) -> [Raising] {
+        typealias Order = CompanionLedger.Order
+        var raisings: [Raising] = []
+        if world.standardRefusal(at: hex, by: player) == nil {
+            raisings.append(Raising(said: Standard.raiseSaid,
+                                    orders: [Order(title: "Raise a standard, for \(Standard.cost)", command: .raiseStandard(at: hex))]))
+        }
+        if let standard = world.standard(at: hex), world.helpStandardRefusal(standard.id, by: player) == nil {
+            raisings.append(Raising(said: standard.risingSaid,
+                                    orders: [Order(title: "Lend a hand, for \(Standard.helpCost)", command: .helpStandard(standard: standard.id))]))
+        }
+        if world.hallRefusal(at: hex, by: player) == nil {
+            raisings.append(Raising(said: AllianceHall.raiseSaid,
+                                    orders: [Order(title: "Begin the hall, for \(AllianceHall.cost)", command: .raiseAllianceHall(at: hex))]))
+        }
+        if world.storehouseRefusal(at: hex, by: player) == nil {
+            raisings.append(Raising(said: Storehouse.raiseSaid,
+                                    orders: [Order(title: "Raise the storehouse, for \(Storehouse.cost)", command: .raiseStorehouse(at: hex))]))
+        }
+        let yards = Resource.allCases.filter { world.yardRefusal($0, at: hex, by: player) == nil }.map { store in
+            Order(title: "Raise a \(Yard.title(of: store).lowercased()), for \(Yard.cost)", command: .raiseYard(store, at: hex))
+        }
+        if !yards.isEmpty {
+            raisings.append(Raising(said: Yard.raiseSaid, orders: yards))
+        }
+        if world.seatMoveRefusal(to: hex, as: player) == nil {
+            raisings.append(Raising(said: GameState.seatMoveSaid,
+                                    orders: [Order(title: "Raise the seat here, for \(GameState.seatMoveCost)", command: .raiseSeat(at: hex))]))
+        }
+        return raisings
     }
 
     /// How a cell is drawn, its red, green and blue from 0 to 1: its

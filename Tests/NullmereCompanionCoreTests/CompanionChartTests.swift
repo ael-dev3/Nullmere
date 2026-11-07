@@ -219,7 +219,7 @@ final class CompanionChartTests: XCTestCase {
         XCTAssertTrue(there.companies.isEmpty)
         XCTAssertNil(there.hold)
         let marches = there.marches
-        XCTAssertEqual(there.orders, there.strikes + there.calls + there.gathers + there.marches)
+        XCTAssertEqual(there.orders, there.strikes + there.calls + there.gathers + there.marches + there.raisings.flatMap(\.orders))
         XCTAssertTrue(marches.allSatisfy { if case .move = $0.command { return true }; return false })
         XCTAssertTrue(there.strikes.isEmpty && there.calls.isEmpty && there.gathers.isEmpty, "Nothing there to strike, rally on or gather")
         XCTAssertFalse(marches.isEmpty, "The House's companies may march there")
@@ -248,6 +248,65 @@ final class CompanionChartTests: XCTestCase {
         let boundView = bound.view(for: me)
         let again = CompanionChart(world: boundView, player: me).place(at: open.hex, in: boundView, player: me)
         XCTAssertFalse(again.orders.contains { $0.command == .move(unit: first.id, to: open.hex) && bound.unit(first.id)?.position != open.hex })
+    }
+
+    /// What may be raised at a hex is offered from the chart as the Mac's
+    /// ground panel offers it, each said in its words and taken by the
+    /// rules: the seat raised anew on the House's own open ground; a
+    /// standard of its alliance near its seat; a hand lent by an ally to
+    /// the standard as it rises; and once it stands, the leader's
+    /// storehouse and yards on the alliance's land, which the ally may not
+    /// raise.
+    func testWhatMayBeRaisedIsOfferedFromTheChart() throws {
+        var (state, me) = world()
+        let seat = try XCTUnwrap(state.seat(of: me))
+        state.reveal(around: seat.position, range: 7, for: me)
+        // In no alliance: the seat, raised anew on the House's own open ground.
+        let ground = try XCTUnwrap(seat.position.spiral(3).first { state.seatMoveRefusal(to: $0, as: me) == nil })
+        let view = state.view(for: me)
+        let place = CompanionChart(world: view, player: me).place(at: ground, in: view, player: me)
+        XCTAssertEqual(place.raisings.map(\.said), [GameState.seatMoveSaid])
+        XCTAssertEqual(place.raisings.first?.orders.map(\.title), ["Raise the seat here, for \(GameState.seatMoveCost)"])
+        assertTaken(place.orders, in: view, as: me)
+
+        // Leading an alliance with an ally: a standard near its seat.
+        _ = try state.perform(.foundAlliance(name: "The Stone Accord"), as: me)
+        let ally = (me + 1) % state.houses.count
+        state.houses[ally].isPlayer = true
+        state.houses[ally].stock = Stock(grain: 5_000, timber: 5_000, stone: 5_000, moonsalt: 500)
+        let alliance = try XCTUnwrap(state.alliance(of: me)).id
+        _ = try state.perform(.inviteToAlliance(house: ally), as: me)
+        _ = try state.perform(.answerInvitation(alliance: alliance, accept: true), as: ally)
+        let flag = try XCTUnwrap(seat.position.spiral(3).first { hex in
+            (2...3).contains(hex.distance(to: seat.position)) && state.standardRefusal(at: hex, by: me) == nil
+        })
+        let standing = CompanionChart.raisings(at: flag, in: state, player: me)
+        XCTAssertTrue(standing.contains { $0.said == Standard.raiseSaid && $0.orders.map(\.title) == ["Raise a standard, for \(Standard.cost)"] },
+                      "\(standing.map(\.said))")
+        assertTaken(standing.flatMap(\.orders), in: state, as: me)
+
+        // Raised, and rising: the ally lends a hand.
+        _ = try state.perform(.raiseStandard(at: flag), as: me)
+        let standard = try XCTUnwrap(state.standard(at: flag))
+        let lending = try XCTUnwrap(CompanionChart.raisings(at: flag, in: state, player: ally).first { $0.said == standard.risingSaid })
+        XCTAssertEqual(lending.orders.map(\.title), ["Lend a hand, for \(Standard.helpCost)"])
+        XCTAssertEqual(lending.orders.first?.command, .helpStandard(standard: standard.id))
+        assertTaken(lending.orders, in: state, as: ally)
+
+        // Standing whole: the leader's storehouse and yards on its land.
+        for index in (state.standards ?? []).indices { state.standards![index].built = Standard.raising }
+        let land = try XCTUnwrap(flag.spiral(Standard.reach).first { state.storehouseRefusal(at: $0, by: me) == nil })
+        let raisings = CompanionChart.raisings(at: land, in: state, player: me)
+        XCTAssertTrue(raisings.contains { $0.said == Storehouse.raiseSaid && $0.orders.map(\.title) == ["Raise the storehouse, for \(Storehouse.cost)"] },
+                      "\(raisings.map(\.said))")
+        let yards = Resource.allCases.filter { state.yardRefusal($0, at: land, by: me) == nil }
+        XCTAssertEqual(raisings.first { $0.said == Yard.raiseSaid }?.orders.map(\.title) ?? [],
+                       yards.map { "Raise a \(Yard.title(of: $0).lowercased()), for \(Yard.cost)" })
+        XCTAssertEqual(raisings.contains { $0.said == AllianceHall.raiseSaid }, state.hallRefusal(at: land, by: me) == nil)
+        assertTaken(raisings.flatMap(\.orders), in: state, as: me)
+        let theirs = CompanionChart.raisings(at: land, in: state, player: ally).map(\.said)
+        XCTAssertFalse(theirs.contains(Storehouse.raiseSaid) || theirs.contains(Yard.raiseSaid) || theirs.contains(AllianceHall.raiseSaid),
+                       "Only the leader raises the alliance's works: \(theirs)")
     }
 
     /// At a site of the land the House has explored, its companies of war

@@ -107,6 +107,21 @@ struct PlaceSections: View {
         } header: {
             Text(verbatim: place.title)
         }
+        // What may be raised here, as the Mac's ground panel offers it:
+        // what raising it does, and the orders the rules would take.
+        if !place.raisings.isEmpty {
+            Section("To raise here") {
+                ForEach(Array(place.raisings.enumerated()), id: \.offset) { raising in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(verbatim: raising.element.said)
+                            .font(Night.small)
+                            .foregroundStyle(Night.ink.opacity(0.75))
+                            .fixedSize(horizontal: false, vertical: true)
+                        FlowOrders(session: session, orders: raising.element.orders)
+                    }
+                }
+            }
+        }
         if let ledger = session.ledger {
             ForEach(ledger.companies.filter { place.companies.contains($0.id) }) { company in
                 Section {
@@ -118,6 +133,28 @@ struct PlaceSections: View {
                     HoldRows(session: session, hold: hold)
                 }
             }
+        }
+    }
+}
+
+/// Orders side by side, each its own bordered button, wrapping onto the
+/// next line where they don't fit.
+struct FlowOrders: View {
+    let session: CompanionSession
+    let orders: [CompanionLedger.Order]
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { buttons }
+            VStack(alignment: .leading, spacing: 6) { buttons }
+        }
+        .font(Night.small)
+    }
+
+    private var buttons: some View {
+        ForEach(Array(orders.enumerated()), id: \.offset) { order in
+            Button(order.element.title) { session.give(order.element.command, told: order.element.title) }
+                .buttonStyle(.bordered)
         }
     }
 }

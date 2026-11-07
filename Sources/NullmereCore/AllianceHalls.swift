@@ -51,6 +51,13 @@ public struct AllianceHall: Codable, Equatable, Identifiable, Sendable {
     public static let cost = Stock(grain: 200, timber: 400, stone: 400, moonsalt: 20)
     /// Ward it mends each watch.
     public static let mending = 15
+
+    /// What beginning it does, said beside it on the Mac and the phone.
+    public static var raiseSaid: String {
+        "Begin your alliance's hall here. It rises over \(raising) watches; whole, the land \(reach) tiles about it is the alliance's, "
+            + "its keepers stand a quarter firmer, your alliance's rallies take \(rallyCompanies) more companies and it may keep "
+            + "\(standards) more standards."
+    }
     /// How much firmer the alliance's companies keeping it stand, in percent.
     public static let garrison = 25
     /// The more companies each rally its alliance's Houses call takes.
@@ -103,7 +110,7 @@ extension GameState {
     }
 
     /// Why a House can't raise its alliance's hall at a hex, if it can't.
-    func hallRefusal(at hex: Hex, by house: Int) -> RuleError? {
+    public func hallRefusal(at hex: Hex, by house: Int) -> RuleError? {
         guard let sworn = alliance(of: house) else { return .notInAlliance }
         guard sworn.leader == house else { return .notAllianceLeader }
         guard hall(of: sworn.id) == nil else { return .hallStanding }

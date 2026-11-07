@@ -7,6 +7,12 @@ extension GameState {
     /// How near a foe at war keeps a seat where it stands.
     public static let seatMoveFoeReach = 3
 
+    /// What raising a seat anew does, said beside it on the Mac and the phone.
+    public static var seatMoveSaid: String {
+        "Raise your seat anew here: its works, walls and ward as they stand, and the company at its gates with it. "
+            + "Once in \(seatMoveRest) watches, and never while it is beset."
+    }
+
     /// Why a keeper can't raise their House's seat anew on a hex now, if
     /// they can't: the ground must be open and settleable, of the House's
     /// own land, three tiles from every other hold and clear of holy sites,

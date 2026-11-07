@@ -56,6 +56,15 @@ public struct Standard: Codable, Equatable, Identifiable, Sendable {
     /// Ward a struck standard mends each watch.
     public static let mending = 10
 
+    /// What raising one does, said beside it on the Mac and the phone.
+    public static let raiseSaid = "Raise a standard of your alliance here: the land two tiles about it becomes the alliance's."
+
+    /// How it rises, said beside a hand lent to it on the Mac and the phone.
+    public var risingSaid: String {
+        let left = Standard.raising - (built ?? Standard.raising)
+        return "It rises, whole in \(left) watch\(left == 1 ? "" : "es"); its land is the alliance's only once it stands."
+    }
+
     /// The standards an alliance may keep: one, and one more for each of
     /// its Houses, eight at most.
     public static func allowed(members: Int) -> Int { min(8, 1 + members) }
@@ -141,7 +150,7 @@ extension GameState {
     }
 
     /// Why a House can't raise a standard at a hex, if it can't.
-    func standardRefusal(at hex: Hex, by house: Int) -> RuleError? {
+    public func standardRefusal(at hex: Hex, by house: Int) -> RuleError? {
         guard let sworn = alliance(of: house) else { return .notInAlliance }
         guard let tile = map[hex] else { return .outsideTheWorld }
         guard isExplored(hex, by: house) else { return .unexplored }
