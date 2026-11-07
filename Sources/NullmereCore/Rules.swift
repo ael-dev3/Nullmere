@@ -818,6 +818,19 @@ extension GameState {
 
     // MARK: Barter
 
+    /// Why a House with `stock`, and storage for `room` of each store, would
+    /// be refused `amount` of `take` for `give` in barter, as the realm
+    /// would refuse it and the Mac and the phone both say it; nil when it
+    /// would be carried out.
+    public static func barterProblem(give: Resource, take: Resource, amount: Int, stock: Stock, room: Int) -> String? {
+        if give == take { return "Choose two different stores." }
+        if amount < 1 || amount > Stock.cap { return "Choose how much to take." }
+        let price = take.barterCost(of: amount, paidIn: give)
+        if stock[give] < price { return "You have only \(stock[give]) \(give.title.lowercased())." }
+        if stock[take] + amount > room { return "No room to store that much \(take.title.lowercased())." }
+        return nil
+    }
+
     private mutating func barter(give: Resource, take: Resource, amount: Int, as house: Int) throws(RuleError) -> [GameEvent] {
         guard give != take else { throw .sameStore }
         guard amount > 0, amount <= Stock.cap else { throw .invalidAmount }

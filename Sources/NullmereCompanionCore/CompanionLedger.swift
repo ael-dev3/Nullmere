@@ -140,6 +140,9 @@ public struct CompanionLedger: Equatable, Sendable {
     /// while one is under way.
     public let studies: [Order]
     public let stores: [(resource: Resource, amount: Int)]
+    /// How much of each store the House's holds keep, what barter can
+    /// bring it up to.
+    public let storage: Int
     /// The House's satchel, a stack a kind, as the Mac's panels use it:
     /// hourglasses for the holds with work or a muster to hasten and for the
     /// study, caches while the stores have room, ward stones for the holds
@@ -175,10 +178,17 @@ public struct CompanionLedger: Equatable, Sendable {
         a.house == b.house && a.watch == b.watch && a.envoys == b.envoys && a.gatherings == b.gatherings
             && a.companies == b.companies && a.commanders == b.commanders && a.helps == b.helps
             && a.holds == b.holds && a.studying == b.studying && a.studies == b.studies
-            && a.stores.map(\.amount) == b.stores.map(\.amount) && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
+            && a.stores.map(\.amount) == b.stores.map(\.amount) && a.storage == b.storage && a.satchel == b.satchel && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
             && a.invitations == b.invitations && a.requests == b.requests && a.asks == b.asks && a.invites == b.invites
             && a.leave == b.leave
+    }
+
+    /// The House's stores as one stock.
+    public var stock: Stock {
+        var stock = Stock()
+        for store in stores { stock[store.resource] = store.amount }
+        return stock
     }
 
     /// The ledger of `player`'s House in their view of the world.
@@ -255,6 +265,7 @@ public struct CompanionLedger: Equatable, Sendable {
         let stock = houses.indices.contains(player) ? houses[player].stock : .zero
         stores = Resource.allCases.map { ($0, stock[$0]) }
         let room = world.storage(of: player)
+        storage = room
         let hurt = world.units(of: player).contains { $0.health < 100 }
         satchel = world.satchel(of: player).map { stack in
             let uses: [Order]

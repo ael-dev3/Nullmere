@@ -178,6 +178,7 @@ struct HouseTab: View {
                             }
                         }
                     }
+                    BarterSection(session: session, ledger: ledger)
                     // The satchel: each item, how many, what one does, and its uses now.
                     if !ledger.satchel.isEmpty {
                         Section("Satchel") {
@@ -594,6 +595,44 @@ struct EnvoyRow: View {
 }
 
 /// A menu of orders of one kind, shown only when there are any.
+/// A store bartered for another, three to one and moonsalt counted as three
+/// of any other, as on the Mac: what it costs, or why the realm would
+/// refuse it (`GameState.barterProblem`, one wording for both).
+struct BarterSection: View {
+    let session: CompanionSession
+    let ledger: CompanionLedger
+    @State private var take: Resource = .timber
+    @State private var give: Resource = .grain
+    @State private var amount = 20
+
+    var body: some View {
+        let price = take.barterCost(of: amount, paidIn: give)
+        let problem = GameState.barterProblem(give: give, take: take, amount: amount, stock: ledger.stock, room: ledger.storage)
+        Section("Barter") {
+            Picker("Take", selection: $take) {
+                ForEach(Resource.allCases, id: \.self) { Text(verbatim: $0.title).tag($0) }
+            }
+            Stepper(value: $amount, in: 10...500, step: 10) {
+                Text(verbatim: "\(amount) \(take.title.lowercased())")
+                    .font(Night.figures)
+            }
+            Picker("For", selection: $give) {
+                ForEach(Resource.allCases, id: \.self) { Text(verbatim: $0.title).tag($0) }
+            }
+            Text(verbatim: problem ?? "Costs \(price) \(give.title.lowercased())")
+                .font(Night.small)
+                .foregroundStyle(problem == nil ? Night.ink.opacity(0.75) : Night.bad)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Barter") {
+                session.give(.barter(give: give, take: take, amount: amount),
+                             told: "Barter \(price) \(give.title.lowercased()) for \(amount) \(take.title.lowercased())")
+            }
+            .disabled(problem != nil)
+        }
+        .font(Night.body)
+    }
+}
+
 /// An item of the House's satchel: how many, what one does, and its uses
 /// now, one at a press or a menu of where.
 struct SatchelRow: View {

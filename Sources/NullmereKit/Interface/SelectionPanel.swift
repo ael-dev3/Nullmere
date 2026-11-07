@@ -482,11 +482,7 @@ struct BarterRow: View {
     /// Why a barter would be refused, as the realm would refuse it; nil when
     /// it would be carried out.
     static func problem(give: Resource, take: Resource, amount: Int, stock: Stock, room: Int) -> String? {
-        if give == take { return "Choose two different stores." }
-        let price = take.barterCost(of: amount, paidIn: give)
-        if stock[give] < price { return "You have only \(stock[give]) \(give.title.lowercased())." }
-        if stock[take] + amount > room { return "No room to store that much \(take.title.lowercased())." }
-        return nil
+        GameState.barterProblem(give: give, take: take, amount: amount, stock: stock, room: room)
     }
 
     var body: some View {

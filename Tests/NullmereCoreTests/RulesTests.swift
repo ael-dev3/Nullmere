@@ -292,6 +292,30 @@ final class EconomyTests: XCTestCase {
         }
     }
 
+    /// Why a barter would be refused, in the words the Mac and the phone both
+    /// say it, and nil exactly where the realm carries it out.
+    func testABarterSaysWhyItWouldBeRefusedAsTheRulesRefuseIt() {
+        let stock = Stock(grain: 90, timber: 290, stone: 0, moonsalt: 0)
+        XCTAssertEqual(GameState.barterProblem(give: .grain, take: .grain, amount: 10, stock: stock, room: 300), "Choose two different stores.")
+        XCTAssertEqual(GameState.barterProblem(give: .grain, take: .timber, amount: 0, stock: stock, room: 300), "Choose how much to take.")
+        XCTAssertEqual(GameState.barterProblem(give: .stone, take: .grain, amount: 10, stock: stock, room: 300), "You have only 0 stone.")
+        XCTAssertEqual(GameState.barterProblem(give: .grain, take: .timber, amount: 20, stock: stock, room: 300), "No room to store that much timber.")
+        XCTAssertNil(GameState.barterProblem(give: .grain, take: .timber, amount: 10, stock: stock, room: 300))
+
+        var state = GameState(settings: GameSettings(seedText: "barter's words", keepers: 1))
+        let room = state.storage(of: 0)
+        state.houses[0].stock = Stock(grain: 90, timber: room - 10, stone: 0, moonsalt: 4)
+        for give in Resource.allCases {
+            for take in Resource.allCases {
+                for amount in [0, 1, 10, 20, 30, 40] {
+                    let problem = GameState.barterProblem(give: give, take: take, amount: amount, stock: state.houses[0].stock, room: room)
+                    let refusal = state.refusal(of: .barter(give: give, take: take, amount: amount), as: 0)
+                    XCTAssertEqual(problem == nil, refusal == nil, "\(amount) \(take) for \(give): \(problem ?? "none"), \(refusal.map { "\($0)" } ?? "none")")
+                }
+            }
+        }
+    }
+
     func testStorageLimitsWhatAHouseKeeps() {
         var state = GameState(settings: GameSettings(seedText: "storage", keepers: 1))
         let room = state.storage(of: 0)

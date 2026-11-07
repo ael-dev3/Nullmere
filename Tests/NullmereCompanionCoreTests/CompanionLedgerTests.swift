@@ -181,6 +181,9 @@ final class CompanionLedgerTests: XCTestCase {
         var (state, me) = try world()
         state.houses[me].stock = Stock(grain: 0, timber: 5_000, stone: 5_000, moonsalt: 500)
         XCTAssertTrue(CompanionLedger(world: state, player: me).satchel.isEmpty, "Nothing in it")
+        // The stores and their room, as barter on the phone reads them.
+        XCTAssertEqual(CompanionLedger(world: state, player: me).stock, state.houses[me].stock)
+        XCTAssertEqual(CompanionLedger(world: state, player: me).storage, state.storage(of: me))
         _ = state.give(.hourglass, 2, to: me)
         _ = state.give(.grainCache, to: me)
         _ = state.give(.wardStone, to: me)

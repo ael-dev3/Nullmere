@@ -244,7 +244,10 @@ been heard from lately.
   demand is war; the House's stores; its holds,
   each with what it raises and musters and how long each has to go, and
   Raise and Muster: the works it may raise a level and the companies it
-  may muster at the first tier now, the House able to pay; the satchel,
+  may muster at the first tier now, the House able to pay; Barter, a
+  store for another, three to one and moonsalt as three of any other, with
+  what it costs or why the realm would refuse it, in the Mac's words; the
+  satchel,
   each item the House keeps and what one does, with its uses now (an
   hourglass to hasten a hold's work or muster, or the study; a cache to open
   while the stores have room; a ward stone for a hold whose ward isn't
