@@ -105,6 +105,13 @@ final class PanelRenderTests: XCTestCase {
         XCTAssertEqual(RaceTable.more(session.standings.count - shown.count), "\(128 - shown.count) more Houses, further from winning")
         try draw(HousesPanel(session: session), width: 360, height: 900)
         try draw(RaceTable(session: session), width: 360)
+        // The story of the age: the dozen holding most and the keeper's own, not a line for each House.
+        let told = StoryChart.told(in: state, player: session.player)
+        XCTAssertEqual(told.count, Standing.leaders + (told.prefix(Standing.leaders).contains(session.player) ? 0 : 1))
+        XCTAssertTrue(told.contains(session.player))
+        XCTAssertEqual(Set(StoryChart.points(for: state, houses: told).map(\.house)), Set(told))
+        XCTAssertEqual(StoryChart(state: state, player: session.player).makeChartDescriptor().series.count, told.count)
+        try draw(StoryChart(state: state, player: session.player), width: 360, height: 180)
     }
 
     func testThePanelsDrawAGameUnderWay() throws {

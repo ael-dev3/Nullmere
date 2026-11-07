@@ -4,7 +4,8 @@ import LauncherKit
 import NullmereCore
 import SwiftUI
 
-/// The story of a game: every House's holds, watch by watch.
+/// The story of a game: every House's holds, watch by watch; past ninety-six
+/// Houses, those of the dozen leading and the keeper's own.
 struct StoryChart: View {
     let state: GameState
     let player: Int
@@ -16,14 +17,28 @@ struct StoryChart: View {
         var id: String { "\(house)-\(watch)" }
     }
 
-    /// The points to draw, the lake as it stands now ending each line.
-    nonisolated static func points(for state: GameState) -> [Point] {
+    /// The Houses whose story is told: every one of a lake of up to
+    /// ninety-six; past that, a line for each of a thousand Houses would be
+    /// none to read, so the dozen holding most, as the race's table shows
+    /// its leaders, and the keeper's own wherever it stands.
+    nonisolated static func told(in state: GameState, player: Int) -> [Int] {
+        let ids = state.houses.map(\.id)
+        guard ids.count > Standing.shownWhole else { return ids }
+        let ranked = ids.map { ($0, state.holds(of: $0).count) }.sorted { ($1.1, $0.0) < ($0.1, $1.0) }.map(\.0)
+        let leading = Array(ranked.prefix(Standing.leaders))
+        return leading.contains(player) || !ids.contains(player) ? leading : leading + [player]
+    }
+
+    /// The points to draw, of the Houses `told` (every House's, if none are
+    /// named), the lake as it stands now ending each line.
+    nonisolated static func points(for state: GameState, houses told: [Int]? = nil) -> [Point] {
         var history = state.history
         if history.last?.watch != state.watch {
             history.append(Snapshot(watch: state.watch, holds: state.houses.map { state.holds(of: $0.id).count }, strength: []))
         }
         var points: [Point] = []
-        for house in state.houses {
+        let drawn = told.map(Set.init)
+        for house in state.houses where drawn?.contains(house.id) ?? true {
             for snapshot in history where house.id < snapshot.holds.count {
                 points.append(Point(house: house.id, watch: snapshot.watch, holds: snapshot.holds[house.id]))
                 // A fallen House's line ends where it fell.
@@ -42,7 +57,7 @@ struct StoryChart: View {
     }
 
     var body: some View {
-        let points = Self.points(for: state)
+        let points = Self.points(for: state, houses: Self.told(in: state, player: player))
         let differentiates = Contrast.shared.differentiates
         Chart(points) { point in
             LineMark(x: .value("Watch", point.watch), y: .value("Holds", point.holds), series: .value("House", point.house))
@@ -94,16 +109,17 @@ struct StoryChart: View {
 }
 
 extension StoryChart: AXChartDescriptorRepresentable {
-    /// The chart as VoiceOver plays it: each House a series of its holds,
-    /// watch by watch.
+    /// The chart as VoiceOver plays it: each House drawn a series of its
+    /// holds, watch by watch.
     nonisolated func makeChartDescriptor() -> AXChartDescriptor {
-        let points = Self.points(for: state)
+        let told = Self.told(in: state, player: player)
+        let points = Self.points(for: state, houses: told)
         let first = Double(points.map(\.watch).min() ?? 1)
         let last = max(Double(points.map(\.watch).max() ?? 1), first + 1)
         let most = max(Double(points.map(\.holds).max() ?? 1), 1)
         let watches = AXNumericDataAxisDescriptor(title: "Watch", range: first...last, gridlinePositions: []) { "watch \(Int($0))" }
         let holds = AXNumericDataAxisDescriptor(title: "Holds", range: 0...most, gridlinePositions: []) { "\(Int($0)) holds" }
-        let series = state.houses.map { house in
+        let series = told.map { state.houses[$0] }.map { house in
             AXDataSeriesDescriptor(name: house.id == player ? "You, \(house.title)" : house.title, isContinuous: true,
                                    dataPoints: points.filter { $0.house == house.id }.map { AXDataPoint(x: Double($0.watch), y: Double($0.holds)) })
         }
