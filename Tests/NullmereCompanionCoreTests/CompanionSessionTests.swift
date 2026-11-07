@@ -179,6 +179,56 @@ final class CompanionSessionTests: XCTestCase {
         mac.close()
     }
 
+    /// Counsel from the phone: its commander told of the realm from the
+    /// keeper's view as the phone holds it, and remembering what was said
+    /// on this phone this age, and nothing of an age gone by; another
+    /// House's commander isn't the phone's to ask; and let go, the phone
+    /// forgets every word of it.
+    func testCounselOnThePhoneIsTheKeepersAndStaysOnIt() async throws {
+        let (db, running, mac, keeper, _) = try await realm()
+        defer { running.cancel() }
+        let memory = PassingMemory()
+        let store = MemoryStore()
+        let phone = CompanionSession(memory: memory) { _ in NetworkRealmLink(transport: db, credentials: store, pollInterval: 0.05) }
+        let house = try XCTUnwrap(keeper.house)
+        XCTAssertNil(phone.counsel(of: 1), "Speaking for no one, it asks no commander")
+        let code = try await offer(mac)
+        phone.take(try XCTUnwrap(CompanionInvite(realm: try XCTUnwrap(URL(string: "https://realm.example/n")), code: code)))
+        try await until("the phone in as the keeper") { phone.phase == .keeping }
+        let world = try XCTUnwrap(phone.world)
+        let commander = try XCTUnwrap(phone.ledger?.commanders.first(where: \.canCounsel))
+        let taken = try XCTUnwrap(phone.counsel(of: commander.id))
+        XCTAssertEqual(taken.counsel.player, house)
+        XCTAssertEqual(taken.counsel.commander.name, commander.name)
+        XCTAssertTrue(taken.counsel.instructions.contains("of the House of \(world.houses[house].title)"), taken.counsel.instructions)
+        XCTAssertTrue(taken.counsel.briefing.hasPrefix("It is watch \(world.watch)."), "Briefed from the keeper's view as the phone holds it")
+        XCTAssertTrue(taken.memory.exchanges.isEmpty)
+        let age = phone.status?.age ?? 0
+        XCTAssertEqual(taken.memory.age, age)
+        if let theirs = world.roster.first(where: { $0.owner != house }) {
+            XCTAssertNil(phone.counsel(of: theirs.id), "Another House's commander")
+        }
+
+        // Remembered here, and recalled next counsel; an age gone by forgotten.
+        var said = taken.memory
+        said.remember("What do you see?", "The water lies still to the east.", at: world.watch)
+        phone.remember(said)
+        XCTAssertEqual(phone.counsel(of: commander.id)?.memory.exchanges.map(\.answered), ["The water lies still to the east."])
+        memory.counsel[commander.id] = CounselMemory(commander: commander.id, age: age - 1,
+                                                     exchanges: [.init(watch: 1, asked: "Old", answered: "An age gone by.")])
+        XCTAssertEqual(phone.counsel(of: commander.id)?.memory.exchanges, [], "Nothing of an age gone by")
+        phone.remember(said)
+        XCTAssertEqual(memory.counsel.count, 1)
+
+        // Let go: every word of it forgotten, and nothing kept after.
+        phone.unlink()
+        XCTAssertTrue(memory.counsel.isEmpty)
+        phone.remember(said)
+        XCTAssertTrue(memory.counsel.isEmpty, "Linked to no realm, it keeps no counsel")
+        XCTAssertNil(phone.counsel(of: commander.id))
+        mac.close()
+    }
+
     /// A realm too old to link phones is said to be, and the phone asks for
     /// nothing more of it; one that can't be reached is told so.
     func testARealmThatCantLinkIsSaidToBe() async throws {

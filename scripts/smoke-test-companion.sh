@@ -5,14 +5,18 @@
 # scripts/build-companion.sh and run in one, takes the link as the phone's
 # camera would, comes in as the keeper, gives an order the realm carries
 # out, is set aside and comes in again by its own key; and the Mac sees the
-# phone's order. Saves the companion's screens and both reports:
-# build/companion-*.png, build/companion-report.txt and
-# build/companion-mac-report.txt.
+# phone's order. Then the phone takes counsel of a commander through its
+# own on-device model, as the Mac's check does: heard and held to counsel's
+# rules, or, where the simulator's Mac can't run the model, said to be
+# unverified. Saves the companion's screens and the reports:
+# build/companion-*.png, build/companion-report.txt,
+# build/companion-mac-report.txt and build/counsel-phone-report.txt.
 #
 #   NULLMERE_REALM=http://127.0.0.1:3000/nullmere scripts/smoke-test-companion.sh
 #
 # Only debug builds heed NULLMERE_OFFER_LINK, NULLMERE_LINK_REPORT and the
-# companion's NULLMERE_COMPANION_LINK and NULLMERE_COMPANION_TAB.
+# companion's NULLMERE_COMPANION_LINK, NULLMERE_COMPANION_TAB and
+# NULLMERE_COUNSEL_REPORT.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -24,9 +28,10 @@ MAC="${BIN:-$(swift build --show-bin-path)/NullmereLauncher}"
 LINK="$PWD/build/companion-link.txt"
 MAC_REPORT="$PWD/build/companion-mac-report.txt"
 REPORT="build/companion-report.txt"
+COUNSEL_REPORT="build/counsel-phone-report.txt"
 IDENTITY="$PWD/build/companion-mac-identity"
 mkdir -p build
-rm -f "$LINK" "$MAC_REPORT" "$REPORT" "$IDENTITY" build/companion-*.png
+rm -f "$LINK" "$MAC_REPORT" "$REPORT" "$COUNSEL_REPORT" "$IDENTITY" build/companion-*.png
 [ -d "$APP" ] || scripts/build-companion.sh
 
 # An iPhone of the newest iOS the simulators have, booted.
@@ -115,12 +120,34 @@ if [ -n "$COMPANY" ]; then
 fi
 echo "The Mac sees the phone's order: $SEEN ($(cat "$MAC_REPORT" 2>/dev/null || echo "no report"))"
 
-# The phone's other screens, in again by its own key each time.
-for tab in house alliance; do
+# The phone's other screens, in again by its own key each time, and
+# counsel with the House's first free commander.
+for tab in house alliance counsel; do
     xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
     SIMCTL_CHILD_NULLMERE_COMPANION_TAB="$tab" xcrun simctl launch "$UDID" "$BUNDLE_ID" >/dev/null
     shot "$tab" 8
 done
+
+# Counsel through the phone's own model, as the keeper takes it there: the
+# report is written once, whole, when the counsel is done.
+xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+COUNSEL="$DATA/Documents/counsel-report.txt"
+rm -f "$COUNSEL"
+echo "Taking counsel of a commander through the phone's own on-device model…"
+SIMCTL_CHILD_NULLMERE_COUNSEL_REPORT=1 xcrun simctl launch "$UDID" "$BUNDLE_ID" >/dev/null
+for _ in $(seq 1 240); do
+    [ -s "$COUNSEL" ] && break
+    sleep 1
+done
+cp "$COUNSEL" "$COUNSEL_REPORT" 2>/dev/null || echo "The companion wrote no report of counsel." >"$COUNSEL_REPORT"
+cat "$COUNSEL_REPORT"
+PHONE_COUNSEL=failed
+if head -n 1 "$COUNSEL_REPORT" | grep -q ", not ready ("; then
+    PHONE_COUNSEL="unverified: the model can't be asked here"
+elif [ "$(tail -n 1 "$COUNSEL_REPORT")" = "Counsel kept to its rules." ]; then
+    PHONE_COUNSEL="heard, within its rules"
+fi
+echo "Counsel on the phone: $PHONE_COUNSEL"
 
 if ! grep -q "The companion kept its keeper's House." "$REPORT"; then
     echo "error: the companion didn't keep its keeper's House" >&2
@@ -128,6 +155,10 @@ if ! grep -q "The companion kept its keeper's House." "$REPORT"; then
 fi
 if [ "$SEEN" != yes ]; then
     echo "error: the Mac never saw the order given on the phone" >&2
+    exit 1
+fi
+if [ "$PHONE_COUNSEL" = failed ]; then
+    echo "error: counsel on the phone didn't keep its rules, or wasn't heard; see $COUNSEL_REPORT" >&2
     exit 1
 fi
 echo "Nullmere Companion, on iOS $IOS in the simulator, kept its keeper's House beside their Mac on the realm."

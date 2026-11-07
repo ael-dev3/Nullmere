@@ -51,6 +51,34 @@ final class CompanionLedgerTests: XCTestCase {
         XCTAssertTrue(bare.musters.isEmpty)
     }
 
+    /// The House's commanders as the Mac's board orders them, each with
+    /// how they stand; one held prisoner may not be asked for counsel.
+    func testTheHousesCommandersAndHowTheyStand() throws {
+        var (state, me) = try world()
+        let first = try XCTUnwrap(state.commanders(of: me).first, "Every House begins with a commander")
+        let ledger = CompanionLedger(world: state, player: me)
+        let listed = try XCTUnwrap(ledger.commanders.first { $0.id == first.id })
+        XCTAssertEqual(listed.name, first.name)
+        XCTAssertEqual(listed.title, "\(first.archetype.title) · level \(first.level)")
+        XCTAssertTrue(listed.canCounsel)
+        if let unit = state.company(ledBy: first.id) {
+            XCTAssertEqual(listed.standing, "Leads the \(SpokenOrders.named(unit, in: state))")
+        } else {
+            XCTAssertEqual(listed.standing, "Free to lead a company of war")
+        }
+        // Wounded, and then taken.
+        let index = try XCTUnwrap(state.commanders?.firstIndex { $0.id == first.id })
+        state.commanders?[index].woundedUntil = state.watch + 3
+        XCTAssertEqual(CompanionLedger(world: state, player: me).commanders.first { $0.id == first.id }?.standing,
+                       "Wounded: whole again in 3 watches")
+        let captor = (me + 1) % state.houses.count
+        state.commanders?[index].captive = Captivity(by: captor, since: state.watch, questioned: 0)
+        let held = try XCTUnwrap(CompanionLedger(world: state, player: me).commanders.first { $0.id == first.id })
+        XCTAssertEqual(held.standing, "Held prisoner by \(state.houses[captor].title)")
+        XCTAssertFalse(held.canCounsel)
+        XCTAssertNotEqual(CompanionLedger(world: state, player: me), ledger, "A commander's standing changes the ledger")
+    }
+
     func testACompanysStrikesAndGatheringAreThoseTheRulesTake() throws {
         var (state, me) = try world()
         // A company of war set beside a wild of the land, once the wilds rise.

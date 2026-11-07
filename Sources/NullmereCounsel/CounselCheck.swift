@@ -2,7 +2,7 @@ import Foundation
 import FoundationModels
 import NullmereCore
 
-/// Counsel heard from this Mac's own model, as a keeper takes it: a lake
+/// Counsel heard from this device's own model, as a keeper takes it: a lake
 /// some watches on, the keeper's first commander at the head of their first
 /// company of war, asked in turn what they see, how the House stands and
 /// what they would have done, then asked again and stopped as they begin.
@@ -12,7 +12,9 @@ import NullmereCore
 /// looked before answering at least once, the orders it put forward must be
 /// ones the realm would take, it must remember what was said, and a stopped
 /// answer must stop. scripts/check-counsel.sh asks it through the app, as a
-/// keeper's Mac runs it, and writes what was heard and how long it took.
+/// keeper's Mac runs it, and writes what was heard and how long it took;
+/// the companion asks it on the phone it runs on, as the keeper takes
+/// counsel there.
 public enum CounselCheck {
     /// Words counsel never says.
     static let forbidden = ["game", "player", "turn", "rule", "model", "tool", "ai", "artificial", "assistant"]
@@ -64,19 +66,21 @@ public enum CounselCheck {
         return problems
     }
 
+    /// Asks it on `device`, as the report names the device: "this Mac",
+    /// "this iPhone".
     @MainActor
-    public static func run(availability: (() -> SystemLanguageModel.Availability)? = nil) async -> Report {
+    public static func run(on device: String = "this Mac", availability: (() -> SystemLanguageModel.Availability)? = nil) async -> Report {
         guard let (world, commander) = world(),
               let counsel = CommanderCounsel(state: world.view(for: world.player), player: world.player, commander: commander) else {
             return Report(text: "No commander to take counsel of.", failures: ["no commander"], unavailable: false)
         }
         let session = CommanderCounselSession(counsel: counsel, memory: CounselMemory(commander: commander, age: 1), availability: availability)
         if let trouble = session.unavailable {
-            return Report(text: "Apple's on-device model on this Mac, not ready (\(trouble.said))", failures: [], unavailable: true)
+            return Report(text: "Apple's on-device model on \(device), not ready (\(trouble.said))", failures: [], unavailable: true)
         }
         session.prewarm()
         let named = "\(counsel.commander.name), \(counsel.commander.archetype.named)"
-        var text = ["Counsel of \(named), heard from Apple's on-device model on this Mac", ""]
+        var text = ["Counsel of \(named), heard from Apple's on-device model on \(device)", ""]
         var failures: [String] = []
         var looked = 0
         for question in questions {

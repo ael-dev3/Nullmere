@@ -2,6 +2,7 @@
 import Foundation
 import NullmereCompanionCore
 import NullmereCore
+import NullmereCounsel
 
 /// The companion run in the iOS Simulator as a keeper runs it, for
 /// scripts/smoke-test-companion.sh: it takes the link the keeper's Mac
@@ -9,11 +10,22 @@ import NullmereCore
 /// in as the keeper, gives one order and hears the realm's word on it, is
 /// set aside and comes in again, and writes what it saw to
 /// Documents/companion-report.txt in its own container. NULLMERE_COMPANION_TAB
-/// opens a tab to be seen. Debug builds alone heed either.
+/// opens a tab to be seen, or counsel with the first free commander
+/// (NULLMERE_COMPANION_TAB=counsel). And NULLMERE_COUNSEL_REPORT takes counsel of a
+/// commander through this phone's own on-device model, as the Mac's check
+/// does (CounselCheck), writing what was heard to
+/// Documents/counsel-report.txt. Debug builds alone heed any of them.
 @MainActor
 enum CompanionCheck {
     static var tabShown: CompanionTab? {
-        ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"].flatMap(CompanionTab.init(rawValue:))
+        if counselShown { return .army }
+        return ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"].flatMap(CompanionTab.init(rawValue:))
+    }
+
+    /// Counsel opened with the House's first free commander, to be seen:
+    /// NULLMERE_COMPANION_TAB=counsel.
+    static var counselShown: Bool {
+        ProcessInfo.processInfo.environment["NULLMERE_COMPANION_TAB"] == "counsel"
     }
 
     /// The line a report ends with when every step came as it should.
@@ -25,9 +37,29 @@ enum CompanionCheck {
         Task { await run(session, invite: invite) }
     }
 
-    private static var report: URL {
-        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return documents.appendingPathComponent("companion-report.txt")
+    private static var report: URL { documents.appendingPathComponent("companion-report.txt") }
+
+    private static var documents: URL { FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0] }
+
+    /// The device the phone's model is asked on, as the report names it.
+    static var device: String {
+        #if targetEnvironment(simulator)
+        return "this iPhone Simulator"
+        #else
+        return "this iPhone"
+        #endif
+    }
+
+    /// Counsel taken through this phone's own model, if asked for.
+    static func takeCounselIfAsked() {
+        guard ProcessInfo.processInfo.environment["NULLMERE_COUNSEL_REPORT"] != nil else { return }
+        let written = documents.appendingPathComponent("counsel-report.txt")
+        try? FileManager.default.removeItem(at: written)
+        Task {
+            let report = await CounselCheck.run(on: device)
+            try? FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
+            try? report.text.write(to: written, atomically: true, encoding: .utf8)
+        }
     }
 
     private static func until(_ seconds: Double, _ condition: () -> Bool) async -> Bool {

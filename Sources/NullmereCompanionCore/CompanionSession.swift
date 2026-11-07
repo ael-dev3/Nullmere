@@ -4,14 +4,19 @@ import NullmereRealm
 import Observation
 
 /// Where a phone keeps the realm it was linked to, so it comes back in as
-/// its keeper when it opens: the address alone, never a key.
+/// its keeper when it opens: the address alone, never a key. And what each
+/// of the keeper's commanders remembers of counsel taken on this phone,
+/// which stays on it: counsel is spoken on the device it is taken on.
 public protocol CompanionMemory: AnyObject {
     var realm: URL? { get set }
+    /// By commander.
+    var counsel: [Int: CounselMemory] { get set }
 }
 
 /// A memory kept for the life of the process: for tests.
 public final class PassingMemory: CompanionMemory {
     public var realm: URL?
+    public var counsel: [Int: CounselMemory] = [:]
     public init(realm: URL? = nil) { self.realm = realm }
 }
 
@@ -123,6 +128,29 @@ public final class CompanionSession {
         link.leave()
         self.link = nil
         phase = .away
+    }
+
+    /// Counsel of one of the keeper's commanders as this phone takes it:
+    /// what they are told of the realm, from the keeper's view as this phone
+    /// holds it, and what they remember of counsel taken here this age.
+    /// Nil unless the phone speaks for the keeper and the commander is the
+    /// House's own and free to speak.
+    public func counsel(of commander: Int) -> (counsel: CommanderCounsel, memory: CounselMemory)? {
+        guard phase == .keeping, let world, let house = keeper?.house,
+              let grounded = CommanderCounsel(state: world, player: house, commander: commander),
+              grounded.commander.captive == nil else { return nil }
+        let age = status?.age ?? 0
+        let kept = memory.counsel[commander].flatMap { $0.age == age ? $0 : nil }
+        return (grounded, kept ?? CounselMemory(commander: commander, age: age))
+    }
+
+    /// Keeps what a commander remembers of counsel taken here, forgetting
+    /// what any remembers of an age gone by.
+    public func remember(_ counsel: CounselMemory) {
+        guard memory.realm != nil else { return }
+        var kept = memory.counsel.filter { $0.value.age == counsel.age }
+        kept[counsel.commander] = counsel
+        memory.counsel = kept
     }
 
     /// Gives an order for the keeper's House: refused here with the rules'
@@ -248,6 +276,7 @@ public final class CompanionSession {
         link?.close()
         link = nil
         memory.realm = nil
+        memory.counsel = [:]
         keeper = nil
         world = nil
         ledger = nil

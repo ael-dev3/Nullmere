@@ -1,5 +1,6 @@
 import Foundation
 import NullmereCompanionCore
+import NullmereCore
 import NullmereRealm
 import SwiftUI
 
@@ -27,6 +28,7 @@ struct CompanionApp: App {
                     session.resume()
                     #if DEBUG
                     CompanionCheck.startIfAsked(session)
+                    CompanionCheck.takeCounselIfAsked()
                     #endif
                 }
         }
@@ -40,12 +42,27 @@ struct CompanionApp: App {
     }
 }
 
-/// The realm the phone was linked to, kept in its defaults: an address, never a key.
+/// The realm the phone was linked to, kept in its defaults: an address,
+/// never a key; and what the keeper's commanders remember of counsel taken
+/// on this phone, which stays on it.
 final class DefaultsMemory: CompanionMemory {
     private let key = "companion.realm"
+    private let counselKey = "companion.counsel"
     var realm: URL? {
         get { UserDefaults.standard.string(forKey: key).flatMap(URL.init(string:)) }
         set { UserDefaults.standard.set(newValue?.absoluteString, forKey: key) }
+    }
+    var counsel: [Int: CounselMemory] {
+        get {
+            UserDefaults.standard.data(forKey: counselKey).flatMap { try? JSONDecoder().decode([Int: CounselMemory].self, from: $0) } ?? [:]
+        }
+        set {
+            if newValue.isEmpty {
+                UserDefaults.standard.removeObject(forKey: counselKey)
+            } else {
+                UserDefaults.standard.set(try? JSONEncoder().encode(newValue), forKey: counselKey)
+            }
+        }
     }
 }
 

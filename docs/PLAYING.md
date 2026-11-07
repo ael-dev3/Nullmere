@@ -234,7 +234,17 @@ been heard from lately.
   refused on the phone with their reason and sent nowhere; one sent is
   carried out on the phone at once, as the realm will, and the realm's
   word follows, the world as it truly stands with it. What the phone
-  orders the Mac sees, and the phone what the Mac orders.
+  orders the Mac sees, and the phone what the Mac orders. Below the
+  companies, the House's commanders, each with how they stand, and
+  Counsel: counsel as on the Mac, spoken by Apple's on-device model on the
+  phone (an iPhone 15 Pro or later, with Apple Intelligence on), told of
+  the realm from the House's view as the phone holds it. Each answer
+  appears as it is spoken, Stop stops it, and an order the commander puts
+  forward is the keeper's to give or set aside, given as any order the
+  phone gives. What a commander remembers of counsel taken on the phone
+  stays on the phone, for the age, and is forgotten when the phone is let
+  go. A phone that can't run the model says so, and why, and everything
+  else plays as ever.
 - **Alliance.** The alliance and its Houses, the leader first; what was
   said in it lately, and to the whole realm; and a line to say to either.
 - **Letting go.** Let this phone go, at the foot of House, unlinks it; the

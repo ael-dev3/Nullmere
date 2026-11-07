@@ -61,9 +61,24 @@ public struct CompanionLedger: Equatable, Sendable {
         public let isOwn: Bool
     }
 
+    /// One of the House's commanders, who may be asked for counsel: free,
+    /// at the head of a company, wounded or held prisoner, as the Mac's
+    /// commanders board orders them.
+    public struct Commander: Equatable, Identifiable, Sendable {
+        public let id: Int
+        public let name: String
+        /// Their kind and level.
+        public let title: String
+        /// How they stand: the company they lead, their wound or their captor.
+        public let standing: String
+        /// A commander held by another House speaks only to their captors.
+        public let canCounsel: Bool
+    }
+
     public let house: String
     public let watch: Int
     public let companies: [Company]
+    public let commanders: [Commander]
     public let holds: [Hold]
     public let stores: [(resource: Resource, amount: Int)]
     /// The alliance, by name, and its Houses, the leader first.
@@ -78,7 +93,7 @@ public struct CompanionLedger: Equatable, Sendable {
     public static let linesShown = 30
 
     public static func == (a: CompanionLedger, b: CompanionLedger) -> Bool {
-        a.house == b.house && a.watch == b.watch && a.companies == b.companies && a.holds == b.holds
+        a.house == b.house && a.watch == b.watch && a.companies == b.companies && a.commanders == b.commanders && a.holds == b.holds
             && a.stores.map(\.amount) == b.stores.map(\.amount) && a.alliance == b.alliance && a.allies == b.allies
             && a.allianceWords == b.allianceWords && a.realmWords == b.realmWords && a.chronicle == b.chronicle
     }
@@ -110,6 +125,20 @@ public struct CompanionLedger: Equatable, Sendable {
                            leader: unit.leader.flatMap { world.commander($0)?.name }, doing: CompanionLedger.doing(unit, in: world),
                            orders: orders, marches: marches, strikes: CompanionLedger.strikes(for: unit, in: world, player: player),
                            gathers: CompanionLedger.gathers(for: unit, in: world, player: player))
+        }
+        commanders = world.commandersBoard(for: player).lines.map { line in
+            let standing: String
+            if let captor = line.heldBy {
+                standing = "Held prisoner by \(title(captor))"
+            } else if let wounded = line.woundedFor {
+                standing = wounded == 1 ? "Wounded: whole again next watch" : "Wounded: whole again in \(wounded) watches"
+            } else if let unit = line.leads {
+                standing = "Leads the \(SpokenOrders.named(unit, in: world))"
+            } else {
+                standing = "Free to lead a company of war"
+            }
+            return Commander(id: line.commander.id, name: line.commander.name, title: "\(line.commander.archetype.title) · level \(line.level)",
+                             standing: standing, canCounsel: line.heldBy == nil)
         }
         self.holds = holds.map { hold in
             var work: [String] = []

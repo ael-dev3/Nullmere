@@ -166,8 +166,11 @@ builds also take:
 
 The companion's debug builds take `NULLMERE_COMPANION_LINK` (a link as the
 Mac's QR code carries it: taken at once, then an order given, the phone set
-aside and back, and a report written to its Documents) and
-`NULLMERE_COMPANION_TAB` (`house`, `army` or `alliance`), passed to the
+aside and back, and a report written to its Documents),
+`NULLMERE_COMPANION_TAB` (`house`, `army`, `alliance`, or `counsel` for
+counsel with the House's first free commander) and `NULLMERE_COUNSEL_REPORT`
+(counsel taken through the phone's own model as the Mac's check takes it,
+its report written to Documents/counsel-report.txt), passed to the
 simulator as `SIMCTL_CHILD_` variables.
 
 Release builds ignore them all and always require the model.

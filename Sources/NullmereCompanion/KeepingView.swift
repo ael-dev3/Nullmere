@@ -1,6 +1,7 @@
 import Foundation
 import NullmereCompanionCore
 import NullmereCore
+import NullmereCounsel
 import SwiftUI
 
 /// The keeper's House from the phone: how it and the realm stand, its
@@ -173,9 +174,11 @@ struct HouseTab: View {
 }
 
 /// The House's companies: what each is about and the orders it may be
-/// given, each the realm's to decide.
+/// given, each the realm's to decide; and its commanders, each of whom may
+/// be asked for counsel, spoken by Apple's on-device model on this phone.
 struct ArmyTab: View {
     let session: CompanionSession
+    @State private var counselling: Counselling?
 
     var body: some View {
         NavigationStack {
@@ -230,12 +233,61 @@ struct ArmyTab: View {
                             }
                         }
                     }
+                    if !ledger.commanders.isEmpty {
+                        Section("Commanders") {
+                            ForEach(ledger.commanders) { commander in
+                                HStack(alignment: .center, spacing: 10) {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(verbatim: commander.name)
+                                            .font(Night.heading)
+                                        Text(verbatim: "\(commander.title) · \(commander.standing)")
+                                            .font(Night.small)
+                                            .foregroundStyle(commander.canCounsel ? Night.ink.opacity(0.7) : Night.bad)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                    .accessibilityElement(children: .combine)
+                                    Spacer()
+                                    Button("Counsel") { openCounsel(with: commander.id) }
+                                        .buttonStyle(.bordered)
+                                        .font(Night.small)
+                                        .disabled(!commander.canCounsel)
+                                        .accessibilityLabel("Take counsel of \(commander.name)")
+                                        .accessibilityHint(commander.canCounsel ? "Spoken by Apple's on-device model on this phone"
+                                                                                : "\(commander.name) is held prisoner.")
+                                }
+                            }
+                        }
+                    }
                 }
             }
             .scrollContentBackground(.hidden)
             .background(Night.background)
             .navigationTitle("Army")
         }
+        .sheet(item: $counselling, onDismiss: { counselling = nil }) { open in
+            CounselView(session: session, counsel: open.counsel) { counselling = nil }
+        }
+        .onChange(of: session.phase) {
+            if session.phase != .keeping { counselling = nil }
+        }
+        .onAppear {
+            #if DEBUG
+            if CompanionCheck.counselShown, counselling == nil,
+               let first = session.ledger?.commanders.first(where: \.canCounsel) {
+                openCounsel(with: first.id)
+            }
+            #endif
+        }
+    }
+
+    /// Opens counsel with one of the House's commanders, who remembers what
+    /// was said in counsel on this phone this age.
+    private func openCounsel(with commander: Int) {
+        guard let taken = session.counsel(of: commander) else { return }
+        let opened = CommanderCounselSession(counsel: taken.counsel, memory: taken.memory)
+        opened.onRemember = { [session] in session.remember($0) }
+        opened.prewarm()
+        counselling = Counselling(id: commander, counsel: opened)
     }
 }
 

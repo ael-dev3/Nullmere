@@ -300,7 +300,11 @@ public enum CounselTrouble: Equatable, Sendable, Error {
         case .unavailable(.deviceNotEligible):
             return "This device can't run Apple's on-device model, so your commanders can't take counsel here. Everything else plays as ever."
         case .unavailable(.appleIntelligenceOff):
+            #if os(iOS)
+            return "Apple Intelligence is turned off in Settings, so your commanders can't take counsel until it is turned on."
+            #else
             return "Apple Intelligence is turned off in System Settings, so your commanders can't take counsel until it is turned on."
+            #endif
         case .unavailable(.modelNotReady):
             return "Apple's on-device model is still downloading or preparing. Your commanders can take counsel once it is ready."
         case .unavailable(.systemTooOld):

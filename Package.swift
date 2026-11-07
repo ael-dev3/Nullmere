@@ -75,7 +75,7 @@ targets += [
     // Nullmere Companion, the keeper's iPhone app: its SwiftUI screens over
     // the companion's core. Built for iOS by scripts/build-companion.sh,
     // which bundles it; on the Mac it builds too, to be checked as the rest is.
-    .executableTarget(name: "NullmereCompanion", dependencies: ["NullmereCompanionCore", "NullmereCore", "NullmereRealm"]),
+    .executableTarget(name: "NullmereCompanion", dependencies: ["NullmereCompanionCore", "NullmereCounsel", "NullmereCore", "NullmereRealm"]),
     .testTarget(name: "LauncherKitTests", dependencies: ["LauncherKit", "LauncherCore", "NullmereTestSupport"]),
     .testTarget(name: "NullmereKitTests", dependencies: ["NullmereKit", "NullmereCore", "NullmereModels", "NullmereWorld", "NullmereRealm", "NullmereSound", "NullmereCounsel", "NullmereCompanionCore", "LauncherCore", "LauncherKit", "NullmereTestSupport"]),
 ]
