@@ -72,6 +72,13 @@ final class LocalRealmEdgeTests: XCTestCase {
             link.onEvent = { heard.append($0) }
             link.reclaim(proof: "anything")
             guard case .refused(.unknownWords)? = heard.first else { return XCTFail("Refused, by no words") }
+            // Nor does it link a phone, or let one go: it says so.
+            var offered: Result<Int, LinkRefusal>?
+            link.offerLink(code: LinkCode.make()) { offered = $0 }
+            XCTAssertEqual(offered, .failure(LinkRefusal(RealmLinkNote.linksNoPhones)))
+            var unlinked: String??
+            link.unlinkDevices { unlinked = .some($0) }
+            XCTAssertEqual(unlinked, .some(RealmLinkNote.linksNoPhones))
         }
     }
 

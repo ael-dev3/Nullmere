@@ -3,7 +3,9 @@ import Metal
 @testable import NullmereCore
 @testable import NullmereKit
 import NullmereModels
+import NullmereRealm
 import NullmereWorld
+import SwiftUI
 import XCTest
 
 /// The world in three dimensions, drawn by its own shaders on this Mac's
@@ -242,6 +244,12 @@ final class WorldRenderTests: XCTestCase {
         print("RENDER battle: \(changed) of \(WorldRenderTests.width * WorldRenderTests.height / 4) sampled pixels changed by the host")
         XCTAssertGreaterThan(changed, 6_000, "the host fills the field")
         try keep([fought], as: "world-battle")
+        // And told on the map, in the band under the bar, while it is fought.
+        let app = GameApp(store: LocalStore(directory: directory), readiness: { .ready }, sound: false, address: .hosted(seed: "battle band"),
+                          identity: FileIdentityStore(url: directory.appendingPathComponent("identity")))
+        let play = ImageRenderer(content: PlayView(app: app, session: session).frame(width: 1100, height: 760).background(Color.black))
+        play.scale = 1
+        XCTAssertNotNil(play.cgImage)
 
         // The foe's side broken, three in four of its troops lost: its
         // companies turn their backs and run, ranks gone; the keeper's own

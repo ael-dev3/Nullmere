@@ -45,6 +45,32 @@ final class PanelRenderTests: XCTestCase {
         return image
     }
 
+    /// A hold at work: the work it raises and the company it musters, each
+    /// with the watches it has to go, the next watch, or, trained with no
+    /// ground to stand on, waiting for room; and on its alliance's land, the
+    /// share of all it yields the land gives it.
+    func testAHoldAtWorkTellsWhatItRaisesAndMusters() throws {
+        var state = GameState(settings: GameSettings(seedText: "hold at work", keepers: 1))
+        let me = state.player
+        state.houses[me].stock = Stock(grain: 9_000, timber: 9_000, stone: 9_000, moonsalt: 900)
+        let seat = try XCTUnwrap(state.seat(of: me))
+        _ = try state.perform(.build(hold: seat.id, kind: .granary), as: me)
+        let kind = try XCTUnwrap(UnitKind.allCases.first { $0.hasTiers && state.tierRefusal(of: $0, tier: 1, at: seat, for: me) == nil })
+        _ = try state.perform(.train(hold: seat.id, kind: kind, tier: 1), as: me)
+        _ = try state.perform(.foundAlliance(name: "Hostward"), as: me)
+        let alliance = try XCTUnwrap(state.alliance(of: me))
+        let standard = state.takeID()
+        state.standards = [Standard(id: standard, alliance: alliance.id, raisedBy: me, position: seat.position, raised: state.watch)]
+        XCTAssertTrue(state.isOnAllianceLand(try XCTUnwrap(state.hold(seat.id))), "Its seat on the alliance's land")
+        let index = try XCTUnwrap(state.holdIndex(seat.id))
+        XCTAssertNotNil(state.holds[index].project)
+        for left in [3, 1, 0] {
+            state.holds[index].training?.watchesLeft = left
+            let session = GameSession(state: state, store: LocalStore(directory: dir.appendingPathComponent("at-work-\(left)")))
+            try draw(OwnHoldDetails(session: session, hold: try XCTUnwrap(session.state.hold(seat.id))), width: 340, height: 1000)
+        }
+    }
+
     /// The selection panel for what is chosen: nothing chosen draws nothing;
     /// the keeper's own hold scrolls, so its details are drawn on their own.
     private func drawSelection(_ session: GameSession, width: CGFloat, height: CGFloat) throws {

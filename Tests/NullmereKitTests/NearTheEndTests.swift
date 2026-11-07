@@ -86,6 +86,23 @@ final class NearTheEndTests: XCTestCase {
 
     /// A keeper whose House falls while the age goes on looks on, and is
     /// told they'll be seated again when the next begins.
+    /// Orders written in the keeper's own words: their card takes the hover
+    /// line's place at the foot of the map while it is open, and leaves it
+    /// when put away.
+    func testTheOrdersCardTakesItsPlaceOnTheMap() throws {
+        let state = GameState(settings: GameSettings(seedText: "orders on the map", keepers: 1))
+        let store = LocalStore(directory: dir.appendingPathComponent("orders"))
+        let session = GameSession(state: state, store: store)
+        let app = GameApp(store: store, readiness: { .ready }, sound: false, address: .hosted(seed: "orders on the map"),
+                          identity: FileIdentityStore(url: dir.appendingPathComponent("identity-orders")))
+        session.toggleOrders()
+        XCTAssertNotNil(session.ordersInWords)
+        try draw(PlayView(app: app, session: session))
+        session.toggleOrders()
+        XCTAssertNil(session.ordersInWords)
+        try draw(PlayView(app: app, session: session))
+    }
+
     func testAFallenKeeperLooksOnUntilTheAgeEnds() throws {
         var state = GameState(settings: GameSettings(seedText: "fallen, looking on", keepers: 1))
         state.houses[state.player].isEliminated = true

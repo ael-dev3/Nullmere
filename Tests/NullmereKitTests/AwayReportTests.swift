@@ -36,6 +36,7 @@ final class AwayReportTests: XCTestCase {
         _ = try state.perform(.stand(.home), as: me)
         let kept = try XCTUnwrap(AwayReport(since: seen, now: later(state, by: 3), player: me))
         XCTAssertEqual(kept.standing, "A caretaker kept your House by your standing orders, which still stand.")
+        try keep(AwayCard(report: kept) {}, as: "game-away-standing.png")
         XCTAssertNil(AwayReport(since: seen, now: later(state, by: 1), player: me)?.standing, "A watch away: no caretaker yet")
     }
 
