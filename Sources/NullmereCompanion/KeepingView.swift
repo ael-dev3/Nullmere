@@ -580,6 +580,10 @@ struct ArmyTab: View {
                                             .font(Night.small)
                                             .foregroundStyle(commander.canCounsel ? Night.ink.opacity(0.7) : Night.bad)
                                             .fixedSize(horizontal: false, vertical: true)
+                                        Text(verbatim: commander.stars)
+                                            .font(Night.small)
+                                            .foregroundStyle(commander.raiseStar != nil ? Night.moon : Night.ink.opacity(0.6))
+                                            .fixedSize(horizontal: false, vertical: true)
                                     }
                                     .accessibilityElement(children: .combine)
                                     Spacer()
@@ -1292,6 +1296,13 @@ struct CommanderOrders: View {
                 }
             }
             .font(Night.small)
+        }
+        // A star raised with the sculptures the House keeps, as on the Mac.
+        if let star = commander.raiseStar {
+            Button("Raise a star") { session.give(star.command, told: star.title) }
+                .buttonStyle(.bordered)
+                .font(Night.small)
+                .accessibilityLabel(star.title)
         }
         // Held prisoner by another House: ransomed home, where the stores pay it.
         if let ransom = commander.ransom {

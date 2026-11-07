@@ -21,6 +21,13 @@ extension Commander {
         guard stars < mostStars else { return nil }
         return 10 << (stars - 1)
     }
+
+    /// Its stars as its line tells them on the Mac and the phone: what the
+    /// next asks and how many sculptures its House keeps, or all of them.
+    public func starsSaid(kept: Int) -> String {
+        guard let cost = Commander.sculpturesToRaise(from: starCount) else { return "All \(Commander.mostStars) stars" }
+        return "Next star: \(cost) sculptures, \(kept) kept"
+    }
 }
 
 extension GameState {

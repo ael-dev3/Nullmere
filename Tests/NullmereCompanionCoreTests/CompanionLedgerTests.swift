@@ -652,6 +652,39 @@ final class CompanionLedgerTests: XCTestCase {
         assertTaken(laid.takeBack, in: state, as: me)
     }
 
+    /// A commander's stars on the phone, in the words of the Mac's
+    /// Commanders: one of five and what the next asks, nothing offered
+    /// without the sculptures; with them, Raise a star, taken by the rules
+    /// and counted on the Army tab's badge; raised, told anew; at five,
+    /// all of them, and none offered.
+    func testThePhoneRaisesACommandersStarsWithSculptures() throws {
+        var (state, me) = try world()
+        let commander = try XCTUnwrap(state.commanders(of: me).first)
+        var line = try XCTUnwrap(CompanionLedger(world: state, player: me).commanders.first { $0.id == commander.id })
+        XCTAssertEqual(line.stars, "1 of \(Commander.mostStars) stars · Next star: 10 sculptures, 0 kept")
+        XCTAssertNil(line.raiseStar, "No sculptures kept")
+        let before = CompanionLedger(world: state, player: me).armyWaiting
+        _ = state.giveSculptures(25, to: me)
+        let ledger = CompanionLedger(world: state, player: me)
+        line = try XCTUnwrap(ledger.commanders.first { $0.id == commander.id })
+        XCTAssertEqual(line.stars, "1 of \(Commander.mostStars) stars · Next star: 10 sculptures, 25 kept")
+        let raise = try XCTUnwrap(line.raiseStar)
+        XCTAssertEqual(raise.title, "Raise \(commander.name) to 2 stars")
+        assertTaken([raise], in: state, as: me)
+        if line.talents.isEmpty { XCTAssertEqual(ledger.armyWaiting, before + 1, "A star to raise waits on the Army tab") }
+        _ = try state.perform(raise.command, as: me)
+        line = try XCTUnwrap(CompanionLedger(world: state, player: me).commanders.first { $0.id == commander.id })
+        XCTAssertEqual(line.stars, "2 of \(Commander.mostStars) stars · Next star: 20 sculptures, 15 kept")
+        XCTAssertNil(line.raiseStar, "Not sculptures enough for the next")
+        // At five stars, all of them, none offered.
+        let index = try XCTUnwrap(state.commanders?.firstIndex { $0.id == commander.id })
+        state.commanders?[index].stars = Commander.mostStars
+        _ = state.giveSculptures(500, to: me)
+        line = try XCTUnwrap(CompanionLedger(world: state, player: me).commanders.first { $0.id == commander.id })
+        XCTAssertEqual(line.stars, "\(Commander.mostStars) of \(Commander.mostStars) stars · All \(Commander.mostStars) stars")
+        XCTAssertNil(line.raiseStar)
+    }
+
     /// The armoury and what each commander wears on the phone, in the words
     /// of the Mac's Commanders: nothing kept, told how gear comes; a piece
     /// kept, offered to every free commander and to break up, each taken by

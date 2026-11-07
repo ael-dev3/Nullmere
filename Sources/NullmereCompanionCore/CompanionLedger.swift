@@ -100,6 +100,11 @@ public struct CompanionLedger: Equatable, Sendable {
         public var ransom: Order? = nil
         /// What they wear, slot by slot, each with Take off.
         public var worn: [GearPiece] = []
+        /// Their stars, as the Mac's Commanders tell them: "2 of 5 stars ·
+        /// Next star: 20 sculptures, 24 kept".
+        public var stars: String = ""
+        /// A star raised, where the House keeps sculptures enough.
+        public var raiseStar: Order? = nil
     }
 
     /// The Ring, as the Mac's Commanders tell it: where the House stands,
@@ -597,13 +602,16 @@ public struct CompanionLedger: Equatable, Sendable {
     }
 
     /// What waits on them on the Alliance tab, for its badge: invitations
-    /// and Houses asking to join to answer, and allies' work to help.
+    /// and Houses asking to join to answer, allies' work to help, and a
+    /// vote on the realm's law to cast.
     public var allianceWaiting: Int { invitations.count + requests.count + helps.count + (law.votes.isEmpty ? 0 : 1) }
 
     /// What waits on them on the Army tab, for its badge: commanders with a
-    /// talent to learn, and the watch's venture up the Spine not yet made.
+    /// talent to learn or a star to raise, the watch's venture up the Spine
+    /// not yet made, and prisoners to question.
     public var armyWaiting: Int {
-        commanders.filter { !$0.talents.isEmpty }.count + (spine.ventures.isEmpty ? 0 : 1) + prisoners.filter { $0.question != nil }.count
+        commanders.filter { !$0.talents.isEmpty || $0.raiseStar != nil }.count + (spine.ventures.isEmpty ? 0 : 1)
+            + prisoners.filter { $0.question != nil }.count
     }
 
     /// The House's stores as one stock.
@@ -726,6 +734,7 @@ public struct CompanionLedger: Equatable, Sendable {
         }
         let war = world.units(of: player).filter { $0.kind.isMilitary }.sorted { $0.id < $1.id }
         let held = world.gear(of: player)
+        let sculptures = world.sculptures(of: player)
         commanders = world.commandersBoard(for: player).lines.map { line in
             let standing: String
             if let captor = line.heldBy {
@@ -766,7 +775,12 @@ public struct CompanionLedger: Equatable, Sendable {
             return Commander(id: id, name: line.commander.name, title: "\(line.commander.archetype.title) · level \(line.level)",
                              standing: standing, canCounsel: line.heldBy == nil, leads: leads, seconds: seconds,
                              home: riding ? Order(title: "Ride home", command: .unassign(commander: id)) : nil,
-                             talents: talents, gear: gear, ransom: ransom, worn: worn)
+                             talents: talents, gear: gear, ransom: ransom, worn: worn,
+                             stars: "\(line.commander.starCount) of \(NullmereCore.Commander.mostStars) stars · "
+                                + line.commander.starsSaid(kept: sculptures),
+                             raiseStar: world.starRefusal(of: id, as: player) == nil
+                                ? Order(title: "Raise \(line.commander.name) to \(line.commander.starCount + 1) stars", command: .raiseStar(commander: id))
+                                : nil)
         }
         // The armoury: each piece no commander wears, to arm any commander
         // free to take it up, or to break up for its moonsalt.

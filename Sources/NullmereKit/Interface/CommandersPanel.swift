@@ -408,8 +408,7 @@ struct StarsLine: View {
     let commander: Commander
 
     static func line(_ commander: Commander, kept: Int) -> String {
-        guard let cost = Commander.sculpturesToRaise(from: commander.starCount) else { return "All \(Commander.mostStars) stars" }
-        return "Next star: \(cost) sculptures, \(kept) kept"
+        commander.starsSaid(kept: kept)
     }
 
     var body: some View {

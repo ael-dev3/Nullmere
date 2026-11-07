@@ -240,8 +240,8 @@ scrolled to give it; an order still unanswered when the phone is set aside
 is said to have been. The House, Army and Alliance tabs carry a count of
 what waits on the keeper there: envoys to answer, foes gathered near the
 House's holds, wounded it may heal and the Lyceum sitting; commanders with
-a talent to learn, the watch's venture up the Spine not yet made and
-prisoners to question;
+a talent to learn or a star to raise, the watch's venture up the Spine not
+yet made and prisoners to question;
 invitations and Houses asking to join to answer, allies' work to help, and
 a vote on the realm's law to cast.
 
@@ -365,7 +365,9 @@ a vote on the realm's law to cast.
   second beside a company's leader, Ride home, Learn the next rank of a
   talent with a point to spend, Wear a piece of the armoury, from
   whoever wears it, and, for one held prisoner by another House, its
-  ransom while the stores would pay it; what each wears, slot by slot, as
+  ransom while the stores would pay it; its stars, as the Mac's Commanders
+  tell them ("2 of 5 stars · Next star: 20 sculptures, 24 kept"), with
+  Raise a star while the House keeps sculptures enough; what each wears, slot by slot, as
   the Mac's Commanders tell it ("Weapon: Fine Moonblade"), with what it
   gives and Take off; and Counsel: counsel as on the Mac, spoken by Apple's on-device model on the
   phone (an iPhone 15 Pro or later, with Apple Intelligence on), told of
